@@ -71,15 +71,20 @@
     "signinTitle": "Inicia sesión en Houston",
     "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
     "signin": "Iniciar sesión",
-    "connectReasonFallback": "Conecta {{app}} para continuar.",
+    "connectTitle": "Conectar {{app}}",
+    "connectReasonFallback": "El agente necesita {{app}} para continuar.",
     "declinePlaceholder": "O dile qué hacer en vez de eso...",
     "recommended": "Recomendado",
     "skip": "Omitir",
     "notNow": "Ahora no",
+    "collapse": "Contraer interacción",
+    "expand": "Expandir interacción",
     "esc": "Esc"
   },
   "planReady": {
     "title": "Plan listo",
+    "collapse": "Contraer aprobación del plan",
+    "expand": "Expandir aprobación del plan",
     "askFirstTitle": "Continuar en modo Preguntar antes",
     "askFirstDescription": "Hace las cosas y te pregunta antes de acciones delicadas.",
     "autopilotTitle": "Continuar en modo Piloto automático",
@@ -97,6 +102,10 @@
     "saveSkillMessage": "Guarda lo que acabo de hacer como una Habilidad llamada \"{{title}}\".",
     "saveRoutineMessage": "Configura esto como una rutina recurrente llamada \"{{title}}\".",
     "saveLearningMessage": "Recuerda \"{{title}}\" como un aprendizaje para la próxima vez."
+  },
+  "suggestActions": {
+    "heading": "Continuar con",
+    "dismiss": "Descartar acciones sugeridas"
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",
@@ -179,7 +188,21 @@
       "modelsLabel": "Modelos",
       "loading": "Cargando proveedores…",
       "empty": "No se encontraron modelos.",
-      "noProviders": "Aún no hay proveedores conectados.",
+      "noProviders": {
+        "action": "Conectar un modelo de IA",
+        "personal": {
+          "title": "Aún no hay proveedores conectados.",
+          "hint": "Conecta un modelo de IA para empezar a chatear."
+        },
+        "teamCanConnect": {
+          "title": "Este espacio de equipo aún no tiene una conexión de IA.",
+          "hint": "Conecta un modelo de IA para este equipo y todos aquí podrán usarlo."
+        },
+        "teamAskAdmin": {
+          "title": "Este espacio de equipo aún no tiene una conexión de IA.",
+          "hint": "Pídele a un propietario o administrador del equipo que conecte un modelo de IA para este espacio."
+        }
+      },
       "hiddenByWorkspace_one": "{{count}} modelo más está desactivado en tu espacio de trabajo",
       "hiddenByWorkspace_other": "{{count}} modelos más están desactivados en tu espacio de trabajo"
     },

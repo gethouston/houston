@@ -1,7 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  providerAppearsConnected,
   providerIsAuthenticated,
   providerReconnectSignalState,
   reconnectProviderForChat,
@@ -37,29 +36,12 @@ describe("provider reconnect signal state", () => {
       "resolved",
     );
   });
-
-  it("treats connected only as installed plus authenticated", () => {
-    strictEqual(
-      providerIsAuthenticated({
-        cli_installed: true,
-        auth_state: "authenticated",
-      }),
-      true,
-    );
-    strictEqual(
-      providerIsAuthenticated({
-        cli_installed: false,
-        auth_state: "authenticated",
-      }),
-      false,
-    );
-  });
 });
 
-describe("provider appears connected (settings card)", () => {
+describe("provider is authenticated (the confirmed-connected predicate)", () => {
   it("treats authenticated as connected", () => {
     strictEqual(
-      providerAppearsConnected({
+      providerIsAuthenticated({
         cli_installed: true,
         auth_state: "authenticated",
       }),
@@ -67,16 +49,21 @@ describe("provider appears connected (settings card)", () => {
     );
   });
 
-  it("treats unknown as connected so a working provider keeps its connected state", () => {
+  it("treats unknown as NOT connected (HOU-979)", () => {
+    // Reversed deliberately. The old `providerAppearsConnected` counted an
+    // unconfirmable probe as connected, which is how a team space whose
+    // per-agent probe 404'd kept reporting "Connected" in the AI hub while the
+    // chat picker showed no providers at all. `unknown` is now `checking`
+    // everywhere: never Connected, never silently hidden.
     strictEqual(
-      providerAppearsConnected({ cli_installed: true, auth_state: "unknown" }),
-      true,
+      providerIsAuthenticated({ cli_installed: true, auth_state: "unknown" }),
+      false,
     );
   });
 
   it("treats confirmed unauthenticated as disconnected", () => {
     strictEqual(
-      providerAppearsConnected({
+      providerIsAuthenticated({
         cli_installed: true,
         auth_state: "unauthenticated",
       }),
@@ -86,11 +73,11 @@ describe("provider appears connected (settings card)", () => {
 
   it("is never connected when the CLI is missing", () => {
     strictEqual(
-      providerAppearsConnected({ cli_installed: false, auth_state: "unknown" }),
+      providerIsAuthenticated({ cli_installed: false, auth_state: "unknown" }),
       false,
     );
     strictEqual(
-      providerAppearsConnected({
+      providerIsAuthenticated({
         cli_installed: false,
         auth_state: "authenticated",
       }),

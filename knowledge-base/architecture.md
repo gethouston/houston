@@ -173,12 +173,15 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `{ steps: InteractionStep[] }`, each step
   `{kind:"question", id, question, options?}` | `{kind:"connect", id, toolkit,
   reason?}` | `{kind:"approval", id, toolkit, action, params?, paramsHash}` (+
-  `signin` / `plan_ready` / `suggest_reusable`), `packages/protocol`, wire v3).
+  `signin` / `plan_ready` / `suggest_reusable` / `suggest_actions`),
+  `packages/protocol`, wire v3).
   Only the clean path carries it; an error frame never does.
 - **Done frame → settle split.** The SDK folds the frame
   (`packages/sdk/src/modules/turns/turn-settle.ts`): a clean turn WITH an
   interaction settles `boardStatus: needs_you` and carries the interaction; a
-  clean turn WITHOUT one settles the NEW terminal `boardStatus: done`. A user Stop
+  clean turn WITHOUT one settles the NEW terminal `boardStatus: done`. A frame
+  containing only optional `suggest_reusable` and/or `suggest_actions` steps
+  also settles `done`; any blocking step still settles `needs_you`. A user Stop
   / logged-out provider is a handled `needs_you` (never carrying an interaction);
   a real failure is `error`. `persistBoardStatus` writes `{ status,
   pending_interaction }` (the web adapter PATCHes it); Activity persists
@@ -187,8 +190,12 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   reload.
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
   the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v19):
-  a one-step-at-a-time stepper composed in the shared `InteractionModal` shell,
-  reference "Coworker card" look — a white card, REGULAR-weight left title,
+  a one-step-at-a-time stepper composed in the shared `InteractionModal` shell.
+  Only its body is bounded to 40vh with scrolling; the footer and free-text row
+  remain fixed. A visible header chevron can collapse the card without hiding
+  the blocked state, keeping the transcript readable even for long interactions.
+  The shell follows the reference "Coworker card" look — a white card,
+  REGULAR-weight left title,
   top-right "N of M" pager whose chevrons are Back/Forward (hidden for a lone
   step) + dismiss X. Question steps show option rows with a LEFT number badge
   (the digit is the keyboard shortcut) and an optional "Recommended" chip (the
@@ -234,6 +241,14 @@ null-clears the interaction at the next turn's start — unchanged. `suggest_reu
 "Not now" also clears the persisted interaction (no stop marker); `plan_ready`
 "Keep planning" stays local-only.
 
+**Plan approval.** Plan mode writes the complete plan as the normal assistant
+message, then calls `plan_ready` with a one- or two-sentence lede. The compact
+plan-ready card shares the bounded, collapsible interaction shell and offers
+Ask first, Autopilot, or Keep planning. The card never owns the complete plan,
+so long plans remain readable in the transcript. Its trailing shared free-text
+row is the only input while the card is shown; a typed instruction starts a
+visible plan-mode follow-up and retires the pending card.
+
 **Reflection step (suggest_reusable).** The prompt names the agent's
 end-of-mission evaluation the REFLECTION STEP: every time the agent finishes a
 task (a clean `done`, never `needs_you`), it reflects on whether the work should
@@ -250,6 +265,12 @@ card — the old mid-task `ask_user` "Want me to remember that?" flow is gone;
 a direct user "remember this" still saves immediately. Concept name lives in
 prompts/docs only; the wire kind stays `suggest_reusable` (persisted in user
 data). Inventory: `suggest-reusable-card` v22.
+
+**Follow-up step (suggest_actions).** Once a mission is complete, the agent may
+call `suggest_actions` with 2 to 4 concrete follow-ups. Each action has a short
+pill label and the visible user message sent when it is selected. This optional
+offer can compose with `suggest_reusable` (actions first), persists through
+reload, and never turns the board to `needs_you`. Dismissing clears it.
 
 The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
 tool guidance; the app's legacy link-card renderer survives only to render old

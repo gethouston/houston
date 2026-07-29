@@ -71,7 +71,11 @@ export function ChatSigninInteractionCard({
   pager,
   onDismiss,
   dismissLabel,
+  collapseLabel,
+  expandLabel,
   disabled,
+  open,
+  onOpenChange,
 }: ChatSigninInteractionCardProps) {
   const { t } = useTranslation("chat");
   const gate = useIntegrationsGate();
@@ -123,7 +127,7 @@ export function ChatSigninInteractionCard({
   // hook owns the editable-target guard + capture-phase pre-emption of the
   // global Escape-closes-the-panel shortcut.
   useInteractionStepKeys({
-    enabled: !pending,
+    enabled: open && !pending,
     onEnter: showSignin && gate.kind === "signin" ? doSignIn : undefined,
     onEscape: showNotNow ? onSkip : undefined,
   });
@@ -145,9 +149,14 @@ export function ChatSigninInteractionCard({
   return (
     <InteractionModal
       contentKey={stepId}
+      collapseLabel={collapseLabel}
+      collapsedHint={reasonLine}
       disabled={disabled}
       dismissLabel={dismissLabel}
+      expandLabel={expandLabel}
       onDismiss={onDismiss}
+      onOpenChange={onOpenChange}
+      open={open}
       pager={pager}
       // Title: the Houston helmet beside the "Houston" name (regular weight).
       title={
@@ -163,8 +172,7 @@ export function ChatSigninInteractionCard({
         </InteractionModalTitle>
       }
       // Two-field body: the agent's REASON (foreground "why") over the muted
-      // explainer line, then the always-visible free-text row (until signed in)
-      // — sign in, or tell it what to do instead.
+      // explainer line. The free-text escape row follows the footer.
       body={
         <div className="flex flex-col gap-1">
           <p className="text-balance text-ink text-sm leading-snug">
@@ -173,14 +181,6 @@ export function ChatSigninInteractionCard({
           <p className="text-ink-muted text-sm">
             {t("interaction.signinDescription")}
           </p>
-          {showSignin && (
-            <InlineTextRow
-              disabled={pending}
-              onSubmit={(text) => onSkip(text)}
-              placeholder={t("interaction.declinePlaceholder")}
-              sendLabel={t("questionCard.send")}
-            />
-          )}
         </div>
       }
       footer={
@@ -196,6 +196,16 @@ export function ChatSigninInteractionCard({
             )}
             {signInButton}
           </>
+        ) : undefined
+      }
+      trailing={
+        showSignin ? (
+          <InlineTextRow
+            disabled={pending}
+            onSubmit={(text) => onSkip(text)}
+            placeholder={t("interaction.declinePlaceholder")}
+            sendLabel={t("questionCard.send")}
+          />
         ) : undefined
       }
     />

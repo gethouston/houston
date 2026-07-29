@@ -35,7 +35,6 @@
  * bug in the push must never leave the user on a dead spinner.
  */
 
-import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import {
   isTransientPushError,
@@ -66,10 +65,7 @@ type Confirm = (provider: string) => Promise<boolean>;
  * exactly like `providerStatuses` in `tauri.ts`.
  */
 type ClaudeCredentialPusher = {
-  pushClaudeOAuthCredential?: (
-    agentId: string | null,
-    credentialJson: string,
-  ) => Promise<void>;
+  pushClaudeOAuthCredential?: (credentialJson: string) => Promise<void>;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -98,9 +94,11 @@ async function pushMintedClaudeCredential(): Promise<ClaudeHandoffResult> {
     return { ok: false, reason: "no-credential", error: err };
   }
 
-  const agents = useAgentStore.getState();
-  const agentId = agents.current?.id ?? agents.agents[0]?.id ?? null;
-
+  // The target pod is resolved by the engine adapter's ONE space-validated
+  // accessor (HOU-979). Picking it here off the agent STORE was a third,
+  // unsynchronized source of the routing id: right after a space switch the
+  // store can still hold the previous space's agents, so a freshly minted
+  // credential would be pushed at an agent the active space does not have.
   const engine = getEngine() as unknown as ClaudeCredentialPusher;
   try {
     if (!engine.pushClaudeOAuthCredential) {
@@ -108,7 +106,7 @@ async function pushMintedClaudeCredential(): Promise<ClaudeHandoffResult> {
     }
     for (let attempt = 0; ; attempt++) {
       try {
-        await engine.pushClaudeOAuthCredential(agentId, credentialJson);
+        await engine.pushClaudeOAuthCredential(credentialJson);
         return { ok: true };
       } catch (err) {
         const delay = PUSH_RETRY_DELAYS_MS[attempt];

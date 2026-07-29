@@ -48,7 +48,14 @@ export function ProviderModal({
   onSetDefault?: (provider: ProviderInfo) => void;
 }) {
   const { t } = useTranslation("aiHub");
-  const connected = connections.isConnected(provider);
+  // Tri-state (HOU-979): only a CONFIRMED connection gets the live badge, the
+  // sign-out footer, and the local-bridge treatment; only a CONFIRMED
+  // disconnection gets the Connect CTA. An unconfirmable probe gets neither —
+  // a muted "Checking" stands in, so the modal never guesses in either
+  // direction about an account it cannot see.
+  const connection = connections.connectionState(provider);
+  const connected = connection === "connected";
+  const checking = connection === "checking";
   const busy = connections.busy[provider.id];
   const models = useMemo(
     () => providerModels(catalog, provider),
@@ -98,6 +105,7 @@ export function ProviderModal({
             <SpecChip>{t("card.models", { count: models.length })}</SpecChip>
           )}
           {showConnectedBadge && <LiveStatus label={t("card.connected")} />}
+          {checking && <SpecChip>{t("card.checking")}</SpecChip>}
         </div>
         {showTunnelPill && (
           <LocalModelStatusPill
@@ -109,7 +117,7 @@ export function ProviderModal({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        {!connected && (
+        {connection === "disconnected" && (
           <ConnectButton provider={provider} connections={connections} />
         )}
         <button

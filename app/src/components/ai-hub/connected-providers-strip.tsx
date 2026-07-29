@@ -9,6 +9,7 @@ import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { installedPreview } from "../../lib/installed-preview";
+import type { ProviderConnectionState } from "../../lib/provider-connection";
 import {
   providerCostLine,
   providerDescription,
@@ -33,14 +34,23 @@ import { BrandMark } from "../provider-browser/brand-mark";
  * {@link CATALOG_INSTALLED_PREVIEW_CAP} rows behind a "Show all" expander so a
  * well-stocked strip never buries the tabs; while `searching` every match shows
  * uncapped (searching IS looking past the preview).
+ *
+ * The strip is the "yours" side, so it also carries the providers whose probe
+ * could not be confirmed (HOU-979): they belong with the user's accounts rather
+ * than in the browse tab's connect-me list, but they must NOT borrow the green
+ * Connected dot. Each row reads its own state and shows the pending dot instead
+ * — honest, and still no Connect CTA anywhere on this strip.
  */
 export function ConnectedProvidersStrip({
   providers,
+  connectionState,
   searching,
   onOpen,
 }: {
-  /** The connected providers to render — already narrowed by the page query. */
+  /** The user's providers to render — already narrowed by the page query. */
   providers: readonly ProviderInfo[];
+  /** Per-provider connection state, from the ONE shared derivation. */
+  connectionState: (provider: ProviderInfo) => ProviderConnectionState;
   /** Whether the page query is active (uncaps the preview). */
   searching: boolean;
   onOpen: (provider: ProviderInfo) => void;
@@ -62,6 +72,7 @@ export function ConnectedProvidersStrip({
         {rows.map((provider) => {
           const description =
             providerCostLine(provider.id) ?? providerDescription(provider.id);
+          const checking = connectionState(provider) === "checking";
           return (
             <CatalogRow
               key={provider.id}
@@ -70,7 +81,10 @@ export function ConnectedProvidersStrip({
               description={description || undefined}
               onClick={() => onOpen(provider)}
               statusDot={
-                <StatusDot status="active" srLabel={t("card.connected")} />
+                <StatusDot
+                  status={checking ? "pending" : "active"}
+                  srLabel={t(checking ? "card.checking" : "card.connected")}
+                />
               }
               trailing={
                 <ChevronRight

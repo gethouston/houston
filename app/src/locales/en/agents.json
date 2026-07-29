@@ -43,6 +43,8 @@
   },
   "toasts": {
     "renamed": "Workspace renamed",
+    "nameConflict": "An agent named {{name}} already exists",
+    "nameConflictDescription": "Choose a different name and try again.",
     "deleted": "Workspace deleted",
     "switchedModel": "Switched to {{provider}} ({{model}})",
     "timezoneSet": "Timezone set to {{zone}}"
@@ -84,11 +86,9 @@
   },
   "tabLabels": {
     "activity": "Activity",
-    "archived": "Archived",
     "routines": "Routines",
     "files": "Files",
-    "job-description": "Agent Settings",
-    "agent-permissions": "Permissions",
+    "job-description": "Settings",
     "integrations": "Integrations",
     "chat": "Chat",
     "board": "Board",
@@ -163,12 +163,33 @@
     "uploadFolder": "Upload folder",
     "folderDropFailed": "We could not read that folder. Try the Upload button instead.",
     "downloadAll": "Download all",
+    "dropHint": "or drag and drop files here",
+    "uploadingBusy": "Uploading…",
+    "searchPlaceholder": "Search files",
+    "searchClear": "Clear search",
+    "searchNoResults": "No files match your search",
+    "uploadTooLarge": {
+      "title_one": "File too large",
+      "title_other": "Files too large",
+      "description_one": "The limit is {{maxSize}} per file, so {{names}} was not uploaded.",
+      "description_other": "The limit is {{maxSize}} per file, so these were not uploaded: {{names}}",
+      "batchTitle": "Upload too large",
+      "batchDescription": "This upload goes over the {{maxSize}} limit. Try smaller files."
+    },
+    "delete": {
+      "title": "Move “{{name}}” to Trash?",
+      "fileDescription": "This file will be removed from your assistant’s workspace.",
+      "folderDescription": "This folder and everything inside it will be removed from your assistant’s workspace.",
+      "confirm": "Move to Trash",
+      "cancel": "Cancel"
+    },
     "columns": {
       "name": "Name",
       "dateModified": "Date Modified",
       "dateCreated": "Date Created",
       "size": "Size",
-      "kind": "Kind"
+      "kind": "Kind",
+      "kindFolder": "Folder"
     },
     "menu": {
       "open": "Open",
@@ -184,15 +205,15 @@
       "unsupportedDescription": "Download it to open it on your computer.",
       "download": "Download",
       "close": "Close",
-      "errorTitle": "Couldn't load the file"
+      "errorTitle": "Couldn’t load the file"
     },
     "toasts": {
       "savedTitle": "File saved",
       "savedDescription": "{{name}} was saved to your computer.",
       "revealAction": "Show in File Manager",
-      "revealFailed": "Couldn't show the file",
-      "saveFailedTitle": "Couldn't save the file",
-      "openFailedTitle": "Couldn't open the file"
+      "revealFailed": "Couldn’t show the file",
+      "saveFailedTitle": "Couldn’t save the file",
+      "openFailedTitle": "Couldn’t open the file"
     }
   }
 }

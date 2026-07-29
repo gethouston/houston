@@ -214,14 +214,10 @@ export function ChatPanel({
         </div>
       )}
 
-      {/* Default ("above"): the composer stays mounted at all times. A pending
-          interaction renders its card ABOVE the input (both visible) rather
-          than replacing it, so the user can always type a fresh message —
-          doing so abandons the card. The override block drops the input's own
-          top padding for its gap, avoiding doubled spacing between the two.
-          "replace" hides the input entirely while the override is present, for
-          surfaces whose override is the ONLY intended action (onboarding's
-          one-button offer). */}
+      {/* Above-card offers keep the composer visible. Replacing interaction
+          cards own their input, so the composer is hidden while they are
+          present. The override block drops the input's own top padding for its
+          gap, avoiding doubled spacing between the two. */}
       {composerOverride && (
         <div className="shrink-0 px-4 pt-2 pb-3">
           <div className="max-w-3xl mx-auto">{composerOverride}</div>

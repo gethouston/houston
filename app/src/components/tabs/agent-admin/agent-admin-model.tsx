@@ -26,7 +26,7 @@ import { AgentModelsSection } from "./agent-models-section.tsx";
  * The Access group is multiplayer-only, so single-player never reaches here:
  * single-player has no ceiling and its sole user sets the model in the composer.
  *
- * `readOnly` (a non-manager viewing the agent's Permissions tab) disables every
+ * `readOnly` (a non-manager viewing the agent's Settings access row) disables every
  * control and hides the "Add models" list via the shared editor's own mode, so a
  * member sees the model ceiling without a dead affordance. The gateway is the
  * real enforcer.

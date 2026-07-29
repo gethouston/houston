@@ -43,6 +43,8 @@
   },
   "toasts": {
     "renamed": "Espaço de trabalho renomeado",
+    "nameConflict": "Já existe um agente chamado {{name}}",
+    "nameConflictDescription": "Escolha um nome diferente e tente novamente.",
     "deleted": "Espaço de trabalho excluído",
     "switchedModel": "Mudou para {{provider}} ({{model}})",
     "timezoneSet": "Fuso horário definido como {{zone}}"
@@ -84,11 +86,9 @@
   },
   "tabLabels": {
     "activity": "Atividade",
-    "archived": "Arquivadas",
     "routines": "Rotinas",
     "files": "Arquivos",
-    "job-description": "Configurações do agente",
-    "agent-permissions": "Permissões",
+    "job-description": "Configurações",
     "integrations": "Integrações",
     "chat": "Chat",
     "board": "Quadro",
@@ -163,12 +163,33 @@
     "uploadFolder": "Enviar pasta",
     "folderDropFailed": "Não conseguimos ler essa pasta. Tente o botão Enviar.",
     "downloadAll": "Baixar tudo",
+    "dropHint": "ou arraste e solte arquivos aqui",
+    "uploadingBusy": "Enviando…",
+    "searchPlaceholder": "Buscar arquivos",
+    "searchClear": "Limpar busca",
+    "searchNoResults": "Nenhum arquivo corresponde à sua busca",
+    "uploadTooLarge": {
+      "title_one": "Arquivo grande demais",
+      "title_other": "Arquivos grandes demais",
+      "description_one": "O limite é de {{maxSize}} por arquivo, então {{names}} não foi enviado.",
+      "description_other": "O limite é de {{maxSize}} por arquivo, então estes não foram enviados: {{names}}",
+      "batchTitle": "Envio grande demais",
+      "batchDescription": "Este envio passa do limite de {{maxSize}}. Tente arquivos menores."
+    },
+    "delete": {
+      "title": "Mover “{{name}}” para o Lixo?",
+      "fileDescription": "Este arquivo será removido do espaço de trabalho do seu assistente.",
+      "folderDescription": "Esta pasta e tudo o que está dentro dela serão removidos do espaço de trabalho do seu assistente.",
+      "confirm": "Mover para o Lixo",
+      "cancel": "Cancelar"
+    },
     "columns": {
       "name": "Nome",
       "dateModified": "Data de modificação",
       "dateCreated": "Data de criação",
       "size": "Tamanho",
-      "kind": "Tipo"
+      "kind": "Tipo",
+      "kindFolder": "Pasta"
     },
     "menu": {
       "open": "Abrir",

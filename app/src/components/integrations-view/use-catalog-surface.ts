@@ -3,7 +3,7 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import { useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import {
   type FilteredInstalled,
   filterInstalledBy,
@@ -17,7 +17,7 @@ export interface CatalogSurface {
   tab: string;
   setTab: (value: string) => void;
   query: string;
-  setQuery: (value: string) => void;
+  setQuery: Dispatch<SetStateAction<string>>;
   category: string;
   setCategory: (value: string) => void;
   /** True while the shared query or category is narrowing both sections — the

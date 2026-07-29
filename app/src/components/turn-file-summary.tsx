@@ -3,9 +3,9 @@ import type { TFunction } from "i18next";
 import { ChevronDownIcon, Lightbulb, Play, ScrollText } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isVisibleAgentTab } from "../agents/standard-tabs";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
+import { isAgentManager } from "../lib/agent-access";
 import { fileNameOf } from "../lib/agent-file-paths";
 import {
   groupTurnSummaryItems,
@@ -35,11 +35,9 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
       const agents = useAgentStore.getState().agents;
       const agent = agents.find((a) => a.folderPath === agentPath);
       const ui = useUIStore.getState();
-      // Agent Settings (job-description) is hidden from plain org members, so a
-      // member's deep-link must not navigate there — it would land on a blank
-      // pane (AgentRenderer marks no visible tab active). Only navigate when the
-      // caller may actually see the tab; otherwise just close the mission panel.
-      if (agent && isVisibleAgentTab(capabilities, agent, "job-description")) {
+      // Semantic Settings sections are manager-only. Members can inspect the
+      // access rows, but their Settings screen ignores this deep-link target.
+      if (agent && isAgentManager(capabilities, agent)) {
         useAgentStore.getState().setCurrent(agent);
         ui.setJobDescriptionTarget(semanticTarget(kind));
         ui.setViewMode("job-description");

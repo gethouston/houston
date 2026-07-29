@@ -7,13 +7,10 @@ import { describe, it } from "node:test";
  * repo's React-test idiom) these assert on the hook's source — they pin two
  * decisions that are invisible in a screenshot and easy to regress:
  *
- *  1. `showSenders` is `true` or `undefined`, NEVER `false`. `true` forces
- *     attribution on in a multiplayer deployment; `undefined` hands the call to
- *     `ui/chat`'s ≥2-distinct-authors heuristic — which is what must govern
- *     during the capabilities-loading window (else a shared transcript paints
- *     unattributed and then pops names in) and on any host that serves an
- *     authored transcript without advertising multiplayer. A hard `false` would
- *     make that heuristic unreachable and SUPPRESS attribution.
+ *  1. `showSenders` is `true` or `undefined`, NEVER `false`. The pure selector
+ *     forces attribution only for a multiplayer transcript that proves another
+ *     person participated; `undefined` preserves ui/chat's distinct-authors
+ *     fallback. A hard `false` would make that heuristic unreachable.
  *  2. The sender face carries the author's stable `id`, which is what gives the
  *     initials fallback their opaque `person.*` tone — one person, one tone,
  *     identical to their face on every board card.
@@ -25,10 +22,10 @@ const src = readFileSync(
 );
 
 describe("chat sender identity", () => {
-  it("never passes a hard `false` for showSenders", () => {
+  it("uses the transcript-aware selector and never passes a hard `false`", () => {
     ok(
-      src.includes("isMultiplayer(capabilities) || undefined"),
-      "showSenders is true in multiplayer, undefined everywhere else",
+      src.includes("chatSenderMode("),
+      "showSenders comes from the transcript-aware selector",
     );
     ok(
       !/showSenders\s*[:=]\s*false/.test(src),

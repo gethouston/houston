@@ -1,12 +1,21 @@
 "use client";
 
-import { Button, cn } from "@houston-ai/core";
-import { ChevronLeft, ChevronRight, XIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  cn,
+  ScrollArea,
+} from "@houston-ai/core";
+import { ChevronDown, XIcon } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { InteractionPager } from "./interaction-modal-pager";
 
-/** The compact `‹ N of M ›` pager pinned top-right of the modal header. Its
- *  chevrons ARE the step navigation (Back / Forward), each disabled at its end
- *  of the sequence. A consumer passes `null` for a lone step (no pager). */
+/**
+ * The compact `‹ N of M ›` pager pinned top-right of the modal header.
+ * It belongs to the shared shell so every step kind uses one navigation contract.
+ */
 export interface InteractionModalPager {
   /** 1-based current step index (for a11y / callers that need it). */
   current: number;
@@ -30,52 +39,26 @@ export interface InteractionModalProps {
   /** Dismiss X (top-right). Omitted renders no X. */
   onDismiss?: () => void;
   dismissLabel?: string;
+  collapseLabel?: string;
+  expandLabel?: string;
+  /** A muted one-line explanation retained in the header while collapsed. */
+  collapsedHint?: ReactNode;
   /** The step content (option rows, the reason body, etc.). */
   body: ReactNode;
   /** The right-aligned footer actions row (the unified decline, plus a CTA for
    *  signin/connect). Omitted renders no footer. */
   footer?: ReactNode;
+  /** Optional content rendered after the footer, such as a free-text escape
+   *  row. Keeps secondary input below the card-wide actions. The node owns
+   *  its own top spacing (no wrapper margin is added). */
+  trailing?: ReactNode;
   /** Fades the body region on change so a step swap reads as "content changed,
    *  chrome stayed" (gated by the motion-safe media query). */
   contentKey?: string;
   disabled?: boolean;
-}
-
-/** The compact pager: `‹ N of M ›` with Back/Forward chevrons. */
-function Pager({
-  pager,
-  disabled,
-}: {
-  pager: InteractionModalPager;
-  disabled: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-0.5 text-ink-muted">
-      <Button
-        aria-label={pager.backLabel}
-        className="size-6"
-        disabled={disabled || !pager.onBack}
-        onClick={pager.onBack ?? undefined}
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-      >
-        <ChevronLeft className="size-4" />
-      </Button>
-      <span className="px-0.5 text-xs tabular-nums">{pager.label}</span>
-      <Button
-        aria-label={pager.forwardLabel}
-        className="size-6"
-        disabled={disabled || !pager.onForward}
-        onClick={pager.onForward ?? undefined}
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-      >
-        <ChevronRight className="size-4" />
-      </Button>
-    </div>
-  );
+  /** Controlled collapse state. Omit both props for an initially expanded card. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /** The shared modal title, so a question, a sign-in step, and a connect step all
@@ -112,11 +95,12 @@ export function InteractionModalTitle({
  * owns the chrome — surface, padding, header/footer row layout, and the quiet
  * body fade on a step swap — so every consumer (the question stepper, the
  * sign-in step, the connect step) is structurally identical: they differ ONLY in
- * the title, body, and footer nodes they hand in.
+ * the title, body, footer, and optional trailing nodes they hand in.
  *
  * How it composes with the composer is the caller's call (see ChatPanel's
  * `composerOverrideMode`): a full interaction stepper replaces the composer's
- * slot, while a lighter plan/offer floats above the still-mounted one.
+ * slot (the stepper and the plan-approval card both do), while the lighter
+ * suggestion offers float above the still-mounted one.
  * Weight is restrained across the whole family: ONE regular step of hierarchy,
  * never competing bolds — color tone (foreground vs muted) carries the structure.
  */
@@ -125,16 +109,25 @@ export function InteractionModal({
   pager,
   onDismiss,
   dismissLabel = "Dismiss",
+  collapseLabel = "Collapse interaction",
+  expandLabel = "Expand interaction",
+  collapsedHint,
   body,
   footer,
+  trailing,
   contentKey,
   disabled = false,
+  open: controlledOpen,
+  onOpenChange,
 }: InteractionModalProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(true);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const showPager = pager != null && pager.total > 1;
-  const showHeader = Boolean(title) || showPager || Boolean(onDismiss);
+  const showHeader = true;
 
   return (
-    <div
+    <Collapsible
       aria-disabled={disabled || undefined}
       className={cn(
         // Solid `bg-input` in BOTH themes (white light / neutral.800 dark) —
@@ -146,12 +139,39 @@ export function InteractionModal({
         "transition-shadow",
         disabled && "opacity-50",
       )}
+      onOpenChange={setOpen}
+      open={open}
     >
       {showHeader && (
         <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">{title}</div>
+          <div className="min-w-0 flex-1">
+            {title}
+            {!open && collapsedHint && (
+              <div className="truncate text-ink-muted text-sm leading-5">
+                {collapsedHint}
+              </div>
+            )}
+          </div>
           <div className="flex shrink-0 items-center gap-1">
-            {showPager && pager && <Pager disabled={disabled} pager={pager} />}
+            {showPager && pager && (
+              <InteractionPager disabled={disabled} pager={pager} />
+            )}
+            <CollapsibleTrigger asChild>
+              <Button
+                aria-label={open ? collapseLabel : expandLabel}
+                className="shrink-0 text-ink-muted"
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <ChevronDown
+                  className={cn(
+                    "size-4 transition-transform duration-200 motion-reduce:transition-none",
+                    open ? "rotate-0" : "rotate-180",
+                  )}
+                />
+              </Button>
+            </CollapsibleTrigger>
             {onDismiss && (
               <Button
                 aria-label={dismissLabel}
@@ -168,25 +188,25 @@ export function InteractionModal({
         </div>
       )}
 
-      {/* Content changes, chrome doesn't: a single quiet fade on step swap. */}
-      <div
-        className={cn(
-          showHeader && "mt-3",
-          "motion-safe:animate-[interaction-step-in_200ms_cubic-bezier(0.25,0.1,0.25,1)]",
+      <CollapsibleContent>
+        <ScrollArea viewportClassName="max-h-[40vh]">
+          <div
+            className={cn(
+              showHeader && "mt-3",
+              "motion-safe:animate-[interaction-step-in_200ms_cubic-bezier(0.25,0.1,0.25,1)]",
+            )}
+            key={contentKey}
+          >
+            {body}
+          </div>
+        </ScrollArea>
+        {footer && (
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+            {footer}
+          </div>
         )}
-        key={contentKey}
-      >
-        {body}
-      </div>
-
-      {footer && (
-        // flex-wrap: a step with several actions (a decline beside a filled CTA,
-        // longer in es/pt) must wrap onto a second row in a narrow
-        // panel — the card clips overflow, so an unwrapped row loses buttons.
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-          {footer}
-        </div>
-      )}
-    </div>
+        {trailing}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

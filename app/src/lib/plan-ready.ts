@@ -1,17 +1,18 @@
 import type { InteractionStep } from "@houston/protocol";
 
-/** A plan_ready step: the model called `plan_ready` with the drafted plan. It
+/** A plan_ready step: the model called `plan_ready` with a compact plan lede. It
  *  reaches the frontend as a lone step in a `PendingInteraction`, exactly like
  *  ask_user. Extracted from the protocol union so the app narrows to it. */
 export type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 
 /** Every interaction step the ChatInteractionCard stepper can walk: question /
- *  signin / connect. Excludes the two composer-replacing card kinds (plan_ready
- *  and suggest_reusable), which each render their own dedicated card and never
+ *  signin / connect. Excludes plan_ready and the suggestion cards, which never
  *  belong in the stepper. */
 export type NonPlanReadyStep = Exclude<
   InteractionStep,
-  { kind: "plan_ready" } | { kind: "suggest_reusable" }
+  | { kind: "plan_ready" }
+  | { kind: "suggest_reusable" }
+  | { kind: "suggest_actions" }
 >;
 
 /**
@@ -47,7 +48,9 @@ export function resolvePlanReadyOverride(
   }
   const rest = steps.filter(
     (step): step is NonPlanReadyStep =>
-      step.kind !== "plan_ready" && step.kind !== "suggest_reusable",
+      step.kind !== "plan_ready" &&
+      step.kind !== "suggest_reusable" &&
+      step.kind !== "suggest_actions",
   );
   return rest.length > 0 ? { kind: "stepper", steps: rest } : { kind: "none" };
 }

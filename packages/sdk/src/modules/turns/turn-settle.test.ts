@@ -385,6 +385,71 @@ test("finishOk with a LONE suggest_reusable step settles the card to done, not n
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
+test("finishOk keeps suggest actions and reusable offers on done", () => {
+  const { output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-actions", output);
+  s.pendingInteraction = {
+    steps: [
+      {
+        kind: "suggest_actions",
+        id: "a1",
+        actions: [
+          { id: "draft", label: "Draft", message: "Draft it." },
+          { id: "share", label: "Share", message: "Share it." },
+        ],
+      },
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "skill",
+        title: "Weekly summary",
+        rationale: "Useful every week.",
+      },
+    ],
+  };
+  finishOk(s);
+  expect(s.terminal).toBe("done");
+});
+
+test("finishOk with a lone suggest_actions step settles the card to done", () => {
+  const { output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-actions-only", output);
+  s.pendingInteraction = {
+    steps: [
+      {
+        kind: "suggest_actions",
+        id: "a1",
+        actions: [
+          { id: "draft", label: "Draft", message: "Draft it." },
+          { id: "share", label: "Share", message: "Share it." },
+        ],
+      },
+    ],
+  };
+  finishOk(s);
+  expect(s.terminal).toBe("done");
+});
+
+test("finishOk with suggest_actions and a question settles needs_you", () => {
+  const { output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity-actions-question", output);
+  s.pendingInteraction = {
+    steps: [
+      { kind: "question", id: "q1", question: "Which account?" },
+      {
+        kind: "suggest_actions",
+        id: "a1",
+        actions: [
+          { id: "draft", label: "Draft", message: "Draft it." },
+          { id: "share", label: "Share", message: "Share it." },
+        ],
+      },
+    ],
+  };
+  finishOk(s);
+  expect(s.terminal).toBe("needs_you");
+});
+
 test("finishOk with suggest_reusable co-occurring with a question still settles needs_you", () => {
   const { output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-suggest-mixed", output);

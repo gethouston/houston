@@ -11,14 +11,19 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * only Codex is renamed; every other id flows to the engine verbatim.
  */
 
-const { setApiKey, claimActiveProvider, forgetCredential, logout } = vi.hoisted(
-  () => ({
-    setApiKey: vi.fn(),
-    claimActiveProvider: vi.fn(),
-    forgetCredential: vi.fn(),
-    logout: vi.fn(),
-  }),
-);
+const {
+  setApiKey,
+  claimActiveProvider,
+  forgetCredential,
+  logout,
+  cpListAgents,
+} = vi.hoisted(() => ({
+  setApiKey: vi.fn(),
+  claimActiveProvider: vi.fn(),
+  forgetCredential: vi.fn(),
+  logout: vi.fn(),
+  cpListAgents: vi.fn(),
+}));
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -27,6 +32,7 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
+    listAgents: cpListAgents,
     setApiKey,
     forgetCredential,
     runtimeClientFor: vi.fn(() => ({ claimActiveProvider, logout })),
@@ -50,16 +56,25 @@ beforeEach(() => {
   claimActiveProvider.mockReset().mockResolvedValue(undefined);
   forgetCredential.mockReset().mockResolvedValue(undefined);
   logout.mockReset().mockResolvedValue(undefined);
+  cpListAgents.mockReset().mockResolvedValue([{ id: "agent-1" }]);
 });
 
 afterEach(() => vi.clearAllMocks());
 
-function client() {
-  return new HoustonClient({
+/**
+ * A client whose active space has already listed its agents. Provider writes
+ * refuse until that resolves, because the persisted pref is not space-aware and
+ * would otherwise route this space's connect at the previous space's agent
+ * (HOU-979, pinned in `provider-space-routing.test.ts`).
+ */
+async function client() {
+  const c = new HoustonClient({
     baseUrl: "http://host",
     token: "t",
     controlPlane: true,
   });
+  await c.listAgents("ws");
+  return c;
 }
 
 test("toNewProvider renames only Codex and passes every other id through", () => {
@@ -93,7 +108,7 @@ test("credentialSiblings fans out only the OpenCode gateways", () => {
 });
 
 test("setProviderApiKey connects an uncurated pi provider instead of throwing", async () => {
-  await client().setProviderApiKey("mistral", "sk-mistral-key");
+  await (await client()).setProviderApiKey("mistral", "sk-mistral-key");
 
   expect(setApiKey).toHaveBeenCalledTimes(1);
   expect(setApiKey.mock.calls[0].slice(2)).toEqual([
@@ -104,7 +119,7 @@ test("setProviderApiKey connects an uncurated pi provider instead of throwing", 
 });
 
 test("providerLogout clears an uncurated pi provider instead of no-oping", async () => {
-  await client().providerLogout("groq");
+  await (await client()).providerLogout("groq");
 
   expect(forgetCredential).toHaveBeenCalledTimes(1);
   expect(forgetCredential.mock.calls[0][2]).toBe("groq");

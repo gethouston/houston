@@ -118,6 +118,10 @@ components:
     status: implemented
     ref: "@houston-ai/chat ChatSuggestReusableCard (chat-suggest-reusable-card + chat-suggest-reusable-card-model)"
 
+  suggest-actions:
+    status: implemented
+    ref: "@houston-ai/chat ChatSuggestActions (ai-elements/suggestion)"
+
   interaction-answers-message:
     status: partial
     ref: "@houston-ai/chat interaction-answers-message (decode) + UserInteractionAnswersMessage; encode in app/"
@@ -157,7 +161,7 @@ components:
 
   skill-row:
     status: partial
-    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/tabs/installed-skills-strip.tsx"
+    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/skills/skill-catalog-rows.tsx + app/src/components/tabs/installed-skills-strip.tsx"
     notes: >-
       Rides the shared ui/ catalog family (CatalogRow / CatalogAddButton /
       CatalogShowMore / CatalogShell); the skills composition itself is split

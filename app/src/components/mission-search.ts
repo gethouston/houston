@@ -1,11 +1,16 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import {
-  extractSnippet,
   foldForSearch,
   type MissionSnippet,
   matchesPhrase,
 } from "./mission-highlight.ts";
+import {
+  matchesSearchable,
+  type SearchableText,
+  snippetFor,
+  toSearchableText,
+} from "./mission-search-text.ts";
 
 export interface MissionSearchResult<T> {
   items: T[];
@@ -60,10 +65,20 @@ export function buildMissionHistorySearchText(items: FeedItem[]): string {
   return items.map(feedItemToSearchText).filter(Boolean).join("\n");
 }
 
+/**
+ * Filter `items` by `rawQuery` over titles, descriptions and any chat history
+ * already scanned for them.
+ *
+ * `historyById` holds PRE-FOLDED transcripts (see {@link SearchableText}):
+ * matching a keystroke against them is then a regex test, not a re-fold of
+ * every mission's conversation (HOU-941). Description and history are matched
+ * as separate bodies — a snippet comes from whichever one matched, so no
+ * per-keystroke concatenation of transcript-sized strings is needed.
+ */
 export function searchMissions<T extends KanbanItem>(
   items: T[],
   rawQuery: string,
-  historyTextById: Record<string, string> = {},
+  historyById: Record<string, SearchableText> = {},
 ): MissionSearchResult<T> {
   const query = normalizeMissionSearchQuery(rawQuery);
   if (!query) {
@@ -75,15 +90,19 @@ export function searchMissions<T extends KanbanItem>(
     // A title match speaks for itself: keep it, show no snippet, and (per #411)
     // never highlight the title.
     if (matchesPhrase(item.title, query)) return true;
-    // Otherwise search the body + loaded chat history (which includes the
-    // user's own messages) and, on a match, surface a snippet showing why.
-    const text = [item.description, historyTextById[item.id]]
-      .filter(Boolean)
-      .join("\n");
-    if (!matchesPhrase(text, query)) return false;
-    const snippet = extractSnippet(text, query);
-    if (snippet) snippets[item.id] = snippet;
-    return true;
+    // Otherwise search the body, then the loaded chat history (which includes
+    // the user's own messages), and surface a snippet showing why it matched.
+    const bodies = [
+      item.description ? toSearchableText(item.description) : null,
+      historyById[item.id] ?? null,
+    ];
+    for (const body of bodies) {
+      if (!body || !matchesSearchable(body, query)) continue;
+      const snippet = snippetFor(body, query);
+      if (snippet) snippets[item.id] = snippet;
+      return true;
+    }
+    return false;
   });
 
   return { items: matched, hasQuery: true, snippets };

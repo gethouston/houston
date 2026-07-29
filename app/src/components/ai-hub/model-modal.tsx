@@ -61,9 +61,14 @@ export function ModelModal({
       ),
     [model.offers, cardByGateway],
   );
+  // Offers the user can already run sort first. `checking` ranks with them
+  // rather than with the connect-me offers (HOU-979): it is the "yours" side,
+  // and its row renders its own neutral treatment, never a Connect CTA.
   const offers = sortOffers([...providerByOffer.keys()], (offer) => {
     const provider = providerByOffer.get(offer);
-    return provider ? connections.isConnected(provider) : false;
+    return provider
+      ? connections.connectionState(provider) !== "disconnected"
+      : false;
   });
 
   const specs = buildSpecs(model, i18n.language, t);

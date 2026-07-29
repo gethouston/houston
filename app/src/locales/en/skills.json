@@ -9,6 +9,7 @@
     "yourSkillsHeading": "Your skills",
     "availableHeading": "Available",
     "searchSkills": "Search skills",
+    "clearSearch": "Clear search",
     "noMatchingSkills": "No skills match your search",
     "showAllSkills": "Show all {{count}} skills"
   },

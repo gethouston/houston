@@ -8,12 +8,16 @@ import {
 
 const LABELS: ChatPlanReadyLabels = {
   title: "Plan ready",
+  collapse: "Collapse plan approval",
+  expand: "Expand plan approval",
   askFirstTitle: "Continue in Ask first mode",
   askFirstDescription: "Gets things done, asks before sensitive actions.",
   autopilotTitle: "Continue in Autopilot mode",
   autopilotDescription: "Finishes it on its own. No questions asked.",
   keepPlanningTitle: "Keep planning",
   keepPlanningDescription: "Stay here and adjust the plan.",
+  declinePlaceholder: "Or tell it what to do instead...",
+  send: "Send",
 };
 
 describe("resolvePlanReadyActions", () => {
@@ -63,6 +67,7 @@ describe("resolvePlanReadyActions", () => {
 describe("DEFAULT_PLAN_READY_LABELS", () => {
   it("ships the English fallback copy with no em dashes", () => {
     assert.equal(DEFAULT_PLAN_READY_LABELS.title, "Plan ready");
+    assert.equal(DEFAULT_PLAN_READY_LABELS.collapse, "Collapse plan approval");
     assert.equal(
       DEFAULT_PLAN_READY_LABELS.askFirstTitle,
       "Continue in Ask first mode",
@@ -72,8 +77,27 @@ describe("DEFAULT_PLAN_READY_LABELS", () => {
       "Continue in Autopilot mode",
     );
     assert.equal(DEFAULT_PLAN_READY_LABELS.keepPlanningTitle, "Keep planning");
+    assert.equal(
+      DEFAULT_PLAN_READY_LABELS.declinePlaceholder,
+      "Or tell it what to do instead...",
+    );
+    assert.equal(DEFAULT_PLAN_READY_LABELS.send, "Send");
     for (const value of Object.values(DEFAULT_PLAN_READY_LABELS)) {
       assert.ok(!value.includes("—"), `"${value}" must not use an em dash`);
     }
+  });
+});
+
+describe("plan-ready lede contract", () => {
+  it("uses the default continuation model when callers supply no alternate copy", () => {
+    const actions = resolvePlanReadyActions(DEFAULT_PLAN_READY_LABELS, false);
+    assert.deepEqual(
+      actions.map(({ key, title }) => ({ key, title })),
+      [
+        { key: "startWorking", title: "Continue in Ask first mode" },
+        { key: "runAutopilot", title: "Continue in Autopilot mode" },
+        { key: "keepPlanning", title: "Keep planning" },
+      ],
+    );
   });
 });

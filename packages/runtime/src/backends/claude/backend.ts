@@ -125,11 +125,22 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         permissionMode: "default",
       };
 
+      const sessionsStore = createSessionsStore(
+        deps.dataDir,
+        deps.workspaceDir,
+      );
+      // A cross-backend rebuild (opts.fresh) must NOT resume a stale SDK
+      // session from before the conversation left this backend: the history
+      // arrives as a transcript replay on the first prompt (HOU-951), and the
+      // old SDK session is missing everything said on the other backend since.
+      // Dropping the mapping (transcript stays on disk) makes the first prompt
+      // open a brand-new SDK session, whose id is then stored as usual.
+      if (opts.fresh) sessionsStore.remove(opts.conversationId);
       return new ClaudeSession({
         query,
         conversationId: opts.conversationId,
         baseOptions,
-        sessionsStore: createSessionsStore(deps.dataDir, deps.workspaceDir),
+        sessionsStore,
         model: toSdkModel(opts.model.id),
         thinkingLevel: opts.thinkingLevel,
       });

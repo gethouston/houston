@@ -60,9 +60,13 @@ export function IntakeTemplateCard({
   return (
     <InteractionModal
       contentKey="template"
+      collapseLabel={chrome.collapseLabel}
       disabled={chrome.disabled}
       dismissLabel={chrome.dismissLabel}
+      expandLabel={chrome.expandLabel}
       onDismiss={chrome.onDismiss}
+      onOpenChange={chrome.onOpenChange}
+      open={chrome.open}
       pager={chrome.pager}
       title={
         <InteractionModalTitle className="text-balance">

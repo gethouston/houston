@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  providerAppearsConnected,
-  providerIsAuthenticated,
-} from "../components/shell/provider-reconnect-state";
+import { providerIsAuthenticated } from "../components/shell/provider-reconnect-state";
 import { useCopilotConnect } from "../components/shell/use-copilot-connect";
 import { newEngineActive } from "../lib/engine";
 import { osIsTauri } from "../lib/os-bridge";
@@ -18,6 +15,7 @@ import type {
   ProviderLoginDialogState,
   ProviderPending,
 } from "./provider-connections/types";
+import { useConnectionReaders } from "./provider-connections/use-connection-readers";
 import { useProviderConnectActions } from "./provider-connections/use-provider-connect-actions";
 import { useProviderLoginEvents } from "./provider-connections/use-provider-login-events";
 import { useProviderStatuses } from "./provider-connections/use-provider-statuses";
@@ -127,13 +125,8 @@ export function useProviderConnections(): ProviderConnections {
     setCustomEndpointDialog,
   });
 
-  const isConnected = useCallback(
-    (p: ProviderInfo) => {
-      const s = statuses[p.id];
-      return s ? providerAppearsConnected(s) : false;
-    },
-    [statuses],
-  );
+  // The ONE connection reader, from the ONE shared derivation (HOU-979).
+  const { connectionState } = useConnectionReaders(statuses, loading);
 
   // `signOut` opens the confirm; the actual logout runs on confirm.
   const signOut = useCallback((p: ProviderInfo) => setConfirmSignOutFor(p), []);
@@ -180,7 +173,7 @@ export function useProviderConnections(): ProviderConnections {
     ready: !loading,
     probed,
     refresh: loadStatuses,
-    isConnected,
+    connectionState,
     connect,
     cancel,
     signOut,

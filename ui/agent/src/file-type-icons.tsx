@@ -1,6 +1,7 @@
 /**
- * Lucide-based, token-tinted file-type icons for the grid cards.
- * (The Finder-style list view keeps its own miniature SVGs.)
+ * Lucide file-type glyphs shared by BOTH views (grid cards and list rows).
+ * Near-monochrome on purpose: a tinted glyph would be decorative colour on a
+ * content surface, so file type is carried by the icon's shape alone.
  */
 import { cn } from "@houston-ai/core";
 import {
@@ -13,24 +14,25 @@ import {
   FileSpreadsheet,
   FileText,
   FileVideo,
+  Folder,
   type LucideIcon,
 } from "lucide-react";
 import { type FileCategory, fileCategory } from "./file-type";
 
-const META: Record<FileCategory, { Icon: LucideIcon; tint: string }> = {
-  pdf: { Icon: FileText, tint: "text-danger" },
-  image: { Icon: FileImage, tint: "text-ink-muted" },
-  code: { Icon: FileCode, tint: "text-ink-muted" },
-  sheet: { Icon: FileSpreadsheet, tint: "text-success" },
-  archive: { Icon: FileArchive, tint: "text-warning" },
-  audio: { Icon: FileAudio, tint: "text-ink-muted" },
-  video: { Icon: FileVideo, tint: "text-ink-muted" },
-  doc: { Icon: FileText, tint: "text-ink-muted" },
-  data: { Icon: FileJson, tint: "text-ink-muted" },
-  other: { Icon: File, tint: "text-ink-muted" },
+const ICONS: Record<FileCategory, LucideIcon> = {
+  pdf: FileText,
+  image: FileImage,
+  code: FileCode,
+  sheet: FileSpreadsheet,
+  archive: FileArchive,
+  audio: FileAudio,
+  video: FileVideo,
+  doc: FileText,
+  data: FileJson,
+  other: File,
 };
 
-/** Small type glyph for a card header row. */
+/** Small type glyph for a card header row or a list row. */
 export function FileTypeIcon({
   extension,
   className,
@@ -38,16 +40,33 @@ export function FileTypeIcon({
   extension: string;
   className?: string;
 }) {
-  const { Icon, tint } = META[fileCategory(extension)];
+  const Icon = ICONS[fileCategory(extension)];
   return (
-    <Icon aria-hidden className={cn("size-4 shrink-0", tint, className)} />
+    <Icon
+      aria-hidden
+      className={cn("size-4 shrink-0 text-ink-muted", className)}
+    />
   );
 }
 
 /** Large centered glyph for a card body with no thumbnail. */
 export function FileTypeGlyph({ extension }: { extension: string }) {
-  const { Icon, tint } = META[fileCategory(extension)];
+  const Icon = ICONS[fileCategory(extension)];
   return (
-    <Icon aria-hidden strokeWidth={1.25} className={cn("size-10", tint)} />
+    <Icon aria-hidden strokeWidth={1.25} className="size-10 text-ink-muted" />
+  );
+}
+
+/** Folder glyph: the same outline style in the grid and the list. */
+export function FolderGlyph({ small }: { small?: boolean }) {
+  return (
+    <Folder
+      aria-hidden
+      strokeWidth={small ? 2 : 1}
+      className={cn(
+        "fill-chip text-ink-muted",
+        small ? "size-4 shrink-0" : "size-12",
+      )}
+    />
   );
 }

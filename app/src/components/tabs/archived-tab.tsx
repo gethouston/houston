@@ -1,6 +1,6 @@
 import { AIBoard, type KanbanItem } from "@houston-ai/board";
 import { type FeedItem, messagePreviewText } from "@houston-ai/chat";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useDeleteActivity } from "../../hooks/queries";
 import { useConversationVm } from "../../hooks/use-conversation-vm";
@@ -37,7 +37,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const deleteActivity = useDeleteActivity(path);
   const addToast = useUIStore((s) => s.addToast);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
-  const viewMode = useUIStore((s) => s.viewMode);
 
   const archived = useMemo(() => selectArchived(rawItems ?? []), [rawItems]);
   const items: KanbanItem[] = useMemo(
@@ -57,13 +56,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // All tabs stay mounted (hidden via CSS) and every AIBoard portals its
-  // detail panel into the SAME shared container. Drop our selection whenever
-  // this tab isn't the active one so we never stack a second chat panel on
-  // top of the Activity board's.
-  useEffect(() => {
-    if (viewMode !== "archived" && selectedId !== null) setSelectedId(null);
-  }, [viewMode, selectedId]);
   const sessionKeyFor = useCallback(
     (activityId: string) =>
       archived.find((a) => a.id === activityId)?.session_key ??

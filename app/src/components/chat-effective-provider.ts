@@ -32,6 +32,11 @@
  * @param hasMessages whether the open conversation already has turns. Once true,
  *   the provider is frozen (no auth-driven switch) so logging out mid-chat shows
  *   the reconnect card rather than silently moving to another connected provider.
+ * @param unconfirmedProviders provider ids whose probe came back `unknown` — we
+ *   could not confirm them either way (HOU-979). They are NOT fallback targets
+ *   (switching onto one would be a guess), but neither are they evidence that
+ *   `preferred` is signed out, so an unconfirmed `preferred` defers rather than
+ *   being auth-switched away from.
  */
 export function resolveEffectiveProvider(
   activityProvider: string | null,
@@ -39,6 +44,7 @@ export function resolveEffectiveProvider(
   lastUsedProvider: string | null,
   authenticatedProviders: string[],
   hasMessages: boolean,
+  unconfirmedProviders: readonly string[] = [],
 ): string {
   const preferred =
     activityProvider ?? agentProvider ?? lastUsedProvider ?? "anthropic";
@@ -50,5 +56,7 @@ export function resolveEffectiveProvider(
   // Fresh composer (initial selection): never default onto a disconnected
   // provider — use `preferred` when connected, else any connected provider.
   if (authenticatedProviders.includes(preferred)) return preferred;
+  // Only a CONFIRMED sign-out earns the switch. Defer on an unconfirmable one.
+  if (unconfirmedProviders.includes(preferred)) return preferred;
   return authenticatedProviders[0] ?? preferred;
 }

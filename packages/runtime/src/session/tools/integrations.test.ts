@@ -156,7 +156,7 @@ test("a connectable toolkit-level entry names the slug and teaches request_conne
   expect(text).toContain("request_connection tool");
 });
 
-test("a blocked app points the user at the agent's Permissions tab and never offers request_connection", async () => {
+test("a blocked app points the user at the agent's Settings Apps section and never offers request_connection", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -174,8 +174,8 @@ test("a blocked app points the user at the agent's Permissions tab and never off
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("- salesforce (app, TURNED OFF): Salesforce");
   expect(text).toContain("turned off for this agent");
-  // The new, Permissions-tab-aware copy — never the old "ask your admin".
-  expect(text).toContain("this agent's Permissions tab");
+  // The new Settings-aware copy, never the old "ask your admin".
+  expect(text).toContain("this agent's Settings, under Apps");
   expect(text).not.toContain("admin");
   // The guidance explicitly forbids the connect card for a blocked app.
   expect(text).toContain("Do NOT call request_connection");
@@ -207,6 +207,31 @@ test("execute runs an action and returns its data; a failed action surfaces", as
   await expect(
     run(execute, { action: "GMAIL_SEND_EMAIL", params: {} }),
   ).rejects.toThrow(/did not succeed: missing recipient/);
+});
+
+test("a giant execute result is truncated with recovery guidance, never fed whole", async () => {
+  // A single Gmail fetch with full payloads exceeds 1 MB of JSON — enough to
+  // overflow a model context window on its own (HOU-893: every event-trigger
+  // run on a newsletter inbox died with a terminal context-window error).
+  mockFetch(() => ({
+    body: { successful: true, data: { html: "x".repeat(1_200_000) } },
+  }));
+  const out = await run(execute, {
+    action: "GMAIL_FETCH_EMAILS",
+    params: { include_payload: true },
+  });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text.length).toBeLessThan(300 * 1024);
+  expect(text).toContain("[result truncated");
+  expect(text).toContain("Re-run the action with tighter parameters");
+});
+
+test("a small execute result passes through untouched", async () => {
+  mockFetch(() => ({ body: { successful: true, data: { ok: 1 } } }));
+  const out = await run(execute, { action: "X", params: {} });
+  expect((out.content[0] as { text: string }).text).not.toContain(
+    "[result truncated",
+  );
 });
 
 test("a no-connected-account failure hands off to request_connection", async () => {
@@ -399,13 +424,17 @@ test("a 409 (approval_required) is no longer special: it surfaces as a generic e
   const failure = runWithInteractionCapture(holder, () =>
     run(execute, { action: "GMAIL_SEND_EMAIL", params: { to: "a@b.com" } }),
   );
-  await expect(failure).rejects.toThrow(/integrations execute failed \(409\)/);
+  await expect(failure).rejects.toThrow(
+    /integrations execute failed \(409, code approval_required\)/,
+  );
+  // Unrecognized 4xx → the body (toolkit, action, params hash) is redacted.
+  await expect(failure).rejects.not.toThrow(/paramsHash|h7f3a1/);
   expect(holder.pending).toBeUndefined();
 });
 
-test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw error", async () => {
+test("a 403 (toolkit_not_allowed) returns Settings Apps guidance, not a raw error", async () => {
   // The gateway walls off an execute whose app is outside this agent's
-  // allowlist (turned off in the Permissions tab). The sandbox proxy relays the
+  // allowlist (turned off in this agent's Settings, under Apps). The sandbox proxy relays the
   // 403 body verbatim, so the runtime classifies it by its stable code and
   // RETURNS guidance — being walled off is a user-fixable state, not a failure.
   mockFetch(() => ({
@@ -424,7 +453,7 @@ test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw er
   );
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("turned off for this agent");
-  expect(text).toContain("this agent's Permissions tab");
+  expect(text).toContain("this agent's Settings, under Apps");
   // It tells the model NOT to retry, and never to imply Houston lacks the app.
   expect(text).toContain("Do not retry");
   expect(text).toContain("never imply Houston lacks the app");
@@ -433,8 +462,83 @@ test("a 403 (toolkit_not_allowed) returns Permissions-tab guidance, not a raw er
     action: "SALESFORCE_CREATE_LEAD",
     appTurnedOff: true,
   });
-  // No interaction card is queued — the fix lives in the Permissions tab.
+  // No interaction card is queued — the fix lives in this agent's Settings.
   expect(holder.pending).toBeUndefined();
+});
+
+test("a 403 (not_assigned) returns access guidance on BOTH search and execute, never the gateway's words", async () => {
+  // HOU-967: the gateway refuses when the acting user isn't one of the people
+  // with access to this agent. Its body ("this agent isn't assigned to you")
+  // is internal jargon the model used to paraphrase at a non-technical user —
+  // so both tools classify the stable code and RETURN the human remedy.
+  const notAssigned = () => ({
+    status: 403,
+    body: { error: "this agent isn't assigned to you", code: "not_assigned" },
+  });
+  const holder = newInteractionHolder();
+
+  mockFetch(notAssigned);
+  const found = await runWithInteractionCapture(holder, () =>
+    run(search, { query: "send an email" }),
+  );
+  mockFetch(notAssigned);
+  const ran = await runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEND_EMAIL", params: { to: "a@b.com" } }),
+  );
+
+  for (const out of [found, ran]) {
+    const text = (out.content[0] as { text: string }).text;
+    expect(text).toContain("does not have access to this agent");
+    // The remedy names the exact place a manager fixes it.
+    expect(text).toContain("Settings");
+    expect(text).toContain("People");
+    expect(text).toContain("Do not retry");
+    // Never the raw body, the gateway's jargon, or a connect offer.
+    expect(text).not.toContain("not_assigned");
+    expect(text).not.toContain("assigned");
+    expect(text).not.toContain("{");
+    expect(text).not.toContain("403");
+  }
+  expect(found.details).toEqual({
+    matches: 0,
+    actions: [],
+    noAgentAccess: true,
+  });
+  expect(ran.details).toEqual({
+    action: "GMAIL_SEND_EMAIL",
+    noAgentAccess: true,
+  });
+  // A permission state, not an interaction: nothing is queued for the user.
+  expect(holder.pending).toBeUndefined();
+});
+
+test("an unrecognized 4xx redacts the response body, keeping only status + code", async () => {
+  // The model reads whatever we throw, so an unclassified refusal must not hand
+  // it gateway JSON to paraphrase — status + code survive for the logs.
+  mockFetch(() => ({
+    status: 422,
+    body: {
+      error: "tenant xyz-9 exceeded seat_policy for org 41f",
+      code: "seat_policy_violation",
+    },
+  }));
+  const failure = run(execute, { action: "GMAIL_SEND_EMAIL" });
+  await expect(failure).rejects.toThrow(
+    /integrations execute failed \(422, code seat_policy_violation\)/,
+  );
+  await expect(failure).rejects.toThrow(/never quote this message/);
+  // No trace of the body: no JSON, no upstream prose.
+  await expect(failure).rejects.not.toThrow(/tenant xyz-9/);
+  await expect(failure).rejects.not.toThrow(/seat_policy for org/);
+  await expect(failure).rejects.not.toThrow(/[{}]/);
+
+  // Search redacts identically.
+  mockFetch(() => ({ status: 400, body: { error: "bad query for org 41f" } }));
+  const searchFailure = run(search, { query: "x" });
+  await expect(searchFailure).rejects.toThrow(
+    /integrations search failed \(400\)\./,
+  );
+  await expect(searchFailure).rejects.not.toThrow(/bad query/);
 });
 
 test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off guidance", async () => {

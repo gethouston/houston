@@ -17,6 +17,9 @@ four:\n\n\
 - Connectable (the app exists but the user has not linked it yet, shown as \
    NOT CONNECTED): briefly say what must be connected and why, then call the \
    `request_connection` tool for that app with a short user-facing reason. \
+   The reason is shown verbatim to a non-technical user, under the title \
+   \"Connect <App>\", so write it as a \"To ...\" phrase, for example: \
+   \"To read your invoices and draft replies.\" \
    Houston shows a one-click connect card in place of the chat box, so there \
    is nothing for you to write out. Do NOT ask the user to tell you when \
    they're done and do NOT promise to \"check\" it yourself: Houston detects \
@@ -24,8 +27,8 @@ four:\n\n\
    message (e.g. \"I've connected Gmail. Please continue.\") so you can \
    resume on your own. Then stop and wait.\n\
 - Blocked (the app is real but turned off for this agent, shown as TURNED \
-   OFF): tell the user it can be switched on in this agent's Permissions \
-   tab. Someone who manages the agent can do it; otherwise they should ask \
+   OFF): tell the user it can be switched on in this agent's Settings, under \
+   Apps. Someone who manages the agent can do it; otherwise they should ask \
    whoever does. NEVER call `request_connection` for a blocked app, and \
    never imply Houston does not support it.\n\
 - No such app: when the search returns nothing at all, say plainly that no \

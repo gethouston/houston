@@ -90,7 +90,11 @@ test("without the integrations gate only ask_user + suggest_reusable are allow-l
   const options = await runTurn(undefined);
   expect(options.mcpServers?.houston).toBeDefined();
   expect(new Set(options.allowedTools)).toEqual(
-    new Set(["mcp__houston__ask_user", "mcp__houston__suggest_reusable"]),
+    new Set([
+      "mcp__houston__ask_user",
+      "mcp__houston__suggest_reusable",
+      "mcp__houston__suggest_actions",
+    ]),
   );
 });
 
@@ -134,6 +138,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
   expect(new Set(exposed)).toEqual(
     new Set([
       "suggest_reusable",
+      "suggest_actions",
       "save_routine",
       "save_learning",
       "integration_search",
@@ -148,6 +153,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
   expect(new Set(options.allowedTools)).toEqual(
     new Set([
       "mcp__houston__suggest_reusable",
+      "mcp__houston__suggest_actions",
       "mcp__houston__save_routine",
       "mcp__houston__save_learning",
       "mcp__houston__integration_search",

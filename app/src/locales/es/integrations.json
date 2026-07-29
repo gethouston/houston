@@ -87,6 +87,7 @@
       "custom": "Integraciones personalizadas"
     },
     "searchPlaceholder": "Buscar integraciones",
+    "clearSearch": "Borrar búsqueda",
     "allCategories": "Todas las categorías",
     "categoryFilter": "Filtrar por categoría",
     "connect": "Conectar",
@@ -121,6 +122,7 @@
     "description": "Conecta una API o un servidor MCP que no esté en el catálogo de aplicaciones.",
     "addButton": "Agregar integración personalizada",
     "searchPlaceholder": "Buscar integraciones personalizadas...",
+    "clearSearch": "Borrar búsqueda",
     "empty": "Aún no tienes integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
     "emptyTitle": "Aún no tienes integraciones personalizadas",
     "noResults": "Ninguna integración personalizada coincide con tu búsqueda.",

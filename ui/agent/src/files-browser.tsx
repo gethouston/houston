@@ -3,7 +3,8 @@
  * navigation, plus the original Finder-style list view behind a toggle. Flat
  * on the canvas: a header row over a full-bleed scroll body whose content is
  * capped to the sibling-tab column. Drag-and-drop, context menus and inline
- * rename in both views.
+ * rename in both views. The drop container wraps EVERY state, the zero-files
+ * one included, so an empty workspace accepts a drop like any other.
  */
 
 import { BgContextMenu } from "./bg-context-menu";
@@ -48,13 +49,19 @@ export interface FilesBrowserProps {
   onRename?: (file: FileEntry, newName: string) => void;
   /** Receives the workspace-relative path (grid view creates inside the open folder). */
   onCreateFolder?: (name: string) => void;
+  /** Empty-workspace CTA: pick files for the root, which is all there is. */
   onBrowse?: () => void;
   emptyTitle?: string;
   emptyDescription?: string;
-  /** Pick files to upload (header's filled primary pill). */
-  onUpload?: () => void;
-  /** Pick a whole folder to upload (turns the pill into a files/folder menu). */
-  onUploadFolder?: () => void;
+  /** An upload is in flight: the upload actions go busy. Browsing stays free. */
+  uploading?: boolean;
+  /** Pick files to upload (header's filled primary pill). Receives the open
+   *  folder's workspace-relative path, undefined at the root, so a picked file
+   *  lands where the user is looking, exactly like a drop does. */
+  onUpload?: (targetFolder?: string) => void;
+  /** Pick a whole folder to upload (turns the pill into a files/folder menu).
+   *  Same target-folder argument as onUpload. */
+  onUploadFolder?: (targetFolder?: string) => void;
   /** Reveal the agent's folder in the OS file manager (co-located desktop). */
   onRevealAgent?: () => void;
   /** Download the whole workspace as one zip (browser/remote builds). */
@@ -78,23 +85,9 @@ export function FilesBrowser(props: FilesBrowserProps) {
     onFilesDropped: props.onFilesDropped,
     onDropError: props.onDropError,
     onMove: props.onMove,
+    onUpload: props.onUpload,
+    onUploadFolder: props.onUploadFolder,
   });
-
-  if (b.isEmpty) {
-    return (
-      <FilesEmptyState
-        title={props.emptyTitle ?? "No files yet"}
-        description={
-          props.emptyDescription ??
-          "When agents create files, they’ll appear here."
-        }
-        browseLabel={l.browseFiles}
-        onBrowse={props.onBrowse}
-        folderLabel={l.uploadFolder}
-        onBrowseFolder={props.onUploadFolder}
-      />
-    );
-  }
 
   return (
     <div
@@ -102,6 +95,7 @@ export function FilesBrowser(props: FilesBrowserProps) {
       {...(props.onFilesDropped || props.onMove ? b.dragHandlers : {})}
     >
       <FilesHeader
+        empty={b.isEmpty}
         view={b.view}
         onViewChange={b.changeView}
         path={b.resolvedPath}
@@ -112,22 +106,26 @@ export function FilesBrowser(props: FilesBrowserProps) {
         sortDir={b.sortDir}
         onSort={b.handleSort}
         sortLabels={toSortLabels(l)}
+        query={b.query}
+        onQueryChange={b.setQuery}
+        searchPlaceholder={l.searchPlaceholder}
+        searchClearLabel={l.searchClear}
         viewGridLabel={l.viewGrid}
         viewListLabel={l.viewList}
         breadcrumbsLabel={l.breadcrumbs}
-        onNewFolder={
-          props.onCreateFolder ? () => b.setCreatingFolder(true) : undefined
-        }
+        onNewFolder={props.onCreateFolder ? b.startCreatingFolder : undefined}
         newFolderLabel={l.newFolder}
-        onUpload={props.onUpload}
+        onUpload={b.uploadHere}
         uploadLabel={props.onUploadFolder ? l.upload : l.uploadFiles}
-        onUploadFolder={props.onUploadFolder}
+        onUploadFolder={b.uploadFolderHere}
         uploadFilesLabel={l.uploadFiles}
         uploadFolderLabel={l.uploadFolder}
         onRevealAgent={props.onRevealAgent}
         revealAgentLabel={l.openInFileManager}
         onDownloadAll={props.onDownloadAll}
         downloadAllLabel={l.downloadAll}
+        uploading={props.uploading}
+        uploadingLabel={l.uploadingBusy}
       />
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: click-to-deselect and right-click-for-context-menu on the backdrop are pointer-only affordances; no keyboard equivalent exists for these background gestures */}
@@ -149,9 +147,29 @@ export function FilesBrowser(props: FilesBrowserProps) {
           }
         }}
       >
-        <div className={`${FILES_CONTENT_COLUMN} pb-6`}>
-          <FilesBody b={b} props={props} l={l} />
-        </div>
+        {b.isEmpty ? (
+          <FilesEmptyState
+            title={props.emptyTitle ?? "No files yet"}
+            description={
+              props.emptyDescription ??
+              "When agents create files, they’ll appear here."
+            }
+            browseLabel={l.browseFiles}
+            onBrowse={props.onBrowse}
+            folderLabel={l.uploadFolder}
+            onBrowseFolder={b.uploadFolderHere}
+            dropHint={l.dropHint}
+            dragActive={b.isBgDropTarget}
+            uploading={props.uploading}
+            uploadingLabel={l.uploadingBusy}
+          />
+        ) : (
+          <div
+            className={`${FILES_CONTENT_COLUMN} flex min-h-0 flex-1 flex-col pb-6`}
+          >
+            <FilesBody b={b} props={props} l={l} />
+          </div>
+        )}
       </div>
 
       {b.bgMenu && (
@@ -159,7 +177,7 @@ export function FilesBrowser(props: FilesBrowserProps) {
           position={b.bgMenu}
           label={l.newFolder}
           onNewFolder={() => {
-            b.setCreatingFolder(true);
+            b.startCreatingFolder();
             b.setBgMenu(null);
           }}
           onClose={() => b.setBgMenu(null)}

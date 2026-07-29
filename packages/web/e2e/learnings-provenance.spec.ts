@@ -14,10 +14,10 @@ import { expect, test } from "./support/fixtures";
  * must render no line at all rather than a hollow "From unknown".
  */
 
-/** Agent Settings (job-description) → the Memory section. */
+/** Settings (job-description) → the Memory section. */
 async function openMemory(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Agent Settings" }).click();
+  await page.locator('[data-tour-target="tab-job-description"]').click();
   await page.getByText("Memory", { exact: true }).click();
 }
 

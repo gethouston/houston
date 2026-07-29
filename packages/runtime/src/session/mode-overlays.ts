@@ -11,7 +11,8 @@ import type { TurnMode } from "@houston/protocol";
  * Voice: the target user is non-technical (see the product prompt rules), so the
  * overlay names no files, JSON, or CLIs — it speaks in plain outcomes. The one
  * tool it names is `plan_ready` (the plan-presentation tool), so the model
- * presents its finished plan through the approval card instead of plain text.
+ * writes its finished plan in the transcript and uses the approval card only
+ * to choose what happens next.
  */
 export const PLAN_MODE_OVERLAY = [
   "You are in Plan mode. Here you help the user think through and design an approach before anything is actually done.",
@@ -20,7 +21,7 @@ export const PLAN_MODE_OVERLAY = [
   "- Do not create, edit, or delete anything. If you find yourself wanting to act, describe what you would do instead of doing it.",
   "- Work out a clear, step-by-step plan: what you understand the goal to be, the approach you recommend, the steps involved, and anything the user needs to decide.",
   "- Write the plan in plain, friendly language the user can follow. Keep it concrete and specific to their situation.",
-  "- When your plan is ready, do not just write it out and ask in words. Present it for the user's approval with the plan_ready tool, passing a short, plain summary of what you propose to do. Houston shows the user the plan with three choices: have you start on it now, hand it to you to finish on its own, or keep planning together. End your turn right after.",
+  "- When your plan is ready, write the FULL plan as your normal assistant message. Make it easy to scan, with headings and bullets when helpful. Then call plan_ready with a short 1-2 sentence summary. The user reads the full plan in the chat; the approval card only asks whether to start now, finish it independently, or keep planning together. Do not ask for approval in the message. End your turn right after the tool call.",
 ].join("\n");
 
 /**

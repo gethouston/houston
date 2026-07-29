@@ -22,7 +22,11 @@ import {
   skipStep,
   type Transition,
 } from "./interaction-card-logic";
-import { BrandLogo, QuestionStepBody } from "./interaction-card-parts";
+import {
+  BrandLogo,
+  QuestionAnswerRow,
+  QuestionStepBody,
+} from "./interaction-card-parts";
 import {
   InteractionModal,
   type InteractionModalPager,
@@ -44,12 +48,17 @@ type CustomStep = Extract<ChatInteractionStep, { kind: "custom" }>;
 /** The chrome the shared {@link InteractionModal} needs, handed to a
  *  signin/connect body so it renders the SAME modal shell as a question step:
  *  the header pager (Back/Forward + progress) and the dismiss X. The body owns
- *  its own title (its `(icon) name` lockup), reason, and footer CTA. */
+ *  its own title (its `(icon) action` lockup), reason, footer CTA, and the
+ *  trailing free-text escape row below the footer. */
 export interface StepChrome {
   pager: InteractionModalPager | null;
   onDismiss?: () => void;
   dismissLabel: string;
+  collapseLabel: string;
+  expandLabel: string;
   disabled: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export interface ChatInteractionCardProps {
@@ -60,8 +69,8 @@ export interface ChatInteractionCardProps {
   /** Receives every question answer, in step order, once the last step is done. */
   onComplete: (answers: ChatInteractionAnswer[]) => void;
   /** Renders a connect step as its OWN {@link InteractionModal} — the `(icon)
-   *  name` header title, the reason + muted app description body, and the
-   *  footer's unified decline + Connect CTA — wiring the supplied {@link
+   *  Connect <App>` header title, the reason body, the footer's unified
+   *  decline + Connect CTA, and the trailing free-text row — wiring the supplied {@link
    *  StepChrome} (pager + dismiss) into the shell so it matches every other
    *  step. Call `api.onConnected` once the connection lands. ui/chat stays
    *  Composio-unaware, so the app supplies the reactive content and identity. */
@@ -78,8 +87,8 @@ export interface ChatInteractionCardProps {
   ) => ReactNode;
   /** Renders a credential step as its OWN {@link InteractionModal} (see
    *  {@link renderConnect}): the integration's `(icon) name` header, the reason
-   *  line + a secure key field body, and the footer's unified decline + Save
-   *  CTA. Call `api.onSaved` once the secret is stored to advance; `api.onSkip`
+   *  line + a secure key field body, the footer's unified decline + Save
+   *  CTA, and the trailing free-text row. Call `api.onSaved` once the secret is stored to advance; `api.onSkip`
    *  declines the key like any sibling. ui/chat stays integration-unaware, so
    *  the app supplies the reactive, secure key-entry card. */
   renderCredential: (
@@ -118,6 +127,8 @@ export interface ChatInteractionCardProps {
     /** aria-label of the pager's forward chevron. */
     forward?: string;
     dismiss?: string;
+    collapse?: string;
+    expand?: string;
     /** The soft "Recommended" chip beside a marked option's label. */
     recommended?: string;
     /** Pager progress copy, e.g. "1 of 3" (shown for a multi-step sequence). */
@@ -166,7 +177,8 @@ export interface StepFooterApi {
  * render their OWN {@link InteractionModal} wired with the {@link StepChrome}
  * this stepper hands them, so the card stays Composio/auth-unaware while every
  * step shares one shell. Every non-question step also carries an always-visible
- * free-text row (the app supplies it): typing an instruction there and sending
+ * free-text row (the app supplies it, trailing below the footer actions):
+ * typing an instruction there and sending
  * declines the step WITH that message, which the caller relays to the agent.
  * The caller seats this card in the composer's slot (replacing it), so its
  * per-step free-text row is the one text input on screen; the card's dismiss X
@@ -197,6 +209,8 @@ export function ChatInteractionCard({
   const sendLabel = labels?.send ?? "Send";
   const escLabel = labels?.esc ?? "Esc";
   const dismissLabel = labels?.dismiss ?? "Dismiss";
+  const collapseLabel = labels?.collapse ?? "Collapse interaction";
+  const expandLabel = labels?.expand ?? "Expand interaction";
   const recommendedLabel = labels?.recommended ?? "Recommended";
   const progress = labels?.progress ?? defaultProgress;
 
@@ -209,6 +223,10 @@ export function ChatInteractionCard({
   );
 
   const stepId = step?.id ?? "";
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    if (stepId) setOpen(true);
+  }, [stepId]);
   const draft = draftFor(state, stepId);
   const selectedId =
     step?.kind === "question" ? selectedOptionId(state, stepId) : null;
@@ -240,7 +258,7 @@ export function ChatInteractionCard({
   // phase and stops the event dead so it decides "not now" here instead of
   // falling through to the global Escape-closes-the-panel shortcut.
   useEffect(() => {
-    if (disabled || !isQuestion) return;
+    if (disabled || !open || !isQuestion) return;
     const options = (step?.kind === "question" && step.options) || [];
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -262,7 +280,7 @@ export function ChatInteractionCard({
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [disabled, isQuestion, step, onOption, onSkip]);
+  }, [disabled, open, isQuestion, step, onOption, onSkip]);
 
   const onConnected = useCallback(() => {
     apply(advanceConnect(state, steps));
@@ -303,7 +321,16 @@ export function ChatInteractionCard({
         }
       : null;
 
-  const chrome: StepChrome = { pager, onDismiss, dismissLabel, disabled };
+  const chrome: StepChrome = {
+    pager,
+    onDismiss,
+    dismissLabel,
+    collapseLabel,
+    expandLabel,
+    disabled,
+    open,
+    onOpenChange: setOpen,
+  };
   const footerApi: StepFooterApi = { revisited: canGoForward(state), onSkip };
 
   if (step.kind === "signin") {
@@ -327,21 +354,27 @@ export function ChatInteractionCard({
   const optionsPresent = hasSelectableOptions(step.options);
   // A branded question wears the app's identity in the title (logo + name, like
   // the connect card) and moves the question text into the body; a plain one
-  // keeps the question in the title with no body lead. Either way the options
-  // come FIRST and the free-text row sits below (QuestionStepBody's order).
+  // keeps the question in the title with no body lead. The options are the
+  // scrollable body; the answer row (free-text escape + skip) stays FIXED in
+  // the modal's trailing slot so a long option list never scrolls it away.
   const brand = step.brand;
   const questionBody = (
     <QuestionStepBody
       disabled={disabled}
+      onOption={onOption}
+      options={step.options}
+      recommendedLabel={recommendedLabel}
+      selectedId={selectedId}
+    />
+  );
+  const questionAnswerRow = (
+    <QuestionAnswerRow
+      disabled={disabled}
       draft={draft}
       hideFreeText={optionsPresent && step.hideFreeText === true}
       onDraftChange={(value) => setState((s) => setDraft(s, stepId, value))}
-      onOption={onOption}
       onSubmit={onSend}
-      options={step.options}
       placeholder={optionsPresent ? escapePlaceholder : neutralPlaceholder}
-      recommendedLabel={recommendedLabel}
-      selectedId={selectedId}
       sendLabel={sendLabel}
       skip={{ label: skipLabel, escLabel, onSkip, disabled }}
     />
@@ -350,10 +383,17 @@ export function ChatInteractionCard({
   return (
     <InteractionModal
       contentKey={step.id}
+      collapseLabel={collapseLabel}
       disabled={disabled}
       dismissLabel={dismissLabel}
+      expandLabel={expandLabel}
       onDismiss={onDismiss}
+      onOpenChange={setOpen}
+      open={open}
       pager={pager}
+      // A plain question's title IS the question, so only a branded question
+      // (app name in the title, question in the body) needs the collapsed hint.
+      collapsedHint={brand ? step.question : undefined}
       title={
         brand ? (
           <InteractionModalTitle
@@ -384,6 +424,7 @@ export function ChatInteractionCard({
           questionBody
         )
       }
+      trailing={questionAnswerRow}
     />
   );
 }

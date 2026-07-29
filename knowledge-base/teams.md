@@ -233,25 +233,19 @@ Integration allowlist ceiling section, Part B).
 **Agent detail — three tabs** (`agent-detail.tsx`, takes `{ agent, members, initialTab? }`):
 a `PageHeader` (agent avatar + name + "Open agent") over the shared
 **`AgentPermissionsPanel`** (`permissions/agent-permissions-panel.tsx`, `{ agent, members,
-initialTab?, readOnly }`): `@houston-ai/core` `Tabs variant="line"` with
+initialTab? }`): `@houston-ai/core` `Tabs variant="line"` with
 **People | Integrations | AI Models** (labels `permissions.agentTabs.{people,integrations,models}`;
 `defaultValue = initialTab`, default `"people"`). In the top-level drill-in the whole detail is
 gated on `isAgentManager(caps, agent)` — a visible-but-not-manager admin gets
-`org.agentDetail.managerOnly` instead of the panel, and the panel renders `readOnly={false}`.
+`org.agentDetail.managerOnly` instead of the panel.
 
-**Two fronts, one target — the agent's OWN Permissions tab.** The SAME `AgentPermissionsPanel`
-also mounts as a per-agent workspace tab (`components/tabs/agent-permissions-tab.tsx`, built-in
-`agent-permissions`), so it is visible to **everyone who can open the agent** — read-only when the
-viewer can't manage it — and a user always sees why their agent can or can't use something. It is
-registered in `standard-tabs.ts` (`PERMISSIONS_TAB_ID = "agent-permissions"`) and **`teams`-gated**
-in `visibleAgentTabs` (`caps?.teams === true`), so it never appears on single-player/self-host
-(no ceilings, no roster). The tab id is deliberately NOT `"permissions"`: agent tab ids share the
-`viewMode` string space with top-level view ids, and `PERMISSIONS_VIEW_ID = "permissions"` already
-owns that name (the top-level drill-in), so reusing it would shadow the view in `workspace-shell`.
-(This inverts the `integrations` precedent, where the TAB owns the short name and the VIEW is
-`integrations-home`; here the VIEW owns it, so the tab is prefixed — the least-churn choice, since
-the view id is referenced across many files while the tab is new and unreleased.) The tab fetches
-the roster via `useOrg` and renders `readOnly = !isAgentManager(caps, agent)`; managers get the
+**Two fronts, one target — the agent's Settings access rows.** The same People,
+Integrations, and AI Models sections mount in the per-agent Settings rail. Settings
+is visible to everyone on a Teams host; non-managers see those access rows read-only,
+while manager-only configuration rows remain hidden. It never exposes access rows on
+single-player/self-host, where there are no ceilings or roster.
+`agent-admin-screen.tsx` fetches the roster via `useOrg` and renders
+`readOnly = !isAgentManager(caps, agent)`; managers get the
 fully editable panel right on the agent.
 
 **Read-only rule.** `readOnly` threads through the panel to every section: People rows drop to
@@ -292,7 +286,7 @@ no wrapper — the old `permissions-agents-tab.tsx` wrapper was deleted); helper
 stay in `organization/` (cross-dir import). NO "Defaults for every agent" card — policy is
 per agent only. Tested: e2e `packages/web/e2e/permissions.spec.ts` (agent list → three-tab
 drill-in; People Can use→No access round-trip; Integrations ceiling round-trip; AI Models
-present; PLUS the agent's OWN `agent-permissions` tab: a manager's editable round-trip and a
+present; PLUS the agent's Settings access rows: a manager's editable round-trip and a
 role-`user` member's read-only view + viewer-line degradation) via fake host `/__test__/org`
 (multi-member roster + fleet with per-agent `assignments`/`access`; `/v1/org` omits the roster
 for role `user`, mirroring the gateway) + `PUT /v1/agents/:slug/assignments`/`settings`.
@@ -414,6 +408,81 @@ per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16
   re-probes on a workspace-id change, gating the live probe on the new space's
   agents having loaded (the probe routes per-agent, so it must not fire at the old
   agent under the new org header). The old un-scoped `.v1` key is orphaned + purged.
+  A probe now also pins `activeProviderStatusScope()` when it STARTS and discards
+  its result if the space changed mid-flight, so a personal probe that resolves
+  after a switch can neither paint nor persist under the team's key (HOU-979).
+- **Provider ROUTING is space-validated, and refuses rather than guesses**
+  (HOU-979, `packages/web/src/engine-adapter/client/provider-routing.ts`). Every
+  provider connect/probe goes to a specific agent's runtime; the only space-aware
+  source for that id is the adapter's `agentList` (the CURRENT space's last
+  `listAgents`). The persisted `last_agent_id` pref is NOT space-aware, so the
+  three formerly independent sources (`providerAgentId()`, the raw-pref
+  `requireAgentId()`, and the agent STORE read in `claude-login-remote.ts`)
+  collapsed onto one: `requireProviderAgentId(ctx)`. Before the list settles,
+  writes throw "This space is still loading", the status probe returns `unknown`
+  with NO request, and the Claude credential push degrades to the setup runtime
+  (space-correct: same central store, same org header). `requireAgentId()` stays
+  for routes that genuinely mean the agent the user has OPEN (project files,
+  per-agent prefs).
+  **`agentList` is a THREE-state machine (`context.ts`), not a nullable list** —
+  the distinction is what keeps the guard both effective and non-bricking:
+  - `pending` — no list for THIS space yet. Writes refuse, the probe skips.
+    **`setActiveOrg` resets to `pending` on a real slug change**, so the guard is
+    not first-boot-only: a Connect clicked mid-switch used to route at the space
+    just left. Re-pinning the SAME slug (the client rebuild / bearer rotation in
+    `lib/engine.ts`) is a no-op.
+  - `unavailable` — a list was asked for and could not be had: `listAgents`
+    threw (`agents-mixin` notes it, then rethrows so the failure still surfaces),
+    or boot resolved no workspace to list agents for and the app called
+    `client.noteAgentsUnavailable()`. Routing degrades to the pre-HOU-979
+    pref-based path so connect + the picker keep working. Never downgrades a list
+    we already have; a later successful `listAgents` restores strict validation.
+  - `known` — the space's own ids; the pref is validated against them.
+
+  `GET /v1/catalog` deliberately does NOT send `x-houston-org`: the gateway's
+  catalog handler ignores the request entirely (one global snapshot,
+  `cloud/internal/edge/catalog.go`), so the header buys nothing and newly exposes
+  a 403 from `ResolveOrg` on a stale slug — which would pin the picker at
+  "Loading providers…" forever through `useProviderCatalog`'s `isSuccess` gate.
+- **One provider-connection derivation** (`app/src/lib/provider-connection.ts`,
+  HOU-979). `unknown` used to mean opposite things per surface: invisible to the
+  chat picker's catalog, "Connected" to the AI hub's badge, "card never clears"
+  to the in-chat reconnect card. It is now the third state, `checking`,
+  everywhere — never Connected, never silently hidden. `unknown` is tested FIRST,
+  ahead of the missing-CLI check: an unconfirmable probe is ALWAYS `checking`.
+  `providerIsConnected` is the ONLY connected predicate (badges, analytics
+  transitions); `providerNotConfirmedDisconnected` is the permissive read,
+  sanctioned ONLY for the tunnel auto-reconnect and the first-load
+  `claudeAvailable` gate, never for a badge — and it keeps the OLD lenient
+  reading when `auth_state` is absent (`cli_installed`), which the strict
+  derivation deliberately does not. The chat picker's
+  `hooks/use-provider-statuses.ts` carries the same agents-settled gate +
+  a workspace-scoped query key as the hub's sibling hook
+  (`lib/provider-statuses-query.ts` holds the pure rules).
+  **The connections layer exposes ONE reader, `connectionState`** — no boolean
+  sibling, because every surface that reached for one collapsed the third state.
+  `groupProviders` returns three buckets (`connected` / `checking` /
+  `available`): only `connected` may claim Connected (the hub's strip dot, the
+  Usage page's account rows), only `available` gets a Connect CTA, and
+  `providerOwnedSide()` is the render order the browse surfaces use.
+- **A team space with no credential explains itself.** When statuses settle with
+  nothing connected, the picker's level 1 shows an honest empty state instead of
+  a blank panel: `personal` / `teamCanConnect` / `teamAskAdmin`
+  (`app/src/components/chat-model-selector-labels.ts`, copy under
+  `chat:modelSelector.picker.noProviders.*`). A plain member gets no CTA and no
+  "Connect more providers…" footer at all — provider connections are org-level,
+  so `canSeeAiModelsPage` is false for them and the hub would dead-end. The
+  decision is gated on capabilities having LOADED (`canSeeAiModelsPage` answers
+  TRUE for absent capabilities, which flashed a CTA at a member and withdrew it);
+  `use-picker-view-models` folds the same signal into `catalogState`, so the
+  picker holds its neutral loading state through that window.
+- **Boot with NO space settles honestly** (HOU-979). If `loadWorkspaces` fails
+  (or yields no current workspace) `loadAgents` never runs, and every `loaded`
+  gate hung: the boot splash never lifted and the provider probe never fired.
+  `useHoustonInit` now calls the agent store's `settleEmpty()`, which settles the
+  store AND tells the client `noteAgentsUnavailable()`. The failure itself is
+  already surfaced by `lib/tauri.ts`'s `call()` (toast + Sentry) and recorded as
+  the workspace store's `loadError` for the Settings retry.
 - **Restore last space**: `resolveActiveWorkspace` (`app/src/lib/workspace-switch.ts`)
   restores the persisted `last_workspace_id`, else default, else first.
 
@@ -657,9 +726,9 @@ hides the "Add models" list, all copy passed in.
 Members can only connect apps the agent allows. See `integrations.md` §2
 for the full model. In short: `effective = agentCeiling` (`null` = all, `[]` =
 none — the org-wide ceiling was removed 2026-07-16 as overengineering; policy is
-per agent only), grants are pruned when the ceiling shrinks, and a per-agent
-connect carries the agent slug so the gateway checks the allowlist and auto-grants
-on success.
+per agent only), now-disallowed toolkits are pruned from live connections when the
+ceiling shrinks, and a per-agent connect carries the agent slug so the gateway
+checks the toolkit against the allowlist on a successful OAuth.
 
 **The per-agent ceiling has one frontend home** — the shared presentational
 `AllowlistEditor` (`app/src/components/integrations/allowlist-editor.tsx`):
@@ -672,10 +741,12 @@ on success.
   Integrations tab (`permissions/agent-detail.tsx`), same editor, same wire.
 
 The global Integrations page has no ceiling to apply (policy is per agent), so it
-never locks a row — it's the personal catalog for every member. Per-agent GRANT
-toggles are a separate concept and live only on the global Integrations page's app
-detail modal (the ONE by-app grants lens; the Settings row deep-links there), never
-in the ceiling editor.
+never locks a row — it's the personal catalog for every member. Connections are
+per USER and global: one connection serves every agent that person may use.
+**Usable = connected AND the person may use the agent AND the toolkit is inside
+that agent's app ceiling.** There are no grants anywhere — the per-`(user, agent)`
+grants layer was DELETED (client, host and UI; `integrations.md` §2), so no
+surface carries a grant toggle, the app detail modal included.
 
 **Design principle: blocked is visible, never silently hidden.** Applied wherever the
 agent ceiling narrows a member's world: the per-agent Integrations tab ITEMIZES the
@@ -791,13 +862,16 @@ rare hard failure stays silent and consumers fall back via React Query's `isErro
 
 ## Chat sender attribution (HOU-943, HOU-960)
 
-In a shared chat every turn says who sent it, on WhatsApp-group semantics: a
-group chat labels the people you talk TO and never you, and a name is an answer
-to "who is talking now", so it prints once per change of speaker rather than
-once per message. The trigger is the DEPLOYMENT, not the thread —
-`isMultiplayer(capabilities)` — so a shared chat attributes its first message,
-not only once a second person writes. Single-player renders no sender
-presentation at all: no name, no face, no reserved column (byte-identical
+In a multiplayer chat, group presentation starts only when the transcript proves
+someone besides the viewer participated: a user-message author differs from the
+resolved viewer id, or the transcript has at least two distinct author ids while
+that profile is still resolving. It follows WhatsApp-group semantics: a group
+chat labels the people you talk TO and never you, and a name is an answer to
+"who is talking now", so it prints once per change of speaker rather than once
+per message. A viewer-and-agent transcript keeps the classic single-player
+layout. The app passes `true` for the proven group case and otherwise omits the
+prop, preserving `ui/chat`'s distinct-authors fallback. Single-player renders
+no sender presentation at all: no name, no face, no reserved column (byte-identical
 transcript).
 
 **The identity travels on the view-model.** A message's author is already stored
@@ -863,7 +937,8 @@ signed-in-but-not-yet-resolved window both render today's layout) and
 viewer's own row is no longer labelled on screen).
 
 **App wiring.** `use-chat-sender-avatars.tsx` resolves it: `showSenders` from
-capabilities, `agentLabel` from the agent, faces from the SAME batched
+the multiplayer transcript and resolved viewer profile, `agentLabel` from the
+agent, faces from the SAME batched
 `useUserProfiles` lookup the board face stacks use (ids collected from the feed's
 authors, own rows via `useMyProfile`, `PersonFace` initials fallback), and
 `senderNameClass` = `personNameToneClass(author.userId)` for a human,
@@ -1248,8 +1323,8 @@ The **`permissions.*`** block backs the Permissions view: `title`, `subtitle`,
 `agentPeople.{none,noneHint,changeAccess,readOnlyHint,viewerOnly,empty.{title,body}}` (the
 per-agent People tab; `readOnlyHint` + `viewerOnly` back the agent-tab read-only view). The
 read-only editors also add `integrations.allowlist.readOnlyNote` + `agentAdmin.models.readOnlyNote`.
-The agent workspace **Permissions tab label** lives in the `agents` namespace like every other tab:
-`agents:tabLabels.agent-permissions` (en "Permissions" / es "Permisos" / pt "Permissões").
+The agent workspace **Settings tab label** lives in the `agents` namespace like every other tab:
+`agents:tabLabels.job-description` (en "Settings" / es "Configuración" / pt "Configurações").
 (`permissions.tabs.*`, `permissions.people.*`, `permissions.defaults.*`, and
 `permissions.agents.listTitle` were deleted — with the top-level People/Agents split and
 the "Defaults for every agent" card.) The agent detail REUSES `share.*` copy (levels,

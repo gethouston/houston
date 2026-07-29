@@ -1,7 +1,8 @@
-import { ok } from "node:assert";
+import { ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   sidebarClasses,
+  sidebarGroupClasses,
   sidebarItemRowClasses,
 } from "../src/sidebar-classes.ts";
 
@@ -30,17 +31,24 @@ describe("sidebar item row layout", () => {
   it("keeps menu trigger in its own visible slot", () => {
     ok(includes(sidebarItemRowClasses.menuButton, "size-7"));
     ok(includes(sidebarItemRowClasses.menuButton, "shrink-0"));
-    ok(includes(sidebarItemRowClasses.menuButton, "opacity-0"));
-    ok(includes(sidebarItemRowClasses.menuButton, "group-hover:opacity-100"));
-    ok(
-      includes(
-        sidebarItemRowClasses.menuButton,
-        "group-focus-within:opacity-100",
-      ),
+    strictEqual(includes(sidebarItemRowClasses.menuButton, "opacity-0"), false);
+    strictEqual(
+      includes(sidebarItemRowClasses.menuButton, "pointer-events-none"),
+      false,
     );
-    ok(
-      includes(sidebarItemRowClasses.trailingWithMenu, "group-hover:opacity-0"),
+    ok(includes(sidebarItemRowClasses.menuButton, "text-ink-muted/50"));
+    strictEqual(includes(sidebarItemRowClasses.trailing, "absolute"), false);
+    strictEqual(includes(sidebarItemRowClasses.actions, "size-7"), false);
+    ok(includes(sidebarItemRowClasses.actions, "gap-1"));
+  });
+
+  it("keeps the group menu visible and quiet", () => {
+    strictEqual(includes(sidebarGroupClasses.menuButton, "opacity-0"), false);
+    strictEqual(
+      includes(sidebarGroupClasses.menuButton, "group-hover/gh:opacity-100"),
+      false,
     );
-    ok(includes(sidebarItemRowClasses.trailingMenuOpen, "opacity-0"));
+    ok(includes(sidebarGroupClasses.menuButton, "text-ink-muted/60"));
+    strictEqual(includes(sidebarGroupClasses.menuButton, "absolute"), false);
   });
 });

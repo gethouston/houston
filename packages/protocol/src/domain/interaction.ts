@@ -11,12 +11,11 @@
 // call, deduped by toolkit). Any single kind alone still yields a valid
 // sequence.
 //
-// `suggest_reusable` is the ONE exception to "present → needs_you": the model
-// calls it on a clean finish to suggest saving the just-completed work as a
-// Skill, a Routine, or a Learning, so the mission genuinely IS done. `turn-settle.ts` treats
-// a lone `suggest_reusable` step as `done`, not `needs_you` — see that file's
-// `finishOk`. It arrives on the same `done` frame and renders a card the same
-// way; only the board-status mapping differs.
+// `suggest_reusable` and `suggest_actions` are exceptions to "present →
+// needs_you": they are optional clean-finish offers, respectively for saving
+// reusable work and for concrete follow-up actions. Any mix of those two offer
+// kinds settles `done`; a sequence with any blocking step settles `needs_you`.
+// They arrive on the same `done` frame and render above the composer.
 
 export interface InteractionOption {
   id: string;
@@ -57,6 +56,11 @@ export type InteractionStep =
       reusableKind: "skill" | "routine" | "learning";
       title: string;
       rationale: string;
+    }
+  | {
+      kind: "suggest_actions";
+      id: string;
+      actions: { id: string; label: string; message: string }[];
     };
 
 /** The ordered steps the mission is waiting on: question steps first (at most 3),
@@ -88,6 +92,19 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
         v.reusableKind === "learning") &&
       typeof v.title === "string" &&
       typeof v.rationale === "string"
+    );
+  if (v.kind === "suggest_actions")
+    return (
+      Array.isArray(v.actions) &&
+      v.actions.length >= 2 &&
+      v.actions.length <= 4 &&
+      v.actions.every(
+        (action) =>
+          isRecord(action) &&
+          typeof action.id === "string" &&
+          typeof action.label === "string" &&
+          typeof action.message === "string",
+      )
     );
   return false;
 };

@@ -32,7 +32,7 @@ import { AgentPersonRow } from "./agent-person-row.tsx";
  * surface as a toast, and a self-lockout is confirm-gated identically.
  *
  * `readOnly` renders the roster with static level labels and NO controls — the
- * face shown on the agent's own Permissions tab to a viewer who can't manage it.
+ * face shown in the agent's Settings People row to a viewer who can't manage it.
  * The gateway only serves the roster to owner/admin, so a plain member's `members`
  * arrives empty; there the tab degrades to an honest viewer line (`viewerOnly`)
  * rather than a misleading empty state. The gateway is the real enforcer.

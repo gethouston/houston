@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { selectCurrentAgent } from "../lib/agent-selection";
 import { analytics } from "../lib/analytics";
+import { getEngine, isEngineReady } from "../lib/engine";
 import {
   tauriAgents,
   tauriPreferences,
@@ -43,6 +44,16 @@ interface AgentState {
     workspaceId: string,
     options?: { silent?: boolean },
   ) => Promise<void>;
+  /**
+   * Settle with no agents, for a boot that resolved NO workspace to list them
+   * for — the workspace load failed (already toasted + reported by `call()`,
+   * and recorded as `loadError` for the Settings retry) or the account has
+   * none. `loadAgents` is never called in that path, so without this `loaded`
+   * stays false forever and every gate reading it hangs: the boot splash never
+   * lifts and the provider probe never runs (HOU-979). Settled-empty is the
+   * honest state — there is no space, so there are no agents.
+   */
+  settleEmpty: () => void;
   setCurrent: (agent: Agent) => void;
   /**
    * Reveal a freshly created agent: mark it provisioning (HOU-693), append it
@@ -62,7 +73,7 @@ interface AgentState {
     existingPath?: string,
   ) => Promise<CreatedAgent>;
   delete: (workspaceId: string, id: string) => Promise<void>;
-  rename: (workspaceId: string, id: string, newName: string) => Promise<void>;
+  rename: (workspaceId: string, id: string, newName: string) => Promise<Agent>;
   updateColor: (
     workspaceId: string,
     id: string,
@@ -97,6 +108,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       // as the same empty state the legacy wire shows on a failed load.
       set({ loading: false, loaded: true });
     }
+  },
+
+  settleEmpty: () => {
+    // Also tell the engine client no list is coming, so provider routing falls
+    // back to the persisted selection instead of refusing every call while it
+    // waits on a `listAgents` that will never run (HOU-979). Guarded because
+    // this settles UI state and must never itself throw; a client that isn't
+    // built yet starts in the same unrouted state anyway.
+    if (isEngineReady()) getEngine().noteAgentsUnavailable();
+    set({ agents: [], current: null, loading: false, loaded: true });
   },
 
   setCurrent: (agent) => {
@@ -182,6 +203,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     if (get().current?.id === id) {
       get().setCurrent(updated);
     }
+    return updated;
   },
 
   updateColor: async (workspaceId, id, color) => {

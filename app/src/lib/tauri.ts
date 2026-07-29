@@ -26,6 +26,7 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
+import { isAgentNameConflictError } from "./agent-name-conflict";
 import {
   blockWriteWhileWarming,
   blockWriteWhileWarmingById,
@@ -45,6 +46,7 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
+import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
@@ -84,6 +86,15 @@ export interface EngineCallOptions {
    *  host emits bare-string / status-only errors with no typed `kind`, so this
    *  predicate keys on the thrown error rather than a kind string. */
   silence?: (err: unknown) => boolean;
+  /**
+   * Suppress ALL user-facing surfacing for this attempt — toast, Sentry, and
+   * the expected-state toasts alike. The failure is still logged.
+   *
+   * Only for a caller that will retry and surface the FINAL error itself (via
+   * {@link surfaceEngineError}); anything else would be a silent failure. One
+   * user-visible surface per user-visible action, no more and no less.
+   */
+  surface?: boolean;
 }
 
 /** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
@@ -99,6 +110,22 @@ async function call<T>(
     await surfaceError(label, err, context, options);
     throw err;
   }
+}
+
+/**
+ * Surface an engine failure the way `call` would, for the one caller that has
+ * to defer it: a bounded retry loop runs its attempts with `toast`/`capture`
+ * off (four rejections must not become four Sentry issues and a stack of
+ * toasts) and then hands the FINAL error here, so exactly one surface happens
+ * and the no-silent-failures invariant holds. See
+ * `hooks/queries/use-conversations.ts`.
+ */
+export async function surfaceEngineError(
+  label: string,
+  err: unknown,
+  context?: Record<string, unknown>,
+): Promise<void> {
+  await surfaceError(label, err, context);
 }
 
 async function surfaceError(
@@ -117,6 +144,12 @@ async function surfaceError(
     `[engine:${label}] ${message}`,
     context ? JSON.stringify(context) : undefined,
   );
+
+  // An attempt whose caller owns the surface (a retry loop). The log tail above
+  // still records every attempt; nothing below this line runs, so a failure
+  // that is about to be retried costs the user neither a toast nor a Sentry
+  // issue. The caller MUST surface the final error — see `surfaceEngineError`.
+  if (options?.surface === false) return;
 
   // Expected, explainable engine errors the caller surfaces inline. Logged
   // above for the local log tail, but no red bug toast and no Sentry report.
@@ -266,8 +299,12 @@ export const tauriAgents = {
   rename: (workspaceId: string, id: string, newName: string) => {
     // A rename dispatches into the agent's engine — held while it warms up.
     blockWriteWhileWarmingById(id);
-    return call<Agent>("rename_agent", async () =>
-      toAgent(await getEngine().renameAgent(workspaceId, id, newName)),
+    return call<Agent>(
+      "rename_agent",
+      async () =>
+        toAgent(await getEngine().renameAgent(workspaceId, id, newName)),
+      undefined,
+      { silence: isAgentNameConflictError },
     );
   },
   updateColor: (workspaceId: string, id: string, color: string) =>
@@ -352,9 +389,11 @@ export const tauriAgentModelChoice = {
 
 /**
  * How a chat history load behaves. `observe: false` marks a BULK read
- * (mission search, board scans over N conversations): the new-engine adapter
- * then skips attaching its passive in-flight-turn observer stream, which only
- * a real conversation open (the default) should do.
+ * (mission search, board scans over N conversations). The new-engine adapter
+ * then (a) skips attaching its passive in-flight-turn observer stream, which
+ * only a real conversation open should do, (b) reads the wider but still
+ * BOUNDED scan window instead of a full transcript, and (c) leaves the local
+ * conversation cache alone. See `engine-adapter/history-window.ts`.
  */
 export interface HistoryLoadOptions {
   observe?: boolean;
@@ -867,11 +906,19 @@ export const tauriFiles = {
     });
   },
   /** Upload browser Files into the workspace (drag-drop / Browse), optionally
-   * into a subfolder. */
+   * into a subfolder.
+   *
+   * The host's 413 (request over `MAX_UPLOAD_BYTES`) is silenced here because
+   * it is an EXPECTED, explainable state, not a Houston bug: `useUploadFiles`
+   * surfaces it as calm, translated copy about the size limit. Every other
+   * failure keeps the standard red toast + Sentry report. */
   upload: (agentPath: string, files: File[], targetDir?: string | null) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("upload_project_files", () =>
-      getEngine().uploadProjectFiles(agentPath, files, targetDir),
+    return call<void>(
+      "upload_project_files",
+      () => getEngine().uploadProjectFiles(agentPath, files, targetDir),
+      { agentPath, targetDir, fileCount: files.length },
+      { silence: isUploadTooLargeError },
     );
   },
   /** Move a file/folder into another folder (null = workspace root). */
@@ -895,7 +942,7 @@ export const tauriFiles = {
 
 // ─── Conversations ────────────────────────────────────────────────────
 
-interface RawConversation {
+export interface RawConversation {
   id: string;
   title: string;
   description?: string;
@@ -918,6 +965,17 @@ interface RawConversation {
   mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
+/**
+ * One cross-agent conversation sweep: the rows every agent that answered
+ * returned, plus the agents whose read failed. A non-empty `failedAgentPaths`
+ * means the rows are INCOMPLETE and must not be treated as the whole truth
+ * (see lib/all-conversations-recovery.ts).
+ */
+export interface AllConversationsSweep {
+  items: RawConversation[];
+  failedAgentPaths: string[];
+}
+
 export const tauriConversations = {
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
@@ -927,7 +985,9 @@ export const tauriConversations = {
             conversationToRaw,
           ),
         ),
-  listAll: (agentPaths: string[]) => {
+  /** @param options pass `{ surface: false }` for an attempt the caller will
+   *  retry — the failure it surfaces is the LAST one, exactly once. */
+  listAll: (agentPaths: string[], options?: EngineCallOptions) => {
     // A JUST-CREATED agent has no conversations yet and its read would hold
     // the whole bulk scan — sweep only past those. An EXISTING asleep agent
     // stays IN the sweep: dropping it resolves Mission Control without its
@@ -935,11 +995,27 @@ export const tauriConversations = {
     // keeping it holds the sweep until its pod wakes while the cached rows
     // keep painting.
     const reachable = agentPaths.filter((p) => !isAgentPathCreating(p));
-    if (reachable.length === 0) return Promise.resolve<RawConversation[]>([]);
-    return call<RawConversation[]>("list_all_conversations", async () =>
-      (await getEngine().listAllConversations(reachable)).map(
-        conversationToRaw,
-      ),
+    if (reachable.length === 0)
+      return Promise.resolve<AllConversationsSweep>({
+        items: [],
+        failedAgentPaths: [],
+      });
+    // A sweep where SOME agents failed resolves (partial) rather than throwing,
+    // so `call()` raises no toast for it — the query layer owns that surface
+    // (one toast per incomplete sweep, plus a bounded re-sweep). Only a sweep
+    // where EVERY agent failed rejects, and that keeps the toast + capture.
+    return call<AllConversationsSweep>(
+      "list_all_conversations",
+      async () => {
+        const { conversations, failedAgentPaths } =
+          await getEngine().listAllConversations(reachable);
+        return {
+          items: conversations.map(conversationToRaw),
+          failedAgentPaths,
+        };
+      },
+      undefined,
+      options,
     );
   },
 };

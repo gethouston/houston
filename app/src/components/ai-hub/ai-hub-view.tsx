@@ -19,7 +19,10 @@ import {
   type ProviderInfo,
 } from "../../lib/providers";
 import { searchProviders } from "../provider-browser/provider-filtering";
-import { groupProviders } from "../provider-browser/provider-grouping";
+import {
+  groupProviders,
+  providerOwnedSide,
+} from "../provider-browser/provider-grouping";
 import { PageContainer } from "../shell/page-shell";
 import { ConnectedProvidersStrip } from "./connected-providers-strip";
 import { HubHero } from "./hub-hero";
@@ -67,20 +70,25 @@ export function AiHubView() {
       }),
     [newEngine, providerCapabilities],
   );
-  // Connected providers live in the strip; only the rest browse in the tab.
+  // The user's own providers live in the strip; only the ones we CONFIRMED are
+  // not connected browse in the tab, so the tab's `+` connect is never offered
+  // for an account that may already be signed in (HOU-979). A provider whose
+  // probe came back unconfirmable rides the strip with its own checking dot.
   // Until the first status probe resolves everything counts as available (the
   // pane holds a skeleton and the counts stay hidden meanwhile).
-  const { connected, available } = useMemo(
-    () => groupProviders(connectProviders, connections.isConnected),
-    [connectProviders, connections.isConnected],
+  const groups = useMemo(
+    () => groupProviders(connectProviders, connections.connectionState),
+    [connectProviders, connections.connectionState],
   );
+  const available = groups.available;
+  const owned = useMemo(() => providerOwnedSide(groups), [groups]);
 
   // The page query narrows both provider sections; `searching` uncaps the
   // Connected strip's preview and switches the count chips to shown-count.
   const searching = query.trim() !== "";
   const connectedMatches = useMemo(
-    () => searchProviders(connected, query),
-    [connected, query],
+    () => searchProviders(owned, query),
+    [owned, query],
   );
   const availableMatches = useMemo(
     () => searchProviders(available, query),
@@ -156,6 +164,7 @@ export function AiHubView() {
                   value={query}
                   onChange={setQuery}
                   label={t("search.placeholder")}
+                  clearLabel={t("search.clear")}
                 />
               }
               installedTitle={t("sections.connected")}
@@ -163,7 +172,7 @@ export function AiHubView() {
                 connections.ready
                   ? searching
                     ? connectedMatches.length
-                    : connected.length
+                    : owned.length
                   : undefined
               }
               availableTitle={t("sections.available")}
@@ -171,6 +180,7 @@ export function AiHubView() {
                 connections.ready && connectedMatches.length > 0 ? (
                   <ConnectedProvidersStrip
                     providers={connectedMatches}
+                    connectionState={connections.connectionState}
                     searching={searching}
                     onOpen={setOpenProvider}
                   />

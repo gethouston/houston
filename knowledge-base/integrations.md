@@ -74,7 +74,7 @@ the agent which of four speech acts to perform:
 - `connectable` — a real toolkit, not connected yet: OFFER to connect
   (`request_connection`).
 - `blocked` — a real toolkit outside this agent's allowlist (turned OFF in the
-  agent's Permissions tab): tell the user it can be switched on there — whoever
+  agent's Settings, under Apps): tell the user it can be switched on there — whoever
   manages the agent can do it, otherwise they ask whoever does — never imply
   Houston lacks it, never `request_connection`. Rendered `, TURNED OFF` in the tool
   list. **`blocked` is produced solely by the closed cloud gateway** (Teams v2,
@@ -117,7 +117,7 @@ or unrecognized `status` (today's gateway) derives from the `connected` boolean
 **Runtime tool text** (`packages/runtime/src/session/tools/integrations.ts`) is
 status-aware: connected actions as before; `connectable` entries name the exact
 slug and teach `request_connection`; `blocked` (rendered `, TURNED OFF`) tells the
-user to switch the app on in the agent's Permissions tab and forbids
+user to switch the app on in the agent's Settings, under Apps, and forbids
 `request_connection`; a genuinely EMPTY result says no such app/action exists (a
 real not-found, NOT a policy block).
 
@@ -128,15 +128,27 @@ sandbox proxy relays that body verbatim (`integrationUpstreamErrorFromResponse` 
 `code`), so `integration_execute` classifies it by its stable `code`, never the
 bare 403, and RETURNS
 guidance (the app is turned off for this agent; tell the user to enable it in the
-Permissions tab; do not retry until they confirm), never a thrown/raw error.
+Settings, under Apps; do not retry until they confirm), never a thrown/raw error.
 Marked `details.appTurnedOff`.
+
+**No access to the agent (HOU-967).** The gateway 403s with `{code:"not_assigned"}`
+when the acting user is not one of the people with access to the agent. BOTH
+`integration_search` and `integration_execute` classify that code and RETURN
+guidance (the user has no access; someone who manages the agent gives it to them in
+Permissions > this agent > People; do not retry, do not `request_connection`),
+marked `details.noAgentAccess`. The gateway's own phrasing ("isn't assigned to you")
+and its JSON body never reach the model — it paraphrases whatever we hand it.
+Same rule for any OTHER unrecognized 4xx: the body is REDACTED from the thrown
+message, leaving `integrations <path> failed (<status>[, code <code>])` plus a plain
+instruction not to quote technical detail. Uncoded 5xx keeps its body (transient,
+diagnostic).
 
 **Prompt contract — the four speech acts.** `packages/host/src/houston-prompt.ts`
 INTEGRATIONS section and its verbatim Rust mirror
 `app/src-tauri/src/houston_prompt/integrations.rs` (`PI_INTEGRATIONS_GUIDANCE`,
 kept in sync) instruct: connected → use it; connectable → briefly offer +
 `request_connection`; blocked → tell the user it can be switched on in this
-agent's Permissions tab, someone who manages the agent can do it (never imply
+agent's Settings, under Apps, someone who manages the agent can do it (never imply
 Houston lacks it, never `request_connection`); unknown/empty → say plainly no such
 app is available. An empty result never means an app is unsupported — trust the
 reported status.
@@ -403,8 +415,11 @@ integrations** tab (§2, `teams.md`).
   catalog size via `home.descriptionCount`), then the shell:
   (0) the ONE **controls** row (`catalog-controls.tsx` → `CatalogControls`): a
   `CatalogSearchField` (`home.searchPlaceholder`) + the searchable A-Z category
-  `FilterCombobox`. It sits ABOVE both sections and its query + category narrow the
-  Installed strip AND the Integrations tab together. The surface owns that state in
+  `FilterCombobox`. The search field has an always-available clear X whenever it
+  contains text. A successful connect clears the query only when the landed app
+  still matches it, so a later OAuth completion cannot erase a newer search. It
+  sits ABOVE both sections and its query + category narrow the Installed strip AND
+  the Integrations tab together. The surface owns that state in
   the shared `use-catalog-surface.ts` hook (`useCatalogSurface` → `tab`, `query`,
   `category`, `filtering`, `shown`, `installedCount`, `availableCount`), used verbatim
   by the global page and the per-agent tab so the two-section wiring lives in ONE
@@ -836,14 +851,16 @@ connect step is `ChatConnectInteractionCard`. Every step (question, sign-in,
 connect, credential) composes ONE shared modal shell — `InteractionModal` + `InteractionModalTitle`
 in `ui/chat` (reference "Coworker card" look, inventory v19) — that owns the
 surface, the HEADER row (title left; `‹ N of M ›` pager + dismiss X top-right),
-the body, and a right-aligned FOOTER row. Every step kind also carries an
-always-visible free-text row (`InlineTextRow`, ui/chat): submitted text records
-a decline-with-instruction the agent hears in the composed reply. The connect step's `(icon) NAME`
-identity lockup (AppLogo `sm` beside the integration NAME at REGULAR weight — the
-sign-in step seats the Houston helmet + "Houston" in the same slot) is the modal
-TITLE, IN the header beside the pager/X; the body is a two-field block (the
-agent's reason in foreground tone over a muted app-description / sign-in-explainer
-line; the connected state swaps it for a calm check + "Connected"). The signin/
+the body, a right-aligned FOOTER row, and an optional trailing region. Connect,
+sign-in, and credential steps carry a free-text row (`InlineTextRow`, ui/chat)
+in that trailing region, below their action buttons: submitted text records a
+decline-with-instruction the agent hears in the composed reply. (Question steps
+have their own in-body escape field, `FreeTextRow`, which the stepper can
+suppress via `hideFreeText`.) The connect step's `(icon) ACTION`
+title (AppLogo `sm` beside "Connect {app}" at REGULAR weight — the sign-in step
+seats the Houston helmet + "Houston" in the same slot) is in the header beside
+the pager/X; its body is the agent's reason in foreground tone (the connected
+state swaps it for a calm check + "Connected"). The signin/
 connect body renders its OWN `InteractionModal`, wired with the `StepChrome`
 (`{ pager, onDismiss, dismissLabel, disabled }`) the stepper hands it, so ui/chat
 stays auth/Composio-unaware while the whole family shares one shell (there is no

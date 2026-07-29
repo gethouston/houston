@@ -95,7 +95,14 @@ export function SkillsContent({
     onQueryChange: setQuery,
     // Read-only mode never offers the Store either: no community callbacks.
     onSearch: readOnly ? undefined : onSearch,
-    onInstallCommunity: readOnly ? undefined : onInstallCommunity,
+    onInstallCommunity:
+      readOnly || !onInstallCommunity
+        ? undefined
+        : async (skill, signal) => {
+            const result = await onInstallCommunity(skill, signal);
+            if (!signal?.aborted) setQuery("");
+            return result;
+          },
     onPreviewCommunity,
     installedSkillNames,
   });
@@ -131,6 +138,7 @@ export function SkillsContent({
                   value={query}
                   onChange={setQuery}
                   label={t("grid.searchSkills")}
+                  clearLabel={t("grid.clearSearch")}
                 />
               )
             }

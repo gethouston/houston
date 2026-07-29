@@ -52,7 +52,7 @@ const ConnectParams = Type.Object({
   reason: Type.Optional(
     Type.String({
       description:
-        "A short, plain-language reason to show the user for why this app is needed.",
+        "A short user-facing reason shown verbatim to a non-technical user under the title 'Connect <App>'. Write it as a 'To ...' phrase, for example: 'To read your invoices and draft replies.'",
     }),
   ),
 });
@@ -91,7 +91,7 @@ function signalCode(detail: string): string | undefined {
 /**
  * Thrown by `post()` when the gateway REFUSED an integration `execute` because
  * the action's app is outside this agent's allowlist (403 "toolkit_not_allowed"
- * — the app is turned OFF in the agent's Permissions tab). Module-private: the
+ * — the app is turned OFF in this agent's Settings, under Apps). Module-private: the
  * `execute` tool catches it and RETURNS a normal (non-error) instruction, since
  * being walled off is an expected policy state the user can fix, not a tool
  * failure. Classified on the stable `code`, never the bare 403 (a relayed
@@ -103,6 +103,31 @@ class ToolkitNotAllowedError extends Error {
     this.name = "ToolkitNotAllowedError";
   }
 }
+
+/**
+ * Thrown by `post()` when the gateway REFUSED because the acting USER may not
+ * use this agent at all (403 "not_assigned" — they are not among the people
+ * with access to it). Module-private and handled by BOTH tools: like the
+ * allowlist refusal, it is an expected, user-fixable permission state, so each
+ * tool RETURNS guidance rather than failing. Classified on the stable `code`,
+ * never the bare 403 (a relayed upstream 403 carries no such code).
+ */
+class NoAgentAccessError extends Error {
+  constructor() {
+    super("no agent access");
+    this.name = "NoAgentAccessError";
+  }
+}
+
+/**
+ * What the model must say when the user may not use this agent. The gateway's
+ * own wording is internal jargon ("this agent isn't assigned to you") and its
+ * body is JSON — both would be paraphrased straight at a non-technical user, so
+ * neither ever reaches the model. This does: the state, the human remedy, and
+ * the exact place someone who manages the agent fixes it.
+ */
+const NO_AGENT_ACCESS_GUIDANCE =
+  "The user does not have access to this agent, so its connected apps cannot be used for them. Tell the user plainly that someone who manages this agent needs to give them access to it in this agent's Settings, under People. Do not retry until they confirm they have access, do not call request_connection, and never imply Houston lacks the app or that something is broken.";
 
 export interface IntegrationToolOptions {
   /** The host control-plane base URL (HOUSTON_CONTROL_PLANE_URL). */
@@ -171,6 +196,23 @@ function renderMatch(m: ToolMatch, status: AppStatus): string {
  */
 const REQUEST_CONNECTION_GUIDANCE =
   "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue - do not ask the user to confirm.";
+
+/**
+ * Ceiling for one integration tool result, aligned with the code sandbox's
+ * output limit (code-sandbox DEFAULT_LIMITS.maxOutputBytes). App APIs return
+ * unbounded documents — a single GMAIL_FETCH_EMAILS with include_payload can
+ * exceed 1 MB of JSON, which alone overflows a model's context window and
+ * terminally errors the turn (every event-trigger run on a newsletter inbox
+ * died this way, HOU-893). Truncate with an instructive marker instead: the
+ * model re-runs the action with tighter parameters rather than the turn dying.
+ */
+const MAX_RESULT_CHARS = 256 * 1024;
+
+/** Bound a tool-result text; the marker tells the model how to recover. */
+function boundResultText(text: string, guidance: string): string {
+  if (text.length <= MAX_RESULT_CHARS) return text;
+  return `${text.slice(0, MAX_RESULT_CHARS)}\n[result truncated: it exceeded the ${Math.floor(MAX_RESULT_CHARS / 1024)} KB tool-result limit and is cut off mid-document. ${guidance}]`;
+}
 interface ActionResult {
   successful: boolean;
   data?: unknown;
@@ -215,10 +257,17 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       const code = signalCode(detail);
       // toolkit_not_allowed (403): the gateway walled this action off because
       // its app is outside this agent's allowlist (turned off in the agent's
-      // Permissions tab). A normal, user-fixable policy state — throw the typed
+      // Settings, under Apps). A normal, user-fixable policy state — throw the typed
       // error the execute tool turns into guidance, never a raw failure.
       if (code === "toolkit_not_allowed") {
         throw new ToolkitNotAllowedError();
+      }
+      // not_assigned (403): the gateway refused because the acting user is not
+      // one of the people with access to this agent — a permission state a
+      // manager fixes in Permissions > this agent > People. Applies to search
+      // and execute alike, so both tools turn the typed error into guidance.
+      if (code === "not_assigned") {
+        throw new NoAgentAccessError();
       }
       // signin_required (409): integrations can't act for this user yet (on
       // desktop: they're signed out of Houston, so the gateway has no session to
@@ -243,6 +292,16 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
+      // Anything else. A 4xx is a REFUSAL, and its body is gateway/provider
+      // JSON written for us, not for a person — the model reads whatever we
+      // throw and paraphrases it straight at the user, so the body is REDACTED
+      // and only the status (+ any unrecognized code, for the logs) survives. A
+      // 5xx is a transient upstream failure whose body is genuinely diagnostic.
+      if (res.status >= 400 && res.status < 500) {
+        throw new Error(
+          `integrations ${path} failed (${res.status}${code ? `, code ${code}` : ""}). The request was refused. Tell the user plainly that this could not be done right now, and never quote this message, any code, or any other technical detail to them.`,
+        );
+      }
       throw new Error(
         `integrations ${path} failed (${res.status}): ${detail.slice(0, 300)}`,
       );
@@ -250,7 +309,12 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     return (await res.json()) as T;
   }
 
-  const search = defineTool({
+  const search = defineTool<
+    typeof SearchParams,
+    // Pinned so the result path ({ matches, actions }) and the no-access path
+    // (which adds the flag) share ONE details type.
+    { matches: number; actions: string[]; noAgentAccess?: boolean }
+  >({
     name: "integration_search",
     label: "Find an app action",
     description:
@@ -263,11 +327,27 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       params: SearchParams,
       signal: AbortSignal | undefined,
     ) {
-      const { items } = await post<{ items: ToolMatch[] }>(
-        "search",
-        { query: params.query },
-        signal,
-      );
+      let items: ToolMatch[];
+      try {
+        ({ items } = await post<{ items: ToolMatch[] }>(
+          "search",
+          { query: params.query },
+          signal,
+        ));
+      } catch (err) {
+        // The user may not use this agent at all: not a search failure, a
+        // permission state someone who manages the agent fixes. Return the
+        // guidance so the model relays it in Houston's voice.
+        if (err instanceof NoAgentAccessError) {
+          return {
+            content: [
+              { type: "text" as const, text: NO_AGENT_ACCESS_GUIDANCE },
+            ],
+            details: { matches: 0, actions: [], noAgentAccess: true },
+          };
+        }
+        throw err;
+      }
       if (items.length === 0) {
         // Genuinely empty: not a policy block, not "unavailable" - no such app
         // or action was found. The prompt tells the model to say so plainly.
@@ -317,11 +397,19 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       const blocked = slugsWith("blocked");
       if (blocked.length > 0) {
         parts.push(
-          `These apps are turned off for this agent (${blocked.join(", ")}). Tell the user they can be switched on in this agent's Permissions tab (someone who manages the agent can do it; otherwise they should ask whoever does). Do NOT call request_connection for these, and never imply Houston lacks them.`,
+          `These apps are turned off for this agent (${blocked.join(", ")}). Tell the user they can be switched on in this agent's Settings, under Apps (someone who manages the agent can do it; otherwise they should ask whoever does). Do NOT call request_connection for these, and never imply Houston lacks them.`,
         );
       }
       return {
-        content: [{ type: "text" as const, text: parts.join("\n\n") }],
+        content: [
+          {
+            type: "text" as const,
+            text: boundResultText(
+              parts.join("\n\n"),
+              "Search again with a more specific query to see the actions that were cut off.",
+            ),
+          },
+        ],
         details: {
           matches: items.length,
           actions: items.filter((m) => m.action).map((m) => m.action),
@@ -332,10 +420,10 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
 
   const execute = defineTool<
     typeof ExecuteParams,
-    // Pinned so the success path ({ action }) and the walled-off path
-    // ({ action, appTurnedOff: true }) share ONE details type — the flag is
+    // Pinned so the success path ({ action }) and the refused paths (walled-off
+    // app, no access to the agent) share ONE details type — each flag is
     // present only in its state.
-    { action: string; appTurnedOff?: boolean }
+    { action: string; appTurnedOff?: boolean; noAgentAccess?: boolean }
   >({
     name: "integration_execute",
     label: "Run an app action",
@@ -365,7 +453,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         );
       } catch (err) {
         // The gateway walled this action off: its app is outside this agent's
-        // allowlist (turned off in the agent's Permissions tab). NOT a tool
+        // allowlist (turned off in this agent's Settings, under Apps). NOT a tool
         // failure — return guidance the model relays to the user, and do not
         // retry until the user confirms the app is switched on.
         if (err instanceof ToolkitNotAllowedError) {
@@ -374,10 +462,20 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             content: [
               {
                 type: "text" as const,
-                text: `This action's app is turned off for this agent, so it can't run. Tell the user it can be switched on in this agent's Permissions tab (someone who manages the agent can do it; otherwise they should ask whoever does). Do not retry this action until the user confirms it's enabled, and never imply Houston lacks the app.`,
+                text: `This action's app is turned off for this agent, so it can't run. Tell the user it can be switched on in this agent's Settings, under Apps (someone who manages the agent can do it; otherwise they should ask whoever does). Do not retry this action until the user confirms it's enabled, and never imply Houston lacks the app.`,
               },
             ],
             details: { action, appTurnedOff: true },
+          };
+        }
+        // The user may not use this agent at all — same shape: an expected
+        // permission state, returned as guidance rather than a failure.
+        if (err instanceof NoAgentAccessError) {
+          return {
+            content: [
+              { type: "text" as const, text: NO_AGENT_ACCESS_GUIDANCE },
+            ],
+            details: { action: params.action, noAgentAccess: true },
           };
         }
         throw err;
@@ -392,7 +490,10 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           : "";
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
-      const text = result.data ? JSON.stringify(result.data, null, 2) : "Done.";
+      const text = boundResultText(
+        result.data ? JSON.stringify(result.data, null, 2) : "Done.",
+        "Do not rely on the cut-off tail. Re-run the action with tighter parameters — fewer results, specific ids or fields, and without full payloads/bodies — to get what you need within the limit.",
+      );
       return {
         content: [{ type: "text" as const, text }],
         details: { action: params.action },

@@ -28,10 +28,29 @@ const LEGACY_CACHE_KEY = "houston.providerStatusCache.v1";
  * `window.__HOUSTON_ACTIVE_ORG__`, or the fixed `"personal"` scope when no
  * team is active (null/absent global — the same signal the engine adapter uses
  * to send no `x-houston-org` header).
+ *
+ * Exported so a probe can capture its scope when it STARTS and check it again
+ * when it resolves — see {@link providerProbeScopeChanged}.
  */
-function activeScope(): string {
+export function activeProviderStatusScope(): string {
   if (typeof window === "undefined") return "personal";
   return window.__HOUSTON_ACTIVE_ORG__ ?? "personal";
+}
+
+/**
+ * Whether a probe that STARTED in `startedIn` has been overtaken by a space
+ * switch (C8) — the active scope is no longer the one it was fired for.
+ *
+ * A probe describes exactly one space. If the user switched while it was in
+ * flight, its answer describes a world they have left: painting it would stamp
+ * the old space's connected cards onto the new one, and persisting it would put
+ * them under the new space's cache key (HOU-979). So a probe that returns true
+ * here is DROPPED WHOLE — not merely skipped on the persist. Dropping it is
+ * safe because the switch itself re-seeds from the new scope's snapshot and
+ * fires a fresh probe for it.
+ */
+export function providerProbeScopeChanged(startedIn: string): boolean {
+  return activeProviderStatusScope() !== startedIn;
 }
 
 function scopedCacheKey(scope: string): string {
@@ -80,7 +99,7 @@ type StatusStore = Pick<Storage, "getItem" | "setItem">;
  */
 export function loadCachedProviderStatuses(
   storage: StatusStore = localStorage,
-  scope: string = activeScope(),
+  scope: string = activeProviderStatusScope(),
 ): Record<string, ProviderStatus> {
   try {
     const raw = storage.getItem(scopedCacheKey(scope));
@@ -102,7 +121,7 @@ export function loadCachedProviderStatuses(
 export function saveCachedProviderStatuses(
   statuses: Record<string, ProviderStatus>,
   storage: StatusStore = localStorage,
-  scope: string = activeScope(),
+  scope: string = activeProviderStatusScope(),
 ): void {
   try {
     storage.setItem(scopedCacheKey(scope), JSON.stringify(statuses));

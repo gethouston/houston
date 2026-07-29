@@ -1,6 +1,8 @@
 /**
- * Lightweight right-click context menu for file rows.
- * Portal-based — renders at cursor position, closes on outside click or Escape.
+ * Lightweight context menu for file rows, opened by right-click or the row's
+ * kebab button. Portal-based: renders at the reported position and closes on
+ * outside click or Escape (the latter on the document, since the portal never
+ * holds focus).
  */
 
 import {
@@ -13,6 +15,7 @@ import {
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { FileEntry } from "./types";
+import { useEscapeDismiss } from "./use-escape-dismiss";
 
 export interface FileMenuLabels {
   open?: string;
@@ -52,14 +55,14 @@ export function FileMenu({
   labels?: FileMenuLabels;
 }) {
   const l = { ...DEFAULT_LABELS, ...labels };
+  useEscapeDismiss(onClose);
   return createPortal(
     <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop overlay for click-outside dismissal; adding an interactive role (button/link) here would confuse screen readers — the menu itself has role="menu" and handles keyboard dismissal */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop overlay for click-outside dismissal; adding an interactive role (button/link) here would confuse screen readers — the menu itself has role="menu", and Escape is handled on the document (useEscapeDismiss) */}
       <div
         role="presentation"
         className="fixed inset-0 z-40"
         onClick={onClose}
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
         onContextMenu={(e) => {
           e.preventDefault();
           onClose();
@@ -69,7 +72,6 @@ export function FileMenu({
         role="menu"
         className="fixed z-50 min-w-[160px] rounded-md border bg-popover p-1 text-popover-text shadow-md"
         style={{ left: position.x, top: position.y }}
-        onKeyDown={(e) => e.key === "Escape" && onClose()}
       >
         {onOpen && (
           <MenuItem

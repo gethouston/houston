@@ -52,7 +52,7 @@ created: 2026-04-25
 last_used: 2026-04-25
 
 # Picker presentation (optional)
-category: research                 # tab in picker; missing = "Other"
+category: research                 # preview-modal category chip
 featured: yes                      # showcase on chat empty-state cards
 image: magnifying-glass-tilted-left
                                    # Fluent emoji slug (flat 2D) OR full https URL
@@ -72,7 +72,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 | `description` | string | `""` | One line. Claude semantically matches user intent against this. **Specific = reliable invocation.** |
 | `version` | int | `1` | Engine increments on edit. |
 | `created` / `last_used` | string | unset | YYYY-MM-DD. Engine maintains. |
-| `category` | string | unset | Picker tab grouping. Missing → falls under "Other". |
+| `category` | string | unset | Preview-modal category chip. |
 | `featured` | bool | `false` | Accepts `yes` / `true` / `1` / `on`. Surfaces on the empty-chat showcase. |
 | `image` | string | unset | Either an `https://...` URL OR a Fluent Emoji slug (rendered as the flat 2D variant) (lowercased folder name from [microsoft/fluentui-emoji/assets](https://github.com/microsoft/fluentui-emoji/tree/main/assets), spaces → dashes). Resolved frontend-side via `resolveSkillImage`. |
 | `integrations` | string[] | `[]` | Composio toolkit slugs. Drives the logo row on every skill surface (see "Connected apps on skill surfaces"). |
@@ -103,8 +103,8 @@ from one normalizer and two shared app components (HOU-794):
 
 | Surface | Component | Where |
 |---|---|---|
-| Skill cards (chat empty state, New Mission picker) | pips in `SkillCard`'s `footer` slot | `use-agent-chat-panel.tsx`, `new-mission-picker-skill-list.tsx` |
-| Installed-skills strip rows | pips in `CatalogRow`'s `trailing`, before the chevron (cap 3) | `tabs/installed-skills-strip.tsx` |
+| Skill cards (chat empty state) | pips in `SkillCard`'s `footer` slot | `use-agent-chat-panel.tsx` |
+| Installed-skill rows (Skills tab, chat picker) | pips in `SkillCatalogRow`'s trailing slot, before the chevron (cap 3) | `skills/skill-catalog-rows.tsx` |
 | Skill edit modal | named badges under the description | `tabs/skill-editor-dialogs.tsx` → `SkillEditModal`'s `integrationsSlot` |
 | Marketplace preview modal (skills.sh) | named badges under the description, from the preview's `integrations` | `tabs/skill-discovery-tabs.tsx` → `SkillMarketplaceSection`'s `renderIntegrations` → `SkillPreviewModal` |
 | Chat skill invocation card | pips under the description | `user-skill-message.tsx` (from the marker's `integrations`) |
@@ -116,12 +116,42 @@ Composio-catalog concern that belongs to `app/`. Its heading copy is
 200-line law: `skill-edit-modal-labels.ts` (labels + defaults) and
 `skill-edit-modal-parts.tsx` (the body/footer states).
 
+## How skills reach the model (both backends)
+
+Skill INVOCATION is just a user message (`Use the <skill> skill.` — see the
+marker section below), so the model must already know what skills exist and
+where their files live. Each runtime backend surfaces that index in its system
+prompt:
+
+- **pi backend** (every non-Anthropic provider): `DefaultResourceLoader`
+  (`packages/runtime/src/session/resource-loader.ts`) loads
+  `<workspace>/.agents/skills` (or `HOUSTON_SKILLS_DIR`) and pi's own
+  system-prompt builder appends an `<available_skills>` XML section — each
+  skill's `name`, `description`, and the absolute SKILL.md `<location>` — plus
+  the instruction to Read the file when the task matches.
+- **Claude backend** (Anthropic provider, the Claude Agent SDK subprocess):
+  the SDK's native skill machinery is deliberately OFF (`settingSources: []`,
+  `Skill` in `disallowedTools` — nothing on disk may leak in), so
+  `buildSystemPrompt` (`packages/runtime/src/backends/claude/system-prompt.ts`)
+  appends the IDENTICAL `<available_skills>` section itself, reusing pi's
+  exported `loadSkillsFromDir` + `formatSkillsForPrompt` on the same directory.
+  Before HOU-894 this section was missing entirely: an Anthropic session had no
+  idea what skills existed, so "Use the <skill> skill." turns ran blind —
+  agents improvised the procedure, spun for minutes, and never completed
+  (the legacy Rust engine never had this gap; its claude CLI discovered the
+  `.claude/skills` mirror natively).
+
+Loader parity rule (pi's, now both backends): a SKILL.md with **no
+`description:` frontmatter is silently dropped from the index** — the model
+never learns it exists, even though the Skills UI still lists it. Keep
+`description` mandatory in anything that writes skills.
+
 ## Render pipeline
 
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
 2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
 3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
-4. **Skill cards** use `app/src/components/skill-card.tsx` across the chat empty state and the New Mission picker. Keep these in sync by reusing the component, not recreating card markup. (The per-agent Skills tab no longer uses `SkillCard`: its installed skills are rows in the catalog strip — see "Add Skills UI" below.) **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
+4. **Skill cards** use `app/src/components/skill-card.tsx` only for the chat empty-state showcase. The Skills tab and New Mission picker share `skills/skill-catalog-rows.tsx`: `SkillCatalogRow` renders the installed catalog row, while `SkillCatalogGrid` supplies its list. Both surfaces filter with `filterInstalledSkills` and sort with `sortSkillsByTitle`, so display titles, including accented frontmatter titles, determine A-Z order. **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
    - selected Skill chip above the composer
@@ -138,7 +168,9 @@ The agent's Skills section (`app/src/components/tabs/skills-content.tsx`) is
 the shared **catalog layout** (the ui/core `CatalogShell`, same two-section grammar
 as the Integrations surfaces and the AI hub, no page header — the nav label carries
 it): ONE top `CatalogSearchField` (`grid.searchSkills`) — the page's single query,
-owned by `skills-content.tsx` — over the consolidated **Your skills** section
+owned by `skills-content.tsx` — with an always-available clear X when text is
+present, and a successful install clearing the query — over the consolidated
+**Your skills** section
 (`grid.yourSkillsHeading`, an `lg` `CatalogSectionHeader` + count chip; installed-skill
 ROWS, not tiles) and the **Available** section (`grid.availableHeading`) holding two
 discovery tabs — **Store** (`skills:tabs.store`, the skills.sh marketplace) and
@@ -195,10 +227,12 @@ hand-authored frontmatter and decides which sections exist — node:test-covered
 ### Installed skills — strip rows with an edit modal (no separate detail screen)
 
 The per-agent Skills section (`app/src/components/tabs/agent-admin/agent-admin-skills.tsx`
-→ `SkillsContent`) renders the installed list as a two-column `CatalogGrid` of
-`CatalogRow`s in the consolidated strip (`app/src/components/tabs/installed-skills-strip.tsx`,
-the `useInstalledSkillsStrip` hook) — the SAME row grammar as the Store/browse
-list: the skill's own `SkillIcon` (image resolved via `resolveSkillImageUrl` in
+→ `SkillsContent`) renders the installed list through the shared responsive
+`SkillCatalogGrid` / `SkillCatalogRow` pair in
+`app/src/components/skills/skill-catalog-rows.tsx`; the consolidated strip
+(`app/src/components/tabs/installed-skills-strip.tsx`, the
+`useInstalledSkillsStrip` hook) owns sorting, filtering, and preview expansion.
+The row grammar matches the Store/browse list: the skill's own `SkillIcon` (image resolved via `resolveSkillImageUrl` in
 `app/src/lib/skill-image.ts`, or a `skillMonogram` letter box when it has none),
 the always-visible display title, a one-line description, and a quiet trailing
 `ChevronRight` marking each row as an open-affordance (the shared convention with
@@ -210,14 +244,15 @@ tabs; an active search drops the cap and shows every match uncapped. That
 preview / expander split and the `filterInstalledSkills` search filter are the
 shared node-safe `app/src/lib/installed-preview.ts` (the generic
 `installedPreview<T>` helper the integrations + providers strips also use, cap
-injected; `filterInstalledSkills` re-exported from `installed-skills-strip.tsx`).
+injected).
 The old
 `installed-skill-tile.tsx` icon-tile composition and the earlier
 `InstalledSkillRow` (pen/trash row) were both DELETED with this convergence. To
 hold the 200-line file law `SkillsContent`
 stays a thin orchestrator delegating to three siblings in `tabs/`:
 `installed-skills-strip.tsx` (the `useInstalledSkillsStrip` hook: sort + search
-+ the strip node), `skill-discovery-tabs.tsx` (`useSkillDiscoveryTabs`: the
++ the strip node), `skills/skill-catalog-rows.tsx` (the shared installed-skill
+row grammar), `skill-discovery-tabs.tsx` (`useSkillDiscoveryTabs`: the
 Store + Custom tab array), and `skill-editor-dialogs.tsx` (`SkillEditorDialogs`:
 the edit modal + delete-confirm handshake).
 

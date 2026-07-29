@@ -50,7 +50,12 @@ export function KanbanListItem({
         tabIndex={0}
         onClick={onSelect}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          // Only the row itself opens on Enter/Space; key events from a focused
+          // inner control bubble here but carry a different target.
+          if (
+            e.target === e.currentTarget &&
+            (e.key === "Enter" || e.key === " ")
+          ) {
             e.preventDefault();
             onSelect();
           }

@@ -3,13 +3,13 @@ import type { ChatHistoryEntry } from "../../../../../ui/engine-client/src/types
 import * as controlPlane from "../control-plane";
 import {
   type CachedFrame,
-  readCachedConversation,
   writeCachedConversation,
 } from "../conversation-cache";
-import { CHAT_OPEN_WINDOW } from "../history-window";
+import { CHAT_OPEN_WINDOW, SEARCH_SCAN_WINDOW } from "../history-window";
 import { historyToFeed, isConversationNotFound } from "../translate";
 import { observeConversation, seedConversationVm } from "../turn-stream";
 import { setActivityStatus } from "./activity-status";
+import { cachedFallbackTranscript, seedFromCache } from "./history-cache";
 import { loadOlderPage } from "./load-older";
 import type { BaseCtor } from "./mixin";
 
@@ -18,7 +18,8 @@ import type { BaseCtor } from "./mixin";
  * this read twice — the board's hydrate call and the chat-history query's
  * fetch land in the same tick — and both want the identical windowed read +
  * VM seed. Sharing the in-flight promise halves the open traffic; bulk reads
- * (`observe: false`) never join it (mission search needs its own full fetch).
+ * (`observe: false`) never join it — they read a different window and take a
+ * different path through the cache.
  */
 const openLoadsInFlight = new Map<string, Promise<ChatHistoryEntry[]>>();
 
@@ -47,41 +48,39 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
       sessionKey: string,
       opts: { observe?: boolean } = {},
     ): Promise<ChatHistoryEntry[]> {
-      // Cache-first paint (HOU-712): a cloud read is HELD by the gateway for
-      // the whole engine-pod cold start, so seed the VM from the last locally
-      // persisted transcript NOW — the chat shows its messages instantly — and
-      // let the network read below revalidate whenever it lands. The seed
-      // guards in seedConversationVm keep a live or richer VM untouched, so a
-      // stale cache can never clobber fresh state.
+      const observing = opts.observe !== false;
+      // Cache-first paint on an open; a bulk scan skips it (see seedFromCache).
       let cachedFrames: CachedFrame[] | null = null;
-      if (this.ctx.cp) {
-        cachedFrames = await readCachedConversation(agentPath, sessionKey);
-        if (cachedFrames && cachedFrames.length > 0 && opts.observe !== false) {
-          seedConversationVm(agentPath, sessionKey, cachedFrames);
-        }
+      if (this.ctx.cp && observing) {
+        cachedFrames = await seedFromCache(agentPath, sessionKey);
       }
       try {
         const engine = this.ctx.cp
           ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
           : this.ctx.engine;
-        // A conversation OPEN reads only the tail window (HOU-819) — long
-        // missions used to fetch and fold their entire transcript here, the
-        // main "chat hangs before opening" cost. Bulk reads (mission search
-        // needs full text to match against) keep the full fetch. A
-        // pre-windowing server ignores `limit` and returns everything —
-        // `offset`/`totalMessages` then default to the full-transcript shape.
-        const history = await engine.getHistory(
-          sessionKey,
-          opts.observe !== false ? { limit: CHAT_OPEN_WINDOW } : {},
-        );
+        // Every read is windowed. A conversation OPEN reads the tail window
+        // (HOU-819) — long missions used to fetch and fold their entire
+        // transcript here, the main "chat hangs before opening" cost. A BULK
+        // read (mission search scanning every mission for the phrase) reads the
+        // wider scan window (HOU-941) — full transcripts, N missions at a time,
+        // were the "search takes 15 seconds" cost. A pre-windowing server
+        // ignores `limit` and returns everything — `offset`/`totalMessages`
+        // then default to the full-transcript shape.
+        const history = await engine.getHistory(sessionKey, {
+          limit: observing ? CHAT_OPEN_WINDOW : SEARCH_SCAN_WINDOW,
+        });
         const sdkFeed = sdkHistoryToFeed(history.messages);
         const window = {
           earliestLoaded: history.offset ?? 0,
           total: history.totalMessages ?? history.messages.length,
         };
-        // Refresh the local copy on EVERY successful read (bulk scans too), so
-        // the next cold open paints the freshest transcript we ever saw.
-        if (this.ctx.cp) {
+        // Refresh the local copy on every successful OPEN, so the next cold
+        // open paints the freshest transcript we ever saw. Bulk scans are
+        // excluded (HOU-941): each write enumerates and prunes the whole store,
+        // which a board-wide search paid once per mission, and it would evict
+        // the conversations the user actually opens in favour of ones they only
+        // ever searched through.
+        if (this.ctx.cp && observing) {
           void writeCachedConversation(agentPath, sessionKey, sdkFeed);
         }
         // Observer mode: a loaded chat may have a turn in flight that THIS client
@@ -93,7 +92,7 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
         // for BULK history reads (mission search, board scans) that load N
         // conversations at a time and must not spawn N streams — only a real
         // conversation open observes (the default).
-        if (opts.observe !== false) {
+        if (observing) {
           // Seed FIRST (the chat opens complete), then attach: the observer
           // renders any in-flight turn live into the same VM. Seeding is a no-op
           // when a live stream already owns this conversation (see
@@ -126,15 +125,17 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
         // app's `call()` wrapper toasts it with the Report-bug affordance —
         // returning [] would render a fake empty chat and swallow the error.
         if (isConversationNotFound(err)) {
-          // A 404 with a locally cached transcript is NOT proof the chat never
-          // existed: an engine pod can answer 404 while its data is lost or not
-          // yet restored (volume recreation, seed self-heal window). The local
-          // copy is the user's only surviving transcript then — serve it and
-          // KEEP it (HOU-731). A truly deleted conversation drops out of the
-          // conversation list, so nothing reopens its cached ghost; the size
-          // cap prunes the orphaned entry eventually.
-          if (cachedFrames && cachedFrames.length > 0) {
-            return cachedFrames as ChatHistoryEntry[];
+          // The local copy may be the user's only surviving transcript — see
+          // cachedFallbackTranscript.
+          const fallback = this.ctx.cp
+            ? await cachedFallbackTranscript(
+                agentPath,
+                sessionKey,
+                cachedFrames,
+              )
+            : null;
+          if (fallback && fallback.length > 0) {
+            return fallback as ChatHistoryEntry[];
           }
           return [];
         }

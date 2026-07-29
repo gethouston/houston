@@ -2,6 +2,7 @@
   "title": "Agent Store",
   "subtitle": "Ready-made agents from the Houston community. Install one and make it yours.",
   "searchPlaceholder": "Search agents",
+  "clearSearch": "Clear search",
   "allCategories": "All",
   "sort": {
     "recent": "Newest",

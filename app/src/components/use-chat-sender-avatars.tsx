@@ -22,6 +22,7 @@ import { type ReactNode, useCallback, useMemo } from "react";
 import { useUserProfiles } from "../hooks/queries/use-user-profiles";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useMyProfile } from "../hooks/use-my-profile";
+import { chatSenderMode } from "../lib/chat-sender-mode";
 import { shortUserLabel } from "../lib/mission-people";
 import { isMultiplayer } from "../lib/org-roles";
 import type { Agent } from "../lib/types";
@@ -46,13 +47,12 @@ function authorIdsIn(feedItems: FeedItem[]): string[] {
 
 export interface ChatSenderIdentity {
   /**
-   * `true` = attribute EVERY turn (the deployment is multiplayer, so sender
-   * identity is a property of the deployment). NEVER `false`: `undefined` hands
-   * the decision to `ui/chat`'s ≥2-distinct-authors heuristic, which is the
-   * right answer everywhere else — including the capabilities-loading window
-   * (a shared transcript must not paint unattributed and then pop names in) and
-   * any host that serves an authored transcript without advertising
-   * multiplayer, where a hard `false` would actively SUPPRESS attribution.
+   * `true` = attribute EVERY turn once multiplayer plus the transcript proves a
+   * teammate participated. NEVER `false`: `undefined` hands the decision to
+   * `ui/chat`'s ≥2-distinct-authors heuristic. That remains the right fallback
+   * while the viewer profile is resolving and for authored transcripts from a
+   * host that does not advertise multiplayer, where hard `false` would actively
+   * suppress attribution.
    */
   showSenders: true | undefined;
   /** The agent's display name, shown on its rows. */
@@ -73,13 +73,17 @@ export function useChatSenderAvatars(
   feedItems: FeedItem[],
 ): ChatSenderIdentity {
   const { capabilities } = useCapabilities();
-  const showSenders = isMultiplayer(capabilities) || undefined;
   const myProfile = useMyProfile();
 
   // Every authored id in the transcript — empty in single-player, where no
   // message carries an author, and the batched profiles query is multiplayer
   // gated on top of that (see `profilesQueryEnabled`).
   const authorIds = useMemo(() => authorIdsIn(feedItems), [feedItems]);
+  const showSenders = chatSenderMode(
+    authorIds,
+    myProfile?.userId,
+    isMultiplayer(capabilities),
+  );
   const { profiles } = useUserProfiles(authorIds);
 
   const agentColor = agent?.color;

@@ -5,6 +5,7 @@ import {
   normalizeMissionSearchQuery,
   searchMissions,
 } from "../src/components/mission-search.ts";
+import { toSearchableText } from "../src/components/mission-search-text.ts";
 
 const missions = [
   {
@@ -70,7 +71,9 @@ describe("mission search", () => {
 
   it("searches loaded chat history, including the user's own messages", () => {
     const result = searchMissions(missions, "vendor contract", {
-      three: "Assistant found the vendor contract in old messages.",
+      three: toSearchableText(
+        "Assistant found the vendor contract in old messages.",
+      ),
     });
     deepStrictEqual(
       result.items.map((m) => m.id),
@@ -80,6 +83,46 @@ describe("mission search", () => {
       result.snippets.three.text.toLowerCase().includes("vendor contract"),
       true,
     );
+  });
+
+  it("snippets a history match from the ORIGINAL message, accents intact", () => {
+    const history = buildMissionHistorySearchText([
+      { feed_type: "user_message", data: "Where did we land on staffing?" },
+      {
+        feed_type: "final_result",
+        data: {
+          result: "The São Paulo office signs the lease next week.",
+          cost_usd: null,
+          duration_ms: null,
+        },
+      },
+    ]);
+    const result = searchMissions(missions, "sao paulo", {
+      three: toSearchableText(history),
+    });
+    deepStrictEqual(
+      result.items.map((m) => m.id),
+      ["three"],
+    );
+    const snippet = result.snippets.three;
+    strictEqual(snippet.text.includes("São Paulo"), true);
+    // Cut from the matching message only, not the whole transcript.
+    strictEqual(snippet.text.includes("staffing"), false);
+    deepStrictEqual(
+      snippet.ranges.map((r) => snippet.text.slice(r.start, r.end)),
+      ["São Paulo"],
+    );
+  });
+
+  it("prefers the description's own snippet over the history's", () => {
+    const result = searchMissions(missions, "budget notes", {
+      two: toSearchableText("Chat history also mentions budget notes later."),
+    });
+    deepStrictEqual(
+      result.items.map((m) => m.id),
+      ["two"],
+    );
+    strictEqual(result.snippets.two.text.includes("transcript"), true);
   });
 
   it("includes user messages, tools, files, and results in searchable text", () => {

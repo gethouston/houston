@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 40
+version: 45
 
 components:
   - id: agent-avatar
@@ -199,7 +199,7 @@ components:
       In-chat notice under a sent message while a just-created agent's hosted
       engine is still warming up, so the wait reads as expected, not broken.
     anatomy: [spinner, title, body]
-    states: [default]
+    states: [default, disabled]
     variants: [chat-card, blocked-write-dialog]
     behavior: >-
       Driven by the client-side provisioning presence map: marked on hosted
@@ -320,9 +320,9 @@ components:
 
   - id: interaction-card
     title: Interaction card
-    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), floating ABOVE the always-mounted composer.
-    anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, dismiss-action, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, app-logo, integration-name, reason-line, app-description, connected-check, waiting-note]
-    states: [single-step, multi-step, with-options, single-option, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
+    purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), replacing the composer while pending.
+    anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, collapse-chevron, dismiss-action, bounded-scroll-body, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, trailing-free-text-row, app-logo, integration-name, reason-line, explainer-line, connected-check, waiting-note]
+    states: [single-step, multi-step, collapsed, with-options, single-option, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
     variants: [choice, open-ended, signin, connect, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
@@ -335,7 +335,11 @@ components:
       card with a hairline border and roomy padding (the reference "Coworker card"
       look; a card-surface same colour as the page, set apart by border + soft
       shadow, theme-aware tokens keep dark mode sane), a HEADER row, a body that
-      fades on step swap, and a right-aligned FOOTER row — so the question
+      fades on step swap, and a right-aligned FOOTER row. Only its body is bounded
+      to 40vh and scrolls; the footer and trailing free-text row stay fixed. A
+      visible-at-rest header chevron collapses it to the title, pager, muted
+      one-line step hint, and expand control without muting the blocked state;
+      the chevron remains usable while the rest of the card is disabled, so the question
       stepper, the sign-in step, and the connect step are structurally identical
       and differ only in the title / body / footer nodes they hand in. Shows ONE
       step at a time. Weight is restrained across the whole family: color tone
@@ -343,16 +347,16 @@ components:
       / identity labels are REGULAR weight, never bold; the only font-medium left
       is the Recommended chip, the number badge digit, and the filled CTA label.
       Header: the step TITLE left (a question's text, or a signin/connect step's
-      '(icon) NAME' identity lockup — the real brand logo beside the integration
-      NAME, "Google Sheets" / "Houston") with, top-RIGHT on the same row, a
+      '(icon) ACTION' identity lockup — the real brand logo beside the explicit
+      connect action, "Connect Google Sheets" (or the integration NAME,
+      "Houston", for sign-in) with, top-RIGHT on the same row, a
       compact "N of M" pager whose chevrons ARE the Back/Forward navigation
       (hidden for a single-step sequence) plus a dismiss X that abandons the WHOLE
-      sequence. This '(icon) NAME' header title is the family convention for ANY
+      sequence. This '(icon) ACTION/NAME' header title is the family convention for ANY
       card carrying an app/brand icon (the action-approval card adopts it too;
       suggest-reusable and plan-ready have no app icon and keep their own
-      headers). The card never replaces the composer: the real composer stays
-      mounted below it, and sending a fresh message there abandons the sequence
-      exactly like the X. Dismissing (the X, or typing a fresh message) is a user
+      headers). The card replaces the composer while the sequence is pending;
+      dismissing restores it. Dismissing (the X) is a user
       INTERRUPTION, not an answer: it persists a durable `stopped` marker on the
       turn AND clears the pending interaction, so the sequence retires and the
       MODEL LEARNS NOTHING from the abandonment (a reload renders the standard
@@ -376,7 +380,9 @@ components:
       keycap hint in the footer: a question's footer is that decline ALONE (no
       primary CTA — clicking an option is the advance), while a signin/connect
       footer places it beside the single filled CTA pill ("Connect" / "Sign in",
-      with a return-key glyph). Skip/decline advances past ANY step kind without
+      with a return-key glyph). The connect, sign-in, and credential free-text
+      alternate-instruction row follows that footer, keeping the required action
+      above the redirect path. Skip/decline advances past ANY step kind without
       completing it — a skipped question is omitted from the composed reply, while
       a skipped signin/connect is a recorded fact the reply states ("Skipped
       connecting {app}." / "Skipped signing in.") so the agent hears the decline
@@ -390,7 +396,7 @@ components:
       reactive signin/connect body + CTA, rendering its own InteractionModal wired
       with that chrome. While an OAuth hand-off is in flight the CTA shows a
       connecting spinner and a quiet muted line reminds the user their browser is
-      waiting; an already-connected app swaps its two-field body for a calm check
+      waiting; an already-connected app swaps its reason body for a calm check
       + "Connected" and self-reports to advance (live frontier only). "Not now"
       travels WITH the CTA: the decline affordance is present wherever the CTA is
       (frontier AND a reconsidered skip), so no step is ever a dead end with only
@@ -409,7 +415,7 @@ components:
       from each step's FINAL outcome — a step skipped then reconsidered reports
       "Connected {app}." (never a stale "Skipped connecting {app}."), and no step
       is named twice. Disabled while another turn is active.
-    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps; the pager's Back/Forward chevrons and the dismiss X are labeled icon buttons; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); the "N of M" pager copy is visible text.
+    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps and follows the fixed footer on signin/connect/credential steps; the pager's Back/Forward chevrons, collapse chevron, and dismiss X are labeled icon buttons; collapsed cards retain one muted, truncated context line; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines). While collapsed, step shortcuts are inert; while a turn runs, every action except the collapse chevron is disabled. The "N of M" pager copy is visible text.
     since: 4
 
   - id: interaction-approval-card
@@ -455,14 +461,15 @@ components:
 
   - id: plan-ready-card
     title: Plan-ready card
-    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents the drafted plan and three ways forward as composer mode-menu rows, floating above the always-mounted composer (typing there instead abandons it).
-    anatomy: [title, plan-summary, coworker-row, autopilot-row, keep-planning-row]
-    states: [default, disabled]
+    purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents a compact approval lede and three ways forward, while the complete plan remains in the transcript.
+    anatomy: [modal-shell, title, collapse-chevron, clamped-plan-lede, coworker-row, autopilot-row, keep-planning-row, trailing-free-text-row]
+    states: [default, collapsed, disabled]
     variants: [default]
     behavior: >-
       Rendered from a pending interaction carrying a single plan_ready step
-      (summary), exactly like ask_user reaches the frontend. Shows the plan
-      summary above three always-visible option rows built in the composer mode
+      (summary), exactly like ask_user reaches the frontend. The complete plan
+      is the assistant's preceding transcript message; this card clamps its
+      summary to two lines as a lede above three always-visible option rows built in the composer mode
       menu's idiom: each a full-width row with its icon inline with the title
       (Handshake / Rocket / ListTodo, matching the mode selector) and a
       one-line description below, rounded-xl hover background, nothing
@@ -472,8 +479,14 @@ components:
       user message. "Keep planning" dismisses the card LOCALLY (the composer
       returns, mode stays plan) without sending; a later, different plan
       re-shows the card. Primary emphasis comes from row order + title weight,
-      not a filled button. Disabled gates all three rows.
-    a11y: title then plan summary read in order; three labeled row buttons visible at rest (no hover gate), keyboard-reachable, each with a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every row.
+      not a filled button. The shared InteractionModal shell bounds the expanded
+      body to 40vh with scrolling and has a visible-at-rest chevron that collapses
+      the card to its title, muted summary hint, and expand control. Its fixed
+      trailing free-text row is the only text input on screen: typing an
+      instruction sends a visible plan-mode user follow-up and retires the card.
+      Disabled gates the rows and free-text input while the chevron remains
+      available for reading the transcript.
+    a11y: title then clamped plan lede read in order; the labeled collapse and expand control is visible at rest; three labeled row buttons and the shared free-text input are keyboard-reachable; each row has a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every action.
     since: 9
 
   - id: suggest-reusable-card
@@ -498,6 +511,22 @@ components:
       interaction card. Dismissal is per-offer (step id) and per conversation.
     a11y: eyebrow then title then rationale read in order; two labeled row buttons visible at rest (no hover gate), keyboard-reachable; disabled marks the surface aria-disabled and gates both rows.
     since: 12
+
+  - id: suggest-actions
+    title: Suggested action bubbles
+    purpose: Optional clickable next steps shown above the composer after a mission finishes cleanly.
+    anatomy: [heading, horizontal-pill-scroller, dismiss]
+    states: [default]
+    variants: [actions-only, actions-with-reusable]
+    behavior: >-
+      A suggest_actions interaction step carries two to four concrete actions,
+      each with a short label and the visible user message sent on click. It
+      rides the terminal done frame and keeps the mission done, never
+      needs_you. Dismiss hides the bubbles and clears the persisted offer;
+      clicking an action starts its follow-up turn. It may appear before the
+      optional suggest-reusable card on the same clean-finish frame.
+    a11y: heading and all pill buttons are visible at rest, keyboard reachable, and the dismiss control has an accessible label.
+    since: 43
 
   - id: interaction-answers-message
     title: Interaction answers message
@@ -717,10 +746,10 @@ components:
 
   - id: skill-row
     title: Skill row
-    purpose: A skill in the Skills surface -- an installed row or a community catalog row.
+    purpose: A skill in the Skills surface, chat picker, or community catalog.
     anatomy: [icon, name, description, install-or-check]
     states: [available, installed, installing, error, editing]
-    variants: [installed-row, community-catalog-row]
+    variants: [installed-row, picker-select-row, community-catalog-row]
     behavior: >-
       Community rows ride the shared catalog grammar (CatalogRow): the row body
       opens the skill's info modal, a ghost round + installs (spinner while in
@@ -728,7 +757,9 @@ components:
       CatalogRow grammar in the consolidated strip above the Store / Custom
       skills tabs (CatalogShell), capped to a preview behind a "Show all"
       expander at rest; a row opens the edit modal, whose footer carries
-      Save/Cancel and the destructive Delete (confirm-gated). No separate
+      Save/Cancel and the destructive Delete (confirm-gated). The chat picker
+      uses the same installed row renderer with search and title-sorted rows;
+      selecting a row places that skill in the composer. No separate
       skill-detail surface.
     a11y: rows are single labeled buttons beside a labeled install button, never nested; install state conveyed as text.
     since: 1

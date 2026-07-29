@@ -1,9 +1,11 @@
 import { Badge, cn } from "@houston-ai/core";
 import {
+  Boxes,
   Brain,
   FileText,
   LibraryBig,
   type LucideIcon,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -17,6 +19,8 @@ const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   skills: LibraryBig,
   knowledge: Brain,
   people: Users,
+  integrations: Boxes,
+  model: Sparkles,
 };
 
 /**
@@ -29,6 +33,8 @@ const ROW_TITLES = {
   skills: "agents:subTabs.skills",
   knowledge: "agentAdmin.rows.knowledge.title",
   people: "agentAdmin.rows.people.title",
+  integrations: "agentAdmin.rows.integrations.title",
+  model: "agentAdmin.rows.model.title",
 } as const satisfies Record<AgentAdminScreen, string>;
 
 /**
@@ -44,10 +50,12 @@ export function AgentAdminSidebar({
   agent,
   selected,
   onSelect,
+  readOnly = false,
 }: {
   agent: Agent;
   selected: AgentAdminScreen;
   onSelect: (screen: AgentAdminScreen) => void;
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation(["teams", "agents"]);
   const { capabilities } = useCapabilities();
@@ -57,7 +65,9 @@ export function AgentAdminSidebar({
   // Flatten the gated card model into one flat, in-order row list — the cards
   // still gate which rows show (single-player drops the access rows); the rail
   // renders them as a single sequence with no group separation.
-  const rows = agentAdminCards(capabilities).flatMap((card) => card.rows);
+  const rows = agentAdminCards(capabilities, readOnly).flatMap(
+    (card) => card.rows,
+  );
 
   // Skill / note / people counts render as bare-number badges.
   const badgeCount = (s: AgentAdminScreen): number | undefined => {

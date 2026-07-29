@@ -14,7 +14,10 @@ import { conversationStore } from "../src/engine-adapter/vm";
  * loadChatHistory × the local conversation cache (HOU-712): opening a cloud
  * chat paints the VM from the cached transcript IMMEDIATELY — even while the
  * gateway holds the history read for an engine-pod cold start — and every
- * successful read refreshes the cache. A 404 with a cached transcript KEEPS
+ * successful OPEN refreshes the cache. A BULK scan read (`observe: false`,
+ * mission search) leaves the cache alone (HOU-941): its window is partial and
+ * a board-wide scan must not churn/prune the store once per mission. A 404
+ * with a cached transcript KEEPS
  * and serves the local copy (HOU-731): the pod may have lost or not yet
  * restored its data, and the cache is the user's only surviving transcript.
  * Deleting the chat (user intent) is what drops the cache entry.
@@ -124,7 +127,7 @@ test("a held history read paints the chat from the cache immediately", async () 
   expect(settled).toBe(false);
 });
 
-test("a successful read refreshes the cache and reseeds the VM", async () => {
+test("a successful open refreshes the cache and reseeds the VM", async () => {
   const agentPath = "Ws/Agent";
   const sessionKey = `fresh-${convSeq++}`;
   const client = cloudClient();
@@ -144,9 +147,7 @@ test("a successful read refreshes the cache and reseeds the VM", async () => {
     return new Response("", { status: 200 });
   }) as unknown as typeof fetch;
 
-  const feed = await client.loadChatHistory(agentPath, sessionKey, {
-    observe: false,
-  });
+  const feed = await client.loadChatHistory(agentPath, sessionKey);
   expect(feed.map((f) => f.data)).toEqual([
     "cached question",
     "cached answer",
@@ -158,6 +159,40 @@ test("a successful read refreshes the cache and reseeds the VM", async () => {
     const record = await store.backend.get(key);
     expect(record?.frames.length).toBe(4);
   });
+});
+
+test("a bulk scan read leaves the cache untouched", async () => {
+  const agentPath = "Ws/Agent";
+  const sessionKey = `scan-${convSeq++}`;
+  const client = cloudClient();
+  await seedCache(agentPath, sessionKey);
+  const messages = [
+    { role: "user", content: "cached question", ts: 1 },
+    { role: "assistant", content: "cached answer", ts: 2 },
+    { role: "user", content: "new question", ts: 3 },
+    { role: "assistant", content: "new answer", ts: 4 },
+  ];
+  globalThis.fetch = vi.fn(async (input: unknown) => {
+    const url = String(input);
+    if (url.includes("/messages")) {
+      return json(200, { id: sessionKey, title: "t", messages });
+    }
+    return new Response("", { status: 200 });
+  }) as unknown as typeof fetch;
+
+  // Mission search's transcript scan: the read itself works…
+  const feed = await client.loadChatHistory(agentPath, sessionKey, {
+    observe: false,
+  });
+  expect(feed).toHaveLength(4);
+
+  // …but its WINDOWED result is never written back over the cached
+  // transcript (HOU-941), and the VM of the unopened chat stays unseeded.
+  await new Promise((r) => setTimeout(r, 50));
+  const key = `${GW}|user-1|${encodeURIComponent(agentPath)}|${encodeURIComponent(sessionKey)}`;
+  const record = await store.backend.get(key);
+  expect(record?.frames).toEqual(CACHED);
+  expect(vmFeed(agentPath, sessionKey)).toEqual([]);
 });
 
 test("a 404 with a cached transcript keeps and serves the local copy", async () => {

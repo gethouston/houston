@@ -1,5 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import { activatePendingConnection } from "./support/activate-pending-connection";
 import { expect, test } from "./support/fixtures";
+import { startMission } from "./support/mission";
 
 /**
  * Element 4 (v3): the pending-interaction hand-off, a STEPPER. When a turn
@@ -23,21 +25,95 @@ import { expect, test } from "./support/fixtures";
  * assert the card RENDERS (button + reason + progress), not the landing.
  */
 
-/** Kick off a fresh mission whose next turn ends on the armed interaction. */
-async function startMission(
-  page: import("@playwright/test").Page,
-  text: string,
-) {
-  await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
-  const composer = page.getByPlaceholder("What should the agent work on?");
-  await expect(composer).toBeVisible();
-  await composer.fill(text);
-  await composer.press("Enter");
-  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
+test("collapses a blocking question without hiding its blocked header", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q-collapse",
+            question: "Which launch date should we use?",
+            options: [
+              { id: "monday", label: "Monday" },
+              { id: "friday", label: "Friday" },
+            ],
+          },
+        ],
+      },
+    },
+  });
+  await startMission(page, "schedule the launch");
+
+  await expect(page.getByText("Which launch date should we use?")).toBeVisible({
     timeout: 15_000,
   });
-}
+  await page.getByRole("button", { name: "Collapse interaction" }).click();
+  await expect(
+    page.getByText("Which launch date should we use?"),
+  ).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand interaction" }).click();
+  await expect(page.getByRole("radio")).toHaveCount(2);
+});
+
+test("keeps a long question's footer reachable in a short viewport", async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q-six-options",
+            question: "Which launch detail should we prioritize?",
+            options: [
+              "Timeline",
+              "Audience",
+              "Budget",
+              "Messaging",
+              "Channels",
+              "Measurement",
+            ].map((label) => ({ id: label.toLowerCase(), label })),
+          },
+        ],
+      },
+    },
+  });
+  await startMission(page, "prepare the launch");
+
+  // The decline button's accessible name includes its Esc keycap ("Skip Esc").
+  const skip = page.getByRole("button", { name: /^Skip/ });
+  await expect(skip).toBeInViewport({ timeout: 15_000 });
+  const bodyViewport = page.locator("[data-slot=scroll-area-viewport]").last();
+  await expect
+    .poll(() =>
+      bodyViewport.evaluate(
+        (viewport) => viewport.scrollHeight > viewport.clientHeight,
+      ),
+    )
+    .toBe(true);
+  await bodyViewport.evaluate((viewport) => {
+    viewport.scrollTop = viewport.scrollHeight;
+  });
+  await expect(page.getByRole("radio", { name: "Measurement" })).toBeVisible();
+  await expect(skip).toBeInViewport();
+  await page
+    .getByRole("button", { name: "Collapse interaction", exact: true })
+    .click();
+  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Expand interaction", exact: true })
+    .click();
+  await expect(skip).toBeInViewport();
+  await skip.click();
+});
 
 /**
  * The three-question stepper: only ONE step shows at a time with a
@@ -372,7 +448,9 @@ test("advances from a question to a connect step in one sequence", async ({
   const connectCard = page.locator("div.overflow-clip").filter({
     hasText: "I need access to your Gmail to send the trip itinerary.",
   });
-  await expect(connectCard.getByText("Gmail", { exact: true })).toBeVisible();
+  await expect(
+    connectCard.getByText("Connect Gmail", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
   await expect(
     page.getByText("Who should I send the itinerary to?"),
@@ -570,9 +648,9 @@ test("renders the app's real logo on the connect step once the catalog resolves"
   const card = page
     .locator("div.overflow-clip")
     .filter({ hasText: "I need Slack access to post the trip summary." });
-  // The catalog identity joins the row: real name, one-line description, and
-  // the brand image itself (the seeded data URI), never the letter fallback.
-  await expect(card.getByText("Team messaging")).toBeVisible();
+  // The explicit connect title and brand image identify the required action;
+  // the catalog description stays out of the in-chat card.
+  await expect(card.getByText("Connect Slack", { exact: true })).toBeVisible();
   const logo = card.getByRole("img", { name: "Slack" });
   await expect(logo).toBeVisible();
   expect(await logo.getAttribute("src")).toMatch(/^data:image\/png/);
@@ -797,27 +875,7 @@ test("reconsiders a skipped connect step: Back offers Connect again and reports 
   // Connect it. The fake host mints a PENDING connection on connect; flip it
   // active (models the OAuth completing) so the card self-reports and advances.
   await connect.click();
-  await expect
-    .poll(
-      async () => {
-        const res = await request.get(
-          `${FAKE_HOST_URL}/v1/integrations/composio/connections`,
-        );
-        const { items } = (await res.json()) as {
-          items: { toolkit: string; connectionId: string; status: string }[];
-        };
-        const pending = items.find(
-          (c) => c.toolkit === "slack" && c.status === "pending",
-        );
-        if (!pending) return false;
-        await request.post(`${FAKE_HOST_URL}/__test__/integrations-activate`, {
-          data: { connectionId: pending.connectionId },
-        });
-        return true;
-      },
-      { timeout: 10_000 },
-    )
-    .toBe(true);
+  await activatePendingConnection(request, "slack");
 
   // The connection lands -> Slack advances to the GitHub step (2 of 2). Decline
   // GitHub genuinely ("Skip") to finish the sequence.
@@ -1377,27 +1435,7 @@ test("pressing Enter connects a lone connect step", async ({
 
   // Enter fired startConnect: the fake host mints a PENDING slack connection.
   // Flip it active (models the OAuth completing) so the card self-reports.
-  await expect
-    .poll(
-      async () => {
-        const res = await request.get(
-          `${FAKE_HOST_URL}/v1/integrations/composio/connections`,
-        );
-        const { items } = (await res.json()) as {
-          items: { toolkit: string; connectionId: string; status: string }[];
-        };
-        const pending = items.find(
-          (c) => c.toolkit === "slack" && c.status === "pending",
-        );
-        if (!pending) return false;
-        await request.post(`${FAKE_HOST_URL}/__test__/integrations-activate`, {
-          data: { connectionId: pending.connectionId },
-        });
-        return true;
-      },
-      { timeout: 10_000 },
-    )
-    .toBe(true);
+  await activatePendingConnection(request, "slack");
 
   // The connection lands -> the card self-reports and resumes the agent (the
   // composed "Connected Slack." resume plus its echo can appear more than once).

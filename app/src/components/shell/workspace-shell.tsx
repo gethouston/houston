@@ -58,6 +58,7 @@ import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
 import { STORE_VIEW_ID, StoreView } from "../store-view";
 import { USAGE_VIEW_ID, UsageView } from "../usage-view";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
+import { ArchivedToggleButton } from "./archived-toggle-button";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
@@ -76,13 +77,16 @@ export function WorkspaceShell({
   toasts,
   onDismissToast,
 }: WorkspaceShellProps) {
-  const { t } = useTranslation(["agents", "shell", "board"]);
+  const { t } = useTranslation(["agents", "dashboard", "shell", "board"]);
   const currentAgent = useAgentStore((s) => s.current);
+  const currentAgentId = currentAgent?.id;
   const agents = useAgentStore((s) => s.agents);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const getById = useAgentCatalogStore((s) => s.getById);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const agentBoardMode = useUIStore((s) => s.agentBoardMode);
+  const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
   const onStartMission = useUIStore((s) => s.onStartMission);
   const boardActions = useUIStore((s) => s.boardActions);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
@@ -175,6 +179,13 @@ export function WorkspaceShell({
       setCurrentAgent(agents[0]);
     }
   }, [agents, currentAgent, setCurrentAgent]);
+
+  const previousAgentIdRef = useRef(currentAgentId);
+  useEffect(() => {
+    if (previousAgentIdRef.current === currentAgentId) return;
+    previousAgentIdRef.current = currentAgentId;
+    setAgentBoardMode("active");
+  }, [currentAgentId, setAgentBoardMode]);
 
   // Single tab_opened analytics point — watches viewMode regardless of which
   // path triggered the change (TabBar click, sidebar nav, keyboard shortcut,
@@ -298,6 +309,20 @@ export function WorkspaceShell({
                                 <NotificationsBell
                                   collapsed={missionPanelOpen}
                                 />
+                                {viewMode === "activity" && (
+                                  <ArchivedToggleButton
+                                    archived={agentBoardMode === "archived"}
+                                    collapsed={missionPanelOpen}
+                                    label={t("dashboard:archived.button")}
+                                    onToggle={() =>
+                                      setAgentBoardMode(
+                                        agentBoardMode === "archived"
+                                          ? "active"
+                                          : "archived",
+                                      )
+                                    }
+                                  />
+                                )}
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
@@ -336,6 +361,7 @@ export function WorkspaceShell({
                                         )}
                                         onClick={() => {
                                           setViewMode("activity");
+                                          setAgentBoardMode("active");
                                           setTimeout(() => {
                                             useUIStore
                                               .getState()
@@ -364,6 +390,7 @@ export function WorkspaceShell({
                                     variant="secondary"
                                     onClick={() => {
                                       setViewMode("activity");
+                                      setAgentBoardMode("active");
                                       setTimeout(() => action.onClick(), 50);
                                     }}
                                   >
@@ -468,10 +495,19 @@ export function WorkspaceShell({
                 onEnter: () => setViewMode(tabOr("activity")),
               },
               {
-                title: t("shell:uiTour.steps.tabRoutines.title"),
-                body: t("shell:uiTour.steps.tabRoutines.body"),
-                targetSelector: "[data-tour-target='tab-routines']",
-                onEnter: () => setViewMode(tabOr("routines")),
+                title: t("shell:uiTour.steps.tabArchived.title"),
+                body: t("shell:uiTour.steps.tabArchived.body"),
+                targetSelector: "[data-tour-target='archivedMissions']",
+                onEnter: () => {
+                  setViewMode(tabOr("activity"));
+                  setAgentBoardMode("active");
+                },
+              },
+              {
+                title: t("shell:uiTour.steps.tabJobDescription.title"),
+                body: t("shell:uiTour.steps.tabJobDescription.body"),
+                targetSelector: "[data-tour-target='tab-job-description']",
+                onEnter: () => setViewMode(tabOr("job-description")),
               },
               {
                 title: t("shell:uiTour.steps.tabIntegrations.title"),
@@ -480,22 +516,16 @@ export function WorkspaceShell({
                 onEnter: () => setViewMode(tabOr("integrations")),
               },
               {
+                title: t("shell:uiTour.steps.tabRoutines.title"),
+                body: t("shell:uiTour.steps.tabRoutines.body"),
+                targetSelector: "[data-tour-target='tab-routines']",
+                onEnter: () => setViewMode(tabOr("routines")),
+              },
+              {
                 title: t("shell:uiTour.steps.tabFiles.title"),
                 body: t("shell:uiTour.steps.tabFiles.body"),
                 targetSelector: "[data-tour-target='tab-files']",
                 onEnter: () => setViewMode(tabOr("files")),
-              },
-              {
-                title: t("shell:uiTour.steps.tabArchived.title"),
-                body: t("shell:uiTour.steps.tabArchived.body"),
-                targetSelector: "[data-tour-target='tab-archived']",
-                onEnter: () => setViewMode(tabOr("archived")),
-              },
-              {
-                title: t("shell:uiTour.steps.tabJobDescription.title"),
-                body: t("shell:uiTour.steps.tabJobDescription.body"),
-                targetSelector: "[data-tour-target='tab-job-description']",
-                onEnter: () => setViewMode(tabOr("job-description")),
               },
               {
                 title: t("shell:uiTour.steps.missionControl.title"),
@@ -585,6 +615,11 @@ export function WorkspaceShell({
                 !!currentAgent &&
                 isVisibleAgentTab(capabilities, currentAgent, "job-description")
               );
+            }
+            if (
+              step.targetSelector === "[data-tour-target='archivedMissions']"
+            ) {
+              return !!currentAgent;
             }
             // The Organization + Permissions nav items only render for
             // multiplayer owner/admin — same reasoning, drop the step where the

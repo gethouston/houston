@@ -3,6 +3,48 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v45 - 2026-07-28
+
+The plan-ready card now belongs fully to the shared interaction-card family. Its
+two-line plan lede and three choices live in the common modal shell, with the
+same fixed trailing free-text row used by sign-in, connection, and credential
+cards. The card replaces the external composer while pending, so its row is the
+only text input; submitting it creates a visible plan-mode user follow-up and
+retires the card.
+
+## v44 - 2026-07-28
+
+HOU-974 and HOU-766 make blocked interaction cards collapsible without hiding
+their state. Only the body scrolls under the 40vh cap; footer actions and the
+trailing free-text row remain reachable. The chevron stays usable while a turn
+is running, and collapsed cards retain a muted one-line context hint. The
+complete plan now stays in the transcript; the floating plan approval card above
+the always-mounted composer carries only a two-line lede and three next-step
+choices.
+
+## v43 - 2026-07-28
+
+HOU-773 adds `suggest-actions`, optional follow-up bubbles above the completed
+mission composer. A selected pill sends its concrete message as a visible user
+follow-up; dismissal is available without hover.
+
+## v42 - 2026-07-28
+
+HOU-762 through HOU-764 unify the chat skill picker with the Skills catalog's
+installed row. The picker now searches, sorts by displayed title, and selects
+from the same row anatomy rather than presenting a separate card and category
+tab treatment.
+
+## v41 - 2026-07-28
+
+HOU-831 clarifies the required action in in-chat integration steps. A connect
+title now reads "Connect {app}" beside the app logo, and the body keeps only the
+agent's reason: the redundant catalog description is gone. The action footer
+keeps Skip left and the filled Connect CTA right; the free-text escape row moves
+into the modal's trailing region below those actions. Sign-in and credential
+steps share that trailing-row structure, so every actionable card presents its
+primary choice before its alternate instruction.
+
 ## v40 - 2026-07-27
 
 HOU-960, chat sender presentation rebuilt on the semantics of a group chat. A

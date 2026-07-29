@@ -15,12 +15,14 @@ import {
   providerBilling,
   providerDescriptionKey,
   providerModels,
+  providerOwnedSide,
 } from "../src/components/provider-browser/provider-grouping.ts";
 import type {
   CatalogModel,
   CatalogOffer,
   HubCatalog,
 } from "../src/lib/ai-hub/catalog-types.ts";
+import type { ProviderConnectionState } from "../src/lib/provider-connection.ts";
 import { providerCostLine } from "../src/lib/provider-overrides.ts";
 import type { ProviderInfo } from "../src/lib/providers.ts";
 
@@ -52,19 +54,60 @@ function catalogOf(byProvider: Record<string, CatalogModel[]>): HubCatalog {
 }
 
 describe("groupProviders", () => {
-  it("puts connected first and preserves catalog order within groups", () => {
-    const a = provider("a");
-    const b = provider("b");
-    const c = provider("c");
-    const connectedIds = new Set(["b"]);
-    const groups = groupProviders([a, b, c], (p) => connectedIds.has(p.id));
+  it("splits by connection state and preserves catalog order within groups", () => {
+    const state: Record<string, ProviderConnectionState> = {
+      a: "disconnected",
+      b: "connected",
+      c: "disconnected",
+      d: "checking",
+      e: "connected",
+    };
+    const groups = groupProviders(
+      ["a", "b", "c", "d", "e"].map((id) => provider(id)),
+      (p) => state[p.id] ?? "disconnected",
+    );
     deepStrictEqual(
       groups.connected.map((p) => p.id),
-      ["b"],
+      ["b", "e"],
+    );
+    deepStrictEqual(
+      groups.checking.map((p) => p.id),
+      ["d"],
     );
     deepStrictEqual(
       groups.available.map((p) => p.id),
       ["a", "c"],
+    );
+  });
+
+  // HOU-979: `Available` is the ONLY section whose rows carry a live Connect
+  // button, so an unconfirmable provider must never land there — offering
+  // Connect for an account that may already be signed in is exactly the guess
+  // the tri-state exists to prevent. It rides the "yours" side instead, where
+  // the row renders its own neutral Checking treatment.
+  it("keeps an unconfirmable provider out of Available and on the owned side", () => {
+    const groups = groupProviders([provider("a")], () => "checking");
+    deepStrictEqual(groups.available, []);
+    deepStrictEqual(groups.connected, []);
+    deepStrictEqual(
+      providerOwnedSide(groups).map((p) => p.id),
+      ["a"],
+    );
+  });
+
+  it("never claims an unconfirmable provider is connected", () => {
+    // The owned side is a RENDER order, not a claim: `connected` — the bucket
+    // the green dot and the usage rows read — stays confirmed-only.
+    const groups = groupProviders([provider("a"), provider("b")], (p) =>
+      p.id === "a" ? "connected" : "checking",
+    );
+    deepStrictEqual(
+      groups.connected.map((p) => p.id),
+      ["a"],
+    );
+    deepStrictEqual(
+      providerOwnedSide(groups).map((p) => p.id),
+      ["a", "b"],
     );
   });
 });

@@ -53,6 +53,7 @@ export function CatalogControls({
         value={query}
         onChange={onQueryChange}
         label={t("home.searchPlaceholder")}
+        clearLabel={t("home.clearSearch")}
         className="flex-1"
       />
       <FilterCombobox

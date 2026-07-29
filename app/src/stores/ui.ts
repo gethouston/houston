@@ -14,6 +14,7 @@ export interface ToastItem {
 }
 
 export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
+export type AgentBoardMode = "active" | "archived";
 
 /** A workspace file queued for the global in-app preview dialog (chat file
  * cards, turn summaries, prose file pills — HOU: preview files from chat). */
@@ -27,6 +28,8 @@ export interface FilePreviewTarget {
 
 interface UIState {
   viewMode: string;
+  /** Ephemeral Activity sub-mode. It resets on navigation and agent changes. */
+  agentBoardMode: AgentBoardMode;
   /** A one-shot deep-link consumed by SettingsView on mount: other surfaces set
    * it right before `setViewMode("settings")` to open a specific section, and
    * SettingsView clears it once read so a later plain Settings open lands home. */
@@ -133,6 +136,7 @@ interface UIState {
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
   setViewMode: (mode: string) => void;
+  setAgentBoardMode: (mode: AgentBoardMode) => void;
   setSettingsSection: (section: SettingsSectionId | null) => void;
   setAssistantPanelOpen: (open: boolean) => void;
   setActivityPanelId: (
@@ -193,6 +197,7 @@ interface UIState {
  *  two can never drift. Excludes the action functions. */
 const initialUIState = {
   viewMode: "chat",
+  agentBoardMode: "active",
   settingsSection: null,
   assistantPanelOpen: false,
   activityPanelId: null,
@@ -243,7 +248,12 @@ export const useUIStore = create<UIState>()(
     (set) => ({
       ...initialUIState,
 
-      setViewMode: (viewMode) => set({ viewMode }),
+      setViewMode: (viewMode) =>
+        set({
+          viewMode,
+          ...(viewMode === "activity" ? {} : { agentBoardMode: "active" }),
+        }),
+      setAgentBoardMode: (agentBoardMode) => set({ agentBoardMode }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
       setAssistantPanelOpen: (assistantPanelOpen) =>
         set({ assistantPanelOpen }),

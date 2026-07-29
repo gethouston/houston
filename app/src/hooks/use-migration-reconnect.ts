@@ -4,7 +4,10 @@ import { useCallback } from "react";
 import { isCoLocatedEngine, newEngineActive } from "../lib/engine";
 import { queryKeys } from "../lib/query-keys";
 import { tauriPreferences, tauriSystem } from "../lib/tauri";
-import { shouldShowMigrationReconnect } from "./migration-reconnect-trigger";
+import {
+  migrationProviderSignals,
+  shouldShowMigrationReconnect,
+} from "./migration-reconnect-trigger";
 import { useProviderStatuses } from "./use-provider-statuses";
 
 export interface MigrationReconnectState {
@@ -56,7 +59,12 @@ export function useMigrationReconnect(): MigrationReconnectState {
   });
 
   const { statuses, isLoading: statusesLoading } = useProviderStatuses();
-  const hasProvider = Object.values(statuses).some((s) => s.authenticated);
+  // Both provider signals come from the ONE shared derivation (HOU-979): an
+  // `unknown` probe is "not yet known", never "not connected", so it defers the
+  // gate rather than firing it at a migrated user who IS connected.
+  const { hasProvider, unconfirmable } = migrationProviderSignals(
+    Object.values(statuses),
+  );
 
   const dismissMutation = useMutation({
     mutationFn: async () => {
@@ -80,7 +88,8 @@ export function useMigrationReconnect(): MigrationReconnectState {
     loading:
       (coLocated && migratedQuery.isLoading) ||
       dismissedQuery.isLoading ||
-      statusesLoading,
+      statusesLoading ||
+      unconfirmable,
   });
 
   return { show, dismiss };

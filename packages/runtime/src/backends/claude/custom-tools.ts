@@ -20,6 +20,7 @@ import {
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
 import { makeSaveLearningTool } from "../../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../../session/tools/save-routine";
+import { makeSuggestActionsTool } from "../../session/tools/suggest-actions";
 import { makeSuggestReusableTool } from "../../session/tools/suggest-reusable";
 
 /**
@@ -140,6 +141,7 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
     // suggest_reusable is the inverse gating: name-kept in execute/auto, filtered
     // out of plan by `toolNamesForMode`.
     makeSuggestReusableTool(),
+    makeSuggestActionsTool(),
     // save_routine reaches the host with the SAME sandbox token the integration
     // tools use (present ⟺ host reachable). It reaches execute/auto but never
     // plan — the same reach as suggest_reusable, applied by `toolNamesForMode`.

@@ -6,6 +6,7 @@ import {
   recordPlanReady,
   recordQuestions,
   recordSignin,
+  recordSuggestActions,
   recordSuggestReusable,
   runWithInteractionCapture,
 } from "./interaction";
@@ -252,6 +253,46 @@ test("recordSuggestReusable records the single suggest-reusable step (id r1, tri
       },
     ],
   });
+});
+
+test("suggest actions compose with reusable offers, but blocking steps win", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSuggestReusable({
+      reusableKind: "skill",
+      title: " Brief ",
+      rationale: " Useful. ",
+    });
+    recordSuggestActions({
+      actions: [
+        { id: "draft", label: " Draft ", message: " Draft it. " },
+        { id: "send", label: " Send ", message: " Send it. " },
+      ],
+    });
+  });
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "suggest_actions",
+        id: "a1",
+        actions: [
+          { id: "draft", label: "Draft", message: "Draft it." },
+          { id: "send", label: "Send", message: "Send it." },
+        ],
+      },
+      {
+        kind: "suggest_reusable",
+        id: "r1",
+        reusableKind: "skill",
+        title: "Brief",
+        rationale: "Useful.",
+      },
+    ],
+  });
+  runWithInteractionCapture(holder, () =>
+    recordQuestions([q("q1", "Which one?")]),
+  );
+  expect(holder.pending).toEqual({ steps: [q("q1", "Which one?")] });
 });
 
 test("a suggest-reusable step ALONE surfaces as the pending sequence", () => {

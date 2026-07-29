@@ -12,6 +12,7 @@ import {
   filterInstalledSkills,
   type InstalledRow,
   installedPreview,
+  sortSkillsByTitle,
 } from "../src/lib/installed-preview.ts";
 import type { SkillSummary } from "../src/lib/types.ts";
 
@@ -67,6 +68,21 @@ describe("installedPreview", () => {
     });
     deepStrictEqual(visible, []);
     deepStrictEqual(showExpander, false);
+  });
+});
+
+describe("sortSkillsByTitle", () => {
+  it("sorts display titles in the supplied UI locale", () => {
+    const skills = [
+      { name: "zulu-slug", title: "Árbol" },
+      { name: "alpha-slug", title: "Zebra" },
+      { name: "middle-slug", title: "Éclair" },
+    ] as SkillSummary[];
+
+    deepStrictEqual(
+      sortSkillsByTitle(skills, "es").map((skill) => skill.name),
+      ["zulu-slug", "middle-slug", "alpha-slug"],
+    );
   });
 });
 

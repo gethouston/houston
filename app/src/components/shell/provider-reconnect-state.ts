@@ -1,12 +1,22 @@
-type ProviderAuthState = "authenticated" | "unauthenticated" | "unknown";
+import {
+  type ProviderConnectionStatus,
+  providerIsConnected,
+} from "../../lib/provider-connection.ts";
 
-interface ProviderReconnectStatus {
-  cli_installed: boolean;
-  auth_state: ProviderAuthState;
-}
+type ProviderReconnectStatus = ProviderConnectionStatus & {
+  auth_state: NonNullable<ProviderConnectionStatus["auth_state"]>;
+};
 
 export type ProviderReconnectSignalState = "needs_auth" | "resolved";
 
+/**
+ * Whether a chat's feed auth signal is a real "sign in again" prompt.
+ *
+ * Only a CONFIRMED signed-out probe raises the card. An `unknown` probe is
+ * "checking", not "signed out", so it resolves the signal instead of flashing a
+ * reconnect prompt at a provider that may well be connected — and a missing CLI
+ * is not something reconnecting can fix.
+ */
 export function providerReconnectSignalState(
   status: ProviderReconnectStatus,
 ): ProviderReconnectSignalState {
@@ -15,28 +25,11 @@ export function providerReconnectSignalState(
     : "resolved";
 }
 
+/** CONFIRMED connected. Thin alias over the ONE derivation (HOU-979). */
 export function providerIsAuthenticated(
   status: ProviderReconnectStatus,
 ): boolean {
-  return status.cli_installed && status.auth_state === "authenticated";
-}
-
-/**
- * Whether the settings UI should present a provider as connected (show
- * "Sign out" instead of the "Connect" CTA).
- *
- * Mirrors providerReconnectSignalState: only a *confirmed* signed-out state
- * counts as disconnected. An "unknown" probe result — `claude auth status`
- * timed out or returned a format the classifier doesn't recognize, which is
- * common for Anthropic (the reason #76 introduced this gating) — is NOT
- * treated as disconnected. Claude usually still works in that state, so a
- * "Connect" button is wrong and, worse, never clears after a successful
- * sign-in because the follow-up probe is unknown too.
- */
-export function providerAppearsConnected(
-  status: ProviderReconnectStatus,
-): boolean {
-  return status.cli_installed && status.auth_state !== "unauthenticated";
+  return providerIsConnected(status);
 }
 
 /**

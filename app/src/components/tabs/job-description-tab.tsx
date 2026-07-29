@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { isAgentManager } from "../../lib/agent-access";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -9,30 +11,49 @@ import { AgentAdminScreenView } from "./agent-admin/agent-admin-screen";
 import { AgentAdminSidebar } from "./agent-admin/agent-admin-sidebar";
 
 /**
- * The manager-only Agent Settings tab, a two-column master-detail admin page: a
+ * The Agent Settings tab, a two-column master-detail admin page: a
  * slim settings nav rail ({@link AgentAdminSidebar}) on the left, the selected
  * section on the right. One section is always selected, so there is no back
- * navigation. Only agent-managers / owners (or the single-player sole user) ever
- * reach this tab, so every section is editable — the old read-only "managed
- * agent" plumbing is gone. A turn-summary file link deep-links straight into the
- * matching section via the UI store target.
+ * navigation. Managers see the configuration and access sections. Teams members
+ * see the access sections only, read-only. A turn-summary file link deep-links
+ * straight into a manager's matching section via the UI store target.
  */
 export default function JobDescriptionTab({ agent }: TabProps) {
-  const [screen, setScreen] = useState<AgentAdminScreen>("instructions");
+  const { capabilities } = useCapabilities();
+  const readOnly = !isAgentManager(capabilities, agent);
+  const [screen, setScreen] = useState<AgentAdminScreen>(
+    readOnly ? "people" : "instructions",
+  );
   const target = useUIStore((s) => s.jobDescriptionTarget);
   const setTarget = useUIStore((s) => s.setJobDescriptionTarget);
+  const previousAgentIdRef = useRef(agent.id);
+
+  useEffect(() => {
+    if (previousAgentIdRef.current === agent.id && !readOnly) return;
+    previousAgentIdRef.current = agent.id;
+    if (readOnly) setScreen("people");
+  }, [agent.id, readOnly]);
 
   useEffect(() => {
     if (!target) return;
-    setScreen(targetToScreen(target));
+    if (!readOnly) setScreen(targetToScreen(target));
     setTarget(null);
-  }, [target, setTarget]);
+  }, [readOnly, target, setTarget]);
 
   return (
     <div className="flex flex-1 min-h-0">
-      <AgentAdminSidebar agent={agent} selected={screen} onSelect={setScreen} />
+      <AgentAdminSidebar
+        agent={agent}
+        selected={screen}
+        onSelect={setScreen}
+        readOnly={readOnly}
+      />
       <div className="flex flex-1 min-w-0 flex-col overflow-y-auto">
-        <AgentAdminScreenView agent={agent} screen={screen} />
+        <AgentAdminScreenView
+          agent={agent}
+          screen={screen}
+          readOnly={readOnly}
+        />
       </div>
     </div>
   );

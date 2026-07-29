@@ -1,59 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pickerModelRows, providerPickerState } from "./model-picker.ts";
+import { pickerModelRows } from "./model-picker.ts";
 
-const CONNECTED = { cli_installed: true, authenticated: true };
-const INSTALLED_UNAUTH = { cli_installed: true, authenticated: false };
-const MISSING = { cli_installed: false, authenticated: false };
-
-test("providerPickerState: known statuses map to connected / disconnected", () => {
-  assert.equal(providerPickerState(CONNECTED, false), "connected");
-  // A connected status wins even if a background refetch is in flight.
-  assert.equal(providerPickerState(CONNECTED, true), "connected");
-  assert.equal(providerPickerState(INSTALLED_UNAUTH, false), "disconnected");
-  assert.equal(providerPickerState(MISSING, false), "disconnected");
-});
-
-test("providerPickerState: missing status is 'checking' only while loading", () => {
-  // The #342 fix: before statuses resolve, providers read as 'checking', NOT
-  // 'disconnected', so the picker never shows a false "Not connected".
-  assert.equal(providerPickerState(undefined, true), "checking");
-  // Not loading + no status (e.g. the fetch failed) degrades to disconnected
-  // rather than spinning forever.
-  assert.equal(providerPickerState(undefined, false), "disconnected");
-});
-
-test("providerPickerState: an 'unknown' probe (engine unreachable) is 'checking', never 'disconnected'", () => {
-  // A cold pod waking after a relaunch/update answers every status probe with
-  // auth_state "unknown". That is not a confirmed disconnect: collapsing to
-  // "Not connected" is the #342 flicker all over again.
-  const unknown = {
-    cli_installed: true,
-    authenticated: false,
-    auth_state: "unknown",
-  };
-  assert.equal(providerPickerState(unknown, false), "checking");
-  assert.equal(providerPickerState(unknown, true), "checking");
-  // Confirmed states keep their meaning when auth_state is present.
-  assert.equal(
-    providerPickerState(
-      { cli_installed: true, authenticated: true, auth_state: "authenticated" },
-      false,
-    ),
-    "connected",
-  );
-  assert.equal(
-    providerPickerState(
-      {
-        cli_installed: true,
-        authenticated: false,
-        auth_state: "unauthenticated",
-      },
-      false,
-    ),
-    "disconnected",
-  );
-});
+// The provider CONNECTION derivation moved to `provider-connection.ts` (one home
+// for every surface, HOU-979); its cases live in `app/tests/provider-connection.test.ts`.
 
 test("pickerModelRows: a catalogued provider shows its catalog, ignoring the runtime model", () => {
   const catalog = [

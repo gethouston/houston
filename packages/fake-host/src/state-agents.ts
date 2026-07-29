@@ -60,7 +60,7 @@ export interface AgentAccessSeed {
   /**
    * The SERVED caller's effective access on this agent (`GET /agents` `access`).
    * Defaults to `manager` (the owner/manager lens). Arm `"user"` to serve a
-   * plain member who can only USE the agent — the read-only Permissions tab.
+   * plain member who can only USE the agent — the read-only Settings access rows.
    */
   access?: FakeAssignment["access"];
 }

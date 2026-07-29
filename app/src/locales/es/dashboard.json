@@ -63,6 +63,7 @@
   },
   "errors": {
     "noAgentForMission": "Elige un agente antes de iniciar una misión.",
+    "partialMissionLoad": "Algunas misiones no se pudieron cargar. Lo estamos intentando de nuevo.",
     "stopSession": "No se pudo detener la misión: {{error}}"
   },
   "agentPicker": {
@@ -71,19 +72,8 @@
   },
   "skillPicker": {
     "title": "Elige un skill",
-    "description": "Explora los skills que este agente ya sabe hacer.",
     "descriptionWithAgent": "Explora los skills que {{name}} ya sabe hacer.",
-    "agentLabel": "Agente",
-    "agentPlaceholder": "Selecciona un agente...",
-    "blank": "Conversación en blanco",
-    "blankDescription": "Abre un chat nuevo y escribe tu propia indicación.",
-    "featuredTab": "Destacados",
-    "otherTab": "Otros",
     "empty": "Aún no hay skills.",
-    "pickAgentFirst": "Elige un agente para ver sus skills.",
-    "skillsLoading": "Cargando skills...",
-    "skillsEmpty": "Aún no hay skills en esta categoría.",
-    "scrollTabsLeft": "Desplazar pestañas de skills a la izquierda",
-    "scrollTabsRight": "Desplazar pestañas de skills a la derecha"
+    "skillsLoading": "Cargando skills..."
   }
 }

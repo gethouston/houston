@@ -16,6 +16,7 @@
   },
   "search": {
     "placeholder": "Busque modelos e provedores de IA",
+    "clear": "Limpar busca",
     "showAll": "Ver todos os {{count}} provedores"
   },
   "card": {
@@ -23,6 +24,7 @@
     "connectName": "Conectar {{name}}",
     "connecting": "Conectando",
     "connected": "Conectado",
+    "checking": "Verificando",
     "signOut": "Sair",
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",

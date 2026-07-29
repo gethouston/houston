@@ -14,6 +14,7 @@ import {
   useConnectFlow,
   useConnectionSelection,
 } from "../integrations";
+import { matchesQuery } from "../integrations/browse-model";
 import { PageHeader } from "../shell/page-shell";
 import { CatalogControls } from "./catalog-controls";
 import { CatalogPane } from "./catalog-pane";
@@ -116,6 +117,17 @@ export function IntegrationsReady({
           category={category}
           isLoading={apps.isLoading}
           connectFlow={connectFlow}
+          onConnected={(toolkit) =>
+            setQuery((currentQuery) => {
+              if (!currentQuery.trim()) return currentQuery;
+              const app = apps.catalogData.find(
+                (item) => item.slug === toolkit,
+              );
+              return app && matchesQuery(app, currentQuery.trim().toLowerCase())
+                ? ""
+                : currentQuery;
+            })
+          }
           onRemove={(toolkit) => disconnect.mutate({ toolkit })}
         />
       ),

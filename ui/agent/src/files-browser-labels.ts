@@ -9,6 +9,8 @@ export interface FilesBrowserLabels {
   columnDateCreated?: string;
   columnSize?: string;
   columnKind?: string;
+  /** The Kind column's word for a folder row (list view). */
+  kindFolder?: string;
   loading?: string;
   browseFiles?: string;
   viewGrid?: string;
@@ -17,6 +19,9 @@ export interface FilesBrowserLabels {
   newFolder?: string;
   newFolderPlaceholder?: string;
   emptyFolder?: string;
+  /** Empty-folder CTAs beneath the notice (grid view). */
+  emptyFolderUploadCta?: string;
+  emptyFolderNewFolderCta?: string;
   /** Folder-card child count (grid view), pluralized against the count. */
   itemSingular?: string;
   itemPlural?: string;
@@ -31,6 +36,14 @@ export interface FilesBrowserLabels {
   uploadFolder?: string;
   openInFileManager?: string;
   downloadAll?: string;
+  /** Empty-state hint that the zero-files screen also accepts a drop. */
+  dropHint?: string;
+  /** Busy label on the upload actions while an upload is in flight. */
+  uploadingBusy?: string;
+  /** Header search field: placeholder, clear button, empty-result notice. */
+  searchPlaceholder?: string;
+  searchClear?: string;
+  searchNoResults?: string;
 }
 
 /** Slice the flat label bag into the shapes the subcomponents take. */
@@ -52,12 +65,12 @@ export function toColumnLabels(l: Required<FilesBrowserLabels>) {
     columnDateCreated: l.columnDateCreated,
     columnSize: l.columnSize,
     columnKind: l.columnKind,
+    kindFolder: l.kindFolder,
   };
 }
 
 export function toGridLabels(l: Required<FilesBrowserLabels>) {
   return {
-    emptyFolder: l.emptyFolder,
     newFolderPlaceholder: l.newFolderPlaceholder,
     itemSingular: l.itemSingular,
     itemPlural: l.itemPlural,
@@ -71,6 +84,7 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   columnDateCreated: "Date Created",
   columnSize: "Size",
   columnKind: "Kind",
+  kindFolder: "Folder",
   loading: "Loading…",
   browseFiles: "Browse files",
   viewGrid: "Grid view",
@@ -79,6 +93,8 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   newFolder: "New Folder",
   newFolderPlaceholder: "untitled folder",
   emptyFolder: "This folder is empty",
+  emptyFolderUploadCta: "Upload files",
+  emptyFolderNewFolderCta: "New folder",
   itemSingular: "item",
   itemPlural: "items",
   menuButton: "More actions",
@@ -88,4 +104,9 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   uploadFolder: "Upload folder",
   openInFileManager: "Open in File Manager",
   downloadAll: "Download all",
+  dropHint: "or drag and drop files here",
+  uploadingBusy: "Uploading…",
+  searchPlaceholder: "Search files",
+  searchClear: "Clear search",
+  searchNoResults: "No files match your search",
 };

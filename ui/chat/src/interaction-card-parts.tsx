@@ -25,46 +25,22 @@ export function BrandLogo({ url, name }: { url: string; name: string }) {
   );
 }
 
-/** A question step's body: the single-select option rows (when the agent offered
- *  choices) followed by the free-text ESCAPE field, as ONE tight list so the
- *  field reads as the last row, not a separate control. The card-wide decline is
- *  NOT here — it lives in the modal footer. Selecting an option answers and
- *  advances; typing + Enter submits the field. */
+/** A question step's scrollable body: the single-select option rows (when the
+ *  agent offered choices). The free-text escape field and the card-wide decline
+ *  are NOT here — they live in {@link QuestionAnswerRow}, fixed below the
+ *  scroll region. Selecting an option answers and advances. */
 export function QuestionStepBody({
   options,
   selectedId,
   disabled,
   recommendedLabel,
-  draft,
-  placeholder,
-  sendLabel,
-  hideFreeText = false,
-  skip,
   onOption,
-  onDraftChange,
-  onSubmit,
 }: {
   options?: ChatInteractionOption[];
   selectedId: string | null;
   disabled: boolean;
   recommendedLabel: string;
-  draft: string;
-  placeholder: string;
-  sendLabel: string;
-  /** Drop the free-text escape row: the option rows are the only way to answer
-   *  (the skip button keeps its place, right-aligned on its own row). */
-  hideFreeText?: boolean;
-  /** The card-wide decline, rendered OUTSIDE the field at its right so the
-   *  input row reads as "type here, or skip" in one glance. */
-  skip: {
-    label: string;
-    escLabel: string;
-    onSkip: () => void;
-    disabled: boolean;
-  };
   onOption: (optionId: string) => void;
-  onDraftChange: (value: string) => void;
-  onSubmit: () => void;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -83,34 +59,66 @@ export function QuestionStepBody({
           ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      <div
-        className={cn("flex items-center gap-2", hideFreeText && "justify-end")}
+/** The question's fixed answer row — the free-text escape field with the
+ *  card-wide decline at its right ("type here, or skip" in one glance) —
+ *  handed to the modal's `trailing` slot so it never scrolls away with a long
+ *  option list. `hideFreeText` drops the field and leaves the skip button
+ *  right-aligned alone. */
+export function QuestionAnswerRow({
+  disabled,
+  draft,
+  placeholder,
+  sendLabel,
+  hideFreeText = false,
+  skip,
+  onDraftChange,
+  onSubmit,
+}: {
+  disabled: boolean;
+  draft: string;
+  placeholder: string;
+  sendLabel: string;
+  hideFreeText?: boolean;
+  skip: {
+    label: string;
+    escLabel: string;
+    onSkip: () => void;
+    disabled: boolean;
+  };
+  onDraftChange: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div
+      className={cn("flex items-center gap-2", hideFreeText && "justify-end")}
+    >
+      {!hideFreeText && (
+        <div className="min-w-0 flex-1">
+          <FreeTextRow
+            disabled={disabled}
+            onChange={onDraftChange}
+            onSubmit={onSubmit}
+            placeholder={placeholder}
+            sendLabel={sendLabel}
+            value={draft}
+          />
+        </div>
+      )}
+      <Button
+        className="mt-1.5 gap-1.5 text-ink-muted"
+        disabled={skip.disabled}
+        onClick={skip.onSkip}
+        size="sm"
+        type="button"
+        variant="outline"
       >
-        {!hideFreeText && (
-          <div className="min-w-0 flex-1">
-            <FreeTextRow
-              disabled={disabled}
-              onChange={onDraftChange}
-              onSubmit={onSubmit}
-              placeholder={placeholder}
-              sendLabel={sendLabel}
-              value={draft}
-            />
-          </div>
-        )}
-        <Button
-          className="mt-1.5 gap-1.5 text-ink-muted"
-          disabled={skip.disabled}
-          onClick={skip.onSkip}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          {skip.label}
-          <Kbd>{skip.escLabel}</Kbd>
-        </Button>
-      </div>
+        {skip.label}
+        <Kbd>{skip.escLabel}</Kbd>
+      </Button>
     </div>
   );
 }

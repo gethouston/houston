@@ -80,7 +80,7 @@ function ProgressCard({
                 Progress will appear when the agent starts working
               </p>
             ) : (
-              <ScrollArea className="max-h-[300px]">
+              <ScrollArea viewportClassName="max-h-[300px]">
                 <div className="space-y-0.5">
                   {steps.map((step, i) => (
                     // biome-ignore lint/suspicious/noArrayIndexKey: SidebarStep has no stable id; steps derive from tool-call order and are never reordered

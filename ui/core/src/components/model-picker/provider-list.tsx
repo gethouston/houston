@@ -1,5 +1,6 @@
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import type * as React from "react";
+import { Button } from "../button";
 import { CommandItem } from "../command";
 import { ProviderIcon } from "./provider-icon";
 import type { ModelPickerLabels, ModelPickerProvider } from "./types";
@@ -8,9 +9,9 @@ import type { ModelPickerLabels, ModelPickerProvider } from "./types";
  * Level 1: the connected providers, in the shared dropdown idiom. Each row is a
  * `CommandItem` so ↑↓/Enter roving works; Enter (or click) drills into that
  * provider's models. A neutral loading state stands in for an empty list while
- * statuses resolve (#342 guard); a truly empty connected set shows the "no
- * providers" hint instead. A check marks the current provider; a trailing chevron
- * signals the drill-in to its models.
+ * statuses resolve (#342 guard); a truly empty connected set shows the explained
+ * empty state below instead. A check marks the current provider; a trailing
+ * chevron signals the drill-in to its models.
  */
 export function ProviderList({
   providers,
@@ -19,6 +20,7 @@ export function ProviderList({
   labels,
   renderProviderIcon,
   onEnter,
+  onConnect,
 }: {
   providers: ModelPickerProvider[];
   loading: boolean;
@@ -29,6 +31,8 @@ export function ProviderList({
     className?: string,
   ) => React.ReactNode;
   onEnter: (providerId: string) => void;
+  /** Empty-state action. Omit to render the empty state with no action. */
+  onConnect?: () => void;
 }) {
   if (loading) {
     return (
@@ -38,10 +42,24 @@ export function ProviderList({
       </div>
     );
   }
+  // Settled, and nothing is connected. Say so honestly and offer the way out
+  // rather than leaving a blank panel the user has to interpret: an empty
+  // provider list is the normal first state of a brand-new team space, not an
+  // error.
   if (providers.length === 0) {
     return (
-      <div className="px-4 py-10 text-center text-sm text-ink-muted">
-        {labels.noProviders}
+      <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+        <p className="text-pretty text-sm font-medium text-ink">
+          {labels.noProviders}
+        </p>
+        <p className="text-pretty text-xs text-ink-muted">
+          {labels.noProvidersHint}
+        </p>
+        {onConnect && (
+          <Button size="sm" className="mt-2" onClick={onConnect}>
+            {labels.noProvidersAction}
+          </Button>
+        )}
       </div>
     );
   }

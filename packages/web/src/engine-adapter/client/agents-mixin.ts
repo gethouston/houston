@@ -16,7 +16,19 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Agents extends Base {
     async listAgents(workspaceId: string): Promise<Agent[]> {
       if (this.ctx.cp) {
-        const list = await controlPlane.listAgents(this.ctx.cp);
+        let list: Agent[];
+        try {
+          list = await controlPlane.listAgents(this.ctx.cp);
+        } catch (e) {
+          // A FAILED list is not "not loaded yet" (HOU-979). Left as the latter
+          // it never resolves, so the provider probe skipped itself forever
+          // (a permanent "Loading providers…") and every connect / sign-out
+          // threw "still loading" with no way back. Record that no list is
+          // coming so provider routing degrades to the pref-based path, and
+          // rethrow — the caller still surfaces the failure.
+          this.ctx.noteAgentsUnavailable();
+          throw e;
+        }
         // CP agent ids are global (the list ignores workspaceId), so this list is
         // the full truth the selection pref must exist in. Pruning here heals a
         // stale pref at boot, before the first-run connect surface mounts; the

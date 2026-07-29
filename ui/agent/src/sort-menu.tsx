@@ -43,10 +43,10 @@ export function SortMenu({
           const rect = e.currentTarget.getBoundingClientRect();
           setMenu({ x: Math.max(8, rect.right - 180), y: rect.bottom + 4 });
         }}
-        className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[12px] text-ink-muted transition-colors hover:bg-hover hover:text-ink"
+        className="flex min-w-0 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
       >
         <ArrowUpDown aria-hidden className="size-3.5" />
-        <span className="hidden sm:inline">{labels[sortKey]}</span>
+        <span className="hidden truncate sm:inline">{labels[sortKey]}</span>
         <DirIcon aria-hidden className="size-3" />
       </button>
       {menu &&

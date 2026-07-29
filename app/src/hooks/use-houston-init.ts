@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
-import { providerAppearsConnected } from "../components/shell/provider-reconnect-state";
 import { analytics } from "../lib/analytics";
+import { providerNotConfirmedDisconnected } from "../lib/provider-connection";
 import { tauriPreferences, tauriProvider, tauriRoutines } from "../lib/tauri";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useAgentStore } from "../stores/agents";
@@ -16,6 +16,7 @@ export function useHoustonInit() {
   const loadConfigs = useAgentCatalogStore((s) => s.loadConfigs);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const loadAgents = useAgentStore((s) => s.loadAgents);
+  const settleAgentsEmpty = useAgentStore((s) => s.settleEmpty);
   const setCurrent = useAgentStore((s) => s.setCurrent);
   const setClaudeAvailable = useUIStore((s) => s.setClaudeAvailable);
   const setViewMode = useUIStore((s) => s.setViewMode);
@@ -72,6 +73,14 @@ export function useHoustonInit() {
               ),
           ),
         );
+      } else {
+        // No space resolved, so `loadAgents` never runs. Settle the store
+        // instead of leaving `loaded` false forever: the boot splash and the
+        // provider probe both gate on it, and a load that can never arrive is
+        // an infinite spinner, not a wait. The failure itself is already
+        // surfaced (the workspace call toasts + reports, and the store's
+        // `loadError` drives the Settings retry).
+        settleAgentsEmpty();
       }
 
       if (lastAgentId) {
@@ -88,10 +97,11 @@ export function useHoustonInit() {
         const defaultProv = await tauriProvider.getDefault();
         if (defaultProv) {
           const status = await tauriProvider.checkStatus(defaultProv);
-          // appears-connected (not confirmed-authenticated): an "unknown"
-          // probe against a still-waking pod must not degrade first-load
-          // gating for a provider that is in fact connected server-side.
-          setClaudeAvailable(providerAppearsConnected(status));
+          // The PERMISSIVE read (not confirmed-connected): an "unknown" probe
+          // against a still-waking pod must not degrade first-load gating for
+          // a provider that is in fact connected server-side. This gate never
+          // paints a "Connected" badge, so leniency here is safe.
+          setClaudeAvailable(providerNotConfirmedDisconnected(status));
         } else {
           // No provider configured — track as activation drop-off signal
           analytics.track("provider_not_configured");
@@ -107,6 +117,7 @@ export function useHoustonInit() {
     loadConfigs,
     loadWorkspaces,
     loadAgents,
+    settleAgentsEmpty,
     setCurrent,
     setClaudeAvailable,
     setViewMode,

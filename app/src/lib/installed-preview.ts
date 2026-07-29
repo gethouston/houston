@@ -148,3 +148,15 @@ export function filterInstalledSkills(
   );
   return { filtered, noMatches: filtered.length === 0 };
 }
+
+/** Sort skills by their user-facing title, ignoring case and accents. */
+export function sortSkillsByTitle(
+  skills: readonly SkillSummary[],
+  locale?: string,
+): SkillSummary[] {
+  return [...skills].sort((a, b) =>
+    skillDisplayTitle(a).localeCompare(skillDisplayTitle(b), locale, {
+      sensitivity: "base",
+    }),
+  );
+}

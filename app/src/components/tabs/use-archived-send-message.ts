@@ -33,6 +33,7 @@ export function useArchivedSendMessage({
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
 
   return useCallback(
@@ -71,6 +72,7 @@ export function useArchivedSendMessage({
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         }
         onReactivated();
+        setAgentBoardMode("active");
         setViewMode("activity");
         setActivityPanelId(missionId, { forceOpen: true });
       } catch (err) {
@@ -93,6 +95,7 @@ export function useArchivedSendMessage({
       onReactivated,
       addToast,
       setViewMode,
+      setAgentBoardMode,
       setActivityPanelId,
       t,
     ],

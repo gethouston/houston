@@ -48,7 +48,7 @@ export function usePickerViewModels(opts: {
   const { provider, model, isOpen } = opts;
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
-  const { capabilities } = useCapabilities();
+  const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
   // The pi-ai catalog hydrates `PROVIDERS` IN PLACE with no React signal, so the
   // `getVisibleProviders` memo below must re-key on `updatedAt` — otherwise the
   // picker stays pinned to the empty override-only seed captured on first render.
@@ -117,7 +117,14 @@ export function usePickerViewModels(opts: {
   // The pi-ai catalog is the source of the runnable set, so the picker is
   // "loading" until it resolves and "ready" after. This drives the picker's
   // neutral level-1 loading state (#342 guard) while providers resolve.
-  const catalogState: "loading" | "ready" = catalogReady ? "ready" : "loading";
+  //
+  // Capabilities join it: they GATE the visible provider set, and the empty
+  // state they lead to makes a claim about the viewer ("connect one" vs "ask an
+  // admin") that depends on a role we don't have yet. Settling early flashed a
+  // connect CTA at a plain team member and then withdrew it (HOU-979). Not
+  // knowing yet is exactly what the neutral loading state is for.
+  const catalogState: "loading" | "ready" =
+    catalogReady && !capabilitiesLoading ? "ready" : "loading";
 
   const currentModel = getModel(provider, model);
   const currentProvider = getProvider(provider);

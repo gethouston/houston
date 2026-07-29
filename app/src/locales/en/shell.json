@@ -114,11 +114,11 @@
       },
       "tabArchived": {
         "title": "Archived",
-        "body": "Missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
+        "body": "Use this button to revisit missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
       },
       "tabJobDescription": {
-        "title": "Agent Settings",
-        "body": "Shape how your assistant works: its instructions, skills, and settings. Update them any time."
+        "title": "Settings",
+        "body": "Shape how your assistant works: its instructions, skills, and access. Update them any time."
       },
       "missionControl": {
         "title": "Mission Control",

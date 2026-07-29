@@ -38,7 +38,7 @@ export function CrumbButton({
       aria-label={children ? crumb.name : undefined}
       title={children ? crumb.name : undefined}
       className={cn(
-        "min-w-0 truncate rounded-md px-1.5 py-0.5 text-[13px] transition-colors",
+        "min-w-0 truncate rounded-md px-1.5 py-0.5 text-sm transition-colors",
         current
           ? "font-medium text-ink"
           : "text-ink-muted hover:bg-hover hover:text-ink",

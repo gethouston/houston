@@ -79,7 +79,7 @@ export function RenameInput({
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
       className={cn(
-        "min-w-0 flex-1 rounded border border-focus bg-input px-1 text-[13px] text-ink shadow-sm outline-none",
+        "min-w-0 flex-1 rounded border border-focus bg-input px-1 text-sm text-ink shadow-sm outline-none",
         className,
       )}
     />

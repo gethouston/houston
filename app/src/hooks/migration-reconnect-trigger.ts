@@ -6,6 +6,40 @@
  * here.
  */
 
+import {
+  type ProviderConnectionStatus,
+  providerConnectionState,
+  providerIsConnected,
+} from "../lib/provider-connection.ts";
+
+/**
+ * The two provider signals the gate reads, derived from the probe's statuses
+ * through the ONE shared derivation (HOU-979).
+ */
+export interface MigrationProviderSignals {
+  /** At least one provider is CONFIRMED connected. */
+  hasProvider: boolean;
+  /**
+   * At least one provider's probe came back `unknown`. "We could not check" is
+   * not "nothing is connected": reading it as the latter puts a migrated user
+   * who IS connected behind the reconnect gate. It folds into `loading` below
+   * so the gate DEFERS instead of firing on an answer we do not have.
+   */
+  unconfirmable: boolean;
+}
+
+/** Derive both provider signals from the probed statuses. */
+export function migrationProviderSignals(
+  statuses: readonly ProviderConnectionStatus[],
+): MigrationProviderSignals {
+  return {
+    hasProvider: statuses.some((s) => providerIsConnected(s)),
+    unconfirmable: statuses.some(
+      (s) => providerConnectionState(s, false) === "checking",
+    ),
+  };
+}
+
 /** Inputs to the "reconnect your AI" decision. */
 export interface MigrationReconnectInputs {
   /** Active backend is the new TS host (the only build that migrates). */

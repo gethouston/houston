@@ -43,11 +43,10 @@ interface ChatConnectInteractionCardProps extends StepChrome {
  * its OWN `InteractionModal` inside the shared `ChatInteractionCard` sequence
  * (via its `renderConnect` prop, wired with the `StepChrome` the stepper hands
  * it — the header pager + dismiss X). Following the reference "Coworker card"
- * language, the modal TITLE is the identity lockup — the app's real brand logo
- * beside the integration NAME ("Google Sheets") at regular weight — and the body
- * is a two-field block: the agent's REASON ("To create the spreadsheet in your
- * Drive.") in foreground tone (the prominent-but-not-bold "why"), then the app
- * description muted on one truncated line. A right-aligned footer carries the
+ * language, the modal TITLE is the app's real brand logo beside the explicit
+ * action, "Connect Google Sheets", at regular weight. The body carries the
+ * agent's REASON ("To create the spreadsheet in your Drive.") in foreground
+ * tone. A right-aligned footer carries the
  * unified quiet "Not now" + Esc hint beside the single filled "Connect" pill
  * (with a return-key glyph).
  *
@@ -76,7 +75,11 @@ export function ChatConnectInteractionCard({
   pager,
   onDismiss,
   dismissLabel,
+  collapseLabel,
+  expandLabel,
   disabled,
+  open,
+  onOpenChange,
 }: ChatConnectInteractionCardProps) {
   const { t } = useTranslation("chat");
   // Auto-continue only on the LIVE frontier: a revisited completed step mounts a
@@ -90,8 +93,7 @@ export function ChatConnectInteractionCard({
     autoContinueWhenConnected: !revisited,
   });
 
-  // The identity line is the app NAME; the agent's reason becomes the body's
-  // foreground "why" line (falling back to a generic connect line).
+  // The title names the required action; the agent's reason explains why.
   const reasonLine =
     reason ?? t("interaction.connectReasonFallback", { app: app.name });
 
@@ -107,7 +109,7 @@ export function ChatConnectInteractionCard({
   // flight; the shared hook owns the editable-target guard + capture-phase
   // pre-emption of the global Escape-closes-the-panel shortcut.
   useInteractionStepKeys({
-    enabled: !connecting,
+    enabled: open && !connecting,
     onEnter: showConnect ? () => void startConnect() : undefined,
     onEscape: showNotNow ? () => onSkip(toolkit, app.name) : undefined,
   });
@@ -137,18 +139,22 @@ export function ChatConnectInteractionCard({
   return (
     <InteractionModal
       contentKey={stepId}
+      collapseLabel={collapseLabel}
+      collapsedHint={reasonLine}
       disabled={disabled}
       dismissLabel={dismissLabel}
+      expandLabel={expandLabel}
       onDismiss={onDismiss}
+      onOpenChange={onOpenChange}
+      open={open}
       pager={pager}
-      // Title: the app icon beside the integration NAME (regular weight), the
-      // card's identity line.
+      // Title: the app icon beside the required connect action.
       title={
         <InteractionModalTitle
           className="flex-1 truncate"
           icon={<AppLogo className="shrink-0" display={app} size="sm" />}
         >
-          {app.name}
+          {t("interaction.connectTitle", { app: app.name })}
         </InteractionModalTitle>
       }
       body={
@@ -159,23 +165,9 @@ export function ChatConnectInteractionCard({
               {t("composio.connected")}
             </span>
           ) : (
-            // Two-field body: the agent's REASON (foreground "why") over the app
-            // description (muted, one truncated line), then the always-visible
-            // free-text row — connect, or tell it what to do instead.
-            <div className="flex flex-col gap-1">
-              <p className="text-balance text-ink text-sm leading-snug">
-                {reasonLine}
-              </p>
-              <p className="truncate text-ink-muted text-sm">
-                {app.description || t("composio.integration")}
-              </p>
-              <InlineTextRow
-                disabled={connecting}
-                onSubmit={(text) => onSkip(toolkit, app.name, text)}
-                placeholder={t("interaction.declinePlaceholder")}
-                sendLabel={t("questionCard.send")}
-              />
-            </div>
+            <p className="text-balance text-ink text-sm leading-snug">
+              {reasonLine}
+            </p>
           )}
           {connecting && (
             <p className="mt-1.5 text-ink-muted text-xs">
@@ -197,6 +189,16 @@ export function ChatConnectInteractionCard({
             )}
             {connectButton}
           </>
+        ) : undefined
+      }
+      trailing={
+        showConnect ? (
+          <InlineTextRow
+            disabled={connecting}
+            onSubmit={(text) => onSkip(toolkit, app.name, text)}
+            placeholder={t("interaction.declinePlaceholder")}
+            sendLabel={t("questionCard.send")}
+          />
         ) : undefined
       }
     />

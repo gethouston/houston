@@ -32,10 +32,10 @@ interface AgentManifest {
 ## Tabs
 
 Every agent renders the same standard tabs in the shell:
-`Activity` (board) / `Routines` (tab id `routines`; schedule-driven AND
-event-driven in one list — the wake mechanism is a choice made while creating a
-routine, never a separate tab) / `Files` / `Agent Settings`
-(tab id `job-description`) / `Integrations`.
+`Activity` (board) / `Settings` (tab id `job-description`) / `Integrations` /
+`Routines` (tab id `routines`; schedule-driven AND event-driven in one list —
+the wake mechanism is a choice made while creating a routine, never a separate
+tab) / `Files`.
 
 **Routines are created chat-first (no manual editor, no Dialog wizard).**
 Starting a new routine opens a scripted **in-chat intake** (`app/src/components/
@@ -58,11 +58,11 @@ This used to be configurable per agent via a `tabs: AgentTab[]` field in `housto
 
 The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
-**Manager-only configure gating (Teams v2).** Agent Settings
-(`job-description-tab.tsx`) is **hidden** from a plain member of a shared agent:
-`standard-tabs.ts` only adds the `job-description` tab for single-player or
-`isAgentManager` callers, so it is a manager-only two-column admin page with no
-read-only variant. The Integrations tab gates its edits on `isAgentManager` /
+**Configure gating (Teams v2).** Settings (`job-description-tab.tsx`) is visible
+to every shared-agent member on a Teams host. Managers get configuration plus
+editable access controls; members get the People, Apps, and AI models access rows
+read-only. Outside Teams, Settings remains limited to `isAgentManager` callers.
+The Integrations tab gates its edits on `isAgentManager` /
 `canEditAgentGrants`. The gateway 403s any configure-scope write regardless —
 these gates only avoid showing a dead control. The **Share**
 dialog (`agent-share-dialog.tsx`) — a Drive-style people-with-access sheet
@@ -968,7 +968,7 @@ The per-agent board tab AND cross-agent Mission Control render **one** component
 - `useAgentBoardSource(agent, agentDef)` → single-agent data + per-agent bulk + default-mode "New mission" + DnD. Consumed by the thin `tabs/board-tab.tsx`.
 - `useMissionControlSource(agents, onShowArchived)` → cross-agent data (`useMissionControl`) + cross-agent bulk (`useCrossAgentSelection`, groups bulk ops by owning agent) + cross-agent drag-and-drop (a dragged card moves within its own agent; `useMcActions.handleItemMove` routes the status change to that card's agent path) + an agent-picker "New mission" + the filter/search/Archived toolbar. Consumed by `MissionControlActive`.
 
-`dashboard.tsx` toggles (swaps, not hides — so only the mounted view's hooks run) between `MissionControlActive` and the cross-agent **Archived** view (`MissionControlArchived` + `useMissionControlArchived`) via the toolbar's Archived button. The Archived view is the per-agent Archived tab's list UI spanning every agent; sending in an archived chat re-activates the mission (`archived → running`) and hands off to that agent's board (`setCurrent` + `setViewMode("activity")` + `setActivityPanelId`).
+`dashboard.tsx` toggles (swaps, not hides — so only the mounted view's hooks run) between `MissionControlActive` and the cross-agent **Archived** view (`MissionControlArchived` + `useMissionControlArchived`) via the toolbar's Archived button. The Archived view is the per-agent Activity area's archived-list UI spanning every agent; sending in an archived chat re-activates the mission (`archived → running`) and hands off to that agent's board (`setCurrent` + `setViewMode("activity")` + `setActivityPanelId`).
 
 Adding a board capability = add it to `<MissionBoard>` (both board views get it) or to one `BoardSource` (just that view). `archived-tab.tsx` (per-agent) still renders `AIBoard` directly (list layout) and shares the same primitives.
 

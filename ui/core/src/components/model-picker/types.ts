@@ -49,6 +49,19 @@ export interface ModelPickerLabels {
   empty: string;
   /** Empty state when no provider is connected yet. */
   noProviders: string;
+  /**
+   * One line under {@link noProviders} explaining what to do about it. The
+   * consumer owns the wording, which differs by context (a personal space, a
+   * team space the caller can connect for, a team space where only an admin
+   * can) — the picker only renders it.
+   */
+  noProvidersHint: string;
+  /**
+   * Label for the empty state's primary action, which calls `onConnectMore`.
+   * Omit `onConnectMore` when the viewer has no way to connect, and the action
+   * is not rendered at all.
+   */
+  noProvidersAction: string;
 }
 
 export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
@@ -60,6 +73,8 @@ export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
   loading: "Loading providers…",
   empty: "No models found.",
   noProviders: "No providers connected yet.",
+  noProvidersHint: "Connect an AI model to start chatting.",
+  noProvidersAction: "Connect an AI model",
 };
 
 export interface ModelPickerProps {
