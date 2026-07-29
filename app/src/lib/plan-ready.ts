@@ -6,8 +6,7 @@ import type { InteractionStep } from "@houston/protocol";
 export type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 
 /** Every interaction step the ChatInteractionCard stepper can walk: question /
- *  signin / connect. Excludes the three composer-replacing card kinds (plan_ready,
- *  suggest_reusable, and suggest_actions), which render above the composer and never
+ *  signin / connect. Excludes plan_ready and the suggestion cards, which never
  *  belong in the stepper. */
 export type NonPlanReadyStep = Exclude<
   InteractionStep,

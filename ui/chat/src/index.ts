@@ -287,8 +287,8 @@ export type {
 export { decodeInteractionAnswersMessage } from "./interaction-answers-message";
 // === Interaction Card ===
 // The in-chat surface shown when the agent pauses to gather what it needs before
-// continuing; a stepper (one question or connect step at a time) shown above the
-// always-mounted composer while a pending interaction is awaiting the user.
+// continuing; a stepper (one question or connect step at a time) that replaces
+// the composer while a pending interaction is awaiting the user.
 export type {
   ChatInteractionAnswer,
   ChatInteractionBrand,

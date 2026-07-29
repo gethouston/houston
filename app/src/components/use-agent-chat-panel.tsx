@@ -214,10 +214,9 @@ interface AgentChatPanelProps {
    *  plan_ready / suggest_reusable / suggest_actions offer. Undefined when nothing is pending or a
    *  turn is running. Pair it with {@link composerOverrideMode}. */
   composerOverride: AIBoardProps["composerOverride"];
-  /** How the override composes with the input: the interaction STEPPER passes
-   *  `"replace"` (it owns the one text input on screen — the composer is not
-   *  rendered under it), while plan_ready / suggest_reusable / suggest_actions pass `"above"` (they
-   *  carry no input, so the composer stays mounted below them). */
+  /** How the override composes with the input: interaction cards with their own
+   *  free-text row pass `"replace"` (the composer is not rendered under them),
+   *  while suggestion offers pass `"above"`. */
   composerOverrideMode: AIBoardProps["composerOverrideMode"];
   /** Submit can run the selected Skill without extra text. */
   canSendEmpty: AIBoardProps["canSendEmpty"];
@@ -1194,10 +1193,10 @@ export function useAgentChatPanel({
   const [dismissedSuggestActions, setDismissedSuggestActions] = useState<
     string | null
   >(null);
-  // The user can abandon ANY pending interaction (question stepper, plan_ready,
-  // suggest_reusable) either by the card's dismiss X or by typing a fresh message
-  // in the composer while it shows. Remembering the abandoned interaction's key
-  // suppresses its card uniformly. Per-conversation, like the dismissals above.
+  // The user can abandon any pending interaction by its dismiss X, or an
+  // above-card offer by typing a fresh composer message. The plan-ready card
+  // marks itself abandoned when its integrated row submits. Remembering the
+  // interaction key suppresses its card uniformly, per conversation.
   const [abandonedInteractionKey, setAbandonedInteractionKey] = useState<
     string | null
   >(null);
@@ -1307,6 +1306,10 @@ export function useAgentChatPanel({
       autopilotDescription: t("chat:planReady.autopilotDescription"),
       keepPlanningTitle: t("chat:planReady.keepPlanningTitle"),
       keepPlanningDescription: t("chat:planReady.keepPlanningDescription"),
+      // Borrowed from the interaction-card family on purpose: the plan card's
+      // trailing row is the same shared component with the same wording.
+      declinePlaceholder: t("chat:interaction.declinePlaceholder"),
+      send: t("chat:questionCard.send"),
     }),
     [t],
   );
@@ -1399,22 +1402,17 @@ export function useAgentChatPanel({
   // interaction, so the memo does not recompute — and the accumulator does not
   // reset — while the user walks the steps; a fresh interaction gets a fresh
   // array.
-  // The pending-interaction override plus how it composes with the input: the
-  // stepper (question / signin / connect / credential) REPLACES the
-  // composer (its own free-text row is the one input on screen — no competing
-  // "Send a follow-up..." below it), while the lighter plan_ready / suggest_reusable / suggest_actions
-  // offers stay ABOVE the always-mounted composer (they carry no text input, so
-  // the composer below them is the single input). `node: undefined` means no
-  // override (the composer stands alone).
+  // The stepper and plan_ready REPLACE the composer: each owns the one text
+  // input on screen. The suggestion offers stay above the composer because they
+  // carry no text input. `node: undefined` means the composer stands alone.
   const composerOverrideState = useMemo<{
     node: AIBoardProps["composerOverride"];
     mode: "above" | "replace";
   }>(() => {
     const none = { node: undefined, mode: "above" as const };
     if (!agent || !activeInteraction) return none;
-    // Abandoned (dismiss X, or a fresh composer send while a plan/offer showed):
-    // suppress the card uniformly, whatever kind it is (suggest_reusable /
-    // plan_ready / stepper), and let the always-mounted composer stand alone.
+    // Abandoned interactions stay suppressed while this conversation is open,
+    // whatever their kind, and the composer stands alone.
     if (interactionKey === abandonedInteractionKey) return none;
     // Optional clean-finish offers can coexist. They are handled before the
     // blocking stepper so action bubbles and the reusable card remain above the
@@ -1478,7 +1476,7 @@ export function useAgentChatPanel({
     if (override.kind === "card") {
       const summary = override.summary;
       return {
-        mode: "above",
+        mode: "replace",
         node: (
           <ChatPlanReadyCard
             summary={summary}
@@ -1490,6 +1488,11 @@ export function useAgentChatPanel({
               startPlan("auto", t("chat:planReady.runAutopilotMessage"))
             }
             onKeepPlanning={() => setDismissedPlanReady(summary)}
+            // No abandon bookkeeping: the turn start null-clears the pending
+            // interaction and deriveActiveInteraction hides the card while the
+            // turn runs. Keying the conversation-wide abandoned key here would
+            // suppress EVERY later plan card (each plan_ready step is id "p1").
+            onSubmit={(text) => startPlan("plan", text)}
           />
         ),
       };
@@ -1732,13 +1735,9 @@ export function useAgentChatPanel({
   const composerOverride = composerOverrideState.node;
   const composerOverrideMode = composerOverrideState.mode;
 
-  // A fresh message typed into the always-mounted composer WHILE an interaction
-  // card shows is an implicit "abandon this interaction": mark it abandoned so
-  // the card retires (the composerOverride memo suppresses it), then run the
-  // normal composer-submit path unchanged. Only genuine composer submits reach
-  // here — the cards' own composed replies go through sendInteractionMessage /
-  // saveReusable / startPlan, which call tauriChat.send directly and never touch
-  // this handler, so completing/acting on an interaction never self-abandons it.
+  // A fresh composer message while an above-card shows abandons that interaction
+  // and runs the usual submit path. Replacing cards submit through their own
+  // controls, so completing an interaction never self-abandons it.
   const onComposerSubmit = useCallback<
     NonNullable<AIBoardProps["onComposerSubmit"]>
   >(

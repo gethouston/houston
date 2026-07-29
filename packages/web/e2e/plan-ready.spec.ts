@@ -48,11 +48,31 @@ test("keeps a large plan approval compact, collapsible, and actionable", async (
 
   await page.getByRole("button", { name: "Expand plan approval" }).click();
   await expect(lede).toBeVisible();
-  await page
-    .getByRole("button", { name: "Continue in Ask first mode" })
-    .click();
+  const integratedInput = page.getByPlaceholder(
+    "Or tell it what to do instead...",
+    { exact: true },
+  );
+  await expect(integratedInput).toBeVisible();
+  await expect(
+    page.getByPlaceholder("Send a follow-up...", { exact: true }),
+  ).toBeHidden();
+  await integratedInput.fill("Add a launch checklist before starting.");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
   // Scope to the user bubble: the fake host's echo repeats the same text.
   await expect(
-    page.locator(".is-user").filter({ hasText: "Go ahead with the plan." }),
+    page
+      .locator(".is-user")
+      .filter({ hasText: "Add a launch checklist before starting." })
+      .first(),
   ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Plan ready", { exact: true })).toBeHidden();
+  // After the follow-up turn settles the card stays retired (the interaction
+  // was cleared at turn start) and the normal composer returns.
+  await expect(
+    page.getByText(
+      'Roger that. You said: "Add a launch checklist before starting."',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Plan ready", { exact: true })).toBeHidden();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });

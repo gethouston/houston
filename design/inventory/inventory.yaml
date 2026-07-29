@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 44
+version: 45
 
 components:
   - id: agent-avatar
@@ -462,7 +462,7 @@ components:
   - id: plan-ready-card
     title: Plan-ready card
     purpose: In-chat surface shown when the agent finishes planning (plan mode) and calls plan_ready; presents a compact approval lede and three ways forward, while the complete plan remains in the transcript.
-    anatomy: [title, collapse-chevron, clamped-plan-lede, coworker-row, autopilot-row, keep-planning-row]
+    anatomy: [modal-shell, title, collapse-chevron, clamped-plan-lede, coworker-row, autopilot-row, keep-planning-row, trailing-free-text-row]
     states: [default, collapsed, disabled]
     variants: [default]
     behavior: >-
@@ -481,10 +481,12 @@ components:
       re-shows the card. Primary emphasis comes from row order + title weight,
       not a filled button. The shared InteractionModal shell bounds the expanded
       body to 40vh with scrolling and has a visible-at-rest chevron that collapses
-      the card to its title, muted summary hint, and expand control. It floats
-      above the always-mounted composer. Disabled gates all three rows while the
-      chevron remains available for reading the transcript.
-    a11y: title then clamped plan lede read in order; the labeled collapse and expand control is visible at rest; three labeled row buttons are keyboard-reachable, each with a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every row.
+      the card to its title, muted summary hint, and expand control. Its fixed
+      trailing free-text row is the only text input on screen: typing an
+      instruction sends a visible plan-mode user follow-up and retires the card.
+      Disabled gates the rows and free-text input while the chevron remains
+      available for reading the transcript.
+    a11y: title then clamped plan lede read in order; the labeled collapse and expand control is visible at rest; three labeled row buttons and the shared free-text input are keyboard-reachable; each row has a foreground-color icon inline with its title; disabled state marks the surface aria-disabled and gates every action.
     since: 9
 
   - id: suggest-reusable-card

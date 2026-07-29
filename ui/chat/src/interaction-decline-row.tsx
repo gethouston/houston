@@ -7,8 +7,8 @@ import { normalizeAnswer } from "./interaction-card-model.ts";
 
 /**
  * The always-visible single-line free-text row every non-question interaction
- * step carries: under a connect / sign-in / credential step it's "or tell it what
- * to do instead". It's a MINIATURE of the real composer (rounded
+ * card carries: under a connect / sign-in / credential step, and the
+ * plan-approval card, it's "or tell it what to do instead". It's a MINIATURE of the real composer (rounded
  * pill, hairline border, a circular arrow-up send that turns on the moment there
  * is text), so nothing about it needs learning. Never hover-gated: present at
  * rest on every live step.

@@ -3,6 +3,15 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v45 - 2026-07-28
+
+The plan-ready card now belongs fully to the shared interaction-card family. Its
+two-line plan lede and three choices live in the common modal shell, with the
+same fixed trailing free-text row used by sign-in, connection, and credential
+cards. The card replaces the external composer while pending, so its row is the
+only text input; submitting it creates a visible plan-mode user follow-up and
+retires the card.
+
 ## v44 - 2026-07-28
 
 HOU-974 and HOU-766 make blocked interaction cards collapsible without hiding
