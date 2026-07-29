@@ -1,13 +1,14 @@
 /**
- * Drive-style file card: type icon + name header, lazy thumbnail body,
- * date meta row. Click selects, double-click opens, kebab or right-click
- * opens the context menu, drag to move. The kebab sits in the shell's actions
- * slot, outside the role="button" surface (whose children are presentational).
+ * Drive-style file card: a one-line title row (type icon + name + kebab) over
+ * a lazy thumbnail that fills the whole rest of the card, so the preview is
+ * the hero. A single click OPENS the file (Enter does the same); the kebab or
+ * a right-click opens the context menu, which is where rename lives; drag to
+ * move. The kebab sits in the shell's actions slot, outside the role="button"
+ * surface (whose children are presentational).
  */
 import { useState } from "react";
 import {
   CardActions,
-  CardMeta,
   CardShell,
   cardClass,
   cardHeaderClass,
@@ -17,16 +18,13 @@ import {
 import { INTERNAL_DRAG_TYPE } from "./drop-zone";
 import { CardPreview } from "./file-card-preview";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
-import { FileTypeIcon } from "./file-type-icons";
+import { FileTypeTile } from "./file-type-icons";
 import { RenameInput, useInlineRename } from "./inline-rename";
 import type { FileEntry, LoadFilePreview } from "./types";
-import { formatFileManagerDate } from "./utils";
 
 export function FileCard({
   file,
-  selected,
   loadPreview,
-  onSelect,
   onOpen,
   onReveal,
   onDownload,
@@ -37,9 +35,7 @@ export function FileCard({
   menuButtonLabel,
 }: {
   file: FileEntry;
-  selected?: boolean;
   loadPreview?: LoadFilePreview;
-  onSelect?: (file: FileEntry) => void;
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
   onDownload?: (file: FileEntry) => void;
@@ -70,26 +66,23 @@ export function FileCard({
           setDragging(true);
         }}
         onDragEnd={() => setDragging(false)}
-        onClick={() => !rename.renaming && onSelect?.(file)}
-        onDoubleClick={() => !rename.renaming && onOpen?.(file)}
+        onClick={() => !rename.renaming && onOpen?.(file)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && selected && !rename.renaming) {
+          if (e.key === "Enter" && !rename.renaming) {
             e.preventDefault();
-            rename.start();
+            onOpen?.(file);
           }
           if (e.key === "Escape" && rename.renaming) rename.cancel();
         }}
         onContextMenu={(e) => {
           if (!hasMenu || rename.renaming) return;
           e.preventDefault();
-          onSelect?.(file);
           setMenu({ x: e.clientX, y: e.clientY });
         }}
-        data-selected={selected || undefined}
-        className={cardClass({ selected, dragging })}
+        className={cardClass({ dragging })}
       >
         <div className={cardHeaderClass(!!hasMenu)}>
-          <FileTypeIcon extension={file.extension} />
+          <FileTypeTile small extension={file.extension} />
           {rename.renaming ? (
             <RenameInput rename={rename} />
           ) : (
@@ -101,17 +94,10 @@ export function FileCard({
         <div className={cardPreviewClass}>
           <CardPreview file={file} loadPreview={loadPreview} />
         </div>
-        <CardMeta left={formatFileManagerDate(file.dateModified)} />
       </div>
       {hasMenu && (
         <CardActions>
-          <KebabButton
-            label={menuButtonLabel}
-            onOpen={(position) => {
-              onSelect?.(file);
-              setMenu(position);
-            }}
-          />
+          <KebabButton label={menuButtonLabel} onOpen={setMenu} />
         </CardActions>
       )}
       {menu && (

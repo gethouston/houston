@@ -1,37 +1,47 @@
 /**
  * FilesBrowser — Drive-style card grid (default) with per-folder breadcrumb
- * navigation, plus the original Finder-style list view behind a toggle. Flat
- * on the canvas: a header row over a full-bleed scroll body whose content is
- * capped to the sibling-tab column. Drag-and-drop, context menus and inline
- * rename in both views. The drop container wraps EVERY state, the zero-files
- * one included, so an empty workspace accepts a drop like any other.
+ * navigation, plus a Library-style list view behind a toggle, which shows the
+ * WHOLE workspace and browses it by expanding folder rows in place. Borderless
+ * on the canvas: a header band (utilities, plus the breadcrumb trail when the
+ * grid is inside a folder) over a full-bleed scroll body, both using the pane's
+ * whole width with one shared gutter, and no rule between them. Drag-and-drop,
+ * context menus and inline rename in both views. The drop container wraps EVERY
+ * state, the zero-files one included, so an empty workspace accepts a drop like
+ * any other.
+ *
+ * A click OPENS a file in both views. Selecting is a separate gesture living on
+ * the list's checkbox gutter, and it exists at all only when `onDeleteMany`
+ * gives it somewhere to go.
  */
 
 import { BgContextMenu } from "./bg-context-menu";
 import type { FileMenuLabels } from "./file-menu";
 import { FilesBody } from "./files-body";
+import { FilesBrowserHeader } from "./files-browser-header";
 import {
   DEFAULT_FILES_BROWSER_LABELS,
   type FilesBrowserLabels,
-  toSortLabels,
+  toSelectionLabels,
 } from "./files-browser-labels";
 import { FilesEmptyState } from "./files-empty-state";
-import { FILES_CONTENT_COLUMN, FilesHeader } from "./files-header";
+import { FILES_CONTENT_COLUMN } from "./files-header";
+import { buildFilesSelection } from "./files-selection";
 import type { FileEntry, FilesViewMode, LoadFilePreview } from "./types";
 import { useFilesBrowser } from "./use-files-browser";
 
 export interface FilesBrowserProps {
   files: FileEntry[];
   loading?: boolean;
-  selectedPath?: string | null;
   /** Controlled view mode; omit to let the browser manage it internally. */
   view?: FilesViewMode;
   onViewChange?: (view: FilesViewMode) => void;
   /** First breadcrumb (the workspace root), e.g. the agent's name. */
   rootLabel?: string;
-  /** Lazily fetch thumbnail bytes for a visible card (grid view). */
+  /** BCP-47 tag the Modified column formats its dates in (the app passes the
+   *  active i18n language). Undefined follows the browser's own locale. */
+  locale?: string;
+  /** Lazily fetch thumbnail bytes for a visible card or list-row icon. */
   loadPreview?: LoadFilePreview;
-  onSelect?: (file: FileEntry) => void;
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
   /** Save the file to the user's machine (browser builds; desktop uses onOpen/onReveal). */
@@ -39,6 +49,10 @@ export interface FilesBrowserProps {
   /** Save a folder's subtree as a zip. Adds a context menu to folder rows/cards. */
   onDownloadFolder?: (folder: FileEntry) => void;
   onDelete?: (file: FileEntry) => void;
+  /** Delete this whole selection. Passing it is what turns the list's
+   *  checkbox column on: with no bulk handler there is nothing a selection
+   *  could do, so no checkbox is drawn at all. */
+  onDeleteMany?: (files: FileEntry[]) => void;
   onFilesDropped?: (files: File[], targetFolder?: string) => void;
   /** Surfaces dropped-folder expansion failures (unreadable entries, too many
    *  files). Pass whenever onFilesDropped is set — the async folder walk has
@@ -79,8 +93,6 @@ export function FilesBrowser(props: FilesBrowserProps) {
     loading: props.loading,
     controlledView: props.view,
     onViewChange: props.onViewChange,
-    controlledSelected: props.selectedPath,
-    onSelect: props.onSelect,
     onCreateFolder: props.onCreateFolder,
     onFilesDropped: props.onFilesDropped,
     onDropError: props.onDropError,
@@ -89,44 +101,20 @@ export function FilesBrowser(props: FilesBrowserProps) {
     onUploadFolder: props.onUploadFolder,
   });
 
+  // Undefined unless the consumer passed onDeleteMany: no bulk handler, no
+  // checkbox column anywhere in the list.
+  const selection = buildFilesSelection(
+    b,
+    props.onDeleteMany,
+    toSelectionLabels(l),
+  );
+
   return (
     <div
       className="relative flex h-full flex-col"
       {...(props.onFilesDropped || props.onMove ? b.dragHandlers : {})}
     >
-      <FilesHeader
-        empty={b.isEmpty}
-        view={b.view}
-        onViewChange={b.changeView}
-        path={b.resolvedPath}
-        rootLabel={props.rootLabel ?? "Files"}
-        onNavigate={b.navigate}
-        onDragActive={b.onDragActive}
-        sortKey={b.sortKey}
-        sortDir={b.sortDir}
-        onSort={b.handleSort}
-        sortLabels={toSortLabels(l)}
-        query={b.query}
-        onQueryChange={b.setQuery}
-        searchPlaceholder={l.searchPlaceholder}
-        searchClearLabel={l.searchClear}
-        viewGridLabel={l.viewGrid}
-        viewListLabel={l.viewList}
-        breadcrumbsLabel={l.breadcrumbs}
-        onNewFolder={props.onCreateFolder ? b.startCreatingFolder : undefined}
-        newFolderLabel={l.newFolder}
-        onUpload={b.uploadHere}
-        uploadLabel={props.onUploadFolder ? l.upload : l.uploadFiles}
-        onUploadFolder={b.uploadFolderHere}
-        uploadFilesLabel={l.uploadFiles}
-        uploadFolderLabel={l.uploadFolder}
-        onRevealAgent={props.onRevealAgent}
-        revealAgentLabel={l.openInFileManager}
-        onDownloadAll={props.onDownloadAll}
-        downloadAllLabel={l.downloadAll}
-        uploading={props.uploading}
-        uploadingLabel={l.uploadingBusy}
-      />
+      <FilesBrowserHeader b={b} props={props} l={l} />
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: click-to-deselect and right-click-for-context-menu on the backdrop are pointer-only affordances; no keyboard equivalent exists for these background gestures */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: same rationale — background click deselection has no keyboard equivalent */}
@@ -165,9 +153,9 @@ export function FilesBrowser(props: FilesBrowserProps) {
           />
         ) : (
           <div
-            className={`${FILES_CONTENT_COLUMN} flex min-h-0 flex-1 flex-col pb-6`}
+            className={`${FILES_CONTENT_COLUMN} flex min-h-0 flex-1 flex-col pt-4 pb-6`}
           >
-            <FilesBody b={b} props={props} l={l} />
+            <FilesBody b={b} props={props} l={l} selection={selection} />
           </div>
         )}
       </div>

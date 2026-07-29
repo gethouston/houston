@@ -1,8 +1,8 @@
 /**
- * Shared chrome for the Drive-style cards: the wrapper that keeps the kebab
- * OUT of the interactive card surface (a role="button" prunes its children
- * from assistive tech), the card shell classes, the meta footer row, and the
- * always-visible kebab menu button.
+ * Shared chrome for the Drive-style grid: the wrapper that keeps the kebab
+ * OUT of the interactive surface (a role="button" prunes its children from
+ * assistive tech), the hero file-card shell, the one-line folder-chip shell,
+ * and the always-visible kebab menu button.
  */
 import { cn } from "@houston-ai/core";
 import { EllipsisVertical } from "lucide-react";
@@ -13,6 +13,9 @@ export const MENU_WIDTH = 160;
 /** Card padding, in step with the preview panel's inset (concentric radii). */
 const CARD_PAD = "px-2";
 
+/** Room the kebab occupies, so a long name never runs under it. */
+const KEBAB_GUTTER = "pr-9";
+
 /**
  * Card wrapper: positions the kebab as a SIBLING of the interactive surface,
  * so the button stays reachable by assistive tech instead of being pruned as
@@ -22,69 +25,98 @@ export function CardShell({ children }: { children: ReactNode }) {
   return <div className="relative">{children}</div>;
 }
 
-/** Absolute slot for the kebab, pinned to the card's top-right corner. */
-export function CardActions({ children }: { children: ReactNode }) {
-  return <div className="absolute top-1.5 right-1.5 z-10">{children}</div>;
+/**
+ * Absolute slot for the kebab: the card's top-right corner, or vertically
+ * centered on a chip, whose whole content is one row.
+ */
+export function CardActions({
+  children,
+  center,
+}: {
+  children: ReactNode;
+  center?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "absolute right-1.5 z-10",
+        center ? "inset-y-0 flex items-center" : "top-1.5",
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
-/** Shared card shell classes: borderless, filled with a soft chip tone. */
-export function cardClass(opts: {
-  selected?: boolean;
+export interface SurfaceState {
   dropTarget?: boolean;
   dragging?: boolean;
-}) {
+}
+
+/**
+ * Fill, hover and drag states shared by cards and chips. There is no selected
+ * state: a click on a card OPENS it, so nothing on the grid ever sits
+ * highlighted-and-idle waiting for a second gesture.
+ */
+function surfaceClass(opts: SurfaceState) {
   return cn(
-    "group flex flex-col overflow-hidden rounded-xl bg-chip-subtle/60 text-card-text outline-none transition-colors select-none",
-    opts.selected
-      ? "bg-chip-subtle ring-2 ring-action"
-      : "hover:bg-chip-subtle focus-visible:ring-2 focus-visible:ring-focus",
+    "group bg-chip-subtle/60 text-card-text outline-none transition-colors select-none",
+    "hover:bg-chip-subtle focus-visible:ring-2 focus-visible:ring-focus",
     opts.dropTarget && "ring-2 ring-focus",
     opts.dragging && "opacity-40",
   );
 }
 
 /**
+ * Hero file card: a title row on top and a preview panel that takes the whole
+ * rest of the card, so the thumbnail is what the eye lands on.
+ */
+export function cardClass(opts: SurfaceState) {
+  return cn(
+    "flex h-64 flex-col overflow-hidden rounded-xl",
+    surfaceClass(opts),
+  );
+}
+
+/** One-line folder chip: glyph + name + trailing kebab, nothing else. */
+export function chipClass(opts: SurfaceState) {
+  return cn(
+    "flex h-12 items-center gap-2 overflow-hidden rounded-xl pl-3",
+    KEBAB_GUTTER,
+    surfaceClass(opts),
+  );
+}
+
+/**
  * Card header row (type glyph + name). `withActions` reserves the room the
- * kebab occupies in the card's actions slot, so a long name never runs under
- * it.
+ * kebab occupies in the card's actions slot.
  */
 export function cardHeaderClass(withActions?: boolean) {
   return cn(
     "flex h-10 shrink-0 items-center gap-2",
     CARD_PAD,
-    withActions && "pr-9",
+    withActions && KEBAB_GUTTER,
   );
 }
 
 /**
- * Inner thumbnail/glyph panel: a paper surface recessed into the card.
- * Inset 8px on every side, so the panel lines up with the header and meta
- * text, and the 4px inner radius stays concentric with the card's 12px.
+ * Inner thumbnail/glyph panel: a paper surface recessed into the card, taking
+ * every pixel the header leaves. Inset 8px on every side, so it lines up with
+ * the header text and its 4px radius stays concentric with the card's 12px.
  */
-export const cardPreviewClass = "mx-2 h-28 overflow-hidden rounded-sm bg-input";
-
-/** Bottom meta row: modified date on the left, optional count on the right. */
-export function CardMeta({ left, right }: { left: string; right?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-2 pt-1.5 pb-2 text-xs text-ink-muted tabular-nums",
-        CARD_PAD,
-      )}
-    >
-      <span className="truncate">{left}</span>
-      {right !== undefined && <span className="shrink-0">{right}</span>}
-    </div>
-  );
-}
+export const cardPreviewClass =
+  "mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-sm bg-input";
 
 /** Always-visible actions button; reports where the menu should open. */
 export function KebabButton({
   label,
   onOpen,
+  className,
 }: {
   label?: string;
   onOpen: (position: { x: number; y: number }) => void;
+  /** Lets a list row hold the glyph quieter at rest than a card's does. */
+  className?: string;
 }) {
   return (
     <button
@@ -96,7 +128,10 @@ export function KebabButton({
         onOpen({ x: Math.max(8, rect.right - MENU_WIDTH), y: rect.bottom + 4 });
       }}
       onDoubleClick={(e) => e.stopPropagation()}
-      className="shrink-0 rounded-md p-1 text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      className={cn(
+        "shrink-0 rounded-md p-1 text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        className,
+      )}
     >
       <EllipsisVertical aria-hidden className="size-4" />
     </button>

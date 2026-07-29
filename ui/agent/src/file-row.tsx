@@ -1,56 +1,68 @@
 /**
- * Finder-style file row (list view): click to select, double-click to open,
- * kebab or right-click for the context menu, inline rename, draggable for
- * moves. Same affordances as the grid's FileCard.
+ * Library-style file row (list view): a single click opens the file, the
+ * gutter checkbox is the ONLY way to select it, and the kebab or a right-click
+ * carries everything else (rename, download, delete). Draggable for moves.
+ * Selecting and opening are deliberately different gestures now — a click that
+ * both highlighted and did nothing else was a dead click.
+ *
+ * The row draws no separator: it is a transparent object that paints a soft
+ * rounded fill under the pointer, and a checked row keeps a quieter fill of its
+ * own so a selection is legible without counting checkboxes.
  */
 import { cn } from "@houston-ai/core";
 import { useState } from "react";
 import { KebabButton } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE } from "./drop-zone";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
-import { FileTypeIcon } from "./file-type-icons";
+import { FileRowIcon } from "./file-row-icon";
+import { FilesCheckbox } from "./files-checkbox";
 import {
-  BASE_INDENT,
-  COL_GRID,
-  DEPTH_INDENT,
+  ACTIONS_CELL,
+  colGrid,
   META_CELL,
-  TRIANGLE_AREA,
+  NAME_CELL_INNER,
+  NAME_TEXT,
+  ROW_CHECKED,
+  ROW_CLASS,
 } from "./files-list-chrome";
+import { RowIndent } from "./files-list-indent";
+import type { FilesSelection } from "./files-selection";
+import { formatModified, formatModifiedFull } from "./format-modified";
 import { RenameInput, useInlineRename } from "./inline-rename";
-import type { FileEntry } from "./types";
-import { formatFileManagerDate, formatSize, getKind } from "./utils";
-
-/** Row shell shared with FolderSection: height, quiet hover, focus ring. */
-export const ROW_CLASS =
-  "h-8 cursor-default select-none items-center rounded-lg outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus";
-
-/** Selected row: the same quiet language the grid's selected card speaks. */
-export const ROW_SELECTED_CLASS = "bg-chip-subtle ring-2 ring-action";
+import type { FileEntry, LoadFilePreview } from "./types";
+import { formatSize } from "./utils";
 
 export function FileRow({
   file,
   depth = 0,
-  selected,
-  onSelect,
+  selection,
+  loadPreview,
   onOpen,
   onReveal,
   onDownload,
   onDelete,
   onRename,
   onMove,
+  locale,
+  modifiedTodayLabel,
   menuLabels,
   menuButtonLabel,
 }: {
   file: FileEntry;
   depth?: number;
-  selected?: boolean;
-  onSelect?: (file: FileEntry) => void;
+  /** Present only when the browser can act on a selection (see FilesSelection). */
+  selection?: FilesSelection;
+  loadPreview?: LoadFilePreview;
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
   onDownload?: (file: FileEntry) => void;
   onDelete?: (file: FileEntry) => void;
   onRename?: (file: FileEntry, newName: string) => void;
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
+  /** BCP-47 tag for the Modified cell; undefined follows the browser. */
+  locale?: string;
+  /** Translated word the Modified cell shows for the current calendar day. */
+  modifiedTodayLabel: string;
   menuLabels?: FileMenuLabels;
   /** Accessible name for the always-visible kebab button. */
   menuButtonLabel?: string;
@@ -61,8 +73,8 @@ export function FileRow({
     file.name,
     onRename ? (newName) => onRename(file, newName) : undefined,
   );
-  const padLeft = BASE_INDENT + depth * DEPTH_INDENT + TRIANGLE_AREA;
   const hasMenu = onOpen || onReveal || onDownload || onDelete || onRename;
+  const checked = !!selection?.paths.has(file.path);
 
   return (
     <>
@@ -77,60 +89,69 @@ export function FileRow({
           setDragging(true);
         }}
         onDragEnd={() => setDragging(false)}
-        onClick={() => !rename.renaming && onSelect?.(file)}
-        onDoubleClick={() => !rename.renaming && onOpen?.(file)}
+        onClick={() => !rename.renaming && onOpen?.(file)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && selected && !rename.renaming) {
+          if (e.key === "Enter" && !rename.renaming) {
             e.preventDefault();
-            rename.start();
+            onOpen?.(file);
           }
           if (e.key === "Escape" && rename.renaming) rename.cancel();
         }}
         onContextMenu={(e) => {
           if (!hasMenu || rename.renaming) return;
           e.preventDefault();
-          onSelect?.(file);
           setMenu({ x: e.clientX, y: e.clientY });
         }}
-        data-selected={selected || undefined}
         className={cn(
           ROW_CLASS,
-          selected && ROW_SELECTED_CLASS,
+          checked && ROW_CHECKED,
           dragging && "opacity-40",
         )}
-        style={{ display: "grid", gridTemplateColumns: COL_GRID }}
+        style={{
+          display: "grid",
+          gridTemplateColumns: colGrid(!!selection),
+        }}
       >
-        <div
-          className="flex min-w-0 items-center gap-1.5 pr-1.5"
-          style={{ paddingLeft: padLeft }}
-        >
-          <FileTypeIcon extension={file.extension} />
-          {rename.renaming ? (
-            <RenameInput rename={rename} className="-ml-1" />
-          ) : (
-            <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
-          )}
-        </div>
-        <span className={META_CELL}>
-          {formatFileManagerDate(file.dateModified)}
-        </span>
-        <span className={META_CELL}>
-          {formatFileManagerDate(file.dateCreated)}
-        </span>
-        <span className={cn(META_CELL, "text-right")}>
-          {formatSize(file.size)}
-        </span>
-        <span className={META_CELL}>{getKind(file.extension)}</span>
-        <span className="flex items-center justify-center">
-          {hasMenu && (
-            <KebabButton
-              label={menuButtonLabel}
-              onOpen={(position) => {
-                onSelect?.(file);
-                setMenu(position);
-              }}
+        {selection && (
+          <span className="flex h-full items-center justify-center">
+            <FilesCheckbox
+              checked={checked}
+              label={selection.labels.selectRow}
+              onToggle={() => selection.toggle(file.path)}
             />
-          )}
+          </span>
+        )}
+        <div className="flex h-full min-w-0 items-center">
+          <RowIndent depth={depth} chevron />
+          <div className={NAME_CELL_INNER}>
+            <FileRowIcon file={file} loadPreview={loadPreview} />
+            {rename.renaming ? (
+              <RenameInput rename={rename} className="-ml-1" />
+            ) : (
+              <span className={cn("min-w-0 flex-1 truncate", NAME_TEXT)}>
+                {file.name}
+              </span>
+            )}
+          </div>
+        </div>
+        <span
+          className={META_CELL}
+          title={formatModifiedFull(file.dateModified, locale)}
+        >
+          <span className="truncate">
+            {formatModified(
+              file.dateModified,
+              Date.now(),
+              locale,
+              modifiedTodayLabel,
+            )}
+          </span>
+        </span>
+        <span className={META_CELL}>
+          <span className="truncate">{formatSize(file.size)}</span>
+        </span>
+        <span className={ACTIONS_CELL}>
+          {hasMenu && <KebabButton label={menuButtonLabel} onOpen={setMenu} />}
         </span>
       </div>
       {menu && (

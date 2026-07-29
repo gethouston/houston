@@ -104,6 +104,13 @@ storage internals and an unmocked identity call fails loudly instead of escaping
 to Google. Arm the fake host's org roster with the same `u-self` id and "me" is
 assertable (`chat-mentions.spec.ts`).
 
+**File download MIME types.** The Files tab BRANCHES on the served
+`Content-Type` to decide whether a list row / grid card paints a thumbnail, so
+the fake host imports the REAL host's `mimeFor` (`packages/host/src/turn/files.ts`)
+for `files/download` rather than re-implementing it. A PNG comes back as
+`image/png` against the mock exactly as it does in production, and no spec needs
+to patch the header.
+
 **Teams / integrations arming.** Single-player alone can't reach the Teams-shaped
 state the locked browse rows (and, later, the admin policy pages) need. Two
 controls arm it (documented in the `@houston/fake-host` README):

@@ -59,6 +59,18 @@
       "orange": { "$value": "{color.agent.orange-bright}" },
       "golden": { "$value": "{color.agent.golden-bright}" }
     },
+    "filetype": {
+      "pdf": { "$value": "{color.filetype.pdf-bright}" },
+      "doc": { "$value": "{color.filetype.doc-bright}" },
+      "sheet": { "$value": "{color.filetype.sheet-bright}" },
+      "slide": { "$value": "{color.filetype.slide-bright}" },
+      "image": { "$value": "{color.filetype.image-bright}" },
+      "video": { "$value": "{color.filetype.video-bright}" },
+      "audio": { "$value": "{color.filetype.audio-bright}" },
+      "archive": { "$value": "{color.filetype.archive-bright}" },
+      "code": { "$value": "{color.filetype.code-bright}" },
+      "generic": { "$value": "{color.filetype.generic-bright}" }
+    },
     "person": {
       "slate": { "$value": "{color.person.slate-bright}" },
       "sage": { "$value": "{color.person.sage-bright}" },

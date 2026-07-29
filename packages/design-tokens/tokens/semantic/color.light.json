@@ -59,6 +59,18 @@
       "orange": { "$value": "{color.agent.orange}" },
       "golden": { "$value": "{color.agent.golden}" }
     },
+    "filetype": {
+      "pdf": { "$value": "{color.filetype.pdf}" },
+      "doc": { "$value": "{color.filetype.doc}" },
+      "sheet": { "$value": "{color.filetype.sheet}" },
+      "slide": { "$value": "{color.filetype.slide}" },
+      "image": { "$value": "{color.filetype.image}" },
+      "video": { "$value": "{color.filetype.video}" },
+      "audio": { "$value": "{color.filetype.audio}" },
+      "archive": { "$value": "{color.filetype.archive}" },
+      "code": { "$value": "{color.filetype.code}" },
+      "generic": { "$value": "{color.filetype.generic}" }
+    },
     "person": {
       "slate": { "$value": "{color.person.slate}" },
       "sage": { "$value": "{color.person.sage}" },

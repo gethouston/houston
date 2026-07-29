@@ -33,4 +33,4 @@ export type {
 } from "./types";
 export type { SortDirection, SortKey } from "./utils";
 // Utilities
-export { formatFileManagerDate, formatSize, getKind } from "./utils";
+export { formatSize } from "./utils";

@@ -144,6 +144,7 @@
     "viewGrid": "Vista de cuadrícula",
     "viewList": "Vista de lista",
     "sortBy": "Ordenar por",
+    "newMenu": "Nuevo",
     "newFolder": "Nueva carpeta",
     "newFolderPlaceholder": "carpeta sin título",
     "emptyFolder": "Esta carpeta está vacía",
@@ -159,7 +160,6 @@
       "cancel": "Cancelar"
     },
     "uploadFiles": "Subir archivos",
-    "upload": "Subir",
     "uploadFolder": "Subir carpeta",
     "folderDropFailed": "No pudimos leer esa carpeta. Intenta con el botón Subir.",
     "downloadAll": "Descargar todo",
@@ -168,6 +168,12 @@
     "searchPlaceholder": "Buscar archivos",
     "searchClear": "Borrar búsqueda",
     "searchNoResults": "Ningún archivo coincide con tu búsqueda",
+    "selectRow": "Seleccionar",
+    "selectAll": "Seleccionar todo",
+    "selectedCount_one": "{{count}} seleccionado",
+    "selectedCount_other": "{{count}} seleccionados",
+    "deleteSelected": "Eliminar",
+    "clearSelection": "Quitar selección",
     "uploadTooLarge": {
       "title_one": "Archivo demasiado grande",
       "title_other": "Archivos demasiado grandes",
@@ -180,16 +186,17 @@
       "title": "¿Mover “{{name}}” a la Papelera?",
       "fileDescription": "Este archivo se quitará del espacio de trabajo de tu asistente.",
       "folderDescription": "Esta carpeta y todo su contenido se quitarán del espacio de trabajo de tu asistente.",
+      "batchTitle_one": "¿Mover {{count}} elemento a la Papelera?",
+      "batchTitle_other": "¿Mover {{count}} elementos a la Papelera?",
+      "batchDescription_one": "Este elemento se quitará del espacio de trabajo de tu asistente.",
+      "batchDescription_other": "Estos elementos se quitarán del espacio de trabajo de tu asistente.",
       "confirm": "Mover a la Papelera",
       "cancel": "Cancelar"
     },
     "columns": {
       "name": "Nombre",
-      "dateModified": "Fecha de modificación",
-      "dateCreated": "Fecha de creación",
-      "size": "Tamaño",
-      "kind": "Tipo",
-      "kindFolder": "Carpeta"
+      "dateModified": "Modificado",
+      "size": "Tamaño"
     },
     "menu": {
       "open": "Abrir",
@@ -214,6 +221,7 @@
       "revealFailed": "No se pudo mostrar el archivo",
       "saveFailedTitle": "No se pudo guardar el archivo",
       "openFailedTitle": "No se pudo abrir el archivo"
-    }
+    },
+    "modifiedToday": "Hoy"
   }
 }

@@ -168,6 +168,69 @@
         "$value": "#fbbf24"
       }
     },
+    "filetype": {
+      "$type": "color",
+      "pdf": {
+        "$value": "#c0392b"
+      },
+      "pdf-bright": {
+        "$value": "#e8776c"
+      },
+      "doc": {
+        "$value": "#2158a8"
+      },
+      "doc-bright": {
+        "$value": "#6ea8ef"
+      },
+      "sheet": {
+        "$value": "#1b6b3a"
+      },
+      "sheet-bright": {
+        "$value": "#4fb87b"
+      },
+      "slide": {
+        "$value": "#b45309"
+      },
+      "slide-bright": {
+        "$value": "#d09a4e"
+      },
+      "image": {
+        "$value": "#0e7490"
+      },
+      "image-bright": {
+        "$value": "#48b0c2"
+      },
+      "video": {
+        "$value": "#6d28d9"
+      },
+      "video-bright": {
+        "$value": "#a292e8"
+      },
+      "audio": {
+        "$value": "#a21a6b"
+      },
+      "audio-bright": {
+        "$value": "#df7fb0"
+      },
+      "archive": {
+        "$value": "#8a5a2b"
+      },
+      "archive-bright": {
+        "$value": "#bb9269"
+      },
+      "code": {
+        "$value": "#42509b"
+      },
+      "code-bright": {
+        "$value": "#8e9be6"
+      },
+      "generic": {
+        "$value": "#6b7280"
+      },
+      "generic-bright": {
+        "$value": "#9a9a9a"
+      }
+    },
     "person": {
       "$type": "color",
       "slate": {

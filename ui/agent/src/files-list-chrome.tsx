@@ -1,12 +1,21 @@
 /**
- * List-view chrome shared by the header row, the file/folder rows and the
- * skeleton: the column grid, the row indent constants, the quiet sortable
- * header cell and the disclosure chevron.
+ * List-view chrome shared by the column header, the file/folder rows, the
+ * new-folder row and the skeleton: the column template, the row shell, the cell
+ * classes and the quiet sortable header cell. Every geometry value lives HERE
+ * exactly once, or the header, the rows and the skeleton drift apart. How a row
+ * states its DEPTH (indent + disclosure chevron) is files-list-indent.tsx.
+ *
+ * The doctrine: the list draws NO rules. Rows are transparent objects separated
+ * by their own height, and the only thing that ever paints is the row under the
+ * pointer — a soft `rounded-xl` fill the width of the listing. That is what
+ * lets the tab stay borderless while a 14px medium name still reads a clear
+ * step above its 12px muted metadata.
  */
 import { cn } from "@houston-ai/core";
-import { ChevronRight } from "lucide-react";
+import type { CSSProperties } from "react";
 import type { FileMenuLabels } from "./file-menu";
-import type { FileEntry } from "./types";
+import type { FilesSelection } from "./files-selection";
+import type { FileEntry, LoadFilePreview } from "./types";
 import type { SortDirection, SortKey } from "./utils";
 
 /**
@@ -15,8 +24,11 @@ import type { SortDirection, SortKey } from "./utils";
  * threaded through each level of the recursion by hand.
  */
 export interface ListRowCallbacks {
-  selectedPath?: string | null;
-  onSelect?: (file: FileEntry) => void;
+  /** Present only when the consumer can act on a selection: its presence is
+   *  what puts the checkbox gutter on every row. */
+  selection?: FilesSelection;
+  /** Lazily fetch thumbnail bytes for a visible image row. */
+  loadPreview?: LoadFilePreview;
   onOpen?: (file: FileEntry) => void;
   onReveal?: (file: FileEntry) => void;
   onDownload?: (file: FileEntry) => void;
@@ -28,26 +40,105 @@ export interface ListRowCallbacks {
   /** "" = root hovered, null = nothing hovered (see FilesBrowser). */
   onDragActive?: (folder: string | null) => void;
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
-  /** The Kind column's word for a folder row. */
-  kindFolderLabel: string;
+  /** BCP-47 tag for the Modified column; undefined follows the browser. */
+  locale?: string;
+  /** Translated word the Modified cell shows for the current calendar day. */
+  modifiedTodayLabel: string;
+  /** Nouns a folder row counts its children with ("item" / "items"). */
+  itemSingular?: string;
+  itemPlural?: string;
   menuLabels?: FileMenuLabels;
   /** Accessible name for the always-visible kebab buttons. */
   menuButtonLabel?: string;
+  /** Shown under a folder row expanded onto nothing, so an open chevron with
+   *  no rows beneath it never reads as a listing that failed to load. */
+  emptyFolderLabel?: string;
 }
 
-export const DEPTH_INDENT = 20;
-export const BASE_INDENT = 12;
-export const TRIANGLE_AREA = 16;
+/** The checkbox gutter to the left of every row's icon (px). */
+export const SELECT_COL = 36;
+/** Where the first level starts, measured from inside ROW_PAD_X. */
+export const BASE_INDENT = 4;
+/** One level of the tree. */
+export const DEPTH_INDENT = 24;
+/** Chevron (16px) + its gap (8px): what a file row pads past so its tile lines
+ *  up with the folder glyphs at the same depth. */
+export const TRIANGLE_AREA = 24;
 
 /**
- * Column grid shared between the header, the rows and the skeleton. The
- * trailing track is the actions column: every row's kebab sits there, at the
- * row's end, aligned with the one above it.
+ * The hover pill bleeds 8px past the text gutter on both sides, so the fill
+ * reads as a surface UNDER the row rather than as a box drawn around it. The
+ * rows container pulls that back out (`LIST_INSET`) and every row and the
+ * column header pay it back (`ROW_PAD_X`) — they must move together or the
+ * columns shift the moment the header swaps for the selection bar.
  */
-export const COL_GRID = "1fr 160px 160px 80px 130px 40px";
+export const LIST_INSET = "-mx-2";
+const ROW_PAD_X = "px-2";
 
-/** Row cell classes for the quiet, column-aligned metadata. */
-export const META_CELL = "truncate px-2 text-xs text-ink-muted tabular-nums";
+/**
+ * One source of truth for the column template: Name, Modified, Size, then the
+ * actions column where every row's kebab sits, aligned with the one above it.
+ * A file's TYPE is carried by its icon tile, which is why there is no Kind
+ * column to align. Modified and Size are held narrow ON PURPOSE: right-aligned
+ * and packed, the two read as ONE block against the pane's right edge instead
+ * of as two islands adrift in the middle of the row.
+ *
+ * A browser with no selection capability has no gutter, and the header, the
+ * rows and the skeleton must all decide that from the same boolean or the
+ * columns drift.
+ */
+export function colGrid(selectable: boolean): string {
+  const plain = "minmax(0,1fr) 116px 80px 44px";
+  return selectable ? `${SELECT_COL}px ${plain}` : plain;
+}
+
+/**
+ * Row shell shared by file rows, folder rows, the empty-folder row, the
+ * new-folder row and the skeleton. `group/row` is what lets the gutter checkbox
+ * strengthen while the pointer is anywhere on the row.
+ */
+export const ROW_CLASS = cn(
+  "group/row h-13 cursor-default select-none items-center rounded-xl outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus",
+  ROW_PAD_X,
+);
+
+/**
+ * A CHECKED row, so a selection is legible from across the screen rather than
+ * from a 16px box. It sits one step below the hover fill, which still paints
+ * over it — a checked row under the pointer must not look inert.
+ */
+export const ROW_CHECKED = "bg-chip-subtle";
+
+/** The column header / selection-bar slot: same padding as a row, so the
+ *  gutter checkbox above the listing lines up with the ones inside it. */
+export const HEADER_ROW = cn("h-9 shrink-0 select-none", ROW_PAD_X);
+
+/** Filenames: the one thing on this screen worth reading first. */
+export const NAME_TEXT = "text-sm font-medium text-ink";
+/** Everything a filename is not: dates, sizes, counts, the empty-folder note. */
+export const META_TEXT = "text-xs text-ink-muted";
+
+/**
+ * Both metadata cells. They are right-aligned together: ragged-left dates
+ * ending on the same x read as a column, and it puts Modified and Size within
+ * one glance of each other instead of a screen apart.
+ */
+export const META_CELL = cn(
+  "flex h-full items-center justify-end px-2 tabular-nums",
+  META_TEXT,
+);
+
+/** The actions (kebab) cell. */
+export const ACTIONS_CELL = "flex h-full items-center justify-center";
+
+/** The Name cell's inner wrapper: everything from the item's icon rightwards. */
+export const NAME_CELL_INNER =
+  "flex h-full min-w-0 flex-1 items-center gap-2 pr-1.5";
+
+/** The row's leading icon box — type tile and image thumbnail wear the SAME
+ *  one, so a listing of mixed types keeps an unbroken icon column. */
+export const ROW_TILE = "size-8 rounded-lg";
+export const ROW_TILE_GLYPH = "size-5";
 
 export function HeaderCell({
   label,
@@ -56,6 +147,7 @@ export function HeaderCell({
   sortDir,
   onSort,
   className,
+  style,
 }: {
   label: string;
   col: SortKey;
@@ -63,14 +155,21 @@ export function HeaderCell({
   sortDir: SortDirection;
   onSort: (key: SortKey) => void;
   className?: string;
+  /** Pixel alignment the class layer cannot express (the Name column's indent). */
+  style?: CSSProperties;
 }) {
   const active = sortKey === col;
   return (
     <button
       type="button"
       onClick={() => onSort(col)}
+      style={style}
       className={cn(
-        "flex h-full items-center justify-between rounded-sm px-2 text-xs font-medium text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        // The sort caret hugs its label instead of being pushed to the column's
+        // far edge — over a 1fr Name column that put it a screen away from the
+        // word it describes.
+        "flex h-full items-center gap-1.5 rounded-sm px-2 font-medium transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        META_TEXT,
         className,
       )}
     >
@@ -97,25 +196,5 @@ export function HeaderCell({
         </svg>
       )}
     </button>
-  );
-}
-
-/** Folder-row expand/collapse indicator (rotates a quarter turn when open). */
-export function DisclosureChevron({
-  open,
-  className,
-}: {
-  open: boolean;
-  className?: string;
-}) {
-  return (
-    <ChevronRight
-      aria-hidden
-      className={cn(
-        "size-3.5 shrink-0 text-ink-muted transition-transform duration-150",
-        open && "rotate-90",
-        className,
-      )}
-    />
   );
 }

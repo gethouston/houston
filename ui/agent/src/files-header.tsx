@@ -1,183 +1,57 @@
 /**
- * Files header: breadcrumb navigation on the left (both views are scoped to
- * the open folder, so the trail states the scope in either) and a right
- * cluster with search, sort, the grid/list toggle, new-folder, and the
- * promoted Upload + reveal/download-all actions. Sort stays grid-only (the
- * list sorts from its column headers) but its slot is reserved in BOTH views,
- * so toggling grid/list never shifts the row sideways. This row does not
- * scroll with the file list, and it stays put on an empty workspace: only the
- * controls with nothing to act on step aside.
+ * The Files header: a band of chrome over the scrolling body.
+ *
+ *   row 1  utilities  — search (takes the row) + the New pill, the
+ *                       download/reveal glyph, sort, view tabs (FilesToolbar)
+ *   row 2  location   — the breadcrumb trail, ONLY in the grid and ONLY once
+ *                       you are inside a folder        (FilesBreadcrumbs)
+ *
+ * The trail earns its row only when it has something to say. At the workspace
+ * root it would repeat what the pane already shows, and the list view browses
+ * the whole tree by expanding rows rather than by walking a path, so it has no
+ * open folder to state. Both cases collapse the band to the toolbar alone.
+ *
+ * One wrapper carries FILES_CONTENT_COLUMN, so every row shares the gutter the
+ * grid, list, skeletons and zero states use. The band draws NO floor: the page
+ * is borderless, and the only hairlines on this screen are the list's row
+ * separators. Spacing alone holds the band apart from the listing. It stays
+ * put on an empty workspace too, so New never jumps away.
  */
-import { Button } from "@houston-ai/core";
-import { Download, FolderOpen, FolderPlus } from "lucide-react";
-import { FilesBreadcrumbs } from "./files-breadcrumbs";
-import { FilesHeaderUpload } from "./files-header-upload";
-import { FilesSearch } from "./files-search";
-import { SortMenu, type SortMenuLabels } from "./sort-menu";
-import type { FilesViewMode } from "./types";
-import type { SortDirection, SortKey } from "./utils";
-import { ViewToggle } from "./view-toggle";
+import {
+  FilesBreadcrumbs,
+  type FilesBreadcrumbsProps,
+} from "./files-breadcrumbs";
+import { FilesToolbar, type FilesToolbarProps } from "./files-toolbar";
 
-/** Shared width cap so the header and the scroll body's content column align. */
-export const FILES_CONTENT_COLUMN = "mx-auto w-full max-w-4xl px-6";
+/**
+ * Shared gutter so the header and the scroll body's content column align.
+ * Full width on purpose: the file grid and list use every pixel of the pane.
+ */
+export const FILES_CONTENT_COLUMN = "w-full px-6";
 
 export function FilesHeader({
-  empty,
-  view,
-  onViewChange,
   path,
   rootLabel,
+  breadcrumbsLabel,
   onNavigate,
   onDragActive,
-  sortKey,
-  sortDir,
-  onSort,
-  sortLabels,
-  query,
-  onQueryChange,
-  searchPlaceholder,
-  searchClearLabel,
-  viewGridLabel,
-  viewListLabel,
-  breadcrumbsLabel,
-  onNewFolder,
-  newFolderLabel,
-  onUpload,
-  uploadLabel,
-  onUploadFolder,
-  uploadFilesLabel,
-  uploadFolderLabel,
-  onRevealAgent,
-  revealAgentLabel,
-  onDownloadAll,
-  downloadAllLabel,
-  uploading,
-  uploadingLabel,
-}: {
-  /** Zero files in the workspace: keep Upload and the layout, drop the rest. */
-  empty?: boolean;
-  view: FilesViewMode;
-  onViewChange: (view: FilesViewMode) => void;
-  path: string;
-  rootLabel: string;
-  onNavigate: (path: string) => void;
-  /** "" = root hovered, null = nothing hovered (see FilesBrowser). */
-  onDragActive: (folder: string | null) => void;
-  sortKey: SortKey;
-  sortDir: SortDirection;
-  onSort: (key: SortKey) => void;
-  sortLabels: SortMenuLabels;
-  /** Name search over the open folder's subtree. */
-  query: string;
-  onQueryChange: (query: string) => void;
-  searchPlaceholder: string;
-  searchClearLabel: string;
-  viewGridLabel: string;
-  viewListLabel: string;
-  breadcrumbsLabel: string;
-  onNewFolder?: () => void;
-  newFolderLabel: string;
-  /** Pick files to upload (filled primary pill). */
-  onUpload?: () => void;
-  uploadLabel: string;
-  /** Pick a whole folder to upload. When set, the Upload pill opens a menu
-   *  offering files or a folder instead of jumping straight to the picker. */
-  onUploadFolder?: () => void;
-  uploadFilesLabel: string;
-  uploadFolderLabel: string;
-  /** Reveal the agent's folder in the OS file manager (co-located desktop). */
-  onRevealAgent?: () => void;
-  revealAgentLabel: string;
-  /** Download the whole workspace as one zip (browser/remote builds). */
-  onDownloadAll?: () => void;
-  downloadAllLabel: string;
-  /** An upload is in flight (see FilesHeaderUpload). */
-  uploading?: boolean;
-  uploadingLabel: string;
-}) {
-  const secondary = onRevealAgent
-    ? {
-        onClick: onRevealAgent,
-        icon: <FolderOpen aria-hidden />,
-        label: revealAgentLabel,
-      }
-    : onDownloadAll
-      ? {
-          onClick: onDownloadAll,
-          icon: <Download aria-hidden />,
-          label: downloadAllLabel,
-        }
-      : null;
+  ...toolbar
+}: FilesToolbarProps & FilesBreadcrumbsProps) {
+  const showTrail = toolbar.view === "grid" && path !== "";
+
   return (
     <div
-      className={`${FILES_CONTENT_COLUMN} flex shrink-0 items-center gap-2 pt-6 pb-4`}
+      className={`${FILES_CONTENT_COLUMN} flex shrink-0 flex-col gap-1 pt-4 pb-3`}
     >
-      <FilesBreadcrumbs
-        path={path}
-        rootLabel={rootLabel}
-        label={breadcrumbsLabel}
-        onNavigate={onNavigate}
-        onDragActive={onDragActive}
-      />
-      {!empty && (
-        <>
-          <FilesSearch
-            value={query}
-            onChange={onQueryChange}
-            placeholder={searchPlaceholder}
-            clearLabel={searchClearLabel}
-          />
-          {/* Reserved width: the sort control is grid-only, and a slot that
-              collapses would slide the whole right cluster on every toggle. */}
-          <div className="flex w-7 shrink-0 justify-end sm:w-28">
-            {view === "grid" && (
-              <SortMenu
-                sortKey={sortKey}
-                sortDir={sortDir}
-                onSort={onSort}
-                labels={sortLabels}
-              />
-            )}
-          </div>
-          <ViewToggle
-            view={view}
-            onViewChange={onViewChange}
-            viewGridLabel={viewGridLabel}
-            viewListLabel={viewListLabel}
-          />
-          {onNewFolder && (
-            <button
-              type="button"
-              aria-label={newFolderLabel}
-              title={newFolderLabel}
-              onClick={onNewFolder}
-              className="shrink-0 rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <FolderPlus aria-hidden className="size-4" />
-            </button>
-          )}
-        </>
-      )}
-      {onUpload && (
-        <FilesHeaderUpload
-          onUpload={onUpload}
-          uploadLabel={uploadLabel}
-          onUploadFolder={onUploadFolder}
-          uploadFilesLabel={uploadFilesLabel}
-          uploadFolderLabel={uploadFolderLabel}
-          uploading={uploading}
-          uploadingLabel={uploadingLabel}
+      <FilesToolbar {...toolbar} />
+      {showTrail && (
+        <FilesBreadcrumbs
+          path={path}
+          rootLabel={rootLabel}
+          breadcrumbsLabel={breadcrumbsLabel}
+          onNavigate={onNavigate}
+          onDragActive={onDragActive}
         />
-      )}
-      {secondary && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={secondary.onClick}
-          className="shrink-0"
-        >
-          {secondary.icon} {secondary.label}
-        </Button>
       )}
     </div>
   );
