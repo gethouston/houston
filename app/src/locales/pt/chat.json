@@ -89,8 +89,7 @@
     "askFirstDescription": "Faz as coisas e pergunta antes de ações sensíveis.",
     "autopilotTitle": "Continuar no modo Piloto automático",
     "autopilotDescription": "Termina sozinho. Sem perguntas.",
-    "keepPlanningTitle": "Continuar planejando",
-    "keepPlanningDescription": "Fique aqui e ajuste o plano.",
+    "feedbackPlaceholder": "Dê sua opinião sobre o plano...",
     "startWorkingMessage": "Pode seguir com o plano.",
     "runAutopilotMessage": "Pode terminar por conta própria."
   },

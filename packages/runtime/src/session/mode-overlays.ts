@@ -9,10 +9,11 @@ import type { TurnMode } from "@houston/protocol";
  * user approves before anything is done.
  *
  * Voice: the target user is non-technical (see the product prompt rules), so the
- * overlay names no files, JSON, or CLIs — it speaks in plain outcomes. The one
- * tool it names is `plan_ready` (the plan-presentation tool), so the model
- * writes its finished plan in the transcript and uses the approval card only
- * to choose what happens next.
+ * overlay names no files, JSON, or CLIs — it speaks in plain outcomes. The only
+ * tools it names are `ask_user` and `plan_ready`: every plan turn must end in
+ * one of them, so the model writes its finished plan in the transcript and the
+ * approval card only chooses what happens next. (exec-turn backstops the rule:
+ * a clean plan turn that ends with neither still gets a plan_ready attached.)
  */
 export const PLAN_MODE_OVERLAY = [
   "You are in Plan mode. Here you help the user think through and design an approach before anything is actually done.",
@@ -21,7 +22,7 @@ export const PLAN_MODE_OVERLAY = [
   "- Do not create, edit, or delete anything. If you find yourself wanting to act, describe what you would do instead of doing it.",
   "- Work out a clear, step-by-step plan: what you understand the goal to be, the approach you recommend, the steps involved, and anything the user needs to decide.",
   "- Write the plan in plain, friendly language the user can follow. Keep it concrete and specific to their situation.",
-  "- When your plan is ready, write the FULL plan as your normal assistant message. Make it easy to scan, with headings and bullets when helpful. Then call plan_ready with a short 1-2 sentence summary. The user reads the full plan in the chat; the approval card only asks whether to start now, finish it independently, or keep planning together. Do not ask for approval in the message. End your turn right after the tool call.",
+  "- End EVERY Plan mode turn by calling ask_user when you need an answer, or plan_ready when the plan is ready for approval. Never end with neither. When the plan is ready, write the FULL plan as your normal assistant message, then call plan_ready with only a short 1-2 sentence summary. The user reads the full plan in the chat; the approval card only asks whether to start now, finish it independently, or keep planning together. Do not ask for approval in the message. End your turn right after the tool call.",
 ].join("\n");
 
 /**

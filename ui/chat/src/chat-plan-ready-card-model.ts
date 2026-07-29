@@ -16,9 +16,8 @@ export interface ChatPlanReadyLabels {
   askFirstDescription: string;
   autopilotTitle: string;
   autopilotDescription: string;
-  keepPlanningTitle: string;
-  keepPlanningDescription: string;
-  declinePlaceholder: string;
+  dismiss: string;
+  feedbackPlaceholder: string;
   send: string;
 }
 
@@ -32,20 +31,20 @@ export const DEFAULT_PLAN_READY_LABELS: ChatPlanReadyLabels = {
   askFirstDescription: "Gets things done, asks before sensitive actions.",
   autopilotTitle: "Continue in Autopilot mode",
   autopilotDescription: "Finishes it on its own. No questions asked.",
-  keepPlanningTitle: "Keep planning",
-  keepPlanningDescription: "Stay here and adjust the plan.",
-  declinePlaceholder: "Or tell it what to do instead...",
+  dismiss: "Dismiss",
+  feedbackPlaceholder: "Give feedback on the plan...",
   send: "Send",
 };
 
 /** Shared by the card and its DOM-free tests: summaries stay a compact lede. */
 export const PLAN_READY_LEDE_CLASS_NAME = "line-clamp-2";
 
+/** Empty fallback summaries deliberately render no lede or collapsed hint. */
+export const hasPlanReadySummary = (summary: string): boolean =>
+  summary.trim().length > 0;
+
 /** Stable key for each action, so the .tsx wires the right callback + icon. */
-export type PlanReadyActionKey =
-  | "startWorking"
-  | "runAutopilot"
-  | "keepPlanning";
+export type PlanReadyActionKey = "startWorking" | "runAutopilot";
 
 /** One resolved row descriptor: its stable key, its localized title +
  *  description, and whether it is disabled. Icons are internal to the .tsx. */
@@ -57,11 +56,11 @@ export interface PlanReadyAction {
 }
 
 /**
- * The three options in render order: Continue in Ask first mode (execute) ->
- * Continue in Autopilot mode (auto) -> Keep planning (dismiss). Rendered as
+ * The two options in render order: Continue in Ask first mode (execute) ->
+ * Continue in Autopilot mode (auto). Rendered as
  * full-width mode-menu rows (icon inline with the title, description below).
  * Primary emphasis comes from row order + title weight, not a filled button.
- * `disabled` gates ALL three uniformly, so the whole card reads as inert while
+ * `disabled` gates both uniformly, so the whole card reads as inert while
  * another turn is active. Pure so the ordering/content/disabled mapping is
  * unit-tested without a DOM.
  */
@@ -80,12 +79,6 @@ export function resolvePlanReadyActions(
       key: "runAutopilot",
       title: labels.autopilotTitle,
       description: labels.autopilotDescription,
-      disabled,
-    },
-    {
-      key: "keepPlanning",
-      title: labels.keepPlanningTitle,
-      description: labels.keepPlanningDescription,
       disabled,
     },
   ];

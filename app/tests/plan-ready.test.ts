@@ -27,9 +27,21 @@ describe("resolvePlanReadyOverride", () => {
     });
   });
 
-  it("returns the composer once THIS plan is dismissed (Keep planning)", () => {
+  it("returns the composer once THIS plan is dismissed", () => {
     deepStrictEqual(resolvePlanReadyOverride([planReady], planReady.summary), {
       kind: "none",
+    });
+  });
+
+  it("renders an empty-summary fallback until the panel resets on the next turn", () => {
+    const fallback: InteractionStep = {
+      kind: "plan_ready",
+      id: "p1",
+      summary: "",
+    };
+    deepStrictEqual(resolvePlanReadyOverride([fallback], null), {
+      kind: "card",
+      summary: "",
     });
   });
 

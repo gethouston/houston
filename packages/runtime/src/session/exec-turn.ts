@@ -42,7 +42,11 @@ import {
   type FileSnapshot,
   snapshotWorkspace,
 } from "./file-changes";
-import { newInteractionHolder, runWithInteractionCapture } from "./interaction";
+import {
+  newInteractionHolder,
+  planReadyFallback,
+  runWithInteractionCapture,
+} from "./interaction";
 import { switchNeedsCompaction } from "./provider-switch";
 import { renderReplayPreamble, replayCharBudget } from "./replay-transcript";
 import { createStallWatchdog } from "./stall-watchdog";
@@ -471,6 +475,20 @@ export async function execTurn(
     // assistant message so both the boundary divider and the reconnect /
     // rate-limit card survive a history reload. A provider failure lands HERE
     // (pi resolves the turn, it does not throw) with empty text, not in the catch.
+    // Models occasionally write a complete plan but omit the final tool call.
+    // A clean plan turn with visible assistant output must always leave the user
+    // an approval path. Recorded interactions still win (including ask_user).
+    // Check the LIVE mode too: a mid-turn execute→plan flip tells the model to
+    // lay out a plan while its execute-built toolset has no plan_ready at all,
+    // so the backstop is the ONLY way that flow gets its approval card.
+    const pendingInteraction =
+      !providerError &&
+      !stopped &&
+      (mode === "plan" || liveMode.current === "plan") &&
+      assistantText.trim() &&
+      !interaction.pending
+        ? planReadyFallback()
+        : interaction.pending;
     appendAssistantMessage(id, assistantText, {
       tools,
       thinking: thinkingText || undefined,
@@ -493,7 +511,7 @@ export async function execTurn(
       // stopped turn never carries it either — the user walked away mid-ask, so
       // nothing should re-render a card.
       pendingInteraction:
-        providerError || stopped ? undefined : interaction.pending,
+        providerError || stopped ? undefined : pendingInteraction,
       turnId,
     });
     // Fold this turn's token usage into the local spend ledger — the usage
@@ -522,9 +540,7 @@ export async function execTurn(
         type: "done",
         data: null,
         turnId,
-        ...(interaction.pending
-          ? { pendingInteraction: interaction.pending }
-          : {}),
+        ...(pendingInteraction ? { pendingInteraction } : {}),
       });
     }
   } catch (err) {

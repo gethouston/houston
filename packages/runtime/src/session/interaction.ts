@@ -219,6 +219,13 @@ export function recordPlanReady(input: { summary: string }): void {
   };
 }
 
+/** The deterministic plan-mode completion offer when the model wrote a plan
+ * without calling `plan_ready`. Kept beside `recordPlanReady` so both shapes
+ * remain deliberately identical. */
+export function planReadyFallback(): PendingInteraction {
+  return { steps: [{ kind: "plan_ready", id: "p1", summary: "" }] };
+}
+
 /**
  * Record the single suggest-reusable step for this turn (the model called
  * `suggest_reusable` on a clean finish to offer saving the work as a Skill,

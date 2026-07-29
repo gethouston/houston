@@ -161,6 +161,123 @@ test("the done frame omits pendingInteraction when the model asked nothing", asy
   expect(persistedInteraction(id)).toBeUndefined();
 });
 
+test("a clean plan turn with assistant output falls back to an empty plan_ready", async () => {
+  const id = "exec-plan-fallback";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv((emit) =>
+    emit({ type: "text", data: "Here is the plan." }),
+  );
+
+  await execTurn(
+    conv,
+    id,
+    "turn-1",
+    "plan it",
+    { author: undefined, priorAuthors: [] },
+    { mode: "plan" },
+  );
+  unsub();
+
+  const fallback = { steps: [{ kind: "plan_ready", id: "p1", summary: "" }] };
+  const done = events.find(
+    (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
+  );
+  expect(done?.pendingInteraction).toEqual(fallback);
+  expect(persistedInteraction(id)).toEqual(fallback);
+});
+
+test("a plan turn with a recorded question keeps that interaction instead of falling back", async () => {
+  const id = "exec-plan-question";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv((emit) => {
+    emit({ type: "text", data: "I need one detail." });
+    recordQuestions([{ kind: "question", id: "q1", question: "Which date?" }]);
+  });
+
+  await execTurn(
+    conv,
+    id,
+    "turn-1",
+    "plan it",
+    { author: undefined, priorAuthors: [] },
+    { mode: "plan" },
+  );
+  unsub();
+
+  const done = events.find(
+    (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
+  );
+  expect(done?.pendingInteraction).toEqual({
+    steps: [{ kind: "question", id: "q1", question: "Which date?" }],
+  });
+});
+
+test("a tool-only plan turn (no assistant text) never receives the plan fallback", async () => {
+  const id = "exec-plan-tool-only-no-fallback";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv(() => {
+    // No text frames at all: the model only ran tools and went silent.
+  });
+
+  await execTurn(
+    conv,
+    id,
+    "turn-1",
+    "plan it",
+    { author: undefined, priorAuthors: [] },
+    { mode: "plan" },
+  );
+  unsub();
+
+  const done = events.find(
+    (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
+  );
+  expect(done?.pendingInteraction).toBeUndefined();
+  expect(persistedInteraction(id)).toBeUndefined();
+});
+
+test("a mid-turn execute-to-plan flip still receives the plan fallback", async () => {
+  const id = "exec-flip-plan-fallback";
+  const { events, unsub } = collect(id);
+  // The Mode-pill flip lands on conv.liveMode while the turn runs; the
+  // execute-built toolset has no plan_ready, so the backstop must fire.
+  const conv = fakeConv((emit) => {
+    emit({ type: "text", data: "Here is the plan you asked for." });
+    if (conv.liveMode) conv.liveMode.current = "plan";
+  });
+
+  await execTurn(conv, id, "turn-1", "plan it from now on", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  const fallback = { steps: [{ kind: "plan_ready", id: "p1", summary: "" }] };
+  const done = events.find(
+    (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
+  );
+  expect(done?.pendingInteraction).toEqual(fallback);
+  expect(persistedInteraction(id)).toEqual(fallback);
+});
+
+test("an execute turn never receives the plan fallback", async () => {
+  const id = "exec-execute-no-plan-fallback";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv((emit) => emit({ type: "text", data: "All done." }));
+
+  await execTurn(conv, id, "turn-1", "do it", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  const done = events.find(
+    (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
+  );
+  expect(done?.pendingInteraction).toBeUndefined();
+  expect(persistedInteraction(id)).toBeUndefined();
+});
+
 test("a provider_error turn emits no done — the pending interaction never rides an error", async () => {
   const id = "exec-pending-provider-error";
   const { events, unsub } = collect(id);
@@ -182,6 +299,31 @@ test("a provider_error turn emits no done — the pending interaction never ride
   expect(events.some((e) => e.type === "done")).toBe(false);
   expect(events.some((e) => e.type === "provider_error")).toBe(true);
   // The recorded interaction must NOT be persisted on a failed turn either.
+  expect(persistedInteraction(id)).toBeUndefined();
+});
+
+test("a provider-error plan turn never receives the plan fallback", async () => {
+  const id = "exec-plan-error-no-fallback";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv((emit) => {
+    emit({ type: "text", data: "Partial plan." });
+    emit({
+      type: "provider_error",
+      data: { kind: "unknown", provider: "openai", raw_excerpt: "boom" },
+    });
+  });
+
+  await execTurn(
+    conv,
+    id,
+    "turn-1",
+    "plan it",
+    { author: undefined, priorAuthors: [] },
+    { mode: "plan" },
+  );
+  unsub();
+
+  expect(events.some((e) => e.type === "done")).toBe(false);
   expect(persistedInteraction(id)).toBeUndefined();
 });
 
@@ -364,6 +506,28 @@ test("a user stop mid-prompt persists stopped:true, drops the pending interactio
   expect(meta?.pendingInteraction).toBeUndefined();
   // The marker is cleared so it never bleeds into the next turn.
   expect((conv as { stoppedTurnId?: string }).stoppedTurnId).toBeUndefined();
+});
+
+test("a stopped plan turn never receives the plan fallback", async () => {
+  const id = "exec-plan-stop-no-fallback";
+  const { events, unsub } = collect(id);
+  const conv: Conv = fakeConv((emit) => {
+    emit({ type: "text", data: "Partial plan." });
+    (conv as { stoppedTurnId?: string }).stoppedTurnId = "turn-stop";
+  });
+
+  await execTurn(
+    conv,
+    id,
+    "turn-stop",
+    "plan it",
+    { author: undefined, priorAuthors: [] },
+    { mode: "plan" },
+  );
+  unsub();
+
+  expect(events.some((e) => e.type === "done")).toBe(false);
+  expect(persistedInteraction(id)).toBeUndefined();
 });
 
 test("a completed turn (no stop) leaves stopped absent", async () => {

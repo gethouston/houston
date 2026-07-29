@@ -149,6 +149,27 @@ test("a persisted pendingInteraction recovers on reload: needs_you + the interac
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
+test("an empty-summary plan_ready settles to needs_you like every blocking interaction", () => {
+  const interaction: PendingInteraction = {
+    steps: [{ kind: "plan_ready", id: "p1", summary: "" }],
+  };
+  const { s } = run(
+    [
+      { role: "user", content: "plan it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "Here is the plan.",
+        ts: 2,
+        turnId: "t-1",
+        pendingInteraction: interaction,
+      },
+    ],
+    "t-1",
+  );
+  expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
+});
+
 test("a legacy pre-step pendingInteraction on a persisted reply is ignored, not adopted", () => {
   // Written by an older build: no `steps`. Adopting it would crash every
   // consumer that reads interaction.steps ("undefined is not an object").

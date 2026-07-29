@@ -23,12 +23,14 @@ export type NonPlanReadyStep = Exclude<
  *  - `stepper` — anything else with at least one non-plan_ready step → the
  *                existing ChatInteractionCard, over the plan_ready-free steps
  *                (defensive: a plan_ready step never enters the stepper).
- *  - `none`    — a lone plan_ready step the user dismissed ("Keep planning"),
+ *  - `none`    — a lone plan_ready step the user dismissed,
  *                or nothing renderable → the composer returns.
  *
- * `dismissed` is the summary of the plan_ready step the user chose to keep
- * planning on: a LATER, different plan (different summary) re-shows the card.
- * Pure so the branch is unit-tested without the panel's event plumbing.
+ * `dismissed` is the summary of the plan_ready step the user dismissed. It
+ * only suppresses a matching offer during the current idle
+ * window; the panel clears it when a new turn starts, so reused step ids and
+ * summaries never suppress a later turn's card. Pure so the branch is
+ * unit-tested without the panel's event plumbing.
  */
 export type PlanReadyOverride =
   | { kind: "card"; summary: string }
