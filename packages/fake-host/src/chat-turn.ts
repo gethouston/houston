@@ -49,7 +49,27 @@ export function resetReplyDelay(): void {
   nextInteraction = null;
 }
 
+/**
+ * A fixed markdown document so the visual suite can pin the chat type scale
+ * (HOU-1051): every heading level, emphasis, a list, inline code, and a link.
+ * Triggered when the user's text mentions "markdown"; everything else keeps the
+ * plain echo the functional specs assert on.
+ */
+const MARKDOWN_SHOWCASE = [
+  "# Tokyo, distilled",
+  "## Where the money goes",
+  "Flights and the hotel dominate; the rest is noise.",
+  "- **Flights**: book 8 weeks out",
+  "- **Hotel**: Shinjuku, near the JR line",
+  "### Day one",
+  "Land, drop the bags, walk Omoide Yokocho at dusk.",
+  "#### Backup plan",
+  "Budget lives in `trip.md`; [this guide](https://example.com) covers rail passes.",
+  "That is the whole plan.",
+].join("\n\n");
+
 function cannedReply(userText: string): string {
+  if (/markdown/i.test(userText)) return MARKDOWN_SHOWCASE;
   return `Roger that. You said: "${userText}"`;
 }
 

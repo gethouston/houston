@@ -72,6 +72,23 @@ function mentionTargets({
   }));
 }
 
+/**
+ * Chat retune of Streamdown's document-scale headings (HOU-1051). Stock
+ * Streamdown sets `h1` to text-3xl (30px), which towers over the bubble's 16px
+ * body. Both roles keep full markdown rendering (the user's message included,
+ * matching ChatGPT/Claude); only the type scale changes: h1 20px stepping down
+ * through 16px (never below the body, so a deep heading can't read inverted;
+ * h5/h6 at 14px are the rare exception), all semibold (Streamdown's own
+ * weight), with heading margins pulled
+ * in from mt-6 to fit a bubble. Descendant selectors (specificity 0,1,1)
+ * reliably beat Streamdown's element utilities (0,1,0) — same trick as the
+ * app's update-notes card.
+ */
+const CHAT_MARKDOWN_SCALE = [
+  "[&_h1]:text-xl [&_h2]:text-lg [&_:is(h3,h4)]:text-base [&_:is(h5,h6)]:text-sm",
+  "[&_:is(h1,h2)]:mt-5 [&_:is(h3,h4,h5,h6)]:mt-4",
+].join(" ");
+
 export function ChatMessageBody({
   message,
   streaming,
@@ -121,6 +138,7 @@ export function ChatMessageBody({
           reads as the speaker's byline rather than a separate line of talk. */}
       {nameSlot ? <div className="-mb-1">{nameSlot}</div> : null}
       <MessageResponse
+        className={CHAT_MARKDOWN_SCALE}
         isAnimating={streaming}
         mentions={mentionTargets({ message, mentionPeople, currentUserId })}
         onOpenLink={onOpenLink}
