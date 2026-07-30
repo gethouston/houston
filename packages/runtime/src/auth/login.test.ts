@@ -98,6 +98,37 @@ test("openai-codex browser login preflights the callback port and fails fast whe
   }
 });
 
+test("a retry click during an in-flight codex browser login reuses the flow instead of reporting its own port busy", async () => {
+  // pi binds 1455 the moment the browser flow starts. The preflight used to run
+  // BEFORE the idempotent reuse check, so a second connect click (user's
+  // browser tab hung / opened behind the window) tripped over Houston's OWN
+  // callback server: "Another app on this computer is using the sign-in port"
+  // on every retry for the whole 10-min abandonment window (Sentry issue
+  // 7639120568). Reuse must win: same info back, no error, pi invoked once.
+  const pi: { server: Server | null } = { server: null };
+  const piLogin = stubPiLogin(async (interaction) => {
+    // Simulate pi's in-process callback server holding the fixed port.
+    pi.server = await occupyCodexCallbackPort();
+    interaction.notify({ type: "auth_url", url: "https://auth.example/codex" });
+    return new Promise<never>(() => {});
+  });
+  try {
+    const first = await startLogin("openai-codex", false);
+    expect(first.kind).toBe("url");
+
+    // The retry click, with 1455 held by our own in-flight flow.
+    const second = await startLogin("openai-codex", false);
+    expect(second).toBe(first);
+    expect(piLogin.oauthLogin).toHaveBeenCalledTimes(1);
+  } finally {
+    cancelLogin("openai-codex");
+    await new Promise((r) => setTimeout(r, 50));
+    piLogin.mockRestore();
+    const server = pi.server;
+    if (server) await new Promise<void>((r) => server.close(() => r()));
+  }
+});
+
 test("openai-codex device-code login does NOT preflight the callback port", async () => {
   // The device-code flow (deviceAuth:true) binds no loopback server, so a
   // squatter on 1455 must not block it: it goes straight to pi.

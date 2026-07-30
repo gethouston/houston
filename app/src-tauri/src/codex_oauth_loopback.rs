@@ -12,10 +12,12 @@
 //! runs in JS exactly as it does for the browser relay. Then we serve a small
 //! "you're connected" page, pull the app window to the front, and shut down.
 
+use std::sync::Mutex;
 use std::time::Duration;
 
 use tauri::{AppHandle, Emitter};
 use tokio::net::TcpListener;
+use tokio::task::JoinHandle;
 
 use crate::loopback_util::{read_request_target, split_target, write_response};
 
@@ -35,25 +37,34 @@ const CALLBACK_EVENT: &str = "codex-oauth://callback";
 /// `start_codex_oauth_loopback` again for a fresh attempt.
 const LISTEN_TIMEOUT: Duration = Duration::from_secs(300);
 
-/// Start a one-shot loopback listener on the fixed Codex redirect port. The
+/// The live listener task, if any. A retry click within the previous attempt's
+/// 5-minute window used to find port 1455 still held by our OWN one-shot
+/// listener and fail with "close whatever is using it" (Sentry issue
+/// 7639120568) — the abandoned listener had no teardown short of its timeout.
+/// A new start now aborts the previous task (dropping its socket) and rebinds,
+/// so the latest click always gets a fresh listener and a fresh window.
+static ACTIVE_LISTENER: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
+
+/// How long to keep retrying the bind while an aborted predecessor's socket is
+/// being dropped by the runtime. A genuinely foreign squatter (a real Codex
+/// CLI mid-login) still errors, just ~half a second later.
+const BIND_RETRIES: u32 = 20;
+const BIND_RETRY_DELAY: Duration = Duration::from_millis(25);
+
+/// Start a one-shot loopback listener on the fixed Codex redirect port,
+/// replacing any listener a previous (abandoned) attempt left running. The
 /// listener runs in a background task and shuts itself down after the first
-/// callback (or the timeout). Returns `Err` immediately if the port can't be
-/// bound so the frontend can toast the reason.
+/// callback (or the timeout). Returns `Err` if the port is held by another
+/// process so the frontend can toast the reason.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn start_codex_oauth_loopback(app: AppHandle) -> Result<(), String> {
-    let listener = TcpListener::bind(("127.0.0.1", CODEX_PORT))
-        .await
-        .map_err(|e| {
-            format!(
-                "Could not start the Codex sign-in listener: port {CODEX_PORT} is unavailable ({e}). \
-                 OpenAI requires this exact port, so close whatever is using it and try again."
-            )
-        })?;
+    abort_active_listener();
+    let listener = bind_codex_port(CODEX_PORT).await?;
     tracing::info!(
         "[codex-oauth-loopback] listening on http://127.0.0.1:{CODEX_PORT}{CALLBACK_PATH}"
     );
 
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         match tokio::time::timeout(LISTEN_TIMEOUT, serve_callback(&listener, &app)).await {
             Ok(Ok(())) => {}
             // The listener is a background task: the command already returned,
@@ -67,8 +78,40 @@ pub async fn start_codex_oauth_loopback(app: AppHandle) -> Result<(), String> {
             ),
         }
     });
+    *ACTIVE_LISTENER.lock().unwrap() = Some(handle);
 
     Ok(())
+}
+
+/// Abort the previous attempt's listener task, if one is still running.
+/// Aborting a task that already finished (callback served / timed out) is a
+/// no-op, so this needs no liveness check.
+fn abort_active_listener() {
+    if let Some(prev) = ACTIVE_LISTENER.lock().unwrap().take() {
+        prev.abort();
+    }
+}
+
+/// Bind the fixed redirect port, absorbing the short window in which an
+/// aborted predecessor's socket is still being torn down. Every retry
+/// exhausted means a foreign process owns the port for real.
+async fn bind_codex_port(port: u16) -> Result<TcpListener, String> {
+    let mut last_err = None;
+    for attempt in 0..BIND_RETRIES {
+        if attempt > 0 {
+            tokio::time::sleep(BIND_RETRY_DELAY).await;
+        }
+        match TcpListener::bind(("127.0.0.1", port)).await {
+            Ok(listener) => return Ok(listener),
+            Err(e) => last_err = Some(e),
+        }
+    }
+    let e = last_err.expect("BIND_RETRIES > 0 guarantees an error was recorded");
+    Err(format!(
+        "Could not start the Codex sign-in listener: port {port} is unavailable ({e}). \
+         OpenAI requires this exact port, so close other AI coding tools \
+         (or wait a few minutes) and try again."
+    ))
 }
 
 /// Accept connections until one hits the callback path, then handle it and
@@ -175,5 +218,40 @@ mod tests {
         // The loopback serves only this one page, so nothing may be fetched.
         assert!(!SUCCESS_PAGE.contains("<img"));
         assert!(!SUCCESS_PAGE.contains("src="));
+    }
+
+    #[tokio::test]
+    async fn bind_fails_with_actionable_error_when_a_foreign_process_holds_the_port() {
+        // A real squatter (e.g. an actual Codex CLI mid-login) never releases
+        // the port, so the retry loop must exhaust and surface the remedy.
+        // Ephemeral port: tests must never touch the real 1455.
+        let squatter = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let port = squatter.local_addr().unwrap().port();
+
+        let err = bind_codex_port(port).await.unwrap_err();
+        assert!(err.contains("close other AI coding tools"), "err: {err}");
+        assert!(err.contains(&port.to_string()), "err: {err}");
+    }
+
+    #[tokio::test]
+    async fn bind_succeeds_after_the_previous_listener_task_is_aborted() {
+        // The Sentry-7639120568 shape: a prior sign-in attempt's one-shot
+        // listener still owns the port when the user retries. Aborting the old
+        // task and rebinding must succeed within the retry window — the abort
+        // drops the socket asynchronously, which is exactly the latency the
+        // bind retries exist to absorb.
+        let holder = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let port = holder.local_addr().unwrap().port();
+        let task = tokio::spawn(async move {
+            // Hold the socket like an abandoned serve_callback would.
+            let _ = holder.accept().await;
+        });
+
+        // Sanity: while the task lives, the port really is taken.
+        assert!(TcpListener::bind(("127.0.0.1", port)).await.is_err());
+
+        task.abort();
+        let rebound = bind_codex_port(port).await.expect("rebind after abort");
+        assert_eq!(rebound.local_addr().unwrap().port(), port);
     }
 }
