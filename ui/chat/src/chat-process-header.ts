@@ -9,6 +9,8 @@
  */
 
 import type { ChatProcessSegment } from "./chat-process-groups";
+import type { CommandActivity } from "./command-activity.ts";
+import { commandActivityOf } from "./command-activity.ts";
 import type { ToolEntry } from "./feed-to-messages";
 import { getToolActionLabel, toolShortName } from "./tool-labels.ts";
 
@@ -113,10 +115,24 @@ export function buildProcessHeaderLabel(opts: {
 }
 
 /**
+ * Header text for a classified command activity, mirroring the branded row's
+ * `{name} · {action}` shape (HOU-1048). English-only like the tool verbs.
+ */
+export function activityLabel(activity: CommandActivity): string {
+  if (activity.kind === "python") return "Python · Running code";
+  return activity.host
+    ? `Browsing the web · ${activity.host}`
+    : "Browsing the web";
+}
+
+/**
  * The header content and its left-icon intent, picked purely so the component
  * only reads the `kind`:
  * - `brand` — the current tool is a resolvable `integration_execute`: the app
  *   logo replaces the helmet + `{name} · {actionLabel}`.
+ * - `activity` — a `bash`/`run_code` call classified as web or Python
+ *   (HOU-1048): globe / Python glyph + "Browsing the web · {host}" /
+ *   "Python · Running code".
  * - `tool` — any other running tool: `toolName` lets the component reuse the
  *   mission-log per-tool icon (helmet when the name isn't mapped) + the verb.
  * - `text` — helmet + label: the active "Thinking..." gap and the settled
@@ -124,6 +140,7 @@ export function buildProcessHeaderLabel(opts: {
  */
 export type ProcessHeader =
   | { kind: "brand"; brand: ChatActionBrand }
+  | { kind: "activity"; activity: CommandActivity; label: string }
   | { kind: "tool"; label: string; toolName: string }
   | { kind: "text"; label: string };
 
@@ -143,6 +160,10 @@ export function buildProcessHeader(opts: {
           const brand = labels.resolveActionBrand(action);
           if (brand) return { kind: "brand", brand };
         }
+      }
+      const activity = commandActivityOf(tool);
+      if (activity) {
+        return { kind: "activity", activity, label: activityLabel(activity) };
       }
       return {
         kind: "tool",
