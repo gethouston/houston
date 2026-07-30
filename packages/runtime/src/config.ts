@@ -84,6 +84,8 @@ export const config = {
    * always kept on disk. An absent directory simply means no skills.
    */
   skillsDirOverride: env.HOUSTON_SKILLS_DIR || "",
+  /** Read-only workspace-shared skills directory. Empty means unavailable. */
+  sharedSkillsDir: env.HOUSTON_SHARED_SKILLS_DIR || "",
   /** Product system prompt injected by the host/app. Empty = built-in default. */
   systemPrompt: env.HOUSTON_SYSTEM_PROMPT || "",
 

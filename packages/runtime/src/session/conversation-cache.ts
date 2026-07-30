@@ -41,7 +41,9 @@ import type { ProvidedContext } from "./workspace-context";
 // by name: pi's defaults resolve absolute paths as-is, so without the clamp a
 // prompt-injected agent could read /etc/passwd or its own auth.json with no
 // bash tool. See tools/clamped-fs.ts.
-const fileTools = makeClampedFileTools(config.workspaceDir);
+const fileTools = makeClampedFileTools(config.workspaceDir, {
+  readOnlyRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
+});
 
 // The blocking-question tool: available in EVERY mode (holds no credential,
 // makes no network call). Records the turn's pending question so it rides the
@@ -174,6 +176,7 @@ registerBackend(
     readToken: () => readAnthropicToken(authStorage),
     toolSelection,
     systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+    readOnlyRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
     // SAME integrations gate as the pi path above: present only when this
     // runtime can reach its host with a sandbox token, so the Claude backend's
     // in-process MCP server exposes the identical integration tool set.

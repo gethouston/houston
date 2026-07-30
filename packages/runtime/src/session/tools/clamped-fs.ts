@@ -18,7 +18,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
 import { assertNotPlanMode } from "../live-mode-gate";
-import { WorkspaceGuard } from "./fs-guard";
+import { WorkspaceGuard, type WorkspaceGuardOptions } from "./fs-guard";
 
 /**
  * Workspace-clamped file tools (cloud security Gate #1).
@@ -31,9 +31,10 @@ import { WorkspaceGuard } from "./fs-guard";
  *
  *  1. OUTER (load-bearing, all six tools): before pi's execute runs, the
  *     model-supplied `path` is resolved the way pi resolves it, validated
- *     against the workspace root (lexically AND symlink-resolved), and the
- *     param is REWRITTEN to the clamped absolute path. grep/find spawn rg/fd
- *     subprocesses on that path, so this is the only wall that constrains them.
+ *     lexically AND symlink-resolved, and rewritten to the clamped absolute
+ *     path. Reads accept the workspace or configured read-only roots; writes
+ *     accept only the workspace. grep/find spawn rg/fd subprocesses on that
+ *     path, so this is the only wall that constrains them.
  *  2. INNER (defense in depth): edit/write/ls/grep run their filesystem access
  *     through guarded `operations` that re-validate every absolute path pi
  *     hands them. read keeps pi's default operations (its image-sniffing
@@ -76,6 +77,7 @@ function withPlanGate(def: AnyToolDefinition): AnyToolDefinition {
 function withClampedPath(
   def: AnyToolDefinition,
   guard: WorkspaceGuard,
+  access: "read" | "write",
 ): AnyToolDefinition {
   return {
     ...def,
@@ -84,7 +86,10 @@ function withClampedPath(
       if (raw !== undefined && typeof raw !== "string") {
         throw new Error(`${def.name}: 'path' must be a string`);
       }
-      const abs = guard.clamp(raw as string | undefined);
+      const abs =
+        access === "read"
+          ? guard.clampRead(raw as string | undefined)
+          : guard.clamp(raw as string | undefined);
       return def.execute(
         toolCallId,
         { ...(params as object), path: abs },
@@ -98,25 +103,28 @@ function withClampedPath(
 
 export function makeClampedFileTools(
   workspaceDir: string,
+  options?: WorkspaceGuardOptions,
 ): AnyToolDefinition[] {
-  const guard = new WorkspaceGuard(workspaceDir);
-  const g = (p: string) => guard.assertInside(p);
+  const guard = new WorkspaceGuard(workspaceDir, options);
+  const read = (path: string) => guard.assertReadable(path);
+  const write = (path: string) => guard.assertInside(path);
 
   // Inner-wall operations mirror pi's defaults exactly, plus the guard.
   const editOps = {
-    readFile: (p: string) => fsReadFile(g(p)),
+    readFile: (p: string) => fsReadFile(write(p)),
     writeFile: (p: string, content: string) =>
-      fsWriteFile(g(p), content, "utf-8"),
-    access: (p: string) => fsAccess(g(p), constants.R_OK | constants.W_OK),
+      fsWriteFile(write(p), content, "utf-8"),
+    access: (p: string) => fsAccess(write(p), constants.R_OK | constants.W_OK),
   };
   const writeOps = {
     writeFile: (p: string, content: string) =>
-      fsWriteFile(g(p), content, "utf-8"),
-    mkdir: (dir: string) => fsMkdir(g(dir), { recursive: true }).then(() => {}),
+      fsWriteFile(write(p), content, "utf-8"),
+    mkdir: (dir: string) =>
+      fsMkdir(write(dir), { recursive: true }).then(() => {}),
   };
   const lsOps = {
     exists: async (p: string) => {
-      const abs = g(p); // an escape THROWS — it must never read as "doesn't exist"
+      const abs = read(p); // an escape THROWS — it must never read as "doesn't exist"
       try {
         await fsStat(abs);
         return true;
@@ -124,35 +132,39 @@ export function makeClampedFileTools(
         return false;
       }
     },
-    stat: (p: string) => fsStat(g(p)),
-    readdir: (p: string) => fsReaddir(g(p)),
+    stat: (p: string) => fsStat(read(p)),
+    readdir: (p: string) => fsReaddir(read(p)),
   };
   const grepOps = {
-    isDirectory: async (p: string) => (await fsStat(g(p))).isDirectory(),
-    readFile: (p: string) => fsReadFile(g(p), "utf-8"),
+    isDirectory: async (p: string) => (await fsStat(read(p))).isDirectory(),
+    readFile: (p: string) => fsReadFile(read(p), "utf-8"),
   };
 
   return [
-    withClampedPath(createReadToolDefinition(workspaceDir), guard),
+    withClampedPath(createReadToolDefinition(workspaceDir), guard, "read"),
     withClampedPath(
       createLsToolDefinition(workspaceDir, { operations: lsOps }),
       guard,
+      "read",
     ),
     withClampedPath(
       createGrepToolDefinition(workspaceDir, { operations: grepOps }),
       guard,
+      "read",
     ),
-    withClampedPath(createFindToolDefinition(workspaceDir), guard),
+    withClampedPath(createFindToolDefinition(workspaceDir), guard, "read"),
     withPlanGate(
       withClampedPath(
         createEditToolDefinition(workspaceDir, { operations: editOps }),
         guard,
+        "write",
       ),
     ),
     withPlanGate(
       withClampedPath(
         createWriteToolDefinition(workspaceDir, { operations: writeOps }),
         guard,
+        "write",
       ),
     ),
   ];

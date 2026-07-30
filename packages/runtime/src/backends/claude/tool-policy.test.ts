@@ -108,6 +108,27 @@ test("canUseTool approves a file tool whose path is inside the workspace", async
   });
 });
 
+test("canUseTool allows shared-root reads but denies writes and Bash there", async () => {
+  const ws = workspace();
+  const shared = workspace();
+  const can = makeCanUseTool(ws, { readOnlyRoots: [shared] });
+
+  expect(
+    (await decide(can, "Read", { file_path: join(shared, "SKILL.md") }))
+      .behavior,
+  ).toBe("allow");
+  expect(
+    (await decide(can, "Grep", { pattern: "step", path: shared })).behavior,
+  ).toBe("allow");
+  expect(
+    (await decide(can, "Edit", { file_path: join(shared, "SKILL.md") }))
+      .behavior,
+  ).toBe("deny");
+  expect(
+    (await decide(can, "Bash", { command: `cat ${shared}/SKILL.md` })).behavior,
+  ).toBe("deny");
+});
+
 test("canUseTool denies an absolute-path escape", async () => {
   const can = makeCanUseTool(workspace());
   const r = await decide(can, "Read", { file_path: "/etc/passwd" });

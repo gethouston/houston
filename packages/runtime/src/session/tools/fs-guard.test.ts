@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
@@ -124,4 +130,45 @@ test("prefix-sibling directory does not pass the containment check", () => {
   writeFileSync(join(r, "ws-evil", "x.txt"), "x");
   const g = new WorkspaceGuard(ws);
   expect(() => g.clamp(join(r, "ws-evil", "x.txt"))).toThrow(PathEscapeError);
+});
+
+test("a read-only root is readable but remains outside write containment", () => {
+  const ws = freshRoot();
+  const shared = mkdtempSync(join(tmpdir(), "houston-shared-"));
+  const skillFile = join(shared, "research-company", "SKILL.md");
+  mkdirSync(join(shared, "research-company"));
+  writeFileSync(skillFile, "shared skill");
+  const g = new WorkspaceGuard(ws, { readOnlyRoots: [shared] });
+  const canonicalSkillFile = realpathSync(skillFile);
+
+  expect(g.clampRead(canonicalSkillFile)).toBe(canonicalSkillFile);
+  expect(g.assertReadable(canonicalSkillFile)).toBe(canonicalSkillFile);
+  expect(() => g.clamp(canonicalSkillFile)).toThrow(PathEscapeError);
+  expect(() => g.assertInside(canonicalSkillFile)).toThrow(PathEscapeError);
+});
+
+test("a symlink inside a read-only root cannot escape that root", () => {
+  const ws = freshRoot();
+  const shared = mkdtempSync(join(tmpdir(), "houston-shared-"));
+  const outside = mkdtempSync(join(tmpdir(), "houston-outside-"));
+  writeFileSync(join(outside, "secret.txt"), "secret");
+  symlinkSync(outside, join(shared, "escaped"));
+  const g = new WorkspaceGuard(ws, { readOnlyRoots: [shared] });
+  const [canonicalShared] = g.readOnlyRoots;
+  if (!canonicalShared) throw new Error("expected the shared root to exist");
+
+  expect(() =>
+    g.clampRead(join(canonicalShared, "escaped", "secret.txt")),
+  ).toThrow(PathEscapeError);
+});
+
+test("without an existing read-only root, reads stay workspace-only", () => {
+  const ws = freshRoot();
+  const g = new WorkspaceGuard(ws, {
+    readOnlyRoots: [join(ws, "missing-shared-root")],
+  });
+
+  expect(g.readOnlyRoots).toEqual([]);
+  expect(g.clampRead("notes.txt")).toBe(join(g.root, "notes.txt"));
+  expect(() => g.clampRead("/etc/passwd")).toThrow(PathEscapeError);
 });

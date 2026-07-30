@@ -1,10 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { join, sep } from "node:path";
 import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
 import { config } from "../config";
 import { makeCompactionGuard } from "./compaction-guard";
 import { withModeOverlay } from "./mode-overlays";
+import { loadSkillsManifest } from "./skills-manifest";
 import {
   buildGroupContextSection,
   buildWorkspaceContextSection,
@@ -38,17 +39,31 @@ function loadWorkspaceContextFile(
 
 /**
  * Pure, parameterized loader builder: our system prompt, the workspace's own
- * context file (CLAUDE.md/AGENTS.md, root only), and SKILL.md skills from the
- * given skills dir. pi's broader on-disk discovery (extensions, prompt
- * templates, themes, the ancestor context-file walk, pi's default skill dirs)
- * stays disabled — what an agent sees is decided here, not by whatever is
- * lying around on disk. Caller must await loader.reload() before use.
+ * context file (CLAUDE.md/AGENTS.md, root only), agent-local skills, and only
+ * the workspace-shared skills enabled by this agent's manifest. pi's broader
+ * on-disk discovery (extensions, prompt templates, themes, the ancestor
+ * context-file walk, pi's default skill dirs) stays disabled — what an agent
+ * sees is decided here, not by whatever is lying around on disk. Caller must
+ * await loader.reload() before use.
  */
 export function buildAgentLoader(opts: {
   cwd: string;
   skillsDir: string;
+  sharedSkillsDir?: string;
   systemPrompt: string;
 }) {
+  const sharedSkillsDir =
+    opts.sharedSkillsDir && existsSync(opts.sharedSkillsDir)
+      ? realpathSync(opts.sharedSkillsDir)
+      : null;
+  const enabledSharedSkills = new Set(
+    sharedSkillsDir ? loadSkillsManifest(opts.cwd).enabled : [],
+  );
+  const additionalSkillPaths = [
+    ...(existsSync(opts.skillsDir) ? [opts.skillsDir] : []),
+    ...(sharedSkillsDir ? [sharedSkillsDir] : []),
+  ];
+
   // noSkills disables pi's DEFAULT skill directories; additionalSkillPaths
   // still load (pi gates on `noSkills && skillPaths.length === 0`).
   return new DefaultResourceLoader({
@@ -63,7 +78,27 @@ export function buildAgentLoader(opts: {
     // on-disk discovery). The guard keeps compaction's summarization request
     // within the model's window — see compaction-guard.ts (HOU-709).
     extensionFactories: [makeCompactionGuard()],
-    additionalSkillPaths: existsSync(opts.skillsDir) ? [opts.skillsDir] : [],
+    additionalSkillPaths,
+    skillsOverride: sharedSkillsDir
+      ? ({ skills, diagnostics }) => {
+          const isShared = (baseDir: string) =>
+            isWithin(realpathSync(baseDir), sharedSkillsDir);
+          const localNames = new Set(
+            skills
+              .filter((skill) => !isShared(skill.baseDir))
+              .map((skill) => skill.name),
+          );
+          return {
+            skills: skills.filter(
+              (skill) =>
+                !isShared(skill.baseDir) ||
+                (enabledSharedSkills.has(skill.name) &&
+                  !localNames.has(skill.name)),
+            ),
+            diagnostics,
+          };
+        }
+      : undefined,
     agentsFilesOverride: () => ({
       agentsFiles: loadWorkspaceContextFile(opts.cwd),
     }),
@@ -71,10 +106,14 @@ export function buildAgentLoader(opts: {
   });
 }
 
+function isWithin(path: string, root: string): boolean {
+  return path === root || path.startsWith(root + sep);
+}
+
 /**
- * Config-bound loader for an agent session. Skills come from
- * <workspace>/.agents/skills (Agent Skills standard — Houston's existing
- * on-disk layout loads as-is) unless HOUSTON_SKILLS_DIR overrides.
+ * Config-bound loader for an agent session. Agent-local skills come from
+ * <workspace>/.agents/skills unless HOUSTON_SKILLS_DIR overrides; an existing
+ * HOUSTON_SHARED_SKILLS_DIR contributes manifest-filtered read-only skills.
  */
 export function makeAgentLoader(
   cwd: string,
@@ -96,6 +135,7 @@ export function makeAgentLoader(
   return buildAgentLoader({
     cwd,
     skillsDir: config.skillsDirOverride || join(cwd, ".agents", "skills"),
+    sharedSkillsDir: config.sharedSkillsDir,
     systemPrompt: withModeOverlay(withGroup, mode),
   });
 }
