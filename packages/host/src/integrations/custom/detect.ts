@@ -8,6 +8,10 @@ export interface DetectResult {
   suggestedSlug?: string;
   /** MCP probe: does the server demand auth before listing tools? */
   requiresAuthentication?: boolean;
+  /** MCP probe: the auth it demands is ITS OWN sign-in flow (OAuth), which
+   *  the custom provider cannot drive — a pasted API key will never work.
+   *  Surfaced so the UI/agent can say so instead of collecting a dead key. */
+  requiresOAuth?: boolean;
   toolCount?: number;
 }
 
@@ -38,6 +42,7 @@ export async function detectSource(
       suggestedSlug: slugify(probe.slug),
       requiresAuthentication:
         probe.requiresAuthentication || probe.requiresOAuth,
+      ...(probe.requiresOAuth ? { requiresOAuth: true } : {}),
       toolCount: probe.toolCount ?? undefined,
     };
   } catch {

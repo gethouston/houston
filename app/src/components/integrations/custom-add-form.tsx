@@ -143,7 +143,7 @@ export function CustomAddForm({
         </div>
         {shownVerdict && (
           <p
-            className={`text-[13px] ${shownVerdict.kind === "unknown" ? "text-ink-muted" : "text-success-text"}`}
+            className={`text-[13px] ${shownVerdict.kind === "unknown" || shownVerdict.requiresOAuth ? "text-ink-muted" : "text-success-text"}`}
             role="status"
           >
             {t(detectSummaryKey(shownVerdict))}

@@ -137,7 +137,7 @@
     "enterKey": "Enter key",
     "add": {
       "title": "Add a custom integration",
-      "chatTitle": "Set it up with Houston",
+      "chatTitle": "Set it up in chat",
       "chatDesc": "Tell Houston what you want to connect and it walks you through everything in chat.",
       "manualTitle": "Add it manually",
       "manualDesc": "Paste an API or MCP server address and fill in the details yourself.",
@@ -150,12 +150,13 @@
       "detected": {
         "api": "Recognized an API service.",
         "mcp": "Recognized an MCP server.",
-        "unknown": "We couldn't recognize this address. Check the URL, or let Houston help you in chat."
+        "unknown": "We couldn't recognize this address. Check the URL, or let Houston help you in chat.",
+        "mcpOauth": "This server signs in with its own account (OAuth), which Houston can't connect to yet. An API key won't work here."
       },
       "nameLabel": "Name",
       "namePlaceholder": "What should we call it?",
       "needsKey": "Needs an API key",
-      "needsKeyDesc": "Turn this on if the service asks for a key or token.",
+      "needsKeyDesc": "Turn this on if the service asks for a key or token. You'll enter it securely right after adding.",
       "back": "Back",
       "submit": "Add integration",
       "submitting": "Adding...",
@@ -168,12 +169,7 @@
       "activeBody": "Connected and working. Your agents can use its actions in any chat.",
       "pendingBody": "Waiting for an API key. Enter the key to switch it on.",
       "errorBody": "It isn't working right now: {{message}}",
-      "updateKey": "Update key",
-      "toolsTitle": "Available actions",
-      "toolsEmpty": "No actions discovered yet.",
-      "moreTools_one": "and {{count}} more",
-      "moreTools_other": "and {{count}} more",
-      "toolsError": "We couldn't load the list of actions right now."
+      "updateKey": "Update key"
     },
     "status": {
       "pendingKey": "Needs an API key",

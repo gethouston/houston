@@ -86,7 +86,6 @@ export function CustomIntegrationDialogs({
     <>
       <CustomDetailDialog
         integration={bySlug(selection.detailSlug)}
-        agentId={agentId}
         onClose={selection.closeDetail}
         onEnterKey={(integration) => {
           selection.closeDetail();

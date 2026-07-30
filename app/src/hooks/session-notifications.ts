@@ -103,6 +103,11 @@ export async function consumePendingNav() {
   logger.debug(
     `[notification] navigating to agent=${agent.name} activity=${target.activityId} (sessionKey=${sessionKey})`,
   );
+  // Captured BEFORE setCurrent: the integration branch below needs to know
+  // where the user actually was, and on macOS a bare cmd-tab refocus lands
+  // here too (focus is the click proxy — there is no desktop click event).
+  const prevAgentId = useAgentStore.getState().current?.id;
+  const prevViewMode = useUIStore.getState().viewMode;
   useAgentStore.getState().setCurrent(agent);
   if (target.setupKind === "routine") {
     // A routine-setup chat has no board card: its home is the Routines tab,
@@ -112,10 +117,25 @@ export async function consumePendingNav() {
     return;
   }
   if (target.setupKind === "integration") {
-    // A custom-integration setup chat has no board card either: its home is
-    // the global Integrations page, where the panel reopens for this agent.
-    useUIStore.getState().setViewMode(INTEGRATIONS_VIEW_ID);
-    useUIStore.getState().setIntegrationSetupChatAgentId(agent.id);
+    // A custom-integration setup chat has no board card. Since HOU-980 it
+    // lives on TWO surfaces — the owning agent's Integrations tab and the
+    // global page. When the user is ALREADY on one of them, never yank them
+    // to the global section (a bare macOS refocus lands here): leave an open
+    // chat alone, or open it in place when it was closed.
+    const ui = useUIStore.getState();
+    const onOwnSurface =
+      prevViewMode === INTEGRATIONS_VIEW_ID ||
+      (prevViewMode === "integrations" && prevAgentId === agent.id);
+    if (onOwnSurface) {
+      if (ui.integrationSetupChatAgentId !== agent.id) {
+        ui.onPanelClose?.();
+        ui.setIntegrationSetupChatAgentId(agent.id);
+      }
+      return;
+    }
+    ui.onPanelClose?.();
+    ui.setViewMode(INTEGRATIONS_VIEW_ID);
+    ui.setIntegrationSetupChatAgentId(agent.id);
     return;
   }
   if (target.setupKind === "skill") {

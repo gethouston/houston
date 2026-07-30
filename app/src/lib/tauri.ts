@@ -1765,10 +1765,6 @@ export const tauriIntegrations = {
     call("custom_integration_remove", () =>
       getEngine().removeAgentCustomIntegration(agentId, slug),
     ),
-  customTools: (slug: string, agentId?: string) =>
-    agentId
-      ? getEngine().agentCustomIntegrationTools(agentId, slug)
-      : getEngine().customIntegrationTools(slug),
 };
 
 /**

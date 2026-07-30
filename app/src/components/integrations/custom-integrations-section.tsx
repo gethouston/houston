@@ -14,7 +14,7 @@ import {
 } from "./custom-integration-dialogs";
 import { CustomIntegrationRow } from "./custom-integration-row";
 import { filterCustomIntegrations } from "./custom-integrations-model";
-import { CustomSectionChrome } from "./custom-section-chrome";
+import { CustomModeShell, CustomSectionChrome } from "./custom-section-chrome";
 import { CustomSetupBanner } from "./custom-setup-banner";
 import { IntegrationSetupChat } from "./integration-setup-chat";
 import { useIntegrationChatSetup } from "./use-integration-chat-setup";
@@ -105,15 +105,25 @@ export function CustomIntegrationsSection({
     </Button>
   );
 
+  const rowsGrid = (
+    <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
+      {visible.map((integration) => (
+        <CustomIntegrationRow
+          key={integration.slug}
+          integration={integration}
+          onOpen={(i) => selection.openDetail(i.slug)}
+          onEnterKey={(i) => selection.openKey(i.slug)}
+          onRemove={(i) => selection.openRemove(i.slug)}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <section>
-      <CustomSectionChrome
-        variant={variant}
-        count={items.length}
-        query={query}
-        onQueryChange={setQuery}
-        addButton={addButton}
-      />
+      {variant === "section" && (
+        <CustomSectionChrome count={items.length} addButton={addButton} />
+      )}
 
       {chatSetup.hasDraft && !chatSetup.open && activeAgent && (
         <CustomSetupBanner
@@ -148,20 +158,26 @@ export function CustomIntegrationsSection({
             <p className="text-sm text-ink-muted">{t("custom.empty")}</p>
           )
         )
+      ) : variant === "tab" ? (
+        // The Custom MODE (HOU-980 review): the same shell grammar as the
+        // Composio mode — this mode's search + Add over an Installed card.
+        <>
+          <CustomModeShell
+            query={query}
+            onQueryChange={setQuery}
+            addButton={addButton}
+            count={visible.length}
+          >
+            {rowsGrid}
+          </CustomModeShell>
+          {visible.length === 0 && (
+            <p className="text-sm text-ink-muted">{t("custom.noResults")}</p>
+          )}
+        </>
       ) : visible.length === 0 ? (
         <p className="text-sm text-ink-muted">{t("custom.noResults")}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-          {visible.map((integration) => (
-            <CustomIntegrationRow
-              key={integration.slug}
-              integration={integration}
-              onOpen={(i) => selection.openDetail(i.slug)}
-              onEnterKey={(i) => selection.openKey(i.slug)}
-              onRemove={(i) => selection.openRemove(i.slug)}
-            />
-          ))}
-        </div>
+        rowsGrid
       )}
 
       <CustomAddFlow

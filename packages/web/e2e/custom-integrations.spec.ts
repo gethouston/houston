@@ -10,8 +10,9 @@ import { expect, test } from "./support/fixtures";
  * key-free `custom` provider, and the page must render the Custom
  * integrations section instead of going dark with "not available in this
  * setup" (the regression this spec pins). The ready-mode case checks the
- * custom integration surfaces in the consolidated Installed strip + its own
- * tab, and that the pending → enter-key flow works.
+ * custom integration surfaces behind the page-level Custom integrations mode
+ * (its own Installed list — never mixed into the Composio strip since the
+ * mode split), and that the pending → enter-key flow works.
  */
 
 async function armCapabilities(
@@ -107,15 +108,13 @@ test("ready mode lists a pending custom integration and the enter-key flow activ
   await armCustomIntegrations(request, [ACME_PENDING]);
   await openIntegrationsPage(page);
 
-  // The consolidated Installed strip (OUTSIDE the tabs) carries the custom
-  // integration as a tile (name + its API/MCP badge) alongside the catalog
-  // connections.
+  // The Custom integrations mode carries the row (name + its API/MCP badge
+  // + status) in ITS Installed section — the Composio strip never mixes
+  // custom rows in (the mode split shows one source at a time).
+  await page.getByRole("tab", { name: "Custom integrations" }).click();
   await expect(
     page.getByRole("button", { name: "Acme CRM API" }),
   ).toBeVisible();
-
-  // Its row (status + actions) lives in the Custom integrations tab.
-  await page.getByRole("tab", { name: "Custom integrations" }).click();
   await expect(page.getByText("Needs an API key")).toBeVisible();
 
   // Enter the key: the secure dialog collects it, the definition flips active.
@@ -188,7 +187,7 @@ test("adding manually with a key lands pending and chains straight into the secu
   await expect(page.getByText("3 actions")).toBeVisible();
 });
 
-test("an Installed-strip custom tile opens the detail card: metadata, actions list, and remove (HOU-980)", async ({
+test("a custom row opens the detail card: metadata, action count, and remove (HOU-980)", async ({
   page,
   request,
 }) => {
@@ -200,15 +199,12 @@ test("an Installed-strip custom tile opens the detail card: metadata, actions li
       slug: "acme_live",
       name: "Acme Live",
       state: { status: "active", toolCount: 2 },
-      tools: [
-        { name: "create_contact", description: "Create a contact" },
-        { name: "list_deals" },
-      ],
     },
   ]);
   await openIntegrationsPage(page);
 
-  // The strip tile now opens the detail card in place (no tab jump).
+  // The row's body is the open affordance for the detail card.
+  await page.getByRole("tab", { name: "Custom integrations" }).click();
   await page.getByRole("button", { name: "Acme Live API" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Acme Live")).toBeVisible();
@@ -218,8 +214,9 @@ test("an Installed-strip custom tile opens the detail card: metadata, actions li
   await expect(
     dialog.getByText("https://api.acme.test/openapi.json"),
   ).toBeVisible();
-  await expect(dialog.getByText("create_contact")).toBeVisible();
-  await expect(dialog.getByText("list_deals")).toBeVisible();
+  // The action COUNT is the whole story (the per-action list was cut on
+  // review — raw tool names read as noise to a non-technical audience).
+  await expect(dialog.getByText("2 actions")).toBeVisible();
 
   // Remove chains into the named confirm (an ALERTDIALOG — ConfirmDialog
   // rides Radix AlertDialog, which getByRole("dialog") never matches), and
@@ -244,6 +241,7 @@ test("a pending integration's detail card leads with Enter key and opens the sec
   await armCustomIntegrations(request, [ACME_PENDING]);
   await openIntegrationsPage(page);
 
+  await page.getByRole("tab", { name: "Custom integrations" }).click();
   await page.getByRole("button", { name: "Acme CRM API" }).click();
   const dialog = page.getByRole("dialog");
   await expect(

@@ -8,7 +8,6 @@ import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { KeyRound } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./app-logo";
-import { CustomDetailTools } from "./custom-detail-tools";
 import {
   customAuthMethod,
   customKindBadgeKey,
@@ -28,21 +27,20 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 /**
  * The custom integration's "more info" modal (HOU-980) — what a custom row or
  * Installed-strip tile opens: letter avatar + name, kind + live-status chips,
- * a situation line, the metadata the user gave it (URL, added date), and the
- * compiled actions behind it ({@link CustomDetailTools}). Footer: Enter/Update
- * key (when the integration can take one) beside Remove. Presentational: the
- * parent owns the key dialog, the delete confirm, and the selection state.
+ * a situation line, and the metadata the user gave it (URL, added date, the
+ * action COUNT — the per-action list was cut on review: raw tool names +
+ * model-facing blurbs read as noise to the non-technical audience). Footer:
+ * Enter/Update key (when the integration can take one) beside Remove.
+ * Presentational: the parent owns the key dialog, the delete confirm, and
+ * the selection state.
  */
 export function CustomDetailDialog({
   integration,
-  agentId,
   onClose,
   onEnterKey,
   onRemove,
 }: {
   integration: CustomIntegrationView | null;
-  /** Per-agent surface (HOU-823): the tools read rides the agent's routes. */
-  agentId?: string;
   onClose: () => void;
   onEnterKey: (integration: CustomIntegrationView) => void;
   onRemove: (integration: CustomIntegrationView) => void;
@@ -140,10 +138,6 @@ export function CustomDetailDialog({
           />
         )}
       </dl>
-
-      {state.status === "active" && (
-        <CustomDetailTools slug={integration.slug} agentId={agentId} />
-      )}
     </CatalogDetailDialog>
   );
 }

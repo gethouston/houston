@@ -218,10 +218,20 @@ export function setCustomCredential(
 }
 
 /** Deterministic detect for `POST /v1/integrations/custom/detect` (HOU-980):
- *  "mcp" in the URL → an MCP probe hit, "unknown" → unrecognizable, anything
- *  else → an OpenAPI document. Mirrors the real host's result shape. */
+ *  "mcp" in the URL → an MCP probe hit ("oauth" too → an OAuth-walled one),
+ *  "unknown" → unrecognizable, anything else → an OpenAPI document. Mirrors
+ *  the real host's result shape. */
 export function detectCustomIntegration(url: string): Record<string, unknown> {
   if (url.includes("unknown")) return { kind: "unknown" };
+  if (url.includes("oauth")) {
+    return {
+      kind: "mcp",
+      name: "Acme MCP",
+      suggestedSlug: "acme-mcp",
+      requiresAuthentication: true,
+      requiresOAuth: true,
+    };
+  }
   if (url.includes("mcp")) {
     return {
       kind: "mcp",

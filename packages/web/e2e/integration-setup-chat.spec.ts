@@ -60,7 +60,7 @@ async function startSetupChat(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Add custom integration" }).click();
   // The add fork (HOU-980): the guided chat path leads; "Add it manually"
   // is its sibling (covered in custom-integrations.spec.ts).
-  await page.getByRole("button", { name: /Set it up with Houston/ }).click();
+  await page.getByRole("button", { name: /Set it up in chat/ }).click();
   // The agent picker: choose the seeded agent to open the embedded chat.
   await expect(page.getByText("Which agent should run this?")).toBeVisible();
   await page

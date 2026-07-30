@@ -58,6 +58,22 @@ describe("applyDetect", () => {
     const before = form({ kind: "mcp", name: "Keep", needsKey: true });
     deepStrictEqual(applyDetect(before, { kind: "unknown" }), before);
   });
+
+  it("an OAuth wall never flips needsKey on — a pasted key cannot satisfy it", () => {
+    const next = applyDetect(form(), {
+      kind: "mcp",
+      requiresAuthentication: true,
+      requiresOAuth: true,
+    });
+    strictEqual(next.needsKey, false);
+    // ...but a needsKey the user already turned on is left alone.
+    const kept = applyDetect(form({ needsKey: true }), {
+      kind: "mcp",
+      requiresAuthentication: true,
+      requiresOAuth: true,
+    });
+    strictEqual(kept.needsKey, true);
+  });
 });
 
 describe("detectSummaryKey", () => {
@@ -67,6 +83,10 @@ describe("detectSummaryKey", () => {
       "custom.add.detected.api",
     );
     strictEqual(detectSummaryKey({ kind: "mcp" }), "custom.add.detected.mcp");
+    strictEqual(
+      detectSummaryKey({ kind: "mcp", requiresOAuth: true }),
+      "custom.add.detected.mcpOauth",
+    );
     strictEqual(
       detectSummaryKey({ kind: "unknown" }),
       "custom.add.detected.unknown",

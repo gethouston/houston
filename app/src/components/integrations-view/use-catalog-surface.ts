@@ -1,5 +1,4 @@
 import type {
-  CustomIntegrationView,
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
@@ -43,20 +42,22 @@ export interface CatalogSurface {
  */
 export function useCatalogSurface(opts: {
   active: readonly InstalledRow[];
-  custom: CustomIntegrationView[];
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   allowlist?: string[] | null;
 }): CatalogSurface {
-  const { active, custom, catalog, connections, allowlist = null } = opts;
+  const { active, catalog, connections, allowlist = null } = opts;
   const [tab, setTab] = useState("catalog");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
 
   const filtering = query.trim() !== "" || category !== "all";
+  // Composio only since the mode split (HOU-980 review): custom integrations
+  // live behind their own mode with their own installed list, never in this
+  // strip.
   const shown = useMemo(
-    () => filterInstalledBy(active, custom, catalog, { query, category }),
-    [active, custom, catalog, query, category],
+    () => filterInstalledBy(active, [], catalog, { query, category }),
+    [active, catalog, query, category],
   );
   const availableCount = useMemo(() => {
     const connected = catalogHiddenToolkits(connections, allowlist);
@@ -73,7 +74,7 @@ export function useCatalogSurface(opts: {
     setCategory,
     filtering,
     shown,
-    installedCount: shown.active.length + shown.custom.length,
+    installedCount: shown.active.length,
     availableCount,
   };
 }

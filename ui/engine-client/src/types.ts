@@ -2035,6 +2035,9 @@ export interface CustomDetectResult {
   suggestedSlug?: string;
   /** MCP probe: does the server demand auth before listing tools? */
   requiresAuthentication?: boolean;
+  /** MCP probe: the auth is the server's OWN sign-in flow (OAuth), which the
+   *  custom provider cannot drive — a pasted API key will never work. */
+  requiresOAuth?: boolean;
   toolCount?: number;
 }
 

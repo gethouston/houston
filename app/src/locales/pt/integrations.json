@@ -137,7 +137,7 @@
     "enterKey": "Inserir chave",
     "add": {
       "title": "Adicionar uma integração personalizada",
-      "chatTitle": "Configure com o Houston",
+      "chatTitle": "Configure no chat",
       "chatDesc": "Conte ao Houston o que você quer conectar e ele te guia passo a passo no chat.",
       "manualTitle": "Adicionar manualmente",
       "manualDesc": "Cole o endereço de uma API ou de um servidor MCP e preencha os dados você mesmo.",
@@ -150,12 +150,13 @@
       "detected": {
         "api": "Reconhecemos um serviço de API.",
         "mcp": "Reconhecemos um servidor MCP.",
-        "unknown": "Não conseguimos reconhecer este endereço. Confira a URL ou deixe o Houston te ajudar no chat."
+        "unknown": "Não conseguimos reconhecer este endereço. Confira a URL ou deixe o Houston te ajudar no chat.",
+        "mcpOauth": "Este servidor faz login com a própria conta (OAuth) e o Houston ainda não consegue se conectar a ele. Uma chave de API não vai funcionar aqui."
       },
       "nameLabel": "Nome",
       "namePlaceholder": "Como você quer chamá-la?",
       "needsKey": "Precisa de uma chave de API",
-      "needsKeyDesc": "Ative isto se o serviço pede uma chave ou um token.",
+      "needsKeyDesc": "Ative isto se o serviço pede uma chave ou um token. Você vai inseri-la com segurança logo depois de adicionar.",
       "back": "Voltar",
       "submit": "Adicionar integração",
       "submitting": "Adicionando...",
@@ -168,12 +169,7 @@
       "activeBody": "Conectada e funcionando. Seus agentes podem usar as ações dela em qualquer chat.",
       "pendingBody": "Aguardando uma chave de API. Insira a chave para ativá-la.",
       "errorBody": "Ela não está funcionando agora: {{message}}",
-      "updateKey": "Atualizar chave",
-      "toolsTitle": "Ações disponíveis",
-      "toolsEmpty": "Nenhuma ação descoberta ainda.",
-      "moreTools_one": "e mais {{count}}",
-      "moreTools_other": "e mais {{count}}",
-      "toolsError": "Não conseguimos carregar a lista de ações agora."
+      "updateKey": "Atualizar chave"
     },
     "status": {
       "pendingKey": "Precisa de uma chave de API",

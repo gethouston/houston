@@ -27,7 +27,6 @@ export {
   useAgentCustomIntegrations,
   useCustomIntegrations,
   useCustomIntegrationsFor,
-  useCustomIntegrationTools,
   useDetectCustomIntegration,
   useRemoveCustomIntegration,
   useSubmitCustomCredential,

@@ -27,8 +27,10 @@ export function isServiceUrl(url: string): boolean {
 /**
  * Fold a detect result into the form: adopt the detected kind, fill a name
  * the user has not typed yet, and flip "needs a key" on when the probe hit an
- * auth wall. Never overwrites what the user already wrote, and an `unknown`
- * result changes nothing (the caller shows the "couldn't recognize it" line).
+ * auth wall — but NOT an OAuth wall: that server wants its own sign-in flow,
+ * which a pasted key can never satisfy (the verdict line says so instead).
+ * Never overwrites what the user already wrote, and an `unknown` result
+ * changes nothing (the caller shows the "couldn't recognize it" line).
  */
 export function applyDetect(
   form: CustomAddForm,
@@ -39,7 +41,10 @@ export function applyDetect(
     ...form,
     kind: result.kind,
     name: form.name.trim() ? form.name : (result.name ?? form.name),
-    needsKey: result.requiresAuthentication ? true : form.needsKey,
+    needsKey:
+      result.requiresAuthentication && !result.requiresOAuth
+        ? true
+        : form.needsKey,
   };
 }
 
@@ -49,9 +54,13 @@ export function detectSummaryKey(
 ):
   | "custom.add.detected.api"
   | "custom.add.detected.mcp"
+  | "custom.add.detected.mcpOauth"
   | "custom.add.detected.unknown" {
   if (result.kind === "openapi") return "custom.add.detected.api";
-  if (result.kind === "mcp") return "custom.add.detected.mcp";
+  if (result.kind === "mcp")
+    return result.requiresOAuth
+      ? "custom.add.detected.mcpOauth"
+      : "custom.add.detected.mcp";
   return "custom.add.detected.unknown";
 }
 

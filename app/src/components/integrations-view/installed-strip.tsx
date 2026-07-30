@@ -5,10 +5,7 @@ import {
   CatalogShowMore,
   StatusDot,
 } from "@houston-ai/core";
-import type {
-  CustomIntegrationView,
-  IntegrationConnection,
-} from "@houston-ai/engine-client";
+import type { IntegrationConnection } from "@houston-ai/engine-client";
 import { ChevronRight } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,8 +16,7 @@ import {
 import { AppLogo } from "../integrations";
 
 /** One installed item, flattened to the props {@link CatalogRow} needs so the
- *  preview cap can slice a single list spanning both active apps and custom
- *  integrations in display order. */
+ *  preview cap can slice the list in display order. */
 interface InstalledItem {
   key: string;
   icon: ReactNode;
@@ -33,16 +29,14 @@ interface InstalledItem {
 }
 
 /**
- * The CONSOLIDATED "Installed" section: everything the user already has — active
- * catalog connections AND custom integrations — as the SAME flat rows the
- * browse catalog uses ({@link CatalogRow}: brand art via {@link AppLogo}, name +
- * one-line description, a quiet trailing chevron). It sits above the source tabs
- * (identity, not discovery), so it never changes when the user switches tabs,
- * and the tabs' own searches never touch it. The parent may narrow WHICH rows
- * render via the section's own "Installed" search — it hands us the already-
- * filtered rows, so this component stays a pure renderer. A catalog row opens
- * that connection's detail modal; a custom row jumps to the Custom integrations
- * tab, where its row (status, key, remove) lives.
+ * The Composio "Installed" section: the user's active catalog connections as
+ * the SAME flat rows the browse catalog uses ({@link CatalogRow}: brand art
+ * via {@link AppLogo}, name + one-line description, a quiet trailing
+ * chevron). Custom integrations never appear here — since the mode split
+ * (HOU-980 review) they live behind their own page-level mode with their own
+ * installed list. The parent hands us already-filtered rows, so this
+ * component stays a pure renderer; a row opens that connection's detail
+ * modal.
  *
  * At rest the section caps to {@link CATALOG_INSTALLED_PREVIEW_CAP} rows behind
  * a quiet "Show all N" expander, so a well-stocked section never buries the
@@ -54,15 +48,11 @@ interface InstalledItem {
  */
 export function InstalledStrip({
   active,
-  custom,
   onOpen,
-  onOpenCustom,
   searching = false,
 }: {
   active: readonly InstalledRow[];
-  custom: CustomIntegrationView[];
   onOpen: (connection: IntegrationConnection) => void;
-  onOpenCustom: (integration: CustomIntegrationView) => void;
   /** True while the surface's shared query or category is narrowing the rows:
    *  show every match uncapped. At rest (the default) the section caps to a
    *  preview. */
@@ -96,32 +86,6 @@ export function InstalledStrip({
       // lookup that could never resolve to anything else.
       statusDot: <StatusDot status="active" srLabel={t("status.active")} />,
       onClick: () => onOpen(row.connection),
-    })),
-    ...custom.map((integration) => ({
-      key: integration.slug,
-      icon: (
-        <AppLogo
-          display={{
-            toolkit: integration.slug,
-            name: integration.name,
-            description: "",
-            logoUrl: "",
-          }}
-          size="lg"
-          className="rounded-lg"
-        />
-      ),
-      title: integration.name,
-      description: t(
-        integration.kind === "mcp" ? "custom.badge.mcp" : "custom.badge.api",
-      ),
-      statusDot: (
-        <StatusDot
-          status={integration.state.status}
-          srLabel={t(`status.${integration.state.status}`)}
-        />
-      ),
-      onClick: () => onOpenCustom(integration),
     })),
   ];
 

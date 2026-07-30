@@ -1,7 +1,6 @@
 import type {
   AddCustomIntegrationInput,
   CustomIntegrationView,
-  CustomToolInfo,
 } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
@@ -150,24 +149,5 @@ export function useAddCustomIntegration(agentId?: string) {
       }
       invalidateCustom(qc);
     },
-  });
-}
-
-/**
- * The compiled tools behind one custom integration (the detail card's list).
- * `slug === null` keeps the query idle (no dialog open). `null` data = the
- * host does not serve the route (old build) — the caller hides the list and
- * keeps the count it already has.
- */
-export function useCustomIntegrationTools(
-  slug: string | null,
-  agentId?: string,
-) {
-  const { capabilities } = useCapabilities();
-  return useQuery<CustomToolInfo[] | null>({
-    queryKey: queryKeys.customIntegrationTools(slug ?? "", agentId),
-    queryFn: () => tauriIntegrations.customTools(slug as string, agentId),
-    enabled: integrationsSupported(capabilities) && slug !== null,
-    staleTime: 30_000,
   });
 }

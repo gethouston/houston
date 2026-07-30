@@ -1035,29 +1035,37 @@ tools, credential, remove) switches to the `/agents/:id/...` routes via the
 adapter grew the matching `...AgentCustomIntegration...` methods in
 `custom-integrations-mixin.ts`), so the tab works behind the hosted gateway.
 
-**UI (HOU-980)**: the Custom integrations tab (both surfaces — the global page
-and the per-agent tab share the whole Available section through
-`integrations-view/use-catalog-tabs.tsx`, the one builder of the catalog +
-custom tabs). "Add custom integration" opens `CustomAddDialog`, a two-way
-fork: **"Set it up with Houston"** (the guided chat — direct with the tab's
-agent, agent picker first on the global page; it opens in the shell-level
-RIGHT panel, the same one the routine chat and the mission board use, so the
-Integrations surface stays visible on the left. Only the VISIBLE section
-instance drives that shared panel — kept-alive views leave every instance
-mounted, so `integration-setup-chat.tsx` gates on `active`: TabProps.isActive
-on the per-agent tab, `viewMode === INTEGRATIONS_VIEW_ID` on the global page.
-The kickoff prompt, `lib/integration-chat-setup.ts`, explicitly states the
-user is present and `ask_user` works — a "Houston sent this automatically"
-framing once made the model refuse the step-by-step interview) or **"Add it manually"**
+**UI (HOU-980)**: a PAGE-LEVEL source toggle (`integrations-view/
+catalog-mode-tabs.tsx` — `CatalogModeTabs` + the shared `CatalogBrowsePane`,
+one builder for both surfaces) shows ONE source at a time: **Integrations**
+(Composio — search + categories, its Installed strip of active catalog
+connections ONLY, the browse catalog) or **Custom integrations** (the same
+`CatalogShell` grammar via `CustomModeShell`: the mode's search + Add button
+over an Installed card of the custom rows). Custom rows never appear in the
+Composio strip — the old layout showed them twice. "Add custom integration"
+opens `CustomAddDialog`, a two-way fork: **"Set it up in chat"** (the guided
+chat — direct with the tab's agent, agent picker first on the global page; it
+opens in the shell-level RIGHT panel, the same one the routine chat and the
+mission board use, so the Integrations surface stays visible on the left.
+Only the VISIBLE section instance drives that shared panel — kept-alive views
+leave every instance mounted, so `integration-setup-chat.tsx` gates on
+`active`: TabProps.isActive on the per-agent tab, `viewMode ===
+INTEGRATIONS_VIEW_ID` on the global page. The kickoff prompt,
+`lib/integration-chat-setup.ts`, explicitly states the user is present and
+`ask_user` works — a "Houston sent this automatically" framing once made the
+model refuse the step-by-step interview) or **"Add it manually"**
 (`CustomAddForm` + pure `custom-add-model.ts`, node-tested): kind (API / MCP
-server), URL with an optional "Check" (the detect route pre-classifies and
-fills the name), name, and a "needs an API key" switch. An add that needs a
-key lands `pending` and chains straight into the secure key dialog. Every
-custom row's BODY and every Installed-strip custom tile opens
-`CustomDetailDialog` (letter avatar, kind + live-status chips, URL + added
-date, the compiled actions list via the tools route, capped at 8 with an
-"and N more" line; footer: Enter/Update key beside Remove). The dialog trio
-(detail / key / delete) hangs off ONE slug-keyed selection
+server), URL with an optional "Check" (the detect route pre-classifies, fills
+the name, and flips "needs an API key" on a key-walled server — an
+OAuth-walled one instead gets an honest "Houston can't connect to this yet"
+verdict via `requiresOAuth`, and never auto-flips the key switch: a pasted
+key cannot satisfy OAuth), name, and a "needs an API key" switch. An add
+that needs a key lands `pending` and chains straight into the secure key
+dialog. Every custom row's BODY opens `CustomDetailDialog` (letter avatar,
+kind + live-status chips, URL + added date + the action COUNT — the
+per-action list was cut on review as noise; footer: Enter/Update key beside
+Remove; the `tools` host route stays as API). The dialog trio (detail / key
+/ delete) hangs off ONE slug-keyed selection
 (`custom-integration-dialogs.tsx` — `useCustomSelection` +
 `CustomIntegrationDialogs`), re-deriving the fresh view from the live list so
 a key save flips the open card to active and a removal closes it. The
