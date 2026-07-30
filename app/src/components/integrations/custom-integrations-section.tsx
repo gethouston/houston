@@ -64,8 +64,11 @@ export function CustomIntegrationsSection({
 
   // A FAILED read renders loudly (error + retry): a transient 500 must never
   // be indistinguishable from a host without the feature — that one resolves
-  // `null` and hides the section legitimately.
-  if (list.isError) {
+  // `null` and hides the section legitimately. Only when there is NOTHING to
+  // show, though: a failed BACKGROUND refetch keeps the last good list on
+  // screen (an error panel over N live rows would erase the surface the same
+  // way the silent degrade would).
+  if (list.isError && list.data === undefined) {
     return <CustomLoadErrorState onRetry={() => void list.refetch()} />;
   }
 

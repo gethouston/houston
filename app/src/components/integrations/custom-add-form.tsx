@@ -3,7 +3,7 @@ import type {
   CustomDetectResult,
   CustomIntegrationView,
 } from "@houston-ai/engine-client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useAddCustomIntegration,
@@ -48,6 +48,10 @@ export function CustomAddForm({
   } | null>(null);
   const detect = useDetectCustomIntegration(agentId);
   const add = useAddCustomIntegration(agentId);
+  // Latest check wins, locally: today `canCheck` (disabled while pending)
+  // already serializes probes, but the verdict's correctness must not hang on
+  // the button's disabled state — a late result may never clobber a newer one.
+  const checkSeq = useRef(0);
 
   const input = addInputFrom(form);
   const canCheck = isServiceUrl(form.url) && !detect.isPending;
@@ -57,11 +61,12 @@ export function CustomAddForm({
   const check = async () => {
     if (!canCheck) return;
     const url = form.url.trim();
+    const seq = ++checkSeq.current;
     // A transport failure is toasted by `call()`; the stale verdict clears so
     // the line never claims a check that did not run.
     setVerdict(null);
     const result = await detect.mutateAsync(url).catch(() => null);
-    if (!result) return;
+    if (!result || seq !== checkSeq.current) return;
     setVerdict({ url, result });
     // Guarded per-field: only apply while the form still holds the checked URL.
     setForm((f) => (f.url.trim() === url ? applyDetect(f, result) : f));

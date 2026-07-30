@@ -39,13 +39,16 @@ export function useCustomIntegrations() {
   });
 }
 
-/** The SAME list through the per-agent surface (HOU-823). */
+/** The SAME list through the per-agent surface (HOU-823). Same `staleTime`
+ *  as the other observers of this key — mixed options on one cache entry
+ *  would make refetch behavior depend on which surface mounted first. */
 export function useAgentCustomIntegrations(agentId: string) {
   const { capabilities } = useCapabilities();
   return useQuery<CustomIntegrationView[] | null>({
     queryKey: queryKeys.agentCustomIntegrations(agentId),
     queryFn: () => tauriIntegrations.customListForAgent(agentId),
     enabled: integrationsSupported(capabilities),
+    staleTime: 30_000,
   });
 }
 
