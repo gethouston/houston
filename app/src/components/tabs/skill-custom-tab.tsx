@@ -7,12 +7,14 @@ import {
 import type { Activity } from "@houston-ai/engine-client";
 import { Plus, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { Agent } from "../../lib/types";
 import { HoustonSkillShelves } from "./houston-skill-shelves";
+import { OtherAgentSkills } from "./other-agent-skills";
 import { useHoustonSkillLibrary } from "./use-houston-skill-library";
 
 interface Props {
   /** The agent the library installs into (and whose drafts these are). */
-  agentPath: string;
+  agent: Agent;
   /** Unclaimed create-chats — each resumes right where the interview left off. */
   drafts: Activity[];
   onResumeDraft: (activityId: string) => void;
@@ -33,7 +35,7 @@ interface Props {
  * ({@link HoustonSkillShelves}).
  */
 export function SkillCustomTab({
-  agentPath,
+  agent,
   drafts,
   onResumeDraft,
   onDiscardDraft,
@@ -42,7 +44,7 @@ export function SkillCustomTab({
   installedSkillNames,
 }: Props) {
   const { t } = useTranslation("skills");
-  const library = useHoustonSkillLibrary(agentPath);
+  const library = useHoustonSkillLibrary(agent.folderPath);
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,6 +93,13 @@ export function SkillCustomTab({
           </Button>
         </div>
       </div>
+
+      {/* The user's own skills living on OTHER agents (HOU-792) — one click
+          copies a skill built for Agent A onto this agent. */}
+      <OtherAgentSkills
+        agent={agent}
+        installedSkillNames={installedSkillNames}
+      />
 
       <div className="flex flex-col gap-3">
         <CatalogSectionHeader title={t("library.heading")} size="lg" />

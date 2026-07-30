@@ -29,6 +29,9 @@ export function useSkillsChatSurface(opts: {
   chatNode: ReactNode | null;
   /** Row click: the skill's chat (writable) or the manual modal (read-only). */
   openRow: (name: string) => void;
+  /** Open a skill's chat WITHOUT the re-click toggle — the manage dialog's
+   *  "Edit in chat" must land on the chat even when it is already open. */
+  openChatFor: (name: string) => void;
   /** Unclaimed create-chats, shown as resumable rows on the Custom tab. */
   drafts: Activity[];
   resumeDraft: (activityId: string) => void;
@@ -56,6 +59,7 @@ export function useSkillsChatSurface(opts: {
     return {
       chatNode: null,
       openRow: onEditSkill,
+      openChatFor: () => {},
       drafts: [],
       resumeDraft: () => {},
       discardDraft: () => {},
@@ -94,6 +98,13 @@ export function useSkillsChatSurface(opts: {
   return {
     chatNode,
     openRow: view.openSkillChat,
+    openChatFor: (name: string) => {
+      // openSkillChat toggles a re-click closed; skip the call when this
+      // skill's chat is already the open one so the intent "go to the chat"
+      // never closes it.
+      if (selected?.kind === "skill" && selected.slug === name) return;
+      view.openSkillChat(name);
+    },
     drafts: chatSetup.draftActivities,
     resumeDraft: view.resumeDraft,
     discardDraft: view.discardDraft,

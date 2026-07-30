@@ -4,6 +4,7 @@ import type { CommunitySkill, CommunitySkillPreview } from "@houston-ai/skills";
 import { SkillMarketplaceSection } from "@houston-ai/skills";
 import { useTranslation } from "react-i18next";
 import { skillIntegrationSlugs } from "../../lib/skill-integrations";
+import type { Agent } from "../../lib/types";
 import { IntegrationBadges } from "../integrations";
 import { SkillCustomTab } from "./skill-custom-tab";
 import { useSkillMarketplaceSectionLabels } from "./use-skill-surface-labels";
@@ -21,8 +22,8 @@ import { useSkillMarketplaceSectionLabels } from "./use-skill-surface-labels";
 export function useSkillDiscoveryTabs(opts: {
   showCustom: boolean;
   /** The agent whose Skills surface this is — the Custom tab's Houston
-   *  library installs into it. */
-  agentPath: string;
+   *  library installs into it, and the cross-agent section excludes it. */
+  agent: Agent;
   onAddClick: () => void;
   /** Custom tab (HOU-791): start a new agent-guided create chat. */
   onCreateWithAi: () => void;
@@ -86,7 +87,7 @@ export function useSkillDiscoveryTabs(opts: {
             label: t("tabs.custom"),
             content: (
               <SkillCustomTab
-                agentPath={opts.agentPath}
+                agent={opts.agent}
                 drafts={opts.drafts}
                 onResumeDraft={opts.onResumeDraft}
                 onDiscardDraft={opts.onDiscardDraft}

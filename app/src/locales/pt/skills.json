@@ -149,7 +149,8 @@
     "back": "Voltar para habilidades",
     "editManually": "Editar manualmente",
     "draftInProgress": "Habilidade em construção. Continue de onde parou.",
-    "discardDraft": "Descartar rascunho"
+    "discardDraft": "Descartar rascunho",
+    "close": "Fechar"
   },
   "library": {
     "heading": "Dos agentes da Houston",
@@ -159,5 +160,53 @@
     "loading": "Carregando habilidades...",
     "loadFailed": "Não foi possível carregar a biblioteca de habilidades.",
     "retry": "Tentar novamente"
+  },
+  "global": {
+    "pageTitle": "Skills",
+    "pageSubtitle": "Ensine skills reutilizáveis aos seus agentes e escolha quem sabe o quê.",
+    "newSkill": "Nova skill",
+    "alreadyHasIt": "Já tem",
+    "noAgentsTitle": "Nenhum agente ainda",
+    "noAgentsDescription": "Crie um agente primeiro. As skills vivem com seus agentes, e esta página gerencia todas elas em um só lugar.",
+    "installedTo_one": "Adicionada a {{count}} agente",
+    "installedTo_other": "Adicionada a {{count}} agentes",
+    "installFailedFor": "Não conseguimos adicionar a skill para {{names}}",
+    "createdFor_one": "Skill criada para {{count}} agente",
+    "createdFor_other": "Skill criada para {{count}} agentes",
+    "skillUpdated": "Skill atualizada",
+    "skillRemoved": "Skill removida",
+    "install": {
+      "title": "Adicionar \"{{name}}\" a agentes",
+      "description": "Escolha quais agentes recebem esta skill.",
+      "confirm_one": "Adicionar a {{count}} agente",
+      "confirm_other": "Adicionar a {{count}} agentes"
+    },
+    "create": {
+      "title": "Nova skill",
+      "description": "Escreva a skill uma vez e escolha quais agentes vão aprender.",
+      "agentsLabel": "Criar para",
+      "confirm_one": "Criar para {{count}} agente",
+      "confirm_other": "Criar para {{count}} agentes"
+    },
+    "manage": {
+      "agentsLabel": "Agentes com esta skill",
+      "keepOneAgent": "Mantenha pelo menos um agente, ou use Excluir para remover a skill de todos.",
+      "removeConfirmTitle_one": "Remover de {{count}} agente?",
+      "removeConfirmTitle_other": "Remover de {{count}} agentes?",
+      "removeConfirmDescription": "Ao salvar, esta skill será removida de {{names}}. Isso não pode ser desfeito.",
+      "deleteConfirmTitle": "Excluir \"{{name}}\"?",
+      "deleteConfirmDescription_one": "Isso remove a skill de {{count}} agente ({{names}}). Não pode ser desfeito.",
+      "deleteConfirmDescription_other": "Isso remove a skill de {{count}} agentes ({{names}}). Não pode ser desfeito.",
+      "editInChat": "Editar no chat"
+    },
+    "chatPick": {
+      "title": "Quem vai construir com você?",
+      "description": "O chat abre com esse agente e a skill é criada nele primeiro. Depois você pode compartilhar com outros agentes."
+    }
+  },
+  "fromYourAgents": {
+    "heading": "Dos seus outros agentes",
+    "installAria": "Adicionar {{name}} a este agente",
+    "installedAria": "{{name}} já está neste agente"
   }
 }

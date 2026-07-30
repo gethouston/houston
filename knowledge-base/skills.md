@@ -162,6 +162,71 @@ never learns it exists, even though the Skills UI still lists it. Keep
    - `renderUserMessage` — decodes skill + attachment markers into cards
 6. Both **BoardTab** (per-agent kanban) and **Dashboard** (Mission Control / cross-agent kanban) consume this hook so the right panel is identical in both views.
 
+## Global Skills page (sidebar "Skills", HOU-792)
+
+Skills are stored ON each agent (`<agent>/.agents/skills/` — there is no shared
+or org-level store; that was HOU-792's misconception). The top-level **Skills**
+page (`app/src/components/skills-view/`, viewMode `skills-home`, sidebar entry
+between Integrations and AI Models) is a pure client aggregation over the
+existing per-agent routes — the host's skill routes already accept ANY agent
+the caller owns (`canUseAgent` is workspace ownership), so no backend changed:
+
+- **Your skills** — one row per slug across the workspace's agents
+  (`aggregateWorkspaceSkills` in `app/src/lib/workspace-skills.ts`,
+  node:test-covered), each with the holder agents' avatar stack. Fetching uses
+  one query per agent on the SAME `queryKeys.skills(path)` keys the per-agent
+  tab uses (`use-workspace-skills.ts`), so `SkillsChanged` invalidation
+  refreshes the page for free; fetched once per mount, never on focus (hosted:
+  a sweep wakes every pod — the `useAllConversations` discipline).
+- **Row click → manage dialog** (`manage-skill-dialog.tsx`): edit the full
+  SKILL.md (canonical copy = FIRST holder's) + toggle which agents hold it.
+  `planSkillAssignment` diffs the edit into the minimal fan-out: newly
+  assigned agents always get the canonical content (full-file
+  `tauriAgent.writeFile`, the Houston-library copy primitive); existing
+  holders are rewritten only when the content itself was edited; unassignments
+  confirm first (destructive), and Delete removes it from every holder.
+- **Store tab** — the same `SkillMarketplaceSection`; search/preview ride the
+  first agent (read-only marketplace proxies), install opens the
+  pick-agents dialog (`install-skill-dialog.tsx`; agents already holding the
+  slug lock out) and fans out `installCommunity` per picked agent.
+- **Custom skills tab** (`global-custom-tab.tsx`) — Create skill (the guided
+  chat), Add skill (the multi-agent from-scratch dialog,
+  `new-skill-dialog.tsx`), and the Houston library shelves
+  (`useHoustonSkillLibraryData`, the agent-agnostic half of the library hook);
+  library installs route through the same pick-agents flow
+  (`use-global-install-flow.tsx` unifies marketplace + library pending
+  installs behind one dialog).
+- **New skill / Create skill** — the guided create chat (HOU-791) in the
+  SHELL'S right-hand panel: `use-global-chat-flow.tsx` picks the hosting
+  agent (`choose-chat-agent-dialog.tsx`; skipped with one agent) and mounts
+  `global-skill-chat.tsx`, which drives the per-agent setup-chat machinery
+  and starts a fresh draft. The skill is created on that agent first, then
+  assignable from the manage dialog.
+
+**Setup chats are side-by-side everywhere (the Routines split).**
+`skill-setup-chat.tsx` portals into the shell detail panel
+(`useShellDetailPanel`) and owns the panel-open flag on mount/unmount, so on
+BOTH the per-agent Skills tab and the global page the catalog stays visible
+on the left while the conversation runs on the right (Escape closes, same as
+routines). The old swap-the-catalog-for-the-chat behavior is gone.
+
+**The manage dialog is the skill's one detail surface on BOTH pages.** A row
+click on the per-agent Skills tab opens the SAME manage dialog the global
+page uses (`agent-skill-manage-dialog.tsx` wraps it: lazy cross-agent
+aggregation while open, current agent pinned first so its copy is canonical);
+the guided chat sits behind the dialog's **Edit in chat** button
+(`onEditInChat`), which opens the side-panel chat on the skill's holder. The
+raw `SkillEditModal` remains only as the read-only fallback.
+
+**Per-agent Custom tab also shows "From your other agents"**
+(`other-agent-skills.tsx`): the user's own skills living on OTHER agents,
+one-click copyable onto this agent (load the holder's SKILL.md verbatim →
+`writeFile` here — the Houston-library copy primitive). Mounted only inside
+the tab content so the cross-agent fan-out runs only when the tab opens.
+
+The sidebar nav item made the bare "Skills" text ambiguous in e2e — scope
+selectors (see `skills-add-dialog.spec.ts`).
+
 ## Add Skills UI — the catalog-grammar Skills surface
 
 The agent's Skills section (`app/src/components/tabs/skills-content.tsx`) is

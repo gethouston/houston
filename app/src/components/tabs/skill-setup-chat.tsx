@@ -1,10 +1,12 @@
 import { Button } from "@houston-ai/core";
 import type { Activity } from "@houston-ai/engine-client";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Loader2, X } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { skillChatTurnContext } from "../../lib/skill-chat-prompts";
 import type { Agent, AgentDefinition } from "../../lib/types";
+import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
 
 interface Props {
@@ -26,7 +28,7 @@ interface Props {
    *  bound skill. Unused for drafts (nothing exists to pin yet). */
   skillSlug?: string;
   /** Close the pane and clear the selection (the catalog stays put). Wired
-   *  to the panel chrome's close X. */
+   *  to the panel chrome's close X and Escape. */
   onClose: () => void;
   /** The manual escape hatch (HOU-791 keeps it): opens the raw markdown edit
    *  modal for THIS skill. Only offered on an installed skill's chat. */
@@ -34,18 +36,18 @@ interface Props {
 }
 
 /**
- * A custom skill's setup chat, rendered INLINE inside the Skills section
- * (HOU-791 — mirrors the custom-integration setup chat). The guided chat is a
- * real mission under the hood, but every board filters it out via the
- * skill-setup sentinel — so this owns its OWN local container div and portals
- * the chat's detail panel into it, keeping the chat embedded on the Skills
- * page.
+ * A custom skill's setup chat, rendered in the SHELL'S right-hand detail
+ * panel — the same split the Routines tab and the mission board use: the
+ * Skills catalog stays visible on the left while the conversation opens as
+ * its own screen card on the right. Mounting this component IS what opens
+ * the panel (and unmounting closes it), so every host — the per-agent Skills
+ * tab and the global Skills page — gets the split without extra wiring.
  *
- * The shared {@link RoutineSetupChatBoard} does the AIBoard mount + full
- * `useAgentChatPanel` wiring — crucially `composerOverride`, which renders the
- * ask_user question cards the create interview depends on. The auto
- * "Mission: {title}" header line is overridden to read "Skill: {name}" (or
- * the create title for a draft).
+ * The guided chat is a real mission under the hood, but every board filters
+ * it out via the skill-setup sentinel — its only home is this panel. The
+ * shared {@link RoutineSetupChatBoard} does the AIBoard mount + full
+ * `useAgentChatPanel` wiring — crucially `composerOverride`, which renders
+ * the ask_user question cards the create interview depends on.
  */
 export function SkillSetupChat({
   agent,
@@ -57,7 +59,36 @@ export function SkillSetupChat({
   onEditManually,
 }: Props) {
   const { t } = useTranslation("skills");
-  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const { panelContainer, setPanelOpen } = useShellDetailPanel();
+
+  // Mount = panel open, unmount = panel closed. Same contract as
+  // routines-tab.tsx, centralized here so both Skills hosts share it.
+  useEffect(() => {
+    setPanelOpen(true);
+    return () => setPanelOpen(false);
+  }, [setPanelOpen]);
+
+  // Escape closes the panel (routines parity). Radix menus/dialogs mark their
+  // own Escape handled (`defaultPrevented`); a focused composer gets the FIRST
+  // Escape to blur (app convention), the pane only on the next one.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const el = document.activeElement;
+      const editable =
+        el instanceof HTMLElement &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable);
+      if (editable) {
+        el.blur();
+        return;
+      }
+      onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   // The Skills section has no ambient AgentDefinition. RoutineSetupChatBoard
   // needs one only for its agent-modes list, which a setup chat never uses —
@@ -76,32 +107,35 @@ export function SkillSetupChat({
       ? t("setupChat.missionTitle")
       : t("setupChat.skillLabel", { name: skillName ?? "" });
 
-  // The way back to the Skills section, always visible at the pane's left —
-  // the same affordance the custom-integration setup chat leads with.
-  const backButton = (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      onClick={onClose}
-      aria-label={t("setupChat.back")}
-    >
-      <ArrowLeft className="size-4" />
-    </Button>
-  );
-
-  // Draft still being created, or a skill chat still loading: keep the pane
-  // shape stable over a calm loading state rather than flashing an empty box,
-  // with the way back reachable the whole time.
+  // Draft still being created, or a skill chat still loading: a slim header
+  // (same shape + close as the live panel's) keeps the panel dismissable
+  // while it settles — portaled into the shell panel like the live board, so
+  // the pre-model state shares the same surface.
   if (!activity) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line">
-        <div className="border-line border-b px-4 py-3">{backButton}</div>
+    const surface = (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
+          <div className="mx-auto flex w-full max-w-3xl items-center gap-3">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+              {missionLabel}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t("setupChat.close")}
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink"
+            >
+              <X className="size-4" strokeWidth={1.75} />
+            </button>
+          </div>
+        </div>
         <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-ink-muted">
           <Loader2 className="size-4 animate-spin" />
           <span className="text-sm">{t("setupChat.opening")}</span>
         </div>
       </div>
     );
+    return panelContainer ? createPortal(surface, panelContainer) : null;
   }
 
   const sessionKey = activity.session_key ?? `activity-${activity.id}`;
@@ -115,35 +149,32 @@ export function SkillSetupChat({
       </Button>
     ) : undefined;
 
+  // The board renders its detail panel straight into the shell panel via
+  // `panelContainer`; its own list never shows, so the board itself stays
+  // hidden (the portal escapes the `hidden` wrapper). One mount, one panel.
   return (
-    // Fills the section's whole height (the Automations chat look) — the
-    // pane is flex-1 against the settings column, never a fixed box.
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line">
-      <div ref={setContainer} className="min-h-0 flex-1" />
-      <div className="hidden">
-        <RoutineSetupChatBoard
-          agent={agent}
-          agentDef={agentDef}
-          activity={activity}
-          sessionKey={sessionKey}
-          panelContainer={container}
-          panelLeading={backButton}
-          missionLabel={missionLabel}
-          panelActions={editManuallyButton}
-          onPanelClose={onClose}
-          // Every send re-asserts which skill this chat manages — the model
-          // must never have to remember it from the kickoff alone (it was
-          // observed asking "which skill?" inside a skill's own chat).
-          promptContext={
-            kind === "skill" && skillSlug
-              ? skillChatTurnContext({
-                  slug: skillSlug,
-                  displayName: skillName ?? "",
-                })
-              : undefined
-          }
-        />
-      </div>
+    <div className="hidden">
+      <RoutineSetupChatBoard
+        agent={agent}
+        agentDef={agentDef}
+        activity={activity}
+        sessionKey={sessionKey}
+        panelContainer={panelContainer}
+        missionLabel={missionLabel}
+        panelActions={editManuallyButton}
+        onPanelClose={onClose}
+        // Every send re-asserts which skill this chat manages — the model
+        // must never have to remember it from the kickoff alone (it was
+        // observed asking "which skill?" inside a skill's own chat).
+        promptContext={
+          kind === "skill" && skillSlug
+            ? skillChatTurnContext({
+                slug: skillSlug,
+                displayName: skillName ?? "",
+              })
+            : undefined
+        }
+      />
     </div>
   );
 }

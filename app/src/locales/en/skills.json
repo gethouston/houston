@@ -149,7 +149,8 @@
     "back": "Back to skills",
     "editManually": "Edit manually",
     "draftInProgress": "Skill in progress. Pick up where you left off.",
-    "discardDraft": "Discard draft"
+    "discardDraft": "Discard draft",
+    "close": "Close"
   },
   "library": {
     "heading": "From Houston's agents",
@@ -159,5 +160,53 @@
     "loading": "Loading skills...",
     "loadFailed": "Couldn't load the skill library.",
     "retry": "Retry"
+  },
+  "global": {
+    "pageTitle": "Skills",
+    "pageSubtitle": "Teach your agents reusable skills and choose who knows what.",
+    "newSkill": "New skill",
+    "alreadyHasIt": "Already has it",
+    "noAgentsTitle": "No agents yet",
+    "noAgentsDescription": "Create an agent first. Skills live with your agents, and this page manages them across all of them.",
+    "installedTo_one": "Added to {{count}} agent",
+    "installedTo_other": "Added to {{count}} agents",
+    "installFailedFor": "We couldn't add the skill for {{names}}",
+    "createdFor_one": "Skill created for {{count}} agent",
+    "createdFor_other": "Skill created for {{count}} agents",
+    "skillUpdated": "Skill updated",
+    "skillRemoved": "Skill removed",
+    "install": {
+      "title": "Add \"{{name}}\" to agents",
+      "description": "Choose which agents get this skill.",
+      "confirm_one": "Add to {{count}} agent",
+      "confirm_other": "Add to {{count}} agents"
+    },
+    "create": {
+      "title": "New skill",
+      "description": "Write the skill once, then choose which agents learn it.",
+      "agentsLabel": "Create for",
+      "confirm_one": "Create for {{count}} agent",
+      "confirm_other": "Create for {{count}} agents"
+    },
+    "manage": {
+      "agentsLabel": "Agents with this skill",
+      "keepOneAgent": "Keep at least one agent, or use Delete to remove the skill everywhere.",
+      "removeConfirmTitle_one": "Remove from {{count}} agent?",
+      "removeConfirmTitle_other": "Remove from {{count}} agents?",
+      "removeConfirmDescription": "Saving will remove this skill from {{names}}. This cannot be undone.",
+      "deleteConfirmTitle": "Delete \"{{name}}\"?",
+      "deleteConfirmDescription_one": "This removes the skill from {{count}} agent ({{names}}). This cannot be undone.",
+      "deleteConfirmDescription_other": "This removes the skill from {{count}} agents ({{names}}). This cannot be undone.",
+      "editInChat": "Edit in chat"
+    },
+    "chatPick": {
+      "title": "Who should build it with you?",
+      "description": "The chat runs with this agent, and the skill is created there first. You can share it with other agents afterwards."
+    }
+  },
+  "fromYourAgents": {
+    "heading": "From your other agents",
+    "installAria": "Add {{name}} to this agent",
+    "installedAria": "{{name}} is already on this agent"
   }
 }

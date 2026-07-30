@@ -1,11 +1,19 @@
 import type { SidebarLabels, SidebarNavItemEntry } from "@houston-ai/layout";
 import { WorkspaceSwitcher } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import { Blocks, Boxes, LayoutDashboard, Settings, Store } from "lucide-react";
+import {
+  Blocks,
+  Boxes,
+  LayoutDashboard,
+  LibraryBig,
+  Settings,
+  Store,
+} from "lucide-react";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
+import { SKILLS_VIEW_ID } from "../skills-view/id";
 import { STORE_VIEW_ID } from "../store-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 
@@ -40,6 +48,13 @@ export function buildSidebarNavItems(args: {
       icon: <Blocks className="h-4 w-4" />,
       onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
       dataAttrs: { "data-tour-target": "nav-integrations" },
+    },
+    {
+      id: SKILLS_VIEW_ID,
+      label: t("shell:sidebar.skills"),
+      icon: <LibraryBig className="h-4 w-4" />,
+      onClick: () => setViewMode(SKILLS_VIEW_ID),
+      dataAttrs: { "data-tour-target": "nav-skills" },
     },
     ...(showAiModels
       ? [

@@ -46,6 +46,7 @@
     "unreadCount_one": "{{count}} novidade não lida",
     "unreadCount_other": "{{count}} novidades não lidas",
     "integrations": "Integrações",
+    "skills": "Skills",
     "agentStore": "Loja de agentes"
   },
   "tabActions": {

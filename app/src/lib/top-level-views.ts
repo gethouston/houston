@@ -12,9 +12,10 @@
  * some screen of its own is.
  */
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
+import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
 import { STORE_VIEW_ID } from "../components/store-view/id.ts";
 
-export { INTEGRATIONS_VIEW_ID, STORE_VIEW_ID };
+export { INTEGRATIONS_VIEW_ID, SKILLS_VIEW_ID, STORE_VIEW_ID };
 
 export const DASHBOARD_VIEW_ID = "dashboard";
 export const SETTINGS_VIEW_ID = "settings";
@@ -25,6 +26,7 @@ export type TopLevelViewId =
   | typeof SETTINGS_VIEW_ID
   | typeof AI_HUB_VIEW_ID
   | typeof INTEGRATIONS_VIEW_ID
+  | typeof SKILLS_VIEW_ID
   | typeof STORE_VIEW_ID;
 
 export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
@@ -32,6 +34,7 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   SETTINGS_VIEW_ID,
   AI_HUB_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
+  SKILLS_VIEW_ID,
   STORE_VIEW_ID,
 ]);
 
