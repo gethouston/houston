@@ -1,7 +1,7 @@
 import { existsSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
-import { loadRoutineRuns } from "@houston/domain";
+import { loadRoutineRuns, sharedSkillsDirKey } from "@houston/domain";
 import type { Capabilities } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
@@ -28,6 +28,7 @@ import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { reseedAgentSchemas } from "../migrate/agent-schemas";
 import { migrateChatHistory } from "../migrate/chat-history";
+import { migrateSharedSkills } from "../migrate/shared-skills";
 import { LocalPaths } from "../paths";
 import type { ChannelCtx } from "../ports";
 import { forward } from "../proxy/route";
@@ -288,6 +289,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     spawner,
     workspaceDirFor: (a) => agentDir(a.id),
     dataDirFor: (a) => join(agentDir(a.id), ".houston", "runtime"),
+    sharedSkillsDirFor: opts.gatewayFronted
+      ? undefined
+      : (a) =>
+          join(
+            opts.workspacesRoot,
+            ...sharedSkillsDirKey(
+              paths.sharedRoot({ id: a.workspaceId }),
+            ).split("/"),
+          ),
     mintToken: (a) => vault.sandboxToken(a.workspaceId, a.id),
     // Connect-once locally too: keyless runtimes fetch a fresh token from this
     // host, so the refresh token never sits in a runtime's environment.
@@ -578,6 +588,20 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           "[local-host] agent-layout migration failed (continuing):",
           err,
         );
+      }
+      // Desktop/self-host only: collapse byte-identical per-agent skills into
+      // the workspace store before the watcher starts. Managed pods hydrate
+      // shared storage through the gateway in Phase 2; passive migration-source
+      // hosts must remain read-only.
+      if (!opts.gatewayFronted && !opts.passive) {
+        try {
+          await migrateSharedSkills({ store, vfs, paths });
+        } catch (err) {
+          console.error(
+            "[local-host] shared-skills migration failed (continuing):",
+            err,
+          );
+        }
       }
       // Bring every EXISTING agent's seeded `.houston/**.schema.json` up to the
       // schemas this build ships (they are seeded once, at agent creation, and

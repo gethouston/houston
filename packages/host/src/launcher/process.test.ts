@@ -67,6 +67,19 @@ test("ensureAwake spawns one runtime per agent with its workspace/data/token", a
   expect(await launcher.status("sales")).toBe("running");
 });
 
+test("local filesystem profiles pass the workspace shared-skills directory", async () => {
+  const { spawner, spawns } = recordingSpawner();
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      sharedSkillsDirFor: (a) => `/houston/${a.workspaceId}/shared/skills`,
+    }),
+  );
+
+  await launcher.ensureAwake(agent("sales"));
+
+  expect(spawns[0]?.sharedSkillsDir).toBe("/houston/w1/shared/skills");
+});
+
 test("a warm runtime is reused, not respawned", async () => {
   const { spawner, spawns } = recordingSpawner();
   const launcher = new ProcessLauncher(opts(spawner));

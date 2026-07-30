@@ -32,7 +32,7 @@ export interface WorkspacePaths {
    * Local: a dot-dir, so agent discovery (which filters dot names) never
    * mistakes it for an agent.
    */
-  sharedRoot(ws: Workspace): string;
+  sharedRoot(ws: Pick<Workspace, "id">): string;
 }
 
 export function conversationKey(
@@ -63,7 +63,7 @@ export class CloudPaths implements WorkspacePaths {
   dataRoot(ws: Workspace, agent: Agent): string {
     return `${this.agentPrefix(ws, agent)}/data`;
   }
-  sharedRoot(ws: Workspace): string {
+  sharedRoot(ws: Pick<Workspace, "id">): string {
     return `ws/${ws.id}/shared`;
   }
 }
@@ -86,7 +86,7 @@ export class LocalPaths implements WorkspacePaths {
   dataRoot(_ws: Workspace, agent: Agent): string {
     return `${agent.id}/.houston/runtime`;
   }
-  sharedRoot(ws: Workspace): string {
+  sharedRoot(ws: Pick<Workspace, "id">): string {
     return `${ws.id}/.shared`;
   }
 }

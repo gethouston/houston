@@ -12,7 +12,7 @@ import { expect, test } from "vitest";
 import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import { EnvCredentialVault } from "../credentials/vault";
 import type { Agent } from "../domain/types";
-import type { RuntimeSpawner } from "../launcher/process";
+import type { RuntimeSpawner, SpawnSpec } from "../launcher/process";
 import {
   buildLocalHost,
   formatIntegrationsModeLog,
@@ -473,10 +473,10 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
   const healthAddr = health.address();
   const healthPort =
     typeof healthAddr === "object" && healthAddr ? healthAddr.port : 0;
-  const spawned: string[] = [];
+  const spawned: SpawnSpec[] = [];
   const recordingSpawner: RuntimeSpawner = {
     spawn: (spec) => {
-      spawned.push(spec.workspaceDir);
+      spawned.push(spec);
       return { port: healthPort, kill: () => {} };
     },
   };
@@ -489,7 +489,10 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
       await new Promise((r) => setTimeout(r, 25));
     }
     expect(spawned).toHaveLength(1);
-    expect(spawned[0]).toContain(join("Work", "Sales"));
+    expect(spawned[0]?.workspaceDir).toContain(join("Work", "Sales"));
+    expect(spawned[0]?.sharedSkillsDir).toBe(
+      join(eager.workspacesRoot, "Work", ".shared", "skills"),
+    );
   } finally {
     eager.host.stop();
   }
@@ -502,6 +505,24 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
     expect(spawned).toHaveLength(0);
   } finally {
     lazy.host.stop();
+  }
+
+  // Managed pods receive their hydrated shared mirror in Phase 2, so this
+  // desktop/local filesystem wiring must stay absent when gateway-fronted.
+  const managed = await setup({
+    spawner: recordingSpawner,
+    eagerRuntime: true,
+    gatewayFronted: true,
+  });
+  try {
+    const deadline = Date.now() + 5_000;
+    while (spawned.length === 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    expect(spawned).toHaveLength(1);
+    expect(spawned[0]?.sharedSkillsDir).toBeUndefined();
+  } finally {
+    managed.host.stop();
     await new Promise<void>((r) => health.close(() => r()));
   }
 });
