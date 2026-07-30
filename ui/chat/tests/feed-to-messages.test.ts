@@ -90,6 +90,74 @@ describe("tool_call after streamed narration (HOU-1047)", () => {
     strictEqual(earlyKey, laterKey);
   });
 
+  it("keeps the same process key when the turn settles (no remount/jump)", () => {
+    // Production symptom #2: at settle the final assistant_text finalizes the
+    // text entry (positioned before the tools), which used to re-group the
+    // tools into their own message for the first time — the log teleported
+    // from above the text to a "new" block below it. With the split applied
+    // live, the trailing block exists during the run and must settle in place:
+    // same key, active -> inactive, no remount.
+    const live = getChatDisplayItems(feedItemsToMessages(feed), "submitted");
+    const settledFeed = [
+      user("connect to anakin"),
+      finalText("Let me connect to anakin.io for you."),
+      ...feed.slice(2),
+      {
+        feed_type: "final_result",
+        data: { result: "", cost_usd: null, duration_ms: null, usage: null },
+        id: "fr1",
+      } satisfies FeedItem,
+    ];
+    const settled = getChatDisplayItems(
+      feedItemsToMessages(settledFeed),
+      "ready",
+    );
+    const liveProcess = live[live.length - 1];
+    const settledProcess = settled[settled.length - 1];
+    strictEqual(liveProcess.kind, "process");
+    strictEqual(settledProcess.kind, "process");
+    strictEqual(
+      liveProcess.kind === "process" && liveProcess.key,
+      settledProcess.kind === "process" && settledProcess.key,
+    );
+    strictEqual(
+      settledProcess.kind === "process" && settledProcess.isActive,
+      false,
+    );
+  });
+
+  it("splits a second tool phase off a tools-then-text message", () => {
+    // Claude-style opening (tools before any text) followed by narration and
+    // then ANOTHER round of tools: the first phase's log settles above the
+    // text, and the new phase must start a fresh LIVE trailing log below it —
+    // not silently grow the settled one above.
+    const multiPhase = [
+      user("top 5 hacker news"),
+      toolCall("integration_search", "c1", {}),
+      toolResult("apps", "r1"),
+      streamText("I'll fetch the current Hacker News front page."),
+      toolCall("bash", "c2", { cmd: "curl hn" }),
+    ];
+    const messages = feedItemsToMessages(multiPhase);
+    strictEqual(messages.length, 3);
+    strictEqual(messages[1].tools.length, 1);
+    strictEqual(
+      messages[1].content,
+      "I'll fetch the current Hacker News front page.",
+    );
+    strictEqual(messages[2].content, "");
+    strictEqual(messages[2].tools.length, 1);
+    const items = getChatDisplayItems(messages, "submitted");
+    const kinds = items.map((i) => i.kind);
+    // settled phase-1 log, text bubble, live phase-2 log
+    deepStrictEqual(kinds, ["message", "process", "message", "process"]);
+    const first = items[1];
+    const last = items[3];
+    strictEqual(first.kind === "process" && first.isActive, false);
+    strictEqual(last.kind === "process" && last.isActive, true);
+    strictEqual(shouldShowThinkingIndicator(items, "submitted"), false);
+  });
+
   it("settles to the text bubble above an inactive mission log", () => {
     const settled = [
       user("connect to anakin"),
