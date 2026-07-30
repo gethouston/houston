@@ -9,6 +9,8 @@
     "agentMenu": "Menu do agente",
     "collapse": "Recolher barra lateral",
     "expand": "Expandir barra lateral",
+    "openMenu": "Abrir menu",
+    "mobileNavTitle": "Navegação",
     "createWorkspace": "Criar espaço de trabalho",
     "groups": {
       "new": "Novo grupo",

@@ -3,6 +3,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  useIsMobile,
 } from "@houston-ai/core";
 import { AppSidebar } from "@houston-ai/layout";
 import { Users } from "lucide-react";
@@ -27,6 +28,7 @@ import {
   buildSidebarNavItems,
   SidebarWorkspaceHeader,
 } from "./sidebar-chrome";
+import { MobileSidebarSheet } from "./sidebar-mobile";
 import { UpdateChecker } from "./update-checker";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { UserMenu } from "./user-menu";
@@ -67,6 +69,14 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
 
+  // Below md the fixed rail becomes a Sheet drawer (opened by MobileTopBar's
+  // hamburger). Selecting anything that navigates closes the drawer so the
+  // content is immediately visible.
+  const isMobile = useIsMobile();
+  const mobileSidebarOpen = useUIStore((s) => s.mobileSidebarOpen);
+  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
+  const closeMobileSidebar = () => setMobileSidebarOpen(false);
+
   const sidebar = useSidebarLayout(currentWorkspace?.id);
 
   // Auto-collapse the rail when the window gets narrow (e.g. Houston docked to
@@ -74,6 +84,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // is otherwise respected; auto-expands again when it widens back across it.
   const prevWidth = useRef<number | null>(null);
   useEffect(() => {
+    // Mobile has no rail to auto-collapse; the drawer is always expanded.
+    if (isMobile) return;
     const apply = () => {
       const w = window.innerWidth;
       const decision = resolveAutoCollapse(prevWidth.current, w);
@@ -83,7 +95,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     apply();
     window.addEventListener("resize", apply);
     return () => window.removeEventListener("resize", apply);
-  }, [setSidebarCollapsed]);
+  }, [setSidebarCollapsed, isMobile]);
 
   const activitySummaries = useAgentActivitySummaries(agents);
   const { items, groups } = buildAgentSidebarLists({
@@ -103,6 +115,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     if (wsId === currentWorkspace?.id) return;
     const ws = workspaces.find((s) => s.id === wsId);
     if (!ws) return;
+    closeMobileSidebar();
     setCurrentWorkspace(ws);
     await loadAgents(ws.id);
   };
@@ -112,6 +125,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     if (!agent) return;
     setCurrentAgent(agent);
     setViewMode(DEFAULT_TAB_ID);
+    closeMobileSidebar();
   };
 
   const handleRename = async (agentId: string, newName: string) => {
@@ -151,6 +165,15 @@ export function Sidebar({ children }: { children: ReactNode }) {
     ? sidebar.layout.groups.find((g) => g.id === editingContextGroupId)
     : undefined;
 
+  /* Gutter around the floating "screen" (Arc canvas). The small padding lets
+     the window background show as a frame on all four sides; the screen
+     itself is workspace-shell.tsx's rounded bg-input panel. */
+  const gutter = (
+    <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col p-2">
+      {children}
+    </div>
+  );
+
   return (
     <>
       <ConfirmDialog
@@ -180,86 +203,114 @@ export function Sidebar({ children }: { children: ReactNode }) {
         }}
       />
       <div className="flex h-full flex-1 min-w-0">
-        <AppSidebar
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
-          header={
-            <SidebarWorkspaceHeader
-              t={t}
-              workspaces={workspaces}
-              currentId={currentWorkspace?.id ?? null}
-              currentName={currentWorkspace?.name}
-              collapsed={collapsed}
-              onSwitch={handleWorkspaceSwitch}
-              onCreate={() => setCreateWsOpen(true)}
-              onExpand={() => setSidebarCollapsed(false)}
-            />
-          }
-          navItems={buildSidebarNavItems({
-            t,
-            showAiModels,
-            setViewMode,
-            openSettingsIndex: () => openSettings(null),
-          })}
-          activeNavId={isTopLevel ? viewMode : undefined}
-          sectionLabel={t("shell:sidebar.yourAgents")}
-          sectionAction={
-            canCreateAgents ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t("shell:sidebar.groups.new")}
-                    onClick={() => {
-                      const id = sidebar.createGroup(
-                        t("shell:sidebar.groups.newDefault"),
-                      );
-                      if (id) setRenamingGroupId(id);
-                    }}
-                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
-                  >
-                    <Users className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t("shell:sidebar.groups.new")}
-                </TooltipContent>
-              </Tooltip>
-            ) : undefined
-          }
-          items={items}
-          groups={groups}
-          renamingGroupId={renamingGroupId}
-          onRenamingGroupIdHandled={() => setRenamingGroupId(null)}
-          onToggleGroupCollapsed={sidebar.toggleGroupCollapsed}
-          onEditGroupContext={(id) => setEditingContextGroupId(id)}
-          onRenameGroup={sidebar.renameGroup}
-          onDeleteGroup={sidebar.deleteGroup}
-          onMoveItem={sidebar.moveItem}
-          onMoveGroup={sidebar.moveGroup}
-          selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
-          onSelect={handleSelectAgent}
-          onAdd={canCreateAgents ? () => setDialogOpen(true) : undefined}
-          addItemDataAttrs={{ "data-tour-target": "newAgent" }}
-          onRename={handleRename}
-          onDelete={(agentId) => setPendingDeleteId(agentId)}
-          labels={buildSidebarLabels(t)}
-          footer={
-            <div className="flex flex-col">
-              <UserMenu collapsed={collapsed} />
-              <UpdateChecker />
-            </div>
-          }
-        >
-          {/* Gutter around the floating "screen" (Arc canvas). The small
-            padding lets the window background show as a frame on all
-            four sides; the screen itself is workspace-shell.tsx's
-            rounded bg-input panel. */}
-          <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col p-2">
-            {children}
-          </div>
-        </AppSidebar>
+        {/* Mobile: the same AppSidebar element, hosted in a drawer; the
+            content column takes the full width. Desktop: the fixed rail. */}
+        {isMobile && (
+          <MobileSidebarSheet
+            open={mobileSidebarOpen}
+            onOpenChange={setMobileSidebarOpen}
+            title={t("shell:sidebar.mobileNavTitle")}
+          >
+            {renderAppSidebar(true)}
+          </MobileSidebarSheet>
+        )}
+        {isMobile ? gutter : renderAppSidebar(false, gutter)}
       </div>
     </>
   );
+
+  // Shared AppSidebar invocation for both presentations. A plain function
+  // (not a nested component) so switching presentation never remounts the
+  // sidebar tree. Mobile is always expanded: collapse is a rail concept.
+  function renderAppSidebar(mobile: boolean, gutterChildren?: ReactNode) {
+    const effectiveCollapsed = mobile ? false : collapsed;
+    return (
+      <AppSidebar
+        collapsed={effectiveCollapsed}
+        onToggleCollapsed={mobile ? undefined : toggleCollapsed}
+        header={
+          <SidebarWorkspaceHeader
+            t={t}
+            workspaces={workspaces}
+            currentId={currentWorkspace?.id ?? null}
+            currentName={currentWorkspace?.name}
+            collapsed={effectiveCollapsed}
+            onSwitch={handleWorkspaceSwitch}
+            onCreate={() => setCreateWsOpen(true)}
+            onExpand={() => setSidebarCollapsed(false)}
+          />
+        }
+        navItems={buildSidebarNavItems({
+          t,
+          showAiModels,
+          setViewMode: (view) => {
+            setViewMode(view);
+            closeMobileSidebar();
+          },
+          openSettingsIndex: () => {
+            openSettings(null);
+            closeMobileSidebar();
+          },
+        })}
+        activeNavId={isTopLevel ? viewMode : undefined}
+        sectionLabel={t("shell:sidebar.yourAgents")}
+        sectionAction={
+          canCreateAgents ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t("shell:sidebar.groups.new")}
+                  onClick={() => {
+                    const id = sidebar.createGroup(
+                      t("shell:sidebar.groups.newDefault"),
+                    );
+                    if (id) setRenamingGroupId(id);
+                  }}
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
+                >
+                  <Users className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {t("shell:sidebar.groups.new")}
+              </TooltipContent>
+            </Tooltip>
+          ) : undefined
+        }
+        items={items}
+        groups={groups}
+        renamingGroupId={renamingGroupId}
+        onRenamingGroupIdHandled={() => setRenamingGroupId(null)}
+        onToggleGroupCollapsed={sidebar.toggleGroupCollapsed}
+        onEditGroupContext={(id) => setEditingContextGroupId(id)}
+        onRenameGroup={sidebar.renameGroup}
+        onDeleteGroup={sidebar.deleteGroup}
+        onMoveItem={sidebar.moveItem}
+        onMoveGroup={sidebar.moveGroup}
+        selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
+        onSelect={handleSelectAgent}
+        onAdd={
+          canCreateAgents
+            ? () => {
+                setDialogOpen(true);
+                closeMobileSidebar();
+              }
+            : undefined
+        }
+        addItemDataAttrs={{ "data-tour-target": "newAgent" }}
+        onRename={handleRename}
+        onDelete={(agentId) => setPendingDeleteId(agentId)}
+        labels={buildSidebarLabels(t)}
+        footer={
+          <div className="flex flex-col">
+            <UserMenu collapsed={effectiveCollapsed} />
+            <UpdateChecker />
+          </div>
+        }
+      >
+        {gutterChildren}
+      </AppSidebar>
+    );
+  }
 }

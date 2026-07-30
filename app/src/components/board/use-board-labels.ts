@@ -26,6 +26,7 @@ export function useBoardLabels(): {
       people: t("board:people.label"),
       peopleExpand: t("board:people.expand"),
       unread: t("board:unread.label"),
+      closePanel: t("board:cardActions.closePanel"),
     },
     composerLabels: {
       fileAlreadyInChat: t("chat:composer.fileAlreadyInChat"),

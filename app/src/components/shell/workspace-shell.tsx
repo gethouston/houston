@@ -10,6 +10,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  useIsMobile,
 } from "@houston-ai/core";
 import { TabBar } from "@houston-ai/layout";
 import { Compass, Plus } from "lucide-react";
@@ -52,6 +53,7 @@ import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
 import { AgentRenderer } from "./experience-renderer";
 import { KeepAliveViews } from "./keep-alive-views";
+import { MobileTopBar } from "./mobile-top-bar";
 import { NotificationsBell } from "./notifications-bell";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
@@ -189,6 +191,12 @@ export function WorkspaceShell({
 
   useKeyboardShortcuts();
 
+  // Mobile (<768px): tab-bar actions drop to icon size (same treatment the
+  // open mission panel already forces) and the mission panel covers the full
+  // content area instead of splitting it 55/45.
+  const isMobile = useIsMobile();
+  const compactActions = missionPanelOpen || isMobile;
+
   return (
     <DetailPanelProvider value={panelContainer}>
       <div
@@ -196,7 +204,9 @@ export function WorkspaceShell({
           // Transparent so the window background reads up through the content.
           // Column layout: a seamless overlay title-bar strip on top, then the
           // sidebar + content row below it.
-          "flex h-screen flex-col bg-transparent text-ink",
+          // h-dvh (not h-screen) so mobile browser chrome (the collapsing URL
+          // bar) never pushes the composer below the visible viewport.
+          "flex h-dvh flex-col bg-transparent text-ink",
           uiTourActive && "pointer-events-none [&_*]:select-none",
         )}
       >
@@ -212,11 +222,14 @@ export function WorkspaceShell({
         )}
         <div className="flex min-h-0 flex-1">
           <Sidebar>
+            {/* Hamburger row for the mobile drawer; CSS-hidden at md+. */}
+            <MobileTopBar />
             {/* Transparent row: the window gutter shows in the gap-2 between
               the cards (and around them). main + the mission panel are each
               their OWN rounded frosted "screen" card, so the rounding reads
-              against the gutter. */}
-            <div className="flex min-w-0 flex-1 overflow-hidden gap-2">
+              against the gutter. `relative` anchors the mobile full-screen
+              mission panel overlay. */}
+            <div className="relative flex min-w-0 flex-1 overflow-hidden gap-2">
               <main
                 data-tour-target="main"
                 className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-background canvas-screen"
@@ -284,10 +297,10 @@ export function WorkspaceShell({
                                 <div className="flex shrink-0 items-center gap-2">
                                   <AgentPersonScopeMenu
                                     agent={currentAgent}
-                                    collapsed={missionPanelOpen}
+                                    collapsed={compactActions}
                                   />
                                   <NotificationsBell
-                                    collapsed={missionPanelOpen}
+                                    collapsed={compactActions}
                                   />
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -295,7 +308,7 @@ export function WorkspaceShell({
                                         data-tour-target="appTour"
                                         variant="ghost"
                                         size={
-                                          missionPanelOpen ? "icon" : "default"
+                                          compactActions ? "icon" : "default"
                                         }
                                         className="rounded-full"
                                         onClick={() => setUiTourActive(true)}
@@ -304,11 +317,11 @@ export function WorkspaceShell({
                                         )}
                                       >
                                         <Compass className="size-4" />
-                                        {!missionPanelOpen &&
+                                        {!compactActions &&
                                           t("shell:tabActions.startTour")}
                                       </Button>
                                     </TooltipTrigger>
-                                    {missionPanelOpen && (
+                                    {compactActions && (
                                       <TooltipContent side="bottom">
                                         {t("shell:tabActions.startTour")}
                                       </TooltipContent>
@@ -320,12 +333,10 @@ export function WorkspaceShell({
                                         <Button
                                           data-tour-target="newMission"
                                           size={
-                                            missionPanelOpen
-                                              ? "icon"
-                                              : "default"
+                                            compactActions ? "icon" : "default"
                                           }
                                           className={cn(
-                                            missionPanelOpen && "rounded-full",
+                                            compactActions && "rounded-full",
                                           )}
                                           onClick={() => {
                                             setViewMode("activity");
@@ -341,12 +352,12 @@ export function WorkspaceShell({
                                           )}
                                         >
                                           <HoustonLogo size={16} />
-                                          {!missionPanelOpen &&
+                                          {!compactActions &&
                                             t("shell:tabActions.newMission")}
                                         </Button>
                                       </TooltipTrigger>
                                       <TooltipContent side="bottom">
-                                        {missionPanelOpen
+                                        {compactActions
                                           ? t("shell:tabActions.newMission")
                                           : shortcutLabel("newMission")}
                                       </TooltipContent>
@@ -410,8 +421,15 @@ export function WorkspaceShell({
               {missionPanelOpen && (
                 <div
                   ref={setPanelContainer}
-                  className="h-full overflow-hidden rounded-2xl bg-background canvas-screen"
-                  style={{ width: "45%", minWidth: 380 }}
+                  data-testid="mission-panel"
+                  className={cn(
+                    "h-full overflow-hidden rounded-2xl bg-background canvas-screen",
+                    // Mobile: the panel takes the whole content area (the
+                    // board stays mounted underneath); its own close button
+                    // returns to the board.
+                    isMobile && "absolute inset-0 z-30 w-full",
+                  )}
+                  style={isMobile ? undefined : { width: "45%", minWidth: 380 }}
                 />
               )}
             </div>

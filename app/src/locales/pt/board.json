@@ -4,7 +4,8 @@
     "approveTooltip": "Mover para Pronto",
     "renameTooltip": "Mudar título",
     "deleteTooltip": "Excluir",
-    "select": "Selecionar missão"
+    "select": "Selecionar missão",
+    "closePanel": "Fechar painel"
   },
   "deleteCard": {
     "titleWithName": "Excluir \"{{name}}\"?",
