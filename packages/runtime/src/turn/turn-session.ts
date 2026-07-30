@@ -208,7 +208,7 @@ export async function runPiTurn(
       tools: toolSelection.toolNames,
       customTools: [
         ...makeClampedFileTools(workspaceDir, {
-          readOnlyRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
+          sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
         }),
         // ask_user is available in every mode (holds no credential); its name is
         // already in toolSelection.toolNames. request_connection is NOT — it is

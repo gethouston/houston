@@ -5,10 +5,11 @@ export interface ObjectMetadata {
   updated: string;
 }
 
-/** Read-only manifest + object seam used by shared-prefix mirrors. */
+/** Manifest + object seam used by read/write shared-prefix mirrors. */
 export interface ManifestObjectStore {
   manifest(prefix?: string): Promise<ObjectMetadata[]>;
   download(key: string, destFile: string): Promise<void>;
+  upload(srcFile: string, key: string): Promise<void>;
 }
 
 export function isObjectMetadata(value: unknown): value is ObjectMetadata {

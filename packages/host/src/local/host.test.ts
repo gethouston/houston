@@ -150,6 +150,7 @@ test("a failed shared-mirror wake does not block host readiness", async () => {
   const store: ManifestObjectStore = {
     manifest: () => failure.promise,
     async download() {},
+    async upload() {},
   };
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   const { base, host } = await setup({
@@ -554,6 +555,7 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
           return [];
         },
         async download() {},
+        async upload() {},
       },
       mirrorDir: managedMirrorDir,
     },

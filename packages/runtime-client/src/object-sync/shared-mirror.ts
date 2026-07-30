@@ -1,14 +1,24 @@
-import { createHash, randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { lstat, mkdir, readdir, rename, rm } from "node:fs/promises";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { createHash } from "node:crypto";
+import { mkdir, rm } from "node:fs/promises";
 import type { ManifestObjectStore, ObjectMetadata } from "./object-manifest";
+import {
+  canonicalMetadata,
+  downloadAtomic,
+  localFamilyFiles,
+  localMetadata,
+  localPath,
+  matches,
+  type SharedMirrorFileState,
+  sameMetadata,
+} from "./shared-mirror-files";
 
 export type SharedMirrorFamily = "skills";
 
 export interface SharedMirrorState {
-  /** Opaque digest of the selected remote manifest. */
+  /** Opaque digest of the last per-file synchronization baseline. */
   fingerprint: string;
+  /** Bytes known to match locally and remotely after the last completed pass. */
+  files: Record<string, SharedMirrorFileState>;
 }
 
 export interface SharedMirrorSnapshot {
@@ -20,18 +30,20 @@ export interface SyncSharedMirrorOptions {
   store: ManifestObjectStore;
   mirrorDir: string;
   snapshot?: SharedMirrorSnapshot;
+  state?: SharedMirrorState;
   families?: readonly SharedMirrorFamily[];
+  mode?: "push-pull" | "push-only";
+  onConflict?: (key: string) => void;
 }
 
 export interface SharedMirrorResult {
   state: SharedMirrorState;
+  uploaded: string[];
   downloaded: string[];
   deleted: string[];
 }
 
 const DEFAULT_FAMILIES = ["skills"] as const;
-
-const normalized = (path: string) => path.split(sep).join("/");
 
 function selectedObjects(
   manifest: readonly ObjectMetadata[],
@@ -53,11 +65,22 @@ function selectedObjects(
 }
 
 function stateFor(objects: readonly ObjectMetadata[]): SharedMirrorState {
-  const hash = createHash("sha256");
+  const files: Record<string, SharedMirrorFileState> = {};
   for (const object of objects) {
-    hash.update(`${object.key}\0${object.size}\0${object.md5}\0`);
+    files[object.key] = canonicalMetadata(object);
   }
-  return { fingerprint: hash.digest("hex") };
+  return stateFromFiles(files);
+}
+
+function stateFromFiles(
+  files: Record<string, SharedMirrorFileState>,
+): SharedMirrorState {
+  const hash = createHash("sha256");
+  for (const key of Object.keys(files).sort()) {
+    const metadata = files[key];
+    hash.update(`${key}\0${metadata?.size}\0${metadata?.md5}\0`);
+  }
+  return { fingerprint: hash.digest("hex"), files };
 }
 
 /** The cheap freshness probe: one manifest GET, scoped to shared families. */
@@ -69,92 +92,10 @@ export async function probeSharedMirror(
   return { state: stateFor(objects), objects };
 }
 
-function localPath(root: string, key: string): string {
-  const resolvedRoot = resolve(root);
-  const file = resolve(resolvedRoot, ...key.split("/"));
-  if (!file.startsWith(`${resolvedRoot}${sep}`)) {
-    throw new Error(`shared object key escapes mirror root: ${key}`);
-  }
-  return file;
-}
-
-async function digestFile(
-  file: string,
-): Promise<{ hex: string; base64: string }> {
-  const hash = createHash("md5");
-  for await (const chunk of createReadStream(file))
-    hash.update(chunk as Buffer);
-  const digest = hash.digest();
-  return { hex: digest.toString("hex"), base64: digest.toString("base64") };
-}
-
-async function matches(file: string, object: ObjectMetadata): Promise<boolean> {
-  try {
-    const info = await lstat(file);
-    if (!info.isFile() || info.size !== object.size) return false;
-    const digest = await digestFile(file);
-    return object.md5 === digest.hex || object.md5 === digest.base64;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
-    throw error;
-  }
-}
-
-async function downloadAtomic(
-  store: ManifestObjectStore,
-  object: ObjectMetadata,
-  destination: string,
-): Promise<void> {
-  await mkdir(dirname(destination), { recursive: true });
-  const temporary = `${destination}.${randomUUID()}.tmp`;
-  try {
-    await store.download(object.key, temporary);
-    if (!(await matches(temporary, object))) {
-      throw new Error(
-        `shared object ${object.key} failed size/hash verification`,
-      );
-    }
-    const existing = await lstat(destination).catch((error: unknown) => {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-      throw error;
-    });
-    if (existing && !existing.isFile()) {
-      await rm(destination, { force: true, recursive: true });
-    }
-    await rename(temporary, destination);
-  } catch (error) {
-    await rm(temporary, { force: true });
-    throw error;
-  }
-}
-
-async function walkFiles(dir: string, root: string): Promise<string[]> {
-  const files: string[] = [];
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...(await walkFiles(path, root)));
-    else files.push(normalized(relative(root, path)));
-  }
-  return files;
-}
-
-async function localFamilyFiles(
-  root: string,
-  families: readonly SharedMirrorFamily[],
-): Promise<string[]> {
-  const files: string[] = [];
-  for (const family of families) {
-    const dir = join(root, family);
-    await mkdir(dir, { recursive: true });
-    files.push(...(await walkFiles(dir, root)));
-  }
-  return files.sort();
-}
-
 /**
- * Reconciles selected read-only shared families into a disposable local cache.
- * The remote manifest is authoritative. A caller may reuse an already-fetched
- * snapshot, but reconciliation always verifies the local bytes.
+ * Pushes intentional local edits before pulling the shared store. The previous
+ * completed state distinguishes edits from stale cache bytes. Local deletion is
+ * never uploaded; the pull phase restores any remotely-present file.
  */
 export async function syncSharedMirror(
   options: SyncSharedMirrorOptions,
@@ -162,9 +103,53 @@ export async function syncSharedMirror(
   const families = options.families ?? DEFAULT_FAMILIES;
   const snapshot =
     options.snapshot ?? (await probeSharedMirror(options.store, families));
-  const { objects, state } = snapshot;
-
   await mkdir(options.mirrorDir, { recursive: true });
+  const remote = new Map(
+    snapshot.objects.map((object) => [object.key, object]),
+  );
+  const uploaded: string[] = [];
+  const uploadedMetadata: Record<string, SharedMirrorFileState> = {};
+  if (options.state) {
+    for (const key of await localFamilyFiles(options.mirrorDir, families)) {
+      const metadata = await localMetadata(localPath(options.mirrorDir, key));
+      if (!metadata || sameMetadata(metadata, options.state.files[key]))
+        continue;
+      const remoteMetadata = remote.get(key);
+      const canonicalRemote = remoteMetadata
+        ? canonicalMetadata(remoteMetadata)
+        : undefined;
+      // A partial earlier pass may have changed bytes without advancing state.
+      // Equal remote bytes prove this is an echo, not a new intentional edit.
+      if (sameMetadata(metadata, canonicalRemote)) continue;
+      if (!sameMetadata(canonicalRemote, options.state.files[key])) {
+        options.onConflict?.(key);
+      }
+      await options.store.upload(localPath(options.mirrorDir, key), key);
+      remote.set(key, {
+        key,
+        ...metadata,
+        updated: remoteMetadata?.updated ?? "",
+      });
+      uploadedMetadata[key] = metadata;
+      uploaded.push(key);
+    }
+  }
+
+  if (options.mode === "push-only") {
+    return {
+      state: stateFromFiles({
+        ...(options.state?.files ?? {}),
+        ...uploadedMetadata,
+      }),
+      uploaded,
+      downloaded: [],
+      deleted: [],
+    };
+  }
+
+  const objects = [...remote.values()].sort((a, b) =>
+    a.key.localeCompare(b.key),
+  );
   const downloaded: string[] = [];
   for (const object of objects) {
     const destination = localPath(options.mirrorDir, object.key);
@@ -180,5 +165,5 @@ export async function syncSharedMirror(
     await rm(localPath(options.mirrorDir, key), { force: true });
     deleted.push(key);
   }
-  return { state, downloaded, deleted };
+  return { state: stateFor(objects), uploaded, downloaded, deleted };
 }

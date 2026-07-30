@@ -113,7 +113,7 @@ function isWithin(path: string, root: string): boolean {
 /**
  * Config-bound loader for an agent session. Agent-local skills come from
  * <workspace>/.agents/skills unless HOUSTON_SKILLS_DIR overrides; an existing
- * HOUSTON_SHARED_SKILLS_DIR contributes manifest-filtered read-only skills.
+ * HOUSTON_SHARED_SKILLS_DIR contributes manifest-filtered workspace-shared skills.
  */
 export function makeAgentLoader(
   cwd: string,

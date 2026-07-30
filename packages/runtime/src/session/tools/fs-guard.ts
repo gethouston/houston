@@ -13,8 +13,8 @@ import { fileURLToPath } from "node:url";
  * bash tool at all. `clamp` re-resolves the raw path the way pi does, requires
  * the result (and its symlink-resolved real path) to land inside the workspace
  * root, and returns the absolute path the tool is then forced to use.
- * `clampRead` extends that same discipline to explicitly configured read-only
- * roots. Callers rewrite the tool's path param to the clamped result, so a
+ * Shared roots (the org-shared mirror) get the same discipline — agents edit
+ * the org original there by design. Callers rewrite the tool's path param to the clamped result, so a
  * normalization divergence from pi cannot escape an allowed root.
  */
 
@@ -26,7 +26,11 @@ interface RootBoundary {
 }
 
 export interface WorkspaceGuardOptions {
-  readOnlyRoots?: string[];
+  /** Extra WRITABLE roots outside the workspace — the org-shared mirror.
+   *  Shared skills are agent-editable by design (an agent's edit IS an edit
+   *  of the org original); deletion stays a human act in the UI, and the
+   *  same symlink-resolved containment applies as for the workspace. */
+  sharedRoots?: string[];
 }
 
 export class PathEscapeError extends Error {
@@ -56,10 +60,10 @@ function normalizeLikePi(input: string): string {
 export class WorkspaceGuard {
   /** Canonical (symlink-resolved) workspace root. Must exist. */
   readonly root: string;
-  /** Canonical readable roots outside the workspace; missing roots are ignored. */
-  readonly readOnlyRoots: string[];
+  /** Canonical shared (writable) roots outside the workspace; missing roots are ignored. */
+  readonly sharedRoots: string[];
   private readonly workspaceBoundary: RootBoundary;
-  private readonly readOnlyBoundaries: RootBoundary[];
+  private readonly sharedBoundaries: RootBoundary[];
 
   constructor(root: string, options?: WorkspaceGuardOptions) {
     this.workspaceBoundary = {
@@ -67,13 +71,13 @@ export class WorkspaceGuard {
       lexical: resolve(root),
     };
     this.root = this.workspaceBoundary.canonical;
-    const boundaries = (options?.readOnlyRoots ?? []).flatMap(
-      (readOnlyRoot): RootBoundary[] => {
+    const boundaries = (options?.sharedRoots ?? []).flatMap(
+      (sharedRoot): RootBoundary[] => {
         try {
           return [
             {
-              canonical: realpathSync(readOnlyRoot),
-              lexical: resolve(readOnlyRoot),
+              canonical: realpathSync(sharedRoot),
+              lexical: resolve(sharedRoot),
             },
           ];
         } catch (error) {
@@ -82,14 +86,14 @@ export class WorkspaceGuard {
         }
       },
     );
-    this.readOnlyBoundaries = boundaries.filter(
+    this.sharedBoundaries = boundaries.filter(
       (boundary, index) =>
         boundary.canonical !== this.root &&
         boundaries.findIndex(
           (candidate) => candidate.canonical === boundary.canonical,
         ) === index,
     );
-    this.readOnlyRoots = this.readOnlyBoundaries.map(
+    this.sharedRoots = this.sharedBoundaries.map(
       (boundary) => boundary.canonical,
     );
   }
@@ -101,17 +105,9 @@ export class WorkspaceGuard {
    * file://-prefixed absolutes, or a symlink whose target leaves the root.
    */
   clamp(raw: string | undefined): string {
-    return this.resolveAndAssert(raw, [this.workspaceBoundary]);
-  }
-
-  /**
-   * Resolve a model-supplied read path against the workspace, allowing either
-   * the workspace or a configured read-only root.
-   */
-  clampRead(raw: string | undefined): string {
     return this.resolveAndAssert(raw, [
       this.workspaceBoundary,
-      ...this.readOnlyBoundaries,
+      ...this.sharedBoundaries,
     ]);
   }
 
@@ -119,14 +115,7 @@ export class WorkspaceGuard {
   assertInside(absolutePath: string): string {
     return this.assertContained(resolve(absolutePath), absolutePath, [
       this.workspaceBoundary,
-    ]);
-  }
-
-  /** Guard an already-resolved path for a read operation. */
-  assertReadable(absolutePath: string): string {
-    return this.assertContained(resolve(absolutePath), absolutePath, [
-      this.workspaceBoundary,
-      ...this.readOnlyBoundaries,
+      ...this.sharedBoundaries,
     ]);
   }
 

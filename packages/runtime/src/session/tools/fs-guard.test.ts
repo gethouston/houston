@@ -132,43 +132,45 @@ test("prefix-sibling directory does not pass the containment check", () => {
   expect(() => g.clamp(join(r, "ws-evil", "x.txt"))).toThrow(PathEscapeError);
 });
 
-test("a read-only root is readable but remains outside write containment", () => {
+test("a shared root is fully usable: reads AND writes clamp inside it", () => {
+  // Agents edit the org original directly (the no-fork decision) — the shared
+  // mirror is a writable root, with the same containment walls as the
+  // workspace. Deletion is not a file-tool operation, so removing a shared
+  // skill stays a UI/admin act.
   const ws = freshRoot();
   const shared = mkdtempSync(join(tmpdir(), "houston-shared-"));
   const skillFile = join(shared, "research-company", "SKILL.md");
   mkdirSync(join(shared, "research-company"));
   writeFileSync(skillFile, "shared skill");
-  const g = new WorkspaceGuard(ws, { readOnlyRoots: [shared] });
+  const g = new WorkspaceGuard(ws, { sharedRoots: [shared] });
   const canonicalSkillFile = realpathSync(skillFile);
 
-  expect(g.clampRead(canonicalSkillFile)).toBe(canonicalSkillFile);
-  expect(g.assertReadable(canonicalSkillFile)).toBe(canonicalSkillFile);
-  expect(() => g.clamp(canonicalSkillFile)).toThrow(PathEscapeError);
-  expect(() => g.assertInside(canonicalSkillFile)).toThrow(PathEscapeError);
+  expect(g.clamp(canonicalSkillFile)).toBe(canonicalSkillFile);
+  expect(g.assertInside(canonicalSkillFile)).toBe(canonicalSkillFile);
 });
 
-test("a symlink inside a read-only root cannot escape that root", () => {
+test("a symlink inside a shared root cannot escape that root", () => {
   const ws = freshRoot();
   const shared = mkdtempSync(join(tmpdir(), "houston-shared-"));
   const outside = mkdtempSync(join(tmpdir(), "houston-outside-"));
   writeFileSync(join(outside, "secret.txt"), "secret");
   symlinkSync(outside, join(shared, "escaped"));
-  const g = new WorkspaceGuard(ws, { readOnlyRoots: [shared] });
-  const [canonicalShared] = g.readOnlyRoots;
+  const g = new WorkspaceGuard(ws, { sharedRoots: [shared] });
+  const [canonicalShared] = g.sharedRoots;
   if (!canonicalShared) throw new Error("expected the shared root to exist");
 
-  expect(() =>
-    g.clampRead(join(canonicalShared, "escaped", "secret.txt")),
-  ).toThrow(PathEscapeError);
+  expect(() => g.clamp(join(canonicalShared, "escaped", "secret.txt"))).toThrow(
+    PathEscapeError,
+  );
 });
 
-test("without an existing read-only root, reads stay workspace-only", () => {
+test("without an existing shared root, everything stays workspace-only", () => {
   const ws = freshRoot();
   const g = new WorkspaceGuard(ws, {
-    readOnlyRoots: [join(ws, "missing-shared-root")],
+    sharedRoots: [join(ws, "missing-shared-root")],
   });
 
-  expect(g.readOnlyRoots).toEqual([]);
-  expect(g.clampRead("notes.txt")).toBe(join(g.root, "notes.txt"));
-  expect(() => g.clampRead("/etc/passwd")).toThrow(PathEscapeError);
+  expect(g.sharedRoots).toEqual([]);
+  expect(g.clamp("notes.txt")).toBe(join(g.root, "notes.txt"));
+  expect(() => g.clamp("/etc/passwd")).toThrow(PathEscapeError);
 });

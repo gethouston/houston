@@ -25,3 +25,4 @@ export type {
   SyncSharedMirrorOptions,
 } from "./shared-mirror";
 export { probeSharedMirror, syncSharedMirror } from "./shared-mirror";
+export type { SharedMirrorFileState } from "./shared-mirror-files";

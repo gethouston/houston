@@ -141,7 +141,7 @@ export function makeCanUseTool(
       const readOnly =
         toolName === "Read" || toolName === "Glob" || toolName === "Grep";
       for (const p of paths) {
-        if (readOnly) guard.clampRead(p);
+        if (readOnly) guard.clamp(p);
         else guard.clamp(p);
       }
       return { behavior: "allow", updatedInput: input };

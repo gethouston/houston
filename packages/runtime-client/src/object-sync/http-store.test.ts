@@ -67,6 +67,39 @@ test("round-trips objects through the agent-scoped HTTP API", async () => {
   expect(await store.list("")).toEqual([]);
 });
 
+test("PUTs shared objects with the pod agent binding", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-shared-object-store-"));
+  const source = join(dir, "SKILL.md");
+  writeFileSync(source, "shared edit");
+  let request:
+    | { body: string; headers: Headers; method: string; url: string }
+    | undefined;
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/v1/pod/store/acme/shared",
+    token: "pod-token",
+    agentSlug: "writer",
+    fetchImpl: async (input, init) => {
+      request = {
+        body: Buffer.from(init?.body as Uint8Array).toString(),
+        headers: new Headers(init?.headers),
+        method: init?.method ?? "GET",
+        url: String(input),
+      };
+      return Response.json(metadata("skills/research/SKILL.md", 11));
+    },
+  });
+
+  await store.upload(source, "skills/research/SKILL.md");
+
+  expect(request).toMatchObject({
+    body: "shared edit",
+    method: "PUT",
+    url: "https://store.test/v1/pod/store/acme/shared/objects/skills/research/SKILL.md",
+  });
+  expect(request?.headers.get("authorization")).toBe("Bearer pod-token");
+  expect(request?.headers.get("x-houston-agent")).toBe("writer");
+});
+
 test("encodes each object-key path segment", async () => {
   let seenUrl = "";
   const store = new HttpObjectStore({

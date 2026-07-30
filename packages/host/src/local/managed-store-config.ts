@@ -13,7 +13,7 @@ function optionalPositiveNumber(name: string): number | undefined {
 
 /**
  * Both managed-pod caches ride the same gateway and bearer. Agent state uses
- * the read/write agent prefix; shared state uses the read-only org prefix and
+ * the read/write agent prefix; shared state uses the read/write org prefix and
  * binds every request to this pod's agent slug.
  */
 export async function managedStoreConfig(

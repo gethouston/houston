@@ -32,7 +32,7 @@ export interface ClaudeBackendDeps {
   /** Houston's product system prompt (full-replace, not the claude_code preset). */
   systemPrompt: string;
   /** Extra roots available to read-only file tools, never Edit/Write/Bash. */
-  readOnlyRoots?: string[];
+  sharedRoots?: string[];
   /**
    * Integration proxy config when this runtime can reach its host with a sandbox
    * token — the SAME gate the pi path applies (`config.controlPlaneUrl &&
@@ -117,7 +117,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         mcpServers: { [HOUSTON_MCP_SERVER_NAME]: houstonMcp.server },
         allowedTools: houstonMcp.allowedTools,
         canUseTool: makeCanUseTool(deps.workspaceDir, {
-          readOnlyRoots: deps.readOnlyRoots,
+          sharedRoots: deps.sharedRoots,
         }),
         systemPrompt: buildSystemPrompt(
           deps.workspaceDir,

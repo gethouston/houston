@@ -188,7 +188,7 @@ export interface LocalHostOptions {
     intervalMs?: number;
     maxHydrateBytes?: number;
   };
-  /** Managed-pod read-only org prefix cache, outside the agent workspace. */
+  /** Managed-pod read/write org prefix mirror, outside the agent workspace. */
   sharedMirror?: {
     store: ManifestObjectStore;
     mirrorDir: string;
@@ -577,7 +577,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       // readiness-critical and must finish before migrations or HTTP listening;
       // failure propagates so the pod restarts without ever syncing an empty tree.
       await syncDaemon?.hydrate();
-      // Shared storage is a disposable read-only cache, not a readiness
+      // Shared storage is a disposable synchronized mirror, not a readiness
       // invariant. Start its pull after authoritative agent hydration but do
       // not await the network; the first turn joins it through beforeTurn.
       if (sharedMirrorDir) {
@@ -714,6 +714,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // Await actual child exit (bounded): the final sync below must not
         // walk /data while a runtime is still flushing its last writes.
         await launcher.shutdownAllAndWait();
+        await sharedMirror?.stop();
         await syncDaemon?.stop();
         await new Promise<void>((resolve, reject) => {
           if (!server.listening) return resolve();

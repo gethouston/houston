@@ -42,7 +42,7 @@ import type { ProvidedContext } from "./workspace-context";
 // prompt-injected agent could read /etc/passwd or its own auth.json with no
 // bash tool. See tools/clamped-fs.ts.
 const fileTools = makeClampedFileTools(config.workspaceDir, {
-  readOnlyRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
+  sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
 });
 
 // The blocking-question tool: available in EVERY mode (holds no credential,
@@ -176,7 +176,7 @@ registerBackend(
     readToken: () => readAnthropicToken(authStorage),
     toolSelection,
     systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
-    readOnlyRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
+    sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
     // SAME integrations gate as the pi path above: present only when this
     // runtime can reach its host with a sandbox token, so the Claude backend's
     // in-process MCP server exposes the identical integration tool set.

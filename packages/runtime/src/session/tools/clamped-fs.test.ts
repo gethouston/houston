@@ -116,14 +116,14 @@ test("non-string path is rejected, not coerced", async () => {
   );
 });
 
-test("shared roots are readable through file tools but never writable", async () => {
+test("shared roots are fully usable through file tools (agents edit the org original)", async () => {
   const shared = join(base, "shared-skills");
   const skillDir = join(shared, "research-company");
   mkdirSync(skillDir, { recursive: true });
   const skillFile = join(skillDir, "SKILL.md");
   writeFileSync(skillFile, "shared procedure");
   const sharedTools = new Map(
-    makeClampedFileTools(ws, { readOnlyRoots: [shared] }).map((tool) => [
+    makeClampedFileTools(ws, { sharedRoots: [shared] }).map((tool) => [
       tool.name,
       tool,
     ]),
@@ -142,14 +142,10 @@ test("shared roots are readable through file tools but never writable", async ()
 
   const read = await run("read", { path: skillFile });
   expect(JSON.stringify(read.content)).toContain("shared procedure");
+  await run("write", { path: skillFile, content: "replaced procedure" });
+  expect(readFileSync(skillFile, "utf8")).toBe("replaced procedure");
+  // Containment still holds: a path outside every root stays rejected.
   await expect(
-    run("write", { path: skillFile, content: "replaced" }),
+    run("write", { path: "/etc/houston-nope", content: "x" }),
   ).rejects.toThrow("outside the agent workspace");
-  await expect(
-    run("edit", {
-      path: skillFile,
-      edits: [{ oldText: "shared", newText: "mutated" }],
-    }),
-  ).rejects.toThrow("outside the agent workspace");
-  expect(readFileSync(skillFile, "utf8")).toBe("shared procedure");
 });
