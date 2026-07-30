@@ -262,22 +262,11 @@ export async function startLogin(
     throw new Error(`${providerId} does not use OAuth sign-in`);
   const provider = providerId;
 
-  // The OpenAI/Codex browser (loopback) login makes pi bind a FIXED loopback
-  // callback port (1455) in-process — and pi swallows an EADDRINUSE, stranding
-  // the flow (a browser opens, the user approves, the redirect lands on whoever
-  // holds the port, and Houston spins the whole 10-min window). Probe that exact
-  // port FIRST so a real Codex CLI / stray login becomes an instant, actionable
-  // error before any browser opens. Throwing here — BEFORE any state is added to
-  // `active` or the expiry armed — leaves the slot free for an immediate retry.
-  // The device-code path (deviceAuth) and every other provider bind nothing.
-  if (
-    provider === "openai-codex" &&
-    codexLoginMethod({ deviceAuth }) === OPENAI_CODEX_BROWSER_LOGIN_METHOD
-  ) {
-    await preflightCodexCallbackPort();
-  }
-
-  // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).
+  // Idempotent: reuse an in-flight login. This must run BEFORE the port
+  // preflight below: an in-flight Codex browser login is ITSELF holding the
+  // fixed callback port (pi's in-process server), so probing first would
+  // mistake our own flow for a squatter and turn every retry click into
+  // "Another app is using the sign-in port" for the whole abandonment window.
   const existing = active.get(provider);
   if (
     existing &&
@@ -287,6 +276,22 @@ export async function startLogin(
     // A fresh connect click deserves the full abandonment window.
     armLoginExpiry(provider, existing);
     return existing.info;
+  }
+
+  // The OpenAI/Codex browser (loopback) login makes pi bind a FIXED loopback
+  // callback port (1455) in-process — and pi swallows an EADDRINUSE, stranding
+  // the flow (a browser opens, the user approves, the redirect lands on whoever
+  // holds the port, and Houston spins the whole 10-min window). With no reusable
+  // flow of our own, probe that exact port so a real Codex CLI / stray login
+  // becomes an instant, actionable error before any browser opens. Throwing
+  // here — BEFORE any state is added to `active` or the expiry armed — leaves
+  // the slot free for an immediate retry. The device-code path (deviceAuth)
+  // and every other provider bind nothing.
+  if (
+    provider === "openai-codex" &&
+    codexLoginMethod({ deviceAuth }) === OPENAI_CODEX_BROWSER_LOGIN_METHOD
+  ) {
+    await preflightCodexCallbackPort();
   }
 
   const state: LoginState = {
