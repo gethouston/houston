@@ -74,7 +74,7 @@ export function findDraftIntegrationSetupActivity<
  * — and only forces the agent to open the interview in this same turn.
  */
 export function integrationSetupPrompt(): string {
-  return `Houston sent this message automatically: the user clicked "Add custom integration" on the Integrations page. This chat is where you set up a service that the app's integration search does not already offer (their company's internal API, a niche tool, an MCP server). The user has not said anything yet and is waiting for you to start.
+  return `The user just clicked "Add custom integration" on the Integrations page, which opened this chat. They are sitting RIGHT HERE, live, watching the conversation and waiting for you to begin — Houston merely wrote this kickoff for you (they never see it). This is a normal, fully interactive chat: the ask_user tool is available and this whole flow runs on it. Never claim you cannot ask questions, run a step-by-step setup, or use interactive cards in this chat — you can, and you must. This chat is where you set up a service that the app's integration search does not already offer (their company's internal API, a niche tool, an MCP server). The user has not said anything yet and is waiting for you to start.
 
 Start RIGHT NOW, in this same turn:
 1. Write exactly one short, friendly opening line (match the user's language; no headings, no lists, no explanations). Say you will help them connect a tool that is not in the app's catalog.

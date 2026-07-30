@@ -6,7 +6,12 @@ import type { CustomSecretStore } from "./secrets";
 import { secretIdFor } from "./secrets";
 import { slugify } from "./slug";
 import type { CustomIntegrationStore } from "./store";
-import type { CustomIntegrationDef, CustomIntegrationView } from "./types";
+import { toolsOf } from "./tools";
+import type {
+  CustomIntegrationDef,
+  CustomIntegrationView,
+  CustomToolInfo,
+} from "./types";
 import { CUSTOM_SLUG, CustomIntegrationError } from "./types";
 import { viewOf } from "./views";
 
@@ -46,12 +51,30 @@ export class CustomIntegrationManager {
     return detectSource(executor, url);
   }
 
+  /** The compiled tools behind one integration (the detail card's list).
+   *  A pending/errored definition simply has none compiled yet. */
+  async tools(slug: string): Promise<CustomToolInfo[]> {
+    await this.defOr404(slug);
+    const { executor } = await this.host.ensure();
+    return toolsOf(executor, slug);
+  }
+
   async add(input: AddCustomIntegrationInput): Promise<CustomIntegrationView> {
     const slug = input.slug ?? slugify(input.name);
     if (!CUSTOM_SLUG.test(slug)) {
       throw new CustomIntegrationError(
         "invalid_slug",
         `invalid slug '${slug}'`,
+      );
+    }
+    // The executor's own internal toolbox lives under the reserved
+    // integration id "executor" — a user definition with that slug would
+    // collide inside the engine and leak engine-internal tools into
+    // counts/lists (the store's duplicate check cannot see it).
+    if (slug === "executor") {
+      throw new CustomIntegrationError(
+        "invalid_slug",
+        "'executor' is a reserved name; pick another",
       );
     }
     const defs = await this.store.list();

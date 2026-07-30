@@ -29,6 +29,7 @@ import { BootMixin } from "./client/boot-mixin";
 import { ChatHistoryMixin } from "./client/chat-history-mixin";
 import { ChatSendMixin } from "./client/chat-send-mixin";
 import { ConfigPrefsMixin } from "./client/config-prefs-mixin";
+import { CustomIntegrationsMixin } from "./client/custom-integrations-mixin";
 import { IntegrationsMixin } from "./client/integrations-mixin";
 import { LegacyUnsupportedMixin } from "./client/legacy-unsupported-mixin";
 import { MarketplaceMixin } from "./client/marketplace-mixin";
@@ -63,14 +64,16 @@ const Composed = BootMixin(
                         ProviderLoginMixin(
                           ProviderCredentialsMixin(
                             IntegrationsMixin(
-                              MeProfileMixin(
-                                OrgsMixin(
-                                  TeamsMixin(
-                                    ApiKeysMixin(
-                                      StoreMixin(
-                                        PortableMixin(
-                                          LegacyUnsupportedMixin(
-                                            HoustonClientBase,
+                              CustomIntegrationsMixin(
+                                MeProfileMixin(
+                                  OrgsMixin(
+                                    TeamsMixin(
+                                      ApiKeysMixin(
+                                        StoreMixin(
+                                          PortableMixin(
+                                            LegacyUnsupportedMixin(
+                                              HoustonClientBase,
+                                            ),
                                           ),
                                         ),
                                       ),

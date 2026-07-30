@@ -1,68 +1,77 @@
-import { Button, CatalogSearchField } from "@houston-ai/core";
-import type { CustomIntegrationView } from "@houston-ai/engine-client";
+import { Button } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  useCustomIntegrations,
-  useRemoveCustomIntegration,
-} from "../../hooks/queries";
+import { useCustomIntegrationsFor } from "../../hooks/queries";
 import type { Agent } from "../../lib/types";
-import { useAgentStore } from "../../stores/agents";
-import { AgentPickerDialog } from "../agent-picker-dialog";
-import { CustomDeleteDialog } from "./custom-delete-dialog";
-import { CustomEmptyState } from "./custom-empty-state";
+import { useUIStore } from "../../stores/ui";
+import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
+import { CustomAddFlow } from "./custom-add-flow";
+import { CustomEmptyState, CustomLoadErrorState } from "./custom-empty-state";
+import {
+  CustomIntegrationDialogs,
+  useCustomSelection,
+} from "./custom-integration-dialogs";
 import { CustomIntegrationRow } from "./custom-integration-row";
 import { filterCustomIntegrations } from "./custom-integrations-model";
-import { CustomKeyDialog } from "./custom-key-dialog";
+import { CustomModeShell, CustomSectionChrome } from "./custom-section-chrome";
 import { CustomSetupBanner } from "./custom-setup-banner";
 import { IntegrationSetupChat } from "./integration-setup-chat";
-import { SectionHeader } from "./section-header";
 import { useIntegrationChatSetup } from "./use-integration-chat-setup";
 
 /**
  * Custom integrations (API / MCP servers the app catalog doesn't offer). Two
  * variants, one body: `"section"` (default) is the standalone block with its
  * own heading, embedded by the page's non-ready states; `"tab"` is the body of
- * the global page's Custom integrations tab, where the tab label already names
- * the surface, so the heading drops and a search field joins the Add button in
- * a controls row (mirroring the catalog tab's layout). Hidden ENTIRELY when the
- * host does not support the feature (`useCustomIntegrations` → `null`) or
+ * the Custom integrations tab on the global page AND the per-agent tab. Hidden
+ * ENTIRELY when the host does not support the feature (list → `null`) or
  * before the list resolves; otherwise always visible so the empty state can
  * invite creation.
  *
- * "Add custom integration" picks an agent, then opens a guided setup chat
- * EMBEDDED right here (the same pattern as the routine setup chat) — an agent
- * runs the interview (which service, its URL, keys via `request_credential`)
- * with no board navigation and no view switch (see {@link
- * useIntegrationChatSetup} + {@link IntegrationSetupChat}). While a draft chat
- * exists it surfaces as a Continue-setup banner. Each row can enter a pending
- * integration's key (a secure dialog) or remove it (confirm-gated). All
- * mutations route through `call()`, so failures toast once and carry no local
- * `onError`.
+ * "Add custom integration" opens the {@link CustomAddDialog} fork: the guided
+ * setup chat (opened in the shell-level RIGHT panel, the same panel the
+ * routine chat and the mission board use, so this page stays visible) or
+ * the manual typed form. With an `agent` (the per-agent tab) every read/write
+ * rides the per-agent routes (HOU-823) and the chat starts with THAT agent;
+ * without one the chat path goes through the agent picker first. A row's body
+ * opens the detail card (metadata, tool list, key + remove); the trailing
+ * actions stay one-click. All mutations route through `call()`, so failures
+ * toast once and carry no local `onError`.
  */
 export function CustomIntegrationsSection({
   variant = "section",
+  agent,
+  tabActive,
 }: {
   variant?: "section" | "tab";
+  agent?: Agent;
+  /** Per-agent surface only: whether that tab owns the visible agent screen
+   *  (TabProps.isActive). The global page derives visibility from `viewMode`
+   *  itself. Needed because kept-alive views leave every section MOUNTED, and
+   *  only the visible one may drive the shared shell chat panel. */
+  tabActive?: boolean;
 }) {
   const { t } = useTranslation("integrations");
-  const list = useCustomIntegrations();
-  const remove = useRemoveCustomIntegration();
-  const agents = useAgentStore((s) => s.agents);
+  const list = useCustomIntegrationsFor(agent?.id);
+  const viewMode = useUIStore((s) => s.viewMode);
+  const surfaceActive = agent
+    ? (tabActive ?? false)
+    : viewMode === INTEGRATIONS_VIEW_ID;
   const chatSetup = useIntegrationChatSetup();
+  const selection = useCustomSelection();
 
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [keyIntegration, setKeyIntegration] =
-    useState<CustomIntegrationView | null>(null);
-  const [removeIntegration, setRemoveIntegration] =
-    useState<CustomIntegrationView | null>(null);
 
-  const onPickAgent = (agent: Agent) => {
-    setPickerOpen(false);
-    void chatSetup.start(agent);
-  };
+  // A FAILED read renders loudly (error + retry): a transient 500 must never
+  // be indistinguishable from a host without the feature — that one resolves
+  // `null` and hides the section legitimately. Only when there is NOTHING to
+  // show, though: a failed BACKGROUND refetch keeps the last good list on
+  // screen (an error panel over N live rows would erase the surface the same
+  // way the silent degrade would).
+  if (list.isError && list.data === undefined) {
+    return <CustomLoadErrorState onRetry={() => void list.refetch()} />;
+  }
 
   // `null` = unsupported host (hide the whole section); `undefined` = still
   // loading (nothing to show yet). Only a resolved array renders the section.
@@ -89,43 +98,31 @@ export function CustomIntegrationsSection({
       variant="outline"
       className="shrink-0 gap-1.5"
       disabled={chatSetup.pending}
-      onClick={() => setPickerOpen(true)}
+      onClick={() => setAddOpen(true)}
     >
       <Plus className="size-4" />
       {t("custom.addButton")}
     </Button>
   );
 
+  const rowsGrid = (
+    <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
+      {visible.map((integration) => (
+        <CustomIntegrationRow
+          key={integration.slug}
+          integration={integration}
+          onOpen={(i) => selection.openDetail(i.slug)}
+          onEnterKey={(i) => selection.openKey(i.slug)}
+          onRemove={(i) => selection.openRemove(i.slug)}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <section>
-      {variant === "tab" ? (
-        items.length > 0 && (
-          <>
-            <div className="mb-2 flex items-center gap-2">
-              <CatalogSearchField
-                value={query}
-                onChange={setQuery}
-                label={t("custom.searchPlaceholder")}
-                clearLabel={t("custom.clearSearch")}
-                className="flex-1"
-              />
-              {addButton}
-            </div>
-            <p className="mb-6 text-[13px] text-ink-muted">
-              {t("custom.description")}
-            </p>
-          </>
-        )
-      ) : (
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <SectionHeader title={t("custom.title")} count={items.length} />
-            <p className="mt-0.5 text-[13px] text-ink-muted">
-              {t("custom.description")}
-            </p>
-          </div>
-          {addButton}
-        </div>
+      {variant === "section" && (
+        <CustomSectionChrome count={items.length} addButton={addButton} />
       )}
 
       {chatSetup.hasDraft && !chatSetup.open && activeAgent && (
@@ -136,13 +133,15 @@ export function CustomIntegrationsSection({
         />
       )}
 
-      {/* The setup chat lives INLINE right here while open — an agent runs the
-          interview without any board navigation or view switch. */}
+      {/* The setup chat opens in the shell-level RIGHT panel (the routines
+          look): the agent runs the interview beside this page, which stays
+          visible on the left — no board navigation, no view switch. */}
       {chatSetup.open && activeAgent && (
         <IntegrationSetupChat
           agent={activeAgent}
           agentDef={chatSetup.activeAgentDef}
           activity={chatSetup.draftActivity}
+          active={surfaceActive}
           onClose={chatSetup.closePanel}
           onDone={chatSetup.finish}
         />
@@ -151,7 +150,7 @@ export function CustomIntegrationsSection({
       {items.length === 0 ? (
         tabEmptyState ? (
           <CustomEmptyState
-            onAdd={() => setPickerOpen(true)}
+            onAdd={() => setAddOpen(true)}
             pending={chatSetup.pending}
           />
         ) : (
@@ -159,38 +158,37 @@ export function CustomIntegrationsSection({
             <p className="text-sm text-ink-muted">{t("custom.empty")}</p>
           )
         )
+      ) : variant === "tab" ? (
+        // The Custom MODE (HOU-980 review): the same shell grammar as the
+        // Composio mode — this mode's search + Add over an Installed card.
+        <>
+          <CustomModeShell
+            query={query}
+            onQueryChange={setQuery}
+            addButton={addButton}
+            count={visible.length}
+          >
+            {rowsGrid}
+          </CustomModeShell>
+          {visible.length === 0 && (
+            <p className="text-sm text-ink-muted">{t("custom.noResults")}</p>
+          )}
+        </>
       ) : visible.length === 0 ? (
         <p className="text-sm text-ink-muted">{t("custom.noResults")}</p>
       ) : (
-        <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-          {visible.map((integration) => (
-            <CustomIntegrationRow
-              key={integration.slug}
-              integration={integration}
-              onEnterKey={setKeyIntegration}
-              onRemove={setRemoveIntegration}
-            />
-          ))}
-        </div>
+        rowsGrid
       )}
 
-      <AgentPickerDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        agents={agents}
-        onPick={onPickAgent}
+      <CustomAddFlow
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        agent={agent}
+        onStartChat={(target) => void chatSetup.start(target)}
+        onNeedsKey={(slug) => selection.openKey(slug)}
       />
 
-      <CustomKeyDialog
-        integration={keyIntegration}
-        onClose={() => setKeyIntegration(null)}
-      />
-
-      <CustomDeleteDialog
-        integration={removeIntegration}
-        onClose={() => setRemoveIntegration(null)}
-        onConfirm={(integration) => remove.mutate(integration.slug)}
-      />
+      <CustomIntegrationDialogs selection={selection} agentId={agent?.id} />
     </section>
   );
 }

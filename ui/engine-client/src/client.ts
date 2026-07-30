@@ -14,6 +14,7 @@ import { planAttachmentUploadBatches } from "./attachments.ts";
 import type {
   Activity,
   ActivityUpdate,
+  AddCustomIntegrationInput,
   AddOrgMemberResult,
   Agent,
   AgentAssignment,
@@ -52,8 +53,10 @@ import type {
   CreatorAnalytics,
   CreatorProfile,
   CreatorProfilePatch,
+  CustomDetectResult,
   CustomEndpoint,
   CustomIntegrationView,
+  CustomToolInfo,
   EditableProfile,
   EditableProfileUpdate,
   ErrorBody,
@@ -1326,6 +1329,98 @@ export class HoustonClient {
       { values },
     );
   }
+  /** Classify a pasted URL (OpenAPI doc / MCP endpoint / unknown) — the manual
+   *  add form's pre-check (HOU-980). `unknown` is a result, never a throw. */
+  detectCustomIntegration(url: string): Promise<CustomDetectResult> {
+    return this.request("POST", "/integrations/custom/detect", { url });
+  }
+  /** Register a custom integration from the manual add form. The host compiles
+   *  it before persisting; a compile failure rejects with the real reason. */
+  addCustomIntegration(
+    input: AddCustomIntegrationInput,
+  ): Promise<CustomIntegrationView> {
+    return this.request("POST", "/integrations/custom/definitions", input);
+  }
+  /** The compiled tools behind one custom integration (the detail card's
+   *  list), or `null` when the host does not serve the route (404 — old
+   *  build / gateway-fronted pod), mirroring `customIntegrations`. The
+   *  OTHER 404 — an unknown slug, marked `{code:"not_found"}` — is a real
+   *  miss and rethrows (a card open across a concurrent remove must not
+   *  read as "feature absent"). */
+  async customIntegrationTools(slug: string): Promise<CustomToolInfo[] | null> {
+    try {
+      return (
+        await this.request<{ items: CustomToolInfo[] }>(
+          "GET",
+          `/integrations/custom/definitions/${this.seg(slug)}/tools`,
+        )
+      ).items;
+    } catch (err) {
+      if (
+        isHoustonEngineError(err) &&
+        err.status === 404 &&
+        !isCustomSlugMiss(err)
+      )
+        return null;
+      throw err;
+    }
+  }
+  /** `detectCustomIntegration` through the per-agent surface (the ONE form a
+   *  gateway-fronted deployment proxies to the pod — HOU-823). */
+  detectAgentCustomIntegration(
+    agentSlugOrId: string,
+    url: string,
+  ): Promise<CustomDetectResult> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/detect`,
+      { url },
+    );
+  }
+  /** `addCustomIntegration` through the per-agent surface (HOU-823). */
+  addAgentCustomIntegration(
+    agentSlugOrId: string,
+    input: AddCustomIntegrationInput,
+  ): Promise<CustomIntegrationView> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions`,
+      input,
+    );
+  }
+  /** `removeCustomIntegration` through the per-agent surface (HOU-823). */
+  async removeAgentCustomIntegration(
+    agentSlugOrId: string,
+    slug: string,
+  ): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}`,
+    );
+  }
+  /** `customIntegrationTools` through the per-agent surface (HOU-823).
+   *  `null` on a route-absent 404 only, mirroring the top-level form. */
+  async agentCustomIntegrationTools(
+    agentSlugOrId: string,
+    slug: string,
+  ): Promise<CustomToolInfo[] | null> {
+    try {
+      return (
+        await this.request<{ items: CustomToolInfo[] }>(
+          "GET",
+          `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}/tools`,
+        )
+      ).items;
+    } catch (err) {
+      if (
+        isHoustonEngineError(err) &&
+        err.status === 404 &&
+        !isCustomSlugMiss(err)
+      )
+        return null;
+      throw err;
+    }
+  }
 
   // ---------- triggers (C9 event-driven routines) ----------
   //
@@ -2525,6 +2620,15 @@ export class HoustonClient {
     const ws = this.baseUrl.replace(/^http/, "ws");
     return `${ws}/v1/ws?token=${encodeURIComponent(this.token)}`;
   }
+}
+
+/** The custom-integration slug-scoped 404: the host marks an UNKNOWN SLUG
+ *  with a top-level `{code:"not_found"}` body, distinct from a bare 404
+ *  meaning the whole route family is absent (old build / gateway). */
+function isCustomSlugMiss(err: HoustonEngineError): boolean {
+  return (
+    (err.body as unknown as { code?: string } | null)?.code === "not_found"
+  );
 }
 
 export class HoustonEngineError extends Error {

@@ -55,6 +55,11 @@ export {
   type ConnectionStatus,
   ConnectionStatusBadge,
 } from "./connection-status-badge";
+export {
+  CustomIntegrationDialogs,
+  type CustomSelection,
+  useCustomSelection,
+} from "./custom-integration-dialogs";
 export { CustomIntegrationsSection } from "./custom-integrations-section";
 export { EnableInPermissionsButton } from "./enable-in-permissions-button";
 export { IntegrationBadges } from "./integration-badges";

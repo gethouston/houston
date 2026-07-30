@@ -2020,6 +2020,50 @@ export type CustomIntegrationState =
   | { status: "pending"; authMethods: CustomAuthMethod[] }
   | { status: "error"; message: string };
 
+/** One compiled tool behind a custom integration, as the detail card lists
+ *  it (name + blurb; addresses/schemas stay host-internal). */
+export interface CustomToolInfo {
+  name: string;
+  description?: string;
+}
+
+/** What a pasted URL turned out to be — the manual add form's pre-check.
+ *  `unknown` is a RESULT (not a recognizable service URL), never an error. */
+export interface CustomDetectResult {
+  kind: "openapi" | "mcp" | "unknown";
+  name?: string;
+  suggestedSlug?: string;
+  /** MCP probe: does the server demand auth before listing tools? */
+  requiresAuthentication?: boolean;
+  /** MCP probe: the auth is the server's OWN sign-in flow (OAuth), which the
+   *  custom provider cannot drive — a pasted API key will never work. */
+  requiresOAuth?: boolean;
+  toolCount?: number;
+}
+
+/**
+ * The manual add form's submit body (HOU-980) — the SAME grammar the agent's
+ * sandbox add tool sends, validated by the one host-side parser. `openapi`
+ * needs `url` OR `spec` (an inline OpenAPI document); `mcp` needs `endpoint`.
+ */
+export type AddCustomIntegrationInput =
+  | {
+      kind: "openapi";
+      name: string;
+      url?: string;
+      spec?: string;
+      baseUrl?: string;
+      auth: "none" | "credential";
+      slug?: string;
+    }
+  | {
+      kind: "mcp";
+      name: string;
+      endpoint: string;
+      auth: "none" | "credential";
+      slug?: string;
+    };
+
 /** What the host lists: the definition plus its live compiled state. */
 export interface CustomIntegrationView {
   slug: string;

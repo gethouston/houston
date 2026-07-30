@@ -35,3 +35,20 @@ export function CustomEmptyState({
     </Empty>
   );
 }
+
+/**
+ * The custom list FAILED to load (a real error, not the feature-absent 404
+ * degrade): say so and offer a retry — a transient 500 must never silently
+ * erase the whole custom surface (beta no-silent-failures policy).
+ */
+export function CustomLoadErrorState({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation("integrations");
+  return (
+    <section className="flex flex-col items-start gap-2 py-4">
+      <p className="text-sm text-ink-muted">{t("custom.loadError")}</p>
+      <Button type="button" size="sm" variant="outline" onClick={onRetry}>
+        {t("custom.retry")}
+      </Button>
+    </section>
+  );
+}

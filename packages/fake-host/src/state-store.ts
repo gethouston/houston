@@ -66,6 +66,9 @@ export interface CustomIntegrationSeed {
     label: string;
     fields: { variable: string; label: string }[];
   }[];
+  /** The compiled tools the detail card lists (HOU-980). Optional: an active
+   *  seed without it serves a generated `action_N` list sized to toolCount. */
+  tools?: { name: string; description?: string }[];
 }
 
 /**

@@ -1,19 +1,18 @@
-import { CatalogShell, type CatalogShellTab } from "@houston-ai/core";
+import { CatalogShell } from "@houston-ai/core";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCustomIntegrations } from "../../../hooks/queries";
-import {
-  type ConnectFlow,
-  CustomIntegrationsSection,
-  type PermissionsFix,
-} from "../../integrations";
-import { matchesQuery } from "../../integrations/browse-model";
+import { useCustomIntegrationsFor } from "../../../hooks/queries";
+import type { Agent } from "../../../lib/types";
+import type { ConnectFlow, PermissionsFix } from "../../integrations";
 import { CatalogControls } from "../../integrations-view/catalog-controls";
-import { CatalogPane } from "../../integrations-view/catalog-pane";
+import {
+  CatalogBrowsePane,
+  CatalogModeTabs,
+} from "../../integrations-view/catalog-mode-tabs";
 import { InstalledStrip } from "../../integrations-view/installed-strip";
 import { useCatalogSurface } from "../../integrations-view/use-catalog-surface";
 import { AgentCatalogSections } from "./agent-catalog-sections";
@@ -25,6 +24,12 @@ import {
 } from "./model";
 
 interface AgentIntegrationsBodyProps {
+  /** The agent this tab belongs to: the custom-integration reads/writes ride
+   *  its per-agent routes (HOU-823) and the setup chat starts with it. */
+  agent: Agent;
+  /** Whether this mounted tab owns the visible agent surface (TabProps) —
+   *  gates the setup chat's shared shell panel. */
+  tabActive: boolean;
   view: AgentIntegrationsView;
   /** The full toolkit catalog (drives the category filter + browse list). */
   catalog: IntegrationToolkit[];
@@ -50,23 +55,24 @@ interface AgentIntegrationsBodyProps {
 }
 
 /**
- * The resolved body of the per-agent Integrations tab — the SAME catalog
- * layout as the global Integrations page, minus its page header (the tab label
- * already says Integrations): the consolidated Installed strip (this agent's
- * usable apps + the custom integrations) OUTSIDE the tabs, then the
- * Integrations / Custom integrations tabs via the shared {@link CatalogShell}.
- * ONE search + category controls row ({@link CatalogControls}) above both
- * sections filters the Installed strip and the catalog tab together. The catalog
- * tab is the shared {@link CatalogPane} (the grouped category catalog with Teams
- * locked rows, and the rows of any app whose connection needs finishing),
- * carrying the agent-only disallowed-apps
- * section as its `children`; a strip row opens the shared detail modal (view +
+ * The resolved body of the per-agent Integrations tab — the SAME layout as
+ * the global Integrations page, minus its page header (the tab label already
+ * says Integrations): the page-level source toggle ({@link CatalogModeTabs},
+ * one source at a time), whose Composio mode is the shared
+ * {@link CatalogShell} — ONE search + category controls row over this agent's
+ * Installed strip and the browse catalog ({@link CatalogBrowsePane}, with
+ * Teams locked rows and the agent-only disallowed-apps section as its
+ * `children`) — and whose Custom mode is the shared section with ITS
+ * installed list up top. A strip row opens the shared detail modal (view +
  * reconnect + disconnect, a pure connect surface, never a permission editor).
- * Connecting an app makes it usable for this agent (connection ∩ allowlist) via
- * `connectFlow`. Split out so the parent remounts it per agent (`key={agent.id}`),
- * keeping lifted state (tab, search, category, modals) from crossing agents.
+ * Connecting an app makes it usable for this agent (connection ∩ allowlist)
+ * via `connectFlow`. Split out so the parent remounts it per agent
+ * (`key={agent.id}`), keeping lifted state (mode, search, category, modals)
+ * from crossing agents.
  */
 export function AgentIntegrationsBody({
+  agent,
+  tabActive,
   view,
   catalog,
   allowlist,
@@ -81,8 +87,9 @@ export function AgentIntegrationsBody({
   const { t } = useTranslation("integrations");
   const [detailRow, setDetailRow] = useState<AgentAppRow | null>(null);
   const [disconnectRow, setDisconnectRow] = useState<AgentAppRow | null>(null);
-  const custom = useCustomIntegrations();
-  const customItems = custom.data ?? [];
+  // Per-agent form (HOU-823): the ONE custom surface a gateway proxies to the
+  // pod, so this tab keeps working on managed cloud (top-level 404s there).
+  const custom = useCustomIntegrationsFor(agent.id);
 
   // Only WORKING connections fill the strip; an app whose connection is pending
   // or errored stays in the catalog below, in its own category rows.
@@ -105,92 +112,84 @@ export function AgentIntegrationsBody({
     availableCount,
   } = useCatalogSurface({
     active,
-    custom: customItems,
     catalog,
     connections,
     allowlist,
   });
 
-  const tabs: CatalogShellTab[] = [
-    {
-      value: "catalog",
-      label: t("home.tabs.catalog"),
-      count: connectableCount({ catalog, connections, allowlist }),
-      content: (
-        <CatalogPane
-          catalog={catalog}
-          connections={connections}
-          surface={surface}
-          query={query}
-          category={category}
-          isLoading={catalogLoading}
-          connectFlow={connectFlow}
-          onConnected={(toolkit) =>
-            setQuery((currentQuery) => {
-              if (!currentQuery.trim()) return currentQuery;
-              const app = catalog.find((item) => item.slug === toolkit);
-              return app && matchesQuery(app, currentQuery.trim().toLowerCase())
-                ? ""
-                : currentQuery;
-            })
-          }
-          onRemove={onDisconnect}
-          allowlist={allowlist}
-          lockedFix={permissionsFix}
-        >
-          <AgentCatalogSections view={view} permissionsFix={permissionsFix} />
-        </CatalogPane>
-      ),
-    },
-    ...(custom.data !== null
-      ? [
-          {
-            value: "custom",
-            label: t("home.tabs.custom"),
-            count: custom.data?.length,
-            content: <CustomIntegrationsSection variant="tab" />,
-          },
-        ]
-      : []),
-  ];
   return (
     <>
-      <CatalogShell
-        controls={
-          <CatalogControls
-            catalog={catalog}
-            connections={connections}
-            query={query}
-            onQueryChange={setQuery}
-            category={category}
-            onCategoryChange={setCategory}
-          />
+      <CatalogModeTabs
+        mode={tab}
+        onModeChange={setTab}
+        catalogCount={
+          catalogLoading
+            ? undefined
+            : connectableCount({ catalog, connections, allowlist })
         }
-        installedTitle={t("home.installedTitle")}
-        installedCount={installedCount}
-        installed={
-          installedCount > 0 ? (
-            <InstalledStrip
-              active={shown.active}
-              custom={shown.custom}
-              searching={filtering}
-              onOpen={(connection) => {
-                const row = active.find(
-                  (r) => r.connection.connectionId === connection.connectionId,
-                );
-                if (row) setDetailRow(row);
-              }}
-              onOpenCustom={() => setTab("custom")}
+        customData={custom.data}
+        customListFailed={custom.isError}
+        agent={agent}
+        tabActive={tabActive}
+      >
+        <CatalogShell
+          controls={
+            <CatalogControls
+              catalog={catalog}
+              connections={connections}
+              query={query}
+              onQueryChange={setQuery}
+              category={category}
+              onCategoryChange={setCategory}
             />
-          ) : undefined
-        }
-        availableTitle={t("home.availableTitle")}
-        // >1 tab: the tab chips carry the counts (no duplicate header chip).
-        availableCount={tabs.length > 1 ? undefined : availableCount}
-        tabs={tabs}
-        value={tab}
-        onValueChange={setTab}
-      />
+          }
+          installedTitle={t("home.installedTitle")}
+          installedCount={installedCount}
+          installed={
+            installedCount > 0 ? (
+              <InstalledStrip
+                active={shown.active}
+                searching={filtering}
+                onOpen={(connection) => {
+                  const row = active.find(
+                    (r) =>
+                      r.connection.connectionId === connection.connectionId,
+                  );
+                  if (row) setDetailRow(row);
+                }}
+              />
+            ) : undefined
+          }
+          availableTitle={t("home.availableTitle")}
+          availableCount={availableCount}
+          tabs={[
+            {
+              value: "catalog",
+              label: t("home.tabs.catalog"),
+              content: (
+                <CatalogBrowsePane
+                  catalog={catalog}
+                  connections={connections}
+                  surface={surface}
+                  query={query}
+                  setQuery={setQuery}
+                  category={category}
+                  isLoading={catalogLoading}
+                  connectFlow={connectFlow}
+                  onRemove={onDisconnect}
+                  allowlist={allowlist}
+                  lockedFix={permissionsFix}
+                >
+                  <AgentCatalogSections
+                    view={view}
+                    permissionsFix={permissionsFix}
+                  />
+                </CatalogBrowsePane>
+              ),
+            },
+          ]}
+        />
+      </CatalogModeTabs>
 
       <AgentIntegrationsChrome
         onManageAll={onManageAll}

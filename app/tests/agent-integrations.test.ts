@@ -191,13 +191,27 @@ describe("E7 integrations tab source", () => {
     const body = read(
       "../src/components/tabs/agent-integrations/agent-integrations-body.tsx",
     );
-    ok(body.includes("CatalogPane"), "the shared catalog pane stays");
+    // The browse pane is the SHARED CatalogBrowsePane inside the page-level
+    // source toggle (copy-paste twin of the global page removed, HOU-980);
+    // the ceiling + full catalog flow through it into the one CatalogPane.
     ok(
-      body.includes("allowlist={allowlist}"),
-      "body hands the ceiling to the pane (locks, not pre-filter)",
+      body.includes("CatalogBrowsePane") && body.includes("CatalogModeTabs"),
+      "renders the shared browse pane inside the shared mode toggle",
     );
     ok(
-      body.includes("catalog={catalog}"),
+      body.includes("allowlist={allowlist}"),
+      "body hands the ceiling to the shared pane (locks, not pre-filter)",
+    );
+    const paneSrc = read(
+      "../src/components/integrations-view/catalog-mode-tabs.tsx",
+    );
+    ok(paneSrc.includes("CatalogPane"), "the shared catalog pane stays");
+    ok(
+      paneSrc.includes("allowlist={allowlist}"),
+      "the shared pane hands the ceiling down",
+    );
+    ok(
+      paneSrc.includes("catalog={catalog}"),
       "the pane receives the FULL catalog, never a pre-filtered one",
     );
   });

@@ -373,3 +373,59 @@ test("list() after a FRESH CustomExecutorHost over the same stores rehydrates th
   expect(views[0]?.slug).toBe(added.slug);
   expect(views[0]?.state).toEqual({ status: "active", toolCount });
 });
+
+test("tools() lists exactly the active state's toolCount, names filled", async () => {
+  const { manager } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Widgets",
+    spec: { kind: "blob", value: OPENAPI_SPEC },
+    auth: "none",
+  });
+  expect(added.state.status).toBe("active");
+  const toolCount =
+    added.state.status === "active" ? added.state.toolCount : -1;
+
+  // The list backs the detail card's "N actions" — it must agree with the
+  // count the row shows, and nothing from the executor's own internal
+  // toolbox (integration "executor") may leak in.
+  const tools = await manager.tools(added.slug);
+  expect(tools).toHaveLength(toolCount);
+  for (const tool of tools) {
+    expect(tool.name.length).toBeGreaterThan(0);
+  }
+});
+
+test("add() rejects the reserved 'executor' slug before touching the engine", async () => {
+  const { manager } = setup();
+  await expect(
+    manager.add({
+      kind: "mcp",
+      name: "Executor",
+      slug: "executor",
+      endpoint: "https://mcp.example.invalid",
+      auth: "none",
+    }),
+  ).rejects.toMatchObject({ code: "invalid_slug" });
+});
+
+test("tools() on an unknown slug throws not_found", async () => {
+  const { manager } = setup();
+  await expect(manager.tools("ghost")).rejects.toMatchObject({
+    code: "not_found",
+  });
+});
+
+test("tools() on a pending credential-mode def resolves (no throw)", async () => {
+  const { manager } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC },
+    auth: "credential",
+  });
+  expect(added.state.status).toBe("pending");
+  // The detail card may ask for the list before the key is saved; the
+  // contract is "an array, possibly empty", never an error.
+  expect(Array.isArray(await manager.tools(added.slug))).toBe(true);
+});

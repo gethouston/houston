@@ -87,6 +87,13 @@ export type CustomIntegrationState =
   | { status: "pending"; authMethods: CustomAuthMethod[] }
   | { status: "error"; message: string };
 
+/** One compiled tool of a custom integration, reduced to what the detail
+ *  UI lists (name + blurb). Addresses/schemas stay engine-internal. */
+export interface CustomToolInfo {
+  name: string;
+  description?: string;
+}
+
 /** What the routes/UI list: the definition + its live state. */
 export interface CustomIntegrationView {
   slug: string;
