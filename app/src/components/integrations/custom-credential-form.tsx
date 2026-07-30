@@ -1,4 +1,4 @@
-import { Button } from "@houston-ai/core";
+import { Button, Input } from "@houston-ai/core";
 import type {
   CustomAuthField,
   CustomAuthMethod,
@@ -100,11 +100,13 @@ export function CustomCredentialForm({
               {field.label}
             </label>
             <div className="relative">
-              <input
+              {/* The design-system Input (quiet focus:border-focus) — the old
+                  hand-rolled input stacked a 2px ring-focus ON TOP of its
+                  border, which read as a harsh black double border. */}
+              <Input
                 id={`ci-${field.variable}`}
                 type={show ? "text" : "password"}
                 autoComplete="off"
-                // biome-ignore lint/a11y/noAutofocus: focus the first key field
                 autoFocus={autoFocus && i === 0}
                 value={values[field.variable] ?? ""}
                 onChange={(e) =>
@@ -112,7 +114,7 @@ export function CustomCredentialForm({
                 }
                 placeholder={t("custom.credential.placeholder")}
                 disabled={submitting}
-                className="w-full rounded-md border bg-input px-3 py-2 pr-10 font-mono text-[13px] focus:outline-none focus:ring-2 focus:ring-focus"
+                className="pr-10 font-mono text-[13px]"
               />
               <button
                 type="button"
