@@ -5,6 +5,11 @@ import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+import {
+  isObjectMetadata,
+  type ObjectMetadata,
+  parseObjectManifest,
+} from "./object-manifest";
 import { type ObjectStore, ObjectTooLargeError } from "./object-store";
 import { type FetchRetryOptions, fetchWithRetry } from "./retry";
 
@@ -22,16 +27,11 @@ export interface HttpObjectStoreOptions {
   /** Full agent-scoped base URL ending in `/v1/pod/store/<org>/<agent>`. */
   baseUrl: string;
   token: string;
+  /** Shared routes additionally bind the pod token to its own agent slug. */
+  agentSlug?: string;
   fetchImpl?: typeof fetch;
   /** One delay per retry of a transient failure; override to speed up tests. */
   retryDelaysMs?: number[];
-}
-
-interface ObjectMetadata {
-  key: string;
-  size: number;
-  md5: string;
-  updated: string;
 }
 
 /**
@@ -42,29 +42,32 @@ interface ObjectMetadata {
 export class HttpObjectStore implements ObjectStore {
   private readonly baseUrl: string;
   private readonly token: string;
+  private readonly agentSlug: string | undefined;
   private readonly fetchImpl: typeof fetch;
   private readonly retryDelaysMs: number[] | undefined;
 
   constructor(opts: HttpObjectStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.token = opts.token;
+    this.agentSlug = opts.agentSlug;
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.retryDelaysMs = opts.retryDelaysMs;
   }
 
   async list(prefix: string): Promise<string[]> {
+    return (await this.manifest(prefix)).map((object) => object.key);
+  }
+
+  async manifest(prefix = ""): Promise<ObjectMetadata[]> {
     const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : "";
     const res = await this.fetch(`${this.baseUrl}/manifest${query}`, {
       headers: this.authHeaders(),
     });
     if (!res.ok) throw await this.responseError(res, "GET", "manifest");
-    const body: unknown = await res.json();
-    if (!this.isManifest(body)) {
-      throw new Error("object store GET manifest returned a malformed body");
-    }
-    return body.objects
-      .map((object) => object.key)
-      .filter((key) => !prefix || key.startsWith(prefix));
+    return parseObjectManifest(
+      await res.json(),
+      "object store GET manifest",
+    ).filter((object) => !prefix || object.key.startsWith(prefix));
   }
 
   async download(key: string, destFile: string): Promise<void> {
@@ -119,7 +122,7 @@ export class HttpObjectStore implements ObjectStore {
           });
     if (!res.ok) throw await this.responseError(res, "PUT", key);
     const body: unknown = await res.json();
-    if (!this.isObjectMetadata(body)) {
+    if (!isObjectMetadata(body)) {
       throw new Error(`object store PUT ${key} returned a malformed body`);
     }
   }
@@ -156,29 +159,12 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   private authHeaders(): Record<string, string> {
-    return { Authorization: `Bearer ${this.token}` };
-  }
-
-  private isManifest(value: unknown): value is { objects: ObjectMetadata[] } {
-    if (!value || typeof value !== "object" || !("objects" in value)) {
-      return false;
-    }
-    const { objects } = value as { objects: unknown };
-    return (
-      Array.isArray(objects) &&
-      objects.every((item) => this.isObjectMetadata(item))
-    );
-  }
-
-  private isObjectMetadata(value: unknown): value is ObjectMetadata {
-    if (!value || typeof value !== "object") return false;
-    const item = value as Partial<ObjectMetadata>;
-    return (
-      typeof item.key === "string" &&
-      typeof item.size === "number" &&
-      typeof item.md5 === "string" &&
-      typeof item.updated === "string"
-    );
+    return this.agentSlug
+      ? {
+          Authorization: `Bearer ${this.token}`,
+          "X-Houston-Agent": this.agentSlug,
+        }
+      : { Authorization: `Bearer ${this.token}` };
   }
 
   private async responseError(

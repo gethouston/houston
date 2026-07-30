@@ -6,9 +6,10 @@ import { join } from "node:path";
 import type { Capabilities, Workspace } from "@houston/protocol";
 import {
   LocalDirStore,
+  type ManifestObjectStore,
   type ObjectStore,
 } from "@houston/runtime-client/object-sync";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import { EnvCredentialVault } from "../credentials/vault";
 import type { Agent } from "../domain/types";
@@ -52,6 +53,7 @@ async function setup(opts?: {
   spawner?: RuntimeSpawner;
   eagerRuntime?: boolean;
   storeSync?: LocalHostOptions["storeSync"];
+  sharedMirror?: LocalHostOptions["sharedMirror"];
   waitForStart?: boolean;
 }) {
   const houstonHome = mkdtempSync(join(tmpdir(), "houston-localhost-"));
@@ -72,6 +74,7 @@ async function setup(opts?: {
     credentials: opts?.credentials,
     eagerRuntime: opts?.eagerRuntime,
     storeSync: opts?.storeSync,
+    sharedMirror: opts?.sharedMirror,
   });
   const startPromise = host.start();
   if (opts?.waitForStart !== false) await startPromise;
@@ -113,10 +116,12 @@ test("integration mode log explains how to enable integrations when off", () => 
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, reject, resolve };
 }
 
 test("does not listen until store hydration has completed", async () => {
@@ -138,6 +143,33 @@ test("does not listen until store hydration has completed", async () => {
   await startPromise;
   expect((await fetch(`${base}/health`)).status).toBe(200);
   await host.stop();
+});
+
+test("a failed shared-mirror wake does not block host readiness", async () => {
+  const failure = deferred<never>();
+  const store: ManifestObjectStore = {
+    manifest: () => failure.promise,
+    async download() {},
+  };
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const { base, host } = await setup({
+    sharedMirror: {
+      store,
+      mirrorDir: mkdtempSync(join(tmpdir(), "host-shared-mirror-")),
+    },
+  });
+  try {
+    expect((await fetch(`${base}/health`)).status).toBe(200);
+    failure.reject(new Error("shared wake failed"));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(error).toHaveBeenCalledWith(
+      "[shared-mirror] wake sync failed; using current mirror",
+      expect.objectContaining({ message: "shared wake failed" }),
+    );
+  } finally {
+    await host.stop();
+    error.mockRestore();
+  }
 });
 
 test("stop uploads local changes before closing the host", async () => {
@@ -507,12 +539,24 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
     lazy.host.stop();
   }
 
-  // Managed pods receive their hydrated shared mirror in Phase 2, so this
-  // desktop/local filesystem wiring must stay absent when gateway-fronted.
+  // Managed pods point every runtime at the pod-local org mirror, never the
+  // workspace's desktop `.shared` tree.
+  const managedMirrorDir = mkdtempSync(
+    join(tmpdir(), "managed-shared-mirror-"),
+  );
   const managed = await setup({
     spawner: recordingSpawner,
     eagerRuntime: true,
     gatewayFronted: true,
+    sharedMirror: {
+      store: {
+        async manifest() {
+          return [];
+        },
+        async download() {},
+      },
+      mirrorDir: managedMirrorDir,
+    },
   });
   try {
     const deadline = Date.now() + 5_000;
@@ -520,7 +564,7 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
       await new Promise((r) => setTimeout(r, 25));
     }
     expect(spawned).toHaveLength(1);
-    expect(spawned[0]?.sharedSkillsDir).toBeUndefined();
+    expect(spawned[0]?.sharedSkillsDir).toBe(join(managedMirrorDir, "skills"));
   } finally {
     managed.host.stop();
     await new Promise<void>((r) => health.close(() => r()));

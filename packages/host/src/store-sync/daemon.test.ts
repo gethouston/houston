@@ -93,6 +93,7 @@ test("never uploads credentials, db files, temp files, or runtime auth", async (
     "credentials.json": "secret",
     "claude-login/.credentials.json": "secret",
     "db/houston.db": "db",
+    "shared-mirror/skills/org/SKILL.md": "read-only cache",
     "workspace/write.tmp": "temp",
     "workspaces/W/A/.houston/runtime/auth.json": "token",
     "claude-login/projects/resume.json": "resume",
@@ -108,6 +109,11 @@ test("never uploads credentials, db files, temp files, or runtime auth", async (
     readFileSync(join(remoteRoot, "claude-login", ".credentials.json")),
   ).toThrow();
   expect(() => readFileSync(join(remoteRoot, "db", "houston.db"))).toThrow();
+  expect(() =>
+    readFileSync(
+      join(remoteRoot, "shared-mirror", "skills", "org", "SKILL.md"),
+    ),
+  ).toThrow();
   expect(() =>
     readFileSync(join(remoteRoot, "workspace", "write.tmp")),
   ).toThrow();

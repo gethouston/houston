@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { HttpObjectStore } from "@houston/runtime-client/object-sync";
 import {
   initEngineSentry,
   installConsoleCapture,
@@ -14,6 +13,7 @@ import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
 import { isBenignRecursiveWatchRace } from "../watch/watcher-race";
 import { buildLocalHost } from "./host";
+import { managedStoreConfig } from "./managed-store-config";
 import { runtimeCommand } from "./runtime-command";
 
 /**
@@ -90,41 +90,15 @@ async function remoteCredentialConfig(hostTokenEnv: string | undefined) {
   return undefined;
 }
 
-function optionalPositiveNumber(name: string): number | undefined {
-  const raw = process.env[name];
-  if (raw === undefined) return undefined;
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${name} must be a positive number`);
-  }
-  return value;
-}
-
-async function storeSyncConfig(hostTokenEnv: string | undefined) {
-  const url = process.env.HOUSTON_STORE_URL;
-  if (!url) return undefined;
-  const orgSlug = process.env.HOUSTON_ORG_SLUG;
-  const agentSlug = process.env.HOUSTON_AGENT_SLUG;
-  if (!orgSlug || !agentSlug || !hostTokenEnv) {
-    return fatal(
-      "[local-host] incomplete managed object-store env: set HOUSTON_STORE_URL, HOUSTON_ORG_SLUG, HOUSTON_AGENT_SLUG, and HOUSTON_HOST_TOKEN together.",
-    );
-  }
-  const baseUrl = `${url.replace(/\/+$/, "")}/v1/pod/store/${encodeURIComponent(orgSlug)}/${encodeURIComponent(agentSlug)}`;
-  const hydrateMaxMb = optionalPositiveNumber("HOUSTON_HYDRATE_MAX_MB");
-  return {
-    store: new HttpObjectStore({ baseUrl, token: hostTokenEnv }),
-    quietMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_QUIET_MS"),
-    intervalMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_INTERVAL_MS"),
-    maxHydrateBytes:
-      hydrateMaxMb === undefined ? undefined : hydrateMaxMb * 1024 * 1024,
-  };
-}
-
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
 const hostTokenEnv = process.env.HOUSTON_HOST_TOKEN;
 const hostToken = hostTokenEnv || randomBytes(32).toString("hex");
 const remoteGateway = await remoteCredentialConfig(hostTokenEnv);
+const managedStore = await managedStoreConfig(
+  hostTokenEnv,
+  houstonHome,
+  (message) => fatal(message),
+);
 // Event-driven routines fire only where a trigger backend exists (a Composio
 // project key + a public webhook URL) — that is Houston Cloud, i.e. a managed
 // pod. Desktop and self-host carry no trigger backend. This one fact drives the
@@ -191,7 +165,8 @@ const host = buildLocalHost({
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
   passive: process.env.HOUSTON_PASSIVE === "1",
-  storeSync: await storeSyncConfig(hostTokenEnv),
+  storeSync: managedStore?.storeSync,
+  sharedMirror: managedStore?.sharedMirror,
   // Platform-mode integrations: desktops get HOUSTON_INTEGRATIONS_URL (the
   // cloud gateway holding Houston's Composio key); self-host + the managed pod
   // set their own COMPOSIO_API_KEY and go direct. Neither → integrations off.

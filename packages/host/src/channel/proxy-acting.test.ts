@@ -47,12 +47,16 @@ beforeAll(async () => {
 
 afterAll(() => runtime.close());
 
-function makeChannel(forwardActingHeader: boolean): ProxyChannel {
+function makeChannel(
+  forwardActingHeader: boolean,
+  beforeTurn?: () => Promise<void>,
+): ProxyChannel {
   return new ProxyChannel({
     launcher: new FakeLauncher({ baseUrl: runtimeUrl, token: "sbx" }),
     proxy: { forward },
     credentials: new MemoryCredentialStore(),
     forwardActingHeader,
+    beforeTurn,
   });
 }
 
@@ -118,4 +122,16 @@ test("routine creator identity (server-minted acting-user) flows regardless of t
     // fireTurn never sends the acting-as header — it is not the routine path.
     expect(seenHeaders[0]?.["x-houston-acting-as"]).toBeUndefined();
   }
+});
+
+test("interactive and routine turns both refresh shared resources before dispatch", async () => {
+  let refreshes = 0;
+  const channel = makeChannel(false, async () => {
+    refreshes += 1;
+  });
+
+  await dispatchWithHeader(channel);
+  await channel.fireTurn(ctx, "c1", "run it");
+
+  expect(refreshes).toBe(2);
 });

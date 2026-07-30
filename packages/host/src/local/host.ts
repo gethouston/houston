@@ -1,9 +1,12 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { basename, dirname, join } from "node:path";
 import { loadRoutineRuns, sharedSkillsDirKey } from "@houston/domain";
 import type { Capabilities } from "@houston/protocol";
-import type { ObjectStore } from "@houston/runtime-client/object-sync";
+import type {
+  ManifestObjectStore,
+  ObjectStore,
+} from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
@@ -36,7 +39,7 @@ import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { LocalWorkspaceStore } from "../store/local";
-import { StoreSyncDaemon } from "../store-sync";
+import { SharedMirrorController, StoreSyncDaemon } from "../store-sync";
 import { MemoryTurnBus } from "../turn/bus";
 import { UsageSampler } from "../usage/sampler";
 import { FsVfs } from "../vfs";
@@ -185,6 +188,11 @@ export interface LocalHostOptions {
     intervalMs?: number;
     maxHydrateBytes?: number;
   };
+  /** Managed-pod read-only org prefix cache, outside the agent workspace. */
+  sharedMirror?: {
+    store: ManifestObjectStore;
+    mirrorDir: string;
+  };
   /**
    * Managed-pod active-time reporting: sample this pod's busy state and report
    * per-day totals to the gateway's compute-usage ingest. Same env quadruple as
@@ -260,6 +268,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         podToken: opts.sharedEndpoints.podToken,
       })
     : undefined;
+  const sharedMirrorDir = opts.sharedMirror?.mirrorDir;
+  const sharedMirror = opts.sharedMirror
+    ? new SharedMirrorController({
+        ...opts.sharedMirror,
+        log: severityLog,
+      })
+    : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
 
   const spawner =
@@ -288,15 +303,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     spawner,
     workspaceDirFor: (a) => agentDir(a.id),
     dataDirFor: (a) => join(agentDir(a.id), ".houston", "runtime"),
-    sharedSkillsDirFor: opts.gatewayFronted
-      ? undefined
-      : (a) =>
-          join(
-            opts.workspacesRoot,
-            ...sharedSkillsDirKey(
-              paths.sharedRoot({ id: a.workspaceId }),
-            ).split("/"),
-          ),
+    sharedSkillsDirFor: sharedMirrorDir
+      ? () => join(sharedMirrorDir, "skills")
+      : opts.gatewayFronted
+        ? undefined
+        : (a) =>
+            join(
+              opts.workspacesRoot,
+              ...sharedSkillsDirKey(
+                paths.sharedRoot({ id: a.workspaceId }),
+              ).split("/"),
+            ),
     mintToken: (a) => vault.sandboxToken(a.workspaceId, a.id),
     // Connect-once locally too: keyless runtimes fetch a fresh token from this
     // host, so the refresh token never sits in a runtime's environment.
@@ -323,6 +340,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // the gateway minted the header, so relaying it is what lets the runtime's
     // integration calls act as the driving user (C2).
     forwardActingHeader: opts.gatewayFronted ?? false,
+    beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
   });
 
   // Integrations (platform model): the desktop holds NO provider key — the
@@ -559,6 +577,20 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       // readiness-critical and must finish before migrations or HTTP listening;
       // failure propagates so the pod restarts without ever syncing an empty tree.
       await syncDaemon?.hydrate();
+      // Shared storage is a disposable read-only cache, not a readiness
+      // invariant. Start its pull after authoritative agent hydration but do
+      // not await the network; the first turn joins it through beforeTurn.
+      if (sharedMirrorDir) {
+        try {
+          mkdirSync(sharedMirrorDir, { recursive: true });
+          sharedMirror?.wake();
+        } catch (error) {
+          severityLog(
+            "[shared-mirror] wake sync failed; using current mirror",
+            error,
+          );
+        }
+      }
       // Managed cloud: migrate the hydrated plaintext custom-integration file
       // into Secret Manager before starting the watcher/sync loop. Removing it
       // after every upload succeeds makes the first sync delete the old GCS

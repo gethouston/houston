@@ -11,5 +11,17 @@ export {
   hydrate,
   syncBack,
 } from "./hydrate";
+export type {
+  ManifestObjectStore,
+  ObjectMetadata,
+} from "./object-manifest";
 export type { ObjectStore } from "./object-store";
 export { LocalDirStore, ObjectTooLargeError } from "./object-store";
+export type {
+  SharedMirrorFamily,
+  SharedMirrorResult,
+  SharedMirrorSnapshot,
+  SharedMirrorState,
+  SyncSharedMirrorOptions,
+} from "./shared-mirror";
+export { probeSharedMirror, syncSharedMirror } from "./shared-mirror";
