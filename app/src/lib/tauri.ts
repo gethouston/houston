@@ -780,6 +780,11 @@ export const tauriSharedSkills = {
         content,
       }),
     ),
+  /** "Share to workspace": full SKILL.md verbatim, at the exact slug. */
+  promote: (workspaceId: string, slug: string, content: string) =>
+    call<SkillDetail>("promote_shared_skill", () =>
+      getEngine().promoteSharedSkill(workspaceId, slug, content),
+    ),
   delete: (workspaceId: string, slug: string) =>
     call<void>("delete_shared_skill", () =>
       getEngine().deleteSharedSkill(workspaceId, slug),

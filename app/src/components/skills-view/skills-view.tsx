@@ -198,6 +198,7 @@ export function SkillsView() {
                 onDelete: (row) => sharedActions.deleteShared(row, agents),
                 onRevert: sharedActions.revertOverride,
                 onEnableAll: (row) => sharedActions.enableForAll(row, agents),
+                onPromote: sharedActions.promoteToShared,
               }
             : undefined
         }

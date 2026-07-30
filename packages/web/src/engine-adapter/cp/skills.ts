@@ -119,6 +119,20 @@ export async function createSharedSkill(
   return (await res.json()) as SkillDetail;
 }
 
+export async function promoteSharedSkill(
+  cfg: ControlPlaneConfig,
+  workspaceId: string,
+  slug: string,
+  content: string,
+): Promise<SkillDetail> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/workspaces/${encodeURIComponent(workspaceId)}/shared-skills/${encodeURIComponent(slug)}`,
+    { method: "POST", body: JSON.stringify({ content }) },
+  );
+  return (await res.json()) as SkillDetail;
+}
+
 export async function saveSharedSkill(
   cfg: ControlPlaneConfig,
   workspaceId: string,

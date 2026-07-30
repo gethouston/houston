@@ -202,7 +202,8 @@
       "enableAll": "Activar para todos los agentes",
       "modifiedOn": "{{name}} tiene una copia modificada",
       "revert": "Usar versión del espacio",
-      "deleteSharedDescription": "Esto quita la skill del espacio de trabajo para todos los agentes. Los agentes con una copia modificada conservan su propia versión."
+      "deleteSharedDescription": "Esto quita la skill del espacio de trabajo para todos los agentes. Los agentes con una copia modificada conservan su propia versión.",
+      "shareToWorkspace": "Compartir con el espacio"
     },
     "chatPick": {
       "title": "¿Quién la construye contigo?",
@@ -211,7 +212,8 @@
     "createdShared": "Skill agregada a tu espacio de trabajo",
     "enabledForAll_one": "Activada para {{count}} agente",
     "enabledForAll_other": "Activada para {{count}} agentes",
-    "overrideReverted": "{{name}} vuelve a usar la versión del espacio de trabajo"
+    "overrideReverted": "{{name}} vuelve a usar la versión del espacio de trabajo",
+    "promoted": "La skill ahora se comparte en tu espacio de trabajo"
   },
   "fromYourAgents": {
     "heading": "De tus otros agentes",

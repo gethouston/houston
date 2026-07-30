@@ -118,6 +118,19 @@ export function createSharedSkill(
   return detail(slug, content);
 }
 
+/** "Share to workspace": verbatim SKILL.md at an exact slug; null if taken. */
+export function promoteSharedSkill(
+  workspaceId: string,
+  slug: string,
+  content: string,
+): SkillDetail | null {
+  const skills = workspaceSkills(workspaceId);
+  if (skills.has(slug)) return null;
+  skills.set(slug, content);
+  emitDomain("SharedSkillsChanged", undefined, workspaceId);
+  return detail(slug, content);
+}
+
 export function saveSharedSkill(
   workspaceId: string,
   slug: string,

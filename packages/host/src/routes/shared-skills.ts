@@ -97,6 +97,25 @@ export async function handleSharedSkills(
     json(res, 201, await loadSkillDetailFromDir(deps.vfs, dir, newSlug));
     return true;
   }
+  if (method === "POST" && slug) {
+    // Promote: place a FULL existing SKILL.md (frontmatter intact) into the
+    // store at an exact slug — the explicit "Share to workspace" act that
+    // replaced auto-migration (a skill becomes shared only when a user says
+    // so). Unlike the compose-create above, content arrives verbatim.
+    const body = await readJson(req);
+    if (!body.content || typeof body.content !== "string") {
+      json(res, 400, { error: "missing 'content'" });
+      return true;
+    }
+    if ((await deps.vfs.readText(skillKeyInDir(dir, slug))) !== null) {
+      json(res, 409, { error: `shared skill '${slug}' already exists` });
+      return true;
+    }
+    await deps.vfs.writeText(skillKeyInDir(dir, slug), body.content);
+    fireChange();
+    json(res, 201, await loadSkillDetailFromDir(deps.vfs, dir, slug));
+    return true;
+  }
   if (method === "PUT" && slug) {
     const body = await readJson(req);
     if (!body.content || typeof body.content !== "string") {

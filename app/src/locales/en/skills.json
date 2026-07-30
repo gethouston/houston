@@ -202,7 +202,8 @@
       "enableAll": "Enable for all agents",
       "modifiedOn": "{{name}} has a modified copy",
       "revert": "Use workspace version",
-      "deleteSharedDescription": "This removes the skill from the workspace for every agent. Agents with a modified copy keep their own version."
+      "deleteSharedDescription": "This removes the skill from the workspace for every agent. Agents with a modified copy keep their own version.",
+      "shareToWorkspace": "Share to workspace"
     },
     "chatPick": {
       "title": "Who should build it with you?",
@@ -211,7 +212,8 @@
     "createdShared": "Skill added to your workspace",
     "enabledForAll_one": "Enabled for {{count}} agent",
     "enabledForAll_other": "Enabled for {{count}} agents",
-    "overrideReverted": "{{name}} is back on the workspace version"
+    "overrideReverted": "{{name}} is back on the workspace version",
+    "promoted": "Skill is now shared across your workspace"
   },
   "fromYourAgents": {
     "heading": "From your other agents",

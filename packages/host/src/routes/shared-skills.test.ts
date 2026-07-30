@@ -159,6 +159,41 @@ test("shared skill detail supports conflict, full-content save, delete, and 404"
   ).toBe(404);
 });
 
+test("promote places a full SKILL.md verbatim at an exact slug, 409 on collision", async () => {
+  const full =
+    "---\nname: field-notes\ndescription: Promoted verbatim\nversion: 3\n---\n\nBody stays byte-identical.\n";
+  const promoted = await fetch(
+    `${base}/v1/workspaces/${workspaceId}/shared-skills/field-notes`,
+    {
+      method: "POST",
+      headers: auth("alice"),
+      body: JSON.stringify({ content: full }),
+    },
+  );
+  expect(promoted.status).toBe(201);
+  expect((await promoted.json()) as object).toMatchObject({
+    name: "field-notes",
+    version: 3,
+    content: full,
+  });
+
+  const collision = await fetch(
+    `${base}/v1/workspaces/${workspaceId}/shared-skills/field-notes`,
+    {
+      method: "POST",
+      headers: auth("alice"),
+      body: JSON.stringify({ content: "other" }),
+    },
+  );
+  expect(collision.status).toBe(409);
+
+  const missingContent = await fetch(
+    `${base}/v1/workspaces/${workspaceId}/shared-skills/no-content`,
+    { method: "POST", headers: auth("alice"), body: JSON.stringify({}) },
+  );
+  expect(missingContent.status).toBe(400);
+});
+
 test("shared skill routes enforce workspace ownership and missing workspaces", async () => {
   expect(
     (

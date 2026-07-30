@@ -977,6 +977,18 @@ export class HoustonClient {
       req,
     );
   }
+  /** Place a FULL existing SKILL.md at an exact slug ("Share to workspace"). */
+  promoteSharedSkill(
+    workspaceId: string,
+    slug: string,
+    content: string,
+  ): Promise<SkillDetail> {
+    return this.request(
+      "POST",
+      `/workspaces/${this.seg(workspaceId)}/shared-skills/${this.seg(slug)}`,
+      { content },
+    );
+  }
   saveSharedSkill(
     workspaceId: string,
     slug: string,

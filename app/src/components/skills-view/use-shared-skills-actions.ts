@@ -141,6 +141,37 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [addToast, invalidate, setManifestEntry, t, workspaceId],
   );
 
+  /** "Share to workspace": the explicit act that replaced auto-migration. The
+   *  canonical copy (first holder's) moves into the store, current holders get
+   *  manifest entries, and only their BYTE-IDENTICAL copies are deleted — a
+   *  holder whose copy diverged keeps it, surfacing as an override. */
+  const promoteToShared = useCallback(
+    async (row: SharedSkillRow): Promise<void> => {
+      if (workspaceId === null) throw new Error("no workspace");
+      const canonical = row.agents[0];
+      if (!canonical) throw new Error("no holder to promote from");
+      const detail = await tauriSkills.load(canonical.folderPath, row.slug);
+      await tauriSharedSkills.promote(workspaceId, row.slug, detail.content);
+      const settled = await Promise.allSettled(
+        row.agents.map(async (holder) => {
+          await setManifestEntry(holder.folderPath, row.slug, true);
+          const copy = await tauriSkills.load(holder.folderPath, row.slug);
+          if (copy.content === detail.content)
+            await tauriSkills.delete(holder.folderPath, row.slug);
+        }),
+      );
+      invalidate(row.agents.map((a) => a.folderPath));
+      analytics.track("skill_installed", {
+        skill_slug: row.slug,
+        source: "promoted",
+      });
+      addToast({ title: t("global.promoted"), variant: "success" });
+      if (settled.some((r) => r.status === "rejected"))
+        throw new Error("promote failed for some agents");
+    },
+    [addToast, invalidate, setManifestEntry, t, workspaceId],
+  );
+
   /** Drop an agent's overriding copy — back on the store version. */
   const revertOverride = useCallback(
     async (row: SharedSkillRow, agent: Agent): Promise<void> => {
@@ -159,6 +190,7 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     applyShared,
     enableForAll,
     deleteShared,
+    promoteToShared,
     revertOverride,
   };
 }

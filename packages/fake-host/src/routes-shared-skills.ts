@@ -50,6 +50,14 @@ export function handleSharedSkillsRoutes(
       ? json(detail)
       : json({ error: "shared skill not found" }, 404);
   }
+  if (slug && method === "POST") {
+    const content = typeof body?.content === "string" ? body.content : "";
+    if (!content) return json({ error: "missing 'content'" }, 400);
+    const promoted = state.promoteSharedSkill(workspaceId, slug, content);
+    return promoted
+      ? json(promoted, 201)
+      : json({ error: "shared skill already exists" }, 409);
+  }
   if (slug && method === "PUT") {
     const content = typeof body?.content === "string" ? body.content : "";
     if (!content) return json({ error: "missing 'content'" }, 400);

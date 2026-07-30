@@ -38,6 +38,8 @@ export interface SharedDialogActions {
   onDelete: (row: SharedSkillRow) => Promise<void>;
   onRevert: (row: SharedSkillRow, agent: Agent) => Promise<void>;
   onEnableAll: (row: SharedSkillRow) => Promise<void>;
+  /** Move a per-agent (local) row into the store — "Share to workspace". */
+  onPromote: (row: SharedSkillRow) => Promise<void>;
 }
 
 /**
@@ -170,6 +172,14 @@ export function ManageSkillDialog({
               onEnableAll={
                 isShared && assignedIds.size < agents.length
                   ? () => shared.onEnableAll(asShared)
+                  : undefined
+              }
+              onPromote={
+                shared !== undefined && row.origin === "local"
+                  ? async () => {
+                      await shared.onPromote(asShared);
+                      onClose();
+                    }
                   : undefined
               }
               onSave={save}

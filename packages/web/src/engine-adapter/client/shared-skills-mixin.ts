@@ -41,6 +41,22 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       return detail;
     }
 
+    async promoteSharedSkill(
+      workspaceId: string,
+      slug: string,
+      content: string,
+    ): Promise<SkillDetail> {
+      if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
+      const detail = await controlPlane.promoteSharedSkill(
+        this.ctx.cp,
+        workspaceId,
+        slug,
+        content,
+      );
+      emitLocalEcho("SharedSkillsChanged", { workspaceId });
+      return detail;
+    }
+
     async saveSharedSkill(
       workspaceId: string,
       slug: string,

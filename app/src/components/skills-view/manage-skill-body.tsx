@@ -1,5 +1,5 @@
 import { AsyncButton, Button, DialogFooter, Textarea } from "@houston-ai/core";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
@@ -19,6 +19,7 @@ export function ManageSkillBody({
   allowEmptySelection = false,
   overrides,
   onEnableAll,
+  onPromote,
   onSave,
   onDeleteEverywhere,
   onCancel,
@@ -36,6 +37,9 @@ export function ManageSkillBody({
   overrides?: { agents: Agent[]; onRevert: (agent: Agent) => Promise<void> };
   /** One click enables every agent (store-backed rows only). */
   onEnableAll?: () => Promise<void>;
+  /** Move this per-agent skill into the workspace store ("Share to
+   *  workspace") — offered on local rows when the deployment has a store. */
+  onPromote?: () => Promise<void>;
   onSave: (draft: {
     content: string;
     contentDirty: boolean;
@@ -142,6 +146,12 @@ export function ManageSkillBody({
         >
           {t("common:actions.delete")}
         </Button>
+        {onPromote && (
+          <AsyncButton type="button" variant="outline" onClick={onPromote}>
+            <Users className="size-4" />
+            {t("skills:global.manage.shareToWorkspace")}
+          </AsyncButton>
+        )}
         {onEditInChat && (
           <Button type="button" variant="outline" onClick={onEditInChat}>
             <MessageCircle className="size-4" />
