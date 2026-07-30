@@ -221,11 +221,13 @@ test("an Installed-strip custom tile opens the detail card: metadata, actions li
   await expect(dialog.getByText("create_contact")).toBeVisible();
   await expect(dialog.getByText("list_deals")).toBeVisible();
 
-  // Remove chains into the named confirm, and the tile disappears.
+  // Remove chains into the named confirm (an ALERTDIALOG — ConfirmDialog
+  // rides Radix AlertDialog, which getByRole("dialog") never matches), and
+  // the tile disappears.
   await dialog.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByText("Remove Acme Live?")).toBeVisible();
   await page
-    .getByRole("dialog")
+    .getByRole("alertdialog")
     .getByRole("button", { name: "Remove" })
     .click();
   await expect(
