@@ -25,6 +25,8 @@ export const STORE_SYNC_EXCLUDES = [
   "credentials.json",
   "claude-login/.credentials.json",
   "db/",
+  // Org-shared data is a synchronized mirror with its own store prefix.
+  "shared-mirror/",
 ];
 
 export interface StoreSyncOptions {

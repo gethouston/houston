@@ -111,6 +111,7 @@ import type {
   SidebarLayout,
   SkillDetail,
   SkillSummary,
+  SkillsManifest,
   StoreListing,
   StorePublicationStatus,
   StorePublishRequest,
@@ -949,6 +950,73 @@ export class HoustonClient {
   deleteSkill(workspacePath: string, name: string): Promise<void> {
     return this.request("DELETE", `/skills/${this.seg(name)}`, undefined, {
       workspacePath,
+    });
+  }
+  listSharedSkills(workspaceId: string): Promise<{
+    items: SkillSummary[];
+    diagnostics: { key: string; message: string }[];
+  }> {
+    return this.request(
+      "GET",
+      `/workspaces/${this.seg(workspaceId)}/shared-skills`,
+    );
+  }
+  loadSharedSkill(workspaceId: string, slug: string): Promise<SkillDetail> {
+    return this.request(
+      "GET",
+      `/workspaces/${this.seg(workspaceId)}/shared-skills/${this.seg(slug)}`,
+    );
+  }
+  createSharedSkill(
+    workspaceId: string,
+    req: CreateSkillRequest,
+  ): Promise<SkillDetail> {
+    return this.request(
+      "POST",
+      `/workspaces/${this.seg(workspaceId)}/shared-skills`,
+      req,
+    );
+  }
+  /** Place a FULL existing SKILL.md at an exact slug ("Share to workspace"). */
+  promoteSharedSkill(
+    workspaceId: string,
+    slug: string,
+    content: string,
+  ): Promise<SkillDetail> {
+    return this.request(
+      "POST",
+      `/workspaces/${this.seg(workspaceId)}/shared-skills/${this.seg(slug)}`,
+      { content },
+    );
+  }
+  saveSharedSkill(
+    workspaceId: string,
+    slug: string,
+    req: SaveSkillRequest,
+  ): Promise<void> {
+    return this.request(
+      "PUT",
+      `/workspaces/${this.seg(workspaceId)}/shared-skills/${this.seg(slug)}`,
+      req,
+    );
+  }
+  deleteSharedSkill(workspaceId: string, slug: string): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/workspaces/${this.seg(workspaceId)}/shared-skills/${this.seg(slug)}`,
+    );
+  }
+  getSkillsManifest(agentPath: string): Promise<SkillsManifest> {
+    return this.request("GET", "/skills-manifest", undefined, {
+      workspacePath: agentPath,
+    });
+  }
+  putSkillsManifest(
+    agentPath: string,
+    manifest: SkillsManifest,
+  ): Promise<SkillsManifest> {
+    return this.request("PUT", "/skills-manifest", manifest, {
+      workspacePath: agentPath,
     });
   }
   // Marketplace reads carry the browsing agent's path: the hosted gateway only

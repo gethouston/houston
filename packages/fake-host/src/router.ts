@@ -23,6 +23,7 @@ import { handleAgents } from "./routes";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
 import { handleSetupRuntime } from "./routes-setup-runtime";
+import { handleSharedSkillsRoutes } from "./routes-shared-skills";
 import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
 import type { FakeCapabilities, TeamsSettings } from "./state";
@@ -306,6 +307,8 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/v1/catalog" && method === "GET") {
     return json(buildProviderCatalog());
   }
+  const sharedSkillsRoute = handleSharedSkillsRoutes(method, segs, body);
+  if (sharedSkillsRoute) return sharedSkillsRoute;
   // --- user-scoped gateway routes (integrations, preferences, locale) ---
   const userRoute = handleUserRoutes(method, segs, body);
   if (userRoute) return userRoute;

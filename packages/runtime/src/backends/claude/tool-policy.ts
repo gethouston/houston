@@ -4,7 +4,10 @@ import type {
   PermissionResult,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { TurnMode } from "@houston/protocol";
-import { WorkspaceGuard } from "../../session/tools/fs-guard";
+import {
+  WorkspaceGuard,
+  type WorkspaceGuardOptions,
+} from "../../session/tools/fs-guard";
 import { currentTurnMode } from "../../session/turn-mode-context";
 
 /**
@@ -101,18 +104,21 @@ export function buildToolPolicy(input: ToolPolicyInput): ToolPolicy {
 }
 
 /**
- * The permission gate: auto-approve a tool call whose target paths resolve inside
- * the workspace, deny any that escape. Reuses `WorkspaceGuard.clamp` (the same
- * wall pi's file tools use), so a Read/Edit/Write/Glob/Grep path outside the root
- * — absolute, `~`, `..`, `@`/`file://`, or a symlink leaving the root — is denied
- * with a clear message. Bash is approved unless its command names a path token
- * that escapes (absolute, `~`, or a `..` segment climbing out of cwd).
+ * The permission gate: auto-approve reads in the workspace or configured
+ * read-only roots, and writes/commands only in the workspace. Reuses
+ * `WorkspaceGuard` (the same wall pi's file tools use), so absolute, `~`, `..`,
+ * `@`/`file://`, and symlink escapes are denied with a clear message. Bash is
+ * approved unless its command names a path token that escapes (absolute, `~`,
+ * or a `..` segment climbing out of cwd).
  */
 /** The mutating/executing built-ins a LIVE flip to plan mode must stop. */
 const PLAN_DENIED_TOOLS = new Set(["Edit", "Write", "Bash"]);
 
-export function makeCanUseTool(workspaceDir: string): CanUseTool {
-  const guard = new WorkspaceGuard(workspaceDir);
+export function makeCanUseTool(
+  workspaceDir: string,
+  guardOptions?: WorkspaceGuardOptions,
+): CanUseTool {
+  const guard = new WorkspaceGuard(workspaceDir, guardOptions);
   return async (toolName, input, options): Promise<PermissionResult> => {
     // Live plan-mode gate for the mid-turn Mode-pill switch (Claude Code's
     // shift+tab): a session BUILT at execute/auto still exposes Edit/Write/Bash,
@@ -132,7 +138,12 @@ export function makeCanUseTool(workspaceDir: string): CanUseTool {
       // `blockedPath` — clamp it too, so an escape our own parsing missed is
       // still caught (Bash has no single path field of its own).
       if (options.blockedPath) paths.push(options.blockedPath);
-      for (const p of paths) guard.clamp(p);
+      const readOnly =
+        toolName === "Read" || toolName === "Glob" || toolName === "Grep";
+      for (const p of paths) {
+        if (readOnly) guard.clamp(p);
+        else guard.clamp(p);
+      }
       return { behavior: "allow", updatedInput: input };
     } catch (err) {
       return {

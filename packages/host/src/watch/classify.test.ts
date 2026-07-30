@@ -9,6 +9,7 @@ import { classifyChange } from "./classify";
 
 const cases: [string, string | null, string | null][] = [
   // [relPath, expected type, expected agentPath]
+  ["Work/.shared/skills/research/SKILL.md", "SharedSkillsChanged", "Work"],
   [
     "Work/Sales/.houston/activity/activity.json",
     "ActivityChanged",
@@ -55,6 +56,7 @@ const cases: [string, string | null, string | null][] = [
   ["Work/Sales/subdir/notes.md", "FilesChanged", "Work/Sales"],
   // Not classifiable:
   ["Work/Sales/.git/index", null, null],
+  ["Work/.shared/context/GROUP.md", null, null],
   ["Work/Sales/.DS_Store", null, null],
   ["Work", null, null], // not inside an agent
   ["Work/Sales", null, null], // the agent dir itself, no file
@@ -65,6 +67,8 @@ for (const [relPath, type, agentPath] of cases) {
     const event = classifyChange(relPath);
     if (type === null) {
       expect(event).toBeNull();
+    } else if (type === "SharedSkillsChanged") {
+      expect(event).toEqual({ type, workspaceId: agentPath } as never);
     } else {
       expect(event).toEqual({ type, agentPath } as never);
     }

@@ -25,6 +25,7 @@ import type {
 } from "@houston/runtime-client";
 import { SEED_AGENT_ID, SEED_AGENT_NAME, SEED_WORKSPACE_ID } from "./config";
 import { resetProviders } from "./state-providers";
+import { resetSharedSkills } from "./state-shared-skills";
 import { resetSkills } from "./state-skills";
 
 /**
@@ -197,6 +198,7 @@ export const DEFAULT_CAPABILITIES: FakeCapabilities = {
   providers: ["anthropic"],
   openaiCompatible: false,
   integrations: [],
+  sharedSkills: true,
 };
 
 /** Unrestricted, manager access — no policy until a spec arms one. */
@@ -494,6 +496,7 @@ export function setFailingAgentReads(agentIds: string[]): void {
 export function reset(): void {
   state = freshState();
   resetProviders();
+  resetSharedSkills();
   resetSkills();
   domainListeners.clear();
 }
@@ -510,9 +513,12 @@ export function onDomainEvent(fn: DomainListener): () => void {
   domainListeners.add(fn);
   return () => domainListeners.delete(fn);
 }
-export function emitDomain(type: string, agentPath?: string): void {
-  for (const fn of domainListeners)
-    fn({ type, agentPath, workspaceId: SEED_WORKSPACE_ID });
+export function emitDomain(
+  type: string,
+  agentPath?: string,
+  workspaceId = SEED_WORKSPACE_ID,
+): void {
+  for (const fn of domainListeners) fn({ type, agentPath, workspaceId });
 }
 /** Public emit, used by the `/__test__/emit` control route to drive reactivity. */
 export function emit(type: string, agentPath?: string): void {

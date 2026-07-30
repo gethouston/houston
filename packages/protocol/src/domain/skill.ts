@@ -41,6 +41,19 @@ export interface SkillDetail {
   content: string;
 }
 
+/**
+ * Per-agent enablement of workspace-shared skills (ADR 0003). A skill existing
+ * in the shared store enables nothing; this manifest says which shared slugs
+ * THIS agent loads. Agent-local skills always load and shadow a shared skill
+ * with the same slug (the override mechanism). Additive-only shape: context /
+ * learnings enablement will ride the same file later.
+ */
+export interface SkillsManifest {
+  version: 1;
+  /** Shared skill slugs this agent loads (sorted, deduped). */
+  enabled: string[];
+}
+
 /** A skill in the skills.sh community directory (marketplace search hit). */
 export interface CommunitySkill {
   id: string;

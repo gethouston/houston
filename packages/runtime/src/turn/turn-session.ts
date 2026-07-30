@@ -207,7 +207,9 @@ export async function runPiTurn(
       modelRuntime,
       tools: toolSelection.toolNames,
       customTools: [
-        ...makeClampedFileTools(workspaceDir),
+        ...makeClampedFileTools(workspaceDir, {
+          sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
+        }),
         // ask_user is available in every mode (holds no credential); its name is
         // already in toolSelection.toolNames. request_connection is NOT — it is
         // gated with the integration tools, which are off in cloud turn mode.

@@ -59,6 +59,7 @@ import { handleSandboxProviderUsage } from "./routes/provider-usage";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleSandboxRoutines } from "./routes/routines-sandbox";
 import { handleSetupRuntime } from "./routes/setup-runtime";
+import { handleSharedSkills } from "./routes/shared-skills";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import { handleTriggerEvents } from "./routes/trigger-events";
 import type { TriggerEventLock } from "./triggers/fire";
@@ -342,6 +343,7 @@ async function handle(
   // answer top-level for direct API callers; the shipped clients call them
   // agent-scoped (skills-remote.ts) so the hosted gateway can proxy them.
   if (await handleSkillsDirectory(method, path, req, res)) return;
+  if (await handleSharedSkills(deps, userId, method, path, req, res)) return;
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
   if (

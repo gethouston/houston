@@ -32,6 +32,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: ["composio"],
+  sharedSkills: false,
 };
 
 /** Records every call; dispatch answers 200 with the rest it was asked for. */

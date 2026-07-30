@@ -38,6 +38,9 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
         HOUSTON_PORT: String(spec.port),
         HOUSTON_WORKSPACE_DIR: spec.workspaceDir,
         HOUSTON_DATA_DIR: spec.dataDir,
+        ...(spec.sharedSkillsDir
+          ? { HOUSTON_SHARED_SKILLS_DIR: spec.sharedSkillsDir }
+          : {}),
         HOUSTON_RUNTIME_TOKEN: spec.token,
         // Connect-once: keyless runtime fetches its token from the host.
         ...(spec.sandboxToken

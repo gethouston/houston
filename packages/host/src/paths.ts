@@ -24,6 +24,15 @@ export interface WorkspacePaths {
   agentRoot(ws: Workspace, agent: Agent): string;
   /** HOUSTON_DATA_DIR — conversations, settings.json, auth.json. */
   dataRoot(ws: Workspace, agent: Agent): string;
+  /**
+   * The workspace-level shared subtree (ADR 0003) — the single copy of
+   * org/workspace-shared resources (skills first) every agent mirrors
+   * read-only. Cloud: beside the agent prefixes, under the same org root the
+   * pod-store scopes; agent ids are synthetic, so `shared` cannot collide.
+   * Local: a dot-dir, so agent discovery (which filters dot names) never
+   * mistakes it for an agent.
+   */
+  sharedRoot(ws: Pick<Workspace, "id">): string;
 }
 
 export function conversationKey(
@@ -54,6 +63,9 @@ export class CloudPaths implements WorkspacePaths {
   dataRoot(ws: Workspace, agent: Agent): string {
     return `${this.agentPrefix(ws, agent)}/data`;
   }
+  sharedRoot(ws: Pick<Workspace, "id">): string {
+    return `ws/${ws.id}/shared`;
+  }
 }
 
 /**
@@ -73,6 +85,9 @@ export class LocalPaths implements WorkspacePaths {
   }
   dataRoot(_ws: Workspace, agent: Agent): string {
     return `${agent.id}/.houston/runtime`;
+  }
+  sharedRoot(ws: Pick<Workspace, "id">): string {
+    return `${ws.id}/.shared`;
   }
 }
 

@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
@@ -124,4 +130,47 @@ test("prefix-sibling directory does not pass the containment check", () => {
   writeFileSync(join(r, "ws-evil", "x.txt"), "x");
   const g = new WorkspaceGuard(ws);
   expect(() => g.clamp(join(r, "ws-evil", "x.txt"))).toThrow(PathEscapeError);
+});
+
+test("a shared root is fully usable: reads AND writes clamp inside it", () => {
+  // Agents edit the org original directly (the no-fork decision) — the shared
+  // mirror is a writable root, with the same containment walls as the
+  // workspace. Deletion is not a file-tool operation, so removing a shared
+  // skill stays a UI/admin act.
+  const ws = freshRoot();
+  const shared = mkdtempSync(join(tmpdir(), "houston-shared-"));
+  const skillFile = join(shared, "research-company", "SKILL.md");
+  mkdirSync(join(shared, "research-company"));
+  writeFileSync(skillFile, "shared skill");
+  const g = new WorkspaceGuard(ws, { sharedRoots: [shared] });
+  const canonicalSkillFile = realpathSync(skillFile);
+
+  expect(g.clamp(canonicalSkillFile)).toBe(canonicalSkillFile);
+  expect(g.assertInside(canonicalSkillFile)).toBe(canonicalSkillFile);
+});
+
+test("a symlink inside a shared root cannot escape that root", () => {
+  const ws = freshRoot();
+  const shared = mkdtempSync(join(tmpdir(), "houston-shared-"));
+  const outside = mkdtempSync(join(tmpdir(), "houston-outside-"));
+  writeFileSync(join(outside, "secret.txt"), "secret");
+  symlinkSync(outside, join(shared, "escaped"));
+  const g = new WorkspaceGuard(ws, { sharedRoots: [shared] });
+  const [canonicalShared] = g.sharedRoots;
+  if (!canonicalShared) throw new Error("expected the shared root to exist");
+
+  expect(() => g.clamp(join(canonicalShared, "escaped", "secret.txt"))).toThrow(
+    PathEscapeError,
+  );
+});
+
+test("without an existing shared root, everything stays workspace-only", () => {
+  const ws = freshRoot();
+  const g = new WorkspaceGuard(ws, {
+    sharedRoots: [join(ws, "missing-shared-root")],
+  });
+
+  expect(g.sharedRoots).toEqual([]);
+  expect(g.clamp("notes.txt")).toBe(join(g.root, "notes.txt"));
+  expect(() => g.clamp("/etc/passwd")).toThrow(PathEscapeError);
 });

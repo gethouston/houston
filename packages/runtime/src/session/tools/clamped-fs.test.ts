@@ -115,3 +115,37 @@ test("non-string path is rejected, not coerced", async () => {
     "'path' must be a string",
   );
 });
+
+test("shared roots are fully usable through file tools (agents edit the org original)", async () => {
+  const shared = join(base, "shared-skills");
+  const skillDir = join(shared, "research-company");
+  mkdirSync(skillDir, { recursive: true });
+  const skillFile = join(skillDir, "SKILL.md");
+  writeFileSync(skillFile, "shared procedure");
+  const sharedTools = new Map(
+    makeClampedFileTools(ws, { sharedRoots: [shared] }).map((tool) => [
+      tool.name,
+      tool,
+    ]),
+  );
+  const run = (name: string, params: Record<string, unknown>) => {
+    const tool = sharedTools.get(name);
+    if (!tool) throw new Error(`Unknown tool: ${name}`);
+    return tool.execute(
+      "call-shared",
+      params as Parameters<typeof tool.execute>[1],
+      undefined,
+      undefined,
+      {} as Parameters<typeof tool.execute>[4],
+    );
+  };
+
+  const read = await run("read", { path: skillFile });
+  expect(JSON.stringify(read.content)).toContain("shared procedure");
+  await run("write", { path: skillFile, content: "replaced procedure" });
+  expect(readFileSync(skillFile, "utf8")).toBe("replaced procedure");
+  // Containment still holds: a path outside every root stays rejected.
+  await expect(
+    run("write", { path: "/etc/houston-nope", content: "x" }),
+  ).rejects.toThrow("outside the agent workspace");
+});

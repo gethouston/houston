@@ -44,6 +44,39 @@ test("a write under an agent's .houston surfaces a debounced ActivityChanged", a
   }
 });
 
+test("a direct shared skill edit surfaces SharedSkillsChanged for its workspace", async () => {
+  const root = mkdtempSync(join(tmpdir(), "houston-watch-"));
+  const skillDir = join(root, "Work", ".shared", "skills", "research");
+  mkdirSync(skillDir, { recursive: true });
+  const events: HoustonEvent[] = [];
+  const watcher = new FsWatcher(root, (event) => events.push(event), 50);
+  watcher.start();
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    writeFileSync(join(skillDir, "SKILL.md"), "---\nname: research\n---\n");
+
+    const deadline = Date.now() + 3000;
+    const expected = {
+      type: "SharedSkillsChanged",
+      workspaceId: "Work",
+    };
+    while (
+      !events.some((event) =>
+        Object.entries(expected).every(
+          ([key, value]) => (event as Record<string, unknown>)[key] === value,
+        ),
+      ) &&
+      Date.now() < deadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(events).toContainEqual(expected);
+  } finally {
+    watcher.stop();
+  }
+});
+
 test("stop() halts delivery", async () => {
   const root = mkdtempSync(join(tmpdir(), "houston-watch-"));
   mkdirSync(join(root, "W", "A"), { recursive: true });

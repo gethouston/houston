@@ -57,6 +57,8 @@ export class ProxyChannel implements RuntimeChannel {
        * `x-houston-acting-user` never rides this header.
        */
       forwardActingHeader: boolean;
+      /** Managed pod shared-cache freshness gate, invoked only for turn starts. */
+      beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
     },
   ) {}
 
@@ -87,6 +89,9 @@ export class ProxyChannel implements RuntimeChannel {
     let body = ctx.body;
     if (!body && method !== "GET" && method !== "HEAD") {
       body = await readBody(req, MAX_JSON_BYTES);
+    }
+    if (method === "POST" && /^conversations\/[^/]+\/messages$/.test(rest)) {
+      await this.opts.beforeTurn?.(ctx.agent);
     }
     const params = new URLSearchParams(url.search);
     params.delete("token");
@@ -140,6 +145,7 @@ export class ProxyChannel implements RuntimeChannel {
     // the session's current/default). A non-2xx throws so the scheduler records
     // an errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    await this.opts.beforeTurn?.(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
       {

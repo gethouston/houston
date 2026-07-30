@@ -33,6 +33,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: ["custom"],
+  sharedSkills: false,
 };
 
 const VIEW: CustomIntegrationView = {

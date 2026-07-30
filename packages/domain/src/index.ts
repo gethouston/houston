@@ -16,5 +16,6 @@ export * from "./scan";
 export * from "./schedule";
 export * from "./skill-install";
 export * from "./skills";
+export * from "./skills-manifest";
 export * from "./store";
 export * from "./store-ir";

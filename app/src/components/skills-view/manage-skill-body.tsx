@@ -1,5 +1,5 @@
 import { AsyncButton, Button, DialogFooter, Textarea } from "@houston-ai/core";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
@@ -16,6 +16,10 @@ export function ManageSkillBody({
   initialContent,
   agents,
   assignedIds,
+  allowEmptySelection = false,
+  overrides,
+  onEnableAll,
+  onPromote,
   onSave,
   onDeleteEverywhere,
   onCancel,
@@ -26,6 +30,16 @@ export function ManageSkillBody({
   agents: Agent[];
   /** Ids of the agents currently holding a copy. */
   assignedIds: ReadonlySet<string>;
+  /** Store-backed rows may save with nobody enabled — the skill just rests
+   *  in the workspace store (copy-based rows treat that as deletion). */
+  allowEmptySelection?: boolean;
+  /** Agents whose own modified copy shadows the workspace version. */
+  overrides?: { agents: Agent[]; onRevert: (agent: Agent) => Promise<void> };
+  /** One click enables every agent (store-backed rows only). */
+  onEnableAll?: () => Promise<void>;
+  /** Move this per-agent skill into the workspace store ("Share to
+   *  workspace") — offered on local rows when the deployment has a store. */
+  onPromote?: () => Promise<void>;
   onSave: (draft: {
     content: string;
     contentDirty: boolean;
@@ -46,9 +60,10 @@ export function ManageSkillBody({
     selected.size !== assignedIds.size ||
     [...selected].some((id) => !assignedIds.has(id));
   const dirty = contentDirty || assignmentDirty;
-  // Unassigning everyone IS deletion — that path goes through the explicit
-  // Delete button, so an empty selection can't ride an innocuous-looking Save.
-  const savable = dirty && selected.size > 0;
+  // Copy-based rows: unassigning everyone IS deletion — that path goes through
+  // the explicit Delete button, so an empty selection can't ride an
+  // innocuous-looking Save. Store-backed rows keep the skill either way.
+  const savable = dirty && (allowEmptySelection || selected.size > 0);
 
   return (
     <>
@@ -61,9 +76,24 @@ export function ManageSkillBody({
           className="h-64 resize-none overflow-y-auto font-mono text-sm"
         />
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">
-            {t("skills:global.manage.agentsLabel")}
-          </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-ink">
+              {t("skills:global.manage.agentsLabel")}
+            </span>
+            {onEnableAll && (
+              <AsyncButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  await onEnableAll();
+                  setSelected(new Set(agents.map((a) => a.id)));
+                }}
+              >
+                {t("skills:global.manage.enableAll")}
+              </AsyncButton>
+            )}
+          </div>
           <AgentSelectList
             agents={agents}
             selected={selected}
@@ -76,10 +106,34 @@ export function ManageSkillBody({
               })
             }
           />
-          {selected.size === 0 && (
+          {selected.size === 0 && !allowEmptySelection && (
             <p className="text-xs text-ink-muted">
               {t("skills:global.manage.keepOneAgent")}
             </p>
+          )}
+          {overrides && overrides.agents.length > 0 && (
+            <div className="flex flex-col gap-1 pt-1">
+              {overrides.agents.map((agent) => (
+                <div
+                  key={agent.id}
+                  className="flex items-center justify-between gap-2 text-xs text-ink-muted"
+                >
+                  <span>
+                    {t("skills:global.manage.modifiedOn", {
+                      name: agent.name,
+                    })}
+                  </span>
+                  <AsyncButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => overrides.onRevert(agent)}
+                  >
+                    {t("skills:global.manage.revert")}
+                  </AsyncButton>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -92,6 +146,12 @@ export function ManageSkillBody({
         >
           {t("common:actions.delete")}
         </Button>
+        {onPromote && (
+          <AsyncButton type="button" variant="outline" onClick={onPromote}>
+            <Users className="size-4" />
+            {t("skills:global.manage.shareToWorkspace")}
+          </AsyncButton>
+        )}
         {onEditInChat && (
           <Button type="button" variant="outline" onClick={onEditInChat}>
             <MessageCircle className="size-4" />

@@ -70,6 +70,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: [],
+  sharedSkills: false,
 };
 
 let server: Server;

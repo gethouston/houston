@@ -44,6 +44,7 @@ import { handlePortableStore } from "./portable-store";
 import { MAX_JSON_BYTES, readBody } from "./read-body";
 import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
+import { handleSkillsManifest } from "./skills-manifest";
 import { handleSkillsRemote } from "./skills-remote";
 import { handleTriggerStatus } from "./trigger-status";
 
@@ -789,6 +790,19 @@ export async function handleAgents(
       return true;
     if (
       await handleAgentFile(deps.vfs, paths, ctx, method, rest, req, res, emit)
+    )
+      return true;
+    if (
+      await handleSkillsManifest(
+        deps.vfs,
+        paths,
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+        emit,
+      )
     )
       return true;
     if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit))

@@ -18,7 +18,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
 import { assertNotPlanMode } from "../live-mode-gate";
-import { WorkspaceGuard } from "./fs-guard";
+import { WorkspaceGuard, type WorkspaceGuardOptions } from "./fs-guard";
 
 /**
  * Workspace-clamped file tools (cloud security Gate #1).
@@ -31,9 +31,11 @@ import { WorkspaceGuard } from "./fs-guard";
  *
  *  1. OUTER (load-bearing, all six tools): before pi's execute runs, the
  *     model-supplied `path` is resolved the way pi resolves it, validated
- *     against the workspace root (lexically AND symlink-resolved), and the
- *     param is REWRITTEN to the clamped absolute path. grep/find spawn rg/fd
- *     subprocesses on that path, so this is the only wall that constrains them.
+ *     lexically AND symlink-resolved, and rewritten to the clamped absolute
+ *     path. The workspace and any configured shared roots (the org-shared
+ *     mirror — agent-editable by design) are equally valid. grep/find spawn
+ *     rg/fd subprocesses on that path, so this is the only wall that
+ *     constrains them.
  *  2. INNER (defense in depth): edit/write/ls/grep run their filesystem access
  *     through guarded `operations` that re-validate every absolute path pi
  *     hands them. read keeps pi's default operations (its image-sniffing
@@ -98,9 +100,10 @@ function withClampedPath(
 
 export function makeClampedFileTools(
   workspaceDir: string,
+  options?: WorkspaceGuardOptions,
 ): AnyToolDefinition[] {
-  const guard = new WorkspaceGuard(workspaceDir);
-  const g = (p: string) => guard.assertInside(p);
+  const guard = new WorkspaceGuard(workspaceDir, options);
+  const g = (path: string) => guard.assertInside(path);
 
   // Inner-wall operations mirror pi's defaults exactly, plus the guard.
   const editOps = {

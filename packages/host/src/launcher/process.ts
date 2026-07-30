@@ -24,6 +24,8 @@ export interface RuntimeHandle {
 export interface SpawnSpec {
   workspaceDir: string;
   dataDir: string;
+  /** Read-only workspace-shared skills mirror, local filesystem profiles only. */
+  sharedSkillsDir?: string;
   /** Bearer the launcher will present to this runtime (per-process). */
   token: string;
   /** Loopback port the runtime must bind. */
@@ -45,6 +47,8 @@ export interface ProcessLauncherOptions {
   workspaceDirFor: (agent: Agent) => string;
   /** Where the runtime keeps auth.json + sessions for this agent. */
   dataDirFor: (agent: Agent) => string;
+  /** Shared skills mirror; omitted where this host has no hydrated filesystem copy. */
+  sharedSkillsDirFor?: (agent: Agent) => string;
   /** Per-process bearer token (reuse the HMAC vault). */
   mintToken: (agent: Agent) => string;
   /**
@@ -164,6 +168,9 @@ export class ProcessLauncher implements RuntimeLauncher {
     const handle = this.opts.spawner.spawn({
       workspaceDir: this.opts.workspaceDirFor(agent),
       dataDir: this.opts.dataDirFor(agent),
+      ...(this.opts.sharedSkillsDirFor
+        ? { sharedSkillsDir: this.opts.sharedSkillsDirFor(agent) }
+        : {}),
       token,
       port,
       ...(cred

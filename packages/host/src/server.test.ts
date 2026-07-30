@@ -109,6 +109,7 @@ const TEST_CAPABILITIES: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: [],
+  sharedSkills: false,
 };
 
 beforeAll(async () => {

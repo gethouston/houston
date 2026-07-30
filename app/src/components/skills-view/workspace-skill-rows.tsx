@@ -53,10 +53,16 @@ export function AgentStack({ agents }: { agents: WorkspaceSkillAgent[] }) {
  * stack of agents holding a copy, and opens the manage dialog. Preview-capped
  * behind "Show all" at rest; an active query drops the cap.
  */
+/** Rows carry the store fields when the deployment shares (ADR 0003). */
+type PageSkillRow = WorkspaceSkillRow & {
+  origin?: "shared" | "local";
+  overriddenBy?: WorkspaceSkillAgent[];
+};
+
 export function useWorkspaceSkillRows(
-  rows: WorkspaceSkillRow[],
+  rows: PageSkillRow[],
   query: string,
-  onOpen: (row: WorkspaceSkillRow) => void,
+  onOpen: (row: PageSkillRow) => void,
 ): { installedCount: number; installed: ReactNode | undefined } {
   const { t } = useTranslation("skills");
   const [expanded, setExpanded] = useState(false);
@@ -88,6 +94,11 @@ export function useWorkspaceSkillRows(
               description={row.summary.description || undefined}
               trailing={
                 <div className="flex shrink-0 items-center gap-2">
+                  {row.origin === "shared" && (
+                    <span className="rounded-full bg-chip px-2 py-0.5 text-[10px] font-medium text-chip-text">
+                      {t("grid.sharedBadge")}
+                    </span>
+                  )}
                   <AgentStack agents={row.agents} />
                   <ChevronRight
                     aria-hidden

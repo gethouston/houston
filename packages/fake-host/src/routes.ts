@@ -73,6 +73,14 @@ export function handleAgents(
 
   const sub = rest[1];
   switch (sub) {
+    case "skills-manifest": {
+      if (rest.length !== 2) return noContent(404);
+      if (method === "GET") return json(state.getSkillsManifest(id));
+      if (method === "PUT")
+        return json(state.putSkillsManifest(id, body ?? {}));
+      return noContent(405);
+    }
+
     case "activities": {
       if (rest.length === 2) {
         if (method === "GET") return json({ items: state.listActivities(id) });

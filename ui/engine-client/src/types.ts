@@ -88,6 +88,8 @@ export interface Capabilities {
   providers: string[];
   openaiCompatible: boolean;
   integrations: string[];
+  /** Workspace-shared skills store served by this deployment (ADR 0003). */
+  sharedSkills: boolean;
   /**
    * Whether this deployment runs in multiplayer (paid org) mode: members,
    * roles, per-agent assignment. Absent/false = single personal workspace.
@@ -1102,6 +1104,16 @@ export interface CreateSkillRequest {
 export interface SaveSkillRequest {
   workspacePath: string;
   content: string;
+}
+
+/**
+ * Per-agent enablement of workspace-shared skills (ADR 0003). A shared skill
+ * remains disabled until its slug appears here; agent-local skills always load
+ * and shadow shared skills with the same slug.
+ */
+export interface SkillsManifest {
+  version: 1;
+  enabled: string[];
 }
 
 export interface RepoSkill {

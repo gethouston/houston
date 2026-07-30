@@ -12,12 +12,26 @@ import { fileURLToPath } from "node:url";
  * prompt-injected agent could read /etc/passwd or its own auth.json with no
  * bash tool at all. `clamp` re-resolves the raw path the way pi does, requires
  * the result (and its symlink-resolved real path) to land inside the workspace
- * root, and returns the absolute path the tool is then forced to use. Callers
- * REWRITE the tool's path param to the clamped result, so a normalization
- * divergence from pi can only mis-resolve INSIDE the workspace, never escape.
+ * root, and returns the absolute path the tool is then forced to use.
+ * Shared roots (the org-shared mirror) get the same discipline — agents edit
+ * the org original there by design. Callers rewrite the tool's path param to the clamped result, so a
+ * normalization divergence from pi cannot escape an allowed root.
  */
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
+
+interface RootBoundary {
+  canonical: string;
+  lexical: string;
+}
+
+export interface WorkspaceGuardOptions {
+  /** Extra WRITABLE roots outside the workspace — the org-shared mirror.
+   *  Shared skills are agent-editable by design (an agent's edit IS an edit
+   *  of the org original); deletion stays a human act in the UI, and the
+   *  same symlink-resolved containment applies as for the workspace. */
+  sharedRoots?: string[];
+}
 
 export class PathEscapeError extends Error {
   constructor(raw: string, root: string) {
@@ -46,9 +60,42 @@ function normalizeLikePi(input: string): string {
 export class WorkspaceGuard {
   /** Canonical (symlink-resolved) workspace root. Must exist. */
   readonly root: string;
+  /** Canonical shared (writable) roots outside the workspace; missing roots are ignored. */
+  readonly sharedRoots: string[];
+  private readonly workspaceBoundary: RootBoundary;
+  private readonly sharedBoundaries: RootBoundary[];
 
-  constructor(root: string) {
-    this.root = realpathSync(root);
+  constructor(root: string, options?: WorkspaceGuardOptions) {
+    this.workspaceBoundary = {
+      canonical: realpathSync(root),
+      lexical: resolve(root),
+    };
+    this.root = this.workspaceBoundary.canonical;
+    const boundaries = (options?.sharedRoots ?? []).flatMap(
+      (sharedRoot): RootBoundary[] => {
+        try {
+          return [
+            {
+              canonical: realpathSync(sharedRoot),
+              lexical: resolve(sharedRoot),
+            },
+          ];
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+          throw error;
+        }
+      },
+    );
+    this.sharedBoundaries = boundaries.filter(
+      (boundary, index) =>
+        boundary.canonical !== this.root &&
+        boundaries.findIndex(
+          (candidate) => candidate.canonical === boundary.canonical,
+        ) === index,
+    );
+    this.sharedRoots = this.sharedBoundaries.map(
+      (boundary) => boundary.canonical,
+    );
   }
 
   /**
@@ -58,28 +105,51 @@ export class WorkspaceGuard {
    * file://-prefixed absolutes, or a symlink whose target leaves the root.
    */
   clamp(raw: string | undefined): string {
+    return this.resolveAndAssert(raw, [
+      this.workspaceBoundary,
+      ...this.sharedBoundaries,
+    ]);
+  }
+
+  /** Guard a path pi already resolved (the operations-hook inner wall). */
+  assertInside(absolutePath: string): string {
+    return this.assertContained(resolve(absolutePath), absolutePath, [
+      this.workspaceBoundary,
+      ...this.sharedBoundaries,
+    ]);
+  }
+
+  private resolveAndAssert(
+    raw: string | undefined,
+    allowedRoots: RootBoundary[],
+  ): string {
     const input = raw ?? ".";
     const normalized = normalizeLikePi(input);
     const abs = isAbsolute(normalized)
       ? resolve(normalized)
       : resolve(this.root, normalized);
-    if (!this.contains(abs) || !this.contains(this.realNearest(abs))) {
-      throw new PathEscapeError(input, this.root);
-    }
-    return abs;
+    return this.assertContained(abs, input, allowedRoots);
   }
 
-  /** Guard a path pi already resolved (the operations-hook inner wall). */
-  assertInside(absolutePath: string): string {
-    const abs = resolve(absolutePath);
-    if (!this.contains(abs) || !this.contains(this.realNearest(abs))) {
-      throw new PathEscapeError(absolutePath, this.root);
+  private assertContained(
+    abs: string,
+    raw: string,
+    allowedRoots: RootBoundary[],
+  ): string {
+    const real = this.realNearest(abs);
+    for (const allowedRoot of allowedRoots) {
+      const lexicallyInside =
+        this.contains(abs, allowedRoot.lexical) ||
+        this.contains(abs, allowedRoot.canonical);
+      if (lexicallyInside && this.contains(real, allowedRoot.canonical)) {
+        return abs;
+      }
     }
-    return abs;
+    throw new PathEscapeError(raw, this.root);
   }
 
-  private contains(abs: string): boolean {
-    return abs === this.root || abs.startsWith(this.root + sep);
+  private contains(abs: string, root: string): boolean {
+    return abs === root || abs.startsWith(root + sep);
   }
 
   /**

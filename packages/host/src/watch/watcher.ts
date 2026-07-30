@@ -47,7 +47,13 @@ export class FsWatcher {
   }
 
   private schedule(event: HoustonEvent): void {
-    const key = `${event.type}:${"agentPath" in event ? event.agentPath : ""}`;
+    const scope =
+      "agentPath" in event
+        ? event.agentPath
+        : "workspaceId" in event
+          ? event.workspaceId
+          : "";
+    const key = `${event.type}:${scope}`;
     const existing = this.pending.get(key);
     if (existing) clearTimeout(existing);
     const timer = setTimeout(() => {
