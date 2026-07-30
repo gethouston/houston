@@ -2,6 +2,7 @@ import {
   Badge,
   Button,
   CatalogDetailDialog,
+  cn,
   StatusBadge,
 } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
@@ -13,11 +14,28 @@ import {
   customKindBadgeKey,
 } from "./custom-integrations-model";
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+function MetaRow({
+  label,
+  value,
+  scroll = false,
+}: {
+  label: string;
+  value: string;
+  /** Long unbreakable values (the URL): a quiet horizontal scroll area whose
+   *  scrollbar only exists when the text actually overflows, instead of the
+   *  ellipsis cut (the address is the one field worth reading in full). */
+  scroll?: boolean;
+}) {
   return (
     <div className="flex items-baseline gap-3 text-[13px]">
       <dt className="w-20 shrink-0 text-ink-muted">{label}</dt>
-      <dd className="min-w-0 flex-1 truncate text-ink" title={value}>
+      <dd
+        className={cn(
+          "min-w-0 flex-1 text-ink",
+          scroll ? "overflow-x-auto whitespace-nowrap" : "truncate",
+        )}
+        title={value}
+      >
         {value}
       </dd>
     </div>
@@ -118,11 +136,16 @@ export function CustomDetailDialog({
         </div>
       }
     >
-      <dl className="space-y-1.5">
+      {/* min-w-0: DialogContent is a GRID, and a grid item's default
+          min-width:auto lets one unbreakable URL widen the implicit track
+          past the card — spilling the text AND shoving the footer's
+          justify-end buttons outside the dialog. */}
+      <dl className="min-w-0 space-y-1.5">
         {integration.displayUrl && (
           <MetaRow
             label={t("custom.details.url")}
             value={integration.displayUrl}
+            scroll
           />
         )}
         <MetaRow
