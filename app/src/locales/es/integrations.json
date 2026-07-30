@@ -201,7 +201,7 @@
     },
     "setupChat": {
       "missionTitle": "Configurar una integración personalizada",
-      "back": "Volver a integraciones",
+      "close": "Cerrar el chat",
       "opening": "Abriendo el chat...",
       "bannerTitle": "Estás configurando una integración personalizada en el chat",
       "bannerDescription": "Retoma donde quedaste o descarta el chat en curso.",

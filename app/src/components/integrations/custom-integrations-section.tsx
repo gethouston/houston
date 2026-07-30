@@ -4,10 +4,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCustomIntegrationsFor } from "../../hooks/queries";
 import type { Agent } from "../../lib/types";
-import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { AgentPickerDialog } from "../agent-picker-dialog";
-import { CustomAddDialog } from "./custom-add-dialog";
+import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
+import { CustomAddFlow } from "./custom-add-flow";
 import { CustomEmptyState, CustomLoadErrorState } from "./custom-empty-state";
 import {
   CustomIntegrationDialogs,
@@ -30,7 +29,8 @@ import { useIntegrationChatSetup } from "./use-integration-chat-setup";
  * invite creation.
  *
  * "Add custom integration" opens the {@link CustomAddDialog} fork: the guided
- * setup chat (EMBEDDED right here, same pattern as the routine setup chat) or
+ * setup chat (opened in the shell-level RIGHT panel, the same panel the
+ * routine chat and the mission board use, so this page stays visible) or
  * the manual typed form. With an `agent` (the per-agent tab) every read/write
  * rides the per-agent routes (HOU-823) and the chat starts with THAT agent;
  * without one the chat path goes through the agent picker first. A row's body
@@ -41,26 +41,27 @@ import { useIntegrationChatSetup } from "./use-integration-chat-setup";
 export function CustomIntegrationsSection({
   variant = "section",
   agent,
+  tabActive,
 }: {
   variant?: "section" | "tab";
   agent?: Agent;
+  /** Per-agent surface only: whether that tab owns the visible agent screen
+   *  (TabProps.isActive). The global page derives visibility from `viewMode`
+   *  itself. Needed because kept-alive views leave every section MOUNTED, and
+   *  only the visible one may drive the shared shell chat panel. */
+  tabActive?: boolean;
 }) {
   const { t } = useTranslation("integrations");
   const list = useCustomIntegrationsFor(agent?.id);
-  const agents = useAgentStore((s) => s.agents);
-  const addToast = useUIStore((s) => s.addToast);
+  const viewMode = useUIStore((s) => s.viewMode);
+  const surfaceActive = agent
+    ? (tabActive ?? false)
+    : viewMode === INTEGRATIONS_VIEW_ID;
   const chatSetup = useIntegrationChatSetup();
   const selection = useCustomSelection();
 
   const [addOpen, setAddOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
-
-  const startChat = (target: Agent) => {
-    setAddOpen(false);
-    setPickerOpen(false);
-    void chatSetup.start(target);
-  };
 
   // A FAILED read renders loudly (error + retry): a transient 500 must never
   // be indistinguishable from a host without the feature — that one resolves
@@ -122,13 +123,15 @@ export function CustomIntegrationsSection({
         />
       )}
 
-      {/* The setup chat lives INLINE right here while open — an agent runs the
-          interview without any board navigation or view switch. */}
+      {/* The setup chat opens in the shell-level RIGHT panel (the routines
+          look): the agent runs the interview beside this page, which stays
+          visible on the left — no board navigation, no view switch. */}
       {chatSetup.open && activeAgent && (
         <IntegrationSetupChat
           agent={activeAgent}
           agentDef={chatSetup.activeAgentDef}
           activity={chatSetup.draftActivity}
+          active={surfaceActive}
           onClose={chatSetup.closePanel}
           onDone={chatSetup.finish}
         />
@@ -161,33 +164,12 @@ export function CustomIntegrationsSection({
         </div>
       )}
 
-      <CustomAddDialog
+      <CustomAddFlow
         open={addOpen}
         onOpenChange={setAddOpen}
-        agentId={agent?.id}
-        onStartChat={() => {
-          if (agent) startChat(agent);
-          else {
-            setAddOpen(false);
-            setPickerOpen(true);
-          }
-        }}
-        onAdded={(view) => {
-          setAddOpen(false);
-          if (view.state.status === "pending") selection.openKey(view.slug);
-          else
-            addToast({
-              title: t("custom.add.addedToast", { name: view.name }),
-              variant: "success",
-            });
-        }}
-      />
-
-      <AgentPickerDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        agents={agents}
-        onPick={startChat}
+        agent={agent}
+        onStartChat={(target) => void chatSetup.start(target)}
+        onNeedsKey={(slug) => selection.openKey(slug)}
       />
 
       <CustomIntegrationDialogs selection={selection} agentId={agent?.id} />

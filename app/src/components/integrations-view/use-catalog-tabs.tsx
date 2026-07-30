@@ -41,6 +41,7 @@ export function useCatalogTabs({
   customData,
   customListFailed = false,
   agent,
+  tabActive,
   allowlist = null,
   lockedFix,
   children,
@@ -65,6 +66,9 @@ export function useCatalogTabs({
    *  a transient 500 must never silently erase the whole custom surface. */
   customListFailed?: boolean;
   agent?: Agent;
+  /** Per-agent surface: whether that tab owns the visible agent screen
+   *  (TabProps.isActive) — gates the setup chat's shared shell panel. */
+  tabActive?: boolean;
   allowlist?: string[] | null;
   lockedFix?: PermissionsFix;
   children?: ReactNode;
@@ -107,7 +111,13 @@ export function useCatalogTabs({
             value: "custom",
             label: t("home.tabs.custom"),
             count: customData?.length,
-            content: <CustomIntegrationsSection variant="tab" agent={agent} />,
+            content: (
+              <CustomIntegrationsSection
+                variant="tab"
+                agent={agent}
+                tabActive={tabActive}
+              />
+            ),
           },
         ]
       : []),

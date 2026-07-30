@@ -29,6 +29,9 @@ interface AgentIntegrationsBodyProps {
   /** The agent this tab belongs to: the custom-integration reads/writes ride
    *  its per-agent routes (HOU-823) and the setup chat starts with it. */
   agent: Agent;
+  /** Whether this mounted tab owns the visible agent surface (TabProps) —
+   *  gates the setup chat's shared shell panel. */
+  tabActive: boolean;
   view: AgentIntegrationsView;
   /** The full toolkit catalog (drives the category filter + browse list). */
   catalog: IntegrationToolkit[];
@@ -72,6 +75,7 @@ interface AgentIntegrationsBodyProps {
  */
 export function AgentIntegrationsBody({
   agent,
+  tabActive,
   view,
   catalog,
   allowlist,
@@ -133,6 +137,7 @@ export function AgentIntegrationsBody({
     customData: custom.data,
     customListFailed: custom.isError,
     agent,
+    tabActive,
     allowlist,
     lockedFix: permissionsFix,
     children: (

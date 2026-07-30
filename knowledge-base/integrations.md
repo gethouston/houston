@@ -1040,7 +1040,15 @@ and the per-agent tab share the whole Available section through
 `integrations-view/use-catalog-tabs.tsx`, the one builder of the catalog +
 custom tabs). "Add custom integration" opens `CustomAddDialog`, a two-way
 fork: **"Set it up with Houston"** (the guided chat — direct with the tab's
-agent, agent picker first on the global page) or **"Add it manually"**
+agent, agent picker first on the global page; it opens in the shell-level
+RIGHT panel, the same one the routine chat and the mission board use, so the
+Integrations surface stays visible on the left. Only the VISIBLE section
+instance drives that shared panel — kept-alive views leave every instance
+mounted, so `integration-setup-chat.tsx` gates on `active`: TabProps.isActive
+on the per-agent tab, `viewMode === INTEGRATIONS_VIEW_ID` on the global page.
+The kickoff prompt, `lib/integration-chat-setup.ts`, explicitly states the
+user is present and `ask_user` works — a "Houston sent this automatically"
+framing once made the model refuse the step-by-step interview) or **"Add it manually"**
 (`CustomAddForm` + pure `custom-add-model.ts`, node-tested): kind (API / MCP
 server), URL with an optional "Check" (the detect route pre-classifies and
 fills the name), name, and a "needs an API key" switch. An add that needs a

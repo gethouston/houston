@@ -40,7 +40,7 @@ import { agentIntegrationsView } from "./model";
  * connected apps out; non-Teams hosts feature-detect off. The bottom "manage"
  * link routes to the global Integrations page, which everyone can reach.
  */
-export default function IntegrationsTab({ agent }: TabProps) {
+export default function IntegrationsTab({ agent, isActive }: TabProps) {
   const gate = useIntegrationsGate();
   const ready = gate.kind === "ready";
   const { capabilities } = useCapabilities();
@@ -127,6 +127,7 @@ export default function IntegrationsTab({ agent }: TabProps) {
             <AgentIntegrationsBody
               key={agent.id}
               agent={agent}
+              tabActive={isActive ?? false}
               view={view}
               catalog={catalog.data ?? []}
               allowlist={allowlist}

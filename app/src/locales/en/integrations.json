@@ -201,7 +201,7 @@
     },
     "setupChat": {
       "missionTitle": "Set up a custom integration",
-      "back": "Back to integrations",
+      "close": "Close chat",
       "opening": "Opening chat...",
       "bannerTitle": "You are setting up a custom integration in chat",
       "bannerDescription": "Pick up where you left off, or discard the draft chat.",

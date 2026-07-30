@@ -38,6 +38,11 @@ describe("integration chat setup message", () => {
     for (const needle of [
       "Add custom integration",
       "The user has not said anything yet",
+      // The model must never read the kickoff as a non-interactive/automatic
+      // turn (it once refused: "I can't run the usual step-by-step questions
+      // here") — the prompt states the user is present and ask_user works.
+      "fully interactive chat",
+      "Never claim you cannot ask questions",
       "Start RIGHT NOW, in this same turn",
       "one short, friendly opening line",
       "call the ask_user tool",
