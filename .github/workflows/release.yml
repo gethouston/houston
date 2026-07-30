@@ -1852,7 +1852,10 @@ jobs:
   # (GOOGLE_APPLICATION_CREDENTIALS), so no FIREBASE_TOKEN is needed.
   build-web:
     needs: prep
-    if: ${{ startsWith(github.ref_name, 'v') && github.repository == 'gethouston/houston' }}
+    # Both channels build web bytes: cloud-v* is the channel actually shipping
+    # (its releases stay prereleases so the legacy local desktop app keeps
+    # "latest release" untouched); plain v* is kept for the legacy local channel.
+    if: ${{ (startsWith(github.ref_name, 'v') || startsWith(github.ref_name, 'cloud-v')) && github.repository == 'gethouston/houston' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -1894,7 +1897,10 @@ jobs:
         id: webversion
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          # Strip the channel prefix on either channel: cloud-v0.5.36 and
+          # v0.5.36 both stamp 0.5.36 (same app version, one web bundle).
+          VERSION="${GITHUB_REF_NAME#cloud-}"
+          VERSION="${VERSION#v}"
           jq --arg v "$VERSION" '.version = $v' packages/web/package.json > packages/web/package.json.tmp
           mv packages/web/package.json.tmp packages/web/package.json
           echo "release=houston-app@${VERSION}-web" >> "$GITHUB_OUTPUT"

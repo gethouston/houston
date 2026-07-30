@@ -9,13 +9,23 @@
 # preview.gethouston.ai for this version. Preview vs production is decided at
 # runtime from the hostname, so one artifact legitimately serves both.
 #
-# Rollback = re-publish an older release (this re-runs and re-deploys that
-# release's web-dist.tar.gz), or roll back in the Firebase Hosting console.
+# Rollback = run this workflow manually (workflow_dispatch) with an older
+# release tag — the `published` event fires only once per release, so manual
+# dispatch is the promotion path for anything already published. Or roll back
+# in the Firebase Hosting console.
 name: Web promote
 
 on:
   release:
     types: [published]
+  # Manual promote/rollback: any existing release tag that carries a
+  # web-dist.tar.gz asset can be (re-)promoted to production.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to promote (e.g. cloud-v0.5.36)"
+        required: true
+        type: string
 
 # Serialize overlapping publishes so two rapid promotions can't race the same
 # production site into an inconsistent state; never cancel an in-flight deploy.
@@ -29,20 +39,37 @@ permissions:
 
 jobs:
   promote:
-    # Promote ONLY real, published, non-prerelease LOCAL-channel releases:
-    #   - `v*`               — the local channel the web app tracks. cloud-v*
-    #                          desktop releases start with `c`, so they never match.
-    #   - not a prerelease   — cloud-v* releases are prereleases anyway; this also
-    #                          keeps any hand-made prerelease off production.
+    # Promote published releases on either channel, plus manual dispatch:
+    #   - `cloud-v*`         — the CLOUD channel, the one actually shipping. These
+    #                          releases are prereleases BY POLICY (the legacy local
+    #                          desktop app tracks "latest release", which cloud cuts
+    #                          must not claim), so no prerelease check applies here.
+    #   - `v*` non-prerelease — the legacy LOCAL channel, kept as-is for the day it
+    #                          ships web bytes again.
+    #   - workflow_dispatch  — manual promote/rollback by tag (the tag itself is
+    #                          validated in the first step).
     #   - canonical repo     — forks have no deploy access to our GCP project.
-    if: ${{ startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease && github.repository == 'gethouston/houston' }}
+    if: ${{ github.repository == 'gethouston/houston' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'cloud-v') || (startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       GH_REPO: ${{ github.repository }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TAG: ${{ github.event.release.tag_name }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
+      # Manual dispatch accepts arbitrary text; only release-channel tags may
+      # reach production. Fail loudly on anything else.
+      - name: Validate dispatched tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          set -euo pipefail
+          case "$TAG" in
+            cloud-v*|v*) echo "Promoting $TAG" ;;
+            *)
+              echo "::error::'$TAG' is not a release-channel tag (expected cloud-v* or v*)."
+              exit 1
+              ;;
+          esac
       # A release published BEFORE this pipeline existed carries no web asset.
       # That is not a failure — skip gracefully with a notice rather than red-X an
       # old release the instant it is published. A PRESENT-but-empty asset, by
@@ -65,7 +92,7 @@ jobs:
         if: ${{ steps.check.outputs.present == 'true' }}
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           sparse-checkout: |
             packages/web/firebase.json
             packages/web/.firebaserc
