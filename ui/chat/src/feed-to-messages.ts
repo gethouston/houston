@@ -203,6 +203,18 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "tool_call": {
+        // HOU-1047: some providers (OpenAI's style especially) narrate BEFORE
+        // running tools, so streamed text keeps the current message open when
+        // the first tool_call arrives. Without a flush the tool fused into the
+        // text message, the grouping layer rendered its mission log INACTIVE
+        // above the text, and the chat bottom showed only the generic loading
+        // indicator while the agent worked. Mirror the thinking case: a tool
+        // call after visible content starts a fresh process-only message, so
+        // the trailing mission log stays live at the bottom of the chat.
+        const prev = getCur();
+        if (prev && prev.from === "assistant" && prev.content) {
+          flush();
+        }
         const msg = ensureAssistant(item);
         // Deduplicate: the parser emits two tool_calls per tool (null input
         // on block start, real input on block stop). Replace the placeholder.
