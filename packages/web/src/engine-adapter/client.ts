@@ -41,6 +41,7 @@ import { ProviderCredentialsMixin } from "./client/provider-credentials-mixin";
 import { ProviderLoginMixin } from "./client/provider-login-mixin";
 import { ProviderStatusMixin } from "./client/provider-status-mixin";
 import { RoutinesSkillsMixin } from "./client/routines-skills-mixin";
+import { SharedSkillsMixin } from "./client/shared-skills-mixin";
 import { StoreMixin } from "./client/store-mixin";
 import { TeamsMixin } from "./client/teams-mixin";
 import { WorkspacesMixin } from "./client/workspaces-mixin";
@@ -56,23 +57,25 @@ const Composed = BootMixin(
         ActivitiesMixin(
           AgentFilesMixin(
             ProjectFilesMixin(
-              RoutinesSkillsMixin(
-                MarketplaceMixin(
-                  ChatSendMixin(
-                    ChatHistoryMixin(
-                      ProviderStatusMixin(
-                        ProviderLoginMixin(
-                          ProviderCredentialsMixin(
-                            IntegrationsMixin(
-                              CustomIntegrationsMixin(
-                                MeProfileMixin(
-                                  OrgsMixin(
-                                    TeamsMixin(
-                                      ApiKeysMixin(
-                                        StoreMixin(
-                                          PortableMixin(
-                                            LegacyUnsupportedMixin(
-                                              HoustonClientBase,
+              SharedSkillsMixin(
+                RoutinesSkillsMixin(
+                  MarketplaceMixin(
+                    ChatSendMixin(
+                      ChatHistoryMixin(
+                        ProviderStatusMixin(
+                          ProviderLoginMixin(
+                            ProviderCredentialsMixin(
+                              IntegrationsMixin(
+                                CustomIntegrationsMixin(
+                                  MeProfileMixin(
+                                    OrgsMixin(
+                                      TeamsMixin(
+                                        ApiKeysMixin(
+                                          StoreMixin(
+                                            PortableMixin(
+                                              LegacyUnsupportedMixin(
+                                                HoustonClientBase,
+                                              ),
                                             ),
                                           ),
                                         ),

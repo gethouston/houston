@@ -47,6 +47,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: true,
   integrations: [],
+  sharedSkills: true,
 };
 
 const makeDeps = (triggersEnabled: boolean): ControlPlaneDeps => ({

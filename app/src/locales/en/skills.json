@@ -11,7 +11,8 @@
     "searchSkills": "Search skills",
     "clearSearch": "Clear search",
     "noMatchingSkills": "No skills match your search",
-    "showAllSkills": "Show all {{count}} skills"
+    "showAllSkills": "Show all {{count}} skills",
+    "sharedBadge": "Shared"
   },
   "addDialog": {
     "title": "Add skills",
@@ -197,12 +198,20 @@
       "deleteConfirmTitle": "Delete \"{{name}}\"?",
       "deleteConfirmDescription_one": "This removes the skill from {{count}} agent ({{names}}). This cannot be undone.",
       "deleteConfirmDescription_other": "This removes the skill from {{count}} agents ({{names}}). This cannot be undone.",
-      "editInChat": "Edit in chat"
+      "editInChat": "Edit in chat",
+      "enableAll": "Enable for all agents",
+      "modifiedOn": "{{name}} has a modified copy",
+      "revert": "Use workspace version",
+      "deleteSharedDescription": "This removes the skill from the workspace for every agent. Agents with a modified copy keep their own version."
     },
     "chatPick": {
       "title": "Who should build it with you?",
       "description": "The chat runs with this agent, and the skill is created there first. You can share it with other agents afterwards."
-    }
+    },
+    "createdShared": "Skill added to your workspace",
+    "enabledForAll_one": "Enabled for {{count}} agent",
+    "enabledForAll_other": "Enabled for {{count}} agents",
+    "overrideReverted": "{{name}} is back on the workspace version"
   },
   "fromYourAgents": {
     "heading": "From your other agents",

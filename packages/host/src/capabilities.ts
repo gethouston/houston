@@ -56,6 +56,7 @@ export const LOCAL_CAPABILITIES: Capabilities = {
   // the gateway URL, cloud/self-host the platform key), so an unconfigured
   // deployment honestly serves [].
   integrations: ["composio"],
+  sharedSkills: true,
 };
 
 /** What the cloud deployment can do (served at /v1/capabilities). */
@@ -70,6 +71,8 @@ export const CLOUD_CAPABILITIES: Capabilities = {
   // hosted). The save route validates it reaches only a public :443 host.
   openaiCompatible: true,
   integrations: ["composio"],
+  // The managed gateway serves no org skill store until HOU-1033.
+  sharedSkills: false,
 };
 
 /**
@@ -89,4 +92,6 @@ export const MANAGED_CLOUD_CAPABILITIES: Capabilities = {
   // Same as the cloud profile: a public-HTTPS BYO endpoint, validated on save.
   openaiCompatible: true,
   integrations: ["composio"],
+  // The managed gateway serves no org skill store until HOU-1033.
+  sharedSkills: false,
 };

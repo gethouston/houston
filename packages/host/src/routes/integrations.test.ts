@@ -32,6 +32,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: ["composio"],
+  sharedSkills: false,
 };
 
 async function setup(

@@ -77,6 +77,7 @@ const baseCaps: Omit<Capabilities, "profile" | "openaiCompatible"> = {
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
   integrations: [],
+  sharedSkills: false,
 };
 const LOCAL_CAPS: Capabilities = {
   ...baseCaps,

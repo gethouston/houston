@@ -57,10 +57,10 @@ export function aggregateWorkspaceSkills(
  * over the display title, the slug, and any holder's agent name (finding "what
  * does Maya know?" is a first-class query here). Empty query keeps everything.
  */
-export function filterWorkspaceSkills(
-  rows: readonly WorkspaceSkillRow[],
+export function filterWorkspaceSkills<T extends WorkspaceSkillRow>(
+  rows: readonly T[],
   query: string,
-): WorkspaceSkillRow[] {
+): T[] {
   const q = query.trim().toLowerCase();
   if (!q) return [...rows];
   return rows.filter(

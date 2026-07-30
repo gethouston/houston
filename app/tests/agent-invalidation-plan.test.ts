@@ -43,6 +43,30 @@ describe("planInvalidation — ActivityChanged reaches the board face stack", ()
 });
 
 describe("planInvalidation — unrelated cases keep their exact effects", () => {
+  it("SharedSkillsChanged invalidates only that workspace's shared store", () => {
+    const plan = planInvalidation(
+      {
+        type: "SharedSkillsChanged",
+        data: { workspace_id: "w1" },
+      },
+      {},
+    );
+    ok(invalidates(plan, queryKeys.sharedSkills("w1")));
+    strictEqual(invalidates(plan, queryKeys.sharedSkills("w2")), false);
+  });
+
+  it("SkillsChanged invalidates the agent's skills manifest", () => {
+    const plan = planInvalidation(
+      {
+        type: "SkillsChanged",
+        data: { agent_path: PATH },
+      },
+      {},
+    );
+    ok(invalidates(plan, queryKeys.skills(PATH)));
+    ok(invalidates(plan, queryKeys.skillsManifest(PATH)));
+  });
+
   it("ConversationsChanged invalidates conversations + chat-history prefix", () => {
     const plan = planInvalidation(
       {
@@ -70,6 +94,7 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
       {},
     );
     ok(invalidates(plan, queryKeys.activity(PATH)));
+    ok(invalidates(plan, queryKeys.skillsManifest(PATH)));
     strictEqual(invalidates(plan, ["activity"]), false);
     deepStrictEqual(plan.patchAllConversations, [PATH]);
   });

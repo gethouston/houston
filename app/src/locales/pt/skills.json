@@ -11,7 +11,8 @@
     "searchSkills": "Buscar skills",
     "clearSearch": "Limpar busca",
     "noMatchingSkills": "Nenhuma skill corresponde à sua busca",
-    "showAllSkills": "Ver todas as {{count}} skills"
+    "showAllSkills": "Ver todas as {{count}} skills",
+    "sharedBadge": "Compartilhada"
   },
   "addDialog": {
     "title": "Adicionar skills",
@@ -197,12 +198,20 @@
       "deleteConfirmTitle": "Excluir \"{{name}}\"?",
       "deleteConfirmDescription_one": "Isso remove a skill de {{count}} agente ({{names}}). Não pode ser desfeito.",
       "deleteConfirmDescription_other": "Isso remove a skill de {{count}} agentes ({{names}}). Não pode ser desfeito.",
-      "editInChat": "Editar no chat"
+      "editInChat": "Editar no chat",
+      "enableAll": "Ativar para todos os agentes",
+      "modifiedOn": "{{name}} tem uma cópia modificada",
+      "revert": "Usar versão do espaço",
+      "deleteSharedDescription": "Isso remove a skill do espaço de trabalho para todos os agentes. Agentes com uma cópia modificada mantêm a própria versão."
     },
     "chatPick": {
       "title": "Quem vai construir com você?",
       "description": "O chat abre com esse agente e a skill é criada nele primeiro. Depois você pode compartilhar com outros agentes."
-    }
+    },
+    "createdShared": "Skill adicionada ao seu espaço de trabalho",
+    "enabledForAll_one": "Ativada para {{count}} agente",
+    "enabledForAll_other": "Ativada para {{count}} agentes",
+    "overrideReverted": "{{name}} voltou para a versão do espaço de trabalho"
   },
   "fromYourAgents": {
     "heading": "Dos seus outros agentes",

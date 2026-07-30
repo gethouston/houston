@@ -193,6 +193,7 @@ function routeDeps(feedback?: ControlPlaneDeps["feedback"]): ControlPlaneDeps {
     providers: ["openai-codex"],
     openaiCompatible: false,
     integrations: [],
+    sharedSkills: false,
   };
   return {
     verifier,

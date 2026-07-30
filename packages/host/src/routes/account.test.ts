@@ -45,6 +45,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: [],
+  sharedSkills: false,
 };
 const store = new MemoryWorkspaceStore();
 const credentials = new MemoryCredentialStore();

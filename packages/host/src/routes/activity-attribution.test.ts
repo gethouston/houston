@@ -45,6 +45,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: [],
+  sharedSkills: false,
 };
 
 // A turn POST (…/conversations/:cid/messages) reaches the channel; answer 202

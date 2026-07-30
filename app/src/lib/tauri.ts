@@ -24,6 +24,7 @@ import type {
   MessageMention,
   ProviderAuthState,
   ProviderUsage,
+  SkillsManifest,
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
@@ -722,6 +723,78 @@ export const tauriSkills = {
         ),
       undefined,
       { toast: false },
+    );
+  },
+};
+
+export const tauriSharedSkills = {
+  list: (workspaceId: string) =>
+    call("list_shared_skills", async () => {
+      const result = await getEngine().listSharedSkills(workspaceId);
+      return {
+        diagnostics: result.diagnostics,
+        items: result.items.map((s) => ({
+          name: s.name,
+          title: s.title ?? null,
+          description: s.description,
+          version: s.version,
+          tags: s.tags,
+          created: s.created,
+          last_used: s.lastUsed,
+          category: s.category ?? null,
+          featured: s.featured ?? false,
+          integrations: s.integrations ?? [],
+          image: s.image ?? null,
+          setup_activity_id: s.setupActivityId ?? null,
+          inputs: (s.inputs ?? []).map((i) => ({
+            name: i.name,
+            label: i.label,
+            placeholder: i.placeholder,
+            type: i.type,
+            required: i.required,
+            default: i.default,
+            options: i.options ?? [],
+          })),
+          prompt_template: s.promptTemplate ?? null,
+        })),
+      };
+    }),
+  load: (workspaceId: string, slug: string) =>
+    call<SkillDetail>("load_shared_skill", () =>
+      getEngine().loadSharedSkill(workspaceId, slug),
+    ),
+  create: (
+    workspaceId: string,
+    input: { name: string; description: string; content: string },
+  ) =>
+    call<SkillDetail>("create_shared_skill", () =>
+      getEngine().createSharedSkill(workspaceId, {
+        workspacePath: workspaceId,
+        ...input,
+      }),
+    ),
+  save: (workspaceId: string, slug: string, content: string) =>
+    call<void>("save_shared_skill", () =>
+      getEngine().saveSharedSkill(workspaceId, slug, {
+        workspacePath: workspaceId,
+        content,
+      }),
+    ),
+  delete: (workspaceId: string, slug: string) =>
+    call<void>("delete_shared_skill", () =>
+      getEngine().deleteSharedSkill(workspaceId, slug),
+    ),
+};
+
+export const tauriSkillsManifest = {
+  get: (agentPath: string) =>
+    call<SkillsManifest>("get_skills_manifest", () =>
+      getEngine().getSkillsManifest(agentPath),
+    ),
+  set: (agentPath: string, manifest: SkillsManifest) => {
+    blockWriteWhileWarming(agentPath);
+    return call<SkillsManifest>("put_skills_manifest", () =>
+      getEngine().putSkillsManifest(agentPath, manifest),
     );
   },
 };

@@ -127,6 +127,10 @@ export type HoustonEvent =
       data: { agent_path: string };
     }
   | {
+      type: "SharedSkillsChanged";
+      data: { workspace_id: string };
+    }
+  | {
       type: "FilesChanged";
       data: { agent_path: string };
     }

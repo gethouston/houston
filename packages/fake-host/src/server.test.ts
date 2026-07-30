@@ -83,9 +83,14 @@ describe("startFakeHost", () => {
 
     const caps = (await (
       await fetch(`${host.url}/v1/capabilities`)
-    ).json()) as { profile: string; providers: string[] };
+    ).json()) as {
+      profile: string;
+      providers: string[];
+      sharedSkills: boolean;
+    };
     expect(caps.profile).toBe("local");
     expect(caps.providers).toContain("anthropic");
+    expect(caps.sharedSkills).toBe(true);
   });
 
   it("serves the pi-ai provider catalog at /v1/catalog", async () => {
@@ -228,6 +233,68 @@ describe("startFakeHost", () => {
   it("404s a sidebar layout for an unknown workspace", async () => {
     const res = await fetch(`${host.url}/v1/workspaces/ghost/sidebar-layout`);
     expect(res.status).toBe(404);
+  });
+
+  it("round-trips workspace-shared skills and per-agent manifests", async () => {
+    const sharedBase = `${host.url}/v1/workspaces/${SEED_WORKSPACE_ID}/shared-skills`;
+    const created = await fetch(sharedBase, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        name: "Brand Voice",
+        description: "Use our voice",
+        content: "## Procedure\nWrite clearly.",
+      }),
+    });
+    expect(created.status).toBe(201);
+    expect(await created.json()).toMatchObject({
+      name: "brand-voice",
+      description: "Use our voice",
+    });
+    expect(await (await fetch(sharedBase)).json()).toMatchObject({
+      items: [{ name: "brand-voice" }],
+      diagnostics: [],
+    });
+
+    const detailUrl = `${sharedBase}/brand-voice`;
+    const savedContent =
+      "---\nname: brand-voice\ndescription: Updated\nversion: 2\n---\n\nNew body.\n";
+    expect(
+      (
+        await fetch(detailUrl, {
+          method: "PUT",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ content: savedContent }),
+        })
+      ).status,
+    ).toBe(200);
+    expect(await (await fetch(detailUrl)).json()).toMatchObject({
+      name: "brand-voice",
+      description: "Updated",
+      version: 2,
+      content: savedContent,
+    });
+
+    const manifestUrl = `${host.url}/agents/${SEED_AGENT_ID}/skills-manifest`;
+    expect(await (await fetch(manifestUrl)).json()).toEqual({
+      version: 1,
+      enabled: [],
+    });
+    const manifest = await fetch(manifestUrl, {
+      method: "PUT",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        version: 99,
+        enabled: ["research", "brand-voice", "research", 42],
+      }),
+    });
+    expect(await manifest.json()).toEqual({
+      version: 1,
+      enabled: ["brand-voice", "research"],
+    });
+
+    expect((await fetch(detailUrl, { method: "DELETE" })).status).toBe(200);
+    expect((await fetch(detailUrl)).status).toBe(404);
   });
 
   it("dismiss-interaction stops the transcript and clears the activity", async () => {

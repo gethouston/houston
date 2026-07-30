@@ -33,3 +33,11 @@ describe("capability profiles: openaiCompatible", () => {
     );
   });
 });
+
+describe("capability profiles: sharedSkills", () => {
+  test("is local/self-host only until the cloud gateway serves org skills", () => {
+    expect(LOCAL_CAPABILITIES.sharedSkills).toBe(true);
+    expect(CLOUD_CAPABILITIES.sharedSkills).toBe(false);
+    expect(MANAGED_CLOUD_CAPABILITIES.sharedSkills).toBe(false);
+  });
+});

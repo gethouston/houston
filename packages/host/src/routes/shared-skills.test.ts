@@ -22,6 +22,7 @@ const capabilities: Capabilities = {
   providers: [],
   openaiCompatible: false,
   integrations: [],
+  sharedSkills: false,
 };
 const store = new MemoryWorkspaceStore();
 const vfs = new MemoryVfs();

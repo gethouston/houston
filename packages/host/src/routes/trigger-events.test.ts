@@ -57,6 +57,7 @@ const CAPS: Capabilities = {
   providers: ["openai-codex"],
   openaiCompatible: false,
   integrations: [],
+  sharedSkills: false,
 };
 
 const routine = (over: Partial<Routine> = {}): Routine => ({

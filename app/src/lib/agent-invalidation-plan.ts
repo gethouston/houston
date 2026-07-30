@@ -63,8 +63,12 @@ export function planInvalidation(
       break;
     case "SkillsChanged":
       plan.invalidate.push(queryKeys.skills(ev.data.agent_path));
+      plan.invalidate.push(queryKeys.skillsManifest(ev.data.agent_path));
       // The open skill's detail pane rides a separate key; refresh it too.
       plan.invalidate.push(["skill-detail", ev.data.agent_path]);
+      break;
+    case "SharedSkillsChanged":
+      plan.invalidate.push(queryKeys.sharedSkills(ev.data.workspace_id));
       break;
     case "FilesChanged":
       plan.invalidate.push(queryKeys.files(ev.data.agent_path));
@@ -124,6 +128,7 @@ export function planInvalidation(
         plan.invalidate.push(queryKeys.workspaceContext(agentPath));
         plan.invalidate.push(queryKeys.files(agentPath));
         plan.invalidate.push(queryKeys.skills(agentPath));
+        plan.invalidate.push(queryKeys.skillsManifest(agentPath));
         plan.invalidate.push(["skill-detail", agentPath]);
         plan.invalidate.push(queryKeys.learnings(agentPath));
         plan.invalidate.push(queryKeys.config(agentPath));
