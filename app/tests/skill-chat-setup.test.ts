@@ -141,7 +141,11 @@ describe("skill chat setup message", () => {
       "exactly one short, friendly line",
       "do not call ask_user",
       "end your turn after that single line",
-      '".agents/skills/weekly-update/"',
+      // Location by lookup, not a hardcoded path: the skill may live in the
+      // workspace's shared library, and the model's own skills list carries
+      // the real location either way.
+      'named "weekly-update" in your skills list',
+      "edit that file where it is",
       "Never create a second skill",
       // Structure awareness: a rename means the display title, never the
       // folder/name identity (renaming those breaks how Houston finds it).
@@ -415,7 +419,8 @@ describe("skill chat setup message", () => {
     });
     for (const needle of [
       "not written by the user",
-      '".agents/skills/audit-my-books/"',
+      'named "audit-my-books" in your skills list',
+      "edit that file in place",
       '"Audit my books"',
       "Never ask which skill is meant",
       'frontmatter "title" field',

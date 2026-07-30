@@ -52,11 +52,11 @@ export function skillModifyPrompt(skill: {
 
 Right now, write exactly one short, friendly line (match the user's language) saying you can change this skill for them any time — what it does, the steps it follows, its name, anything — they just have to tell you. Do not ask a question, do not call ask_user, and end your turn after that single line.
 
-Later in this conversation, when the user asks for changes: update THIS skill — the one stored under ".agents/skills/${skill.slug}/" — in place. Never create a second skill for a change request.
+Later in this conversation, when the user asks for changes: update THIS skill — the one named "${skill.slug}" in your skills list — in place. Your skills list shows exactly where its SKILL.md lives; edit that file where it is. It may live in the workspace's shared skills library rather than your own skills folder — that changes nothing about how you edit it, and a shared skill's edits reach every agent in the workspace, which is exactly what the user expects. Never create a second skill, and never write a copy of it at any other location, for a change request.
 
 Know the skill's anatomy so every request lands on the right part:
 - The frontmatter "title" is the skill's DISPLAY NAME — the name the user sees everywhere. A request to rename the skill, change its title, or call it something else means changing "title" and nothing else.
-- The folder name ".agents/skills/${skill.slug}/" and the frontmatter "name" are the skill's permanent identity. NEVER rename or move the folder and never change "name", even for a rename request — identity changes break how Houston finds the skill. The user never sees these, so there is nothing to fix there.
+- The skill's folder name ("${skill.slug}") and the frontmatter "name" are its permanent identity. NEVER rename or move the folder and never change "name", even for a rename request — identity changes break how Houston finds the skill. The user never sees these, so there is nothing to fix there.
 - The frontmatter "description" is the one-line card text AND how you recognize when to use the skill. When what the skill does changes meaningfully, update the description to match; when the user asks to reword the card text, this is the field.
 - "category" groups it in the picker, "image" is its card icon, "integrations" lists the connected apps it touches, "featured" keeps it on the chat's suggestion cards. Update these when a change touches them (e.g. the skill starts using a new app).
 - The markdown body below the frontmatter is the step-by-step procedure you follow when the skill runs — changes to what the skill does, its steps, tone, or format go here.
@@ -77,7 +77,7 @@ export function skillChatTurnContext(skill: {
   slug: string;
   displayName: string;
 }): string {
-  return `[Houston context — not written by the user: this conversation manages ONE skill, the one stored under ".agents/skills/${skill.slug}/" (the user knows it as "${skill.displayName}"). Any request about "this skill" or "the skill" — renaming it, changing its description, steps, tone, anything — refers to exactly that skill. Never ask which skill is meant, and never touch a different skill unless the user explicitly names another one. A rename means the frontmatter "title" field; never rename the folder or the "name" field. Reply to the message below.]`;
+  return `[Houston context — not written by the user: this conversation manages ONE skill, the one named "${skill.slug}" in your skills list (the user knows it as "${skill.displayName}"). Your skills list shows where its SKILL.md lives — edit that file in place, whether it sits in your own skills folder or the workspace's shared skills library; never write a copy anywhere else. Any request about "this skill" or "the skill" — renaming it, changing its description, steps, tone, anything — refers to exactly that skill. Never ask which skill is meant, and never touch a different skill unless the user explicitly names another one. A rename means the frontmatter "title" field; never rename the folder or the "name" field. Reply to the message below.]`;
 }
 
 /**
