@@ -1,14 +1,14 @@
 /**
  * Visual-regression baselines for markdown inside chat bubbles (HOU-1051).
  *
- * Both roles render markdown: the USER bubble gets a real heading + emphasis +
- * inline code (typed into the composer as multi-line text), and the fake host
- * answers with its fixed MARKDOWN_SHOWCASE (triggered by "markdown" in the
- * prompt) — all six heading levels, emphasis, ordered/unordered/nested lists, a
- * blockquote, a table, inline code, a fenced code block, and a link. This is
- * the baseline that pins the chat type scale: Streamdown's document-size
- * headings are retuned in `ui/chat` (h1 20px … h5/h6 14px), and any drift
- * there shows up here first.
+ * Only the AGENT renders markdown: the fake host answers with its fixed
+ * MARKDOWN_SHOWCASE (triggered by "markdown" in the prompt) — all six heading
+ * levels, emphasis, ordered/unordered/nested lists, a blockquote, a table,
+ * inline code, a fenced code block, and a link — retuned to the chat type
+ * scale in `ui/chat` (h1 20px … h5/h6 14px). The USER bubble pins the other
+ * half of HOU-1051: the multi-line markdown typed into the composer renders
+ * VERBATIM (`##` and `**` stay literal, line break kept), never as markup.
+ * Any drift on either path shows up here first.
  *
  * The viewport is TALLER than the suite's 1280×800 default: the showcase is a
  * full document, and at 800px the chat scroller would crop the user bubble +
@@ -40,11 +40,15 @@ for (const theme of THEMES) {
     await composer.fill(USER_MARKDOWN);
     await composer.press("Enter");
 
-    // The user bubble rendered its heading, and the showcase reply settled
-    // (its fixed last line is only published with the final delta).
+    // The user bubble shows the typed markdown VERBATIM (no heading element),
+    // and the showcase reply settled (its fixed last line is only published
+    // with the final delta).
+    await expect(
+      page.getByText("## Can you show me **markdown**?"),
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Can you show me markdown?" }),
-    ).toBeVisible();
+    ).not.toBeVisible();
     await expect(page.getByText("That is the whole plan.")).toBeVisible({
       timeout: 15_000,
     });

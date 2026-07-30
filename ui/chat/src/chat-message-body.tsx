@@ -9,6 +9,7 @@ import type { RenderLinkProps } from "./ai-elements/message";
 import { MessageContent, MessageResponse } from "./ai-elements/message";
 import type { ChatMessage } from "./feed-to-messages";
 import type { MentionTarget } from "./mention-spans.ts";
+import { PlainMessageText } from "./plain-message-text";
 import type { MentionPerson } from "./types";
 
 interface ChatMessageBodyProps {
@@ -75,14 +76,13 @@ function mentionTargets({
 /**
  * Chat retune of Streamdown's document-scale headings (HOU-1051). Stock
  * Streamdown sets `h1` to text-3xl (30px), which towers over the bubble's 16px
- * body. Both roles keep full markdown rendering (the user's message included,
- * matching ChatGPT/Claude); only the type scale changes: h1 20px stepping down
+ * body. Only the AGENT's prose renders markdown (a user turn goes through
+ * `PlainMessageText`), and its type scale is retuned: h1 20px stepping down
  * through 16px (never below the body, so a deep heading can't read inverted;
  * h5/h6 at 14px are the rare exception), all semibold (Streamdown's own
- * weight), with heading margins pulled
- * in from mt-6 to fit a bubble. Descendant selectors (specificity 0,1,1)
- * reliably beat Streamdown's element utilities (0,1,0) — same trick as the
- * app's update-notes card.
+ * weight), with heading margins pulled in from mt-6 to fit a bubble.
+ * Descendant selectors (specificity 0,1,1) reliably beat Streamdown's element
+ * utilities (0,1,0) — same trick as the app's update-notes card.
  */
 const CHAT_MARKDOWN_SCALE = [
   "[&_h1]:text-xl [&_h2]:text-lg [&_:is(h3,h4)]:text-base [&_:is(h5,h6)]:text-sm",
@@ -137,15 +137,25 @@ export function ChatMessageBody({
           break, not a name-to-first-line break. Pull the name back to 4px so it
           reads as the speaker's byline rather than a separate line of talk. */}
       {nameSlot ? <div className="-mb-1">{nameSlot}</div> : null}
-      <MessageResponse
-        className={CHAT_MARKDOWN_SCALE}
-        isAnimating={streaming}
-        mentions={mentionTargets({ message, mentionPeople, currentUserId })}
-        onOpenLink={onOpenLink}
-        renderLink={renderLink}
-      >
-        {transformed?.content ?? message.content}
-      </MessageResponse>
+      {message.from === "user" ? (
+        // A person's words render verbatim (HOU-1051): no markdown, line
+        // breaks kept, mention chips preserved.
+        <PlainMessageText
+          text={message.content}
+          mentions={mentionTargets({ message, mentionPeople, currentUserId })}
+          onOpenLink={onOpenLink}
+        />
+      ) : (
+        <MessageResponse
+          className={CHAT_MARKDOWN_SCALE}
+          isAnimating={streaming}
+          mentions={mentionTargets({ message, mentionPeople, currentUserId })}
+          onOpenLink={onOpenLink}
+          renderLink={renderLink}
+        >
+          {transformed?.content ?? message.content}
+        </MessageResponse>
+      )}
       {transformed?.extra}
     </MessageContent>
   );
