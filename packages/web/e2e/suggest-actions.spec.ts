@@ -12,7 +12,7 @@ async function startMission(page: import("@playwright/test").Page) {
   });
 }
 
-test("suggested action pills stay above the composer, send visibly, and dismiss", async ({
+test("suggested action pills prefill the composer, send on confirm, and dismiss", async ({
   page,
   request,
 }) => {
@@ -50,12 +50,30 @@ test("suggested action pills stay above the composer, send visibly, and dismiss"
       .getByText("prepare the update")
       .first(),
   ).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  const followUp = page.getByPlaceholder("Send a follow-up...");
+  await expect(followUp).toBeVisible();
+  // HOU-1050: a pill click prefills the composer instead of sending, and the
+  // pills stay up so the user can still pick a different one (each click
+  // replaces the draft).
   await page.getByRole("button", { name: "Draft an email" }).click();
+  await expect(followUp).toHaveValue("Draft the email.");
+  await expect(
+    page.locator(".is-user").filter({ hasText: "Draft the email." }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Share update" }).click();
+  await expect(followUp).toHaveValue("Share the update.");
+  await page.getByRole("button", { name: "Draft an email" }).click();
+  await expect(followUp).toHaveValue("Draft the email.");
+  // Confirming with Enter runs the normal composer send and retires the pills.
+  await followUp.press("Enter");
   await expect(
     page.locator(".is-user").filter({ hasText: "Draft the email." }),
   ).toBeVisible();
-  // Wait for the pill-click turn to fully settle BEFORE staging the next offer:
+  await expect(
+    page.getByRole("button", { name: "Share update", exact: true }),
+  ).toHaveCount(0);
+  // Wait for the prefilled send's turn to fully settle BEFORE staging the next
+  // offer:
   // staging while that turn is still open races it onto the wrong done frame,
   // where the upcoming composer send would abandon it.
   await expect(
