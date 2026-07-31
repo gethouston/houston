@@ -76,6 +76,11 @@ export function ManageSkillDialog({
 }) {
   const { t } = useTranslation(["skills", "common"]);
   const isShared = shared !== undefined && row?.origin === "shared";
+  // On a shared-store deployment a LOCAL row never offers copy fan-out:
+  // holders render read-only and multi-agent use goes through "Share to
+  // workspace" (ADR 0003), so the checkbox list can't be mistaken for the
+  // org-level assignment it isn't.
+  const assignmentLocked = shared !== undefined && row?.origin === "local";
   const canonicalPath = row?.agents[0]?.folderPath;
   const { data: detail, error } = useQuery({
     queryKey: isShared
@@ -159,6 +164,7 @@ export function ManageSkillDialog({
               agents={agents}
               assignedIds={assignedIds}
               allowEmptySelection={isShared}
+              assignmentLocked={assignmentLocked}
               overrides={
                 isShared && overriddenBy.length > 0
                   ? {

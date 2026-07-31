@@ -192,6 +192,8 @@
     "manage": {
       "agentsLabel": "Agents with this skill",
       "keepOneAgent": "Keep at least one agent, or use Delete to remove the skill everywhere.",
+      "hasSkillNote": "Has this skill",
+      "shareToManage": "To use this skill with other agents, share it to the workspace. Shared skills keep one version for every agent.",
       "removeConfirmTitle_one": "Remove from {{count}} agent?",
       "removeConfirmTitle_other": "Remove from {{count}} agents?",
       "removeConfirmDescription": "Saving will remove this skill from {{names}}. This cannot be undone.",

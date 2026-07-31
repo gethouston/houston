@@ -17,6 +17,7 @@ export function ManageSkillBody({
   agents,
   assignedIds,
   allowEmptySelection = false,
+  assignmentLocked = false,
   overrides,
   onEnableAll,
   onPromote,
@@ -33,6 +34,10 @@ export function ManageSkillBody({
   /** Store-backed rows may save with nobody enabled — the skill just rests
    *  in the workspace store (copy-based rows treat that as deletion). */
   allowEmptySelection?: boolean;
+  /** Shared-store deployments lock copy assignment on LOCAL rows: holders
+   *  render read-only and multi-agent use goes through "Share to workspace"
+   *  (ADR 0003), never through more per-agent copies. */
+  assignmentLocked?: boolean;
   /** Agents whose own modified copy shadows the workspace version. */
   overrides?: { agents: Agent[]; onRevert: (agent: Agent) => Promise<void> };
   /** One click enables every agent (store-backed rows only). */
@@ -57,8 +62,9 @@ export function ManageSkillBody({
 
   const contentDirty = content !== initialContent;
   const assignmentDirty =
-    selected.size !== assignedIds.size ||
-    [...selected].some((id) => !assignedIds.has(id));
+    !assignmentLocked &&
+    (selected.size !== assignedIds.size ||
+      [...selected].some((id) => !assignedIds.has(id)));
   const dirty = contentDirty || assignmentDirty;
   // Copy-based rows: unassigning everyone IS deletion — that path goes through
   // the explicit Delete button, so an empty selection can't ride an
@@ -94,22 +100,39 @@ export function ManageSkillBody({
               </AsyncButton>
             )}
           </div>
-          <AgentSelectList
-            agents={agents}
-            selected={selected}
-            onToggle={(agent) =>
-              setSelected((prev) => {
-                const next = new Set(prev);
-                if (next.has(agent.id)) next.delete(agent.id);
-                else next.add(agent.id);
-                return next;
-              })
-            }
-          />
-          {selected.size === 0 && !allowEmptySelection && (
-            <p className="text-xs text-ink-muted">
-              {t("skills:global.manage.keepOneAgent")}
-            </p>
+          {assignmentLocked ? (
+            <>
+              <AgentSelectList
+                agents={agents.filter((a) => assignedIds.has(a.id))}
+                selected={selected}
+                onToggle={() => {}}
+                lockedIds={assignedIds}
+                lockedNote={t("skills:global.manage.hasSkillNote")}
+              />
+              <p className="text-xs text-ink-muted">
+                {t("skills:global.manage.shareToManage")}
+              </p>
+            </>
+          ) : (
+            <>
+              <AgentSelectList
+                agents={agents}
+                selected={selected}
+                onToggle={(agent) =>
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(agent.id)) next.delete(agent.id);
+                    else next.add(agent.id);
+                    return next;
+                  })
+                }
+              />
+              {selected.size === 0 && !allowEmptySelection && (
+                <p className="text-xs text-ink-muted">
+                  {t("skills:global.manage.keepOneAgent")}
+                </p>
+              )}
+            </>
           )}
           {overrides && overrides.agents.length > 0 && (
             <div className="flex flex-col gap-1 pt-1">

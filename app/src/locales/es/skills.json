@@ -192,6 +192,8 @@
     "manage": {
       "agentsLabel": "Agentes con esta skill",
       "keepOneAgent": "Mantén al menos un agente, o usa Eliminar para quitar la skill de todos.",
+      "hasSkillNote": "Tiene esta skill",
+      "shareToManage": "Para usar esta skill con otros agentes, compártela con el espacio. Las skills compartidas mantienen una sola versión para todos los agentes.",
       "removeConfirmTitle_one": "¿Quitar de {{count}} agente?",
       "removeConfirmTitle_other": "¿Quitar de {{count}} agentes?",
       "removeConfirmDescription": "Al guardar se quitará esta skill de {{names}}. Esto no se puede deshacer.",
