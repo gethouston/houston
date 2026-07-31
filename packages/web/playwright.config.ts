@@ -57,14 +57,18 @@ export default defineConfig({
     : [["list"]],
   use: {
     baseURL: WEB_URL,
-    // In CI, recording trace + video for every passing test costs real CPU
-    // across hundreds of tests (encode per test, then discarded). `retries: 1`
-    // there means a failure re-runs once with both recorded — diagnostics
-    // survive, the happy path pays nothing. Locally (retries: 0) keep the
-    // record-everything-keep-failures behavior for debugging.
-    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
+    // Keep trace + video recording ON for every attempt, in CI too. Skipping
+    // them on first attempts ("on-first-retry") was tried to save encode CPU
+    // and produced first-attempt-only flakes that no retry ever reproduced:
+    // recording paces the page slightly, and the unrecorded attempts ran
+    // FASTER than the suite ever had, exposing UI races (a nav click landing
+    // with the panel never switching; AnimatePresence crossfades caught
+    // mid-flight as duplicate cards). Recording parity with every attempt is
+    // part of the environment the suite is stable in; with the suite sharded
+    // across runners the overhead is cheap.
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: process.env.CI ? "on-first-retry" : "retain-on-failure",
+    video: "retain-on-failure",
   },
   projects: [
     {
