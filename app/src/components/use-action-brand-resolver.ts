@@ -1,6 +1,9 @@
 import { type ChatActionBrand, humanizeActionGerund } from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
-import { useCustomIntegrations } from "../hooks/queries";
+import {
+  useCustomIntegrationsFor,
+  useCustomTransportAgentId,
+} from "../hooks/queries";
 import {
   camelToSnakeCase,
   customActionOf,
@@ -41,7 +44,7 @@ export function useActionBrandResolver(): (
     () => (catalogData ?? []).map((tk) => tk.slug),
     [catalogData],
   );
-  const custom = useCustomIntegrations();
+  const custom = useCustomIntegrationsFor(useCustomTransportAgentId());
   const customDefs = custom.data;
   const resolveBrand = useToolkitBrandResolver();
   return useCallback(
