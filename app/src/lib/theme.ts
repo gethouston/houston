@@ -1,8 +1,14 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { tauriPreferences } from "./tauri";
+import {
+  applyThemeAttribute,
+  type Theme,
+  writeCachedTheme,
+} from "./theme-boot";
 
-export type Theme = "light" | "dark";
+export type { Theme };
 
+/** Engine preference key for the user's chosen theme — the source of truth. */
 const THEME_KEY = "theme";
 
 /**
@@ -21,18 +27,28 @@ function syncWindowChrome(theme: Theme): void {
     .catch(() => {});
 }
 
+/**
+ * Apply a theme everywhere it is observable: the CSS `data-theme` attribute,
+ * the device-local mirror the next boot paints from (see `./theme-boot`), and
+ * the native window chrome. Every path that changes the theme goes through
+ * here, so the mirror can never drift from what the user sees.
+ */
 export function applyTheme(theme: Theme) {
-  const el = document.documentElement;
-  if (theme === "dark") {
-    el.setAttribute("data-theme", "dark");
-  } else {
-    el.removeAttribute("data-theme");
-  }
+  applyThemeAttribute(theme);
+  writeCachedTheme(theme);
   syncWindowChrome(theme);
 }
 
-export async function loadTheme(): Promise<Theme> {
-  const saved = await tauriPreferences.get(THEME_KEY).catch(() => null);
+export async function loadTheme(): Promise<Theme | null> {
+  let saved: string | null;
+  try {
+    saved = await tauriPreferences.get(THEME_KEY);
+  } catch {
+    // Read FAILED (as opposed to "no preference saved"): keep whatever the
+    // boot mirror painted. Applying the light fallback here would overwrite a
+    // correct device mirror with a guess and mis-paint the next boot too.
+    return null;
+  }
   const theme: Theme = saved === "dark" ? "dark" : "light";
   applyTheme(theme);
   return theme;

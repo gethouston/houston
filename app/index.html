@@ -4,6 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Houston</title>
+    <!-- Pre-JS frame. The app's CSS arrives with the app bundle, so the FIRST
+         painted frame is whatever this document says — before any module runs.
+         `houston.theme.cache` is the boot mirror written by
+         app/src/lib/theme-boot.ts; reading it here (parser-blocking, so it lands
+         before first paint) lets that frame already match the theme
+         `applyBootTheme()` is about to apply, instead of flashing the wrong one.
+         Values are the design tokens the first app frame paints: light
+         `--ht-background` #fcfcfc (the boot splash's screen surface) and dark
+         `--ht-base` #141416 (the opaque gutter the splash's frosted glass sits
+         on). No mirror yet (first launch) or storage unavailable -> light, the
+         document default, exactly how applyBootTheme() resolves it.
+         KEEP IDENTICAL to packages/web/index.html — same document, two shells. -->
+    <style>
+      html {
+        background: #fcfcfc;
+      }
+      html[data-theme="dark"] {
+        background: #141416;
+      }
+      body {
+        margin: 0;
+      }
+    </style>
+    <script>
+      try {
+        if (localStorage.getItem("houston.theme.cache") === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      } catch (e) {
+        /* storage disabled/hardened webview — same as a first launch */
+      }
+    </script>
     <!-- Classic (non-module) script. `defer` (not parser-blocking) so it runs
          AFTER the document is parsed and #root exists, yet still before the
          deferred app bundle (defer scripts + module scripts execute in document

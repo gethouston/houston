@@ -10,6 +10,7 @@
  *    config, are pre-seeded via `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN`,
  *    or are entered at runtime on the Connect screen.
  */
+import { applyBootTheme } from "@houston/app/lib/theme-boot";
 import { createRoot } from "react-dom/client";
 import { currentDeployEnvironment } from "./deploy-environment";
 import {
@@ -24,6 +25,15 @@ import {
 // below. ONE bundle serves both sites, so this is derived from the hostname, not
 // baked at build time (see ./deploy-environment).
 window.__HOUSTON_DEPLOY_ENV__ = currentDeployEnvironment();
+
+// Theme BEFORE the first paint, on the same contract as the desktop entry
+// (app/src/main.tsx): the engine preference is the source of truth but only
+// answers after the handshake, and the boot splash renders during it on the
+// themed surface. Applying the device-local mirror here — a leaf module with no
+// app-graph imports, so it costs nothing before the lazy chunk loads — keeps a
+// dark-mode user from flashing the light surface. `loadTheme()` in ./app-tree
+// reconciles against the engine once the handshake lands.
+applyBootTheme();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Missing #root element");

@@ -54,7 +54,7 @@ export function EngineConnectScreen({
   };
 
   return (
-    <div style={ui.page}>
+    <div style={ui.pageDark}>
       <form style={ui.card} onSubmit={submit}>
         <div style={ui.brand}>🚀 Houston</div>
         <p style={ui.subtitle}>Connect to your Houston engine</p>

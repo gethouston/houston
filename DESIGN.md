@@ -17,6 +17,8 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
    - `app/src/components/shell/provider-brand-colors.ts` — brand-mark hex map (AI Hub candy store)
    - `app/src/components/provider-browser/brand-mark.tsx`, `app/src/components/auth/provider-brand-icons.tsx` — full-colour brand marks
    - `app/src/main.tsx` — pre-boot fallback colour before tokens load
+   - `app/index.html` + `packages/web/index.html` — the pre-paint theme frame + cache script (light screen `#fcfcfc` / dark gutter `#141416`; keep the two blocks identical)
+   - `packages/web/src/new-engine/styles.ts` — entry-chunk boot-gate styles (render before any token CSS loads; gate surfaces mirror the same frame values)
    - `futuristic.css` effects layer — aurora / `.ht-live-glow` / glass-sheen rgba (sanctioned effect values, not tokenized)
 2. **Use `@houston-ai/core` primitives** (§ inventory). Never invent a parallel component; never import another component library. Search core + the shadcn registry before building.
 3. **Lucide icons only**, `currentColor`, 20px standard (`h-5 w-5`), 16px small, 24px large, stroke 2px. **No emoji as icons, ever.**
@@ -76,7 +78,7 @@ Status (each has a `-text`): `danger` `#e02e2a`→`#ef4444` · `success` `#00a24
 
 Reserved families — do not reach for outside their home:
 - `sidebar*` (`-text`/`-line`/`-hover`/`-active`): sidebar is transparent; `sidebar-active` is the selected-row fill, a clear step above hover.
-- `space-*`: theme-invariant **dark**, ONLY for the workspace-loading splash / `OrbitLoader` / storage-unavailable gate (`app/src/components/space/`). Any themed control placed on it must pin `data-theme="dark"`.
+- `space-*`: theme-invariant **dark**, ONLY for the storage-unavailable gate and the cloud-migration `OrbitLoader` (`app/src/components/space/`); the workspace-loading splash moved to the standard screen tokens (`bg-background`). Any themed control placed on a space surface must pin `data-theme="dark"`.
 - `agent.{charcoal,forest,navy,purple,crimson,orange,golden}`: AGENT avatar palette — resolve stored ids via `resolveAgentColor` from `@houston-ai/core`, never app-local helpers. Use `HoustonAvatar`. The same tokens are bridged as `text-agent-*` utilities for the agent's NAME in chat; pick that class with `agentNameToneClass(stored)` (`@houston-ai/core`), which measures the colour against each theme's chat surface and falls back to `text-ink` below 4.5:1 — never hand-write a `text-agent-*` class.
 - `filetype.{pdf,doc,sheet,slide,image,video,audio,archive,code,generic}`: FILE-TYPE identity palette — one muted hue per family, themed both ways, worn ONLY by the Lucide glyph inside the Files icon tile (`FileTypeTile`, `@houston-ai/agent`) via a `text-filetype-*` utility. Identity like an agent's helmet, never status; folders stay `text-ink-muted`. Contrast on the tile (`bg-input`) is guarded by `packages/design-tokens/test/contrast.test.ts`.
 - `person-{slate,sage,mauve,taupe,indigo}` + `person-initials` + `person-overflow`/`person-overflow-text`: HUMAN avatar palette (mission face stacks). Deliberately desaturated so teammates never compete with agent helmets. Pick a tone with `personToneClass(id)` from `@houston-ai/board` — never by list index, or a person's colour changes when the roster does.

@@ -22,6 +22,7 @@ import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 import { runStartupAnalytics } from "./lib/startup-analytics";
 import { tauriSystem } from "./lib/tauri";
 import { loadTheme } from "./lib/theme";
+import { applyBootTheme } from "./lib/theme-boot";
 
 // Sentry first so global error handlers below can capture into it from the
 // very first render. Empty DSN → silent no-op (dev / forks).
@@ -46,6 +47,16 @@ initFrontendLogging();
 // can't drift. Must run AFTER initFrontendLogging() so the console.error → log
 // file patch is already in place.
 installGlobalErrorHandlers();
+
+// Theme BEFORE the first paint, and before React mounts. The engine preference
+// `theme` is the source of truth but is unreadable until the handshake lands
+// (see StartupEffects below), and the boot splash renders DURING that handshake
+// on the themed `bg-background` surface — so a dark-mode user would sit on the
+// light surface for the whole handshake, then snap to dark. This applies the
+// device-local mirror of the last resolved theme synchronously; `loadTheme()`
+// reconciles it against the engine moments later. No mirror yet (first launch
+// on this device) → the light default, exactly as before.
+applyBootTheme();
 
 class ErrorBoundary extends Component<
   { children: ReactNode },

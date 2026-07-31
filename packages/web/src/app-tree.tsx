@@ -27,6 +27,7 @@ import i18n from "@houston/app/lib/i18n";
 import { initFrontendLogging, logger } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
 import { initSentry } from "@houston/app/lib/sentry";
+import { loadTheme } from "@houston/app/lib/theme";
 import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect, useState } from "react";
@@ -131,8 +132,30 @@ function EngineGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Reconcile the theme with the `theme` preference — the source of truth — once
+ * the handshake lands. Mirrors `StartupEffects` in app/src/main.tsx: the
+ * preference reads through `getEngine()`, which throws before the handshake.
+ * The web tree used to skip this entirely, so a web user's saved theme was
+ * never applied and every reload came back light. The pre-boot mirror in
+ * ./main.tsx has already painted the right surface; this settles the preference
+ * over it and refreshes the mirror. Renders nothing; never blocks.
+ */
+function useEngineTheme(): void {
+  useEffect(() => {
+    let cancelled = false;
+    void whenEngineReady().then(() => {
+      if (!cancelled) void loadTheme();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+}
+
 // No StrictMode — matches app/src/main.tsx (portal/listener double-mount churn).
 export default function AppTree() {
+  useEngineTheme();
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
