@@ -12,7 +12,6 @@
  */
 
 import type {
-  AddCustomIntegrationInput,
   AgentAssignment,
   CommunitySkillPreview,
   CustomEndpoint,
@@ -1823,21 +1822,6 @@ export const tauriIntegrations = {
   ) =>
     call("custom_integration_credential", () =>
       getEngine().submitAgentCustomIntegrationCredential(agentId, slug, values),
-    ),
-  // Manual add form (HOU-980): pre-check a pasted URL, then register. Both are
-  // user-initiated writes → `call()` toasts + reports a failure exactly once.
-  // The tools read is plain (query-owned; `null` = host without the route).
-  customDetect: (url: string, agentId?: string) =>
-    call("custom_integration_detect", () =>
-      agentId
-        ? getEngine().detectAgentCustomIntegration(agentId, url)
-        : getEngine().detectCustomIntegration(url),
-    ),
-  customAdd: (input: AddCustomIntegrationInput, agentId?: string) =>
-    call("custom_integration_add", () =>
-      agentId
-        ? getEngine().addAgentCustomIntegration(agentId, input)
-        : getEngine().addCustomIntegration(input),
     ),
   customRemoveForAgent: (agentId: string, slug: string) =>
     call("custom_integration_remove", () =>

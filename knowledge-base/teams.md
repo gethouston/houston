@@ -1288,7 +1288,7 @@ subscriber to `useReadCursorStore` depends on this filter.
   that merely moved is not somebody typing your name. `MentionInboxRow` carries
   both booleans so neither surface has to re-derive the other's rule.
 
-- **Mission cards** — REMOVED (2026-07-30, inventory `mission-card` v50). The
+- **Mission cards** — REMOVED (2026-07-30, inventory `mission-card` v51). The
   per-mission card dot (`KanbanItem.unread`, `ui/board/src/kanban-card-unread.ts`,
   the `use-board-unread.ts` join) was cut pending a proper rebuild — it fired
   too broadly to be a trustworthy signal. The read-cursor model and

@@ -25,6 +25,10 @@ import { getToolActionLabel, toolShortName } from "./tool-labels.ts";
 export interface ChatActionBrand {
   name: string;
   logoUrl?: string;
+  /** A glyph standing in for a brand logo when the integration has none:
+   *  `"tool"` renders a wrench (custom API/MCP integrations, HOU-1049).
+   *  Takes precedence over `logoUrl`; absent → logo, else the helmet. */
+  icon?: "tool";
   actionLabel: string;
 }
 

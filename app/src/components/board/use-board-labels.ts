@@ -17,6 +17,7 @@ export function useBoardLabels(): {
     cardLabels: {
       approve: t("board:cardActions.approve"),
       approveTooltip: t("board:cardActions.approveTooltip"),
+      archiveTooltip: t("board:cardActions.archiveTooltip"),
       renameTooltip: t("board:cardActions.renameTooltip"),
       deleteTooltip: t("board:cardActions.deleteTooltip"),
       deleteTitle: (name: string) =>
@@ -25,6 +26,7 @@ export function useBoardLabels(): {
       selectTooltip: t("board:cardActions.select"),
       people: t("board:people.label"),
       peopleExpand: t("board:people.expand"),
+      closePanel: t("board:cardActions.closePanel"),
     },
     composerLabels: {
       fileAlreadyInChat: t("chat:composer.fileAlreadyInChat"),

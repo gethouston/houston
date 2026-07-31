@@ -135,11 +135,28 @@ backs that with a real in-memory store, seeded with two missions, and unified wi
 the `/agents/:id/activities` route (same data, as in the real host) so a
 turn flipping a card's status shows up on the board.
 
-**Isolation.** One fake-host process serves the whole run, so the suite is serial
-(`workers: 1`) and `support/fixtures.ts` resets the host (`POST /__test__/reset`)
-before each test.
+**Isolation.** The suite runs fully parallel: every Playwright worker starts its
+OWN in-process fake host (`support/fixtures.ts`) on a worker-slot port —
+`FAKE_HOST_PORT` in `@houston/fake-host` reads Playwright's
+`TEST_PARALLEL_INDEX`, so a worker's specs, seed, and fixtures all resolve
+`FAKE_HOST_URL` to that worker's host with no plumbing. Workers are separate OS
+processes, so their in-memory host state never crosses; within a worker,
+`support/fixtures.ts` resets the host (`POST /__test__/reset`) before each test.
+The `webServer` fake host on the base port only serves the main process
+(global-setup's warm-up). Running several worktrees' suites at once? Space the
+per-worktree `HOUSTON_E2E_FAKE_HOST_PORT` bases ≥ 32 apart so worker slots
+can't overlap.
 
-**CI.** vite dev compiles modules on demand, and Playwright only waits for the dev
+**CI.** The web job shards the suite across runners (`test:e2e --shard=N/6`,
+see `.github/workflows/ci.yml`) with ONE worker per shard: one single-threaded
+vite dev process serves every worker's page boots, and on a 4-vCPU runner
+concurrent workers starve renders — 4 workers blew expect budgets outright,
+and even 2 left the signed-in specs flaking on stuck-animation transients
+(duplicate `AnimatePresence` card ghosts). Throughput comes from the shards;
+each test runs at the single-worker density the suite has always been stable
+at.
+
+vite dev compiles modules on demand, and Playwright only waits for the dev
 server's port to open, not for it to compile. `support/global-setup.ts` boots the
 shell once before the timed suite so the first test doesn't eat vite's cold
 compile inside its 10s assertion budget — that cold start used to time out the
@@ -194,6 +211,12 @@ Theme is pinned by setting `data-theme` on `<html>` before the app mounts
 (`visual/support.ts` `seedTheme`) — NOT the `houston.pref.theme` preference: the
 web entry (`NewEngineRoot`) never runs the desktop's `loadTheme` bootstrap, so
 that pref is inert here.
+
+The visual scripts cap parallelism at `--workers=2`: full-page screenshots are
+CPU-heavy, and at higher worker counts the pinned CI container starves renders
+past the expect budget (a first-paint anchor missed its 10s window at 4
+workers). Two workers keep the 8-shot suite fast without contention; the
+determinism rules below outrank raw speed here.
 
 **Determinism rules** (a flaky baseline is worse than none — skip a screen you
 can't make deterministic rather than commit one):

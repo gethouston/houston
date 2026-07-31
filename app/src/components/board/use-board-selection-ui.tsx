@@ -1,7 +1,12 @@
 import type { KanbanColumnConfig, KanbanItem } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { moveTargetsForSection } from "../../lib/mission-selection";
+import { fireMissionDoneConfetti } from "../../lib/confetti";
+import {
+  celebratesMissionDone,
+  DONE_STATUS,
+  moveTargetsForSection,
+} from "../../lib/mission-selection";
 import { useUIStore } from "../../stores/ui";
 import type { BoardSelectionModel } from "./board-source";
 import { ColumnActionsMenu } from "./column-actions-menu";
@@ -138,15 +143,20 @@ export function useBoardSelectionUI({
     [baseColumns, doneHeaderAction, needsYouHeaderAction],
   );
 
+  /** Run a bulk op, toasting any failure. Resolves `true` only when the op
+   *  actually succeeded, so callers can chain a success-only follow-up (the
+   *  Move-to-Done celebration) without re-catching. */
   const runBulk = useCallback(
     async (op: () => Promise<void>) => {
       try {
         await op();
+        return true;
       } catch (err) {
         addToast({
           title: t("board:bulk.error", { error: String(err) }),
           variant: "error",
         });
+        return false;
       }
     },
     [addToast, t],
@@ -174,12 +184,27 @@ export function useBoardSelectionUI({
         (status) => ({
           status,
           label:
-            status === "done"
+            status === DONE_STATUS
               ? t("dashboard:columns.done")
               : t("dashboard:columns.needsYou"),
         }),
       ),
-      onMove: (status: string) => runBulk(() => selection.move(status)),
+      // One celebration for the whole batch, and only once the move landed.
+      // The statuses are read BEFORE the move (a successful bulk move rewrites
+      // them and clears the selection): a Needs you selection can mix settled
+      // and failed missions, so the batch celebrates when at least one of them
+      // succeeded, and a batch of nothing but failures moves in silence.
+      // No card origin here, unlike the single-card paths: a bulk move finishes
+      // many cards at once, so there is no ONE card the burst belongs to — the
+      // batch keeps the default rise from the bottom of the board.
+      onMove: async (status: string) => {
+        const fromStatuses = allItems
+          .filter((a) => selection.selectedIds.has(a.id))
+          .map((a) => a.status);
+        const moved = await runBulk(() => selection.move(status));
+        if (moved && celebratesMissionDone(status, fromStatuses))
+          fireMissionDoneConfetti();
+      },
       onArchive: () => runBulkRemoval(() => selection.archive()),
       onDelete: () => runBulkRemoval(() => selection.remove()),
       onClear: selection.clear,
@@ -204,7 +229,7 @@ export function useBoardSelectionUI({
         confirmDeleteAction: t("board:bulk.confirmDelete.action"),
       },
     };
-  }, [selection, selectionLockColumnId, runBulk, runBulkRemoval, t]);
+  }, [selection, selectionLockColumnId, allItems, runBulk, runBulkRemoval, t]);
 
   const selectionProps =
     selection && bulkActions

@@ -4,7 +4,7 @@ import { messagePreviewText } from "@houston-ai/chat";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
-import { useConversationVm } from "../../hooks/use-conversation-vm";
+import { useOpenConversationFeed } from "../../hooks/use-open-conversation-feed";
 import { isSetupChatMode } from "../../lib/integration-chat-setup";
 import { missionCardTags } from "../../lib/mission-card";
 import {
@@ -15,8 +15,6 @@ import {
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
-
-const EMPTY_FEED: FeedItem[] = [];
 
 /**
  * Cross-agent archived data: every agent's *archived* missions on one list,
@@ -115,25 +113,14 @@ export function useMissionControlArchived(agents: Agent[]) {
     [items],
   );
 
-  // The open conversation's reactive feed from the SDK conversation VM
-  // (history seeded by the adapter's loadHistory). Single-entry map — AIBoard
-  // only reads `feedItems[activeSessionKey]`.
+  // The open conversation's reactive feed, plus its scroll-up lazy-load — the
+  // same seam the per-agent Archived tab uses.
   const activeSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
   const activeAgentPath = activeSessionKey
     ? (sessionMapRef.current[activeSessionKey]?.agentPath ?? null)
     : null;
-  const activeVm = useConversationVm(activeAgentPath, activeSessionKey);
-  const activeFeed = activeVm?.feed ?? EMPTY_FEED;
-  const feedItems = useMemo<Record<string, FeedItem[]>>(
-    () => (activeSessionKey ? { [activeSessionKey]: activeFeed } : {}),
-    [activeSessionKey, activeFeed],
-  );
-  // Scroll-up lazy-load (HOU-819): see use-agent-board-data.
-  const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
-  const onLoadOlderMessages = useCallback(async () => {
-    if (!activeAgentPath || !activeSessionKey) return;
-    await tauriChat.loadOlderHistory(activeAgentPath, activeSessionKey);
-  }, [activeAgentPath, activeSessionKey]);
+  const { feedItems, hasOlderMessages, onLoadOlderMessages } =
+    useOpenConversationFeed(activeAgentPath, activeSessionKey);
 
   const loadHistory = useCallback(
     async (
@@ -163,11 +150,28 @@ export function useMissionControlArchived(agents: Agent[]) {
     [selectedId],
   );
 
+  // The open mission resolved all the way through to the agent that owns it:
+  // the chat panel, the send path and the archived → active handoff all need
+  // the same four values, so they are derived ONCE here rather than in the view.
+  const selectedItem = selectedId
+    ? (items.find((i) => i.id === selectedId) ?? null)
+    : null;
+  const activeAgent = selectedItem
+    ? (agentMap[selectedItem.metadata?.agentPath as string] ?? null)
+    : null;
+  const activeAgentDef = activeAgent
+    ? (getAgentDef(activeAgent.configId) ?? null)
+    : null;
+
   return {
     items,
     feedItems,
     selectedId,
     setSelectedId,
+    selectedItem,
+    activeAgent,
+    activeAgentDef,
+    selectedSessionKey: activeSessionKey,
     sessionKeyFor,
     loadHistory,
     onLoadOlderMessages,

@@ -3,7 +3,11 @@
  * board reads, so a chat turn flipping a card's status shows up on the board.
  */
 
-import type { Activity, ActivityUpdate } from "@houston/protocol";
+import {
+  type Activity,
+  type ActivityUpdate,
+  resolveInteractionPatch,
+} from "@houston/protocol";
 import { ACTIVITY_PATH, emitDomain, fileKey, ISO, state } from "./state-store";
 
 export function listActivities(agentId: string): Activity[] {
@@ -55,13 +59,19 @@ export function updateActivity(
   if (!activity) return null;
   const { pending_interaction, ...rest } = updates;
   Object.assign(activity, rest, { updated_at: ISO });
-  // The app clears a persisted interaction by PATCHing `pending_interaction:
-  // null`. DELETE the key (never store null) so it can't linger or fail the
-  // `isPendingInteraction` shape guard on a later read; a value records it.
-  if ("pending_interaction" in updates) {
-    if (pending_interaction) activity.pending_interaction = pending_interaction;
-    else delete activity.pending_interaction;
-  }
+  // Same rule as the real host (`applyActivityUpdate` in @houston/domain),
+  // resolved through the one shared helper: `null` DELETES the key (never store
+  // null, or a later read fails the shape guard), a valid object records it, and
+  // an absent or malformed one leaves it alone EXCEPT on a move to Done, which
+  // strips the blocking steps and keeps the clean-finish offers.
+  const outcome = resolveInteractionPatch({
+    patched: pending_interaction,
+    stored: activity.pending_interaction,
+    status: updates.status,
+  });
+  if (outcome.kind === "set")
+    activity.pending_interaction = outcome.interaction;
+  else if (outcome.kind === "clear") delete activity.pending_interaction;
   setActivities(agentId, items);
   return activity;
 }

@@ -378,6 +378,46 @@ describe("startFakeHost", () => {
     expect("pending_interaction" in activity).toBe(false);
   });
 
+  it("strips blocking steps and keeps the offers on a move to done", async () => {
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const url = `${host.url}/agents/${SEED_AGENT_ID}/activities/act-1`;
+    const offer = {
+      kind: "suggest_actions",
+      id: "a1",
+      actions: [
+        { id: "x", label: "Send it", message: "Send the deck" },
+        { id: "y", label: "Draft a note", message: "Draft the note" },
+      ],
+    };
+    await fetch(url, {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        pending_interaction: {
+          steps: [
+            { kind: "question", id: "q1", question: "Which deck?" },
+            offer,
+          ],
+        },
+      }),
+    });
+
+    // Same rule as the real host: the user's move to Done answers the question,
+    // the clean-finish offer keeps rendering on the Done card. A MALFORMED
+    // interaction riding along on the same patch counts as absent — it must not
+    // block the strip (and must never be stored).
+    const done = await fetch(url, {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        status: "done",
+        pending_interaction: { kind: "question", question: "legacy shape" },
+      }),
+    });
+    const activity = (await done.json()) as Record<string, unknown>;
+    expect(activity.pending_interaction).toEqual({ steps: [offer] });
+  });
+
   it("serves the space directory at /v1/org/people in the gateway's order", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
 

@@ -11,6 +11,11 @@ import Foundation
 /// EXACTLY: only `needs_you` and `running` are counted (`error` shares the
 /// Needs-you column in the missions view but is NOT part of the attention count,
 /// matching desktop — PARITY §4).
+///
+/// `needsYouCount` counts missions that FINISHED and are waiting for the user to
+/// close them, not missions blocked on an answer: since the engine stopped
+/// routing anything to `done`, `needs_you` IS the review queue. The chip and the
+/// attention sort below are deliberately built on that reading.
 struct AgentActivitySummary: Equatable, Sendable {
     var needsYouCount: Int = 0
     var runningCount: Int = 0
@@ -90,8 +95,10 @@ enum AgentsOverviewBuilder {
         )
     }
 
-    /// Attention sort (PARITY §4, mobile IA): needs-you agents first, then running
-    /// agents, then everyone else — each tier ordered by most-recent activity.
+    /// Attention sort (PARITY §4, mobile IA): agents with missions awaiting the
+    /// user's review first, then running agents, then everyone else — each tier
+    /// ordered by most-recent activity. Leading with the review queue is the
+    /// intent: those are the missions only the user can finish.
     static func attentionOrder(_ a: AgentOverview, _ b: AgentOverview) -> Bool {
         let ra = tier(a), rb = tier(b)
         if ra != rb { return ra < rb }

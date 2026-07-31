@@ -1,16 +1,10 @@
-import {
-  Button,
-  CatalogGrid,
-  CatalogRow,
-  CatalogSectionHeader,
-} from "@houston-ai/core";
+import { Button, CatalogGrid, CatalogRow } from "@houston-ai/core";
 import type { Activity } from "@houston-ai/engine-client";
 import { Plus, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
-import { HoustonSkillShelves } from "./houston-skill-shelves";
 import { OtherAgentSkills } from "./other-agent-skills";
-import { useHoustonSkillLibrary } from "./use-houston-skill-library";
+import { WorkspaceSharedSkillsSection } from "./workspace-shared-skills-section";
 
 interface Props {
   /** The agent the library installs into (and whose drafts these are). */
@@ -23,6 +17,8 @@ interface Props {
   onCreateWithAi: () => void;
   /** Open the manual GitHub / from-scratch dialog (the secondary path). */
   onAddClick: () => void;
+  /** An ACTIVE workspace-store skill's row opens the manage dialog. */
+  onManageSkill?: (slug: string) => void;
   /** Installed slugs — library rows show a quiet check instead of an add. */
   installedSkillNames?: Set<string>;
 }
@@ -30,9 +26,7 @@ interface Props {
 /**
  * The Custom skills tab — the user's SOURCES of skills: build one with the
  * agent (primary), add one manually (GitHub / from scratch), resume an
- * unfinished create-chat, or pull a curated skill from the Houston library —
- * every skill our pre-set store agents ship, installable one by one
- * ({@link HoustonSkillShelves}).
+ * unfinished create-chat, or copy a skill living on another of their agents.
  */
 export function SkillCustomTab({
   agent,
@@ -41,10 +35,10 @@ export function SkillCustomTab({
   onDiscardDraft,
   onCreateWithAi,
   onAddClick,
+  onManageSkill,
   installedSkillNames,
 }: Props) {
   const { t } = useTranslation("skills");
-  const library = useHoustonSkillLibrary(agent.folderPath);
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,14 +54,13 @@ export function SkillCustomTab({
               }
               title={draft.title}
               description={t("setupChat.draftInProgress")}
-              trailing={
+              // `action`, never `trailing`: trailing renders INSIDE the row's
+              // <button>, and a nested <button> corrupts the DOM tree.
+              action={
                 <button
                   type="button"
                   aria-label={t("setupChat.discardDraft")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDiscardDraft(draft.id);
-                  }}
+                  onClick={() => onDiscardDraft(draft.id)}
                   className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink"
                 >
                   <X className="size-4" />
@@ -101,18 +94,13 @@ export function SkillCustomTab({
         installedSkillNames={installedSkillNames}
       />
 
-      <div className="flex flex-col gap-3">
-        <CatalogSectionHeader title={t("library.heading")} size="lg" />
-        <HoustonSkillShelves
-          groups={library.groups}
-          loading={library.loading}
-          failed={library.failed}
-          retry={library.retry}
-          install={library.install}
-          installing={library.installing}
-          installedSkillNames={installedSkillNames}
-        />
-      </div>
+      {/* The shared-store sibling: skills living in the workspace store,
+          enabled here by a reversible manifest write (ADR 0003). */}
+      <WorkspaceSharedSkillsSection
+        agent={agent}
+        onManageSkill={onManageSkill}
+        installedSkillNames={installedSkillNames}
+      />
     </div>
   );
 }

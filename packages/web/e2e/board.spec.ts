@@ -273,15 +273,19 @@ test("paints cached missions immediately while cold-start reads are held", async
 
   // Cold open: every per-agent read now stalls the way an asleep pod's do.
   await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
-    data: { ms: 8_000 },
+    data: { ms: 20_000 },
   });
   await page.reload();
 
   // The cards must come from the locally cached aggregate — well before any
-  // held read can answer. 4s of grace for the reload+restore, far under the
-  // 8s hold.
+  // held read can answer. The grace only has to stay far under the hold to
+  // keep the proof sharp; it must ALSO absorb a full dev-server reload on a
+  // contended CI runner, which alone can blow a too-tight budget (a 4s grace
+  // under an 8s hold flaked there). 12s of grace, 20s hold: same invariant,
+  // CI-realistic slack. On success the assertion resolves at paint time, so
+  // the bigger numbers cost nothing.
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible({
-    timeout: 4_000,
+    timeout: 12_000,
   });
 });
 
@@ -344,6 +348,35 @@ test("moves a mission to the Done column", async ({ page }) => {
       .locator('[data-kanban-column="done"]')
       .getByText("Plan a trip to Tokyo"),
   ).toBeVisible();
+});
+
+/**
+ * The Done card's counterpart to the checkmark (act-2 = the seeded `done`
+ * mission): one click writes status=archived, which takes the mission off the
+ * active board entirely and surfaces it behind the Activity Archived button.
+ */
+test("archives a Done mission from its card", async ({ page }) => {
+  await page.goto("/");
+  const card = page.locator('[data-kanban-card="act-2"]');
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "Archive" }).click();
+
+  // Off the active board, and found again in the archived list.
+  await expect(page.getByText("Draft the launch email")).toHaveCount(0);
+  await page.getByRole("button", { name: "Archived" }).click();
+  await expect(page.getByText("Draft the launch email")).toBeVisible();
+});
+
+/** The archive box belongs to the Done column alone: a mission still waiting on
+ *  the user gets the checkmark instead, so nothing can be filed away unread. */
+test("offers no archive box on a Needs-you card", async ({ page }) => {
+  await page.goto("/");
+  const card = page.locator('[data-kanban-card="act-1"]');
+  await card.hover();
+  await expect(
+    card.getByRole("button", { name: "Move to done" }),
+  ).toBeVisible();
+  await expect(card.getByRole("button", { name: "Archive" })).toHaveCount(0);
 });
 
 /**

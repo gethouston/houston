@@ -6,13 +6,51 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
+import { DEFAULT_WORKSPACE_ID } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 
 export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
   class SharedSkills extends Base {
+    /** Resolved server-side personal workspace id (see `wireWorkspaceId`). */
+    #personalWsId: Promise<string> | undefined;
+
+    /**
+     * The workspace id the UI holds for the personal space is the SYNTHETIC
+     * "default" (`workspaces-mixin` replaces the served personal row with it;
+     * its id is load-bearing for prefs/caches). No server speaks that
+     * vocabulary: the local host's personal workspace id is its folder name
+     * and the gateway's is its fixed engine id ("Houston") — both 404
+     * "workspace not found" for "default". Team spaces (`org:<slug>`) bridge
+     * through with their real ids and pass through here untouched. So the
+     * personal id is resolved from the server's own `/v1/workspaces` list
+     * (the non-`org:` row) and cached for the client's lifetime.
+     */
+    private wireWorkspaceId(workspaceId: string): Promise<string> {
+      if (workspaceId !== DEFAULT_WORKSPACE_ID)
+        return Promise.resolve(workspaceId);
+      const cp = this.ctx.cp;
+      if (!cp) throw new Error("Shared skills need a host workspace.");
+      this.#personalWsId ??= (async () => {
+        const rows = await controlPlane.listWorkspaces(cp);
+        const personal = rows.find((w) => !w.id.startsWith("org:"));
+        if (!personal)
+          throw new Error("The host serves no personal workspace.");
+        return personal.id;
+      })();
+      // A transient failure must not wedge shared skills for the session:
+      // drop the cached rejection so the next call re-resolves.
+      return this.#personalWsId.catch((err: unknown) => {
+        this.#personalWsId = undefined;
+        throw err;
+      });
+    }
+
     async listSharedSkills(workspaceId: string) {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      return controlPlane.listSharedSkills(this.ctx.cp, workspaceId);
+      return controlPlane.listSharedSkills(
+        this.ctx.cp,
+        await this.wireWorkspaceId(workspaceId),
+      );
     }
 
     async loadSharedSkill(
@@ -20,7 +58,11 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       slug: string,
     ): Promise<SkillDetail> {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      return controlPlane.loadSharedSkill(this.ctx.cp, workspaceId, slug);
+      return controlPlane.loadSharedSkill(
+        this.ctx.cp,
+        await this.wireWorkspaceId(workspaceId),
+        slug,
+      );
     }
 
     async createSharedSkill(
@@ -30,13 +72,15 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
       const detail = await controlPlane.createSharedSkill(
         this.ctx.cp,
-        workspaceId,
+        await this.wireWorkspaceId(workspaceId),
         {
           name: req.name,
           description: req.description,
           content: req.content,
         },
       );
+      // Local echoes keep the CLIENT's id vocabulary — query keys are built
+      // from the same workspaceId the caller holds.
       emitLocalEcho("SharedSkillsChanged", { workspaceId });
       return detail;
     }
@@ -49,7 +93,7 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
       const detail = await controlPlane.promoteSharedSkill(
         this.ctx.cp,
-        workspaceId,
+        await this.wireWorkspaceId(workspaceId),
         slug,
         content,
       );
@@ -65,7 +109,7 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
       await controlPlane.saveSharedSkill(
         this.ctx.cp,
-        workspaceId,
+        await this.wireWorkspaceId(workspaceId),
         slug,
         req.content,
       );
@@ -74,7 +118,11 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
 
     async deleteSharedSkill(workspaceId: string, slug: string): Promise<void> {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      await controlPlane.deleteSharedSkill(this.ctx.cp, workspaceId, slug);
+      await controlPlane.deleteSharedSkill(
+        this.ctx.cp,
+        await this.wireWorkspaceId(workspaceId),
+        slug,
+      );
       emitLocalEcho("SharedSkillsChanged", { workspaceId });
     }
 

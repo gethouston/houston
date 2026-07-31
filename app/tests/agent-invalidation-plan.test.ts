@@ -43,16 +43,20 @@ describe("planInvalidation — ActivityChanged reaches the board face stack", ()
 });
 
 describe("planInvalidation — unrelated cases keep their exact effects", () => {
-  it("SharedSkillsChanged invalidates only that workspace's shared store", () => {
+  it("SharedSkillsChanged invalidates the whole shared-skills family", () => {
+    // The server's event carries ITS workspace-id vocabulary (host folder
+    // name, gateway "Houston") while query keys use the client's synthetic
+    // "default" — an exact-id match would silently never fire, so the plan
+    // invalidates by key-family prefix instead.
     const plan = planInvalidation(
       {
         type: "SharedSkillsChanged",
-        data: { workspace_id: "w1" },
+        data: { workspace_id: "Houston" },
       },
       {},
     );
-    ok(invalidates(plan, queryKeys.sharedSkills("w1")));
-    strictEqual(invalidates(plan, queryKeys.sharedSkills("w2")), false);
+    ok(invalidates(plan, ["shared-skills"]));
+    strictEqual(invalidates(plan, queryKeys.sharedSkills("Houston")), false);
   });
 
   it("SkillsChanged invalidates the agent's skills manifest", () => {

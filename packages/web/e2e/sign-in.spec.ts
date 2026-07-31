@@ -198,3 +198,28 @@ test.describe("returning user (last sign-in continue)", () => {
     ).toBeVisible();
   });
 });
+
+/**
+ * HOU-1014: on the cloud web app (identity configured) the sign-in screen is
+ * the FIRST screen. The first-run language picker and the agreement gate are
+ * desktop/self-host concepts — pre-auth their preference writes 401 at the
+ * gateway, which dead-ended the agreement's Continue on the deployed web app.
+ * A fresh browser (no seeded gate prefs) must land directly on sign-in.
+ */
+test("a fresh browser lands on sign-in, never the language or agreement gates", async ({
+  page,
+}) => {
+  // Undo the shared boot seed's gate prefs — this init script runs after
+  // seedPage's, so the app boots like a genuinely fresh visitor.
+  await page.addInitScript(() => {
+    localStorage.removeItem("houston.pref.locale");
+    localStorage.removeItem("houston.pref.legal_acceptance");
+  });
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("button", { name: "Continue with Google" }),
+  ).toBeVisible();
+  await expect(page.getByText("Choose your language")).toHaveCount(0);
+  await expect(page.getByText("Elige tu idioma")).toHaveCount(0);
+});

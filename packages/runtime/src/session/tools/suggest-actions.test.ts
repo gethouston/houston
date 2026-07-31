@@ -23,6 +23,14 @@ test("is named suggest_actions", () => {
   expect(SUGGEST_ACTIONS_TOOL_NAME).toBe("suggest_actions");
 });
 
+test("the description states the call is required on non-blocking finishes", () => {
+  const d = suggestActions.description ?? "";
+  expect(d).toContain("Required on every turn you end without a blocking ask");
+  expect(d).toContain("Skip it only when the turn ends blocked on the user");
+  // The retired opt-out ("skip it if you can't name one") must not linger.
+  expect(d).not.toContain("genuinely cannot name");
+});
+
 test("records action steps and returns the non-ending instruction", async () => {
   const holder = newInteractionHolder();
   const out = await runWithInteractionCapture(holder, () => run({ actions }));

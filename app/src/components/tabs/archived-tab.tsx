@@ -1,25 +1,24 @@
 import { AIBoard, type KanbanItem } from "@houston-ai/board";
-import { type FeedItem, messagePreviewText } from "@houston-ai/chat";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useDeleteActivity } from "../../hooks/queries";
-import { useConversationVm } from "../../hooks/use-conversation-vm";
+import { useArchivedHandoff } from "../../hooks/use-archived-handoff";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
+import { useOpenConversationFeed } from "../../hooks/use-open-conversation-feed";
 import { selectArchived } from "../../lib/mission-selection";
 import { modelAcceptsImages } from "../../lib/providers";
-import { tauriChat } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
+import { buildArchivedBoardItems } from "../board/agent-board-items";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
-import { ArchivedEmptyState, ArchivedSearchBar } from "./archived-tab-search";
+import { ArchivedEmptyState } from "./archived-empty-state";
+import { ArchivedHeader } from "./archived-header";
 import { useArchivedMissionSearch } from "./use-archived-mission-search";
 import { useArchivedSendMessage } from "./use-archived-send-message";
-
-const EMPTY_FEED: FeedItem[] = [];
 
 /**
  * Archived missions: a column-less list of the agent's archived missions.
@@ -28,7 +27,11 @@ const EMPTY_FEED: FeedItem[] = [];
  * start (`set_status_by_session_key`), so the mission leaves this tab and we
  * hand the user off to the active board to keep the conversation in view.
  */
-export default function ArchivedTab({ agent, agentDef }: TabProps) {
+export default function ArchivedTab({
+  agent,
+  agentDef,
+  onBack,
+}: TabProps & { onBack: () => void }) {
   const { t } = useTranslation("board");
   const path = agent.folderPath;
   const openHref = useOpenAgentHref(path);
@@ -37,22 +40,16 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const deleteActivity = useDeleteActivity(path);
   const addToast = useUIStore((s) => s.addToast);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
+  const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
 
   const archived = useMemo(() => selectArchived(rawItems ?? []), [rawItems]);
   const items: KanbanItem[] = useMemo(
     () =>
-      archived.map((a) => ({
-        id: a.id,
-        title: a.title,
-        // Decode a Skill / attachment first-message marker to the user's words;
-        // never echo the raw `<!--houston:...-->` on the card (HOU-425).
-        description: messagePreviewText(a.description),
-        status: a.status,
-        updatedAt: a.updated_at ?? new Date().toISOString(),
-        group: agent.name,
-        metadata: { ...(a.session_key ? { sessionKey: a.session_key } : {}) },
-      })),
-    [archived, agent.name],
+      buildArchivedBoardItems({
+        activities: rawItems ?? [],
+        agentName: agent.name,
+      }),
+    [rawItems, agent.name],
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -64,33 +61,33 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   );
   const selectedSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
 
+  const handleReactivated = useCallback(() => setSelectedId(null), []);
+  const focusActiveBoard = useCallback(
+    () => setAgentBoardMode("active"),
+    [setAgentBoardMode],
+  );
+  const { handoff, onSendReactivated } = useArchivedHandoff({
+    missionId: selectedId,
+    onReactivated: handleReactivated,
+    focusBoard: focusActiveBoard,
+  });
+
   const panel = useAgentChatPanel({
     agent,
     agentDef,
     selectedSessionKey,
     onSelectSession: setSelectedId,
+    onSendReactivated,
   });
   const { effectiveProvider, effectiveModel } = panel;
   const attachmentValidation = useAttachmentRejectionDialog({
     modelAcceptsImages: modelAcceptsImages(effectiveProvider, effectiveModel),
   });
 
-  // The open conversation's reactive feed from the SDK conversation VM
-  // (history seeded by the adapter's loadHistory).
-  const activeVm = useConversationVm(path, selectedSessionKey);
-  const activeFeed = activeVm?.feed ?? EMPTY_FEED;
-  const feedItems = useMemo<Record<string, FeedItem[]>>(
-    () => (selectedSessionKey ? { [selectedSessionKey]: activeFeed } : {}),
-    [selectedSessionKey, activeFeed],
-  );
-  // Scroll-up lazy-load (HOU-819): archived missions can be the longest
-  // transcripts of all — the open chat shows the tail window and prepends
-  // older pages on scroll.
-  const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
-  const onLoadOlderMessages = useCallback(async () => {
-    if (!selectedSessionKey) return;
-    await tauriChat.loadOlderHistory(path, selectedSessionKey);
-  }, [path, selectedSessionKey]);
+  // Archived missions can be the longest transcripts of all, so the open chat
+  // shows the tail window and prepends older pages on scroll (HOU-819).
+  const { feedItems, hasOlderMessages, onLoadOlderMessages } =
+    useOpenConversationFeed(path, selectedSessionKey);
 
   const archivedSearch = useArchivedMissionSearch(path, items);
 
@@ -102,7 +99,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
     [deleteActivity, selectedId],
   );
 
-  const handleReactivated = useCallback(() => setSelectedId(null), []);
   const handleSendMessage = useArchivedSendMessage({
     agentPath: path,
     selectedId,
@@ -110,7 +106,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
     agentDef,
     effectiveProvider,
     effectiveModel,
-    onReactivated: handleReactivated,
+    onHandoff: handoff,
   });
   const emptyState = (
     <ArchivedEmptyState
@@ -121,11 +117,12 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <ArchivedSearchBar
-        value={archivedSearch.query}
+      <ArchivedHeader
+        search={archivedSearch.query}
         isSearchingText={archivedSearch.isLoading}
-        visible={items.length > 0 || archivedSearch.missionSearch.hasQuery}
-        onChange={archivedSearch.setQuery}
+        searchable={items.length > 0 || archivedSearch.missionSearch.hasQuery}
+        onSearchChange={archivedSearch.setQuery}
+        onBack={onBack}
       />
       <div className="min-h-0 flex-1">
         <AIBoard
@@ -162,6 +159,13 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           }}
           chatEmptyState={panel.chatEmptyState}
           composerHeader={panel.composerHeader}
+          // Only the OFFERS an archived mission finished with, never a blocking
+          // stepper: archiving answers nothing, so a mission archived mid-
+          // question still carries its question steps (see
+          // `offersComposerOverride`). Acting on an offer sends a message,
+          // which re-activates the mission like any other send.
+          composerOverride={panel.offersComposerOverride}
+          composerOverrideMode="above"
           canSendEmpty={panel.canSendEmpty}
           footer={panel.footer}
           attachMenu={panel.attachMenu}

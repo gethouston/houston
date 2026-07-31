@@ -42,12 +42,14 @@ export interface TurnState {
   settled: boolean;
   terminal: TerminalBoardStatus | null;
   /**
-   * The interaction the turn ended on (ask_user / request_connection), captured
-   * from the clean `done` frame; `null` when the turn settled without one. It
-   * splits a clean settle to `needs_you` (present) vs `done` (absent) in
-   * {@link finishOk} and rides the terminal board persist so the card can
-   * render its composer-replacing question/connect card. Handled non-success
-   * settles (user Stop, provider error) never set it.
+   * The interaction the turn ended on (ask_user / request_connection, or a pure
+   * offer from suggest_actions / suggest_reusable), captured from the clean
+   * `done` wire frame; `null` when the turn settled without one. It does NOT
+   * decide the board status — a clean finish always settles `needs_you` (see
+   * {@link finishOk}) — it rides the terminal board persist so the card can
+   * render its composer-replacing question/connect card or its suggestion
+   * bubbles. Handled non-success settles (user Stop, provider error) never set
+   * it.
    */
   pendingInteraction: PendingInteraction | null;
   /**
@@ -98,13 +100,16 @@ const invisibleFinal = (s: TurnState) =>
 
 /**
  * Settle a successful turn: flush accumulations, final_result, completed. The
- * board split is on the captured interaction (the `done` frame stashes it into
- * `s.pendingInteraction` before calling here): the turn ended asking the user
- * for something → `needs_you`; it ended with nothing outstanding → `done`.
+ * board ALWAYS lands on `needs_you` — the engine never writes `done`. Closing a
+ * mission is the USER's call: a finished turn parks its card where the user can
+ * read the result and decide, so nothing is auto-archived out from under them.
  *
- * The exception is any mix of the optional `suggest_reusable` and
- * `suggest_actions` offers: the mission genuinely IS done, so it settles
- * `done`, not `needs_you`. Any blocking step means `needs_you`.
+ * There is no split on the captured interaction any more. Blocking or not
+ * (ask_user / request_connection / plan_ready, or a pure `suggest_actions` /
+ * `suggest_reusable` offer), `s.pendingInteraction` still rides the terminal
+ * board persist untouched, so the card renders its question/connect card or its
+ * suggestion bubbles — and the suggestions survive the user's later move to
+ * done.
  */
 export function finishOk(s: TurnState): void {
   if (s.settled) return;
@@ -116,12 +121,7 @@ export function finishOk(s: TurnState): void {
     data: { result: s.text, cost_usd: null, duration_ms: null, usage: s.usage },
   });
   s.output.sessionStatus(s.agentPath, s.sessionKey, "completed");
-  const onlySuggestion =
-    s.pendingInteraction?.steps.every(
-      (step) =>
-        step.kind === "suggest_reusable" || step.kind === "suggest_actions",
-    ) ?? false;
-  s.terminal = s.pendingInteraction && !onlySuggestion ? "needs_you" : "done";
+  s.terminal = "needs_you";
 }
 
 /**

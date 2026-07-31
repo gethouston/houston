@@ -17,9 +17,11 @@ export interface KanbanColumnProps {
   onSelect: (item: KanbanItem) => void;
   onDelete?: (item: KanbanItem) => void;
   onApprove?: (item: KanbanItem) => void;
+  onArchive?: (item: KanbanItem) => void;
   onRename?: (item: KanbanItem, newTitle: string) => void;
   runningStatuses?: string[];
   approveStatuses?: string[];
+  archiveStatuses?: string[];
   errorStatuses?: string[];
   renderCard?: (item: KanbanItem) => React.ReactNode;
   actions?: (item: KanbanItem) => React.ReactNode;
@@ -56,9 +58,11 @@ export function KanbanColumn({
   onSelect,
   onDelete,
   onApprove,
+  onArchive,
   onRename,
   runningStatuses,
   approveStatuses,
+  archiveStatuses,
   errorStatuses,
   renderCard,
   actions,
@@ -81,7 +85,9 @@ export function KanbanColumn({
       // Name must match board-drag-dom's COLUMN_ID_ATTR (drop hit-testing).
       data-kanban-column={columnId}
       className={cn(
-        "min-w-[180px] flex-1 flex flex-col h-full min-h-0 rounded-xl bg-chip transition-[box-shadow,background-color] duration-150",
+        // Below md the board becomes one column per swipe: each column snaps
+        // to the center of the horizontally-scrolling board container.
+        "min-w-[180px] max-md:min-w-[80vw] max-md:snap-center flex-1 flex flex-col h-full min-h-0 rounded-xl bg-chip transition-[box-shadow,background-color] duration-150",
         // Valid drop target during a drag: a faint inset ring hints "drop here".
         // The column the pointer is over gets a stronger ring + tint.
         isDropTarget &&
@@ -130,11 +136,13 @@ export function KanbanColumn({
                 onSelect={() => onSelect(item)}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
                 onApprove={onApprove ? () => onApprove(item) : undefined}
+                onArchive={onArchive ? () => onArchive(item) : undefined}
                 onRename={
                   onRename ? (title) => onRename(item, title) : undefined
                 }
                 runningStatuses={runningStatuses}
                 approveStatuses={approveStatuses}
+                archiveStatuses={archiveStatuses}
                 errorStatuses={errorStatuses}
                 actions={actions?.(item)}
                 avatar={avatar}

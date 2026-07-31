@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 // The /core subpaths: the packages' root type entries are missing from the
 // published dist (their promise.d.ts is not shipped), while the core entries
 // are complete — and the promise-surface createExecutor consumes core-shaped
@@ -44,6 +45,28 @@ function buildExecutor(secrets: CustomSecretStore) {
 const OWNER = "org";
 const CONNECTION = "default";
 
+/**
+ * How stale a URL-sourced OpenAPI spec's compiled view may grow before use
+ * triggers a background verify (HOU-1052 follow-up). The compiled view is
+ * in-memory and otherwise lives as long as the host process — hours on a
+ * cloud pod, potentially WEEKS on a desktop install — while the service's
+ * API description can change under it. Blob specs are frozen by design
+ * (the agent authored them) and MCP tool lists are discovered live, so
+ * only url-kind OpenAPI defs are ever refreshed.
+ */
+const SPEC_REFRESH_TTL_MS = 6 * 60 * 60 * 1000;
+
+/** Fetch the spec text, or `null` when unreachable/non-2xx — the caller
+ *  keeps the WORKING compiled view rather than downgrading on an outage. */
+async function fetchSpecText(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    return res.ok ? await res.text() : null;
+  } catch {
+    return null;
+  }
+}
+
 export interface CompiledState {
   executor: CustomExecutor;
   /** Live per-slug state, refreshed by every (re)compile of that slug. */
@@ -52,14 +75,30 @@ export interface CompiledState {
 
 export class CustomExecutorHost {
   private building: Promise<CompiledState> | null = null;
+  /** When the url-sourced specs were last VERIFIED against their sources.
+   *  0 = never built, which also gates the refresh kick until a build lands. */
+  private lastSpecCheckAt = 0;
+  /** sha256 of each url-spec's last-seen content; a def with no entry gets a
+   *  baseline recorded on its first verify instead of a blind recompile. */
+  private readonly specHashes = new Map<string, string>();
+  private refreshing: Promise<void> | null = null;
 
   constructor(
     private readonly secrets: CustomSecretStore,
     private readonly listDefs: () => Promise<CustomIntegrationDef[]>,
+    private readonly specRefreshTtlMs: number = SPEC_REFRESH_TTL_MS,
   ) {}
 
-  /** The compiled engine, built once and rehydrated from the definitions. */
+  /** The compiled engine, built once and rehydrated from the definitions.
+   *  Every use also arms the stale-spec verify (background, never blocking:
+   *  a chat turn must not wait on a spec re-fetch). */
   ensure(): Promise<CompiledState> {
+    const built = this.ensureBuilt();
+    this.maybeRefreshSpecs();
+    return built;
+  }
+
+  private ensureBuilt(): Promise<CompiledState> {
     this.building ??= this.build().catch((err) => {
       // A failed BUILD (not a failed definition) must not poison every later
       // call with the same stale rejection — drop it so the next call retries.
@@ -73,6 +112,8 @@ export class CustomExecutorHost {
   async reset(): Promise<void> {
     const pending = this.building;
     this.building = null;
+    this.lastSpecCheckAt = 0;
+    this.specHashes.clear();
     if (pending) {
       const { executor } = await pending.catch(() => ({ executor: null }));
       if (executor) await executor.close();
@@ -85,7 +126,56 @@ export class CustomExecutorHost {
     for (const def of await this.listDefs()) {
       states.set(def.slug, await this.compileDef(executor, def));
     }
+    // The specs were just compiled from source: the verify clock starts now.
+    this.lastSpecCheckAt = Date.now();
     return { executor, states };
+  }
+
+  /** Arm one background refresh when the TTL has lapsed. The window is
+   *  claimed up front so racing ensure() calls never stack refreshes, and a
+   *  failed sweep simply waits out the next TTL (the view keeps working). */
+  private maybeRefreshSpecs(): void {
+    if (this.refreshing || this.lastSpecCheckAt === 0) return;
+    if (Date.now() - this.lastSpecCheckAt < this.specRefreshTtlMs) return;
+    this.lastSpecCheckAt = Date.now();
+    this.refreshing = this.refreshSpecs()
+      .catch((err) => {
+        // Background maintenance with no user action to toast on — the
+        // compiled view stays as it was, so log-and-wait is the honest move.
+        console.error("[custom-integrations] spec refresh failed", err);
+      })
+      .finally(() => {
+        this.refreshing = null;
+      });
+  }
+
+  /**
+   * Verify-then-recompile for every url-sourced OpenAPI def (HOU-1052
+   * follow-up): re-fetch the spec, and only when its CONTENT actually changed
+   * (sha256) tear down and recompile that one definition — the same
+   * removeSpec + compileDef sequence a remove + re-add runs, connection
+   * included. An unreachable spec host keeps the working view untouched; a
+   * def seen for the first time records its baseline hash without a blind
+   * recompile (the boot compile is at most one TTL old). Awaitable directly
+   * (tests, a future manual Refresh affordance); `ensure()` runs it in the
+   * background on the TTL.
+   */
+  async refreshSpecs(): Promise<void> {
+    const { executor, states } = await this.ensureBuilt();
+    for (const def of await this.listDefs()) {
+      if (def.kind !== "openapi" || def.spec.kind !== "url") continue;
+      const text = await fetchSpecText(def.spec.url);
+      if (text === null) continue;
+      const hash = createHash("sha256").update(text).digest("hex");
+      const prev = this.specHashes.get(def.slug);
+      this.specHashes.set(def.slug, hash);
+      if (prev === undefined || prev === hash) continue;
+      await executor.openapi.removeSpec(def.slug).catch(() => undefined);
+      states.set(def.slug, await this.compileDef(executor, def));
+      console.info(
+        `[custom-integrations] '${def.slug}' spec changed upstream - recompiled`,
+      );
+    }
   }
 
   /**

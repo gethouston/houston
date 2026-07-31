@@ -176,18 +176,29 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `signin` / `plan_ready` / `suggest_reusable` / `suggest_actions`),
   `packages/protocol`, wire v3).
   Only the clean path carries it; an error frame never does.
-- **Done frame → settle split.** The SDK folds the frame
-  (`packages/sdk/src/modules/turns/turn-settle.ts`): a clean turn WITH an
-  interaction settles `boardStatus: needs_you` and carries the interaction; a
-  clean turn WITHOUT one settles the NEW terminal `boardStatus: done`. A frame
-  containing only optional `suggest_reusable` and/or `suggest_actions` steps
-  also settles `done`; any blocking step still settles `needs_you`. A user Stop
-  / logged-out provider is a handled `needs_you` (never carrying an interaction);
-  a real failure is `error`. `persistBoardStatus` writes `{ status,
-  pending_interaction }` (the web adapter PATCHes it); Activity persists
-  `pending_interaction` (null-cleared at turn start) and the assistant
-  `ChatMessage` persists `pendingInteraction`, so a `needs_you` card survives
-  reload.
+- **Done frame → settle. THE ENGINE NEVER WRITES `done`.** The SDK folds the
+  frame (`packages/sdk/src/modules/turns/turn-settle.ts`) and there is no split:
+  every clean finish settles `boardStatus: needs_you`, with or without a captured
+  interaction. A user Stop / logged-out provider is a handled `needs_you` (never
+  carrying an interaction); a real failure is `error`. Both land in the **Needs
+  you** column. The captured `pendingInteraction` does NOT pick a status — it
+  only says what the settled card renders (question / connect stepper, or the
+  optional `suggest_actions` / `suggest_reusable` offer bubbles).
+  `persistBoardStatus` writes `{ status, pending_interaction }` (the web adapter
+  PATCHes it); Activity persists `pending_interaction` (null-cleared at turn
+  start) and the assistant `ChatMessage` persists `pendingInteraction`, so the
+  card survives reload.
+- **`done` is the USER's move, and it celebrates.** Closing a mission is
+  exclusively user-driven: the card's checkmark (offered on `needs_you` AND
+  `error` cards — `MISSION_APPROVE_STATUSES`,
+  `app/src/components/mission-board-columns.ts`), a drag into Done, or a bulk
+  move. Each fires `fireMissionDoneConfetti` (`app/src/lib/confetti.ts`). So
+  `needs_you` means "finished (or blocked, or errored) and awaiting your review",
+  and nothing is ever auto-closed out from under the user. The sidebar / tab
+  badges count EVERY `needs_you` card by design — that is the review inbox, not
+  a bug to fix. A user move to `done` strips the blocking steps but KEEPS the
+  offers, so suggestion bubbles still render on a Done card
+  (`retainSuggestionSteps`; see `knowledge-base/files-first.md`).
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
   the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v19):
   a one-step-at-a-time stepper composed in the shared `InteractionModal` shell.
@@ -235,10 +246,11 @@ stamps `conv.stoppedTurnId`, and exec-turn writes `stopped: true` (skipping any
 `pendingInteraction` — a stopped turn never carries a card). The SDK renders it as
 the verbatim "Stopped by user" line, and settle-from-history routes a stopped
 reply through the SAME `finishErr` stop settle → `needs_you`, so live and reload
-agree (fixing the old divergence where a reloaded stopped turn re-derived as
-`done`). Type-to-abandon (sending a fresh message while a card is up) already
+agree and a reloaded stopped turn never re-derives an interaction card.
+Type-to-abandon (sending a fresh message while a card is up) already
 null-clears the interaction at the next turn's start — unchanged. `suggest_reusable`
-"Not now" also clears the persisted interaction (no stop marker); `plan_ready`
+"Not now" writes the persisted interaction MINUS that one step (no stop marker),
+so a sibling `suggest_actions` offer survives the reload; `plan_ready`
 header dismissal stays local-only.
 
 **Plan approval.** Plan mode writes the complete plan as the normal assistant
@@ -252,26 +264,48 @@ visible plan-mode follow-up and retires the pending card.
 
 **Reflection step (suggest_reusable).** The prompt names the agent's
 end-of-mission evaluation the REFLECTION STEP: every time the agent finishes a
-task (a clean `done`, never `needs_you`), it reflects on whether the work should
+task cleanly, it reflects on whether the work should
 be kept and, if so, calls `suggest_reusable` right before its final message with
 `reusableKind: "skill" | "routine" | "learning"` — a reusable procedure, a
 scheduled automation, or a stable fact/preference for
-`.houston/learnings/learnings.json`. The step arrives as a LONE
-`suggest_reusable` interaction step on the `done` frame and renders
+`.houston/learnings/learnings.json`. The step rides the clean `done` wire frame
+(alone, or beside a `suggest_actions` offer) and renders
 `ChatSuggestReusableCard` (Sparkles / CalendarClock / Lightbulb icon per kind);
 accepting sends a follow-up user message (always an `execute` turn) asking the
-agent to actually write the Skill/Routine/Learning, "Not now" dismisses and
-clears the persisted interaction. Inferred learnings route ONLY through this
+agent to actually write the Skill/Routine/Learning, "Not now" is a PER-STEP
+dismissal (above) that leaves sibling offers alive. Because the card settles on
+`needs_you` and offers survive the user's move to `done`, it still renders on a
+Done card — and on the Archived surfaces. Inferred learnings route ONLY through this
 card — the old mid-task `ask_user` "Want me to remember that?" flow is gone;
 a direct user "remember this" still saves immediately. Concept name lives in
 prompts/docs only; the wire kind stays `suggest_reusable` (persisted in user
 data). Inventory: `suggest-reusable-card` v22.
 
-**Follow-up step (suggest_actions).** Once a mission is complete, the agent may
-call `suggest_actions` with 2 to 4 concrete follow-ups. Each action has a short
-pill label and the visible user message sent when it is selected. This optional
-offer can compose with `suggest_reusable` (actions first), persists through
-reload, and never turns the board to `needs_you`. Dismissing clears it.
+**Follow-up step (suggest_actions).** The product prompt makes this MANDATORY on
+every turn the agent ends WITHOUT a blocking ask (no `ask_user`, no connection /
+credential request, no plan awaiting approval): it must call `suggest_actions`
+with 2 to 4 concrete follow-ups grounded in the work it just did, so the user
+always has a next step. Blocking turns are the only exception (the user already
+has something to do: answer). Each action has a short
+pill label and the visible user message sent when it is selected. The offer
+never blocks the user, composes with `suggest_reusable` (actions first) and persists through
+reload — including past the user's own move to Done, which strips the blocking
+steps but keeps the offers (`retainSuggestionSteps`,
+`knowledge-base/files-first.md` → Activity statuses). Selecting an action always
+sends an `execute` turn (it asks the agent to DO the thing, whatever the
+composer's pinned Mode says), matching the reusable card's Save. Dismissing
+drops only this step from the persisted interaction, never the sibling offer.
+Both offers also render on archived missions (Archived tab + Mission Control
+Archived pass the panel's `composerOverride`). Acting on one there sends a real
+turn, which re-activates the mission (`archived → running`) — as does a Skill
+submitted into that same archived chat. Both of those send from INSIDE
+`useAgentChatPanel`, bypassing each surface's `onSendMessage`, so the panel
+reports them back through its `onSendReactivated` option and both archived
+surfaces run the SAME archived → active handoff their composer send uses
+(`useArchivedHandoff`, `app/src/hooks/use-archived-handoff.ts`: drop the
+selection, focus the target board, open the mission's panel). It fires only
+after the send RESOLVES. Miss it on any one path and that mission leaves the
+archived list while the user stays on it.
 
 The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
 tool guidance; the app's legacy link-card renderer survives only to render old

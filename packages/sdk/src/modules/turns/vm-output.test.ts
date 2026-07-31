@@ -157,10 +157,12 @@ test("a clean settle folds the pending interaction into the VM; turn start clear
   expect(snap().pendingInteraction).toBe(null);
 });
 
-test("a clean settle with no interaction lands boardStatus done and no interaction", async () => {
+test("a clean settle with no interaction lands boardStatus needs_you and no interaction", async () => {
   const { snap, vm } = harness();
-  await vm.persistBoardStatus("a", "c1", "done", null);
-  expect(snap().boardStatus).toBe("done");
+  // The engine never writes `done` — a finished turn parks the card on
+  // needs_you and the user decides when the mission is closed.
+  await vm.persistBoardStatus("a", "c1", "needs_you", null);
+  expect(snap().boardStatus).toBe("needs_you");
   expect(snap().pendingInteraction).toBe(null);
 });
 

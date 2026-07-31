@@ -16,7 +16,8 @@
 
 import { shouldUseCodexLoopback } from "../components/shell/provider-login-url";
 import { useUIStore } from "../stores/ui";
-import { genericErrorDescription } from "./error-report";
+import { runCodexDeviceCodeFallback } from "./codex-device-code-fallback";
+import { genericErrorDescription, logAndReportError } from "./error-report";
 import i18n from "./i18n";
 import {
   legacyListen,
@@ -54,6 +55,29 @@ function failCodexLogin(frontendProviderId: string, err: unknown): void {
   });
 }
 
+/**
+ * The relay could not run on this machine (the fixed port 1455 is owned by
+ * another process, or the browser refused to open): restart the SAME sign-in
+ * as a device-code login instead of dead-ending into the connect timeout.
+ * Cancel-first ordering and the no-toast-on-success policy live in
+ * codex-device-code-fallback.ts; this only binds the real desktop effects.
+ */
+function fallBackToDeviceCode(
+  frontendProviderId: string,
+  cause: unknown,
+): Promise<void> {
+  return runCodexDeviceCodeFallback(cause, {
+    report: (err) => logAndReportError("codex_loopback_login", err),
+    cancelLogin: () => tauriProvider.cancelLogin(frontendProviderId),
+    launchDeviceCodeLogin: () =>
+      tauriProvider.launchLogin(frontendProviderId, {
+        deviceAuth: true,
+        toast: false,
+      }),
+    fail: (err) => failCodexLogin(frontendProviderId, err),
+  });
+}
+
 /** Relay the callback's query string to the engine. `submitLoginCode`'s
  *  engine-call wrapper already surfaces a failure toast + Sentry report, so the
  *  catch here only keeps the promise from floating unhandled. */
@@ -71,10 +95,11 @@ async function relayCodexCode(
 /**
  * Drive the desktop Codex/OpenAI browser sign-in: listen for the loopback
  * callback, bind the native listener, open the authorize URL, and relay the
- * code back to the engine. Surfaces a toast and cleans up the listener on any
- * setup failure; never leaves an orphaned listener on any path (success, error,
- * or timeout). Resolves once the browser has been opened (the callback is
- * handled asynchronously); never rejects.
+ * code back to the engine. On any setup failure it cleans up the listener and
+ * falls back to the device-code sign-in (`fallBackToDeviceCode`) — a toast
+ * only fires if that fallback fails too. Never leaves an orphaned listener on
+ * any path (success, error, or timeout). Resolves once the browser has been
+ * opened (the callback is handled asynchronously); never rejects.
  */
 export async function beginCodexBrowserLogin(
   frontendProviderId: string,
@@ -106,7 +131,7 @@ export async function beginCodexBrowserLogin(
     });
   } catch (err) {
     cleanup();
-    failCodexLogin(frontendProviderId, err);
+    await fallBackToDeviceCode(frontendProviderId, err);
     return;
   }
 
@@ -117,7 +142,7 @@ export async function beginCodexBrowserLogin(
     await osOpenUrl(authorizeUrl);
   } catch (err) {
     cleanup();
-    failCodexLogin(frontendProviderId, err);
+    await fallBackToDeviceCode(frontendProviderId, err);
   }
 }
 
@@ -152,8 +177,8 @@ export function tryBeginCodexLoopbackLogin(ev: {
   // Codex/OpenAI against a REMOTE engine on desktop: bind our OWN local
   // 127.0.0.1:1455 listener and relay the callback code, so ChatGPT sign-in
   // works with zero device code. pi's 1455 is in the pod, so no collision.
-  // beginCodexBrowserLogin surfaces its own failure toast and never leaves an
-  // orphaned listener.
+  // beginCodexBrowserLogin falls back to the device-code sign-in when the
+  // relay can't run and never leaves an orphaned listener.
   void beginCodexBrowserLogin(ev.provider, ev.url);
   return true;
 }

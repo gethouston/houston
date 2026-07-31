@@ -135,33 +135,6 @@
     "toolCount_one": "{{count}} action",
     "toolCount_other": "{{count}} actions",
     "enterKey": "Enter key",
-    "add": {
-      "title": "Add a custom integration",
-      "chatTitle": "Set it up in chat",
-      "chatDesc": "Tell Houston what you want to connect and it walks you through everything in chat.",
-      "manualTitle": "Add it manually",
-      "manualDesc": "Paste an API or MCP server address and fill in the details yourself.",
-      "kindLabel": "Connection type",
-      "urlLabelApi": "API documentation URL",
-      "urlLabelMcp": "MCP server URL",
-      "urlPlaceholderApi": "https://api.example.com/openapi.json",
-      "urlPlaceholderMcp": "https://mcp.example.com",
-      "check": "Check",
-      "detected": {
-        "api": "Recognized an API service.",
-        "mcp": "Recognized an MCP server.",
-        "unknown": "We couldn't recognize this address. Check the URL, or let Houston help you in chat.",
-        "mcpOauth": "This server signs in with its own account (OAuth), which Houston can't connect to yet. An API key won't work here."
-      },
-      "nameLabel": "Name",
-      "namePlaceholder": "What should we call it?",
-      "needsKey": "Needs an API key",
-      "needsKeyDesc": "Turn this on if the service asks for a key or token. You'll enter it securely right after adding.",
-      "back": "Back",
-      "submit": "Add integration",
-      "submitting": "Adding...",
-      "addedToast": "{{name}} is ready to use"
-    },
     "details": {
       "url": "Address",
       "added": "Added",

@@ -13,11 +13,13 @@ export interface KanbanBoardProps {
   onSelect?: (item: KanbanItem) => void;
   onDelete?: (item: KanbanItem) => void;
   onApprove?: (item: KanbanItem) => void;
+  onArchive?: (item: KanbanItem) => void;
   onRename?: (item: KanbanItem, newTitle: string) => void;
   emptyState?: React.ReactNode;
   renderCard?: (item: KanbanItem) => React.ReactNode;
   runningStatuses?: string[];
   approveStatuses?: string[];
+  archiveStatuses?: string[];
   errorStatuses?: string[];
   actions?: (item: KanbanItem) => React.ReactNode;
   avatar?: React.ReactNode;
@@ -49,11 +51,13 @@ export function KanbanBoard({
   onSelect,
   onDelete,
   onApprove,
+  onArchive,
   onRename,
   emptyState,
   renderCard,
   runningStatuses,
   approveStatuses,
+  archiveStatuses,
   errorStatuses,
   actions,
   avatar,
@@ -116,7 +120,7 @@ export function KanbanBoard({
     // itself is driven by `body` classes (see use-board-drag), not here.
     <div
       {...dragHandlers}
-      className="flex-1 flex gap-3 p-3 min-h-0 overflow-x-auto overflow-y-hidden"
+      className="flex-1 flex gap-3 p-3 min-h-0 overflow-x-auto overflow-y-hidden max-md:snap-x max-md:snap-mandatory"
     >
       {columnData.map((col) => {
         // `idle | origin | drop-target | forbidden` — see `columnDragRole`. A
@@ -145,10 +149,12 @@ export function KanbanBoard({
             onSelect={onSelect ?? (() => {})}
             onDelete={onDelete}
             onApprove={onApprove}
+            onArchive={onArchive}
             onRename={onRename}
             renderCard={renderCard}
             runningStatuses={runningStatuses}
             approveStatuses={approveStatuses}
+            archiveStatuses={archiveStatuses}
             errorStatuses={errorStatuses}
             actions={actions}
             avatar={avatar}

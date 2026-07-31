@@ -13,6 +13,10 @@ export const queryKeys = {
     ["skills-manifest", agentPath] as const,
   sharedSkills: (workspaceId: string) =>
     ["shared-skills", workspaceId] as const,
+  /** One store skill's full SKILL.md — rides the "shared-skills" prefix so
+   *  `SharedSkillsChanged` invalidates it with the list. */
+  sharedSkillDetail: (workspaceId: string, slug: string) =>
+    ["shared-skills", workspaceId, "detail", slug] as const,
   skillDetail: (agentPath: string, name: string) =>
     ["skill-detail", agentPath, name] as const,
   files: (agentPath: string) => ["files", agentPath] as const,

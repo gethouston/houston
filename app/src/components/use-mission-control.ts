@@ -17,10 +17,12 @@ import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
 import { missionCardTags } from "../lib/mission-card";
+import { armMissionDoneCelebration } from "../lib/mission-done-celebration";
 import {
   buildMissionPeople,
   collectContributorIds,
 } from "../lib/mission-people";
+import { ARCHIVED_STATUS, DONE_STATUS } from "../lib/mission-selection";
 import { isMultiplayer } from "../lib/org-roles";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
@@ -48,7 +50,7 @@ export function useMissionControl(agents: Agent[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   // activityId → agentPath. Keyed by the activity id (the KanbanItem id), used
-  // by the card-level handlers (delete/approve/rename) that operate on item.id.
+  // by the card-level handlers (delete/approve/archive/rename) on item.id.
   const pathMapRef = useRef<Record<string, string>>({});
   // session_key → { agentPath, activityId }. A routine chat's key is
   // `routine-{rid}`, NOT `activity-{id}`, so stripping an "activity-" prefix to
@@ -220,11 +222,35 @@ export function useMissionControl(agents: Agent[]) {
     [selectedId],
   );
 
+  // The card checkmark: the user signing a mission off. Confetti fires only
+  // after the write lands (a rejection propagates to the global error toast)
+  // and only for a mission that actually succeeded — the checkmark also closes
+  // failed missions, and those get the move without the fanfare. The burst is
+  // armed before the write so it comes off the card the user just checked off
+  // (full contract in armMissionDoneCelebration).
   const handleApprove = useCallback(async (item: KanbanItem) => {
     const agentPath = pathMapRef.current[item.id];
     if (!agentPath) return;
-    await tauriActivity.update(agentPath, item.id, { status: "done" });
+    const celebrate = armMissionDoneCelebration(item, DONE_STATUS);
+    await tauriActivity.update(agentPath, item.id, { status: DONE_STATUS });
+    celebrate();
   }, []);
+
+  // The Done card's archive box: filing away a mission the user already signed
+  // off. No confetti — the win was the checkmark, this is the tidy-up after it.
+  // Archiving takes the card off the active board, so a mission whose chat is
+  // open is deselected exactly as `handleDelete` and the bulk archive do it.
+  const handleArchive = useCallback(
+    async (item: KanbanItem) => {
+      const agentPath = pathMapRef.current[item.id];
+      if (!agentPath) return;
+      await tauriActivity.update(agentPath, item.id, {
+        status: ARCHIVED_STATUS,
+      });
+      if (selectedId === item.id) setSelectedId(null);
+    },
+    [selectedId],
+  );
 
   const handleRename = useCallback(
     async (item: KanbanItem, newTitle: string) => {
@@ -435,6 +461,7 @@ export function useMissionControl(agents: Agent[]) {
     hasOlderMessages,
     handleDelete,
     handleApprove,
+    handleArchive,
     handleRename,
     handleSendMessage,
     handleCreateConversation,

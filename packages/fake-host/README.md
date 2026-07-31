@@ -1,7 +1,8 @@
 # @houston/fake-host
 
-An in-memory, **protocol-v3** Houston host for UI / e2e tests. A single Node
-process answers just enough of the host + per-agent runtime for the desktop UI
+An in-memory, **protocol-v3** Houston host for UI / e2e tests. A small Node
+server (one per Playwright worker in the e2e suite — see `src/config.ts`)
+answers just enough of the host + per-agent runtime for the desktop UI
 (`app/src`) to boot and run on the new-engine adapter in **host mode** — with NO
 real backend, no AI provider, no credentials. Deterministic and hermetic: the
 same click always produces the same pixels.

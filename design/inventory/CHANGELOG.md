@@ -3,7 +3,7 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v50 - 2026-07-30
+## v51 - 2026-07-31
 
 The mission card loses its unread dot. The mark shipped in v39 as the per-card
 half of the shell's unread signal, and on a real board it did not earn its place:
@@ -24,6 +24,43 @@ outstanding-mention count (`mentions-inbox`), and the per-device read cursors al
 three are measured against. Only the board card's copy of the signal is removed —
 the `mentions-inbox` wording is updated to point at the sidebar rather than at a
 card dot that no longer exists.
+
+## v50 - 2026-07-30
+
+The board's loop had one click at the start and a menu at the end. A finished
+mission reaches Done with a single tap of the checkmark, and then the only move
+left, getting it out of the way, cost a multi-select: tick the card, wait for
+the bulk bar, press Archive, confirm. Four steps to do the thing the column is
+for.
+
+The mission card now carries at most ONE status-gated primary action, chosen by
+the column it sits in. Needs you keeps the checkmark. Done gets an archive box,
+same 24px hit target, same resting weight, same one click. The status sets are
+disjoint by construction, so the two never appear together and the action row
+never has to fit a second same-weight glyph beside rename and delete; a running
+card gets neither, because there is nothing to sign off yet and nothing to file
+away.
+
+What separates them is colour and nothing else. The checkmark warms to `success`
+on hover because signing a mission off is a win; the archive box stays neutral
+(`ink` on `hover`) because filing one away is housekeeping. Neither is `danger`:
+the trash can beside them is still the only control that destroys anything, and
+archiving remains fully reversible from the archived list. There is no confetti
+on archive either. The mission was already celebrated when it was checked off,
+and cheering the same work twice cheapens the first burst.
+
+One consequence worth naming: `archived` is the only status with no board
+column, so archiving a card removes it from the board rather than moving it.
+A mission archived while its chat panel is open therefore closes that panel,
+matching what a delete and a bulk archive already do instead of leaving a panel
+pointed at a card that is no longer on screen.
+
+`KanbanCard` gains `archiveStatuses` + `onArchive`, mirroring the approve pair
+exactly and threaded through the same `KanbanColumn` / `KanbanBoard` / `AIBoard`
+cascade, plus an `archiveTooltip` label. Both actions now read their render rule
+from one pure gate (`kanban-card-actions.ts`) instead of two inline conditions,
+so "which action does this card show" is a single tested decision rather than a
+pattern to be repeated by hand next time.
 
 ## v49 - 2026-07-29
 

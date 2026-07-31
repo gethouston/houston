@@ -10,6 +10,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  useIsMobile,
 } from "@houston-ai/core";
 import { TabBar } from "@houston-ai/layout";
 import { Plus } from "lucide-react";
@@ -52,6 +53,7 @@ import { DetailPanelProvider } from "./detail-panel-context";
 import { HoustonLogo } from "./experience-card";
 import { AgentRenderer } from "./experience-renderer";
 import { KeepAliveViews } from "./keep-alive-views";
+import { MobileTopBar } from "./mobile-top-bar";
 import { NotificationsBell } from "./notifications-bell";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
@@ -75,6 +77,7 @@ export function WorkspaceShell({
   const getById = useAgentCatalogStore((s) => s.getById);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const agentBoardMode = useUIStore((s) => s.agentBoardMode);
   const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
   const onStartMission = useUIStore((s) => s.onStartMission);
   const boardActions = useUIStore((s) => s.boardActions);
@@ -189,6 +192,12 @@ export function WorkspaceShell({
 
   useKeyboardShortcuts();
 
+  // Mobile (<768px): tab-bar actions drop to icon size (same treatment the
+  // open mission panel already forces) and the mission panel covers the full
+  // content area instead of splitting it 55/45.
+  const isMobile = useIsMobile();
+  const compactActions = missionPanelOpen || isMobile;
+
   return (
     <DetailPanelProvider value={panelContainer}>
       <div
@@ -196,7 +205,9 @@ export function WorkspaceShell({
           // Transparent so the window background reads up through the content.
           // Column layout: a seamless overlay title-bar strip on top, then the
           // sidebar + content row below it.
-          "flex h-screen flex-col bg-transparent text-ink",
+          // h-dvh (not h-screen) so mobile browser chrome (the collapsing URL
+          // bar) never pushes the composer below the visible viewport.
+          "flex h-dvh flex-col bg-transparent text-ink",
           uiTourActive && "pointer-events-none [&_*]:select-none",
         )}
       >
@@ -212,11 +223,14 @@ export function WorkspaceShell({
         )}
         <div className="flex min-h-0 flex-1">
           <Sidebar>
+            {/* Hamburger row for the mobile drawer; CSS-hidden at md+. */}
+            <MobileTopBar />
             {/* Transparent row: the window gutter shows in the gap-2 between
               the cards (and around them). main + the mission panel are each
               their OWN rounded frosted "screen" card, so the rounding reads
-              against the gutter. */}
-            <div className="flex min-w-0 flex-1 overflow-hidden gap-2">
+              against the gutter. `relative` anchors the mobile full-screen
+              mission panel overlay. */}
+            <div className="relative flex min-w-0 flex-1 overflow-hidden gap-2">
               <main
                 data-tour-target="main"
                 className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-background canvas-screen"
@@ -254,37 +268,45 @@ export function WorkspaceShell({
                             onTabChange={setViewMode}
                             actions={
                               <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                                {currentAgent && (
-                                  <MissionSearchInput
-                                    value={agentMissionSearchQuery}
-                                    isSearchingText={agentMissionSearchLoading}
-                                    labels={{
-                                      placeholder: t(
-                                        "board:search.placeholder",
-                                      ),
-                                      placeholderShort: t(
-                                        "board:search.placeholderShort",
-                                      ),
-                                      clear: t("board:search.clear"),
-                                      searchingText: t(
-                                        "board:search.searchingText",
-                                      ),
-                                    }}
-                                    className="relative min-w-0 flex-1 max-w-[320px]"
-                                    onChange={(value) => {
-                                      setAgentMissionSearchQuery(
-                                        currentAgent.folderPath,
-                                        value,
-                                      );
-                                      if (viewMode !== "activity")
-                                        setViewMode("activity");
-                                    }}
-                                  />
-                                )}
+                                {/* Hidden in the archive: this field searches
+                                    the ACTIVE board, so leaving it up beside
+                                    the archive's own search gave the user two
+                                    boxes, one of which did nothing visible
+                                    (HOU-1043). */}
+                                {currentAgent &&
+                                  agentBoardMode !== "archived" && (
+                                    <MissionSearchInput
+                                      value={agentMissionSearchQuery}
+                                      isSearchingText={
+                                        agentMissionSearchLoading
+                                      }
+                                      labels={{
+                                        placeholder: t(
+                                          "board:search.placeholder",
+                                        ),
+                                        placeholderShort: t(
+                                          "board:search.placeholderShort",
+                                        ),
+                                        clear: t("board:search.clear"),
+                                        searchingText: t(
+                                          "board:search.searchingText",
+                                        ),
+                                      }}
+                                      className="relative min-w-0 flex-1 max-w-[320px]"
+                                      onChange={(value) => {
+                                        setAgentMissionSearchQuery(
+                                          currentAgent.folderPath,
+                                          value,
+                                        );
+                                        if (viewMode !== "activity")
+                                          setViewMode("activity");
+                                      }}
+                                    />
+                                  )}
                                 <div className="flex shrink-0 items-center gap-2">
                                   <AgentPersonScopeMenu
                                     agent={currentAgent}
-                                    collapsed={missionPanelOpen}
+                                    collapsed={compactActions}
                                   />
                                   <NotificationsBell />
                                   {onStartMission && (
@@ -293,12 +315,10 @@ export function WorkspaceShell({
                                         <Button
                                           data-tour-target="newMission"
                                           size={
-                                            missionPanelOpen
-                                              ? "icon"
-                                              : "default"
+                                            compactActions ? "icon" : "default"
                                           }
                                           className={cn(
-                                            missionPanelOpen && "rounded-full",
+                                            compactActions && "rounded-full",
                                           )}
                                           onClick={() => {
                                             setViewMode("activity");
@@ -314,12 +334,12 @@ export function WorkspaceShell({
                                           )}
                                         >
                                           <HoustonLogo size={16} />
-                                          {!missionPanelOpen &&
+                                          {!compactActions &&
                                             t("shell:tabActions.newMission")}
                                         </Button>
                                       </TooltipTrigger>
                                       <TooltipContent side="bottom">
-                                        {missionPanelOpen
+                                        {compactActions
                                           ? t("shell:tabActions.newMission")
                                           : shortcutLabel("newMission")}
                                       </TooltipContent>
@@ -383,8 +403,15 @@ export function WorkspaceShell({
               {missionPanelOpen && (
                 <div
                   ref={setPanelContainer}
-                  className="h-full overflow-hidden rounded-2xl bg-background canvas-screen"
-                  style={{ width: "45%", minWidth: 380 }}
+                  data-testid="mission-panel"
+                  className={cn(
+                    "h-full overflow-hidden rounded-2xl bg-background canvas-screen",
+                    // Mobile: the panel takes the whole content area (the
+                    // board stays mounted underneath); its own close button
+                    // returns to the board.
+                    isMobile && "absolute inset-0 z-30 w-full",
+                  )}
+                  style={isMobile ? undefined : { width: "45%", minWidth: 380 }}
                 />
               )}
             </div>

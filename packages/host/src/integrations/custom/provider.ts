@@ -145,7 +145,7 @@ export class CustomIntegrationProvider implements IntegrationProvider {
     } catch (err) {
       return {
         successful: false,
-        error: err instanceof Error ? err.message : String(err),
+        error: describeExecuteError(err),
       };
     } finally {
       clearTimeout(timer);
@@ -155,6 +155,46 @@ export class CustomIntegrationProvider implements IntegrationProvider {
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
+
+/** The transient dropped-connection shapes (a keep-alive socket the server
+ *  closed under us, a mid-request reset). undici retries idempotent GETs on a
+ *  fresh connection by itself but NEVER a POST, so against an edge that
+ *  idle-closes connections "reads work, writes always fail" (HOU-1052). */
+const DROPPED_CONNECTION =
+  /other side closed|socket hang up|ECONNRESET|EPIPE|UND_ERR_SOCKET/i;
+
+/**
+ * A TRANSPORT-level failure (DNS, TLS, a dropped socket, a length mismatch)
+ * REJECTS out of `executor.execute` as an error whose own message is just
+ * "HTTP request failed" — the real reason lives in the `cause` chain
+ * underneath (TransportError → "fetch failed" → the socket error). Surfacing
+ * only the top message blinded HOU-1052: every POST to one API failed and
+ * neither the agent, the user, nor any log could say why. Walk the chain and
+ * compose the whole story so the failure self-describes; on the transient
+ * dropped-connection shape, add honest recovery guidance (the MODEL decides
+ * whether its action is safe to repeat — this host never replays writes).
+ */
+export function describeExecuteError(err: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = err;
+  for (let depth = 0; depth < 6 && isRecord(current); depth++) {
+    const message =
+      typeof current.message === "string" ? current.message.trim() : "";
+    const code = typeof current.code === "string" ? current.code : "";
+    const part = message
+      ? code && !message.includes(code)
+        ? `${message} (${code})`
+        : message
+      : code;
+    if (part && parts[parts.length - 1] !== part) parts.push(part);
+    current = current.cause;
+  }
+  if (parts.length === 0) return String(err);
+  const composed = parts.join(": ");
+  return DROPPED_CONNECTION.test(composed)
+    ? `${composed}. The connection dropped mid-request - this is usually transient, so if this action is safe to repeat, retry it once before reporting a failure.`
+    : composed;
+}
 
 /**
  * The executor RESOLVES failed calls with `{ok:false, error}` instead of

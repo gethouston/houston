@@ -3,7 +3,7 @@ import { MessageCircle, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
-import { AgentSelectList } from "./agent-select-list";
+import { SkillAssignmentSection } from "./skill-assignment-section";
 
 /**
  * The ready-state body of the global skill dialog: the full SKILL.md in a
@@ -17,11 +17,13 @@ export function ManageSkillBody({
   agents,
   assignedIds,
   allowEmptySelection = false,
+  assignment = "editable",
   overrides,
   onEnableAll,
   onPromote,
   onSave,
   onDeleteEverywhere,
+  deleteLabel,
   onCancel,
   onEditInChat,
 }: {
@@ -33,6 +35,16 @@ export function ManageSkillBody({
   /** Store-backed rows may save with nobody enabled — the skill just rests
    *  in the workspace store (copy-based rows treat that as deletion). */
   allowEmptySelection?: boolean;
+  /**
+   * The "Agents with this skill" section's mode:
+   * - `"editable"` — the toggle list (the global page's assignment).
+   * - `"locked"` — holders read-only + a share hint: shared-store deployments
+   *   never offer copy fan-out on a LOCAL row; multi-agent use goes through
+   *   "Share to workspace" (ADR 0003).
+   * - `"hidden"` — no section at all: the per-agent dialog edits ONLY that
+   *   agent's copy; cross-agent management lives on the global Skills page.
+   */
+  assignment?: "editable" | "locked" | "hidden";
   /** Agents whose own modified copy shadows the workspace version. */
   overrides?: { agents: Agent[]; onRevert: (agent: Agent) => Promise<void> };
   /** One click enables every agent (store-backed rows only). */
@@ -46,6 +58,10 @@ export function ManageSkillBody({
     afterIds: Set<string>;
   }) => Promise<void>;
   onDeleteEverywhere: () => void;
+  /** Overrides the danger button's label (the per-agent shared dialog says
+   *  "Disable for this agent" — the action is a reversible manifest write,
+   *  not a delete). */
+  deleteLabel?: string;
   onCancel: () => void;
   /** Open the skill's guided setup chat instead of editing raw markdown
    *  (HOU-791's primary edit path). Omit to hide the button. */
@@ -57,8 +73,9 @@ export function ManageSkillBody({
 
   const contentDirty = content !== initialContent;
   const assignmentDirty =
-    selected.size !== assignedIds.size ||
-    [...selected].some((id) => !assignedIds.has(id));
+    assignment === "editable" &&
+    (selected.size !== assignedIds.size ||
+      [...selected].some((id) => !assignedIds.has(id)));
   const dirty = contentDirty || assignmentDirty;
   // Copy-based rows: unassigning everyone IS deletion — that path goes through
   // the explicit Delete button, so an empty selection can't ride an
@@ -75,27 +92,11 @@ export function ManageSkillBody({
           placeholder={t("skills:detail.instructionsPlaceholder")}
           className="h-64 resize-none overflow-y-auto font-mono text-sm"
         />
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-ink">
-              {t("skills:global.manage.agentsLabel")}
-            </span>
-            {onEnableAll && (
-              <AsyncButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  await onEnableAll();
-                  setSelected(new Set(agents.map((a) => a.id)));
-                }}
-              >
-                {t("skills:global.manage.enableAll")}
-              </AsyncButton>
-            )}
-          </div>
-          <AgentSelectList
+        {assignment !== "hidden" && (
+          <SkillAssignmentSection
+            mode={assignment}
             agents={agents}
+            assignedIds={assignedIds}
             selected={selected}
             onToggle={(agent) =>
               setSelected((prev) => {
@@ -105,37 +106,18 @@ export function ManageSkillBody({
                 return next;
               })
             }
+            allowEmptySelection={allowEmptySelection}
+            onEnableAll={
+              onEnableAll
+                ? async () => {
+                    await onEnableAll();
+                    setSelected(new Set(agents.map((a) => a.id)));
+                  }
+                : undefined
+            }
+            overrides={overrides}
           />
-          {selected.size === 0 && !allowEmptySelection && (
-            <p className="text-xs text-ink-muted">
-              {t("skills:global.manage.keepOneAgent")}
-            </p>
-          )}
-          {overrides && overrides.agents.length > 0 && (
-            <div className="flex flex-col gap-1 pt-1">
-              {overrides.agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="flex items-center justify-between gap-2 text-xs text-ink-muted"
-                >
-                  <span>
-                    {t("skills:global.manage.modifiedOn", {
-                      name: agent.name,
-                    })}
-                  </span>
-                  <AsyncButton
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => overrides.onRevert(agent)}
-                  >
-                    {t("skills:global.manage.revert")}
-                  </AsyncButton>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
       <DialogFooter>
         <Button
@@ -144,7 +126,7 @@ export function ManageSkillBody({
           className="mr-auto text-danger hover:text-danger"
           onClick={onDeleteEverywhere}
         >
-          {t("common:actions.delete")}
+          {deleteLabel ?? t("common:actions.delete")}
         </Button>
         {onPromote && (
           <AsyncButton type="button" variant="outline" onClick={onPromote}>

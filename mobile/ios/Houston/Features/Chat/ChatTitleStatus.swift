@@ -6,26 +6,36 @@ import Foundation
 /// only binds it.
 ///
 /// Only two states earn a second line: a running turn ("working…", shimmered)
-/// and a settled `needs_you` mission ("needs your attention", warning-tinted).
-/// Everything else is ``hidden`` — the name sits vertically centred beside the
-/// avatar, no status line. `error` deliberately gets NO line here: the typed
-/// error card in the feed is the surface for a real failure (PARITY §1), and a
-/// user Stop settles as `needsYou`, not `error`.
+/// and a mission settled on something it is BLOCKED on ("needs your attention",
+/// warning-tinted). Everything else is ``hidden`` — the name sits vertically
+/// centred beside the avatar, no status line. `error` deliberately gets NO line
+/// here: the typed error card in the feed is the surface for a real failure
+/// (PARITY §1).
 enum ChatTitleStatus: Equatable {
   /// A turn is in flight — "working…" with the live shimmer.
   case working
-  /// Settled and awaiting the user — "needs your attention", warning-tinted.
+  /// Settled on a blocking step — "needs your attention", warning-tinted.
   case needsAttention
   /// No second line; the name centres beside the avatar.
   case hidden
 
-  /// Derive the title-status from the pair the VM publishes. A live turn always
-  /// wins (`running` → ``working``); once settled, a `needs_you` board status
-  /// asks for attention. Read `boardStatus`, never `sessionStatus`, for the
-  /// settled signal (a user Stop lands as `needsYou`, not `error`, PARITY §1).
-  static func derive(running: Bool, boardStatus: BoardStatus?) -> ChatTitleStatus {
+  /// Derive the title-status from what the VM publishes. A live turn always
+  /// wins (`running` → ``working``); once settled, the line shows only when the
+  /// turn ended on a BLOCKING step — a question, a sign-in, a connection, a
+  /// plan to approve (``PendingInteraction/hasBlockingSteps``).
+  ///
+  /// The board status is deliberately NOT the trigger. Missions no longer
+  /// auto-route to `done`: every clean finish settles `needs_you` and only the
+  /// user's own checkmark closes one, so `boardStatus == .needsYou` would leave
+  /// a permanent "needs your attention" line under the name of EVERY finished
+  /// conversation. The pending interaction is the honest signal — a mission
+  /// that finished with offers (`suggest_actions` / `suggest_reusable`) or
+  /// plainly finished carries no blocking step and shows no line.
+  static func derive(
+    running: Bool, pendingInteraction: PendingInteraction?
+  ) -> ChatTitleStatus {
     if running { return .working }
-    if boardStatus == .needsYou { return .needsAttention }
+    if pendingInteraction?.hasBlockingSteps == true { return .needsAttention }
     return .hidden
   }
 }

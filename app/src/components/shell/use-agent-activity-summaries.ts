@@ -41,6 +41,14 @@ export function useAgentActivitySummaries(
     (onStoreChange: () => void) =>
       queryClient.getQueryCache().subscribe((event) => {
         if (event.query.queryKey[0] !== "activity") return;
+        // Only data changes. The cache also emits synchronously from INSIDE a
+        // mounting component's render (v5 builds the query there, emitting
+        // "added"/"observerAdded"), and re-rendering the sidebar from that
+        // listener is a setState-in-render violation. "updated" (fetch landed,
+        // setQueryData — including the one that creates a key) and "removed"
+        // (eviction) are dispatched outside render and are the only events
+        // that change the rows this hook summarizes.
+        if (event.type !== "updated" && event.type !== "removed") return;
         activityCacheVersion.current += 1;
         onStoreChange();
       }),

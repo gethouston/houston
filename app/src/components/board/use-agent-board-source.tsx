@@ -151,6 +151,7 @@ export function useAgentBoardSource(
     sessionKeyFor: data.sessionKeyFor,
     onDelete: data.handleDelete,
     onApprove: data.handleApprove,
+    onArchive: data.handleArchive,
     onRename: data.onRename,
     loadHistory: data.loadHistory,
     onLoadOlderMessages: data.onLoadOlderMessages,

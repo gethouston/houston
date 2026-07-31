@@ -1,73 +1,27 @@
-// A pending interaction: the ordered sequence of steps a mission is waiting on
-// the user for. Recorded when the model calls ask_user / request_connection,
-// carried on the terminal `done` wire frame, and persisted on the Activity so
-// the board card settles to `needs_you` (present) vs `done` (absent). The UI
-// renders it as ONE composer-replacing card that walks the user through the
-// steps one at a time, with a "1 of X" progress indicator.
-//
-// A turn's steps are the question steps (from one ask_user call, 1 to 3
-// questions) FOLLOWED BY at most one signin step (the user must sign in to
-// Houston first) FOLLOWED BY the connect steps (one per request_connection
-// call, deduped by toolkit). Any single kind alone still yields a valid
-// sequence.
-//
-// `suggest_reusable` and `suggest_actions` are exceptions to "present →
-// needs_you": they are optional clean-finish offers, respectively for saving
-// reusable work and for concrete follow-up actions. Any mix of those two offer
-// kinds settles `done`; a sequence with any blocking step settles `needs_you`.
-// They arrive on the same `done` frame and render above the composer.
+/**
+ * The RUNTIME side of a pending interaction: the tolerant structural guards
+ * every read seam goes through, and the two rules the write seams share (the
+ * move-to-Done strip and the PATCH merge). The wire TYPES live next door in
+ * `./interaction-types` and are re-exported here, so `@houston/protocol/interaction`
+ * remains the single import for both.
+ *
+ * Type-only import on purpose: it is erased, which keeps this module free of
+ * runtime relative imports. The app's node:test runner loads it directly by
+ * subpath, and Node's ESM resolver cannot follow an extensionless `./x`.
+ */
 
-export interface InteractionOption {
-  id: string;
-  label: string;
-  /** One muted line of consequence or benefit shown after the label. */
-  description?: string;
-  /** Mark AT MOST one option as the suggested default. */
-  recommended?: boolean;
-}
+import type {
+  InteractionStep,
+  PendingInteraction,
+  SuggestionStep,
+} from "./interaction-types";
 
-/** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
- *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps, `k1`..`kN` for credential steps) so each step's outcome is
- *  addressable. A `question` carries its text + optional single-select options,
- *  plus an optional `toolkit` slug that brands the card with a connected app's
- *  logo (set when the question confirms an app action); a `signin` asks the user
- *  to sign in to Houston with an optional user-facing reason; a `connect` names
- *  the toolkit to connect with an optional user-facing reason; a `credential`
- *  asks the user to enter a custom integration's API key/token in a secure field
- *  (never into the chat) — `toolkit` is the custom integration's slug. */
-export type InteractionStep =
-  | {
-      kind: "question";
-      id: string;
-      question: string;
-      options?: InteractionOption[];
-      /** Lowercase toolkit slug (e.g. "gmail") when the question concerns a
-       *  connected app: the card shows that app's logo. */
-      toolkit?: string;
-    }
-  | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string }
-  | { kind: "credential"; id: string; toolkit: string; reason?: string }
-  | { kind: "plan_ready"; id: string; summary: string }
-  | {
-      kind: "suggest_reusable";
-      id: string;
-      reusableKind: "skill" | "routine" | "learning";
-      title: string;
-      rationale: string;
-    }
-  | {
-      kind: "suggest_actions";
-      id: string;
-      actions: { id: string; label: string; message: string }[];
-    };
-
-/** The ordered steps the mission is waiting on: question steps first (at most 3),
- *  then at most one signin step, then connect steps. Always at least one step. */
-export interface PendingInteraction {
-  steps: InteractionStep[];
-}
+export type {
+  InteractionOption,
+  InteractionStep,
+  PendingInteraction,
+  SuggestionStep,
+} from "./interaction-types";
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
@@ -131,3 +85,86 @@ export const parsePendingInteraction = (
  *  interaction goes through this (or the parse). */
 export const isPendingInteraction = (v: unknown): v is PendingInteraction =>
   parsePendingInteraction(v) !== undefined;
+
+/** True for the optional clean-finish offers, false for every blocking step. */
+export const isSuggestionStep = (
+  step: InteractionStep,
+): step is SuggestionStep =>
+  step.kind === "suggest_actions" || step.kind === "suggest_reusable";
+
+/**
+ * True when EVERY step is an optional clean-finish offer — i.e. the mission is
+ * not blocked on anything and the composer stays live, with the offers rendered
+ * above it. The single spelling of "offers only": a surface that hand-rolls
+ * `steps.every(isSuggestionStep)` and one that hand-rolls
+ * `steps.some((s) => !isSuggestionStep(s))` drift apart on the empty sequence.
+ * An empty sequence is NOT offers-only — there is nothing to offer.
+ */
+export const hasOnlySuggestionSteps = (steps: InteractionStep[]): boolean =>
+  steps.length > 0 && steps.every(isSuggestionStep);
+
+/**
+ * Keep ONLY the optional clean-finish offers, dropping every blocking step.
+ *
+ * The rule behind a mission the user moved to Done by hand: what it was waiting
+ * on is void (a Done card must never show a question stepper), but the offers
+ * that came with the clean finish — "what to do next" bubbles, "save this as a
+ * Skill" — stay useful and keep rendering on the Done card.
+ *
+ * Returns undefined when nothing survives (the caller clears the interaction).
+ * Takes `unknown` so it doubles as the tolerant read of persisted data: it
+ * builds on {@link parsePendingInteraction}, so malformed or unrecognized steps
+ * drop the same way they do everywhere else.
+ */
+export const retainSuggestionSteps = (
+  v: unknown,
+): PendingInteraction | undefined => {
+  const parsed = parsePendingInteraction(v);
+  if (!parsed) return undefined;
+  const steps = parsed.steps.filter(isSuggestionStep);
+  return steps.length > 0 ? { steps } : undefined;
+};
+
+/** What a PATCH's `pending_interaction` field resolves to for the mission's
+ *  stored value. `keep` leaves the stored interaction untouched. */
+export type InteractionPatchOutcome =
+  | { kind: "set"; interaction: PendingInteraction }
+  | { kind: "clear" }
+  | { kind: "keep" };
+
+/**
+ * The ONE rule every activity write seam applies to a patch's
+ * `pending_interaction` — the host's `applyActivityUpdate`, the app's local
+ * `applyActivityPatch`, and the fake host's `updateActivity` all resolve
+ * through this, so the three can never drift:
+ *
+ *  - `null` CLEARS it (the schema has no null type, so the key is deleted).
+ *  - a structurally valid object REPLACES it (a per-step dismissal writes back
+ *    the remaining steps). The value is stored VERBATIM, not re-serialized from
+ *    the parse, so a step kind a newer peer knows and this build doesn't
+ *    survives the round-trip.
+ *  - absent — or MALFORMED, which is the same thing: a payload this build
+ *    cannot read says nothing about what should be stored — leaves it alone,
+ *    EXCEPT on a `status: "done"` patch, which strips the blocking steps and
+ *    keeps the clean-finish offers (see {@link retainSuggestionSteps}).
+ *
+ * Treating a malformed payload as absent rather than as "keep what's stored" is
+ * load-bearing: a `{status:"done"}` patch that ALSO carried a junk interaction
+ * would otherwise skip the strip and leave a question stepper on a Done card.
+ *
+ * `status` is the patch's status when it sets one (a plain string, like the
+ * `Activity` field: unknown statuses are preserved for forward compat).
+ */
+export const resolveInteractionPatch = (args: {
+  patched: unknown;
+  stored: unknown;
+  status: string | undefined;
+}): InteractionPatchOutcome => {
+  const { patched, stored, status } = args;
+  if (patched === null) return { kind: "clear" };
+  if (patched !== undefined && isPendingInteraction(patched))
+    return { kind: "set", interaction: patched };
+  if (status !== "done") return { kind: "keep" };
+  const kept = retainSuggestionSteps(stored);
+  return kept ? { kind: "set", interaction: kept } : { kind: "clear" };
+};

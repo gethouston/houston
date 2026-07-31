@@ -3,10 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
-import {
-  type HoustonLibrarySkill,
-  withFeaturedFrontmatter,
-} from "../../lib/houston-skill-library";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriAgent, tauriSkills } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
@@ -126,37 +122,6 @@ export function useSkillsViewActions() {
     [addToast, invalidateSkills, t],
   );
 
-  /** Houston-library install, fanned out to the picked agents — the same
-   *  full-file copy the per-agent library uses, N times. */
-  const installLibraryToAgents = useCallback(
-    async (skill: HoustonLibrarySkill, targets: Agent[]): Promise<void> => {
-      const settled = await Promise.allSettled(
-        targets.map((agent) =>
-          tauriAgent.writeFile(
-            agent.folderPath,
-            skillMdPath(skill.slug),
-            withFeaturedFrontmatter(skill.content),
-          ),
-        ),
-      );
-      invalidateSkills(targets.map((a) => a.folderPath));
-      const okCount = settled.filter((r) => r.status === "fulfilled").length;
-      if (okCount > 0) {
-        analytics.track("skill_installed", {
-          skill_slug: skill.slug,
-          source: "houston",
-        });
-        addToast({
-          title: t("global.installedTo", { count: okCount }),
-          variant: "success",
-        });
-      }
-      // Failures already toasted with their real reason by `call`.
-      if (okCount === 0) throw new Error("install failed for every agent");
-    },
-    [addToast, invalidateSkills, t],
-  );
-
   /** One global save: write the canonical content to `writes`, remove the copy
    *  from `deletes` (both agent folderPaths). Throws if anything failed so the
    *  dialog stays open; the failed calls have already toasted their reason. */
@@ -200,7 +165,6 @@ export function useSkillsViewActions() {
 
   return {
     installToAgents,
-    installLibraryToAgents,
     createForAgents,
     applySkillChanges,
     deleteSkillEverywhere,

@@ -112,6 +112,9 @@ export type AnalyticsEventName =
   | "skill_installed"
   | "skill_edited"
   | "skill_deleted"
+  // A workspace-shared skill was turned off for one agent (a reversible
+  // manifest write, ADR 0003) — the skill itself survives in the store.
+  | "skill_disabled"
   | "routine_scheduled"
   | "routine_executed"
   | "routine_chat_setup_started"

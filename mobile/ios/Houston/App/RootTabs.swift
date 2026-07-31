@@ -8,7 +8,10 @@ import SwiftUI
 /// `TabView` with no intercepted center action.
 ///
 /// The Mission Control tab item carries a native badge fed by ``BadgeModel``
-/// (the aggregate `needs_you` count across agents — see `PARITY.md` §4).
+/// (the aggregate `needs_you` count across agents — see `PARITY.md` §4). That
+/// is a count of missions that FINISHED and are waiting for the user to review
+/// and close them, not of missions blocked on an answer: nothing routes itself
+/// to `done` any more, so the badge is by design the user's review queue.
 struct RootTabs: View {
     @Environment(BadgeModel.self) private var badge
     @Environment(\.colorScheme) private var systemScheme

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 50
+version: 51
 
 components:
   - id: agent-avatar
@@ -590,7 +590,16 @@ components:
       ]
     variants: [board-card, archived-list-row]
     behavior: >-
-      Running state shows the comet glow; approve moves to done. Drag/multi-select
+      Running state shows the comet glow. The card carries at most ONE
+      status-gated primary action, decided by the column it sits in and offered
+      at full resting weight (never hover-gated): a Needs-you card gets the
+      checkmark that moves it to done, a Done card gets the box that archives
+      it. The two status sets are disjoint, so the pair never competes for the
+      same card, and a running card offers neither -- nothing to sign off yet,
+      nothing to file away. Archiving takes the mission off the active board
+      (it is the only status with no column), so a card archived while its chat
+      is open closes that panel, exactly as a delete or a bulk archive does; it
+      is not destructive and never celebrates. Drag/multi-select
       are surface-capability gated (pointer drag on desktop). The people face stack
       is the multi-contributor signal: every human on the mission, creator first,
       as overlapping ringed avatars over the card body's bottom-right corner
@@ -602,7 +611,9 @@ components:
       only (multiplayer); an unattributed card renders exactly as before.
     a11y: >-
       article/button role; title as label; checkbox labeled; status not
-      color-only; the face stack is a labeled group, each face names its person
+      color-only; each action button is a >=24px hit box whose icon-only glyph
+      carries an accessible label naming what it does, so approve and archive
+      are told apart by name, not shape; the face stack is a labeled group, each face names its person
       (tooltip + title) and the "+N" chip is a labeled control, so no contributor
       is reachable by hover alone.
     since: 1

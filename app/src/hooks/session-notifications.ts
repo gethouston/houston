@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id";
+import { SKILLS_VIEW_ID } from "../components/skills-view/id";
 import { isIntegrationSetupMode } from "../lib/integration-chat-setup";
 import { logger } from "../lib/logger";
 import {
@@ -7,6 +8,7 @@ import {
   type NotificationNav,
   shouldArmNotificationNav,
   shouldNavigateOnAppActivation,
+  skillChatNavDecision,
 } from "../lib/notification-nav";
 import {
   isSessionNotificationEnabled,
@@ -103,11 +105,34 @@ export async function consumePendingNav() {
   logger.debug(
     `[notification] navigating to agent=${agent.name} activity=${target.activityId} (sessionKey=${sessionKey})`,
   );
-  // Captured BEFORE setCurrent: the integration branch below needs to know
+  // Captured BEFORE setCurrent: the setup-chat branches below need to know
   // where the user actually was, and on macOS a bare cmd-tab refocus lands
   // here too (focus is the click proxy — there is no desktop click event).
   const prevAgentId = useAgentStore.getState().current?.id;
   const prevViewMode = useUIStore.getState().viewMode;
+  if (target.setupKind === "skill") {
+    // A skill-setup chat has no board card: its home is the agent's Skills
+    // section, but it also lives on the global Skills page (the create flow).
+    // HOU-980's rule applies: a user already on a surface hosting the chat is
+    // never yanked elsewhere — which is why this branch runs BEFORE the agent
+    // switch. "stay" must leave the world untouched.
+    const decision = skillChatNavDecision({
+      prevViewMode,
+      prevAgentId,
+      jobDescriptionTarget: useUIStore.getState().jobDescriptionTarget,
+      agentId: agent.id,
+      skillsHomeViewId: SKILLS_VIEW_ID,
+    });
+    logger.debug(`[notification] skill-chat nav decision: ${decision}`);
+    if (decision === "stay") return;
+    useAgentStore.getState().setCurrent(agent);
+    if (decision === "navigate") {
+      useUIStore.getState().setViewMode("job-description");
+      useUIStore.getState().setJobDescriptionTarget("skills");
+    }
+    useUIStore.getState().setPendingSkillChatActivityId(target.activityId);
+    return;
+  }
   useAgentStore.getState().setCurrent(agent);
   if (target.setupKind === "routine") {
     // A routine-setup chat has no board card: its home is the Routines tab,
@@ -136,14 +161,6 @@ export async function consumePendingNav() {
     ui.onPanelClose?.();
     ui.setViewMode(INTEGRATIONS_VIEW_ID);
     ui.setIntegrationSetupChatAgentId(agent.id);
-    return;
-  }
-  if (target.setupKind === "skill") {
-    // A skill-setup chat has no board card either: its home is the agent's
-    // Skills section (Agent Settings), where the chat reopens on the spot.
-    useUIStore.getState().setViewMode("job-description");
-    useUIStore.getState().setJobDescriptionTarget("skills");
-    useUIStore.getState().setPendingSkillChatActivityId(target.activityId);
     return;
   }
   useUIStore.getState().setViewMode("activity");

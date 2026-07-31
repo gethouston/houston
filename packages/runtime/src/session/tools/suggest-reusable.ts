@@ -15,9 +15,11 @@ import { recordSuggestReusable } from "../interaction";
  *
  * CRITICALLY, this is NOT a turn-ending block like `plan_ready`: the task is
  * genuinely DONE, so the model wraps up its final message to the user as usual.
- * The suggestion is an optional offer, never something blocking completion — a
- * LONE `suggest_reusable` step keeps the mission on `done`, not `needs_you` (see
- * `interaction.ts`'s fallback-only precedence and `turn-settle.ts`'s `finishOk`).
+ * The suggestion is an optional offer, never something blocking completion: it
+ * renders above the composer instead of replacing it (see `interaction.ts`'s
+ * fallback-only precedence). It does not drive the board status — every settled
+ * turn lands `needs_you` (`turn-settle.ts`'s `finishOk`) and only the user moves
+ * a card to done, which the offer survives.
  *
  * It holds no credential and makes no network call, and it is name-gated OUT of
  * plan mode by `session/tool-selection.ts` (plan is read-only planning, not a

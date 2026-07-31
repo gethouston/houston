@@ -1,4 +1,8 @@
 import type { InteractionStep } from "@houston/protocol";
+// Subpath import (like `active-interaction.ts`): the app's node:test runner
+// loads value imports for real, and the package index's extensionless import
+// chain only resolves under bundler resolution.
+import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
 
 /** A suggest_reusable step: the model called `suggest_reusable` on a clean
  *  finish to offer saving the just-completed work as a Skill, Routine, or Learning.
@@ -34,14 +38,8 @@ export function resolveSuggestReusableOverride(
   steps: InteractionStep[],
   dismissedId: string | null,
 ): SuggestReusableOverride {
-  if (
-    steps.some(
-      (candidate) =>
-        candidate.kind !== "suggest_reusable" &&
-        candidate.kind !== "suggest_actions",
-    )
-  )
-    return { kind: "none" };
+  // Any blocking step wins: the stepper owns the composer instead.
+  if (!hasOnlySuggestionSteps(steps)) return { kind: "none" };
   const step = steps.find((candidate) => candidate.kind === "suggest_reusable");
   if (!step) return { kind: "none" };
   return dismissedId === step.id ? { kind: "none" } : { kind: "card", step };

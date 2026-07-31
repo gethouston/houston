@@ -1,8 +1,10 @@
 import { expect, expectTypeOf, test } from "vitest";
 import {
+  hasOnlySuggestionSteps,
   isPendingInteraction,
   type PendingInteraction,
   parsePendingInteraction,
+  resolveInteractionPatch,
 } from "../index";
 
 test("isPendingInteraction accepts the step-sequence shape and rejects legacy shapes", () => {
@@ -326,4 +328,110 @@ test("the protocol index re-exports PendingInteraction", () => {
   // @ts-expect-error — a step's `kind` is the discriminant; other values are not assignable
   const bad: PendingInteraction = { steps: [{ kind: "unknown" }] };
   void bad;
+});
+
+// ── The offers-only predicate ───────────────────────────────────────────────
+// One spelling for "nothing blocking here", so the surfaces that gate on it
+// (the chat panel's override, the two offer resolvers) can never disagree.
+
+const ACTIONS_STEP = {
+  kind: "suggest_actions" as const,
+  id: "a1",
+  actions: [
+    { id: "x", label: "Send it", message: "Send the deck" },
+    { id: "y", label: "Draft a note", message: "Draft the note" },
+  ],
+};
+const REUSABLE_STEP = {
+  kind: "suggest_reusable" as const,
+  id: "r1",
+  reusableKind: "skill" as const,
+  title: "Weekly deck",
+  rationale: "You do this every week.",
+};
+const QUESTION_STEP = {
+  kind: "question" as const,
+  id: "q1",
+  question: "Which deck?",
+};
+
+test("hasOnlySuggestionSteps is true only for a non-empty, blocking-free sequence", () => {
+  expect(hasOnlySuggestionSteps([ACTIONS_STEP])).toBe(true);
+  expect(hasOnlySuggestionSteps([ACTIONS_STEP, REUSABLE_STEP])).toBe(true);
+  expect(hasOnlySuggestionSteps([QUESTION_STEP, ACTIONS_STEP])).toBe(false);
+  expect(hasOnlySuggestionSteps([QUESTION_STEP])).toBe(false);
+  expect(
+    hasOnlySuggestionSteps([{ kind: "connect", id: "c1", toolkit: "gmail" }]),
+  ).toBe(false);
+  // An empty sequence offers nothing — `every` alone would call it true.
+  expect(hasOnlySuggestionSteps([])).toBe(false);
+});
+
+// ── The shared PATCH rule ───────────────────────────────────────────────────
+// The host, the app's local write path and the fake host all resolve through
+// this, so the three can never drift.
+
+test("resolveInteractionPatch: null clears, a valid object replaces verbatim", () => {
+  expect(
+    resolveInteractionPatch({
+      patched: null,
+      stored: { steps: [ACTIONS_STEP] },
+      status: undefined,
+    }),
+  ).toEqual({ kind: "clear" });
+
+  const patched = { steps: [REUSABLE_STEP] };
+  const outcome = resolveInteractionPatch({
+    patched,
+    stored: { steps: [ACTIONS_STEP] },
+    status: "done",
+  });
+  expect(outcome).toEqual({ kind: "set", interaction: patched });
+  // Verbatim: a step kind only a newer peer knows survives the round-trip.
+  if (outcome.kind === "set") expect(outcome.interaction).toBe(patched);
+});
+
+test("resolveInteractionPatch: an absent field keeps, except on a move to done", () => {
+  const stored = { steps: [QUESTION_STEP, ACTIONS_STEP] };
+  expect(
+    resolveInteractionPatch({
+      patched: undefined,
+      stored,
+      status: "needs_you",
+    }),
+  ).toEqual({ kind: "keep" });
+  expect(
+    resolveInteractionPatch({ patched: undefined, stored, status: undefined }),
+  ).toEqual({ kind: "keep" });
+  expect(
+    resolveInteractionPatch({ patched: undefined, stored, status: "done" }),
+  ).toEqual({ kind: "set", interaction: { steps: [ACTIONS_STEP] } });
+  expect(
+    resolveInteractionPatch({
+      patched: undefined,
+      stored: { steps: [QUESTION_STEP] },
+      status: "done",
+    }),
+  ).toEqual({ kind: "clear" });
+});
+
+test("resolveInteractionPatch: a MALFORMED payload is absent, never 'keep what's stored'", () => {
+  // A pre-step build's shape: no `steps` at all. Left as "keep", a done patch
+  // carrying it would skip the strip and leave a question stepper on a Done card.
+  const malformed = { kind: "question", question: "Which deck?" };
+  expect(
+    resolveInteractionPatch({
+      patched: malformed,
+      stored: { steps: [QUESTION_STEP, ACTIONS_STEP] },
+      status: "done",
+    }),
+  ).toEqual({ kind: "set", interaction: { steps: [ACTIONS_STEP] } });
+  // Off a done patch it still says nothing: the stored value stands.
+  expect(
+    resolveInteractionPatch({
+      patched: malformed,
+      stored: { steps: [QUESTION_STEP] },
+      status: "needs_you",
+    }),
+  ).toEqual({ kind: "keep" });
 });

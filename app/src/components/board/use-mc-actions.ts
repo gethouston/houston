@@ -2,6 +2,7 @@ import type { KanbanItem } from "@houston-ai/board";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { armMissionDoneCelebration } from "../../lib/mission-done-celebration";
 import { canDropMission } from "../../lib/mission-selection";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity, tauriChat } from "../../lib/tauri";
@@ -120,11 +121,16 @@ export function useMcActions({
   // update to that card's agent path and refreshes both the cross-agent board
   // and that agent's own board (matching the cross-agent bulk move). The board
   // only fires this for a column `canDropItem` accepted, so `toColumnId`
-  // doubles as the new status. Failure surfaces as a toast.
+  // doubles as the new status. Failure surfaces as a toast, and the celebration
+  // is armed before the write (measuring the card so the burst comes off it)
+  // and fired after it lands — declining a dragged `error` card, which shares
+  // the Needs you column but is filing, not a win. Full contract in
+  // armMissionDoneCelebration.
   const handleItemMove = useCallback(
     async (item: KanbanItem, toColumnId: string) => {
       const agentPath = item.metadata?.agentPath as string | undefined;
       if (!agentPath) return;
+      const celebrate = armMissionDoneCelebration(item, toColumnId);
       try {
         await tauriActivity.update(agentPath, item.id, { status: toColumnId });
         qc.invalidateQueries({ queryKey: queryKeys.allConversations(paths) });
@@ -134,7 +140,10 @@ export function useMcActions({
           title: t("board:dnd.moveError", { error: String(err) }),
           variant: "error",
         });
+        return;
       }
+      // Outside the try: a throwing celebration must never read as a failed move.
+      celebrate();
     },
     [qc, paths, addToast, t],
   );

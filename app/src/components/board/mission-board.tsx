@@ -5,7 +5,11 @@ import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { modelAcceptsImages } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
-import { buildMissionBoardColumns } from "../mission-board-columns";
+import {
+  buildMissionBoardColumns,
+  MISSION_APPROVE_STATUSES,
+  MISSION_ARCHIVE_STATUSES,
+} from "../mission-board-columns";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
@@ -146,6 +150,9 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           isLoading={source.loading}
           onDelete={source.onDelete}
           onApprove={source.onApprove}
+          approveStatuses={MISSION_APPROVE_STATUSES}
+          onArchive={source.onArchive}
+          archiveStatuses={MISSION_ARCHIVE_STATUSES}
           onRename={source.onRename}
           onCreateConversation={handleCreateConversation}
           onSendMessage={sendQueue.handleSendMessage}

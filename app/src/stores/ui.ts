@@ -64,6 +64,9 @@ interface UIState {
   agentArchivedSearchLoading: Record<string, boolean>;
   /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
   missionPanelOpen: boolean;
+  /** Whether the mobile (<768px) sidebar drawer is open. Session-only, never
+   *  persisted: a drawer restored open after a reload is a trap on a phone. */
+  mobileSidebarOpen: boolean;
   /**
    * One-shot nav target for a routine chat with no board card (session-
    * finished notification click, #401): the activity id to open in the
@@ -171,6 +174,7 @@ interface UIState {
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
   setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
   setMissionPanelOpen: (open: boolean) => void;
+  setMobileSidebarOpen: (open: boolean) => void;
   setPendingRoutineActivityId: (activityId: string | null) => void;
   setPendingSkillChatActivityId: (activityId: string | null) => void;
   setIntegrationSetupChatAgentId: (agentId: string | null) => void;
@@ -227,6 +231,7 @@ const initialUIState = {
   agentArchivedSearchQueries: {},
   agentArchivedSearchLoading: {},
   missionPanelOpen: false,
+  mobileSidebarOpen: false,
   pendingRoutineActivityId: null,
   pendingSkillChatActivityId: null,
   integrationSetupChatAgentId: null,
@@ -380,6 +385,7 @@ export const useUIStore = create<UIState>()(
           return { agentArchivedSearchLoading: next };
         }),
       setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
+      setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
       setPendingRoutineActivityId: (pendingRoutineActivityId) =>
         set({ pendingRoutineActivityId }),
       setPendingSkillChatActivityId: (pendingSkillChatActivityId) =>

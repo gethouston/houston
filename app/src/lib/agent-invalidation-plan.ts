@@ -68,7 +68,13 @@ export function planInvalidation(
       plan.invalidate.push(["skill-detail", ev.data.agent_path]);
       break;
     case "SharedSkillsChanged":
-      plan.invalidate.push(queryKeys.sharedSkills(ev.data.workspace_id));
+      // The server's events carry ITS workspace-id vocabulary (the host's
+      // folder name, the gateway's "Houston"), while shared-skills query keys
+      // are built from the client's (the synthetic "default" for the personal
+      // space — see the adapter's `wireWorkspaceId`). Invalidate the whole
+      // family instead of guessing the mapping; there is at most one
+      // shared-skills list per space in the cache.
+      plan.invalidate.push(["shared-skills"]);
       break;
     case "FilesChanged":
       plan.invalidate.push(queryKeys.files(ev.data.agent_path));

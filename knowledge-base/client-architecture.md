@@ -184,19 +184,24 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 > a logged-out provider) settles `sessionStatus === "error"` but
 > `boardStatus === "needs_you"`. A surface keying off `sessionStatus` alone
 > renders a normal Stop as a red failure. `boardStatus` is the handled-vs-error
-> signal: `needs_you` = handled / your attention, `error` = genuine failure. A
-> *clean* turn splits on whether it ended on an interaction: nothing outstanding →
-> the terminal `done`; ended on `ask_user`/`request_connection` → `needs_you`
-> carrying the `pendingInteraction` VM field. ONE exception: a lone
-> `suggest_reusable` step (the reflection step's save-as-Skill/Routine/Learning
-> offer) settles `done`, not
-> `needs_you` — nothing is waiting on the user. A user Stop (or dismissing an
-> interaction card, which is a user interruption) now persists a durable
-> `stopped: true` marker on the assistant `ChatMessage`, so settle-FROM-HISTORY
-> routes it through the SAME `finishErr` stop settle → `needs_you` (live and
-> reload agree; a stopped turn re-derives neither a false `done` nor a
-> `pendingInteraction` card) — fixing the pre-marker divergence.
-> (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts` /
+> signal: `needs_you` = handled / your attention, `error` = genuine failure.
+>
+> **The engine NEVER settles `done`.** There is no clean-turn split: every clean
+> finish settles `needs_you`, whether or not the turn ended on an interaction,
+> and whether the captured `pendingInteraction` holds blocking steps
+> (`ask_user` / `request_connection` / `plan_ready`) or only the optional
+> `suggest_actions` / `suggest_reusable` offers. The VM field decides what the
+> card RENDERS, never what status it lands on. `needs_you` therefore reads
+> "finished (or blocked, or errored) and awaiting your review" — and the
+> needs-you badges deliberately count every such card, because that set IS the
+> review inbox. `done` is written only by a user action (card checkmark, drag,
+> bulk move) and fires confetti; it strips blocking steps but keeps the offers.
+>
+> A user Stop (or dismissing an interaction card, which is a user interruption)
+> persists a durable `stopped: true` marker on the assistant `ChatMessage`, so
+> settle-FROM-HISTORY routes it through the SAME `finishErr` stop settle →
+> `needs_you`, and a stopped turn never re-derives a `pendingInteraction` card on
+> reload. (`packages/sdk/src/modules/turns/turn-settle.ts` / `vm-output.ts` /
 > `settle-from-history.ts`.)
 
 ### b. Visual change → tokens procedure

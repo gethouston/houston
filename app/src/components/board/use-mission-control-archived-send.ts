@@ -8,7 +8,6 @@ import { classifyFileKind } from "../../lib/file-kind";
 import { tauriAttachments, tauriChat, tauriConfig } from "../../lib/tauri";
 import { readAgentTurnMode } from "../../lib/turn-mode";
 import type { Agent, AgentDefinition } from "../../lib/types";
-import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -24,19 +23,19 @@ export function useMissionControlArchivedSend({
   selectedItem,
   providerOverride,
   modelOverride,
-  onReactivated,
+  onHandoff,
 }: {
   activeAgent: Agent | null;
   activeAgentDef: AgentDefinition | null;
   selectedItem: KanbanItem | null;
   providerOverride: string;
   modelOverride: string;
-  onReactivated: () => void;
+  /** The archived → active handoff (`useArchivedHandoff`), run once the send
+   *  lands and the mission is no longer archived. */
+  onHandoff: (missionId: string) => void;
 }) {
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
-  const setViewMode = useUIStore((s) => s.setViewMode);
-  const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
 
   return useCallback(
     async (
@@ -73,10 +72,7 @@ export function useMissionControlArchivedSend({
         for (const f of files)
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         // Reactivated (archived → running): hand off to the agent's board.
-        onReactivated();
-        useAgentStore.getState().setCurrent(activeAgent);
-        setViewMode("activity");
-        setActivityPanelId(missionId, { forceOpen: true });
+        onHandoff(missionId);
       } catch (err) {
         // The send failed BEFORE a turn stream existed — nothing wrote to the
         // VM, so surface it as a toast (no-silent-failures rule).
@@ -93,10 +89,8 @@ export function useMissionControlArchivedSend({
       selectedItem,
       providerOverride,
       modelOverride,
-      onReactivated,
+      onHandoff,
       addToast,
-      setViewMode,
-      setActivityPanelId,
       t,
     ],
   );

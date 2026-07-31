@@ -124,8 +124,6 @@ export function SkillsView() {
     custom: {
       onCreateWithAi: chat.startCreate,
       onAddClick: () => setCreating(true),
-      onInstallLibrary: install.handleInstallLibrary,
-      installing: install.libraryInstalling,
     },
   });
 

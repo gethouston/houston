@@ -157,7 +157,15 @@ async function mockIdentityBackend(page: Page): Promise<void> {
  * Pair it with `test.use({ baseURL: AUTH_WEB_URL })` so every later `goto`,
  * and the app's own gateway calls, stay on that server.
  */
-export async function signInAsViewer(page: Page): Promise<void> {
+export async function signInAsViewer(
+  page: Page,
+  opts?: {
+    /** Budget for the post-sign-in shell to appear. global-setup's warm-up
+     *  passes a cold-compile-sized one; specs keep the default (the shell
+     *  graph is warm by the time any spec runs). */
+    shellTimeout?: number;
+  },
+): Promise<void> {
   await mockIdentityBackend(page);
   await page.goto(`${AUTH_WEB_URL}/`);
 
@@ -169,7 +177,7 @@ export async function signInAsViewer(page: Page): Promise<void> {
   // The shell is up once its header actions are (the same anchor chat.spec.ts
   // uses to open a mission).
   await expect(page.locator('[data-tour-target="newMission"]')).toBeVisible({
-    timeout: 20_000,
+    timeout: opts?.shellTimeout ?? 20_000,
   });
 }
 

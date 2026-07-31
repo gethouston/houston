@@ -29,6 +29,8 @@
     "unreadCount_other": "{{count}} novedades sin leer",
     "collapse": "Contraer barra lateral",
     "expand": "Expandir barra lateral",
+    "openMenu": "Abrir menú",
+    "mobileNavTitle": "Navegación",
     "createWorkspace": "Crear espacio de trabajo",
     "groups": {
       "new": "Nuevo grupo",

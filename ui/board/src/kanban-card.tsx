@@ -5,8 +5,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { Check, Pencil, Trash2 } from "lucide-react";
+import { Archive, Check, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import {
+  ACTION_BUTTON_CLASS,
+  ACTION_ICON_CLASS,
+  showsCardAction,
+} from "./kanban-card-actions";
 import { KanbanPeople } from "./kanban-people";
 import {
   CARD_PEOPLE_MAX,
@@ -20,6 +25,9 @@ export interface KanbanCardLabels {
    *  the action is now an icon-only button with `approveTooltip`. */
   approve?: string;
   approveTooltip?: string;
+  /** Tooltip + accessible label for the archive action (the icon carries no
+   *  text, so this is its only non-visual form). */
+  archiveTooltip?: string;
   renameTooltip?: string;
   deleteTooltip?: string;
   /** Delete confirm title, `{name}` substituted with `item.title`. */
@@ -31,11 +39,14 @@ export interface KanbanCardLabels {
   people?: string;
   /** Accessible label for the people overlay's expandable "+N" chip. */
   peopleExpand?: string;
+  /** Accessible label for the detail panel's icon-only close button. */
+  closePanel?: string;
 }
 
 const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   approve: "Move to done",
   approveTooltip: "Move to done",
+  archiveTooltip: "Archive",
   renameTooltip: "Change title",
   deleteTooltip: "Delete",
   deleteTitle: (name) => `Delete "${name}"?`,
@@ -43,6 +54,7 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   selectTooltip: "Select",
   people: "People",
   peopleExpand: "All people",
+  closePanel: "Close panel",
 };
 
 export interface KanbanCardProps {
@@ -50,9 +62,14 @@ export interface KanbanCardProps {
   onSelect: () => void;
   onDelete?: () => void;
   onApprove?: () => void;
+  /** One-click "file this away". Mirrors {@link KanbanCardProps.onApprove}:
+   *  the consumer decides what archiving means, the card only offers it. */
+  onArchive?: () => void;
   onRename?: (newTitle: string) => void;
   runningStatuses?: string[];
   approveStatuses?: string[];
+  /** Statuses whose cards offer the archive action. */
+  archiveStatuses?: string[];
   errorStatuses?: string[];
   actions?: React.ReactNode;
   avatar?: React.ReactNode;
@@ -86,9 +103,11 @@ export function KanbanCard({
   onSelect,
   onDelete,
   onApprove,
+  onArchive,
   onRename,
   runningStatuses = ["running"],
   approveStatuses = ["needs_you"],
+  archiveStatuses = ["done"],
   errorStatuses = ["error"],
   actions,
   avatar,
@@ -104,8 +123,22 @@ export function KanbanCard({
 }: KanbanCardProps) {
   const l = { ...DEFAULT_LABELS, ...labels };
   const isRunning = runningStatuses.includes(item.status);
-  const isNeedsApproval = approveStatuses.includes(item.status);
   const isError = errorStatuses.includes(item.status);
+  // The two status-gated actions. Their status lists are disjoint by
+  // construction (a mission waiting on the user vs one the user already signed
+  // off), so a card shows at most one of them, and a running card neither.
+  const showsApprove = showsCardAction({
+    itemStatus: item.status,
+    actionStatuses: approveStatuses,
+    handled: !!onApprove,
+    hasCustomActions: !!actions,
+  });
+  const showsArchive = showsCardAction({
+    itemStatus: item.status,
+    actionStatuses: archiveStatuses,
+    handled: !!onArchive,
+    hasCustomActions: !!actions,
+  });
   const [showConfirm, setShowConfirm] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
@@ -294,8 +327,18 @@ export function KanbanCard({
               </span>
             )}
           </div>
+          {/* Card actions. Every button is a 24px box holding a 16px glyph —
+              the accessibility floor for a hit target, and the product's
+              "small" icon size — and every glyph rests at the SAME light
+              `ink-muted/40` (ACTION_BUTTON_CLASS). The row is one control
+              cluster, so mixed resting weights read as a bug; the light tint
+              keeps it recessive behind the mission's own content until the
+              card is worked with. Colour only
+              appears on hover, and only where the outcome is semantic:
+              approve turns success-green, delete danger-red; archive and
+              rename take the row's neutral hover. */}
           <div className="flex items-center gap-0.5 shrink-0">
-            {!actions && isNeedsApproval && onApprove && (
+            {showsApprove && onApprove && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -304,13 +347,39 @@ export function KanbanCard({
                       e.stopPropagation();
                       onApprove();
                     }}
-                    className="p-1 rounded-md text-ink-muted/40 hover:text-success hover:bg-success/10 transition-colors duration-200"
+                    className={cn(
+                      ACTION_BUTTON_CLASS,
+                      "hover:bg-success/10 hover:text-success",
+                    )}
                     aria-label={l.approveTooltip}
                   >
-                    <Check className="size-3" />
+                    <Check className={ACTION_ICON_CLASS} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{l.approveTooltip}</TooltipContent>
+              </Tooltip>
+            )}
+            {/* Archive: the checkmark's counterpart one column over. A signed-off
+                mission's only remaining move is out of the way, so it gets the
+                same one-click treatment and the same resting weight. Neutral,
+                never `danger` — archiving hides a mission, it doesn't destroy
+                one (that is the trash can beside it). */}
+            {showsArchive && onArchive && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onArchive();
+                    }}
+                    className={ACTION_BUTTON_CLASS}
+                    aria-label={l.archiveTooltip}
+                  >
+                    <Archive className={ACTION_ICON_CLASS} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{l.archiveTooltip}</TooltipContent>
               </Tooltip>
             )}
             {onRename && (
@@ -319,10 +388,10 @@ export function KanbanCard({
                   <button
                     type="button"
                     onClick={handleRenameClick}
-                    className="p-1 rounded-md text-ink-muted/40 hover:text-ink hover:bg-hover transition-colors duration-200"
+                    className={ACTION_BUTTON_CLASS}
                     aria-label={l.renameTooltip}
                   >
-                    <Pencil className="size-3" />
+                    <Pencil className={ACTION_ICON_CLASS} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{l.renameTooltip}</TooltipContent>
@@ -334,10 +403,13 @@ export function KanbanCard({
                   <button
                     type="button"
                     onClick={handleDeleteClick}
-                    className="p-1 rounded-md text-ink-muted/40 hover:text-danger hover:bg-danger/10 transition-colors duration-200"
+                    className={cn(
+                      ACTION_BUTTON_CLASS,
+                      "hover:bg-danger/10 hover:text-danger",
+                    )}
                     aria-label={l.deleteTooltip}
                   >
-                    <Trash2 className="size-3" />
+                    <Trash2 className={ACTION_ICON_CLASS} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">{l.deleteTooltip}</TooltipContent>

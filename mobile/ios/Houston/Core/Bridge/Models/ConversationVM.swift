@@ -13,8 +13,10 @@ struct ConversationVM: Decodable, Equatable, Sendable {
   let running: Bool
   let sessionStatus: SessionStatus
   /// The persisted board-card status, or `nil` before any turn ran. The
-  /// handled-vs-error signal: `needsYou` = handled / attention, `error` = a real
-  /// failure.
+  /// finished-vs-failed signal: `needsYou` = the turn finished and the card is
+  /// waiting for the user to close it, `error` = a real failure. It does NOT
+  /// mean the mission is blocked on the user — read ``pendingInteraction`` for
+  /// that.
   var boardStatus: BoardStatus?
   /// Messages typed while a turn runs — held and flushed as ONE combined send
   /// when the turn settles (additive; absent when none). Rendered as pending
@@ -144,14 +146,19 @@ enum SessionStatus: Decodable, Equatable, Sendable {
 }
 
 /// The board-card status a streamed turn writes (SDK `BoardStatus`): `running`
-/// in flight, then a terminal status. `needs_you` (something is outstanding) and
-/// `error` (a genuine failure) are the cases the surfaces branch on; a clean turn
-/// with nothing outstanding now settles `done` (`vm-output.ts`). `done` and any
-/// FUTURE terminal string fall through to `.unknown`, which every consumer
-/// already treats as "no special status": ``ChatTitleStatus`` shows no second
-/// line (it matches only `.needsYou`) and ``MissionState`` renders it neutrally.
-/// Tolerating `done` this way keeps decoding forward-compatible without forcing a
-/// case onto the exhaustive `MissionState` switch. Unknown values preserved.
+/// in flight, then a terminal status. A turn only ever settles `needs_you` (it
+/// finished — cleanly, or on something it is waiting for) or `error` (a genuine
+/// failure); the engine NEVER writes `done`, because closing a mission is the
+/// user's own move (`vm-output.ts`).
+///
+/// `done` therefore reaches a decode only from a card the USER closed, and any
+/// FUTURE terminal string the same way: both fall through to `.unknown`, which
+/// every consumer already treats as "no special status" — ``MissionState``
+/// renders it neutrally, and ``ChatTitleStatus`` never reads a board status at
+/// all (it keys the attention line off the pending interaction, since a settled
+/// `needs_you` no longer means the user is needed). Tolerating `done` this way
+/// keeps decoding forward-compatible without forcing a case onto the exhaustive
+/// `MissionState` switch. Unknown values preserved.
 enum BoardStatus: Decodable, Equatable, Sendable {
   case running
   case needsYou

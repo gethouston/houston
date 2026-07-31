@@ -11,6 +11,9 @@
  * Boot order matches the desktop entry:
  *   QueryClientProvider > ErrorBoundary > TooltipProvider > EngineGate >
  *   I18nextProvider > LanguageGate > DisclaimerGate > App
+ * EXCEPT on the cloud web build (identity configured), where the first-run
+ * language/agreement gates are skipped: sign-in is the first screen, and the
+ * account's stored locale applies after auth (see AppTree below, HOU-1014).
  */
 
 import { AgentFilePreviewHost } from "@houston/app/components/agent-file-preview-host";
@@ -18,12 +21,15 @@ import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
+import { useLocalePreference } from "@houston/app/hooks/use-locale-preference";
+import { useSession } from "@houston/app/hooks/use-session";
 import { IdentityKeyedApp } from "@houston/app/identity-keyed-app";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
 import { showErrorToast } from "@houston/app/lib/error-toast";
 import { installGlobalErrorHandlers } from "@houston/app/lib/global-error-handlers";
 import i18n from "@houston/app/lib/i18n";
+import { isIdentityConfigured } from "@houston/app/lib/identity";
 import { initFrontendLogging, logger } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
 import { initSentry } from "@houston/app/lib/sentry";
@@ -153,9 +159,46 @@ function useEngineTheme(): void {
   }, []);
 }
 
+/**
+ * Cloud web (identity configured): apply the signed-in account's stored locale
+ * WITHOUT blocking any screen. Mounted only once a session exists — signed out,
+ * the gateway would 401 the preference reads anyway (and the sign-in screen
+ * renders in the browser-detected language). Keyed by uid so a fresh sign-in
+ * or an account switch re-resolves the preference.
+ */
+function SignedInLocaleSync() {
+  const session = useSession();
+  const uid = session.data?.uid;
+  if (!uid) return null;
+  return <LocaleSyncOnce key={uid} />;
+}
+
+function LocaleSyncOnce() {
+  // Mounted purely for the hook's apply-on-arrival effect (it swaps the live
+  // i18n language when the account's `locale` preference resolves).
+  useLocalePreference();
+  return null;
+}
+
 // No StrictMode — matches app/src/main.tsx (portal/listener double-mount churn).
 export default function AppTree() {
   useEngineTheme();
+  // Cloud web build (Firebase identity baked in): sign-in is the FIRST screen.
+  // The first-run language picker + agreement are desktop/self-host concepts —
+  // pre-auth they can't even persist (the gateway 401s preference writes, which
+  // dead-ended the agreement's Continue, HOU-1014). Language defaults to the
+  // browser and the account's stored preference applies after sign-in
+  // (SignedInLocaleSync); Settings keeps its picker for changes.
+  const cloudWeb = isIdentityConfigured();
+  const app = (
+    <>
+      <IdentityKeyedApp />
+      {/* Global workspace-file preview (chat file clicks) —
+          mirrors app/src/main.tsx. */}
+      <AgentFilePreviewHost />
+    </>
+  );
+
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
@@ -167,14 +210,16 @@ export default function AppTree() {
                     overlays every gate/screen without disturbing layout or clicks.
                     Renders null off the preview deployment. */}
                 <PreviewBadge />
-                <LanguageGate>
-                  <DisclaimerGate>
-                    <IdentityKeyedApp />
-                    {/* Global workspace-file preview (chat file clicks) —
-                        mirrors app/src/main.tsx. */}
-                    <AgentFilePreviewHost />
-                  </DisclaimerGate>
-                </LanguageGate>
+                {cloudWeb ? (
+                  <>
+                    <SignedInLocaleSync />
+                    {app}
+                  </>
+                ) : (
+                  <LanguageGate>
+                    <DisclaimerGate>{app}</DisclaimerGate>
+                  </LanguageGate>
+                )}
               </I18nextProvider>
             </QueryPersistenceProvider>
           </EngineGate>

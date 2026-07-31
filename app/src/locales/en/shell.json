@@ -29,6 +29,8 @@
     "unreadCount_other": "{{count}} unread updates",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
+    "openMenu": "Open menu",
+    "mobileNavTitle": "Navigation",
     "createWorkspace": "Create workspace",
     "groups": {
       "new": "New group",

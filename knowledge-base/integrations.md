@@ -947,6 +947,18 @@ definition that fails to compile degrades to state `error` for itself only.
 Secrets reach requests via a Houston `CredentialProvider` (`secrets.ts`)
 resolved lazily — the executor never copies values.
 
+**Spec freshness (HOU-1052 follow-up).** The compiled view is process-long
+(hours on a pod, weeks on a desktop), so url-sourced OpenAPI specs get a
+stale-while-revalidate verify: any `ensure()` past a 6h TTL arms ONE
+background `refreshSpecs()` sweep — re-fetch each url spec, sha256-compare,
+and recompile ONLY a def whose content actually changed (removeSpec +
+compileDef, the same sequence remove + re-add runs, connection included). An
+unreachable spec host keeps the working view; a first sweep records baselines
+without recompiling; blob specs are frozen by design and MCP tool lists are
+discovered live per listing (no cache in the executor SDK), so neither is
+swept. Nothing ever blocks a chat turn on a spec fetch, and nothing refetches
+per request.
+
 **Definition shape** (discriminated union, `types.ts`): `openapi` (spec
 url|blob, baseUrl?) or `mcp` (remote endpoint, headers?), plus
 `auth: "none" | "credential"` and an optional stored `credential`
@@ -1000,9 +1012,10 @@ its rename-replace.
 
 **User routes** (`routes/custom-integrations-user.ts`; the sandbox detect/add
 routes stay in `routes/custom-integrations.ts`): GET/DELETE
-`definitions[/:slug]`, the credential POST, and — since HOU-980 — the manual
-form's **POST `definitions`** (add; body = the SAME grammar as the agent's
-sandbox add tool, `parseAddInput` is the one validator), **POST `detect`**
+`definitions[/:slug]`, the credential POST, and — since HOU-980 — **POST
+`definitions`** (add; body = the SAME grammar as the agent's sandbox add
+tool, `parseAddInput` is the one validator; API-only since the manual form
+UI was cut — chat is the one add path in the client), **POST `detect`**
 (classify a pasted URL), and **GET `definitions/:slug/tools`** (the compiled
 tool list behind one definition — `manager.tools(slug)` over
 `custom/tools.ts` `toolsOf`, backing the detail card's actions list; the
@@ -1023,17 +1036,20 @@ so in a Teams org only agent managers can save/remove — a member-facing
 use-scope carve-out is a gateway follow-up. Errors carry stable `code`s
 (`not_found`, `duplicate_slug`, `credential_invalid`, `compile_failed`…).
 Mutations emit `CustomIntegrationsChanged` (protocol events.ts) → query
-invalidation. The GLOBAL page still reads/writes the top-level form (hidden
-behind the 404→null degrade on managed cloud); the PER-AGENT Integrations tab
-now rides the per-agent form end to end (HOU-980): `CustomIntegrationsSection`
-takes an optional `agent` and every read/write beneath it (list, add, detect,
-tools, credential, remove) switches to the `/agents/:id/...` routes via the
-`agentId?`-aware hooks (`use-custom-integrations.ts` —
-`useCustomIntegrationsFor`, `useAddCustomIntegration`,
-`useDetectCustomIntegration`, `useCustomIntegrationTools`,
-`useRemoveCustomIntegration`, `useSubmitCustomCredential`; engine-client +
-adapter grew the matching `...AgentCustomIntegration...` methods in
-`custom-integrations-mixin.ts`), so the tab works behind the hosted gateway.
+invalidation. EVERY client surface now rides the per-agent form whenever an
+agent exists: `CustomIntegrationsSection` takes an optional `agent` (the
+per-agent tab, HOU-980), and agent-less surfaces (the global page + its tab
+chip in `IntegrationsReady`, screen prefetch, chat brand resolution) resolve a
+transport agent via `useCustomTransportAgentId`
+(`use-custom-integrations.ts`) — the FIRST agent's `/agents/:id/...` routes,
+valid because the data is user-global — falling back to the top-level form
+only when no agent exists yet. That transport fallback is what makes the
+global page's Custom integrations tab (and its key/remove dialogs) work
+behind the hosted gateway instead of hiding behind the 404→null degrade. The
+`agentId?`-aware hooks are `useCustomIntegrationsFor`,
+`useAgentCustomIntegrations`, `useRemoveCustomIntegration`,
+`useSubmitCustomCredential`; engine-client + adapter carry the matching
+`...AgentCustomIntegration...` methods in `custom-integrations-mixin.ts`.
 
 **UI (HOU-980)**: a PAGE-LEVEL source toggle (`integrations-view/
 catalog-mode-tabs.tsx` — `CatalogModeTabs` + the shared `CatalogBrowsePane`,
@@ -1043,25 +1059,21 @@ connections ONLY, the browse catalog) or **Custom integrations** (the same
 `CatalogShell` grammar via `CustomModeShell`: the mode's search + Add button
 over an Installed card of the custom rows). Custom rows never appear in the
 Composio strip — the old layout showed them twice. "Add custom integration"
-opens `CustomAddDialog`, a two-way fork: **"Set it up in chat"** (the guided
-chat — direct with the tab's agent, agent picker first on the global page; it
-opens in the shell-level RIGHT panel, the same one the routine chat and the
-mission board use, so the Integrations surface stays visible on the left.
-Only the VISIBLE section instance drives that shared panel — kept-alive views
-leave every instance mounted, so `integration-setup-chat.tsx` gates on
-`active`: TabProps.isActive on the per-agent tab, `viewMode ===
-INTEGRATIONS_VIEW_ID` on the global page. The kickoff prompt,
-`lib/integration-chat-setup.ts`, explicitly states the user is present and
-`ask_user` works — a "Houston sent this automatically" framing once made the
-model refuse the step-by-step interview) or **"Add it manually"**
-(`CustomAddForm` + pure `custom-add-model.ts`, node-tested): kind (API / MCP
-server), URL with an optional "Check" (the detect route pre-classifies, fills
-the name, and flips "needs an API key" on a key-walled server — an
-OAuth-walled one instead gets an honest "Houston can't connect to this yet"
-verdict via `requiresOAuth`, and never auto-flips the key switch: a pasted
-key cannot satisfy OAuth), name, and a "needs an API key" switch. An add
-that needs a key lands `pending` and chains straight into the secure key
-dialog. Every custom row's BODY opens `CustomDetailDialog` (letter avatar,
+goes **straight to the guided setup chat** — the `CustomAddDialog` fork and
+its manual typed API/MCP form were CUT (chat is the one add path; the host's
+detect/add routes stay as API for the agent's sandbox tools and direct
+callers). The chat starts immediately with the tab's agent, or with the
+workspace's only agent on the global page; only a multi-agent workspace on
+the global page interposes `AgentPickerDialog`. It opens in the shell-level
+RIGHT panel, the same one the routine chat and the mission board use, so the
+Integrations surface stays visible on the left. Only the VISIBLE section
+instance drives that shared panel — kept-alive views leave every instance
+mounted, so `integration-setup-chat.tsx` gates on `active`:
+TabProps.isActive on the per-agent tab, `viewMode === INTEGRATIONS_VIEW_ID`
+on the global page. The kickoff prompt, `lib/integration-chat-setup.ts`,
+explicitly states the user is present and `ask_user` works — a "Houston sent
+this automatically" framing once made the model refuse the step-by-step
+interview. Every custom row's BODY opens `CustomDetailDialog` (letter avatar,
 kind + live-status chips, URL + added date + the action COUNT — the
 per-action list was cut on review as noise; footer: Enter/Update key beside
 Remove; the `tools` host route stays as API). The dialog trio (detail / key
