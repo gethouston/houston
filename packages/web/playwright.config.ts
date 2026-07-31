@@ -13,9 +13,11 @@ import {
  * (packages/web), on the host adapter in host mode, against an
  * in-memory fake host (@houston/fake-host) — no real backend, no AI provider.
  *
- * Two web servers boot for a run: the fake host (Node) and vite. The fake
- * host is a single shared process, so the suite is serial (`workers: 1`) and
- * resets host state per test (see support/fixtures.ts).
+ * The suite runs FULLY PARALLEL: every Playwright worker starts its own
+ * in-process fake host on a worker-slot port (see support/fixtures.ts and
+ * `@houston/fake-host` config.ts), so workers never share host state. The
+ * `webServer` fake host below serves only the main process (global-setup's
+ * warm-up); vite is shared by all workers, which is fine once warm.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -24,8 +26,17 @@ export default defineConfig({
   // pay vite's cold on-demand compile inside its assertion budget (see
   // e2e/support/global-setup.ts).
   globalSetup: "./e2e/support/global-setup.ts",
-  fullyParallel: false,
-  workers: 1,
+  fullyParallel: true,
+  // CI runners (ubuntu-latest) have 4 vCPUs, and page boots are served by ONE
+  // single-threaded vite dev process — at 4 workers renders starve past the
+  // 10s expect budget (run 30596416439: 14 timing failures), and even at 2
+  // the heavy signed-in specs flake on animation transients (run
+  // 30597930896: stuck AnimatePresence exit ghosts duplicate kanban cards).
+  // CI therefore runs ONE worker per runner — the density the suite has
+  // always been stable at — and gets its throughput from sharding across
+  // runners (ci.yml `--shard`). Locally, let Playwright pick from the
+  // machine's cores; fast machines don't starve.
+  workers: process.env.CI ? 1 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
@@ -46,6 +57,15 @@ export default defineConfig({
     : [["list"]],
   use: {
     baseURL: WEB_URL,
+    // Keep trace + video recording ON for every attempt, in CI too. Skipping
+    // them on first attempts ("on-first-retry") was tried to save encode CPU
+    // and produced first-attempt-only flakes that no retry ever reproduced:
+    // recording paces the page slightly, and the unrecorded attempts ran
+    // FASTER than the suite ever had, exposing UI races (a nav click landing
+    // with the panel never switching; AnimatePresence crossfades caught
+    // mid-flight as duplicate cards). Recording parity with every attempt is
+    // part of the environment the suite is stable in; with the suite sharded
+    // across runners the overhead is cheap.
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

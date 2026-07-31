@@ -18,6 +18,7 @@
  */
 import { chromium, type FullConfig } from "@playwright/test";
 import { AUTH_WEB_URL, WEB_URL } from "../config";
+import { signInAsViewer } from "./identity";
 import { seedPage } from "./seed";
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {
@@ -39,14 +40,23 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
       .waitFor({ state: "visible", timeout: 120_000 });
 
     // Warm the identity-on server (the `auth` project) the same way. It's a
-    // SEPARATE vite process with its own cold compile, so the sign-in spec would
-    // otherwise pay it inside its assertion budget. Here it reaches SignInScreen.
+    // SEPARATE vite process with its own cold compile (dep-optimizer caches are
+    // scoped per port), so the sign-in spec would otherwise pay it inside its
+    // assertion budget. Here it reaches SignInScreen.
     const authPage = await browser.newPage();
     await seedPage(authPage);
     await authPage.goto(AUTH_WEB_URL, { timeout: 120_000 });
     await authPage
       .getByRole("button", { name: "Continue with Google" })
       .waitFor({ state: "visible", timeout: 120_000 });
+
+    // Then all the way THROUGH sign-in to the shell: the signed-in specs
+    // (identity.ts) boot the full app tree on THIS server, and that graph is
+    // not part of the SignInScreen warm-up. Cold, its compile lands on the
+    // first signed-in spec of every worker — on a contended CI runner that
+    // blew 17–30s and flaked mentions-inbox + profile-settings (run
+    // 30597316258). Same generous ceiling as the rest of the warm-up.
+    await signInAsViewer(authPage, { shellTimeout: 120_000 });
   } finally {
     await browser.close();
   }

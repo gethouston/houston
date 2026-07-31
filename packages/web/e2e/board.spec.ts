@@ -273,15 +273,19 @@ test("paints cached missions immediately while cold-start reads are held", async
 
   // Cold open: every per-agent read now stalls the way an asleep pod's do.
   await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
-    data: { ms: 8_000 },
+    data: { ms: 20_000 },
   });
   await page.reload();
 
   // The cards must come from the locally cached aggregate — well before any
-  // held read can answer. 4s of grace for the reload+restore, far under the
-  // 8s hold.
+  // held read can answer. The grace only has to stay far under the hold to
+  // keep the proof sharp; it must ALSO absorb a full dev-server reload on a
+  // contended CI runner, which alone can blow a too-tight budget (a 4s grace
+  // under an 8s hold flaked there). 12s of grace, 20s hold: same invariant,
+  // CI-realistic slack. On success the assertion resolves at paint time, so
+  // the bigger numbers cost nothing.
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible({
-    timeout: 4_000,
+    timeout: 12_000,
   });
 });
 
