@@ -27,10 +27,13 @@ export default defineConfig({
   // e2e/support/global-setup.ts).
   globalSetup: "./e2e/support/global-setup.ts",
   fullyParallel: true,
-  // CI runners (ubuntu-latest) have 4 vCPUs; browser tests are wait-bound
-  // enough that one worker per core beats Playwright's 50% default. Locally,
-  // let Playwright pick from the machine's cores.
-  workers: process.env.CI ? 4 : undefined,
+  // CI runners (ubuntu-latest) have 4 vCPUs, and page boots are served by ONE
+  // single-threaded vite dev process — at 4 workers the renders starve past
+  // the 10s expect budget (run 30596416439: 14 timing failures). Two workers
+  // is the contention-safe density; CI gets its throughput from sharding the
+  // suite across runners instead (ci.yml `--shard`). Locally, let Playwright
+  // pick from the machine's cores.
+  workers: process.env.CI ? 2 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,

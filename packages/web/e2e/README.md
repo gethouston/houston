@@ -147,7 +147,13 @@ The `webServer` fake host on the base port only serves the main process
 per-worktree `HOUSTON_E2E_FAKE_HOST_PORT` bases ≥ 32 apart so worker slots
 can't overlap.
 
-**CI.** vite dev compiles modules on demand, and Playwright only waits for the dev
+**CI.** The web job shards the suite across runners (`test:e2e --shard=N/3`,
+see `.github/workflows/ci.yml`) with 2 workers per shard: one single-threaded
+vite dev process serves every worker's page boots, and on a 4-vCPU runner more
+than 2 concurrent renders starve past the expect budget. Throughput comes from
+the shards, density stays safe.
+
+vite dev compiles modules on demand, and Playwright only waits for the dev
 server's port to open, not for it to compile. `support/global-setup.ts` boots the
 shell once before the timed suite so the first test doesn't eat vite's cold
 compile inside its 10s assertion budget — that cold start used to time out the
@@ -202,6 +208,12 @@ Theme is pinned by setting `data-theme` on `<html>` before the app mounts
 (`visual/support.ts` `seedTheme`) — NOT the `houston.pref.theme` preference: the
 web entry (`NewEngineRoot`) never runs the desktop's `loadTheme` bootstrap, so
 that pref is inert here.
+
+The visual scripts cap parallelism at `--workers=2`: full-page screenshots are
+CPU-heavy, and at higher worker counts the pinned CI container starves renders
+past the expect budget (a first-paint anchor missed its 10s window at 4
+workers). Two workers keep the 8-shot suite fast without contention; the
+determinism rules below outrank raw speed here.
 
 **Determinism rules** (a flaky baseline is worse than none — skip a screen you
 can't make deterministic rather than commit one):
