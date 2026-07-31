@@ -3,7 +3,7 @@ import { MessageCircle, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
-import { AgentSelectList } from "./agent-select-list";
+import { SkillAssignmentSection } from "./skill-assignment-section";
 
 /**
  * The ready-state body of the global skill dialog: the full SKILL.md in a
@@ -17,7 +17,7 @@ export function ManageSkillBody({
   agents,
   assignedIds,
   allowEmptySelection = false,
-  assignmentLocked = false,
+  assignment = "editable",
   overrides,
   onEnableAll,
   onPromote,
@@ -34,10 +34,16 @@ export function ManageSkillBody({
   /** Store-backed rows may save with nobody enabled — the skill just rests
    *  in the workspace store (copy-based rows treat that as deletion). */
   allowEmptySelection?: boolean;
-  /** Shared-store deployments lock copy assignment on LOCAL rows: holders
-   *  render read-only and multi-agent use goes through "Share to workspace"
-   *  (ADR 0003), never through more per-agent copies. */
-  assignmentLocked?: boolean;
+  /**
+   * The "Agents with this skill" section's mode:
+   * - `"editable"` — the toggle list (the global page's assignment).
+   * - `"locked"` — holders read-only + a share hint: shared-store deployments
+   *   never offer copy fan-out on a LOCAL row; multi-agent use goes through
+   *   "Share to workspace" (ADR 0003).
+   * - `"hidden"` — no section at all: the per-agent dialog edits ONLY that
+   *   agent's copy; cross-agent management lives on the global Skills page.
+   */
+  assignment?: "editable" | "locked" | "hidden";
   /** Agents whose own modified copy shadows the workspace version. */
   overrides?: { agents: Agent[]; onRevert: (agent: Agent) => Promise<void> };
   /** One click enables every agent (store-backed rows only). */
@@ -62,7 +68,7 @@ export function ManageSkillBody({
 
   const contentDirty = content !== initialContent;
   const assignmentDirty =
-    !assignmentLocked &&
+    assignment === "editable" &&
     (selected.size !== assignedIds.size ||
       [...selected].some((id) => !assignedIds.has(id)));
   const dirty = contentDirty || assignmentDirty;
@@ -81,84 +87,32 @@ export function ManageSkillBody({
           placeholder={t("skills:detail.instructionsPlaceholder")}
           className="h-64 resize-none overflow-y-auto font-mono text-sm"
         />
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-ink">
-              {t("skills:global.manage.agentsLabel")}
-            </span>
-            {onEnableAll && (
-              <AsyncButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  await onEnableAll();
-                  setSelected(new Set(agents.map((a) => a.id)));
-                }}
-              >
-                {t("skills:global.manage.enableAll")}
-              </AsyncButton>
-            )}
-          </div>
-          {assignmentLocked ? (
-            <>
-              <AgentSelectList
-                agents={agents.filter((a) => assignedIds.has(a.id))}
-                selected={selected}
-                onToggle={() => {}}
-                lockedIds={assignedIds}
-                lockedNote={t("skills:global.manage.hasSkillNote")}
-              />
-              <p className="text-xs text-ink-muted">
-                {t("skills:global.manage.shareToManage")}
-              </p>
-            </>
-          ) : (
-            <>
-              <AgentSelectList
-                agents={agents}
-                selected={selected}
-                onToggle={(agent) =>
-                  setSelected((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(agent.id)) next.delete(agent.id);
-                    else next.add(agent.id);
-                    return next;
-                  })
-                }
-              />
-              {selected.size === 0 && !allowEmptySelection && (
-                <p className="text-xs text-ink-muted">
-                  {t("skills:global.manage.keepOneAgent")}
-                </p>
-              )}
-            </>
-          )}
-          {overrides && overrides.agents.length > 0 && (
-            <div className="flex flex-col gap-1 pt-1">
-              {overrides.agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="flex items-center justify-between gap-2 text-xs text-ink-muted"
-                >
-                  <span>
-                    {t("skills:global.manage.modifiedOn", {
-                      name: agent.name,
-                    })}
-                  </span>
-                  <AsyncButton
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => overrides.onRevert(agent)}
-                  >
-                    {t("skills:global.manage.revert")}
-                  </AsyncButton>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {assignment !== "hidden" && (
+          <SkillAssignmentSection
+            mode={assignment}
+            agents={agents}
+            assignedIds={assignedIds}
+            selected={selected}
+            onToggle={(agent) =>
+              setSelected((prev) => {
+                const next = new Set(prev);
+                if (next.has(agent.id)) next.delete(agent.id);
+                else next.add(agent.id);
+                return next;
+              })
+            }
+            allowEmptySelection={allowEmptySelection}
+            onEnableAll={
+              onEnableAll
+                ? async () => {
+                    await onEnableAll();
+                    setSelected(new Set(agents.map((a) => a.id)));
+                  }
+                : undefined
+            }
+            overrides={overrides}
+          />
+        )}
       </div>
       <DialogFooter>
         <Button

@@ -1,22 +1,18 @@
 import { useMemo } from "react";
 import type { Agent } from "../../lib/types";
 import type { WorkspaceSkillRow } from "../../lib/workspace-skills";
-import { useAgentStore } from "../../stores/agents";
 import { ManageSkillDialog } from "../skills-view/manage-skill-dialog";
 import { useSkillsViewActions } from "../skills-view/use-skills-view-actions";
 import { useWorkspaceSkills } from "../skills-view/use-workspace-skills";
 
 /**
- * The per-agent Skills tab's skill dialog (HOU-792): the SAME manage dialog
- * the global page opens — content, "Agents with this skill" assignment, Edit
- * in chat, Delete — resolved for one clicked slug. Rendered only while a
- * skill is open, so the cross-agent aggregation (one request per agent;
- * hosted mode wakes pods) runs only for an open dialog; until every list has
- * answered the dialog stays closed rather than showing a wrong holder set.
- *
- * The CURRENT agent is pinned first among the holders, so the content shown
- * (and copied to newly assigned agents) is THIS agent's copy — on the tab of
- * Agent B you edit Agent B's version, never a divergent sibling's.
+ * The per-agent Skills tab's skill dialog (HOU-792): the shared manage dialog
+ * scoped to ONE agent — content editing, Edit in chat, Delete, and no "Agents
+ * with this skill" section. Cross-agent assignment lives ONLY on the global
+ * Skills page; here Save writes THIS agent's copy and Delete removes it from
+ * this agent alone. The scoping also means only this agent's skill list is
+ * fetched — never the workspace-wide fan-out (which, in hosted mode, woke a
+ * pod per agent just to render a holder list this dialog no longer shows).
  */
 export function AgentSkillManageDialog({
   agent,
@@ -31,29 +27,20 @@ export function AgentSkillManageDialog({
   /** "Edit in chat" — opens the skill's setup chat in the side panel. */
   onEditInChat: (slug: string) => void;
 }) {
-  const agents = useAgentStore((s) => s.agents);
-  const { rows, loading } = useWorkspaceSkills(agents);
+  const scope = useMemo(() => [agent], [agent]);
+  const { rows, loading } = useWorkspaceSkills(scope);
   const actions = useSkillsViewActions();
 
   const row = useMemo<WorkspaceSkillRow | null>(() => {
     if (loading) return null;
-    const found = rows.find((r) => r.slug === slug);
-    if (!found) return null;
-    const holdsHere = found.agents.some((a) => a.id === agent.id);
-    if (!holdsHere) return found;
-    return {
-      ...found,
-      agents: [
-        found.agents.find((a) => a.id === agent.id) ?? found.agents[0],
-        ...found.agents.filter((a) => a.id !== agent.id),
-      ],
-    };
-  }, [rows, loading, slug, agent.id]);
+    return rows.find((r) => r.slug === slug) ?? null;
+  }, [rows, loading, slug]);
 
   return (
     <ManageSkillDialog
       row={row}
-      agents={agents}
+      agents={scope}
+      hideAssignment
       onApply={actions.applySkillChanges}
       onDeleteEverywhere={actions.deleteSkillEverywhere}
       onClose={onClose}

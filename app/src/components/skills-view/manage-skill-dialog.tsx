@@ -59,6 +59,7 @@ export function ManageSkillDialog({
   onClose,
   onEditInChat,
   shared,
+  hideAssignment = false,
 }: {
   /** The open row; null keeps the dialog closed. */
   row: ManagedSkillRow | null;
@@ -73,6 +74,10 @@ export function ManageSkillDialog({
   /** Open the skill's guided setup chat (closes this dialog first). */
   onEditInChat?: (row: WorkspaceSkillRow) => void;
   shared?: SharedDialogActions;
+  /** Per-agent surface: no "Agents with this skill" section at all — the
+   *  dialog edits ONLY that agent's copy; cross-agent management lives on
+   *  the global Skills page. */
+  hideAssignment?: boolean;
 }) {
   const { t } = useTranslation(["skills", "common"]);
   const isShared = shared !== undefined && row?.origin === "shared";
@@ -80,7 +85,11 @@ export function ManageSkillDialog({
   // holders render read-only and multi-agent use goes through "Share to
   // workspace" (ADR 0003), so the checkbox list can't be mistaken for the
   // org-level assignment it isn't.
-  const assignmentLocked = shared !== undefined && row?.origin === "local";
+  const assignment = hideAssignment
+    ? ("hidden" as const)
+    : shared !== undefined && row?.origin === "local"
+      ? ("locked" as const)
+      : ("editable" as const);
   const canonicalPath = row?.agents[0]?.folderPath;
   const { data: detail, error } = useQuery({
     queryKey: isShared
@@ -164,7 +173,7 @@ export function ManageSkillDialog({
               agents={agents}
               assignedIds={assignedIds}
               allowEmptySelection={isShared}
-              assignmentLocked={assignmentLocked}
+              assignment={assignment}
               overrides={
                 isShared && overriddenBy.length > 0
                   ? {
