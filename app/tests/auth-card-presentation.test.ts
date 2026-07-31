@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   authCauseBodyKey,
+  reconnectSurface,
   resolveAuthCardPresentation,
 } from "../src/components/shell/provider-error-cards/auth-presentation.ts";
 
@@ -39,6 +40,42 @@ describe("authCauseBodyKey", () => {
       authCauseBodyKey("mystery" as never),
       "providerError.unauthenticated.bodyUnknown",
     );
+  });
+});
+
+describe("reconnectSurface", () => {
+  // Reconnect once sent EVERY provider through launchLogin, which the engine
+  // 400s for non-OAuth providers ("nvidia does not use OAuth sign-in") — the
+  // card flipped to failed with no way out (HOU-1077). API-key providers must
+  // reconnect through the key paste dialog instead.
+  it("api-key providers open the key dialog, never the OAuth login", () => {
+    strictEqual(reconnectSurface("nvidia", "apiKey"), "api_key_dialog");
+    strictEqual(reconnectSurface("google", "apiKey"), "api_key_dialog");
+    strictEqual(
+      reconnectSurface("qwen-token-plan", "apiKey"),
+      "api_key_dialog",
+    );
+  });
+
+  it("OAuth providers keep the browser login", () => {
+    strictEqual(reconnectSurface("anthropic", "oauth"), "oauth_login");
+    strictEqual(reconnectSurface("openai-codex", "oauth"), "oauth_login");
+  });
+
+  it("the local provider keeps its guided endpoint dialog, whatever the catalog says", () => {
+    strictEqual(
+      reconnectSurface("openai-compatible", "openaiCompatible"),
+      "local_model_dialog",
+    );
+    strictEqual(
+      reconnectSurface("openai-compatible", undefined),
+      "local_model_dialog",
+    );
+  });
+
+  it("an id the catalog cannot resolve falls back to the OAuth login", () => {
+    // Only the engine knows the method then; its launch keeps the non-OAuth guard.
+    strictEqual(reconnectSurface("mystery", undefined), "oauth_login");
   });
 });
 
