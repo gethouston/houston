@@ -4,14 +4,14 @@
 # builds packages/web with the SAME recipe as release.yml's build-web job and
 # deploys it. Production (app.gethouston.ai) is untouched here — it only ever
 # receives the byte-identical web-dist.tar.gz asset of a published release, via
-# web-promote.yml. At tag time build-web also deploys the tagged bytes to
-# preview; since tags are cut from main the two writers converge, and the
-# release deploy guarantees the exact promoted bytes were serveable on preview.
+# web-promote.yml. This workflow is the ONLY writer to the preview site:
+# release bytes bake the production gateway and must never land here.
 #
-# The bundle bakes the PRODUCTION gateway (HOSTED_ENGINE_URL), exactly like the
-# release build — staging here means "main-HEAD frontend", not a separate
-# control plane. (A staging-gateway variant would bake HOSTED_ENGINE_URL_STAGING
-# the way the desktop staging QA DMG does — deliberate non-goal for now.)
+# The bundle bakes the STAGING gateway (HOSTED_ENGINE_URL_STAGING — the same
+# secret the desktop staging QA DMG bakes), so preview is a full staging axis:
+# main-HEAD frontend against the staging control plane. The production web app
+# (release.yml build-web → web-promote.yml) bakes HOSTED_ENGINE_URL instead;
+# preview and production share no artifact.
 name: Web staging
 
 on:
@@ -70,7 +70,9 @@ jobs:
           echo "release=houston-app@${VERSION}-web" >> "$GITHUB_OUTPUT"
           echo "Web Sentry release: houston-app@${VERSION}-web"
 
-      # Same build inputs as release.yml build-web: the gateway URL selects
+      # Same build inputs as release.yml build-web EXCEPT the gateway URL: this
+      # bundle bakes the STAGING gateway, so preview exercises the main-HEAD
+      # frontend against the staging control plane. The gateway URL selects
       # host/cloud-login mode, the FIREBASE_* trio configures GCIP sign-in
       # (FIREBASE_API_KEY is load-bearing, no build-time default), POSTHOG_*/
       # SENTRY_DSN power analytics + crash reporting. The deploy environment is
@@ -78,7 +80,7 @@ jobs:
       # reports itself as `preview` when served from the preview domains.
       - name: Build packages/web
         env:
-          VITE_CONTROL_PLANE_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+          VITE_CONTROL_PLANE_URL: ${{ secrets.HOSTED_ENGINE_URL_STAGING }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -91,7 +93,7 @@ jobs:
           # back to the self-host Connect screen instead of the managed cloud.
           # Fail loudly (no-silent-failures) rather than deploy a broken build.
           if [ -z "${VITE_CONTROL_PLANE_URL}" ]; then
-            echo "::error::HOSTED_ENGINE_URL secret is empty — set it to the managed gateway URL (https://gateway.gethouston.ai) before deploying the web app."
+            echo "::error::HOSTED_ENGINE_URL_STAGING secret is empty — set it to the staging gateway URL (repo → Settings → Secrets; same value the staging QA DMG bakes) before deploying the preview web app."
             exit 1
           fi
           pnpm --filter houston-web build
