@@ -503,11 +503,11 @@ export async function execTurn(
       // divergence where settle-from-history re-derived a stopped turn as a
       // clean `done` (pi resolves the aborted turn clean, leaving no trace).
       stopped: stopped ? true : undefined,
-      // Persist what the turn is waiting on the user for under the SAME
-      // condition that puts it on the clean `done` frame below (no provider
-      // error) — so a client that misses the live `done` settles from history
-      // to `needs_you`, never dropping the question/connect card to a false
-      // `done`. A failed/stalled turn (providerError set) never carries it; a
+      // Persist what the turn ended on under the SAME condition that puts it on
+      // the clean `done` frame below (no provider error) — so a client that
+      // misses the live `done` still renders that question/connect card (or
+      // clean-finish offer) when it settles from history, instead of showing a
+      // bare finish. A failed/stalled turn (providerError set) never carries it; a
       // stopped turn never carries it either — the user walked away mid-ask, so
       // nothing should re-render a card.
       pendingInteraction:
@@ -527,9 +527,10 @@ export async function execTurn(
     // notification on top of the error. Also skip it when the user STOPPED the
     // turn: cancelTurn's live "Stopped by user" error frame is the terminal
     // surface, and a `done` on top would race the client's settle. On the
-    // clean-done path, carry whatever the model is now waiting on the user for so
-    // the board card settles to `needs_you` (absent → `done`). Only the clean
-    // done ever carries it.
+    // clean-done path, carry whatever the turn ended on (a question / connect,
+    // or a clean-finish offer) so the card can render it. The status itself does
+    // NOT depend on it: every clean settle lands `needs_you`, since only the
+    // user ever moves a mission to done. Only the clean done ever carries it.
     if (!providerError && !stopped) {
       // A completed turn proves this provider's credential works — heal any
       // stale turn-failure mark so status reads connected again

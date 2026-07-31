@@ -1,4 +1,8 @@
-import type { ActivityContributor } from "@houston/protocol";
+import type {
+  Activity,
+  ActivityContributor,
+  PendingInteraction,
+} from "@houston/protocol";
 import { expect, test } from "vitest";
 import {
   applyActivityUpdate,
@@ -192,4 +196,145 @@ test("a load round-trip strips malformed contributors from disk", async () => {
   expect(items[0]?.contributors).toEqual([
     { user_id: "u-alice", name: "Alice" },
   ]);
+});
+
+// ── Manual move to Done: blocking steps go, suggestion offers stay ──────────
+// Closing a mission is the user's own move and answers whatever it was waiting
+// on, but the clean-finish offers keep rendering on the Done card.
+
+const QUESTION_STEP = {
+  kind: "question" as const,
+  id: "q1",
+  question: "Which deck?",
+};
+const ACTIONS_STEP = {
+  kind: "suggest_actions" as const,
+  id: "a1",
+  actions: [
+    { id: "x", label: "Send it", message: "Send the deck" },
+    { id: "y", label: "Draft a note", message: "Draft the note" },
+  ],
+};
+const REUSABLE_STEP = {
+  kind: "suggest_reusable" as const,
+  id: "r1",
+  reusableKind: "skill" as const,
+  title: "Weekly deck",
+  rationale: "You do this every week.",
+};
+
+const withInteraction = (steps: PendingInteraction["steps"]): Activity => ({
+  ...createActivity({ title: "T" }, "a1", NOW),
+  status: "needs_you",
+  pending_interaction: { steps },
+});
+
+test("moving to done drops blocking steps and keeps the suggestion offers", () => {
+  const next = applyActivityUpdate(
+    withInteraction([QUESTION_STEP, ACTIONS_STEP, REUSABLE_STEP]),
+    { status: "done" },
+    NOW,
+  );
+  expect(next.status).toBe("done");
+  expect(next.pending_interaction).toEqual({
+    steps: [ACTIONS_STEP, REUSABLE_STEP],
+  });
+});
+
+test("moving to done clears the interaction when only blocking steps remain", () => {
+  const next = applyActivityUpdate(
+    withInteraction([
+      QUESTION_STEP,
+      { kind: "connect", id: "c1", toolkit: "gmail" },
+    ]),
+    { status: "done" },
+    NOW,
+  );
+  expect(next.pending_interaction).toBeUndefined();
+  expect("pending_interaction" in next).toBe(false);
+});
+
+test("moving to done leaves a suggestions-only interaction untouched", () => {
+  const next = applyActivityUpdate(
+    withInteraction([ACTIONS_STEP]),
+    { status: "done" },
+    NOW,
+  );
+  expect(next.pending_interaction).toEqual({ steps: [ACTIONS_STEP] });
+});
+
+test("a done patch that carries its own pending_interaction wins", () => {
+  const next = applyActivityUpdate(
+    withInteraction([QUESTION_STEP, ACTIONS_STEP]),
+    { status: "done", pending_interaction: { steps: [REUSABLE_STEP] } },
+    NOW,
+  );
+  expect(next.pending_interaction).toEqual({ steps: [REUSABLE_STEP] });
+});
+
+test("a done patch with an explicit null clears the interaction outright", () => {
+  const next = applyActivityUpdate(
+    withInteraction([ACTIONS_STEP]),
+    { status: "done", pending_interaction: null },
+    NOW,
+  );
+  expect(next.pending_interaction).toBeUndefined();
+});
+
+test("a non-done patch leaves the pending interaction untouched", () => {
+  const steps = [QUESTION_STEP, ACTIONS_STEP];
+  for (const status of ["archived", "running", "needs_you", undefined]) {
+    const next = applyActivityUpdate(
+      withInteraction(steps),
+      status === undefined ? { title: "Renamed" } : { status },
+      NOW,
+    );
+    expect(next.pending_interaction).toEqual({ steps });
+  }
+});
+
+test("moving to done is a no-op when there is no interaction", () => {
+  const next = applyActivityUpdate(
+    createActivity({ title: "T" }, "a1", NOW),
+    { status: "done" },
+    NOW,
+  );
+  expect(next.pending_interaction).toBeUndefined();
+});
+
+// A payload this build cannot read says NOTHING about what should be stored, so
+// it is treated as absent — never as "keep what's there". Otherwise a done patch
+// that also carried junk would skip the strip and leave a Done card asking a
+// question.
+const MALFORMED = {
+  kind: "question",
+  question: "Which deck?",
+} as unknown as PendingInteraction; // a pre-step build's shape: no `steps`
+
+test("a done patch with a MALFORMED pending_interaction still strips", () => {
+  const next = applyActivityUpdate(
+    withInteraction([QUESTION_STEP, ACTIONS_STEP]),
+    { status: "done", pending_interaction: MALFORMED },
+    NOW,
+  );
+  expect(next.pending_interaction).toEqual({ steps: [ACTIONS_STEP] });
+});
+
+test("a done patch with a malformed payload clears when only blocking steps remain", () => {
+  const next = applyActivityUpdate(
+    withInteraction([QUESTION_STEP]),
+    { status: "done", pending_interaction: MALFORMED },
+    NOW,
+  );
+  expect("pending_interaction" in next).toBe(false);
+});
+
+test("a NON-done patch with a malformed payload leaves the stored one alone", () => {
+  const steps = [QUESTION_STEP, ACTIONS_STEP];
+  const next = applyActivityUpdate(
+    withInteraction(steps),
+    { status: "needs_you", pending_interaction: MALFORMED },
+    NOW,
+  );
+  expect(next.pending_interaction).toEqual({ steps });
 });

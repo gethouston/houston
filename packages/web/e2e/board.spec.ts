@@ -351,6 +351,35 @@ test("moves a mission to the Done column", async ({ page }) => {
 });
 
 /**
+ * The Done card's counterpart to the checkmark (act-2 = the seeded `done`
+ * mission): one click writes status=archived, which takes the mission off the
+ * active board entirely and surfaces it behind the Activity Archived button.
+ */
+test("archives a Done mission from its card", async ({ page }) => {
+  await page.goto("/");
+  const card = page.locator('[data-kanban-card="act-2"]');
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "Archive" }).click();
+
+  // Off the active board, and found again in the archived list.
+  await expect(page.getByText("Draft the launch email")).toHaveCount(0);
+  await page.getByRole("button", { name: "Archived" }).click();
+  await expect(page.getByText("Draft the launch email")).toBeVisible();
+});
+
+/** The archive box belongs to the Done column alone: a mission still waiting on
+ *  the user gets the checkmark instead, so nothing can be filed away unread. */
+test("offers no archive box on a Needs-you card", async ({ page }) => {
+  await page.goto("/");
+  const card = page.locator('[data-kanban-card="act-1"]');
+  await card.hover();
+  await expect(
+    card.getByRole("button", { name: "Move to done" }),
+  ).toBeVisible();
+  await expect(card.getByRole("button", { name: "Archive" })).toHaveCount(0);
+});
+
+/**
  * HOU-932: the card wrapper's Enter/Space handler had no target guard, so a
  * Space bubbling out of the inline rename input was preventDefault-ed and
  * opened the mission — the editor unmounted mid-word and the space never

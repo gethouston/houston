@@ -8,6 +8,12 @@ import Observation
 /// reads it to badge the tab. Keeping it a single observable avoids each surface
 /// re-deriving the total and lets the tab badge update from anywhere.
 ///
+/// `needs_you` is where EVERY clean finish settles — the engine never closes a
+/// mission, the user does — so this counts missions awaiting the user's review,
+/// which is exactly what the badge is for. It is not a count of missions blocked
+/// on an answer; the chat title bar's attention line is that signal, and it
+/// reads the pending interaction instead (``ChatTitleStatus``).
+///
 /// The count is a raw total; the tab badge renders it verbatim. The "99+" cap
 /// from `PARITY.md` §4 applies to the in-surface `NeedsYouChip`, not the native
 /// tab badge.

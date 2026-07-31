@@ -100,9 +100,9 @@ test("matches the assistant reply by turnId and adopts its text + usage", () => 
     "t-1",
   );
   expect(s.settled).toBe(true);
-  // New semantics: a clean settle with NO pending interaction lands on `done`
-  // (the reloaded reply carries none — the terminal `done` frame was lost).
-  expect(s.terminal).toBe("done");
+  // A clean settle with NO pending interaction still lands on `needs_you` —
+  // the engine never writes `done`.
+  expect(s.terminal).toBe("needs_you");
   expect(items).toContainEqual({
     feed_type: "assistant_text",
     data: "Full reply",
@@ -141,9 +141,9 @@ test("a persisted pendingInteraction recovers on reload: needs_you + the interac
     "t-1",
   );
   expect(s.settled).toBe(true);
-  // The live `done` was missed; recovering the persisted interaction lands the
-  // card on needs_you (not a false `done`) and carries it for the terminal
-  // persist — the element-3 machinery reads s.pendingInteraction from here.
+  // The live `done` was missed; recovering the persisted interaction carries it
+  // onto the terminal needs_you persist — the machinery reads
+  // s.pendingInteraction from here, so the card renders the question.
   expect(s.terminal).toBe("needs_you");
   expect(s.pendingInteraction).toEqual(interaction);
   expect(statuses).toEqual([["completed", undefined]]);
@@ -193,7 +193,7 @@ test("a legacy pre-step pendingInteraction on a persisted reply is ignored, not 
   );
   expect(s.settled).toBe(true);
   expect(s.pendingInteraction).toBeNull();
-  expect(s.terminal).toBe("done");
+  expect(s.terminal).toBe("needs_you");
 });
 
 test("a persisted providerError for our turn settles as the typed card", () => {
@@ -213,12 +213,12 @@ test("a persisted providerError for our turn settles as the typed card", () => {
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(true);
 });
 
-test("a persisted stopped reply settles needs_you with the standard stop line, not a false done", () => {
+test("a persisted stopped reply settles needs_you with the standard stop line, not a plain finish", () => {
   const { s, items, statuses } = run(
     [
       { role: "user", content: "do it", ts: 1, turnId: "t-1" },
       // The runtime never publishes a clean `done` for a stopped turn; adopting
-      // it as a plain reply would collapse to a false `done`.
+      // it as a plain reply would render the interruption as a normal finish.
       {
         role: "assistant",
         content: "working on",
@@ -311,7 +311,7 @@ test("legacy: a rejected guard settles the streamed accumulation as completed", 
     undefined,
     { guard: false, streamed: "what we streamed" },
   );
-  expect(s.terminal).toBe("done"); // clean settle, no interaction
+  expect(s.terminal).toBe("needs_you"); // clean settle: never `done`
   expect(items).toContainEqual({
     feed_type: "assistant_text",
     data: "what we streamed",
@@ -334,7 +334,7 @@ test("legacy: a rejected guard with NOTHING streamed settles as the dead-turn er
 
 test("a failed history reload (null) still settles: streamed text as completed, nothing as error", () => {
   const withText = run(null, "t-1", { streamed: "partial tail" });
-  expect(withText.s.terminal).toBe("done"); // clean settle, no interaction
+  expect(withText.s.terminal).toBe("needs_you"); // clean settle: never `done`
   expect(withText.items).toContainEqual({
     feed_type: "assistant_text",
     data: "partial tail",
@@ -345,24 +345,25 @@ test("a failed history reload (null) still settles: streamed text as completed, 
 });
 
 /**
- * finishOk — the clean-settle board split (element 3). A turn that ended with
- * a captured pending interaction lands `needs_you` (and the interaction rides
- * the persist via the sink); one with nothing outstanding lands `done`. The
- * session status is `completed` either way.
+ * finishOk — the clean-settle board status. There is NO split any more: every
+ * clean finish lands `needs_you`, because the engine never writes `done` (only
+ * the user moves a card there). What the captured pending interaction decides is
+ * what the card RENDERS, and it must ride the settle untouched — blocking steps
+ * or offer-only ones alike. The session status is `completed` in every case.
  */
 
-test("finishOk without a captured interaction settles the card to done", () => {
+test("finishOk without a captured interaction settles the card to needs_you", () => {
   const { statuses, output } = recorder();
-  const s = newTurnState("Houston/Bo", "activity-done", output);
+  const s = newTurnState("Houston/Bo", "activity-clean", output);
   s.text = "all set";
   finishOk(s);
   expect(s.settled).toBe(true);
-  expect(s.terminal).toBe("done");
+  expect(s.terminal).toBe("needs_you");
   expect(s.pendingInteraction).toBe(null);
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
-test("finishOk with a captured interaction settles needs_you and keeps the interaction", () => {
+test("finishOk with a blocking interaction settles needs_you and keeps the interaction", () => {
   const { statuses, output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-ask", output);
   s.text = "which one?";
@@ -384,13 +385,14 @@ test("finishOk with a captured interaction settles needs_you and keeps the inter
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
-test("finishOk with a LONE suggest_reusable step settles the card to done, not needs_you", () => {
+test("finishOk with a LONE suggest_reusable step settles needs_you and persists the offer", () => {
   const { statuses, output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-suggest", output);
   s.text = "Done. Sales summary is ready.";
-  // The mission genuinely IS done — the suggestion card is an optional offer, so
-  // it must NOT flip the board to needs_you (the core property of the feature).
-  s.pendingInteraction = {
+  // The mission IS finished, but finishing is not the engine's call to close:
+  // the card parks on needs_you and the offer rides along so it renders there
+  // (and survives the user's later move to done).
+  const interaction: PendingInteraction = {
     steps: [
       {
         kind: "suggest_reusable",
@@ -401,15 +403,17 @@ test("finishOk with a LONE suggest_reusable step settles the card to done, not n
       },
     ],
   };
+  s.pendingInteraction = interaction;
   finishOk(s);
-  expect(s.terminal).toBe("done");
+  expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
-test("finishOk keeps suggest actions and reusable offers on done", () => {
+test("finishOk keeps BOTH suggestion offers on the needs_you settle", () => {
   const { output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-actions", output);
-  s.pendingInteraction = {
+  const interaction: PendingInteraction = {
     steps: [
       {
         kind: "suggest_actions",
@@ -428,14 +432,16 @@ test("finishOk keeps suggest actions and reusable offers on done", () => {
       },
     ],
   };
+  s.pendingInteraction = interaction;
   finishOk(s);
-  expect(s.terminal).toBe("done");
+  expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
 });
 
-test("finishOk with a lone suggest_actions step settles the card to done", () => {
+test("finishOk with a lone suggest_actions step settles needs_you and persists the bubbles", () => {
   const { output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-actions-only", output);
-  s.pendingInteraction = {
+  const interaction: PendingInteraction = {
     steps: [
       {
         kind: "suggest_actions",
@@ -447,14 +453,16 @@ test("finishOk with a lone suggest_actions step settles the card to done", () =>
       },
     ],
   };
+  s.pendingInteraction = interaction;
   finishOk(s);
-  expect(s.terminal).toBe("done");
+  expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
 });
 
-test("finishOk with suggest_actions and a question settles needs_you", () => {
+test("finishOk with suggest_actions beside a question settles needs_you with both steps", () => {
   const { output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-actions-question", output);
-  s.pendingInteraction = {
+  const interaction: PendingInteraction = {
     steps: [
       { kind: "question", id: "q1", question: "Which account?" },
       {
@@ -467,17 +475,16 @@ test("finishOk with suggest_actions and a question settles needs_you", () => {
       },
     ],
   };
+  s.pendingInteraction = interaction;
   finishOk(s);
   expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
 });
 
-test("finishOk with suggest_reusable co-occurring with a question still settles needs_you", () => {
+test("finishOk with suggest_reusable co-occurring with a question settles needs_you", () => {
   const { output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-suggest-mixed", output);
   s.text = "which one?";
-  // Defensive: the holder never produces this combination (suggest_reusable is
-  // fallback-only), but if anything else is outstanding the mission is NOT done,
-  // so the `only-suggestion` guard must not fire.
   s.pendingInteraction = {
     steps: [
       { kind: "question", id: "q1", question: "Which week?" },
@@ -498,8 +505,6 @@ test("finishOk with a single branded question step settles needs_you (confirmati
   const { statuses, output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-confirm", output);
   s.text = "Ready to send the email?";
-  // A confirmation the turn is waiting on — nothing about it is optional, so
-  // it must block completion (unlike a lone suggest_reusable).
   s.pendingInteraction = {
     steps: [
       {
@@ -515,31 +520,16 @@ test("finishOk with a single branded question step settles needs_you (confirmati
   expect(statuses).toEqual([["completed", undefined]]);
 });
 
-test("finishOk with a question step co-occurring with suggest_reusable still settles needs_you", () => {
+test("finishOk with a plan_ready step settles needs_you and keeps the plan", () => {
   const { output } = recorder();
-  const s = newTurnState("Houston/Bo", "activity-confirm-mixed", output);
-  s.text = "Ready?";
-  // suggest_reusable only settles `done` when it is ALONE — a blocking
-  // question beside it means the mission is not done.
-  s.pendingInteraction = {
-    steps: [
-      {
-        kind: "question",
-        id: "q1",
-        question: "Should I send the draft?",
-        toolkit: "gmail",
-      },
-      {
-        kind: "suggest_reusable",
-        id: "r1",
-        reusableKind: "skill",
-        title: "Send the weekly email",
-        rationale: "Saves you doing it every Monday.",
-      },
-    ],
+  const s = newTurnState("Houston/Bo", "activity-plan", output);
+  const interaction: PendingInteraction = {
+    steps: [{ kind: "plan_ready", id: "p1", summary: "Three steps." }],
   };
+  s.pendingInteraction = interaction;
   finishOk(s);
   expect(s.terminal).toBe("needs_you");
+  expect(s.pendingInteraction).toEqual(interaction);
 });
 
 /**

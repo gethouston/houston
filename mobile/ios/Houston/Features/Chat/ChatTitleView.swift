@@ -31,8 +31,10 @@ struct ChatTitleView: View {
   }
 
   /// The second line: shimmered "working…" while running, a warning-tinted
-  /// "needs your attention" when settled and awaiting the user, else nothing so
-  /// the name centres beside the avatar.
+  /// "needs your attention" when the turn settled on something it is BLOCKED on
+  /// (a question, a sign-in, a connection), else nothing so the name centres
+  /// beside the avatar. A merely FINISHED mission shows no line — see
+  /// ``ChatTitleStatus``.
   @ViewBuilder private var statusLine: some View {
     switch status {
     case .working:

@@ -172,8 +172,8 @@ describe("send -> stream -> settle (bridge-fetch streaming path)", () => {
     }).toEqual({
       running: false,
       sessionStatus: "completed",
-      // A clean turn with nothing outstanding settles to `done`.
-      boardStatus: "done",
+      // A clean turn settles to `needs_you` — the engine never writes `done`.
+      boardStatus: "needs_you",
       pendingInteraction: null,
       feed: [
         // The optimistic push — the ONE user bubble (its echo never renders).

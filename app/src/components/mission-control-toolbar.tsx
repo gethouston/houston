@@ -1,11 +1,5 @@
-import {
-  Button,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@houston-ai/core";
-import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { BoardBackButton } from "./board/board-back-button";
 import { MissionSearchInput } from "./mission-search-input";
 import {
   MissionToolbarActions,
@@ -24,9 +18,11 @@ interface MissionControlToolbarProps extends MissionToolbarActionsProps {
   /** When set, renders the text-search field. Omitted by the Mentions inbox,
    *  which is a short chronological list with nothing to search. */
   onSearchChange?: (value: string) => void;
-  /** When set, renders a back button on the left (used by the Archived and
-   *  Mentions views to return to the active board). */
+  /** When set, renders the labelled back button on the left (used by the
+   *  Archived and Mentions views to return to the active board). */
   onBack?: () => void;
+  /** Whether the Archived view is showing -- picks the title line. */
+  archivedActive?: boolean;
 }
 
 export function MissionControlToolbar(props: MissionControlToolbarProps) {
@@ -44,22 +40,12 @@ export function MissionControlToolbar(props: MissionControlToolbarProps) {
     <div className="shrink-0 px-5 pt-4">
       <div className="mb-3 flex items-center gap-3">
         {onBack && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="-ml-2 shrink-0 rounded-full"
-                onClick={onBack}
-                aria-label={t("archived.back")}
-              >
-                <ArrowLeft className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{t("archived.back")}</TooltipContent>
-          </Tooltip>
+          <BoardBackButton label={t("archived.back")} onClick={onBack} />
         )}
-        <h1 className="shrink-0 text-xl font-semibold text-ink">
+        {/* Truncates rather than holding its width: on a narrow window the way
+            HOME must survive, so the title gives up space before the back
+            button does. */}
+        <h1 className="min-w-0 truncate text-xl font-semibold text-ink">
           {mentionsActive
             ? t("mentions.title")
             : archivedActive

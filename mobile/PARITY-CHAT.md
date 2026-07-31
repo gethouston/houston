@@ -137,8 +137,11 @@ degrades gracefully (a flat, separator-less feed; no crash).
   returning to the bottom clears it. State: `UnreadCounter` (`ChatTimelineScroll.swift`).
 - **Title bar (principal)** — a WhatsApp-style bar: agent avatar (`HoustonAvatar`, 26pt) + the
   agent name (line 1, `bodyMedium`) + a status line (line 2, `caption`): "Working…" (shimmer,
-  `inkMuted`) while running, "Needs your attention" (`warning`) when settled needs-you, else
-  hidden. Derivation: `ChatTitleStatus.derive(running:boardStatus:)`. Files: `ChatTitleView.swift`,
+  `inkMuted`) while running, "Needs your attention" (`warning`) when the settled turn left a
+  BLOCKING step pending (a question / sign-in / connection / plan), else hidden. NOT keyed off
+  `boardStatus`: every clean finish settles `needs_you` now, so that would pin the line onto every
+  finished conversation; a finished-with-offers mission shows nothing.
+  Derivation: `ChatTitleStatus.derive(running:pendingInteraction:)`. Files: `ChatTitleView.swift`,
   `ChatTitleStatus.swift`, `Strings.Chat.TitleBar`. The name is threaded via
   `ChatView(agentId:conversationId:title:agentName:)` (optional; Mission Control opens a chat by
   mission, so it falls back to the mission title).

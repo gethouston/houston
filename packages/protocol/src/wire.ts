@@ -179,12 +179,14 @@ export type WireEvent =
     }
   | {
       /**
-       * The turn ended normally. `pendingInteraction` is present only when the
-       * model finished by asking the user for something (ask_user /
-       * request_connection) — the turn settles the board card to `needs_you`
-       * and carries the interaction to render; absent means the card settles to
-       * `done`. Also persisted on the turn's assistant `ChatMessage` so it
-       * survives a reload.
+       * The turn ended normally. `pendingInteraction` is present when the model
+       * finished by asking the user for something (ask_user /
+       * request_connection / plan_ready) or by offering something optional
+       * (suggest_actions / suggest_reusable). It describes what the settled card
+       * SHOWS — it does NOT pick the board status: a clean finish ALWAYS settles
+       * `needs_you`, present or absent. The engine never writes `done`; only the
+       * user closes a mission. Also persisted on the turn's assistant
+       * `ChatMessage` so it survives a reload.
        */
       type: "done";
       data: null;

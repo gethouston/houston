@@ -17,6 +17,7 @@ export function useBoardLabels(): {
     cardLabels: {
       approve: t("board:cardActions.approve"),
       approveTooltip: t("board:cardActions.approveTooltip"),
+      archiveTooltip: t("board:cardActions.archiveTooltip"),
       renameTooltip: t("board:cardActions.renameTooltip"),
       deleteTooltip: t("board:cardActions.deleteTooltip"),
       deleteTitle: (name: string) =>

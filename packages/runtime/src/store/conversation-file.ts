@@ -93,16 +93,17 @@ export interface AssistantMessageMeta {
   /** Files the turn created/modified (relative paths); omitted when empty. */
   fileChanges?: ChatMessage["fileChanges"];
   /**
-   * What the turn ended waiting on the user for — set ONLY on a clean turn (the
-   * caller mirrors the `done`-frame condition). Persisted so a client that
-   * missed the live `done` and settles from history lands on `needs_you`
-   * instead of a false `done`.
+   * What the turn ended on — a question / connect the user has to answer, or a
+   * pure clean-finish offer. Set ONLY on a clean turn (the caller mirrors the
+   * `done`-frame condition). Persisted so a client that missed the live `done`
+   * and settles from history still renders the card it would have shown.
    */
   pendingInteraction?: ChatMessage["pendingInteraction"];
   /**
    * Set when the user STOPPED this turn — persisted so the standard "Stopped by
-   * user" line survives a history reload and the reload derivation settles the
-   * turn to `needs_you` instead of a false `done`. Absent on completed turns.
+   * user" line survives a history reload and the reload derivation renders the
+   * interruption instead of a plain successful finish. Absent on completed
+   * turns.
    */
   stopped?: true;
   /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */

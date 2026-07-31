@@ -60,7 +60,7 @@
       },
       "pending_interaction": {
         "type": "object",
-        "description": "The ordered steps this mission is waiting on the user for, walked one at a time: question steps first (at most 3), then at most one signin step, then connect steps, then approval steps (last, since approving happens after connecting).",
+        "description": "The ordered steps a settled turn left for the user. The BLOCKING steps are what the mission is waiting on, walked one at a time: question steps first (at most 3), then at most one signin step, then connect steps, then approval steps (last, since approving happens after connecting). The suggest_actions / suggest_reusable steps are OPTIONAL clean-finish offers, not things the mission waits on: they render beside a live composer and survive the user's move to done, which strips every blocking step.",
         "required": ["steps"],
         "properties": {
           "steps": {

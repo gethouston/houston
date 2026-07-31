@@ -42,7 +42,8 @@ struct ChatView: View {
   private var displayName: String { agentName ?? title }
 
   private var titleStatus: ChatTitleStatus {
-    ChatTitleStatus.derive(running: model.running, boardStatus: model.vm?.boardStatus)
+    ChatTitleStatus.derive(
+      running: model.running, pendingInteraction: model.vm?.pendingInteraction)
   }
 
   var body: some View {

@@ -79,6 +79,28 @@ enum InteractionStep: Decodable, Equatable, Sendable {
     if case .unknown = self { return false }
     return true
   }
+
+  /// Whether this step BLOCKS the mission on the user — something it is
+  /// genuinely waiting for, as opposed to an optional offer it merely carries.
+  ///
+  /// This is the signal the chat title bar keys its "needs your attention" line
+  /// off, NOT the board status: since the engine stopped closing missions on
+  /// the user's behalf, every clean finish settles `needs_you`, so a board
+  /// status alone would put a permanent attention line on every finished
+  /// conversation.
+  ///
+  /// Listed positively (never `!isRenderable`) so a future case has to declare
+  /// which side it is on. The protocol's non-blocking kinds — `suggest_actions`
+  /// and `suggest_reusable`, the optional clean-finish offers — have no iOS UI
+  /// yet and therefore decode to ``unknown``, as does any kind newer than this
+  /// build; both correctly report `false`, which degrades to "no attention
+  /// line" exactly as the card degrades to rendering nothing.
+  var isBlocking: Bool {
+    switch self {
+    case .question, .signin, .connect, .planReady: return true
+    case .unknown: return false
+    }
+  }
 }
 
 /// The ordered steps a mission is waiting on the user for (`PendingInteraction`).
@@ -111,4 +133,10 @@ struct PendingInteraction: Decodable, Equatable, Sendable {
   /// interaction as absent so no empty card mounts, mirroring desktop's
   /// `isPendingInteraction`.
   var hasRenderableSteps: Bool { !renderableSteps.isEmpty }
+
+  /// Whether the mission is genuinely waiting on the user (see
+  /// ``InteractionStep/isBlocking``). An interaction carrying nothing but the
+  /// optional clean-finish offers — or nothing this build understands — is a
+  /// FINISHED mission, not a blocked one.
+  var hasBlockingSteps: Bool { steps.contains(where: \.isBlocking) }
 }

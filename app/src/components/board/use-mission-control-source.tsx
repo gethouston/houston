@@ -152,8 +152,7 @@ export function useMissionControlSource(
       onFilterPathChange={setFilterPath}
       onFilterUserIdChange={setFilterUserId}
       onSearchChange={setMissionSearchQuery}
-      archivedActive={false}
-      onToggleArchived={onShowArchived}
+      onShowArchived={onShowArchived}
       onToggleMentions={mentions?.onShow}
       mentionCount={mentions?.count}
       onNewMission={newMission.openNewMission}
@@ -181,6 +180,7 @@ export function useMissionControlSource(
     sessionKeyFor: actions.sessionKeyFor,
     onDelete: mc.handleDelete,
     onApprove: mc.handleApprove,
+    onArchive: mc.handleArchive,
     onRename: mc.handleRename,
     loadHistory: mc.loadHistory,
     onLoadOlderMessages: mc.onLoadOlderMessages,

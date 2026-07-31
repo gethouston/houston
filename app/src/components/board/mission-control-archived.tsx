@@ -1,18 +1,19 @@
 import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useArchivedHandoff } from "../../hooks/use-archived-handoff";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { modelAcceptsImages } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { MissionControlToolbar } from "../mission-control-toolbar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { ArchivedEmptyState } from "../tabs/archived-tab-search";
+import { ArchivedEmptyState } from "../tabs/archived-empty-state";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useMissionSearch } from "../use-mission-search";
+import { useLatchedMissionAgent } from "./use-latched-mission-agent";
 import { useMissionControlArchived } from "./use-mission-control-archived";
 import { useMissionControlArchivedSend } from "./use-mission-control-archived-send";
 
@@ -31,7 +32,6 @@ export function MissionControlArchived({
 }) {
   const { t } = useTranslation("board");
   const panelContainer = useDetailPanelContainer();
-  const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const addToast = useUIStore((s) => s.addToast);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
@@ -61,25 +61,28 @@ export function MissionControlArchived({
     onHistoryLoadError: handleSearchError,
   });
 
-  const selectedItem = data.selectedId
-    ? (data.items.find((i) => i.id === data.selectedId) ?? null)
-    : null;
-  const activeAgent = selectedItem
-    ? (data.agentMap[selectedItem.metadata?.agentPath as string] ?? null)
-    : null;
-  const activeAgentDef = activeAgent
-    ? (getAgentDef(activeAgent.configId) ?? null)
-    : null;
-  const selectedSessionKey = selectedItem
-    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
-      `activity-${selectedItem.id}`)
-    : null;
+  const { selectedItem, activeAgent, activeAgentDef } = data;
+
+  const clearSelection = useCallback(() => data.setSelectedId(null), [data]);
+  // The mission's agent, captured while it is still LISTED: the handoff fires
+  // after a send that re-activates the mission, by which point this list has
+  // refetched without it (see `useLatchedMissionAgent`).
+  const focusMissionAgent = useLatchedMissionAgent(
+    data.selectedId,
+    activeAgent,
+  );
+  const { handoff, onSendReactivated } = useArchivedHandoff({
+    missionId: data.selectedId,
+    onReactivated: clearSelection,
+    focusBoard: focusMissionAgent,
+  });
 
   const panel = useAgentChatPanel({
     agent: activeAgent,
     agentDef: activeAgentDef,
-    selectedSessionKey,
+    selectedSessionKey: data.selectedSessionKey,
     onSelectSession: data.setSelectedId,
+    onSendReactivated,
   });
   const attachmentValidation = useAttachmentRejectionDialog({
     modelAcceptsImages: modelAcceptsImages(
@@ -87,7 +90,6 @@ export function MissionControlArchived({
       panel.effectiveModel,
     ),
   });
-  const clearSelection = useCallback(() => data.setSelectedId(null), [data]);
   const openHref = useOpenAgentHref(activeAgent?.folderPath ?? null);
   const handleSendMessage = useMissionControlArchivedSend({
     activeAgent,
@@ -95,7 +97,7 @@ export function MissionControlArchived({
     selectedItem,
     providerOverride: panel.effectiveProvider,
     modelOverride: panel.effectiveModel,
-    onReactivated: clearSelection,
+    onHandoff: handoff,
   });
 
   return (
@@ -108,7 +110,6 @@ export function MissionControlArchived({
         onFilterPathChange={setFilterPath}
         onSearchChange={setSearch}
         archivedActive
-        onToggleArchived={onShowActive}
         onBack={onShowActive}
         onNewMission={() => {
           // Mirror the per-agent Archived tab: New mission lives in the bar
@@ -160,6 +161,13 @@ export function MissionControlArchived({
           }}
           chatEmptyState={panel.chatEmptyState}
           composerHeader={panel.composerHeader}
+          // Only the OFFERS an archived mission finished with, never a blocking
+          // stepper: archiving answers nothing, so a mission archived mid-
+          // question still carries its question steps (see
+          // `offersComposerOverride`). Acting on an offer sends a message,
+          // which re-activates the mission like any other send.
+          composerOverride={panel.offersComposerOverride}
+          composerOverrideMode="above"
           canSendEmpty={panel.canSendEmpty}
           footer={panel.footer}
           attachMenu={panel.attachMenu}

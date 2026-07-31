@@ -1,4 +1,4 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { PendingInteraction } from "@houston/protocol";
 import {
@@ -46,6 +46,31 @@ const questionSignin: PendingInteraction = {
     { kind: "signin", id: "s1" },
   ],
 };
+const offers: PendingInteraction = {
+  steps: [
+    {
+      kind: "suggest_actions",
+      id: "a1",
+      actions: [
+        { id: "x", label: "Send it", message: "Send the deck" },
+        { id: "y", label: "Draft a note", message: "Draft the note" },
+      ],
+    },
+    {
+      kind: "suggest_reusable",
+      id: "r1",
+      reusableKind: "skill",
+      title: "Weekly deck",
+      rationale: "You do this every week.",
+    },
+  ],
+};
+const questionPlusOffers: PendingInteraction = {
+  steps: [
+    { kind: "question", id: "q1", question: "Which deck?" },
+    ...offers.steps,
+  ],
+};
 const brandedQuestion: PendingInteraction = {
   steps: [
     {
@@ -75,6 +100,7 @@ describe("deriveActiveInteraction", () => {
         running: true,
         live: question,
         persisted: connect,
+        missionStatus: "needs_you",
       }),
       null,
     );
@@ -86,6 +112,7 @@ describe("deriveActiveInteraction", () => {
         running: false,
         live: question,
         persisted: connect,
+        missionStatus: "needs_you",
       }),
       question,
     );
@@ -97,6 +124,7 @@ describe("deriveActiveInteraction", () => {
         running: false,
         live: null,
         persisted: connect,
+        missionStatus: "needs_you",
       }),
       connect,
     );
@@ -108,9 +136,108 @@ describe("deriveActiveInteraction", () => {
         running: false,
         live: null,
         persisted: undefined,
+        missionStatus: "needs_you",
       }),
       null,
     );
+  });
+});
+
+/**
+ * The user's move to Done answers whatever the mission was blocked on. Only the
+ * PERSISTED interaction is rewritten by that move — the VM's live one is
+ * written at turn start/settle and a board write never touches it — so the
+ * derivation has to apply the same strip, or the Done card keeps showing the
+ * blocking stepper until an app reload. Live and reload must agree.
+ */
+describe("deriveActiveInteraction on a mission the user moved to done", () => {
+  it("drops the LIVE blocking interaction (the regression: reopening a Done card re-asked the question)", () => {
+    strictEqual(
+      deriveActiveInteraction({
+        running: false,
+        live: question,
+        persisted: undefined,
+        missionStatus: "done",
+      }),
+      null,
+    );
+  });
+
+  it("keeps the clean-finish offers of a mixed live interaction, dropping the question", () => {
+    deepStrictEqual(
+      deriveActiveInteraction({
+        running: false,
+        live: questionPlusOffers,
+        persisted: undefined,
+        missionStatus: "done",
+      }),
+      offers,
+    );
+  });
+
+  it("returns the SAME reference when there is nothing to strip", () => {
+    // Callers memoize on this identity, so an offers-only interaction must not
+    // be re-minted on every render.
+    strictEqual(
+      deriveActiveInteraction({
+        running: false,
+        live: offers,
+        persisted: undefined,
+        missionStatus: "done",
+      }),
+      offers,
+    );
+  });
+
+  it("returns the SAME stripped object for the same source interaction", () => {
+    // Identity is a contract, not an optimization: the panel memoizes on it and
+    // the per-step dismissal chains its writes on it. Re-minting the strip when
+    // the PERSISTED side changes (which is exactly what a dismissal does) would
+    // restart that chain and resurrect the offer the user just dismissed.
+    const args = {
+      running: false,
+      live: questionPlusOffers,
+      missionStatus: "done",
+    };
+    strictEqual(
+      deriveActiveInteraction({ ...args, persisted: undefined }),
+      deriveActiveInteraction({ ...args, persisted: offers }),
+    );
+  });
+
+  it("strips the persisted interaction too (the reload path agrees)", () => {
+    strictEqual(
+      deriveActiveInteraction({
+        running: false,
+        live: null,
+        persisted: mixed,
+        missionStatus: "done",
+      }),
+      null,
+    );
+  });
+
+  it("leaves every other status untouched", () => {
+    for (const missionStatus of [
+      "needs_you",
+      "error",
+      "running",
+      "archived",
+      "something_new",
+      null,
+      undefined,
+    ]) {
+      strictEqual(
+        deriveActiveInteraction({
+          running: false,
+          live: question,
+          persisted: undefined,
+          missionStatus,
+        }),
+        question,
+        `status ${missionStatus} must not strip`,
+      );
+    }
   });
 });
 
@@ -134,6 +261,7 @@ describe("legacy persisted shapes (no steps)", () => {
         running: false,
         live: legacyQuestion,
         persisted: legacyConnect,
+        missionStatus: "needs_you",
       }),
       null,
     );
@@ -145,6 +273,7 @@ describe("legacy persisted shapes (no steps)", () => {
         running: false,
         live: legacyQuestion,
         persisted: connect,
+        missionStatus: "needs_you",
       }),
       connect,
     );

@@ -77,6 +77,7 @@ export function WorkspaceShell({
   const getById = useAgentCatalogStore((s) => s.getById);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const agentBoardMode = useUIStore((s) => s.agentBoardMode);
   const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
   const onStartMission = useUIStore((s) => s.onStartMission);
   const boardActions = useUIStore((s) => s.boardActions);
@@ -267,33 +268,41 @@ export function WorkspaceShell({
                             onTabChange={setViewMode}
                             actions={
                               <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                                {currentAgent && (
-                                  <MissionSearchInput
-                                    value={agentMissionSearchQuery}
-                                    isSearchingText={agentMissionSearchLoading}
-                                    labels={{
-                                      placeholder: t(
-                                        "board:search.placeholder",
-                                      ),
-                                      placeholderShort: t(
-                                        "board:search.placeholderShort",
-                                      ),
-                                      clear: t("board:search.clear"),
-                                      searchingText: t(
-                                        "board:search.searchingText",
-                                      ),
-                                    }}
-                                    className="relative min-w-0 flex-1 max-w-[320px]"
-                                    onChange={(value) => {
-                                      setAgentMissionSearchQuery(
-                                        currentAgent.folderPath,
-                                        value,
-                                      );
-                                      if (viewMode !== "activity")
-                                        setViewMode("activity");
-                                    }}
-                                  />
-                                )}
+                                {/* Hidden in the archive: this field searches
+                                    the ACTIVE board, so leaving it up beside
+                                    the archive's own search gave the user two
+                                    boxes, one of which did nothing visible
+                                    (HOU-1043). */}
+                                {currentAgent &&
+                                  agentBoardMode !== "archived" && (
+                                    <MissionSearchInput
+                                      value={agentMissionSearchQuery}
+                                      isSearchingText={
+                                        agentMissionSearchLoading
+                                      }
+                                      labels={{
+                                        placeholder: t(
+                                          "board:search.placeholder",
+                                        ),
+                                        placeholderShort: t(
+                                          "board:search.placeholderShort",
+                                        ),
+                                        clear: t("board:search.clear"),
+                                        searchingText: t(
+                                          "board:search.searchingText",
+                                        ),
+                                      }}
+                                      className="relative min-w-0 flex-1 max-w-[320px]"
+                                      onChange={(value) => {
+                                        setAgentMissionSearchQuery(
+                                          currentAgent.folderPath,
+                                          value,
+                                        );
+                                        if (viewMode !== "activity")
+                                          setViewMode("activity");
+                                      }}
+                                    />
+                                  )}
                                 <div className="flex shrink-0 items-center gap-2">
                                   <AgentPersonScopeMenu
                                     agent={currentAgent}

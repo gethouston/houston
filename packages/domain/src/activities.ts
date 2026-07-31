@@ -4,6 +4,7 @@ import {
   type ActivityUpdate,
   isPendingInteraction,
   type NewActivity,
+  resolveInteractionPatch,
 } from "@houston/protocol";
 import {
   cloneContributor,
@@ -165,16 +166,17 @@ export function applyActivityUpdate(
     Object.entries(rest).filter(([, v]) => v !== undefined),
   );
   const next = { ...current, ...defined, updated_at: nowIso } as Activity;
-  if (pending_interaction === null) {
-    delete next.pending_interaction;
-  } else if (pending_interaction !== undefined) {
-    // PATCH bodies are untrusted at runtime (an old client or stale message can
-    // carry a pre-step shape the compile-time type can't catch): only a
-    // structurally valid sequence is persisted; anything else leaves the
-    // current value alone.
-    if (isValidPendingInteraction(pending_interaction))
-      next.pending_interaction = pending_interaction;
-  }
+  // PATCH bodies are untrusted at runtime (an old client or a stale message can
+  // carry a pre-step shape the compile-time type can't catch), and closing a
+  // mission answers whatever it was waiting on. Both rules live once, in
+  // @houston/protocol, shared with the app's local write path and the fake host.
+  const outcome = resolveInteractionPatch({
+    patched: pending_interaction,
+    stored: next.pending_interaction,
+    status: update.status,
+  });
+  if (outcome.kind === "set") next.pending_interaction = outcome.interaction;
+  else if (outcome.kind === "clear") delete next.pending_interaction;
   return author !== undefined ? upsertContributor(next, author) : next;
 }
 

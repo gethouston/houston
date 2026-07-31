@@ -10,10 +10,46 @@ import { isSetupChatMode } from "./integration-chat-setup.ts";
  *  the Archived missions tab. Matches `activity.schema.json`. */
 export const ARCHIVED_STATUS = "archived";
 
+/** The status of a mission the user has signed off on. Only the user ever puts
+ *  a mission here: the engine settles finished work into `needs_you` (or
+ *  `error`) and waits, so every write of this status is a deliberate act. */
+export const DONE_STATUS = "done";
+
+/** The status a mission ends in when its turn genuinely failed. It shares the
+ *  Needs you column with `needs_you`, so it reaches every "move to done" path —
+ *  but closing a failed mission is housekeeping, never a win. */
+export const ERROR_STATUS = "error";
+
+/**
+ * True when moving the missions currently in `fromStatuses` to `targetStatus`
+ * earns the confetti payoff. Two conditions, both required:
+ *
+ *  - the move lands on Done (the only transition worth celebrating), and
+ *  - at least one of the moved missions actually succeeded — checking off a
+ *    mission that ended in `error` is filing a failure away, and a celebration
+ *    there reads as the product cheering for a mission that broke.
+ *
+ * A mixed batch celebrates ONCE, for the missions that did land: the bulk bar
+ * moves the whole selection in one act, so one nod for the batch is the honest
+ * response (silencing it because one card failed would rob the rest).
+ *
+ * Named once here so the card checkmark, the drag-to-column drop and the bulk
+ * "Move to" all agree on what counts as finishing a mission.
+ */
+export function celebratesMissionDone(
+  targetStatus: string,
+  fromStatuses: readonly string[],
+): boolean {
+  return (
+    targetStatus === DONE_STATUS &&
+    fromStatuses.some((status) => status !== ERROR_STATUS)
+  );
+}
+
 /** Statuses a multi-selection can be moved to from the bulk action bar.
  *  Deliberately excludes `running` (you don't manually "move" a mission
  *  into running — sending a message does that) and `error`/`archived`. */
-export const BULK_MOVE_TARGETS = ["done", "needs_you"] as const;
+export const BULK_MOVE_TARGETS = [DONE_STATUS, "needs_you"] as const;
 export type BulkMoveTarget = (typeof BULK_MOVE_TARGETS)[number];
 
 /**

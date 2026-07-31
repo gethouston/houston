@@ -146,8 +146,8 @@ async function executeTurn(
         type: "done",
         data: null,
         turnId,
-        // Carry whatever the model is waiting on the user for (ask_user), so the
-        // board card settles to `needs_you`. Only the clean done ever carries it.
+        // Carry whatever the turn ended on (ask_user, or a clean-finish offer)
+        // so the `needs_you` card can render it. Only the clean done carries it.
         ...(outcome.pendingInteraction
           ? { pendingInteraction: outcome.pendingInteraction }
           : {}),

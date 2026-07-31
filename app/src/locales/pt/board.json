@@ -2,6 +2,7 @@
   "cardActions": {
     "approve": "Mover para Pronto",
     "approveTooltip": "Mover para Pronto",
+    "archiveTooltip": "Arquivar",
     "renameTooltip": "Mudar título",
     "deleteTooltip": "Excluir",
     "select": "Selecionar missão",
