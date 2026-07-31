@@ -1450,8 +1450,14 @@ export function useAgentChatPanel({
                   void clearPersistedInteraction();
                 }}
                 onSelect={(action) => {
-                  setDismissedSuggestActions(actions.step.id);
-                  sendInteractionMessage(action.message);
+                  // HOU-1050: a pill click PREFILLS the composer instead of
+                  // sending, so the user can edit the prompt (or pick another
+                  // pill — each click replaces the draft) before deciding to
+                  // send. The pills stay up until the actual send abandons the
+                  // interaction (onComposerSubmit) or the X dismisses it.
+                  useDraftStore
+                    .getState()
+                    .setDraftText(draftKey, action.message);
                 }}
               />
             ) : null}
@@ -1733,6 +1739,7 @@ export function useAgentChatPanel({
     saveReusable,
     interactionLabels,
     sendInteractionMessage,
+    draftKey,
     clearPersistedInteraction,
     dismissActiveInteraction,
     resolveBrand,
