@@ -1,14 +1,11 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { KanbanItem } from "@houston-ai/board";
 import type { ReadCursorStore } from "../src/lib/read-cursors.ts";
 import { ROUTINE_SETUP_AGENT_MODE } from "../src/lib/routine-chat-setup.ts";
 import {
-  attachMissionUnread,
   countUnreadByAgentPath,
   isUnreadForMe,
   type UnreadConversationInput,
-  unreadMissionIds,
 } from "../src/lib/unread-model.ts";
 
 const ME = "user-me";
@@ -234,65 +231,5 @@ describe("countUnreadByAgentPath", () => {
       countUnreadByAgentPath([conv({ created_by: ME })], store(), null),
       {},
     );
-  });
-});
-
-describe("unreadMissionIds", () => {
-  it("returns the ids of the missions that are unread for me", () => {
-    const convs: UnreadConversationInput[] = [
-      conv({ id: "a1", created_by: ME }),
-      // A teammate's own mission: relevant to them, not to me.
-      conv({ id: "a2", created_by: MATE, contributors: [{ user_id: MATE }] }),
-      // Not mine, but it names me.
-      conv({
-        id: "a3",
-        created_by: MATE,
-        contributors: [{ user_id: MATE }],
-        mentioned: [{ user_id: ME, at: NEWER }],
-      }),
-    ];
-    deepStrictEqual([...unreadMissionIds(convs, store(), ME)].sort(), [
-      "a1",
-      "a3",
-    ]);
-  });
-
-  it("excludes setup chats and non-activity rows, like the sidebar count", () => {
-    const convs: UnreadConversationInput[] = [
-      conv({ id: "p1", type: "primary", created_by: ME }),
-      conv({ id: "s1", agent: ROUTINE_SETUP_AGENT_MODE, created_by: ME }),
-    ];
-    strictEqual(unreadMissionIds(convs, store(), ME).size, 0);
-  });
-
-  it("marks nothing with nobody signed in", () => {
-    strictEqual(
-      unreadMissionIds([conv({ created_by: ME })], store(), null).size,
-      0,
-    );
-  });
-});
-
-describe("attachMissionUnread", () => {
-  const items: KanbanItem[] = [
-    { id: "a1", title: "One", status: "running", updatedAt: NEWER },
-    { id: "a2", title: "Two", status: "done", updatedAt: NEWER },
-  ];
-
-  it("sets `unread` only on the missions in the set", () => {
-    const out = attachMissionUnread(items, new Set(["a2"]));
-    strictEqual(out[0]?.unread, undefined);
-    strictEqual(out[1]?.unread, true);
-  });
-
-  it("keeps the SAME array reference when nothing is unread", () => {
-    // The single-player / desktop path: no re-render, no new card objects.
-    strictEqual(attachMissionUnread(items, new Set()), items);
-  });
-
-  it("leaves the read items themselves untouched by reference", () => {
-    const out = attachMissionUnread(items, new Set(["a2"]));
-    strictEqual(out[0], items[0]);
-    strictEqual(out[1] === items[1], false);
   });
 });

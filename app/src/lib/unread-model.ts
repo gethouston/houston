@@ -1,4 +1,3 @@
-import type { KanbanItem } from "@houston-ai/board";
 import { isSetupChatMode } from "./integration-chat-setup.ts";
 import {
   isRelevantToMe,
@@ -97,47 +96,4 @@ export function countUnreadByAgentPath(
     counts[conv.agent_path] = (counts[conv.agent_path] ?? 0) + 1;
   }
   return counts;
-}
-
-/**
- * The ids of the missions that are unread FOR ME — the per-card half of the
- * same signal the sidebar counts, so a lit card and a lit agent row can never
- * disagree. Same exclusions as {@link countUnreadByAgentPath} (only `activity`
- * conversations become cards; the agent's primary chat is not a mission).
- *
- * A Set, not a flag on the row: the per-agent board builds its cards from the
- * activity list, which carries no attribution at all, so the unread verdict has
- * to be joined back on by mission id — exactly as the face stacks are.
- */
-export function unreadMissionIds(
-  convs: readonly UnreadConversationInput[],
-  store: ReadCursorStore,
-  selfId: string | null,
-): ReadonlySet<string> {
-  const ids = new Set<string>();
-  for (const conv of convs) {
-    if (conv.type !== "activity") continue;
-    if (isUnreadForMe(conv, store, selfId)) ids.add(conv.id);
-  }
-  return ids;
-}
-
-/**
- * Join the unread verdict onto board items by id. Identity pass-through when
- * nothing is unread, so the items array KEEPS ITS REFERENCE and memoized cards
- * never re-render — which is also what makes single player (where the set is
- * always empty) byte-identical to before this feature.
- *
- * Only sets the key when true: an absent `unread` is what the card reads as
- * "render nothing at all", and writing `unread: false` on every card would
- * churn every item object on every cursor move for no visible difference.
- */
-export function attachMissionUnread(
-  items: KanbanItem[],
-  unreadIds: ReadonlySet<string>,
-): KanbanItem[] {
-  if (unreadIds.size === 0) return items;
-  return items.map((item) =>
-    unreadIds.has(item.id) ? { ...item, unread: true } : item,
-  );
 }

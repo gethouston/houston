@@ -92,7 +92,7 @@ The owner vocabulary (say these words to direct changes):
   fill, light `#efefef`), `chip`/`chip-text` + `chip-subtle` (soft fills).
 - **Lines & focus**: `line` (hairlines), `line-input` (field borders), `focus`.
 - **Status**: `danger`, `success`, `warning`, `highlight` (each with `-text`).
-- Untouched families: `space-*` (the workspace-loading splash + OrbitLoader),
+- Untouched families: `space-*` (the storage-unavailable gate + the cloud-migration OrbitLoader),
   `agent.*` (agent avatar palette),
   `person-*` (HUMAN avatar palette — `slate` / `sage` / `mauve` / `taupe` /
   `indigo` fills, `person-initials`, and the `person-overflow` /
@@ -144,12 +144,14 @@ vocabulary: `bg-background → bg-card → bg-card-hover → bg-popover`, with d
 from HAIRLINE INSET RINGS (`.ht-hairline`), not opaque borders or drop shadows —
 real shadow is reserved for floating chrome (modals/popovers).
 
-### `--ht-space-*` (workspace-loading splash)
+### `--ht-space-*` (space boot surfaces)
 A deliberately **theme-invariant** group — both `color.light.json` and
 `color.dark.json` alias the same `color.space.*` primitives, so the space
 backdrop reads identically in light and dark. It now backs ONLY the
-**workspace-loading splash** (`shell/workspace-loading.tsx`) and the
-`OrbitLoader` / `SuccessCheck` it hosts — the first-run gates, sign-in,
+**storage-unavailable gate** (`auth/storage-unavailable-screen.tsx`) and the
+`OrbitLoader` / `SuccessCheck` (cloud-migration wizard) — the workspace-loading
+splash moved OFF the space theme to a flat themed screen (2026-07, see
+Animation → Workspace loading splash), and the first-run gates, sign-in,
 onboarding, and the cloud-migration wizard moved OFF the space photo to a flat
 light page (see Animation → First-run flow). Feeds the shared
 `SpaceScreen` backdrop (see Animation → Space screen backdrop): `--ht-space-canvas`
@@ -157,8 +159,8 @@ light page (see Animation → First-run flow). Feeds the shared
 `color-mix`) · `-canvas-glow` `#101430` (decode-gradient top) ·
 `-nebula-1` `#38346b` / `-nebula-core` `#b8b2e8` / `-star-warm` `#f6e7cd` —
 the `SuccessCheck` celebratory gradient · `-star` `#dce2f7` (OrbitLoader ring
-+ comet tail) · `-foreground` `#ffffff` (the splash wordmark + loader,
-currentColor) · `-foreground-muted` `#8e96b8` (splash status line).
++ comet tail) · `-foreground` `#ffffff` (space-screen content, currentColor) ·
+`-foreground-muted` `#8e96b8` (status lines on the space surface).
 The `OrbitLoader` rocket + comet trail reuse `-foreground` (pure white, head)
 and `-star` (cool white, tail) — no dedicated comet tokens. (`-nebula-2`,
 `-nebula-dust`, `-haze` were deleted with the procedural nebula/starfield —
@@ -340,12 +342,38 @@ the space/galaxy look is OUT for first-run.
   forced-update dialog title was the casualty that exposed it). Never
   reintroduce a colour token named `base` — the gutter utility is `bg-gutter`.
 
+### Workspace loading splash (screen tokens)
+The workspace-loading splash (`shell/workspace-loading.tsx`) is a flat themed
+surface since 2026-07 — no space theme: full-screen `bg-background canvas-screen`
+(light = the `#fcfcfc` screen, dark = the glass screen over gutter + aurora), a
+`Spinner` from `@houston-ai/core` above the status line, both `text-ink-muted`,
+one entrance (opacity + 8px rise, entrance easing, `elegant` 582ms;
+reduced-motion collapses to opacity-only), plus the local macOS drag region.
+Because the splash is themed, the persisted theme must apply PRE-paint:
+`app/src/lib/theme-boot.ts` mirrors the resolved theme to
+`localStorage["houston.theme.cache"]` on every apply, and `applyBootTheme()`
+runs at module scope in both entries (desktop `app/src/main.tsx`, web
+`packages/web/src/main.tsx`) before React mounts. The engine preference stays
+the source of truth — `loadTheme()` reconciles after the handshake.
+
+One frame lands even earlier: the document itself, before any module runs. Both
+entry documents (`app/index.html`, `packages/web/index.html` — **kept
+identical**) carry the same tiny head block: a `<style>` painting `html`
+`#fcfcfc` (the splash's light screen) and `html[data-theme="dark"]` `#141416`
+(`--ht-base`, the opaque gutter the dark splash's glass sits on), plus a
+parser-blocking inline `<script>` that reads the same `houston.theme.cache` key
+in a `try/catch` and sets `data-theme="dark"` when it says so. No mirror or
+unreadable storage → the light default, same resolution as `applyBootTheme()`.
+Inline is safe on both shells: Tauri's `security.csp` is `null`
+(`app/src-tauri/tauri.conf.json`) and the web's Firebase Hosting CSP is only
+`frame-ancestors 'none'` (`packages/web/firebase.json`). Playwright contexts
+start with empty storage, so the visual suite is unaffected.
+
 ### Space screen backdrop (boot gate states)
 `SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
 full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
 backdrop (the landing page's Milky Way photograph under its readability scrim),
-and a `z-10` content slot on top. Its consumers are the **workspace-loading
-splash** (`components/shell/workspace-loading.tsx`) and the **storage-unavailable
+and a `z-10` content slot on top. Its sole consumer is the **storage-unavailable
 gate** (`components/auth/storage-unavailable-screen.tsx`) — content sits
 directly on the dark backdrop, using the space-foreground token family
 (`--ht-space-foreground` / `-foreground-muted`). The canvas is theme-invariant
@@ -355,8 +383,8 @@ subtree or it turns near-black-on-black in light mode.
 The whole space rendering cluster lives in **`app/src/components/space/`**.
 
 **`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
-`space/orbit-path.ts`) is the loading centrepiece that replaced the old scaled-up
-`HoustonAvatar running` card: a 240px inline-SVG scene — a soft pulsing core
+`space/orbit-path.ts`) is the cloud-migration progress centrepiece (formerly
+also the splash loader): a 240px inline-SVG scene — a soft pulsing core
 (the workspace being assembled), a barely-there tilted elliptical orbit ring
 (`--ht-space-star` @ 0.16), and a rocket ship (a single closed compound `<path>`:
 ogive nose cone, cylindrical body, swept tail fins, tapered engine base) travelling

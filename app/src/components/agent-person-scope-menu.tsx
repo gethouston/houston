@@ -29,14 +29,15 @@ import { usePersonFilterMode } from "./use-person-filter-mode";
 /**
  * The per-agent PERSON SCOPE control that lives in the agent header, beside the
  * Share button (it replaces the old per-agent board toolbar filter). The
- * trigger shows the SELECTED person's face + short name so the default — the
- * signed-in user — teaches that the dropdown exists and is theirs.
+ * trigger shows the SELECTED person's face + short name; on the default —
+ * Everyone — it wears the generic people glyph + "Everyone", the same face the
+ * cross-agent Mission Control filter shows at rest.
  *
- * Menu: me first (my missions), Everyone, then every other contributor on this
- * agent's items, a divider, and a quiet "Invite teammates" row. That last row
- * is not a scope — it opens the SAME share flow as the header Share button
- * ({@link AgentShareSurfaces} keyed by {@link agentShareSurface}), the
- * actionable end of the sharing reminder.
+ * Menu (order owned by {@link buildScopeOptions}): Everyone first, then me (my
+ * missions), then every other contributor on this agent's items, a divider, and
+ * a quiet "Invite teammates" row. That last row is not a scope — it opens the
+ * SAME share flow as the header Share button ({@link AgentShareSurfaces} keyed
+ * by {@link agentShareSurface}), the actionable end of the sharing reminder.
  *
  * Same gate as the cross-agent filter via {@link usePersonFilterMode}: nothing
  * renders off spaces / single-player / signed out.
@@ -74,6 +75,8 @@ export function AgentPersonScopeMenu({
   );
   const options = buildScopeOptions(roster, user.id);
 
+  // Everyone (the default) has no face: a null face makes {@link FilterTrigger}
+  // fall back to its generic people glyph beside the "Everyone" label.
   let activeFace: FilterFace | null = null;
   let activeText = t("dashboard:peopleFilter.everyone");
   if (scope.kind === "me") {
@@ -105,7 +108,14 @@ export function AgentPersonScopeMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {options.map((option) =>
-            option.scope.kind === "me" ? (
+            option.scope.kind === "everyone" ? (
+              <DropdownMenuItem
+                key="everyone"
+                onClick={() => setScope(option.scope)}
+              >
+                {t("dashboard:peopleFilter.everyone")}
+              </DropdownMenuItem>
+            ) : option.scope.kind === "me" ? (
               <DropdownMenuItem
                 key="me"
                 onClick={() => setScope(option.scope)}
@@ -116,13 +126,6 @@ export function AgentPersonScopeMenu({
                 <span className="ml-auto text-ink-muted text-xs">
                   {t("dashboard:peopleFilter.mine")}
                 </span>
-              </DropdownMenuItem>
-            ) : option.scope.kind === "everyone" ? (
-              <DropdownMenuItem
-                key="everyone"
-                onClick={() => setScope(option.scope)}
-              >
-                {t("dashboard:peopleFilter.everyone")}
               </DropdownMenuItem>
             ) : (
               option.person && (

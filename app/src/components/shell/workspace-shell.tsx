@@ -13,7 +13,7 @@ import {
   useIsMobile,
 } from "@houston-ai/core";
 import { TabBar } from "@houston-ai/layout";
-import { Compass, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -308,34 +308,7 @@ export function WorkspaceShell({
                                     agent={currentAgent}
                                     collapsed={compactActions}
                                   />
-                                  <NotificationsBell
-                                    collapsed={compactActions}
-                                  />
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        data-tour-target="appTour"
-                                        variant="ghost"
-                                        size={
-                                          compactActions ? "icon" : "default"
-                                        }
-                                        className="rounded-full"
-                                        onClick={() => setUiTourActive(true)}
-                                        aria-label={t(
-                                          "shell:tabActions.startTour",
-                                        )}
-                                      >
-                                        <Compass className="size-4" />
-                                        {!compactActions &&
-                                          t("shell:tabActions.startTour")}
-                                      </Button>
-                                    </TooltipTrigger>
-                                    {compactActions && (
-                                      <TooltipContent side="bottom">
-                                        {t("shell:tabActions.startTour")}
-                                      </TooltipContent>
-                                    )}
-                                  </Tooltip>
+                                  <NotificationsBell />
                                   {onStartMission && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -572,14 +545,16 @@ export function WorkspaceShell({
               },
               // The "replay the tour" step is a wrap-up pointer at the replay
               // button, so it comes last, right before the outro. It closes the
-              // create-agent dialog opened by the agentStore step above.
+              // create-agent dialog opened by the agentStore step above. The
+              // replay entry point is the Settings > Help row, so the step opens
+              // Settings for its anchor to exist.
               {
                 title: t("shell:uiTour.steps.appTour.title"),
                 body: t("shell:uiTour.steps.appTour.body"),
                 targetSelector: "[data-tour-target='appTour']",
                 onEnter: () => {
                   setCreateAgentDialogOpen(false);
-                  setViewMode(DEFAULT_TAB_ID);
+                  useUIStore.getState().openSettings(null);
                 },
               },
               {

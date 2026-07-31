@@ -91,7 +91,11 @@ export function WebApp({
             <>
               <br />
               <br />
-              <button type="button" style={ui.button} onClick={onChangeEngine}>
+              <button
+                type="button"
+                style={ui.pageButton}
+                onClick={onChangeEngine}
+              >
                 Use a different engine
               </button>
             </>

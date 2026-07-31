@@ -47,10 +47,10 @@ export function AgentPersonScopeProvider({
 }
 
 /**
- * The active per-agent person scope. Returns the default (me) with a no-op
- * setter when rendered outside a provider, so a board mounted without the agent
- * view header (never in practice) degrades to the unfiltered default rather
- * than throwing.
+ * The active per-agent person scope. Returns the default (everyone) with a
+ * no-op setter when rendered outside a provider, so a board mounted without the
+ * agent view header (never in practice) degrades to the unfiltered default
+ * rather than throwing.
  */
 export function useAgentPersonScope(): AgentPersonScopeValue {
   return (

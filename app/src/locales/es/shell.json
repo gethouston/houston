@@ -52,8 +52,7 @@
     }
   },
   "tabActions": {
-    "newMission": "Nueva misión",
-    "startTour": "Guíame"
+    "newMission": "Nueva misión"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Prueba nativa de Sentry activada",

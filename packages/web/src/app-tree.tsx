@@ -33,6 +33,7 @@ import { isIdentityConfigured } from "@houston/app/lib/identity";
 import { initFrontendLogging, logger } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
 import { initSentry } from "@houston/app/lib/sentry";
+import { loadTheme } from "@houston/app/lib/theme";
 import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect, useState } from "react";
@@ -138,6 +139,27 @@ function EngineGate({ children }: { children: ReactNode }) {
 }
 
 /**
+ * Reconcile the theme with the `theme` preference — the source of truth — once
+ * the handshake lands. Mirrors `StartupEffects` in app/src/main.tsx: the
+ * preference reads through `getEngine()`, which throws before the handshake.
+ * The web tree used to skip this entirely, so a web user's saved theme was
+ * never applied and every reload came back light. The pre-boot mirror in
+ * ./main.tsx has already painted the right surface; this settles the preference
+ * over it and refreshes the mirror. Renders nothing; never blocks.
+ */
+function useEngineTheme(): void {
+  useEffect(() => {
+    let cancelled = false;
+    void whenEngineReady().then(() => {
+      if (!cancelled) void loadTheme();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+}
+
+/**
  * Cloud web (identity configured): apply the signed-in account's stored locale
  * WITHOUT blocking any screen. Mounted only once a session exists — signed out,
  * the gateway would 401 the preference reads anyway (and the sign-in screen
@@ -160,6 +182,7 @@ function LocaleSyncOnce() {
 
 // No StrictMode — matches app/src/main.tsx (portal/listener double-mount churn).
 export default function AppTree() {
+  useEngineTheme();
   // Cloud web build (Firebase identity baked in): sign-in is the FIRST screen.
   // The first-run language picker + agreement are desktop/self-host concepts —
   // pre-auth they can't even persist (the gateway 401s preference writes, which

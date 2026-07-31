@@ -75,6 +75,9 @@ interface SettingsRowProps {
   destructive?: boolean;
   /** Stable `data-testid` for rows the UI tests navigate by (label-independent). */
   testId?: string;
+  /** Set false for ACTION rows that resolve in place instead of drilling into
+   *  a sub-screen — the chevron promises navigation. Defaults to true. */
+  chevron?: boolean;
   onClick: () => void;
 }
 
@@ -86,6 +89,7 @@ export function SettingsRow({
   value,
   destructive,
   testId,
+  chevron = true,
   onClick,
 }: SettingsRowProps) {
   return (
@@ -104,7 +108,9 @@ export function SettingsRow({
       {value && (
         <span className="shrink-0 text-sm text-ink-muted">{value}</span>
       )}
-      <ChevronRight className="size-4 shrink-0 text-ink-muted/70 transition-colors group-hover:text-ink-muted" />
+      {chevron && (
+        <ChevronRight className="size-4 shrink-0 text-ink-muted/70 transition-colors group-hover:text-ink-muted" />
+      )}
     </button>
   );
 }

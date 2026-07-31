@@ -3,6 +3,28 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v51 - 2026-07-31
+
+The mission card loses its unread dot. The mark shipped in v39 as the per-card
+half of the shell's unread signal, and on a real board it did not earn its place:
+a filled dot trailing the agent name on a card that already carries a status, a
+running glow, a people stack and three icon actions reads as one more thing to
+decode, not as "there is something new here". The signal is being redesigned from
+the mission card outward, so the dot comes out cleanly rather than sitting in the
+codebase as a shape the redesign has to work around.
+
+Gone from `mission-card`: the `unread-dot` anatomy part, the `unread` state, the
+behavior paragraph describing when it paints, and its a11y clause. `KanbanItem`
+drops the optional `unread` flag and `KanbanCardLabels` drops the `unread` label,
+so `@houston-ai/board` no longer has an unread vocabulary at all.
+
+What STAYS, deliberately: the agent sidebar's unread dot and its per-agent count
+(`agent-list-item`), the Mentions inbox row dot and the toolbar pill's
+outstanding-mention count (`mentions-inbox`), and the per-device read cursors all
+three are measured against. Only the board card's copy of the signal is removed —
+the `mentions-inbox` wording is updated to point at the sidebar rather than at a
+card dot that no longer exists.
+
 ## v50 - 2026-07-30
 
 The board's loop had one click at the start and a menu at the end. A finished

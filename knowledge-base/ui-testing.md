@@ -32,6 +32,16 @@ each rewrites the other's optimized chunks mid-navigation, wedging the sign-in
 server on an endless reload so global-setup times out (passed locally, where the
 cache was warm).
 
+**Parallel agent-task worktrees: ALWAYS override the ports.** `webServer` uses
+`reuseExistingServer` locally, and Playwright only checks that the PORT is open,
+not WHOSE server it is. If another task workspace already has a vite dev server
+on `:1430` (or a fake host on `:4399`), the suite silently runs against that
+FOREIGN worktree's code — symptoms: global-setup times out waiting for "Your
+Agents", the app boots to the wrong gate, absurd run durations. Before running
+e2e in an `_agent-tasks/<id>/` worktree, pick distinct ports:
+`HOUSTON_E2E_WEB_PORT=<p> HOUSTON_E2E_FAKE_HOST_PORT=<q> pnpm test:e2e`
+(the auth server derives `WEB_PORT+5` automatically).
+
 ## Architecture
 
 - **Fake host** (`e2e/fake-host/`) — Node HTTP server. Models the host

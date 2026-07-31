@@ -7,13 +7,13 @@
  * need is the app THEME.
  *
  * How theme is pinned here — and why it is NOT the `houston.pref.theme`
- * preference: the desktop entry (app/src/main.tsx) loads that pref after the
- * engine handshake (`StartupEffects` → `loadTheme` → `applyTheme`), but the WEB
- * entry mounts `NewEngineRoot` (packages/web/src/main.tsx) and its app-tree
- * deliberately does NOT run that bootstrap (App.tsx even notes theme load lives
- * in main.tsx's StartupEffects, not the tree). So under this harness the pref
- * is inert and nothing ever touches `data-theme`. The switch the UI actually
- * reads is `data-theme` on `<html>`: the `@theme inline` token bridge in
+ * preference: both entries do load that pref (desktop `StartupEffects`, web
+ * `useEngineTheme` in app-tree.tsx) — but only ONCE, right after the engine
+ * handshake, which lands long before a spec is ready to shoot. Driving a
+ * baseline through the pref would mean seeding it before boot and re-navigating
+ * per theme; the pin below is a live switch instead. It runs after the shell is
+ * visible, i.e. after that one-shot load, so it always wins. The switch the UI
+ * actually reads is `data-theme` on `<html>`: the `@theme inline` token bridge in
  * ui/core/src/globals.css re-resolves every color utility from it, live, on the
  * consuming element (see theme-pin.spec.ts). We therefore pin it directly —
  * AFTER navigation (an `addInitScript` at document-start races the parser
@@ -36,6 +36,12 @@ export async function pinTheme(page: Page, theme: Theme): Promise<void> {
     const el = document.documentElement;
     if (t === "dark") el.setAttribute("data-theme", "dark");
     else el.removeAttribute("data-theme");
+    // Also align the device-local preference + boot mirror: on web the theme
+    // pref resolves device-locally, so if the one-shot `loadTheme()` lands
+    // AFTER this pin (slow load), it re-applies the SAME theme instead of
+    // silently flipping the baseline back.
+    localStorage.setItem("houston.pref.theme", t);
+    localStorage.setItem("houston.theme.cache", t);
   }, theme);
 }
 

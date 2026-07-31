@@ -2,7 +2,7 @@
  * The mission card's top-right action row: its shared geometry plus the one
  * rule that decides whether a status-gated action shows. Kept pure (no JSX) so
  * the gate is unit-tested without a DOM, the same split as
- * `kanban-card-unread.ts` and `kanban-people-logic.ts`.
+ * `kanban-people-logic.ts`.
  */
 
 /** Shared geometry AND resting colour for the card's top-right action buttons:

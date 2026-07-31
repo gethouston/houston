@@ -154,10 +154,12 @@ test("account usage renders on the hub's Connected row and nowhere else", async 
   // EXACT set of drill-in rows the index carries, so a re-added usage screen
   // fails here whatever it gets called — the old `settings-row-usage` testid no
   // longer exists anywhere, and an assertion on a name nothing can produce
-  // cannot fail. On this gateway that set is Admin + Permissions: Time worked
-  // rides `capabilities.computeUsage`, which the fake host does not advertise.
+  // cannot fail. On this gateway that set is Guide me (the Help action row) +
+  // Admin + Permissions: Time worked rides `capabilities.computeUsage`, which
+  // the fake host does not advertise.
   await openSettings(page);
-  await expect(page.locator('[data-testid^="settings-row-"]')).toHaveCount(2);
+  await expect(page.locator('[data-testid^="settings-row-"]')).toHaveCount(3);
+  await expect(page.getByTestId("settings-row-guide-me")).toBeVisible();
   await expect(settingsRow(page, "organization")).toBeVisible();
   await expect(settingsRow(page, "permissions")).toBeVisible();
   await expect(settingsRow(page, "time-worked")).toHaveCount(0);

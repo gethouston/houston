@@ -36,10 +36,8 @@ import {
 } from "../lib/tauri";
 import { readAgentTurnMode } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
-import { attachMissionUnread } from "../lib/unread-model";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
-import { useBoardUnread } from "./board/use-board-unread";
 import { resolveActivityOverride } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
@@ -111,7 +109,7 @@ export function useMissionControl(agents: Agent[]) {
     return m;
   }, [agents]);
 
-  const builtItems: KanbanItem[] = useMemo(() => {
+  const items: KanbanItem[] = useMemo(() => {
     if (!convos) return [];
     const map: Record<string, string> = {};
     const sessionMap: Record<
@@ -171,17 +169,6 @@ export function useMissionControl(agents: Agent[]) {
     sessionMapRef.current = sessionMap;
     return result;
   }, [convos, agentColorMap, agentMap, getAgentDef, multiplayer, profiles, t]);
-
-  // Per-mission unread marks (HOU-945), joined on as a LAST pass rather than
-  // computed inside the card build: a read cursor moves on every mission open,
-  // and folding it into the build above would rebuild every card (and the
-  // path/session maps) each time. Identity pass-through when nothing is unread,
-  // so single player keeps the exact same array reference.
-  const unreadIds = useBoardUnread(convos);
-  const items = useMemo(
-    () => attachMissionUnread(builtItems, unreadIds),
-    [builtItems, unreadIds],
-  );
 
   // The open conversation's reactive feed, straight from the SDK conversation
   // VM. AIBoard only ever reads `feedItems[activeSessionKey]`, so a

@@ -10,8 +10,8 @@ import { missionMatchesPerson } from "./mission-people.ts";
  * ({@link AgentPersonScopeMenu}) and the board filter ({@link useAgentBoardScope}).
  *
  * Three scopes:
- * - `me` (the DEFAULT): my missions plus anything nobody is stamped on;
- * - `everyone`: no filter at all;
+ * - `everyone` (the DEFAULT): no filter at all;
+ * - `me`: my missions plus anything nobody is stamped on;
  * - `person`: strict membership on one named teammate.
  */
 export type PersonScope =
@@ -20,30 +20,33 @@ export type PersonScope =
   | { kind: "person"; userId: string };
 
 /**
- * The scope every agent board opens on. It is the SIGNED-IN USER, on purpose:
- * the default is the founder's teaching moment — it seeds the trigger with the
- * user's own face + name so they learn the dropdown exists and is theirs,
- * instead of a neutral "Everyone" that hides the control's meaning.
+ * The scope every agent board opens on. It is EVERYONE, on purpose: a board
+ * must open showing all of the agent's work, so nothing a teammate did can be
+ * hidden by a filter the user never chose. Narrowing to yourself is an explicit
+ * act, exactly as on the cross-agent Mission Control board (which has always
+ * opened on Everyone) — one mental model for both boards.
  */
-export const DEFAULT_SCOPE: PersonScope = { kind: "me" };
+export const DEFAULT_SCOPE: PersonScope = { kind: "everyone" };
 
 /**
  * Does this mission belong under `scope` for the signed-in `selfId`?
  *
- * - `everyone`: always — the scope is a no-op, every mission shows.
+ * - `everyone` (the DEFAULT): always — the scope is a no-op, every mission
+ *   shows.
  * - `person`: strict membership on that id, exactly as the cross-agent board
  *   ({@link missionMatchesPerson}).
- * - `me` (the DEFAULT): the mission's face stack includes me, OR the mission
- *   has NO attribution at all (an empty/absent face stack).
+ * - `me`: the mission's face stack includes me, OR the mission has NO
+ *   attribution at all (an empty/absent face stack).
  *
  * The unattributed clause is load-bearing and must never be dropped. Missions
  * created before the gateway stamped `created_by` + `contributors` (legacy /
- * pre-Teams / any unstamped mission) carry no people. Because the board now
- * DEFAULTS to `me`, without this clause every such mission would vanish the
- * instant a user lands on the board — a long-tenured user would see an empty
- * board on day one of this change. Treating "nobody is stamped" as "mine by
- * default" keeps that history visible; a named person filter still excludes it
- * (only `everyone` and `me` show unattributed work).
+ * pre-Teams / any unstamped mission) carry no people, and off multiplayer NO
+ * mission carries any. Without this clause, picking `me` would blank the board
+ * for a long-tenured user and hide every single-player mission. Treating
+ * "nobody is stamped" as "mine by default" keeps that history visible; a named
+ * person filter still excludes it (only `everyone` and `me` show unattributed
+ * work). {@link missionIsMine} reuses the `me` scope for exactly that rule, so
+ * it must stay independent of which scope the board happens to open on.
  */
 export function missionMatchesScope(
   people: KanbanPerson[] | undefined,
@@ -71,11 +74,12 @@ export interface ScopeOption {
 
 /**
  * The ordered scope menu, decided purely so the ordering is testable without
- * React: the signed-in user FIRST (the default, their own face), then Everyone,
- * then every OTHER contributor on this agent's items in roster order (self
- * removed — they are already the first row). The "Invite teammates" affordance
- * is a caller concern (it opens a share flow, not a scope) and is appended by
- * the menu itself, not here.
+ * React: Everyone FIRST (the default, and the widest view — the row you return
+ * to), then the signed-in user, then every OTHER contributor on this agent's
+ * items in roster order (self removed — they are already the second row). Same
+ * order as the cross-agent Mission Control filter. The "Invite teammates"
+ * affordance is a caller concern (it opens a share flow, not a scope) and is
+ * appended by the menu itself, not here.
  */
 export function buildScopeOptions(
   roster: KanbanPerson[],
@@ -83,7 +87,7 @@ export function buildScopeOptions(
 ): ScopeOption[] {
   return [
     { scope: DEFAULT_SCOPE },
-    { scope: { kind: "everyone" } },
+    { scope: { kind: "me" } },
     ...roster
       .filter((p) => p.id !== selfId)
       .map((p) => ({

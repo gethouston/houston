@@ -42,7 +42,7 @@ import {
   storedContributorNames,
 } from "../board/mentions-inbox-view-model";
 
-export function NotificationsBell({ collapsed }: { collapsed?: boolean }) {
+export function NotificationsBell() {
   const { t, i18n } = useTranslation("dashboard");
   const { capabilities } = useCapabilities();
   const agents = useAgentStore((s) => s.agents);
@@ -87,11 +87,10 @@ export function NotificationsBell({ collapsed }: { collapsed?: boolean }) {
             <Button
               aria-label={accessibleLabel}
               className="relative rounded-full"
-              size={collapsed ? "icon" : "default"}
+              size="icon"
               variant="ghost"
             >
-              <Bell className="size-5" />
-              {collapsed ? null : label}
+              <Bell className="size-4" />
               {mentionCount > 0 && (
                 <span
                   aria-hidden
