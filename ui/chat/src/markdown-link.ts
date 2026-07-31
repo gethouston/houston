@@ -38,6 +38,12 @@ export function markdownLinkText(children: unknown): string | null {
     children !== null &&
     "props" in children
   ) {
+    // A hard break inside a link label (agents hard-wrap long URLs with
+    // trailing spaces or a backslash, HOU-1071) renders as a childless
+    // <br> element — line-break hints are whitespace, not "not text".
+    const type = (children as { type?: unknown }).type;
+    if (type === "br") return "\n";
+    if (type === "wbr") return "";
     const props = (children as { props: unknown }).props;
     if (typeof props === "object" && props !== null && "children" in props) {
       return markdownLinkText((props as { children: unknown }).children);

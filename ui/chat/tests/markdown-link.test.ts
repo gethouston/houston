@@ -28,6 +28,16 @@ describe("markdownLinkText", () => {
     );
   });
 
+  it("treats <br>/<wbr> break elements as whitespace, not non-text (HOU-1071)", () => {
+    // A hard break inside a link label renders as a childless <br> element;
+    // returning null here dropped wrapped-URL labels into the clipped pill.
+    assert.equal(
+      markdownLinkText(["https://a.com/x-", { type: "br", props: {} }, "\ny"]),
+      "https://a.com/x-\n\ny",
+    );
+    assert.equal(markdownLinkText({ type: "wbr", props: {} }), "");
+  });
+
   it("returns null for non-text nodes", () => {
     assert.equal(markdownLinkText({ href: "x" }), null);
     assert.equal(markdownLinkText(["text", { type: "img" }]), null);
@@ -87,6 +97,19 @@ describe("classifyMarkdownLink", () => {
         "https://docs.google.com/spreadsheets/d/1JOOOml-rR9Hmali/edit?usp=sharing",
         "https://docs.google.com/spreadsheets/d/1JOOOml-\nrR9Hmali/edit",
       ),
+      "autolink",
+    );
+  });
+
+  it("URL label hard-broken with <br> is an autolink (HOU-1071 live shape)", () => {
+    // Trailing-space / backslash hard breaks render the wrapped label as
+    // [text, <br>, text] — the exact shape from the issue screenshot.
+    assert.equal(
+      classifyMarkdownLink("https://docs.google.com/spreadsheets/d/1JO/edit", [
+        "https://docs.google.com/spreadsheets/d/",
+        { type: "br", props: {} },
+        "\n1JO/edit",
+      ]),
       "autolink",
     );
   });
