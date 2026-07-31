@@ -140,7 +140,7 @@
   "tabs": {
     "store": "Store",
     "custom": "Custom skills",
-    "customEmptyDescription": "Describe what you need and build it together with your agent, add one yourself, or pick a ready-made skill from the library below.",
+    "customEmptyDescription": "Describe what you need and build it together with your agent, or add one yourself.",
     "createSkill": "Create skill"
   },
   "setupChat": {
@@ -152,15 +152,6 @@
     "draftInProgress": "Skill in progress. Pick up where you left off.",
     "discardDraft": "Discard draft",
     "close": "Close"
-  },
-  "library": {
-    "heading": "From Houston's agents",
-    "previewLabel": "Preview {{name}}",
-    "fromAgent": "From the {{agent}} agent",
-    "installedLabel": "Installed",
-    "loading": "Loading skills...",
-    "loadFailed": "Couldn't load the skill library.",
-    "retry": "Retry"
   },
   "global": {
     "pageTitle": "Skills",
@@ -192,6 +183,8 @@
     "manage": {
       "agentsLabel": "Agents with this skill",
       "keepOneAgent": "Keep at least one agent, or use Delete to remove the skill everywhere.",
+      "hasSkillNote": "Has this skill",
+      "shareToManage": "To use this skill with other agents, share it to the workspace. Shared skills keep one version for every agent.",
       "removeConfirmTitle_one": "Remove from {{count}} agent?",
       "removeConfirmTitle_other": "Remove from {{count}} agents?",
       "removeConfirmDescription": "Saving will remove this skill from {{names}}. This cannot be undone.",
@@ -203,7 +196,8 @@
       "modifiedOn": "{{name}} has a modified copy",
       "revert": "Use workspace version",
       "deleteSharedDescription": "This removes the skill from the workspace for every agent. Agents with a modified copy keep their own version.",
-      "shareToWorkspace": "Share to workspace"
+      "shareToWorkspace": "Share to workspace",
+      "disableForAgent": "Disable for this agent"
     },
     "chatPick": {
       "title": "Who should build it with you?",
@@ -218,6 +212,15 @@
   "fromYourAgents": {
     "heading": "From your other agents",
     "installAria": "Add {{name}} to this agent",
-    "installedAria": "{{name}} is already on this agent"
+    "installedAria": "{{name}} is already on this agent",
+    "fromAgent": "From the {{agent}} agent"
+  },
+  "fromWorkspace": {
+    "heading": "From your workspace",
+    "enableAria": "Enable {{name}}",
+    "enabledAria": "{{name}} is enabled",
+    "enable": "Enable",
+    "enabling": "Enabling...",
+    "enabled": "Enabled"
   }
 }

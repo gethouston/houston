@@ -1,11 +1,9 @@
 import { CatalogSearchField, CatalogShell, Spinner } from "@houston-ai/core";
-import { AddSkillDialog } from "@houston-ai/skills";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AgentSkillManageDialog } from "./agent-skill-manage-dialog";
 import { useInstalledSkillsStrip } from "./installed-skills-strip";
 import { useSkillDiscoveryTabs } from "./skill-discovery-tabs";
-import { SkillEditorDialogs } from "./skill-editor-dialogs";
+import { SkillsContentDialogs } from "./skills-content-dialogs";
 import type { SkillsContentProps } from "./skills-content-props";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
 import { useSkillsChatSurface } from "./use-skills-chat-surface";
@@ -75,7 +73,9 @@ export function SkillsContent({
     readOnly,
     onEditSkill: readOnly ? onEditSkill : setManagingSlug,
   });
-  // A row click opens the manage dialog (read-only: the raw modal).
+  // A row click opens the manage dialog (read-only: the raw modal) — the
+  // dialog itself resolves whether the slug is this agent's copy or a
+  // workspace-store skill the manifest enables.
   const { sorted, installedCount, installed } = useInstalledSkillsStrip(
     skills,
     readOnly ? onEditSkill : setManagingSlug,
@@ -96,6 +96,9 @@ export function SkillsContent({
     agent,
     onAddClick: () => setDialogOpen(true),
     onCreateWithAi: chat.startCreate,
+    // The Custom tab's workspace section routes an ACTIVE store skill's row
+    // here — the same manage dialog a strip row opens.
+    onManageSkill: setManagingSlug,
     drafts: chat.drafts,
     onResumeDraft: chat.resumeDraft,
     onDiscardDraft: chat.discardDraft,
@@ -166,34 +169,29 @@ export function SkillsContent({
           {t("grid.noMatchingSkills")}
         </p>
       )}
-      {addDialogProps && (
-        <AddSkillDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          {...addDialogProps}
-          labels={dialogLabels}
-        />
-      )}
-      {managingSlug !== null && !readOnly && (
-        <AgentSkillManageDialog
-          agent={agent}
-          slug={managingSlug}
-          onClose={() => setManagingSlug(null)}
-          onEditInChat={(slug) => {
-            setManagingSlug(null);
-            chat.openChatFor(slug);
-          }}
-        />
-      )}
-      <SkillEditorDialogs
-        editingSkill={editingSkill}
-        editorState={editorState}
+      <SkillsContentDialogs
+        agent={agent}
         readOnly={readOnly}
-        onCloseEdit={onCloseEdit}
-        onSaveEditing={onSaveEditing}
-        onDeleteSkill={onDeleteSkill}
-        editModalLabels={editModalLabels}
-        deleteConfirm={deleteConfirm}
+        addDialogProps={addDialogProps}
+        dialogLabels={dialogLabels}
+        dialogOpen={dialogOpen}
+        onDialogOpenChange={setDialogOpen}
+        managingSlug={managingSlug}
+        onCloseManage={() => setManagingSlug(null)}
+        onEditInChat={(slug) => {
+          setManagingSlug(null);
+          chat.openChatFor(slug);
+        }}
+        editor={{
+          editingSkill,
+          editorState,
+          readOnly,
+          onCloseEdit,
+          onSaveEditing,
+          onDeleteSkill,
+          editModalLabels,
+          deleteConfirm,
+        }}
       />
     </>
   );

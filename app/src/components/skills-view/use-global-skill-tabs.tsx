@@ -3,7 +3,6 @@ import type { CommunitySkill } from "@houston-ai/skills";
 import { SkillMarketplaceSection } from "@houston-ai/skills";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { HoustonLibrarySkill } from "../../lib/houston-skill-library";
 import { skillIntegrationSlugs } from "../../lib/skill-integrations";
 import { tauriSkills } from "../../lib/tauri";
 import { IntegrationBadges } from "../integrations";
@@ -15,9 +14,9 @@ import { GlobalCustomTab } from "./global-custom-tab";
  * {@link SkillMarketplaceSection} the per-agent tab mounts, its search/preview
  * riding ANY owned agent (read-only marketplace proxies; the hosted gateway
  * only proxies agent-scoped routes) — and **Custom skills** — build with an
- * agent, add manually, or pull from the Houston library. Every install routes
- * through the caller's pick-agents flow. No agent → no tabs (the page shows
- * its empty state instead).
+ * agent or add manually. Every install routes through the caller's
+ * pick-agents flow. No agent → no tabs (the page shows its empty state
+ * instead).
  */
 export function useGlobalSkillTabs(opts: {
   /** The agent id the read-only marketplace calls ride; undefined = no tabs. */
@@ -30,8 +29,6 @@ export function useGlobalSkillTabs(opts: {
   custom: {
     onCreateWithAi: () => void;
     onAddClick: () => void;
-    onInstallLibrary: (skill: HoustonLibrarySkill) => void;
-    installing: string | null;
   };
 }): CatalogShellTab[] {
   const { t } = useTranslation("skills");
@@ -90,9 +87,6 @@ export function useGlobalSkillTabs(opts: {
         <GlobalCustomTab
           onCreateWithAi={opts.custom.onCreateWithAi}
           onAddClick={opts.custom.onAddClick}
-          onInstallLibrary={opts.custom.onInstallLibrary}
-          installing={opts.custom.installing}
-          installedSkillNames={opts.installedSkillNames}
         />
       ),
     },

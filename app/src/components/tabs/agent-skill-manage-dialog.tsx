@@ -1,22 +1,22 @@
 import { useMemo } from "react";
 import type { Agent } from "../../lib/types";
-import type { WorkspaceSkillRow } from "../../lib/workspace-skills";
-import { useAgentStore } from "../../stores/agents";
+import type { ManagedSkillRow } from "../skills-view/manage-skill-dialog";
 import { ManageSkillDialog } from "../skills-view/manage-skill-dialog";
+import { useSharedSkillsActions } from "../skills-view/use-shared-skills-actions";
 import { useSkillsViewActions } from "../skills-view/use-skills-view-actions";
 import { useWorkspaceSkills } from "../skills-view/use-workspace-skills";
+import { useAgentSharedSkills } from "./use-agent-shared-skills";
 
 /**
- * The per-agent Skills tab's skill dialog (HOU-792): the SAME manage dialog
- * the global page opens — content, "Agents with this skill" assignment, Edit
- * in chat, Delete — resolved for one clicked slug. Rendered only while a
- * skill is open, so the cross-agent aggregation (one request per agent;
- * hosted mode wakes pods) runs only for an open dialog; until every list has
- * answered the dialog stays closed rather than showing a wrong holder set.
- *
- * The CURRENT agent is pinned first among the holders, so the content shown
- * (and copied to newly assigned agents) is THIS agent's copy — on the tab of
- * Agent B you edit Agent B's version, never a divergent sibling's.
+ * The per-agent Skills tab's skill dialog (HOU-792): the shared manage dialog
+ * scoped to ONE agent — content editing, Edit in chat, and no "Agents with
+ * this skill" section (cross-agent assignment lives ONLY on the global Skills
+ * page). A LOCAL skill's Save writes this agent's copy and Delete removes it
+ * from this agent alone. A WORKSPACE-STORE skill this agent enables (ADR
+ * 0003) opens the same dialog: Save is one store write — an edit of the
+ * original, every agent gets it — and the danger action becomes "Disable for
+ * this agent", a reversible manifest write. The scoping also means only this
+ * agent's skill list is fetched — never the workspace-wide fan-out.
  */
 export function AgentSkillManageDialog({
   agent,
@@ -31,33 +31,55 @@ export function AgentSkillManageDialog({
   /** "Edit in chat" — opens the skill's setup chat in the side panel. */
   onEditInChat: (slug: string) => void;
 }) {
-  const agents = useAgentStore((s) => s.agents);
-  const { rows, loading } = useWorkspaceSkills(agents);
+  const scope = useMemo(() => [agent], [agent]);
+  const { rows, loading } = useWorkspaceSkills(scope);
+  const shared = useAgentSharedSkills(agent.folderPath);
   const actions = useSkillsViewActions();
+  const sharedActions = useSharedSkillsActions(shared.workspaceId);
 
-  const row = useMemo<WorkspaceSkillRow | null>(() => {
+  const row = useMemo<ManagedSkillRow | null>(() => {
     if (loading) return null;
-    const found = rows.find((r) => r.slug === slug);
-    if (!found) return null;
-    const holdsHere = found.agents.some((a) => a.id === agent.id);
-    if (!holdsHere) return found;
+    const local = rows.find((r) => r.slug === slug);
+    if (local) return local;
+    // No local copy: a store skill this agent's manifest enables — manage
+    // the ONE workspace copy, scoped to this agent.
+    const summary = shared.items.find((s) => s.name === slug);
+    if (!summary || !shared.activeSlugs.has(slug)) return null;
     return {
-      ...found,
-      agents: [
-        found.agents.find((a) => a.id === agent.id) ?? found.agents[0],
-        ...found.agents.filter((a) => a.id !== agent.id),
-      ],
+      slug,
+      summary,
+      origin: "shared",
+      agents: [agent],
+      overriddenBy: [],
     };
-  }, [rows, loading, slug, agent.id]);
+  }, [rows, loading, slug, shared.items, shared.activeSlugs, agent]);
 
+  const isShared = row?.origin === "shared";
   return (
     <ManageSkillDialog
       row={row}
-      agents={agents}
+      agents={scope}
+      hideAssignment
       onApply={actions.applySkillChanges}
       onDeleteEverywhere={actions.deleteSkillEverywhere}
       onClose={onClose}
       onEditInChat={(open) => onEditInChat(open.slug)}
+      shared={
+        isShared && shared.workspaceId !== null
+          ? {
+              workspaceId: shared.workspaceId,
+              onApply: sharedActions.applyShared,
+              // Assignment is hidden here, so only onApply (content save) and
+              // the disable path below are reachable; the rest satisfy the
+              // contract with their real implementations.
+              onDelete: (r) => sharedActions.deleteShared(r, scope),
+              onRevert: sharedActions.revertOverride,
+              onEnableAll: (r) => sharedActions.enableForAll(r, scope),
+              onPromote: sharedActions.promoteToShared,
+            }
+          : undefined
+      }
+      onDisableForAgent={isShared ? () => shared.disable(slug) : undefined}
     />
   );
 }

@@ -7,6 +7,7 @@ import {
   resolvePendingActivitySelection,
   shouldArmNotificationNav,
   shouldNavigateOnAppActivation,
+  skillChatNavDecision,
 } from "../src/lib/notification-nav.ts";
 
 const agents: NavAgent[] = [
@@ -225,5 +226,67 @@ describe("shouldNavigateOnAppActivation", () => {
   // mission finished in the background throws the user into that mission.
   it("does not navigate on app activation on Linux/Windows", () => {
     strictEqual(shouldNavigateOnAppActivation(false), false);
+  });
+});
+
+describe("skillChatNavDecision", () => {
+  const base = {
+    prevAgentId: "a1",
+    jobDescriptionTarget: null as string | null,
+    agentId: "a1",
+    skillsHomeViewId: "skills-home",
+  };
+
+  // Regression: "New skill" on the global Skills page opens the setup chat in
+  // the page's own right panel; the chat's turn finishing while backgrounded
+  // armed a nav, and the next bare macOS refocus yanked the user to the
+  // agent's Skills section. Already-hosting surfaces must never be yanked
+  // (HOU-980's rule, extended to skill chats).
+  it("stays put on the global Skills page", () => {
+    strictEqual(
+      skillChatNavDecision({ ...base, prevViewMode: "skills-home" }),
+      "stay",
+    );
+  });
+
+  it("reopens in place on the owning agent's Skills section", () => {
+    strictEqual(
+      skillChatNavDecision({
+        ...base,
+        prevViewMode: "job-description",
+        jobDescriptionTarget: "skills",
+      }),
+      "reopen-in-place",
+    );
+  });
+
+  it("navigates from another agent's Skills section", () => {
+    strictEqual(
+      skillChatNavDecision({
+        ...base,
+        prevViewMode: "job-description",
+        jobDescriptionTarget: "skills",
+        prevAgentId: "a2",
+      }),
+      "navigate",
+    );
+  });
+
+  it("navigates from another Agent Settings sub-target", () => {
+    strictEqual(
+      skillChatNavDecision({
+        ...base,
+        prevViewMode: "job-description",
+        jobDescriptionTarget: "instructions",
+      }),
+      "navigate",
+    );
+  });
+
+  it("navigates from unrelated views (board, chat)", () => {
+    strictEqual(
+      skillChatNavDecision({ ...base, prevViewMode: "activity" }),
+      "navigate",
+    );
   });
 });

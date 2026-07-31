@@ -140,7 +140,7 @@
   "tabs": {
     "store": "Loja",
     "custom": "Habilidades personalizadas",
-    "customEmptyDescription": "Descreva o que você precisa e construa junto com seu agente, adicione você mesmo, ou escolha uma habilidade pronta da biblioteca abaixo.",
+    "customEmptyDescription": "Descreva o que você precisa e construa junto com seu agente, ou adicione você mesmo.",
     "createSkill": "Criar habilidade"
   },
   "setupChat": {
@@ -152,15 +152,6 @@
     "draftInProgress": "Habilidade em construção. Continue de onde parou.",
     "discardDraft": "Descartar rascunho",
     "close": "Fechar"
-  },
-  "library": {
-    "heading": "Dos agentes da Houston",
-    "previewLabel": "Ver {{name}}",
-    "fromAgent": "Do agente {{agent}}",
-    "installedLabel": "Instalada",
-    "loading": "Carregando habilidades...",
-    "loadFailed": "Não foi possível carregar a biblioteca de habilidades.",
-    "retry": "Tentar novamente"
   },
   "global": {
     "pageTitle": "Skills",
@@ -192,6 +183,8 @@
     "manage": {
       "agentsLabel": "Agentes com esta skill",
       "keepOneAgent": "Mantenha pelo menos um agente, ou use Excluir para remover a skill de todos.",
+      "hasSkillNote": "Tem esta skill",
+      "shareToManage": "Para usar esta skill com outros agentes, compartilhe com o espaço. Skills compartilhadas mantêm uma única versão para todos os agentes.",
       "removeConfirmTitle_one": "Remover de {{count}} agente?",
       "removeConfirmTitle_other": "Remover de {{count}} agentes?",
       "removeConfirmDescription": "Ao salvar, esta skill será removida de {{names}}. Isso não pode ser desfeito.",
@@ -203,7 +196,8 @@
       "modifiedOn": "{{name}} tem uma cópia modificada",
       "revert": "Usar versão do espaço",
       "deleteSharedDescription": "Isso remove a skill do espaço de trabalho para todos os agentes. Agentes com uma cópia modificada mantêm a própria versão.",
-      "shareToWorkspace": "Compartilhar com o espaço"
+      "shareToWorkspace": "Compartilhar com o espaço",
+      "disableForAgent": "Desativar para este agente"
     },
     "chatPick": {
       "title": "Quem vai construir com você?",
@@ -218,6 +212,15 @@
   "fromYourAgents": {
     "heading": "Dos seus outros agentes",
     "installAria": "Adicionar {{name}} a este agente",
-    "installedAria": "{{name}} já está neste agente"
+    "installedAria": "{{name}} já está neste agente",
+    "fromAgent": "Do agente {{agent}}"
+  },
+  "fromWorkspace": {
+    "heading": "Do seu espaço",
+    "enableAria": "Ativar {{name}}",
+    "enabledAria": "{{name}} está ativada",
+    "enable": "Ativar",
+    "enabling": "Ativando...",
+    "enabled": "Ativada"
   }
 }
