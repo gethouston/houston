@@ -13,9 +13,11 @@ import {
  * (packages/web), on the host adapter in host mode, against an
  * in-memory fake host (@houston/fake-host) — no real backend, no AI provider.
  *
- * Two web servers boot for a run: the fake host (Node) and vite. The fake
- * host is a single shared process, so the suite is serial (`workers: 1`) and
- * resets host state per test (see support/fixtures.ts).
+ * The suite runs FULLY PARALLEL: every Playwright worker starts its own
+ * in-process fake host on a worker-slot port (see support/fixtures.ts and
+ * `@houston/fake-host` config.ts), so workers never share host state. The
+ * `webServer` fake host below serves only the main process (global-setup's
+ * warm-up); vite is shared by all workers, which is fine once warm.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -24,8 +26,11 @@ export default defineConfig({
   // pay vite's cold on-demand compile inside its assertion budget (see
   // e2e/support/global-setup.ts).
   globalSetup: "./e2e/support/global-setup.ts",
-  fullyParallel: false,
-  workers: 1,
+  fullyParallel: true,
+  // CI runners (ubuntu-latest) have 4 vCPUs; browser tests are wait-bound
+  // enough that one worker per core beats Playwright's 50% default. Locally,
+  // let Playwright pick from the machine's cores.
+  workers: process.env.CI ? 4 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
@@ -46,9 +51,14 @@ export default defineConfig({
     : [["list"]],
   use: {
     baseURL: WEB_URL,
-    trace: "retain-on-failure",
+    // In CI, recording trace + video for every passing test costs real CPU
+    // across hundreds of tests (encode per test, then discarded). `retries: 1`
+    // there means a failure re-runs once with both recorded — diagnostics
+    // survive, the happy path pays nothing. Locally (retries: 0) keep the
+    // record-everything-keep-failures behavior for debugging.
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: process.env.CI ? "on-first-retry" : "retain-on-failure",
   },
   projects: [
     {

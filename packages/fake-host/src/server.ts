@@ -5,10 +5,10 @@
  * `Request -> Response` function) and exposes a lifecycle: `startFakeHost`
  * resolves once the listener is up, and the returned {@link FakeHost} closes it.
  *
- * A single process serves the whole test run — with NO real backend, no AI
- * provider, no credentials. Run standalone with
- * `pnpm --filter @houston/fake-host start`; the Playwright config starts it
- * automatically as a `webServer`.
+ * NO real backend, no AI provider, no credentials. Run standalone with
+ * `pnpm --filter @houston/fake-host start`; the Playwright config starts one
+ * as a `webServer` (for global-setup's warm-up), and each e2e worker starts
+ * its own in-process (e2e/support/fixtures.ts).
  */
 
 import { createServer } from "node:http";

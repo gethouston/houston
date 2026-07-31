@@ -135,9 +135,17 @@ backs that with a real in-memory store, seeded with two missions, and unified wi
 the `/agents/:id/activities` route (same data, as in the real host) so a
 turn flipping a card's status shows up on the board.
 
-**Isolation.** One fake-host process serves the whole run, so the suite is serial
-(`workers: 1`) and `support/fixtures.ts` resets the host (`POST /__test__/reset`)
-before each test.
+**Isolation.** The suite runs fully parallel: every Playwright worker starts its
+OWN in-process fake host (`support/fixtures.ts`) on a worker-slot port —
+`FAKE_HOST_PORT` in `@houston/fake-host` reads Playwright's
+`TEST_PARALLEL_INDEX`, so a worker's specs, seed, and fixtures all resolve
+`FAKE_HOST_URL` to that worker's host with no plumbing. Workers are separate OS
+processes, so their in-memory host state never crosses; within a worker,
+`support/fixtures.ts` resets the host (`POST /__test__/reset`) before each test.
+The `webServer` fake host on the base port only serves the main process
+(global-setup's warm-up). Running several worktrees' suites at once? Space the
+per-worktree `HOUSTON_E2E_FAKE_HOST_PORT` bases ≥ 32 apart so worker slots
+can't overlap.
 
 **CI.** vite dev compiles modules on demand, and Playwright only waits for the dev
 server's port to open, not for it to compile. `support/global-setup.ts` boots the
