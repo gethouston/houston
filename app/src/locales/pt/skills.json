@@ -211,11 +211,15 @@
   "fromYourAgents": {
     "heading": "Dos seus outros agentes",
     "installAria": "Adicionar {{name}} a este agente",
-    "installedAria": "{{name}} já está neste agente"
+    "installedAria": "{{name}} já está neste agente",
+    "fromAgent": "Do agente {{agent}}"
   },
   "fromWorkspace": {
     "heading": "Do seu espaço",
     "enableAria": "Ativar {{name}}",
-    "enabledAria": "{{name}} está ativada"
+    "enabledAria": "{{name}} está ativada",
+    "enable": "Ativar",
+    "enabling": "Ativando...",
+    "enabled": "Ativada"
   }
 }

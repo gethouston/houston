@@ -11,7 +11,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { useLearnings, useSkills } from "../../../hooks/queries";
 import { useCapabilities } from "../../../hooks/use-capabilities";
+import { mergeSharedIntoAgentSkills } from "../../../lib/agent-shared-skills";
 import type { Agent } from "../../../lib/types";
+import { useAgentSharedSkills } from "../use-agent-shared-skills";
 import { type AgentAdminScreen, agentAdminCards } from "./agent-admin-nav.ts";
 
 const ICONS: Record<AgentAdminScreen, LucideIcon> = {
@@ -61,7 +63,15 @@ export function AgentAdminSidebar({
   const { capabilities } = useCapabilities();
   const path = agent.folderPath;
   const { data: skills } = useSkills(path);
+  const shared = useAgentSharedSkills(path);
   const { data: learnings } = useLearnings(path);
+  // The badge counts what the Skills section shows: local skills PLUS the
+  // workspace-store skills this agent's manifest enables (ADR 0003).
+  const skillCount = mergeSharedIntoAgentSkills({
+    local: skills ?? [],
+    shared: shared.items,
+    enabled: shared.activeSlugs,
+  }).skills.length;
   // Flatten the gated card model into one flat, in-order row list — the cards
   // still gate which rows show (single-player drops the access rows); the rail
   // renders them as a single sequence with no group separation.
@@ -71,7 +81,7 @@ export function AgentAdminSidebar({
 
   // Skill / note / people counts render as bare-number badges.
   const badgeCount = (s: AgentAdminScreen): number | undefined => {
-    if (s === "skills" && skills?.length) return skills.length;
+    if (s === "skills" && skillCount) return skillCount;
     if (s === "knowledge" && learnings?.entries.length) {
       return learnings.entries.length;
     }

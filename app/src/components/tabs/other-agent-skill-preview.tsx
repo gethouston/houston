@@ -95,7 +95,7 @@ export function OtherAgentSkillPreview({
       labels={{
         ...marketplaceLabels.preview,
         bySource: () =>
-          t("library.fromAgent", { agent: row?.agents[0]?.name ?? "" }),
+          t("fromYourAgents.fromAgent", { agent: row?.agents[0]?.name ?? "" }),
       }}
     />
   );

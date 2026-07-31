@@ -49,4 +49,12 @@ export interface SkillsContentProps {
     content: string;
   }) => Promise<string>;
   installedSkillNames?: Set<string>;
+  /**
+   * Lowercase slugs in `skills` that live in the WORKSPACE STORE (merged in
+   * because this agent's manifest enables them, ADR 0003). Their strip rows
+   * route to `onOpenSharedSkill` — the workspace preview — never to the
+   * per-agent copy dialog, which has no copy to manage.
+   */
+  sharedSkillSlugs?: Set<string>;
+  onOpenSharedSkill?: (slug: string) => void;
 }
