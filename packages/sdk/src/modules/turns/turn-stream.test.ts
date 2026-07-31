@@ -192,8 +192,9 @@ test("a silent stream close mid-turn reconnects with the cursor and settles on t
   expect(
     (finals(items)[0]?.data as { result?: string } | undefined)?.result,
   ).toBe("Hello");
-  // A clean `done` with NO interaction settles the card to `done`.
-  expect(board).toEqual(["running", "done"]);
+  // A clean `done` with NO interaction still settles the card to `needs_you`
+  // — the engine never writes `done`.
+  expect(board).toEqual(["running", "needs_you"]);
 });
 
 test("a clean done carrying a pending interaction settles needs_you and persists the interaction", async () => {
@@ -288,8 +289,8 @@ test("a resync after the turn ended settles from refreshed history, not partial 
     | undefined;
   expect(final?.result).toBe("Hello world");
   expect(final?.usage?.context_tokens).toBe(42);
-  // Settled from refreshed history (clean, no interaction) → `done`.
-  expect(board).toEqual(["running", "done"]);
+  // Settled from refreshed history (clean, no interaction) → `needs_you`.
+  expect(board).toEqual(["running", "needs_you"]);
 });
 
 test("a resync for a turn that died unpersisted settles from the streamed text", async () => {
@@ -627,7 +628,7 @@ test("observer mode surfaces a running turn (spinner + partial) and settles on d
     registry,
     fast,
   );
-  await waitFor(() => board.includes("done"));
+  await waitFor(() => board.includes("needs_you"));
 
   // The spinner flipped on for the observed turn, then completed.
   expect(sessionStatuses).toEqual(["running", "completed"]);
@@ -637,8 +638,9 @@ test("observer mode surfaces a running turn (spinner + partial) and settles on d
   expect(streaming[0]?.data).toBe("Hi the"); // the sync partial seeded the bubble
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hi there" }]);
-  // Clean observed done, no interaction → `done`; observer never writes "running".
-  expect(board).toEqual(["done"]);
+  // Clean observed done, no interaction → `needs_you`; an observer never
+  // writes "running".
+  expect(board).toEqual(["needs_you"]);
 });
 
 test("observer mode closes silently on an idle conversation", async () => {
@@ -1610,8 +1612,8 @@ test("a transport-failed send whose turn actually started renders and settles no
   // No misleading transport-error line reached the feed.
   expect(items.map((i) => i.data)).not.toContain("Load failed");
   expect(items.map((i) => i.data)).not.toContain(SEND_LOST_MESSAGE);
-  // Clean `done`, no interaction → `done`.
-  expect(board).toEqual(["running", "done"]);
+  // Clean `done`, no interaction → `needs_you`.
+  expect(board).toEqual(["running", "needs_you"]);
 });
 
 test("a transport-failed send with no evidence of the turn settles as lost after the verdict window", async () => {
@@ -1724,13 +1726,13 @@ test("a turn that finished before the first sync settles from history via the po
   });
   expect(sessionStatuses).toEqual(["running", "completed"]);
   // The board leaves "running" — the card no longer eats Escape.
-  expect(board).toEqual(["running", "done"]);
+  expect(board).toEqual(["running", "needs_you"]);
 });
 
-test("a pre-settled ask_user turn recovers its persisted interaction: needs_you, not a false done", async () => {
+test("a pre-settled ask_user turn recovers its persisted interaction onto the needs_you settle", async () => {
   // The mid-interview shape under the race: the turn ended asking the user and
   // completed before we attached. The runtime persists the interaction ON the
-  // reply, so the poll's history settle must split to needs_you and carry it.
+  // reply, so the poll's history settle must carry it onto the terminal persist.
   const interaction: PendingInteraction = {
     steps: [
       {
@@ -1819,7 +1821,7 @@ test("the poll does NOT settle a healthy slow turn (trailing user in history), t
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "slow reply" }]);
   expect(sessionStatuses).toEqual(["running", "completed"]);
-  expect(board).toEqual(["running", "done"]);
+  expect(board).toEqual(["running", "needs_you"]);
 });
 
 test("dispose clears an armed pre-settled poll — teardown leaves nothing pending", async () => {

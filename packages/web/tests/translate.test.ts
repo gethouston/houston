@@ -39,11 +39,11 @@ function collectFeed(): { items: unknown[]; stop: () => void } {
 
 // THE REGRESSION: a completed turn's board status must reach the injected
 // (cloud-aware) setter — NOT a localStorage write the board never reads. Before
-// the fix, `done` flipped the card in localStorage while the board read the
-// host, so the card hung in "running" forever. A clean turn with nothing
-// outstanding now settles to `done` (needs_you is reserved for a turn that
-// ended asking the user for something).
-test("a completed turn drives the activity setter running -> done", async () => {
+// the fix, the terminal status flipped the card in localStorage while the board
+// read the host, so the card hung in "running" forever. Every clean finish now
+// settles `needs_you` (the engine never writes `done`; that move belongs to the
+// user alone).
+test("a completed turn drives the activity setter running -> needs_you", async () => {
   const statuses: string[] = [];
   const setStatus = async (s: string) => {
     statuses.push(s);
@@ -62,7 +62,7 @@ test("a completed turn drives the activity setter running -> done", async () => 
   );
   feed.stop();
 
-  expect(statuses).toEqual(["running", "done"]);
+  expect(statuses).toEqual(["running", "needs_you"]);
   // The agent's text reached the feed as a final result (the turn really ran).
   expect(
     feed.items.some(
@@ -167,7 +167,7 @@ test("historyToFeed emits no final_result when the message has no usage", () => 
 // the beta no-silent-failure rule.
 test("a failing status persist surfaces in the feed, not silently", async () => {
   const setStatus = async (s: string) => {
-    if (s === "done") throw new Error("host unreachable");
+    if (s === "needs_you") throw new Error("host unreachable");
   };
   const feed = collectFeed();
 

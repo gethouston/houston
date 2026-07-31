@@ -2,6 +2,7 @@
   "cardActions": {
     "approve": "Mover a Listo",
     "approveTooltip": "Mover a Listo",
+    "archiveTooltip": "Archivar",
     "renameTooltip": "Cambiar título",
     "deleteTooltip": "Eliminar",
     "select": "Seleccionar misión",

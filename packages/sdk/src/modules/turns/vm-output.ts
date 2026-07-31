@@ -23,8 +23,9 @@ import type {
  * settle apart from a real failure: a user Stop (and a logged-out provider)
  * settles `sessionStatus === "error"` but `boardStatus === "needs_you"`, so a
  * native shell keying off `sessionStatus` alone would render a normal Stop red.
- * Read the pair: `boardStatus` `needs_you` = handled / your attention, `error` =
- * a genuine failure. `sessionStatus` semantics are unchanged, for web parity.
+ * Read the pair: `boardStatus` `needs_you` = handled / your attention (every
+ * clean finish included — a turn ending never closes a mission), `error` = a
+ * genuine failure. `sessionStatus` semantics are unchanged, for web parity.
  */
 
 /**
@@ -134,9 +135,9 @@ export interface ConversationVM {
   /**
    * The persisted board-card status (the `persistBoardStatus` seam), or `null`
    * before any turn ran. Handled-vs-error lives HERE: `needs_you` = handled /
-   * attention (a user Stop, or a clean turn that ended asking the user for
-   * something, settles here), `done` = a clean turn with nothing outstanding,
-   * `error` = a real failure.
+   * attention (EVERY settled turn that is not a real failure — a clean finish,
+   * a turn that ended asking the user for something, a user Stop), `error` = a
+   * real failure. A turn never writes `done`; only the user moves a card there.
    */
   boardStatus: BoardStatus | null;
   /**

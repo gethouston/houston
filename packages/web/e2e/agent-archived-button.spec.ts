@@ -15,15 +15,21 @@ test("the Activity archived button swaps to archived missions and back", async (
   });
   await page.goto("/");
 
-  const archived = page.getByRole("button", { name: "Archived" });
+  const archived = page.getByRole("button", { name: "Archived", exact: true });
   await expect(archived).toBeVisible();
   await expect(page.getByText("Quarterly review")).toHaveCount(0);
 
   await archived.click();
   await expect(page.getByText("Quarterly review")).toBeVisible();
 
-  await archived.click();
+  // Entry and exit are separate, labelled controls: the floating Archived pill
+  // is gone from the archive, and the header's back button is the way home.
+  await expect(archived).toHaveCount(0);
+  const back = page.getByRole("button", { name: "Back to missions" });
+  await expect(back).toBeVisible();
+  await back.click();
   await expect(page.getByText("Quarterly review")).toHaveCount(0);
+  await expect(archived).toBeVisible();
 });
 
 test("switching tabs resets the archived view", async ({ page, request }) => {
@@ -32,7 +38,7 @@ test("switching tabs resets the archived view", async ({ page, request }) => {
   });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Archived" }).click();
+  await page.getByRole("button", { name: "Archived", exact: true }).click();
   await expect(page.getByText("Reset me")).toBeVisible();
   await page.locator('[data-tour-target="tab-files"]').click();
   await page.locator('[data-tour-target="tab-activity"]').click();

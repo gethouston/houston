@@ -2,6 +2,7 @@
   "cardActions": {
     "approve": "Move to done",
     "approveTooltip": "Move to done",
+    "archiveTooltip": "Archive",
     "renameTooltip": "Change title",
     "deleteTooltip": "Delete",
     "select": "Select mission",

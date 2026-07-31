@@ -711,8 +711,8 @@ export type InteractionStep =
   | { kind: "plan_ready"; id: string; summary: string }
   /** The model finished cleanly and offers to save the just-completed work as a
    *  reusable Skill, a scheduled Routine, or a Learning to remember. Optional and
-   *  dismissible: unlike the other kinds, a lone `suggest_reusable` step does NOT
-   *  flip the board to `needs_you` (the mission genuinely finished). Mirrors
+   *  dismissible; a non-blocking offer the settled card renders. Steps never pick
+   *  the board status — a clean finish always settles `needs_you`. Mirrors
    *  `packages/protocol/src/domain/interaction.ts`. */
   | {
       kind: "suggest_reusable";
@@ -721,8 +721,8 @@ export type InteractionStep =
       title: string;
       rationale: string;
     }
-  /** Optional, concrete follow-up actions after a clean finish. A lone actions
-   * offer, or one alongside suggest_reusable, does not flip the board to needs_you. */
+  /** Optional, concrete follow-up actions after a clean finish. A non-blocking
+   * offer the settled card renders; it never affects which status the turn settles. */
   | {
       kind: "suggest_actions";
       id: string;

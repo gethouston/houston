@@ -7,7 +7,12 @@
 
 import type { PendingInteraction } from "@houston/protocol";
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
-import { applyBulkPatch, applyBulkRemove, applyRemove } from "./activity-bulk";
+import {
+  applyActivityPatch,
+  applyBulkPatch,
+  applyBulkRemove,
+  applyRemove,
+} from "./activity-bulk";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
 
 /** Every status a mission can have. Mirrors the `status` enum in
@@ -52,10 +57,18 @@ export interface ActivityUpdate {
   skill_slug?: string;
   provider?: string;
   model?: string;
-  /** Clear the persisted pending interaction (the board card leaves "Needs
-   *  you"). Only `null` is meaningful — it DELETES the key; the schema has no
-   *  null type, so `update()` removes it rather than writing `null`. */
-  pending_interaction?: null;
+  /**
+   * The mission's persisted pending interaction.
+   *  - a VALID interaction object REPLACES the stored one (per-step dismissal
+   *    writes back the remaining steps, so dismissing one offer never kills its
+   *    sibling).
+   *  - `null` CLEARS it — the key is DELETED rather than written as `null`,
+   *    since the schema has no null type.
+   *  - absent — or malformed, which reads the same — leaves it alone, EXCEPT on
+   *    a `status: "done"` patch, which strips the blocking steps and keeps the
+   *    clean-finish offers (see `applyActivityPatch`).
+   */
+  pending_interaction?: PendingInteraction | null;
 }
 
 const NAME = "activity";
@@ -97,16 +110,10 @@ export async function update(
   const items = await list(agentPath);
   const idx = items.findIndex((a) => a.id === id);
   if (idx === -1) throw new Error(`Activity not found: ${id}`);
-  // `pending_interaction: null` clears the pending interaction. The schema has
-  // no null type, so spreading `null` would fail validation — DELETE the key
-  // instead (matches the host's domain `applyActivityUpdate` null semantics).
-  const { pending_interaction, ...rest } = patch;
-  const merged: Activity = {
-    ...items[idx],
-    ...rest,
-    updated_at: now(),
-  };
-  if (pending_interaction === null) delete merged.pending_interaction;
+  // ONE merge rule, shared with the bulk path and mirroring the host's domain
+  // `applyActivityUpdate` (clear on null, replace on an object, strip the
+  // blocking steps on a move to done).
+  const merged = applyActivityPatch(items[idx], patch, now());
   const next = [...items];
   next[idx] = merged;
   await writeAgentJson(agentPath, NAME, s, next);

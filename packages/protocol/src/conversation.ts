@@ -354,21 +354,22 @@ export interface ChatMessage {
    */
   providerError?: ProviderError;
   /**
-   * What this turn ended waiting on the user for (ask_user / request_connection),
-   * persisted ONLY when the turn ended clean (no provider error, not thrown) —
+   * What this turn ended on — a question / connect the user has to answer
+   * (ask_user / request_connection), or an optional clean-finish offer —
+   * persisted ONLY when the turn ended clean (no provider error, not thrown):
    * the exact condition that attaches it to the terminal `done` wire frame. A
    * client that MISSES the live `done` (connection blip / observer reload) and
-   * settles from this history reads the interaction here and lands the board
-   * card on `needs_you`, instead of dropping the question/connect card to a
-   * false `done`. Absent when the turn ended with nothing outstanding.
+   * settles from this history reads the interaction here, so its `needs_you`
+   * card renders exactly what the live frame would have shown instead of a bare
+   * finish. Absent when the turn ended with nothing outstanding.
    */
   pendingInteraction?: PendingInteraction;
   /**
    * Set on the assistant message when the user interrupted this turn — the Stop
    * button, or dismissing the composer-replacing interaction card. Persisted so
    * the standard "Stopped by user" line survives a history reload, and so the
-   * board-status derivation on reload settles the turn to `needs_you` instead of
-   * a false `done`. Absent on turns that ran to completion.
+   * reload derivation renders the interruption instead of a plain successful
+   * finish. Absent on turns that ran to completion.
    */
   stopped?: true;
 }

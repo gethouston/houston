@@ -27,14 +27,14 @@ export type { PendingInteraction } from "@houston/runtime-client";
 export type SessionStatusValue = "starting" | "running" | "completed" | "error";
 
 /**
- * Terminal board-card status, persisted once the turn settles. A clean turn
- * splits on its pending interaction: it ended asking the user for something
- * (ask_user / connect) → `needs_you` and the interaction rides the persist;
- * it ended with nothing outstanding → `done`. A handled non-success (user Stop,
- * logged-out provider) also lands `needs_you` (never carrying an interaction);
- * a real failure is `error`.
+ * Terminal board-card status, persisted once the turn settles. Two values, and
+ * `done` is deliberately NOT one of them: the engine never closes a mission —
+ * only the user moves a card to done. A clean turn lands `needs_you` (carrying
+ * its pending interaction, blocking or offer-only, when it ended on one), as
+ * does a handled non-success (user Stop, logged-out provider — those never
+ * carry an interaction); a real failure is `error`.
  */
-export type TerminalBoardStatus = "needs_you" | "error" | "done";
+export type TerminalBoardStatus = "needs_you" | "error";
 
 /** Board-card statuses a streamed turn writes: running in flight, then terminal. */
 export type BoardStatus = "running" | TerminalBoardStatus;
@@ -58,8 +58,9 @@ export interface FeedOutput {
   /**
    * Persist the board-card status through the host's (cloud-aware) seam.
    * `pendingInteraction` rides the terminal persist: the interaction a clean
-   * turn ended on (drives `needs_you`), or `null` to clear it (turn start, and
-   * every settle that carries no interaction). Omitted is treated as `null`.
+   * turn ended on (what the `needs_you` card renders), or `null` to clear it
+   * (turn start, and every settle that carries no interaction). Omitted is
+   * treated as `null`.
    */
   persistBoardStatus(
     agentPath: string,

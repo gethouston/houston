@@ -16,6 +16,21 @@ const COLUMN_STATUSES = {
   done: ["done"],
 } as const;
 
+/** Statuses whose cards offer the "Move to done" checkmark. It is exactly the
+ *  Needs you column's contents: the engine parks finished work there whether
+ *  the turn settled cleanly (`needs_you`) or blew up (`error`), and only the
+ *  user moves a mission on to Done, so an errored mission needs the same
+ *  one-click finish as any other. */
+export const MISSION_APPROVE_STATUSES = [...COLUMN_STATUSES.needs_you];
+
+/** Statuses whose cards offer the one-click archive box. It is exactly the
+ *  Done column's contents: once the user has signed a mission off, the only
+ *  move left is filing it away, so the card that ends the board's loop gets the
+ *  same single click that got it there. Deliberately disjoint from
+ *  {@link MISSION_APPROVE_STATUSES} — a mission still waiting on the user must
+ *  be dealt with before it can be hidden. */
+export const MISSION_ARCHIVE_STATUSES = [...COLUMN_STATUSES.done];
+
 export function buildMissionBoardColumns(
   labels: MissionBoardColumnLabels,
   onNewMission: () => void,

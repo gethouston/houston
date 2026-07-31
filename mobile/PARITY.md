@@ -20,7 +20,19 @@ Unknown statuses are preserved and rendered neutrally. New activities are create
 | Type | Values | Meaning |
 |---|---|---|
 | `SessionStatusValue` | `starting` \| `running` \| `completed` \| `error` | Drives spinner (`running`), settle (`completed`), failure (`error`). `starting` is legacy — TS machinery never emits it. |
-| `BoardStatus` | `running` \| `needs_you` \| `error` \| `done` | Persisted board-card status once a turn settles. `done` = a clean turn with nothing outstanding (`TerminalBoardStatus`). iOS `BoardStatus` decodes only `running`/`needs_you`/`error` explicitly and folds `done` (+ any future terminal string) to `.unknown`, which every consumer treats as "no special status" — this keeps decoding forward-compatible without forcing a case onto the exhaustive `MissionState` switch. |
+| `BoardStatus` | `running` \| `needs_you` \| `error` \| `done` | Persisted board-card status. **A settling turn only ever writes `running`/`needs_you`/`error`** — every clean finish lands `needs_you`, a real failure `error`. `done` is in the union because the USER can write it (see below), never because a turn settles there. iOS `BoardStatus` decodes only `running`/`needs_you`/`error` explicitly and folds `done` (+ any future terminal string) to `.unknown`, which every consumer treats as "no special status" — this keeps decoding forward-compatible without forcing a case onto the exhaustive `MissionState` switch. |
+
+### THE settle rule — the engine never settles `done`
+There is no clean-turn split. `packages/sdk/src/modules/turns/turn-settle.ts` `finishOk` always
+sets `needs_you`, whether or not the `done` wire frame carried a `pendingInteraction`, and
+whether that interaction holds blocking steps (`ask_user`/`request_connection`/`plan_ready`) or
+only the optional `suggest_actions`/`suggest_reusable` offers. The interaction says what the
+settled card RENDERS, not which status it lands on. So `needs_you` = "finished (or blocked, or
+errored) and awaiting the user's review", and needs-you badges deliberately count every such
+mission — that set is the review inbox. Closing a mission is a USER action (card checkmark, drag
+into Done, bulk move), and it celebrates (confetti on desktop). A user move to `done` strips the
+blocking steps but KEEPS the offers, so suggestion bubbles still render on a Done card — and on
+archived surfaces. A surface must never auto-close a mission on settle.
 
 ### THE critical needs_you-vs-error rule
 `packages/sdk/src/modules/turns/vm-output.ts:36-47`: a user **Stop** (and a logged-out provider)
@@ -59,7 +71,9 @@ Left-to-right order and status→column mapping (single source of truth):
 ### Card color/glow semantics — `ui/board/src/kanban-card.tsx`
 - `running` → `card-running-glow` animated conic border + blue shadow `rgba(59,130,246,0.12)`.
 - `error` → `border-danger/60`.
-- `needs_you` → renders the Approve check button ("Move to done").
+- `needs_you` **and `error`** → render the Approve check button ("Move to done"). The offer set is
+  exactly the Needs you column's contents (`MISSION_APPROVE_STATUSES`): an errored mission needs the
+  same one-click finish as a cleanly settled one.
 - selected/highlighted → `bg-hover`.
 
 ## 2. Archive semantics

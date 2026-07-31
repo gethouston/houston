@@ -17,6 +17,9 @@
  * duplicate the encoding + feed-push logic in two places.
  */
 
+// Subpath import (like `lib/active-interaction.ts`): value imports from the
+// package index only resolve under bundler resolution.
+import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
@@ -180,6 +183,7 @@ import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
+import { usePersistedInteraction } from "./use-persisted-interaction";
 import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
 import { UserSkillMessage } from "./user-skill-message";
 
@@ -202,6 +206,15 @@ interface UseAgentChatPanelArgs {
    *  so the live composer must match. Omit to keep today's behavior exactly
    *  (seed the global default, then load the agent's remembered mode). */
   initialTurnMode?: TurnMode;
+  /** Fires after a send THIS HOOK owns LANDS — every one that bypasses the
+   *  surface's own `onSendMessage`: an interaction offer (suggested-action
+   *  bubble, completed stepper, accepted save-as-reusable, plan-ready choice)
+   *  and a Skill submitted into an existing conversation. Each starts a turn,
+   *  which re-activates an ARCHIVED mission, so a surface that must react to
+   *  that (the archived views, which have to hand the user off to the active
+   *  board) wires its handoff here. Never called when the send fails — the
+   *  failure surfaces on its own and the user stays where they are. */
+  onSendReactivated?: () => void;
 }
 
 interface AgentChatPanelProps {
@@ -218,6 +231,14 @@ interface AgentChatPanelProps {
    *  free-text row pass `"replace"` (the composer is not rendered under them),
    *  while suggestion offers pass `"above"`. */
   composerOverrideMode: AIBoardProps["composerOverrideMode"];
+  /** {@link composerOverride} narrowed to the NON-BLOCKING clean-finish offers
+   *  (mode `"above"`), for the archived surfaces. Archiving a mission does not
+   *  answer what it was waiting on, so a mission archived mid-question still
+   *  carries blocking steps — and a composer-REPLACING stepper inside a
+   *  read-mostly archived list is a dead end. The offers are welcome there:
+   *  acting on one sends a message, which re-activates the mission like any
+   *  other send. Pair it with `composerOverrideMode="above"`. */
+  offersComposerOverride: AIBoardProps["composerOverride"];
   /** Submit can run the selected Skill without extra text. */
   canSendEmpty: AIBoardProps["canSendEmpty"];
   /** Intercepts composer submit while a Skill is selected. */
@@ -282,6 +303,7 @@ export function useAgentChatPanel({
   onSelectSession,
   draftScope,
   initialTurnMode,
+  onSendReactivated,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "teams"]);
   const { processLabels, getThinkingMessage, thinkingIndicator } =
@@ -912,6 +934,14 @@ export function useAgentChatPanel({
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
 
+  // Both consumer callbacks live in refs so the send callbacks that fire them
+  // don't re-create (and re-render the override cards) every time the consumer
+  // passes a fresh closure.
+  const onSendReactivatedRef = useRef(onSendReactivated);
+  useEffect(() => {
+    onSendReactivatedRef.current = onSendReactivated;
+  }, [onSendReactivated]);
+
   const onSelectSessionRef = useRef(onSelectSession);
   useEffect(() => {
     onSelectSessionRef.current = onSelectSession;
@@ -969,6 +999,12 @@ export function useAgentChatPanel({
           // the teammates they named there must ride too (HOU-944).
           mentions,
         });
+        // Landed, so the turn is starting: an ARCHIVED mission has just been
+        // re-activated by it, exactly as an interaction offer would. A throw
+        // above skips this and propagates to the composer's own error path.
+        // (Only this branch — the `else` CREATES a mission, which is never
+        // archived, and `onSelectSession` already moves the user to it.)
+        onSendReactivatedRef.current?.();
       } else {
         // New conversation: createMission with `title` override so the
         // kanban card reads "Research a company" instead of the marker.
@@ -1063,13 +1099,22 @@ export function useAgentChatPanel({
           effortOverride: effectiveEffort,
           modeOverride: turnMode,
         })
-        .catch((err) => {
-          addToast({
-            title: t("chat:composio.followupFailed", { name: appName }),
-            description: genericErrorDescription("integration_followup", err),
-            variant: "error",
-          });
-        });
+        // Two-arg `then`, not `.then().catch()`: the rejection handler stays
+        // exclusive to the SEND, so a throw inside the handoff callback is
+        // never reported as a failed follow-up.
+        .then(
+          // The nudge starts a turn, so an ARCHIVED mission has just been
+          // re-activated by it — move the user with it (`useArchivedHandoff`),
+          // exactly as the interaction sends do.
+          () => onSendReactivatedRef.current?.(),
+          (err: unknown) => {
+            addToast({
+              title: t("chat:composio.followupFailed", { name: appName }),
+              description: genericErrorDescription("integration_followup", err),
+              variant: "error",
+            });
+          },
+        );
     },
     [
       path,
@@ -1102,12 +1147,29 @@ export function useAgentChatPanel({
   // The one thing the mission is waiting on the user for: the live VM
   // interaction if this client settled the turn, else the activity's persisted
   // one (reload / observer). Gated on `running` so a fresh turn's composer wins
-  // and the card disappears the instant the user answers.
-  const activeInteraction = deriveActiveInteraction({
-    running: turnRunning,
-    live: conversationVm?.pendingInteraction,
-    persisted: selectedActivity?.pending_interaction,
-  });
+  // and the card disappears the instant the user answers, and on the mission's
+  // board status so a card the user moved to Done shows the clean-finish offers
+  // and never a blocking stepper — the same strip the write seams persist, so
+  // the live view and a reload agree.
+  //
+  // Memoized because the Done strip can mint a new object: the override memo
+  // below keeps the stepper's in-progress outcomes in its body and must not
+  // recompute on an unrelated render.
+  const activeInteraction = useMemo(
+    () =>
+      deriveActiveInteraction({
+        running: turnRunning,
+        live: conversationVm?.pendingInteraction,
+        persisted: selectedActivity?.pending_interaction,
+        missionStatus: selectedActivity?.status,
+      }),
+    [
+      turnRunning,
+      conversationVm?.pendingInteraction,
+      selectedActivity?.pending_interaction,
+      selectedActivity?.status,
+    ],
+  );
 
   // A stable key for the CURRENT pending interaction. There is no single id on a
   // PendingInteraction (only on its individual steps), so the step ids joined in
@@ -1120,22 +1182,42 @@ export function useAgentChatPanel({
   // existing follow-up send path; the turn start clears the interaction, so the
   // card retires through the same reactivity. A failure surfaces (no silent
   // swallow) — the composer is gone, so a toast is the only channel left.
+  //
+  // This is the ONE send every interaction card routes through (stepper
+  // completion, suggested-action bubble, save-as-reusable, plan-ready), so all
+  // four report through `onSendReactivated` from here. It is not the only send
+  // this hook owns, and EVERY one of them reports: the Skill submit above, the
+  // integration-connected nudge, and the two error-card retries in
+  // `renderSystemMessage` each fire the callback from their own await/handler.
+  // A send that starts a turn re-activates an archived mission, so a send that
+  // stays silent strands the user on a list the conversation just left.
+  //
+  // `mode` overrides the composer's pinned Mode for the one send: a suggested
+  // follow-up action asks the agent to DO the thing, so it runs in `execute`
+  // like the save-as-reusable send, never in plan. Omitted → the pinned mode
+  // (an answered question resumes the turn the user was already having).
   const sendInteractionMessage = useCallback(
-    (text: string) => {
+    (text: string, mode?: TurnMode) => {
       if (!path || !selectedSessionKey) return;
       tauriChat
         .send(path, text, selectedSessionKey, {
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
-          modeOverride: turnMode,
+          modeOverride: mode ?? turnMode,
         })
-        .catch((err) => {
-          addToast({
-            title: t("chat:errors.sessionStart", { error: String(err) }),
-            variant: "error",
-          });
-        });
+        // Two-arg `then`, not `.then().catch()`: the rejection handler must stay
+        // exclusive to the SEND, or a throw inside the handoff callback would
+        // be reported to the user as a failed message.
+        .then(
+          () => onSendReactivatedRef.current?.(),
+          (err: unknown) => {
+            addToast({
+              title: t("chat:errors.sessionStart", { error: String(err) }),
+              variant: "error",
+            });
+          },
+        );
     },
     [
       path,
@@ -1217,38 +1299,18 @@ export function useAgentChatPanel({
     setAbandonedInteractionKey(null);
   }, [turnRunning]);
 
-  // Clear the PERSISTED pending interaction on the open activity so its card
-  // never reappears on reload, then repaint the board + transcript. Used both by
-  // the interrupt (dismissActiveInteraction, with a stop marker) and by the lone
-  // suggest_reusable "Not now" (the mission genuinely finished — no marker). The
-  // activity write does NOT self-toast (it's the data layer, not a `call()`), so
-  // a failure surfaces here; the query invalidations are the AI-native repaint
-  // (the runtime transcript write does not fire a chat-history event on its own).
-  // Keyed on the STABLE `selectedActivityId` string (not the `selectedActivity`
-  // object), so an activity-query refetch mid-sequence never gives this callback
-  // a new reference — which would recompute the composerOverride memo and RESET
-  // the in-progress connect/credential outcome maps the user is walking.
-  const clearPersistedInteraction = useCallback(async () => {
-    if (!path) return;
-    if (selectedActivityId) {
-      try {
-        await tauriActivity.update(path, selectedActivityId, {
-          pending_interaction: null,
-        });
-      } catch (err) {
-        addToast({
-          title: t("chat:errors.interactionDismissFailed"),
-          description: genericErrorDescription("interaction_dismiss", err),
-          variant: "error",
-        });
-      }
-    }
-    queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
-    if (selectedSessionKey)
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.chatHistory(path, selectedSessionKey),
-      });
-  }, [path, selectedActivityId, selectedSessionKey, queryClient, addToast, t]);
+  // Writes to the open mission's PERSISTED pending interaction, so a dismissed
+  // card never reappears on reload: a blanket clear for the interrupt
+  // (dismissActiveInteraction, with a stop marker) and a per-step drop for the
+  // independent clean-finish offers (dismissing the bubbles must not take the
+  // save-as-reusable card with them). Both persist, then repaint the board +
+  // transcript — see `use-persisted-interaction.ts`.
+  const { clearPersistedInteraction, dismissInteractionStep } =
+    usePersistedInteraction({
+      agentPath: path,
+      activityId: selectedActivityId,
+      sessionKey: selectedSessionKey,
+    });
 
   // The stepper's X on ANY step kind (question/signin/connect/credential): "the
   // user interrupted, nothing was decided" — exactly a Stop. Hide the card at
@@ -1276,32 +1338,12 @@ export function useAgentChatPanel({
   // suppress flags): the plan approval is a real user turn.
   const startPlan = useCallback(
     (mode: TurnMode, text: string) => {
-      if (!path || !selectedSessionKey) return;
+      // No path / session guard here: `sendInteractionMessage` owns that check,
+      // and the card only renders on an open conversation anyway.
       void handleModeSelect(mode);
-      tauriChat
-        .send(path, text, selectedSessionKey, {
-          providerOverride: effectiveProvider,
-          modelOverride: effectiveModel,
-          effortOverride: effectiveEffort,
-          modeOverride: mode,
-        })
-        .catch((err) => {
-          addToast({
-            title: t("chat:errors.sessionStart", { error: String(err) }),
-            variant: "error",
-          });
-        });
+      sendInteractionMessage(text, mode);
     },
-    [
-      path,
-      selectedSessionKey,
-      handleModeSelect,
-      effectiveProvider,
-      effectiveModel,
-      effectiveEffort,
-      addToast,
-      t,
-    ],
+    [handleModeSelect, sendInteractionMessage],
   );
 
   const planReadyLabels = useMemo<ChatPlanReadyLabels>(
@@ -1351,7 +1393,7 @@ export function useAgentChatPanel({
 
   const saveReusable = useCallback(
     (step: SuggestReusableStep) => {
-      if (!path || !selectedSessionKey) return;
+      // No path / session guard here: `sendInteractionMessage` owns that check.
       setDismissedSuggestReusable(step.id);
       const text =
         step.reusableKind === "skill"
@@ -1363,29 +1405,9 @@ export function useAgentChatPanel({
             : t("chat:suggestReusable.saveLearningMessage", {
                 title: step.title,
               });
-      tauriChat
-        .send(path, text, selectedSessionKey, {
-          providerOverride: effectiveProvider,
-          modelOverride: effectiveModel,
-          effortOverride: effectiveEffort,
-          modeOverride: "execute",
-        })
-        .catch((err) => {
-          addToast({
-            title: t("chat:errors.sessionStart", { error: String(err) }),
-            variant: "error",
-          });
-        });
+      sendInteractionMessage(text, "execute");
     },
-    [
-      path,
-      selectedSessionKey,
-      effectiveProvider,
-      effectiveModel,
-      effectiveEffort,
-      addToast,
-      t,
-    ],
+    [sendInteractionMessage, t],
   );
 
   // The mission is waiting on a sequence of steps (questions then connections).
@@ -1423,11 +1445,7 @@ export function useAgentChatPanel({
     // Optional clean-finish offers can coexist. They are handled before the
     // blocking stepper so action bubbles and the reusable card remain above the
     // live composer, while any blocking step still wins on the runtime side.
-    const hasOnlySuggestions = activeInteraction.steps.every(
-      (step) =>
-        step.kind === "suggest_actions" || step.kind === "suggest_reusable",
-    );
-    if (hasOnlySuggestions) {
+    if (hasOnlySuggestionSteps(activeInteraction.steps)) {
       const actions = resolveSuggestActionsOverride(
         activeInteraction.steps,
         dismissedSuggestActions,
@@ -1445,9 +1463,15 @@ export function useAgentChatPanel({
               <ChatSuggestActions
                 actions={actions.step.actions}
                 labels={suggestActionsLabels}
+                // Per-STEP dismissal: drop only this offer from the persisted
+                // interaction, so the sibling save-as-reusable card is still
+                // there after a reload.
                 onDismiss={() => {
                   setDismissedSuggestActions(actions.step.id);
-                  void clearPersistedInteraction();
+                  void dismissInteractionStep(
+                    activeInteraction,
+                    actions.step.id,
+                  );
                 }}
                 onSelect={(action) => {
                   // HOU-1050: a pill click PREFILLS the composer instead of
@@ -1466,7 +1490,10 @@ export function useAgentChatPanel({
                 labels={suggestReusableLabels}
                 onDismiss={() => {
                   setDismissedSuggestReusable(reusable.step.id);
-                  void clearPersistedInteraction();
+                  void dismissInteractionStep(
+                    activeInteraction,
+                    reusable.step.id,
+                  );
                 }}
                 onSave={() => saveReusable(reusable.step)}
                 rationale={reusable.step.rationale}
@@ -1740,13 +1767,19 @@ export function useAgentChatPanel({
     interactionLabels,
     sendInteractionMessage,
     draftKey,
-    clearPersistedInteraction,
+    dismissInteractionStep,
     dismissActiveInteraction,
     resolveBrand,
     t,
   ]);
   const composerOverride = composerOverrideState.node;
   const composerOverrideMode = composerOverrideState.mode;
+  // The archived surfaces take only the offers — the mode IS the distinction:
+  // "above" is the offers-beside-a-live-composer shape (and the nothing-pending
+  // shape, whose node is undefined anyway), "replace" is a blocking stepper or
+  // the plan-ready card.
+  const offersComposerOverride =
+    composerOverrideMode === "above" ? composerOverride : undefined;
 
   // A fresh composer message while an above-card shows abandons that interaction
   // and runs the usual submit path. Replacing cards submit through their own
@@ -1817,6 +1850,11 @@ export function useAgentChatPanel({
                 effortOverride: effectiveEffort,
                 modeOverride: turnMode,
               });
+              // The retry starts a turn: this card also renders inside an
+              // ARCHIVED transcript, and the send re-activates that mission, so
+              // the user has to travel with it. A throw above skips this and
+              // surfaces through the card's own error path.
+              onSendReactivatedRef.current?.();
             }}
             onSwitchModel={
               isModelUnsupported
@@ -1880,6 +1918,9 @@ export function useAgentChatPanel({
                 suppressUserBubble: resendsOriginalPrompt(providerError),
                 autoResume: providerError.kind === "unauthenticated",
               });
+              // Same as the tool-error retry: this card renders inside archived
+              // transcripts too, and the send re-activates the mission.
+              onSendReactivatedRef.current?.();
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
             // "Switch to <fallback>" applies it directly on the same provider.
@@ -2160,6 +2201,7 @@ export function useAgentChatPanel({
     composerHeader,
     composerOverride,
     composerOverrideMode,
+    offersComposerOverride,
     canSendEmpty: activeSkill != null,
     onComposerSubmit,
     footer,

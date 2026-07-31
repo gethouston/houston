@@ -18,7 +18,9 @@ interface ArchivedSendMessageOptions {
   agentDef: AgentDefinition;
   effectiveProvider: string;
   effectiveModel: string;
-  onReactivated: () => void;
+  /** The archived → active handoff (`useArchivedHandoff`), run once the send
+   *  lands and the mission is no longer archived. */
+  onHandoff: (missionId: string) => void;
 }
 
 export function useArchivedSendMessage({
@@ -28,13 +30,10 @@ export function useArchivedSendMessage({
   agentDef,
   effectiveProvider,
   effectiveModel,
-  onReactivated,
+  onHandoff,
 }: ArchivedSendMessageOptions) {
   const { t } = useTranslation("chat");
   const addToast = useUIStore((s) => s.addToast);
-  const setViewMode = useUIStore((s) => s.setViewMode);
-  const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
-  const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
 
   return useCallback(
     async (
@@ -71,10 +70,7 @@ export function useArchivedSendMessage({
         for (const f of files) {
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         }
-        onReactivated();
-        setAgentBoardMode("active");
-        setViewMode("activity");
-        setActivityPanelId(missionId, { forceOpen: true });
+        onHandoff(missionId);
       } catch (err) {
         // The send failed BEFORE a turn stream existed — nothing wrote to the
         // VM, so surface it as a toast (no-silent-failures rule).
@@ -92,11 +88,8 @@ export function useArchivedSendMessage({
       agentDef,
       effectiveProvider,
       effectiveModel,
-      onReactivated,
+      onHandoff,
       addToast,
-      setViewMode,
-      setAgentBoardMode,
-      setActivityPanelId,
       t,
     ],
   );

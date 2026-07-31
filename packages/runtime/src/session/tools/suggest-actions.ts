@@ -8,8 +8,12 @@ import { recordSuggestActions } from "../interaction";
  * frame, which Houston renders as dismissible bubbles above the composer.
  *
  * This is NOT a turn-ending block like `plan_ready`: the mission is already
- * done, so the model still finishes its final message normally. The offer is
- * optional and never changes the board from `done` to `needs_you`.
+ * done, so the model still finishes its final message normally. The call is
+ * mandatory on every turn that ends WITHOUT a blocking ask (the product prompt
+ * requires it), yet the offer itself never blocks the user — it rides the same
+ * terminal `done` frame as the blocking steps, but renders above the composer
+ * instead of replacing it. It has no effect on the board status (every settled
+ * turn lands `needs_you`; only the user moves a card to done).
  */
 const SuggestActionsParams = Type.Object({
   actions: Type.Array(
@@ -39,7 +43,7 @@ export function makeSuggestActionsTool() {
     name: "suggest_actions",
     label: "Suggest follow-up actions",
     description:
-      "Part of finishing every completed mission: offer 2 to 4 concrete, useful next steps grounded in the work you just did, in the same final turn as your closing message. Each label is short bubble text and each message is what Houston sends if the user clicks it. Use this instead of ending a completed mission with a filler ask_user question. Do not use it for blocking questions; skip it only when you genuinely cannot name one useful follow-up. Call it at most once per turn, then finish normally.",
+      "Required on every turn you end without a blocking ask: offer 2 to 4 concrete, useful next steps grounded in the work you just did, in the same final turn as your closing message. Each label is short bubble text and each message is what Houston sends if the user clicks it. Use this instead of ending a completed mission with a filler ask_user question. Skip it only when the turn ends blocked on the user, meaning an ask_user question, a connection or credential request, or a plan waiting for approval. Call it at most once per turn, then finish normally.",
     promptSnippet: "Offer concrete follow-up actions for the completed work",
     parameters: SuggestActionsParams,
     executionMode: "sequential",

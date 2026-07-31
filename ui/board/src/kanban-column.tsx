@@ -17,9 +17,11 @@ export interface KanbanColumnProps {
   onSelect: (item: KanbanItem) => void;
   onDelete?: (item: KanbanItem) => void;
   onApprove?: (item: KanbanItem) => void;
+  onArchive?: (item: KanbanItem) => void;
   onRename?: (item: KanbanItem, newTitle: string) => void;
   runningStatuses?: string[];
   approveStatuses?: string[];
+  archiveStatuses?: string[];
   errorStatuses?: string[];
   renderCard?: (item: KanbanItem) => React.ReactNode;
   actions?: (item: KanbanItem) => React.ReactNode;
@@ -56,9 +58,11 @@ export function KanbanColumn({
   onSelect,
   onDelete,
   onApprove,
+  onArchive,
   onRename,
   runningStatuses,
   approveStatuses,
+  archiveStatuses,
   errorStatuses,
   renderCard,
   actions,
@@ -132,11 +136,13 @@ export function KanbanColumn({
                 onSelect={() => onSelect(item)}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
                 onApprove={onApprove ? () => onApprove(item) : undefined}
+                onArchive={onArchive ? () => onArchive(item) : undefined}
                 onRename={
                   onRename ? (title) => onRename(item, title) : undefined
                 }
                 runningStatuses={runningStatuses}
                 approveStatuses={approveStatuses}
+                archiveStatuses={archiveStatuses}
                 errorStatuses={errorStatuses}
                 actions={actions?.(item)}
                 avatar={avatar}

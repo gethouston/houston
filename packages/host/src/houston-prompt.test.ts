@@ -159,6 +159,34 @@ test("the pre-ask confirmation contract mirrors into the Rust integrations promp
   );
 });
 
+test("suggest_actions is MANDATORY on every non-blocking finish, in BOTH mirrors", () => {
+  const rust = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../app/src-tauri/src/houston_prompt/base.rs",
+        import.meta.url,
+      ),
+    ),
+    "utf8",
+  );
+  const ts = norm(houstonSystemPrompt());
+  const rs = norm(rust);
+  for (const phrase of [
+    "Finish every non-blocking turn with `suggest_actions`.",
+    "This is mandatory: the user must always leave your turn with something to do next.",
+    "Blocking turns are the only exception",
+    "2 to 4 follow-ups grounded in what you just did",
+    "Ending with no follow-ups is not an option.",
+  ]) {
+    const needle = norm(phrase);
+    expect(ts).toContain(needle);
+    expect(rs).toContain(needle);
+  }
+  // The retired opt-out ("skip it if you can't name one") is gone from both.
+  expect(ts).not.toContain(norm("Skip the call only when"));
+  expect(rs).not.toContain(norm("Skip the call only when"));
+});
+
 test("blocking questions, choices, and approvals route through the ask_user tool", () => {
   const p = houstonSystemPrompt();
   expect(p).toContain("ask_user");

@@ -24,6 +24,7 @@ import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRunCodeTool } from "./tools/run-code";
 import { makeSaveLearningTool } from "./tools/save-learning";
 import { makeSaveRoutineTool } from "./tools/save-routine";
+import { makeSuggestActionsTool } from "./tools/suggest-actions";
 import { makeSuggestReusableTool } from "./tools/suggest-reusable";
 import type { TurnModeRef } from "./turn-mode-context";
 import type { ProvidedContext } from "./workspace-context";
@@ -59,9 +60,19 @@ const planReadyTool = makePlanReadyTool();
 // The reusable-suggestion tool: registered always, reaches execute/auto via the
 // tool-selection allowlist and is filtered out of plan by name (`toolNamesForMode`).
 // Records the turn's suggest-reusable step so a clean finish can ride the terminal
-// `done` frame as a dismissible save-as-Skill/Routine card, without flipping the
-// board to `needs_you`.
+// `done` frame as a dismissible save-as-Skill/Routine card, rendered above the
+// composer rather than replacing it.
 const suggestReusableTool = makeSuggestReusableTool();
+
+// The follow-up-actions tool: registered always, same reach as
+// `suggest_reusable` (execute/auto via the tool-selection allowlist, filtered
+// out of plan by `toolNamesForMode`). The product prompt MANDATES calling it on
+// every turn that ends WITHOUT a blocking ask, so it must be registered on
+// EVERY backend — pi (here, the default for every non-Anthropic provider) and
+// Claude (backends/claude/custom-tools.ts). A name in the allowlist with no
+// registered tool object is invisible to the model: pi exposes the intersection
+// of the two. See conversation-cache-tools.test.ts, which pins that parity.
+const suggestActionsTool = makeSuggestActionsTool();
 
 // Integration tools (Composio, platform mode): available whenever this runtime
 // can reach its host with a sandbox token (server mode — local desktop +
@@ -145,6 +156,7 @@ const piBackend = createPiBackend({
     askUserTool,
     planReadyTool,
     suggestReusableTool,
+    suggestActionsTool,
     ...(runCodeTool ? [runCodeTool] : []),
     ...(saveRoutineTool ? [saveRoutineTool] : []),
     ...(saveLearningTool ? [saveLearningTool] : []),

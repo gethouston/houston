@@ -35,6 +35,8 @@ export interface AIBoardProps {
   onSelect?: (id: string | null) => void;
   onDelete?: (item: KanbanItem) => void;
   onApprove?: (item: KanbanItem) => void;
+  /** One-click archive on the cards whose status is in `archiveStatuses`. */
+  onArchive?: (item: KanbanItem) => void;
   /** Called when user sends the first message in a new conversation. Should
    *  return the created activity ID. `mentions` (HOU-944) are the teammates the
    *  composer named and whose "@Name" text survived into the sent message. */
@@ -61,6 +63,7 @@ export interface AIBoardProps {
   sessionKeyFor?: (activityId: string) => string;
   runningStatuses?: string[];
   approveStatuses?: string[];
+  archiveStatuses?: string[];
   errorStatuses?: string[];
   /** Load persisted chat history for a session. Called once per session key when selected. */
   onLoadHistory?: (sessionKey: string) => Promise<FeedItem[]>;
@@ -215,7 +218,7 @@ export interface AIBoardProps {
   drafts?: Record<string, string>;
   /** Called when the user types in the panel's chat input. */
   onDraftChange?: (sessionKey: string, text: string) => void;
-  /** Translated label overrides for per-card copy (Approve button + delete confirm). */
+  /** Translated label overrides for per-card copy (the card's action tooltips + delete confirm). */
   cardLabels?: KanbanCardLabels;
   /**
    * When set, replaces the chat composer with this node. Forwarded to
@@ -313,6 +316,7 @@ export function AIBoard({
   onSelect: onSelectProp,
   onDelete,
   onApprove,
+  onArchive,
   onCreateConversation,
   onSendMessage,
   feedItems = {},
@@ -321,6 +325,7 @@ export function AIBoard({
   sessionKeyFor = defaultSessionKey,
   runningStatuses = ["running"],
   approveStatuses = ["needs_you"],
+  archiveStatuses = ["done"],
   errorStatuses = ["error"],
   onLoadHistory,
   onHistoryLoaded,
@@ -675,10 +680,12 @@ export function AIBoard({
           highlightedId={highlightedId}
           runningStatuses={runningStatuses}
           approveStatuses={approveStatuses}
+          archiveStatuses={archiveStatuses}
           errorStatuses={errorStatuses}
           onSelect={handleCardSelect}
           onDelete={onDelete ? handleDelete : undefined}
           onApprove={onApprove}
+          onArchive={onArchive}
           onRename={onRename}
           emptyState={emptyState}
           actions={actions}

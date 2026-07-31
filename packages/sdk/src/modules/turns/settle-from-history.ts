@@ -74,12 +74,13 @@ function adoptReply(s: TurnState, reply: ChatMessage): void {
     return;
   }
   // A turn the user interrupted persisted `stopped`. The runtime never publishes
-  // a clean `done` for it, so adopting it as a plain reply would collapse to a
-  // false `done`. Route it through the SAME body the live Stop uses — `finishErr`
-  // with the verbatim `STOPPED_BY_USER`: it pushes the "Stopped by user" system
-  // line, an invisible final, an `error` status with no text, and settles
-  // `needs_you`. `stopped` wins over any (illegal) `pendingInteraction` — a
-  // stopped turn must never render a card — so this precedes the adopt below.
+  // a clean `done` for it, so adopting it as a plain reply would render an
+  // interrupted turn as a normal successful finish. Route it through the SAME
+  // body the live Stop uses — `finishErr` with the verbatim `STOPPED_BY_USER`:
+  // it pushes the "Stopped by user" system line, an invisible final, an `error`
+  // status with no text, and settles `needs_you`. `stopped` wins over any
+  // (illegal) `pendingInteraction` — a stopped turn must never render a card —
+  // so this precedes the adopt below.
   if (reply.stopped) {
     finishErr(s, STOPPED_BY_USER);
     return;
@@ -90,10 +91,10 @@ function adoptReply(s: TurnState, reply: ChatMessage): void {
   // (finishOk flushes `s.thinking` into the feed).
   if (reply.thinking && !s.thinking) s.thinking = reply.thinking;
   if (reply.usage) s.usage = reply.usage;
-  // A turn that ended asking the user for something persisted its interaction
-  // (runtime, clean path only). Adopt it BEFORE finishOk so a settle from
-  // history splits to `needs_you` with the interaction — matching the live
-  // `done` frame we missed — instead of collapsing to a false `done`.
+  // A turn that ended on an interaction (a question / connect, or an offer)
+  // persisted it (runtime, clean path only). Adopt it BEFORE finishOk so the
+  // recovered settle carries it onto the terminal `needs_you` persist — the card
+  // renders exactly what the live `done` frame we missed would have shown.
   // Guarded: persisted messages outlive code, and a reply written by an older
   // build carries a pre-step interaction shape that must not reach the VM.
   if (isPendingInteraction(reply.pendingInteraction))

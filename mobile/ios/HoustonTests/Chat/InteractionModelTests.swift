@@ -2,12 +2,17 @@ import XCTest
 
 @testable import Houston
 
-/// Pins the wire decode of a pending interaction and the board-status `done`
-/// tolerance. The interaction shape mirrors `packages/protocol/src/domain/
-/// interaction.ts`: an ordered `steps` array of tagged unions. An UNRECOGNISED
-/// `kind` must decode to `.unknown` (render nothing) so a newer engine never
-/// crashes the conversation decode, and `boardStatus: "done"` must decode safely
-/// to the tolerant `.unknown` case (no title-bar status line).
+/// Pins the wire decode of a pending interaction, the board-status `done`
+/// tolerance, and the blocking-vs-finished rule the chat title line rests on.
+/// The interaction shape mirrors `packages/protocol/src/domain/interaction.ts`:
+/// an ordered `steps` array of tagged unions. An UNRECOGNISED `kind` must decode
+/// to `.unknown` (render nothing) so a newer engine never crashes the
+/// conversation decode, and `boardStatus: "done"` must decode safely to the
+/// tolerant `.unknown` case.
+///
+/// Since the engine stopped closing missions, `needs_you` is where every clean
+/// finish settles — so "needs your attention" keys off a BLOCKING step, never
+/// off the board status.
 final class InteractionModelTests: XCTestCase {
   private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
     try JSONDecoder().decode(T.self, from: Data(json.utf8))
@@ -163,16 +168,89 @@ final class InteractionModelTests: XCTestCase {
     let vm = try decode(
       ConversationVM.self,
       #"{"feed":[],"running":false,"sessionStatus":"completed","boardStatus":"done"}"#)
-    // "done" is a terminal string the enum has no explicit case for: it tolerates
-    // it via `.unknown`, never crashing the decode.
+    // "done" only ever reaches a decode from a card the USER closed — the engine
+    // never writes it. The enum has no explicit case for it and tolerates it via
+    // `.unknown`, never crashing the decode.
     XCTAssertEqual(vm.boardStatus, .unknown("done"))
-    // The title bar shows NO second line for a done mission.
-    XCTAssertEqual(
-      ChatTitleStatus.derive(running: false, boardStatus: vm.boardStatus), .hidden)
     // MissionState stays safe (renders neutrally, off-board) rather than matching
     // a wrong column.
     XCTAssertEqual(
       MissionState.from(sessionStatus: .completed, boardStatus: vm.boardStatus),
       .unknown("done"))
+  }
+
+  // MARK: - Blocking vs non-blocking steps
+
+  func testBlockingStepKindsBlock() {
+    // Everything this build renders is something the user must answer.
+    XCTAssertTrue(InteractionStep.question(id: "q1", question: "Who?", options: []).isBlocking)
+    XCTAssertTrue(InteractionStep.signin(id: "s1", reason: nil).isBlocking)
+    XCTAssertTrue(InteractionStep.connect(id: "c1", toolkit: "gmail", reason: nil).isBlocking)
+    XCTAssertTrue(InteractionStep.planReady(id: "p1", summary: "Plan").isBlocking)
+  }
+
+  func testSuggestionKindsDecodeUnknownAndDoNotBlock() throws {
+    // The optional clean-finish offers have no iOS UI yet, so they decode to
+    // `.unknown` — and must never make a finished mission read as blocked.
+    let offer = try decode(
+      InteractionStep.self,
+      #"{"kind":"suggest_actions","id":"a1","actions":[{"id":"x","label":"L","message":"M"}]}"#)
+    XCTAssertEqual(offer, .unknown(kind: "suggest_actions"))
+    XCTAssertFalse(offer.isBlocking)
+
+    let reusable = try decode(
+      InteractionStep.self,
+      #"{"kind":"suggest_reusable","id":"r1","reusableKind":"skill","title":"T","rationale":"R"}"#)
+    XCTAssertEqual(reusable, .unknown(kind: "suggest_reusable"))
+    XCTAssertFalse(reusable.isBlocking)
+  }
+
+  func testHasBlockingStepsIgnoresNonBlockingOnes() {
+    XCTAssertFalse(PendingInteraction(steps: []).hasBlockingSteps)
+    XCTAssertFalse(
+      PendingInteraction(steps: [.unknown(kind: "suggest_actions")]).hasBlockingSteps)
+    XCTAssertTrue(
+      PendingInteraction(steps: [
+        .unknown(kind: "suggest_actions"),
+        .question(id: "q1", question: "Who?", options: []),
+      ]).hasBlockingSteps)
+  }
+
+  // MARK: - The title line under the user-closes-missions model
+
+  func testFinishedMissionShowsNoAttentionLineDespiteNeedsYou() throws {
+    // EVERY clean finish settles `needs_you` now, so a settled board status must
+    // NOT put a permanent "needs your attention" line under the agent's name.
+    let vm = try decode(
+      ConversationVM.self,
+      #"{"feed":[],"running":false,"sessionStatus":"completed","boardStatus":"needs_you"}"#)
+    XCTAssertEqual(vm.boardStatus, .needsYou)
+    XCTAssertEqual(
+      ChatTitleStatus.derive(running: false, pendingInteraction: vm.pendingInteraction),
+      .hidden)
+  }
+
+  func testFinishedWithOffersShowsNoAttentionLine() throws {
+    let vm = try decode(
+      ConversationVM.self,
+      #"""
+      {"feed":[],"running":false,"sessionStatus":"completed","boardStatus":"needs_you",
+       "pendingInteraction":{"steps":[{"kind":"suggest_actions","id":"a1","actions":[]}]}}
+      """#)
+    XCTAssertEqual(
+      ChatTitleStatus.derive(running: false, pendingInteraction: vm.pendingInteraction),
+      .hidden)
+  }
+
+  func testMissionWaitingOnAQuestionAsksForAttention() throws {
+    let vm = try decode(
+      ConversationVM.self,
+      #"""
+      {"feed":[],"running":false,"sessionStatus":"completed","boardStatus":"needs_you",
+       "pendingInteraction":{"steps":[{"kind":"question","id":"q1","question":"Who?"}]}}
+      """#)
+    XCTAssertEqual(
+      ChatTitleStatus.derive(running: false, pendingInteraction: vm.pendingInteraction),
+      .needsAttention)
   }
 }

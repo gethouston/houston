@@ -45,11 +45,10 @@ export interface MissionToolbarActionsProps {
   onFilterPathChange?: (path: string) => void;
   /** When set, renders the filter-by-person control (active board only). */
   onFilterUserIdChange?: (userId: string | null) => void;
-  /** Whether the Archived view is currently showing (highlights the toggle). */
-  archivedActive?: boolean;
-  /** Toggle between the active board and the cross-agent Archived view. When
-   *  omitted, no Archived control renders. */
-  onToggleArchived?: () => void;
+  /** Opens the cross-agent Archived view. When omitted, no Archived control
+   *  renders -- the Archived view itself leaves it out, because there its own
+   *  labelled back button is the single way home (HOU-1043). */
+  onShowArchived?: () => void;
   /** Whether the Mentions inbox is currently showing (highlights the control
    *  and switches the title line). */
   mentionsActive?: boolean;
@@ -72,8 +71,7 @@ export function MissionToolbarActions({
   filterUserId,
   onFilterPathChange,
   onFilterUserIdChange,
-  archivedActive = false,
-  onToggleArchived,
+  onShowArchived,
   mentionsActive = false,
   onToggleMentions,
   mentionCount = 0,
@@ -131,14 +129,17 @@ export function MissionToolbarActions({
           )}
         </Tooltip>
       )}
-      {onToggleArchived && (
+      {onShowArchived && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={archivedActive ? "secondary" : "ghost"}
+              // Outline, not ghost: the archive is a place users go looking for,
+              // so its door reads as a real control -- one rank below the single
+              // filled "New mission" CTA beside it (HOU-1043).
+              variant="outline"
               size={collapsed ? "icon" : "default"}
               className={cn("rounded-full", !collapsed && "gap-1.5")}
-              onClick={onToggleArchived}
+              onClick={onShowArchived}
               aria-label={t("archived.button")}
             >
               <Archive className="size-4" />

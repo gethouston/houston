@@ -68,7 +68,7 @@ export function appendUserMessage(
  * Append the durable "stopped by user" marker the dismiss/abandon path writes:
  * an empty assistant message flagged `stopped`, mirroring the real runtime's
  * dismiss-interaction passthrough. A reloaded transcript then shows the stop
- * line and the board settles to `needs_you` instead of a false `done`.
+ * line instead of rendering the interrupted turn as a plain successful finish.
  */
 export function appendStoppedMessage(
   agentId: string,
@@ -83,10 +83,11 @@ export function appendStoppedMessage(
 
 /**
  * Persist the assistant reply at turn END, stamped with the same turn id.
- * A turn that ended asking the user persists its interaction ON the reply,
- * matching the real runtime (`exec-turn.ts` clean path) — so a client that
- * settles from history (the terminal frame lost, or the turn completed before
- * its subscription attached) recovers the needs_you split, not a false done.
+ * A turn that ended on an interaction persists it ON the reply, matching the
+ * real runtime (`exec-turn.ts` clean path) — so a client that settles from
+ * history (the terminal frame lost, or the turn completed before its
+ * subscription attached) still recovers the card that rides the `needs_you`
+ * settle.
  */
 export function appendAssistantMessage(
   agentId: string,
