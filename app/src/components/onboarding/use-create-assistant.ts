@@ -3,21 +3,23 @@ import { useTranslation } from "react-i18next";
 import { seedTimezoneIfUnset } from "../../hooks/use-timezone-preference";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
+import type { OnboardingSegmentChoice } from "../../lib/onboarding-segment";
 import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import type { Agent, Workspace } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import {
+  primaryAssistantForSegment,
+  seedExtraPackAgents,
+} from "./assistant-segment-seeds";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import {
   type EnsuredWorkspace,
   ensureWorkspaceWithAssistant,
 } from "./ensure-default-assistant";
 import { surfaceAgentThenRefresh } from "./first-run-provision";
-import {
-  buildAssistantInstructions,
-  defaultAssistantSetup,
-} from "./personal-assistant-artifacts";
-import { buildPersonalAssistantSeeds } from "./personal-assistant-seeds";
+import { defaultAssistantSetup } from "./personal-assistant-artifacts";
+import { agentPacksForSegment } from "./segment-agent-pack";
 
 /**
  * Post-create bookkeeping: persist the last-used pick and reload the stores.
@@ -56,6 +58,9 @@ async function refreshAfterCreate(
 interface UseCreateAssistantArgs {
   assistantName: string;
   assistantColor: string;
+  /** The answered first-run segment, used to pick a role-specific store pack to
+   *  seed the assistant with; `null` (unmapped / skipped) seeds the generic one. */
+  segment: OnboardingSegmentChoice | null;
 }
 
 /**
@@ -70,6 +75,7 @@ interface UseCreateAssistantArgs {
 export function useCreateAssistant({
   assistantName,
   assistantColor,
+  segment,
 }: UseCreateAssistantArgs): {
   agent: Agent | null;
   creating: boolean;
@@ -102,25 +108,46 @@ export function useCreateAssistant({
           listWorkspaces: () => tauriWorkspaces.list(),
           createWorkspace: (name) => tauriWorkspaces.create(name),
           listAgents: (workspaceId) => tauriAgents.list(workspaceId),
-          createAssistant: (workspaceId) =>
-            createPersonalAssistantForWorkspace(workspaceId, {
-              name: setup.assistantName.trim(),
-              instructions: buildAssistantInstructions(setup),
+          createAssistant: async (workspaceId) => {
+            // Role-aware primary: a segment that maps to a store pack makes its
+            // first pack the primary agent — carrying that pack's catalog
+            // identity (name + configId → icon/description) and its
+            // CLAUDE.md/skills/routines. Everything else keeps the generic
+            // assistant identity + Daily Briefing + Meeting-prep. The active
+            // locale selects the language / translated pack variant either way.
+            const primary = await primaryAssistantForSegment(
+              setup,
+              t,
+              i18n.language,
+              segment,
+            );
+            return createPersonalAssistantForWorkspace(workspaceId, {
+              name: primary.name.trim(),
+              configId: primary.configId,
+              instructions: primary.instructions,
               color: setup.color,
               provider: pickedProvider,
               model: pickedModel,
-              // Real capability on day one: a Daily Briefing routine + a
-              // Meeting-prep skill, seeded into the fresh agent's tree. The
-              // active locale selects the language they write output in.
-              seeds: buildPersonalAssistantSeeds(t, i18n.language),
-            }),
+              seeds: primary.seeds,
+            });
+          },
         });
       },
       // Surface the agent the instant its record lands so onboarding advances to
       // the email step immediately; the refresh below must not gate this.
       (ensured) => setAgent(ensured.assistant),
-      // Background: the pod-dependent refresh that used to stall the click.
-      (ensured) => refreshAfterCreate(ensured, pickedProvider, pickedModel),
+      // Background: seed the secondary role agents (packs beyond the primary),
+      // then run the pod-dependent store refresh that used to stall the click.
+      // Both stay off the surface path — the refresh reload picks the new agents
+      // up and re-selects the primary assistant.
+      async (ensured) => {
+        await seedExtraPackAgents(
+          ensured.workspace.id,
+          agentPacksForSegment(segment).slice(1),
+          i18n.language,
+        );
+        await refreshAfterCreate(ensured, pickedProvider, pickedModel);
+      },
       (err) =>
         logger.error(`[onboarding] post-create store refresh failed: ${err}`),
     ).then((ensured) => ensured.assistant);
