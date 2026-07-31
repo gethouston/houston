@@ -39,6 +39,8 @@ export interface KanbanCardLabels {
   /** Accessible label for the quiet unread mark ({@link KanbanItem.unread}).
    *  The mark is a dot with no text, so this is its only non-visual form. */
   unread?: string;
+  /** Accessible label for the detail panel's icon-only close button. */
+  closePanel?: string;
 }
 
 const DEFAULT_LABELS: Required<KanbanCardLabels> = {
@@ -52,6 +54,7 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   people: "People",
   peopleExpand: "All people",
   unread: "Unread",
+  closePanel: "Close panel",
 };
 
 export interface KanbanCardProps {

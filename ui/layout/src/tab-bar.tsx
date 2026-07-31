@@ -43,8 +43,9 @@ export function TabBar({
         </div>
       )}
 
-      {/* Tab strip */}
-      <div className="flex items-center gap-5">
+      {/* Tab strip — scrolls horizontally when the viewport is narrower than
+          the tab row (phone widths) instead of wrapping or clipping. */}
+      <div className="flex items-center gap-5 overflow-x-auto">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const isDisabled = tab.disabled;
@@ -56,7 +57,7 @@ export function TabBar({
               onClick={() => !isDisabled && onTabChange(tab.id)}
               disabled={isDisabled}
               className={cn(
-                "relative flex items-center gap-1.5 pb-2.5 text-sm transition-colors duration-200",
+                "relative flex shrink-0 items-center gap-1.5 pb-2.5 text-sm whitespace-nowrap transition-colors duration-200",
                 isDisabled
                   ? "text-ink-muted/50 cursor-not-allowed"
                   : isActive

@@ -717,6 +717,7 @@ export function AIBoard({
       people={panelItem?.people}
       peopleLabel={cardLabels?.people}
       peopleExpandLabel={cardLabels?.peopleExpand}
+      closeLabel={cardLabels?.closePanel}
       actions={panelItem ? panelActions?.(panelItem) : undefined}
     >
       <div className="flex-1 min-h-0 flex flex-col">

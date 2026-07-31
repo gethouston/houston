@@ -4,7 +4,8 @@
     "approveTooltip": "Move to done",
     "renameTooltip": "Change title",
     "deleteTooltip": "Delete",
-    "select": "Select mission"
+    "select": "Select mission",
+    "closePanel": "Close panel"
   },
   "deleteCard": {
     "titleWithName": "Delete \"{{name}}\"?",

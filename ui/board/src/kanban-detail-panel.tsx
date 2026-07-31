@@ -36,6 +36,8 @@ export interface KanbanDetailPanelProps {
   peopleLabel?: string;
   /** Accessible label for the people stack's expandable "+N" chip. */
   peopleExpandLabel?: string;
+  /** Accessible label for the icon-only close button (English default). */
+  closeLabel?: string;
   runningStatuses?: string[];
   statusLabels?: Record<string, string>;
 }
@@ -58,6 +60,7 @@ export const KanbanDetailPanel = forwardRef<
     people,
     peopleLabel = "People",
     peopleExpandLabel,
+    closeLabel = "Close panel",
     runningStatuses = ["running"],
     statusLabels,
   },
@@ -126,6 +129,7 @@ export const KanbanDetailPanel = forwardRef<
             <button
               type="button"
               onClick={onClose}
+              aria-label={closeLabel}
               className="size-7 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-hover/50 transition-colors shrink-0"
             >
               <XIcon className="size-4" strokeWidth={1.75} />
