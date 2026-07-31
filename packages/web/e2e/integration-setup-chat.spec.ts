@@ -4,11 +4,12 @@ import { expect, test } from "./support/fixtures";
 
 /**
  * The custom-integration setup chat is embedded INSIDE the Integrations page
- * (not a board mission): "Add custom integration" picks an agent, then opens a
- * guided setup chat right there — the agent speaks first (the Houston-sent
- * kickoff bubble never renders), the chat never appears as a board card, and
- * the page never navigates away. The load-bearing case is the COMPOSIO-ABSENT
- * host (no key, no gateway): the chat must work there too.
+ * (not a board mission): "Add custom integration" opens a guided setup chat
+ * right there — no chooser dialog, and with the workspace's single seeded
+ * agent no picker either — the agent speaks first (the Houston-sent kickoff
+ * bubble never renders), the chat never appears as a board card, and the page
+ * never navigates away. The load-bearing case is the COMPOSIO-ABSENT host (no
+ * key, no gateway): the chat must work there too.
  */
 
 async function armCapabilities(
@@ -57,16 +58,9 @@ async function openCustomIntegrations(
 }
 
 async function startSetupChat(page: Page): Promise<void> {
+  // Straight to the chat: no fork dialog, and the single seeded agent means
+  // no agent picker either — the click itself starts the setup mission.
   await page.getByRole("button", { name: "Add custom integration" }).click();
-  // The add fork (HOU-980): the guided chat path leads; "Add it manually"
-  // is its sibling (covered in custom-integrations.spec.ts).
-  await page.getByRole("button", { name: /Set it up in chat/ }).click();
-  // The agent picker: choose the seeded agent to open the embedded chat.
-  await expect(page.getByText("Which agent should run this?")).toBeVisible();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Houston" })
-    .click();
 }
 
 test("composio-absent: Add custom integration opens the embedded chat, agent speaks first, no view switch", async ({
@@ -93,6 +87,28 @@ test("composio-absent: Add custom integration opens the embedded chat, agent spe
   await expect(
     page.getByRole("heading", { name: "Custom integrations" }),
   ).toBeVisible();
+});
+
+test("a multi-agent workspace interposes ONLY the agent picker before the chat", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["custom"] });
+  await armIntegrationsMode(request, "absent");
+  await armCustomIntegrations(request, []);
+  // A second agent makes the target ambiguous — the one question left.
+  await request.post(`${FAKE_HOST_URL}/agents`, { data: { name: "Atlas" } });
+  await openCustomIntegrations(page, "absent");
+
+  await page.getByRole("button", { name: "Add custom integration" }).click();
+  await expect(page.getByText("Which agent should run this?")).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Houston" })
+    .click();
+  await expect(
+    page.getByText("Mission: Set up a custom integration"),
+  ).toBeVisible({ timeout: 10_000 });
 });
 
 test("a draft chat survives a reload as a Continue banner that resumes the same chat", async ({

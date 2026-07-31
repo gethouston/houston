@@ -31,9 +31,18 @@ export function useScreenPrefetch() {
           queryFn: () => tauriIntegrations.toolkits("composio"),
           staleTime: 60 * 60_000,
         });
+        // The same transport (and key) the Integrations page reads through:
+        // agent-less surfaces ride the first agent's per-agent route, the only
+        // custom form the hosted gateway proxies (HOU-823).
+        const customAgentId = useAgentStore.getState().agents[0]?.id;
         void queryClient.prefetchQuery({
-          queryKey: queryKeys.customIntegrations(),
-          queryFn: () => tauriIntegrations.customList(),
+          queryKey: customAgentId
+            ? queryKeys.agentCustomIntegrations(customAgentId)
+            : queryKeys.customIntegrations(),
+          queryFn: () =>
+            customAgentId
+              ? tauriIntegrations.customListForAgent(customAgentId)
+              : tauriIntegrations.customList(),
           staleTime: 30_000,
         });
       }

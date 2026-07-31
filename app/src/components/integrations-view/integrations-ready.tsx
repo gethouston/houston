@@ -2,7 +2,8 @@ import { CatalogShell } from "@houston-ai/core";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useCustomIntegrations,
+  useCustomIntegrationsFor,
+  useCustomTransportAgentId,
   useDisconnectIntegration,
 } from "../../hooks/queries";
 import {
@@ -61,7 +62,11 @@ export function IntegrationsReady({
   const apps = useConnectedApps();
   const connectFlow = useConnectFlow({});
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
-  const custom = useCustomIntegrations();
+  // Same transport (and query key) as the CustomIntegrationsSection inside the
+  // tab, so the chip and the tab body can never disagree — and the tab shows
+  // behind the hosted gateway, which proxies only the per-agent custom routes.
+  const customTransportAgentId = useCustomTransportAgentId();
+  const custom = useCustomIntegrationsFor(customTransportAgentId);
   const selection = useConnectionSelection(apps);
 
   const surface = useCatalogSurface({

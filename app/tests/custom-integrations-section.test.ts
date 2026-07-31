@@ -20,13 +20,33 @@ describe("custom integrations section error truth table", () => {
     );
   });
 
-  it("the add form's detect verdict is latest-check-wins", () => {
-    const src = read("../src/components/integrations/custom-add-form.tsx");
-    // A late detect result must never clobber a newer verdict, independent
-    // of the Check button's disabled-while-pending coupling.
+  it("Add goes straight to the setup chat — no fork dialog in between", () => {
+    const src = read(
+      "../src/components/integrations/custom-integrations-section.tsx",
+    );
+    // The chooser dialog (guided chat vs manual form) was cut: clicking Add
+    // starts the chat with the ambient (or only) agent immediately; only a
+    // multi-agent workspace on the global page may interpose the agent picker.
     ok(
-      src.includes("seq !== checkSeq.current"),
-      "stale detect results are dropped by sequence",
+      src.includes("void chatSetup.start(target)"),
+      "the add handler starts the setup chat directly",
+    );
+    ok(
+      !src.includes("CustomAddDialog"),
+      "the fork dialog stays deleted from the add path",
+    );
+  });
+
+  it("agent-less surfaces ride the per-agent transport (gateway-safe)", () => {
+    const src = read(
+      "../src/components/integrations/custom-integrations-section.tsx",
+    );
+    // The hosted gateway proxies only the per-agent custom routes: without a
+    // transport fallback the global Integrations page's custom tab silently
+    // hides on managed cloud (its top-level fetch 404s to null).
+    ok(
+      src.includes("useCustomTransportAgentId(agent?.id)"),
+      "the list rides the transport agent, not only the ambient one",
     );
   });
 });
