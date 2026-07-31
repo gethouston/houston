@@ -5,42 +5,46 @@ import {
 } from "../../lib/onboarding-segment";
 
 /**
- * Maps a first-run onboarding segment to the first-party store agent pack that
- * best fits that role, so the default assistant is seeded with role-relevant
- * skills/routines/instructions instead of the one-size-fits-all briefing.
+ * Maps a first-run onboarding segment to the SET of first-party store agent
+ * packs that fit that role, so a new user is seeded with a small team of
+ * role-relevant agents (one agent per pack) instead of a single one-size-fits-
+ * all assistant. The founder's requirement is "a set of agents", and each
+ * `store/agents/<id>` pack is a single agent, so a segment lists every pack the
+ * role should ship with.
  *
  * The values are `store/agents/<id>` pack ids (see `STORE_TEMPLATE_IDS` /
- * `store-catalog.ts`), loaded on create via `loadStoreTemplate`. A `null` means
- * "no pack fits" — those segments fall back to the generic personal-assistant
- * seeds, so a user is never left worse off than before this mapping existed.
+ * `store-catalog.ts`), each loaded on create via `loadStoreTemplate`. An empty
+ * array means "no pack fits" — those segments fall back to the generic
+ * personal-assistant seeds, so a user is never left worse off than before this
+ * mapping existed.
  *
  * Exhaustive over `OnboardingSegment` on purpose: adding a segment forces a
- * decision here at compile time. Packs `outbound` and `support` exist but have
- * no matching segment, so they are intentionally unmapped.
+ * decision here at compile time.
  */
-export const SEGMENT_AGENT_PACK: Record<OnboardingSegment, string | null> = {
-  marketing: "marketing",
-  product: null,
-  legal: "legal",
-  engineering: null,
-  student: null,
-  design: null,
-  operations: "operations",
-  people_hr: "people",
-  data_science: null,
-  finance: "bookkeeping",
-  sales: "sales",
-  something_else: null,
+export const SEGMENT_AGENT_PACK: Record<OnboardingSegment, string[]> = {
+  marketing: ["marketing", "outbound"],
+  product: [],
+  legal: ["legal", "operations"],
+  engineering: [],
+  student: [],
+  design: [],
+  operations: ["operations", "support"],
+  people_hr: ["people", "operations"],
+  data_science: [],
+  finance: ["bookkeeping", "operations"],
+  sales: ["sales", "outbound"],
+  something_else: [],
 };
 
 /**
- * The store pack id for a stored segment choice, or `null` when the segment has
- * no matching pack (or the answer was skipped / absent) — the caller then seeds
- * the generic personal assistant.
+ * The store pack ids for a stored segment choice, in seed order (the first is
+ * the primary assistant surfaced during onboarding; the rest become their own
+ * agents). Empty when the segment has no matching pack, or the answer was
+ * skipped / absent — the caller then seeds the generic personal assistant.
  */
-export function agentPackForSegment(
+export function agentPacksForSegment(
   segment: OnboardingSegmentChoice | null | undefined,
-): string | null {
-  if (!segment || !isOnboardingSegment(segment)) return null;
+): string[] {
+  if (!segment || !isOnboardingSegment(segment)) return [];
   return SEGMENT_AGENT_PACK[segment];
 }

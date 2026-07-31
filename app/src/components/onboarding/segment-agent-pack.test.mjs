@@ -2,33 +2,33 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ONBOARDING_SEGMENTS } from "../../lib/onboarding-segment.ts";
 import {
-  agentPackForSegment,
+  agentPacksForSegment,
   SEGMENT_AGENT_PACK,
 } from "./segment-agent-pack.ts";
 
 // The expected mapping, spelled out independently of the source so a silent
 // edit to SEGMENT_AGENT_PACK can't make the test agree with a regression.
 const EXPECTED = {
-  marketing: "marketing",
-  product: null,
-  legal: "legal",
-  engineering: null,
-  student: null,
-  design: null,
-  operations: "operations",
-  people_hr: "people",
-  data_science: null,
-  finance: "bookkeeping",
-  sales: "sales",
-  something_else: null,
+  marketing: ["marketing", "outbound"],
+  product: [],
+  legal: ["legal", "operations"],
+  engineering: [],
+  student: [],
+  design: [],
+  operations: ["operations", "support"],
+  people_hr: ["people", "operations"],
+  data_science: [],
+  finance: ["bookkeeping", "operations"],
+  sales: ["sales", "outbound"],
+  something_else: [],
 };
 
-test("agentPackForSegment resolves every one of the 12 segments", () => {
+test("agentPacksForSegment resolves every one of the 12 segments", () => {
   for (const segment of ONBOARDING_SEGMENTS) {
-    assert.equal(
-      agentPackForSegment(segment),
+    assert.deepEqual(
+      agentPacksForSegment(segment),
       EXPECTED[segment],
-      `segment ${segment} should map to ${EXPECTED[segment]}`,
+      `segment ${segment} should map to ${JSON.stringify(EXPECTED[segment])}`,
     );
   }
 });
@@ -40,20 +40,37 @@ test("the map has an entry for every segment and no extras", () => {
   );
 });
 
-test("skipped / undefined / null / unknown all fall back to null (generic)", () => {
-  assert.equal(agentPackForSegment("skipped"), null);
-  assert.equal(agentPackForSegment(undefined), null);
-  assert.equal(agentPackForSegment(null), null);
-  assert.equal(agentPackForSegment("not_a_segment"), null);
+test("skipped / undefined / null / unknown all fall back to [] (generic)", () => {
+  assert.deepEqual(agentPacksForSegment("skipped"), []);
+  assert.deepEqual(agentPacksForSegment(undefined), []);
+  assert.deepEqual(agentPacksForSegment(null), []);
+  assert.deepEqual(agentPacksForSegment("not_a_segment"), []);
 });
 
-test("exactly six segments map to a pack, six to generic", () => {
+test("six segments map to a pack set, six to generic", () => {
   const mapped = ONBOARDING_SEGMENTS.filter(
-    (s) => agentPackForSegment(s) !== null,
+    (s) => agentPacksForSegment(s).length > 0,
   );
-  assert.equal(mapped.length, 6);
-  assert.deepEqual(
-    mapped.sort(),
-    ["finance", "legal", "marketing", "operations", "people_hr", "sales"],
-  );
+  assert.deepEqual(mapped.sort(), [
+    "finance",
+    "legal",
+    "marketing",
+    "operations",
+    "people_hr",
+    "sales",
+  ]);
+});
+
+test("every mapped segment ships at least two agents (a set, not one)", () => {
+  for (const segment of ONBOARDING_SEGMENTS) {
+    const packs = agentPacksForSegment(segment);
+    if (packs.length > 0) {
+      assert.ok(
+        packs.length >= 2,
+        `${segment} should ship a set of agents, got ${packs.length}`,
+      );
+      // No duplicate pack within a segment's set.
+      assert.equal(new Set(packs).size, packs.length);
+    }
+  }
 });

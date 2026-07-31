@@ -1,8 +1,5 @@
-import type { TFunction } from "i18next";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
-import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { seedTimezoneIfUnset } from "../../hooks/use-timezone-preference";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
@@ -11,19 +8,18 @@ import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import type { Agent, Workspace } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import {
+  assistantContentForSegment,
+  seedExtraPackAgents,
+} from "./assistant-segment-seeds";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import {
   type EnsuredWorkspace,
   ensureWorkspaceWithAssistant,
 } from "./ensure-default-assistant";
 import { surfaceAgentThenRefresh } from "./first-run-provision";
-import {
-  type AssistantSetup,
-  buildAssistantInstructions,
-  defaultAssistantSetup,
-} from "./personal-assistant-artifacts";
-import { buildPersonalAssistantSeeds } from "./personal-assistant-seeds";
-import { agentPackForSegment } from "./segment-agent-pack";
+import { defaultAssistantSetup } from "./personal-assistant-artifacts";
+import { agentPacksForSegment } from "./segment-agent-pack";
 
 /**
  * Post-create bookkeeping: persist the last-used pick and reload the stores.
@@ -57,34 +53,6 @@ async function refreshAfterCreate(
     .getState()
     .agents.find((a) => a.id === ensured.assistant.id);
   if (refreshed) useAgentStore.getState().setCurrent(refreshed);
-}
-
-/**
- * Role-aware create-time content for the default assistant. When the answered
- * onboarding segment maps to a first-party store pack, seed that pack's
- * CLAUDE.md + skills/routines/data so the assistant is useful for that role on
- * day one (the same `loadStoreTemplate` payload the New Agent picker installs).
- * Otherwise fall back to the generic personal-assistant seeds, so an unmapped
- * (or skipped) segment is never left worse off than before the mapping existed.
- */
-async function assistantContentForSegment(
-  setup: AssistantSetup,
-  t: TFunction<"setup">,
-  locale: string,
-  segment: OnboardingSegmentChoice | null,
-): Promise<{ instructions: string; seeds: Record<string, string> }> {
-  const pack = agentPackForSegment(segment);
-  if (pack && STORE_TEMPLATE_IDS.has(pack)) {
-    const tpl = await loadStoreTemplate(pack, locale);
-    return {
-      instructions: tpl.claudeMd ?? buildAssistantInstructions(setup),
-      seeds: tpl.seeds,
-    };
-  }
-  return {
-    instructions: buildAssistantInstructions(setup),
-    seeds: buildPersonalAssistantSeeds(t, locale),
-  };
 }
 
 interface UseCreateAssistantArgs {
@@ -165,8 +133,18 @@ export function useCreateAssistant({
       // Surface the agent the instant its record lands so onboarding advances to
       // the email step immediately; the refresh below must not gate this.
       (ensured) => setAgent(ensured.assistant),
-      // Background: the pod-dependent refresh that used to stall the click.
-      (ensured) => refreshAfterCreate(ensured, pickedProvider, pickedModel),
+      // Background: seed the secondary role agents (packs beyond the primary),
+      // then run the pod-dependent store refresh that used to stall the click.
+      // Both stay off the surface path — the refresh reload picks the new agents
+      // up and re-selects the primary assistant.
+      async (ensured) => {
+        await seedExtraPackAgents(
+          ensured.workspace.id,
+          agentPacksForSegment(segment).slice(1),
+          i18n.language,
+        );
+        await refreshAfterCreate(ensured, pickedProvider, pickedModel);
+      },
       (err) =>
         logger.error(`[onboarding] post-create store refresh failed: ${err}`),
     ).then((ensured) => ensured.assistant);
