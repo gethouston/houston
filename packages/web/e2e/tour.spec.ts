@@ -1,10 +1,14 @@
 import { expect, test } from "./support/fixtures";
+import { openSettings } from "./support/settings-nav";
 
 test("Guide me tour places replay before the final closing step", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Guide me" }).click();
+  // The tour starts from Settings > Help, not the topbar: the "Guide me" button
+  // moved in there, so the entry point is walked the way a user reaches it.
+  await openSettings(page);
+  await page.getByTestId("settings-row-guide-me").click();
 
   const dialog = page
     .getByRole("dialog")

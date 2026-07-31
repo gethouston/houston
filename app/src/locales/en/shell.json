@@ -50,8 +50,7 @@
     }
   },
   "tabActions": {
-    "newMission": "New mission",
-    "startTour": "Guide me"
+    "newMission": "New mission"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Native Sentry smoke triggered",

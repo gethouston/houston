@@ -16,6 +16,7 @@ import type { SettingsSectionId } from "../../lib/settings-sections";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHeader } from "../shell/page-shell";
+import { HelpGroup } from "./help-group";
 import { AccountSection } from "./sections/account";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
@@ -40,7 +41,8 @@ interface SettingsIndexProps {
  * ones (context editors, shortcuts, bug report, and since HOU-788 Time worked,
  * Permissions and Admin) are navigable rows that drill into their own screen.
  * Account appears only when applicable; the Workspace and Team groups only when
- * their Teams gate passes.
+ * their Teams gate passes. Help leads the page: it is where the guided tour is
+ * started from since the topbar "Guide me" button moved in here.
  */
 export function SettingsIndex({
   accountAvailable,
@@ -80,7 +82,9 @@ export function SettingsIndex({
       />
 
       <div className="space-y-8">
-        <SettingsCard>
+        <HelpGroup />
+
+        <SettingsCard title={t("settings:index.groups.general")}>
           {/* WorkspaceSection (rename) is deliberately not rendered: the
               workspace name is fixed for now (HOU-704). */}
           {profileAvailable && (

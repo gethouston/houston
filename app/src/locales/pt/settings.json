@@ -1,6 +1,7 @@
 {
   "title": "Configurações",
   "nav": {
+    "guideMe": "Me guie",
     "profile": "Perfil",
     "apiKeys": "Chaves de API",
     "workspaceContext": "Contexto do espaço",
@@ -158,12 +159,15 @@
   "index": {
     "subtitle": "Gerencie seu espaço de trabalho e sua conta.",
     "groups": {
+      "general": "Geral",
+      "help": "Ajuda",
       "context": "Contexto",
       "support": "Suporte",
       "workspace": "Espaço de trabalho",
       "team": "Equipe"
     },
     "rows": {
+      "guideMe": "Faça um tour rápido pelo app",
       "profile": "Seu nome e sua foto",
       "apiKeys": "Permita que outros apps e assistentes de IA iniciem missões com seus agentes",
       "workspaceContext": "O que todo agente sabe sobre este espaço",

@@ -50,8 +50,7 @@
     "agentStore": "Loja de agentes"
   },
   "tabActions": {
-    "newMission": "Nova missão",
-    "startTour": "Me guie"
+    "newMission": "Nova missão"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Teste nativo do Sentry acionado",

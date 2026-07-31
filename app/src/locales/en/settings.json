@@ -1,6 +1,7 @@
 {
   "title": "Settings",
   "nav": {
+    "guideMe": "Guide me",
     "profile": "Profile",
     "apiKeys": "API keys",
     "workspaceContext": "Workspace context",
@@ -158,12 +159,15 @@
   "index": {
     "subtitle": "Manage your workspace and account.",
     "groups": {
+      "general": "General",
+      "help": "Help",
       "context": "Context",
       "support": "Support",
       "workspace": "Workspace",
       "team": "Team"
     },
     "rows": {
+      "guideMe": "Take a quick tour of the app",
       "profile": "Your name and picture",
       "apiKeys": "Let other apps and AI assistants start missions with your agents",
       "workspaceContext": "What every agent knows about this workspace",
