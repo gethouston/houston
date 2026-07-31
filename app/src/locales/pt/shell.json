@@ -63,7 +63,9 @@
     "genericDescription": "Algo inesperado deu errado. Tente novamente.",
     "reportSentTitle": "Houston, relatório enviado",
     "reportSentDescription": "Referência #{{id}}.",
-    "copyId": "Copiar código"
+    "copyId": "Copiar código",
+    "offlineTitle": "Houston, sem conexão",
+    "offlineDescription": "Não conseguimos conectar ao Houston agora. Verifique sua conexão com a internet e tente novamente."
   },
   "agentDelete": {
     "title": "Excluir o agente?",

@@ -83,6 +83,34 @@ export function showExpectedStateToast(
   useUIStore.getState().addToast({ title, description, variant: "info" });
 }
 
+/**
+ * Surface a transport-level network failure (device offline, host unreachable
+ * — HOU-1085) as ONE informational connectivity toast. A connectivity drop
+ * fails every live query at once, so the toast dedupes on its (constant)
+ * displayed body: the burst reads as one problem. No Sentry capture and no
+ * green "report sent" toast — nothing in Houston broke and there is nothing
+ * for us to fix; the raw diagnostic still reaches the frontend log via the
+ * caller's `logger.error` plus the `[toast:…]` line here. The analytics event
+ * fires only past the dedupe, mirroring `showErrorToast`.
+ */
+export function showConnectivityErrorToast(
+  command: string,
+  message: string,
+): void {
+  console.error(`[toast:${command}] ${message}`);
+  const description = i18n.t("shell:errorToast.offlineDescription");
+  if (isDuplicateToast(description, Date.now())) return;
+  analytics.track("app_error_shown", {
+    source: command,
+    error_kind: classifyAnalyticsError(message),
+  });
+  useUIStore.getState().addToast({
+    title: i18n.t("shell:errorToast.offlineTitle"),
+    description,
+    variant: "info",
+  });
+}
+
 export function showErrorToast(
   command: string,
   message: string,
