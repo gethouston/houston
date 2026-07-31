@@ -7,6 +7,7 @@ import {
   detectSummaryKey,
   EMPTY_CUSTOM_ADD_FORM,
   isServiceUrl,
+  oauthBlocked,
 } from "../src/components/integrations/custom-add-model.ts";
 
 const form = (over: Partial<CustomAddForm> = {}): CustomAddForm => ({
@@ -132,6 +133,35 @@ describe("addInputFrom", () => {
         endpoint: "https://mcp.acme.com",
         auth: "credential",
       },
+    );
+  });
+});
+
+describe("oauthBlocked", () => {
+  it("blocks only an MCP verdict that demands OAuth", () => {
+    strictEqual(
+      oauthBlocked(form({ kind: "mcp" }), {
+        kind: "mcp",
+        requiresAuthentication: true,
+        requiresOAuth: true,
+      }),
+      true,
+    );
+    strictEqual(
+      oauthBlocked(form({ kind: "mcp" }), {
+        kind: "mcp",
+        requiresAuthentication: true,
+      }),
+      false,
+    );
+    strictEqual(oauthBlocked(form({ kind: "mcp" }), null), false);
+    strictEqual(
+      oauthBlocked(form({ kind: "openapi" }), {
+        kind: "mcp",
+        requiresAuthentication: true,
+        requiresOAuth: true,
+      }),
+      false,
     );
   });
 });

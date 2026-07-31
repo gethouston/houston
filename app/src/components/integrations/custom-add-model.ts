@@ -64,6 +64,18 @@ export function detectSummaryKey(
   return "custom.add.detected.unknown";
 }
 
+/** An MCP verdict that says the server only signs in with its own account
+ *  flow BLOCKS submission: a pasted key can never satisfy OAuth, and adding
+ *  anyway would land a permanently broken "0 actions" integration. The
+ *  verdict line above the button explains why (always visible, never
+ *  hover-gated); the host refuses the same case authoritatively. */
+export function oauthBlocked(
+  form: CustomAddForm,
+  result: CustomDetectResult | null,
+): boolean {
+  return form.kind === "mcp" && result?.requiresOAuth === true;
+}
+
 /** The wire input for a complete form, or `null` while a required field is
  *  missing/invalid (the Add button stays disabled — nothing to submit yet). */
 export function addInputFrom(

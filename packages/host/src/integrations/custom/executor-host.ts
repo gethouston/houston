@@ -254,6 +254,18 @@ export class CustomExecutorHost {
             message: `the MCP server at ${def.endpoint} is not reachable`,
           };
         }
+        // An auth wall on a def added WITHOUT a credential can never produce
+        // tools — reporting it "active, 0 actions" would bury the real
+        // problem (the reviewed OAuth-only case: the server wants its own
+        // sign-in, which Houston cannot connect to yet).
+        if (probe.requiresAuthentication && def.auth === "none") {
+          return {
+            status: "error",
+            message: probe.requiresOAuth
+              ? `the MCP server at ${def.endpoint} only signs in with its own account flow, which Houston cannot connect to yet`
+              : `the MCP server at ${def.endpoint} requires an API key or token - add it again as a service that needs a key`,
+          };
+        }
       }
       return { status: "active", toolCount };
     } catch (err) {

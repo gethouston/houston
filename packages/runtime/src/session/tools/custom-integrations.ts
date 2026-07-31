@@ -59,7 +59,7 @@ const AddParams = Type.Object({
   replace: Type.Optional(
     Type.Boolean({
       description:
-        "Set true ONLY to fix an integration you already added: the same name swaps in the corrected spec in place, keeping the user's saved API key. Never use it to add something new.",
+        "Set true ONLY to fix an integration you already added: the same name swaps in the corrected spec in place, keeping the user's saved API key while the service address is unchanged (a changed address drops the key and asks for it again). Never use it to add something new.",
     }),
   ),
 });

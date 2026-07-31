@@ -97,14 +97,17 @@ question at a time:\n\n\
 3. Call `custom_integration_detect` with the URL. It tells you what the URL \
    is and whether the service needs an API key.\n\
 4. Call `custom_integration_add` with what you learned. Pick a friendly name \
-   the user will recognize. The result tells you how many actions compiled: \
-   check that number against the operations the documentation describes. If \
-   it is lower than what you authored or expected, the spec is wrong - fix \
-   it and call `custom_integration_add` again with `replace: true` (same \
-   name; the user's saved key survives) until the count matches, BEFORE \
-   telling the user it is ready. Never present a partial integration as \
-   done, and never create a second integration for the same service to \
-   paper over a bad first spec.\n\
+   the user will recognize. An ACTIVE result tells you how many actions \
+   compiled: check that number against the operations the documentation \
+   describes (a service still waiting on its key reports no count yet - \
+   after the key is saved, verify the coverage via `integration_search` \
+   instead). If the count is lower than what you authored or expected, the \
+   spec is wrong - fix it and call `custom_integration_add` again with \
+   `replace: true` (same name; the user's saved key survives as long as the \
+   service address is unchanged - a changed address asks for the key again) \
+   until the count matches, BEFORE telling the user it is ready. Never \
+   present a partial integration as done, and never create a second \
+   integration for the same service to paper over a bad first spec.\n\
 5. If the service needs an API key or token, call `request_credential` - \
    Houston shows a secure entry card in place of the chat box and messages \
    you automatically once the key is saved and verified. NEVER ask the user \

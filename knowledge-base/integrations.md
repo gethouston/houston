@@ -967,10 +967,19 @@ guard stops reaching the wire).
 
 **Replace = the agent's self-repair path (HOU-1083).** `add` with
 `replace: true` (same slug, same kind) swaps the spec in place through the
-proven uncompile → recompile sequence, keeping `addedAtMs` and the stored
-credential (secret ids are slug-scoped) — the user never re-enters a key for a
-spec fix. A replacement that fails to compile restores the previous compiled
-view and rejects, so a working integration is never traded for a broken spec.
+proven uncompile → recompile sequence, keeping `addedAtMs` — and the stored
+credential ONLY when `service-origins.ts` proves the replacement talks to the
+same service (equal server/endpoint origins; url-kind specs need the identical
+document URL; anything indeterminate counts as changed). A changed origin
+drops the carry, deletes the now-unreferenced secret, and lands the def
+`pending` (secure-card re-entry) — otherwise a prompt-injected spec pointing
+at an attacker host would receive the user's key on the next action. A
+replacement that fails to compile is uncompiled again and the previous view
+restored, so a working integration is never traded for a broken spec; a
+credential→none replace deletes the orphaned secret. All manager mutations
+(add/replace/setCredential/remove) are serialized through one queue so the
+def store, secret store, compiled executor, and state map can never interleave
+into disagreement.
 The product prompt (host `houston-prompt.ts` + the Rust twin
 `app/src-tauri/src/houston_prompt/integrations.rs`) makes discovery
 deterministic: search published spec → llms-full.txt/llms.txt → docs pages in

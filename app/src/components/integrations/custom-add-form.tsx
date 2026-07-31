@@ -17,6 +17,7 @@ import {
   EMPTY_CUSTOM_ADD_FORM,
   type CustomAddForm as FormState,
   isServiceUrl,
+  oauthBlocked,
 } from "./custom-add-model";
 
 /**
@@ -59,6 +60,7 @@ export function CustomAddForm({
   const canCheck = isServiceUrl(form.url) && !detect.isPending;
   const shownVerdict =
     verdict && verdict.url === form.url.trim() ? verdict.result : null;
+  const blocked = oauthBlocked(form, shownVerdict);
 
   const check = async () => {
     if (!canCheck) return;
@@ -75,7 +77,7 @@ export function CustomAddForm({
   };
 
   const submit = async () => {
-    if (!input || add.isPending) return;
+    if (!input || add.isPending || blocked) return;
     const view = await add.mutateAsync(input).catch(() => null);
     if (view) onAdded(view);
   };
@@ -179,7 +181,7 @@ export function CustomAddForm({
         </Button>
         <AsyncButton
           type="button"
-          disabled={!input || add.isPending}
+          disabled={!input || add.isPending || blocked}
           onClick={submit}
         >
           {add.isPending ? t("custom.add.submitting") : t("custom.add.submit")}
