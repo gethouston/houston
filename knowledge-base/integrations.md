@@ -947,6 +947,18 @@ definition that fails to compile degrades to state `error` for itself only.
 Secrets reach requests via a Houston `CredentialProvider` (`secrets.ts`)
 resolved lazily — the executor never copies values.
 
+**Spec freshness (HOU-1052 follow-up).** The compiled view is process-long
+(hours on a pod, weeks on a desktop), so url-sourced OpenAPI specs get a
+stale-while-revalidate verify: any `ensure()` past a 6h TTL arms ONE
+background `refreshSpecs()` sweep — re-fetch each url spec, sha256-compare,
+and recompile ONLY a def whose content actually changed (removeSpec +
+compileDef, the same sequence remove + re-add runs, connection included). An
+unreachable spec host keeps the working view; a first sweep records baselines
+without recompiling; blob specs are frozen by design and MCP tool lists are
+discovered live per listing (no cache in the executor SDK), so neither is
+swept. Nothing ever blocks a chat turn on a spec fetch, and nothing refetches
+per request.
+
 **Definition shape** (discriminated union, `types.ts`): `openapi` (spec
 url|blob, baseUrl?) or `mcp` (remote endpoint, headers?), plus
 `auth: "none" | "credential"` and an optional stored `credential`
