@@ -1,0 +1,146 @@
+# Web staging — every push to main → preview.gethouston.ai
+#
+# The preview/staging site (houston-web-preview) tracks main HEAD: every merge
+# builds packages/web with the SAME recipe as release.yml's build-web job and
+# deploys it. Production (app.gethouston.ai) is untouched here — it only ever
+# receives the byte-identical web-dist.tar.gz asset of a published release, via
+# web-promote.yml. At tag time build-web also deploys the tagged bytes to
+# preview; since tags are cut from main the two writers converge, and the
+# release deploy guarantees the exact promoted bytes were serveable on preview.
+#
+# The bundle bakes the PRODUCTION gateway (HOSTED_ENGINE_URL), exactly like the
+# release build — staging here means "main-HEAD frontend", not a separate
+# control plane. (A staging-gateway variant would bake HOSTED_ENGINE_URL_STAGING
+# the way the desktop staging QA DMG does — deliberate non-goal for now.)
+name: Web staging
+
+on:
+  push:
+    branches: [main]
+
+# Only the newest main build matters; cancel a superseded in-flight deploy.
+concurrency:
+  group: web-staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation for the Firebase deploy
+
+jobs:
+  deploy-preview:
+    if: ${{ github.repository == 'gethouston/houston' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Job-level so the Sentry upload step's `if: ${{ env.SENTRY_AUTH_TOKEN != '' }}`
+    # can read it — same step-`if`-can't-see-step-env footgun as the release jobs.
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Full history so `sentry-cli releases set-commits --auto` can
+          # associate the staging release with its commits.
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # packages/web ships a 0.0.0 placeholder version; stamp a per-commit
+      # staging version so each main build gets its own Sentry release
+      # (`houston-app@<version>-web`, mirroring the release build's naming)
+      # instead of every build colliding at houston-app@0.0.0-web.
+      - name: Stamp web bundle version
+        id: webversion
+        run: |
+          set -euo pipefail
+          VERSION="0.0.0-main.${GITHUB_SHA::7}"
+          jq --arg v "$VERSION" '.version = $v' packages/web/package.json > packages/web/package.json.tmp
+          mv packages/web/package.json.tmp packages/web/package.json
+          echo "release=houston-app@${VERSION}-web" >> "$GITHUB_OUTPUT"
+          echo "Web Sentry release: houston-app@${VERSION}-web"
+
+      # Same build inputs as release.yml build-web: the gateway URL selects
+      # host/cloud-login mode, the FIREBASE_* trio configures GCIP sign-in
+      # (FIREBASE_API_KEY is load-bearing, no build-time default), POSTHOG_*/
+      # SENTRY_DSN power analytics + crash reporting. The deploy environment is
+      # NOT baked — it is derived at runtime from the hostname, so this bundle
+      # reports itself as `preview` when served from the preview domains.
+      - name: Build packages/web
+        env:
+          VITE_CONTROL_PLANE_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          set -euo pipefail
+          # A missing gateway URL would silently ship a staging app that falls
+          # back to the self-host Connect screen instead of the managed cloud.
+          # Fail loudly (no-silent-failures) rather than deploy a broken build.
+          if [ -z "${VITE_CONTROL_PLANE_URL}" ]; then
+            echo "::error::HOSTED_ENGINE_URL secret is empty — set it to the managed gateway URL (https://gateway.gethouston.ai) before deploying the web app."
+            exit 1
+          fi
+          pnpm --filter houston-web build
+
+      # Inject Sentry Debug IDs into the shipped JS + maps BEFORE deploy, so the
+      # served bytes and the uploaded maps share the same IDs; then upload the
+      # maps under the staging release. The next step strips the maps from dist
+      # so the public CDN bundle carries only the Debug-ID'd JS.
+      - name: Upload web sourcemaps to Sentry
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_ORG: houston-cd
+          SENTRY_PROJECT: houston-app
+        run: |
+          set -euo pipefail
+          RELEASE="${{ steps.webversion.outputs.release }}"
+          # Lockfile-pinned sentry-cli (app's @sentry/cli devDep), same binary
+          # the release jobs use — not an unpinned get-cli download.
+          SENTRY_CLI="app/node_modules/.bin/sentry-cli"
+          "$SENTRY_CLI" --version
+          "$SENTRY_CLI" releases new "$RELEASE"
+          "$SENTRY_CLI" releases set-commits --auto "$RELEASE" || \
+            echo "::warning::set-commits --auto failed (shallow clone or first release); continuing"
+          "$SENTRY_CLI" sourcemaps inject packages/web/dist
+          "$SENTRY_CLI" sourcemaps upload --release "$RELEASE" packages/web/dist
+          "$SENTRY_CLI" releases finalize "$RELEASE"
+
+      # Keep the served bundle map-free (they live in Sentry now). Runs
+      # unconditionally so even a run without SENTRY_AUTH_TOKEN never publishes
+      # .map files to the public CDN.
+      - name: Strip sourcemaps from dist
+        run: find packages/web/dist -name '*.map' -delete
+
+      - name: Auth to GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-web@gethouston.iam.gserviceaccount.com
+
+      # firebase-tools auto-discovers firebase.json + .firebaserc in this dir;
+      # the target `preview` maps to the houston-web-preview site (.firebaserc).
+      - name: Deploy to preview site
+        working-directory: packages/web
+        run: |
+          # Pinned major: an unpinned @latest would let a breaking firebase-tools
+          # release silently break the deploy. Keep in sync with release.yml +
+          # web-promote.yml.
+          npx --yes firebase-tools@15 deploy \
+            --only hosting:preview \
+            --project gethouston \
+            --non-interactive
+          echo "::notice::Deployed main@${GITHUB_SHA::7} to preview.gethouston.ai (houston-web-preview)."
