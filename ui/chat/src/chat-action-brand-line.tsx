@@ -1,4 +1,5 @@
 import { HoustonHelmet } from "@houston-ai/core";
+import { Wrench } from "lucide-react";
 import { useState } from "react";
 import { Shimmer } from "./ai-elements/shimmer";
 import type { ChatActionBrand } from "./chat-process-header";
@@ -32,7 +33,11 @@ export function ChatActionBrandLine({
   const showLogo = brand.logoUrl && !failed;
   return (
     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs">
-      {showLogo ? (
+      {brand.icon === "tool" ? (
+        // A logo-less integration kind (custom API/MCP, HOU-1049): the wrench
+        // says "your own tool", where the helmet would read as Houston itself.
+        <Wrench aria-hidden className="size-3.5 shrink-0" />
+      ) : showLogo ? (
         <img
           alt=""
           className="size-3.5 shrink-0 rounded object-contain"

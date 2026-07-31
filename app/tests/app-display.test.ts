@@ -1,9 +1,12 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import {
   appDisplay,
+  camelToSnakeCase,
+  customActionOf,
   fallbackLogo,
+  prettifyCustomSlug,
   prettifyToolkit,
   toolkitOfActionSlug,
 } from "../src/components/integrations/app-display.ts";
@@ -105,5 +108,40 @@ describe("toolkitOfActionSlug", () => {
   it("falls back to the first underscore segment when the catalog has no match", () => {
     strictEqual(toolkitOfActionSlug("NOTION_CREATE_PAGE", catalog), "notion");
     strictEqual(toolkitOfActionSlug("STRIPE_REFUND", []), "stripe");
+  });
+});
+
+describe("customActionOf (HOU-1049)", () => {
+  it("parses a custom executor address into slug + tool", () => {
+    deepStrictEqual(customActionOf("tools.anakin.org.default.jobs.listJobs"), {
+      slug: "anakin",
+      tool: "listJobs",
+    });
+    // No namespace segment: the tool is still the last segment.
+    deepStrictEqual(customActionOf("tools.acme-crm.org.default.search"), {
+      slug: "acme-crm",
+      tool: "search",
+    });
+  });
+
+  it("never claims a Composio slug or a malformed address", () => {
+    strictEqual(customActionOf("GMAIL_SEND_EMAIL"), null);
+    strictEqual(customActionOf("tools.anakin.org"), null);
+    strictEqual(customActionOf(""), null);
+  });
+});
+
+describe("custom brand fallbacks (HOU-1049)", () => {
+  it("camelToSnakeCase feeds the shared gerund humanizer", () => {
+    strictEqual(camelToSnakeCase("listJobs"), "list_jobs");
+    strictEqual(camelToSnakeCase("postOperation"), "post_operation");
+    strictEqual(camelToSnakeCase("search"), "search");
+    strictEqual(camelToSnakeCase("get_user"), "get_user");
+  });
+
+  it("prettifyCustomSlug is the no-list name fallback", () => {
+    strictEqual(prettifyCustomSlug("anakin"), "Anakin");
+    strictEqual(prettifyCustomSlug("acme-crm"), "Acme Crm");
+    strictEqual(prettifyCustomSlug("my_api"), "My Api");
   });
 });
