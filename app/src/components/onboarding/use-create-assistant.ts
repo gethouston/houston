@@ -31,6 +31,12 @@ async function refreshAfterCreate(
   provider: string,
   model: string,
 ): Promise<void> {
+  try {
+    await tauriProvider.setLastUsed(provider, model);
+  } catch (err) {
+    logger.error(`[onboarding] last-used provider write failed: ${err}`);
+  }
+
   // Persist the account timezone so the seeded morning-briefing routine fires at
   // the user's local 7am, not the cloud pod's UTC 7am. The Routines-tab hook
   // auto-seeds this too, but it never mounts during onboarding — so a user who
@@ -40,7 +46,6 @@ async function refreshAfterCreate(
   await seedTimezoneIfUnset().catch((err) =>
     logger.error(`[onboarding] timezone seed failed: ${err}`),
   );
-  await tauriProvider.setLastUsed(provider, model);
   if (ensured.createdWorkspace) {
     analytics.track("workspace_created", { provider, source: "onboarding" });
   }

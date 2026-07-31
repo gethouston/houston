@@ -18,7 +18,11 @@ import {
   setCustomEndpoint,
   startLogin,
 } from "../auth/login";
-import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
+import {
+  scrubRefreshTokens,
+  serveModeOn,
+  syncServedCredentialSafe,
+} from "../auth/serve";
 import { ApiKeyVerifyError, verifyApiKey } from "../auth/verify-api-key";
 import { refreshAnthropicCredential } from "../backends/claude/credential-status";
 import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
@@ -145,11 +149,12 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
 /**
  * Materialize a desktop-pushed Claude subscription OAuth credential (host→pod).
  * Writes the CLI's `<CLAUDE_CONFIG_DIR>/.credentials.json` so the Claude Agent
- * SDK + `claude auth status` read as logged-in and the SDK self-refreshes from
- * the refresh token in place. The body is the pinned CLI envelope, validated
- * STRICTLY — a malformed push is a clear 400 (the desktop falls back to paste),
- * a write failure a 500. On success the connected signal is warmed so status
- * flips immediately. The token is never logged.
+ * SDK + `claude auth status` read as logged-in. Desktop/self-host keeps the full
+ * credential so the SDK self-refreshes; serve mode strips the refresh token so
+ * the gateway remains the family's single rotator. The body is the pinned CLI
+ * envelope, validated STRICTLY — a malformed push is a clear 400 (the desktop
+ * falls back to paste), a write failure a 500. On success the connected signal
+ * is warmed so status flips immediately. The token is never logged.
  */
 async function handleClaudeOAuthCredential(ctx: RouteContext) {
   const parsed = parseClaudeOAuthEnvelope(
@@ -160,7 +165,10 @@ async function handleClaudeOAuthCredential(ctx: RouteContext) {
     return;
   }
   try {
-    writeClaudeOAuthCredentialFile(claudeLoginConfigDir(), parsed.value);
+    writeClaudeOAuthCredentialFile(
+      claudeLoginConfigDir(),
+      serveModeOn() ? { ...parsed.value, refreshToken: "" } : parsed.value,
+    );
   } catch (e) {
     json(ctx.res, 500, {
       error: `could not materialize the Claude credential: ${e instanceof Error ? e.message : String(e)}`,

@@ -779,8 +779,8 @@ export interface ActivityUpdate {
   routine_id?: string;
   routine_run_id?: string;
   skill_slug?: string;
-  provider?: string;
-  model?: string;
+  provider?: string | null;
+  model?: string | null;
   /** Set to record a new pending interaction; `null` clears it explicitly. */
   pending_interaction?: PendingInteraction | null;
 }

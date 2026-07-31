@@ -1108,6 +1108,12 @@ export class HoustonClient {
   providerStatus(name: string): Promise<ProviderStatus> {
     return this.request("GET", `/providers/${this.seg(name)}/status`);
   }
+  providerStatusesForAgent(
+    _agentId: string,
+    names: readonly string[],
+  ): Promise<ProviderStatus[]> {
+    return Promise.all(names.map((name) => this.providerStatus(name)));
+  }
   /**
    * Live per-account usage for every CONNECTED provider — rate-limit windows
    * (Claude 5h/weekly, Codex session/weekly, Copilot quotas) and prepaid

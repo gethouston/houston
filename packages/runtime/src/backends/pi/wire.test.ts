@@ -5,6 +5,10 @@ import type {
 } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
+import {
+  authFailureActive,
+  resetAuthFailures,
+} from "../../auth/credential-health";
 import { createWireTranslator, normalizeUsage, toWire } from "./wire";
 
 /** A valid pi `Usage` for fixtures; `cost` is required by the type. */
@@ -170,6 +174,22 @@ test("toWire maps an errored turn_end to a typed provider_error frame", () => {
         "OpenAI API error (401): Your session has ended. Please log in again. (app_session_terminated)",
     },
   });
+});
+
+test("toWire marks raw openai auth failures against openai-codex", () => {
+  resetAuthFailures();
+  toWire(
+    turnEnd(
+      failedAssistantMessage("error", "401 Unauthorized: token expired", {
+        provider: "openai",
+        model: "gpt-5.1-codex",
+      }),
+    ),
+  );
+
+  expect(authFailureActive("openai-codex")).toBe(true);
+  expect(authFailureActive("openai")).toBe(false);
+  resetAuthFailures();
 });
 
 test("toWire surfaces a pi-internal turn error (the Copilot no-response bug) as a typed provider_error", () => {

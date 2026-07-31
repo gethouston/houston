@@ -34,14 +34,17 @@ import type {
 } from "@houston-ai/engine-client";
 import { invoke } from "@tauri-apps/api/core";
 import { Check } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { analytics } from "../../lib/analytics";
+import { pickDefaultProviderModel } from "../../lib/default-provider-model";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-report";
+import { providerIsConnected } from "../../lib/provider-connection";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider, toAgent } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
@@ -77,24 +80,50 @@ export function ImportAgentWizard() {
   const [color, setColor] = useState<string>(AGENT_COLORS[0].id);
   const [provider, setProvider] = useState<string>("anthropic");
   const [model, setModel] = useState<string>(getDefaultModel("anthropic"));
+  const [lastUsed, setLastUsed] = useState<{
+    provider: string | null;
+    model: string | null;
+  } | null>(null);
+  const userPickedModelRef = useRef(false);
+  const { statuses: providerStatuses } = useProviderStatuses();
+  const connectedProviders = useMemo(
+    () =>
+      Object.values(providerStatuses)
+        .filter((status) => providerIsConnected(status))
+        .map((status) => status.provider),
+    [providerStatuses],
+  );
 
-  // Read the sticky default whenever the wizard opens so the picker starts
-  // from the user's last pick (made in the create-agent dialog, AI-assist
-  // step, or chat-tab picker). Falls back to Anthropic if nothing was ever
-  // stored (fresh install).
+  // Resolve the sticky preference against confirmed connections whenever the
+  // wizard opens. An unconfirmed probe retains the non-blocking legacy fallback
+  // until statuses arrive.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     tauriProvider.getLastUsed().then(({ provider: p, model: m }) => {
       if (cancelled) return;
-      const next = p ?? "anthropic";
-      setProvider(next);
-      setModel(m ?? getDefaultModel(next));
+      setLastUsed({ provider: p, model: m });
+      if (!userPickedModelRef.current && p) {
+        setProvider(p);
+        setModel(m ?? getDefaultModel(p));
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || userPickedModelRef.current) return;
+    if (Object.keys(providerStatuses).length === 0) return;
+    const next = pickDefaultProviderModel({
+      lastUsedProvider: lastUsed?.provider,
+      lastUsedModel: lastUsed?.model,
+      connectedProviders,
+    });
+    setProvider(next.provider);
+    setModel(next.model);
+  }, [connectedProviders, lastUsed, open, providerStatuses]);
   const [selection, setSelection] = useState<Selection>({
     skillSlugs: new Set(),
     routineIds: new Set(),
@@ -121,6 +150,8 @@ export function ImportAgentWizard() {
     setWantScan(null);
     setName("");
     setColor(AGENT_COLORS[0].id);
+    setLastUsed(null);
+    userPickedModelRef.current = false;
     // Provider/model intentionally NOT reset here — the open-effect above
     // re-hydrates them from `tauriProvider.getLastUsed()` on the next open.
     setSelection({
@@ -129,6 +160,12 @@ export function ImportAgentWizard() {
       learningIds: new Set(),
     });
   }, []);
+
+  const handleModelChange = (nextProvider: string, nextModel: string) => {
+    userPickedModelRef.current = true;
+    setProvider(nextProvider);
+    setModel(nextModel);
+  };
 
   const runScan = async (packageId: string) => {
     setScanning(true);
@@ -199,6 +236,16 @@ export function ImportAgentWizard() {
       addToast({ variant: "error", title: t("import.errors.nameRequired") });
       return;
     }
+    const resolved = pickDefaultProviderModel({
+      lastUsedProvider: lastUsed?.provider,
+      lastUsedModel: lastUsed?.model,
+      connectedProviders,
+    });
+    const kickoffPin = userPickedModelRef.current
+      ? { provider, model }
+      : resolved.confirmed
+        ? { provider: resolved.provider, model: resolved.model }
+        : {};
     setInstalling(true);
     try {
       const installed = await getEngine().importInstall({
@@ -214,7 +261,9 @@ export function ImportAgentWizard() {
         },
       });
       // Keep the sticky last-used in sync (local, so it's cheap to await).
-      await tauriProvider.setLastUsed(provider, model);
+      if (kickoffPin.provider && kickoffPin.model) {
+        await tauriProvider.setLastUsed(kickoffPin.provider, kickoffPin.model);
+      }
       analytics.track("agent_imported", { agent_slug: installed.agentName });
       // Reveal the agent NOW — the same optimistic contract as the
       // create-agent dialog (HOU-710). `adopt` marks the agent provisioning
@@ -236,8 +285,7 @@ export function ImportAgentWizard() {
       setOpen(false);
       reset();
       void finishAgentSetup(installed.agentPath, {
-        provider,
-        model,
+        ...kickoffPin,
         routine: null,
       });
       // With the wizard dismissed, auto-start the agent's self-setup mission in
@@ -251,7 +299,7 @@ export function ImportAgentWizard() {
           color: installed.agent.color,
           folderPath: installed.agentPath,
         },
-        { provider, model },
+        kickoffPin,
         "imported",
       );
     } catch (err) {
@@ -309,10 +357,7 @@ export function ImportAgentWizard() {
               onColorChange={setColor}
               provider={provider}
               model={model}
-              onProviderChange={(p, m) => {
-                setProvider(p);
-                setModel(m);
-              }}
+              onProviderChange={handleModelChange}
             />
           )}
           {currentStep === "skills" && uploaded && (

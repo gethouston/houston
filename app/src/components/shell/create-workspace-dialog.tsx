@@ -6,14 +6,17 @@ import {
 } from "@houston-ai/core";
 import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import type { RoutineFormData } from "@houston-ai/routines";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
 import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
+import { pickDefaultProviderModel } from "../../lib/default-provider-model";
+import { providerIsConnected } from "../../lib/provider-connection";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -70,12 +73,25 @@ export function CreateAgentDialog() {
   const [existingPath, setExistingPath] = useState<string | null>(null);
   const [provider, setProvider] = useState<string>("anthropic");
   const [model, setModel] = useState<string>(getDefaultModel("anthropic"));
+  const [lastUsed, setLastUsed] = useState<{
+    provider: string | null;
+    model: string | null;
+  } | null>(null);
+  const userPickedModelRef = useRef(false);
+  const { statuses: providerStatuses } = useProviderStatuses();
+  const connectedProviders = useMemo(
+    () =>
+      Object.values(providerStatuses)
+        .filter((status) => providerIsConnected(status))
+        .map((status) => status.provider),
+    [providerStatuses],
+  );
 
-  // Reset form on close. On open, load the sticky last-used provider/model —
-  // the pair becomes the new agent's brain (and the generation brain on the AI
-  // path, where the ai-assist step shows a picker to change it). Reading on
-  // open (not mount) prevents the old "stale workspace default baked into the
-  // new agent's config" bug.
+  // Reset form on close. On open, resolve the sticky preference against
+  // confirmed connections. The pair becomes the new agent's brain (and the
+  // generation brain on the AI path, where the ai-assist step shows a picker to
+  // change it). Reading on open prevents a stale workspace default from being
+  // baked into the new agent's config.
   useEffect(() => {
     if (!open) {
       setStep(1);
@@ -92,19 +108,35 @@ export function CreateAgentDialog() {
       setCreating(false);
       setSearch("");
       setExistingPath(null);
+      setLastUsed(null);
+      userPickedModelRef.current = false;
       return;
     }
     let cancelled = false;
     tauriProvider.getLastUsed().then(({ provider: p, model: m }) => {
       if (cancelled) return;
-      const nextProvider = p ?? "anthropic";
-      setProvider(nextProvider);
-      setModel(m ?? getDefaultModel(nextProvider));
+      setLastUsed({ provider: p, model: m });
+      if (!userPickedModelRef.current && p) {
+        setProvider(p);
+        setModel(m ?? getDefaultModel(p));
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || userPickedModelRef.current) return;
+    if (Object.keys(providerStatuses).length === 0) return;
+    const next = pickDefaultProviderModel({
+      lastUsedProvider: lastUsed?.provider,
+      lastUsedModel: lastUsed?.model,
+      connectedProviders,
+    });
+    setProvider(next.provider);
+    setModel(next.model);
+  }, [connectedProviders, lastUsed, open, providerStatuses]);
 
   const handleClose = () => {
     setOpen(false);
@@ -115,6 +147,7 @@ export function CreateAgentDialog() {
   // surfaces its own error toast (the `call` wrapper), so the local state —
   // which is what this create actually uses — is applied regardless.
   const handleModelChange = (nextProvider: string, nextModel: string) => {
+    userPickedModelRef.current = true;
     setProvider(nextProvider);
     setModel(nextModel);
     tauriProvider.setLastUsed(nextProvider, nextModel).catch(() => {});
@@ -125,6 +158,16 @@ export function CreateAgentDialog() {
     // `creating` also gates re-entry: the submit button is disabled while in
     // flight, but Enter in the name input still fires the form's onSubmit.
     if (creating || !trimmed || !selectedConfigId || !currentWorkspace) return;
+    const resolved = pickDefaultProviderModel({
+      lastUsedProvider: lastUsed?.provider,
+      lastUsedModel: lastUsed?.model,
+      connectedProviders,
+    });
+    const kickoffPin = userPickedModelRef.current
+      ? { provider, model }
+      : resolved.confirmed
+        ? { provider: resolved.provider, model: resolved.model }
+        : {};
     setError(null);
     setCreating(true);
     // AI-generated instructions take priority over the template's claudeMd.
@@ -169,8 +212,7 @@ export function CreateAgentDialog() {
     // its own error toast on failure.
     useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
     void finishAgentSetup(agentPath, {
-      provider,
-      model,
+      ...kickoffPin,
       routine: routineAccepted ? routineForm : null,
     });
     // Auto-start the agent's self-setup mission in the normal shell: it
@@ -184,7 +226,7 @@ export function CreateAgentDialog() {
         color: created.color,
         folderPath: agentPath,
       },
-      { provider, model },
+      kickoffPin,
       "created",
     );
     // Templates that declare integrations keep a connect-apps step, but inside
@@ -212,6 +254,19 @@ export function CreateAgentDialog() {
   };
 
   const selectedDef = agentDefs.find((d) => d.config.id === selectedConfigId);
+  const resolvedGenerationModel = pickDefaultProviderModel({
+    lastUsedProvider: lastUsed?.provider,
+    lastUsedModel: lastUsed?.model,
+    connectedProviders,
+  });
+  const generationPin = userPickedModelRef.current
+    ? { provider, model }
+    : resolvedGenerationModel.confirmed
+      ? {
+          provider: resolvedGenerationModel.provider,
+          model: resolvedGenerationModel.model,
+        }
+      : {};
 
   const aiReviewBackStep = (): Step =>
     routineForm ? "ai-routine" : "ai-assist";
@@ -267,6 +322,8 @@ export function CreateAgentDialog() {
           <AiAssistStep
             provider={provider}
             model={model}
+            providerOverride={generationPin.provider}
+            modelOverride={generationPin.model}
             onModelChange={handleModelChange}
             brief={brief}
             onBriefChange={setBrief}

@@ -61,9 +61,9 @@ export function resolveAgentModelOverrides(
 }
 
 /**
- * Read + resolve in one step (the send-path convenience, mirrors
- * `readAgentTurnMode`). A failed config read falls back to no pins — the safe
- * default for a preference lookup; the send itself still surfaces its errors.
+ * Read + resolve in one step for send paths that need the configured brain.
+ * A failed config read falls back to no pins; the send itself still surfaces
+ * its own errors.
  */
 export async function readAgentModelOverrides(
   agentPath: string,

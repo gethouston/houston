@@ -575,11 +575,20 @@ the border/shadow/radius. The library component is props-only and i18n-agnostic
   selector: the chat composer AND the import flow (`portable/import-wizard.tsx`)
   render it with `agent={null}` (never locks — there is no agent yet). The old
   hand-rolled `InlineModelSelector` (curated-only, hid disconnected providers) is
-  gone. The **create-agent dialog has NO model picker**: `naming-step.tsx` and
-  `ai-assist-step.tsx` silently use the sticky last-used provider/model
-  (loaded on dialog open in `create-workspace-dialog.tsx`, baked into the new
-  agent via `finishAgentSetup`); users change the model later from the chat
-  composer.
+  gone. The create-agent dialog's `naming-step.tsx` uses the sticky default,
+  while `ai-assist-step.tsx` exposes the shared picker. Both resolve against
+  CONFIRMED-CONNECTED providers (HOU-1065): `pickDefaultProviderModel`
+  (`app/src/lib/default-provider-model.ts`, unit-tested) keeps last-used only when
+  connected, else falls to the first connected provider in `PROVIDERS` order, else
+  the legacy anthropic fallback. Loaded on dialog open in
+  `create-workspace-dialog.tsx` (re-resolves as provider statuses land, latched off
+  once the user picks; an EMPTY statuses map is indeterminate and never resets the
+  seed). Create, import, and AI generation re-resolve from CURRENT statuses at
+  action time. An explicit picker choice is pinned; a confirmed default is
+  pinned; if nothing is confirmed, the visible legacy fallback is NOT written
+  by `finishAgentSetup` and is NOT passed as a turn override. The import wizard
+  (`portable/import-wizard.tsx`) follows the same rule. Users can change the
+  model later from the chat composer.
 - **Only ever offers runnable `(provider, model)` pairs.** The mapping
   (`app/src/lib/chat-model-picker-map.ts`, pure + unit-tested) encodes each row
   id as `` `${provider}::${model}` `` (split on the FIRST `::`), decoded on

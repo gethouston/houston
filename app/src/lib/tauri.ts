@@ -1412,6 +1412,27 @@ export const tauriProvider = {
         return out;
       },
     ),
+  checkAllStatusesForAgent: (agentId: string, ids: readonly string[]) =>
+    call<Record<string, ProviderStatus>>(
+      "check_agent_provider_statuses",
+      async () => {
+        const list = await getEngine().providerStatusesForAgent(agentId, ids);
+        const out: Record<string, ProviderStatus> = {};
+        ids.forEach((id, index) => {
+          const status = list[index];
+          if (!status) return;
+          out[id] = {
+            provider: status.provider,
+            cli_installed: status.cliInstalled,
+            auth_state: status.authState,
+            authenticated: status.authState === "authenticated",
+            cli_name: status.cliName,
+            active_model: status.activeModel,
+          };
+        });
+        return out;
+      },
+    ),
   getDefault: () =>
     call<string>(
       "get_default_provider",

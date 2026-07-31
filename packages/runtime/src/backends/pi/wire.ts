@@ -7,6 +7,7 @@ import {
 } from "@houston/runtime-client";
 import { classifyProviderError } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
+import { canonicalPinProvider } from "../../ai/providers";
 import { noteAuthFailure } from "../../auth/credential-health";
 import { reportRevokedServedToken } from "../../auth/report-revoked";
 
@@ -188,7 +189,7 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         // turn just ran on cannot authenticate, so "Connected" would be a lie
         // until it changes (auth/credential-health.ts).
         if (classified.kind === "unauthenticated") {
-          noteAuthFailure(classified.provider);
+          noteAuthFailure(canonicalPinProvider(classified.provider));
           // A REVOKED served token is invisible to the control plane (HOU-952).
           reportRevokedServedToken(classified);
         }

@@ -290,6 +290,11 @@ export class AdapterContext {
       : setupRuntimeClientFor(this._cp);
   }
 
+  /** Runtime client pinned to a specific agent, independent of UI selection. */
+  providerEngineFor(agentId: string): HoustonEngineClient {
+    return this._cp ? runtimeClientFor(this._cp, agentId) : this.engine;
+  }
+
   /** The one config both deployments share: the gateway in cloud mode, the
    *  local/self-host host otherwise — each serves `/v1/preferences/:key`. */
   prefConfig(): ControlPlaneConfig {

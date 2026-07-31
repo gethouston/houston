@@ -22,6 +22,9 @@ export interface RemoteCredentialStoreOptions {
   fetchImpl?: typeof fetch;
 }
 
+/** The gateway positively identified the stored credential as unusable. */
+export class RemoteCredentialDeadError extends Error {}
+
 /**
  * Managed-pod credential store: the pod never owns refresh-token rotation. The
  * gateway is the single refresher for org credentials (OpenAI refresh tokens
@@ -158,6 +161,20 @@ export class RemoteCredentialStore implements CredentialStore {
       headers: this.authHeaders(),
     });
     if (await isNotConnected404(res)) return null;
+    if (res.status === 502) {
+      const body = await res
+        .clone()
+        .text()
+        .catch(() => "");
+      if (
+        /refresh|credential.*(dead|expired|invalid|reject)|session.*ended/i.test(
+          body,
+        )
+      )
+        throw new RemoteCredentialDeadError(
+          `credential gateway GET ${provider} reported a dead credential`,
+        );
+    }
     if (res.status !== 200)
       throw await this.errorFromResponse(res, "GET", provider);
 

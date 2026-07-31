@@ -16,6 +16,8 @@ import { AiStepFooter } from "./ai-step-footer";
 interface AiAssistStepProps {
   provider: string;
   model: string;
+  providerOverride?: string;
+  modelOverride?: string;
   /** Picker changes lift to the dialog: the pair drives this generation turn
    * AND becomes the created agent's brain. Effort has no control here — the
    * engine runs reasoning models at its default (medium). */
@@ -36,6 +38,8 @@ interface AiAssistStepProps {
 export function AiAssistStep({
   provider,
   model,
+  providerOverride,
+  modelOverride,
   onModelChange,
   brief,
   onBriefChange,
@@ -63,8 +67,8 @@ export function AiAssistStep({
     abortRef.current = controller;
     try {
       const result = await tauriAgents.generateInstructions(description, {
-        provider,
-        model,
+        provider: providerOverride,
+        model: modelOverride,
         signal: controller.signal,
       });
       const name = result.name ?? "";

@@ -1,4 +1,4 @@
-import { EngineError, type ProviderId } from "@houston/runtime-client";
+import type { ProviderId } from "@houston/runtime-client";
 import {
   PROVIDER_CONNECT_TIMEOUT_ERROR,
   PROVIDER_LOGIN_TIMEOUT_ERROR,
@@ -11,24 +11,13 @@ import {
   setupRuntimeClientFor,
 } from "../control-plane";
 import type { AdapterContext } from "./context";
+import { retryCredentialCapture } from "./provider-capture-retry";
 
 /**
  * `activeLogins` key segment for a login started before any agent existed
  * (first-run: it runs in the host's hidden setup runtime, not an agent's).
  */
 export const SETUP_LOGIN_KEY = "__setup__";
-
-/**
- * Treat a 404 on login/cancel as benign: it means no login was pending (or an
- * older host lacks the cancel route), so cancel's postcondition — the login
- * slot is free — already holds. The reconnect card's every press goes
- * cancel → launch, so propagating this 404 aborted the chain and the login
- * never launched (HOU-676). Every other failure still propagates.
- */
-export function benignCancelMiss(e: unknown): void {
-  if (e instanceof EngineError && e.status === 404) return;
-  throw e;
-}
 
 /**
  * True iff this provider's login is genuinely DONE — not merely `configured`.
@@ -156,7 +145,9 @@ export async function pollProviderConnect(
         // agent (existing + new + the one onboarding creates next) shares it.
         try {
           if (agentId) {
-            await captureCredential(cp, agentId, pid);
+            await retryCredentialCapture(() =>
+              captureCredential(cp, agentId, pid),
+            );
           } else {
             await captureSetupCredential(cp, pid);
           }
@@ -176,9 +167,13 @@ export async function pollProviderConnect(
             });
             return;
           }
-          // With an agent, the credential already lives in ITS runtime — the
-          // connect works for this agent; only workspace-wide sharing failed.
-          console.error("[connect] workspace credential capture failed", e);
+          emitEvent("ProviderLoginComplete", {
+            provider: oldProvider,
+            success: false,
+            error:
+              e instanceof Error ? e.message : "Saving the connected AI failed",
+          });
+          return;
         }
         emitEvent("ProviderLoginComplete", {
           provider: oldProvider,

@@ -9,6 +9,7 @@ import type {
 } from "@houston/runtime-client/object-sync";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
+import { captureRuntimeCredential } from "../channel/capture-credential";
 import { ProxyChannel } from "../channel/proxy";
 import { FileCredentialStore } from "../credentials/file-store";
 import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
@@ -34,6 +35,7 @@ import { migrateChatHistory } from "../migrate/chat-history";
 import { LocalPaths } from "../paths";
 import type { ChannelCtx } from "../ports";
 import { forward } from "../proxy/route";
+import { CredentialServeHealer } from "../routes/credential-healer";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
@@ -342,6 +344,20 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     forwardActingHeader: opts.gatewayFronted ?? false,
     beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
   });
+  const credentialHealer = opts.credentials
+    ? new CredentialServeHealer(async ({ workspaceId, agentId, provider }) => {
+        const agent = await store.getAgent(agentId);
+        if (!agent || agent.workspaceId !== workspaceId) return false;
+        const result = await captureRuntimeCredential({
+          endpoint: await launcher.ensureAwake(agent),
+          credentials,
+          workspaceId,
+          provider,
+          requireRefresh: true,
+        });
+        return result.ok;
+      })
+    : undefined;
 
   // Integrations (platform model): the desktop holds NO provider key — the
   // gateway adapter forwards every call to Houston's cloud host with the user's
@@ -480,6 +496,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
     credentials,
+    credentialHealer,
     sharedEndpoints,
     vault,
     vfs,

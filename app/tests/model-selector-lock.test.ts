@@ -122,35 +122,88 @@ describe("resolvePersonalModelPin", () => {
         { provider: "openai", model: "gpt-5.5", effort: "low" },
         ["gpt-5.5"],
         fallback,
+        null,
+        () => null,
       ),
       { provider: "openai", model: "gpt-5.5", effort: "low" },
     );
   });
 
   it("keeps the fallback when there is no ceiling", () => {
-    deepStrictEqual(resolvePersonalModelPin(null, null, fallback), fallback);
     deepStrictEqual(
-      resolvePersonalModelPin(undefined, undefined, fallback),
+      resolvePersonalModelPin(null, null, fallback, null, () => null),
+      fallback,
+    );
+    deepStrictEqual(
+      resolvePersonalModelPin(undefined, undefined, fallback, null, () => null),
       fallback,
     );
   });
 
   it("keeps the fallback when its model is inside the ceiling", () => {
     deepStrictEqual(
-      resolvePersonalModelPin(null, ["claude", "gpt-5.5"], fallback),
+      resolvePersonalModelPin(
+        null,
+        ["claude", "gpt-5.5"],
+        fallback,
+        null,
+        () => null,
+      ),
       fallback,
     );
   });
 
-  it("snaps to the ceiling's first model when the fallback is outside it", () => {
+  it("snaps to the ceiling model's owning provider", () => {
     deepStrictEqual(
-      resolvePersonalModelPin(null, ["gpt-5.5", "gemini"], fallback),
-      { provider: "anthropic", model: "gpt-5.5", effort: "high" },
+      resolvePersonalModelPin(
+        null,
+        ["gpt-5.5", "gemini"],
+        fallback,
+        null,
+        (model) => (model === "gpt-5.5" ? "openai" : null),
+      ),
+      { provider: "openai", model: "gpt-5.5", effort: "high" },
+    );
+  });
+
+  it("keeps the fallback provider when the snapped model is unknown", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(null, ["unknown"], fallback, null, () => null),
+      { provider: "anthropic", model: "unknown", effort: "high" },
     );
   });
 
   it("keeps the fallback for an empty ceiling (no model to snap to)", () => {
-    deepStrictEqual(resolvePersonalModelPin(null, [], fallback), fallback);
+    deepStrictEqual(
+      resolvePersonalModelPin(null, [], fallback, null, () => null),
+      fallback,
+    );
+  });
+
+  it("uses an in-ceiling mission pin while keeping personal effort", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(
+        { provider: "openai", model: "gpt-5.5", effort: "low" },
+        ["claude", "gpt-5.5"],
+        fallback,
+        { provider: "anthropic", model: "claude" },
+        () => null,
+      ),
+      { provider: "anthropic", model: "claude", effort: "low" },
+    );
+  });
+
+  it("ignores an out-of-ceiling mission pin", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(
+        { provider: "openai", model: "gpt-5.5", effort: "low" },
+        ["gpt-5.5"],
+        fallback,
+        { provider: "anthropic", model: "claude" },
+        () => null,
+      ),
+      { provider: "openai", model: "gpt-5.5", effort: "low" },
+    );
   });
 });
 

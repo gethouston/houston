@@ -5,13 +5,18 @@ import * as controlPlane from "../control-plane";
 import { toNewProvider, toOldProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 import {
-  benignCancelMiss,
   pollProviderConnect,
   SETUP_LOGIN_KEY,
   stopLoginWatch,
   watchLoginCompletion,
 } from "./provider-login-poll";
 import { requireProviderRouting } from "./provider-routing";
+
+/** A missing login already satisfies cancel's postcondition (HOU-676). */
+function benignCancelMiss(e: unknown): void {
+  if (e instanceof EngineError && e.status === 404) return;
+  throw e;
+}
 
 /**
  * Surface a login-launch failure the runtime tagged with a stable `kind` (today:

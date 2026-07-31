@@ -222,7 +222,7 @@ export function modelFor(provider: ProviderId): string {
  * is "connected" iff it has a STORED credential (`providerConnected`, the HOU-557
  * stored-only rule — env vars / overrides don't count and aren't logout-clearable).
  */
-function providerConfigured(id: ProviderId): boolean {
+export function providerConfigured(id: ProviderId): boolean {
   if (id === OPENAI_COMPATIBLE) return customEndpointConfigured();
   return providerConnected(authStorage, id);
 }
@@ -463,7 +463,7 @@ export function safeGetModel(
  * platform-key OpenAI as its own provider, THIS alias and the frontend rename
  * must be removed together.
  */
-function canonicalPinProvider(id: string): string {
+export function canonicalPinProvider(id: string): string {
   return id === "openai" ? "openai-codex" : id;
 }
 

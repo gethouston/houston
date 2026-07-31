@@ -2,7 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { applyServedCredential, readAuthFile } from "./auth-file";
+import {
+  applyServedCredential,
+  readAuthFile,
+  writeAuthFile,
+} from "./auth-file";
 
 /**
  * The connect-once serve path writes the host's served credential into the
@@ -52,4 +56,26 @@ test("applyServedCredential omits enterpriseUrl for individual Copilot", () => {
   if (cred?.type === "oauth") {
     expect(cred.enterpriseUrl).toBeUndefined();
   }
+});
+
+test("applyServedCredential does not clobber a refresh-bearing login", () => {
+  const path = scratch();
+  const pending = {
+    type: "oauth" as const,
+    access: "fresh-access",
+    refresh: "fresh-refresh",
+    expires: Date.now() + 600_000,
+  };
+  writeAuthFile(path, { "openai-codex": pending });
+
+  expect(
+    applyServedCredential(path, {
+      provider: "openai-codex",
+      access: "old-central-access",
+      expires: Date.now() + 300_000,
+      accountId: null,
+    }),
+  ).toBe(false);
+  expect(readAuthFile(path)["openai-codex"]).toEqual(pending);
+  rmSync(path, { force: true });
 });

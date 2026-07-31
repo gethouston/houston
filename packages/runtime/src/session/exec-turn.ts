@@ -13,7 +13,11 @@ import {
   OPENAI_COMPATIBLE,
 } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
-import { activeEffort, resolveModel } from "../ai/providers";
+import {
+  activeEffort,
+  canonicalPinProvider,
+  resolveModel,
+} from "../ai/providers";
 import { recordTokenSpend } from "../ai/usage/ledger";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
@@ -582,7 +586,7 @@ export async function execTurn(
     // whose refresh token was rejected raises at prompt time, before any
     // stream exists (auth/credential-health.ts).
     if (thrown.kind === "unauthenticated" && !providerError) {
-      noteAuthFailure(thrown.provider);
+      noteAuthFailure(canonicalPinProvider(thrown.provider));
       // A REVOKED served token is invisible to the control plane (HOU-952).
       reportRevokedServedToken(thrown);
     }

@@ -97,12 +97,16 @@ export function updateActivity(
   // `pending_interaction: null` clears it, a value sets it, absent leaves it —
   // the same contract as the domain's applyActivityUpdate (null is an
   // update-only signal; the Activity itself never stores null).
-  const { pending_interaction, ...rest } = updates;
+  const { pending_interaction, provider, model, ...rest } = updates;
   const next: Activity = {
     ...items[idx],
     ...rest,
     updated_at: new Date().toISOString(),
   };
+  if (provider === null) delete next.provider;
+  else if (provider !== undefined) next.provider = provider;
+  if (model === null) delete next.model;
+  else if (model !== undefined) next.model = model;
   if (pending_interaction) next.pending_interaction = pending_interaction;
   else if (pending_interaction === null) delete next.pending_interaction;
   items[idx] = next;

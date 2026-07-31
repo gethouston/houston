@@ -12,6 +12,7 @@ import {
   type TurnPin,
 } from "../ports";
 import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
+import { captureRuntimeCredential } from "./capture-credential";
 import { errorCodeFrom, TurnFireError } from "./fire-error";
 
 /**
@@ -293,81 +294,12 @@ export class ProxyChannel implements RuntimeChannel {
     ctx: ChannelCtx,
     provider?: string,
   ): Promise<CaptureResult> {
-    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
-    const q = provider ? `?provider=${encodeURIComponent(provider)}` : "";
-    const exp = await fetch(`${endpoint.baseUrl}/auth/export${q}`, {
-      headers: { Authorization: `Bearer ${endpoint.token}` },
-    });
-    if (!exp.ok) {
-      return {
-        ok: false,
-        status: 502,
-        error: "could not read agent credential",
-        detail: await exp.text().catch(() => ""),
-      };
-    }
-    const c = (await exp.json()) as {
-      provider?: string;
-      kind?: "oauth" | "api_key";
-      access?: string;
-      refresh?: string;
-      expires?: number;
-      key?: string;
-      accountId?: string;
-      enterpriseUrl?: string;
-    };
-
-    // API-key provider: store the key as a non-refreshing, non-expiring
-    // credential. Nothing to scrub (no refresh token ever sat in the sandbox).
-    if (c.kind === "api_key") {
-      if (!c.provider || !c.key) {
-        return { ok: false, status: 400, error: "agent is not connected yet" };
-      }
-      await this.opts.credentials.put({
-        workspaceId: ctx.agent.workspaceId,
-        provider: c.provider,
-        kind: "api_key",
-        accessToken: c.key,
-        refreshToken: "",
-        expiresAt: Number.MAX_SAFE_INTEGER,
-      });
-      return { ok: true, provider: c.provider };
-    }
-
-    if (
-      !c.provider ||
-      !c.access ||
-      !c.refresh ||
-      typeof c.expires !== "number"
-    ) {
-      return { ok: false, status: 400, error: "agent is not connected yet" };
-    }
-    await this.opts.credentials.put({
+    return captureRuntimeCredential({
+      endpoint: await this.opts.launcher.ensureAwake(ctx.agent),
+      credentials: this.opts.credentials,
       workspaceId: ctx.agent.workspaceId,
-      provider: c.provider,
-      kind: "oauth",
-      accessToken: c.access,
-      refreshToken: c.refresh,
-      accountId: c.accountId,
-      expiresAt: c.expires,
-      // Copilot Enterprise domain, so the central refresh targets the company's
-      // GitHub. Absent for every other OAuth provider (and individual Copilot).
-      enterpriseUrl: c.enterpriseUrl,
+      provider,
     });
-    const scrub = await fetch(`${endpoint.baseUrl}/auth/scrub-refresh`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${endpoint.token}` },
-    });
-    if (!scrub.ok) {
-      return {
-        ok: false,
-        status: 502,
-        error:
-          "credential stored, but the agent sandbox could not be scrubbed of the refresh token — reconnect to retry",
-        detail: await scrub.text().catch(() => ""),
-      };
-    }
-    return { ok: true, provider: c.provider };
   }
 
   /**

@@ -34,11 +34,18 @@ export function applyActivityPatch(
   patch: ActivityUpdate,
   timestamp: string,
 ): Activity {
-  const { pending_interaction, ...rest } = patch;
+  const { pending_interaction, provider, model, ...rest } = patch;
   const defined = Object.fromEntries(
     Object.entries(rest).filter(([, v]) => v !== undefined),
   );
   const merged: Activity = { ...item, ...defined, updated_at: timestamp };
+  // `provider` / `model` are the mission's model pin: `null` DELETES the key
+  // (the schema has no null type) so the mission falls back to the engine's
+  // own resolution — the warming flush clears a pin its pod cannot honor.
+  if (provider === null) delete merged.provider;
+  else if (provider !== undefined) merged.provider = provider;
+  if (model === null) delete merged.model;
+  else if (model !== undefined) merged.model = model;
   const outcome = resolveInteractionPatch({
     patched: pending_interaction,
     stored: merged.pending_interaction,

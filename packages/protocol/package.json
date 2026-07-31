@@ -29,10 +29,15 @@
   ],
   "scripts": {
     "build": "tsgo -p tsconfig.json",
+    "test": "vitest run",
     "typecheck": "tsgo -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "3.2.6"
   }
 }

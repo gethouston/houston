@@ -76,7 +76,19 @@ export function writeAuthFile(
  * with an empty refresh field (Gate #2); an API key is written as pi's
  * `api_key` variant (no refresh, no expiry — there is nothing to scrub).
  */
-export function applyServedCredential(path: string, c: ServedCredential): void {
+export function hasRefreshToken(cred: PiCred | undefined): boolean {
+  return cred?.type === "oauth" && cred.refresh.length > 0;
+}
+
+export function applyServedCredential(
+  path: string,
+  c: ServedCredential,
+): boolean {
+  const merged = readAuthFile(path);
+  // pi's device-code login has completed locally, but the host has not captured
+  // and scrubbed it yet. Serving the old central row here would destroy the only
+  // refresh token before /auth/export can hand it to the gateway.
+  if (hasRefreshToken(merged[c.provider])) return false;
   const entry: PiCred =
     c.kind === "api_key"
       ? { type: "api_key", key: c.access }
@@ -91,9 +103,9 @@ export function applyServedCredential(path: string, c: ServedCredential): void {
           // not a secret, and refresh="" stays scrubbed).
           ...(c.enterpriseUrl ? { enterpriseUrl: c.enterpriseUrl } : {}),
         };
-  const merged = readAuthFile(path);
   merged[c.provider] = entry;
   writeAuthFile(path, merged);
+  return true;
 }
 
 /**
@@ -157,7 +169,7 @@ export function removeServedCredentialAt(
   const cred = auth[provider];
   if (
     !cred ||
-    (cred.type === "oauth" && cred.refresh) ||
+    hasRefreshToken(cred) ||
     (cred.type !== "oauth" && cred.type !== "api_key")
   ) {
     return false;
