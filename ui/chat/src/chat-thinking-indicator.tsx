@@ -2,16 +2,8 @@
 
 import { HoustonHelmet } from "@houston-ai/core";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
-import {
-  advanceDeck,
-  createDeck,
-  currentPhrase,
-  DEFAULT_THINKING_PHRASES,
-} from "./thinking-phrases";
-
-/** How long each one-liner stays before the next rotates in. */
-const ROTATE_MS = 4000;
+import { DEFAULT_THINKING_PHRASES } from "./thinking-phrases";
+import { useRotatingPhrase } from "./use-rotating-phrase";
 
 export interface ChatThinkingIndicatorProps {
   /** The rotating one-liners. Defaults to a small English set so ui/chat works
@@ -32,21 +24,7 @@ export function ChatThinkingIndicator({
   phrases = DEFAULT_THINKING_PHRASES,
 }: ChatThinkingIndicatorProps) {
   const reduceMotion = useReducedMotion();
-  const [phrase, setPhrase] = useState("");
-
-  useEffect(() => {
-    if (phrases.length === 0) {
-      setPhrase("");
-      return;
-    }
-    let deck = createDeck(phrases, Math.random);
-    setPhrase(currentPhrase(deck));
-    const id = window.setInterval(() => {
-      deck = advanceDeck(deck, Math.random);
-      setPhrase(currentPhrase(deck));
-    }, ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [phrases]);
+  const phrase = useRotatingPhrase(phrases);
 
   return (
     <div className="flex items-center gap-2 py-1 text-ink-muted">

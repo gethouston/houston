@@ -13,13 +13,23 @@ export function useChatDisplayLabels(): Pick<
   // tense label the process header shows as a branded row; ui/chat calls it
   // through `processLabels.resolveActionBrand`, staying Composio-unaware.
   const resolveActionBrand = useActionBrandResolver();
+  // The same astronaut deck the pre-reply indicator plays. Passed into
+  // processLabels too so the ACTIVE mission-log header keeps the personality
+  // through mid-turn reasoning gaps — the standalone indicator below is
+  // suppressed the whole time an active log trails (HOU-471/HOU-1047), so
+  // without this the header held the last tool's stale verb.
+  const loadingPhrases = useMemo(
+    () => t("loadingPhrases", { returnObjects: true }) as string[],
+    [t],
+  );
   const processLabels = useMemo(
     () => ({
       active: t("process.active"),
       complete: t("process.complete"),
+      phrases: loadingPhrases,
       resolveActionBrand,
     }),
-    [t, resolveActionBrand],
+    [t, loadingPhrases, resolveActionBrand],
   );
   const getThinkingMessage = useCallback<
     NonNullable<ChatPanelProps["getThinkingMessage"]>
@@ -39,13 +49,10 @@ export function useChatDisplayLabels(): Pick<
   // produces any output (the message is still being sent / queued), the
   // indicator is the pulsing Houston helmet beside a rotating astronaut
   // one-liner (localized copy passed in; ui/chat handles the shuffle + timer).
-  // The moment the agent is actually working (thinking or running tools) an
-  // active mission-log header is on screen reading "Thinking..." or the current
-  // step, and that line is the ONLY indicator: ChatMessages suppresses this one.
-  const loadingPhrases = useMemo(
-    () => t("loadingPhrases", { returnObjects: true }) as string[],
-    [t],
-  );
+  // The moment the agent is actually working an active mission-log header is
+  // on screen — the current step's verb, or this same phrase deck during
+  // reasoning gaps — and that line is the ONLY indicator: ChatMessages
+  // suppresses this one.
   const thinkingIndicator = useMemo(
     () => <ChatThinkingIndicator phrases={loadingPhrases} />,
     [loadingPhrases],
