@@ -212,5 +212,10 @@
     "heading": "De tus otros agentes",
     "installAria": "Añadir {{name}} a este agente",
     "installedAria": "{{name}} ya está en este agente"
+  },
+  "fromWorkspace": {
+    "heading": "De tu espacio",
+    "enableAria": "Activar {{name}}",
+    "enabledAria": "{{name}} está activada"
   }
 }

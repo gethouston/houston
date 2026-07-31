@@ -4,6 +4,7 @@ import { Plus, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 import { OtherAgentSkills } from "./other-agent-skills";
+import { WorkspaceSharedSkillsSection } from "./workspace-shared-skills-section";
 
 interface Props {
   /** The agent the library installs into (and whose drafts these are). */
@@ -87,6 +88,13 @@ export function SkillCustomTab({
       {/* The user's own skills living on OTHER agents (HOU-792) — one click
           copies a skill built for Agent A onto this agent. */}
       <OtherAgentSkills
+        agent={agent}
+        installedSkillNames={installedSkillNames}
+      />
+
+      {/* The shared-store sibling: skills living in the workspace store,
+          enabled here by a reversible manifest write (ADR 0003). */}
+      <WorkspaceSharedSkillsSection
         agent={agent}
         installedSkillNames={installedSkillNames}
       />
