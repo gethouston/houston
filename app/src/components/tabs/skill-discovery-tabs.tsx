@@ -27,6 +27,9 @@ export function useSkillDiscoveryTabs(opts: {
   onAddClick: () => void;
   /** Custom tab (HOU-791): start a new agent-guided create chat. */
   onCreateWithAi: () => void;
+  /** Custom tab: an ACTIVE workspace-store skill's row opens the same manage
+   *  dialog a "Your skills" strip row opens (ADR 0003). */
+  onManageSkill?: (slug: string) => void;
   /** Custom tab: unclaimed create-chats, shown as resumable rows. */
   drafts: Activity[];
   onResumeDraft: (activityId: string) => void;
@@ -93,6 +96,7 @@ export function useSkillDiscoveryTabs(opts: {
                 onDiscardDraft={opts.onDiscardDraft}
                 onCreateWithAi={opts.onCreateWithAi}
                 onAddClick={opts.onAddClick}
+                onManageSkill={opts.onManageSkill}
                 installedSkillNames={opts.installedSkillNames}
               />
             ),

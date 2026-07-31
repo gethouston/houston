@@ -15,20 +15,23 @@ import { WorkspaceSkillPreview } from "./workspace-skill-preview";
 
 /**
  * "From your workspace" (ADR 0003): the workspace store's shared skills,
- * offered on THIS agent's Custom tab. A row opens the PREVIEW modal (the
- * shared marketplace treatment, body loaded from the store); enabling — from
- * the modal or the row's `+` — is one reversible manifest write, never a
- * copy. The shared-store sibling of "From your other agents": once a skill
- * is shared it stops living ON agents, so that section can no longer offer
- * it — this one does. Skills already active here (manifest-enabled, or
- * shadowed by a local copy) show a quiet check. Renders nothing on
- * deployments without the store.
+ * offered on THIS agent's Custom tab. A NOT-yet-active row opens the PREVIEW
+ * modal (the shared marketplace treatment, body loaded from the store), and
+ * enabling — from the modal or the row's `+` — is one reversible manifest
+ * write, never a copy. An ACTIVE row (check) opens the same manage dialog a
+ * "Your skills" strip row opens, where the skill is editable. The
+ * shared-store sibling of "From your other agents": once a skill is shared
+ * it stops living ON agents, so that section can no longer offer it — this
+ * one does. Renders nothing on deployments without the store.
  */
 export function WorkspaceSharedSkillsSection({
   agent,
+  onManageSkill,
   installedSkillNames,
 }: {
   agent: Agent;
+  /** Opens an ACTIVE skill's manage dialog (owned by the Skills surface). */
+  onManageSkill?: (slug: string) => void;
   /** Lowercase slugs already on THIS agent — their rows show the check. */
   installedSkillNames?: Set<string>;
 }) {
@@ -62,7 +65,11 @@ export function WorkspaceSharedSkillsSection({
               }
               title={title}
               description={skill.description || undefined}
-              onClick={() => setPreview(skill)}
+              onClick={() =>
+                activeHere(skill) && onManageSkill
+                  ? onManageSkill(skill.name)
+                  : setPreview(skill)
+              }
               // `action`, never `trailing`: trailing renders INSIDE the row's
               // <button>, and a nested <button> corrupts the DOM tree.
               action={

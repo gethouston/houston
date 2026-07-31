@@ -83,11 +83,61 @@ test("a workspace row opens the preview and its Enable commits", async ({
   await expect(
     page.getByRole("img", { name: "Meeting prep is enabled" }),
   ).toBeVisible();
+});
 
-  // The strip row routes back to the same preview (no per-agent copy dialog).
+test("an active workspace skill is editable and can be disabled here", async ({
+  page,
+  request,
+  fakeHost,
+}) => {
+  const res = await request.post(
+    `${fakeHost.url}/v1/workspaces/default/shared-skills`,
+    { data: SKILL },
+  );
+  expect(res.status()).toBe(201);
+
+  await openAgentCustomTab(page);
+  await page
+    .getByRole("button", { name: "Enable Meeting prep", exact: true })
+    .click();
+  await expect(
+    page.getByRole("img", { name: "Meeting prep is enabled" }),
+  ).toBeVisible();
+
+  // The strip row opens the MANAGE dialog: editable content, Edit in chat,
+  // and "Disable for this agent" instead of Delete.
   await page
     .getByRole("button", { name: /^Meeting prep\b/ })
     .first()
     .click();
-  await expect(page.getByRole("dialog").getByText("Enabled")).toBeVisible();
+  const dialog = page.getByRole("dialog");
+  const editor = dialog.getByLabel("Instructions for the agent");
+  await expect(editor).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Edit in chat" }),
+  ).toBeVisible();
+  await expect(dialog.getByText("Agents with this skill")).toHaveCount(0);
+
+  // A content edit saves to the ONE workspace copy.
+  await editor.fill("---\nname: meeting-prep\n---\n# Steps v2\n");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page
+    .getByRole("button", { name: /^Meeting prep\b/ })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("dialog").getByLabel("Instructions for the agent"),
+  ).toHaveValue(/# Steps v2/);
+
+  // Disabling is reversible: the skill leaves this agent, stays in the store.
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Disable for this agent" })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Enable Meeting prep", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Your skills")).toHaveCount(0);
 });

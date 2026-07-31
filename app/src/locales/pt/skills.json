@@ -196,7 +196,8 @@
       "modifiedOn": "{{name}} tem uma cópia modificada",
       "revert": "Usar versão do espaço",
       "deleteSharedDescription": "Isso remove a skill do espaço de trabalho para todos os agentes. Agentes com uma cópia modificada mantêm a própria versão.",
-      "shareToWorkspace": "Compartilhar com o espaço"
+      "shareToWorkspace": "Compartilhar com o espaço",
+      "disableForAgent": "Desativar para este agente"
     },
     "chatPick": {
       "title": "Quem vai construir com você?",

@@ -24,9 +24,12 @@ export function useAgentSharedSkills(agentPath: string): {
   items: SkillSummary[];
   /** Store slugs this agent's manifest enables. */
   activeSlugs: Set<string>;
-  /** Slug with an enable in flight, or null. */
+  /** Slug with a manifest write in flight, or null. */
   busy: string | null;
   enable: (slug: string) => Promise<void>;
+  /** The reverse write — the skill stays in the store, this agent stops
+   *  loading it. */
+  disable: (slug: string) => Promise<void>;
 } {
   const queryClient = useQueryClient();
   const { capabilities } = useCapabilities();
@@ -49,27 +52,32 @@ export function useAgentSharedSkills(agentPath: string): {
   });
 
   const [busy, setBusy] = useState<string | null>(null);
-  const enable = async (slug: string) => {
+  const setEnabled = async (slug: string, on: boolean) => {
     if (busy) return;
     setBusy(slug);
     try {
       const current = await tauriSkillsManifest.get(agentPath);
       const next = new Set(current.enabled);
-      next.add(slug);
+      if (on) next.add(slug);
+      else next.delete(slug);
       await tauriSkillsManifest.set(agentPath, {
         version: 1,
         enabled: [...next].sort(),
       });
-      analytics.track("skill_installed", {
-        skill_slug: slug,
-        source: "workspace-enable",
-      });
+      if (on)
+        analytics.track("skill_installed", {
+          skill_slug: slug,
+          source: "workspace-enable",
+        });
+      else analytics.track("skill_disabled", { skill_slug: slug });
       await queryClient.invalidateQueries({
         queryKey: queryKeys.skillsManifest(agentPath),
       });
     } catch (err) {
       // call() already toasted the write failure; log so it isn't silent.
-      logger.error(`[skills] enable shared ${slug} failed: ${err}`);
+      logger.error(
+        `[skills] ${on ? "enable" : "disable"} shared ${slug} failed: ${err}`,
+      );
     } finally {
       setBusy(null);
     }
@@ -86,6 +94,7 @@ export function useAgentSharedSkills(agentPath: string): {
     items: available ? (shared.data?.items ?? []) : [],
     activeSlugs,
     busy,
-    enable,
+    enable: (slug: string) => setEnabled(slug, true),
+    disable: (slug: string) => setEnabled(slug, false),
   };
 }

@@ -17,6 +17,8 @@ interface Props {
   onCreateWithAi: () => void;
   /** Open the manual GitHub / from-scratch dialog (the secondary path). */
   onAddClick: () => void;
+  /** An ACTIVE workspace-store skill's row opens the manage dialog. */
+  onManageSkill?: (slug: string) => void;
   /** Installed slugs — library rows show a quiet check instead of an add. */
   installedSkillNames?: Set<string>;
 }
@@ -33,6 +35,7 @@ export function SkillCustomTab({
   onDiscardDraft,
   onCreateWithAi,
   onAddClick,
+  onManageSkill,
   installedSkillNames,
 }: Props) {
   const { t } = useTranslation("skills");
@@ -95,6 +98,7 @@ export function SkillCustomTab({
           enabled here by a reversible manifest write (ADR 0003). */}
       <WorkspaceSharedSkillsSection
         agent={agent}
+        onManageSkill={onManageSkill}
         installedSkillNames={installedSkillNames}
       />
     </div>

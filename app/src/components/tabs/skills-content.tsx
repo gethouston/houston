@@ -5,7 +5,6 @@ import { useInstalledSkillsStrip } from "./installed-skills-strip";
 import { useSkillDiscoveryTabs } from "./skill-discovery-tabs";
 import { SkillsContentDialogs } from "./skills-content-dialogs";
 import type { SkillsContentProps } from "./skills-content-props";
-import { useOpenInstalledSkill } from "./use-open-installed-skill";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
 import { useSkillsChatSurface } from "./use-skills-chat-surface";
 
@@ -52,8 +51,6 @@ export function SkillsContent({
   onInstallFromRepo,
   onCreateFromScratch,
   installedSkillNames,
-  sharedSkillSlugs,
-  onOpenSharedSkill,
 }: SkillsContentProps) {
   const { t } = useTranslation("skills");
   const dialogLabels = useSkillDialogLabels();
@@ -76,16 +73,12 @@ export function SkillsContent({
     readOnly,
     onEditSkill: readOnly ? onEditSkill : setManagingSlug,
   });
-  const openInstalled = useOpenInstalledSkill({
-    readOnly,
-    sharedSkillSlugs,
-    onOpenSharedSkill,
-    onEditSkill,
-    onManageSkill: setManagingSlug,
-  });
+  // A row click opens the manage dialog (read-only: the raw modal) — the
+  // dialog itself resolves whether the slug is this agent's copy or a
+  // workspace-store skill the manifest enables.
   const { sorted, installedCount, installed } = useInstalledSkillsStrip(
     skills,
-    openInstalled,
+    readOnly ? onEditSkill : setManagingSlug,
     query,
   );
   const editingSkill = sorted.find((s) => s.name === editingSkillName) ?? null;
@@ -103,6 +96,9 @@ export function SkillsContent({
     agent,
     onAddClick: () => setDialogOpen(true),
     onCreateWithAi: chat.startCreate,
+    // The Custom tab's workspace section routes an ACTIVE store skill's row
+    // here — the same manage dialog a strip row opens.
+    onManageSkill: setManagingSlug,
     drafts: chat.drafts,
     onResumeDraft: chat.resumeDraft,
     onDiscardDraft: chat.discardDraft,

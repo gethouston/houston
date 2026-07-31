@@ -23,6 +23,7 @@ export function ManageSkillBody({
   onPromote,
   onSave,
   onDeleteEverywhere,
+  deleteLabel,
   onCancel,
   onEditInChat,
 }: {
@@ -57,6 +58,10 @@ export function ManageSkillBody({
     afterIds: Set<string>;
   }) => Promise<void>;
   onDeleteEverywhere: () => void;
+  /** Overrides the danger button's label (the per-agent shared dialog says
+   *  "Disable for this agent" — the action is a reversible manifest write,
+   *  not a delete). */
+  deleteLabel?: string;
   onCancel: () => void;
   /** Open the skill's guided setup chat instead of editing raw markdown
    *  (HOU-791's primary edit path). Omit to hide the button. */
@@ -121,7 +126,7 @@ export function ManageSkillBody({
           className="mr-auto text-danger hover:text-danger"
           onClick={onDeleteEverywhere}
         >
-          {t("common:actions.delete")}
+          {deleteLabel ?? t("common:actions.delete")}
         </Button>
         {onPromote && (
           <AsyncButton type="button" variant="outline" onClick={onPromote}>

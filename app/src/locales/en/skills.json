@@ -196,7 +196,8 @@
       "modifiedOn": "{{name}} has a modified copy",
       "revert": "Use workspace version",
       "deleteSharedDescription": "This removes the skill from the workspace for every agent. Agents with a modified copy keep their own version.",
-      "shareToWorkspace": "Share to workspace"
+      "shareToWorkspace": "Share to workspace",
+      "disableForAgent": "Disable for this agent"
     },
     "chatPick": {
       "title": "Who should build it with you?",
