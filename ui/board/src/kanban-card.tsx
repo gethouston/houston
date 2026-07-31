@@ -7,11 +7,6 @@ import {
 } from "@houston-ai/core";
 import { Check, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import {
-  showsUnreadDot,
-  UNREAD_DOT_BOX_CLASS,
-  UNREAD_DOT_CLASS,
-} from "./kanban-card-unread";
 import { KanbanPeople } from "./kanban-people";
 import {
   CARD_PEOPLE_MAX,
@@ -36,9 +31,6 @@ export interface KanbanCardLabels {
   people?: string;
   /** Accessible label for the people overlay's expandable "+N" chip. */
   peopleExpand?: string;
-  /** Accessible label for the quiet unread mark ({@link KanbanItem.unread}).
-   *  The mark is a dot with no text, so this is its only non-visual form. */
-  unread?: string;
 }
 
 const DEFAULT_LABELS: Required<KanbanCardLabels> = {
@@ -51,7 +43,6 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   selectTooltip: "Select",
   people: "People",
   peopleExpand: "All people",
-  unread: "Unread",
 };
 
 export interface KanbanCardProps {
@@ -300,23 +291,6 @@ export function KanbanCard({
             {item.group && (
               <span className="ml-1.5 text-[11px] text-ink-muted truncate">
                 {item.group}
-              </span>
-            )}
-            {/* Unread mark. Anchored at the END of the header's identity
-                cluster — after the agent name, mirroring the sidebar row where
-                the same dot trails the agent it belongs to. Deliberately NOT in
-                the right-hand cluster (a filled dot among the approve / rename /
-                delete icons would read as a fourth button), and nowhere near the
-                body's bottom-right people stack. Absent = nothing rendered, so
-                a card with nothing new is byte-identical to before. */}
-            {showsUnreadDot(item, selected) && (
-              <span
-                role="img"
-                aria-label={l.unread}
-                title={l.unread}
-                className={UNREAD_DOT_BOX_CLASS}
-              >
-                <span className={UNREAD_DOT_CLASS} />
               </span>
             )}
           </div>

@@ -50,10 +50,10 @@ export function useAgentActivitySummaries(
     return activityCacheVersion.current;
   });
 
-  // Unread badges (HOU-945). Multiplayer-gated twice over, exactly like
-  // `useBoardUnread`: off multiplayer the `unread` option is never passed, so
-  // every count stays 0 and single-player / desktop renders today's chrome with
-  // no dot to explain; and the model itself counts nothing without a `selfId` —
+  // Unread badges (HOU-945). Multiplayer-gated twice over: off multiplayer the
+  // `unread` option is never passed, so every count stays 0 and single-player /
+  // desktop renders today's chrome with no dot to explain; and the model itself
+  // counts nothing without a `selfId` —
   // an unread mark nobody is signed in to clear is a mark that never clears.
   // The cursor store is an EXTERNAL store, not a query, so reading it here adds
   // no observer and keeps the perf discipline above intact.

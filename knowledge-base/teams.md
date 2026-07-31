@@ -1274,8 +1274,7 @@ subscriber to `useReadCursorStore` depends on this filter.
   different shape and weight from `NeedsYouChip`: "something new here" vs "act
   now". Zero when signed out or single-player: `use-agent-activity-summaries.ts`
   omits the `unread` option entirely unless `isMultiplayer(capabilities)`, and
-  `buildAgentActivitySummaries` leaves every count at 0 without it — the same
-  capability gate `use-board-unread.ts` applies to the cards.
+  `buildAgentActivitySummaries` leaves every count at 0 without it.
 - **Mentions inbox** — Mission Control's third mode
   (`app/src/components/board/mentions-inbox.tsx`), hidden entirely when
   `!isMultiplayer(capabilities)`. `MissionControlToolbar` split into
@@ -1289,27 +1288,15 @@ subscriber to `useReadCursorStore` depends on this filter.
   that merely moved is not somebody typing your name. `MentionInboxRow` carries
   both booleans so neither surface has to re-derive the other's rule.
 
-- **Mission cards** — the same quiet dot, per MISSION, trailing the card's agent
-  name in the header's identity cluster (never among the approve/rename/delete
-  icons, never near the bottom-right face stack). `KanbanItem.unread?: boolean`
-  is additive and props-only; the gate + tokens are the pure
-  `ui/board/src/kanban-card-unread.ts` (`showsUnreadDot`), which also hides the
-  mark on the card currently OPEN in the panel — the reader is looking at it, and
-  it swallows the flicker between the click and the cursor moving. Absent =
-  nothing rendered and no reserved rail, so single player is byte-identical.
-  Inventory `mission-card` v39 (`unread-dot` + `unread` state).
+- **Mission cards** — REMOVED (2026-07-30, inventory `mission-card` v50). The
+  per-mission card dot (`KanbanItem.unread`, `ui/board/src/kanban-card-unread.ts`,
+  the `use-board-unread.ts` join) was cut pending a proper rebuild — it fired
+  too broadly to be a trustworthy signal. The read-cursor model and
+  `isUnreadForMe` STAY: the sidebar count and the mentions inbox still consume
+  them, and a rebuilt card indicator should start from the same model.
 
-  App fill: `unreadMissionIds` + `attachMissionUnread` (`lib/unread-model.ts`,
-  the SAME `isUnreadForMe` the sidebar counts) behind
-  `components/board/use-board-unread.ts`. Mission Control joins it onto the
-  cards as a last pass (a cursor move must not rebuild the card list and its
-  path/session maps); the per-agent board joins it in `use-agent-board-scope`
-  after the person filter, since its activity rows carry no attribution and no
-  mention aggregate — the conversations query answers both, deduped with the
-  face-stack read.
-
-E2E: `packages/web/e2e/mentions-inbox.spec.ts` (inbox + the card dot clearing on
-open).
+E2E: `packages/web/e2e/mentions-inbox.spec.ts` (inbox + read-cursor persistence
+when a mission is opened).
 
 ---
 

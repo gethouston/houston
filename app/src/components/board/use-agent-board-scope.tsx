@@ -3,10 +3,8 @@ import { useMemo } from "react";
 import { useSession } from "../../hooks/use-session";
 import { missionMatchesScope } from "../../lib/agent-person-scope";
 import { attachBoardPeople } from "../../lib/mission-people";
-import { attachMissionUnread } from "../../lib/unread-model";
 import { useAgentPersonScope } from "../agent-person-scope-context";
 import { useAgentBoardPeople } from "./use-agent-board-people";
-import { useAgentBoardUnread } from "./use-board-unread";
 
 /**
  * Join the per-mission truth the activity list does not carry onto a single
@@ -16,14 +14,12 @@ import { useAgentBoardUnread } from "./use-board-unread";
  * via {@link useAgentPersonScope}; this only applies it to the cards:
  *
  * - joins server-stamped attribution onto the activity-derived cards (which
- *   carry none) by mission id, multiplayer-gated so desktop stays identical (an
- *   empty map means every item passes as unattributed → the default "me" scope
- *   is an identity pass-through off multiplayer);
+ *   carry none) by mission id, multiplayer-gated so desktop stays identical
+ *   (the default "everyone" scope matches every card, and off multiplayer the
+ *   empty attribution map keeps narrower scopes an identity pass-through);
  * - filters BEFORE text search, exactly as the cross-agent board;
- * - defaults to "me", which keeps unattributed / legacy missions visible (see
- *   {@link missionMatchesScope});
- * - joins the unread mark (HOU-945) on AFTER the filter, so a cursor moving
- *   re-maps only the cards that survived it, and never the whole activity list.
+ * - defaults to "everyone"; a user narrowing to "me" still sees unattributed /
+ *   legacy missions (see {@link missionMatchesScope}).
  */
 export function useAgentBoardScope({
   path,
@@ -46,15 +42,9 @@ export function useAgentBoardScope({
     () => attachBoardPeople(items, peopleById),
     [items, peopleById],
   );
-  const scopedItems = useMemo(
+  return useMemo(
     () =>
       peopledItems.filter((i) => missionMatchesScope(i.people, scope, selfId)),
     [peopledItems, scope, selfId],
-  );
-
-  const unreadIds = useAgentBoardUnread(path);
-  return useMemo(
-    () => attachMissionUnread(scopedItems, unreadIds),
-    [scopedItems, unreadIds],
   );
 }

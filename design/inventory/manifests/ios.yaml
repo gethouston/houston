@@ -182,9 +182,7 @@ components:
       separators, line 1 = title + relative time, line 2 = accent "Working…" /
       destructive snag / muted description, collapsing away when empty. That row
       is native-only styling of the same MissionCardData, not a separate inventory
-      component (the archived list reuses it). The v39 unread-dot is NOT rendered
-      yet: read cursors are per-device local state that iOS does not keep, so no
-      mission can be unread there.
+      component (the archived list reuses it).
   mission-board:
     status: implemented
     ref: mobile/ios/Houston/Features/MissionControl/MissionControlPager.swift
@@ -196,8 +194,8 @@ components:
   mentions-inbox:
     status: not-started
     notes: >-
-      Blocked on the same per-device read cursors the v39 unread dot needs; iOS
-      keeps none, so no mention can be outstanding there.
+      Blocked on the per-device read cursors the outstanding-mention count is
+      measured against; iOS keeps none, so no mention can be outstanding there.
   mission-status-chip:
     status: implemented
     ref: mobile/ios/Houston/DesignSystem/StatusChip.swift

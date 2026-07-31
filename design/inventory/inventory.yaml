@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 49
+version: 50
 
 components:
   - id: agent-avatar
@@ -576,7 +576,6 @@ components:
         select-checkbox,
         people-face-stack,
         people-overflow-chip,
-        unread-dot,
       ]
     states:
       [
@@ -588,7 +587,6 @@ components:
         focused,
         dragging,
         attributed,
-        unread,
       ]
     variants: [board-card, archived-list-row]
     behavior: >-
@@ -602,19 +600,11 @@ components:
       expands to the full roster, and the card body reserves a right gutter sized
       to the stack so no text ever runs underneath it. Server-stamped attribution
       only (multiplayer); an unattributed card renders exactly as before.
-      The unread dot is the per-mission half of the shell's unread signal: a
-      small filled action-token circle trailing the card's agent name, shown only
-      when this mission has moved (or someone typed the reader's name) since the
-      reader last opened it, and never on the card currently open in the detail
-      panel. It is a mark, never a count, so it can never be confused with the
-      needs-you status. Read state is per person, so single player and any
-      signed-out surface never paint it and reserve no space for it.
     a11y: >-
       article/button role; title as label; checkbox labeled; status not
       color-only; the face stack is a labeled group, each face names its person
       (tooltip + title) and the "+N" chip is a labeled control, so no contributor
-      is reachable by hover alone; the unread dot is an image-role element with a
-      text label (tooltip + title), so the signal is never colour/shape alone.
+      is reachable by hover alone.
     since: 1
 
   - id: mission-board
@@ -677,8 +667,8 @@ components:
       completion notification does. A mention whose author is unknown drops the
       face for an at-sign glyph and says only that the reader was mentioned. A
       row with something new since the reader last opened that mission carries
-      the same quiet action-token dot the sidebar and the mission card use, on a
-      rail that is always reserved so read and unread rows stay aligned. With
+      the same quiet action-token dot the agent sidebar uses, on a rail that is
+      always reserved so read and unread rows stay aligned. With
       nobody mentioning the reader the list shows its empty state; with nobody
       signed in there is no "me" to mention, and the mode is never routed to.
     a11y: >-

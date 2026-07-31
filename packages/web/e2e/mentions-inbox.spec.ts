@@ -1,5 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
 
@@ -148,14 +148,9 @@ const inboxRows = (page: Page) =>
 const missionCard = (page: Page, id: string) =>
   page.locator(`[data-kanban-card='${id}']`);
 
-/**
- * The card's unread mark. Addressed by attribute, not `getByRole`, for the same
- * reason as the face stack in board-people.spec: the card is an ARIA `option`,
- * whose children are presentational and never reach the accessibility tree.
- * `app/src/locales/en/board.json` owns the label.
- */
-const cardUnreadDot = (page: Page, id: string) =>
-  missionCard(page, id).locator('[role="img"][aria-label="Unread updates"]');
+/** The inbox row's quiet unread dot: a filled circle on the action token,
+ *  deliberately NOT a count chip ("there is something new here", not "act now"). */
+const rowUnreadDot = (row: Locator) => row.locator("span.bg-action");
 
 test("the inbox lists a mission that mentions me, and only that one", async ({
   page,
@@ -200,13 +195,12 @@ test("the pill counts mentions only, never a mission that merely moved", async (
   await signInAsViewer(page);
   await openMissionControl(page);
 
-  // My own mission moved while I was away, so it IS unread: the board says so
-  // with the same dot the mentioning mission gets. Two unread missions.
+  // My own mission moved while I was away, so it IS unread for me — but nobody
+  // typed my name in it. It is on the board, alongside the one that mentions me.
   await expect(missionCard(page, MOVED_ID)).toBeVisible();
-  await expect(cardUnreadDot(page, MOVED_ID)).toHaveCount(1);
-  await expect(cardUnreadDot(page, MISSION_ID)).toHaveCount(1);
+  await expect(missionCard(page, MISSION_ID)).toBeVisible();
 
-  // The pill makes a NARROWER claim than the dot: it says out loud that someone
+  // The pill makes a NARROWER claim than "unread": it says out loud that someone
   // typed my name, so it counts the one mission where somebody did. Anchored,
   // because the whole point of this test is the number itself.
   await expect(mentionsControl(page)).toHaveAccessibleName(
@@ -232,15 +226,13 @@ test("an unread mention row carries the quiet unread dot until it is opened", as
 
   const row = inboxRows(page).first();
   await expect(row).toBeVisible();
-  // The unread signal is a filled dot painted with the semantic action token,
-  // deliberately NOT a count chip: "there is something new here", not "act now".
-  const dot = row.locator("span.bg-action");
+  const dot = rowUnreadDot(row);
   await expect(dot).toHaveCount(1);
   const fill = await dot.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(fill).not.toBe("rgba(0, 0, 0, 0)");
 });
 
-test("the mission's own card carries the unread dot until the mission is opened", async ({
+test("opening the mission clears its mention, and the read cursor survives a reload", async ({
   page,
   request,
 }) => {
@@ -250,24 +242,24 @@ test("the mission's own card carries the unread dot until the mission is opened"
   await signInAsViewer(page);
   await openMissionControl(page);
 
-  // The board itself says which mission wants me, so the signal is not locked
-  // inside the inbox. Only the one that names me: the other mission is not
-  // unread for me, and a board where every card is lit says nothing.
-  await expect(missionCard(page, MISSION_ID)).toBeVisible();
-  await expect(cardUnreadDot(page, MISSION_ID)).toHaveCount(1);
-  await expect(cardUnreadDot(page, OTHER_ID)).toHaveCount(0);
+  await expect(mentionsControl(page)).toHaveAccessibleName(/1 unread mention/);
 
   await missionCard(page, MISSION_ID).click();
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 
   // Reload rather than just closing the panel: it proves the READ CURSOR was
-  // written and persisted, not merely that an open card suppresses its own mark.
-  // Nothing is selected after a reload, so a still-unread mission would light up
-  // again — which is exactly what a per-device cursor must not do once read.
+  // written and persisted, not merely that an open mission suppresses its own
+  // signal. A cursor that did not survive would light the pill up again — which
+  // is exactly what a per-device cursor must not do once read.
   await page.reload();
   await openMissionControl(page);
-  await expect(missionCard(page, MISSION_ID)).toBeVisible();
-  await expect(cardUnreadDot(page, MISSION_ID)).toHaveCount(0);
+  // Anchored: at zero the pill carries no count at all, it is just "Mentions".
+  await expect(mentionsControl(page)).toHaveAccessibleName("Mentions");
+
+  await mentionsControl(page).click();
+  const row = inboxRows(page).first();
+  await expect(row).toBeVisible();
+  await expect(rowUnreadDot(row)).toHaveCount(0);
 });
 
 test("opening a mention row navigates to that mission's chat", async ({
