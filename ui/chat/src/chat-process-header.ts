@@ -35,6 +35,18 @@ export interface ChatProcessLabels {
   /** Settled label once the mission ends and the log collapses. e.g. "Mission log". */
   complete?: string;
   /**
+   * The rotating astronaut one-liners (the localized HOU-910 deck) for the
+   * active header while nothing is visibly executing: before the first tool
+   * runs, and in the reasoning gaps after a tool finishes. Restores the
+   * personality the standalone pre-reply indicator carries — that indicator is
+   * suppressed the whole time an active log trails (HOU-471), so without this
+   * the header held the last tool's stale verb through every gap. While a tool
+   * IS running (no result yet) the concrete verb/brand still wins. Absent →
+   * the pre-existing behavior: hold the latest verb (HOU-448), static `active`
+   * label before the first tool.
+   */
+  phrases?: string[];
+  /**
    * Resolves a Composio action slug (e.g. `GMAIL_SEND_EMAIL`) to the app's
    * presentational brand for the branded header row. App-supplied (the catalog
    * lives app-side); returns `undefined` when the current tool isn't a
@@ -125,6 +137,9 @@ export function buildProcessHeaderLabel(opts: {
 export type ProcessHeader =
   | { kind: "brand"; brand: ChatActionBrand }
   | { kind: "tool"; label: string; toolName: string }
+  /** Play the rotating phrase deck; `fallback` covers the frame before the
+   *  deck's first draw (the component owns the rotation state). */
+  | { kind: "phrase"; fallback: string }
   | { kind: "text"; label: string };
 
 export function buildProcessHeader(opts: {
@@ -136,7 +151,12 @@ export function buildProcessHeader(opts: {
   const { isActive, segments, labels } = opts;
   if (isActive) {
     const tool = getCurrentActionTool(segments);
-    if (tool) {
+    const hasPhrases = (labels?.phrases?.length ?? 0) > 0;
+    // Tools run serially, so the latest tool is executing iff it has no
+    // result yet. A finished one means the model is reasoning/writing — with
+    // a phrase deck available that gap plays the deck instead of holding the
+    // stale verb (without one, the sticky-verb behavior stands, HOU-448).
+    if (tool && !(hasPhrases && tool.result)) {
       if (labels?.resolveActionBrand) {
         const action = integrationActionOf(tool);
         if (action) {
@@ -149,6 +169,9 @@ export function buildProcessHeader(opts: {
         label: buildProcessHeaderLabel(opts),
         toolName: tool.name,
       };
+    }
+    if (hasPhrases) {
+      return { kind: "phrase", fallback: labels?.active ?? DEFAULTS.active };
     }
   }
   return { kind: "text", label: buildProcessHeaderLabel(opts) };

@@ -22,6 +22,7 @@ import type { ChatProcessLabels } from "./chat-process-header";
 import { buildProcessHeader } from "./chat-process-header";
 import { ChatStatusLine } from "./chat-status-line";
 import { getMappedToolIcon } from "./tool-formatters";
+import { useRotatingPhrase } from "./use-rotating-phrase";
 
 export type { ChatActionBrand, ChatProcessLabels } from "./chat-process-header";
 
@@ -53,11 +54,20 @@ export function ChatProcessBlock({
   // The single trigger line. While active it surfaces only the one in-progress
   // action: a per-tool icon + the verb ("Reading file"), upgraded to the app
   // logo + "Gmail · Sending email" when the current tool is an integration the
-  // app resolves, or the helmet + "Thinking..." before the first tool runs;
-  // settled it reads the helmet + "Mission log". Never a count of tool calls.
+  // app resolves, or the helmet + the rotating astronaut phrases (falling back
+  // to "Thinking...") while nothing is visibly executing; settled it reads the
+  // helmet + "Mission log". Never a count of tool calls.
   const header = useMemo(
     () => buildProcessHeader({ isActive, segments, labels, toolLabels }),
     [isActive, segments, labels, toolLabels],
+  );
+
+  // The astronaut deck for the active header's reasoning gaps (the `phrase`
+  // header kind). Keyed off `isActive` rather than the current kind so ONE
+  // deck runs for the life of the active block — a quick tool flashing its
+  // verb in between doesn't reshuffle and restart the rotation.
+  const rotatingPhrase = useRotatingPhrase(
+    isActive ? labels?.phrases : undefined,
   );
 
   // Once the user opens the (now closed-by-default) pane during an active run,
@@ -83,6 +93,8 @@ export function ChatProcessBlock({
             icon={renderToolIcon(header.toolName)}
             label={header.label}
           />
+        ) : header.kind === "phrase" ? (
+          <ChatStatusLine active label={rotatingPhrase || header.fallback} />
         ) : (
           <ChatStatusLine label={header.label} active={isActive} />
         )}

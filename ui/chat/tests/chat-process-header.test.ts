@@ -304,6 +304,93 @@ describe("buildProcessHeader", () => {
     );
   });
 
+  // HOU-1047 follow-up: with the astronaut deck available, the active header
+  // plays it whenever nothing is visibly executing — before the first tool and
+  // in the gaps after a tool finishes. A running tool's verb/brand still wins,
+  // and WITHOUT a deck the sticky-verb behavior (HOU-448) is unchanged.
+  describe("with rotating phrases", () => {
+    const labels = { phrases: ["Braving the meteor shower..."] };
+
+    it("plays the deck before any tool runs", () => {
+      deepStrictEqual(
+        buildProcessHeader({ isActive: true, segments: [seg([])], labels }),
+        { kind: "phrase", fallback: "Thinking..." },
+      );
+    });
+
+    it("still names a RUNNING tool (no result yet)", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: true,
+          segments: [seg([{ name: "Read" }])],
+          labels,
+        }),
+        { kind: "tool", label: "Reading file", toolName: "Read" },
+      );
+    });
+
+    it("plays the deck once the latest tool has finished (reasoning gap)", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: true,
+          segments: [seg([{ name: "Read", result: RESULT }])],
+          labels,
+        }),
+        { kind: "phrase", fallback: "Thinking..." },
+      );
+    });
+
+    it("carries the localized active label as the deck's fallback", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: true,
+          segments: [seg([])],
+          labels: { ...labels, active: "Pensando..." },
+        }),
+        { kind: "phrase", fallback: "Pensando..." },
+      );
+    });
+
+    it("still brands a RUNNING integration_execute", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: true,
+          segments: [
+            seg([
+              {
+                name: "integration_execute",
+                input: { action: "GMAIL_SEND_EMAIL" },
+              },
+            ]),
+          ],
+          labels: { ...labels, resolveActionBrand },
+        }),
+        { kind: "brand", brand },
+      );
+    });
+
+    it("keeps the sticky verb when NO deck is provided (HOU-448 unchanged)", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: true,
+          segments: [seg([{ name: "Read", result: RESULT }])],
+        }),
+        { kind: "tool", label: "Reading file", toolName: "Read" },
+      );
+    });
+
+    it("settles to the plain Mission log label, never a phrase", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: false,
+          segments: [seg([{ name: "Read", result: RESULT }])],
+          labels,
+        }),
+        { kind: "text", label: "Mission log" },
+      );
+    });
+  });
+
   it("stays plain text when settled (never branded), and a tool row with no resolver", () => {
     const segments = [
       seg([
