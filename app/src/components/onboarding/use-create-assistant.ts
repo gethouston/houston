@@ -1,8 +1,12 @@
+import type { TFunction } from "i18next";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { STORE_TEMPLATE_IDS } from "../../agents/builtin/store-catalog";
+import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { seedTimezoneIfUnset } from "../../hooks/use-timezone-preference";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
+import type { OnboardingSegmentChoice } from "../../lib/onboarding-segment";
 import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import type { Agent, Workspace } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -14,10 +18,12 @@ import {
 } from "./ensure-default-assistant";
 import { surfaceAgentThenRefresh } from "./first-run-provision";
 import {
+  type AssistantSetup,
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts";
 import { buildPersonalAssistantSeeds } from "./personal-assistant-seeds";
+import { agentPackForSegment } from "./segment-agent-pack";
 
 /**
  * Post-create bookkeeping: persist the last-used pick and reload the stores.
@@ -53,9 +59,40 @@ async function refreshAfterCreate(
   if (refreshed) useAgentStore.getState().setCurrent(refreshed);
 }
 
+/**
+ * Role-aware create-time content for the default assistant. When the answered
+ * onboarding segment maps to a first-party store pack, seed that pack's
+ * CLAUDE.md + skills/routines/data so the assistant is useful for that role on
+ * day one (the same `loadStoreTemplate` payload the New Agent picker installs).
+ * Otherwise fall back to the generic personal-assistant seeds, so an unmapped
+ * (or skipped) segment is never left worse off than before the mapping existed.
+ */
+async function assistantContentForSegment(
+  setup: AssistantSetup,
+  t: TFunction<"setup">,
+  locale: string,
+  segment: OnboardingSegmentChoice | null,
+): Promise<{ instructions: string; seeds: Record<string, string> }> {
+  const pack = agentPackForSegment(segment);
+  if (pack && STORE_TEMPLATE_IDS.has(pack)) {
+    const tpl = await loadStoreTemplate(pack, locale);
+    return {
+      instructions: tpl.claudeMd ?? buildAssistantInstructions(setup),
+      seeds: tpl.seeds,
+    };
+  }
+  return {
+    instructions: buildAssistantInstructions(setup),
+    seeds: buildPersonalAssistantSeeds(t, locale),
+  };
+}
+
 interface UseCreateAssistantArgs {
   assistantName: string;
   assistantColor: string;
+  /** The answered first-run segment, used to pick a role-specific store pack to
+   *  seed the assistant with; `null` (unmapped / skipped) seeds the generic one. */
+  segment: OnboardingSegmentChoice | null;
 }
 
 /**
@@ -70,6 +107,7 @@ interface UseCreateAssistantArgs {
 export function useCreateAssistant({
   assistantName,
   assistantColor,
+  segment,
 }: UseCreateAssistantArgs): {
   agent: Agent | null;
   creating: boolean;
@@ -102,18 +140,26 @@ export function useCreateAssistant({
           listWorkspaces: () => tauriWorkspaces.list(),
           createWorkspace: (name) => tauriWorkspaces.create(name),
           listAgents: (workspaceId) => tauriAgents.list(workspaceId),
-          createAssistant: (workspaceId) =>
-            createPersonalAssistantForWorkspace(workspaceId, {
+          createAssistant: async (workspaceId) => {
+            // Role-aware seeds: a segment that maps to a store pack seeds that
+            // pack's CLAUDE.md + skills/routines; everything else keeps the
+            // generic Daily Briefing + Meeting-prep. The active locale selects
+            // the language / translated pack variant either way.
+            const { instructions, seeds } = await assistantContentForSegment(
+              setup,
+              t,
+              i18n.language,
+              segment,
+            );
+            return createPersonalAssistantForWorkspace(workspaceId, {
               name: setup.assistantName.trim(),
-              instructions: buildAssistantInstructions(setup),
+              instructions,
               color: setup.color,
               provider: pickedProvider,
               model: pickedModel,
-              // Real capability on day one: a Daily Briefing routine + a
-              // Meeting-prep skill, seeded into the fresh agent's tree. The
-              // active locale selects the language they write output in.
-              seeds: buildPersonalAssistantSeeds(t, i18n.language),
-            }),
+              seeds,
+            });
+          },
         });
       },
       // Surface the agent the instant its record lands so onboarding advances to

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useOnboardingCompleted } from "../../hooks/use-onboarding-completed";
 import { useOnboardingPending } from "../../hooks/use-onboarding-pending";
+import { useOnboardingSegment } from "../../hooks/use-onboarding-segment";
 import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-report";
 import { getDefaultModel } from "../../lib/providers";
@@ -77,9 +78,16 @@ export function PersonalAssistantOnboarding({
     ? ["ai", "email", "send"]
     : ["ai"];
 
+  // The segment was answered and persisted in the gate BEFORE this flow mounts
+  // (App.tsx routes "segment" → "onboarding"), so this read hits the cached
+  // preference. It picks the role-specific store pack the assistant is seeded
+  // with; an unmapped or skipped answer seeds the generic assistant.
+  const { preference: segmentPreference } = useOnboardingSegment(true);
+
   const { agent, creating, create } = useCreateAssistant({
     assistantName,
     assistantColor,
+    segment: segmentPreference?.segment ?? null,
   });
 
   // Persisted "onboarding is mid-flight" flag (mirrors the legal-acceptance
