@@ -36,14 +36,15 @@ import { tauriProvider } from "../../../lib/tauri";
 import { useUIStore } from "../../../stores/ui";
 import { RowCard } from "../../cards/row-card";
 import { RowCardButton } from "../../cards/row-card-button";
-import { LocalModelDialog } from "../local-model-dialog";
 import { ProviderGlyph } from "../provider-logos";
 import {
   type AuthCardButton,
   authCauseBodyKey,
   type LoginPhase,
+  reconnectSurface,
   resolveAuthCardPresentation,
 } from "./auth-presentation";
+import { ReconnectDialog } from "./reconnect-dialog";
 import { providerLabel } from "./shared";
 
 export function UnauthenticatedCard({
@@ -59,7 +60,7 @@ export function UnauthenticatedCard({
   const [launching, setLaunching] = useState(false);
   const [failureDetail, setFailureDetail] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [showCustomDialog, setShowCustomDialog] = useState(false);
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
   const relaunchingRef = useRef(false);
   // The auto-resend must fire ONCE per card — a second fire (the provider can
   // complete several logins while the chat stays open) would double-send.
@@ -103,16 +104,22 @@ export function UnauthenticatedCard({
     });
   }, [error.provider, setAuthRequired]);
 
+  // Which surface Reconnect opens: OAuth's browser login, the api-key paste
+  // dialog, or the local endpoint dialog. Non-OAuth providers must NEVER hit
+  // launchLogin — the engine 400s ("nvidia does not use OAuth sign-in") and
+  // the card dead-ends in its failed phase with no way out (HOU-1077). Both
+  // dialogs fire the same `ProviderLoginComplete` on a successful connect, so
+  // the auto-resume above runs for every surface.
+  const surface = reconnectSurface(
+    error.provider,
+    getProvider(error.provider)?.auth,
+  );
+
   const reconnect = async () => {
     if (launching) return;
-    // A local OpenAI-compatible server has no OAuth flow — reconnect by
-    // re-connecting the local model in its dialog, not launchLogin (which
-    // would throw "does not use OAuth sign-in" and dead-end the card). A
-    // successful connect fires the same `ProviderLoginComplete` event
-    // (`setProviderCustomEndpoint`), so the auto-resume above still runs.
-    if (error.provider === "openai-compatible") {
+    if (surface !== "oauth_login") {
       setFailureDetail(null);
-      setShowCustomDialog(true);
+      setShowConnectDialog(true);
       setPhase("waiting");
       return;
     }
@@ -132,9 +139,9 @@ export function UnauthenticatedCard({
   };
 
   const cancelSignIn = async () => {
-    // Local model: nothing engine-side to cancel — close the dialog and re-arm.
-    if (error.provider === "openai-compatible") {
-      setShowCustomDialog(false);
+    // Dialog surfaces: nothing engine-side to cancel — close and re-arm.
+    if (surface !== "oauth_login") {
+      setShowConnectDialog(false);
       setPhase("idle");
       return;
     }
@@ -194,16 +201,12 @@ export function UnauthenticatedCard({
         action={renderButton(pres.button)}
       />
 
-      {/* The local model's reconnect surface: the same guided dialog the AI
-          Models section opens. A successful connect fires
-          ProviderLoginComplete, which flips this card to done and auto-resumes
-          the task; closing without connecting re-arms the button. */}
-      <LocalModelDialog
-        provider={
-          showCustomDialog ? (getProvider(error.provider) ?? null) : null
-        }
+      <ReconnectDialog
+        surface={surface}
+        providerId={error.provider}
+        open={showConnectDialog}
         onClose={() => {
-          setShowCustomDialog(false);
+          setShowConnectDialog(false);
           setPhase((p) => (p === "waiting" ? "idle" : p));
         }}
       />

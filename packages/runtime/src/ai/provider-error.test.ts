@@ -559,6 +559,37 @@ test("NVIDIA NIM expired cloud credits → quota_exhausted", () => {
   expect(err.kind).toBe("quota_exhausted");
 });
 
+test("NVIDIA NIM 403 'Authorization failed' → unauthenticated / invalid_api_key", () => {
+  // Verbatim integrate.api.nvidia.com rejection of a bad or revoked key
+  // (HOU-1077): a 403 whose body names neither "unauthorized" nor
+  // "authentication", so it used to fall through to `unknown` — the generic
+  // error card mid-chat, and "could not verify" instead of "didn't accept
+  // this key" at connect time.
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "meta/llama-3.1-70b-instruct",
+    message:
+      '403: {"status":403,"title":"Forbidden","detail":"Authorization failed"}',
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+});
+
+test("Qwen Token Plan 401 'Invalid API-key provided' → unauthenticated / invalid_api_key", () => {
+  // Verbatim token-plan.ap-southeast-1.maas.aliyuncs.com body (HOU-1077). The
+  // endpoint only accepts a DEDICATED Token Plan key — a regular Model Studio
+  // key lands here. "API-key" is hyphenated; the cause must still read
+  // invalid_api_key so the card says the key itself was refused.
+  const err = classifyProviderError({
+    provider: "qwen-token-plan",
+    model: "qwen3.7-max",
+    message:
+      '401: {"message":"Invalid API-key provided. For details, see: https://www.alibabacloud.com/help/en/model-studio/error-code#apikey-error","id":"76019e5d-2f21-45dd-88c3-40d23773d800","type":"invalid_request_error","code":"invalid_api_key"}',
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+});
+
 // ---------------------------------------------------------------------------
 // Context overflow — the conversation no longer fits the model's window.
 // The Jan fixture is the VERBATIM llama.cpp rejection from the production

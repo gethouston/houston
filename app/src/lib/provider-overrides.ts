@@ -638,6 +638,25 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://build.nvidia.com",
     apiKeyUrl: "https://build.nvidia.com/settings/api-keys",
   },
+  // Alibaba's prepaid token bundles for Qwen (+ hosted open models). The
+  // endpoint only accepts the DEDICATED Token Plan API key minted after
+  // purchasing a plan and assigning its seat — a regular Model Studio key gets
+  // a 401 "Invalid API-key provided" (HOU-1077), so the connect guidance must
+  // send users to the Token Plan setup guide, not a generic key console.
+  "qwen-token-plan": {
+    name: "Qwen Token Plan",
+    subtitle: "Alibaba Cloud token plan",
+    description: "Qwen and hosted open models on an Alibaba token plan.",
+    cost: "Requires a purchased token plan",
+    billing: "subscription",
+    installUrl:
+      "https://www.alibabacloud.com/help/en/model-studio/token-plan-team-quickstart",
+    apiKeyUrl:
+      "https://www.alibabacloud.com/help/en/model-studio/token-plan-team-quickstart",
+    // pi lists this multi-vendor catalog alphabetically, which would make
+    // MiniMax the default on a card named Qwen.
+    defaultModel: "qwen3.7-max",
+  },
   "google-vertex": {
     name: "Google Vertex AI",
     subtitle: "Gemini on Google Cloud",

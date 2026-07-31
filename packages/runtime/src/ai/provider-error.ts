@@ -47,6 +47,16 @@ const INVALID_KEY_PATTERNS = [
   "incorrect api key",
   "invalid x-api-key",
   "no auth credentials",
+  // Alibaba Model Studio / Qwen Token Plan gateways: 401
+  // `{"message":"Invalid API-key provided. …","code":"invalid_api_key"}` —
+  // "API-key" is hyphenated, so the plain "invalid api key" pattern misses it.
+  "invalid api-key",
+  // NVIDIA NIM rejects a bad/revoked key with 403
+  // `{"status":403,"title":"Forbidden","detail":"Authorization failed"}` —
+  // no "unauthorized"/"authentication" wording, so without this pattern it
+  // classified `unknown` (generic error card instead of the reconnect card,
+  // and "could not verify" instead of "didn't accept this key") (HOU-1077).
+  "authorization failed",
 ];
 
 /**
