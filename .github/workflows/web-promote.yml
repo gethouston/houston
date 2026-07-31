@@ -1,13 +1,14 @@
-# Web promotion — preview → production (app.gethouston.ai)
+# Web promotion — release asset → production (app.gethouston.ai)
 #
-# The release workflow's `build-web` job builds packages/web ONCE, attaches it
-# as the `web-dist.tar.gz` release asset, and deploys those bytes to the PREVIEW
-# site. Publishing a release (draft → public, the manual QA gate) is the signal
-# that the preview build is blessed: this workflow downloads that SAME asset and
-# re-deploys the identical bytes to the PRODUCTION site. No rebuild — what users
-# get on app.gethouston.ai is byte-for-byte what was tested on
-# preview.gethouston.ai for this version. Preview vs production is decided at
-# runtime from the hostname, so one artifact legitimately serves both.
+# The release workflow's `build-web` job builds packages/web ONCE with the
+# PRODUCTION gateway baked in and attaches it as the `web-dist.tar.gz` release
+# asset. Publishing a release (draft → public, the manual QA gate) is the
+# signal that the build is blessed: this workflow downloads that SAME asset and
+# deploys the identical bytes to the PRODUCTION site. No rebuild — what users
+# get on app.gethouston.ai is byte-for-byte what the release built. The preview
+# site is a separate axis (web-staging.yml: main-HEAD frontend baking the
+# STAGING gateway) and is never touched by release bytes, so preview QA
+# exercises the same frontend code but not the identical artifact.
 #
 # Rollback = run this workflow manually (workflow_dispatch) with an older
 # release tag — the `published` event fires only once per release, so manual
@@ -130,9 +131,9 @@ jobs:
         working-directory: packages/web
         run: |
           # Pinned major: an unpinned @latest would let a breaking firebase-tools
-          # release silently break promotion. Keep in sync with release.yml build-web.
+          # release silently break promotion. Keep in sync with web-staging.yml.
           npx --yes firebase-tools@15 deploy \
             --only hosting:production \
             --project gethouston \
             --non-interactive
-          echo "::notice::Promoted $TAG to production — app.gethouston.ai now serves the same bytes tested on preview."
+          echo "::notice::Promoted $TAG to production — app.gethouston.ai now serves the release's web-dist bytes."

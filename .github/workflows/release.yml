@@ -1826,30 +1826,27 @@ jobs:
   # ============================================================================
   # Web client — Firebase Hosting.
   #
-  # ONE bundle for BOTH environments. This job builds packages/web ONCE, ships
-  # it as the `web-dist.tar.gz` release asset, uploads its sourcemaps to Sentry,
-  # and deploys it to the PREVIEW site (preview.gethouston.ai). Promotion to
-  # production (app.gethouston.ai) re-deploys the SAME bytes from the published
-  # release — see .github/workflows/web-promote.yml. There are NO
-  # environment-specific VITE flags: preview vs production is decided at RUNTIME
-  # from window.location.hostname (packages/web/src/deploy-environment.ts), so
-  # the promoted artifact is byte-identical and only the per-site header config
-  # (e.g. the preview site's X-Robots-Tag: noindex) differs.
+  # PRODUCTION bytes only. This job builds packages/web ONCE with the
+  # PRODUCTION gateway (HOSTED_ENGINE_URL) baked in, ships it as the
+  # `web-dist.tar.gz` release asset, and uploads its sourcemaps to Sentry.
+  # Promotion to production (app.gethouston.ai) deploys those exact bytes from
+  # the published release — see .github/workflows/web-promote.yml. This job
+  # itself touches NO Firebase site: the preview site (preview.gethouston.ai)
+  # is owned exclusively by web-staging.yml, whose bundle bakes the STAGING
+  # gateway (HOSTED_ENGINE_URL_STAGING) — release bytes must never land there.
   #
-  # Local channel only. cloud-v* tags are prerelease DESKTOP builds and never
-  # touch hosting, so this job is gated to `v*` (which cloud-v* never matches).
-  # The `github.repository` guard makes forks skip it entirely — they have
-  # neither the gateway secret nor deploy access to our GCP project, so running
-  # it there would only red-X their release.
+  # The deploy-environment label (Sentry/PostHog tagging, the preview badge) is
+  # still derived at RUNTIME from window.location.hostname
+  # (packages/web/src/deploy-environment.ts); the baked gateway URL is the one
+  # build-time difference between the production and preview bundles.
+  #
+  # The `github.repository` guard makes forks skip this job entirely — they
+  # have neither the gateway secret nor a use for the asset, so running it
+  # there would only red-X their release.
   #
   # The gateway URL is reused from the HOSTED_ENGINE_URL secret (the managed
   # Houston Cloud gateway the desktop cloud channel already bakes) so there is
   # ONE source of truth and no endpoint literal in this file.
-  #
-  # GCP auth: keyless Workload Identity Federation — the SAME provider as
-  # engine-pod-image.yml, with the web-deploy service account. firebase-tools
-  # reads the ADC that google-github-actions/auth writes
-  # (GOOGLE_APPLICATION_CREDENTIALS), so no FIREBASE_TOKEN is needed.
   build-web:
     needs: prep
     # Both channels build web bytes: cloud-v* is the channel actually shipping
@@ -1860,7 +1857,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write # gh release upload the web-dist asset
-      id-token: write # Workload Identity Federation for the Firebase deploy
     # Job-level so the Sentry upload step's `if: ${{ env.SENTRY_AUTH_TOKEN != '' }}`
     # can read it — same step-`if`-can't-see-step-env footgun as the desktop jobs.
     env:
@@ -1936,7 +1932,7 @@ jobs:
           fi
           pnpm --filter houston-web build
 
-      # Inject Sentry Debug IDs into the shipped JS + maps BEFORE tar/deploy, so
+      # Inject Sentry Debug IDs into the shipped JS + maps BEFORE tar, so
       # the promoted bytes and the uploaded maps share the same IDs (the web build
       # emits hidden sourcemaps, exactly like the desktop bundle — no
       # sourceMappingURL comment, resolvable only by Debug ID). Then upload the
@@ -1969,8 +1965,8 @@ jobs:
 
       # Deterministic archive so the byte-for-byte promotion is verifiable: fixed
       # member order, mtime, and ownership, plus `gzip -n` (no name/timestamp in
-      # the gzip header). This exact archive is what web-promote.yml re-deploys to
-      # production — identical bytes on preview and app.gethouston.ai.
+      # the gzip header). This exact archive is what web-promote.yml deploys to
+      # production (app.gethouston.ai).
       - name: Package web-dist.tar.gz
         run: |
           set -euo pipefail
@@ -1984,28 +1980,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "$GITHUB_REF_NAME" web-dist.tar.gz --clobber
-          echo "::notice::web-dist.tar.gz uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME — web-promote.yml re-deploys these exact bytes to production on publish."
-
-      - name: Auth to GCP (Workload Identity Federation)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
-          service_account: github-deploy-web@gethouston.iam.gserviceaccount.com
-
-      # firebase-tools auto-discovers firebase.json + .firebaserc in this dir; the
-      # target `preview` maps to the houston-web-preview site (see .firebaserc), so
-      # no auth-requiring `target:apply` is needed. `public: "dist"` resolves to the
-      # freshly built packages/web/dist.
-      - name: Deploy to preview site
-        working-directory: packages/web
-        run: |
-          # Pinned major: an unpinned @latest would let a breaking firebase-tools
-          # release silently break the deploy. Keep in sync with web-promote.yml.
-          npx --yes firebase-tools@15 deploy \
-            --only hosting:preview \
-            --project gethouston \
-            --non-interactive
-          echo "::notice::Deployed the web bundle to preview.gethouston.ai (houston-web-preview)."
+          echo "::notice::web-dist.tar.gz uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME — web-promote.yml deploys these exact bytes to production on publish."
 
   # ============================================================================
   # Stitch the parallel mac + win builds into one finished draft release.
