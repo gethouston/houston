@@ -431,6 +431,14 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
   mentions?: readonly MentionTarget[];
 };
 
+/**
+ * A bare URL rendered inline in a chat message — shared by the markdown
+ * autolink override below and the plain-text path (`plain-message-text.tsx`),
+ * so a link looks identical whether its message rendered markdown or not.
+ */
+export const AUTOLINK_CLASS =
+  "text-action underline-offset-4 hover:underline [overflow-wrap:anywhere] group-[.is-peer]:underline group-[.is-user]:text-input group-[.is-user]:underline dark:group-[.is-user]:text-ink";
+
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 export const MessageResponse = memo(
@@ -507,7 +515,7 @@ export const MessageResponse = memo(
                   e.preventDefault();
                   onOpen();
                 }}
-                className="text-action underline-offset-4 hover:underline [overflow-wrap:anywhere] group-[.is-peer]:underline group-[.is-user]:text-input group-[.is-user]:underline dark:group-[.is-user]:text-ink"
+                className={AUTOLINK_CLASS}
               >
                 {children}
               </a>

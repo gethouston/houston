@@ -17,6 +17,7 @@
 
 import type { ChatMessage, PendingInteraction } from "@houston/protocol";
 import { type ChatChannel, channel, chatKey, publish } from "./chat-channel";
+import { MARKDOWN_SHOWCASE } from "./markdown-showcase";
 import * as state from "./state";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -50,6 +51,7 @@ export function resetReplyDelay(): void {
 }
 
 function cannedReply(userText: string): string {
+  if (/markdown/i.test(userText)) return MARKDOWN_SHOWCASE;
   return `Roger that. You said: "${userText}"`;
 }
 
