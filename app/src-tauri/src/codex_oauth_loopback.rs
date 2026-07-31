@@ -3,9 +3,11 @@
 //! OpenAI's Codex OAuth client has a SINGLE registered redirect URI —
 //! `http://localhost:1455/auth/callback` — so unlike the GCIP sign-in
 //! loopback (which picks the first free port from a small candidate list) this
-//! listener MUST bind port 1455 exactly. There is no fallback: if 1455 is held
-//! by another process the flow cannot complete, so we surface a clear error
-//! instead of silently retrying elsewhere.
+//! listener MUST bind port 1455 exactly. `localhost` does resolve to both
+//! loopback families though, so when a foreign process holds 127.0.0.1:1455
+//! the listener salvages the flow on [::1]:1455 (browsers try ::1 first). Only
+//! when BOTH families are unavailable does it error — the frontend then falls
+//! back to the device-code sign-in instead of dead-ending.
 //!
 //! On the callback we forward the RAW query string (`code=...&state=...`) to
 //! the webview via the `codex-oauth://callback` Tauri event; the PKCE exchange
@@ -93,8 +95,16 @@ fn abort_active_listener() {
 }
 
 /// Bind the fixed redirect port, absorbing the short window in which an
-/// aborted predecessor's socket is still being torn down. Every retry
-/// exhausted means a foreign process owns the port for real.
+/// aborted predecessor's socket is still being torn down.
+///
+/// OpenAI redirects to `localhost`, which resolves to BOTH loopback families,
+/// and browsers attempt `::1` before `127.0.0.1` on modern OS defaults (RFC
+/// 6724 precedence — Windows and macOS alike). A foreign squatter usually
+/// holds only the IPv4 side (Sentry 7639120568: EADDRINUSE on fresh attempts),
+/// so when 127.0.0.1 is taken the callback can still be caught on `[::1]` —
+/// salvage the one-click flow there instead of failing. Every retry exhausted
+/// on both families means the port is unavailable for real (the frontend then
+/// falls back to the device-code sign-in).
 async fn bind_codex_port(port: u16) -> Result<TcpListener, String> {
     let mut last_err = None;
     for attempt in 0..BIND_RETRIES {
@@ -104,6 +114,23 @@ async fn bind_codex_port(port: u16) -> Result<TcpListener, String> {
         match TcpListener::bind(("127.0.0.1", port)).await {
             Ok(listener) => return Ok(listener),
             Err(e) => last_err = Some(e),
+        }
+        match TcpListener::bind(("::1", port)).await {
+            Ok(listener) => {
+                tracing::warn!(
+                    "[codex-oauth-loopback] 127.0.0.1:{port} is taken ({e}); \
+                     salvaged the callback listener on [::1]:{port}",
+                    e = last_err
+                        .as_ref()
+                        .expect("v4 bind failed on this iteration"),
+                );
+                return Ok(listener);
+            }
+            // The v4 error stays the primary diagnostic: v4 is where foreign
+            // squatters live, and "no IPv6 loopback" would only mislead.
+            Err(e) => {
+                tracing::debug!("[codex-oauth-loopback] [::1]:{port} bind also failed: {e}");
+            }
         }
     }
     let e = last_err.expect("BIND_RETRIES > 0 guarantees an error was recorded");
@@ -221,16 +248,33 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bind_fails_with_actionable_error_when_a_foreign_process_holds_the_port() {
+    async fn bind_fails_with_actionable_error_when_both_loopback_families_are_held() {
         // A real squatter (e.g. an actual Codex CLI mid-login) never releases
         // the port, so the retry loop must exhaust and surface the remedy.
+        // Both families squatted: the [::1] salvage below must not apply.
         // Ephemeral port: tests must never touch the real 1455.
-        let squatter = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
-        let port = squatter.local_addr().unwrap().port();
+        let squatter_v4 = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let port = squatter_v4.local_addr().unwrap().port();
+        let _squatter_v6 = TcpListener::bind(("::1", port)).await.unwrap();
 
         let err = bind_codex_port(port).await.unwrap_err();
         assert!(err.contains("close other AI coding tools"), "err: {err}");
         assert!(err.contains(&port.to_string()), "err: {err}");
+    }
+
+    #[tokio::test]
+    async fn bind_salvages_the_ipv6_loopback_when_only_ipv4_is_squatted() {
+        // The Sentry-7639120568 wild shape: a foreign process owns
+        // 127.0.0.1:<port> outright. OpenAI redirects to `localhost`, which
+        // browsers resolve to ::1 first, so binding [::1] keeps the one-click
+        // flow alive without the device-code fallback ever showing.
+        let _squatter_v4 = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let port = _squatter_v4.local_addr().unwrap().port();
+
+        let salvaged = bind_codex_port(port).await.expect("salvage on [::1]");
+        let addr = salvaged.local_addr().unwrap();
+        assert_eq!(addr.port(), port);
+        assert!(addr.ip().is_ipv6(), "expected [::1], got {addr}");
     }
 
     #[tokio::test]
