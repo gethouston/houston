@@ -147,11 +147,14 @@ The `webServer` fake host on the base port only serves the main process
 per-worktree `HOUSTON_E2E_FAKE_HOST_PORT` bases ≥ 32 apart so worker slots
 can't overlap.
 
-**CI.** The web job shards the suite across runners (`test:e2e --shard=N/3`,
-see `.github/workflows/ci.yml`) with 2 workers per shard: one single-threaded
-vite dev process serves every worker's page boots, and on a 4-vCPU runner more
-than 2 concurrent renders starve past the expect budget. Throughput comes from
-the shards, density stays safe.
+**CI.** The web job shards the suite across runners (`test:e2e --shard=N/6`,
+see `.github/workflows/ci.yml`) with ONE worker per shard: one single-threaded
+vite dev process serves every worker's page boots, and on a 4-vCPU runner
+concurrent workers starve renders — 4 workers blew expect budgets outright,
+and even 2 left the signed-in specs flaking on stuck-animation transients
+(duplicate `AnimatePresence` card ghosts). Throughput comes from the shards;
+each test runs at the single-worker density the suite has always been stable
+at.
 
 vite dev compiles modules on demand, and Playwright only waits for the dev
 server's port to open, not for it to compile. `support/global-setup.ts` boots the

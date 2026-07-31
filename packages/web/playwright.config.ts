@@ -28,12 +28,15 @@ export default defineConfig({
   globalSetup: "./e2e/support/global-setup.ts",
   fullyParallel: true,
   // CI runners (ubuntu-latest) have 4 vCPUs, and page boots are served by ONE
-  // single-threaded vite dev process — at 4 workers the renders starve past
-  // the 10s expect budget (run 30596416439: 14 timing failures). Two workers
-  // is the contention-safe density; CI gets its throughput from sharding the
-  // suite across runners instead (ci.yml `--shard`). Locally, let Playwright
-  // pick from the machine's cores.
-  workers: process.env.CI ? 2 : undefined,
+  // single-threaded vite dev process — at 4 workers renders starve past the
+  // 10s expect budget (run 30596416439: 14 timing failures), and even at 2
+  // the heavy signed-in specs flake on animation transients (run
+  // 30597930896: stuck AnimatePresence exit ghosts duplicate kanban cards).
+  // CI therefore runs ONE worker per runner — the density the suite has
+  // always been stable at — and gets its throughput from sharding across
+  // runners (ci.yml `--shard`). Locally, let Playwright pick from the
+  // machine's cores; fast machines don't starve.
+  workers: process.env.CI ? 1 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,

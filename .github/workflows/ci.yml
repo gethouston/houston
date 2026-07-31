@@ -106,20 +106,23 @@ jobs:
           pnpm exec vitest run scripts/check-parity.test.mjs scripts/publish-starter-agents.test.mjs scripts/lib/release-train.test.mjs
 
   web:
-    # The UI suite is split across runners with Playwright's native --shard:
-    # each shard runs 2 workers (the contention-safe density on a 4-vCPU
-    # runner — one single-threaded vite dev process serves every worker's page
-    # boots, and 4 workers starve renders past the expect budget), and the
-    # shards run concurrently, so the wall clock is one shard's slice of the
-    # suite instead of the whole serial run. Typecheck + unit tests ride
-    # shard 1 only.
+    # The UI suite is split across runners with Playwright's native --shard,
+    # ONE worker per runner: the shards run concurrently, so the wall clock is
+    # one shard's slice of the suite instead of the whole serial run, while
+    # each test still executes in the exact single-worker environment the
+    # suite has always been stable in on this hardware. Higher density was
+    # tried and starves renders on the 4-vCPU runner (one single-threaded vite
+    # dev process serves every worker's page boots): 4 workers blew expect
+    # budgets outright (run 30596416439), and even 2 workers left the heavy
+    # signed-in specs flaking on animation transients (run 30597930896).
+    # Typecheck + unit tests ride shard 1 only.
     name: Web (typecheck + unit + UI tests)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
 
@@ -156,7 +159,7 @@ jobs:
         run: pnpm --filter houston-web test
 
       - name: UI tests (Playwright)
-        run: pnpm --filter houston-web test:e2e --shard=${{ matrix.shard }}/3
+        run: pnpm --filter houston-web test:e2e --shard=${{ matrix.shard }}/6
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
