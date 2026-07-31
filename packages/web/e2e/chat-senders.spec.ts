@@ -34,9 +34,8 @@ test.use({ baseURL: AUTH_WEB_URL });
 /**
  * The spec's OWN mission + its conversation. Created here rather than reusing a
  * seeded card so the transcript is the only thing under test: a fresh activity
- * carries no server-stamped contributors, so it stays visible under the board's
- * default person scope in multiplayer (`missionMatchesScope`'s unattributed
- * clause) whatever the fixtures stamp on the seeded missions.
+ * carries no server-stamped contributors, so nothing the fixtures stamp on the
+ * seeded missions can leak into the sender rail.
  */
 const MISSION_ID = "act-shared";
 const MISSION_TITLE = "Q3 pipeline handover";
