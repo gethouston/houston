@@ -113,3 +113,44 @@ export function toolkitOfActionSlug(
   }
   return best ?? a.split("_")[0] ?? "";
 }
+
+/**
+ * A CUSTOM integration's executor address, parsed for the chat's branded row
+ * (HOU-1049). Custom actions ride `integration_execute` like Composio ones,
+ * but their action is an executor ADDRESS —
+ * `tools.<integration>.<owner>.<connection>.<namespace...>.<tool>` (the
+ * host's CUSTOM_ACTION_PREFIX grammar) — which the Composio slug matching
+ * above can never brand. `null` for anything that isn't a well-formed
+ * address, so Composio slugs fall through untouched.
+ */
+export interface CustomActionRef {
+  /** The custom integration's slug (the definition the user added). */
+  slug: string;
+  /** The tool's own name — the LAST address segment (namespaces dropped). */
+  tool: string;
+}
+
+export function customActionOf(action: string): CustomActionRef | null {
+  if (!action.startsWith("tools.")) return null;
+  const segments = action.split(".");
+  if (segments.length < 5) return null;
+  const slug = segments[1];
+  const tool = segments[segments.length - 1];
+  return slug && tool ? { slug, tool } : null;
+}
+
+/** "listJobs" → "list_jobs", so the shared Composio gerund humanizer can
+ *  read an executor tool name ("Listing jobs"). */
+export function camelToSnakeCase(name: string): string {
+  return name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+}
+
+/** The no-list fallback name for a custom slug ("acme-crm" → "Acme Crm") —
+ *  shown only until (or unless) the definitions list resolves the real name. */
+export function prettifyCustomSlug(slug: string): string {
+  return slug
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
