@@ -39,7 +39,7 @@ import {
 } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { MarkdownCodeBlock } from "../markdown-code-block";
-import { classifyMarkdownLink } from "../markdown-link";
+import { classifyMarkdownLink, collapsedUrlText } from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
 import type { MentionRehypeOptions } from "../mention-rehype.ts";
 import { mentionRehypePlugin } from "../mention-rehype.ts";
@@ -506,7 +506,11 @@ export const MessageResponse = memo(
           // the underline is the whole affordance. Only the assistant's prose,
           // on the plain canvas, may keep it hover-enhanced.
           if (kind === "autolink") {
-            if (!fn) return <span>{children}</span>;
+            // A URL label markdown broke across lines flattens with a
+            // softbreak in it (HOU-1071) — show the reassembled URL, not
+            // the raw children with a stray space mid-URL.
+            const label = collapsedUrlText(children) ?? children;
+            if (!fn) return <span>{label}</span>;
             return (
               <a
                 href={url}
@@ -517,19 +521,21 @@ export const MessageResponse = memo(
                 }}
                 className={AUTOLINK_CLASS}
               >
-                {children}
+                {label}
               </a>
             );
           }
           // Labeled link (text distinct from URL) → button with text + icon.
           // max-w-full + truncate: a long label ellipsizes instead of
           // overflowing the fixed-height pill as clipped wrapped lines.
+          // overflow-hidden: even a child that defeats truncate (a <br>, an
+          // image) stays clipped inside the pill's rounded bounds.
           return (
             <Button
               type="button"
               size="sm"
               variant="default"
-              className="max-w-full"
+              className="max-w-full overflow-hidden"
               onClick={onOpen}
             >
               <span className="min-w-0 truncate">{children}</span>
