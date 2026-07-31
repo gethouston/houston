@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   type ActivityOverrideSource,
   resolveActivityOverride,
+  resolveMissionControlSendOverrides,
 } from "../src/components/mission-control-send.ts";
 
 const opus47Activity: ActivityOverrideSource = {
@@ -130,5 +131,20 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
       providerOverride: "anthropic",
       modelOverride: "claude-opus-4-8",
     });
+  });
+});
+
+describe("resolveMissionControlSendOverrides", () => {
+  it("pins caller-assembled sends to Ask First", () => {
+    deepStrictEqual(
+      resolveMissionControlSendOverrides(`activity-${opus47Activity.id}`, [
+        opus47Activity,
+      ]),
+      {
+        providerOverride: "anthropic",
+        modelOverride: "claude-opus-4-7",
+        modeOverride: "execute",
+      },
+    );
   });
 });

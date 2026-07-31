@@ -10,10 +10,10 @@
  * multiplayer Teams org the composer's model + effort pickers are shown for
  * EVERYONE (plain members included), their option list is clamped to the agent's
  * allowed-models ceiling, and they read+write the ACTING user's PERSONAL
- * per-agent choice rather than the shared agent config. Single-player /
- * self-host is unchanged: shared config, no ceiling, every model. The gateway is
- * the sole enforcer of the ceiling (it clamps every turn to the acting user's
- * choice); these helpers only shape the affordance.
+ * per-agent choice as the default for new missions. An open mission's in-ceiling
+ * activity pin wins. Single-player / self-host is unchanged: shared config, no
+ * ceiling, every model. These helpers mirror the gateway's resolution so the
+ * picker shows the pin that the next turn will run.
  */
 
 import type {
@@ -103,34 +103,44 @@ export interface ModelPin {
 
 /**
  * The provider/model/effort the composer should DISPLAY in personal (Teams)
- * mode. The priority mirrors the gateway's per-turn clamp so the picker shows
- * what will actually run:
- *  1. the user's stored `choice` when present;
- *  2. else, when a ceiling exists and the shared `fallback` model is outside it,
- *     the ceiling's first model carried on the fallback provider (the gateway
+ * mode. The priority mirrors the gateway's per-turn resolution so the picker
+ * shows what will actually run:
+ *  1. an open mission's pin when its model remains inside the ceiling, carrying
+ *     the personal resolution's effort because activities have no effort field;
+ *  2. the user's stored `choice` when present;
+ *  3. else, when a ceiling exists and the shared `fallback` model is outside it,
+ *     the ceiling's first model carried on its catalogued provider (the gateway
  *     forces first-of-ceiling for a member who has not picked yet);
- *  3. else the shared `fallback` (agent / pod default) unchanged.
+ *  4. else the shared `fallback` (agent / pod default) unchanged.
  */
 export function resolvePersonalModelPin(
   choice: AgentModelChoice | null | undefined,
   allowedModels: string[] | null | undefined,
   fallback: ModelPin,
+  missionPin: ModelPin | null,
+  resolveProvider: (model: string) => string | null,
 ): ModelPin {
-  if (choice)
+  const personalPin = choice
+    ? {
+        provider: choice.provider,
+        model: choice.model,
+        effort: choice.effort,
+      }
+    : allowedModels != null &&
+        allowedModels.length > 0 &&
+        !allowedModels.includes(fallback.model)
+      ? {
+          provider: resolveProvider(allowedModels[0]) ?? fallback.provider,
+          model: allowedModels[0],
+          effort: fallback.effort,
+        }
+      : fallback;
+  if (missionPin && isModelAllowed(allowedModels, missionPin.model)) {
     return {
-      provider: choice.provider,
-      model: choice.model,
-      effort: choice.effort,
+      provider: missionPin.provider,
+      model: missionPin.model,
+      effort: personalPin.effort,
     };
-  if (
-    allowedModels != null &&
-    allowedModels.length > 0 &&
-    !allowedModels.includes(fallback.model)
-  )
-    return {
-      provider: fallback.provider,
-      model: allowedModels[0],
-      effort: fallback.effort,
-    };
-  return fallback;
+  }
+  return personalPin;
 }

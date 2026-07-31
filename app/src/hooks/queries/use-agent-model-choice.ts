@@ -59,20 +59,32 @@ export function useAgentModelChoice(agentId: string, enabled: boolean) {
  * validates the model is within the agent's `allowedModels` ceiling (else it
  * answers `model_not_allowed`) and clamps the acting user's turns to it. No
  * `onError` toast: `tauriAgentModelChoice.set` routes through `call()`, which
- * surfaces + reports the failure once; adding one here would double-toast. On
- * success the choice query is invalidated so the picker reflects the new pick.
+ * surfaces + reports the failure once; adding one here would double-toast. The
+ * cache updates optimistically so a racing send sees the new pin, rolls back on
+ * failure, and refetches after the request settles.
  */
 export function useSetAgentModelChoice(agentId: string) {
   const qc = useQueryClient();
+  const key = queryKeys.agentModelChoice(agentId);
   return useMutation({
     mutationFn: (choice: AgentModelChoice) =>
       tauriAgentModelChoice.set(agentId, {
         ...choice,
         provider: toCanonicalProviderId(choice.provider),
       }),
-    onSuccess: () =>
-      qc.invalidateQueries({
-        queryKey: queryKeys.agentModelChoice(agentId),
-      }),
+    onMutate: async (choice) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<AgentModelChoiceInfo | null>(key);
+      if (prev) {
+        qc.setQueryData<AgentModelChoiceInfo>(key, { ...prev, choice });
+      }
+      return { prev };
+    },
+    onError: (_err, _choice, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
+    },
   });
 }

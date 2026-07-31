@@ -13,7 +13,7 @@ import {
 } from "../../lib/integration-chat-setup";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity, tauriConfig } from "../../lib/tauri";
-import { readAgentTurnMode } from "../../lib/turn-mode";
+import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
@@ -136,10 +136,7 @@ export function useIntegrationChatSetup() {
           {
             title: t("custom.setupChat.missionTitle"),
             agentMode: INTEGRATION_SETUP_AGENT_MODE,
-            modeOverride: await readAgentTurnMode(
-              agent.folderPath,
-              tauriConfig.read,
-            ),
+            modeOverride: DEFAULT_TURN_MODE,
             // Pin the agent's configured brain onto the kickoff turn — an
             // unpinned send resolves inside the runtime and lands on the
             // provider default (Sonnet), not the model the user picked.

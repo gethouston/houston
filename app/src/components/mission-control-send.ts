@@ -20,6 +20,7 @@
 // the extension for runtime-value imports). Vite/TSC accept it because
 // `allowImportingTsExtensions: true` is set in `app/tsconfig.json`.
 import { normalizeLegacyModel } from "../lib/providers.ts";
+import { DEFAULT_TURN_MODE } from "../lib/turn-mode.ts";
 
 /** Minimal shape needed for override resolution; mirrors `ActivityItem`. */
 export interface ActivityOverrideSource {
@@ -61,5 +62,16 @@ export function resolveActivityOverride(
   return {
     providerOverride: activity.provider,
     modelOverride: normalizeLegacyModel(activity.model ?? null) ?? undefined,
+  };
+}
+
+/** Assemble a Mission Control follow-up's provider/model and session mode pins. */
+export function resolveMissionControlSendOverrides(
+  sessionKey: string,
+  activities: ActivityOverrideSource[] | undefined,
+): SendOverrides {
+  return {
+    ...resolveActivityOverride(sessionKey, activities),
+    modeOverride: DEFAULT_TURN_MODE,
   };
 }

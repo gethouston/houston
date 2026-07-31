@@ -32,13 +32,12 @@ import {
   tauriActivity,
   tauriAttachments,
   tauriChat,
-  tauriConfig,
 } from "../lib/tauri";
-import { readAgentTurnMode } from "../lib/turn-mode";
+import { DEFAULT_TURN_MODE } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
-import { resolveActivityOverride } from "./mission-control-send";
+import { resolveMissionControlSendOverrides } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
 export function useMissionControl(agents: Agent[]) {
@@ -286,13 +285,7 @@ export function useMissionControl(agents: Agent[]) {
         // activity up and forward its override pair to keep picker and wire
         // in agreement.
         const list = await tauriActivity.list(agentPath);
-        const overrides = resolveActivityOverride(sessionKey, list);
-        // Mode is per-agent composer memory (config.mode), not per-activity:
-        // Mission Control has no live pill state, so read it at send time.
-        overrides.modeOverride = await readAgentTurnMode(
-          agentPath,
-          tauriConfig.read,
-        );
+        const overrides = resolveMissionControlSendOverrides(sessionKey, list);
         // The turn stream pushes the user bubble into the conversation VM
         // itself — no app-side optimistic push. If the conversation is
         // mid-turn the adapter holds this send; the queued bubble shows the
@@ -362,8 +355,7 @@ export function useMissionControl(agents: Agent[]) {
             providerOverride: opts?.providerOverride,
             modelOverride: opts?.modelOverride,
             mentions: opts?.mentions,
-            // Per-agent composer memory; Mission Control has no pill state.
-            modeOverride: await readAgentTurnMode(agentPath, tauriConfig.read),
+            modeOverride: DEFAULT_TURN_MODE,
             titleText: visible,
             buildPrompt: async (activityId) => {
               const saved = await tauriAttachments.save(

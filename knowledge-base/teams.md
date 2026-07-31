@@ -637,16 +637,26 @@ configure surfaces are gated:
   personal membership in `GET /v1/orgs`).
 - **Model / effort pickers** (`chat-model-selector.tsx`,
   `chat-effort-selector.tsx`) are NOT hidden/locked for members (E8 reversed E7).
-  In a Teams org the composer shows them to EVERYONE, clamps the option list to
-  the agent's `allowedModels` ceiling, and reads+writes the caller's PERSONAL
-  per-agent choice (`useAgentModelChoice` / `useSetAgentModelChoice`) — never the
-  shared agent config. The gateway clamps every turn to the acting user's choice
-  (client picker is convenience only). A single-model ceiling renders read-only
+  In a Teams org the composer shows them to EVERYONE and clamps the option list to
+  the agent's `allowedModels` ceiling. **Model scope is per MISSION (HOU-1064):**
+  a pick made with a mission open writes that mission's activity pin (same
+  activity-pin path as single-player, provider-switch consent included) and moves
+  only that conversation; a pick in a fresh composer writes the caller's PERSONAL
+  per-agent choice (`useAgentModelChoice` / `useSetAgentModelChoice`, optimistic
+  cache update) — the default the user's NEXT missions start on. The picker
+  displays the open mission's in-ceiling pin first, else the personal choice; an
+  out-of-ceiling personal pick toasts `chat:errors.modelNotAllowed` instead of
+  silently no-oping. Every send forwards the displayed pin on the wire and the
+  gateway honors it when in-ceiling (see Enforcement below). A member never
+  writes the shared agent config. A single-model ceiling renders read-only
   but still visible. Single-player / self-host is unchanged: shared config, no
   ceiling. The pure decision + clamp + resting-pin helpers live in
   `app/src/lib/model-selector-lock.ts` (`modelSelectorDecision`, `isModelAllowed`,
-  `resolvePersonalModelPin`, and `hiddenModelCount`, the count of DISTINCT blocked
-  models across provider rows); the composer wires them in `use-agent-chat-panel.tsx`.
+  `resolvePersonalModelPin` — mission pin wins in-ceiling; the ceiling snap
+  resolves the model's OWNING provider via an injected catalog lookup — and
+  `hiddenModelCount`, the count of DISTINCT blocked models across provider rows);
+  the composer wires them in `use-agent-chat-panel.tsx`, revalidating the
+  displayed effort against the pinned model (`validEffortOrDefault`).
   **The picker no longer hides blocked models silently:** when the ceiling narrows the
   universe it renders a non-interactive footer "N more models are turned off in your
   workspace" (`chat:modelSelector.picker.hiddenByWorkspace_one/_other`), fed by
@@ -706,11 +716,15 @@ hides the "Add models" list, all copy passed in.
   catalog, plus any unknown ids), not raw ids — falling back to the raw id count only
   while the catalog is still loading.
 - **Per-user choice** — each acting user's own `{provider, model, effort?}` for one
-  shared agent (`gateway.agent_model_choices`), read/written by the composer pickers in
-  multiplayer (see "Manager-only configure surfaces" above), never the shared config.
-- **Enforcement** — the gateway is the sole enforcer: it clamps every turn to the acting
-  user's choice ∩ ceiling and strips any client-supplied model/provider. The client picker
-  is convenience only.
+  shared agent (`gateway.agent_model_choices`), written by the composer picker when NO
+  mission is open (it is the default for the user's next missions), never the shared
+  config. A pick with a mission open writes that mission's activity pin instead (HOU-1064).
+- **Enforcement** — the gateway is the sole enforcer of the CEILING: an in-ceiling
+  per-conversation body pin is honored verbatim (casing normalized to the ceiling's,
+  provider backfilled from the stored choice when the wire omits it); a pin-less or
+  out-of-ceiling turn falls back to the acting user's choice ∩ ceiling, else
+  first-of-ceiling. A client can never run a model outside the ceiling
+  (`cloud/internal/edge/agents/model.go`, contract `C7-teams.md`).
 - Types: `AgentSettings.allowedModels` (the agent's whole model ceiling),
   `AgentModelChoice` (`{provider, model, effort?}`),
   `AgentModelChoiceInfo` (`{choice, allowedModels}`).

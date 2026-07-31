@@ -93,6 +93,7 @@ import {
   finalCredentialNames,
 } from "../lib/interaction-reply";
 import {
+  isModelAllowed,
   modelSelectorDecision,
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
@@ -113,6 +114,7 @@ import {
   getDefaultModel,
   getProvider,
   normalizeLegacyModel,
+  PROVIDERS,
   validEffortOrDefault,
   validModelOrNull,
 } from "../lib/providers";
@@ -136,11 +138,7 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
-import {
-  DEFAULT_TURN_MODE,
-  normalizeTurnMode,
-  type TurnMode,
-} from "../lib/turn-mode";
+import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
@@ -217,6 +215,14 @@ interface UseAgentChatPanelArgs {
   onSendReactivated?: () => void;
 }
 
+function resolveCatalogProvider(model: string): string | null {
+  return (
+    PROVIDERS.find((provider) =>
+      provider.models.some((candidate) => candidate.id === model),
+    )?.id ?? null
+  );
+}
+
 interface AgentChatPanelProps {
   /** Renders skill cards + "see more" when no Skill is in flight. */
   chatEmptyState: AIBoardProps["chatEmptyState"];
@@ -265,7 +271,7 @@ interface AgentChatPanelProps {
   afterMessages: AIBoardProps["afterMessages"];
   /** Hidden picker dialog mounted in the consumer. */
   pickerDialog: ReactNode;
-  /** Effective provider/model for sending. */
+  /** Displayed provider/model for sending. */
   effectiveProvider: string;
   effectiveModel: string;
   /** The composer's turn mode (execute | plan); consumers forward it as
@@ -443,13 +449,9 @@ export function useAgentChatPanel({
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
-  // Composer "Mode" pin (execute/plan). Loaded from config as memory only; the
-  // send path forwards it as `modeOverride`. Unknown/legacy values → execute.
-  //
-  // `initialTurnMode` (when a surface passes one) seeds this AND wins over the
-  // per-agent config, so the surface opens on that mode and holds it until the
-  // user changes it in-session (the setup chat opens on Ask first). Absent, the
-  // behavior is unchanged: the global default, then the agent's remembered mode.
+  // Composer "Mode" pin (execute/plan/auto). It is session-local and every new
+  // mission resets to `initialTurnMode` or Ask First. Existing mission switches
+  // keep the current per-send pin until the user changes it.
   const [turnMode, setTurnMode] = useState<TurnMode>(
     initialTurnMode ?? DEFAULT_TURN_MODE,
   );
@@ -467,10 +469,18 @@ export function useAgentChatPanel({
         setAgentProvider((cfg.provider as string) ?? null);
         setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
         setAgentEffort((cfg.effort as string) ?? null);
-        setTurnMode(initialTurnMode ?? normalizeTurnMode(cfg.mode));
       })
       .catch(() => {});
   }, [path, initialTurnMode]);
+
+  const previousSessionKeyRef = useRef(selectedSessionKey);
+  useEffect(() => {
+    const previousSessionKey = previousSessionKeyRef.current;
+    previousSessionKeyRef.current = selectedSessionKey;
+    if (previousSessionKey && !selectedSessionKey) {
+      setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
+    }
+  }, [selectedSessionKey, initialTurnMode]);
 
   // Last-used provider preference (`default_provider`, written by setLastUsed
   // on every provider pick). The fallback when neither the activity nor the
@@ -604,20 +614,51 @@ export function useAgentChatPanel({
     agentEffort,
   );
 
-  // The provider/model/effort the composer picker DISPLAYS. In personal (Teams)
-  // mode this is the acting user's stored choice, falling back to the clamped
-  // agent default; in shared mode it is the effective pin resolved above. The
-  // SEND path still forwards the effective pin (below) — the gateway strips it
-  // and re-injects each acting user's clamped choice per turn — so the two never
-  // need to agree on the wire, only on screen.
-  const displayModelPin = useMemo(
+  const personalDefaultPin = useMemo(
+    () =>
+      resolvePersonalModelPin(
+        modelChoiceInfo?.choice,
+        allowedModels,
+        {
+          provider: effectiveProvider,
+          model: effectiveModel,
+          effort: effectiveEffort,
+        },
+        null,
+        resolveCatalogProvider,
+      ),
+    [
+      modelChoiceInfo?.choice,
+      allowedModels,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+    ],
+  );
+
+  // The provider/model/effort the composer picker displays and every send
+  // forwards. In personal (Teams) mode an open mission's in-ceiling activity
+  // pin wins for provider/model, while effort stays on the personal resolution.
+  // Without a mission pin, the personal choice remains the default.
+  const rawDisplayModelPin = useMemo(
     () =>
       modelDecision.personal
-        ? resolvePersonalModelPin(modelChoiceInfo?.choice, allowedModels, {
-            provider: effectiveProvider,
-            model: effectiveModel,
-            effort: effectiveEffort,
-          })
+        ? resolvePersonalModelPin(
+            modelChoiceInfo?.choice,
+            allowedModels,
+            {
+              provider: effectiveProvider,
+              model: effectiveModel,
+              effort: effectiveEffort,
+            },
+            activityProvider && activityModel
+              ? {
+                  provider: activityProvider,
+                  model: activityModel,
+                }
+              : null,
+            resolveCatalogProvider,
+          )
         : {
             provider: effectiveProvider,
             model: effectiveModel,
@@ -627,15 +668,28 @@ export function useAgentChatPanel({
       modelDecision.personal,
       modelChoiceInfo?.choice,
       allowedModels,
+      activityProvider,
+      activityModel,
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
     ],
   );
+  const displayModelPin = useMemo(
+    () => ({
+      ...rawDisplayModelPin,
+      effort: validEffortOrDefault(
+        rawDisplayModelPin.provider,
+        rawDisplayModelPin.model,
+        rawDisplayModelPin.effort,
+      ),
+    }),
+    [rawDisplayModelPin],
+  );
 
   // Converge legacy pin-less chats (created before per-conversation pins):
-  // stamp the provider/model this open conversation currently displays — and
-  // would send with — onto its activity, so a later change to the agent
+  // stamp the shared agent-derived provider/model onto its activity, so a later
+  // change to the agent
   // default can never move a chat that already ran (HOU-695). Chats created
   // now are stamped at creation (createMission); this covers the older ones,
   // once per activity per mount. Background convergence, not a user action:
@@ -672,13 +726,16 @@ export function useAgentChatPanel({
     // floors at the peak), and the figure is already labeled an estimate, so
     // it's acceptable for the post-switch turns until the new provider reports
     // its own usage and the indicator re-settles.
-    const cfg = getContextWindowConfig(effectiveProvider, effectiveModel);
+    const cfg = getContextWindowConfig(
+      displayModelPin.provider,
+      displayModelPin.model,
+    );
     return {
       contextUsage: latest,
       contextWindow:
         effectiveContextWindow(cfg, peakContextTokens) ?? undefined,
     };
-  }, [sessionFeedItems, effectiveProvider, effectiveModel]);
+  }, [sessionFeedItems, displayModelPin]);
 
   // A provider switch awaiting the user's consent (it spends tokens). Held here
   // and applied only on confirm.
@@ -724,6 +781,12 @@ export function useAgentChatPanel({
             provider: prov,
             model: mod,
           });
+        } else if (modelDecision.personal) {
+          await setModelChoice.mutateAsync({
+            provider: prov,
+            model: mod,
+            effort: validEffortOrDefault(prov, mod, displayModelPin.effort),
+          });
         } else {
           setAgentProvider(prov);
           setAgentModel(mod);
@@ -745,7 +808,15 @@ export function useAgentChatPanel({
         });
       }
     },
-    [path, selectedActivityId, addToast, t],
+    [
+      path,
+      selectedActivityId,
+      modelDecision.personal,
+      setModelChoice,
+      displayModelPin.effort,
+      addToast,
+      t,
+    ],
   );
 
   // Picking a provider/model from the dropdown. Switching to a DIFFERENT provider
@@ -760,7 +831,7 @@ export function useAgentChatPanel({
       const isProviderSwitch =
         conversationStarted &&
         !!selectedSessionKey &&
-        prov !== effectiveProvider;
+        prov !== displayModelPin.provider;
       if (!isProviderSwitch) {
         await applyProviderModel(prov, mod);
         return;
@@ -777,7 +848,7 @@ export function useAgentChatPanel({
     [
       conversationStarted,
       selectedSessionKey,
-      effectiveProvider,
+      displayModelPin.provider,
       contextUsage,
       sessionFeedItems,
       applyProviderModel,
@@ -813,10 +884,9 @@ export function useAgentChatPanel({
     [path, addToast, t],
   );
   const handleModeSelect = useCallback(
-    async (mode: TurnMode) => {
-      // Mode is per-agent composer memory (never synced to engine Settings):
-      // persist it so the pill reopens where the user left it. Optimistic flip;
-      // each send pins the pick as `modeOverride`.
+    (mode: TurnMode) => {
+      // Mode is session-local. Flip the picker optimistically and pin the pick
+      // on each send.
       //
       // A pick while a turn is STREAMING also applies to that turn (Claude
       // Code's shift+tab): the runtime mutates the executing turn's live-mode
@@ -841,42 +911,42 @@ export function useAgentChatPanel({
           });
         });
       }
-      try {
-        if (path) {
-          const cfg = await tauriConfig.read(path);
-          await tauriConfig.write(path, { ...cfg, mode });
-        }
-      } catch (err) {
-        addToast({
-          title: t("chat:errors.modelPersistFailed"),
-          description: genericErrorDescription("model_persist_failed", err),
-          variant: "error",
-        });
-      }
     },
     [path, selectedSessionKey, addToast, t, turnRunning, turnMode],
   );
 
-  // Route a composer model / effort pick. In personal (Teams) mode it writes the
-  // acting user's per-agent choice (the gateway clamps it to the ceiling and
-  // applies it per turn); in shared mode it keeps the existing agent-config /
-  // activity-pin behavior. `.mutate` fires and forgets — the tauri wrapper's
-  // `call()` surfaces any failure (e.g. `model_not_allowed`) as a toast once, so
-  // awaiting here would only double-toast.
+  // In personal (Teams) mode, a fresh-composer model pick updates the user's
+  // default. A pick inside an open mission follows the activity-pin path,
+  // including provider-switch consent, and can never write agent config.
   const selectModel = useCallback(
     (prov: string, mod: string) => {
-      if (modelDecision.personal) {
+      if (modelDecision.personal && !isModelAllowed(allowedModels, mod)) {
+        addToast({
+          title: t("chat:errors.modelNotAllowed"),
+          variant: "error",
+        });
+        return;
+      }
+      if (modelDecision.personal && !selectedActivityId) {
         setModelChoice.mutate({
           provider: prov,
           model: mod,
-          effort: displayModelPin.effort,
+          effort: validEffortOrDefault(prov, mod, displayModelPin.effort),
         });
+        // The device's sticky default too: the create-agent dialog seeds from
+        // it, so a hosted pick must register as "last used" like a shared-mode
+        // pick does (applyProviderModel writes it on the other branches).
+        tauriProvider.setLastUsed(prov, mod).catch(() => {});
         return;
       }
       void handleModelSelect(prov, mod);
     },
     [
       modelDecision.personal,
+      allowedModels,
+      addToast,
+      t,
+      selectedActivityId,
       setModelChoice,
       displayModelPin.effort,
       handleModelSelect,
@@ -886,8 +956,8 @@ export function useAgentChatPanel({
     (effort: EffortLevel) => {
       if (modelDecision.personal) {
         setModelChoice.mutate({
-          provider: displayModelPin.provider,
-          model: displayModelPin.model,
+          provider: personalDefaultPin.provider,
+          model: personalDefaultPin.model,
           effort,
         });
         return;
@@ -897,8 +967,8 @@ export function useAgentChatPanel({
     [
       modelDecision.personal,
       setModelChoice,
-      displayModelPin.provider,
-      displayModelPin.model,
+      personalDefaultPin.provider,
+      personalDefaultPin.model,
       handleEffortSelect,
     ],
   );
@@ -985,15 +1055,11 @@ export function useAgentChatPanel({
         // conversation VM itself — no app-side optimistic push.
         await tauriChat.send(path, encodedWithAttachments, sessionKey, {
           mode: mode?.promptFile,
-          // Pass the EFFECTIVE values, not just `chatProvider`. The dropdown
-          // displays `effectiveProvider` (chatProvider ?? activityProvider ??
-          // agentProvider ?? wsProvider), so the send must mirror it.
-          // Passing only `chatProvider` lets the engine fall back to its own
-          // resolution chain (which doesn't consult activity records),
-          // producing the "dropdown says Gemini, response from Claude" bug.
-          providerOverride: effectiveProvider,
-          modelOverride: effectiveModel,
-          effortOverride: effectiveEffort,
+          // The wire pin must match the picker. In Teams this may be the open
+          // mission's pin rather than the agent's effective default.
+          providerOverride: displayModelPin.provider,
+          modelOverride: displayModelPin.model,
+          effortOverride: displayModelPin.effort,
           modeOverride: turnMode,
           // A Skill send still carries whatever the user typed alongside it, so
           // the teammates they named there must ride too (HOU-944).
@@ -1022,10 +1088,9 @@ export function useAgentChatPanel({
           {
             agentMode,
             promptFile: mode?.promptFile,
-            // See note above re: effectiveProvider over chatProvider.
-            providerOverride: effectiveProvider,
-            modelOverride: effectiveModel,
-            effortOverride: effectiveEffort,
+            providerOverride: displayModelPin.provider,
+            modelOverride: displayModelPin.model,
+            effortOverride: displayModelPin.effort,
             modeOverride: turnMode,
             mentions,
             buildPrompt: async (activityId) => {
@@ -1059,9 +1124,7 @@ export function useAgentChatPanel({
       agent,
       path,
       agentModes,
-      effectiveProvider,
-      effectiveModel,
-      effectiveEffort,
+      displayModelPin,
       turnMode,
       queryClient,
     ],
@@ -1094,9 +1157,9 @@ export function useAgentChatPanel({
       );
       tauriChat
         .send(path, message, selectedSessionKey, {
-          providerOverride: effectiveProvider,
-          modelOverride: effectiveModel,
-          effortOverride: effectiveEffort,
+          providerOverride: displayModelPin.provider,
+          modelOverride: displayModelPin.model,
+          effortOverride: displayModelPin.effort,
           modeOverride: turnMode,
         })
         // Two-arg `then`, not `.then().catch()`: the rejection handler stays
@@ -1116,16 +1179,7 @@ export function useAgentChatPanel({
           },
         );
     },
-    [
-      path,
-      selectedSessionKey,
-      effectiveProvider,
-      effectiveModel,
-      effectiveEffort,
-      turnMode,
-      addToast,
-      t,
-    ],
+    [path, selectedSessionKey, displayModelPin, turnMode, addToast, t],
   );
   const renderLink = useCallback<NonNullable<AIBoardProps["renderLink"]>>(
     ({ href }) => {
@@ -1201,9 +1255,9 @@ export function useAgentChatPanel({
       if (!path || !selectedSessionKey) return;
       tauriChat
         .send(path, text, selectedSessionKey, {
-          providerOverride: effectiveProvider,
-          modelOverride: effectiveModel,
-          effortOverride: effectiveEffort,
+          providerOverride: displayModelPin.provider,
+          modelOverride: displayModelPin.model,
+          effortOverride: displayModelPin.effort,
           modeOverride: mode ?? turnMode,
         })
         // Two-arg `then`, not `.then().catch()`: the rejection handler must stay
@@ -1219,16 +1273,7 @@ export function useAgentChatPanel({
           },
         );
     },
-    [
-      path,
-      selectedSessionKey,
-      effectiveProvider,
-      effectiveModel,
-      effectiveEffort,
-      turnMode,
-      addToast,
-      t,
-    ],
+    [path, selectedSessionKey, displayModelPin, turnMode, addToast, t],
   );
 
   // Resolves a question step's `toolkit` to the app's presentational brand (logo
@@ -1845,9 +1890,9 @@ export function useAgentChatPanel({
               await tauriChat.send(path, text, selectedSessionKey, {
                 // Retry mirrors the displayed dropdown values, not just
                 // the in-memory chatProvider — see send sites above.
-                providerOverride: effectiveProvider,
-                modelOverride: effectiveModel,
-                effortOverride: effectiveEffort,
+                providerOverride: displayModelPin.provider,
+                modelOverride: displayModelPin.model,
+                effortOverride: displayModelPin.effort,
                 modeOverride: turnMode,
               });
               // The retry starts a turn: this card also renders inside an
@@ -1877,7 +1922,7 @@ export function useAgentChatPanel({
         // its reconnect flow targets the provider the send actually used.
         const providerError = resolveProviderErrorForChat(
           msg.providerError,
-          effectiveProvider,
+          displayModelPin.provider,
         );
         return (
           <ProviderErrorCard
@@ -1909,9 +1954,9 @@ export function useAgentChatPanel({
               // queued bubble; the adapter's watchdog probes immediately so a
               // stale hold clears within one round-trip (HOU-849).
               await tauriChat.send(path, text, selectedSessionKey, {
-                providerOverride: effectiveProvider,
-                modelOverride: effectiveModel,
-                effortOverride: effectiveEffort,
+                providerOverride: displayModelPin.provider,
+                modelOverride: displayModelPin.model,
+                effortOverride: displayModelPin.effort,
                 modeOverride: turnMode,
                 // A refused not-connected send left its prompt's bubble in
                 // the feed already — resending it must not add a second one.
@@ -1925,23 +1970,16 @@ export function useAgentChatPanel({
             // "Pick another model" pops the MODEL picker (not the Skills picker);
             // "Switch to <fallback>" applies it directly on the same provider.
             onSwitchModel={() => setModelPickerOpen(true)}
-            onApplyModel={(model) => selectModel(effectiveProvider, model)}
+            onApplyModel={(model) =>
+              selectModel(displayModelPin.provider, model)
+            }
           />
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
       return undefined;
     },
-    [
-      effectiveModel,
-      effectiveProvider,
-      effectiveEffort,
-      turnMode,
-      selectModel,
-      path,
-      selectedSessionKey,
-      t,
-    ],
+    [displayModelPin, turnMode, selectModel, path, selectedSessionKey, t],
   );
   // The welcome chat's greeting (HOU-713): a hardcoded, localized agent
   // message derived from the `welcome-` session key — prepended at render
@@ -2219,8 +2257,8 @@ export function useAgentChatPanel({
     mapFeedItems,
     afterMessages,
     pickerDialog,
-    effectiveProvider,
-    effectiveModel,
+    effectiveProvider: displayModelPin.provider,
+    effectiveModel: displayModelPin.model,
     turnMode,
     currentUserId,
     authorLabels,
