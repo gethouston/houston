@@ -51,14 +51,13 @@ export function SkillCustomTab({
               }
               title={draft.title}
               description={t("setupChat.draftInProgress")}
-              trailing={
+              // `action`, never `trailing`: trailing renders INSIDE the row's
+              // <button>, and a nested <button> corrupts the DOM tree.
+              action={
                 <button
                   type="button"
                   aria-label={t("setupChat.discardDraft")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDiscardDraft(draft.id);
-                  }}
+                  onClick={() => onDiscardDraft(draft.id)}
                   className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink"
                 >
                   <X className="size-4" />

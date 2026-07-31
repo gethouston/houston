@@ -111,32 +111,29 @@ export function OtherAgentSkills({
               title={title}
               description={row.summary.description || undefined}
               onClick={() => setPreview(row)}
-              trailing={
-                <div className="flex shrink-0 items-center gap-2">
-                  <AgentStack agents={row.agents} />
-                  {installedHere ? (
-                    <span
-                      role="img"
-                      aria-label={t("fromYourAgents.installedAria", {
-                        name: title,
-                      })}
-                      className="flex size-7 items-center justify-center text-ink-muted"
-                    >
-                      <Check aria-hidden className="size-4" />
-                    </span>
-                  ) : (
-                    <CatalogAddButton
-                      label={t("fromYourAgents.installAria", { name: title })}
-                      busy={installing === row.slug}
-                      onClick={(e) => {
-                        // The + previews too (the library convention): the
-                        // modal's Install is the one commit point.
-                        e.stopPropagation();
-                        setPreview(row);
-                      }}
-                    />
-                  )}
-                </div>
+              trailing={<AgentStack agents={row.agents} />}
+              // `action`, never `trailing`: trailing renders INSIDE the row's
+              // <button>, and a nested <button> corrupts the DOM tree.
+              action={
+                installedHere ? (
+                  <span
+                    role="img"
+                    aria-label={t("fromYourAgents.installedAria", {
+                      name: title,
+                    })}
+                    className="flex size-9 shrink-0 items-center justify-center text-ink-muted"
+                  >
+                    <Check aria-hidden className="size-4" />
+                  </span>
+                ) : (
+                  <CatalogAddButton
+                    label={t("fromYourAgents.installAria", { name: title })}
+                    busy={installing === row.slug}
+                    // The + previews too (the library convention): the
+                    // modal's Install is the one commit point.
+                    onClick={() => setPreview(row)}
+                  />
+                )
               }
             />
           );

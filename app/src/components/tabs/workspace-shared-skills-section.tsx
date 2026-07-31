@@ -112,14 +112,16 @@ export function WorkspaceSharedSkillsSection({
               }
               title={title}
               description={skill.description || undefined}
-              trailing={
+              // `action`, never `trailing`: trailing renders INSIDE the row's
+              // <button>, and a nested <button> corrupts the DOM tree.
+              action={
                 activeHere ? (
                   <span
                     role="img"
                     aria-label={t("fromWorkspace.enabledAria", {
                       name: title,
                     })}
-                    className="flex size-7 shrink-0 items-center justify-center text-ink-muted"
+                    className="flex size-9 shrink-0 items-center justify-center text-ink-muted"
                   >
                     <Check aria-hidden className="size-4" />
                   </span>
