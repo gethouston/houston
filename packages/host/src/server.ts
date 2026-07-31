@@ -195,6 +195,12 @@ export interface ControlPlaneDeps {
    */
   agentStoreApiUrl?: string;
   corsOrigin?: string;
+  /**
+   * Prometheus exposition for GET /metrics (HOU-1011): the boot-span ledger,
+   * rendered by prom-client. Token-gated like every non-public route. Absent →
+   * the route 404s (a test server without telemetry stays honest).
+   */
+  metrics?: { render(): Promise<string>; contentType: string };
 }
 
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
@@ -313,6 +319,17 @@ async function handle(
   // (no self-subtraction, unlike the per-agent route).
   if (method === "GET" && path === "/activity") {
     return json(res, 200, await podActivityStatus(deps));
+  }
+
+  // Prometheus text exposition of the boot-span ledger (HOU-1011). Pods are
+  // never scraped in production (they push boot reports to the gateway); this
+  // route is the local/debug window onto the same numbers.
+  if (method === "GET" && path === "/metrics") {
+    if (!deps.metrics) return json(res, 404, { error: "not found" });
+    const body = await deps.metrics.render();
+    res.writeHead(200, { "content-type": deps.metrics.contentType });
+    res.end(body);
+    return;
   }
 
   if (

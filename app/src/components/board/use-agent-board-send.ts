@@ -8,6 +8,7 @@ import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { createMission } from "../../lib/create-mission";
 import { classifyFileKind } from "../../lib/file-kind";
 import { maybeShowFirstMissionPrompt } from "../../lib/notification-nudge";
+import { perfSpans } from "../../lib/perf-spans";
 import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
@@ -143,6 +144,7 @@ export function useAgentBoardSend({
         provider: providerOverride,
         model: modelOverride,
       });
+      perfSpans.messageSent();
       analytics.track("chat_message_sent", {
         provider: providerOverride,
         model: modelOverride,
@@ -223,6 +225,7 @@ export function useAgentBoardSend({
             .getState()
             .setQueuedRowStatus(agent.id, activity.id, "running");
         }
+        perfSpans.messageSent();
         analytics.track("chat_message_sent", {
           provider: overrides.providerOverride,
           model: overrides.modelOverride,
@@ -253,6 +256,7 @@ export function useAgentBoardSend({
           },
         });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
+        perfSpans.messageSent();
         analytics.track("chat_message_sent", {
           provider: overrides.providerOverride,
           model: overrides.modelOverride,

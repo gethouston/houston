@@ -166,6 +166,10 @@ fn engine_identity_env(session_json: Option<&str>) -> Vec<(String, String)> {
 }
 
 pub fn run() {
+    // App-open T0 for the client perf spans (HOU-1011): the first line of
+    // Houston's own code. Everything the user waits for is measured from here.
+    commands::os::stamp_launch_t0();
+
     // First-launch DMG guard (macOS only). If we were double-clicked from
     // inside the installer DMG (path under /Volumes/…), show a native
     // dialog asking the user to move Houston to Applications, do the
@@ -429,6 +433,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // OS-native glue — everything domain-related flows through the
             // engine over HTTP/WS, not Tauri IPC.
+            commands::os::launch_t0_ms,
             commands::os::pick_directory,
             commands::os::open_url,
             commands::os::open_file,

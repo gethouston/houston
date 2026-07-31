@@ -42,6 +42,8 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { LocalWorkspaceStore } from "../store/local";
 import { SharedMirrorController, StoreSyncDaemon } from "../store-sync";
+import { BootTelemetry } from "../telemetry/boot";
+import { sendBootReport } from "../telemetry/boot-report";
 import { MemoryTurnBus } from "../turn/bus";
 import { UsageSampler } from "../usage/sampler";
 import { FsVfs } from "../vfs";
@@ -250,6 +252,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const vfs = new FsVfs(opts.workspacesRoot);
   const paths = new LocalPaths();
   const bus = new MemoryTurnBus();
+  const boot = new BootTelemetry();
   const events = new BusEventHub(bus);
   const vault = new EnvCredentialVault({ secret: opts.token });
   const fileCredentials = new FileCredentialStore(opts.credentialsPath);
@@ -529,6 +532,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // give it the REAL directory (the agent id is a route key, not a path).
     agentDir: (_ws, a) => agentDir(a.id),
     corsOrigin: "*",
+    // Boot-span ledger behind GET /metrics (HOU-1011). Token-gated like every
+    // non-public route: timings aren't secrets, but there is no reason to
+    // widen the unauthenticated surface for them.
+    metrics: { render: () => boot.render(), contentType: boot.contentType },
   };
 
   const server = createControlPlaneServer(deps);
@@ -594,10 +601,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           `[local-host] boot: ${phase} at +${process.uptime().toFixed(1)}s`,
         );
       bootStamp("module eval done");
+      boot.record("module_eval", process.uptime() * 1000);
       // The object store is authoritative in managed server mode. Hydration is
       // readiness-critical and must finish before migrations or HTTP listening;
       // failure propagates so the pod restarts without ever syncing an empty tree.
-      await syncDaemon?.hydrate();
+      if (syncDaemon) {
+        const objects = await boot.time("hydrate", () => syncDaemon.hydrate());
+        boot.setHydratedObjects(objects);
+      }
+      const migrationsT0 = Date.now();
       // Shared storage is a disposable synchronized mirror, not a readiness
       // invariant. Start its pull after authoritative agent hydration but do
       // not await the network; the first turn joins it through beforeTurn.
@@ -679,10 +691,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           );
         }
       }
+      boot.record("migrations", Date.now() - migrationsT0);
       bootStamp("hydration + migrations done");
       const bind = opts.bind ?? "127.0.0.1";
-      await new Promise<void>((resolve) =>
-        server.listen(opts.port, bind, () => resolve()),
+      await boot.time(
+        "listen",
+        () =>
+          new Promise<void>((resolve) =>
+            server.listen(opts.port, bind, () => resolve()),
+          ),
       );
       // Passive migration-source mode runs no background daemons (a read-only
       // source must not fire routines, sync, or churn watch events).
@@ -703,6 +720,18 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           redactToken: opts.redactBannerToken ?? false,
         }),
       );
+      boot.markReady();
+      // One-shot boot report to the gateway (HOU-1011): pods scale to zero, so
+      // Prometheus can't scrape a boot — push the ledger instead. Same gateway
+      // quadruple as usage reporting; absent on desktop/self-host = no report.
+      const reportBoot = () => {
+        if (!opts.usageReporting) return;
+        void sendBootReport({
+          report: opts.usageReporting,
+          telemetry: boot,
+          log: severityLog,
+        });
+      };
       if (opts.eagerRuntime) {
         // Fire-and-forget AFTER the banner: /health (and the supervisor)
         // must never wait on a runtime boot — the point is overlap, and a
@@ -711,6 +740,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // hosts one agent, and a multi-agent tree shouldn't stampede the
         // CPU it shares with the boot it is overlapping.
         void (async () => {
+          const spawnT0 = Date.now();
           for (const ws of await store.listWorkspaces()) {
             for (const agent of await store.listAgents(ws.id)) {
               await launcher.ensureAwake(agent).catch((err) => {
@@ -721,7 +751,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
               });
             }
           }
+          // The report waits for the spawn on purpose: it's the slowest boot
+          // step (~10s) and the whole point of the ledger (HOU-867).
+          boot.record("runtime_spawn", Date.now() - spawnT0);
+          reportBoot();
         })();
+      } else {
+        reportBoot();
       }
     },
     stop() {

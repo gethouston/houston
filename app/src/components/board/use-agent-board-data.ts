@@ -1,6 +1,6 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useActivity,
@@ -16,6 +16,7 @@ import {
   canDropMission,
   DONE_STATUS,
 } from "../../lib/mission-selection";
+import { perfSpans } from "../../lib/perf-spans";
 import {
   type HistoryLoadOptions,
   tauriActivity,
@@ -51,6 +52,16 @@ export function useAgentBoardData({
   const agentModes = agentDef.config.agents;
   const addToast = useUIStore((s) => s.addToast);
   const { data: fetchedItems } = useActivity(path);
+  // App-open → board perf mark (HOU-1011): the cards' data resolved; the rAF
+  // waits for the render that paints them. Latched once per app session
+  // inside perfSpans, so re-mounts and agent switches are free no-ops.
+  const cardsResolved = fetchedItems !== undefined;
+  useEffect(() => {
+    if (!cardsResolved) return;
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(() => perfSpans.boardRendered());
+    else perfSpans.boardRendered();
+  }, [cardsResolved]);
   const deleteActivity = useDeleteActivity(path);
   const updateActivity = useUpdateActivity(path);
 
@@ -99,6 +110,22 @@ export function useAgentBoardData({
   );
   const activeVm = useConversationVm(path, activeSessionKey);
   const activeFeed = activeVm?.feed ?? EMPTY_FEED;
+  // Card-click → chat perf mark (HOU-1011): the opened conversation's
+  // messages are in the feed; the rAF waits for the paint. No-ops unless a
+  // card click armed the mark (perfSpans.cardClicked in mission-board). The
+  // dep is the painted conversation's KEY (not a boolean): switching cards
+  // while both feeds are cached keeps a boolean true, but the key change is
+  // what re-fires the mark for the newly opened chat.
+  const paintedSessionKey =
+    activeSessionKey !== null && activeFeed.length > 0
+      ? activeSessionKey
+      : null;
+  useEffect(() => {
+    if (paintedSessionKey === null) return;
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(() => perfSpans.chatRendered());
+    else perfSpans.chatRendered();
+  }, [paintedSessionKey]);
   const feedItems = useMemo<Record<string, FeedItem[]>>(
     () => (activeSessionKey ? { [activeSessionKey]: activeFeed } : {}),
     [activeSessionKey, activeFeed],

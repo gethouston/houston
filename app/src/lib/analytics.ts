@@ -165,7 +165,11 @@ export type AnalyticsEventName =
   // Reliability
   | "session_completed"
   | "session_failed"
-  | "app_error_shown";
+  | "app_error_shown"
+  // Client UX timing span (HOU-1011): PostHog mirror of the gateway's
+  // Prometheus histograms, for per-user/session drill-down. Carries `span`
+  // (which journey) + `duration_ms`.
+  | "perf_span";
 
 type AnalyticsProperty =
   | "provider"
@@ -209,7 +213,10 @@ type AnalyticsProperty =
   | "selected_segment"
   | "source_screen"
   // Org membership role (org_member_added / org_role_changed)
-  | "role";
+  | "role"
+  // Client UX timing (perf_span)
+  | "span"
+  | "duration_ms";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserIdentity = {
@@ -261,6 +268,8 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "selected_segment",
   "source_screen",
   "role",
+  "span",
+  "duration_ms",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

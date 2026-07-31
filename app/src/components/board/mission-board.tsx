@@ -2,6 +2,7 @@ import { AIBoard, type MessageMention } from "@houston-ai/board";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
+import { perfSpans } from "../../lib/perf-spans";
 import { modelAcceptsImages } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
@@ -145,7 +146,12 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           columns={columns}
           selectedId={source.selectedId}
           highlightedId={source.highlightedId}
-          onSelect={source.setSelectedId}
+          onSelect={(id) => {
+            // Card-open perf mark (HOU-1011): completed when the opened
+            // conversation's messages paint (use-agent-board-data).
+            if (id) perfSpans.cardClicked();
+            source.setSelectedId(id);
+          }}
           feedItems={source.feedItems}
           isLoading={source.loading}
           onDelete={source.onDelete}

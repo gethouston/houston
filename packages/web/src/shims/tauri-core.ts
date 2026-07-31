@@ -226,6 +226,11 @@ export async function invoke<T = unknown>(
         agentDirCount: 0,
       } as T;
 
+    // No shell process on the web — perf spans fall back to the webview's
+    // own performance.timeOrigin (osLaunchT0Ms treats null exactly so).
+    case "launch_t0_ms":
+      return null as T;
+
     // ── Desktop-only: surface a clear error if a user triggers them ─────
     case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the firebase-js-sdk popup
     case "cancel_oauth_loopback": // frees the desktop loopback port; web has no local listener to cancel

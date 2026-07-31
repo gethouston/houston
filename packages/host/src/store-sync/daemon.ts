@@ -64,7 +64,8 @@ export class StoreSyncDaemon {
 
   constructor(private readonly opts: StoreSyncOptions) {}
 
-  async hydrate(): Promise<void> {
+  /** Returns the number of objects restored (the boot telemetry records it). */
+  async hydrate(): Promise<number> {
     this.hydrated = false;
     const startedAt = Date.now();
     await mkdir(this.opts.rootDir, { recursive: true });
@@ -80,6 +81,7 @@ export class StoreSyncDaemon {
     this.opts.log(
       `[store-sync] hydrated ${manifest.size} objects in ${Date.now() - startedAt}ms`,
     );
+    return manifest.size;
   }
 
   start(): void {

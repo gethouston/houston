@@ -28,6 +28,7 @@ import { useNotificationNudges } from "./hooks/use-notification-nudges";
 import { useOnboardingCompleted } from "./hooks/use-onboarding-completed";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
 import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
+import { usePerfSpans } from "./hooks/use-perf-spans";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useReadCursorTracker } from "./hooks/use-read-cursors";
 import { useScreenPrefetch } from "./hooks/use-screen-prefetch";
@@ -74,6 +75,9 @@ export default function App() {
   // relaunch (quiet focus + interval re-list; spaces-capable hosts only).
   useSpacesLiveRefresh();
   useAnalyticsSubscriber();
+  // Client UX timing spans (HOU-1011): upgrades T0 to the shell's process
+  // start and ships measured journeys to the gateway metrics ingest.
+  usePerfSpans();
   useIntegrationSessionSync();
   // Keep the Agent Store adapter pointed at the gateway with the user's session
   // token in local-sidecar mode (account-based publish; no manage tokens).
