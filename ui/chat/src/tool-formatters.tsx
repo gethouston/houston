@@ -19,6 +19,9 @@ import {
   WrenchIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { commandActivityOf } from "./command-activity";
+import type { ToolEntry } from "./feed-to-messages";
+import { PythonIcon } from "./python-icon";
 
 export { ToolContent } from "./tool-content";
 
@@ -46,6 +49,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   grep: SearchIcon,
   find: FolderSearchIcon,
   ls: FolderIcon,
+  run_code: TerminalIcon,
 };
 
 /**
@@ -60,6 +64,19 @@ export function getMappedToolIcon(name: string): LucideIcon | undefined {
 
 export function getToolIcon(name: string): LucideIcon {
   return getMappedToolIcon(name) ?? WrenchIcon;
+}
+
+/**
+ * The icon for a whole tool ENTRY: a `bash`/`run_code` call classified as a
+ * web fetch or a Python run (HOU-1048) upgrades from the terminal glyph to
+ * the globe / Python mark, so the mission-log rows match the header's story.
+ */
+export function getToolEntryIcon(
+  tool: Pick<ToolEntry, "name" | "input">,
+): LucideIcon {
+  const activity = commandActivityOf(tool);
+  if (activity) return activity.kind === "web" ? GlobeIcon : PythonIcon;
+  return getToolIcon(tool.name);
 }
 
 // ---------------------------------------------------------------------------

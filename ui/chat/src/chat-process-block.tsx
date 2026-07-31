@@ -4,7 +4,7 @@ import {
   CollapsibleTrigger,
   cn,
 } from "@houston-ai/core";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, GlobeIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
@@ -21,6 +21,8 @@ import type { ChatProcessSegment } from "./chat-process-groups";
 import type { ChatProcessLabels } from "./chat-process-header";
 import { buildProcessHeader } from "./chat-process-header";
 import { ChatStatusLine } from "./chat-status-line";
+import type { CommandActivity } from "./command-activity";
+import { PythonIcon } from "./python-icon";
 import { getMappedToolIcon } from "./tool-formatters";
 
 export type { ChatActionBrand, ChatProcessLabels } from "./chat-process-header";
@@ -77,6 +79,12 @@ export function ChatProcessBlock({
       <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 text-ink-muted/65 transition-colors hover:text-ink-muted">
         {header.kind === "brand" ? (
           <ChatActionBrandLine active={isActive} brand={header.brand} />
+        ) : header.kind === "activity" ? (
+          <ChatStatusLine
+            active={isActive}
+            icon={renderActivityIcon(header.activity.kind)}
+            label={header.label}
+          />
         ) : header.kind === "tool" ? (
           <ChatStatusLine
             active={isActive}
@@ -152,4 +160,17 @@ export function ChatProcessBlock({
 function renderToolIcon(toolName: string) {
   const Icon = getMappedToolIcon(toolName);
   return Icon ? <Icon className="size-3.5 shrink-0" /> : undefined;
+}
+
+/**
+ * The header's glyph for a classified command activity (HOU-1048): the globe
+ * for a web fetch, the Python mark for a Python run — both `currentColor`, so
+ * the row keeps the muted monochrome language of the other tool icons.
+ */
+function renderActivityIcon(kind: CommandActivity["kind"]) {
+  return kind === "web" ? (
+    <GlobeIcon className="size-3.5 shrink-0" />
+  ) : (
+    <PythonIcon className="size-3.5 shrink-0" />
+  );
 }

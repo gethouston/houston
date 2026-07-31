@@ -245,6 +245,67 @@ describe("integrationActionOf", () => {
   });
 });
 
+// HOU-1048: a bash/run_code call that is really a web fetch or a Python run
+// upgrades to the activity row — globe / Python glyph + a branded-style label —
+// instead of the generic terminal "Running command".
+describe("buildProcessHeader activity rows", () => {
+  it("labels a curl as browsing the web with the host", () => {
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: true,
+        segments: [
+          seg([
+            { name: "bash", input: { command: "curl -s https://anakin.io/x" } },
+          ]),
+        ],
+      }),
+      {
+        kind: "activity",
+        activity: { kind: "web", host: "anakin.io" },
+        label: "Browsing the web · anakin.io",
+      },
+    );
+  });
+
+  it("labels a python run with the Python mark", () => {
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: true,
+        segments: [
+          seg([{ name: "run_code", input: { language: "python", code: "" } }]),
+        ],
+      }),
+      {
+        kind: "activity",
+        activity: { kind: "python" },
+        label: "Python · Running code",
+      },
+    );
+  });
+
+  it("stays a plain tool row for an unclassified command", () => {
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: true,
+        segments: [seg([{ name: "bash", input: { command: "ls -la" } }])],
+      }),
+      { kind: "tool", label: "Running command", toolName: "bash" },
+    );
+  });
+
+  it("never shows an activity row once settled", () => {
+    deepStrictEqual(
+      buildProcessHeader({
+        isActive: false,
+        segments: [
+          seg([{ name: "bash", input: { command: "curl https://a.io" } }]),
+        ],
+      }),
+      { kind: "text", label: "Mission log" },
+    );
+  });
+});
+
 // buildProcessHeader chooses the branded row only when the current tool is a
 // resolvable integration_execute; everything else stays the plain text label.
 describe("buildProcessHeader", () => {

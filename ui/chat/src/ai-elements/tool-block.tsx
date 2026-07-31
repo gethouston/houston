@@ -25,7 +25,11 @@ import {
 import { ChevronDownIcon } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { ToolEntry } from "../feed-to-messages";
-import { getToolDetail, getToolIcon, ToolContent } from "../tool-formatters";
+import {
+  getToolDetail,
+  getToolEntryIcon,
+  ToolContent,
+} from "../tool-formatters";
 import { getToolActionLabel, toolShortName } from "../tool-labels";
 import { Shimmer } from "./shimmer";
 
@@ -85,7 +89,7 @@ export const ToolBlock = memo(
       autoOpenedRef.current = false;
     }, []);
 
-    const Icon = getToolIcon(tool.name);
+    const Icon = getToolEntryIcon(tool);
     const detail = getToolDetail(tool.name, tool.input);
     const isDone = !!tool.result;
 
