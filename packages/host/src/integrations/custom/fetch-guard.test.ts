@@ -1,5 +1,11 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+// The npm undici the production host actually runs (pi installs 8.5's fetch
+// over Node's bundled copy). The hostile-pipeline harness rides it directly so
+// the duplicate-content-length rejection is IMPLEMENTATION-pinned — Node 22's
+// bundled undici 6.x silently strips the header and would make these tests
+// vacuously green (the exact CI failure this comment guards against).
+import { fetch as undiciFetch } from "undici";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { CustomExecutorHost } from "./executor-host";
 import { guardedFetch, sanitizeFetchInit } from "./fetch-guard";
@@ -76,12 +82,19 @@ describe("guardedFetch under a duplicating fetch pipeline", () => {
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     // A pi-style pipeline: any explicit content-length is joined by a second
-    // copy (Effect sets one, the fetch layer computes another).
+    // copy (Effect sets one, the fetch layer computes another), and the
+    // request dispatches through npm undici 8.5 exactly like a pod.
     globalThis.fetch = ((input, init) => {
       const headers = new Headers(init?.headers);
       const explicit = headers.get("content-length");
       if (explicit !== null) headers.append("content-length", explicit);
-      return realFetch(input, { ...init, headers });
+      return undiciFetch(
+        input as never,
+        {
+          ...init,
+          headers,
+        } as never,
+      ) as unknown as Promise<Response>;
     }) as typeof globalThis.fetch;
   });
 
@@ -140,12 +153,19 @@ describe("executor POST actions (HOU-1083 regression)", () => {
   beforeAll(async () => {
     // The executor must survive the SAME hostile pipeline: without the
     // guarded httpClientLayer, Effect's explicit content-length duplicates
-    // here and every POST fails exactly like production.
+    // here and every POST fails exactly like production (undici 8.5 direct,
+    // so the rejection does not depend on the running Node's bundled copy).
     globalThis.fetch = ((input, init) => {
       const headers = new Headers(init?.headers);
       const explicit = headers.get("content-length");
       if (explicit !== null) headers.append("content-length", explicit);
-      return realFetch(input, { ...init, headers });
+      return undiciFetch(
+        input as never,
+        {
+          ...init,
+          headers,
+        } as never,
+      ) as unknown as Promise<Response>;
     }) as typeof globalThis.fetch;
     server = createServer((req, res) => {
       let body = "";
