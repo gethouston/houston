@@ -1,4 +1,5 @@
 import { logger } from "../../lib/logger";
+import { toCanonicalProviderId } from "../../lib/provider-overrides";
 import { tauriConfig } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -55,8 +56,8 @@ async function applyProviderModel(
       agentPath,
       {
         ...cfg,
-        ...(options.provider === "anthropic" || options.provider === "openai"
-          ? { provider: options.provider }
+        ...(options.provider
+          ? { provider: toCanonicalProviderId(options.provider) }
           : {}),
         ...(options.model ? { model: options.model } : {}),
       },

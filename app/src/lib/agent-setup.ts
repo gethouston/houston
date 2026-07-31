@@ -15,27 +15,25 @@ import { tauriConfig, tauriRoutines } from "./tauri";
  */
 export async function finishAgentSetup(
   agentPath: string,
-  opts: { provider: string; model: string; routine: RoutineFormData | null },
+  opts: { provider?: string; model?: string; routine: RoutineFormData | null },
 ): Promise<void> {
-  try {
-    // Always write provider/model to the agent's own config. With workspace
-    // defaults retired, the agent is the single source of truth — leaving the
-    // field blank would make the engine resolver fall back to its platform
-    // default rather than the user's pick.
-    const cfg = await tauriConfig.read(agentPath);
-    await tauriConfig.write(
-      agentPath,
-      {
-        ...cfg,
-        provider: opts.provider,
-        model: opts.model,
-      },
-      // Post-create setup rides as a held request that lands when the engine
-      // wakes (HOU-649) — never blocked by the warming-write dialog.
-      { allowWhileWarming: true },
-    );
-  } catch (e) {
-    logger.error(`[new-agent] provider/model write failed: ${e}`);
+  if (opts.provider || opts.model) {
+    try {
+      const cfg = await tauriConfig.read(agentPath);
+      await tauriConfig.write(
+        agentPath,
+        {
+          ...cfg,
+          ...(opts.provider ? { provider: opts.provider } : {}),
+          ...(opts.model ? { model: opts.model } : {}),
+        },
+        // Post-create setup rides as a held request that lands when the engine
+        // wakes (HOU-649) — never blocked by the warming-write dialog.
+        { allowWhileWarming: true },
+      );
+    } catch (e) {
+      logger.error(`[new-agent] provider/model write failed: ${e}`);
+    }
   }
 
   if (opts.routine) {
