@@ -119,14 +119,18 @@ export class CustomIntegrationManager {
       // (or hides) its servers must never inherit the key, or a bad actor
       // could point it at their own host and collect it. A dropped carry
       // lands the def `pending`; the key is re-collected via the secure card.
+      // Within the same service the carry ignores the input's `auth`: replace
+      // is spec-repair, and the caller is a model re-deriving `auth` on every
+      // call — a sloppy `"none"` replay must not silently discard a working
+      // key (the promised semantics are "the key survives").
       const keepCredential =
-        def.auth === "credential" &&
-        existing.credential !== undefined &&
-        sameServiceOrigins(existing, def);
+        existing.credential !== undefined && sameServiceOrigins(existing, def);
       def = {
         ...def,
         addedAtMs: existing.addedAtMs,
-        ...(keepCredential ? { credential: existing.credential } : {}),
+        ...(keepCredential
+          ? { auth: "credential" as const, credential: existing.credential }
+          : {}),
       };
     }
     const { executor, states } = await this.host.ensure();
@@ -147,8 +151,8 @@ export class CustomIntegrationManager {
       // the agent gets the real reason to relay/fix (wrong URL, server down).
       throw new CustomIntegrationError("compile_failed", state.message);
     }
-    // The replacement no longer references the old secrets (auth dropped to
-    // none, or the carry was refused): delete them now, while the old def
+    // The replacement no longer references the old secrets (the carry was
+    // refused because the service moved): delete them now, while the old def
     // still names them — after the put nothing else ever would.
     for (const id of Object.values(existing?.credential?.secretIds ?? {})) {
       if (!Object.values(def.credential?.secretIds ?? {}).includes(id)) {

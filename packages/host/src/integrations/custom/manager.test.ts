@@ -585,8 +585,8 @@ test("replace with a MOVED server origin refuses the credential carry and delete
   expect(await secrets.get(`ci_${added.slug}_token`)).toBeNull();
 });
 
-test("replace that drops auth to 'none' deletes the now-unreferenced secret", async () => {
-  const { manager, secrets } = setup();
+test("a same-service replace replaying auth:'none' KEEPS the working credential (spec-repair semantics)", async () => {
+  const { manager, secrets, store } = setup();
   const added = await manager.add({
     kind: "openapi",
     name: "Vault",
@@ -594,17 +594,24 @@ test("replace that drops auth to 'none' deletes the now-unreferenced secret", as
     auth: "credential",
   });
   await manager.setCredential(added.slug, { token: "k" });
-  expect(await secrets.get(`ci_${added.slug}_token`)).toBe("k");
 
+  // The caller is a model re-deriving `auth` on every call: a sloppy "none"
+  // replay on an unchanged service must not silently discard a working key.
   const replaced = await manager.add({
     kind: "openapi",
     name: "Vault",
-    spec: { kind: "blob", value: AUTH_SPEC },
+    spec: { kind: "blob", value: AUTH_SPEC_V2 },
     auth: "none",
     replace: true,
   });
-  expect(replaced.state.status).toBe("active");
-  expect(await secrets.get(`ci_${added.slug}_token`)).toBeNull();
+  expect(replaced.state).toEqual({ status: "active", toolCount: 2 });
+  expect(await secrets.get(`ci_${added.slug}_token`)).toBe("k");
+  const def = (await store.list())[0];
+  expect(def?.auth).toBe("credential");
+  expect(def?.credential).toEqual({
+    template: expect.any(String),
+    secretIds: { token: `ci_${added.slug}_token` },
+  });
 });
 
 test("concurrent replace + remove serialize: the store, secrets, and executor agree at the end", async () => {

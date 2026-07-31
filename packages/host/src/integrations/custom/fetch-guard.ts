@@ -33,23 +33,33 @@ const FORBIDDEN_REQUEST_HEADERS = [
   "upgrade",
 ] as const;
 
+const stripForbidden = (headers: Headers): Headers => {
+  for (const name of FORBIDDEN_REQUEST_HEADERS) headers.delete(name);
+  return headers;
+};
+
 /** Rebuild the init without message-framing / hop-by-hop headers. */
 export function sanitizeFetchInit(
   init: RequestInit | undefined,
 ): RequestInit | undefined {
   if (!init?.headers) return init;
-  const headers = new Headers(init.headers);
-  for (const name of FORBIDDEN_REQUEST_HEADERS) headers.delete(name);
-  return { ...init, headers };
+  return { ...init, headers: stripForbidden(new Headers(init.headers)) };
 }
 
 /**
  * `globalThis.fetch` resolved at CALL time (pi swaps the global after boot;
  * a captured reference would freeze the wrong implementation), with the
- * forbidden headers stripped from every request.
+ * forbidden headers stripped from every request — whether they arrive on the
+ * init or on a `Request`-object input (today's callers all pass `(url, init)`,
+ * but the guard must not depend on that staying true).
  */
-export const guardedFetch: typeof globalThis.fetch = (input, init) =>
-  globalThis.fetch(input, sanitizeFetchInit(init));
+export const guardedFetch: typeof globalThis.fetch = (input, init) => {
+  if (input instanceof Request && !init?.headers) {
+    const headers = stripForbidden(new Headers(input.headers));
+    return globalThis.fetch(new Request(input, { ...init, headers }));
+  }
+  return globalThis.fetch(input, sanitizeFetchInit(init));
+};
 
 /** The executor's HttpClient: Effect's fetch client over `guardedFetch`. */
 export function guardedHttpClientLayer(): Layer.Layer<HttpClient.HttpClient> {

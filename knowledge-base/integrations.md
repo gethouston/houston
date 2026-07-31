@@ -973,10 +973,12 @@ same service (equal server/endpoint origins; url-kind specs need the identical
 document URL; anything indeterminate counts as changed). A changed origin
 drops the carry, deletes the now-unreferenced secret, and lands the def
 `pending` (secure-card re-entry) — otherwise a prompt-injected spec pointing
-at an attacker host would receive the user's key on the next action. A
-replacement that fails to compile is uncompiled again and the previous view
-restored, so a working integration is never traded for a broken spec; a
-credential→none replace deletes the orphaned secret. All manager mutations
+at an attacker host would receive the user's key on the next action. Within the same
+service the carry ignores the input's `auth` (replace is spec-repair; a model
+re-deriving `auth` must not discard a working key with a sloppy `"none"`
+replay). A replacement that fails to compile is uncompiled again and the
+previous view restored, so a working integration is never traded for a broken
+spec. All manager mutations
 (add/replace/setCredential/remove) are serialized through one queue so the
 def store, secret store, compiled executor, and state map can never interleave
 into disagreement.

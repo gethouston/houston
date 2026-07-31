@@ -136,6 +136,62 @@ describe("guardedFetch under a duplicating fetch pipeline", () => {
 });
 
 /**
+ * The guard's `Request`-object branch: today's callers all pass `(url, init)`,
+ * but headers carried ON the input must not slip past the strip either — and
+ * the clone (a Request with an unread body) must arrive intact.
+ */
+describe("guardedFetch with a Request-object input", () => {
+  let server: Server;
+  let base: string;
+
+  beforeAll(async () => {
+    server = createServer((req, res) => {
+      let body = "";
+      req.on("data", (c) => {
+        body += c;
+      });
+      req.on("end", () => {
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify({ rawHeaders: req.rawHeaders, body }));
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+  });
+
+  test("input headers are sanitized and the body survives the clone", async () => {
+    const request = new Request(`${base}/search`, {
+      method: "POST",
+      body: '{"prompt":"test"}',
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": "k",
+        "transfer-encoding": "chunked",
+      },
+    });
+    const res = await guardedFetch(request);
+    const { rawHeaders, body } = (await res.json()) as {
+      rawHeaders: string[];
+      body: string;
+    };
+    expect(body).toBe('{"prompt":"test"}');
+    const header = (name: string) =>
+      rawHeaders.flatMap((h, i) =>
+        i % 2 === 0 && h.toLowerCase() === name ? [rawHeaders[i + 1]] : [],
+      );
+    expect(header("x-api-key")).toEqual(["k"]);
+    expect(header("transfer-encoding")).toEqual([]);
+    expect(header("content-length")).toEqual(["17"]);
+  });
+});
+
+/**
  * End to end through the REAL executor: an agent-authored OpenAPI blob with a
  * JSON POST must execute — Effect's explicit content-length crosses our guard,
  * so this exact test failed on every run before the httpClientLayer wiring.
