@@ -10,6 +10,10 @@ interface CreatePersonalAssistantOptions {
   color?: string;
   provider?: string;
   model?: string;
+  /** The AgentConfig id, which drives the agent's identity (icon, description).
+   *  Defaults to the generic personal assistant; a role-seeded first-run passes
+   *  the store pack's id so the primary agent carries that pack's identity. */
+  configId?: string;
   /** Seed files (routines + skills) written into the new agent's tree at
    *  creation, so first-run users get real capability instead of an empty shell. */
   seeds?: Record<string, string>;
@@ -24,7 +28,7 @@ export async function createPersonalAssistantForWorkspace(
     .create(
       workspaceId,
       options.name,
-      PERSONAL_ASSISTANT_CONFIG_ID,
+      options.configId ?? PERSONAL_ASSISTANT_CONFIG_ID,
       options.color ?? "navy",
       options.instructions,
       undefined,

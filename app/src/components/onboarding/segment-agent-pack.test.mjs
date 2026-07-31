@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { storeCatalogConfigs } from "../../agents/builtin/store-catalog.ts";
 import { ONBOARDING_SEGMENTS } from "../../lib/onboarding-segment.ts";
 import {
   agentPacksForSegment,
@@ -72,5 +73,33 @@ test("every mapped segment ships at least two agents (a set, not one)", () => {
       // No duplicate pack within a segment's set.
       assert.equal(new Set(packs).size, packs.length);
     }
+  }
+});
+
+test("every referenced pack id exists in the store catalog with an identity", () => {
+  const byId = new Map(storeCatalogConfigs.map((c) => [c.id, c]));
+  const referenced = [
+    ...new Set(ONBOARDING_SEGMENTS.flatMap((s) => agentPacksForSegment(s))),
+  ];
+  for (const id of referenced) {
+    const config = byId.get(id);
+    assert.ok(config, `pack ${id} must exist in the store catalog`);
+    // The primary agent carries this identity, so name + icon must be present.
+    assert.ok(config.name, `pack ${id} must have a catalog name`);
+    assert.ok(config.icon, `pack ${id} must have a catalog icon`);
+  }
+});
+
+test("the primary pack of each mapped segment resolves to a catalog identity", () => {
+  const byId = new Map(storeCatalogConfigs.map((c) => [c.id, c]));
+  for (const segment of ONBOARDING_SEGMENTS) {
+    const [primary] = agentPacksForSegment(segment);
+    if (!primary) continue; // generic fallback — no catalog identity by design
+    const config = byId.get(primary);
+    assert.ok(
+      config,
+      `primary pack ${primary} (${segment}) must be in catalog`,
+    );
+    assert.ok(config.name && config.icon && config.description);
   }
 });

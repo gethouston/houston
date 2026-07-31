@@ -9,7 +9,7 @@ import type { Agent, Workspace } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import {
-  assistantContentForSegment,
+  primaryAssistantForSegment,
   seedExtraPackAgents,
 } from "./assistant-segment-seeds";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
@@ -109,23 +109,26 @@ export function useCreateAssistant({
           createWorkspace: (name) => tauriWorkspaces.create(name),
           listAgents: (workspaceId) => tauriAgents.list(workspaceId),
           createAssistant: async (workspaceId) => {
-            // Role-aware seeds: a segment that maps to a store pack seeds that
-            // pack's CLAUDE.md + skills/routines; everything else keeps the
-            // generic Daily Briefing + Meeting-prep. The active locale selects
-            // the language / translated pack variant either way.
-            const { instructions, seeds } = await assistantContentForSegment(
+            // Role-aware primary: a segment that maps to a store pack makes its
+            // first pack the primary agent — carrying that pack's catalog
+            // identity (name + configId → icon/description) and its
+            // CLAUDE.md/skills/routines. Everything else keeps the generic
+            // assistant identity + Daily Briefing + Meeting-prep. The active
+            // locale selects the language / translated pack variant either way.
+            const primary = await primaryAssistantForSegment(
               setup,
               t,
               i18n.language,
               segment,
             );
             return createPersonalAssistantForWorkspace(workspaceId, {
-              name: setup.assistantName.trim(),
-              instructions,
+              name: primary.name.trim(),
+              configId: primary.configId,
+              instructions: primary.instructions,
               color: setup.color,
               provider: pickedProvider,
               model: pickedModel,
-              seeds,
+              seeds: primary.seeds,
             });
           },
         });

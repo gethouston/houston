@@ -9,34 +9,55 @@ import { tauriAgents } from "../../lib/tauri";
 import {
   type AssistantSetup,
   buildAssistantInstructions,
+  PERSONAL_ASSISTANT_CONFIG_ID,
 } from "./personal-assistant-artifacts";
 import { buildPersonalAssistantSeeds } from "./personal-assistant-seeds";
 import { agentPacksForSegment } from "./segment-agent-pack";
 
+/** Everything the create call needs to provision the PRIMARY onboarding agent. */
+export interface PrimaryAssistantSpec {
+  /** Display name — the pack's catalog name when role-seeded, else the generic
+   *  onboarding assistant name. */
+  name: string;
+  /** AgentConfig id — drives the agent's identity (icon, description). The
+   *  pack's own id when role-seeded, else the generic personal assistant. */
+  configId: string;
+  instructions: string;
+  seeds: Record<string, string>;
+}
+
 /**
- * Create-time content for the PRIMARY onboarding assistant. When the answered
- * segment maps to one or more store packs, the first pack seeds the primary
- * assistant with its CLAUDE.md + skills/routines/data (the same
- * `loadStoreTemplate` payload the New Agent picker installs); the remaining
+ * Resolve the PRIMARY onboarding assistant. When the answered segment maps to
+ * one or more store packs, the first pack IS the primary agent: it carries that
+ * pack's catalog identity (name, and — via `configId` — its icon/description)
+ * and is seeded with its CLAUDE.md + skills/routines/data (the same
+ * `loadStoreTemplate` payload the New Agent picker installs). The remaining
  * packs become their own agents via `seedExtraPackAgents`. An unmapped (or
- * skipped) segment falls back to the generic personal-assistant seeds, so a
- * user is never left worse off than before the mapping existed.
+ * skipped) segment falls back to the generic personal-assistant identity + seeds,
+ * so a user is never left worse off than before the mapping existed.
  */
-export async function assistantContentForSegment(
+export async function primaryAssistantForSegment(
   setup: AssistantSetup,
   t: TFunction<"setup">,
   locale: string,
   segment: OnboardingSegmentChoice | null,
-): Promise<{ instructions: string; seeds: Record<string, string> }> {
+): Promise<PrimaryAssistantSpec> {
   const [primaryPack] = agentPacksForSegment(segment);
-  if (primaryPack && STORE_TEMPLATE_IDS.has(primaryPack)) {
+  const config = primaryPack
+    ? storeCatalogConfigs.find((c) => c.id === primaryPack)
+    : undefined;
+  if (primaryPack && config && STORE_TEMPLATE_IDS.has(primaryPack)) {
     const tpl = await loadStoreTemplate(primaryPack, locale);
     return {
+      name: config.name,
+      configId: config.id,
       instructions: tpl.claudeMd ?? buildAssistantInstructions(setup),
       seeds: tpl.seeds,
     };
   }
   return {
+    name: setup.assistantName,
+    configId: PERSONAL_ASSISTANT_CONFIG_ID,
     instructions: buildAssistantInstructions(setup),
     seeds: buildPersonalAssistantSeeds(t, locale),
   };
