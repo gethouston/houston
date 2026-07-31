@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
   classifyMarkdownLink,
+  collapsedUrlText,
   markdownLinkText,
 } from "../src/markdown-link.ts";
 
@@ -25,6 +26,16 @@ describe("markdownLinkText", () => {
       markdownLinkText([{ props: { children: ["a", "b"] } }, "c"]),
       "abc",
     );
+  });
+
+  it("treats <br>/<wbr> break elements as whitespace, not non-text (HOU-1071)", () => {
+    // A hard break inside a link label renders as a childless <br> element;
+    // returning null here dropped wrapped-URL labels into the clipped pill.
+    assert.equal(
+      markdownLinkText(["https://a.com/x-", { type: "br", props: {} }, "\ny"]),
+      "https://a.com/x-\n\ny",
+    );
+    assert.equal(markdownLinkText({ type: "wbr", props: {} }), "");
   });
 
   it("returns null for non-text nodes", () => {
@@ -77,6 +88,32 @@ describe("classifyMarkdownLink", () => {
     );
   });
 
+  it("URL label hard-wrapped across lines is an autolink (HOU-1071)", () => {
+    // Agents wrap long URLs inside [label](href); the softbreak flattens
+    // into the label as "\n". Pre-fix this fell into the pill branch and
+    // clipped the URL into an unreadable black bar.
+    assert.equal(
+      classifyMarkdownLink(
+        "https://docs.google.com/spreadsheets/d/1JOOOml-rR9Hmali/edit?usp=sharing",
+        "https://docs.google.com/spreadsheets/d/1JOOOml-\nrR9Hmali/edit",
+      ),
+      "autolink",
+    );
+  });
+
+  it("URL label hard-broken with <br> is an autolink (HOU-1071 live shape)", () => {
+    // Trailing-space / backslash hard breaks render the wrapped label as
+    // [text, <br>, text] — the exact shape from the issue screenshot.
+    assert.equal(
+      classifyMarkdownLink("https://docs.google.com/spreadsheets/d/1JO/edit", [
+        "https://docs.google.com/spreadsheets/d/",
+        { type: "br", props: {} },
+        "\n1JO/edit",
+      ]),
+      "autolink",
+    );
+  });
+
   it("labeled markdown link is labeled", () => {
     assert.equal(
       classifyMarkdownLink("https://example.com/report.pdf", "Open report"),
@@ -113,5 +150,23 @@ describe("classifyMarkdownLink", () => {
     // useOpenAgentHref resolves non-URL hrefs against the agent dir;
     // classification only cares whether the visible text equals the href.
     assert.equal(classifyMarkdownLink("perfil.md", "perfil.md"), "autolink");
+  });
+});
+
+describe("collapsedUrlText", () => {
+  it("reassembles a URL label markdown broke across lines", () => {
+    assert.equal(
+      collapsedUrlText("https://docs.google.com/spreadsheets/d/1JO-\nrR9/edit"),
+      "https://docs.google.com/spreadsheets/d/1JO-rR9/edit",
+    );
+  });
+
+  it("returns null for an unwrapped URL so streaming children render as-is", () => {
+    assert.equal(collapsedUrlText("https://example.com"), null);
+  });
+
+  it("returns null for plain labels and non-text children", () => {
+    assert.equal(collapsedUrlText("Open the sheet"), null);
+    assert.equal(collapsedUrlText({ href: "x" }), null);
   });
 });
