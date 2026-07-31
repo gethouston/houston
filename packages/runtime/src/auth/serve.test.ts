@@ -373,7 +373,7 @@ test("a served credential is written WITHOUT a refresh token", () => {
   expect(JSON.stringify(auth)).not.toContain("RT"); // nothing refresh-like anywhere
 });
 
-test("a served credential overwrites a refresh-bearing entry from device-code login", () => {
+test("a served credential preserves a refresh-bearing entry mid-capture", () => {
   const path = freshAuthPath();
   // What pi's own login leaves behind:
   writeFileSync(
@@ -387,12 +387,44 @@ test("a served credential overwrites a refresh-bearing entry from device-code lo
       },
     }),
   );
-  applyServedCredential(path, {
-    provider: "openai-codex",
-    access: "AT-new",
-    expires: 2,
-    accountId: null,
+  expect(
+    applyServedCredential(path, {
+      provider: "openai-codex",
+      access: "AT-new",
+      expires: 2,
+      accountId: null,
+    }),
+  ).toBe(false);
+  const auth = readAuth(path);
+  expect(auth["openai-codex"]).toEqual({
+    type: "oauth",
+    access: "AT-old",
+    refresh: "RT-SECRET",
+    expires: 1,
   });
+});
+
+test("a served credential replaces an existing refresh-less entry", () => {
+  const path = freshAuthPath();
+  writeFileSync(
+    path,
+    JSON.stringify({
+      "openai-codex": {
+        type: "oauth",
+        access: "AT-old",
+        refresh: "",
+        expires: 1,
+      },
+    }),
+  );
+  expect(
+    applyServedCredential(path, {
+      provider: "openai-codex",
+      access: "AT-new",
+      expires: 2,
+      accountId: null,
+    }),
+  ).toBe(true);
   const auth = readAuth(path);
   const codex = auth["openai-codex"];
   if (!codex) throw new Error("expected openai-codex entry in auth file");

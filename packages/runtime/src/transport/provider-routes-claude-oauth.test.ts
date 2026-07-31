@@ -24,6 +24,7 @@ import {
   claudeCredentialsFile,
   claudeLoginConfigDir,
 } from "../backends/claude/paths";
+import { config } from "../config";
 import { handleProviderRoute } from "./provider-routes";
 
 function mockRes(): {
@@ -69,18 +70,26 @@ const VALID = {
 };
 
 let prevHome: string | undefined;
+let previousControlPlaneUrl: string;
+let previousSandboxToken: string;
 
 beforeEach(() => {
   prevHome = process.env.HOUSTON_HOME;
   process.env.HOUSTON_HOME = mkdtempSync(join(tmpdir(), "claude-route-"));
+  previousControlPlaneUrl = config.controlPlaneUrl;
+  previousSandboxToken = config.sandboxToken;
+  config.controlPlaneUrl = "";
+  config.sandboxToken = "";
   refreshSpy.mockClear();
 });
 afterEach(() => {
   if (prevHome === undefined) delete process.env.HOUSTON_HOME;
   else process.env.HOUSTON_HOME = prevHome;
+  config.controlPlaneUrl = previousControlPlaneUrl;
+  config.sandboxToken = previousSandboxToken;
 });
 
-test("materializes .credentials.json under the login config dir and warms the signal", async () => {
+test("outside serve mode materializes the full credential and warms the signal", async () => {
   const { handled, out } = await post(VALID);
   expect(handled).toBe(true);
   expect(out.status).toBe(200);
@@ -90,6 +99,25 @@ test("materializes .credentials.json under the login config dir and warms the si
   expect(JSON.parse(readFileSync(path, "utf8"))).toEqual(VALID);
   // The connected signal is warmed exactly once on success.
   expect(refreshSpy).toHaveBeenCalledTimes(1);
+});
+
+test("in serve mode materializes an access-only credential", async () => {
+  config.controlPlaneUrl = "https://control.test";
+  config.sandboxToken = "sandbox-token";
+
+  const { out } = await post(VALID);
+
+  expect(out.status).toBe(200);
+  expect(
+    JSON.parse(
+      readFileSync(claudeCredentialsFile(claudeLoginConfigDir()), "utf8"),
+    ),
+  ).toEqual({
+    claudeAiOauth: {
+      ...VALID.claudeAiOauth,
+      refreshToken: "",
+    },
+  });
 });
 
 test("malformed body → 400, nothing written, signal not warmed", async () => {

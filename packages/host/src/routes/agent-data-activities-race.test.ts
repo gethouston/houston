@@ -115,3 +115,23 @@ test("a concurrent patch never erases a concurrent create", async () => {
   expect(items.map((i) => i.id).sort()).toEqual(["id-a", "id-b"]);
   expect(items.find((i) => i.id === "id-a")?.status).toBe("done");
 });
+
+test("activity PATCH validates and deletes null provider/model pins", async () => {
+  const store = slowStore();
+  await post(store, {
+    id: "id-pinned",
+    title: "Pinned",
+    provider: "anthropic",
+    model: "sonnet",
+  });
+  const cleared = await patch(store, "id-pinned", {
+    provider: null,
+    model: null,
+  });
+  expect(cleared.status).toBe(200);
+  expect(storedItems(store)[0]).not.toHaveProperty("provider");
+  expect(storedItems(store)[0]).not.toHaveProperty("model");
+
+  const invalid = await patch(store, "id-pinned", { provider: 42 });
+  expect(invalid.status).toBe(400);
+});

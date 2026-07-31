@@ -28,7 +28,8 @@ import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { refreshMissionTitle } from "./mission-title";
-import { tauriActivity, tauriChat } from "./tauri";
+import { tauriActivity, tauriChat, tauriProvider } from "./tauri";
+import { verifyWarmingSendPin } from "./warming-send-pin";
 
 /** Prompt builders keyed by send id — in-memory only, lost on reload. */
 const promptBuilders = new Map<string, () => Promise<string> | string>();
@@ -197,6 +198,36 @@ export async function flushWarmingSends(
     }
     // Row-only entry (the welcome mission): the row IS the payload.
     if (send.rowOnly) continue;
+    const activityId =
+      rowId ??
+      (send.sessionKey.startsWith("activity-")
+        ? send.sessionKey.slice("activity-".length)
+        : undefined);
+    const pin = await verifyWarmingSendPin({
+      agentId: entry.agentPath,
+      activityId,
+      pin: {
+        provider: send.provider,
+        model: send.model,
+        effort: send.effort,
+      },
+      probe: async (agentId, provider) => {
+        const statuses = await tauriProvider.checkAllStatusesForAgent(agentId, [
+          provider,
+        ]);
+        return statuses[provider]?.authenticated === true;
+      },
+      clearActivityPin: async (agentId, id) => {
+        try {
+          await tauriActivity.update(agentId, id, {
+            provider: null,
+            model: null,
+          });
+        } catch (error) {
+          logger.error(`[warming-sends] activity pin clear failed: ${error}`);
+        }
+      },
+    });
     // The bubble is already on screen (pushed at queue time, or restored on
     // rehydrate) — never double it. If the scope is somehow empty (renamed
     // agent moved the VM scope), let the turn push it.
@@ -206,9 +237,9 @@ export async function flushWarmingSends(
     try {
       await tauriChat.send(entry.agentPath, prompt, send.sessionKey, {
         mode: send.promptFile,
-        providerOverride: send.provider,
-        modelOverride: send.model,
-        effortOverride: send.effort,
+        providerOverride: pin.provider,
+        modelOverride: pin.model,
+        effortOverride: pin.effort,
         modeOverride: send.mode,
         mentions: send.mentions,
         suppressUserBubble: suppress,
@@ -226,8 +257,8 @@ export async function flushWarmingSends(
           agentPath: entry.agentPath,
           activityId: rowId,
           text: send.titleText,
-          provider: send.provider,
-          model: send.model,
+          provider: pin.provider,
+          model: pin.model,
         });
       }
     } catch (e) {

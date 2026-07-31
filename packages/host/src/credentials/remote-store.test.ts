@@ -252,6 +252,15 @@ test("a 404 without the gateway error body is a transport error, not a logout", 
   expect(calls).toHaveLength(2);
 });
 
+test("a gateway dead-credential 502 is classified for serve recovery", async () => {
+  const { fetchImpl } = fakeFetch(() =>
+    json({ error: "credential refresh rejected: session ended" }, 502),
+  );
+  await expect(store(fetchImpl).get("ws_1", "openai-codex")).rejects.toThrow(
+    "reported a dead credential",
+  );
+});
+
 test("remove treats the gateway's not-connected 404 as already signed out and clears the fallback", async () => {
   let fallbackCred: WorkspaceCredential | null = {
     workspaceId: "ws_1",

@@ -38,6 +38,7 @@ import {
 import { handleAgents, podActivityStatus } from "./routes/agents";
 import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
+import type { CredentialServeHealer } from "./routes/credential-healer";
 import { handleSandboxCredentialRevoked } from "./routes/credential-revoked";
 import {
   type CustomIntegrationDeps,
@@ -97,6 +98,8 @@ export interface ControlPlaneDeps {
   sharedEndpoints?: SharedEndpointStore;
   /** Validates per-sandbox HMAC tokens (the sandbox-facing credential endpoint). */
   vault: CredentialVault;
+  /** Managed-pod recovery for an absent/dead central credential row. */
+  credentialHealer?: CredentialServeHealer;
   /**
    * RuntimeChannel per workspace hosting model (gke → ProxyChannel, cloudrun →
    * TurnChannel; the local profile adds its own in P4). A workspace whose

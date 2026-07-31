@@ -1,8 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { expect, test } from "vitest";
+import { RemoteCredentialDeadError } from "../credentials/remote-store";
 import { MemoryCredentialStore } from "../credentials/store";
-import type { CredentialVault } from "../ports";
+import type { CredentialStore, CredentialVault } from "../ports";
 import { handleSandboxCredential } from "./credential";
+import { CredentialServeHealer } from "./credential-healer";
 
 /**
  * The sandbox credential endpoint must keep serving a turn even when the stored
@@ -65,13 +67,21 @@ function mockRes(): {
 }
 
 const call = (
-  credentials: MemoryCredentialStore,
+  credentials: CredentialStore,
   provider: string,
   out: ReturnType<typeof mockRes>,
-  opts: { gatewayFronted?: boolean } = {},
+  opts: {
+    gatewayFronted?: boolean;
+    credentialHealer?: CredentialServeHealer;
+  } = {},
 ) =>
   handleSandboxCredential(
-    { vault, credentials, gatewayFronted: opts.gatewayFronted },
+    {
+      vault,
+      credentials,
+      gatewayFronted: opts.gatewayFronted,
+      credentialHealer: opts.credentialHealer,
+    },
     "GET",
     "/sandbox/credential",
     new URL(`http://x/sandbox/credential?provider=${provider}`),
@@ -81,6 +91,108 @@ const call = (
 
 /** A far-future expiry: not "expiring" for any test run. */
 const FRESH_EXPIRES = Date.now() + 60 * 60 * 1000;
+
+test("serve miss heals once and serves the fresh central credential", async () => {
+  const credentials = new MemoryCredentialStore();
+  let heals = 0;
+  const credentialHealer = new CredentialServeHealer(async () => {
+    heals++;
+    await credentials.put({
+      workspaceId: "w1",
+      provider: "openai-codex",
+      accessToken: "AT-healed",
+      refreshToken: "",
+      expiresAt: FRESH_EXPIRES,
+    });
+    return true;
+  });
+  const first = mockRes();
+  expect(
+    await call(credentials, "openai-codex", first, { credentialHealer }),
+  ).toBe(true);
+  expect(first.out.body.access).toBe("AT-healed");
+  expect(heals).toBe(1);
+
+  await credentials.remove("w1", "openai-codex");
+  const second = mockRes();
+  await call(credentials, "openai-codex", second, { credentialHealer });
+  expect(second.out.status).toBe(404);
+  expect(heals).toBe(1);
+});
+
+test("concurrent dead serves single-flight their heal", async () => {
+  const credentials = new MemoryCredentialStore();
+  let heals = 0;
+  const credentialHealer = new CredentialServeHealer(async () => {
+    heals++;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await credentials.put({
+      workspaceId: "w1",
+      provider: "openai-codex",
+      accessToken: "AT-one-flight",
+      refreshToken: "",
+      expiresAt: FRESH_EXPIRES,
+    });
+    return true;
+  });
+  const a = mockRes();
+  const b = mockRes();
+  await Promise.all([
+    call(credentials, "openai-codex", a, { credentialHealer }),
+    call(credentials, "openai-codex", b, { credentialHealer }),
+  ]);
+  expect(heals).toBe(1);
+  expect(a.out.body.access).toBe("AT-one-flight");
+  expect(b.out.body.access).toBe("AT-one-flight");
+});
+
+test("transport errors never trigger credential healing", async () => {
+  let heals = 0;
+  const credentials: CredentialStore = {
+    get: async () => {
+      throw new Error("network unavailable");
+    },
+    put: async () => {},
+    remove: async () => {},
+    removeIfAccess: async () => false,
+  };
+  const credentialHealer = new CredentialServeHealer(async () => {
+    heals++;
+    return true;
+  });
+  await expect(
+    call(credentials, "openai-codex", mockRes(), { credentialHealer }),
+  ).rejects.toThrow("network unavailable");
+  expect(heals).toBe(0);
+});
+
+test("a gateway-classified dead credential triggers healing", async () => {
+  const fresh = new MemoryCredentialStore();
+  let reads = 0;
+  const credentials: CredentialStore = {
+    get: async (workspaceId, provider) => {
+      reads++;
+      if (reads === 1) throw new RemoteCredentialDeadError("dead");
+      return fresh.get(workspaceId, provider);
+    },
+    put: (credential) => fresh.put(credential),
+    remove: (workspaceId, provider) => fresh.remove(workspaceId, provider),
+    removeIfAccess: async () => false,
+  };
+  const credentialHealer = new CredentialServeHealer(async () => {
+    await credentials.put({
+      workspaceId: "w1",
+      provider: "openai-codex",
+      accessToken: "AT-recaptured",
+      refreshToken: "",
+      expiresAt: FRESH_EXPIRES,
+    });
+    return true;
+  });
+  const result = mockRes();
+  await call(credentials, "openai-codex", result, { credentialHealer });
+  expect(result.out.body.access).toBe("AT-recaptured");
+});
 
 test("serves the existing token when refresh has no config (no 500)", async () => {
   const credentials = new MemoryCredentialStore();

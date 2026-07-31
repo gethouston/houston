@@ -223,6 +223,24 @@ test("activity update: pending_interaction set / clear / untouched", () => {
   expect("pending_interaction" in cleared).toBe(false);
 });
 
+test("activity update: null clears provider and model while omission preserves", () => {
+  const current = createActivity(
+    { title: "Pinned", provider: "anthropic", model: "sonnet" },
+    "a1",
+    NOW,
+  );
+  expect(
+    applyActivityUpdate(current, { status: "running" }, NOW),
+  ).toMatchObject({ provider: "anthropic", model: "sonnet" });
+  const cleared = applyActivityUpdate(
+    current,
+    { provider: null, model: null },
+    NOW,
+  );
+  expect("provider" in cleared).toBe(false);
+  expect("model" in cleared).toBe(false);
+});
+
 test("activity update: an invalid (pre-step legacy) pending_interaction is not persisted", () => {
   const current = applyActivityUpdate(
     createActivity({ title: "T" }, "a1", NOW),

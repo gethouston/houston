@@ -74,6 +74,31 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
         } as ProviderStatus;
       });
     }
+
+    async providerStatusesForAgent(
+      agentId: string,
+      names: readonly string[],
+    ): Promise<ProviderStatus[]> {
+      const byId = new Map(
+        (await this.ctx.providerEngineFor(agentId).listProviders()).map((p) => [
+          p.id,
+          p,
+        ]),
+      );
+      return names.map((name) => {
+        const provider = toNewProvider(name);
+        const status = provider ? byId.get(provider) : undefined;
+        return {
+          provider: name,
+          cliInstalled: true,
+          authState: status?.configured ? "authenticated" : "unauthenticated",
+          cliName: name,
+          installSource: "managed",
+          cliPath: null,
+          activeModel: status?.activeModel || undefined,
+        } as ProviderStatus;
+      });
+    }
     /**
      * Live per-account usage for every connected provider (rate-limit windows
      * + prepaid balances), served by the runtime's `GET /providers/usage`.

@@ -194,6 +194,8 @@ let proxyCustomEndpointBody: unknown = null;
 let proxyClaudeOAuthBody: unknown = null;
 /** When set, the fake runtime rejects /auth/:provider/api-key with this reply. */
 let proxyApiKeyRejection: { status: number; body: unknown } | null = null;
+let proxyScrubFailuresRemaining = 0;
+let proxyScrubCalls = 0;
 
 beforeAll(async () => {
   proxyRuntime = createServer((req, res) => {
@@ -242,7 +244,14 @@ beforeAll(async () => {
       });
       return;
     }
-    if (path === "/auth/scrub-refresh") return reply(200, { ok: true });
+    if (path === "/auth/scrub-refresh") {
+      proxyScrubCalls += 1;
+      if (proxyScrubFailuresRemaining > 0) {
+        proxyScrubFailuresRemaining -= 1;
+        return reply(503, { error: "scrub unavailable" });
+      }
+      return reply(200, { ok: true });
+    }
     // API-key connect pushes the pasted key into the standing runtime.
     if (path.match(/^\/auth\/[^/]+\/api-key$/)) {
       return proxyApiKeyRejection
@@ -266,6 +275,8 @@ afterAll(() => proxyRuntime.close());
 function makeProxyFixture(): ChannelFixture {
   proxyConnected = false; // each fixture starts disconnected
   proxyApiKeyRejection = null;
+  proxyScrubFailuresRemaining = 0;
+  proxyScrubCalls = 0;
   const credentials = new MemoryCredentialStore();
   const launcher = new FakeLauncher({ baseUrl: proxyRuntimeUrl, token: "sbx" });
   const proxy: RuntimeProxy = { forward };
@@ -358,6 +369,36 @@ function makeTurnFixture(): ChannelFixture {
 
 runRuntimeChannelContract("ProxyChannel", makeProxyFixture);
 runRuntimeChannelContract("TurnChannel", makeTurnFixture);
+
+describe("captureCredential scrub coupling (ProxyChannel)", () => {
+  test("retries scrub and succeeds only after the runtime is scrubbed", async () => {
+    const { channel, credentials } = makeProxyFixture();
+    proxyConnected = true;
+    proxyScrubFailuresRemaining = 2;
+
+    const result = await channel.captureCredential(ctx, "openai-codex");
+
+    expect(result).toEqual({ ok: true, provider: "openai-codex" });
+    expect(proxyScrubCalls).toBe(3);
+    expect(await credentials.get(ws.id, "openai-codex")).not.toBeNull();
+  });
+
+  test("reports capture failure when refresh scrubbing persistently fails", async () => {
+    const { channel } = makeProxyFixture();
+    proxyConnected = true;
+    proxyScrubFailuresRemaining = 3;
+
+    const result = await channel.captureCredential(ctx, "openai-codex");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(502);
+      expect(result.error).toContain("could not be scrubbed");
+      expect(result.detail).toContain("scrub unavailable");
+    }
+    expect(proxyScrubCalls).toBe(3);
+  });
+});
 
 // The runtime's live key verification can REFUSE a pasted key; the typed
 // `reason` on its 401 body must survive the proxy hop so the route (and from

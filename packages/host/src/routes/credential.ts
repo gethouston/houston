@@ -4,11 +4,13 @@ import {
   RefreshRejectedError,
   refreshCredential,
 } from "../credentials/refresh";
+import { RemoteCredentialDeadError } from "../credentials/remote-store";
 import {
   type CredentialStore,
   type CredentialVault,
   isApiKeyCredential,
 } from "../ports";
+import type { CredentialServeHealer } from "./credential-healer";
 import { bearer, json } from "./http";
 
 /**
@@ -24,6 +26,7 @@ export async function handleSandboxCredential(
     vault: CredentialVault;
     credentials: CredentialStore;
     gatewayFronted?: boolean;
+    credentialHealer?: CredentialServeHealer;
   },
   method: string,
   path: string,
@@ -58,8 +61,24 @@ export async function handleSandboxCredential(
     );
     return true;
   }
-  let cred = await deps.credentials.get(claim.workspaceId, provider);
+  let deadError: RemoteCredentialDeadError | undefined;
+  let cred = null;
+  try {
+    cred = await deps.credentials.get(claim.workspaceId, provider);
+  } catch (error) {
+    if (!(error instanceof RemoteCredentialDeadError)) throw error;
+    deadError = error;
+  }
+  if (!cred && deps.credentialHealer) {
+    const healed = await deps.credentialHealer.attempt({
+      workspaceId: claim.workspaceId,
+      agentId: claim.agentId,
+      provider,
+    });
+    if (healed) cred = await deps.credentials.get(claim.workspaceId, provider);
+  }
   if (!cred) {
+    if (deadError) throw deadError;
     // The marker makes this 404 the store's own authoritative "not connected"
     // answer. The runtime only drops served credentials on marked 404s — a bare
     // 404 (old host, wrong control-plane URL) must never read as a logout.

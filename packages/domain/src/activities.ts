@@ -161,11 +161,18 @@ export function applyActivityUpdate(
   nowIso: string,
   author?: ActivityContributor,
 ): Activity {
-  const { pending_interaction, ...rest } = update;
+  const { pending_interaction, provider, model, ...rest } = update;
   const defined = Object.fromEntries(
     Object.entries(rest).filter(([, v]) => v !== undefined),
   );
   const next = { ...current, ...defined, updated_at: nowIso } as Activity;
+  // `provider`/`model` are the mission's model pin: `null` deletes the key so
+  // the mission falls back to the engine's own resolution (the warming flush
+  // clears a pin its pod cannot honor).
+  if (provider === null) delete next.provider;
+  else if (provider !== undefined) next.provider = provider;
+  if (model === null) delete next.model;
+  else if (model !== undefined) next.model = model;
   // PATCH bodies are untrusted at runtime (an old client or a stale message can
   // carry a pre-step shape the compile-time type can't catch), and closing a
   // mission answers whatever it was waiting on. Both rules live once, in

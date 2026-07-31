@@ -2,8 +2,14 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import type { TurnMode } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
-import { activeProvider, resolveModel } from "../ai/providers";
-import { syncServedCredentialSafe } from "../auth/serve";
+import {
+  activeProvider,
+  canonicalPinProvider,
+  isProvider,
+  providerConfigured,
+  resolveModel,
+} from "../ai/providers";
+import { serveModeOn, syncServedCredentialSafe } from "../auth/serve";
 import { cleanupClaudeConversation } from "../backends/claude/cleanup";
 import { config } from "../config";
 import {
@@ -82,13 +88,43 @@ export async function runTurn(
   // Mint the turn's wire identity up front so even a turn that fails before
   // executing (the guards below) terminates under one id.
   const turnId = crypto.randomUUID();
+  const canonicalPinnedProvider = pin?.provider
+    ? canonicalPinProvider(pin.provider)
+    : undefined;
+  if (
+    serveModeOn() &&
+    canonicalPinnedProvider &&
+    isProvider(canonicalPinnedProvider) &&
+    !providerConfigured(canonicalPinnedProvider)
+  ) {
+    appendUserMessage(id, text, { turnId, displayText, mentions });
+    publish(id, {
+      type: "user",
+      data: { content: text, ts: Date.now(), nonce, mentions },
+      turnId,
+    });
+    const message = `No provider connected for ${canonicalPinnedProvider}. Connect it first.`;
+    appendAssistantMessage(id, "", {
+      providerError: {
+        kind: "unauthenticated",
+        provider: canonicalPinnedProvider,
+        cause: "no_credentials",
+        message,
+        undelivered_prompt: text,
+      },
+      turnId,
+    });
+    publish(id, { type: "error", data: { message }, turnId });
+    return;
+  }
   // The message route already synced the credential and confirmed a provider via
   // ensureProviderForTurn. Re-check here as a cheap guard for the narrow window
   // where the provider is logged out mid-turn: getConversation returns a CACHED
   // session without re-running resolveModel()'s connect guard, so without this a
   // now-credential-less turn could still reach session.prompt() and hang with no
-  // terminal event. A provider-pinned turn (a routine) skips the guard — its
-  // pin is never auth-gated; a failure surfaces as the turn's provider error.
+  // terminal event. Local provider-pinned turns retain their historical bypass.
+  // In serve mode the gate above refuses only a definitively absent canonical
+  // pinned provider, after the route's served-credential sync has completed.
   if (!pin?.provider && !activeProvider()) {
     publish(id, {
       type: "error",

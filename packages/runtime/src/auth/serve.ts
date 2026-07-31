@@ -23,9 +23,11 @@ import { authStorage } from "./storage";
  * not a permanent account takeover.
  *
  * The one exception is the device-code connect flow: pi's own login writes the
- * full credential (access + refresh) locally. The control plane captures it
- * into the central store immediately afterwards and then calls
- * POST /auth/scrub-refresh, which rewrites every entry with refresh="".
+ * full credential (access + refresh) locally. Serve sync must not overwrite that
+ * refresh-bearing entry with an older central access token while capture is in
+ * progress. The control plane captures it into the central store immediately
+ * afterwards and then calls POST /auth/scrub-refresh, which rewrites every entry
+ * with refresh=""; normal serving resumes after that scrub.
  *
  * Best-effort on sync: a transient control-plane blip leaves the existing
  * (still-valid) auth.json in place; a missing connection surfaces downstream as
@@ -164,9 +166,9 @@ async function runServedSync(): Promise<string[]> {
   for (const probe of probes) {
     if (probe.state !== "error") noteServeProbeOk(probe.id);
     if (probe.state === "served") {
-      applyServedCredential(authPathFor(), probe.cred);
-      applied.push(probe.id);
-      if (!manifest.has(probe.id)) {
+      const didApply = applyServedCredential(authPathFor(), probe.cred);
+      if (didApply) applied.push(probe.id);
+      if (didApply && !manifest.has(probe.id)) {
         manifest.add(probe.id);
         manifestDirty = true;
       }

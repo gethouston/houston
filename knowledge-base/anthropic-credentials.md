@@ -1,4 +1,4 @@
-# Anthropic credential lifecycle (Claude subscription OAuth)
+# Subscription OAuth credential lifecycle
 
 Anthropic is the one provider whose turns run through the **Claude Agent SDK**
 (a `claude` subprocess), not pi — so its credential plumbing is different from
@@ -7,13 +7,29 @@ is unusable" cluster (reconnect card after every send locally, cloud connect
 timing out into the setup-token paste dialog, mid-session sign-outs) came from
 the traps at the bottom — read them before touching any of this.
 
+## OpenAI Codex OAuth rotation
+
+OpenAI Codex refresh tokens rotate on use. In managed cloud the gateway is the
+only rotator and central credential storage is authoritative; a pod may consume
+only access tokens with `refresh=""`. Sharing one refresh-token family between
+the gateway and a pod lets either side invalidate the other's copy.
+
+Device-code connect is the narrow exception. pi first writes the complete new
+credential into the pod's `auth.json`; the host then captures access + refresh
+into central storage and immediately calls `POST /auth/scrub-refresh`. Capture
+is successful only after that scrub succeeds, and both capture and scrub use
+bounded retries. While this sequence is in flight, serve sync must preserve any
+local OAuth entry with a non-empty refresh token. That entry is the newly minted
+credential awaiting capture, whereas normal served entries are always
+refresh-less and remain safe to replace on every serve cycle.
+
 ## Where the credential lives, per deployment
 
 | Deployment | Source of truth | Who refreshes |
 |---|---|---|
 | Desktop (macOS) | Keychain item scoped to `<HOUSTON_HOME>/claude-login` (`claude auth login` writes it) | The SDK/CLI, in place |
 | Desktop (Linux/Win) / self-host | `<HOUSTON_HOME>/claude-login/.credentials.json` | The SDK/CLI, in place |
-| Managed cloud pod | Gateway Pg store (`/v1/pod/credentials`), captured at connect | The **gateway only** (single rotator; anthropic entry in `internal/credentials`, JSON grant) |
+| Managed cloud pod | Gateway Pg store (`/v1/pod/credentials`), captured at connect; pod materialization is access-only | The **gateway only** (single rotator; anthropic entry in `internal/credentials`, JSON grant) |
 | Setup-token paste (any) | `auth.json` `api_key` entry (never expires) | Nobody |
 
 ## The flows
@@ -57,7 +73,15 @@ the traps at the bottom — read them before touching any of this.
   the pod host serves a gateway-refreshed ACCESS-ONLY token
   (`routes/credential.ts`), the runtime writes it to `auth.json`
   (`refresh=""`), and the SDK consumes it via `CLAUDE_CODE_OAUTH_TOKEN`
-  (`backends/claude/read-token.ts`). This is what survives pod recycles:
+  (`backends/claude/read-token.ts`). The connect-time
+  `POST /auth/anthropic/oauth-credential` materialization is also access-only
+  whenever serve mode is on, so the SDK can never rotate the gateway's refresh
+  family from the pod. After serve sync, a pinned turn whose canonical provider
+  is definitively not configured is refused with `unauthenticated /
+  no_credentials` for that provider; reconnecting restores the credential and
+  the app's normal unauthenticated auto-resume retries the undelivered prompt.
+  Unpinned no-provider requests retain their `409 no_provider` contract. This is
+  what survives pod recycles:
   `/data` is an emptyDir in prod and store-sync EXCLUDES both credential files.
 
 ## The five traps (each was a live bug)
@@ -82,7 +106,10 @@ the traps at the bottom — read them before touching any of this.
    single rotator for pods; the desktop CLI is the single rotator locally; the
    central-store copy on a desktop host is an inert marker (never served,
    never refreshed — TS `credentials/refresh.ts` deliberately has no anthropic
-   entry). HOU-950 corollary: a family must never be COPIED between rotating
+   entry). A serve-mode pod therefore strips the refresh token from both its
+   served `auth.json` entry and its connect-time materialized Claude credential;
+   only desktop/self-host materialization retains the full credential for local
+   SDK refresh. HOU-950 corollary: a family must never be COPIED between rotating
    stores — a remote login mints in the handoff dir and the local copy dies
    after the push (exclusive handoff), and cached snapshots are never pushed.
    No locking or freshness check makes a shared family safe; the invalidation
@@ -132,3 +159,12 @@ actually serve a turn:
 The TURN path deliberately keeps looser gating (`providerConfigured`): a turn
 on a suspect provider should run and surface its REAL typed card (network /
 reconnect), and a clean turn is what heals a stale failure mark.
+
+On a managed engine pod, an authoritative central serve miss (the gateway's
+marked not-connected response or a dead-credential response) also self-heals
+from a full refresh-bearing credential still owned by that same pod runtime.
+The host single-flights and cools down recovery per provider, reuses the normal
+export → gateway PUT → runtime scrub transaction, then re-reads and serves the
+gateway-verified access token in the same request. A successful scrub leaves
+the pod access-only and restores the gateway as the credential family's single
+refresh-token rotator; transport failures never trigger an upload.

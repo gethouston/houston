@@ -13,6 +13,7 @@ import type {
   HoustonEvent,
   NewActivity,
 } from "@houston/protocol";
+import { activityUpdateSchema } from "@houston/protocol";
 import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 
@@ -78,7 +79,12 @@ export async function handleActivitiesData(
   }
 
   if (method === "PATCH" && itemId) {
-    const update = await readJson(req);
+    const parsed = activityUpdateSchema.safeParse(await readJson(req));
+    if (!parsed.success) {
+      json(res, 400, { error: "invalid activity update" });
+      return;
+    }
+    const update = parsed.data;
     const next = await locked(async () => {
       const { items } = await loadActivities(store, root);
       const current = items.find((a) => a.id === itemId);

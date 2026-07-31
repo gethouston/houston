@@ -55,8 +55,9 @@ export interface ActivityUpdate {
   routine_id?: string;
   routine_run_id?: string;
   skill_slug?: string;
-  provider?: string;
-  model?: string;
+  /** The mission's model pin; `null` DELETES the key (see `applyActivityPatch`). */
+  provider?: string | null;
+  model?: string | null;
   /**
    * The mission's persisted pending interaction.
    *  - a VALID interaction object REPLACES the stored one (per-step dismissal

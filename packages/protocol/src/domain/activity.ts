@@ -2,6 +2,7 @@
 // .houston schemas (ui/agent-schemas) — files-first: the wire mirrors disk.
 // `claude_session_id` is a legacy field name baked into user data; it stays.
 
+import { z } from "zod";
 import type { PendingInteraction } from "./interaction";
 
 /** A human who started or collaborated on a mission. Server-stamped from the
@@ -66,6 +67,24 @@ export interface Activity {
   mentioned?: ActivityMention[];
 }
 
+export const activityUpdateSchema = z
+  .object({
+    title: z.string().optional(),
+    description: z.string().optional(),
+    status: z.string().optional(),
+    claude_session_id: z.string().nullable().optional(),
+    session_key: z.string().optional(),
+    agent: z.string().optional(),
+    worktree_path: z.string().nullable().optional(),
+    routine_id: z.string().optional(),
+    routine_run_id: z.string().optional(),
+    skill_slug: z.string().optional(),
+    provider: z.string().nullable().optional(),
+    model: z.string().nullable().optional(),
+    pending_interaction: z.custom<PendingInteraction>().nullable().optional(),
+  })
+  .strict();
+
 export interface ActivityUpdate {
   title?: string;
   description?: string;
@@ -77,8 +96,8 @@ export interface ActivityUpdate {
   routine_id?: string;
   routine_run_id?: string;
   skill_slug?: string;
-  provider?: string;
-  model?: string;
+  provider?: string | null;
+  model?: string | null;
   /** Set to record a new pending interaction; `null` clears it explicitly. */
   pending_interaction?: PendingInteraction | null;
 }

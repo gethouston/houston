@@ -9,24 +9,20 @@ import { claudeCredentialsFile } from "./paths";
  * Materialize a pushed Claude subscription OAuth credential as the CLI's own
  * `<CLAUDE_CONFIG_DIR>/.credentials.json` — the exact file the Claude Agent SDK
  * and `claude auth status` read on Linux (the hosted pod). Written verbatim in
- * the CLI envelope (`{claudeAiOauth:{…}}`) so the SDK can self-refresh from the
- * refresh token in place.
+ * the CLI envelope (`{claudeAiOauth:{…}}`). On desktop/self-host the full
+ * credential lets the SDK self-refresh in place. A managed serve-mode pod must
+ * receive an access-only value: the gateway is the refresh family's single
+ * rotator, and materializing its refresh token here would violate trap #4 in
+ * knowledge-base/anthropic-credentials.md.
  *
- * Role after the connect-once serve landed: the file is the pod's IMMEDIATE
- * connected signal at push time and the FALLBACK credential when no served
- * token is available (control plane briefly unreachable, or it can't refresh
- * anthropic yet). Steady-state on a managed pod, the per-turn served access
- * token rides `CLAUDE_CODE_OAUTH_TOKEN` and OUTRANKS this file inside the SDK
- * (see backends/claude/read-token.ts and knowledge-base/
- * anthropic-credentials.md) — which is exactly why the host must never serve
- * a stale anthropic token (routes/credential.ts guards it).
+ * On a managed pod the file is only an immediate, access-only connected signal
+ * at push time. Steady-state, the per-turn served access token rides
+ * `CLAUDE_CODE_OAUTH_TOKEN` and outranks this file inside the SDK (see
+ * backends/claude/read-token.ts). The file cannot be a refresh fallback because
+ * the gateway remains the family's only sanctioned rotator.
  *
  * Atomic (tmp + rename) at mode 0600 so a concurrent reader never sees a
- * half-written file and the token is owner-only on disk. The refresh token in
- * this file stays on the single-tenant, network-policied pod — a documented,
- * EXPLICITLY scoped departure from Gate #2 (see cloud/INTEGRATION.md); it is
- * never written into the multi-tenant per-turn Cloud Run process, which keeps
- * Anthropic off there.
+ * half-written file and the token is owner-only on disk.
  */
 export function writeClaudeOAuthCredentialFile(
   configDir: string,
