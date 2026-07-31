@@ -370,7 +370,10 @@ export function classifyAnalyticsError(message: string): string {
   if (
     lower.includes("network") ||
     lower.includes("fetch") ||
-    lower.includes("timeout")
+    lower.includes("timeout") ||
+    // WebKit's transport-failure message (HOU-1085) names neither "network"
+    // nor "fetch" — without this line an offline burst classifies as unknown.
+    lower.includes("load failed")
   )
     return "network";
   if (lower.includes("permission") || lower.includes("denied"))

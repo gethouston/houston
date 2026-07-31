@@ -27,4 +27,26 @@ describe("errorToast locale shape", () => {
       ok(!/engine error|fetch|http|\{/i.test(text));
     });
   }
+
+  // HOU-1085: the connectivity toast body has the same failure mode — a
+  // missing key would render `shell:errorToast.offlineDescription` verbatim to
+  // every offline user.
+  for (const locale of LOCALES) {
+    it(`${locale} has a usable errorToast offline pair`, () => {
+      const shell = JSON.parse(
+        readFileSync(
+          join(import.meta.dirname, `../src/locales/${locale}/shell.json`),
+          "utf8",
+        ),
+      ) as { errorToast?: Record<string, unknown> };
+      for (const key of ["offlineTitle", "offlineDescription"]) {
+        const value = shell.errorToast?.[key];
+        strictEqual(typeof value, "string");
+        const text = value as string;
+        ok(text.length > 0, "must not be empty");
+        ok(!text.includes("—"), "no em dashes in user-facing copy");
+        ok(!/engine error|fetch|http|\{/i.test(text));
+      }
+    });
+  }
 });

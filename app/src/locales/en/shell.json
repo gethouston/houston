@@ -63,7 +63,9 @@
     "genericDescription": "Something unexpected went wrong. Please try again.",
     "reportSentTitle": "Houston, report sent",
     "reportSentDescription": "Reference #{{id}}.",
-    "copyId": "Copy code"
+    "copyId": "Copy code",
+    "offlineTitle": "Houston, connection lost",
+    "offlineDescription": "We can't reach Houston right now. Check your internet connection and try again."
   },
   "agentDelete": {
     "title": "Delete agent?",

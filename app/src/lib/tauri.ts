@@ -51,6 +51,7 @@ import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
+import { isNetworkTransportError } from "./network-transport-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import { isNeedsUpgradeError, isPersonalSpaceError } from "./team-status-model";
@@ -203,6 +204,19 @@ async function surfaceError(
     options,
   );
   if (!shouldToast && !shouldCapture) return;
+
+  // Expected environment state, not a bug: a transport-level network failure
+  // (device offline / host unreachable — HOU-1085). A sleep-wake or network
+  // drop fails EVERY live gateway query at once with WebKit's "Load failed";
+  // that burst must read as one connectivity notice, not a storm of red bug
+  // toasts and a pile of un-actionable Sentry issues. The toast dedupes on its
+  // constant body; no Sentry capture — nothing in Houston broke, and the raw
+  // diagnostic is already in the log tail above.
+  if (isNetworkTransportError(err)) {
+    const { showConnectivityErrorToast } = await import("./error-toast");
+    showConnectivityErrorToast(label, message);
+    return;
+  }
 
   const [{ showErrorToast }, { reportError }] = await Promise.all([
     import("./error-toast"),

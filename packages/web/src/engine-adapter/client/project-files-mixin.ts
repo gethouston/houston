@@ -1,5 +1,4 @@
 import type { ProjectFile } from "../../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "../client/errors";
 import * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";
 
@@ -26,6 +25,9 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     // In cloud mode the workspace is a GCS prefix served by the control plane at
     // /agents/:id/files*. agentPath IS the agentId here (folderPath = agent.id).
     // In synthetic/local web mode there is no real workspace, so these are inert.
+    // Routed through cpFetch so reads ride the same transient-retry path as
+    // every other control-plane call (HOU-1085: a bare gatewayAuthFetch here
+    // gave files listings zero retries through a brief network blip).
     private async cpFilesFetch(
       agentId: string,
       path: string,
@@ -33,23 +35,11 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<Response> {
       if (!this.ctx.cp)
         throw new Error("cpFilesFetch called without a control-plane config");
-      const cp = this.ctx.cp;
-      const res = await controlPlane.gatewayAuthFetch(
-        cp.token,
-        () => cp.activeOrgSlug,
-      )(`${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`, {
-        ...init,
-        headers: {
-          "Content-Type": "application/json",
-          ...init?.headers,
-        },
-      });
-      if (!res.ok)
-        throw new HoustonEngineError(
-          res.status,
-          await res.json().catch(() => ({})),
-        );
-      return res;
+      return controlPlane.cpFetch(
+        this.ctx.cp,
+        `/agents/${encodeURIComponent(agentId)}/${path}`,
+        init,
+      );
     }
     async listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
       if (!this.ctx.cp) return [];
