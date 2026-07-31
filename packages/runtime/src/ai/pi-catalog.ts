@@ -8,6 +8,7 @@ import {
   getProviders,
 } from "@earendil-works/pi-ai/compat";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
+import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
 /**
  * pi-ai is the model-catalog source of truth. These predicates read its LIVE
@@ -34,9 +35,14 @@ function piBuiltinProviders(): readonly Provider[] {
   return cachedBuiltins;
 }
 
-/** Every provider id pi-ai knows (its full, drifting catalog). */
+/**
+ * Every provider id pi-ai knows (its full, drifting catalog) — plus Houston's
+ * own `qwen` extension provider (see ./qwen-dashscope), which every read
+ * below must treat exactly like a pi builtin so it is connectable, listable,
+ * and resolvable.
+ */
 export function piProviderIds(): string[] {
-  return getProviders() as string[];
+  return [...(getProviders() as string[]), QWEN_PROVIDER_ID];
 }
 
 /** Whether pi-ai knows this provider id at all. */
@@ -62,6 +68,7 @@ export function isPiOAuthProvider(id: string): boolean {
  * open gateways) or isn't a pi builtin. Never throws — a bad id is `[]`.
  */
 export function piModelIds(id: string): string[] {
+  if (id === QWEN_PROVIDER_ID) return qwenModels().map((m) => m.id);
   try {
     return getModels(id as BuiltinProvider).map((m: Model<Api>) => m.id);
   } catch {

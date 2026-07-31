@@ -19,6 +19,7 @@ import type {
   ProviderCatalog,
 } from "@houston/protocol";
 import { piOAuthProviders } from "./pi-oauth";
+import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
 /**
  * Builds the `GET /v1/catalog` body from pi-ai's static, in-process model
@@ -156,5 +157,10 @@ export function buildProviderCatalog(): ProviderCatalog {
       ),
     );
   }
+  // Houston's qwen extension provider (DashScope international pay-as-you-go)
+  // — not a pi builtin, so it is appended explicitly (see ./qwen-dashscope).
+  catalog.push(
+    piProviderToCatalog(QWEN_PROVIDER_ID, qwenModels(), false, "Qwen"),
+  );
   return catalog;
 }

@@ -14,6 +14,7 @@ import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { registerCustomProviderIfConfigured } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
+import { ensureQwenRuntimeProvider } from "../ai/qwen-dashscope";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
 import { createPiBackend } from "../backends/pi/backend";
@@ -154,6 +155,9 @@ export async function runPiTurn(
       modelsPath: join(dataDir, "models.json"),
     });
     registerCustomProviderIfConfigured(modelRuntime, dataDir);
+    // The qwen (DashScope) extension provider needs the same per-turn
+    // registration the long-lived runtime gets at boot (auth/storage.ts).
+    ensureQwenRuntimeProvider(modelRuntime);
 
     const toolSelection = buildToolSelection({
       codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",

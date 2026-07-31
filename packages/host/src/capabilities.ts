@@ -3,6 +3,7 @@
 // instantiated registry we don't otherwise carry here).
 import { getProviders } from "@earendil-works/pi-ai/compat";
 import type { Capabilities } from "@houston/protocol";
+import { QWEN_PROVIDER_ID } from "./providers/qwen-dashscope";
 
 /**
  * The two deployment capability profiles, in ONE place so the host, the local
@@ -35,7 +36,12 @@ import type { Capabilities } from "@houston/protocol";
  * concept, not a pi-ai provider, and rides the separate `openaiCompatible` flag
  * because it carries a base URL + model, not a credential.
  */
-const HOSTED_PROVIDERS: readonly string[] = [...getProviders()].sort();
+const HOSTED_PROVIDERS: readonly string[] = [
+  ...getProviders(),
+  // Houston's qwen extension provider (providers/qwen-dashscope) — served by
+  // the same catalog route, so the hint must name it too.
+  QWEN_PROVIDER_ID,
+].sort();
 
 /** What a desktop deployment can do — the Tauri shell handles OS-native bits. */
 export const LOCAL_CAPABILITIES: Capabilities = {
