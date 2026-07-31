@@ -39,3 +39,23 @@ export class HoustonEngineError extends Error {
 export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
   return e instanceof HoustonEngineError;
 }
+
+/**
+ * The synthetic body `gatewayAuthFetch` answers with when a hosted call is
+ * attempted with no session at all (signed out, or mid account-switch). No
+ * network request is made for these.
+ */
+export const SIGNED_OUT_ERROR = "signed_out";
+
+/**
+ * True for the adapter's synthetic signed-out 401. Signed-out is an EXPECTED
+ * lifecycle state — the sign-in screen is the surface — so callers use this to
+ * skip the error-toast/report path a real failure would take.
+ */
+export function isSignedOutEngineError(e: unknown): boolean {
+  return (
+    isHoustonEngineError(e) &&
+    e.status === 401 &&
+    (e.body as { error?: unknown } | null)?.error === SIGNED_OUT_ERROR
+  );
+}

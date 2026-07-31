@@ -17,7 +17,12 @@
  * TypeError instead of resolving to `[]`.
  */
 export type { HoustonClientOptions } from "./client/context";
-export { HoustonEngineError, isHoustonEngineError } from "./client/errors";
+export {
+  HoustonEngineError,
+  isHoustonEngineError,
+  isSignedOutEngineError,
+  SIGNED_OUT_ERROR,
+} from "./client/errors";
 export { isProviderLoginComplete } from "./client/provider-login-poll";
 
 import { ActivitiesMixin } from "./client/activities-mixin";

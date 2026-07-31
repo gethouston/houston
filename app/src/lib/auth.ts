@@ -64,6 +64,19 @@ function cacheSession(session: Session | null): void {
   queryClient.setQueryData<Session | null>(SESSION_QUERY_KEY, session);
 }
 
+/**
+ * Session mirror for shells that own their own auth listener (web `CloudApp`
+ * and its `onIdTokenChanged` stream): routes an externally-observed session
+ * change through the same identity-change guard as the in-app flows, so an
+ * account switch on those shells drops the outgoing account's query cache and
+ * stores exactly like the desktop path does (HOU-903). Writing the session
+ * query directly would skip that guard and leak the previous account's world
+ * into the next sign-in.
+ */
+export function applyExternalSession(session: Session | null): void {
+  cacheSession(session);
+}
+
 // Public re-exports: the post-hand-off error bus (auth-error-bus.ts) and the
 // loopback-cancel seam (desktop-oauth.ts) the sign-in screen calls on unmount —
 // benign on web and when nothing is pending.

@@ -1,4 +1,4 @@
-import { HoustonEngineError } from "../client/errors";
+import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
 import { refreshLiveToken } from "../session-refresh";
 import { appVersionHeader, noteUpgradeRequired } from "../update-floor";
 
@@ -44,6 +44,25 @@ export function liveToken(fallback: string): string {
   return fallback;
 }
 
+/** True in hosted control-plane mode (the cloud web app and the desktop cloud
+ *  profile both set the flag). Local hosts never set it, so the signed-out
+ *  short-circuit below cannot affect them. */
+const inControlPlaneMode = (): boolean =>
+  typeof window !== "undefined" &&
+  (window as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ === true;
+
+/** The local answer for a hosted call attempted with no session: the same 401
+ *  shape a gateway rejection produces, minted WITHOUT a network round trip.
+ *  Signed-out is an expected lifecycle state (the sign-in screen is already the
+ *  surface), so hammering the gateway with unauthenticated requests would only
+ *  produce console/toast noise — and the error-toast layer recognizes this body
+ *  and stays quiet (HOU-1014). */
+const signedOutResponse = () =>
+  new Response(JSON.stringify({ error: SIGNED_OUT_ERROR }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
+
 /**
  * A `fetch` for gateway calls that keeps auth invisible across cloud restarts
  * (HOU-687): the bearer is read LIVE per attempt (never a pinned copy), and a
@@ -51,6 +70,11 @@ export function liveToken(fallback: string): string {
  * token. A 401 that survives the refresh is returned as-is — a real sign-out
  * must surface, not spin. With no refresher installed (static tokens, tests)
  * the refresh resolves null and this degrades to a plain live-token fetch.
+ *
+ * With NO bearer at all in hosted mode the request is not sent: the refresher
+ * is asked once (bridging the boot race where queries fire before the restored
+ * session's token is mirrored), and when it confirms there is no session the
+ * call resolves to a synthetic signed-out 401 locally.
  */
 export function gatewayAuthFetch(
   fallbackToken: string,
@@ -74,10 +98,16 @@ export function gatewayAuthFetch(
       if (appVersion) headers.set("X-Houston-App-Version", appVersion);
       return fetch(input, { ...init, headers });
     };
+    const bearer = liveToken(fallbackToken);
+    if (!bearer && inControlPlaneMode()) {
+      const fresh = await refreshLiveToken();
+      if (!fresh) return signedOutResponse();
+      return noteUpgradeRequired(await send(fresh));
+    }
     // Every returned response passes noteUpgradeRequired: a gateway that
     // enforces the version floor answers ANY request with 426, and the desktop
     // shell must learn about it from whichever call happens to hit it first.
-    const res = await send(liveToken(fallbackToken));
+    const res = await send(bearer);
     if (res.status !== 401) return noteUpgradeRequired(res);
     const fresh = await refreshLiveToken();
     if (!fresh) return res;

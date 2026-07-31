@@ -137,7 +137,6 @@ test("report_bug refreshes and replays once on a 401", async () => {
 test("report_bug with no token yet still reaches the gateway after a refresh", async () => {
   setCloudWindow({ token: "", refresh: async () => "minted" });
   const calls = stubFetch(
-    json(401, { error: "unauthorized" }),
     json(200, {
       id: "HOU-3",
     }),
@@ -146,9 +145,10 @@ test("report_bug with no token yet still reaches the gateway after a refresh", a
   const id = await invoke<string | null>("report_bug", { payload: {} });
 
   expect(id).toBe("HOU-3");
-  // No bearer to send on the first attempt, so no Authorization header at all;
-  // the refresh mints one and the replay carries it.
-  expect(calls.map((c) => bearer(c.init))).toEqual([null, "Bearer minted"]);
+  // No bearer yet → the transport asks the refresher BEFORE sending, so no
+  // unauthenticated request goes out at all and the single attempt already
+  // carries the minted token (HOU-1014).
+  expect(calls.map((c) => bearer(c.init))).toEqual(["Bearer minted"]);
 });
 
 test("report_bug surfaces the gateway's reason when the refresh cannot save it", async () => {
