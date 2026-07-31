@@ -135,6 +135,33 @@
     "toolCount_one": "{{count}} ação",
     "toolCount_other": "{{count}} ações",
     "enterKey": "Inserir chave",
+    "add": {
+      "title": "Adicionar uma integração personalizada",
+      "chatTitle": "Configure com seu agente",
+      "chatDesc": "Conte ao seu agente o que você quer conectar e ele te guia passo a passo no chat.",
+      "manualTitle": "Adicionar manualmente",
+      "manualDesc": "Cole o endereço de uma API ou de um servidor MCP e preencha os dados você mesmo.",
+      "kindLabel": "Tipo de conexão",
+      "urlLabelApi": "URL da documentação da API",
+      "urlLabelMcp": "URL do servidor MCP",
+      "urlPlaceholderApi": "https://api.exemplo.com/openapi.json",
+      "urlPlaceholderMcp": "https://mcp.exemplo.com",
+      "check": "Verificar",
+      "detected": {
+        "api": "Reconhecemos um serviço de API.",
+        "mcp": "Reconhecemos um servidor MCP.",
+        "unknown": "Não conseguimos reconhecer este endereço. Confira a URL ou deixe o seu agente te ajudar no chat.",
+        "mcpOauth": "Este servidor faz login com a própria conta (OAuth) e o Houston ainda não consegue se conectar a ele. Uma chave de API não vai funcionar aqui."
+      },
+      "nameLabel": "Nome",
+      "namePlaceholder": "Como você quer chamá-la?",
+      "needsKey": "Precisa de uma chave de API",
+      "needsKeyDesc": "Ative isto se o serviço pede uma chave ou um token. Você vai inseri-la com segurança logo depois de adicionar.",
+      "back": "Voltar",
+      "submit": "Adicionar integração",
+      "submitting": "Adicionando...",
+      "addedToast": "{{name}} está pronto para usar"
+    },
     "details": {
       "url": "Endereço",
       "added": "Adicionada",

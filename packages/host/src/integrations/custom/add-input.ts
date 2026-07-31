@@ -4,7 +4,10 @@ import type {
   CustomSpecSource,
 } from "./types";
 
-/** What the agent's add tool passes (validated by the sandbox route). */
+/** What the agent's add tool passes (validated by the sandbox route).
+ *  `replace: true` turns a same-slug, same-kind add into an in-place spec
+ *  swap that keeps the stored credential — the agent's self-repair path when
+ *  a compiled integration turned out to cover fewer actions than the docs. */
 export type AddCustomIntegrationInput =
   | {
       kind: "openapi";
@@ -13,6 +16,7 @@ export type AddCustomIntegrationInput =
       baseUrl?: string;
       auth: CustomAuthMode;
       slug?: string;
+      replace?: boolean;
     }
   | {
       kind: "mcp";
@@ -21,6 +25,7 @@ export type AddCustomIntegrationInput =
       headers?: Record<string, string>;
       auth: CustomAuthMode;
       slug?: string;
+      replace?: boolean;
     };
 
 /** The persisted definition a validated add input becomes. */

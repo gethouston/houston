@@ -78,16 +78,43 @@ export class CustomIntegrationManager {
       );
     }
     const defs = await this.store.list();
-    if (defs.some((d) => d.slug === slug)) {
+    const existing = defs.find((d) => d.slug === slug);
+    if (existing && !input.replace) {
       throw new CustomIntegrationError(
         "duplicate_slug",
         `a custom integration named '${slug}' already exists`,
       );
     }
-    const def = defFromAddInput(input, slug);
+    if (existing && existing.kind !== input.kind) {
+      throw new CustomIntegrationError(
+        "duplicate_slug",
+        `'${slug}' already exists as a different kind; remove it first`,
+      );
+    }
+    let def = defFromAddInput(input, slug);
+    if (existing) {
+      // An in-place spec swap, not a new integration: the added date and the
+      // saved credential survive (secret ids are slug-scoped, so the stored
+      // key still resolves — the user never re-enters it for a spec fix).
+      def = {
+        ...def,
+        addedAtMs: existing.addedAtMs,
+        ...(def.auth === "credential" && existing.credential
+          ? { credential: existing.credential }
+          : {}),
+      };
+    }
     const { executor, states } = await this.host.ensure();
+    // The proven refresh sequence: tear down the compiled view, recompile —
+    // connection included (see CustomExecutorHost.refreshSpecs).
+    if (existing) await this.host.uncompileDef(executor, existing);
     const state = await this.host.compileDef(executor, def);
     if (state.status === "error") {
+      if (existing) {
+        // A failed replacement must not cost a working integration: put the
+        // previous definition's compiled view back before failing the call.
+        states.set(slug, await this.host.compileDef(executor, existing));
+      }
       // Never persist a definition that cannot compile — the add FAILED and
       // the agent gets the real reason to relay/fix (wrong URL, server down).
       throw new CustomIntegrationError("compile_failed", state.message);

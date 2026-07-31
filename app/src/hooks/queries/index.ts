@@ -23,9 +23,11 @@ export {
   useConversations,
 } from "./use-conversations";
 export {
+  useAddCustomIntegration,
   useAgentCustomIntegrations,
   useCustomIntegrationsFor,
   useCustomTransportAgentId,
+  useDetectCustomIntegration,
   useRemoveCustomIntegration,
   useSubmitCustomCredential,
 } from "./use-custom-integrations";

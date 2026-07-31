@@ -429,3 +429,128 @@ test("tools() on a pending credential-mode def resolves (no throw)", async () =>
   // contract is "an array, possibly empty", never an error.
   expect(Array.isArray(await manager.tools(added.slug))).toBe(true);
 });
+
+// A "grown" Vault spec: the same service, now covering a second operation —
+// what the agent authors after noticing the first spec missed endpoints.
+const AUTH_SPEC_V2 = JSON.stringify({
+  openapi: "3.0.0",
+  info: { title: "Vault", version: "1.1.0" },
+  servers: [{ url: "https://vault.example.com" }],
+  paths: {
+    "/secrets": {
+      get: {
+        operationId: "listSecrets",
+        security: [{ apiKeyAuth: [] }],
+        responses: { "200": { description: "ok" } },
+      },
+    },
+    "/secrets/{id}": {
+      get: {
+        operationId: "getSecret",
+        security: [{ apiKeyAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "ok" } },
+      },
+    },
+  },
+  components: {
+    securitySchemes: {
+      apiKeyAuth: { type: "apiKey", in: "header", name: "X-API-Key" },
+    },
+  },
+});
+
+test("add(replace:true) swaps the spec in place: more tools, credential kept, no re-entry (HOU-1083)", async () => {
+  const { manager, secrets, store } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC },
+    auth: "credential",
+  });
+  await manager.setCredential(added.slug, { token: "k" });
+  const originalAddedAt = (await store.list())[0]?.addedAtMs;
+
+  const replaced = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC_V2 },
+    auth: "credential",
+    replace: true,
+  });
+  expect(replaced.slug).toBe(added.slug);
+  // Active immediately — the stored credential carried over, no new pending.
+  expect(replaced.state).toEqual({ status: "active", toolCount: 2 });
+  expect(await secrets.get(`ci_${added.slug}_token`)).toBe("k");
+  const defsAfter = await store.list();
+  expect(defsAfter).toHaveLength(1);
+  expect(defsAfter[0]?.credential).toEqual({
+    template: expect.any(String),
+    secretIds: { token: `ci_${added.slug}_token` },
+  });
+  expect(defsAfter[0]?.addedAtMs).toBe(originalAddedAt);
+});
+
+test("add(replace:true) with a broken spec keeps the WORKING integration and fails the call", async () => {
+  const { manager, store, host } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Widgets",
+    spec: { kind: "blob", value: OPENAPI_SPEC },
+    auth: "none",
+  });
+  await expect(
+    manager.add({
+      kind: "openapi",
+      name: "Widgets",
+      spec: { kind: "blob", value: "not an openapi document" },
+      auth: "none",
+      replace: true,
+    }),
+  ).rejects.toMatchObject({ code: "compile_failed" });
+  // The previous definition is untouched and still compiled.
+  const defs = await store.list();
+  expect(defs).toHaveLength(1);
+  expect(
+    JSON.parse((defs[0] as { spec: { value: string } }).spec.value).info
+      .version,
+  ).toBe("1.0.0");
+  const { executor, states } = await host.ensure();
+  expect(states.get(added.slug)).toEqual({ status: "active", toolCount: 2 });
+  const tools = await executor.tools.list();
+  expect(tools.filter((t) => t.integration === added.slug)).toHaveLength(2);
+});
+
+test("add(replace:true) across kinds refuses; plain duplicate add still 409s", async () => {
+  const { manager } = setup();
+  await manager.add({
+    kind: "openapi",
+    name: "Widgets",
+    spec: { kind: "blob", value: OPENAPI_SPEC },
+    auth: "none",
+  });
+  await expect(
+    manager.add({
+      kind: "mcp",
+      name: "Widgets",
+      endpoint: "http://127.0.0.1:1/mcp",
+      auth: "none",
+      replace: true,
+    }),
+  ).rejects.toMatchObject({ code: "duplicate_slug" });
+  await expect(
+    manager.add({
+      kind: "openapi",
+      name: "Widgets",
+      spec: { kind: "blob", value: OPENAPI_SPEC },
+      auth: "none",
+    }),
+  ).rejects.toMatchObject({ code: "duplicate_slug" });
+});

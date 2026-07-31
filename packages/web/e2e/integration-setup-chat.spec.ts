@@ -4,12 +4,14 @@ import { expect, test } from "./support/fixtures";
 
 /**
  * The custom-integration setup chat is embedded INSIDE the Integrations page
- * (not a board mission): "Add custom integration" opens a guided setup chat
- * right there — no chooser dialog, and with the workspace's single seeded
- * agent no picker either — the agent speaks first (the Houston-sent kickoff
- * bubble never renders), the chat never appears as a board card, and the page
- * never navigates away. The load-bearing case is the COMPOSIO-ABSENT host (no
- * key, no gateway): the chat must work there too.
+ * (not a board mission): "Add custom integration" opens the fork, and its lead
+ * path ("Set up with your agent") opens a guided setup chat right there — with
+ * the workspace's single seeded agent, no picker in between. The agent speaks
+ * first (the Houston-sent kickoff bubble never renders), the chat never
+ * appears as a board card, and the page never navigates away. The load-bearing
+ * case is the COMPOSIO-ABSENT host (no key, no gateway): the chat must work
+ * there too. The fork's OTHER path (the manual form) is covered in
+ * custom-integrations.spec.ts.
  */
 
 async function armCapabilities(
@@ -58,9 +60,11 @@ async function openCustomIntegrations(
 }
 
 async function startSetupChat(page: Page): Promise<void> {
-  // Straight to the chat: no fork dialog, and the single seeded agent means
-  // no agent picker either — the click itself starts the setup mission.
+  // The add fork: the guided chat leads, "Add manually" is its sibling
+  // (covered in custom-integrations.spec.ts). With the single seeded agent
+  // there is no picker after it — the choice starts the setup mission.
   await page.getByRole("button", { name: "Add custom integration" }).click();
+  await page.getByRole("button", { name: /Set up with your agent/ }).click();
 }
 
 test("composio-absent: Add custom integration opens the embedded chat, agent speaks first, no view switch", async ({
@@ -89,7 +93,7 @@ test("composio-absent: Add custom integration opens the embedded chat, agent spe
   ).toBeVisible();
 });
 
-test("a multi-agent workspace interposes ONLY the agent picker before the chat", async ({
+test("a multi-agent workspace interposes the agent picker after the chat choice", async ({
   page,
   request,
 }) => {
@@ -101,6 +105,7 @@ test("a multi-agent workspace interposes ONLY the agent picker before the chat",
   await openCustomIntegrations(page, "absent");
 
   await page.getByRole("button", { name: "Add custom integration" }).click();
+  await page.getByRole("button", { name: /Set up with your agent/ }).click();
   await expect(page.getByText("Which agent should run this?")).toBeVisible();
   await page
     .getByRole("dialog")

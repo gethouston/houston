@@ -21,9 +21,9 @@
   "dependencies": {
     "@earendil-works/pi-ai": "0.82.1",
     "@earendil-works/pi-coding-agent": "0.82.1",
-    "@executor-js/plugin-mcp": "1.5.32",
-    "@executor-js/plugin-openapi": "1.5.32",
-    "@executor-js/sdk": "1.5.32",
+    "@executor-js/plugin-mcp": "1.5.37",
+    "@executor-js/plugin-openapi": "1.5.37",
+    "@executor-js/sdk": "1.5.37",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",

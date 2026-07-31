@@ -7,10 +7,9 @@ import {
   useCustomTransportAgentId,
 } from "../../hooks/queries";
 import type { Agent } from "../../lib/types";
-import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { AgentPickerDialog } from "../agent-picker-dialog";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
+import { CustomAddFlow } from "./custom-add-flow";
 import { CustomEmptyState, CustomLoadErrorState } from "./custom-empty-state";
 import {
   CustomIntegrationDialogs,
@@ -32,19 +31,14 @@ import { useIntegrationChatSetup } from "./use-integration-chat-setup";
  * before the list resolves; otherwise always visible so the empty state can
  * invite creation.
  *
- * "Add custom integration" goes STRAIGHT to the guided setup chat (opened in
- * the shell-level RIGHT panel, the same panel the routine chat and the mission
- * board use, so this page stays visible) — the old choice dialog and its
- * manual typed form were cut. With an `agent` (the per-agent tab) the chat
- * starts with THAT agent; without one it starts with the workspace's only
- * agent, and only a multi-agent workspace asks which agent runs the interview
- * ({@link AgentPickerDialog}). Reads/writes ride the per-agent routes
- * (HOU-823) whenever a transport agent exists, so the surface keeps working
- * behind the hosted gateway (which proxies no top-level custom route). A
- * row's body opens the detail card (metadata, tool list, key + remove); the
- * trailing
- * actions stay one-click. All mutations route through `call()`, so failures
- * toast once and carry no local `onError`.
+ * "Add custom integration" opens the {@link CustomAddFlow} fork: the guided
+ * setup chat (the lead path, rendered in the shell-level RIGHT panel so this
+ * page stays visible) or the manual typed form. Every read/write rides the
+ * per-agent routes (HOU-823) whenever a transport agent exists, so the surface
+ * keeps working behind the hosted gateway, which proxies no top-level custom
+ * route. A row's body opens the detail card (metadata, key + remove); the
+ * trailing actions stay one-click. All mutations route through `call()`, so
+ * failures toast once and carry no local `onError`.
  */
 export function CustomIntegrationsSection({
   variant = "section",
@@ -62,7 +56,6 @@ export function CustomIntegrationsSection({
   const { t } = useTranslation("integrations");
   const transportAgentId = useCustomTransportAgentId(agent?.id);
   const list = useCustomIntegrationsFor(transportAgentId);
-  const agents = useAgentStore((s) => s.agents);
   const viewMode = useUIStore((s) => s.viewMode);
   const surfaceActive = agent
     ? (tabActive ?? false)
@@ -70,17 +63,9 @@ export function CustomIntegrationsSection({
   const chatSetup = useIntegrationChatSetup();
   const selection = useCustomSelection();
 
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
-
-  // Straight to the setup chat — no fork dialog. The ambient agent (per-agent
-  // tab) or a single-agent workspace resolves the target immediately; only a
-  // multi-agent workspace on the global page needs the picker.
-  const startAdd = () => {
-    const target = agent ?? (agents.length === 1 ? agents[0] : undefined);
-    if (target) void chatSetup.start(target);
-    else setPickerOpen(true);
-  };
+  const openAdd = () => setAddOpen(true);
 
   // A FAILED read renders loudly (error + retry): a transient 500 must never
   // be indistinguishable from a host without the feature — that one resolves
@@ -117,7 +102,7 @@ export function CustomIntegrationsSection({
       variant="outline"
       className="shrink-0 gap-1.5"
       disabled={chatSetup.pending}
-      onClick={startAdd}
+      onClick={openAdd}
     >
       <Plus className="size-4" />
       {t("custom.addButton")}
@@ -168,7 +153,7 @@ export function CustomIntegrationsSection({
 
       {items.length === 0 ? (
         tabEmptyState ? (
-          <CustomEmptyState onAdd={startAdd} pending={chatSetup.pending} />
+          <CustomEmptyState onAdd={openAdd} pending={chatSetup.pending} />
         ) : (
           variant === "section" && (
             <p className="text-sm text-ink-muted">{t("custom.empty")}</p>
@@ -196,14 +181,13 @@ export function CustomIntegrationsSection({
         rowsGrid
       )}
 
-      <AgentPickerDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        agents={agents}
-        onPick={(target) => {
-          setPickerOpen(false);
-          void chatSetup.start(target);
-        }}
+      <CustomAddFlow
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        agent={agent}
+        transportAgentId={transportAgentId}
+        onStartChat={(target) => void chatSetup.start(target)}
+        onNeedsKey={(slug) => selection.openKey(slug)}
       />
 
       <CustomIntegrationDialogs
