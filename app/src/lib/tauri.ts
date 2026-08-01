@@ -57,6 +57,7 @@ import { isNetworkTransportError } from "./network-transport-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import { isNeedsUpgradeError, isPersonalSpaceError } from "./team-status-model";
+import { isToolkitOauthUnavailableError } from "./toolkit-oauth-unavailable";
 import type {
   Agent,
   CommunitySkillResult,
@@ -1838,10 +1839,15 @@ export const tauriIntegrations = {
     ),
   /** Begin an app connection. `agent` (the agent slug) scopes the connect to a
    *  per-agent surface so the gateway applies the agent's allowlist + auto-grant
-   *  (Teams v2); omit it for the account-level Integrations page. */
+   *  (Teams v2); omit it for the account-level Integrations page. An
+   *  OAuth-unavailable refusal (a Houston-side setup gap, HOU-1110) is expected
+   *  + explainable: the connect flow surfaces its own copy, so no raw toast. */
   connect: (provider: string, toolkit: string, agent?: string) =>
-    call("integration_connect", () =>
-      getEngine().connectIntegration(provider, toolkit, agent),
+    call(
+      "integration_connect",
+      () => getEngine().connectIntegration(provider, toolkit, agent),
+      { provider, toolkit },
+      { silence: isToolkitOauthUnavailableError },
     ),
   connection: (provider: string, connectionId: string) =>
     call("integration_connection", () =>

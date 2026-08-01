@@ -28,6 +28,8 @@
     "connected": "{{app}} está conectada",
     "timeoutTitle": "Seguimos esperando {{app}}",
     "timeout": "Dejamos de revisar por ahora. Cuando termines de iniciar sesión, conecta {{app}} de nuevo.",
+    "unavailableTitle": "Aún no se puede conectar {{app}}",
+    "unavailable": "El equipo de Houston todavía necesita terminar de configurar esta app. Vuelve a intentarlo pronto.",
     "failedTitle": "No se pudo conectar {{app}}",
     "failed": "Algo salió mal al iniciar sesión. Inténtalo de nuevo."
   },

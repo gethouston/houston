@@ -99,8 +99,20 @@ interface RawToolkitDetail {
  *  connect page, so only those are connectable fallbacks. */
 const OAUTH_MODES = new Set(["OAUTH1", "OAUTH1A", "OAUTH2"]);
 
+/** OAuth-only + unmanaged is a KNOWN deployment gap, not a server fault: typed
+ *  as a 400 the route relays verbatim, so the frontend can key friendly copy on
+ *  the code (HOU-1110: highlevel surfaced this as a raw 500 with the operator
+ *  remedy shown to an end user). The `.message` keeps the remedy for logs and
+ *  self-host operators; `body.error` is the fallback a generic surface shows. */
+export const TOOLKIT_OAUTH_UNAVAILABLE = "toolkit_oauth_unavailable";
+
 function oauthOnlyError(toolkit: string): Error {
-  return new Error(
+  return new IntegrationUpstreamError(
+    400,
+    {
+      error: `connecting ${toolkit} is not available yet: it needs an OAuth app registered in the Composio dashboard`,
+      code: TOOLKIT_OAUTH_UNAVAILABLE,
+    },
     `composio: toolkit '${toolkit}' only offers OAuth and Composio has no managed app for it — register a developer OAuth app for it in the Composio dashboard, then connecting will reuse that auth config`,
   );
 }

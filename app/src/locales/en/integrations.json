@@ -28,6 +28,8 @@
     "connected": "{{app}} is connected",
     "timeoutTitle": "Still waiting for {{app}}",
     "timeout": "We stopped checking for now. When you finish signing in, connect {{app}} again.",
+    "unavailableTitle": "{{app}} can't be connected yet",
+    "unavailable": "The Houston team still needs to finish setting up this app. Please check back soon.",
     "failedTitle": "{{app}} could not be connected",
     "failed": "Something went wrong while signing in. Please try connecting it again."
   },
