@@ -6,9 +6,9 @@ import type {
 /**
  * How N held sends become ONE (see send-queue.ts): the per-field merge rules for
  * a flush. Every field of the combined request comes from the LAST entry (the
- * most recent picker state) EXCEPT the three derived here, which must reflect
- * ALL the merged entries — the combined send says everything the user typed, so
- * it must also carry everything that text implied.
+ * most recent picker state) EXCEPT the ones derived here, which must reflect ALL
+ * the merged entries — the combined send says everything the user typed, so it
+ * must also carry everything that text implied.
  */
 
 /** The fields a flush derives from the whole queue rather than its last entry. */

@@ -11,6 +11,10 @@ import { buildClaudeEnv } from "./claude-env";
 import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 import { toSdkModel } from "./model";
 import { claudeLoginConfigDir } from "./paths";
+import {
+  anthropicCredentialStorageDir,
+  assertAnthropicScopeCredential,
+} from "./scope-guard";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
@@ -66,6 +70,19 @@ export class ClaudeBackendUnavailableError extends Error {
  * subprocess environment, so `buildClaudeEnv` builds it from an ALLOWLIST — the
  * few operational vars the SDK needs plus the config dir and the one connected
  * credential — never spreading `process.env` (see `./claude-env`).
+ *
+ * That shared dir is why a PERSONAL scope with no personal token is REFUSED
+ * before the SDK is touched (`assertAnthropicScopeCredential`): on a managed pod
+ * the dir holds the TEAM's credential, so a member's turn would authenticate as
+ * the team and the SDK would self-refresh the team's refresh-token family in
+ * place — a second rotator beside the gateway, and one member's account paying
+ * for another's turn (see `./scope-guard` and
+ * knowledge-base/anthropic-credentials.md traps #4 and #6). Team scope (desktop,
+ * self-host, every pre-HOU-976 request) and any scope that DOES carry a token are
+ * unaffected. A personal scope that DOES carry a token additionally gets its own
+ * credential-store dir (`anthropicCredentialStorageDir`), because that token is
+ * access-only and can expire MID-TURN — at which point the CLI's own 401 recovery
+ * would otherwise re-read that shared dir and finish the turn on the team account.
  */
 export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
   return {
@@ -74,6 +91,13 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
     // `anthropic`, so it must register under exactly that.
     id: "anthropic",
     async createSession(opts: CreateSessionOptions): Promise<HarnessSession> {
+      // Read the credential ONCE and decide before anything else: a personal
+      // scope with no personal token must never reach the SDK, whose config dir
+      // is the pod-shared (team) one. Refusing here also keeps the failure a
+      // typed reconnect card instead of a mid-turn surprise.
+      const token = deps.readToken();
+      assertAnthropicScopeCredential(token);
+
       let query: ClaudeQuery;
       let houstonMcp: ReturnType<typeof buildHoustonMcpServer>;
       try {
@@ -105,7 +129,14 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       const pathToClaudeCodeExecutable = resolveClaudeExecutable();
       const baseOptions: Options = {
         cwd: deps.workspaceDir,
-        env: buildClaudeEnv(claudeLoginConfigDir(), deps.readToken()),
+        env: buildClaudeEnv(
+          claudeLoginConfigDir(),
+          token,
+          // Personal scope: the CLI's credential store moves off the shared dir,
+          // so a mid-turn 401 cannot recover onto the team credential. Team
+          // scope: undefined, i.e. unchanged (see `./scope-guard`).
+          anthropicCredentialStorageDir(deps.dataDir),
+        ),
         ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
         settingSources: [],
         tools: policy.tools,

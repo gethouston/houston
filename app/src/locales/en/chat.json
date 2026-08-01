@@ -194,14 +194,14 @@
           "title": "No providers connected yet.",
           "hint": "Connect an AI model to start chatting."
         },
-        "teamCanConnect": {
-          "title": "This team space has no AI connection yet.",
-          "hint": "Connect an AI model for this team and everyone here can use it."
-        },
-        "teamAskAdmin": {
-          "title": "This team space has no AI connection yet.",
-          "hint": "Ask a team owner or admin to connect an AI model for this space."
+        "team": {
+          "title": "You have not connected an AI account yet.",
+          "hint": "Connect your own AI account and this team's agents will answer you."
         }
+      },
+      "account": {
+        "personal": "your account",
+        "team": "team account"
       },
       "hiddenByWorkspace_one": "{{count}} more model is turned off in your workspace",
       "hiddenByWorkspace_other": "{{count}} more models are turned off in your workspace"

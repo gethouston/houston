@@ -17,6 +17,15 @@
  * capability / price / context enrichment was dropped with the model detail
  * panel it used to feed.
  *
+ * PER-USER AI ACCOUNTS (HOU-976 §6): there is deliberately NO extra filtering
+ * here. `configured` / `auth_state` on a status row is already resolved for the
+ * ACTING identity by the pod that answered `GET /providers`, so "connected"
+ * means "connected for whoever is asking" and the existing connection filter IS
+ * the intersect. We do not model per-plan model entitlements client-side either:
+ * a personal plan that lacks a model must fail the turn honestly as
+ * `ModelUnavailable` rather than have the row quietly disappear. All this layer
+ * adds is the account LABEL on each row (`accountLabelOf`).
+ *
  * Ranking: with the sort menu gone, the pi catalog's raw order (often
  * oldest-first) would bury the flagships, so each provider's rows are re-ranked
  * CURATED-FIRST — the models with a `PROVIDER_OVERRIDES` entry lead, in their
@@ -26,7 +35,7 @@
 
 import type { ModelPickerModel, ModelPickerProvider } from "@houston-ai/core";
 import { encodeModelPickerId } from "./chat-model-picker-ids.ts";
-import { pickerModelRows } from "./model-picker.ts";
+import { pickerModelRows, withAccountLabel } from "./model-picker.ts";
 import {
   type ProviderConnectionStatus,
   providerConnectionState,
@@ -75,19 +84,24 @@ function providerModelRows(
   describe:
     | ((providerId: string, modelId: string, fallback: string) => string)
     | undefined,
+  accountLabelOf: ((providerId: string) => string | undefined) | undefined,
 ): ModelPickerModel[] {
   const rows = pickerModelRows(
     p.models,
     statuses[p.id]?.active_model,
     p.subtitle,
   );
+  // The account label is appended AFTER localization, so it qualifies the
+  // translated description rather than the catalog English it fell back to.
+  const accountLabel = accountLabelOf?.(p.id);
   return rankCuratedFirst(rows, curatedModelIds(p.id)).map((row) => ({
     id: encodeModelPickerId(p.id, row.id),
     providerId: p.id,
     name: row.label,
-    description: describe
-      ? describe(p.id, row.id, row.description)
-      : row.description,
+    description: withAccountLabel(
+      describe ? describe(p.id, row.id, row.description) : row.description,
+      accountLabel,
+    ),
   }));
 }
 
@@ -101,10 +115,24 @@ export function buildPickerModels(opts: {
   visibleProviders: readonly ProviderInfo[];
   statuses: Record<string, StatusModel | undefined>;
   describe?: (providerId: string, modelId: string, fallback: string) => string;
+  /**
+   * The already-translated name of the ACCOUNT a provider's models run on
+   * ("your account" / "team account", HOU-976 §6), or undefined for a provider
+   * whose deployment never said. Injected as data exactly like `describe`, so
+   * this module stays i18n-free.
+   */
+  accountLabelOf?: (providerId: string) => string | undefined;
 }): ModelPickerModel[] {
   const models: ModelPickerModel[] = [];
   for (const p of opts.visibleProviders) {
-    models.push(...providerModelRows(p, opts.statuses, opts.describe));
+    models.push(
+      ...providerModelRows(
+        p,
+        opts.statuses,
+        opts.describe,
+        opts.accountLabelOf,
+      ),
+    );
   }
   return models;
 }

@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { ExternalLink, Eye, EyeOff } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,6 +16,7 @@ import {
 } from "../../lib/api-key-connect-error";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
+import { ProviderApiKeyField } from "./provider-api-key-field";
 
 /**
  * The host's own reason for a rejected connect ("openrouter rejected this API
@@ -58,15 +59,16 @@ const REASON_COPY: Record<
 export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   const { t } = useTranslation("providers");
   const [key, setKey] = useState("");
-  const [show, setShow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset per-open state so a stale key / error / reveal never leaks across opens.
+  // Reset per-open state so a stale key or error never leaks across opens. The
+  // REVEAL toggle is not reset here and does not need to be: it lives inside
+  // `ProviderApiKeyField`, which unmounts with the dialog and so comes back
+  // hidden on its own.
   useEffect(() => {
     if (provider) {
       setKey("");
-      setShow(false);
       setError(null);
       setSubmitting(false);
     }
@@ -139,39 +141,15 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
             </Button>
           )}
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="provider-api-key"
-              className="text-[13px] font-medium"
-            >
-              {t("apiKey.label")}
-            </label>
-            <div className="relative">
-              <input
-                id="provider-api-key"
-                type={show ? "text" : "password"}
-                autoComplete="off"
-                autoFocus
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder={t("apiKey.placeholder")}
-                className="w-full rounded-md border bg-input px-3 py-2 pr-10 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
-                disabled={submitting}
-              />
-              <button
-                type="button"
-                onClick={() => setShow((v) => !v)}
-                aria-label={show ? t("apiKey.hide") : t("apiKey.show")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-focus rounded"
-              >
-                {show ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </button>
-            </div>
-          </div>
+          <ProviderApiKeyField
+            label={t("apiKey.label")}
+            placeholder={t("apiKey.placeholder")}
+            showLabel={t("apiKey.show")}
+            hideLabel={t("apiKey.hide")}
+            value={key}
+            disabled={submitting}
+            onChange={setKey}
+          />
 
           {error && (
             <p className="text-[12px] text-danger" role="alert">

@@ -121,6 +121,10 @@ test("buildPickerModels: the describe callback localizes a provider row's descri
   assert.equal(m.description, "t:m1:curated desc");
 });
 
+// The per-provider account label (HOU-976 §6) is covered in
+// `app/tests/picker-account-label.test.ts` — the GATED suite. Do not add cases
+// here: nothing runs `src/lib/*.test.mjs`.
+
 // ── curated-first ranking ─────────────────────────────────────────────────
 
 test("rankCuratedFirst: curated ids lead in curation order, rest keep input order", () => {

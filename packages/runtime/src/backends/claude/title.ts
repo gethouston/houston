@@ -24,6 +24,8 @@ export interface ClaudeTitleParams {
   titlePrompt: string;
   workspaceDir: string;
   readToken: () => ClaudeToken | undefined;
+  /** The runtime's data dir — see `ClaudeOneShotParams.dataDir`. */
+  dataDir?: string;
   /** pi model id to title with; mapped to the SDK model string. */
   modelId?: string;
   /** Injected for tests; production lazily imports the optional SDK. */
@@ -50,6 +52,7 @@ export async function titleWithClaude(p: ClaudeTitleParams): Promise<string> {
     systemPrompt: p.titlePrompt,
     workspaceDir: p.workspaceDir,
     readToken: p.readToken,
+    dataDir: p.dataDir,
     modelId: p.modelId,
     query: p.query,
   });

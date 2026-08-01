@@ -38,10 +38,10 @@ now removed.)
 
 | Variant                    | When it fires                                                                          | UI CTAs                                              |
 |----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------|
-| `RateLimited`              | Per-minute / short-window throttle. Wait helps.                                         | Retry, Switch model, optional `retry_after_seconds`. |
-| `QuotaExhausted`           | Long-window / billing-period limit. Wait won't help.                                    | Upgrade plan (`upgrade_url`), Switch provider.       |
+| `RateLimited`              | Per-minute / short-window throttle. Wait helps.                                         | Retry, Switch model, optional `retry_after_seconds`.  |
+| `QuotaExhausted`           | Long-window / billing-period limit. Wait won't help.                                    | Upgrade plan (`upgrade_url`), Switch provider.        |
 | `UsageLimitPaused`         | Plan-window limit hit (today: Anthropic claude-code's 5-hour subscription session limit). Fires from `rate_limit_event` `status:"rejected"` (structured `resetsAt` epoch), a `429` result whose body names a session/usage limit + reset, or the stderr "usage limit ... reset at" banner. Retrying now fails — wait for the reset. | Chat: `UsageLimitPausedCard` (title + "resets at {time}" from `resets_at`, plus Switch model — a different provider has its own limit). Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
-| `ModelUnavailable`         | The requested model isn't available to this account (preview, deprecated, regioned).    | Switch to `suggested_fallback`, Pick another model.  |
+| `ModelUnavailable`         | The requested model isn't available to this account (preview, deprecated, regioned).    | Switch to `suggested_fallback`, Pick another model. Names the PERSONAL account in the body when `credential.scope === "personal"` (see below). |
 | `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect (drives `tauriProvider.launchLogin`); the card then WAITS on the `ProviderLoginComplete` WS event (launchLogin resolves at CLI spawn, not completion) and flips to a green "Reconnected" state with a "Send my message" CTA (`providerError.unauthenticated.sendAgain`, only shown when there's a failed prompt to resend) or a disabled "Signed in" badge, or shows the failure and re-arms with "Reconnect". |
 | `NetworkUnreachable`       | Cannot reach the provider's API (DNS, connect refused, ECONNRESET).                     | Retry, Check status page.                            |
 | `ProviderInternal`         | 5xx from upstream, transient infra failure.                                             | Retry, Check status page.                            |
@@ -50,6 +50,42 @@ now removed.)
 | `SpawnFailed`              | CLI couldn't even spawn (binary missing, killed by OS).                                  | Report bug.                                          |
 | `Cancelled`                | User pressed Stop. Distinct so the UI shows nothing (no toast, no retry).                | none (rendered as `null`).                           |
 | `Unknown`                  | No classifier matched. Carries `raw_excerpt` (≤500 chars).                              | Report bug.                                          |
+
+### `credential` — WHOSE account failed (HOU-976)
+
+Every variant except `Cancelled` may carry one extra field:
+
+```ts
+credential?: { scope: "personal" | "team" }
+```
+
+It is **omitted entirely** unless the turn carried an acting identity, so it is
+absent on desktop, self-host, a personal space and every routine run — there is
+one credential there and nothing to disambiguate. Treat absence as "render exactly
+as before"; never default it.
+
+Populated in `packages/runtime/src/ai/provider-error.ts` from the per-identity
+serve record (`packages/runtime/src/auth/served-scope.ts`), which remembers what
+the gateway resolved for each `(acting identity, provider)` pair.
+
+**It NAMES the account; it unlocks nothing.** In a team space every turn runs on
+the AI account of the person who sent it and there is no other account to reach
+for, so this field buys exactly one thing: a card that tells the truth. "Your
+Anthropic account is rate limited" is a true sentence where a generic one is not,
+and a member whose model is refused learns it is THEIR plan that lacks it, not
+somebody else's. No card gains an ACTION from `credential` — a CTA offering
+another account could only ever fail, because the space holds none.
+
+Today one card reads it: `ModelUnavailableCard` switches its body to
+`shell:providerError.credential.modelUnavailableBody` when
+`credentialScopeOf(error.credential) === "personal"`
+(`app/src/lib/credential-scope.ts`, the one home for these reads). Reconnect is
+deliberately UNSCOPED on both the unauthenticated card and the in-chat
+`ProviderReconnectCard` (`tauriProvider.launchLogin(provider)`): the account that
+failed is the caller's own by construction, so there is nothing to target and a
+scope argument could only contradict the gateway.
+
+Full picture: `knowledge-base/teams.md` → "Per-user AI accounts".
 
 ## The classifier trait
 
@@ -336,5 +372,5 @@ unchanged.
 | Protocol     | `engine/houston-engine-protocol/src/lib.rs` (re-exports `ProviderError`)          |
 | TS type      | `ui/chat/src/types.ts`                                                            |
 | Card router  | `app/src/components/shell/provider-error-card.tsx`                                |
-| Card pieces  | `app/src/components/shell/provider-error-cards/`                                  |
+| Card pieces  | `app/src/components/shell/provider-error-cards/` — `limits.tsx` (rate-limited + usage-limit-paused), `quota.tsx` (quota-exhausted + model-unavailable, the one that names the account), `transient.tsx` (retry-now infra: network / internal / malformed), `auth.tsx`, `terminal.tsx`, `shared.tsx` (`AsyncActionButton` / `RetryButton` / `StatusPageButton`) |
 | i18n         | `app/src/locales/{en,es,pt}/shell.json` → `providerError.*`                       |

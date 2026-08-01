@@ -345,18 +345,22 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
   });
   const credentialHealer = opts.credentials
-    ? new CredentialServeHealer(async ({ workspaceId, agentId, provider }) => {
-        const agent = await store.getAgent(agentId);
-        if (!agent || agent.workspaceId !== workspaceId) return false;
-        const result = await captureRuntimeCredential({
-          endpoint: await launcher.ensureAwake(agent),
-          credentials,
-          workspaceId,
-          provider,
-          requireRefresh: true,
-        });
-        return result.ok;
-      })
+    ? new CredentialServeHealer(
+        async ({ workspaceId, agentId, provider, actingAs }) => {
+          const agent = await store.getAgent(agentId);
+          if (!agent || agent.workspaceId !== workspaceId) return false;
+          const result = await captureRuntimeCredential({
+            endpoint: await launcher.ensureAwake(agent),
+            credentials,
+            workspaceId,
+            provider,
+            requireRefresh: true,
+            // The member whose serve missed — their runtime file, their row.
+            actingAs,
+          });
+          return result.ok;
+        },
+      )
     : undefined;
 
   // Integrations (platform model): the desktop holds NO provider key — the

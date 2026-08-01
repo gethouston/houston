@@ -3,6 +3,10 @@ import {
   type ClaudeOAuthCredential,
   parseClaudeOAuthEnvelope,
 } from "@houston/runtime-client";
+import {
+  currentCredentialScope,
+  isPersonalScope,
+} from "../../session/acting-context";
 import { claudeCredentialsFile } from "./paths";
 
 /**
@@ -23,11 +27,25 @@ import { claudeCredentialsFile } from "./paths";
  *
  * Atomic (tmp + rename) at mode 0600 so a concurrent reader never sees a
  * half-written file and the token is owner-only on disk.
+ *
+ * HARD SCOPE GUARD (HOU-976). This file is POD-WIDE: one path, shared by every
+ * member of a team space. Materializing a MEMBER's credential into it would
+ * (1) hand their Anthropic refresh-token family to every other member of the
+ * space and (2) create a second rotator for that family — Anthropic invalidates
+ * the previous holder on refresh, so the pod's self-refreshing SDK and the
+ * gateway would take turns killing each other's token
+ * (knowledge-base/anthropic-credentials.md trap #4). A personal scope therefore
+ * REFUSES, loudly: personal Anthropic on a managed pod is served access-only per
+ * turn via `CLAUDE_CODE_OAUTH_TOKEN`, which outranks this file anyway (trap #3).
  */
 export function writeClaudeOAuthCredentialFile(
   configDir: string,
   cred: ClaudeOAuthCredential,
 ): void {
+  if (isPersonalScope(currentCredentialScope().key))
+    throw new Error(
+      "refusing to materialize a personal Anthropic credential into the pod-shared Claude login dir: it would be readable by every other member of this space and would create a second refresh-token rotator",
+    );
   mkdirSync(configDir, { recursive: true });
   const path = claudeCredentialsFile(configDir);
   const tmp = `${path}.tmp`;

@@ -5,6 +5,16 @@ import type {
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /**
+ * NO credential write below carries a scope, in any form (HOU-976). WHOSE
+ * account a write lands on is the SERVER's call, decided from the space the
+ * request is made in: a team space has no shared AI credential, so the write is
+ * the acting member's own; a personal space has exactly one. A client-sent scope
+ * could only ever restate what the gateway already knows, or contradict it —
+ * `credential-write-urls.test.ts` pins these URLs byte-for-byte so no query
+ * param can creep back in.
+ */
+
+/**
  * Connect-once: after a device-code connect lands on one agent, capture its
  * credential into the workspace's central store so every agent (existing + new)
  * shares the connection. Idempotent; safe to call on each successful connect.
@@ -96,6 +106,7 @@ export async function setApiKey(
  * (base URL + model + optional key) to the agent's standing runtime, which
  * persists it. LOCAL-only — a non-local deployment 400s on the openaiCompatible
  * capability, and cpFetch throws the host's error message.
+ *
  */
 export async function setCustomEndpoint(
   cfg: ControlPlaneConfig,

@@ -1,15 +1,18 @@
-import { join } from "node:path";
 import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
+import { currentCredentialScope } from "../session/acting-context";
 import {
   applyServedCredential,
+  authPathIn,
   readServedProvidersAt,
   removeServedCredentialAt,
   type ServedCredential,
   scrubRefreshTokensAt,
+  servedProvidersPathIn,
   writeServedProvidersAt,
 } from "./auth-file";
 import { logServeProbeFailure, noteServeProbeOk } from "./serve-log";
+import { forgetServedScope, recordServedScope } from "./served-scope";
 import { authStorage } from "./storage";
 
 /**
@@ -34,9 +37,15 @@ import { authStorage } from "./storage";
  * the runtime's normal "No provider connected" error.
  */
 
-const authPathFor = () => join(config.dataDir, "auth.json");
+/**
+ * Both paths resolve through the CURRENT acting identity (HOU-976): a member's
+ * sync writes that member's file only. With no acting identity these are
+ * `<dataDir>/auth.json` and `<dataDir>/served-providers.json` — unchanged.
+ */
+const authPathFor = () =>
+  authPathIn(config.dataDir, currentCredentialScope().key);
 const servedManifestPathFor = () =>
-  join(config.dataDir, "served-providers.json");
+  servedProvidersPathIn(config.dataDir, currentCredentialScope().key);
 
 /**
  * Marker the host sets on its /sandbox/credential 404: the credential store's
@@ -76,15 +85,22 @@ export function scrubRefreshTokens(): string[] {
  * run N syncs that each rewrite auth.json at once — a write race. A turn and a
  * status poll can also overlap. One sync, one auth.json write, every caller gets
  * the same result.
+ *
+ * Sharing is PER ACTING IDENTITY (HOU-976): two members' syncs write two
+ * different files and must not collapse into one another's result, so the
+ * in-flight promise is keyed by scope.
  */
-let serveSyncInFlight: Promise<string[]> | null = null;
+const serveSyncInFlight = new Map<string, Promise<string[]>>();
 
 export function syncServedCredential(): Promise<string[]> {
-  if (serveSyncInFlight) return serveSyncInFlight;
-  serveSyncInFlight = runServedSync().finally(() => {
-    serveSyncInFlight = null;
+  const { key } = currentCredentialScope();
+  const inFlight = serveSyncInFlight.get(key);
+  if (inFlight) return inFlight;
+  const run = runServedSync().finally(() => {
+    serveSyncInFlight.delete(key);
   });
-  return serveSyncInFlight;
+  serveSyncInFlight.set(key, run);
+  return run;
 }
 
 /**
@@ -111,11 +127,18 @@ type ServeProbe =
 /** One provider's central lookup. Never throws — an internal serve hiccup for
  *  ONE provider must not strand the others. */
 async function probeProvider(id: string): Promise<ServeProbe> {
+  // WHO this serve is for: the host forwards the acting-as token to the gateway,
+  // which resolves personal-vs-team for THIS provider and reports its verdict
+  // on the body. Absent → the team credential, exactly as before HOU-976.
+  const { actingAs } = currentCredentialScope();
   try {
     const res = await fetch(
       `${config.controlPlaneUrl}/sandbox/credential?provider=${id}`,
       {
-        headers: { Authorization: `Bearer ${config.sandboxToken}` },
+        headers: {
+          Authorization: `Bearer ${config.sandboxToken}`,
+          ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
+        },
         signal: AbortSignal.timeout(SERVE_FETCH_TIMEOUT_MS),
       },
     );
@@ -167,19 +190,33 @@ async function runServedSync(): Promise<string[]> {
     if (probe.state !== "error") noteServeProbeOk(probe.id);
     if (probe.state === "served") {
       const didApply = applyServedCredential(authPathFor(), probe.cred);
+      // WHOSE credential this was, remembered for the provider-error stamp and
+      // the /providers row. Recorded on the gateway's ANSWER, not on the write:
+      // a skipped apply is the mid-capture guard over this same scope's own
+      // fresh login, never another member's credential. A pre-HOU-976 gateway
+      // omits `scope`; the only thing it could have served is the team one.
+      recordServedScope(
+        probe.id,
+        probe.cred.scope === "personal" ? "personal" : "team",
+      );
       if (didApply) applied.push(probe.id);
       if (didApply && !manifest.has(probe.id)) {
         manifest.add(probe.id);
         manifestDirty = true;
       }
-    } else if (probe.state === "not-connected" && manifest.has(probe.id)) {
-      // A refresh-bearing OAuth entry still survives inside
-      // removeServedCredentialAt: that's the device-code connect mid-capture.
-      if (removeServedCredentialAt(authPathFor(), probe.id))
-        removed.push(probe.id);
-      manifest.delete(probe.id);
-      manifestDirty = true;
-    } else if (probe.state === "error") {
+    } else if (probe.state === "not-connected") {
+      // Nothing is served for this scope any more, so no stale verdict may be
+      // stamped on a later error.
+      forgetServedScope(probe.id);
+      if (manifest.has(probe.id)) {
+        // A refresh-bearing OAuth entry still survives inside
+        // removeServedCredentialAt: that's the device-code connect mid-capture.
+        if (removeServedCredentialAt(authPathFor(), probe.id))
+          removed.push(probe.id);
+        manifest.delete(probe.id);
+        manifestDirty = true;
+      }
+    } else {
       // Dedup lives in serve-log.ts: every turn and hydrating route re-probes,
       // so a persistent gateway failure must not emit one Sentry error each.
       logServeProbeFailure(probe.id, probe.detail);

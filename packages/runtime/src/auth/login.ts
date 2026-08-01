@@ -18,6 +18,10 @@ import {
   logoutAnthropicCredential,
   refreshAnthropicCredential,
 } from "../backends/claude/credential-status";
+import {
+  currentCredentialScope,
+  isPersonalScope,
+} from "../session/acting-context";
 import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
 import { preflightCodexCallbackPort } from "./codex-port-preflight";
 import { authStorage, modelRuntime, providerConnected } from "./storage";
@@ -49,7 +53,24 @@ type LoginState = {
   timer?: ReturnType<typeof setTimeout>;
 };
 
-const active = new Map<ProviderId, LoginState>();
+/**
+ * In-flight logins, keyed by `<credential scope>:<provider>` — see `activeKey`.
+ */
+const active = new Map<string, LoginState>();
+
+/**
+ * The `active` slot an in-flight login occupies. Scoped, because ONE runtime
+ * serves every member of a team space (HOU-976) and each request runs inside its
+ * own acting identity: a provider-only key handed member B the one-time device
+ * code member A was still typing (B would have connected A's provider account),
+ * and let B's cancel/logout tear down A's flow. Every read AND write of `active`
+ * goes through here so no site can forget the scope. The team scope (desktop,
+ * self-host, every no-identity request) keeps its own `team:<provider>` slot, so
+ * its behavior is unchanged.
+ */
+function activeKey(provider: ProviderId): string {
+  return `${currentCredentialScope().key}:${provider}`;
+}
 
 /**
  * Overall cap on an in-flight login. An abandoned flow is not just stale UI
@@ -114,9 +135,13 @@ function clearLoginExpiry(state: LoginState): void {
  */
 function armLoginExpiry(provider: ProviderId, state: LoginState): void {
   clearLoginExpiry(state);
+  // Resolve the slot NOW, while the arming request's acting identity is still
+  // ambient: a stale timer must only ever tear down the state it was armed for,
+  // never another scope's login for the same provider.
+  const key = activeKey(provider);
   const timer = setTimeout(() => {
     // Stand down if the flow settled or was replaced/cancelled meanwhile.
-    if (active.get(provider) !== state) return;
+    if (active.get(key) !== state) return;
     if (state.status !== "starting" && state.status !== "awaiting_user") return;
     // Record the outcome BEFORE aborting: the login promise's rejection
     // handler sees the abort as a benign unwind and leaves this in place.
@@ -214,7 +239,7 @@ async function runProviderOAuthLogin(
 
 /** One /auth/status row for a provider id (curated or uncurated pi). */
 function authStatusRow(id: ProviderId, name: string) {
-  const st = active.get(id);
+  const st = active.get(activeKey(id));
   // Copilot Enterprise: surface the connected credential's company domain so the
   // connect UI can tell the Enterprise card apart from individual Copilot (both
   // are the same engine provider; the domain is the only difference). `get` is
@@ -262,12 +287,14 @@ export async function startLogin(
     throw new Error(`${providerId} does not use OAuth sign-in`);
   const provider = providerId;
 
-  // Idempotent: reuse an in-flight login. This must run BEFORE the port
-  // preflight below: an in-flight Codex browser login is ITSELF holding the
-  // fixed callback port (pi's in-process server), so probing first would
-  // mistake our own flow for a squatter and turn every retry click into
-  // "Another app is using the sign-in port" for the whole abandonment window.
-  const existing = active.get(provider);
+  // Idempotent: reuse an in-flight login — the ACTING member's own, never
+  // another member's. This must run BEFORE the port preflight below: an
+  // in-flight Codex browser login is ITSELF holding the fixed callback port
+  // (pi's in-process server), so probing first would mistake our own flow for a
+  // squatter and turn every retry click into "Another app is using the sign-in
+  // port" for the whole abandonment window.
+  const key = activeKey(provider);
+  const existing = active.get(key);
   if (
     existing &&
     (existing.status === "starting" || existing.status === "awaiting_user") &&
@@ -298,7 +325,7 @@ export async function startLogin(
     status: "starting",
     abort: new AbortController(),
   };
-  active.set(provider, state);
+  active.set(key, state);
   armLoginExpiry(provider, state);
 
   let resolveInfo!: (i: LoginInfo) => void;
@@ -430,9 +457,10 @@ export async function startLogin(
 export function setApiKey(providerId: string, key: string): void {
   const trimmed = assertApiKeyConnectable(providerId, key);
   authStorage.set(providerId, { type: "api_key", key: trimmed });
-  const state = active.get(providerId as ProviderId);
+  const slot = activeKey(providerId as ProviderId);
+  const state = active.get(slot);
   if (state) clearLoginExpiry(state);
-  active.delete(providerId as ProviderId);
+  active.delete(slot);
 }
 
 /**
@@ -485,9 +513,10 @@ export function setCustomEndpoint(
  */
 export function cancelLogin(providerId: string): void {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
-  const state = active.get(providerId);
+  const key = activeKey(providerId);
+  const state = active.get(key);
   if (!state || state.status === "complete") return;
-  active.delete(providerId);
+  active.delete(key);
   clearLoginExpiry(state);
   state.abort?.abort();
   state.rejectPaste?.(new Error("login cancelled"));
@@ -495,7 +524,7 @@ export function cancelLogin(providerId: string): void {
 
 /** Paste-code completion (Anthropic remote path). */
 export function completeLogin(providerId: string, code: string): void {
-  const state = active.get(providerId as ProviderId);
+  const state = active.get(activeKey(providerId as ProviderId));
   if (!state?.resolvePaste)
     throw new Error(`no active login for ${providerId}`);
   state.resolvePaste(code);
@@ -508,14 +537,25 @@ export async function logout(providerId: string): Promise<void> {
   // provider's OAuth token inside `modify` cannot be undone when that refresh
   // lands and re-persists the rotated credential.
   await authStorage.delete(providerId);
-  const state = active.get(providerId);
+  const key = activeKey(providerId);
+  const state = active.get(key);
   if (state) clearLoginExpiry(state);
-  active.delete(providerId);
+  active.delete(key);
   // Anthropic's primary credential is the browser-login one cached in the shared
   // dir (Keychain / file), NOT auth.json — so clear it via `claude auth logout`
   // and reset the probe cache, else the card would re-read connected on the next
   // poll. `authStorage.remove` above still clears the degraded fallback token.
-  if (providerId === "anthropic") await logoutAnthropicCredential();
+  //
+  // That shared dir is POD-WIDE team material (HOU-976): a member disconnecting
+  // their OWN anthropic account must stop at their own file, or one member's
+  // sign-out would sign the whole space out. Logged, never silent.
+  if (providerId === "anthropic") {
+    if (isPersonalScope(currentCredentialScope().key))
+      console.log(
+        "[oauth:anthropic] personal disconnect: leaving the pod-shared Claude login dir (team credential) in place",
+      );
+    else await logoutAnthropicCredential();
+  }
   // Disconnecting the local provider also forgets its endpoint (else the next
   // turn would re-resolve a base URL with no (real) key behind it); the
   // endpoint write also drops its runtime provider registration.

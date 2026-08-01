@@ -30,6 +30,7 @@ refresh-less and remain safe to replace on every serve cycle.
 | Desktop (macOS) | Keychain item scoped to `<HOUSTON_HOME>/claude-login` (`claude auth login` writes it) | The SDK/CLI, in place |
 | Desktop (Linux/Win) / self-host | `<HOUSTON_HOME>/claude-login/.credentials.json` | The SDK/CLI, in place |
 | Managed cloud pod | Gateway Pg store (`/v1/pod/credentials`), captured at connect; pod materialization is access-only | The **gateway only** (single rotator; anthropic entry in `internal/credentials`, JSON grant) |
+| Managed cloud pod, **personal** account (HOU-976) | Gateway Pg store keyed **(org, user, provider)**; served access-only per turn as `CLAUDE_CODE_OAUTH_TOKEN`, **never materialized to disk** | The **gateway only**, same single rotator, per row |
 | Setup-token paste (any) | `auth.json` `api_key` entry (never expires) | Nobody |
 
 ## The flows
@@ -58,8 +59,19 @@ refresh-less and remain safe to replace on every serve cycle.
   (Rust) extracts it — file first, then the Keychain item
   `Claude Code-credentials-<sha256(dir)[:8]>` (the CLI scopes the service name
   by config dir; account = username) — and pushes it: host route
-  `POST /agents/:id/credential/claude-oauth` → central store put (access +
-  refresh) + materialize on the pod. Once the push settles the local copy is
+  `POST /agents/:id/credential/claude-oauth` → central store put
+  (access + refresh) + materialize on the pod. **The desktop path names NO
+  account** (HOU-976): `launchLogin(provider)` → `beginClaudeBrowserLogin` →
+  `finishRemoteClaudeLogin` → `pushClaudeCredentialWithRetry`
+  (`app/src/lib/claude-credential-push.ts`, the node-testable retry loop) →
+  `pushClaudeOAuthCredential(json)`, and the setup-token paste FALLBACK is
+  likewise scope-free. WHOSE row the push lands on is the gateway's call, derived
+  from the space the request is made in: a team space has no shared AI account, so
+  it is the acting member's own; a personal space has exactly one. A scope
+  threaded down this path could only restate that or contradict it, which is why
+  the URL is asserted WHOLE in `packages/web/tests/credential-write-urls.test.ts`
+  — byte identity, so one cannot creep back as a query param, a path segment or a
+  second query. Once the push settles the local copy is
   DESTROYED (`discard_claude_handoff_credential`): the gateway is that
   family's only rotator from then on. Every space the user connects mints its
   own family this way; there is deliberately NO path that seeds a space from a
@@ -81,10 +93,16 @@ refresh-less and remain safe to replace on every serve cycle.
   no_credentials` for that provider; reconnecting restores the credential and
   the app's normal unauthenticated auto-resume retries the undelivered prompt.
   Unpinned no-provider requests retain their `409 no_provider` contract. This is
-  what survives pod recycles:
-  `/data` is an emptyDir in prod and store-sync EXCLUDES both credential files.
+  what survives pod recycles: `/data` is an emptyDir in prod, and no credential
+  file syncs to the object store — but by two DIFFERENT mechanisms, which matters
+  when you add one. `auth.json` and the entire `auth-users/` subtree are dropped
+  **unconditionally** inside `excluded()` (`packages/runtime-client/src/
+  object-sync/hydrate.ts`, matched by path suffix / segment) so no caller can
+  configure the leak back in; `claude-login/.credentials.json` is merely a
+  NAMED ENTRY in the caller-supplied list (`STORE_SYNC_EXCLUDES`,
+  `packages/host/src/store-sync/daemon.ts`).
 
-## The five traps (each was a live bug)
+## The six traps (each was a live bug, or a guarded near-miss)
 
 1. **`USER` must reach the SDK subprocess.** The CLI names its Keychain
    *account* after the username; `buildClaudeEnv`'s allowlist passes
@@ -128,6 +146,62 @@ refresh-less and remain safe to replace on every serve cycle.
    the built-in PowerShell dir on the child PATH, and the login spawn adds
    `CREATE_NO_WINDOW`. Never PATH-scan for `bash.exe` there —
    `System32\bash.exe` is WSL and wedges the CLI.
+6. **A PERSONAL anthropic family must never reach — or be READ FROM — the shared
+   claude-login dir** (HOU-976). One pod serves every member of a team space, and
+   `<HOUSTON_HOME>/claude-login/.credentials.json` is pod-wide: it is the TEAM's
+   credential — meaning the workspace-level one the no-acting-identity `"team"`
+   scope addresses, not an account a team space offers its members (it offers
+   none; each member's turns run on their own). So nothing legitimately routes a
+   member's turn there, and every path that could is guarded. Both directions
+   are, and the read side has three moments, not one.
+
+   **WRITE.** Materializing a member's family there would (a) leak their
+   credential to every other member of that space and (b) create a SECOND rotator
+   beside the gateway, which is trap #4 with a shared file instead of a shared
+   copy. So `packages/runtime/src/backends/claude/credentials-file.ts`
+   hard-refuses to write when the acting scope is personal (guarded + tested).
+
+   **READ.** Three separate moments could authenticate a personal turn as the
+   team; all three live in `backends/claude/`:
+   - *Session creation* with no personal token → `scope-guard.ts`
+     `assertAnthropicScopeCredential` refuses, on the turn path AND the one-shot
+     path (titles, anonymize). Its message must keep the `No provider connected.`
+     prefix — that sentinel is what renders the typed reconnect card.
+   - *Mid-turn 401* → `scope-guard.ts` `anthropicCredentialStorageDir`. The
+     personal token is served ACCESS-ONLY, so it can die while the turn is still
+     running, and the Claude CLI then runs its OWN recovery: it re-reads its
+     credential store — `<dir>/.credentials.json`, or the dir-scoped macOS
+     Keychain item — and adopts whatever access token is there. Pointed at the
+     shared dir that is the team's, adopted with no error and no card. **The SDK's
+     `getOAuthToken` callback does NOT close this** (verified against the Claude
+     Code build the pinned SDK spawns, 2.1.201 / `@anthropic-ai/claude-agent-sdk`
+     0.3.201): the CLI only registers it when `CLAUDE_CODE_ENTRYPOINT` is
+     `claude-desktop` / `local-agent` / `claude-vscode` and the SDK pins ours to
+     `sdk-ts`; it is skipped whenever the stored credential has a refresh token;
+     and even when it runs it only PRECEDES the disk read, so a null return falls
+     straight through (`tengu_oauth_401_recovered_from_disk`). The lever is the
+     store's LOCATION: for a personal scope we set
+     `CLAUDE_SECURESTORAGE_CONFIG_DIR` to `<dataDir>/auth-users/<hash>.claude-storage`,
+     which relocates the CLI's credential store (the file AND the Keychain service
+     name, which is hashed from that dir) and **nothing else** —
+     `CLAUDE_CONFIG_DIR` keeps owning the `projects/` transcript tree, so resume,
+     the sessions store and cross-member conversation continuity are untouched.
+     Recovery then finds nothing, the 401 stands, and the member gets the honest
+     auth card. Team / desktop / self-host set no override at all, so that env is
+     byte-identical. Re-verify this seam on an SDK bump: it is the CLI's own
+     mechanism, but it is not part of the SDK's typed `Options`.
+   - *The "connected" status surface* → `credential-status.ts`
+     `anthropicCredentialCached()` returns false under a personal scope, so a
+     member is never shown connected on a credential that is not theirs.
+
+   A personal anthropic turn is served access-only via `CLAUDE_CODE_OAUTH_TOKEN`,
+   which outranks the config-dir credential anyway (trap #3). The runtime's
+   per-identity credential material lives under `<dataDir>/auth-users/` — the auth
+   file, its served-providers manifest, and the `.claude-storage` dir above. That
+   whole subtree is dropped from store-sync **unconditionally** by `excluded()`
+   (NOT via the configurable list, which is what carries
+   `claude-login/.credentials.json` — see "Per-turn serve" above) and is denied to
+   the agent's own file tools by `session/tools/fs-guard.ts`.
 
 ## "Connected" means USABLE, not present (all providers)
 

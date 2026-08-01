@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import type { ClaudeToken } from "./backend";
 
 /**
@@ -120,10 +121,17 @@ function tokenEnv(token: ClaudeToken | undefined): Record<string, string> {
  * never survive alongside a user's OAuth token — it was never copied — so a
  * subscription turn cannot silently bill the machine's API key. Shared by the
  * turn backend and the one-shot title path (`./title`) so both isolate identically.
+ *
+ * `credentialStorageDir` relocates the CLI's OWN credential store away from
+ * `configDir` — set for a PERSONAL scope only, and always via
+ * `anthropicCredentialStorageDir` (`./scope-guard`), which documents why.
+ * Undefined (team / desktop / self-host) sets nothing, leaving this env
+ * byte-identical to before that guard existed.
  */
 export function buildClaudeEnv(
   configDir: string,
   token: ClaudeToken | undefined,
+  credentialStorageDir?: string,
 ): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -132,6 +140,18 @@ export function buildClaudeEnv(
     }
   }
   env.CLAUDE_CONFIG_DIR = configDir;
+  if (credentialStorageDir !== undefined) {
+    // The CLI reads an EMPTY `CLAUDE_SECURESTORAGE_CONFIG_DIR` as `~/.houston`'s
+    // neighbour `~/.claude` — the machine user's PERSONAL credential (trap #2) —
+    // and a RELATIVE one against the subprocess cwd, which is the agent's
+    // workspace, so credential material would land in user-visible files. Both
+    // are worse than the leak this var closes, so neither is accepted.
+    if (!isAbsolute(credentialStorageDir))
+      throw new Error(
+        `the Claude credential store must be an absolute path, got "${credentialStorageDir}"`,
+      );
+    env.CLAUDE_SECURESTORAGE_CONFIG_DIR = credentialStorageDir;
+  }
   // Belt-and-braces: the credential keys are not in the allowlist, but assert the
   // invariant so a future allowlist edit can never re-admit an ambient one.
   for (const key of CREDENTIAL_ENV_VARS) delete env[key];

@@ -154,6 +154,7 @@ export type ProviderError =
       model: string | null;
       retry_after_seconds: number | null;
       message: string;
+      credential?: ProviderErrorCredential;
     }
   | {
       kind: "quota_exhausted";
@@ -163,6 +164,7 @@ export type ProviderError =
       /** Human-readable reset hint (e.g. "Jul 1st, 2026 1:16 PM"); null when open-ended. */
       resets_at: string | null;
       message: string;
+      credential?: ProviderErrorCredential;
     }
   | {
       kind: "usage_limit_paused";
@@ -170,6 +172,7 @@ export type ProviderError =
       /** Human-readable reset hint (e.g. "3:30 PM" or "5pm (America/Bogota)"); null if unknown. */
       resets_at: string | null;
       message: string;
+      credential?: ProviderErrorCredential;
     }
   | {
       kind: "model_unavailable";
@@ -178,6 +181,7 @@ export type ProviderError =
       reason: ModelUnavailableReason;
       suggested_fallback: string | null;
       message: string;
+      credential?: ProviderErrorCredential;
     }
   | {
       kind: "unauthenticated";
@@ -200,6 +204,7 @@ export type ProviderError =
        * `failed_prompt` the re-send must never render a second one.
        */
       undelivered_prompt?: string;
+      credential?: ProviderErrorCredential;
     }
   | {
       /**
@@ -215,28 +220,61 @@ export type ProviderError =
       context_window_tokens: number | null;
       prompt_tokens: number | null;
       message: string;
+      credential?: ProviderErrorCredential;
     }
-  | { kind: "network_unreachable"; provider: string; message: string }
+  | {
+      kind: "network_unreachable";
+      provider: string;
+      message: string;
+      credential?: ProviderErrorCredential;
+    }
   | {
       kind: "provider_internal";
       provider: string;
       http_status: number | null;
       message: string;
+      credential?: ProviderErrorCredential;
     }
   | {
       kind: "session_resume_missing";
       provider: string;
       session_id: string;
+      credential?: ProviderErrorCredential;
     }
-  | { kind: "malformed_response"; provider: string; message: string }
+  | {
+      kind: "malformed_response";
+      provider: string;
+      message: string;
+      credential?: ProviderErrorCredential;
+    }
   | {
       kind: "spawn_failed";
       provider: string;
       cli_name: string;
       message: string;
+      credential?: ProviderErrorCredential;
     }
   | { kind: "cancelled"; provider: string }
-  | { kind: "unknown"; provider: string; raw_excerpt: string };
+  | {
+      kind: "unknown";
+      provider: string;
+      raw_excerpt: string;
+      credential?: ProviderErrorCredential;
+    };
+
+/**
+ * WHICH credential ran the failed turn. Mirrors `@houston/protocol`'s
+ * `ProviderErrorCredential`.
+ *
+ * Present only on a managed-cloud turn that carried an acting identity — absent
+ * on desktop, self-host and any turn with no acting identity, where there is one
+ * credential and nothing to name. It lets a failure card say whose account hit
+ * the wall (in a team space, always the acting member's own); it unlocks no
+ * action, because a team space has no shared AI credential to fall back on.
+ */
+export interface ProviderErrorCredential {
+  scope: "personal" | "team";
+}
 
 export type QuotaScope = "free_tier" | "paid_plan" | "organization" | "unknown";
 

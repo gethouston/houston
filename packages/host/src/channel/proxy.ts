@@ -299,6 +299,9 @@ export class ProxyChannel implements RuntimeChannel {
       credentials: this.opts.credentials,
       workspaceId: ctx.agent.workspaceId,
       provider,
+      // The connecting MEMBER's own credential (HOU-976): read from their
+      // runtime auth file, stored on their row, scrubbed from their file.
+      actingAs: ctx.actingAs,
     });
   }
 
@@ -309,7 +312,9 @@ export class ProxyChannel implements RuntimeChannel {
    * single runtime's local auth.json alone would be undone by the next re-serve.
    */
   async forgetCredential(ctx: ChannelCtx, provider: string): Promise<void> {
-    await this.opts.credentials.remove(ctx.agent.workspaceId, provider);
+    await this.opts.credentials.remove(ctx.agent.workspaceId, provider, {
+      actingAs: ctx.actingAs,
+    });
   }
 
   /**
@@ -334,6 +339,7 @@ export class ProxyChannel implements RuntimeChannel {
         headers: {
           "content-type": "application/json",
           Authorization: `Bearer ${endpoint.token}`,
+          ...(ctx.actingAs ? { "x-houston-acting-as": ctx.actingAs } : {}),
         },
         body: JSON.stringify({ key: apiKey }),
       },
@@ -351,14 +357,17 @@ export class ProxyChannel implements RuntimeChannel {
         body?.reason,
       );
     }
-    await this.opts.credentials.put({
-      workspaceId: ctx.agent.workspaceId,
-      provider,
-      accessToken: apiKey,
-      refreshToken: "",
-      expiresAt: 0,
-      kind: "api_key",
-    });
+    await this.opts.credentials.put(
+      {
+        workspaceId: ctx.agent.workspaceId,
+        provider,
+        accessToken: apiKey,
+        refreshToken: "",
+        expiresAt: 0,
+        kind: "api_key",
+      },
+      { actingAs: ctx.actingAs },
+    );
   }
 
   /**
@@ -400,6 +409,7 @@ export class ProxyChannel implements RuntimeChannel {
       const existing = await this.opts.credentials.get(
         ctx.agent.workspaceId,
         "anthropic",
+        { actingAs: ctx.actingAs },
       );
       if (existing) return;
     } else if (cred.expiresAt && cred.expiresAt < Date.now() - STALE_SKEW_MS) {
@@ -433,7 +443,7 @@ export class ProxyChannel implements RuntimeChannel {
       },
       // Belt-and-braces under the gateway's atomic row lock: a concurrent
       // write between the probe above and this put still cannot be clobbered.
-      { ifAbsent: opts?.ifAbsent },
+      { ifAbsent: opts?.ifAbsent, actingAs: ctx.actingAs },
     );
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
@@ -443,6 +453,7 @@ export class ProxyChannel implements RuntimeChannel {
         headers: {
           "content-type": "application/json",
           Authorization: `Bearer ${endpoint.token}`,
+          ...(ctx.actingAs ? { "x-houston-acting-as": ctx.actingAs } : {}),
         },
         // The CLI envelope, forwarded verbatim so the pod writes the exact file.
         body: JSON.stringify({ claudeAiOauth: cred }),

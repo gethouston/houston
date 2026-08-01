@@ -35,6 +35,11 @@ export async function getAgentSettings(
   return (await res.json()) as AgentSettings;
 }
 
+/**
+ * Replace this agent's manager-set settings. The gateway READ-THEN-MERGES the
+ * body, so forwarding only the keys the caller set is the whole contract — a
+ * one-ceiling PUT leaves the other untouched.
+ */
 export async function setAgentSettings(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,

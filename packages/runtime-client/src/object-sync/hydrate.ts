@@ -35,6 +35,13 @@ export function excluded(rel: string, excludes: string[]): boolean {
   const normalized = norm(rel);
   if (normalized.endsWith(".tmp")) return true;
   if (normalized.endsWith(".houston/runtime/auth.json")) return true;
+  // Per-member credential files. Their directory's depth differs per deployment
+  // (`<agent>/.houston/runtime/auth-users/` on a standing pod, `data/auth-users/`
+  // in the per-turn layout), so it must be matched by SEGMENT the same way
+  // auth.json is matched by suffix — a root-relative pattern misses the real
+  // key. Unconditional, not caller-configurable: this is credential material,
+  // and one member's tokens reaching the shared store leaks them to the space.
+  if (normalized.split("/").includes("auth-users")) return true;
   return excludes.some((exclude) => {
     const pattern = norm(exclude);
     if (pattern.endsWith("/")) {

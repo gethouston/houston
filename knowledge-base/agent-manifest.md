@@ -862,6 +862,11 @@ Press motion is transitioned on `background-color` + **`scale`** (not
 `transform`): Tailwind v4's `scale-*` utilities set the standalone `scale`
 property, so naming `transform` would silently leave the press un-eased.
 
+**In a team space the strip is the VIEWER's own accounts** (HOU-976): the status
+and usage probes behind it resolve against the acting member's credential, so
+two members open the same hub and see different Connected rows. There is no
+shared team account to show beside them.
+
 **The strip's mount is NOT the gate.** The strip is the hub's "yours" side, so
 its membership means "the user's accounts" and by design includes rows whose
 probe could not be confirmed (`providerOwnedSide` = connected ∪ checking,

@@ -25,6 +25,10 @@ import { useEffect } from "react";
 import { queryKeys } from "../../lib/query-keys";
 import { UnauthenticatedCard } from "./provider-error-cards/auth";
 import {
+  RateLimitedCard,
+  UsageLimitPausedCard,
+} from "./provider-error-cards/limits";
+import {
   ContextOverflowCard,
   ModelUnavailableCard,
   QuotaExhaustedCard,
@@ -38,8 +42,6 @@ import {
   MalformedResponseCard,
   NetworkUnreachableCard,
   ProviderInternalCard,
-  RateLimitedCard,
-  UsageLimitPausedCard,
 } from "./provider-error-cards/transient";
 
 interface ProviderErrorCardProps {

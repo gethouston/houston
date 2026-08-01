@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { runWithActingContext } from "../../session/acting-context";
 import type { ClaudeToken } from "./backend";
+import { claudeLoginConfigDir } from "./paths";
 import type { ClaudeQuery } from "./session";
 import { titleWithClaude } from "./title";
 
@@ -76,4 +78,42 @@ test("titleWithClaude scrubs a stale API key when an OAuth token is connected", 
   expect(env().CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-x");
   expect(env().ANTHROPIC_API_KEY).toBeUndefined();
   expect(env().ANTHROPIC_AUTH_TOKEN).toBeUndefined();
+});
+
+function actingToken(sub: string): string {
+  const payload = Buffer.from(
+    JSON.stringify({ sub, agent: "acme", exp: 9_000_000_000 }),
+  ).toString("base64url");
+  return `acting-v1.${payload}.sig`;
+}
+
+test("a one-shot under a personal scope with no personal token refuses", async () => {
+  // The one-shot path pins the same POD-SHARED CLAUDE_CONFIG_DIR a turn does, so
+  // it needs the same read-side scope guard: a member's throwaway call must never
+  // authenticate as the team account and self-refresh its credential.
+  const { query, env } = capturingQuery();
+  await expect(
+    runWithActingContext({ actingAs: actingToken("sub-alice") }, () =>
+      titleWithClaude({
+        excerpt: "hello",
+        titlePrompt: "title it",
+        workspaceDir: "/ws",
+        readToken: () => undefined,
+        query,
+      }),
+    ),
+  ).rejects.toThrow(/^No provider connected\./);
+  expect(env().CLAUDE_CONFIG_DIR).toBeUndefined();
+});
+
+test("a one-shot on the team scope with no token still runs (unchanged)", async () => {
+  const { query, env } = capturingQuery();
+  await titleWithClaude({
+    excerpt: "hello",
+    titlePrompt: "title it",
+    workspaceDir: "/ws",
+    readToken: () => undefined,
+    query,
+  });
+  expect(env().CLAUDE_CONFIG_DIR).toBe(claudeLoginConfigDir());
 });

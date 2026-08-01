@@ -88,6 +88,14 @@ export interface ProviderInfo {
   isActive: boolean;
   activeModel: string;
   models: string[];
+  /**
+   * WHOSE credential produced `configured` (HOU-976), so the model picker can
+   * label a row "your account". OMITTED unless the request carried an acting
+   * identity — desktop, self-host, routines and every pre-HOU-976 caller see
+   * the exact shape they saw before, so treat absence as "one credential,
+   * nothing to disambiguate".
+   */
+  credentialScope?: "personal" | "team";
 }
 
 // ── Per-account provider usage (GET /providers/usage) ───────────────────────

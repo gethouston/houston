@@ -1205,6 +1205,21 @@ export class HoustonClient {
     });
   }
   /**
+   * Push a desktop-minted Anthropic OAuth credential to the acting space's agent
+   * pod.
+   *
+   * The v3 host adapter is the real implementation — a remote pod cannot read this
+   * machine's Keychain, so only a cloud deployment needs the push. The legacy Rust
+   * engine is always CO-LOCATED with its credential dir and has no such route, so
+   * reject loudly rather than pretend to succeed (no silent failure). Declared
+   * here so the shared app typechecks against both clients (shim parity).
+   */
+  pushClaudeOAuthCredential(_credentialJson: string): Promise<void> {
+    return Promise.reject(
+      new Error("Pushing a Claude credential requires the new engine."),
+    );
+  }
+  /**
    * Connect an OpenAI-compatible (local) server by base URL + model. The legacy
    * Rust engine has no such provider — it's new-engine + desktop only, and the
    * connect UI is gated on `newEngineActive()` + desktop, so this is never hit

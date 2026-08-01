@@ -1,4 +1,4 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
 import {
@@ -77,23 +77,29 @@ describe("canSeeMembers / canManageMembers", () => {
   });
 });
 
-describe("canSeeAiModelsPage", () => {
-  const teams = (role: OrgRole): Capabilities =>
-    caps({ multiplayer: true, role, teams: true });
+const teams = (role: OrgRole): Capabilities =>
+  caps({ multiplayer: true, role, teams: true });
 
-  it("single-player keeps the AI Models hub", () => {
-    strictEqual(canSeeAiModelsPage(caps()), true);
-    strictEqual(canSeeAiModelsPage(null), true);
+describe("canSeeAiModelsPage (HOU-976)", () => {
+  // Six role/deployment cases used to be spelled out here against a function
+  // that now returns a constant, so not one of them could fail. The gate itself
+  // needs exactly one line; what CAN regress is the SEPARATION below.
+  it("is true for everyone, in every deployment", () => {
+    strictEqual(canSeeAiModelsPage(teams("user")), true);
   });
 
-  it("non-Teams multiplayer keeps it for every role", () => {
-    strictEqual(canSeeAiModelsPage(multiplayer("user")), true);
-  });
-
-  it("in a Teams workspace only owner/admin see it (providers are org-level)", () => {
-    strictEqual(canSeeAiModelsPage(teams("owner")), true);
-    strictEqual(canSeeAiModelsPage(teams("admin")), true);
-    strictEqual(canSeeAiModelsPage(teams("user")), false);
+  it("does not carry the owner/admin matrix that guards team consumption", () => {
+    // Opening the hub (every member connects their OWN AI account there) must
+    // not widen the space-wide spend surface with it: the team roll-up lives in
+    // Admin > Usage, which still rides the owner/admin matrix (`canSeeMembers`,
+    // through `canSeeOrganization`). Re-uniting the two would either hide the
+    // hub from the member whose own account it exists to manage, or open the
+    // space's spend to every member.
+    strictEqual(canSeeMembers(teams("user")), false);
+    notStrictEqual(
+      canSeeAiModelsPage(teams("user")),
+      canSeeMembers(teams("user")),
+    );
   });
 });
 

@@ -30,6 +30,10 @@
     "models_one": "{{count}} model",
     "models_other": "{{count}} models"
   },
+  "accounts": {
+    "title": "Your accounts",
+    "description": "Every agent in this team space runs on the AI account of whoever messages it, so the accounts you connect here are your own."
+  },
   "directory": {
     "search": "Search {{count}}+ models",
     "searchFew": "Search models",

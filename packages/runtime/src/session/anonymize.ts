@@ -67,6 +67,9 @@ export async function anonymizeTexts(
           systemPrompt: ANONYMIZE_PROMPT,
           workspaceDir: config.workspaceDir,
           readToken: () => readAnthropicToken(authStorage),
+          // Locates the acting member's isolated Claude credential store, so a
+          // 401 here can never recover onto the team credential (HOU-976).
+          dataDir: config.dataDir,
           modelId: resolveModel().id,
         })
       : await oneShotText({

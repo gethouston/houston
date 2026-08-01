@@ -10,6 +10,7 @@
 import type { ModelPickerModel, ModelPickerProvider } from "@houston-ai/core";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { pickerAccountLabel } from "../components/chat-model-selector-labels";
 import {
   encodeModelPickerId,
   resolveSelectedModelId,
@@ -18,6 +19,7 @@ import {
   buildPickerModels,
   buildPickerProviders,
 } from "../lib/chat-model-picker-map";
+import { statusCredentialScope } from "../lib/credential-scope";
 import { newEngineActive } from "../lib/engine";
 import { osIsTauri } from "../lib/os-bridge";
 import {
@@ -84,12 +86,30 @@ export function usePickerViewModels(opts: {
     [t],
   );
 
+  // Which ACCOUNT a provider's models run on (HOU-976 §6). The status row says
+  // whose credential answered the probe; `statusCredentialScope` maps an absent
+  // field — every deployment with no acting identity — to null, and
+  // `pickerAccountLabel` maps null to no label, so the row subtitle is
+  // byte-identical to what shipped before per-user accounts.
+  const accountLabelOf = useCallback(
+    (providerId: string) =>
+      pickerAccountLabel(t, statusCredentialScope(statuses[providerId])),
+    [t, statuses],
+  );
+
   // Build the (potentially 300+) rows only while the picker is open — the
   // panel is unmounted otherwise, so there is nothing to feed when closed.
   const models = useMemo(
     () =>
-      isOpen ? buildPickerModels({ visibleProviders, statuses, describe }) : [],
-    [isOpen, visibleProviders, statuses, describe],
+      isOpen
+        ? buildPickerModels({
+            visibleProviders,
+            statuses,
+            describe,
+            accountLabelOf,
+          })
+        : [],
+    [isOpen, visibleProviders, statuses, describe, accountLabelOf],
   );
   const withModels = useMemo(
     () => new Set(models.map((m) => m.providerId)),

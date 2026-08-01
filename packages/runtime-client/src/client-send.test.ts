@@ -60,3 +60,16 @@ test("sendMessage carries the per-turn auto (Autopilot) mode on the wire", async
   await client.sendMessage("c1", "hi", { nonce: "n1", mode: "auto" });
   expect(bodies[0]).toEqual({ text: "hi", nonce: "n1", mode: "auto" });
 });
+
+/**
+ * PERSONAL-ONLY (HOU-976): a send NEVER addresses an AI account. In a team space
+ * every turn runs on the sender's own account, decided gateway-side from the
+ * space it lands in, so the body carries no credential field of any kind — this
+ * pins that the send wire is byte-identical to its pre-feature shape.
+ */
+test("a send carries no credential field of any kind", async () => {
+  const { client, bodies } = capture();
+  await client.sendMessage("c1", "hi", { nonce: "n1", provider: "anthropic" });
+  expect(bodies[0]).not.toHaveProperty("credentialScope");
+  expect(JSON.stringify(bodies[0])).not.toContain("credential");
+});

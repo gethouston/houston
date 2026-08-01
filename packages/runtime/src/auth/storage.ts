@@ -6,10 +6,15 @@ import { config } from "../config";
 import { HoustonAuthStore } from "./credential-store";
 
 /**
- * Single-user credential store, persisted to dataDir/auth.json (mode 0600).
+ * Houston's credential store, persisted to dataDir/auth.json (mode 0600).
  * Houston-owned (see credential-store.ts): pi's `ModelRuntime` runs OAuth
  * refresh through its serialized `modify`, so all agent sessions transparently
  * use the current subscription token.
+ *
+ * Scope-aware since HOU-976: the constructor names the TEAM file, and every
+ * call resolves the ambient acting identity, so a member's turns on a shared
+ * pod read and write their own `auth-users/<hash>.json` instead. With no acting
+ * identity (desktop, self-host) it is exactly this one file.
  */
 export const authStorage = new HoustonAuthStore(
   join(config.dataDir, "auth.json"),
@@ -77,7 +82,9 @@ export function credentialUsable(
  * dir (Keychain / `.credentials.json`), read only by the `claude` binary. So it
  * counts as connected when EITHER a usable setup-token/served entry is in
  * auth.json OR the shared-dir credential signal reads logged-in
- * (`anthropicCredentialCached`, warmed by `getAuthStatus`).
+ * (`anthropicCredentialCached`, warmed by `getAuthStatus`). That shared dir is
+ * TEAM material, so `anthropicCredentialCached` reports false under a personal
+ * scope — a member's "connected" must come from their own credential.
  *
  * Pure over its inputs (store + the cached probe) so the rule stays testable.
  */

@@ -1,6 +1,7 @@
 import { serveModeOn } from "../../auth/serve";
 import { authStorage, type KeyStore } from "../../auth/storage";
 import { config } from "../../config";
+import { currentCredentialScope } from "../../session/acting-context";
 import {
   clampPercent,
   type ProviderUsage,
@@ -171,10 +172,17 @@ export async function fetchCopilotUsage(
   // access-only entry) → the host holds the token; delegate the probe there.
   // Its marked 404 means the central store has no Copilot connection either.
   if (serve && cred) {
+    // WHOSE Copilot account to read the quota of (HOU-976) — the same acting
+    // identity the credential serve carries, or the host would answer with the
+    // shared row's quota for a member running on their own account.
+    const { actingAs } = currentCredentialScope();
     const res = await fetchImpl(
       `${serve.controlPlaneUrl}/sandbox/provider-usage?provider=${provider}`,
       {
-        headers: { Authorization: `Bearer ${serve.sandboxToken}` },
+        headers: {
+          Authorization: `Bearer ${serve.sandboxToken}`,
+          ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
+        },
         signal: AbortSignal.timeout(15_000),
       },
     );

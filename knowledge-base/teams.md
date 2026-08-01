@@ -102,15 +102,22 @@ that also take `Pick<Agent, "access" | "assigned">` live in `agent-access.ts`
   The old `canSeeIntegrationsPage` gate was removed with the Teams policy mode.)
 - `canSeeAiModelsPage(caps)` — the gate for the global **AI Models hub** (sidebar
   nav, render branch, tour step), which is also where each connected account's
-  usage renders (HOU-789): a Teams **plain member** → false, else true. Unlike
-  Composio, AI provider connections are **org-level** (one credential
-  per org — whoever connects, every member's agents work; `cloud/docs/contracts/C6`),
-  so a member has no per-provider account to house anywhere — they pick their model
-  per agent in the composer. The hub is therefore owner/admin-only in Teams; a member
-  loses its nav entirely. This also removes a dead affordance: a member's
-  provider-connect POST already 403s at the gateway. (There is no org-wide model
-  ceiling; model policy is per agent, in the **Permissions** view's per-agent
-  detail (its AI Models tab), below.)
+  usage renders (HOU-789): **TRUE for everyone, always** since HOU-976. It used
+  to be owner/admin-only in Teams, on the premise that AI provider connections
+  were org-level and a member therefore had no account to connect. That premise
+  is gone: in a team space every turn runs on the AI account of the person who
+  sent it, so a member's own account is the ONLY thing that can answer them and
+  the hub is the only surface where they connect it. No role could connect one on
+  their behalf, which is why there is no owner/admin half left to gate. See
+  **Per-user AI accounts** below. (There is still no org-wide model ceiling;
+  model policy is per agent, in the **Permissions** view's per-agent detail (its
+  AI Models tab), below.)
+  Opening the hub widened nothing else. The usage on a hub card is the VIEWER's
+  own account, and the space-wide roll-up lives in **Settings > Admin > Usage**,
+  still behind `canSeeOrganization` (owner/admin, team space) — the two were
+  never one gate after HOU-788 moved Admin into Settings. **No role carries
+  AI-credential authority in a team space**: owner, manager and member are
+  identical there, because each can only ever address their own account.
 - **Settings > Time worked is NOT behind that gate** (HOU-790). The old Usage
   screen inherited `canSeeAiModelsPage` because it carried the org-level provider
   accounts; what is left is only the per-agent running-time analytics, so it
@@ -494,15 +501,21 @@ per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16
   `providerOwnedSide()` is the render order the browse surfaces use.
 - **A team space with no credential explains itself.** When statuses settle with
   nothing connected, the picker's level 1 shows an honest empty state instead of
-  a blank panel: `personal` / `teamCanConnect` / `teamAskAdmin`
-  (`app/src/components/chat-model-selector-labels.ts`, copy under
-  `chat:modelSelector.picker.noProviders.*`). A plain member gets no CTA and no
-  "Connect more providers…" footer at all — provider connections are org-level,
-  so `canSeeAiModelsPage` is false for them and the hub would dead-end. The
-  decision is gated on capabilities having LOADED (`canSeeAiModelsPage` answers
-  TRUE for absent capabilities, which flashed a CTA at a member and withdrew it);
-  `use-picker-view-models` folds the same signal into `catalogState`, so the
-  picker holds its neutral loading state through that window.
+  a blank panel. `pickerEmptyState` (`app/src/components/chat-model-selector-labels.ts`,
+  copy under `chat:modelSelector.picker.noProviders.*`) has exactly TWO variants,
+  `personal` / `team`, because the copy depends only on which KIND of space this
+  is: every viewer of a team space has the same story ("You have not connected an
+  AI account yet." / "Connect your own AI account and this team's agents will
+  answer you."), since every one of them connects their own account and nobody
+  can connect it for them. There is deliberately no role-shaped variant: an
+  "ask a team owner or admin" line would be a dead end, because no role can
+  connect the credential this viewer is missing.
+  The ACTION stays gated on capabilities having LOADED (`canConnect`) — the
+  surface must not promise a Connect before it knows the deployment describes a
+  hub at all; `use-picker-view-models` folds the same signal into `catalogState`,
+  so the picker holds its neutral loading state through that window. A
+  capabilities load that FAILS is not "still loading": it settles on the
+  permissive single-player default, since an undescribed deployment is that.
 - **Boot with NO space settles honestly** (HOU-979). If `loadWorkspaces` fails
   (or yields no current workspace) `loadAgents` never runs, and every `loaded`
   gate hung: the boot splash never lifted and the provider probe never fired.
@@ -687,7 +700,10 @@ hides the "Add models" list, all copy passed in.
 
 - **Per-agent ceiling** — Agent Settings > **Access** > **AI models**
   (`agent-admin-model.tsx` → `AgentModelsSection`, a thin wrapper over the shared
-  editor). The whole AI-hub catalog is the selectable universe (there is no org-wide
+  editor). Manager-only, `readOnly` honoured. It answers WHICH models only —
+  there is no per-agent choice of WHOSE account, because a team space has no
+  account to choose between (see **Per-user AI accounts** below).
+  The whole AI-hub catalog is the selectable universe (there is no org-wide
   ceiling to narrow it). Copy under `teams:agentAdmin.models.*`. The per-agent model
   ceiling ALSO surfaces (via `AgentAdminModel`) in the Permissions agent detail's AI Models
   tab (`permissions/agent-detail.tsx`), same editor, same wire. (The AI Models hub's
@@ -733,6 +749,118 @@ hides the "Add models" list, all copy passed in.
   `{allowedToolkits?, allowedModels?}`. Hooks: `useAgentModelChoice` /
   `useSetAgentModelChoice` (`hooks/queries/use-agent-model-choice.ts`),
   `useSetAgentAllowedModels` (`hooks/queries/use-agent-settings.ts`).
+
+---
+
+## Per-user AI accounts (HOU-976)
+
+A team space has **no shared AI credential**. Every turn runs on the AI account
+of the person who sent it, and on nothing else: the gateway resolves the ACTING
+member's own credential row and stops there. A miss is an honest
+`404 personal_not_connected` → the provider not-connected card, and the member
+connects their own account in the AI Models hub. That is the entire remedy, so
+it must be self-serve: there is no fallback account, no per-agent choice of
+account, no one-turn override, and no role that can connect an account on
+somebody else's behalf.
+
+This is why every AI-credential role gate is gone (`canSeeAiModelsPage` is
+unconditionally true — see the role-matrix section above). A gate can only be
+justified by an authority someone actually has; nobody has authority over
+anybody else's AI account here.
+
+Storage is per **(org, user, provider)**, not (user, provider): connecting in a
+team space is consent for THAT team's agents only, and leaving a team takes the
+credential with the membership. A user in three team spaces connects three times.
+
+**The discriminator is ALWAYS server-side.** A request resolves a per-user
+credential when it carries an acting identity AND its org is a team space — two
+facts only the gateway holds. It is NOT a query param, NOT a body field, and NOT
+a signed claim the client may assert. **The client sends no scope anywhere**: no
+`?scope=` on any credential or auth route, no `credentialScope` on a send body,
+no scope argument on any credential function. A client-sent scope could only
+restate what the gateway already knows or contradict it, and a contradiction
+churns every recorded and golden request while adding nothing the gateway did
+not already have. Two tests hold the line: `packages/web/tests/credential-write-urls.test.ts`
+asserts each credential/auth URL WHOLE (byte identity, so a scope re-entering as
+a query param, a path segment or a second query fails whichever form it takes),
+and `app/tests/credential-scope-ui.test.ts` asserts no credential surface passes
+a scope or names another account.
+
+**Absence is the old world.** With NO acting identity — desktop, self-host, a
+personal space, the setup runtime, a fired routine — every path addresses the
+single workspace credential exactly as it did before this feature, byte for byte.
+That is the `"team"` scope key (`TEAM_SCOPE_KEY` in
+`packages/host/src/credentials/scope-key.ts`, `TEAM_CREDENTIAL_SCOPE` in
+`packages/runtime/src/session/acting-context.ts`): one name for "the one shared
+row", not a second account a team space can reach. `setup-runtime` credential
+writes stay owner/admin for the unrelated reason that they provision a Deployment
++ PVC.
+
+**Isolation is the whole implementation.** Only a gateway-SIGNED acting-as token
+can select a member's own credentials (`credentialScopeKeyFor`); a routine's bare
+creator sub deliberately cannot, and a token whose payload can't be decoded gets
+its own digest-named scope rather than falling back to the shared row — a garbled
+token must never READ the workspace credential. Both sides of the host↔runtime
+seam derive the key the same way, on purpose, or one member would read a
+different row per adapter. Downstream of the key: the runtime's credential store
+resolves the scope on every `read()` pi makes inside `prepareRequest`
+(`auth/credential-store.ts`, per-scope `auth.json` under `<dataDir>/auth-users/`),
+login and serve-sync are scoped the same way, the served-scope record and
+credential-health marks are keyed per `(scope, provider)`, `report-revoked` echoes
+the scope it observed and forwards the acting token, the host's remote-store cache
+is per scope, and the whole `auth-users/` subtree is denied to the agent's file
+tools (`session/tools/fs-guard.ts`) and dropped unconditionally from store-sync.
+The Anthropic-specific guards (the pod-shared `claude-login` write refusal, the
+`CLAUDE_SECURESTORAGE_CONFIG_DIR` relocation that closes mid-turn 401 recovery,
+the cached-status guard) are documented in `knowledge-base/anthropic-credentials.md`
+traps #4 and #6 — read those before touching any of it.
+
+**Attribution is read-only.** Two optional wire fields name WHOSE account
+answered, and nothing else: `ProviderError.credential.scope` on a failed turn
+(`packages/protocol/src/provider-error.ts`) and `credentialScope` on a
+`GET /providers` row (`ProviderInfo`). Both come from the runtime's per-identity
+serve record (`packages/runtime/src/auth/served-scope.ts`), which remembers what
+the gateway resolved for each `(acting identity, provider)` pair. They exist so a
+surface can say a TRUE sentence — "your Anthropic account is rate limited" rather
+than a generic one — and they unlock no action, because there is no other account
+to offer. Their `"personal"` value is the acting member's own account, the only
+one a TEAM space has; `"team"` is the single workspace-level credential of a
+personal space / desktop / self-host, reported for the surfaces that predate the
+distinction. Both fields are omitted without an acting identity, so treat absence
+as "one credential, nothing to disambiguate".
+
+**Client surface**
+
+- **The hub is one list, labelled once.** In a team space `ai-hub-view.tsx`
+  renders a "Your accounts" heading + description above the catalog
+  (`aiHub:accounts.title` / `accounts.description`: every agent in this team
+  space runs on the AI account of whoever messages it, so the accounts here are
+  your own). Saying it once, above the rows, is what keeps a member from reading
+  them as the team's shared connections. A personal space has one account and
+  nothing to qualify, so it renders no note at all and looks exactly as it
+  shipped. There are no account sections, no per-section status, and no scope on
+  any connect the hub performs.
+- **Reconnect is unscoped** (`tauriProvider.launchLogin(provider)`), on the
+  unauthenticated card and the in-chat reconnect card alike. The account that
+  failed is the caller's own by construction, so there is nothing to target.
+- **Failure copy names the account** where it changes the meaning:
+  `ModelUnavailableCard` reads `credentialScopeOf(error.credential) === "personal"`
+  (`app/src/lib/credential-scope.ts`) and switches to
+  `shell:providerError.credential.modelUnavailableBody`, so a member learns it is
+  THEIR plan that lacks the model. No card gains an action from `credential`.
+- **Model picker**: a `GET /providers` row's `credentialScope` becomes the row
+  subtitle via `statusCredentialScope` + `pickerAccountLabel`
+  (`chat:modelSelector.picker.account.*`). Absent ⇒ today's subtitle, unchanged.
+  There is deliberately NO client-side per-plan entitlement filtering beyond
+  `configured`: a personal plan that lacks a model fails the turn honestly as
+  `ModelUnavailable`.
+
+Both readers are gathered in `app/src/lib/credential-scope.ts` and unit-tested
+without a renderer (`app/tests/credential-scope.test.ts`). There are two of them
+rather than one generic reader because every field of the shape is optional: a
+`ProviderStatus` passed to `credentialScopeOf` would type-check and answer `null`
+forever, so one named reader per shape makes that impossible instead of merely
+unlikely.
 
 ---
 

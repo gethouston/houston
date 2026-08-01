@@ -1,4 +1,5 @@
 import type {
+  CredentialScope,
   ProviderStatus,
   ProviderUsage,
 } from "../../../../../ui/engine-client/src/types";
@@ -30,7 +31,14 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<ProviderStatus[]> {
       const byId = new Map<
         string,
-        { configured?: boolean; activeModel?: string }
+        {
+          configured?: boolean;
+          activeModel?: string;
+          // WHOSE credential answered (HOU-976). Absent on desktop, self-host,
+          // and any pre-HOU-976 pod — see the spread below, which keeps the
+          // mapped status byte-identical there.
+          credentialScope?: CredentialScope;
+        }
       >();
       // "unauthenticated" is only ever a CONFIRMED answer from the engine. An
       // unreachable engine (cold pod still waking after a relaunch/update, a
@@ -71,6 +79,11 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           installSource: "managed",
           cliPath: null,
           activeModel: p?.activeModel || undefined,
+          // Carry the credential attribution through (HOU-976) — spread
+          // CONDITIONALLY, never as explicit `undefined` keys: a pre-HOU-976
+          // pod (and every desktop/self-host answer) must map to exactly the
+          // object shape the provider-status tests already assert on.
+          ...(p?.credentialScope ? { credentialScope: p.credentialScope } : {}),
         } as ProviderStatus;
       });
     }

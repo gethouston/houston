@@ -12,18 +12,38 @@ type ExportedCredential = {
   enterpriseUrl?: string;
 };
 
-/** Store a full runtime credential centrally, then remove its refresh token. */
+/**
+ * Store a full runtime credential centrally, then remove its refresh token.
+ *
+ * Scoped by `actingAs` end to end (HOU-976): the runtime keeps one auth file per
+ * member, so the export must be read AS that member, the central write must land
+ * on that member's row, and the scrub must clear that member's file — mixing the
+ * three would capture one member's credential into another's row. Undefined (the
+ * desktop, self-host, every pre-HOU-976 caller) is the single shared scope,
+ * byte-identical to before.
+ */
 export async function captureRuntimeCredential(args: {
   endpoint: RuntimeEndpoint;
   credentials: CredentialStore;
   workspaceId: string;
   provider?: string;
   requireRefresh?: boolean;
+  actingAs?: string;
 }): Promise<CaptureResult> {
-  const { endpoint, credentials, workspaceId, provider, requireRefresh } = args;
+  const {
+    endpoint,
+    credentials,
+    workspaceId,
+    provider,
+    requireRefresh,
+    actingAs,
+  } = args;
   const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
   const exported = await fetch(`${endpoint.baseUrl}/auth/export${query}`, {
-    headers: { Authorization: `Bearer ${endpoint.token}` },
+    headers: {
+      Authorization: `Bearer ${endpoint.token}`,
+      ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
+    },
   });
   if (!exported.ok) {
     return {
@@ -39,14 +59,17 @@ export async function captureRuntimeCredential(args: {
       return { ok: false, status: 400, error: "agent is not connected yet" };
     if (!credential.provider || !credential.key)
       return { ok: false, status: 400, error: "agent is not connected yet" };
-    await credentials.put({
-      workspaceId,
-      provider: credential.provider,
-      kind: "api_key",
-      accessToken: credential.key,
-      refreshToken: "",
-      expiresAt: Number.MAX_SAFE_INTEGER,
-    });
+    await credentials.put(
+      {
+        workspaceId,
+        provider: credential.provider,
+        kind: "api_key",
+        accessToken: credential.key,
+        refreshToken: "",
+        expiresAt: Number.MAX_SAFE_INTEGER,
+      },
+      { actingAs },
+    );
     return { ok: true, provider: credential.provider };
   }
   if (
@@ -57,19 +80,23 @@ export async function captureRuntimeCredential(args: {
   ) {
     return { ok: false, status: 400, error: "agent is not connected yet" };
   }
-  await credentials.put({
-    workspaceId,
-    provider: credential.provider,
-    kind: "oauth",
-    accessToken: credential.access,
-    refreshToken: credential.refresh,
-    accountId: credential.accountId,
-    expiresAt: credential.expires,
-    enterpriseUrl: credential.enterpriseUrl,
-  });
+  await credentials.put(
+    {
+      workspaceId,
+      provider: credential.provider,
+      kind: "oauth",
+      accessToken: credential.access,
+      refreshToken: credential.refresh,
+      accountId: credential.accountId,
+      expiresAt: credential.expires,
+      enterpriseUrl: credential.enterpriseUrl,
+    },
+    { actingAs },
+  );
   const scrub = await scrubRuntimeRefreshToken(
     `${endpoint.baseUrl}/auth/scrub-refresh`,
     endpoint.token,
+    actingAs,
   );
   if (!scrub.ok) {
     return {

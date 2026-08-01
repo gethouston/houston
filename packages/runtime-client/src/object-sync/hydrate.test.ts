@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -112,6 +113,81 @@ test("exclusions support basenames, subtrees, temp files, and runtime auth", () 
     true,
   );
   expect(excluded("claude-login/projects/cache.json", excludes)).toBe(false);
+});
+
+/**
+ * The store-sync daemon's excludes, including the root-relative `auth-users/`
+ * entry it used to carry: the per-member credential directory must stay
+ * excluded at EVERY depth even when no caller configures it, because a
+ * root-relative pattern can never match the real nested key.
+ */
+const DAEMON_EXCLUDES = [
+  "credentials.json",
+  "auth-users/",
+  "claude-login/.credentials.json",
+  "db/",
+];
+
+const POD_AUTH_USERS = "workspaces/W/A/.houston/runtime/auth-users";
+
+test("per-member credential files are excluded at any depth", () => {
+  // The daemon runs with rootDir = HOUSTON_HOME, so the real key is nested
+  // under the agent's runtime dir — the shape that leaked one member's tokens.
+  expect(excluded(`${POD_AUTH_USERS}/abc123.json`, DAEMON_EXCLUDES)).toBe(true);
+  expect(
+    excluded(`${POD_AUTH_USERS}/abc123.served-providers.json`, DAEMON_EXCLUDES),
+  ).toBe(true);
+  expect(excluded("auth-users/abc123.json", DAEMON_EXCLUDES)).toBe(true);
+  // The per-turn layout puts the same directory one level down.
+  expect(excluded("data/auth-users/abc123.json", DAEMON_EXCLUDES)).toBe(true);
+  // The TEAM served-providers manifest is shared state and DOES sync: the
+  // segment rule must not swallow everything named after credentials.
+  expect(
+    excluded(
+      "workspaces/W/A/.houston/runtime/served-providers.json",
+      DAEMON_EXCLUDES,
+    ),
+  ).toBe(false);
+});
+
+test("nested auth-users files never sync out to the shared store", async () => {
+  const { storeRoot, store, work } = setup();
+  const authUsersDir = join(work, ...POD_AUTH_USERS.split("/"));
+  mkdirSync(authUsersDir, { recursive: true });
+  writeFileSync(join(authUsersDir, "abc123.json"), '{"access":"AT-alice"}');
+  writeFileSync(
+    join(authUsersDir, "abc123.served-providers.json"),
+    '["anthropic"]',
+  );
+  mkdirSync(join(work, "workspaces", "W", "A", "workspace"), {
+    recursive: true,
+  });
+  writeFileSync(join(work, "workspaces", "W", "A", "workspace", "n.txt"), "n");
+
+  const result = await syncBack(store, "", work, new Map(), {
+    excludes: DAEMON_EXCLUDES,
+  });
+  expect(result.uploaded).toEqual(["workspaces/W/A/workspace/n.txt"]);
+  expect([...result.manifest.keys()]).toEqual([
+    "workspaces/W/A/workspace/n.txt",
+  ]);
+  expect((await store.list("")).some((key) => key.includes("auth-users"))).toBe(
+    false,
+  );
+  expect(existsSync(join(storeRoot, ...POD_AUTH_USERS.split("/")))).toBe(false);
+});
+
+test("nested auth-users objects never hydrate into a pod", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, "", {
+    [`${POD_AUTH_USERS}/abc123.json`]: '{"access":"AT-alice"}',
+    "workspaces/W/A/workspace/n.txt": "n",
+  });
+  const manifest = await hydrate(store, "", work, {
+    excludes: DAEMON_EXCLUDES,
+  });
+  expect([...manifest.keys()]).toEqual(["workspaces/W/A/workspace/n.txt"]);
+  expect(existsSync(join(work, ...POD_AUTH_USERS.split("/")))).toBe(false);
 });
 
 test("an unchanged workspace uploads nothing and remains in the manifest", async () => {

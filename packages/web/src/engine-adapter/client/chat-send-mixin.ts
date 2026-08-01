@@ -10,7 +10,8 @@ import {
   noteAutoResumeStarted,
   removeQueuedSend,
 } from "../send-queue";
-import { DEFAULT_AGENT_PATH, wireTurnPin } from "../synthetic";
+import { DEFAULT_AGENT_PATH } from "../synthetic";
+import { wireTurnPin } from "../turn-pin";
 import { observeConversation, streamTurn } from "../turn-stream";
 import { setActivityStatus } from "./activity-status";
 import type { BaseCtor } from "./mixin";

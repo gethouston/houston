@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -108,6 +114,69 @@ test("find: hostile search path throws before any fd spawn", async () => {
   await expect(exec("find", { pattern: "auth*", path: ".." })).rejects.toThrow(
     "outside the agent workspace",
   );
+});
+
+/**
+ * The runtime's dataDir lives INSIDE the workspace (`<agentDir>/.houston/
+ * runtime`), so containment cannot protect the credential files — every team
+ * member's provider tokens sit on a path the file tools can otherwise resolve.
+ * Drive pi's real tools at them and prove the deny wall holds end to end.
+ */
+// Canonical root: on macOS /tmp is a symlink, and an absolute path through it
+// would be rejected as an escape before the credential deny even runs.
+const runtimeDir = join(realpathSync(ws), ".houston", "runtime");
+mkdirSync(join(runtimeDir, "auth-users"), { recursive: true });
+writeFileSync(
+  join(runtimeDir, "auth.json"),
+  JSON.stringify({ a: "TEAMTOKEN" }),
+);
+writeFileSync(
+  join(runtimeDir, "auth-users", "deadbeefdeadbeef.json"),
+  JSON.stringify({ a: "MEMBERTOKEN" }),
+);
+writeFileSync(join(runtimeDir, "served-providers.json"), '["anthropic"]');
+
+test("read: credential files inside the workspace are denied, ordinary data is not", async () => {
+  for (const path of [
+    ".houston/runtime/auth.json",
+    ".houston/runtime/auth-users/deadbeefdeadbeef.json",
+    join(runtimeDir, "auth.json"),
+  ]) {
+    await expect(exec("read", { path }), path).rejects.toThrow(
+      /sign-in credentials/,
+    );
+  }
+  const ok = await exec("read", {
+    path: ".houston/runtime/served-providers.json",
+  });
+  expect(JSON.stringify(ok.content)).toContain("anthropic");
+});
+
+test("write/edit cannot overwrite a credential file either", async () => {
+  await expect(
+    exec("write", { path: ".houston/runtime/auth.json", content: "{}" }),
+  ).rejects.toThrow(/sign-in credentials/);
+  await expect(
+    exec("edit", {
+      path: ".houston/runtime/auth-users/deadbeefdeadbeef.json",
+      edits: [{ oldText: "MEMBERTOKEN", newText: "owned" }],
+    }),
+  ).rejects.toThrow(/sign-in credentials/);
+  expect(
+    readFileSync(
+      join(runtimeDir, "auth-users", "deadbeefdeadbeef.json"),
+      "utf8",
+    ),
+  ).toContain("MEMBERTOKEN");
+});
+
+test("ls and grep cannot enumerate or search the credential dir", async () => {
+  await expect(
+    exec("ls", { path: ".houston/runtime/auth-users" }),
+  ).rejects.toThrow(/sign-in credentials/);
+  await expect(
+    exec("grep", { pattern: "access", path: ".houston/runtime/auth-users" }),
+  ).rejects.toThrow(/sign-in credentials/);
 });
 
 test("non-string path is rejected, not coerced", async () => {

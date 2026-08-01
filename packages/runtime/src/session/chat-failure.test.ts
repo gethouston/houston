@@ -12,6 +12,10 @@ process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 const { runTurn } = await import("./chat");
 const { getHistory } = await import("../store/conversations");
 const { subscribe } = await import("./bus");
+const { recordServedScope, resetServedScopes } = await import(
+  "../auth/served-scope"
+);
+const { runWithActingContext } = await import("./acting-context");
 
 /**
  * A turn that fails BEFORE executing (a pin naming an unknown provider — a
@@ -103,4 +107,45 @@ test("a turn failing before execution publishes the nonce-stamped echo before th
   expect(frames.indexOf(user as never)).toBeLessThan(
     frames.indexOf(error as never),
   );
+});
+
+/**
+ * A pre-execution failure is SYNTHESIZED here rather than classified by
+ * ai/provider-error.ts, so it has to stamp the credential context itself
+ * (HOU-976). Without the stamp a member whose OWN account is not connected gets
+ * a card that never says whose account is missing, which is the one fact that
+ * tells them the fix is theirs to make.
+ */
+test("a pre-execution failure under a personal scope stamps the credential context", async () => {
+  resetServedScopes();
+  const acting = {
+    actingAs: `acting-v1.${Buffer.from(
+      JSON.stringify({ sub: "sub-stamp", agent: "acme", exp: 9_000_000_000 }),
+    ).toString("base64url")}.sig`,
+  };
+  await runWithActingContext(acting, async () => {
+    recordServedScope("openai-compatible", "personal");
+    await runTurn("conv-fail-4", "who am I?", undefined, {
+      provider: "openai-compatible",
+    });
+  });
+
+  const assistant = getHistory("conv-fail-4")?.messages.at(-1);
+  expect(assistant?.providerError).toMatchObject({
+    kind: "unauthenticated",
+    provider: "openai-compatible",
+    cause: "no_credentials",
+    credential: { scope: "personal" },
+  });
+  resetServedScopes();
+});
+
+/** The team scope records no served verdict, so the wire shape is unchanged. */
+test("a pre-execution failure with no acting identity carries no credential stamp", async () => {
+  resetServedScopes();
+  await runTurn("conv-fail-5", "who am I?", undefined, {
+    provider: "openai-compatible",
+  });
+  const assistant = getHistory("conv-fail-5")?.messages.at(-1);
+  expect(assistant?.providerError).not.toHaveProperty("credential");
 });

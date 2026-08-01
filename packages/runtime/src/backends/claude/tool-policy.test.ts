@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import type {
@@ -132,6 +132,31 @@ test("canUseTool denies an absolute-path escape", async () => {
   expect(r.behavior).toBe("deny");
   if (r.behavior === "deny")
     expect(r.message).toMatch(/outside the agent workspace/);
+});
+
+test("canUseTool denies the in-workspace credential files (Read/Write/Grep)", async () => {
+  // The runtime's dataDir lives under the workspace root, so these paths pass
+  // containment; the guard's credential deny is the only thing that stops them.
+  const ws = workspace();
+  const runtime = join(ws, ".houston", "runtime");
+  mkdirSync(join(runtime, "auth-users"), { recursive: true });
+  writeFileSync(join(runtime, "auth.json"), "{}");
+  const can = makeCanUseTool(ws);
+  const denied = [
+    ["Read", { file_path: join(runtime, "auth.json") }],
+    ["Write", { file_path: ".houston/runtime/auth.json" }],
+    [
+      "Read",
+      { file_path: ".houston/runtime/auth-users/deadbeefdeadbeef.json" },
+    ],
+    ["Grep", { pattern: "access", path: ".houston/runtime/auth-users" }],
+  ] as const;
+  for (const [tool, input] of denied) {
+    const r = await decide(can, tool, input);
+    expect(r.behavior, `${tool} ${JSON.stringify(input)}`).toBe("deny");
+    if (r.behavior === "deny")
+      expect(r.message).toMatch(/holds the sign-in credentials/);
+  }
 });
 
 test("canUseTool denies a `..` traversal escape", async () => {

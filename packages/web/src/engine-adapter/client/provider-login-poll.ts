@@ -17,7 +17,17 @@ import { retryCredentialCapture } from "./provider-capture-retry";
  * `activeLogins` key segment for a login started before any agent existed
  * (first-run: it runs in the host's hidden setup runtime, not an agent's).
  */
-export const SETUP_LOGIN_KEY = "__setup__";
+const SETUP_LOGIN_KEY = "__setup__";
+
+/**
+ * The in-flight-login key for one (runtime, provider) pair — the shape
+ * `ctx.activeLogins` is keyed by. A null `agentId` is the pre-agent first-run
+ * login, which runs in the hidden setup runtime. Shared by the connect poll and
+ * the cancel path so the two can never disagree about which login they mean.
+ */
+export function loginKey(agentId: string | null, pid: string): string {
+  return `${agentId ?? SETUP_LOGIN_KEY}:${pid}`;
+}
 
 /**
  * True iff this provider's login is genuinely DONE — not merely `configured`.
@@ -98,7 +108,7 @@ export async function pollProviderConnect(
 ): Promise<void> {
   const cp = ctx.cp;
   if (!cp) return;
-  const key = `${agentId ?? SETUP_LOGIN_KEY}:${pid}`;
+  const key = loginKey(agentId, pid);
   ctx.activeLogins.add(key);
   const engine = agentId
     ? runtimeClientFor(cp, agentId)

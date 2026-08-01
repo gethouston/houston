@@ -3,6 +3,7 @@ import type { AuthFailureCause, ProviderError } from "@houston/runtime-client";
 import {
   classifyProviderError,
   extractRetryAfterSeconds,
+  stampCredentialScope,
 } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
 import { noteAuthFailure } from "../../auth/credential-health";
@@ -45,7 +46,15 @@ export function mapSdkError(
   const message = ctx.message.trim() || "Unknown provider error";
   const model = ctx.model;
   const status = ctx.status ?? null;
-  const mapped = mapSdkEnum(error, message, model, status, ctx);
+  // The enum mappings build their card directly, so they bypass
+  // `classifyProviderError` — the one place every OTHER provider error picks up
+  // WHOSE credential ran the turn. Stamp it here or a personal-scope member's
+  // rate-limit / auth card loses `credential` and cannot offer "continue on the
+  // team account" (HOU-976 §5), on the provider whose limits users hit most.
+  // A no-op without an acting identity, so desktop/self-host cards are
+  // unchanged. The fall-through path is already stamped inside classifyText.
+  const enumMapped = mapSdkEnum(error, message, model, status, ctx);
+  const mapped = enumMapped ? stampCredentialScope(enumMapped) : null;
   // Fall-through cases delegate to classifyText, which logs for itself.
   if (mapped) {
     logProviderError(mapped, { model, status, sdkError: error });

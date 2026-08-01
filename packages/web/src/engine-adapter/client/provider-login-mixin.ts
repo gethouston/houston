@@ -1,12 +1,12 @@
 import { EngineError } from "@houston/runtime-client";
-import { PROVIDER_LOGIN_PORT_BUSY_ERROR } from "@houston-ai/core";
 import { emitEvent } from "../bus";
 import * as controlPlane from "../control-plane";
 import { toNewProvider, toOldProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
+import { surfaceTypedLoginFailure } from "./provider-login-failure";
 import {
+  loginKey,
   pollProviderConnect,
-  SETUP_LOGIN_KEY,
   stopLoginWatch,
   watchLoginCompletion,
 } from "./provider-login-poll";
@@ -17,46 +17,6 @@ function benignCancelMiss(e: unknown): void {
   if (e instanceof EngineError && e.status === 404) return;
   throw e;
 }
-
-/**
- * Surface a login-launch failure the runtime tagged with a stable `kind` (today:
- * the OpenAI/Codex sign-in port 1455 is held by another app) as a normal
- * `ProviderLoginComplete` failure — the same channel the completion toast and
- * the reconnect card already read — so its actionable message reaches the user.
- * A raw `startLogin` rejection is otherwise flattened to a generic "sign-in
- * failed" toast (the REST body's real `error` string never reaches the caller).
- * Returns true when handled (the caller must NOT rethrow); false to rethrow
- * unchanged, preserving every untyped failure's existing path.
- */
-function surfaceTypedLoginFailure(
-  displayProvider: string,
-  err: unknown,
-): boolean {
-  if (!(err instanceof EngineError)) return false;
-  let parsed: { error?: unknown; kind?: unknown };
-  try {
-    parsed = JSON.parse(err.body) as { error?: unknown; kind?: unknown };
-  } catch {
-    return false;
-  }
-  if (typeof parsed.kind !== "string" || typeof parsed.error !== "string")
-    return false;
-  emitEvent("ProviderLoginComplete", {
-    provider: displayProvider,
-    success: false,
-    error: SENTINEL_BY_KIND[parsed.kind] ?? parsed.error,
-  });
-  return true;
-}
-
-/** Typed runtime failure kinds the app localizes: the raw runtime message is
- *  swapped for the matching `@houston-ai/core` sentinel so the toast mapping
- *  (app/src/lib/provider-login-error.ts) can match by value, exactly like the
- *  client-side timeout sentinels. Unknown kinds pass the real message through
- *  verbatim (beta policy). */
-const SENTINEL_BY_KIND: Record<string, string> = {
-  codex_callback_port_busy: PROVIDER_LOGIN_PORT_BUSY_ERROR,
-};
 
 export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderLogin extends Base {
@@ -175,7 +135,7 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
         // Key mirrors pollProviderConnect: the agent's id, or the setup-runtime
         // sentinel when the first-run login started before any agent existed.
         const agentId = this.ctx.providerAgentId();
-        this.ctx.activeLogins.delete(`${agentId ?? SETUP_LOGIN_KEY}:${pid}`); // stop the poll
+        this.ctx.activeLogins.delete(loginKey(agentId, pid)); // stop the poll
         // Kill the runtime-side login too, in the same runtime the login started
         // in (the agent's sandbox, or the hidden setup runtime pre-agent) —
         // otherwise it keeps polling the provider until timeout and a retry

@@ -23,6 +23,7 @@ export type {
   PendingInteraction,
   ProviderAuth,
   ProviderError,
+  ProviderErrorCredential,
   ProviderId,
   ProviderInfo,
   ProviderUsage,

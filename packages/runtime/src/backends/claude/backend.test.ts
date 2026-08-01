@@ -1,6 +1,29 @@
-import { afterEach, beforeEach, expect, test } from "vitest";
-import { buildClaudeEnv, type ClaudeToken } from "./backend";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { runWithActingContext } from "../../session/acting-context";
+import type { ResolvedModel } from "../types";
+import {
+  buildClaudeEnv,
+  type ClaudeBackendDeps,
+  type ClaudeToken,
+  createClaudeBackend,
+} from "./backend";
 import { claudeLoginConfigDir } from "./paths";
+
+// Capture the `baseOptions` the backend hands a session WITHOUT running the SDK:
+// the whole point of the scope guard is that a refused turn never builds an env
+// at all, so "was a session constructed, and with which env" is the assertion.
+const { built } = vi.hoisted(() => ({ built: [] as Options[] }));
+vi.mock("./session", () => ({
+  ClaudeSession: class {
+    constructor(deps: { baseOptions: Options }) {
+      built.push(deps.baseOptions);
+    }
+  },
+}));
 
 // buildClaudeEnv reads process.env; snapshot the three credential vars so a test
 // that plants a stale one can't leak into another.
@@ -14,6 +37,7 @@ let saved: Record<string, string | undefined>;
 beforeEach(() => {
   saved = Object.fromEntries(CREDS.map((k) => [k, process.env[k]]));
   for (const k of CREDS) delete process.env[k];
+  built.length = 0;
 });
 afterEach(() => {
   for (const k of CREDS) {
@@ -140,6 +164,71 @@ test("Houston host secrets never reach the subprocess env", () => {
       else process.env[k] = v;
     }
   }
+});
+
+/**
+ * The READ-side mirror of the credentials-file scope guard (HOU-976, and
+ * knowledge-base/anthropic-credentials.md traps #4 + #6): `CLAUDE_CONFIG_DIR` is
+ * the POD-SHARED login dir holding the TEAM's `.credentials.json`. Handing it to
+ * the SDK with no personal token in the env makes a member's turn authenticate as
+ * the team AND lets the SDK self-refresh the team's refresh-token family — a
+ * second rotator beside the gateway, plus a cross-member credential leak.
+ */
+function actingToken(sub: string): string {
+  const payload = Buffer.from(
+    JSON.stringify({ sub, agent: "acme", exp: 9_000_000_000 }),
+  ).toString("base64url");
+  return `acting-v1.${payload}.sig`;
+}
+
+const alice = { actingAs: actingToken("sub-alice") };
+
+const MODEL: ResolvedModel = {
+  provider: "anthropic",
+  id: "claude-sonnet-4-6",
+  contextWindow: 200_000,
+};
+
+function backendDeps(readToken: ClaudeBackendDeps["readToken"]) {
+  // A real directory: the tool policy's workspace clamp realpath()s the cwd.
+  const workspaceDir = mkdtempSync(join(tmpdir(), "claude-backend-scope-"));
+  return {
+    workspaceDir,
+    dataDir: workspaceDir,
+    readToken,
+    toolSelection: { toolNames: [], includeRunCode: false },
+    systemPrompt: "houston",
+  } satisfies ClaudeBackendDeps;
+}
+
+test("a personal scope with NO personal token refuses the session", async () => {
+  const backend = createClaudeBackend(backendDeps(() => undefined));
+  await expect(
+    runWithActingContext(alice, () =>
+      backend.createSession({ conversationId: "c1", model: MODEL }),
+    ),
+  ).rejects.toThrow(/^No provider connected\./);
+  // No session, and therefore no env pinned at the pod-shared login dir.
+  expect(built).toEqual([]);
+});
+
+test("a personal scope with its OWN token proceeds (env token outranks the dir)", async () => {
+  const backend = createClaudeBackend(backendDeps(() => oauth));
+  await runWithActingContext(alice, () =>
+    backend.createSession({ conversationId: "c1", model: MODEL }),
+  );
+  expect(built).toHaveLength(1);
+  expect(built[0]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-x");
+});
+
+test("the team scope still pins the shared login dir with no token (unchanged)", async () => {
+  // Desktop / self-host / every pre-HOU-976 request: the SDK legitimately reads
+  // the credential cached in its own login dir. Byte-identical to before.
+  const backend = createClaudeBackend(backendDeps(() => undefined));
+  await backend.createSession({ conversationId: "c1", model: MODEL });
+  expect(built).toHaveLength(1);
+  expect(built[0]?.env?.CLAUDE_CONFIG_DIR).toBe(claudeLoginConfigDir());
+  expect(built[0]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
 });
 
 test("browser-login path: shared config dir, NO token env (SDK reads the cached cred)", () => {

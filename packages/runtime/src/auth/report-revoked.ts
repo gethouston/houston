@@ -1,8 +1,14 @@
-import { join } from "node:path";
 import type { ProviderError } from "@houston/protocol";
 import { accessDigest } from "@houston/protocol/access-digest";
 import { config } from "../config";
-import { readAuthFile, readServedProvidersAt } from "./auth-file";
+import { currentCredentialScope } from "../session/acting-context";
+import {
+  authPathIn,
+  readAuthFile,
+  readServedProvidersAt,
+  servedProvidersPathIn,
+} from "./auth-file";
+import { servedScopeFor } from "./served-scope";
 
 /**
  * Tell the control plane when a provider REVOKES a token it served us.
@@ -52,13 +58,20 @@ async function reportRevoked(err: ProviderError): Promise<void> {
   if (!config.controlPlaneUrl || !config.sandboxToken) return;
 
   const provider = err.provider;
+  // Everything below is read for the ACTING identity (HOU-976): a member reports
+  // the token THEY were served, and the gateway must delete that row, not the
+  // team's. Absent identity resolves to the one shared file, as before.
+  const { key, actingAs } = currentCredentialScope();
   const served = readServedProvidersAt(
-    join(config.dataDir, "served-providers.json"),
+    servedProvidersPathIn(config.dataDir, key),
   );
   if (!served.includes(provider)) return;
 
-  const cred = readAuthFile(join(config.dataDir, "auth.json"))[provider];
+  const cred = readAuthFile(authPathIn(config.dataDir, key))[provider];
   if (cred?.type !== "oauth" || !cred.access) return;
+  // WHICH row the gateway served us. Unknown (a pre-HOU-976 gateway sends no
+  // scope) reads as the team row — the only thing it could have been.
+  const scope = servedScopeFor(provider) ?? "team";
 
   try {
     const res = await fetch(
@@ -74,6 +87,12 @@ async function reportRevoked(err: ProviderError): Promise<void> {
           // The token is named, never shipped: the control plane holds its own
           // copy and compares digests.
           accessSha256: accessDigest(cred.access),
+          scope,
+          // The scope alone says "a member's row", not WHOSE: the gateway keys
+          // personal credentials by (org, user, provider) and answers 400
+          // without an acting identity. Sent only when there is one, so a team
+          // report stays the body a pre-HOU-976 control plane expects.
+          ...(actingAs ? { actingAs } : {}),
         }),
         signal: AbortSignal.timeout(REPORT_TIMEOUT_MS),
       },

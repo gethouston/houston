@@ -1,99 +1,22 @@
 /**
- * Transient typed-provider-error variants — rate-limited, usage-limit-paused,
- * network, provider-internal, malformed-response. They share the "wait"
- * recovery shape; rate-limited/network/internal offer a retry (and the
- * network/internal ones a status-page link), while usage-limit-paused is
- * informational — the user waits for the plan window to reset. All render on
- * the unified `RowCard` (HOU-467).
+ * Transient typed-provider-error variants that recover by RETRYING NOW —
+ * network-unreachable, provider-internal, malformed-response. The failure is
+ * infrastructure, not the account: nothing about which AI account ran the turn
+ * changes the remedy, so these carry no credential-scope affordance.
+ *
+ * The account-shaped limits (rate-limited, usage-limit-paused) live in the
+ * sibling `limits.tsx` — they recover by waiting or by moving to another account.
+ * All render on the unified `RowCard` (HOU-467).
  */
 
 import type { ProviderError } from "@houston-ai/chat";
-import {
-  AlertTriangleIcon,
-  Clock,
-  ServerCrashIcon,
-  TimerResetIcon,
-  WifiOffIcon,
-} from "lucide-react";
+import { AlertTriangleIcon, ServerCrashIcon, WifiOffIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { RowCard } from "../../cards/row-card";
-import { RowCardButton } from "../../cards/row-card-button";
 import { providerLabel, RetryButton, StatusPageButton } from "./shared";
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;
-  onSwitchModel?: () => void;
-}
-
-export function RateLimitedCard({
-  error,
-  onRetry,
-  onSwitchModel,
-}: BaseProps & {
-  error: Extract<ProviderError, { kind: "rate_limited" }>;
-}) {
-  const { t } = useTranslation("shell");
-  const provider = providerLabel(error.provider);
-  const body = error.retry_after_seconds
-    ? t("providerError.rateLimited.bodyWithRetry", {
-        provider,
-        seconds: error.retry_after_seconds,
-      })
-    : t("providerError.rateLimited.body", { provider });
-  return (
-    <div className="w-full px-1 py-2">
-      <RowCard
-        media={<Clock className="size-5" />}
-        title={t("providerError.rateLimited.title")}
-        description={body}
-        action={
-          <>
-            {onRetry && (
-              <RetryButton
-                onRetry={onRetry}
-                label={t("providerError.rateLimited.retry")}
-              />
-            )}
-            {onSwitchModel && (
-              <RowCardButton
-                label={t("providerError.rateLimited.switchModel")}
-                onClick={onSwitchModel}
-                variant="outline"
-              />
-            )}
-          </>
-        }
-      />
-    </div>
-  );
-}
-
-/**
- * Plan-window usage limit (Anthropic's 5-hour subscription session limit).
- * Distinct from RateLimited: retrying now fails, so there is no action — the
- * user just waits for the reset. We surface the reset time when the engine
- * could resolve it.
- */
-export function UsageLimitPausedCard({
-  error,
-}: {
-  error: Extract<ProviderError, { kind: "usage_limit_paused" }>;
-}) {
-  const { t } = useTranslation("shell");
-  const body = error.resets_at
-    ? t("providerError.usageLimitPaused.bodyWithReset", {
-        time: error.resets_at,
-      })
-    : t("providerError.usageLimitPaused.body");
-  return (
-    <div className="w-full px-1 py-2">
-      <RowCard
-        media={<TimerResetIcon className="size-5" />}
-        title={t("providerError.usageLimitPaused.title")}
-        description={body}
-      />
-    </div>
-  );
 }
 
 export function NetworkUnreachableCard({

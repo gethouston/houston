@@ -5,14 +5,13 @@ import * as controlPlane from "../control-plane";
 import { credentialSiblings, toNewProvider } from "../synthetic";
 import { isHoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
+import { connectApiKey } from "./provider-api-key";
 import { pushClaudeCredential } from "./provider-claude-push";
-import {
-  requireProviderAgentId,
-  requireProviderRouting,
-} from "./provider-routing";
+import { requireProviderAgentId } from "./provider-routing";
 
 export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderCredentials extends Base {
+    /** Disconnect a provider account. */
     async providerLogout(name: string): Promise<void> {
       const pid = toNewProvider(name);
       if (!pid) return;
@@ -54,67 +53,12 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
 
     /**
-     * Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
-     * OAuth dance. Cloud stores it centrally (and pushes it into the agent runtime)
-     * via the control plane; local writes it straight to the single runtime. On
-     * success we fire `ProviderLoginComplete` so the connect dialog closes and the
-     * provider card flips to connected — the same signal the OAuth flow emits. A
-     * failure rejects so the caller surfaces the real reason (never swallowed).
+     * Connect an API-key provider by pasted key — see {@link connectApiKey} for
+     * the whole flow (sibling gateways, the pre-agent setup path, the active
+     * provider claim, and the completion event).
      */
     async setProviderApiKey(name: string, apiKey: string): Promise<void> {
-      const pid = toNewProvider(name);
-      if (!pid) throw new Error(`provider ${name} not supported`);
-      // OpenCode's Zen + Go gateways share one opencode.ai key (pi reads
-      // OPENCODE_API_KEY for both), so store the pasted key under every sibling
-      // gateway — one connect lights up both. `pid` (the connected id) is the one
-      // that becomes active; the order of the writes doesn't affect that.
-      const targets = credentialSiblings(pid);
-      if (this.ctx.cp) {
-        // Refuse rather than guess: an unsettled list leaves only the raw pref,
-        // which after a switch names the PREVIOUS space's agent (HOU-979).
-        requireProviderRouting(this.ctx);
-        // First-run pre-agent: store through the setup runtime instead — the key
-        // lands on this space's central store and the agent created next reads
-        // it. No per-agent settings exist yet to flip.
-        const agentId = this.ctx.providerAgentId();
-        if (!agentId) {
-          for (const target of targets) {
-            await controlPlane.setSetupApiKey(this.ctx.cp, target, apiKey);
-          }
-          emitEvent("ProviderLoginComplete", {
-            provider: name,
-            success: true,
-            error: null,
-          });
-          return;
-        }
-        for (const target of targets) {
-          await controlPlane.setApiKey(this.ctx.cp, agentId, target, apiKey);
-        }
-        // CLAIM (don't set) the active provider: it becomes active only when the
-        // agent doesn't already resolve to one — a first connect on a fresh
-        // agent. Connecting a credential is not a model pick (HOU-695):
-        // unconditionally activating it here used to flip every open chat onto
-        // the new provider (paste an OpenCode key mid-Codex-chat → the next turn
-        // answers, bills, and quota-errors on OpenCode). Switching stays the
-        // model picker's job. Settings are PER-AGENT on the host, so this MUST
-        // go through the agent's runtime client.
-        await controlPlane
-          .runtimeClientFor(this.ctx.cp, agentId)
-          .claimActiveProvider(pid);
-      } else {
-        for (const target of targets) {
-          await this.ctx.engine.setApiKey(target, apiKey);
-        }
-        await this.ctx.engine.claimActiveProvider(pid);
-      }
-      // One completion event for the single account the user connected (never one
-      // per gateway), so the connect dialog closes and exactly one card flips.
-      emitEvent("ProviderLoginComplete", {
-        provider: name,
-        success: true,
-        error: null,
-      });
+      await connectApiKey(this.ctx, name, apiKey);
     }
 
     /**
