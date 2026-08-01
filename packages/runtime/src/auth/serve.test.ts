@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { accessDigest } from "@houston/protocol/access-digest";
 import { expect, test } from "vitest";
 import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
@@ -14,6 +15,7 @@ import {
 } from "./auth-file";
 import { selectExportCredential } from "./export";
 import { syncServedCredential } from "./serve";
+import { resetDeadKeyReportsForTest } from "./served-key-guard";
 
 /** The host's authoritative "not connected" 404 (see routes/credential.ts). */
 const notConnected404 = () =>
@@ -610,5 +612,93 @@ test("scrub leaves api-key entries untouched (no refresh token to strip)", () =>
   expect(auth["amazon-bedrock"]).toEqual({
     type: "api_key",
     key: "bedrock-KEEP",
+  });
+});
+
+// --- Dead served google keys (HOU-1107 / Sentry HOUSTON-APP-4Y9) ---
+
+/** Serves a google api_key credential; captures revoked-token reports. */
+function deadGoogleFetch(access: string) {
+  const reports: Array<Record<string, unknown>> = [];
+  let signalReport: (() => void) | undefined;
+  const reportSeen = new Promise<void>((resolve) => {
+    signalReport = resolve;
+  });
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/sandbox/credential/revoked") {
+      reports.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      signalReport?.();
+      return new Response(JSON.stringify({ ok: true, removed: true }), {
+        status: 200,
+      });
+    }
+    if (url.searchParams.get("provider") === "google") {
+      return new Response(
+        JSON.stringify({
+          provider: "google",
+          kind: "api_key",
+          access,
+          expires: Number.MAX_SAFE_INTEGER,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  return { fetchImpl, reports, reportSeen };
+}
+
+test("a served google 'api key' that is an OAuth token is refused, removed, and reported", async () => {
+  resetDeadKeyReportsForTest();
+  const { fetchImpl, reports, reportSeen } =
+    deadGoogleFetch("ya29.a0DeadToken");
+  await withServeMode(fetchImpl, async () => {
+    const path = join(config.dataDir, "auth.json");
+    const manifestPath = join(config.dataDir, "served-providers.json");
+    // An earlier (unguarded) sync already applied the dead key to this pod.
+    writeFileSync(
+      path,
+      JSON.stringify({ google: { type: "api_key", key: "ya29.a0DeadToken" } }),
+    );
+    writeServedProvidersAt(manifestPath, ["google"]);
+
+    // Refused: never applied, and the previously-applied copy is dropped so
+    // google reads not-connected (the visible connect card) instead of
+    // burning every turn on a doomed 401.
+    expect(await syncServedCredential()).toEqual([]);
+    expect(readAuth(path).google).toBeUndefined();
+    expect(readServedProvidersAt(manifestPath)).toEqual([]);
+
+    // Reported by digest so the store deletes the central row (HOU-952
+    // pipeline) — the whole workspace heals, not just this pod.
+    await reportSeen;
+    expect(reports).toEqual([
+      {
+        provider: "google",
+        accessSha256: accessDigest("ya29.a0DeadToken"),
+        scope: "team",
+      },
+    ]);
+
+    // A second sync re-serves the same dead key (the delete is idempotent on
+    // the store side); the report is deduped for the pod's lifetime.
+    expect(await syncServedCredential()).toEqual([]);
+    expect(reports.length).toBe(1);
+  });
+});
+
+test("a served google key with the real AIza shape is applied normally", async () => {
+  resetDeadKeyReportsForTest();
+  const { fetchImpl, reports } = deadGoogleFetch("AIzaSyServedRealKey");
+  await withServeMode(fetchImpl, async () => {
+    expect(await syncServedCredential()).toEqual(["google"]);
+    const auth = readAuth(join(config.dataDir, "auth.json"));
+    expect(auth.google).toEqual({
+      type: "api_key",
+      key: "AIzaSyServedRealKey",
+    });
+    expect(reports).toEqual([]);
   });
 });

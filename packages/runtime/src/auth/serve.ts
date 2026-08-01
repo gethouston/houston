@@ -12,6 +12,7 @@ import {
   writeServedProvidersAt,
 } from "./auth-file";
 import { logServeProbeFailure, noteServeProbeOk } from "./serve-log";
+import { reportDeadServedApiKey, servedApiKeyIsDead } from "./served-key-guard";
 import { forgetServedScope, recordServedScope } from "./served-scope";
 import { authStorage } from "./storage";
 
@@ -188,6 +189,23 @@ async function runServedSync(): Promise<string[]> {
   let manifestDirty = false;
   for (const probe of probes) {
     if (probe.state !== "error") noteServeProbeOk(probe.id);
+    if (probe.state === "served" && servedApiKeyIsDead(probe.cred)) {
+      // A served "API key" that can never authenticate (a legacy OAuth token
+      // stored as a google key — HOU-1107) must not reach auth.json: applying
+      // it burns every turn on a doomed 401 and the next sync re-applies it.
+      // Refuse it, drop any previously-applied copy (provenance-gated like the
+      // not-connected path below), and report the dead central row so the
+      // store stops serving it to the whole workspace (HOU-952 pipeline).
+      reportDeadServedApiKey(probe.cred);
+      forgetServedScope(probe.id);
+      if (manifest.has(probe.id)) {
+        if (removeServedCredentialAt(authPathFor(), probe.id))
+          removed.push(probe.id);
+        manifest.delete(probe.id);
+        manifestDirty = true;
+      }
+      continue;
+    }
     if (probe.state === "served") {
       const didApply = applyServedCredential(authPathFor(), probe.cred);
       // WHOSE credential this was, remembered for the provider-error stamp and
