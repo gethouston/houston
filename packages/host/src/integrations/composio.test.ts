@@ -380,9 +380,16 @@ test("a gone managed app with no collectible fallback names the remedy, not the 
     }
     return { status: 404 };
   });
-  await expect(provider.connect(USER, "ghostmanaged")).rejects.toThrow(
-    /only offers OAuth.*Composio dashboard/,
+  const failure = await provider.connect(USER, "ghostmanaged").then(
+    () => null,
+    (err: unknown) => err,
   );
+  expect(failure).toBeInstanceOf(IntegrationUpstreamError);
+  expect((failure as IntegrationUpstreamError).status).toBe(400);
+  expect((failure as IntegrationUpstreamError).body).toMatchObject({
+    code: "toolkit_oauth_unmanaged",
+  });
+  expect(String(failure)).toMatch(/only offers OAuth.*Composio dashboard/);
 });
 
 test("a managed create that fails for a non-400 reason surfaces raw, no fallback", async () => {
@@ -432,9 +439,16 @@ test("connect refuses an OAuth-only toolkit with no managed app, naming the reme
     }
     return { status: 404 };
   });
-  await expect(provider.connect(USER, "oauthonly")).rejects.toThrow(
-    /only offers OAuth.*Composio dashboard/,
+  const failure = await provider.connect(USER, "oauthonly").then(
+    () => null,
+    (err: unknown) => err,
   );
+  expect(failure).toBeInstanceOf(IntegrationUpstreamError);
+  expect((failure as IntegrationUpstreamError).status).toBe(400);
+  expect((failure as IntegrationUpstreamError).body).toMatchObject({
+    code: "toolkit_oauth_unmanaged",
+  });
+  expect(String(failure)).toMatch(/only offers OAuth.*Composio dashboard/);
 });
 
 test("connect on a NO_AUTH toolkit is a clean 400, not a doomed Composio POST", async () => {

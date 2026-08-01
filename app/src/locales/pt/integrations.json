@@ -29,7 +29,9 @@
     "timeoutTitle": "Ainda esperando o {{app}}",
     "timeout": "Paramos de verificar por enquanto. Quando terminar de entrar, conecte o {{app}} de novo.",
     "failedTitle": "Não foi possível conectar o {{app}}",
-    "failed": "Algo deu errado ao entrar. Tente conectar novamente."
+    "failed": "Algo deu errado ao entrar. Tente conectar novamente.",
+    "unavailableTitle": "Ainda não é possível conectar o {{app}}",
+    "unavailable": "Este app precisa de configuração adicional do lado da Houston antes de conectar contas. Estamos trabalhando nisso, tente novamente mais tarde."
   },
   "grants": {
     "disconnect": {

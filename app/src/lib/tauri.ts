@@ -51,6 +51,7 @@ import {
 } from "./engine-mode";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
+import { isUnconnectableToolkitError } from "./integration-connect-error";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { isNetworkTransportError } from "./network-transport-error";
@@ -1838,10 +1839,16 @@ export const tauriIntegrations = {
     ),
   /** Begin an app connection. `agent` (the agent slug) scopes the connect to a
    *  per-agent surface so the gateway applies the agent's allowlist + auto-grant
-   *  (Teams v2); omit it for the account-level Integrations page. */
+   *  (Teams v2); omit it for the account-level Integrations page. An
+   *  OAuth-only toolkit with no registered OAuth app (`toolkit_oauth_unmanaged`
+   *  — HOU-1116) is an expected state the connect flow explains with its own
+   *  copy, not a bug toast + Sentry report. */
   connect: (provider: string, toolkit: string, agent?: string) =>
-    call("integration_connect", () =>
-      getEngine().connectIntegration(provider, toolkit, agent),
+    call(
+      "integration_connect",
+      () => getEngine().connectIntegration(provider, toolkit, agent),
+      undefined,
+      { silence: isUnconnectableToolkitError },
     ),
   connection: (provider: string, connectionId: string) =>
     call("integration_connection", () =>

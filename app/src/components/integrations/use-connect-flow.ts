@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { logAndReportError } from "../../lib/error-report";
+import { isUnconnectableToolkitError } from "../../lib/integration-connect-error";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import {
@@ -128,8 +129,31 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
         // Agent context: pass the agent slug so the gateway enforces the
         // agent's effective allowlist on connect (Teams v2). Undefined on the
         // account-level Integrations page.
-        mintLink: (slug) =>
-          tauriIntegrations.connect(INTEGRATION_PROVIDER, slug, agentId),
+        //
+        // An app Houston cannot offer OAuth for yet (`toolkit_oauth_unmanaged`
+        // — twitter, HOU-1116) is an expected state, not a bug: `call()` keeps
+        // it off Sentry and the red toast, and the copy here names the real
+        // reason instead of the generic "something went wrong".
+        mintLink: async (slug) => {
+          try {
+            return await tauriIntegrations.connect(
+              INTEGRATION_PROVIDER,
+              slug,
+              agentId,
+            );
+          } catch (err) {
+            if (isUnconnectableToolkitError(err)) {
+              addToast({
+                title: t("connectResult.unavailableTitle", {
+                  app: appName(slug),
+                }),
+                description: t("connectResult.unavailable"),
+                variant: "info",
+              });
+            }
+            throw err;
+          }
+        },
         openUrl: (url) => tauriSystem.openUrl(url),
         readConnection: (connectionId) =>
           tauriIntegrations.connection(INTEGRATION_PROVIDER, connectionId),
@@ -150,7 +174,17 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
       entry.promise = run;
       return { outcome: await run, initiated: true };
     },
-    [agentId, announce, qc, setNotice, setOrigin, setStep],
+    [
+      agentId,
+      addToast,
+      announce,
+      appName,
+      qc,
+      setNotice,
+      setOrigin,
+      setStep,
+      t,
+    ],
   );
 
   const reopen = useCallback(async (toolkit: string) => {

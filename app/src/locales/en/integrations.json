@@ -29,7 +29,9 @@
     "timeoutTitle": "Still waiting for {{app}}",
     "timeout": "We stopped checking for now. When you finish signing in, connect {{app}} again.",
     "failedTitle": "{{app}} could not be connected",
-    "failed": "Something went wrong while signing in. Please try connecting it again."
+    "failed": "Something went wrong while signing in. Please try connecting it again.",
+    "unavailableTitle": "{{app}} can't be connected yet",
+    "unavailable": "This app needs extra setup on Houston's side before accounts can connect. We're working on it, please check back later."
   },
   "grants": {
     "disconnect": {

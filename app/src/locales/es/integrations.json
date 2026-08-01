@@ -29,7 +29,9 @@
     "timeoutTitle": "Seguimos esperando {{app}}",
     "timeout": "Dejamos de revisar por ahora. Cuando termines de iniciar sesión, conecta {{app}} de nuevo.",
     "failedTitle": "No se pudo conectar {{app}}",
-    "failed": "Algo salió mal al iniciar sesión. Inténtalo de nuevo."
+    "failed": "Algo salió mal al iniciar sesión. Inténtalo de nuevo.",
+    "unavailableTitle": "Aún no se puede conectar {{app}}",
+    "unavailable": "Esta app necesita configuración adicional de parte de Houston antes de poder conectar cuentas. Estamos trabajando en ello, vuelve a intentarlo más tarde."
   },
   "grants": {
     "disconnect": {

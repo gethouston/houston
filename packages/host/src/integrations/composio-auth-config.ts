@@ -99,9 +99,16 @@ interface RawToolkitDetail {
  *  connect page, so only those are connectable fallbacks. */
 const OAUTH_MODES = new Set(["OAUTH1", "OAUTH1A", "OAUTH2"]);
 
-function oauthOnlyError(toolkit: string): Error {
-  return new Error(
-    `composio: toolkit '${toolkit}' only offers OAuth and Composio has no managed app for it — register a developer OAuth app for it in the Composio dashboard, then connecting will reuse that auth config`,
+/** A coded 400, not a plain Error: connecting such a toolkit (twitter —
+ *  HOU-1116) is impossible until the OPERATOR registers a developer OAuth app
+ *  in the Composio dashboard, so the client must receive an expected,
+ *  explainable state it can render calmly, never an opaque 500. */
+function oauthOnlyError(toolkit: string): IntegrationUpstreamError {
+  const detail = `composio: toolkit '${toolkit}' only offers OAuth and Composio has no managed app for it — register a developer OAuth app for it in the Composio dashboard, then connecting will reuse that auth config`;
+  return new IntegrationUpstreamError(
+    400,
+    { error: detail, code: "toolkit_oauth_unmanaged" },
+    detail,
   );
 }
 
