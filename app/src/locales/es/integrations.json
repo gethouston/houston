@@ -172,6 +172,7 @@
       "updateKey": "Actualizar clave"
     },
     "status": {
+      "active": "Conectado",
       "pendingKey": "Necesita una clave de API",
       "error": "{{message}}"
     },

@@ -172,6 +172,7 @@
       "updateKey": "Update key"
     },
     "status": {
+      "active": "Connected",
       "pendingKey": "Needs an API key",
       "error": "{{message}}"
     },

@@ -13,16 +13,19 @@ interface CustomIntegrationRowProps {
   onRemove: (integration: CustomIntegrationView) => void;
 }
 
-/** The status line under the name: tool count (active), a needs-key prompt
- *  (pending), or the error message (error, tinted). Spans (not <p>) because
- *  the line renders inside the row-body <button>, phrasing content only. */
+/** The status line under the name: "Connected" (active — the action COUNT is
+ *  deliberately not shown here: discovery isn't deterministic enough yet for
+ *  a number to read as a promise; the detail card still shows it), a
+ *  needs-key prompt (pending), or the error message (error, tinted). Spans
+ *  (not <p>) because the line renders inside the row-body <button>, phrasing
+ *  content only. */
 function StatusLine({ integration }: { integration: CustomIntegrationView }) {
   const { t } = useTranslation("integrations");
   const state = integration.state;
   if (state.status === "active")
     return (
       <span className="block text-[11px] text-ink-muted">
-        {t("custom.toolCount", { count: state.toolCount })}
+        {t("custom.status.active")}
       </span>
     );
   if (state.status === "pending")
