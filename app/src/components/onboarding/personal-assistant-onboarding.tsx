@@ -22,6 +22,7 @@ import {
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
 import { SetupCard } from "./setup-card";
 import { type Milestone, SetupProgress } from "./setup-progress";
+import { SkipOnboardingButton } from "./skip-onboarding-button";
 import type { OnboardingStep } from "./tutorial-copy";
 import { useCreateAssistant } from "./use-create-assistant";
 
@@ -192,18 +193,22 @@ export function PersonalAssistantOnboarding({
   const missionProvider = provider ?? "anthropic";
   const missionModel = model ?? getDefaultModel(missionProvider);
 
-  // After the first message begins the AI conversation, the user can leave
-  // onboarding and start using Houston. This is not a completion, so analytics
-  // preserves it as a conversation exit instead of a completed email mission.
-  const skipConversation = (fromStep: OnboardingStep) => {
+  // Terminal skip exit shared by both escape hatches: the failure-gated "Skip
+  // for now" inside the email mission (source "conversation") and the global
+  // bottom-of-screen "Skip onboarding" button (source "escape_hatch"). This is
+  // not a completion, so analytics preserves the distinct exit in the funnel.
+  const skipOnboarding = (
+    fromStep: OnboardingStep,
+    source: "conversation" | "escape_hatch",
+  ) => {
     analytics.track("onboarding_skipped", {
       step: fromStep,
       provider: missionProvider,
       model: missionModel,
-      source: "conversation",
+      source,
     });
-    // Terminal conversation exit: clear the resume flag so the next boot
-    // does not return the user to onboarding, and mark onboarding completed.
+    // Terminal exit: clear the resume flag so the next boot does not return
+    // the user to onboarding, and mark onboarding completed.
     void clearPending();
     void markCompleted();
     setTutorialActive(false);
@@ -334,7 +339,7 @@ export function PersonalAssistantOnboarding({
             setEmailSent(true);
             setStep("finished");
           }}
-          onSkip={() => skipConversation("emailChat")}
+          onSkip={() => skipOnboarding("emailChat", "conversation")}
         />
       )}
 
@@ -342,6 +347,16 @@ export function PersonalAssistantOnboarding({
         <FinishedMission
           variant={emailSent ? "sent" : "ready"}
           onStart={finishOnboarding}
+        />
+      )}
+
+      {/* Hidden until the assistant is provisioned, because `markCompleted`
+          is permanent and skipping with zero agents would strand the user in
+          an empty shell. Hidden on the finished screen, whose primary CTA
+          already exits. */}
+      {agent && step !== "finished" && (
+        <SkipOnboardingButton
+          onSkip={() => skipOnboarding(step, "escape_hatch")}
         />
       )}
 
