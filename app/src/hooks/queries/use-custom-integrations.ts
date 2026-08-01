@@ -1,6 +1,10 @@
-import type { CustomIntegrationView } from "@houston-ai/engine-client";
+import type {
+  AddCustomIntegrationInput,
+  CustomIntegrationView,
+} from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
+import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
@@ -111,5 +115,47 @@ export function useSubmitCustomCredential(agentId?: string) {
         ? tauriIntegrations.customCredentialForAgent(agentId, slug, values)
         : tauriIntegrations.customCredential(slug, values),
     onSuccess: () => invalidateCustom(qc),
+  });
+}
+
+/** Classify a pasted URL (OpenAPI / MCP / unknown) — the manual add form's
+ *  pre-check. `unknown` is a normal result; only transport failures reject.
+ *  `agentId` is the transport agent, so the probe rides the per-agent route
+ *  the hosted gateway proxies. */
+export function useDetectCustomIntegration(agentId?: string) {
+  return useMutation({
+    mutationFn: (url: string) => tauriIntegrations.customDetect(url, agentId),
+  });
+}
+
+/** Register a custom integration from the manual add form. The host compiles
+ *  it first — a rejected add (bad URL, duplicate name) never persists. The
+ *  returned view is SEEDED into both list caches before the invalidation, so
+ *  the new row (and the key dialog a `pending` add chains into) appears
+ *  immediately instead of waiting on the refetch round-trip. */
+export function useAddCustomIntegration(agentId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AddCustomIntegrationInput) =>
+      tauriIntegrations.customAdd(input, agentId),
+    onSuccess: (view) => {
+      analytics.track("custom_integration_added", {
+        integration_slug: view.slug,
+        integration_kind: view.kind,
+      });
+      const append = (old: CustomIntegrationView[] | null | undefined) =>
+        old == null ? old : [...old.filter((i) => i.slug !== view.slug), view];
+      qc.setQueryData<CustomIntegrationView[] | null>(
+        queryKeys.customIntegrations(),
+        append,
+      );
+      if (agentId) {
+        qc.setQueryData<CustomIntegrationView[] | null>(
+          queryKeys.agentCustomIntegrations(agentId),
+          append,
+        );
+      }
+      invalidateCustom(qc);
+    },
   });
 }

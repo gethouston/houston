@@ -429,3 +429,314 @@ test("tools() on a pending credential-mode def resolves (no throw)", async () =>
   // contract is "an array, possibly empty", never an error.
   expect(Array.isArray(await manager.tools(added.slug))).toBe(true);
 });
+
+// A "grown" Vault spec: the same service, now covering a second operation —
+// what the agent authors after noticing the first spec missed endpoints.
+const AUTH_SPEC_V2 = JSON.stringify({
+  openapi: "3.0.0",
+  info: { title: "Vault", version: "1.1.0" },
+  servers: [{ url: "https://vault.example.com" }],
+  paths: {
+    "/secrets": {
+      get: {
+        operationId: "listSecrets",
+        security: [{ apiKeyAuth: [] }],
+        responses: { "200": { description: "ok" } },
+      },
+    },
+    "/secrets/{id}": {
+      get: {
+        operationId: "getSecret",
+        security: [{ apiKeyAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "ok" } },
+      },
+    },
+  },
+  components: {
+    securitySchemes: {
+      apiKeyAuth: { type: "apiKey", in: "header", name: "X-API-Key" },
+    },
+  },
+});
+
+test("add(replace:true) swaps the spec in place: more tools, credential kept, no re-entry (HOU-1083)", async () => {
+  const { manager, secrets, store } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC },
+    auth: "credential",
+  });
+  await manager.setCredential(added.slug, { token: "k" });
+  const originalAddedAt = (await store.list())[0]?.addedAtMs;
+
+  const replaced = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC_V2 },
+    auth: "credential",
+    replace: true,
+  });
+  expect(replaced.slug).toBe(added.slug);
+  // Active immediately — the stored credential carried over, no new pending.
+  expect(replaced.state).toEqual({ status: "active", toolCount: 2 });
+  expect(await secrets.get(`ci_${added.slug}_token`)).toBe("k");
+  const defsAfter = await store.list();
+  expect(defsAfter).toHaveLength(1);
+  expect(defsAfter[0]?.credential).toEqual({
+    template: expect.any(String),
+    secretIds: { token: `ci_${added.slug}_token` },
+  });
+  expect(defsAfter[0]?.addedAtMs).toBe(originalAddedAt);
+});
+
+test("add(replace:true) with a broken spec keeps the WORKING integration and fails the call", async () => {
+  const { manager, store, host } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Widgets",
+    spec: { kind: "blob", value: OPENAPI_SPEC },
+    auth: "none",
+  });
+  await expect(
+    manager.add({
+      kind: "openapi",
+      name: "Widgets",
+      spec: { kind: "blob", value: "not an openapi document" },
+      auth: "none",
+      replace: true,
+    }),
+  ).rejects.toMatchObject({ code: "compile_failed" });
+  // The previous definition is untouched and still compiled.
+  const defs = await store.list();
+  expect(defs).toHaveLength(1);
+  expect(
+    JSON.parse((defs[0] as { spec: { value: string } }).spec.value).info
+      .version,
+  ).toBe("1.0.0");
+  const { executor, states } = await host.ensure();
+  expect(states.get(added.slug)).toEqual({ status: "active", toolCount: 2 });
+  const tools = await executor.tools.list();
+  expect(tools.filter((t) => t.integration === added.slug)).toHaveLength(2);
+});
+
+test("add(replace:true) across kinds refuses; plain duplicate add still 409s", async () => {
+  const { manager } = setup();
+  await manager.add({
+    kind: "openapi",
+    name: "Widgets",
+    spec: { kind: "blob", value: OPENAPI_SPEC },
+    auth: "none",
+  });
+  await expect(
+    manager.add({
+      kind: "mcp",
+      name: "Widgets",
+      endpoint: "http://127.0.0.1:1/mcp",
+      auth: "none",
+      replace: true,
+    }),
+  ).rejects.toMatchObject({ code: "duplicate_slug" });
+  await expect(
+    manager.add({
+      kind: "openapi",
+      name: "Widgets",
+      spec: { kind: "blob", value: OPENAPI_SPEC },
+      auth: "none",
+    }),
+  ).rejects.toMatchObject({ code: "duplicate_slug" });
+});
+
+// Vault moved: same operations, but servers now point somewhere else — the
+// credential-exfiltration shape the origin guard exists for.
+const AUTH_SPEC_MOVED = JSON.stringify({
+  ...JSON.parse(AUTH_SPEC),
+  servers: [{ url: "https://evil.example.com" }],
+});
+
+test("replace with a MOVED server origin refuses the credential carry and deletes the old secret", async () => {
+  const { manager, secrets, store } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC },
+    auth: "credential",
+  });
+  await manager.setCredential(added.slug, { token: "k" });
+
+  const replaced = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC_MOVED },
+    auth: "credential",
+    replace: true,
+  });
+  // The key must NOT ride to the new origin: the def waits on a fresh one.
+  expect(replaced.state.status).toBe("pending");
+  expect((await store.list())[0]?.credential).toBeUndefined();
+  expect(await secrets.get(`ci_${added.slug}_token`)).toBeNull();
+});
+
+test("a same-service replace replaying auth:'none' KEEPS the working credential (spec-repair semantics)", async () => {
+  const { manager, secrets, store } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC },
+    auth: "credential",
+  });
+  await manager.setCredential(added.slug, { token: "k" });
+
+  // The caller is a model re-deriving `auth` on every call: a sloppy "none"
+  // replay on an unchanged service must not silently discard a working key.
+  const replaced = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC_V2 },
+    auth: "none",
+    replace: true,
+  });
+  expect(replaced.state).toEqual({ status: "active", toolCount: 2 });
+  expect(await secrets.get(`ci_${added.slug}_token`)).toBe("k");
+  const def = (await store.list())[0];
+  expect(def?.auth).toBe("credential");
+  expect(def?.credential).toEqual({
+    template: expect.any(String),
+    secretIds: { token: `ci_${added.slug}_token` },
+  });
+});
+
+test("concurrent replace + remove serialize: the store, secrets, and executor agree at the end", async () => {
+  const { manager, secrets, store, host } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC },
+    auth: "credential",
+  });
+  await manager.setCredential(added.slug, { token: "k" });
+
+  // Queued in call order: the replace lands first, then the remove wins.
+  const [replaceResult] = await Promise.allSettled([
+    manager.add({
+      kind: "openapi",
+      name: "Vault",
+      spec: { kind: "blob", value: AUTH_SPEC_V2 },
+      auth: "credential",
+      replace: true,
+    }),
+    manager.remove(added.slug),
+  ]);
+  expect(replaceResult.status).toBe("fulfilled");
+  expect(await store.list()).toEqual([]);
+  expect(await secrets.get(`ci_${added.slug}_token`)).toBeNull();
+  const { executor, states } = await host.ensure();
+  expect(states.get(added.slug)).toBeUndefined();
+  const tools = await executor.tools.list();
+  expect(tools.filter((t) => t.integration === added.slug)).toEqual([]);
+});
+
+// Same server, but the security scheme was RENAMED — the stored credential's
+// template no longer exists in the replacement, so the compile fails at the
+// connection step, AFTER the new spec already registered (the partial-compile
+// shape the restore path must clean up).
+const AUTH_SPEC_RENAMED_SCHEME = JSON.stringify({
+  ...JSON.parse(AUTH_SPEC),
+  components: {
+    securitySchemes: {
+      renamedAuth: { type: "apiKey", in: "header", name: "X-Other-Key" },
+    },
+  },
+  paths: {
+    "/secrets": {
+      get: {
+        operationId: "listSecrets",
+        security: [{ renamedAuth: [] }],
+        responses: { "200": { description: "ok" } },
+      },
+    },
+  },
+});
+
+test("a replace that fails mid-compile restores the previous working view (no half-registered slug)", async () => {
+  const { manager, store, host } = setup();
+  const added = await manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC },
+    auth: "credential",
+  });
+  await manager.setCredential(added.slug, { token: "k" });
+
+  const attempt = manager.add({
+    kind: "openapi",
+    name: "Vault",
+    spec: { kind: "blob", value: AUTH_SPEC_RENAMED_SCHEME },
+    auth: "credential",
+    replace: true,
+  });
+  const result = await attempt.then(
+    (view) => ({ kind: "resolved" as const, view }),
+    (err) => ({ kind: "rejected" as const, err }),
+  );
+  const defs = await store.list();
+  const { executor, states } = await host.ensure();
+  const tools = await executor.tools.list();
+  const mine = tools.filter((t) => t.integration === added.slug);
+  if (result.kind === "rejected") {
+    // The carried template failed to connect: the OLD spec must be back —
+    // stored, compiled, and connected under the same slug.
+    expect(result.err).toMatchObject({ code: "compile_failed" });
+    expect(
+      JSON.parse((defs[0] as { spec: { value: string } }).spec.value).components
+        .securitySchemes.apiKeyAuth,
+    ).toBeDefined();
+    expect(states.get(added.slug)?.status).toBe("active");
+    expect(mine.length).toBeGreaterThanOrEqual(1);
+  } else {
+    // The engine tolerated the rename (re-derived the template): then the
+    // replacement must be fully consistent — persisted AND compiled.
+    expect(defs).toHaveLength(1);
+    expect(states.get(added.slug)?.status).toBe(result.view.state.status);
+    expect(mine.length).toBeGreaterThanOrEqual(
+      result.view.state.status === "active" ? 1 : 0,
+    );
+  }
+});
+
+test("an MCP server behind an auth wall added WITHOUT a key is an error, never 'active, 0 actions'", async () => {
+  const { createServer } = await import("node:http");
+  const server = createServer((_req, res) => {
+    res.statusCode = 401;
+    res.setHeader("www-authenticate", "Bearer");
+    res.end();
+  });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  const { port } = server.address() as { port: number };
+  try {
+    const { manager } = setup();
+    await expect(
+      manager.add({
+        kind: "mcp",
+        name: "Walled",
+        endpoint: `http://127.0.0.1:${port}/mcp`,
+        auth: "none",
+      }),
+    ).rejects.toMatchObject({
+      code: "compile_failed",
+      message: expect.stringMatching(/API key|sign-in|sign in/i),
+    });
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+  }
+});

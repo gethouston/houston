@@ -46,7 +46,7 @@ const AddParams = Type.Object({
   spec: Type.Optional(
     Type.String({
       description:
-        "For kind 'openapi' when the service publishes NO OpenAPI document: a complete OpenAPI 3.x document you authored from the service's API docs (JSON or YAML). Include servers[].url, operationIds, and the securityScheme the API requires. Prefer 'url' when one exists.",
+        "For kind 'openapi' when the service publishes NO OpenAPI document: a complete OpenAPI 3.x document you authored from the service's API docs (JSON or YAML). Include servers[].url, operationIds, and the securityScheme the API requires, and cover EVERY operation the documentation describes - not just the ones today's task needs. Prefer 'url' when one exists.",
     }),
   ),
   endpoint: Type.Optional(
@@ -56,6 +56,12 @@ const AddParams = Type.Object({
     description:
       "'credential' when the service needs an API key/token (then call request_credential next); 'none' when it is public or the user said no key is needed.",
   }),
+  replace: Type.Optional(
+    Type.Boolean({
+      description:
+        "Set true ONLY to fix an integration you already added: the same name swaps in the corrected spec in place, keeping the user's saved API key while the service address is unchanged (a changed address drops the key and asks for it again). Never use it to add something new.",
+    }),
+  ),
 });
 type AddParams = Static<typeof AddParams>;
 
@@ -173,6 +179,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
           spec: params.spec,
           endpoint: params.endpoint,
           auth: params.auth,
+          replace: params.replace,
         },
         signal,
       );

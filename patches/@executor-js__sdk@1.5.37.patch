@@ -1,0 +1,31 @@
+diff --git a/dist/index.js b/dist/index.js
+index ca75f76965f0e1b87421985ffeaa90c3609a98bd..aca011156035f410fc72f364da50a1e239c81cfd 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -94,7 +94,9 @@ var createExecutor2 = async (config) => {
+     plugins,
+     ...config.providers ? { providers: config.providers } : {},
+     onElicitation: toEffectOnElicitation(config.onElicitation),
+-    ...db ? { db } : {}
++    ...db ? { db } : {},
++    ...config.httpClientLayer ? { httpClientLayer: config.httpClientLayer } : {},
++    ...config.fetch ? { fetch: config.fetch } : {}
+   };
+   const effectExecutor = await Effect.runPromise(createExecutor(effectConfig));
+   const executor = promisifyDeep(effectExecutor);
+diff --git a/dist/promise-executor.d.ts b/dist/promise-executor.d.ts
+index f8f15f9b373571720357c1fecdbcbc0e08cb4666..eea179486e09dc61b86516428d1bf8cf67d0efa6 100644
+--- a/dist/promise-executor.d.ts
++++ b/dist/promise-executor.d.ts
+@@ -37,6 +37,11 @@ export interface ExecutorConfig<TPlugins extends readonly AnyPlugin[] = readonly
+      * `get`/`set` return `Effect`s) — bring them from `@executor-js/sdk/core`.
+      */
+     readonly providers?: readonly CredentialProvider[];
++    /** HttpClient layer for ALL SDK + plugin HTTP (forwarded to the core
++     *  executor; Houston patch — upstream drops it on the promise surface). */
++    readonly httpClientLayer?: unknown;
++    /** Fetch impl for dependencies that cannot consume `httpClientLayer`. */
++    readonly fetch?: typeof globalThis.fetch;
+     /**
+      * FumaDB ORM handle, or a factory that receives the executor-owned table
+      * map. Public consumers usually want the factory form so `collectTables()`

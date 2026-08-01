@@ -8,6 +8,11 @@ overrides:
   gaxios>uuid: ^11.1.1
   teeny-request>uuid: ^11.1.1
 
+patchedDependencies:
+  '@executor-js/sdk@1.5.37':
+    hash: 7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597
+    path: patches/@executor-js__sdk@1.5.37.patch
+
 importers:
 
   .:
@@ -419,14 +424,14 @@ importers:
         specifier: 0.82.1
         version: 0.82.1(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6))(ws@8.21.0)(zod@4.3.6)
       '@executor-js/plugin-mcp':
-        specifier: 1.5.32
-        version: 1.5.32(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+        specifier: 1.5.37
+        version: 1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
       '@executor-js/plugin-openapi':
-        specifier: 1.5.32
-        version: 1.5.32(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+        specifier: 1.5.37
+        version: 1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
       '@executor-js/sdk':
-        specifier: 1.5.32
-        version: 1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+        specifier: 1.5.37
+        version: 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
       '@houston/agentstore-contract':
         specifier: workspace:*
         version: link:../agentstore-contract
@@ -451,16 +456,25 @@ importers:
       fflate:
         specifier: 0.8.3
         version: 0.8.3
+      js-yaml:
+        specifier: 4.1.1
+        version: 4.1.1
       tsx:
         specifier: 4.23.0
         version: 4.23.0
     devDependencies:
+      '@types/js-yaml':
+        specifier: 4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
       '@typescript/native-preview':
         specifier: 7.0.0-dev.20260607.1
         version: 7.0.0-dev.20260607.1
+      undici:
+        specifier: 8.5.0
+        version: 8.5.0
       vitest:
         specifier: 3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
@@ -479,7 +493,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 3.2.6
-        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/runtime:
     dependencies:
@@ -1754,8 +1768,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@executor-js/config@1.5.32':
-    resolution: {integrity: sha512-/bCVKnHNBKfwUuWGBA6JqcjwbfA2ZDoQh7xGSOtCjhZxYs8d/kmEIcEbtphDuaVt3CTPuNSceoROBf2UewW1zg==}
+  '@executor-js/config@1.5.37':
+    resolution: {integrity: sha512-iv8EyLVHMZpAdfemtjG99NRZa1BFBs6vviYGm/da/vkNwKZvvYrJZlUhuO+B/UNbaZEML5DDRj6plksHkuNspA==}
     peerDependencies:
       effect: 4.0.0-beta.59
 
@@ -1767,8 +1781,8 @@ packages:
       drizzle-orm:
         optional: true
 
-  '@executor-js/plugin-mcp@1.5.32':
-    resolution: {integrity: sha512-VTofmB7AB847uheoiA8OExNe0vr0VYdHUZbrQaSoPLI4QmKN0ZbygXshfiTuoQTz7083c0limFCoJVx6Yx4jBg==}
+  '@executor-js/plugin-mcp@1.5.37':
+    resolution: {integrity: sha512-MJRZOhYrWmo7pDSWJXPt1pwxZ8evnCODbmUeZLZLfqFFYEUYs1JTa9HbCD8EatWUJufRh6ycTfLhnRv7kpJ2qg==}
     peerDependencies:
       '@effect/atom-react': 4.0.0-beta.59
       '@tanstack/react-router': ^1.168.10
@@ -1782,8 +1796,8 @@ packages:
       react:
         optional: true
 
-  '@executor-js/plugin-openapi@1.5.32':
-    resolution: {integrity: sha512-5FzqQpFZhma6PHYJzvCcNuICkaw9blgqOm/bV21ODQ4j1upebNH5nmqAnkGrTFTTPCwz7ScvNBah8aIYJSHBlw==}
+  '@executor-js/plugin-openapi@1.5.37':
+    resolution: {integrity: sha512-bfd13f7IvALmjqatTtrgb64sfeZmty4ZrX/pjmWFSUgNMH8PCofNQ+xEO0plzgIEMykwn51DShtrk+YpSe2Ziw==}
     peerDependencies:
       '@effect/atom-react': 4.0.0-beta.59
       '@tanstack/react-router': ^1.168.10
@@ -1797,8 +1811,8 @@ packages:
       react:
         optional: true
 
-  '@executor-js/sdk@1.5.32':
-    resolution: {integrity: sha512-rg+nxtkLWo/mSGi2YXzZV2kTsGUHk0gMP/o6cuHia5SVPnwEsOajJhTCYR4GOBqn+EOxs7GzoQAOF6eb15a+hQ==}
+  '@executor-js/sdk@1.5.37':
+    resolution: {integrity: sha512-QpLDJuxA9eGbmVYrj3r6ma6GqoIdpNC+PQEbyP2GfMDYQcbv0fjB/71d+SCdxS8Y6J3XZsXXbP1XPxr2vq+9sw==}
     peerDependencies:
       '@effect/atom-react': 4.0.0-beta.59
       '@effect/platform-node': 4.0.0-beta.59
@@ -4227,6 +4241,9 @@ packages:
 
   '@types/hast@3.0.4':
     resolution: {integrity: sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ==}
+
+  '@types/js-yaml@4.0.9':
+    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
 
   '@types/katex@0.16.8':
     resolution: {integrity: sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg==}
@@ -8365,9 +8382,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@executor-js/config@1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
+  '@executor-js/config@1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
     dependencies:
-      '@executor-js/sdk': 1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
       effect: 4.0.0-beta.59
       jiti: 2.7.0
       jsonc-parser: 3.3.1
@@ -8390,12 +8407,12 @@ snapshots:
     transitivePeerDependencies:
       - typeorm
 
-  '@executor-js/plugin-mcp@1.5.32(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
+  '@executor-js/plugin-mcp@1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1)
-      '@executor-js/config': 1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
-      '@executor-js/sdk': 1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+      '@executor-js/config': 1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
       '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
       effect: 4.0.0-beta.59
       zod: 4.3.6
@@ -8409,11 +8426,11 @@ snapshots:
       - typeorm
       - utf-8-validate
 
-  '@executor-js/plugin-openapi@1.5.32(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
+  '@executor-js/plugin-openapi@1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
     dependencies:
       '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1)
-      '@executor-js/config': 1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
-      '@executor-js/sdk': 1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+      '@executor-js/config': 1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
+      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
       effect: 4.0.0-beta.59
       js-yaml: 4.1.1
       lucide-react: 1.24.0(react@19.2.7)
@@ -8427,7 +8444,7 @@ snapshots:
       - typeorm
       - utf-8-validate
 
-  '@executor-js/sdk@1.5.32(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
+  '@executor-js/sdk@1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))':
     dependencies:
       '@executor-js/fumadb': 1.5.7(typeorm@0.3.30(ioredis@5.11.1))
       '@standard-schema/spec': 1.1.0
@@ -11043,6 +11060,8 @@ snapshots:
   '@types/hast@3.0.4':
     dependencies:
       '@types/unist': 3.0.3
+
+  '@types/js-yaml@4.0.9': {}
 
   '@types/katex@0.16.8': {}
 

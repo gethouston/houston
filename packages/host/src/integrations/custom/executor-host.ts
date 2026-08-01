@@ -8,6 +8,7 @@ import { openApiPlugin } from "@executor-js/plugin-openapi/core";
 import { createExecutor } from "@executor-js/sdk";
 import { authMethodsOf, TOKEN_VARIABLE } from "./auth-methods";
 import { fallbackAuthTemplate } from "./fallback-auth";
+import { guardedFetch, guardedHttpClientLayer } from "./fetch-guard";
 import type { CustomSecretStore } from "./secrets";
 import { HOUSTON_PROVIDER_KEY, houstonCredentialProvider } from "./secrets";
 import type {
@@ -38,6 +39,10 @@ function buildExecutor(secrets: CustomSecretStore) {
     providers: [houstonCredentialProvider(secrets)],
     // Non-interactive host: a mid-call elicitation has no UI channel here.
     onElicitation: "accept-all",
+    // Own the HTTP seam instead of inheriting process-global fetch state —
+    // see fetch-guard.ts for the POST-killing header-duplication this ends.
+    httpClientLayer: guardedHttpClientLayer(),
+    fetch: guardedFetch,
   });
 }
 
@@ -249,6 +254,18 @@ export class CustomExecutorHost {
             message: `the MCP server at ${def.endpoint} is not reachable`,
           };
         }
+        // An auth wall on a def added WITHOUT a credential can never produce
+        // tools — reporting it "active, 0 actions" would bury the real
+        // problem (the reviewed OAuth-only case: the server wants its own
+        // sign-in, which Houston cannot connect to yet).
+        if (probe.requiresAuthentication && def.auth === "none") {
+          return {
+            status: "error",
+            message: probe.requiresOAuth
+              ? `the MCP server at ${def.endpoint} only signs in with its own account flow, which Houston cannot connect to yet`
+              : `the MCP server at ${def.endpoint} requires an API key or token - add it again as a service that needs a key`,
+          };
+        }
       }
       return { status: "active", toolCount };
     } catch (err) {
@@ -256,6 +273,20 @@ export class CustomExecutorHost {
         status: "error",
         message: err instanceof Error ? err.message : String(err),
       };
+    }
+  }
+
+  /** Tear one definition's compiled view out of the engine (the first half
+   *  of the replace/refresh sequence; compileDef rebuilds it, connection
+   *  included). Absence is fine — an errored def never compiled. */
+  async uncompileDef(
+    executor: CustomExecutor,
+    def: CustomIntegrationDef,
+  ): Promise<void> {
+    if (def.kind === "openapi") {
+      await executor.openapi.removeSpec(def.slug).catch(() => undefined);
+    } else {
+      await executor.mcp.removeServer(def.slug).catch(() => undefined);
     }
   }
 

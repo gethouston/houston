@@ -108,12 +108,20 @@ export function parseAddInput(
       ...(typeof body.baseUrl === "string" ? { baseUrl: body.baseUrl } : {}),
       auth,
       ...(slug ? { slug } : {}),
+      ...(body.replace === true ? { replace: true } : {}),
     };
   }
   if (body.kind === "mcp") {
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     if (!endpoint) return "missing 'endpoint' (the MCP server URL)";
-    return { kind: "mcp", name, endpoint, auth, ...(slug ? { slug } : {}) };
+    return {
+      kind: "mcp",
+      name,
+      endpoint,
+      auth,
+      ...(slug ? { slug } : {}),
+      ...(body.replace === true ? { replace: true } : {}),
+    };
   }
   return "unknown 'kind' (expected 'openapi' or 'mcp')";
 }

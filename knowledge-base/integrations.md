@@ -947,6 +947,48 @@ definition that fails to compile degrades to state `error` for itself only.
 Secrets reach requests via a Houston `CredentialProvider` (`secrets.ts`)
 resolved lazily — the executor never copies values.
 
+**Transport guard (HOU-1083).** The executor gets its OWN HTTP seam
+(`fetch-guard.ts`: `httpClientLayer` + `fetch` in `buildExecutor`) instead of
+inheriting process-global fetch state. Effect's HttpClient sets an explicit
+`content-length` header on every sized body; in a host process where pi has
+installed npm undici's fetch/global dispatcher over Node's bundled copy, that
+header ended up on the wire twice and undici v8 rejected the merged value —
+EVERY custom POST/PUT failed client-side with `UND_ERR_INVALID_ARG: invalid
+content-length header` while GETs worked (root-caused live on a pod with a
+breakpoint inside undici). The guard strips message-framing/hop-by-hop headers
+(content-length, transfer-encoding, connection, host, ...) before delegating
+to the CURRENT `globalThis.fetch`, so every fetch implementation computes the
+one correct value itself, deterministically, on any Node/Bun/undici mix. Note:
+the promise-surface `createExecutor` in `@executor-js/sdk` 1.5.37 silently
+dropped `httpClientLayer`/`fetch` from its config allowlist —
+`patches/@executor-js__sdk@1.5.37.patch` forwards them (worth an upstream PR;
+re-check on every executor bump — `fetch-guard.test.ts` fails loudly if the
+guard stops reaching the wire).
+
+**Replace = the agent's self-repair path (HOU-1083).** `add` with
+`replace: true` (same slug, same kind) swaps the spec in place through the
+proven uncompile → recompile sequence, keeping `addedAtMs` — and the stored
+credential ONLY when `service-origins.ts` proves the replacement talks to the
+same service (equal server/endpoint origins; url-kind specs need the identical
+document URL; anything indeterminate counts as changed). A changed origin
+drops the carry, deletes the now-unreferenced secret, and lands the def
+`pending` (secure-card re-entry) — otherwise a prompt-injected spec pointing
+at an attacker host would receive the user's key on the next action. Within the same
+service the carry ignores the input's `auth` (replace is spec-repair; a model
+re-deriving `auth` must not discard a working key with a sloppy `"none"`
+replay). A replacement that fails to compile is uncompiled again and the
+previous view restored, so a working integration is never traded for a broken
+spec. All manager mutations
+(add/replace/setCredential/remove) are serialized through one queue so the
+def store, secret store, compiled executor, and state map can never interleave
+into disagreement.
+The product prompt (host `houston-prompt.ts` + the Rust twin
+`app/src-tauri/src/houston_prompt/integrations.rs`) makes discovery
+deterministic: search published spec → llms-full.txt/llms.txt → docs pages in
+that order, author COMPLETE specs (every documented operation), then compare
+the compiled action count against the docs and `replace: true` until they
+match — never a second integration for the same service.
+
 **Spec freshness (HOU-1052 follow-up).** The compiled view is process-long
 (hours on a pod, weeks on a desktop), so url-sourced OpenAPI specs get a
 stale-while-revalidate verify: any `ensure()` past a 6h TTL arms ONE
@@ -1014,8 +1056,8 @@ its rename-replace.
 routes stay in `routes/custom-integrations.ts`): GET/DELETE
 `definitions[/:slug]`, the credential POST, and — since HOU-980 — **POST
 `definitions`** (add; body = the SAME grammar as the agent's sandbox add
-tool, `parseAddInput` is the one validator; API-only since the manual form
-UI was cut — chat is the one add path in the client), **POST `detect`**
+tool, `parseAddInput` is the one validator; called by BOTH the agent's
+sandbox tool and the client's manual add form), **POST `detect`**
 (classify a pasted URL), and **GET `definitions/:slug/tools`** (the compiled
 tool list behind one definition — `manager.tools(slug)` over
 `custom/tools.ts` `toolsOf`, backing the detail card's actions list; the
@@ -1047,7 +1089,8 @@ only when no agent exists yet. That transport fallback is what makes the
 global page's Custom integrations tab (and its key/remove dialogs) work
 behind the hosted gateway instead of hiding behind the 404→null degrade. The
 `agentId?`-aware hooks are `useCustomIntegrationsFor`,
-`useAgentCustomIntegrations`, `useRemoveCustomIntegration`,
+`useAgentCustomIntegrations`, `useDetectCustomIntegration`,
+`useAddCustomIntegration`, `useRemoveCustomIntegration`,
 `useSubmitCustomCredential`; engine-client + adapter carry the matching
 `...AgentCustomIntegration...` methods in `custom-integrations-mixin.ts`.
 
@@ -1059,21 +1102,35 @@ connections ONLY, the browse catalog) or **Custom integrations** (the same
 `CatalogShell` grammar via `CustomModeShell`: the mode's search + Add button
 over an Installed card of the custom rows). Custom rows never appear in the
 Composio strip — the old layout showed them twice. "Add custom integration"
-goes **straight to the guided setup chat** — the `CustomAddDialog` fork and
-its manual typed API/MCP form were CUT (chat is the one add path; the host's
-detect/add routes stay as API for the agent's sandbox tools and direct
-callers). The chat starts immediately with the tab's agent, or with the
-workspace's only agent on the global page; only a multi-agent workspace on
-the global page interposes `AgentPickerDialog`. It opens in the shell-level
-RIGHT panel, the same one the routine chat and the mission board use, so the
-Integrations surface stays visible on the left. Only the VISIBLE section
-instance drives that shared panel — kept-alive views leave every instance
-mounted, so `integration-setup-chat.tsx` gates on `active`:
-TabProps.isActive on the per-agent tab, `viewMode === INTEGRATIONS_VIEW_ID`
-on the global page. The kickoff prompt, `lib/integration-chat-setup.ts`,
-explicitly states the user is present and `ask_user` works — a "Houston sent
-this automatically" framing once made the model refuse the step-by-step
-interview. Every custom row's BODY opens `CustomDetailDialog` (letter avatar,
+opens `CustomAddDialog` (chained by `CustomAddFlow`), a two-way fork whose
+LEAD path — a filled `bg-chip` card, first in the DOM, `emphasis="lead"` —
+is **"Set up with your agent"**: the guided chat. It resolves its agent
+without asking wherever it can (the tab's agent, else the workspace's only
+agent) and interposes `AgentPickerDialog` only for a genuinely multi-agent
+workspace (HOU-1083 restored the fork on top of that #1171 resolution; the
+fork itself is #1151's). The chat opens in the shell-level RIGHT panel, the
+same one the routine chat and the mission board use, so the Integrations
+surface stays visible on the left. Only the VISIBLE section instance drives
+that shared panel — kept-alive views leave every instance mounted, so
+`integration-setup-chat.tsx` gates on `active`: TabProps.isActive on the
+per-agent tab, `viewMode === INTEGRATIONS_VIEW_ID` on the global page. The
+kickoff prompt, `lib/integration-chat-setup.ts`, explicitly states the user
+is present and `ask_user` works — a "Houston sent this automatically" framing
+once made the model refuse the step-by-step interview. The QUIET path is
+**"Add manually"** (`CustomAddForm` + the pure, node-tested
+`custom-add-model.ts`): kind (API / MCP server), URL with an optional "Check"
+(the detect route pre-classifies, fills the name, and flips "needs an API
+key" on a key-walled server — an OAuth-walled one instead gets an honest
+"Houston can't connect to this yet" verdict via `requiresOAuth`, and never
+auto-flips the key switch: a pasted key cannot satisfy OAuth), name, and a
+"needs an API key" switch. The verdict is keyed to the URL it judged and
+latest-check-wins (`checkSeq`), so a late probe can never claim an edited
+address. Detect + add ride the TRANSPORT agent's per-agent routes (the same
+`useCustomTransportAgentId` the reads use), so the form works behind the
+hosted gateway. A successful add SEEDS both list caches before invalidating
+(the row appears without waiting on the refetch); an add that needs a key
+lands `pending` and chains straight into the secure key dialog. Every custom
+row's BODY opens `CustomDetailDialog` (letter avatar,
 kind + live-status chips, URL + added date + the action COUNT — the
 per-action list was cut on review as noise; footer: Enter/Update key beside
 Remove; the `tools` host route stays as API). The dialog trio (detail / key

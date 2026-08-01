@@ -4,6 +4,7 @@ import type { CustomExecutorHost } from "./executor-host";
 import { TOKEN_VARIABLE } from "./executor-host";
 import type { CustomSecretStore } from "./secrets";
 import { secretIdFor } from "./secrets";
+import { sameServiceOrigins } from "./service-origins";
 import { slugify } from "./slug";
 import type { CustomIntegrationStore } from "./store";
 import { toolsOf } from "./tools";
@@ -23,12 +24,25 @@ export type { AddCustomIntegrationInput, DetectResult };
  * executor, then notifies (`onChanged` → HoustonEvent → UI invalidation).
  */
 export class CustomIntegrationManager {
+  /** Mutations run one at a time: every write spans three stores (defs,
+   *  secrets, the compiled executor) plus the state map, and an interleaved
+   *  replace/remove/setCredential pair can otherwise leave them pointing at
+   *  different worlds (a def whose secret was deleted, an executor without
+   *  the integration the store says is active). Reads stay concurrent. */
+  private mutations: Promise<unknown> = Promise.resolve();
+
   constructor(
     private readonly store: CustomIntegrationStore,
     private readonly secrets: CustomSecretStore,
     private readonly host: CustomExecutorHost,
     private readonly onChanged: () => void,
   ) {}
+
+  private serialize<T>(op: () => Promise<T>): Promise<T> {
+    const run = this.mutations.then(op, op);
+    this.mutations = run.catch(() => undefined);
+    return run;
+  }
 
   async list(): Promise<CustomIntegrationView[]> {
     const [defs, { executor, states }] = await Promise.all([
@@ -59,7 +73,13 @@ export class CustomIntegrationManager {
     return toolsOf(executor, slug);
   }
 
-  async add(input: AddCustomIntegrationInput): Promise<CustomIntegrationView> {
+  add(input: AddCustomIntegrationInput): Promise<CustomIntegrationView> {
+    return this.serialize(() => this.addLocked(input));
+  }
+
+  private async addLocked(
+    input: AddCustomIntegrationInput,
+  ): Promise<CustomIntegrationView> {
     const slug = input.slug ?? slugify(input.name);
     if (!CUSTOM_SLUG.test(slug)) {
       throw new CustomIntegrationError(
@@ -78,19 +98,66 @@ export class CustomIntegrationManager {
       );
     }
     const defs = await this.store.list();
-    if (defs.some((d) => d.slug === slug)) {
+    const existing = defs.find((d) => d.slug === slug);
+    if (existing && !input.replace) {
       throw new CustomIntegrationError(
         "duplicate_slug",
         `a custom integration named '${slug}' already exists`,
       );
     }
-    const def = defFromAddInput(input, slug);
+    if (existing && existing.kind !== input.kind) {
+      throw new CustomIntegrationError(
+        "duplicate_slug",
+        `'${slug}' already exists as a different kind; remove it first`,
+      );
+    }
+    let def = defFromAddInput(input, slug);
+    if (existing) {
+      // An in-place spec swap, not a new integration: the added date
+      // survives, and the saved credential survives ONLY when the
+      // replacement provably talks to the same service — a spec that moves
+      // (or hides) its servers must never inherit the key, or a bad actor
+      // could point it at their own host and collect it. A dropped carry
+      // lands the def `pending`; the key is re-collected via the secure card.
+      // Within the same service the carry ignores the input's `auth`: replace
+      // is spec-repair, and the caller is a model re-deriving `auth` on every
+      // call — a sloppy `"none"` replay must not silently discard a working
+      // key (the promised semantics are "the key survives").
+      const keepCredential =
+        existing.credential !== undefined && sameServiceOrigins(existing, def);
+      def = {
+        ...def,
+        addedAtMs: existing.addedAtMs,
+        ...(keepCredential
+          ? { auth: "credential" as const, credential: existing.credential }
+          : {}),
+      };
+    }
     const { executor, states } = await this.host.ensure();
+    // The proven refresh sequence: tear down the compiled view, recompile —
+    // connection included (see CustomExecutorHost.refreshSpecs).
+    if (existing) await this.host.uncompileDef(executor, existing);
     const state = await this.host.compileDef(executor, def);
     if (state.status === "error") {
+      // A failed replacement must not cost a working integration: clear
+      // whatever the failed compile managed to register (an addSpec that
+      // succeeded before the connection step failed would otherwise occupy
+      // the slug), then put the previous compiled view back.
+      await this.host.uncompileDef(executor, def);
+      if (existing) {
+        states.set(slug, await this.host.compileDef(executor, existing));
+      }
       // Never persist a definition that cannot compile — the add FAILED and
       // the agent gets the real reason to relay/fix (wrong URL, server down).
       throw new CustomIntegrationError("compile_failed", state.message);
+    }
+    // The replacement no longer references the old secrets (the carry was
+    // refused because the service moved): delete them now, while the old def
+    // still names them — after the put nothing else ever would.
+    for (const id of Object.values(existing?.credential?.secretIds ?? {})) {
+      if (!Object.values(def.credential?.secretIds ?? {}).includes(id)) {
+        await this.secrets.delete(id);
+      }
     }
     await this.store.put(def);
     states.set(slug, state);
@@ -103,7 +170,14 @@ export class CustomIntegrationManager {
   }
 
   /** Store the user's secret and wire the connection; validates first. */
-  async setCredential(
+  setCredential(
+    slug: string,
+    values: Record<string, string>,
+  ): Promise<CustomIntegrationView> {
+    return this.serialize(() => this.setCredentialLocked(slug, values));
+  }
+
+  private async setCredentialLocked(
     slug: string,
     values: Record<string, string>,
   ): Promise<CustomIntegrationView> {
@@ -179,7 +253,11 @@ export class CustomIntegrationManager {
     };
   }
 
-  async remove(slug: string): Promise<void> {
+  remove(slug: string): Promise<void> {
+    return this.serialize(() => this.removeLocked(slug));
+  }
+
+  private async removeLocked(slug: string): Promise<void> {
     const def = await this.defOr404(slug);
     await this.store.remove(slug);
     for (const id of Object.values(def.credential?.secretIds ?? {})) {
