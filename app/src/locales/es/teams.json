@@ -377,5 +377,28 @@
   "personalSpace": {
     "inviteBlockedTitle": "Este es tu espacio personal",
     "inviteBlockedBody": "Tu espacio personal es solo para ti. Crea un equipo para invitar a otras personas."
+  },
+  "inviteInbox": {
+    "title": "Invitaciones",
+    "headline": "Te invitaron a unirte a {{team}}",
+    "headlineFrom": "{{name}} te invitó a {{team}}",
+    "asRole": "Te unirás como {{role}}.",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "acceptLabel": "Aceptar la invitación a {{team}}",
+    "declineLabel": "Rechazar la invitación a {{team}}",
+    "railLabel_one": "{{count}} invitación pendiente",
+    "railLabel_other": "{{count}} invitaciones pendientes",
+    "joinedTitle": "Te uniste a {{team}}",
+    "joinedBody": "Cambia a ese espacio cuando quieras desde el menú de espacios, arriba en la barra lateral.",
+    "joinedBodyUnconfirmed": "No pudimos actualizar tus espacios en este momento. Abre el menú de espacios en un momento para encontrarlo.",
+    "errors": {
+      "needsUpgradeTitle": "Este equipo necesita mejorar su plan",
+      "needsUpgradeBody": "Su prueba terminó, así que no puede sumar personas ahora. Pídele a quien te invitó que mejore el plan y vuelve a aceptar.",
+      "alreadyMemberTitle": "Ya estás en este equipo",
+      "alreadyMemberBody": "No hay nada que hacer. Encuéntralo en el menú de espacios, arriba en la barra lateral.",
+      "goneTitle": "Esta invitación ya no está disponible",
+      "goneBody": "Se canceló o ya se usó. Pídele a tu equipo que te envíe una nueva."
+    }
   }
 }

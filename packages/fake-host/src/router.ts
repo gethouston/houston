@@ -24,6 +24,7 @@ import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleSharedSkillsRoutes } from "./routes-shared-skills";
+import { handleSpaceInvitesControl, handleSpacesRoutes } from "./routes-spaces";
 import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
 import type { FakeCapabilities, TeamsSettings } from "./state";
@@ -246,6 +247,17 @@ export async function handle(req: Request): Promise<Response> {
     });
     return json({ teams: state.setTeamWorkspaces(rows) });
   }
+  // Arm the invitee-side invite inbox `GET /v1/orgs` surfaces in `invites` (C8
+  // Spaces): `{ invites: [{ orgName, role?, invitedBy?, orgSlug?, id?,
+  // reject? }] }`. Only `orgName` is required. `reject` forces that invite's
+  // accept/decline rejection (`needs_upgrade` 403 / `already_member` 409 /
+  // `invite_not_found` 404) so the error paths are reachable. Pair with
+  // `/__test__/capabilities` `{ spaces:true }` — the sidebar card is
+  // capability-gated on the CLIENT, not here. `{ invites: [] }` (and reset)
+  // empties the inbox.
+  if (path === "/__test__/space-invites" && method === "POST") {
+    return handleSpaceInvitesControl(await parseBody(req));
+  }
   // Seed a connection at a status the UI can't be clicked into: `pending` (an
   // abandoned sign-in) or `error` (the provider refused). `{toolkit, status}`.
   if (path === "/__test__/integrations-connection" && method === "POST") {
@@ -316,6 +328,10 @@ export async function handle(req: Request): Promise<Response> {
   // --- Teams v2 gateway routes (agent + org settings / allowlist ceilings) ---
   const teamsRoute = handleTeamsRoutes(method, segs, body, url);
   if (teamsRoute) return teamsRoute;
+
+  // --- C8 Spaces gateway routes (the cross-org list + the invitee's inbox) ---
+  const spacesRoute = handleSpacesRoutes(method, segs, body);
+  if (spacesRoute) return spacesRoute;
 
   // --- the caller's own editable display profile (name + photo) ---
   const meRoute = handleMeRoutes(method, segs, body);

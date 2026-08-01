@@ -23,6 +23,7 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { buildAgentSidebarLists } from "./agent-sidebar-items";
 import { GroupContextDialog } from "./group-context-dialog";
+import { SidebarInviteInbox } from "./pending-invites";
 import {
   buildSidebarLabels,
   buildSidebarNavItems,
@@ -237,6 +238,15 @@ export function Sidebar({ children }: { children: ReactNode }) {
             collapsed={effectiveCollapsed}
             onSwitch={handleWorkspaceSwitch}
             onCreate={() => setCreateWsOpen(true)}
+            onExpand={() => setSidebarCollapsed(false)}
+          />
+        }
+        // Pending team invitations: same place in the eye (right under the
+        // switcher, where a user picks a space), but their OWN full-width row —
+        // the header line belongs to the switcher and the collapse toggle.
+        headerBelow={
+          <SidebarInviteInbox
+            collapsed={effectiveCollapsed}
             onExpand={() => setSidebarCollapsed(false)}
           />
         }

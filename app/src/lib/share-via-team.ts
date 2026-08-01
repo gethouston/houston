@@ -31,18 +31,32 @@ export type MoveErrorKind =
   | "unknown";
 
 /**
- * Best-effort machine-readable reason from a gateway error (kind > code > body).
- * Shared by the wiring layer (to classify a rejection) and
- * {@link isExpectedShareError} (to silence expected C8 states from the generic
- * bug toast). Pure + DOM-free so it stays in this unit-tested module.
+ * Best-effort machine-readable reason from a gateway error
+ * (kind > code > body.code > body.error). Shared by the wiring layer (to
+ * classify a rejection) and {@link isExpectedShareError} (to silence expected C8
+ * states from the generic bug toast). Pure + DOM-free so it stays in this
+ * unit-tested module.
+ *
+ * `body.code` is the SHIPPED gateway shape: the Go edge answers a business
+ * rejection as a FLAT `{error: "<human sentence>", code: "<machine code>"}`
+ * (e.g. `{error: "team needs upgrade", code: "needs_upgrade"}`), while
+ * `HoustonEngineError`'s own `.code` getter only reads the NESTED
+ * `{error: {code}}` form. Without this step every flat rejection classified as
+ * its English sentence, so `needs_upgrade` / `personal_space` / `already_member`
+ * silently fell through to the red "report a bug" toast.
  */
 export function shareErrorCode(err: unknown): string | undefined {
   const e = err as
-    | { kind?: unknown; code?: unknown; body?: { error?: unknown } }
+    | {
+        kind?: unknown;
+        code?: unknown;
+        body?: { code?: unknown; error?: unknown };
+      }
     | null
     | undefined;
   if (typeof e?.kind === "string") return e.kind;
   if (typeof e?.code === "string") return e.code;
+  if (typeof e?.body?.code === "string") return e.body.code;
   const bodyError = e?.body?.error;
   if (typeof bodyError === "string") return bodyError;
   const nested = (bodyError as { code?: unknown } | undefined)?.code;

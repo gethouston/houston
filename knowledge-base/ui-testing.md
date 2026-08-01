@@ -102,6 +102,18 @@ e2e in an `_agent-tasks/<id>/` worktree, pick distinct ports:
   (agent ∩ org) splits the browse catalog into connectable vs locked rows
   (`integrations-locked.spec.ts`). `SEED_TOOLKIT_SLUGS` (15 A-Z apps) is exported
   for specs arming allowlists over the catalog.
+- **C8 Spaces is armable end to end.** The fake host serves the cross-org
+  surface (`fake-host/routes-spaces.ts`): `GET /v1/orgs` → `{orgs, invites}`,
+  `POST /v1/orgs`, and the INVITEE's `POST /v1/org-invites/:id/accept` (201
+  `{org}`) / `DELETE /v1/org-invites/:id` (204). Memberships have ONE source of
+  truth — the team-space rows `/v1/workspaces` bridges — so an accepted invite
+  lands in the switcher AND in `orgs` in one move. `POST /__test__/space-invites`
+  (`{invites:[{orgName, role?, invitedBy?, orgSlug?, id?, reject?}]}`) arms the
+  inbox; `reject` forces that invite's `needs_upgrade` (403) / `already_member`
+  (409) / `invite_not_found` (404), whose bodies are the gateway's flat
+  `{error, code}` — the shape the client's invite taxonomy reads. The sidebar
+  cards are capability-gated on the CLIENT, so pair with
+  `/__test__/capabilities` `{spaces:true}` (`team-invites.spec.ts`).
 
 ## CI
 

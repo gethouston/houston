@@ -139,6 +139,20 @@ describe("isNeedsUpgradeError", () => {
     );
   });
 
+  // The SHIPPED gateway body: a flat `{error: "<sentence>", code}`. The
+  // `HoustonEngineError.code` getter only reads the NESTED `{error:{code}}`
+  // form, so without `shareErrorCode` reading `body.code` this rejection
+  // classified as its English sentence and fell through to the red bug toast.
+  it("matches the flat {error, code} body the Go gateway sends", () => {
+    strictEqual(
+      isNeedsUpgradeError({
+        status: 403,
+        body: { error: "team needs upgrade", code: "needs_upgrade" },
+      }),
+      true,
+    );
+  });
+
   it("ignores other errors", () => {
     strictEqual(isNeedsUpgradeError({ code: "not_owner" }), false);
     strictEqual(isNeedsUpgradeError(new Error("boom")), false);
@@ -151,6 +165,19 @@ describe("isPersonalSpaceError", () => {
     strictEqual(isPersonalSpaceError({ code: "personal_space" }), true);
     strictEqual(
       isPersonalSpaceError({ body: { error: "personal_space" } }),
+      true,
+    );
+  });
+
+  it("matches the flat {error, code} body the Go gateway sends", () => {
+    strictEqual(
+      isPersonalSpaceError({
+        status: 403,
+        body: {
+          error: "a personal space cannot have members",
+          code: "personal_space",
+        },
+      }),
       true,
     );
   });

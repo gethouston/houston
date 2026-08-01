@@ -67,6 +67,19 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Creating a team needs the hosted gateway.");
       return controlPlane.createOrg(this.ctx.cp, name);
     }
+    // The invitee's own accept/decline (C8). Off-cloud there is no invite to
+    // act on, so both throw rather than degrade: a user who clicked Accept must
+    // never be told nothing happened.
+    async acceptOrgInvite(inviteId: string): Promise<controlPlane.OrgSummary> {
+      if (!this.ctx.cp)
+        throw new Error("Joining a team needs the hosted gateway.");
+      return controlPlane.acceptOrgInvite(this.ctx.cp, inviteId);
+    }
+    async declineOrgInvite(inviteId: string): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Declining an invitation needs the hosted gateway.");
+      return controlPlane.declineOrgInvite(this.ctx.cp, inviteId);
+    }
     async moveAgent(
       agentSlugOrId: string,
       toSlug: string,

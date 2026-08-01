@@ -1710,6 +1710,31 @@ export class HoustonClient {
     return this.request("POST", "/orgs", { name });
   }
   /**
+   * Accept a pending invite addressed to the caller (C8 §Wire surface), by the
+   * id that rides `listOrgs().invites`. Answers the joined space so the caller
+   * can name it without a second read. Never degrades — every rejection is a
+   * state the invitee must see: `404 invite_not_found` (revoked, already used,
+   * or addressed to another email — the gateway deliberately can't tell them
+   * apart), `409 already_member`, `403 needs_upgrade` (the team's trial ended).
+   * A POST, so `send` never auto-replays it.
+   */
+  async acceptOrgInvite(inviteId: string): Promise<OrgSummary> {
+    const res = await this.request<{ org: OrgSummary }>(
+      "POST",
+      `/org-invites/${this.seg(inviteId)}/accept`,
+    );
+    return res.org;
+  }
+  /**
+   * Decline a pending invite addressed to the caller (C8 §Wire surface) — the
+   * invitee's own `204`, NOT the owner's revoke (`deleteOrgInvite`, which is
+   * org-scoped at `/org/invites/:id`). Never degrades: a `404 invite_not_found`
+   * must reach the UI so the stale row explains itself.
+   */
+  async declineOrgInvite(inviteId: string): Promise<void> {
+    await this.request("DELETE", `/org-invites/${this.seg(inviteId)}`);
+  }
+  /**
    * Move an agent into a team space (C8 §Agent move). Returns the `moveId` to
    * poll with `getMoveStatus` to terminal `done` before inviting. Never degrades:
    * a `403 unsupported_move` / `409 unmovable_volume` / `403 needs_upgrade` must

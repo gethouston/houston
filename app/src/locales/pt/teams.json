@@ -377,5 +377,28 @@
   "personalSpace": {
     "inviteBlockedTitle": "Este é o seu espaço pessoal",
     "inviteBlockedBody": "Seu espaço pessoal é só para você. Crie uma equipe para convidar pessoas."
+  },
+  "inviteInbox": {
+    "title": "Convites",
+    "headline": "Você foi convidado para entrar em {{team}}",
+    "headlineFrom": "{{name}} convidou você para {{team}}",
+    "asRole": "Você vai entrar como {{role}}.",
+    "accept": "Aceitar",
+    "decline": "Recusar",
+    "acceptLabel": "Aceitar o convite para {{team}}",
+    "declineLabel": "Recusar o convite para {{team}}",
+    "railLabel_one": "{{count}} convite pendente",
+    "railLabel_other": "{{count}} convites pendentes",
+    "joinedTitle": "Você entrou em {{team}}",
+    "joinedBody": "Mude para esse espaço quando quiser pelo menu de espaços, no topo da barra lateral.",
+    "joinedBodyUnconfirmed": "Não foi possível atualizar seus espaços agora. Abra o menu de espaços daqui a pouco para encontrar a equipe.",
+    "errors": {
+      "needsUpgradeTitle": "Esta equipe precisa de um upgrade",
+      "needsUpgradeBody": "O teste dela terminou, então ela não pode receber pessoas agora. Peça para quem convidou você fazer o upgrade e aceite de novo.",
+      "alreadyMemberTitle": "Você já está nesta equipe",
+      "alreadyMemberBody": "Não há nada a fazer. Encontre a equipe no menu de espaços, no topo da barra lateral.",
+      "goneTitle": "Este convite não está mais disponível",
+      "goneBody": "Ele foi cancelado ou já foi usado. Peça um novo convite para a sua equipe."
+    }
   }
 }

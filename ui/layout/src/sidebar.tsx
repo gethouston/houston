@@ -46,6 +46,15 @@ export interface SidebarProps {
   logo?: ReactNode;
   /** Header area rendered at the very top (e.g., space/org switcher) */
   header?: ReactNode;
+  /**
+   * A FULL-WIDTH band directly under the header, above the nav (e.g. the
+   * pending-invite inbox). Deliberately not part of `header`: expanded, the
+   * header shares its row with the collapse toggle, so anything tall put there
+   * is inset by the toggle's width AND drags the vertically-centred toggle down
+   * to the middle of the block. This slot spans the rail like every row below
+   * it and leaves the toggle on the header's own line.
+   */
+  headerBelow?: ReactNode;
   /** Nav items rendered below the header and above the items list */
   navItems?: SidebarNavItemEntry[];
   /** ID of the currently active nav item (for highlighting) */
@@ -129,6 +138,7 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
 export function AppSidebar({
   logo,
   header,
+  headerBelow,
   navItems,
   activeNavId,
   items,
@@ -255,6 +265,11 @@ export function AppSidebar({
             )}
           </div>
         )}
+
+        {/* Full-width band under the header row (see `headerBelow`). Renders in
+            both presentations: the collapsed rail needs its own stand-in for
+            whatever lives here, not a hidden one. */}
+        {headerBelow}
 
         {/* Legacy logo area (only when no header) */}
         {showLogo && !collapsed && (

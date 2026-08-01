@@ -43,6 +43,42 @@ export async function createOrg(
 }
 
 /**
+ * Accept a pending invite addressed to the caller (C8), by the id that rides
+ * `listOrgs().invites`. Answers the joined space (the gateway wraps it as
+ * `{org}`) so the caller can name it without a second read. Never degrades —
+ * every rejection is a state the invitee must see: `404 invite_not_found`
+ * (revoked, already used, or addressed to another email — the gateway
+ * deliberately can't tell those apart), `409 already_member`, `403
+ * needs_upgrade` (the team's trial ended).
+ */
+export async function acceptOrgInvite(
+  cfg: ControlPlaneConfig,
+  inviteId: string,
+): Promise<OrgSummary> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/org-invites/${encodeURIComponent(inviteId)}/accept`,
+    { method: "POST" },
+  );
+  return ((await res.json()) as { org: OrgSummary }).org;
+}
+
+/**
+ * Decline a pending invite addressed to the caller (C8) — the invitee's own
+ * `204`, NOT the owner's revoke (`deleteOrgInvite`, org-scoped at
+ * `/v1/org/invites/:id`). Never degrades: a `404 invite_not_found` must reach
+ * the UI so the stale row explains itself.
+ */
+export async function declineOrgInvite(
+  cfg: ControlPlaneConfig,
+  inviteId: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/org-invites/${encodeURIComponent(inviteId)}`, {
+    method: "DELETE",
+  });
+}
+
+/**
  * Move an agent into a team space; returns the `moveId` to poll with
  * `getMoveStatus`. Never degrades — 403 `unsupported_move` / 409
  * `unmovable_volume` / 403 `needs_upgrade` throw so the caller surfaces them.

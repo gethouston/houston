@@ -377,5 +377,28 @@
   "personalSpace": {
     "inviteBlockedTitle": "This is your personal space",
     "inviteBlockedBody": "Your personal space is just for you. Create a team to invite people."
+  },
+  "inviteInbox": {
+    "title": "Invitations",
+    "headline": "You were invited to join {{team}}",
+    "headlineFrom": "{{name}} invited you to {{team}}",
+    "asRole": "You will join as {{role}}.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "acceptLabel": "Accept the invitation to {{team}}",
+    "declineLabel": "Decline the invitation to {{team}}",
+    "railLabel_one": "{{count}} pending invitation",
+    "railLabel_other": "{{count}} pending invitations",
+    "joinedTitle": "You joined {{team}}",
+    "joinedBody": "Switch to it any time from the space menu at the top of the sidebar.",
+    "joinedBodyUnconfirmed": "We could not refresh your spaces just now. Open the space menu again in a moment to find it.",
+    "errors": {
+      "needsUpgradeTitle": "This team needs an upgrade",
+      "needsUpgradeBody": "Its trial ended, so it cannot add people right now. Ask the person who invited you to upgrade, then accept again.",
+      "alreadyMemberTitle": "You are already in this team",
+      "alreadyMemberBody": "Nothing to do. Find it in the space menu at the top of the sidebar.",
+      "goneTitle": "This invitation is no longer available",
+      "goneBody": "It was withdrawn or already used. Ask your team to send a new one."
+    }
   }
 }

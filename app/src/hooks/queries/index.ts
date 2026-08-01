@@ -46,6 +46,7 @@ export {
   useIntegrationStatus,
   useIntegrationToolkits,
 } from "./use-integrations";
+export { useAcceptInvite, useDeclineInvite } from "./use-invites";
 export {
   useAddLearning,
   useLearnings,
