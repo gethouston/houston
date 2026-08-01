@@ -65,7 +65,9 @@
     "reportSentDescription": "Referência #{{id}}.",
     "copyId": "Copiar código",
     "offlineTitle": "Houston, sem conexão",
-    "offlineDescription": "Não conseguimos conectar ao Houston agora. Verifique sua conexão com a internet e tente novamente."
+    "offlineDescription": "Não conseguimos conectar ao Houston agora. Verifique sua conexão com a internet e tente novamente.",
+    "engineWakingTitle": "Houston, seu agente está acordando",
+    "engineWakingDescription": "Ele estará pronto em um momento. Tente novamente em breve."
   },
   "agentDelete": {
     "title": "Excluir o agente?",

@@ -112,6 +112,32 @@ export function showConnectivityErrorToast(
   });
 }
 
+/**
+ * Surface a gateway "engine unavailable" 503 (HOU-1114) as ONE informational
+ * "your agent is waking up" toast. The agent's engine pod is provisioning (a
+ * just-installed store agent) or cold-starting; every per-agent call fails the
+ * same way until it wakes, so the toast dedupes on its constant displayed body
+ * and the burst reads as one state, not a storm. No Sentry capture and no
+ * green "report sent" toast: nothing in Houston broke and the request
+ * self-heals on retry; the raw diagnostic still reaches the frontend log via
+ * the caller's `logger.error` plus the `[toast:…]` line here. The analytics
+ * event fires only past the dedupe, mirroring `showErrorToast`.
+ */
+export function showEngineWakingToast(command: string, message: string): void {
+  console.error(`[toast:${command}] ${message}`);
+  const description = i18n.t("shell:errorToast.engineWakingDescription");
+  if (isDuplicateToast(description, Date.now())) return;
+  analytics.track("app_error_shown", {
+    source: command,
+    error_kind: classifyAnalyticsError(message),
+  });
+  useUIStore.getState().addToast({
+    title: i18n.t("shell:errorToast.engineWakingTitle"),
+    description,
+    variant: "info",
+  });
+}
+
 export function showErrorToast(
   command: string,
   message: string,
