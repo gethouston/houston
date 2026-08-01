@@ -125,6 +125,53 @@ test("loadSessionState reports `none` for a corrupt blob", async () => {
   assert.deepEqual(await loadSessionState(), { kind: "none" });
 });
 
+test("clearSession retries a failed delete once and succeeds", async () => {
+  // A transient keychain fault (locked at that instant, a prompt the user then
+  // approves) must not leave the session blob behind: a surviving blob signs the
+  // user straight back into the account they just left on the next launch.
+  const { clearSession } = await import("../src/lib/identity/session-store.ts");
+  let attempts = 0;
+  globalThis.localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("keychain locked");
+    },
+  } as unknown as Storage;
+  await clearSession();
+  assert.equal(attempts, 2, "the failed delete was not retried");
+});
+
+test("clearSession throws typed when both attempts fail, and still broadcasts signed-out", async () => {
+  const { clearSession, subscribeSession } = await import(
+    "../src/lib/identity/session-store.ts"
+  );
+  const { IdentityError } = await import("../src/lib/identity/errors.ts");
+  let attempts = 0;
+  globalThis.localStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {
+      attempts += 1;
+      throw new Error("keychain denied");
+    },
+  } as unknown as Storage;
+
+  const seen: Array<Session | null> = [];
+  const unsub = subscribeSession((s) => seen.push(s));
+  await assert.rejects(
+    () => clearSession(),
+    (e: unknown) =>
+      e instanceof IdentityError && e.code === "session_clear_failed",
+  );
+  unsub();
+  assert.equal(attempts, 2);
+  // Locally the user IS signed out (the epoch bumped, the caches are wiped), so
+  // subscribers must still flip — the surviving blob is what gets surfaced.
+  assert.deepEqual(seen, [null]);
+});
+
 test("saveSession rethrows when the underlying storage write fails", async () => {
   const { saveSession } = await import("../src/lib/identity/session-store.ts");
   globalThis.localStorage = {

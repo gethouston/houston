@@ -23,6 +23,11 @@ export type IdentityErrorCode =
   // config / rate
   | "api_key_invalid" // API key not valid / KEY_INVALID / CONFIGURATION_NOT_FOUND
   | "too_many_attempts" // TOO_MANY_ATTEMPTS_TRY_LATER
+  // local session storage (desktop Keychain / browser)
+  | "session_clear_failed" // sign-out could not delete the stored session
+  | "local_data_clear_failed" // sign-out could not wipe the persisted local cache
+  // desktop loopback OAuth, before the browser takes over
+  | "browser_open_timeout" // binding the loopback / opening the browser hung
   // gateway email-OTP flow
   | "otp_invalid_code" // gateway 401: wrong / expired 6-digit code
   | "otp_rate_limited" // gateway 429: too many start/verify requests

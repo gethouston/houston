@@ -8,8 +8,8 @@
 // retries rather than signing the user out. This backs
 // `window.__HOUSTON_SESSION_REFRESH__`.
 //
-// `startProactiveRefresh()` schedules a timer ~5 min before `expiresAt` and
-// reschedules after each fire; it never throws into the timer.
+// The background timer that drives it (~5 min before `expiresAt`, with a
+// backoff on transient failures) lives in `refresh-timer.ts`.
 //
 // Cache seam: this module never imports react-query. It calls an injected
 // `setSessionSink` callback after each save/clear so Wave B (auth.ts) can push
@@ -24,6 +24,7 @@ import type { Session } from "./session.ts";
 import {
   clearSession,
   loadSession,
+  peekSession,
   saveSession,
   sessionEpoch,
 } from "./session-store.ts";
@@ -55,16 +56,21 @@ export function refreshNow(): Promise<string | null> {
 }
 
 async function doRefresh(): Promise<string | null> {
+  // Capture the epoch BEFORE the storage READ, not after it. `loadSession()` is
+  // itself async (a keychain round-trip), so a sign-out landing while we are
+  // awaiting the read would bump the epoch before we ever sampled it — and the
+  // refresh would then happily re-save the session that sign-out just deleted,
+  // snapping the UI back into the account the user just left (HOU sign-out race).
+  const epochAtStart = sessionEpoch();
   const session = await loadSession();
   if (!session) return null;
-  // Capture the epoch BEFORE the network call; if a sign-out clears the session
-  // while we're awaiting, we must not resurrect it (HOU sign-out race).
-  const epochAtStart = sessionEpoch();
   try {
     const refreshed = await refreshIdToken({
       apiKey: identityConfig.apiKey,
       refreshToken: session.refreshToken,
     });
+    // Re-check immediately before the write: nothing may resurrect a session
+    // cleared at ANY point since `epochAtStart` (during the read or the call).
     if (sessionEpoch() !== epochAtStart) {
       identityLog(
         "info",
@@ -80,6 +86,32 @@ async function doRefresh(): Promise<string | null> {
       expiresAt: refreshed.expiresAt,
     };
     await saveSession(next);
+    if (sessionEpoch() !== epochAtStart) {
+      // A sign-out landed while the WRITE was in flight, so this refresh no
+      // longer speaks for the signed-in identity. Compensate as the keychain ACL
+      // rebind does (session-load.ts) — but ONLY for our own stale write. In
+      // that same window a DIFFERENT account can already have signed in, and an
+      // unconditional clear would delete the NEW user's session: they would be
+      // bounced back to the sign-in screen with no way in until a relaunch.
+      // `peekSession` reads without broadcasting; a read fault resolves null,
+      // which correctly reads as "not provably ours, leave it alone".
+      const persisted = await peekSession();
+      if (persisted?.idToken === next.idToken) {
+        identityLog(
+          "info",
+          "refresh abandoned: session cleared during the save; re-clearing our stale write",
+          "identity/refresh",
+        );
+        await clearSession();
+      } else {
+        identityLog(
+          "info",
+          "refresh abandoned: a newer session already owns the store; leaving it untouched",
+          "identity/refresh",
+        );
+      }
+      return null;
+    }
     sessionSink(next);
     return next.idToken;
   } catch (e) {
@@ -104,91 +136,5 @@ async function doRefresh(): Promise<string | null> {
       return null;
     }
     throw e;
-  }
-}
-
-// ── Proactive refresh timer ───────────────────────────────────────────────
-
-/** Refresh this long before `expiresAt` so a call never rides an expired token. */
-const REFRESH_SKEW_MS = 5 * 60_000;
-
-// Backoff for a TRANSIENT proactive-refresh failure (network down). Without it,
-// a token at/near expiry reschedules at the expiry-based delay `expiresAt - now
-// - skew`, which is 0 once inside the skew window — so a failing refresh would
-// hot-loop the securetoken endpoint while offline. On a transient failure we
-// retry on this exponential backoff instead; a terminal failure clears the
-// session (scheduleNext then stops), and a success resets the backoff.
-const INITIAL_REFRESH_BACKOFF_MS = 30_000;
-const MAX_REFRESH_BACKOFF_MS = 15 * 60_000;
-
-let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-let proactiveRunning = false;
-let getSessionForTimer: () => Promise<Session | null> = loadSession;
-let backoffMs = 0;
-
-/** Begin proactively refreshing. Call after sign-in and on boot with a session. */
-export function startProactiveRefresh(
-  getSession: () => Promise<Session | null> = loadSession,
-): void {
-  getSessionForTimer = getSession;
-  proactiveRunning = true;
-  backoffMs = 0;
-  void scheduleNext();
-}
-
-/** Stop the proactive timer (sign-out / teardown). */
-export function stopProactiveRefresh(): void {
-  proactiveRunning = false;
-  backoffMs = 0;
-  if (refreshTimer) {
-    clearTimeout(refreshTimer);
-    refreshTimer = null;
-  }
-}
-
-/** Arm the single proactive timer after `delayMs` (no-op once torn down). */
-function armTimer(delayMs: number): void {
-  if (!proactiveRunning) return;
-  if (refreshTimer) clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => void onTimer(), delayMs);
-}
-
-async function scheduleNext(): Promise<void> {
-  if (!proactiveRunning) return;
-  let session: Session | null = null;
-  try {
-    session = await getSessionForTimer();
-  } catch (e) {
-    identityLog(
-      "warn",
-      `proactive refresh: reading session failed: ${String(e)}`,
-      "identity/refresh",
-    );
-  }
-  if (!proactiveRunning || !session) return;
-  const delay = Math.max(0, session.expiresAt - Date.now() - REFRESH_SKEW_MS);
-  armTimer(delay);
-}
-
-async function onTimer(): Promise<void> {
-  try {
-    await refreshNow();
-    // Success (or a terminal sign-out that returned null): resume normal
-    // expiry-based scheduling. If the session was cleared, scheduleNext stops.
-    backoffMs = 0;
-    void scheduleNext();
-  } catch (e) {
-    // Transient failure (network): retry on an exponential backoff rather than
-    // hot-looping the 0-delay expiry-based schedule inside the skew window.
-    backoffMs =
-      backoffMs === 0
-        ? INITIAL_REFRESH_BACKOFF_MS
-        : Math.min(backoffMs * 2, MAX_REFRESH_BACKOFF_MS);
-    identityLog(
-      "warn",
-      `proactive refresh failed; retrying in ${backoffMs}ms: ${String(e)}`,
-      "identity/refresh",
-    );
-    armTimer(backoffMs);
   }
 }

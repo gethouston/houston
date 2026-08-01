@@ -163,7 +163,7 @@ test("proactive refresh backs off on a transient failure near expiry (no hot loo
   await saveSession({ ...SESSION, expiresAt: Date.now() }); // past the skew
 
   const { startProactiveRefresh, stopProactiveRefresh } = await import(
-    "../src/lib/identity/refresh.ts"
+    "../src/lib/identity/refresh-timer.ts"
   );
 
   let calls = 0;
@@ -179,6 +179,116 @@ test("proactive refresh backs off on a transient failure near expiry (no hot loo
 
   // Exactly one attempt in the window — the 30s backoff prevents a hot loop.
   assert.ok(calls <= 1, `expected <=1 refresh attempt, got ${calls}`);
+});
+
+test("the post-save compensation never deletes a NEWER account's session", async () => {
+  // The dangerous half of the compensation: a stale refresh whose write landed
+  // after a sign-out must NOT clear the store blindly. By the time it looks, a
+  // DIFFERENT account may already have signed in — clearing then signs the new
+  // user straight back out (and they cannot log in again without a relaunch).
+  await seedSession();
+  const { refreshNow, setSessionSink } = await import(
+    "../src/lib/identity/refresh.ts"
+  );
+  const { clearSession, loadSession, saveSession } = await import(
+    "../src/lib/identity/session-store.ts"
+  );
+
+  const NEW_ACCOUNT: Session = {
+    ...SESSION,
+    idToken: "new-account-id",
+    refreshToken: "new-account-refresh",
+    uid: "uid-2",
+    email: "ada@example.com",
+  };
+
+  setSessionSink(() => {});
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        id_token: "stale-id",
+        refresh_token: "stale-refresh",
+        expires_in: "3600",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  // The interleaving: the stale refresh's write lands, and while it settles the
+  // user signs out and a different account signs in. Both storage ops below run
+  // synchronously inside the browser adapter, so the sequence is deterministic.
+  let armed = true;
+  const realSetItem = fake.setItem.bind(fake);
+  fake.setItem = (key: string, value: string) => {
+    realSetItem(key, value);
+    if (armed && String(value).includes("stale-id")) {
+      armed = false;
+      void clearSession(); // sign-out: bumps the epoch, drops the blob
+      void saveSession(NEW_ACCOUNT); // a different account signs in
+    }
+  };
+
+  assert.equal(await refreshNow(), null, "the stale refresh must abandon");
+  assert.deepEqual(
+    await loadSession(),
+    NEW_ACCOUNT,
+    "the compensating clear wiped the newly signed-in account",
+  );
+
+  setSessionSink(() => {});
+});
+
+test("refreshNow abandons the save when clearSession lands DURING the stored-session read", async () => {
+  // The narrower half of the sign-out race: `loadSession()` is itself async (a
+  // keychain round-trip), so a sign-out can land while the READ is in flight.
+  // Sampling the epoch after the read would miss that clear entirely and the
+  // refresh would re-save the session sign-out just deleted — the "logged back
+  // into the last account" bug. The epoch must be sampled BEFORE the read.
+  await seedSession();
+  const { refreshNow, setSessionSink } = await import(
+    "../src/lib/identity/refresh.ts"
+  );
+  const { clearSession, loadSession } = await import(
+    "../src/lib/identity/session-store.ts"
+  );
+
+  const sinkUpdates: (Session | null)[] = [];
+  setSessionSink((s) => sinkUpdates.push(s));
+
+  // A read that returns the pre-clear blob while the clear runs underneath it.
+  let armed = true;
+  const realGetItem = fake.getItem.bind(fake);
+  fake.getItem = (key: string) => {
+    const value = realGetItem(key);
+    if (armed) {
+      armed = false;
+      void clearSession(); // bumps the epoch mid-read
+    }
+    return value;
+  };
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        id_token: "new-id",
+        refresh_token: "refresh-2",
+        expires_in: "3600",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  assert.equal(await refreshNow(), null);
+  assert.equal(
+    await loadSession(),
+    null,
+    "the cleared session was resurrected",
+  );
+  assert.deepEqual(
+    sinkUpdates.filter((s) => s !== null),
+    [],
+    "the refresh pushed the signed-out account back into the cache",
+  );
+
+  setSessionSink(() => {});
 });
 
 test("refreshNow abandons the save when clearSession fired mid-flight (sign-out race)", async () => {

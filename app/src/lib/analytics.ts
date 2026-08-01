@@ -150,6 +150,9 @@ export type AnalyticsEventName =
   | "org_member_removed"
   | "org_role_changed"
   | "org_invite_revoked"
+  // The INVITEE's own answer to a pending team invite (C8 spaces).
+  | "org_invite_accepted"
+  | "org_invite_declined"
   // Update lifecycle (closes the symbolication-coverage feedback loop).
   // Updates are forced: update_forced marks the blocking surface appearing
   // (`source`: launch | countdown) and update_accepted the install starting

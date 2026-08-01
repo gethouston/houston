@@ -36,11 +36,9 @@
 
 import { gatewayUrl } from "../auth-gateway";
 import { appleReturnUrl } from "./apple-return.ts";
+import { runBrokeredDeepLinkAuthorize } from "./brokered-authorize.ts";
 import { identityConfig } from "./config.ts";
-import {
-  type LoopbackAuthorizeOptions,
-  runBrokeredDeepLinkAuthorize,
-} from "./desktop-oauth.ts";
+import type { LoopbackAuthorizeOptions } from "./desktop-oauth.ts";
 import { IdentityError } from "./errors.ts";
 import { createAuthUri } from "./firebase-rest.ts";
 

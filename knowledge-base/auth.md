@@ -63,12 +63,15 @@ rethrow (see "Error surfacing").
 User clicks "Continue with Google" (or Microsoft) in SignInScreen
  → auth.ts signInWithGoogle() / signInWithMicrosoft():
     1. runLoopbackAuthorize(): mint PKCE verifier + CSRF state,
-       osStartOauthLoopback() → 127.0.0.1:<8975-8978>/auth/callback,
-       open the provider authorize URL in the SYSTEM browser
-       (onBrowserOpened() frees the sign-in buttons the instant it opens)
+       osStartOauthLoopback(state) → { status, redirectUri: 127.0.0.1:
+       <8975-8978>/auth/callback, attemptId } ("superseded" → benign null),
+       open the provider authorize URL in the SYSTEM browser (onBrowserOpened()
+       frees the sign-in buttons the instant it opens; a 15s deadline bounds
+       everything up to that point, releasing a late listener if it wins)
  → provider consent in the system browser
  → 302 → 127.0.0.1:<port>/auth/callback?code=…&state=…
- → oauth_loopback.rs captures it, emits `auth://deep-link`, brings the window front
+ → oauth_loopback/ matches the state, emits `auth://deep-link`, brings the
+   window front (a foreign state gets the stale page and we keep listening)
  → oauth-callback.ts parseCallbackUrl(): validate CSRF `state` FIRST, then code
     2. exchange code at the provider token endpoint (google-authorize.ts /
        microsoft-authorize.ts) → provider id_token (Google also sends its
@@ -76,26 +79,80 @@ User clicks "Continue with Google" (or Microsoft) in SignInScreen
     3. firebase-rest.ts signInWithIdp({ providerId, idToken }) → Firebase session
     4. session-from-idp.ts assembles the Session; saveSession() → Keychain;
        cacheSession() flips the gate; startProactiveRefresh(); PostHog track
+       (steps 3-4 live in sign-in-establish.ts)
 ```
 
 The loopback ports `8975-8978` must be **Authorized redirect URIs** on the
 **Desktop OAuth client** (Google) / Azure app registration (Microsoft). The Rust
-loopback (`app/src-tauri/src/oauth_loopback.rs`) is a dumb listener: it forwards
-`?code=&state=` verbatim on the `auth://deep-link` event and never sees the
-client secret or does a token exchange (TS owns both). A `cancel_oauth_loopback`
-command frees the port immediately on cancel.
+loopback (`app/src-tauri/src/oauth_loopback/`) forwards `?code=&state=` verbatim
+on the `auth://deep-link` event and never sees the client secret or does a token
+exchange (TS owns both).
+
+**The loopback is attempt-scoped** (`oauth_loopback/`: `mod.rs` commands,
+`state.rs` registry, `listener.rs` bind/supersede, `callback.rs` serve loop,
+`pages.rs` the two served pages). Three rules, each fixing a way sign-in used to
+wedge until the app was quit:
+
+1. **`start_oauth_loopback(expected_state)` is told the CSRF `state` up front.**
+   Only a callback echoing THAT state completes the listener (a provider `error`
+   on a matching state counts — it is a real answer). Everything else, including
+   a callback with **no `state` at all**, gets a "this sign-in link has expired"
+   page and the listener **keeps listening**. Before this, ANY request to
+   `/auth/callback` consumed the one-shot listener, so a restored browser tab
+   replaying an old redirect — or a bare
+   `curl 127.0.0.1:8975/auth/callback?code=x` — killed the listener the real
+   sign-in was waiting on, and the attempt then sat silent for the full 300s.
+   No legitimate loopback callback is state-less: `runLoopbackAuthorize` always
+   sends `state`, Google and Microsoft echo it on success AND on their error
+   redirects (RFC 6749 §4.1.2.1), and the one flow that omits it (Apple) never
+   touches this listener — GCIP brokers it back as a `houston://` deep link.
+2. **Supersede-then-bind.** A new attempt cancels the previous listener and waits
+   (≤1s) for its port to be released BEFORE binding, so a re-click reuses the
+   same port. Binding first meant every re-click stepped to the next candidate
+   and the fourth exhausted the list for the rest of the run.
+3. **`cancel_oauth_loopback(attempt_id)` is id-scoped.** `start` returns
+   `{ status: "listening", redirectUri, attemptId }`; a cancel only fires a
+   listener whose id matches, so an abandoned attempt's fire-and-forget cancel
+   can never free the NEXT attempt's port. The listener also clears its own
+   registry slot when it ends.
+4. **Concurrent starts are ordered by USER INITIATION, not by completion.** The
+   attempt id is a monotonic **generation** minted at command entry, and both
+   `claim` (before binding) and `install` (after) refuse a generation older than
+   the newest one seen. Two rapid clicks used to be resolved by whichever
+   coroutine reached `install` last — which could be the OLDER click, and it
+   would then supersede the attempt the user was actually watching. A start that
+   loses drops the socket it bound and returns `{ status: "superseded" }`, which
+   TS treats as a benign `null` (no error, no session) exactly like an in-app
+   supersession.
 
 **Benign-cancel model.** A re-click (supersession), the sign-in screen unmounting
-(`cancelPendingAuthorize()` on unmount), and the 300s timeout all resolve `null` —
-no session, no error toast — so an abandoned browser tab can never freeze the
-buttons or fire a minutes-later error. A **foreign-state** callback (a stale tab's,
-delivered onto the shared `auth://deep-link` channel after a loopback port rebinds)
-is **ignored** — the attempt keeps waiting for its own correct-state callback
-rather than failing. Only a genuine callback error (provider `error` param on a
-matching state, unreadable payload, missing code) or a failure to open the browser
-/ bind the loopback rejects typed. **There is no `houston://auth-callback`
-fallback** — Google/Microsoft reject custom-scheme redirects on direct OAuth, so a
+or a sign-out (`cancelPendingAuthorize()`), and the 300s callback timeout all
+resolve `null` — no session, no error toast — so an abandoned browser tab can
+never freeze the buttons or fire a minutes-later error. A **foreign-state**
+callback (a stale tab's, delivered onto the shared `auth://deep-link` channel) is
+**ignored** — the attempt keeps waiting for its own correct-state callback rather
+than failing. Only a genuine callback error (provider `error` param on a matching
+state, unreadable payload, missing code) or a failure of the pre-browser leg
+rejects typed. **There is no `houston://auth-callback` fallback** —
+Google/Microsoft reject custom-scheme redirects on direct OAuth, so a
 loopback-bind failure surfaces a typed error for the generic retry UI.
+
+**Pre-browser deadline (15s).** The benign model applies only AFTER the browser
+has the flow. Until `onBrowserOpened` fires, the sign-in buttons are latched and
+the user sees nothing, so the whole pre-browser leg — the
+`start_oauth_loopback` invoke, PKCE, and the system-browser hand-off — is bounded
+by `BROWSER_OPEN_TIMEOUT_MS` (`identity/oauth-attempt-contract.ts`) and **rejects
+typed** (`browser_open_timeout` → `errors:auth.signInTimeout`) rather than sitting
+out the 300s clock. The deadline lives at the identity layer, not as a UI
+`setTimeout`, so expiry also tears the attempt down and frees the native port
+through the normal `abandonLoopback` path. `onBrowserOpened` cancels it.
+
+The invoke itself cannot be cancelled mid-flight — its `attemptId` does not exist
+until it returns — so `withBrowserOpenDeadline` takes a **`releaseIfLate`**
+callback: if the native start finally answers after we gave up, its listener is
+cancelled the instant it appears and never installed as the current attempt.
+Without that, an orphaned listener held its port for Rust's full 300s and
+superseded the retry the user had just started.
 
 ### Apple — web (popup) + desktop (gateway bridge + `houston://` deep link)
 
@@ -289,25 +346,74 @@ resolving `null` when the SDK confirms no user.
 
 ## Refresh
 
-`identity/refresh.ts` runs a proactive timer that refreshes ~5 min before
-`expiresAt` (`REFRESH_SKEW_MS`), replacing Supabase's `autoRefreshToken`. It also
-backs `window.__HOUSTON_SESSION_REFRESH__` (`refreshNow()`, single-flight) for the
-gateway 401 seam — **no engine-adapter change**. Firebase refresh tokens are
-long-lived and not rotated. A terminal refresh failure (revoked/expired refresh
-token) resolves `null` → a real sign-out surfaced by the auth gate; a transient
-throw is logged and treated as `null` so the 401 surfaces rather than crashing the
-refresher. On web the firebase-js-sdk owns refresh; `webRefreshIdToken` force-mints
-a fresh token for the same seam.
+`identity/refresh.ts` owns `refreshNow()` (single-flight), which backs
+`window.__HOUSTON_SESSION_REFRESH__` for the gateway 401 seam — **no
+engine-adapter change**. `identity/refresh-timer.ts` runs the proactive timer that
+refreshes ~5 min before `expiresAt` (`REFRESH_SKEW_MS`), replacing Supabase's
+`autoRefreshToken`, with an exponential backoff on transient failures so an
+offline token inside the skew window can't hot-loop the securetoken endpoint.
+Firebase refresh tokens are long-lived and not rotated. A terminal refresh failure
+(revoked/expired refresh token, disabled or deleted account) resolves `null` → a
+real sign-out surfaced by the auth gate; a transient throw is logged and treated as
+`null` so the 401 surfaces rather than crashing the refresher. On web the
+firebase-js-sdk owns refresh; `webRefreshIdToken` force-mints a fresh token for the
+same seam.
+
+**The epoch fence (a refresh must never resurrect a signed-out session).**
+`doRefresh` samples `sessionEpoch()` **before** `loadSession()` — not after — and
+re-checks it before the save AND again after it. `loadSession()` is itself async (a
+keychain round-trip), so sampling after the read would miss a sign-out that landed
+DURING the read; the refresh would then re-save the blob sign-out just deleted and
+`sessionSink` would snap the UI back into the old account. Any epoch change
+abandons the refresh.
+
+**The post-save compensation is CONDITIONAL**, and that condition is load-bearing.
+When the epoch moved during the write, the refresh re-clears only if the blob on
+disk is still the one it just wrote (`peekSession()` — a read that deliberately
+does NOT broadcast, so the UI is never flipped into a session it is about to
+un-see; compare on `idToken`). In that same window a DIFFERENT account can already
+have signed in, and an unconditional clear would delete the NEW user's session,
+bouncing them to the sign-in screen with no way back until a relaunch. A read
+fault resolves `null`, which correctly reads as "not provably ours, leave it".
 
 ## Sign-out
 
-`signOut()` (`app/src/lib/auth.ts`) does a full cleanup: `stopProactiveRefresh()` +
-`clearSession()` (Keychain, desktop) or `webSignOut()` (SDK, web) → `cacheSession(null)`
-→ `clearPersistedLocalData()` (wipes locally persisted per-user data, HOU-712) →
-`analytics.reset()` (so later anonymous events don't attach to the prior user). A
-failed remote/Keychain clear is logged, never silent, and never blocks local
-cleanup. The desktop hosted-mode **engine bearer clears reactively**: `cacheSession(null)`
-→ `["session"]` null → `HostedEngineGate` effect calls `setHostedEngineSessionToken(null)`.
+`signOut()` lives in **`app/src/lib/sign-out.ts`** (re-exported from `lib/auth`,
+which stays the one auth front door). Order matters, and every step that can
+reject is contained so local cleanup ALWAYS completes:
+
+```
+cancelAllConnectFlows()          // no gateway polls as a user who has left
+cancelPendingAuthorize()         // free the loopback port + kill a pending attempt
+stopProactiveRefresh() + clearSession()   (desktop) | webSignOut()  (web)
+clearPersistedLocalData()        // HOU-712, contained: a rejection must not skip the reset
+analytics.track + analytics.reset()
+resetForIdentityChange() + forgetActiveIdentity() + cacheSession(null)
+→ if the clear failed: emitAuthError("session_clear_failed") + throw typed
+```
+
+`clearSession()` (`identity/session-store.ts`) **retries a failed delete once**,
+then throws `IdentityError("session_clear_failed")` — a surviving Keychain blob is
+what silently signed users back into the account they just left on the next launch.
+It still broadcasts signed-out first: locally the session IS gone. `signOut()`
+surfaces that failure rather than warn-and-continuing and rethrows; the two callers
+(`user-menu.tsx`, `settings/sections/account.tsx`) only log, because the bus
+already owns the visible surface.
+
+**The two cleanups are reported DISTINCTLY** (`lib/sign-out-failure.ts`, pure +
+unit-tested). A surviving persisted session means "you may still be signed in next
+launch" (`session_clear_failed` → `errors:auth.signOutIncomplete`); a surviving
+local cache means only "some lists may look stale", with the login genuinely gone
+(`local_data_clear_failed` → `errors:auth.localDataIncomplete`). Collapsing the
+second into the first told users their login had persisted when it had not. When
+both fail the session clear wins the report: a surviving login is strictly worse.
+
+The session-cache writer (`cacheSession` + the HOU-903 identity-change guard) lives
+in `app/src/lib/session-cache.ts` so sign-in and sign-out share one writer; the
+post-success path (persist, remember-last-sign-in, arm refresh, analytics pair) is
+`app/src/lib/sign-in-establish.ts`. The desktop hosted-mode **engine bearer clears
+reactively**: `cacheSession(null)` → `["session"]` null → `HostedEngineGate` effect
+calls `setHostedEngineSessionToken(null)`.
 
 ### Identity reset — in-place, no cross-account bleed (HOU-903)
 
@@ -341,10 +447,15 @@ App's first-boot splash latch — see teams.md **Spaces > The switcher**).
 | `session.ts` | `Session` shape + shape-tolerant serialize/deserialize + `sessionExpiresWithin` |
 | `session-storage-kv.ts` | Keychain/browser KV adapter; `ReadResult` (read fault ≠ absence); `storageKey` / `isKeychainMode` |
 | `session-load.ts` | Pure `createSessionLoader` — `ReadResult` → `SessionLoadState`, notify decision, once-per-run ACL rebind (unit-tested via injected deps) |
-| `session-store.ts` | App persistence API (`loadSessionState`/`loadSession`/`save`/`clear`) + `subscribeSession` + epoch + `SESSION_QUERY_KEY` |
-| `refresh.ts` | Proactive timer, `refreshNow` (401 seam), `setSessionSink`, `start/stopProactiveRefresh` |
+| `session-store.ts` | App persistence API (`loadSessionState`/`loadSession`/`peekSession`/`save`/`clear`, clear retries once then throws typed) + `subscribeSession` + epoch + `SESSION_QUERY_KEY` |
+| `refresh.ts` | `refreshNow` (401 seam, single-flight, epoch-fenced), `setSessionSink` |
+| `refresh-timer.ts` | Proactive timer + transient backoff; `start/stopProactiveRefresh` |
 | `desktop-oauth.ts` | Loopback+PKCE driver (Tauri wiring); shared by Google + Microsoft |
-| `oauth-attempt.ts` | Tauri-free attempt lifecycle (supersede / cancel / timeout / ignore-foreign-state) — unit-testable |
+| `brokered-authorize.ts` | The GCIP-brokered deep-link driver (Apple) — no loopback listener at all |
+| `deep-link-listen.ts` | The one `auth://deep-link` subscriber both drivers inject |
+| `token-exchange.ts` | `postTokenForm` — the provider token-endpoint POST (Google + Microsoft) |
+| `oauth-attempt.ts` | Tauri-free attempt lifecycle (supersede / cancel / timeouts / ignore-foreign-state) — unit-testable |
+| `oauth-attempt-contract.ts` | The injected seams (`DeepLinkListen`, `AwaitCallbackParams`) + both timeout policies (`CALLBACK_TIMEOUT_MS`, `BROWSER_OPEN_TIMEOUT_MS`, `withBrowserOpenDeadline`) |
 | `oauth-callback.ts` | Pure callback parser: CSRF `state` validated first; `isCsrfStateMismatch` predicate |
 | `pkce.ts` | Code verifier / S256 challenge / state |
 | `google-authorize.ts` / `microsoft-authorize.ts` | Provider authorize + token-exchange specifics |
@@ -368,6 +479,20 @@ Every sign-in failure is classified ONCE into an `IdentityErrorCode`
 the browser hands off (provider rejection, code-exchange failure) arrive on the
 `auth-error-bus` (`onAuthError`) and render on `SignInScreen`; email-OTP errors
 render inline in `EmailSignIn` (emitted with `emit:false` to avoid a double render).
+
+Three codes are client-side lifecycle failures rather than GCIP responses:
+`session_clear_failed` → `auth.signOutIncomplete` (the stored session survived a
+sign-out, so the next launch would sign the user back in),
+`local_data_clear_failed` → `auth.localDataIncomplete` (the login IS gone, only
+the on-disk cache survived), and `browser_open_timeout` → `auth.signInTimeout`
+(the pre-browser leg hung).
+
+**The bus holds an unheard emit** (`auth-error-bus.ts`). A sign-out failure is
+emitted while `SignInScreen` is not mounted — that screen mounts as a RESULT of
+the sign-out, a render later — so with no listener the code is parked and handed
+to the first subscriber arriving within 10s; anything older is dropped, so a stale
+failure can never pop up minutes later. This is also why sign-out does NOT toast:
+the toaster lives inside `<App/>`, which unmounts on sign-out.
 
 The identity log seam (`identity/log.ts`) is wired to the app logger by
 `initFrontendLogging()` (`app/src/lib/logger.ts`), called at startup by **both**

@@ -5,58 +5,28 @@
 // the system-browser open are injected. Exactly one attempt is "current" at a
 // time. Three events end an attempt as a BENIGN cancel (resolve `null`, logged,
 // never a toast): a newer attempt superseding it, `cancelPendingAuthorize()`
-// (the sign-in screen unmounting), and the ~300s timeout (an abandoned browser
-// tab must never surface a minutes-later error). Only a genuine callback error
-// (provider `error` param, CSRF state mismatch, unreadable payload) — or a
-// failure to open the browser / install the listener — REJECTS typed.
+// (the sign-in screen unmounting, or a sign-out), and the ~300s callback timeout
+// (an abandoned browser tab must never surface a minutes-later error).
+//
+// Two things REJECT typed: a genuine callback error (provider `error` param,
+// unreadable payload, missing code), and a failed pre-browser leg — the browser
+// never opening within the deadline, or the listener failing to install. That
+// leg is NOT benign: the sign-in buttons stay latched until `onBrowserOpened`
+// fires, so a silent hang there is the stuck-buttons bug. The seam types + both
+// timeout policies live in `oauth-attempt-contract.ts`.
 
 import { IdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
+import {
+  type AwaitCallbackParams,
+  BROWSER_OPEN_TIMEOUT_MS,
+  browserOpenTimeout,
+  CALLBACK_TIMEOUT_MS,
+  type UnlistenFn,
+} from "./oauth-attempt-contract.ts";
 import { isCsrfStateMismatch, parseCallbackUrl } from "./oauth-callback.ts";
 
 const LOG_CTX = "identity/desktop-oauth";
-
-/** How long to wait for the browser to return before abandoning (benign null). */
-export const CALLBACK_TIMEOUT_MS = 300_000;
-
-/** Unsubscribe handle returned by the injected deep-link listener. */
-export type UnlistenFn = () => void;
-
-/** Subscribe to the loopback callback payload; resolves to an unsubscribe fn. */
-export type DeepLinkListen = (
-  onPayload: (payload: string) => void,
-) => Promise<UnlistenFn>;
-
-export interface AwaitCallbackParams {
-  /** The CSRF `state` the callback must echo back. */
-  expectedState: string;
-  /** The provider authorize URL to open in the system browser. */
-  authorizeUrl: string;
-  /** Subscribe to the `auth://deep-link` callback payload. */
-  listen: DeepLinkListen;
-  /** Open the authorize URL in the system browser. */
-  openUrl: (url: string) => Promise<void>;
-  /** Called once the browser has opened (frees the sign-in buttons). */
-  onBrowserOpened?: () => void;
-  /**
-   * Free the native loopback port immediately (desktop injects
-   * `osCancelOauthLoopback`). Invoked on the timeout and on an EXTERNAL cancel
-   * (sign-in-screen unmount) — NOT on supersession, where the new attempt's
-   * `start_oauth_loopback` has already superseded the old listener in Rust and a
-   * second cancel could race and free the NEW listener's port.
-   */
-  abandonLoopback?: () => void;
-  /**
-   * Turn the validated callback payload into the resolved value. Defaults to
-   * {@link parseCallbackUrl} (the authorization `code`); the GCIP-brokered
-   * flows pass {@link parseCallbackQuery} to get the whole query. Must enforce
-   * the CSRF state identically (throw the state-mismatch `IdentityError` so a
-   * stale/foreign callback keeps the attempt waiting).
-   */
-  parsePayload?: (payload: string, expectedState: string) => string;
-  /** Override the abandonment timeout (tests only; defaults to 300s). */
-  timeoutMs?: number;
-}
 
 interface PendingAttempt {
   cancel: (reason: string, freePort: boolean) => void;
@@ -66,9 +36,9 @@ let current: PendingAttempt | null = null;
 
 /**
  * Cancel the current pending authorize as a benign null (logged, no error). A
- * no-op when nothing is pending. Used on sign-in-screen unmount and internally
- * when a new attempt supersedes an older one. `freePort` frees the native
- * loopback port too — default `true` for the external (unmount) call; the
+ * no-op when nothing is pending. Used on sign-in-screen unmount, on sign-out,
+ * and internally when a new attempt supersedes an older one. `freePort` frees
+ * the native loopback port too — default `true` for the external calls; the
  * internal supersede path passes `false` (Rust already superseded the listener).
  */
 export function cancelPendingAuthorize(
@@ -80,15 +50,16 @@ export function cancelPendingAuthorize(
 
 /**
  * Await one loopback callback. Resolves the authorization `code`, or `null` on a
- * benign cancel (superseded / `cancelPendingAuthorize` / timeout). Rejects a
- * typed `IdentityError` only on a genuine callback error or an inability to open
- * the browser / install the listener.
+ * benign cancel (superseded / `cancelPendingAuthorize` / callback timeout).
+ * Rejects a typed `IdentityError` on a genuine callback error, on an inability
+ * to install the listener / open the browser, and when the browser never opens
+ * within the pre-browser deadline.
  */
 export function awaitLoopbackCallback(
   params: AwaitCallbackParams,
 ): Promise<string | null> {
   // A new attempt supersedes any previous pending one (benign null). Don't free
-  // the port here: this call runs right before the new attempt binds its own
+  // the port here: this call runs right after the new attempt bound its own
   // listener, and Rust's `start_oauth_loopback` already superseded the old one.
   cancelPendingAuthorize("superseded by a new sign-in attempt", false);
 
@@ -96,13 +67,20 @@ export function awaitLoopbackCallback(
     let settled = false;
     let unlisten: UnlistenFn | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let openTimer: ReturnType<typeof setTimeout> | null = null;
     let attempt: PendingAttempt;
+
+    const clearOpenTimer = (): void => {
+      if (openTimer) clearTimeout(openTimer);
+      openTimer = null;
+    };
 
     const finish = (fn: () => void): void => {
       if (settled) return;
       settled = true;
       if (current === attempt) current = null;
       if (timer) clearTimeout(timer);
+      clearOpenTimer();
       if (unlisten) unlisten();
       fn();
     };
@@ -120,6 +98,23 @@ export function awaitLoopbackCallback(
         }),
     };
     current = attempt;
+
+    // Pre-browser deadline: until `onBrowserOpened` fires the sign-in buttons
+    // are latched and the user sees nothing at all, so a hang here must FAIL
+    // loudly rather than sit for the full callback timeout (HOU stuck-buttons).
+    openTimer = setTimeout(
+      () =>
+        finish(() => {
+          identityLog(
+            "error",
+            "the system browser never opened; abandoning the sign-in attempt",
+            LOG_CTX,
+          );
+          params.abandonLoopback?.();
+          reject(browserOpenTimeout("open_url"));
+        }),
+      params.browserOpenTimeoutMs ?? BROWSER_OPEN_TIMEOUT_MS,
+    );
 
     timer = setTimeout(
       () =>
@@ -186,6 +181,9 @@ export function awaitLoopbackCallback(
     params
       .openUrl(params.authorizeUrl)
       .then(() => {
+        // The browser has the flow: the pre-browser deadline no longer applies,
+        // only the (benign) callback timeout does.
+        clearOpenTimer();
         if (!settled) params.onBrowserOpened?.();
       })
       .catch((e) =>
