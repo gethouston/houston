@@ -1,7 +1,7 @@
 "use client";
 
 import { LogIn, Moon, Sun } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import type { StoreLinkComponent } from "../types";
 
@@ -21,11 +21,16 @@ export interface StoreNavProps {
   theme?: { isDark: boolean; onToggle: (next: "light" | "dark") => void };
   /** Account control: avatar (or sign-in icon) leading to the owner surface.
    *  `href` renders a link (web), `onOpen` a button (app pane). */
-  account: {
+  account?: {
     user: StoreNavUser | null;
     href?: string;
     onOpen?: () => void;
   };
+  /** Surface-owned account control rendered IN PLACE of `account` — the web
+   *  injects its avatar dropdown (sign in / your agents / sign out) here so
+   *  the nav carries exactly ONE identity control. Behavior-only injection:
+   *  the slot must still read as the account face (nav content stays fixed). */
+  accountSlot?: ReactNode;
   labels?: Partial<{
     toLight: string;
     toDark: string;
@@ -63,16 +68,17 @@ export function StoreNav({
   brandLabel = "Agent Store",
   theme,
   account,
+  accountSlot,
   labels = {},
   LinkComponent = PlainLink,
 }: StoreNavProps) {
   const themeLabel = theme?.isDark
     ? (labels.toLight ?? "Switch to light mode")
     : (labels.toDark ?? "Switch to dark mode");
-  const accountLabel = account.user
+  const accountLabel = account?.user
     ? (labels.account ?? "Your profile")
     : (labels.signIn ?? "Sign in");
-  const accountBody = <AccountFace user={account.user} />;
+  const accountBody = account ? <AccountFace user={account.user} /> : null;
   // Scrolled detection via a zero-height sentinel above the sticky bar: while
   // the sentinel is visible the nav paints NOTHING (so it is pixel-identical
   // to the surface by construction — no second glass layer in dark); once
@@ -123,26 +129,28 @@ export function StoreNav({
                 )}
               </button>
             )}
-            {account.href ? (
-              <LinkComponent
-                href={account.href}
-                aria-label={accountLabel}
-                title={accountLabel}
-                className={CONTROL_CLASS}
-              >
-                {accountBody}
-              </LinkComponent>
-            ) : (
-              <button
-                type="button"
-                aria-label={accountLabel}
-                title={accountLabel}
-                onClick={account.onOpen}
-                className={CONTROL_CLASS}
-              >
-                {accountBody}
-              </button>
-            )}
+            {accountSlot ??
+              (account &&
+                (account.href ? (
+                  <LinkComponent
+                    href={account.href}
+                    aria-label={accountLabel}
+                    title={accountLabel}
+                    className={CONTROL_CLASS}
+                  >
+                    {accountBody}
+                  </LinkComponent>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={accountLabel}
+                    title={accountLabel}
+                    onClick={account.onOpen}
+                    className={CONTROL_CLASS}
+                  >
+                    {accountBody}
+                  </button>
+                )))}
           </div>
         </div>
       </nav>

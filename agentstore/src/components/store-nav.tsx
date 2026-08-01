@@ -1,12 +1,9 @@
 "use client";
 
-import {
-  StoreNav as SharedStoreNav,
-  type StoreNavUser,
-} from "@houston-ai/store";
+import { StoreNav as SharedStoreNav } from "@houston-ai/store";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useOptionalSession } from "@/lib/auth/session";
+import { UserMenu } from "@/components/user-menu";
 
 const THEME_KEY = "houston-store-theme";
 
@@ -26,28 +23,17 @@ function useSiteTheme() {
   return { isDark, onToggle };
 }
 
-/** The account identity for the nav: null while signed out or unconfigured. */
-function useNavUser(): StoreNavUser | null {
-  const session = useOptionalSession();
-  const user = session?.status === "signed-in" ? session.user : null;
-  if (!user) return null;
-  return {
-    avatarUrl: user.photoURL ?? undefined,
-    initial: (user.displayName || user.email || "?")
-      .trim()
-      .charAt(0)
-      .toUpperCase(),
-  };
-}
-
 /** The website's nav: the SHARED fixed-content StoreNav with web behavior
- *  injected (Next links, site theme persistence, session identity). */
+ *  injected (Next links, site theme persistence). The account control is the
+ *  site's own UserMenu — avatar dropdown (Your agents / Sign out) when signed
+ *  in, a Sign in button when signed out — injected via `accountSlot` so the
+ *  nav is the ONE identity control on every page. */
 export function StoreNav() {
   return (
     <SharedStoreNav
       LinkComponent={Link}
       theme={useSiteTheme()}
-      account={{ user: useNavUser(), href: "/me" }}
+      accountSlot={<UserMenu />}
     />
   );
 }
