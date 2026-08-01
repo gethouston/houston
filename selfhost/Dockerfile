@@ -30,6 +30,9 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# pnpm hashes every patchedDependencies file at install time (even for
+# filtered installs), so patches/ must ship with the workspace manifests.
+COPY patches/ /app/patches/
 COPY selfhost/bundle.mjs /app/selfhost/bundle.mjs
 COPY ui/agent-schemas/ /app/ui/agent-schemas/
 COPY packages/agentstore-contract/ /app/packages/agentstore-contract/
@@ -61,6 +64,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches/ /app/patches/
 COPY ui/agent-schemas/ /app/ui/agent-schemas/
 COPY packages/agentstore-contract/ /app/packages/agentstore-contract/
 COPY packages/protocol/ /app/packages/protocol/

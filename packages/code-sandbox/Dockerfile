@@ -23,6 +23,9 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# pnpm hashes every patchedDependencies file at install time (even for
+# filtered installs), so patches/ must ship with the workspace manifests.
+COPY patches/ ./patches/
 COPY packages/code-sandbox/ ./packages/code-sandbox/
 RUN pnpm install --frozen-lockfile --prod --filter @houston/code-sandbox... \
     && chown -R node:node /app

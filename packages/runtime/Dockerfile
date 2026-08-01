@@ -24,6 +24,9 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# pnpm hashes every patchedDependencies file at install time (even for
+# filtered installs), so patches/ must ship with the workspace manifests.
+COPY patches/ ./patches/
 COPY packages/protocol/ ./packages/protocol/
 COPY packages/runtime-client/ ./packages/runtime-client/
 COPY packages/runtime/ ./packages/runtime/
