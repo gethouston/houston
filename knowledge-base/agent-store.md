@@ -22,10 +22,10 @@ The authoritative wire/DB surface is the gateway's contract
 | Store frontend | `agentstore/` | Next.js 15 App Router SSR catalog. **No database, no service credentials**; every read/write goes to the gateway `/v1/agentstore/*`. Sign-in is GCIP (Firebase Auth). Ships as a standalone container to GKE. **Space theme only**: `data-theme` is pinned dark (no toggle), body is transparent over the fixed Milky Way layers (`src/app/space.css` + `components/space-background.tsx`, static — no parallax, see the perf note there). Typography matches gethouston.ai (General Sans display via fontshare, system-stack body — no body webfont). `SiteHeader` is STORE-FIRST (mature-marketplace pattern): "Houston Agent Store" lockup → home, persistent catalog search, Explore/Publish/`UserMenu`, a "Download Houston" pill (the funnel back to gethouston.ai), transparent → dark on scroll, burger dropdown on mobile. Share cards: `app/opengraph-image.tsx` (default) + `app/a/[slug]/opengraph-image.tsx` (per-agent, via `lib/og-card.tsx`) render space-styled OG images with next/og. The website's top menus link here (`https://agents.gethouston.ai`). |
 | Domain bridge | `packages/domain/src/store-ir.ts` | `irFromPortable` / `portableFromIr` between Houston portable content and AgentIR. |
 | Host routes | `packages/host/src/routes/portable-store.ts`, `portable-store-ir.ts`, `store-publication-pointer.ts`, `portable-from-store.ts` | Credential-free: gather the IR + record a token-free local pointer; resolve an install link. |
-| Engine seam | `ui/engine-client/src/client.ts` (front door), `packages/web/src/engine-adapter/portable.ts` + `portable-store.ts` (impl) + `store-gateway.ts` | `publishAgentToStore` / `updateStorePublication` / `unpublishFromStore` / `getStorePublication` / `importFromStoreLink`, plus the owner-dashboard methods `listMyStoreAgents` / `requestStorePublic` / `setStoreVisibilityUnlisted` / `unpublishStoreAgentById` / `deleteStoreAgentById`. Impl = `AgentStoreClient` over the `storeAuthFetch` seam (live bearer, one 401 refresh/replay). |
+| Engine seam | `ui/engine-client/src/client.ts` (front door), `packages/web/src/engine-adapter/portable.ts` + `portable-from-store.ts` + `portable-store.ts` (impl) + `store-gateway.ts` | `publishAgentToStore` / `updateStorePublication` / `unpublishFromStore` / `getStorePublication` / `importFromStoreLink`, plus the owner-dashboard methods `listMyStoreAgents` / `requestStorePublic` / `setStoreVisibilityUnlisted` / `unpublishStoreAgentById` / `deleteStoreAgentById`. Impl = `AgentStoreClient` over the `storeAuthFetch` seam (live bearer, one 401 refresh/replay). |
 | Catalog reads | `ui/engine-client/src/store-catalog.ts` (re-exported by the adapter) | Anonymous CORS-open browse over the SDK: `fetchStoreCatalog` / `fetchStoreAgent` / `fetchStoreCategories` / `pingStoreInstall` / `reportStoreAgent`. No bearer, works signed-out; throws a status-carrying `StoreCatalogError` (deliberately not the engine error class). |
 | App UI (publish/install) | `app/src/components/portable/` | Share wizard (`share-screen`, `listing-step`), `manage-publication` (incl. "See it in the store" + "manage all my agents"), `install-from-link`, `use-store-publication.ts`. |
-| App UI (browse + manage) | `app/src/components/store-view/` | The in-app Agent Store page (sidebar + ⌘K destination, view id `agent-store`), two tabs: **Browse** (`store-browse` + `store-catalog-results`: gateway-driven category chips, integration filter, search, sort, detail modal with report dialog, one-click install) and **My agents** (`my-agents-panel` + `use-my-store-agents`: every published agent with request-public / make-unlisted / unpublish / delete / see-in-store). |
+| App UI (browse + manage) | `app/src/components/store-view/` | The in-app Agent Store page (sidebar + ⌘K destination, view id `agent-store`) consumes the same `StoreHomeScreen`, `AgentDetailScreen`, and `CreatorProfileScreen` from `@houston-ai/store` as the website. Those screens own composition, filtering, and loading/empty/error states; app callbacks supply pane navigation, translated labels, markdown, reporting, and one-click install. **My agents** and creator-profile editing remain app-owned owner surfaces. |
 | Deep-link install | `app/src-tauri/src/store_deep_link.rs` (shell) + `app/src/lib/store-install-{deeplink,slug,drive}.ts` (shared frontend) | `houston://store/install?slug=<slug>` from the website → seeds the import wizard. See §One-click install below. |
 
 The tie to `cloud/` is the gateway API + a shared Firebase project; the AgentIR
@@ -134,9 +134,21 @@ second brand map), passing the UPPERCASE slug as `?integration=`; and an abuse
 reason enum + details ≤2000 + optional contact ≤320, gateway rate-limited
 5/min/IP). The **My agents** tab (`my-agents-panel` + `use-my-store-agents`)
 manages ALL the account's store agents independent of any local pointer:
-request-public, make-unlisted, unpublish + delete (both `ConfirmDialog`-gated),
-see-in-store; every mutation invalidates `["store-my-agents"]` and surfaces
-failure as a toast.
+Edit listing… (shared `EditListingDialog` → `updateStoreAgentIdentity`,
+`PATCH {identity}` — name/tagline/description/category/tags; content stays
+"edit in Houston, republish"), Drive-style Share (public/hidden/private),
+delete (`ConfirmDialog`-gated); every mutation invalidates
+`["store-my-agents"]` and surfaces failure as a toast (the edit dialog shows
+its rejection inline instead).
+
+**One profile page per creator (ownership upgrade).** Viewing a creator you
+ARE resolves to the owner view in place, same route: the app's store-view swaps
+`CreatorProfilePane` for `MyAgentsPanel` when the handle matches
+`useMyStoreProfile`; the web's `creator-profile-view.tsx` probes `getMyProfile`
+and renders `MeClient` on a handle match (`/creators/[handle]` and `/@handle`
+stay shareable). The owner seam (`CreatorProfileOwner`, hero pencils + card
+menus + `OwnedAgentGrid`) lives in `@houston-ai/store` — there is no separate
+owner screen.
 
 **One-click install** (`use-store-install.ts`) is the link-install path with
 the paste skipped: `importFromStoreLink(slug)` fetches the preview through the
@@ -167,7 +179,7 @@ the IR and records a token-free pointer. Agent-scoped routes dispatch through
 | `POST /agents/:agentId/portable/store-publication` | Write the token-free pointer `{ storeAgentId, slug, shareUrl, publishedAt }` → `200 { ok:true }`. Called AFTER a successful gateway publish. |
 | `GET /agents/:agentId/portable/store-publication` | `200 { pointer }` (or `null`). |
 | `DELETE /agents/:agentId/portable/store-publication` | Clear the pointer. |
-| `POST /v1/portable/fetch-from-store` | Account-level (mounted in `server.ts`). Resolve a share link or bare slug → fetch `{apiBase}/v1/agentstore/agents/<slug>` (`config.agentStoreApiUrl` = `HOUSTON_AGENTSTORE_API_URL`, default `https://gateway.gethouston.ai`; SSRF-guarded, `redirect:"error"`, 30s) → unwrap `{ agent, ir }` → validate → `portableFromIr` → `200 { manifest, content }`. Failures surface real statuses (400/404/422/502). |
+| `POST /v1/portable/fetch-from-store` | Account-level (mounted in `server.ts`). Resolve a share link or bare slug → fetch `{apiBase}/v1/agentstore/agents/<slug>` (`config.agentStoreApiUrl` = `HOUSTON_AGENTSTORE_API_URL`, default `https://gateway.gethouston.ai`; SSRF-guarded, `redirect:"error"`, 30s) → unwrap `{ agent, ir }` → validate → `portableFromIr` (via the shared `storePackageFromIrPayload`, `@houston/domain`) → `200 { manifest, content }`. Failures surface real statuses (400/404/422/502). Link resolution is the shared `resolveStoreIrUrl` (`@houston/agentstore-contract`), also used by the adapter's hosted-mode 501 fallback. |
 
 The gateway calls themselves are made by the engine-adapter
 (`packages/web/src/engine-adapter/portable-store.ts`) through an
@@ -211,11 +223,18 @@ with the key named (beta policy: surface, never silently orphan the store agent)
 ## Install flow (end to end)
 
 - **In-app (link back into Houston).** `install-from-link.tsx` →
-  `importFromStoreLink(url)` → host `POST /v1/portable/fetch-from-store` resolves
-  the link, validates the IR, maps it to portable content, and parks it in the SAME
-  in-memory registry a file upload uses. It then flows through the existing import
-  wizard (scan → name/color → per-item pickers → install), so the recipient always
-  re-picks items regardless of what the publisher included.
+  `importFromStoreLink(url)` (`packages/web/src/engine-adapter/portable-from-store.ts`)
+  → host `POST /v1/portable/fetch-from-store` resolves the link, validates the IR,
+  maps it to portable content, and parks it in the SAME in-memory registry a file
+  upload uses. It then flows through the existing import wizard (scan →
+  name/color → per-item pickers → install), so the recipient always re-picks
+  items regardless of what the publisher included. **Hosted/gateway-fronted
+  deployments have no local host** — the cloud gateway answers 501 for
+  `/v1/portable*` — so on a 501 the adapter falls back to fetching the public
+  `{agent, ir}` route from the store gateway (`storeApiBase`) directly in the
+  browser, converting with the SAME shared code the host route runs
+  (`resolveStoreIrUrl` in `@houston/agentstore-contract`,
+  `storePackageFromIrPayload` in `@houston/domain`), so the paths cannot drift.
 - **One-click from the website (deep link).** See §One-click install below.
 - **Claude Skill ZIP / copy-paste.** The gateway-fronted frontend serves the
   machine-readable artifacts (`agentstore/src/app/api/agents/[agent]/{ir,bundle,install-instructions}`);
@@ -313,6 +332,14 @@ Houston surfaces (SDK: profile/creator/analytics methods on
   never touches the cluster; that handoff is the trust boundary
   (mirrors `engine-pod-image.yml`).
 - **Website bridge** `website/src/_redirects`: `/agent-store → agents.gethouston.ai`.
+- **Styling bridge** `agentstore/src/app/globals.css` imports the canonical Tailwind
+  token bridge from `@houston-ai/core/src/globals.css` (same idiom as
+  `app/src/styles/globals.css`). Never re-copy the `@theme inline` block into the
+  site — a hand-copied bridge went stale after the July 2026 token rename and left
+  ~230 class usages mapped to dead `--ht-*` vars. Site-specific keeps: General Sans
+  `--font-display`, the space-background layering, and an unlayered `body` override
+  (core's unlayered `body` rule sets `overflow: hidden` + opaque background for the
+  app shell, which would clip the site's scroll and hide the space photo).
 
 ### Environment variables
 

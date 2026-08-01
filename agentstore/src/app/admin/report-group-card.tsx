@@ -45,7 +45,7 @@ export function ReportGroupCard({
               href={`/a/${group.agentSlug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-muted-foreground"
+              className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-ink-muted"
             >
               {group.agentSlug}{" "}
               <ExternalLink aria-hidden className="size-3.5" />
@@ -59,19 +59,19 @@ export function ReportGroupCard({
         {group.reports.map((report) => (
           <div
             key={report.id}
-            className="flex flex-col gap-2 rounded-lg border border-border/60 p-3"
+            className="flex flex-col gap-2 rounded-lg border border-line/60 p-3"
           >
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{REASON_LABEL[report.reason]}</Badge>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-ink-muted">
                 {new Date(report.createdAt).toLocaleString()}
               </span>
             </div>
             {report.details && (
-              <p className="text-sm text-foreground/90">{report.details}</p>
+              <p className="text-sm text-ink/90">{report.details}</p>
             )}
             {report.contact && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-ink-muted">
                 Contact: {report.contact}
               </p>
             )}

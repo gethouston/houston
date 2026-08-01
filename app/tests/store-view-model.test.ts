@@ -4,7 +4,6 @@ import {
   browseIntegrationOptions,
   catalogIntegrationOptions,
   formatInstalls,
-  requestPublicMode,
   storeAgentGlyph,
   storeSlugFromShareUrl,
 } from "../src/components/store-view/store-view-model.ts";
@@ -140,51 +139,5 @@ describe("browseIntegrationOptions", () => {
 
   it("keeps the active toolkit even before the unfiltered read resolves", () => {
     deepStrictEqual(browseIntegrationOptions([], [], "gmail"), ["gmail"]);
-  });
-});
-
-describe("requestPublicMode", () => {
-  const idle = { inFlight: false, requested: false };
-
-  it("hides the control unless the agent is published and not public", () => {
-    strictEqual(
-      requestPublicMode({ state: "draft", visibility: "unlisted" }, idle),
-      "hidden",
-    );
-    strictEqual(
-      requestPublicMode({ state: "published", visibility: "public" }, idle),
-      "hidden",
-    );
-    strictEqual(
-      requestPublicMode({ state: "archived", visibility: "unlisted" }, idle),
-      "hidden",
-    );
-  });
-
-  it("offers the request on a published, unlisted agent", () => {
-    strictEqual(
-      requestPublicMode({ state: "published", visibility: "unlisted" }, idle),
-      "available",
-    );
-  });
-
-  it("shows a pending state while the request is in flight", () => {
-    strictEqual(
-      requestPublicMode(
-        { state: "published", visibility: "unlisted" },
-        { inFlight: true, requested: false },
-      ),
-      "pending",
-    );
-  });
-
-  it("acknowledges a sent request so the row is not byte-for-byte identical", () => {
-    strictEqual(
-      requestPublicMode(
-        { state: "published", visibility: "unlisted" },
-        { inFlight: false, requested: true },
-      ),
-      "requested",
-    );
   });
 });

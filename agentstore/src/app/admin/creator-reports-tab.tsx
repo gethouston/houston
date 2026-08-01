@@ -106,12 +106,12 @@ export function CreatorReportsTab({
       )}
 
       {load.status === "loading" && (
-        <div className="flex items-center gap-3 py-8 text-muted-foreground">
+        <div className="flex items-center gap-3 py-8 text-ink-muted">
           <Spinner /> Loading reports…
         </div>
       )}
       {load.status === "forbidden" && (
-        <p className="py-8 text-sm text-muted-foreground">
+        <p className="py-8 text-sm text-ink-muted">
           Your account does not have moderation access.
         </p>
       )}
@@ -121,9 +121,7 @@ export function CreatorReportsTab({
         </Alert>
       )}
       {load.status === "ready" && load.items.length === 0 && (
-        <p className="py-8 text-sm text-muted-foreground">
-          No {filter} reports.
-        </p>
+        <p className="py-8 text-sm text-ink-muted">No {filter} reports.</p>
       )}
 
       {load.status === "ready" &&
@@ -134,26 +132,26 @@ export function CreatorReportsTab({
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
+                <span className="rounded-full bg-chip-subtle px-2.5 py-0.5 text-xs font-medium text-ink">
                   {report.reason}
                 </span>
-                <span className="text-sm font-medium text-foreground">
+                <span className="text-sm font-medium text-ink">
                   {report.handle
                     ? `@${report.handle}`
                     : `user ${report.profileUserId}`}
                 </span>
               </div>
-              <time className="text-xs text-muted-foreground">
+              <time className="text-xs text-ink-muted">
                 {new Date(report.createdAt).toLocaleDateString()}
               </time>
             </div>
             {report.details && (
-              <p className="text-sm text-foreground/90 text-pretty">
+              <p className="text-sm text-ink/90 text-pretty">
                 {report.details}
               </p>
             )}
             {report.contact && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-ink-muted">
                 Contact: {report.contact}
               </p>
             )}

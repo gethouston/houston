@@ -1,10 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { agentIrSchema } from "@houston/agentstore-contract";
-import { type PortableContent, portableFromIr } from "@houston/domain";
-import {
-  PORTABLE_FORMAT_VERSION,
-  type PortableManifest,
-} from "@houston/protocol";
+import { resolveStoreIrUrl } from "@houston/agentstore-contract";
+import { storePackageFromIrPayload } from "@houston/domain";
 import { config } from "../config";
 import { json, readJson } from "./http";
 import {
@@ -12,7 +8,6 @@ import {
   type HostLookup,
   vetResolvedHost,
 } from "./portable-from-store-net";
-import { resolveStoreIrUrl } from "./portable-from-store-url";
 
 /** Rides in the manifest of a link-installed package; matches the export path. */
 const HOUSTON_VERSION = "0.0.0";
@@ -116,32 +111,11 @@ export async function handlePortableFromStore(
     return true;
   }
 
-  // The gateway's public route wraps the IR: { agent: AgentSummary, ir: AgentIR }.
-  const ir =
-    payload && typeof payload === "object" && "ir" in payload
-      ? (payload as { ir: unknown }).ir
-      : payload;
-  const parsed = agentIrSchema.safeParse(ir);
-  if (!parsed.success) {
-    json(res, 422, {
-      error: "The shared agent could not be read (unexpected format).",
-    });
+  const pkg = storePackageFromIrPayload(payload, HOUSTON_VERSION);
+  if ("error" in pkg) {
+    json(res, 422, { error: pkg.error });
     return true;
   }
-
-  const { content, meta } = portableFromIr(parsed.data);
-  const manifest: PortableManifest = {
-    agentName: meta.agentName,
-    description: meta.description,
-    exporter: parsed.data.identity.creator.displayName,
-    houstonVersion: HOUSTON_VERSION,
-    createdAt: new Date().toISOString(),
-    anonymized: false,
-    formatVersion: PORTABLE_FORMAT_VERSION,
-  };
-  json(res, 200, { manifest, content } satisfies {
-    manifest: PortableManifest;
-    content: PortableContent;
-  });
+  json(res, 200, pkg);
   return true;
 }

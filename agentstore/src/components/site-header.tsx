@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SearchForm } from "./search-form";
 import { UserMenu } from "./user-menu";
@@ -15,11 +16,12 @@ import { UserMenu } from "./user-menu";
  */
 
 const STORE_LINKS = [
-  { label: "Explore", href: "/explore" },
-  { label: "Publish", href: "/#publish" },
+  { label: "Explore", href: "/" },
+  { label: "Publish", href: "https://gethouston.ai" },
 ] as const;
 
 export function SiteHeader() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -29,6 +31,14 @@ export function SiteHeader() {
     window.addEventListener("scroll", check, { passive: true });
     return () => window.removeEventListener("scroll", check);
   }, []);
+
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/a/") ||
+    pathname.startsWith("/creators/") ||
+    pathname.startsWith("/me")
+  )
+    return null;
 
   return (
     <>
@@ -128,6 +138,7 @@ export function SiteHeader() {
           </a>
         </div>
       ) : null}
+      <div className="h-[65px]" aria-hidden="true" />
     </>
   );
 }

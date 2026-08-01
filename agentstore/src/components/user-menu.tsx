@@ -68,7 +68,7 @@ export function UserMenu() {
         <button
           type="button"
           aria-label="Account menu"
-          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus/50"
         >
           <Avatar className="size-8">
             {user.photoURL && (

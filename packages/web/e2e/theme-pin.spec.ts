@@ -18,7 +18,7 @@ import { expect, test } from "./support/fixtures";
  */
 
 // Token values from packages/design-tokens/dist/css/tokens.css, as computed rgb.
-const LIGHT_BG = "rgb(255, 255, 255)"; // --ht-input #ffffff
+const LIGHT_BG = "rgb(252, 252, 252)"; // --ht-input #fcfcfc
 const LIGHT_FG = "rgb(20, 22, 29)"; //    --ht-ink #14161d
 const DARK_BG = "rgb(30, 30, 30)"; //     --ht-input #1e1e1e
 const DARK_FG = "rgb(229, 229, 229)"; //  --ht-ink #e5e5e5

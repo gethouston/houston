@@ -15,7 +15,11 @@
  *     current session token (see app/src/lib/auth-gateway.ts).
  */
 
-import { type ControlPlaneConfig, gatewayAuthFetch } from "./control-plane";
+import {
+  type ControlPlaneConfig,
+  gatewayAuthFetch,
+  liveToken,
+} from "./control-plane";
 
 declare global {
   interface Window {
@@ -56,7 +60,14 @@ export function storeApiBase(cfg: ControlPlaneConfig): string {
  * global is present.
  */
 export function storeAuthFetch(fallbackToken: string): typeof fetch {
-  const installed =
-    typeof window !== "undefined" ? window.__HOUSTON_STORE__?.token : "";
-  return gatewayAuthFetch(installed || fallbackToken);
+  // The STORE token source must outrank the engine global: on a dev host the
+  // engine global holds the LOCAL host token, which the public gateway
+  // rightly 401s. Read live per attempt so a session rotation (which
+  // re-installs window.__HOUSTON_STORE__) is picked up without a rebuild.
+  const storeToken = () => {
+    const installed =
+      typeof window !== "undefined" ? window.__HOUSTON_STORE__?.token : "";
+    return installed || liveToken(fallbackToken);
+  };
+  return gatewayAuthFetch(fallbackToken, undefined, storeToken);
 }

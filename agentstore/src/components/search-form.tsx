@@ -7,7 +7,7 @@ import type * as React from "react";
 import { resolveSearchTarget } from "@/lib/search-routing";
 
 export interface SearchFormProps {
-  /** Prefill value (the current query on /explore). */
+  /** Prefill value for the current catalog query. */
   defaultValue?: string;
   /** Placeholder copy. */
   placeholder?: string;
@@ -19,7 +19,7 @@ export interface SearchFormProps {
 }
 
 /**
- * The catalog search box. It degrades to a plain GET form to /explore (works with
+ * The catalog search box. It degrades to a plain GET form to Home (works with
  * the keyboard and without hydration), and enhances with JS so a leading `@handle`
  * jumps to that creator's page instead of a full-text search. Every result URL
  * stays shareable and crawlable.
@@ -44,7 +44,7 @@ export function SearchForm({
   return (
     <search className={cn("relative block w-full", className)}>
       <form
-        action="/explore"
+        action="/"
         method="get"
         onSubmit={onSubmit}
         className="relative w-full"
@@ -55,7 +55,7 @@ export function SearchForm({
         <Search
           aria-hidden
           className={cn(
-            "pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted-foreground",
+            "pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-ink-muted",
             large ? "size-5" : "size-4",
           )}
         />
@@ -67,7 +67,7 @@ export function SearchForm({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            "w-full rounded-full border border-input bg-card text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
+            "w-full rounded-full border border-line-input bg-card text-ink shadow-sm outline-none transition-colors placeholder:text-ink-muted focus-visible:border-focus focus-visible:ring-2 focus-visible:ring-focus/50",
             large
               ? "h-13 pr-28 pl-12 text-base sm:h-14"
               : "h-11 pr-24 pl-10 text-sm",
@@ -76,7 +76,7 @@ export function SearchForm({
         <button
           type="submit"
           className={cn(
-            "absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full bg-primary font-medium text-primary-foreground transition-colors hover:bg-primary/70 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
+            "absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full bg-action font-medium text-action-text transition-colors hover:bg-action/70 focus-visible:ring-2 focus-visible:ring-focus/50 focus-visible:outline-none",
             large ? "h-10 px-5 text-sm sm:h-11" : "h-8 px-4 text-sm",
           )}
         >

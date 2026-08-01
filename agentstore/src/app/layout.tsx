@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { SpaceBackground } from "@/components/space-background";
 import { SessionProvider } from "@/lib/auth/session";
 import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
-import "./space.css";
+
+const themeScript = `
+(() => {
+  const stored = localStorage.getItem("houston-store-theme");
+  const theme = stored === "light" || stored === "dark"
+    ? stored
+    : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  document.documentElement.dataset.theme = theme;
+})();
+`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -34,23 +41,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    // The store ships the gethouston.ai space theme only — data-theme is
-    // pinned to dark (no toggle, no OS preference): the Milky Way background
-    // is inherently dark, and the app dark tokens are designed for it.
-    <html lang="en" data-theme="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Typography matches gethouston.ai: General Sans carries display
-            headings + the wordmark (--font-display in globals.css); body copy
-            is the system stack, so no body webfont is shipped at all. */}
-        <link
-          href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap"
-          rel="stylesheet"
-        />
+        {/* The fixed, constant script must run before paint to prevent a
+            light/dark flash; it contains no user-provided content. */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant pre-paint theme bootstrap */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-screen flex-col pt-[65px]">
-        <SpaceBackground />
+      <body className="flex min-h-screen flex-col">
         <SessionProvider>
-          <SiteHeader />
           <div className="flex-1">{children}</div>
           <SiteFooter />
         </SessionProvider>

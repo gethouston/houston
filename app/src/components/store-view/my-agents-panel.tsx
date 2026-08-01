@@ -1,198 +1,185 @@
-import { Button, ConfirmDialog } from "@houston-ai/core";
-import type { MyAgent } from "@houston-ai/engine-client";
-import { AtSign } from "lucide-react";
+import {
+  ClaimProfileCard,
+  CreatorProfileScreen,
+  ProfileEditorSignedOut,
+  type ShareVisibility,
+  SocialLinks,
+  SortPills,
+  shareVisibilityOf,
+} from "@houston-ai/store";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMyStoreProfile } from "../../hooks/use-my-store-profile";
 import { useSession } from "../../hooks/use-session";
 import { signInWithGoogle } from "../../lib/auth";
 import { showErrorToast } from "../../lib/error-toast";
+import {
+  STORE_CATEGORIES,
+  storeCategoryLabelKey,
+} from "../../lib/store-categories";
 import { useUIStore } from "../../stores/ui";
-import { AnalyticsPanel } from "./analytics/analytics-panel";
-import { MyAgentRow } from "./my-agent-row";
-import { requestPublicMode } from "./store-view-model";
-import { useMyStoreAgents } from "./use-my-store-agents";
+import {
+  editListingLabels,
+  ownedCardLabels,
+  shareDialogLabels,
+} from "./my-agents-labels";
+import { actionLink } from "./store-link";
+import { STORE_SITE_URL, useMyStoreAgents } from "./use-my-store-agents";
+import { useStoreInstall } from "./use-store-install";
 
-/** Which confirm-gated action is pending, and on which agent. */
-type Confirm = { kind: "delete" | "unpublish"; agent: MyAgent };
+type Sort = "recent" | "installs";
 
 /**
- * The Agent Store's "my agents" tab: the signed-in owner's published agents in
- * the catalog row grammar, each with its lifecycle actions (request public,
- * make unlisted, unpublish, delete, see in store). Fully self-contained — its
- * own data hook, the ui store for the "see in store" deep link, and the app's
- * Google sign-in for the signed-out CTA. Destructive actions are confirm-gated.
+ * The app's owner view: THE SAME CreatorProfileScreen as everywhere else, in
+ * owner mode (pencils + per-card manage menus) — engine-adapter wiring only.
  */
-export function MyAgentsPanel() {
+export function MyAgentsPanel({
+  onOpenAgentSlug,
+}: {
+  onOpenAgentSlug: (slug: string) => void;
+}) {
   const { t } = useTranslation("store");
+  const { t: tPortable } = useTranslation("portable");
   const { data: session } = useSession();
   const signedIn = Boolean(session);
   const my = useMyStoreAgents(signedIn);
-  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const { profile, isPending: profilePending } = useMyStoreProfile();
+  const setCreatorEditorOpen = useUIStore((s) => s.setCreatorEditorOpen);
   const [signingIn, setSigningIn] = useState(false);
+  const [sort, setSort] = useState<Sort>("recent");
+  const { install } = useStoreInstall();
 
-  const handleSignIn = async () => {
-    setSigningIn(true);
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      setSigningIn(false);
-      showErrorToast(
-        "store_sign_in",
-        err instanceof Error ? err.message : String(err),
-        err,
-      );
-    }
-  };
-
-  const seeInStore = (agent: MyAgent) => {
-    if (agent.slug) useUIStore.getState().setStoreFocusSlug(agent.slug);
-  };
+  const navLink = actionLink((href) => {
+    if (href === "edit-profile") setCreatorEditorOpen(true);
+    else if (href.startsWith("agent:"))
+      onOpenAgentSlug(href.replace("agent:", ""));
+  });
 
   if (!signedIn) {
     return (
-      <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <p className="text-sm text-ink-muted">{t("myAgents.signedOut")}</p>
-        <Button
-          className="rounded-full"
-          disabled={signingIn}
-          onClick={() => void handleSignIn()}
-        >
-          {t("myAgents.signIn")}
-        </Button>
-      </div>
+      <ProfileEditorSignedOut
+        title={t("me.signedOutTitle")}
+        body={t("myAgents.signedOut")}
+        signIn={t("myAgents.signIn")}
+        onSignIn={() => {
+          if (signingIn) return;
+          setSigningIn(true);
+          signInWithGoogle().catch((err) => {
+            setSigningIn(false);
+            showErrorToast(
+              "store_sign_in",
+              err instanceof Error ? err.message : String(err),
+              err,
+            );
+          });
+        }}
+      />
     );
   }
 
-  const rowsRegion = my.isPending ? (
-    <RowsSkeleton />
-  ) : my.isError ? (
-    <div className="flex flex-col items-center gap-3 py-16">
-      <p className="text-sm text-ink-muted">{t("loadFailed")}</p>
-      <Button
-        variant="outline"
-        className="rounded-full"
-        onClick={() => void my.refetch()}
-      >
-        {t("retry")}
-      </Button>
-    </div>
-  ) : my.agents.length === 0 ? (
-    <p className="py-16 text-center text-sm text-ink-muted">
-      {t("myAgents.empty")}
-    </p>
-  ) : (
-    <div className="flex flex-col gap-2">
-      {my.agents.map((agent) => (
-        <MyAgentRow
-          key={agent.id}
-          agent={agent}
-          busy={my.isBusy(agent.id)}
-          requestPublicMode={requestPublicMode(agent, {
-            inFlight: my.isRequestingPublic(agent.id),
-            requested: my.wasRequestedPublic(agent.id),
-          })}
-          onRequestPublic={() => my.requestPublic.mutate(agent.id)}
-          onMakeUnlisted={() => my.makeUnlisted.mutate(agent.id)}
-          onUnpublish={() => setConfirm({ kind: "unpublish", agent })}
-          onDelete={() => setConfirm({ kind: "delete", agent })}
-          onSeeInStore={() => seeInStore(agent)}
-        />
-      ))}
-    </div>
-  );
-
-  return (
-    <>
-      <ProfileHeader />
-      <div className="my-8">
-        <AnalyticsPanel />
-      </div>
-      {rowsRegion}
-
-      <ConfirmDialog
-        open={confirm !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirm(null);
-        }}
-        title={t(`myAgents.confirm.${confirm?.kind ?? "delete"}Title`)}
-        description={t(`myAgents.confirm.${confirm?.kind ?? "delete"}Body`, {
-          name: confirm?.agent.name ?? "",
-        })}
-        confirmLabel={t(`myAgents.confirm.${confirm?.kind ?? "delete"}Confirm`)}
-        cancelLabel={t("myAgents.confirm.cancel")}
-        onConfirm={() => {
-          if (!confirm) return;
-          const { kind, agent } = confirm;
-          if (kind === "delete") my.remove.mutate(agent.id);
-          else my.unpublish.mutate(agent.id);
-          setConfirm(null);
+  const loading = my.isPending || profilePending;
+  if (!loading && !my.isError && !profile?.handle) {
+    return (
+      <ClaimProfileCard
+        editHref="edit-profile"
+        LinkComponent={navLink}
+        labels={{
+          title: t("me.hero.claimTitle"),
+          body: t("me.hero.claimBody"),
+          cta: t("me.hero.claimCta"),
         }}
       />
-    </>
+    );
+  }
+
+  const sorted = [...my.agents].sort((a, b) =>
+    sort === "installs"
+      ? b.installsCount - a.installsCount
+      : (b.publishedAt ?? b.updatedAt).localeCompare(
+          a.publishedAt ?? a.updatedAt,
+        ),
   );
-}
-
-/**
- * The dashboard's identity header: the creator's claimed `@handle` with an
- * "Edit profile" button, or a claim call-to-action when no handle exists yet.
- * Both open the shared creator-profile editor (mounted app-wide by the user
- * menu) via the `creatorEditorOpen` UI flag.
- */
-function ProfileHeader() {
-  const { t } = useTranslation("store");
-  const { profile, isPending } = useMyStoreProfile();
-  const setCreatorEditorOpen = useUIStore((s) => s.setCreatorEditorOpen);
-  const claimed = Boolean(profile?.handle);
-
-  if (isPending) return <ProfileHeaderSkeleton />;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3">
-      <div className="flex min-w-0 items-center gap-2">
-        <AtSign className="size-4 shrink-0 text-ink-muted" />
-        <span className="min-w-0 truncate text-sm font-medium text-ink">
-          {claimed ? `@${profile?.handle}` : t("profile.claimTitle")}
-        </span>
-      </div>
-      <Button
-        variant={claimed ? "outline" : "default"}
-        className="rounded-full"
-        onClick={() => setCreatorEditorOpen(true)}
-      >
-        {claimed ? t("profile.edit") : t("profile.claimCta")}
-      </Button>
-    </div>
-  );
-}
-
-/**
- * Header placeholder while the creator profile query settles, so an existing
- * creator never flashes the "claim your handle" state before their `@handle`
- * resolves. Decorative only, mirrors the header's outer frame.
- */
-function ProfileHeaderSkeleton() {
-  return (
-    <div
-      aria-hidden
-      className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3"
-    >
-      <div className="flex items-center gap-2">
-        <AtSign className="size-4 shrink-0 text-ink-muted" />
-        <div className="h-4 w-32 animate-pulse rounded bg-chip" />
-      </div>
-      <div className="h-9 w-28 animate-pulse rounded-full bg-chip" />
-    </div>
-  );
-}
-
-/** Row placeholders while the owner list settles. Decorative only. */
-function RowsSkeleton() {
-  return (
-    <div aria-hidden className="flex flex-col gap-2">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="h-[76px] animate-pulse rounded-xl bg-chip" />
-      ))}
-    </div>
+    <CreatorProfileScreen
+      profile={
+        profile
+          ? {
+              handle: profile.handle,
+              displayName: profile.displayName ?? "",
+              avatarUrl: profile.avatarUrl ?? undefined,
+              verified: profile.verified,
+              bio: profile.bio ?? undefined,
+            }
+          : undefined
+      }
+      agents={sorted}
+      stats={{
+        agents: my.agents.length,
+        installs: my.agents.reduce(
+          (total, agent) => total + agent.installsCount,
+          0,
+        ),
+      }}
+      socialLinks={
+        profile?.links ? (
+          <SocialLinks links={profile.links} className="mt-3" />
+        ) : null
+      }
+      actions={
+        <SortPills
+          value={sort}
+          options={[
+            { value: "recent", label: t("browse.sortRecent") },
+            { value: "installs", label: t("browse.sortInstalls") },
+          ]}
+          onChange={setSort}
+        />
+      }
+      agentHref={(agent) => `agent:${agent.slug ?? ""}`}
+      LinkComponent={navLink}
+      loading={loading}
+      failed={my.isError}
+      onRetry={() => void my.refetch()}
+      onTryAgent={(agent) => {
+        if (agent.slug) void install(agent.slug);
+      }}
+      labels={{ loadFailed: t("loadFailed"), retry: t("retry") }}
+      owner={{
+        editHref: "edit-profile",
+        busyId: my.agents.find((agent) => my.isBusy(agent.id))?.id ?? null,
+        categories: STORE_CATEGORIES.map((slug) => ({
+          slug,
+          name: tPortable(storeCategoryLabelKey(slug)),
+        })),
+        onEditIdentity: async (id, identity) => {
+          await my.editIdentity.mutateAsync({ id, identity });
+        },
+        shareHrefFor: (agent) =>
+          agent.slug ? `${STORE_SITE_URL}/a/${agent.slug}` : null,
+        onShareSelect: (id, next: ShareVisibility) => {
+          const agent = my.agents.find((item) => item.id === id);
+          if (!agent) return;
+          const current = shareVisibilityOf(agent);
+          if (next === "private") my.unpublish.mutate(id);
+          else if (next === "hidden") {
+            if (current === "public") my.makeUnlisted.mutate(id);
+            else my.publish.mutate(id);
+          } else {
+            if (current === "private")
+              void my.publish
+                .mutateAsync(id)
+                .then(() => my.requestPublic.mutate(id));
+            else my.requestPublic.mutate(id);
+          }
+        },
+        onDelete: (id) => my.remove.mutate(id),
+        editAvatarLabel: t("me.hero.editAvatar"),
+        editProfileLabel: t("me.hero.editProfile"),
+        cardLabels: ownedCardLabels(t),
+        editLabels: editListingLabels(t),
+        shareLabels: shareDialogLabels(t),
+      }}
+    />
   );
 }

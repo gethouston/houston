@@ -26,6 +26,8 @@ export type {
   CreateAgentRequest,
   CreateAgentResponse,
   CreatorAnalytics,
+  CreatorDirectoryEntry,
+  CreatorDirectoryPage,
   CreatorInstallRow,
   CreatorLinks,
   CreatorProfile,

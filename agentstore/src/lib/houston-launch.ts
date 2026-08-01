@@ -36,3 +36,19 @@ export function buildWebAppInstallUrl(slug: string): string | null {
   const base = process.env.NEXT_PUBLIC_WEB_APP_URL ?? DEFAULT_WEB_APP_URL;
   return `${base}/?install=${encodeURIComponent(slug)}`;
 }
+
+/**
+ * Fire the Houston install deep link from a card's Try button (browser only).
+ * A hidden iframe navigates to the custom scheme without a top-level
+ * "unknown protocol" error page; the agent detail page keeps the richer
+ * launch flow with its download fallback.
+ */
+export function launchStoreInstall(slug: string): void {
+  const deepLink = buildStoreInstallDeepLink(slug);
+  if (!deepLink || typeof document === "undefined") return;
+  const iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.src = deepLink;
+  document.body.appendChild(iframe);
+  setTimeout(() => iframe.remove(), 3000);
+}

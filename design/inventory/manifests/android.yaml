@@ -87,3 +87,23 @@ components:
     status: not-started
   status-badge:
     status: not-started
+  agent-store-navigation:
+    status: not-started
+  agent-store-controls:
+    status: not-started
+  agent-store-agent-card:
+    status: not-started
+  agent-store-creator-card:
+    status: not-started
+  agent-store-detail:
+    status: not-started
+  agent-store-skill-list:
+    status: not-started
+  agent-store-creator-block:
+    status: not-started
+  agent-store-home-screen:
+    status: not-started
+  agent-store-agent-detail-screen:
+    status: not-started
+  agent-store-creator-profile-screen:
+    status: not-started

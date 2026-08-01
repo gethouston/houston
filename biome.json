@@ -13,6 +13,7 @@
       "!**/*.svg",
       "!**/*.html",
       "!**/gen",
+      "!**/*.gen.json",
       "!.houston",
       "!packages/design-tokens/dist",
       "!app/src/agents/builtin/store-templates",

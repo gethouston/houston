@@ -79,6 +79,7 @@ const signedOutResponse = () =>
 export function gatewayAuthFetch(
   fallbackToken: string,
   getOrg?: () => string | null | undefined,
+  getToken?: () => string,
 ): typeof fetch {
   return async (input, init) => {
     const send = (bearer: string) => {
@@ -98,7 +99,9 @@ export function gatewayAuthFetch(
       if (appVersion) headers.set("X-Houston-App-Version", appVersion);
       return fetch(input, { ...init, headers });
     };
-    const bearer = liveToken(fallbackToken);
+    // A caller-supplied bearer source (the store seam's session token)
+    // outranks the engine-global live token — same live-read discipline.
+    const bearer = getToken?.() ?? liveToken(fallbackToken);
     if (!bearer && inControlPlaneMode()) {
       const fresh = await refreshLiveToken();
       if (!fresh) return signedOutResponse();

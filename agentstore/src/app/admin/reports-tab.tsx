@@ -120,13 +120,13 @@ export function ReportsTab({
       )}
 
       {load.status === "loading" && (
-        <div className="flex items-center gap-3 py-8 text-muted-foreground">
+        <div className="flex items-center gap-3 py-8 text-ink-muted">
           <Spinner /> Loading reports…
         </div>
       )}
 
       {load.status === "forbidden" && (
-        <p className="py-8 text-sm text-muted-foreground">
+        <p className="py-8 text-sm text-ink-muted">
           Your account does not have moderation access.
         </p>
       )}
@@ -138,9 +138,7 @@ export function ReportsTab({
       )}
 
       {load.status === "ready" && load.items.length === 0 && (
-        <p className="py-8 text-sm text-muted-foreground">
-          No {filter} reports.
-        </p>
+        <p className="py-8 text-sm text-ink-muted">No {filter} reports.</p>
       )}
 
       {load.status === "ready" &&

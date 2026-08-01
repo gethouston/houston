@@ -6,6 +6,7 @@ import {
   listAgents,
   listAllPublicSlugs,
   listCategories,
+  listCreators,
   recordInstall,
 } from "./store-api";
 
@@ -66,6 +67,18 @@ describe("listAgents", () => {
     expect(url.search).toBe("");
   });
 
+  it("requests installs then alphabetizes the returned page by name", async () => {
+    fetchMock.mockResolvedValue(
+      json({
+        items: [{ name: "Zulu" }, { name: "alpha" }],
+        hasMore: false,
+      }),
+    );
+    const result = await listAgents({ sort: "alphabetical", page: 1 });
+    expect(new URL(calledUrl()).searchParams.get("sort")).toBe("installs");
+    expect(result.items.map((item) => item.name)).toEqual(["alpha", "Zulu"]);
+  });
+
   it("throws a StoreApiError on a non-OK response", async () => {
     fetchMock.mockResolvedValue(json({ error: "boom" }, 503));
     await expect(listAgents({})).rejects.toBeInstanceOf(StoreApiError);
@@ -80,6 +93,20 @@ describe("listCategories", () => {
     expect(await listCategories()).toEqual([
       { slug: "writing", name: "Writing" },
     ]);
+  });
+});
+
+describe("listCreators", () => {
+  it("requests a creator page with the catalog revalidate window", async () => {
+    fetchMock.mockResolvedValue(json({ items: [], hasMore: true }));
+    expect(await listCreators(3)).toEqual({ items: [], hasMore: true });
+    const url = new URL(calledUrl());
+    expect(url.pathname).toBe("/v1/agentstore/creators");
+    expect(url.searchParams.get("page")).toBe("3");
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit & {
+      next?: { revalidate?: number };
+    };
+    expect(init.next?.revalidate).toBe(60);
   });
 });
 
@@ -102,7 +129,10 @@ describe("getAgentBySlug", () => {
   it("returns the detail payload on success", async () => {
     const detail = { agent: { id: "a1" }, ir: { irVersion: "2.0.0" } };
     fetchMock.mockResolvedValue(json(detail));
-    expect(await getAgentBySlug("good")).toEqual(detail);
+    expect(await getAgentBySlug("good")).toEqual({
+      ...detail,
+      agent: { id: "a1", skills: [] },
+    });
     expect(new URL(calledUrl()).pathname).toBe("/v1/agentstore/agents/good");
   });
 });

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Houston — Component Showcase</title>
+    <script>
+      // Paint the stored theme before first paint so the page never flashes
+      // the wrong one. Mirrors the toggle in src/use-showcase-state.ts.
+      try {
+        var stored = localStorage.getItem("houston-showcase-theme");
+        document.documentElement.dataset.theme =
+          stored === "light" ? "light" : "dark";
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

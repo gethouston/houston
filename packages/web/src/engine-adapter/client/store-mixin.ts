@@ -1,4 +1,5 @@
 import type {
+  AgentIdentityPatch,
   AvatarUploadResult,
   CreatorAnalytics,
   CreatorProfile,
@@ -73,6 +74,23 @@ export function StoreMixin<TBase extends BaseCtor>(Base: TBase) {
       return portableStore.setStoreVisibilityUnlisted(
         this.ctx.cp,
         storeAgentId,
+      );
+    }
+    async publishStoreAgentById(storeAgentId: string): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Managing your agents needs a connected host.");
+      return portableStore.publishStoreAgentById(this.ctx.cp, storeAgentId);
+    }
+    async updateStoreAgentIdentity(
+      storeAgentId: string,
+      identity: AgentIdentityPatch,
+    ): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Managing your agents needs a connected host.");
+      return portableStore.updateStoreAgentIdentity(
+        this.ctx.cp,
+        storeAgentId,
+        identity,
       );
     }
     async unpublishStoreAgentById(storeAgentId: string): Promise<void> {

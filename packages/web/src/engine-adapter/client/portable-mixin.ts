@@ -9,6 +9,7 @@ import type {
   PortableUploadPreviewResponse,
 } from "../../../../../ui/engine-client/src/types";
 import * as portable from "../portable";
+import { importFromStoreLink } from "../portable-from-store";
 import type { BaseCtor } from "./mixin";
 
 export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -55,7 +56,7 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<PortableUploadPreviewResponse> {
       if (!this.ctx.cp)
         throw new Error("Installing from a link needs a connected host.");
-      return portable.importFromStoreLink(this.ctx.cp, url);
+      return importFromStoreLink(this.ctx.cp, url);
     }
     async importInstall(
       req: PortableInstallRequest,

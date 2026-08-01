@@ -8,6 +8,8 @@
  */
 
 import type {
+  CreatorDirectoryEntry,
+  CreatorDirectoryPage,
   StoreAgentDetail,
   StoreAgentSummary,
 } from "@houston/agentstore-client";
@@ -1965,8 +1967,11 @@ export interface StorePublicationStatus {
 // Creator-profile shapes back the "publish as @handle" identity, its public
 // creator page, avatar upload, and the per-day install analytics panel.
 export type {
+  AgentIdentityPatch,
   AvatarUploadResult,
   CreatorAnalytics,
+  CreatorDirectoryEntry,
+  CreatorDirectoryPage,
   CreatorInstallRow,
   CreatorLinks,
   CreatorProfile,
@@ -1987,6 +1992,10 @@ export type StoreCatalogAgent = StoreAgentSummary;
 
 /** A listing's detail: the summary plus the full published-version IR. */
 export type StoreCatalogAgentDetail = StoreAgentDetail;
+
+/** One creator-directory result and its paged response. */
+export type StoreCreatorDirectoryEntry = CreatorDirectoryEntry;
+export type StoreCreatorDirectoryPage = CreatorDirectoryPage;
 
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)

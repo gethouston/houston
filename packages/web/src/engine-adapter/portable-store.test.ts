@@ -11,6 +11,7 @@ import {
   setStoreVisibilityUnlisted,
   unpublishFromStore,
   unpublishStoreAgentById,
+  updateStoreAgentIdentity,
 } from "./portable-store";
 
 /**
@@ -80,7 +81,18 @@ beforeEach(() => {
         });
       }
       if (url.includes("/v1/agentstore/agents/S1") && method === "PATCH") {
-        return jsonResponse({ ok: true });
+        // The real gateway answers with the resulting agent summary.
+        return jsonResponse({
+          agent: {
+            id: "S1",
+            slug: "mailer",
+            name: "Mailer",
+            description: "Sends mail on your behalf.",
+            category: "productivity",
+            tags: [],
+            state: "published",
+          },
+        });
       }
       if (url.includes("/v1/agentstore/agents/S1") && method === "DELETE") {
         return new Response(null, { status: 204 });
@@ -272,6 +284,19 @@ test("unpublishStoreAgentById PATCHes {unpublish:true} by store id", async () =>
   await unpublishStoreAgentById(cfg, "S1");
   const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
   expect((patch?.body as { unpublish: boolean }).unpublish).toBe(true);
+});
+
+test("updateStoreAgentIdentity PATCHes {identity} by store id", async () => {
+  const identity = {
+    name: "Mailer Pro",
+    tagline: "",
+    description: "Sends better mail.",
+    category: "productivity",
+    tags: ["email"],
+  };
+  await updateStoreAgentIdentity(cfg, "S1", identity);
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect((patch?.body as { identity: unknown }).identity).toEqual(identity);
 });
 
 test("deleteStoreAgentById DELETEs the store agent by id", async () => {

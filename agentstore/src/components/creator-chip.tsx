@@ -34,7 +34,7 @@ export function CreatorChip({
 }: CreatorChipProps) {
   if (!creator.handle) {
     return (
-      <span className={cn("truncate text-muted-foreground", className)}>
+      <span className={cn("truncate text-ink-muted", className)}>
         By {creator.displayName}
       </span>
     );
@@ -42,7 +42,7 @@ export function CreatorChip({
   return (
     <span
       className={cn(
-        "inline-flex min-w-0 items-center gap-1.5 text-muted-foreground",
+        "inline-flex min-w-0 items-center gap-1.5 text-ink-muted",
         className,
       )}
     >
@@ -57,7 +57,7 @@ export function CreatorChip({
         <AvatarFallback>{initial(creator)}</AvatarFallback>
       </Avatar>
       <span
-        className={cn("truncate font-medium text-foreground", {
+        className={cn("truncate font-medium text-ink", {
           "text-sm": size === "sm",
         })}
       >

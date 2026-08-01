@@ -11,6 +11,7 @@
  */
 
 import {
+  type AgentIdentityPatch,
   type AgentPatch,
   AgentStoreClient,
   type CreateAgentRequest,
@@ -214,6 +215,27 @@ export async function setStoreVisibilityUnlisted(
 ): Promise<void> {
   await asEngineError(() =>
     storeClient(cfg).patchAgent(storeAgentId, { visibility: "unlisted" }),
+  );
+}
+
+/** Edit an owned listing's store metadata (`PATCH … {identity}`). */
+export async function updateStoreAgentIdentity(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+  identity: AgentIdentityPatch,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { identity }),
+  );
+}
+
+/** Publish (or re-publish) an owned listing (`PATCH … {publish}`). */
+export async function publishStoreAgentById(
+  cfg: ControlPlaneConfig,
+  storeAgentId: string,
+): Promise<void> {
+  await asEngineError(() =>
+    storeClient(cfg).patchAgent(storeAgentId, { publish: true }),
   );
 }
 

@@ -6,7 +6,9 @@
  * this page can render for everyone — a non-admin simply gets an "access" notice
  * from the tabs. Nothing sensitive is server-rendered; the page is never indexed.
  */
+
 import type { Metadata } from "next";
+import { SiteHeader } from "@/components/site-header";
 import { AdminConsole } from "./admin-console";
 
 export const metadata: Metadata = {
@@ -15,5 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
-  return <AdminConsole />;
+  return (
+    <>
+      <SiteHeader />
+      <AdminConsole />
+    </>
+  );
 }

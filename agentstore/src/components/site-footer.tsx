@@ -1,64 +1,28 @@
-import Link from "next/link";
-import { siteConfig } from "@/lib/site-config";
-
-const LINKS = [
-  { label: "Explore agents", href: "/explore", external: false },
-  { label: "Publish", href: "/#publish", external: false },
-  { label: "gethouston.ai", href: "https://gethouston.ai", external: true },
-  { label: "Terms", href: "https://gethouston.ai/terms", external: true },
-  { label: "Privacy", href: "https://gethouston.ai/privacy", external: true },
+const links = [
+  { label: "Get Houston", href: "https://gethouston.ai" },
+  { label: "Terms", href: "https://gethouston.ai/terms" },
+  { label: "Privacy", href: "https://gethouston.ai/privacy" },
 ] as const;
 
-/** Global footer with brand line and the canonical off-site links. */
+/** Quiet global footer, mounted once by the root layout. */
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div>
-          <p className="font-display text-sm font-semibold">
-            {siteConfig.name}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            A catalog of no-code AI agents for Houston.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground/70">
-            Background: ESO/S. Brunier (
-            <a
-              href="https://www.eso.org/public/images/eso0932a/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2"
-            >
-              CC BY 4.0
-            </a>
-            )
-          </p>
+    <footer className="w-full">
+      <div className="mx-auto flex w-full max-w-[1040px] flex-col gap-4 px-6 py-10 sm:flex-row sm:items-center sm:justify-between md:px-8">
+        <div className="flex items-center gap-3 text-[13px]">
+          <span className="font-medium text-ink">Agent Store</span>
+          <span className="text-ink-muted">© Houston</span>
         </div>
-        <nav
-          aria-label="Footer"
-          className="flex flex-wrap gap-x-5 gap-y-2 text-sm"
-        >
-          {LINKS.map((item) =>
-            item.external ? (
-              <a
-                key={item.label}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {item.label}
-              </a>
-            ) : (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ),
-          )}
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
+          {links.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              className="text-[13px] text-ink-muted transition-colors hover:text-ink"
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
       </div>
     </footer>

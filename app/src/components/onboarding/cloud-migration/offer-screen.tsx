@@ -38,9 +38,9 @@ export function OfferScreen({
           card edge. The image takes a side column so the pitch keeps a
           comfortable measure beside it. */}
       <div className="relative flex w-full max-w-[820px] overflow-hidden rounded-2xl bg-card text-ink shadow-[0_16px_60px_rgba(0,0,0,0.12)]">
-        {/* space-canvas underlay: any subpixel sliver the cover-crop leaves at
-            the rounded edge reads as space-dark, never white. */}
-        <div className="relative hidden w-[360px] shrink-0 self-stretch bg-[var(--ht-space-canvas)] sm:block">
+        {/* The semantic gutter underlay catches any subpixel sliver left by the
+            cover crop at the rounded edge. */}
+        <div className="relative hidden w-[360px] shrink-0 self-stretch bg-gutter sm:block">
           <picture className="absolute inset-0 block">
             <source type="image/webp" srcSet={astroWebp} />
             <img

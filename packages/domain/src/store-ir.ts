@@ -20,6 +20,10 @@ import {
   normalizeAgentIr,
   slugify,
 } from "@houston/agentstore-contract";
+import {
+  PORTABLE_FORMAT_VERSION,
+  type PortableManifest,
+} from "@houston/protocol";
 import type { PortableContent } from "./portable";
 
 /** The identity/creator/integration inputs a publish collects from the wizard. */
@@ -99,4 +103,38 @@ export function portableFromIr(ir: AgentIR): {
       description: ir.identity.description,
     },
   };
+}
+
+/**
+ * Turn the gateway's public agent payload (`{agent, ir}` — or a bare IR) into
+ * the `{manifest, content}` package the import wizard consumes. Shared by the
+ * host's `/v1/portable/fetch-from-store` route and the browser adapter's
+ * direct-from-store fallback, so the two install paths can never drift. An
+ * unparseable IR comes back as the user-facing error string, never a throw.
+ */
+export function storePackageFromIrPayload(
+  payload: unknown,
+  houstonVersion: string,
+):
+  | { manifest: PortableManifest; content: PortableContent }
+  | { error: string } {
+  const ir =
+    payload && typeof payload === "object" && "ir" in payload
+      ? (payload as { ir: unknown }).ir
+      : payload;
+  const parsed = agentIrSchema.safeParse(ir);
+  if (!parsed.success) {
+    return { error: "The shared agent could not be read (unexpected format)." };
+  }
+  const { content, meta } = portableFromIr(parsed.data);
+  const manifest: PortableManifest = {
+    agentName: meta.agentName,
+    description: meta.description,
+    exporter: parsed.data.identity.creator.displayName,
+    houstonVersion,
+    createdAt: new Date().toISOString(),
+    anonymized: false,
+    formatVersion: PORTABLE_FORMAT_VERSION,
+  };
+  return { manifest, content };
 }

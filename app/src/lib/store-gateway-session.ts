@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSession } from "../hooks/use-session";
-import { isRemoteEngine } from "./engine";
+import { hostedEngineUrl } from "./engine";
 
 /**
  * Points the Agent Store adapter at the public gateway with the user's OWN
@@ -38,8 +38,14 @@ function setStoreGatewaySession(token: string | null): void {
 }
 
 /**
- * Keeps the store gateway supplied with the user's current session token in
- * local-sidecar mode. Mounted once in `<App/>`. No-op in gateway-fronted modes.
+ * Keeps the store gateway supplied with the user's current session token
+ * whenever the engine is NOT the hosted cloud gateway itself. Mounted once in
+ * `<App/>`. Hosted mode is the only case where the engine base + bearer
+ * already point at the store's gateway; every other mode (Tauri local
+ * sidecar, or a dev `VITE_NEW_ENGINE_URL` host — whose engine serves no
+ * `/v1/agentstore` routes) needs the explicit store target, or owner surfaces
+ * silently read the wrong backend (the bug where /me showed "claim your
+ * handle" against an empty dev store while browse read production).
  * The token stays fresh on its own: the identity proactive-refresh timer keeps
  * `useSession` current, so a rotation re-runs this effect with the new bearer.
  */
@@ -48,7 +54,12 @@ export function useStoreGatewaySession(): void {
   const token = session?.idToken ?? null;
 
   useEffect(() => {
-    if (isRemoteEngine()) return;
+    // Skip ONLY when the hosted engine gateway IS the store gateway (the
+    // production cloud). A hosted DEV loop (localhost gateway) or any other
+    // mode needs the explicit store target, or owner surfaces silently read
+    // the wrong backend.
+    const hosted = hostedEngineUrl()?.replace(/\/+$/, "");
+    if (hosted && hosted === STORE_GATEWAY_URL) return;
     setStoreGatewaySession(token);
     return () => setStoreGatewaySession(null);
   }, [token]);

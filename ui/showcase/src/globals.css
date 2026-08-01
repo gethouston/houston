@@ -1,0 +1,40 @@
+/* Showcase stylesheet. The token bridge comes from ui/core verbatim, so every
+   specimen renders against exactly the same `--ht-*` values the app, the
+   catalog site and the desktop shell do. */
+@import "tailwindcss";
+@import "@houston-ai/core/src/globals.css";
+/* The shared Houston canvas (aurora + glass), imported AFTER core's globals so
+   its overrides win — the exact plane the app renders on. Components are
+   reviewed ON the canvas, never on a flat background the product never shows. */
+@import "@houston-ai/core/src/canvas.css";
+
+/* Tailwind v4 scans the sources declared here (paths are relative to this
+   file): the showcase itself, plus every package under review. `../` covers
+   `src/` and `specimens/`; the two package paths reach the sibling workspaces
+   through their node_modules symlinks, so a utility that only ever appears
+   inside a component's source is still emitted. */
+@source "../";
+@source "../node_modules/@houston-ai/core/src";
+@source "../node_modules/@houston-ai/store/src";
+
+/* ui/core's globals lock the body for the app shell (`overflow: hidden`). The
+   showcase is a scrolling document, so unlock it. The page COLOUR is not set
+   here on purpose: canvas.css owns it (`--ht-base` on the body, aurora on
+   `body::before`), and everything above the body stays transparent so the glow
+   reaches the content — the same layering the app shell uses. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  overflow: auto;
+}
+
+/* The filter box is a `type="search"` input for its semantics (role, Escape to
+   clear), but Chrome decorates it with a UA-coloured clear glyph that ignores
+   the token palette — a hardcoded blue on a page that has none. The rail
+   renders its own clear button instead. */
+input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}

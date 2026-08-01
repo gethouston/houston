@@ -3,6 +3,20 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v53 - 2026-07-31
+
+Promoted the Agent Store Home, agent detail, and creator profile compositions
+into shared screen contracts. Website and app now supply only data, navigation,
+actions, translations, and rich-content seams, so screen structure cannot drift.
+
+## v52 - 2026-07-31
+
+Registered the shared Agent Store family used by both the public website and
+the in-app Store: navigation, catalog controls, agent and creator cards, the
+full detail layout, skill list, and creator identity block. Navigation,
+installation, translated labels, and rich-content rendering stay
+surface-owned seams while the structure remains shared.
+
 ## v51 - 2026-07-31
 
 The mission card loses its unread dot. The mark shipped in v39 as the per-card

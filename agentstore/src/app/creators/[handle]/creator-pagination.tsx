@@ -4,7 +4,7 @@ import Link from "next/link";
 import { buildCreatorHref } from "@/lib/creator-href";
 
 const LINK_CLASS =
-  "inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none";
+  "inline-flex items-center gap-1.5 rounded-full border border-line bg-chip px-4 py-2 text-sm font-medium text-chip-text transition-colors hover:bg-hover hover:text-hover-text focus-visible:ring-2 focus-visible:ring-focus/50 focus-visible:outline-none";
 
 export interface CreatorPaginationProps {
   handle: string;
@@ -45,7 +45,7 @@ export function CreatorPagination({
         <span />
       )}
 
-      <span className="text-sm text-muted-foreground">Page {page}</span>
+      <span className="text-sm text-ink-muted">Page {page}</span>
 
       {hasMore ? (
         <Link

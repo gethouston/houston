@@ -99,7 +99,7 @@ export function ReportDialog({ slug, agentName }: ReportDialogProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground hover:text-foreground"
+          className="text-ink-muted hover:text-ink"
         >
           <Flag aria-hidden className="size-3.5" />
           Report this agent
@@ -131,8 +131,7 @@ export function ReportDialog({ slug, agentName }: ReportDialogProps) {
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="report-details" className="text-sm font-medium">
-                Details{" "}
-                <span className="text-muted-foreground">(optional)</span>
+                Details <span className="text-ink-muted">(optional)</span>
               </label>
               <Textarea
                 id="report-details"
@@ -146,8 +145,7 @@ export function ReportDialog({ slug, agentName }: ReportDialogProps) {
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="report-contact" className="text-sm font-medium">
-                Your contact{" "}
-                <span className="text-muted-foreground">(optional)</span>
+                Your contact <span className="text-ink-muted">(optional)</span>
               </label>
               <Input
                 id="report-contact"

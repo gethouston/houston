@@ -112,6 +112,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 }
 
 /** Access the session. Must be called under a `SessionProvider`. */
+/** Non-throwing variant for optional chrome (e.g. the nav's account
+ *  control): null outside a provider instead of an error, so isolated
+ *  renders (tests, previews) stay valid. */
+export function useOptionalSession(): SessionContextValue | null {
+  return React.useContext(SessionContext);
+}
+
 export function useSession(): SessionContextValue {
   const ctx = React.useContext(SessionContext);
   if (!ctx) {

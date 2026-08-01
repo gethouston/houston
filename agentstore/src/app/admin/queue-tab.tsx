@@ -85,14 +85,14 @@ export function QueueTab({
 
   if (load.status === "loading") {
     return (
-      <div className="flex items-center gap-3 py-8 text-muted-foreground">
+      <div className="flex items-center gap-3 py-8 text-ink-muted">
         <Spinner /> Loading review queue…
       </div>
     );
   }
   if (load.status === "forbidden") {
     return (
-      <p className="py-8 text-sm text-muted-foreground">
+      <p className="py-8 text-sm text-ink-muted">
         Your account does not have moderation access.
       </p>
     );
@@ -106,7 +106,7 @@ export function QueueTab({
   }
   if (load.items.length === 0) {
     return (
-      <p className="py-8 text-sm text-muted-foreground">
+      <p className="py-8 text-sm text-ink-muted">
         No agents are waiting for review.
       </p>
     );
@@ -131,7 +131,7 @@ export function QueueTab({
                     href={pageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm font-normal text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                    className="inline-flex items-center gap-1 text-sm font-normal text-ink-muted underline underline-offset-4 hover:text-ink"
                   >
                     Preview <ExternalLink aria-hidden className="size-3.5" />
                   </a>
@@ -139,10 +139,10 @@ export function QueueTab({
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-ink-muted">
                 {item.tagline || item.description}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-ink-muted">
                 {item.category} · by {item.creator.displayName}
               </p>
               <div className="flex gap-2">

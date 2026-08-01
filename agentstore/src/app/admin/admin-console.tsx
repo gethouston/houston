@@ -44,7 +44,7 @@ export function AdminConsole() {
 
   if (status === "loading") {
     return (
-      <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-6 py-24 text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-6 py-24 text-ink-muted">
         <Spinner /> Loading…
       </div>
     );
@@ -57,7 +57,7 @@ export function AdminConsole() {
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             Moderation
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-ink-muted">
             Sign in with an admin account to continue.
           </p>
         </div>
@@ -129,9 +129,7 @@ function PurgeButton({ getToken }: { getToken: () => Promise<string | null> }) {
 
   return (
     <div className="flex items-center gap-3">
-      {result && (
-        <span className="text-xs text-muted-foreground">{result}</span>
-      )}
+      {result && <span className="text-xs text-ink-muted">{result}</span>}
       <Button variant="outline" size="sm" disabled={busy} onClick={purge}>
         {busy ? (
           <Spinner className="size-4" />

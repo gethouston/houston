@@ -1,40 +1,32 @@
 import {
-  HANDLE_REGEX,
-  normalizeHandle,
-  RESERVED_HANDLES,
-} from "@houston/agentstore-contract";
-import {
-  Button,
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
   Spinner,
 } from "@houston-ai/core";
-import type { CreatorLinks } from "@houston-ai/engine-client";
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  type ProfileEditorPatch,
+  ProfileEditorScreen,
+} from "@houston-ai/store";
 import { useTranslation } from "react-i18next";
 import { useMyStoreProfile } from "../../../hooks/use-my-store-profile";
 import { getEngine } from "../../../lib/engine";
-import { reportError } from "../../../lib/error-report";
-import { useUIStore } from "../../../stores/ui";
-import { AvatarUploadField } from "./avatar-upload-field";
-import { BioField } from "./bio-field";
-import { HandleField } from "./handle-field";
-import { buildProfilePatch, canSaveProfile } from "./profile-form";
 import { gatewayErrorCode } from "./save-error";
-import { HANDLE_ERROR_KEYS, saveErrorKey } from "./save-error-map";
-import { SocialsEditor } from "./socials-editor";
+
+/** Attach the gateway's machine error code so the shared screen's copy map
+ *  can translate it; rethrows — a failed save must never be swallowed. */
+function withCode(err: unknown): never {
+  const code = gatewayErrorCode(err);
+  if (err instanceof Error && code) throw Object.assign(err, { code });
+  throw err instanceof Error ? err : new Error(String(err));
+}
 
 /**
- * The creator-profile editor: claim an `@handle` for the first time, or edit an
- * existing profile's handle, display name, bio, links, and avatar. A
- * self-contained dialog driven by the `creatorEditorOpen` UI flag (opened from
- * the user menu). Reads and writes the shared `useMyStoreProfile` cache; the
- * avatar is its own immediate mutation while the rest lands on Save.
+ * The creator-profile editor dialog: the app shell (open flag, dialog frame)
+ * around the SHARED ProfileEditorScreen — composition and copy live in
+ * @houston-ai/store, identical to the website's /me/profile.
  */
 export function CreatorProfileEditorDialog({
   open,
@@ -45,144 +37,79 @@ export function CreatorProfileEditorDialog({
 }) {
   const { t } = useTranslation("store");
   const { profile, isPending, invalidate } = useMyStoreProfile();
-  const addToast = useUIStore((s) => s.addToast);
-  const displayNameId = useId();
-
-  const [handle, setHandle] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [bio, setBio] = useState("");
-  const [links, setLinks] = useState<CreatorLinks>({});
-  const [handleServerError, setHandleServerError] = useState<string | null>(
-    null,
-  );
-  const [saving, setSaving] = useState(false);
-  const seeded = useRef(false);
-
-  // Seed the form ONCE per open, from server truth — never re-seed on a later
-  // profile refresh (an avatar upload invalidates the cache mid-edit, and
-  // re-seeding would wipe the user's in-progress name/bio/link edits).
-  useEffect(() => {
-    if (!open) {
-      seeded.current = false;
-      return;
-    }
-    if (seeded.current || isPending) return;
-    setHandle(profile?.handle ?? "");
-    setDisplayName(profile?.displayName ?? "");
-    setBio(profile?.bio ?? "");
-    setLinks(profile?.links ?? {});
-    setHandleServerError(null);
-    seeded.current = true;
-  }, [open, isPending, profile]);
-
-  const claiming = !profile?.handle;
-  const normalized = normalizeHandle(handle);
-  const handleChanged = normalized !== (profile?.handle ?? "");
-  const handleValid =
-    HANDLE_REGEX.test(normalized) && !RESERVED_HANDLES.has(normalized);
-  const canSave = canSaveProfile({
-    claiming,
-    handleChanged,
-    handleValid,
-    links,
-    saving,
-  });
-
-  const handleSave = async () => {
-    const patch = buildProfilePatch(
-      { handle: normalized, displayName, bio, links },
-      profile,
-    );
-    if (Object.keys(patch).length === 0) {
-      onOpenChange(false);
-      return;
-    }
-    setSaving(true);
-    setHandleServerError(null);
-    try {
-      await getEngine().updateMyStoreProfile(patch);
-      await invalidate();
-      addToast({ title: t("profile.saved"), variant: "success" });
-      onOpenChange(false);
-    } catch (err) {
-      const code = gatewayErrorCode(err);
-      reportError(
-        "store_update_profile",
-        `updateMyStoreProfile failed (${code ?? "unknown"})`,
-        err,
-      );
-      const handleKey = code ? HANDLE_ERROR_KEYS[code] : undefined;
-      if (handleKey) setHandleServerError(t(handleKey));
-      else addToast({ title: t(saveErrorKey(code)), variant: "error" });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {claiming ? t("profile.claimTitle") : t("profile.title")}
-          </DialogTitle>
-          {claiming && (
-            <DialogDescription>{t("profile.claimBody")}</DialogDescription>
-          )}
+      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{t("profile.title")}</DialogTitle>
+          <DialogDescription>{t("profile.claimTitle")}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <HandleField
-            value={handle}
-            onChange={(v) => {
-              setHandle(v);
-              setHandleServerError(null);
-            }}
-            serverError={handleServerError}
-            disabled={saving}
-          />
-          <div className="space-y-1.5">
-            <label
-              htmlFor={displayNameId}
-              className="text-sm font-medium text-ink"
-            >
-              {t("profile.displayNameLabel")}{" "}
-              <span className="text-ink-muted">{t("profile.optional")}</span>
-            </label>
-            <Input
-              id={displayNameId}
-              value={displayName}
-              maxLength={80}
-              onChange={(e) => setDisplayName(e.target.value)}
-              disabled={saving}
-            />
-            <p className="text-xs text-ink-muted">
-              {t("profile.displayNameHint")}
-            </p>
+        {isPending ? (
+          <div className="flex items-center gap-3 py-8 text-ink-muted">
+            <Spinner /> {t("me.loadingAgents")}
           </div>
-          <AvatarUploadField
-            avatarUrl={profile?.avatarUrl ?? null}
-            displayName={displayName.trim() || normalized}
-            onChanged={() => void invalidate()}
-            disabled={saving}
-            claiming={claiming}
+        ) : (
+          <ProfileEditorScreen
+            key={open ? "open" : "closed"}
+            initial={
+              profile?.handle
+                ? {
+                    handle: profile.handle,
+                    displayName: profile.displayName ?? "",
+                    bio: profile.bio ?? "",
+                    links: profile.links ?? {},
+                    avatarUrl: profile.avatarUrl ?? null,
+                  }
+                : null
+            }
+            currentHandle={profile?.handle ?? null}
+            onSave={async (patch: ProfileEditorPatch) => {
+              try {
+                const saved = await getEngine().updateMyStoreProfile(patch);
+                invalidate();
+                return {
+                  handle: saved.handle ?? "",
+                  displayName: saved.displayName ?? "",
+                  bio: saved.bio ?? "",
+                  links: saved.links ?? {},
+                  avatarUrl: saved.avatarUrl ?? null,
+                };
+              } catch (err) {
+                withCode(err);
+              }
+            }}
+            checkHandle={(handle) => getEngine().checkStoreHandle(handle)}
+            uploadAvatar={async (file) => {
+              const result = await getEngine().uploadStoreAvatar(file);
+              invalidate();
+              return result;
+            }}
+            deleteAvatar={async () => {
+              await getEngine().deleteStoreAvatar();
+              invalidate();
+            }}
+            labels={{
+              claimTitle: t("me.editor.claimTitle"),
+              claimIntro: t("me.editor.claimIntro"),
+              editTitle: t("me.editor.editTitle"),
+              editIntro: t("me.editor.editIntro"),
+              errorTitle: t("myAgents.actionFailed"),
+              savedTitle: t("me.editor.savedTitle"),
+              savedBody: t("me.editor.savedBody"),
+              nameLabel: t("me.editor.nameLabel"),
+              optional: t("me.editor.optional"),
+              namePlaceholder: t("me.editor.namePlaceholder"),
+              nameHint: t("me.editor.nameHint"),
+              bioLabel: t("me.editor.bioLabel"),
+              bioPlaceholder: t("me.editor.bioPlaceholder"),
+              create: t("me.editor.create"),
+              save: t("me.editor.save"),
+              saveFailed: t("me.editor.saveFailed"),
+              networkFailed: t("me.editor.networkFailed"),
+            }}
           />
-          <BioField value={bio} onChange={setBio} disabled={saving} />
-          <SocialsEditor value={links} onChange={setLinks} disabled={saving} />
-        </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
-            {t("profile.cancel")}
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={!canSave}>
-            {saving && <Spinner className="size-4" />}
-            {saving ? t("profile.saving") : t("profile.save")}
-          </Button>
-        </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
