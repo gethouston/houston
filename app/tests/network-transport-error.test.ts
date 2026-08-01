@@ -61,6 +61,17 @@ describe("isNetworkTransportError", () => {
     strictEqual(isNetworkTransportError(new TypeError("fetch failed")), true);
   });
 
+  it("matches the adapter's synthetic transient-session-refresh failure (HOU-1106)", () => {
+    // packages/web/src/engine-adapter/session-refresh.ts mints exactly this
+    // message when the token refresh loses to a settling reconnect. If the
+    // classifier stops matching it, that failure regresses to a red bug toast
+    // + Sentry report — keep the two in lockstep.
+    strictEqual(
+      isNetworkTransportError(new TypeError("Load failed (session refresh)")),
+      true,
+    );
+  });
+
   it("never matches a coding-bug TypeError", () => {
     strictEqual(
       isNetworkTransportError(new TypeError("undefined is not a function")),
