@@ -13,6 +13,11 @@
 #          stamps the version label. Before this file existed, the engine roll
 #          was a separate manual `engine-pod-v*` tag push that people forgot,
 #          so prod engine drifted behind the app for days.
+#        · THIS workflow also promotes the prod AGENT STORE web
+#          (agents.gethouston.ai) to the same train. Same lesson, second
+#          surface: the store's prod roll used to require a separate manual
+#          `agentstore-v*` tag push that nobody made, so the public site sat
+#          two weeks behind staging (Jul→Aug 2026).
 #
 # WHAT "SAME TRAIN" MEANS FOR THE ENGINE:
 #   Engine images build per engine-touching merge (engine-pod-image.yml is
@@ -37,7 +42,10 @@
 #   namespace: "train 0.5.24" names the app AND the engine it shipped with.
 #   Pushing an `engine-pod-v*` tag MANUALLY (a real user push, which DOES
 #   trigger engine-pod-image.yml's tag path) remains the break-glass prod
-#   engine roll, independent of any release.
+#   engine roll, independent of any release. The `agentstore-v<version>`
+#   label works identically: stamped here with GITHUB_TOKEN (non-triggering);
+#   a MANUAL agentstore-v* push (which triggers agentstore-image.yml's tag
+#   path → roll-agentstore-prod) remains the break-glass prod store roll.
 #
 # OUT OF SCOPE (deliberately): the prod gateway/control-plane (gethouston/cloud
 #   repo) deploys on its own release tag and is not yet part of this train.
@@ -49,7 +57,7 @@ on:
     types: [published]
 
 permissions:
-  contents: write # the engine-pod-v* label tag push (GITHUB_TOKEN, non-triggering)
+  contents: write # the engine-pod-v* / agentstore-v* label tag pushes (GITHUB_TOKEN, non-triggering)
   id-token: write # Workload Identity Federation (Artifact Registry probe)
 
 concurrency:
@@ -166,3 +174,121 @@ jobs:
       - name: Summary
         run: |
           echo "::notice::Train ${{ steps.engine.outputs.version }} shipped: desktop updater flipped by cloud-updater-manifest.yml, prod engine rolling to engine-pod@${{ steps.engine.outputs.digest }} (sha ${{ steps.engine.outputs.train_sha }}), label engine-pod-v${{ steps.engine.outputs.version }} stamped."
+
+  promote-agentstore:
+    # Same gate as promote: cloud channel drafts only.
+    if: >-
+      startsWith(github.event.release.tag_name, 'cloud-v') &&
+      github.event.release.tag_name != 'cloud-latest'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-engine@gethouston.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Same newest-image-at-or-before-base rule as the engine, different
+      # search: agentstore builds are paths-filtered and SPARSE (the store can
+      # go untouched for weeks — the newest image sat 225 first-parent commits
+      # behind the Aug 2026 train base), so the engine's probe-per-sha loop
+      # with its 100-commit horizon would miss it. Instead: ONE registry call
+      # lists every sha-tagged agentstore image, then the first-parent walk
+      # intersects locally — deep history costs nothing extra.
+      - name: Resolve the train's agentstore image
+        id: agentstore
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#cloud-v}"
+          BASE_SHA=$(git rev-parse "${TAG}^")
+          echo "Train ${VERSION}: base commit ${BASE_SHA}"
+
+          # `|| true`: zero sha tags must fall through to the curated error
+          # below, not die opaquely on pipefail at the grep.
+          gcloud artifacts docker images list "${REGISTRY}/agentstore" \
+            --include-tags --format='value(tags)' \
+            | { tr ',' '\n' | grep -E '^[0-9a-f]{40}$' || true; } | sort -u > /tmp/agentstore-shas
+
+          TRAIN_SHA=""
+          for sha in $(git log --first-parent --format=%H -n 1000 "$BASE_SHA"); do
+            if grep -qx "$sha" /tmp/agentstore-shas; then
+              TRAIN_SHA="$sha"
+              break
+            fi
+          done
+
+          if [ -z "$TRAIN_SHA" ]; then
+            echo "::error::No agentstore image found in the last 1000 first-parent commits before ${BASE_SHA}. Something is wrong with agentstore-image.yml — investigate before shipping; do not guess an image."
+            exit 1
+          fi
+
+          DIGEST=$(gcloud artifacts docker images describe \
+            "${REGISTRY}/agentstore:${TRAIN_SHA}" \
+            --format='value(image_summary.digest)')
+
+          echo "Train agentstore: agentstore:${TRAIN_SHA} (${DIGEST})"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "train_sha=${TRAIN_SHA}" >> "$GITHUB_OUTPUT"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      # Same repository_dispatch contract agentstore-image.yml's tag path uses
+      # (cloud/roll-agentstore.yml consumes it: kubectl set image + rollout
+      # status). No seq guard on that side — set-image to an unchanged digest
+      # is a no-op, so a re-published release re-dispatching is harmless.
+      # run_number is informational there; epoch seconds keeps it monotonic
+      # alongside this workflow's engine dispatch.
+      - name: Promote prod agentstore web
+        env:
+          GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          IMAGE="${REGISTRY}/agentstore@${{ steps.agentstore.outputs.digest }}"
+          gh api repos/gethouston/cloud/dispatches \
+            -f event_type='roll-agentstore-prod' \
+            -F "client_payload[digest]=${{ steps.agentstore.outputs.digest }}" \
+            -F "client_payload[image]=$IMAGE" \
+            -F "client_payload[sha]=${{ steps.agentstore.outputs.train_sha }}" \
+            -F "client_payload[run_number]=$(date +%s)"
+          echo "::notice::Prod agentstore promotion dispatched for train ${{ steps.agentstore.outputs.version }} (${IMAGE})"
+
+      # Version label: agentstore-v<version> at the train's agentstore sha.
+      # Same rules as engine-pod-v*: GITHUB_TOKEN push (never triggers the
+      # tag build), re-publish at the same sha is a no-op, a label pointing
+      # ELSEWHERE is a hard error — a train's label must never silently move.
+      - name: Stamp agentstore version label
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.agentstore.outputs.version }}"
+          TRAIN_SHA="${{ steps.agentstore.outputs.train_sha }}"
+          LABEL="agentstore-v${VERSION}"
+
+          if EXISTING=$(git rev-parse -q --verify "refs/tags/${LABEL}" 2>/dev/null); then
+            EXISTING_TARGET=$(git rev-parse "${EXISTING}^{commit}")
+            if [ "$EXISTING_TARGET" = "$TRAIN_SHA" ]; then
+              echo "::notice::${LABEL} already points at ${TRAIN_SHA} (release re-published) — nothing to do."
+              exit 0
+            fi
+            echo "::error::${LABEL} already exists at ${EXISTING_TARGET}, but this train resolves to ${TRAIN_SHA}. A train label must never move — investigate before re-tagging."
+            exit 1
+          fi
+
+          git config user.name "houston-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git tag -a "$LABEL" -m "Houston train ${VERSION} — agentstore label (app tag cloud-v${VERSION})" "$TRAIN_SHA"
+          git push origin "refs/tags/${LABEL}"
+          echo "::notice::Stamped ${LABEL} at ${TRAIN_SHA}"
+
+      - name: Summary
+        run: |
+          echo "::notice::Train ${{ steps.agentstore.outputs.version }}: agents.gethouston.ai rolling to agentstore@${{ steps.agentstore.outputs.digest }} (sha ${{ steps.agentstore.outputs.train_sha }}), label agentstore-v${{ steps.agentstore.outputs.version }} stamped."

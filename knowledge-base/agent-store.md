@@ -326,11 +326,19 @@ Houston surfaces (SDK: profile/creator/analytics methods on
   the >30d drafts/soft-deleted purge. The frontend `agentstore/src/app/admin` page
   is the console; it calls those routes with the admin user's bearer.
 - **Frontend image** `.github/workflows/agentstore-image.yml` builds + pushes the
-  container to Artifact Registry on push to `main` touching `agentstore/**` or
-  `packages/agentstore-contract/**`, then fires a `repository_dispatch` to
-  `gethouston/cloud` (`roll-agentstore.yml`) which does the GKE roll. This repo
-  never touches the cluster; that handoff is the trust boundary
-  (mirrors `engine-pod-image.yml`).
+  container to Artifact Registry, then fires a `repository_dispatch` to
+  `gethouston/cloud`, which does the GKE roll. Deploy paths: a push to `main`
+  touching `agentstore/**` / `packages/agentstore-contract/**` dispatches
+  `roll-agentstore` → cloud's `roll-agentstore-staging.yml` rolls STAGING;
+  **PROD (agents.gethouston.ai) ships on the ship train** — publishing a
+  `cloud-v*` release runs `ship-train.yml`'s `promote-agentstore` job, which
+  resolves the newest `agentstore:<sha>` image at-or-before the train's base
+  commit, dispatches `roll-agentstore-prod` → cloud's `roll-agentstore.yml`,
+  and stamps the `agentstore-v<version>` label. A MANUAL `agentstore-v*` tag
+  push is the break-glass prod roll (triggers the tag path directly; first
+  used: `agentstore-v0.1.0`, Aug 2026, after prod sat two weeks behind on the
+  pre-train manual-tag flow). This repo never touches the cluster; the
+  dispatch handoff is the trust boundary (mirrors `engine-pod-image.yml`).
 - **Website bridge** `website/src/_redirects`: `/agent-store → agents.gethouston.ai`.
 - **Styling bridge** `agentstore/src/app/globals.css` imports the canonical Tailwind
   token bridge from `@houston-ai/core/src/globals.css` (same idiom as
