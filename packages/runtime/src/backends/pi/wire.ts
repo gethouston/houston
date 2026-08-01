@@ -81,6 +81,19 @@ export function normalizeUsage(u: unknown): TokenUsage | null {
  * thinking blocks. The separator rides a delta (never emitted standalone), so
  * an empty block can't leave a dangling break. State resets on `agent_start`
  * so a long-lived subscriber never bleeds one turn's blocks into the next.
+ *
+ * It also gates provider errors on the PROMPT's outcome, not the request's
+ * (HOU-1057). pi recovers from mid-prompt failures on its own — a
+ * context-overflow rejection triggers compact-and-retry, a transient 429/529
+ * auto-retries — all inside the same `prompt()` call, so an errored `turn_end`
+ * is not yet a failed turn. Emitting it immediately painted a terminal "chat
+ * got too long, switch model" card over a conversation pi then compacted and
+ * answered normally. Instead the classified error is HELD: a later successful
+ * assistant `turn_end` proves recovery and drops it; `agent_settled` — emitted
+ * exactly once per prompt, after every retry/recovery path — flushes it if the
+ * failure stood, so a real failure still surfaces (and still does so before
+ * `prompt()` resolves, which exec-turn's settle path relies on). An `aborted`
+ * turn_end is neutral: the user's Stop is its own terminal surface.
  */
 export function createWireTranslator(): (
   e: AgentSessionEvent,
@@ -89,6 +102,7 @@ export function createWireTranslator(): (
   let sawThinking = false;
   let sepText = false;
   let sepThinking = false;
+  let heldError: Extract<WireEvent, { type: "provider_error" }> | null = null;
   return (e) => {
     if (e.type === "agent_start") {
       sawText = sawThinking = sepText = sepThinking = false;
@@ -96,8 +110,32 @@ export function createWireTranslator(): (
       const t = e.assistantMessageEvent.type;
       if (t === "text_start" && sawText) sepText = true;
       if (t === "thinking_start" && sawThinking) sepThinking = true;
+    } else if (e.type === "agent_settled") {
+      // The prompt is over — retries and overflow recovery included. If the
+      // last word was still an error, it is now truly terminal: surface it.
+      const out = heldError;
+      heldError = null;
+      return out;
     }
     const wire = toWire(e);
+    if (e.type === "turn_end") {
+      if (wire?.type === "provider_error") {
+        // Newest failure wins: a retry that fails again replaces the held
+        // classification, so the flushed card names the final reason.
+        heldError = wire;
+        return null;
+      }
+      const msg = e.message;
+      if (
+        heldError &&
+        msg?.role === "assistant" &&
+        msg.stopReason !== "error" &&
+        msg.stopReason !== "aborted"
+      ) {
+        // A clean assistant turn after the failure — pi's recovery worked.
+        heldError = null;
+      }
+    }
     if (wire?.type === "text") {
       sawText = true;
       if (sepText) {
@@ -160,7 +198,11 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
       // `errorMessage`. Classify that into a TYPED provider_error so the chat
       // renders the matching reconnect / rate-limit card; dropping it left the
       // turn a silent, empty success ("no response, no error" — the bug that made
-      // Copilot look dead). "aborted" is the user's own Stop (already surfaced
+      // Copilot look dead). NOTE: raw `toWire` returns the frame immediately, but
+      // the stateful translator above holds it until `agent_settled` — pi may
+      // still recover this prompt (overflow compact-and-retry, transient
+      // auto-retry), and only an unrecovered failure reaches the chat (HOU-1057).
+      // "aborted" is the user's own Stop (already surfaced
       // verbatim by cancelTurn as "Stopped by user"), so it falls through here to
       // the usage path, never double-reported.
       const msg = e.message;

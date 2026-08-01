@@ -378,6 +378,97 @@ test("translator resets its block state on agent_start (a new turn starts fresh)
   });
 });
 
+// --- createWireTranslator: provider errors gated on the prompt's outcome
+// (HOU-1057) ------------------------------------------------------------------
+
+const agentSettled = () =>
+  ({ type: "agent_settled" }) as unknown as AgentSessionEvent;
+
+/** An errored turn_end shaped like a GPT-5.5 context-overflow rejection. */
+const overflowTurnEnd = () =>
+  turnEnd(
+    failedAssistantMessage(
+      "error",
+      "Your input exceeds the context window of this model.",
+      { provider: "openai-codex", model: "gpt-5.5" },
+    ),
+  );
+
+test("translator suppresses an errored turn_end that pi recovers from (HOU-1057)", () => {
+  // The false "chat got too long, switch model" card: one request overflowed,
+  // pi compacted and retried INSIDE the same prompt, and the turn answered
+  // normally — but the errored turn_end had already painted a terminal card.
+  // The error must be held, and a later clean assistant turn must drop it.
+  const translate = createWireTranslator();
+  expect(translate(overflowTurnEnd())).toBeNull();
+  // pi's recovery re-runs the prompt and it succeeds.
+  translate(agentStart());
+  expect(
+    translate(
+      turnEnd(assistantMessage(usage({ totalTokens: 50, output: 10 }))),
+    ),
+  ).toEqual({
+    type: "usage",
+    data: { context_tokens: 40, output_tokens: 10, cached_tokens: 0 },
+  });
+  // The prompt settles clean: no provider_error ever reaches the chat.
+  expect(translate(agentSettled())).toBeNull();
+});
+
+test("translator flushes the held error at agent_settled when recovery never happened", () => {
+  // A failure pi could NOT recover (compaction declined, retries exhausted):
+  // the card must still surface — at settle time, before prompt() resolves.
+  const translate = createWireTranslator();
+  expect(translate(overflowTurnEnd())).toBeNull();
+  const flushed = translate(agentSettled());
+  expect(flushed?.type).toBe("provider_error");
+  expect(flushed && "data" in flushed && flushed.data).toMatchObject({
+    kind: "context_overflow",
+    provider: "openai-codex",
+  });
+  // Once flushed, nothing leaks into the next prompt.
+  expect(translate(agentSettled())).toBeNull();
+});
+
+test("translator keeps the NEWEST failure when a retry fails again", () => {
+  // Overflow recovery retried the prompt and the retry itself failed for a
+  // different reason — the flushed card must name the final failure.
+  const translate = createWireTranslator();
+  expect(translate(overflowTurnEnd())).toBeNull();
+  translate(agentStart());
+  expect(
+    translate(
+      turnEnd(
+        failedAssistantMessage("error", "401 Unauthorized: token expired", {
+          provider: "openai-codex",
+          model: "gpt-5.5",
+        }),
+      ),
+    ),
+  ).toBeNull();
+  const flushed = translate(agentSettled());
+  expect(flushed && "data" in flushed && flushed.data).toMatchObject({
+    kind: "unauthenticated",
+  });
+});
+
+test("translator does NOT treat an aborted turn as recovery — the error still flushes", () => {
+  const translate = createWireTranslator();
+  expect(translate(overflowTurnEnd())).toBeNull();
+  translate(agentStart());
+  translate(
+    turnEnd(
+      failedAssistantMessage("aborted", undefined, {
+        usage: usage({ totalTokens: 10, output: 2 }),
+      }),
+    ),
+  );
+  // An aborted turn is neutral (the Stop is its own surface) — the held error
+  // still flushes at settle so a real failure is never silently dropped.
+  const flushed = translate(agentSettled());
+  expect(flushed?.type).toBe("provider_error");
+});
+
 test("toWire clips an oversized tool result to the preview cap", () => {
   const ev = {
     type: "tool_execution_end",
