@@ -80,21 +80,49 @@ export function osOpenUrl(url: string): Promise<void> {
   return invoke<void>("open_url", { url });
 }
 
-/** Start a one-shot localhost listener for the OAuth sign-in redirect and
- * return the `redirect_uri` the provider should bounce the browser to. Keeps
+/** The outcome of asking the shell to bind a loopback listener. */
+export type OauthLoopbackStart =
+  | {
+      status: "listening";
+      /** `http://127.0.0.1:<port>/auth/callback` — the provider's redirect target. */
+      redirectUri: string;
+      /** Identifies this attempt's listener. `osCancelOauthLoopback` only acts
+       *  when it carries this id, so a late cancel can never free a NEWER
+       *  attempt's port. */
+      attemptId: number;
+    }
+  | {
+      /** A newer sign-in click already owns the loopback, so this (older)
+       *  invocation bound nothing and released anything it held. The caller
+       *  treats it as a benign supersession — no error, no session. */
+      status: "superseded";
+    };
+
+/** Start a one-shot localhost listener for the OAuth sign-in redirect. Keeps
  * desktop sign-in entirely on the user's machine — no website relay, no
- * custom-scheme "open app?" dialog. Desktop only; web clients have no local
+ * custom-scheme "open app?" dialog. `expectedState` is the CSRF `state` this
+ * attempt minted: the listener answers a callback carrying any OTHER state with
+ * a "stale tab" page and KEEPS LISTENING, so a restored browser tab replaying an
+ * old redirect can no longer consume the port this sign-in is waiting on.
+ * Resolves `{ status: "superseded" }` when a NEWER click already claimed the
+ * loopback (concurrent starts are ordered by when the user clicked, not by which
+ * invocation finishes binding first). Desktop only; web clients have no local
  * listener and use the firebase-js-sdk popup instead. */
-export function osStartOauthLoopback(): Promise<string> {
-  return invoke<string>("start_oauth_loopback");
+export function osStartOauthLoopback(
+  expectedState: string,
+): Promise<OauthLoopbackStart> {
+  return invoke<OauthLoopbackStart>("start_oauth_loopback", {
+    expected_state: expectedState,
+  });
 }
 
-/** Free the current loopback listener's port immediately — called when a
- * sign-in attempt is superseded, cancelled (sign-in screen unmount), or times
- * out, instead of waiting out the native 300s self-timeout. A no-op when no
- * listener is bound. Desktop only. */
-export function osCancelOauthLoopback(): Promise<void> {
-  return invoke<void>("cancel_oauth_loopback");
+/** Free a loopback listener's port immediately — called when a sign-in attempt
+ * is cancelled (sign-in screen unmount, sign-out) or times out, instead of
+ * waiting out the native 300s self-timeout. A no-op unless `attemptId` is still
+ * the current listener, so a stale cancel cannot kill the next attempt.
+ * Desktop only. */
+export function osCancelOauthLoopback(attemptId: number): Promise<void> {
+  return invoke<void>("cancel_oauth_loopback", { attempt_id: attemptId });
 }
 
 // ── Identity session persistence (Keychain / DPAPI, via Rust `auth_*`) ──────

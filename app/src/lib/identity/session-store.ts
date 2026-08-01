@@ -18,8 +18,13 @@
 // cache key those callers write.
 
 import { queryKeys } from "../query-keys.ts";
+import { IdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
-import { type Session, serializeSession } from "./session.ts";
+import {
+  deserializeSession,
+  type Session,
+  serializeSession,
+} from "./session.ts";
 import { createSessionLoader, type SessionLoadState } from "./session-load.ts";
 import { isKeychainMode, storage, storageKey } from "./session-storage-kv.ts";
 
@@ -97,17 +102,67 @@ export async function loadSession(): Promise<Session | null> {
   return state.kind === "session" ? state.session : null;
 }
 
+/**
+ * Read the persisted session WITHOUT broadcasting or running the ACL rebind.
+ *
+ * The compensation paths (refresh.ts) need to know what is on disk *right now*
+ * before deciding whether to delete it, and `loadSession()` would notify every
+ * `subscribeSession` consumer along the way — flipping the UI into a session it
+ * is about to un-see. A read fault resolves `null`, so a caller must read that
+ * as "unknown", never as "absent": the safe reaction to unknown is to leave
+ * storage alone.
+ */
+export async function peekSession(): Promise<Session | null> {
+  const read = await storage.getItem(storageKey);
+  return read.ok ? deserializeSession(read.value) : null;
+}
+
 /** Persist the session. Rethrows if the write fails (no silent drop). */
 export async function saveSession(session: Session): Promise<void> {
   await storage.setItem(storageKey, serializeSession(session));
   notify(session);
 }
 
-/** Remove the persisted session. Rethrows if the delete fails. */
+/**
+ * Remove the persisted session.
+ *
+ * A failed delete is RETRIED once: a transient keychain fault (the store locked
+ * at that instant, a prompt the user then approves) must not leave the blob
+ * behind, because a surviving blob signs the user straight back into the account
+ * they just left on the next launch. If the retry also fails we throw a typed
+ * `IdentityError("session_clear_failed")` so `signOut()` can put it in front of
+ * the user — never a warn-and-continue.
+ *
+ * The signed-out broadcast goes out either way, BEFORE the throw: the epoch has
+ * already bumped and the caller is about to wipe the in-memory world, so this
+ * device is signed out even when the stored blob outlived the attempt.
+ */
 export async function clearSession(): Promise<void> {
   // Bump the epoch FIRST so a refresh already awaiting its network call sees the
   // change the moment sign-out begins, even if the keychain delete is slow.
   epoch += 1;
-  await storage.removeItem(storageKey);
+  let failure: unknown;
+  try {
+    await storage.removeItem(storageKey);
+  } catch (first) {
+    identityLog(
+      "warn",
+      `session clear failed, retrying once: ${String(first)}`,
+      "identity/session-store",
+    );
+    try {
+      await storage.removeItem(storageKey);
+    } catch (second) {
+      failure = second;
+      identityLog(
+        "error",
+        `session clear FAILED after a retry; the stored session survives: ${String(second)}`,
+        "identity/session-store",
+      );
+    }
+  }
   notify(null);
+  if (failure !== undefined) {
+    throw new IdentityError("session_clear_failed", { cause: failure });
+  }
 }

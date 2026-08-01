@@ -28,6 +28,9 @@ type AuthErrorKey =
   | "auth.tooManyAttempts"
   | "auth.userDisabled"
   | "auth.configError"
+  | "auth.signOutIncomplete"
+  | "auth.localDataIncomplete"
+  | "auth.signInTimeout"
   | "auth.generic";
 
 const CODE_TO_KEY: Record<IdentityErrorCode, AuthErrorKey> = {
@@ -46,6 +49,15 @@ const CODE_TO_KEY: Record<IdentityErrorCode, AuthErrorKey> = {
   invalid_idp_response: "auth.configError",
   malformed_response: "auth.configError",
   invalid_refresh_token: "auth.configError",
+  // Sign-out could not delete the stored session: the next launch would sign
+  // the user back into the account they just left, so it gets its own copy.
+  session_clear_failed: "auth.signOutIncomplete",
+  // The login IS gone; only the on-disk cache of lists survived. Saying "you may
+  // still be signed in" here would be flatly wrong, so it gets its own copy.
+  local_data_clear_failed: "auth.localDataIncomplete",
+  // The sign-in never got as far as the system browser (loopback bind or the
+  // browser hand-off hung) — "try again" is the honest remedy.
+  browser_open_timeout: "auth.signInTimeout",
   unknown: "auth.generic",
 };
 

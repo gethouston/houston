@@ -4,6 +4,7 @@ import { useMyProfile } from "../../../hooks/use-my-profile";
 import { useSession } from "../../../hooks/use-session";
 import { signOut } from "../../../lib/auth";
 import { isIdentityConfigured } from "../../../lib/identity";
+import { logger } from "../../../lib/logger";
 import { SettingsControlRow } from "../settings-row";
 
 /** Up to two leading letters from the display name, for the no-photo fallback. */
@@ -45,7 +46,18 @@ export function AccountSection() {
       title={displayName}
       description={session.email || undefined}
     >
-      <Button variant="outline" size="sm" onClick={() => signOut()}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          // `signOut` surfaces its own failure on the auth-error bus (the
+          // sign-in screen this settings pane is about to be replaced by renders
+          // it), so the handler only has to keep the rejection from floating.
+          void signOut().catch((e: unknown) =>
+            logger.error(`[auth] sign-out reported a failure: ${e}`),
+          );
+        }}
+      >
         {t("account.signOut")}
       </Button>
     </SettingsControlRow>

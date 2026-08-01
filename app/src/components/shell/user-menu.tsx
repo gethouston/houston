@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMyProfile } from "../../hooks/use-my-profile";
 import { signOut } from "../../lib/auth";
+import { logger } from "../../lib/logger";
 import { useUIStore } from "../../stores/ui";
 import { CreatorProfileEditorDialog } from "../store-view/profile/creator-profile-editor";
 import { FeedbackDialog } from "./feedback-dialog";
@@ -34,7 +35,14 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
 
   const handleSignOut = async () => {
     setOpen(false);
-    await signOut();
+    try {
+      await signOut();
+    } catch (e) {
+      // `signOut` already emitted the typed code on the auth-error bus, which
+      // the sign-in screen behind this menu renders — this menu is unmounting,
+      // so it has no surface of its own. Log for the bug report and move on.
+      logger.error(`[auth] sign-out reported a failure: ${e}`);
+    }
   };
 
   return (

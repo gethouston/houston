@@ -15,17 +15,20 @@
 // microsoft-authorize) then redeems `code` + `codeVerifier` at the provider's
 // token endpoint; a `null` here means "benign cancel — no session, no error".
 
-import { listen } from "@tauri-apps/api/event";
-import { osCancelOauthLoopback, osStartOauthLoopback } from "../os-bridge";
+import {
+  type OauthLoopbackStart,
+  osCancelOauthLoopback,
+  osStartOauthLoopback,
+} from "../os-bridge";
 import { tauriSystem } from "../tauri";
-import { IdentityError } from "./errors.ts";
+import { listenDeepLink } from "./deep-link-listen.ts";
+import { IdentityError, isIdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
 import {
   awaitLoopbackCallback,
   cancelPendingAuthorize,
-  type DeepLinkListen,
 } from "./oauth-attempt.ts";
-import { parseCallbackQuery } from "./oauth-callback.ts";
+import { withBrowserOpenDeadline } from "./oauth-attempt-contract.ts";
 import {
   computeCodeChallenge,
   generateCodeVerifier,
@@ -58,9 +61,22 @@ export interface LoopbackAuthorizeResult {
   codeVerifier: string;
 }
 
-/** The real `auth://deep-link` subscriber, adapted to the injected shape. */
-const listenDeepLink: DeepLinkListen = (onPayload) =>
-  listen<string>("auth://deep-link", (event) => onPayload(event.payload));
+const LOG_CTX = "identity/desktop-oauth";
+
+/**
+ * Free a native loopback listener by id. Scoped to ONE attempt, so a late cancel
+ * can never free a newer attempt's port. Best-effort: a failure just means the
+ * port frees at Rust's 300s self-timeout, so we log rather than toast.
+ */
+function releaseLoopback(attemptId: number, why: string): void {
+  void osCancelOauthLoopback(attemptId).catch((e) =>
+    identityLog(
+      "warn",
+      `failed to free loopback port (${why}): ${String(e)}`,
+      LOG_CTX,
+    ),
+  );
+}
 
 /**
  * Run one loopback+PKCE authorize round-trip. Resolves the redemption inputs, or
@@ -74,10 +90,32 @@ export async function runLoopbackAuthorize(
   const codeChallenge = await computeCodeChallenge(codeVerifier);
   const state = generateState();
 
-  let redirectUri: string;
+  // The native listener is told the `state` up front so it can tell OUR
+  // redirect from a stale tab replaying an older one (see oauth_loopback/):
+  // a foreign callback no longer consumes the one-shot listener.
+  let started: OauthLoopbackStart;
   try {
-    redirectUri = await osStartOauthLoopback();
+    started = await withBrowserOpenDeadline(
+      osStartOauthLoopback(state),
+      "loopback_bind",
+      {
+        // The invoke cannot be cancelled mid-flight (its attempt id does not
+        // exist yet), so if the deadline wins we free the listener the moment it
+        // finally appears. Left alone it would hold its port for Rust's full
+        // 300s and supersede the retry the user is now watching.
+        releaseIfLate: (late) => {
+          if (late.status === "listening") {
+            releaseLoopback(
+              late.attemptId,
+              "orphaned by the pre-browser deadline",
+            );
+          }
+        },
+      },
+    );
   } catch (e) {
+    // Already typed (the pre-browser deadline fired) — keep the specific code.
+    if (isIdentityError(e)) throw e;
     // The loopback bind failed (all ports busy). We must NOT fall back to a
     // `houston://auth-callback` custom-scheme redirect_uri: Google/Microsoft
     // reject custom-scheme redirects on direct OAuth (guaranteed
@@ -88,6 +126,17 @@ export async function runLoopbackAuthorize(
       cause: e,
     });
   }
+  if (started.status === "superseded") {
+    // A newer click already owns the loopback; that attempt is the one the user
+    // is watching. Benign null, exactly like an in-app supersession.
+    identityLog(
+      "info",
+      "loopback authorize superseded by a newer click before binding",
+      LOG_CTX,
+    );
+    return null;
+  }
+  const { redirectUri, attemptId } = started;
 
   const url = new URL(params.authorizeBase);
   const q = url.searchParams;
@@ -110,105 +159,14 @@ export async function runLoopbackAuthorize(
     openUrl: tauriSystem.openUrl,
     onBrowserOpened: opts?.onBrowserOpened,
     // Free the native loopback port the moment the attempt is abandoned
-    // (unmount / timeout). Best-effort: a failure just means the port frees at
-    // Rust's 300s self-timeout, so we log rather than surface a toast.
-    abandonLoopback: () => {
-      void osCancelOauthLoopback().catch((e) =>
-        identityLog(
-          "warn",
-          `failed to free loopback port: ${String(e)}`,
-          "identity/desktop-oauth",
-        ),
-      );
-    },
+    // (unmount / sign-out / timeout). Scoped to THIS attempt's id, so a late
+    // cancel can never free a newer attempt's port. Best-effort: a failure just
+    // means the port frees at Rust's 300s self-timeout, so we log rather than
+    // surface a toast.
+    abandonLoopback: () => releaseLoopback(attemptId, "attempt abandoned"),
   });
   if (code === null) return null; // benign cancel — no error, no session
   return { code, redirectUri, codeVerifier };
 }
 
-/** A GCIP-brokered authorize round-trip's redemption input. */
-export interface BrokeredAuthorizeResult {
-  /** The full callback query the bridge deep-linked back (no leading `?`). */
-  callbackQuery: string;
-}
-
-/**
- * Run one GCIP-BROKERED authorize round-trip (Apple). Unlike
- * {@link runLoopbackAuthorize} there is NO loopback listener: Apple rejects
- * `127.0.0.1` redirects, so the authorize URL minted by GCIP (`createAuthUri`)
- * redirects to the gateway's HTTPS bridge, which navigates the browser to a
- * real `houston://auth-callback?<query>` deep link the OS routes to the app —
- * the Rust shell re-emits it on the same `auth://deep-link` channel the
- * loopback flows use (see `apple-authorize.ts` for the pinned bridge
- * contract). The redemption input is the WHOLE callback query (fed to
- * `signInWithIdp` as the `requestUri`), not a PKCE code. CSRF: the `state`
- * GCIP embedded in its authorize URL is extracted by the caller and enforced
- * on the callback exactly like the PKCE flows. Resolves `null` on a benign
- * cancel (superseded / unmount / timeout).
- */
-export async function runBrokeredDeepLinkAuthorize(
-  mintAuthorizeUrl: () => Promise<{ url: string; expectedState: string }>,
-  opts?: LoopbackAuthorizeOptions,
-): Promise<BrokeredAuthorizeResult | null> {
-  const minted = await mintAuthorizeUrl();
-  const callbackQuery = await awaitLoopbackCallback({
-    expectedState: minted.expectedState,
-    authorizeUrl: minted.url,
-    listen: listenDeepLink,
-    openUrl: tauriSystem.openUrl,
-    onBrowserOpened: opts?.onBrowserOpened,
-    parsePayload: parseCallbackQuery,
-    // No loopback port to free — the callback arrives as an OS deep link.
-  });
-  if (callbackQuery === null) return null; // benign cancel — no error, no session
-  return { callbackQuery };
-}
-
-/**
- * POST a form body to a provider token endpoint and return the parsed JSON.
- * Shared by the Google (confidential installed-app secret) and Microsoft
- * (public PKCE) exchanges. Every failure throws typed — nothing is swallowed.
- */
-export async function postTokenForm(
-  url: string,
-  form: Record<string, string>,
-): Promise<Record<string, unknown>> {
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(form).toString(),
-    });
-  } catch (e) {
-    throw new IdentityError("network", { cause: e });
-  }
-  if (!res.ok) {
-    // Best-effort extraction of the provider's error token for diagnostics;
-    // we throw regardless (never swallow the failure).
-    let rawCode: string | undefined;
-    try {
-      const err = (await res.json()) as { error?: unknown };
-      if (typeof err.error === "string") rawCode = err.error;
-    } catch {
-      rawCode = undefined;
-    }
-    throw new IdentityError("invalid_idp_response", {
-      httpStatus: res.status,
-      rawCode,
-    });
-  }
-  let body: unknown;
-  try {
-    body = await res.json();
-  } catch (e) {
-    throw new IdentityError("malformed_response", {
-      httpStatus: res.status,
-      cause: e,
-    });
-  }
-  if (typeof body !== "object" || body === null) {
-    throw new IdentityError("malformed_response", { httpStatus: res.status });
-  }
-  return body as Record<string, unknown>;
-}
+export { postTokenForm } from "./token-exchange.ts";

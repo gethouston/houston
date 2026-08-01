@@ -34,6 +34,21 @@ describe("authErrorKey", () => {
     strictEqual(authErrorKey("invalid_refresh_token"), "auth.configError");
   });
 
+  it("gives the sign-out and pre-browser failures their own copy", () => {
+    // A surviving session blob means the next launch signs the user back in —
+    // it must never read as a generic "sign-in failed".
+    strictEqual(
+      authErrorKey(new IdentityError("session_clear_failed")),
+      "auth.signOutIncomplete",
+    );
+    strictEqual(authErrorKey("session_clear_failed"), "auth.signOutIncomplete");
+    strictEqual(
+      authErrorKey(new IdentityError("browser_open_timeout")),
+      "auth.signInTimeout",
+    );
+    strictEqual(authErrorKey("browser_open_timeout"), "auth.signInTimeout");
+  });
+
   it("maps a disabled provider", () => {
     strictEqual(authErrorKey("operation_not_allowed"), "auth.providerDisabled");
   });

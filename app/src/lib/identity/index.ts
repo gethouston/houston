@@ -29,12 +29,11 @@ export {
 } from "./firebase-rest.ts";
 export { decodeIdTokenClaims } from "./id-token.ts";
 export { startEmailOtp, verifyEmailOtp } from "./otp.ts";
+export { refreshNow, setSessionSink } from "./refresh.ts";
 export {
-  refreshNow,
-  setSessionSink,
   startProactiveRefresh,
   stopProactiveRefresh,
-} from "./refresh.ts";
+} from "./refresh-timer.ts";
 export type { AuthProvider, Session, SignInOutcome } from "./session.ts";
 export type { SessionLoadState } from "./session-load.ts";
 export {

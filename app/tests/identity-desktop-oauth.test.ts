@@ -8,8 +8,11 @@ import { IdentityError } from "../src/lib/identity/errors.ts";
 import {
   awaitLoopbackCallback,
   cancelPendingAuthorize,
-  type DeepLinkListen,
 } from "../src/lib/identity/oauth-attempt.ts";
+import {
+  type DeepLinkListen,
+  withBrowserOpenDeadline,
+} from "../src/lib/identity/oauth-attempt-contract.ts";
 import {
   parseCallbackQuery,
   parseCallbackUrl,
@@ -324,6 +327,137 @@ test("onBrowserOpened fires after openUrl resolves", async () => {
   assert.equal(opened, 1);
   l.emit("houston://auth-callback?code=c&state=s1");
   await p;
+});
+
+// ── The PRE-browser deadline ──────────────────────────────────────────────────
+//
+// Until `onBrowserOpened` fires the sign-in buttons are latched and the user
+// sees nothing at all, so a hang there (loopback bind, PKCE, the browser
+// hand-off) must FAIL loudly rather than sit out the 300s callback timeout —
+// that hang is what left the buttons dead until the app was quit.
+
+test("a browser that never opens rejects typed and frees the loopback port", async () => {
+  const l = makeListen();
+  let freed = 0;
+  const p = awaitLoopbackCallback({
+    expectedState: "s1",
+    authorizeUrl: "https://provider/a",
+    listen: l.listen,
+    openUrl: () => new Promise<void>(() => {}), // hangs forever
+    browserOpenTimeoutMs: 5,
+    abandonLoopback: () => {
+      freed += 1;
+    },
+  });
+  await assert.rejects(
+    p,
+    (e: unknown) =>
+      e instanceof IdentityError &&
+      e.code === "browser_open_timeout" &&
+      e.rawCode === "open_url",
+  );
+  assert.equal(freed, 1, "the native port was not released");
+  assert.equal(l.unlistened(), true);
+});
+
+test("the pre-browser deadline stops applying once the browser has opened", async () => {
+  // Past the hand-off the user may legitimately take minutes: only the benign
+  // callback timeout bounds the wait from then on.
+  const l = makeListen();
+  let settled = false;
+  const p = awaitLoopbackCallback({
+    expectedState: "s1",
+    authorizeUrl: "https://provider/a",
+    listen: l.listen,
+    openUrl: openOk,
+    browserOpenTimeoutMs: 5,
+    timeoutMs: 5_000,
+  }).then((v) => {
+    settled = true;
+    return v;
+  });
+  await new Promise((r) => setTimeout(r, 30)); // well past the open deadline
+  assert.equal(settled, false, "the open deadline fired after the hand-off");
+  l.emit("houston://auth-callback?code=late-but-fine&state=s1");
+  assert.equal(await p, "late-but-fine");
+});
+
+test("withBrowserOpenDeadline passes a fast result through and times a slow one out", async () => {
+  assert.equal(
+    await withBrowserOpenDeadline(Promise.resolve("bound"), "loopback_bind", {
+      ms: 50,
+    }),
+    "bound",
+  );
+  await assert.rejects(
+    withBrowserOpenDeadline(new Promise<string>(() => {}), "loopback_bind", {
+      ms: 5,
+    }),
+    (e: unknown) =>
+      e instanceof IdentityError &&
+      e.code === "browser_open_timeout" &&
+      e.rawCode === "loopback_bind",
+  );
+  // A rejection of the underlying work still propagates unchanged.
+  await assert.rejects(
+    withBrowserOpenDeadline(
+      Promise.reject(new Error("all ports busy")),
+      "loopback_bind",
+      { ms: 50 },
+    ),
+    /all ports busy/,
+  );
+});
+
+test("a pre-browser step resolving AFTER the deadline is released, not leaked", async () => {
+  // `start_oauth_loopback` cannot be cancelled while it runs: the attempt id it
+  // will return does not exist yet. If we simply walk away on the deadline, the
+  // listener it binds moments later holds its port for the full 300s and
+  // supersedes the retry the user is now watching.
+  let released: number | null = null;
+  let settle: (h: { attemptId: number }) => void = () => {};
+  const work = new Promise<{ attemptId: number }>((r) => {
+    settle = r;
+  });
+
+  const p = withBrowserOpenDeadline(work, "loopback_bind", {
+    ms: 5,
+    releaseIfLate: (h) => {
+      released = h.attemptId;
+    },
+  });
+  await assert.rejects(
+    p,
+    (e: unknown) =>
+      e instanceof IdentityError && e.code === "browser_open_timeout",
+  );
+  assert.equal(released, null, "nothing has been handed back yet");
+
+  // The native command finally answers, long after we gave up on it.
+  settle({ attemptId: 42 });
+  await tick();
+  assert.equal(
+    released,
+    42,
+    "the orphaned native listener was never cancelled",
+  );
+});
+
+test("a pre-browser step that beats the deadline is never released", async () => {
+  let released = 0;
+  const handle = await withBrowserOpenDeadline(
+    Promise.resolve({ attemptId: 7 }),
+    "loopback_bind",
+    {
+      ms: 200,
+      releaseIfLate: () => {
+        released += 1;
+      },
+    },
+  );
+  await tick();
+  assert.equal(handle.attemptId, 7);
+  assert.equal(released, 0, "a healthy listener was cancelled from under us");
 });
 
 test("parseCallbackQuery returns the WHOLE query when state matches (brokered flow)", () => {
