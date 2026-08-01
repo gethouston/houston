@@ -1,5 +1,6 @@
 import type { WorkspaceId } from "../domain/types";
 import {
+  type CredentialActing,
   type CredentialStore,
   isApiKeyCredential,
   type WorkspaceCredential,
@@ -9,6 +10,7 @@ import {
   type GatewayCredential,
   isNotConnected404,
 } from "./gateway-wire";
+import { credentialScopeKey } from "./scope-key";
 
 const CACHE_TTL_MS = 15_000;
 type CachedCredential = Omit<WorkspaceCredential, "workspaceId">;
@@ -58,37 +60,48 @@ export class RemoteCredentialStore implements CredentialStore {
   async get(
     workspaceId: WorkspaceId,
     provider: string,
+    acting?: CredentialActing,
   ): Promise<WorkspaceCredential | null> {
-    const cached = this.cache.get(provider);
+    const cacheKey = scopeKeyOf(acting, provider);
+    const cached = this.cache.get(cacheKey);
     if (cached && cached.until > Date.now())
       return this.withWorkspace(workspaceId, cached.value);
 
-    const remote = await this.fetchRemote(provider);
+    const remote = await this.fetchRemote(provider, acting);
     if (remote) {
-      this.cache.set(provider, this.cacheEntry(remote));
+      this.cache.set(cacheKey, this.cacheEntry(remote));
       return this.withWorkspace(workspaceId, remote);
     }
 
-    const adopted = await this.adoptFallback(workspaceId, provider);
-    this.cache.set(provider, this.cacheEntry(adopted));
+    const adopted = acting?.actingAs
+      ? null
+      : await this.adoptFallback(workspaceId, provider);
+    this.cache.set(cacheKey, this.cacheEntry(adopted));
     return this.withWorkspace(workspaceId, adopted);
   }
 
   async put(
     cred: WorkspaceCredential,
-    opts?: { ifAbsent?: boolean },
+    opts?: { ifAbsent?: boolean } & CredentialActing,
   ): Promise<void> {
     // ifAbsent rides to the gateway as `x-houston-if-absent`, whose PUT is
     // atomic under the per-(org, provider) row lock — the authoritative guard
     // against clobbering a live rotated refresh token with a cached snapshot.
-    await this.putRemote(cred.provider, cred, { ifAbsent: opts?.ifAbsent });
-    this.cache.delete(cred.provider);
+    await this.putRemote(cred.provider, cred, {
+      ifAbsent: opts?.ifAbsent,
+      acting: opts,
+    });
+    this.cache.delete(scopeKeyOf(opts, cred.provider));
   }
 
-  async remove(workspaceId: WorkspaceId, provider: string): Promise<void> {
+  async remove(
+    workspaceId: WorkspaceId,
+    provider: string,
+    acting?: CredentialActing,
+  ): Promise<void> {
     const res = await this.fetchImpl(this.url(provider), {
       method: "DELETE",
-      headers: this.authHeaders(),
+      headers: this.authHeaders({}, acting),
     });
     // Sign-out is idempotent, like the file store: the gateway's "not
     // connected" 404 means the row is already gone (another pod removed it, or
@@ -99,8 +112,8 @@ export class RemoteCredentialStore implements CredentialStore {
     // Clear the legacy adoption source too — leaving the file entry would let
     // the next get()'s 404-adoption silently resurrect the credential the user
     // just removed, org-wide.
-    await this.fallback?.remove(workspaceId, provider);
-    this.cache.delete(provider);
+    if (!acting?.actingAs) await this.fallback?.remove(workspaceId, provider);
+    this.cache.delete(scopeKeyOf(acting, provider));
   }
 
   /**
@@ -118,13 +131,20 @@ export class RemoteCredentialStore implements CredentialStore {
     workspaceId: WorkspaceId,
     provider: string,
     accessSha256: string,
+    opts?: { scope?: "personal" | "team" } & CredentialActing,
   ): Promise<boolean> {
     const res = await this.fetchImpl(this.url(provider), {
       method: "DELETE",
-      headers: {
-        ...this.authHeaders(),
-        "x-houston-if-access-sha256": accessSha256,
-      },
+      // The scope says WHICH kind of row; the acting header (authHeaders) says
+      // WHOSE. A personal row is keyed by (org, user, provider), so without the
+      // acting identity the gateway cannot address it and refuses the report.
+      headers: this.authHeaders(
+        {
+          ...(opts?.scope ? { "x-houston-credential-scope": opts.scope } : {}),
+          "x-houston-if-access-sha256": accessSha256,
+        },
+        opts,
+      ),
     });
     // Idempotent like remove(): an already-gone row is the outcome we wanted.
     if (res.status !== 200 && !(await isNotConnected404(res)))
@@ -137,8 +157,12 @@ export class RemoteCredentialStore implements CredentialStore {
     // legacy fallback entry alone on a superseded report is deliberate: they
     // may describe the credential that SUPERSEDED the revoked one.
     if (removed) {
-      this.cache.delete(provider);
-      await this.fallback?.remove(workspaceId, provider);
+      // Only the REPORTING identity's entry. Evicting every member's key would
+      // cost every other member of this pod a gateway round-trip for a row that
+      // is still theirs and still live.
+      this.cache.delete(scopeKeyOf(opts, provider));
+      if (opts?.scope !== "personal")
+        await this.fallback?.remove(workspaceId, provider);
     }
     return removed;
   }
@@ -156,9 +180,10 @@ export class RemoteCredentialStore implements CredentialStore {
 
   private async fetchRemote(
     provider: string,
+    acting?: CredentialActing,
   ): Promise<CachedCredential | null> {
     const res = await this.fetchImpl(this.url(provider), {
-      headers: this.authHeaders(),
+      headers: this.authHeaders({}, acting),
     });
     if (await isNotConnected404(res)) return null;
     if (res.status === 502) {
@@ -187,14 +212,17 @@ export class RemoteCredentialStore implements CredentialStore {
   private async putRemote(
     provider: string,
     cred: WorkspaceCredential,
-    opts: { ifAbsent?: boolean } = {},
+    opts: { ifAbsent?: boolean; acting?: CredentialActing } = {},
   ): Promise<void> {
     const res = await this.fetchImpl(this.url(provider), {
       method: "PUT",
-      headers: this.authHeaders({
-        "content-type": "application/json",
-        ...(opts.ifAbsent ? { "x-houston-if-absent": "1" } : {}),
-      }),
+      headers: this.authHeaders(
+        {
+          "content-type": "application/json",
+          ...(opts.ifAbsent ? { "x-houston-if-absent": "1" } : {}),
+        },
+        opts.acting,
+      ),
       body: JSON.stringify({
         kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
         access: cred.accessToken,
@@ -227,8 +255,13 @@ export class RemoteCredentialStore implements CredentialStore {
 
   private authHeaders(
     extra: Record<string, string> = {},
+    acting?: CredentialActing,
   ): Record<string, string> {
-    return { Authorization: `Bearer ${this.podToken}`, ...extra };
+    return {
+      Authorization: `Bearer ${this.podToken}`,
+      ...(acting?.actingAs ? { "x-houston-acting-as": acting.actingAs } : {}),
+      ...extra,
+    };
   }
 
   private async errorFromResponse(
@@ -243,4 +276,16 @@ export class RemoteCredentialStore implements CredentialStore {
       }`,
     );
   }
+}
+
+/**
+ * The cache key for one (acting identity, provider). The identity half is the
+ * SHARED scope derivation (credentials/scope-key.ts), so this adapter and the
+ * local ones resolve the same member to the same row. Exported for its test.
+ */
+export function scopeKeyOf(
+  acting: CredentialActing | undefined,
+  provider: string,
+): string {
+  return `${credentialScopeKey(acting)}|${provider}`;
 }

@@ -1,6 +1,6 @@
-import { join } from "node:path";
 import { config } from "../config";
-import { type PiCred, readAuthFile } from "./auth-file";
+import { currentCredentialScope } from "../session/acting-context";
+import { authPathIn, type PiCred, readAuthFile } from "./auth-file";
 
 export type ExportedCredential = {
   provider: string;
@@ -50,10 +50,16 @@ export function selectExportCredential(
  * provider, falls back to the first connected OAuth provider. Returns null when
  * the (requested) provider isn't connected — also the post-scrub state, so
  * capture must run before scrub.
+ *
+ * Reads the ACTING identity's file (HOU-976): the host forwards the acting-as
+ * token on `/auth/export`, and a member's connect must capture the credential
+ * THEY just connected. Exporting the team's instead would hand the gateway one
+ * refresh-token family to store under two rows — two rotators for one family,
+ * the HOU-950 failure mode.
  */
 export function exportCredential(provider?: string): ExportedCredential | null {
   return selectExportCredential(
-    readAuthFile(join(config.dataDir, "auth.json")),
+    readAuthFile(authPathIn(config.dataDir, currentCredentialScope().key)),
     provider,
   );
 }

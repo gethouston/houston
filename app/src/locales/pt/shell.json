@@ -332,6 +332,9 @@
       "switchToFallback": "Trocar para {{model}}",
       "pickAnother": "Escolher outro modelo"
     },
+    "credential": {
+      "modelUnavailableBody": "O modelo {{model}} não está disponível na sua conta pessoal {{provider}}."
+    },
     "unauthenticated": {
       "title": "Conecte-se ao {{provider}} novamente",
       "bodyTokenExpired": "Sua sessão do {{provider}} expirou. Reconecte para continuar.",

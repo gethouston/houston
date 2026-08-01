@@ -61,21 +61,32 @@ export async function handleSandboxCredential(
     );
     return true;
   }
+  // WHOSE credential this serve is for (HOU-976). The gateway mints the header;
+  // absent (desktop, self-host, every pre-HOU-976 pod) means the single shared
+  // scope, so the whole path below is byte-identical to before.
+  const actingHeader = req.headers["x-houston-acting-as"];
+  const actingAs = Array.isArray(actingHeader) ? actingHeader[0] : actingHeader;
+  const acting = actingAs ? { actingAs } : undefined;
   let deadError: RemoteCredentialDeadError | undefined;
   let cred = null;
   try {
-    cred = await deps.credentials.get(claim.workspaceId, provider);
+    cred = await deps.credentials.get(claim.workspaceId, provider, acting);
   } catch (error) {
     if (!(error instanceof RemoteCredentialDeadError)) throw error;
     deadError = error;
   }
   if (!cred && deps.credentialHealer) {
+    // Self-heal reads the runtime's LIVE credential and pushes it centrally —
+    // as this member, or a warm pod would capture whoever's file it found into
+    // the wrong row (and one member's cooldown would mute everyone else's).
     const healed = await deps.credentialHealer.attempt({
       workspaceId: claim.workspaceId,
       agentId: claim.agentId,
       provider,
+      actingAs,
     });
-    if (healed) cred = await deps.credentials.get(claim.workspaceId, provider);
+    if (healed)
+      cred = await deps.credentials.get(claim.workspaceId, provider, acting);
   }
   if (!cred) {
     if (deadError) throw deadError;
@@ -93,7 +104,7 @@ export async function handleSandboxCredential(
   if (isExpiring(cred) && cred.refreshToken) {
     try {
       cred = await refreshCredential(cred);
-      await deps.credentials.put(cred);
+      await deps.credentials.put(cred, acting);
     } catch (err) {
       if (err instanceof RefreshRejectedError) {
         // The OAuth server rejected the refresh token itself (invalid_grant /
@@ -107,7 +118,7 @@ export async function handleSandboxCredential(
           `[sandbox/credential] refresh token rejected for ${cred.provider}, disconnecting:`,
           err.message,
         );
-        await deps.credentials.remove(claim.workspaceId, cred.provider);
+        await deps.credentials.remove(claim.workspaceId, cred.provider, acting);
         json(
           res,
           404,
@@ -158,6 +169,7 @@ export async function handleSandboxCredential(
     // Copilot Enterprise domain (not a secret) so the runtime sets the right API
     // base URL; null for individual Copilot and every other provider.
     enterpriseUrl: cred.enterpriseUrl ?? null,
+    scope: cred.scope ?? "team",
   });
   return true;
 }

@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import { authStorage } from "../../auth/storage";
 import { claudeCredentialsFile } from "../../backends/claude/paths";
 import {
+  currentCredentialScope,
+  isPersonalScope,
+} from "../../session/acting-context";
+import {
   clampPercent,
   type ProviderUsage,
   type ProviderUsageWindow,
@@ -36,15 +40,21 @@ const KEYCHAIN_SERVICE = "Claude Code-credentials";
  *   3. auth.json — a cloud-served OAuth credential's access token, or the
  *      degraded setup-token fallback (`sk-ant-oat01…`, itself an OAuth token).
  *
+ * Sources 1 and 2 are POD-WIDE team material, so a personal scope skips them
+ * (HOU-976): a member's usage row must be read with the member's own credential,
+ * never the team's. Their own auth.json entry is source 3.
+ *
  * Returns null when nothing is readable — the row reports `unauthenticated`.
  */
 export async function resolveAnthropicToken(
   keychain: () => Promise<string | null> = readKeychainCredential,
 ): Promise<string | null> {
-  const fromFile = tokenFromCredentialJson(readCredentialFile());
-  if (fromFile) return fromFile;
-  const fromKeychain = tokenFromCredentialJson(await keychain());
-  if (fromKeychain) return fromKeychain;
+  if (!isPersonalScope(currentCredentialScope().key)) {
+    const fromFile = tokenFromCredentialJson(readCredentialFile());
+    if (fromFile) return fromFile;
+    const fromKeychain = tokenFromCredentialJson(await keychain());
+    if (fromKeychain) return fromKeychain;
+  }
   const cred = authStorage.get("anthropic");
   if (cred?.type === "oauth" && cred.access) return cred.access;
   if (cred?.type === "api_key" && cred.key) return cred.key;

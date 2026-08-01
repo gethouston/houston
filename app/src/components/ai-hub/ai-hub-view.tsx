@@ -6,23 +6,13 @@ import {
 } from "@houston-ai/core";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
 import { searchModels } from "../../lib/ai-hub/search";
 import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
-import { newEngineActive } from "../../lib/engine";
-import { osIsTauri } from "../../lib/os-bridge";
-import {
-  EMPTY_PROVIDER_CAPABILITIES,
-  getConnectProviders,
-  type ProviderInfo,
-} from "../../lib/providers";
-import { searchProviders } from "../provider-browser/provider-filtering";
-import {
-  groupProviders,
-  providerOwnedSide,
-} from "../provider-browser/provider-grouping";
+import type { ProviderInfo } from "../../lib/providers";
+import { isTeamWorkspace } from "../../lib/space-id";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import { PageContainer } from "../shell/page-shell";
 import { ConnectedProvidersStrip } from "./connected-providers-strip";
 import { HubHero } from "./hub-hero";
@@ -30,16 +20,20 @@ import { HubModalStack } from "./hub-modal-stack";
 import { HubSkeleton } from "./hub-skeleton";
 import { ModelDirectory } from "./model-directory";
 import { ProvidersPane } from "./providers-pane";
+import { useHubProviders } from "./use-hub-providers";
 
 /**
  * The AI models hub: a top-level marketplace surface in the shared
  * {@link CatalogShell} grammar (the same layout as the Integrations page) —
- * the hero, then ONE search field over everything, the consolidated
- * **Connected** strip of provider rows OUTSIDE the tabs (a row opens that
- * provider's modal), then the **Available** discovery tabs with live count
- * chips: **Providers** ({@link ProvidersPane}: the not-yet-connected catalog)
- * and **Models** (the cross-provider directory). The one query narrows the
- * Connected strip and both tabs' content at once.
+ * the hero, the "Your accounts" note in a team space (HOU-976: an agent there
+ * runs on the AI account of whoever messages it, so every member connects their
+ * own here), then ONE
+ * search field over everything, the consolidated **Connected** strip of provider
+ * rows OUTSIDE the tabs (a row opens that provider's modal), then the
+ * **Available** discovery tabs with live count chips: **Providers**
+ * ({@link ProvidersPane}: the not-yet-connected catalog) and **Models** (the
+ * cross-provider directory). The one query narrows the Connected strip and both
+ * tabs' content at once.
  * A provider row or model row opens a centered MODAL (`ProviderModal` /
  * `ModelModal`); the connect-dialog stack renders once here for every surface
  * underneath. (Workspace model policy lives on the Admin page.)
@@ -55,45 +49,17 @@ export function AiHubView() {
   const [openProvider, setOpenProvider] = useState<ProviderInfo | null>(null);
   const [openModel, setOpenModel] = useState<CatalogModel | null>(null);
 
-  const { capabilities } = useCapabilities();
-  const newEngine = newEngineActive();
-  const providerCapabilities =
-    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
-  // The connect cards this deployment can show (merged OpenCode account, engine
-  // + capability gated) — the same set the catalog counts its offers from.
-  const connectProviders = useMemo(
-    () =>
-      getConnectProviders({
-        newEngine,
-        desktop: osIsTauri(),
-        capabilities: providerCapabilities,
-      }),
-    [newEngine, providerCapabilities],
-  );
-  // The user's own providers live in the strip; only the ones we CONFIRMED are
-  // not connected browse in the tab, so the tab's `+` connect is never offered
-  // for an account that may already be signed in (HOU-979). A provider whose
-  // probe came back unconfirmable rides the strip with its own checking dot.
-  // Until the first status probe resolves everything counts as available (the
-  // pane holds a skeleton and the counts stay hidden meanwhile).
-  const groups = useMemo(
-    () => groupProviders(connectProviders, connections.connectionState),
-    [connectProviders, connections.connectionState],
-  );
-  const available = groups.available;
-  const owned = useMemo(() => providerOwnedSide(groups), [groups]);
+  const { available, owned, connectedMatches, availableMatches, searching } =
+    useHubProviders(connections, query);
 
-  // The page query narrows both provider sections; `searching` uncaps the
-  // Connected strip's preview and switches the count chips to shown-count.
-  const searching = query.trim() !== "";
-  const connectedMatches = useMemo(
-    () => searchProviders(owned, query),
-    [owned, query],
-  );
-  const availableMatches = useMemo(
-    () => searchProviders(available, query),
-    [available, query],
-  );
+  // In a TEAM space the accounts on this page are the viewer's OWN: an agent
+  // runs every turn on the AI account of the person who messaged it. Saying so
+  // once, above the catalog, is what keeps a member from reading these rows as
+  // the team's shared connections. A personal space has one account and nothing
+  // to qualify, so it renders no note at all and looks exactly as it shipped.
+  const workspaceId = useWorkspaceStore((s) => s.current?.id);
+  const teamSpace = isTeamWorkspace(workspaceId ?? "");
+
   // Models tab chip: models matching the page query (facets narrow further).
   const modelMatches = useMemo(
     () => (catalog ? searchModels(catalog.models, query) : []),
@@ -158,6 +124,16 @@ export function AiHubView() {
         ) : (
           <>
             <HubHero modelCount={catalog.modelCount} />
+            {teamSpace && (
+              <div className="flex flex-col gap-1">
+                <h2 className="text-sm font-medium text-ink">
+                  {t("accounts.title")}
+                </h2>
+                <p className="text-sm text-ink-muted">
+                  {t("accounts.description")}
+                </p>
+              </div>
+            )}
             <CatalogShell
               controls={
                 <CatalogSearchField

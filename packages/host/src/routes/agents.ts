@@ -53,6 +53,27 @@ import { handleTriggerStatus } from "./trigger-status";
 export type { AgentRouteDeps } from "./agent-authz";
 
 /**
+ * The acting identity a credential route may act on (C2/C5) — the ONE gate the
+ * credential routes below share, so a fifth route cannot reopen the hole by
+ * reading the header itself. The gateway is the trust boundary: it mints
+ * `x-houston-acting-as`, and no pod can verify the signature. Off the gateway
+ * (desktop / self-host) clients reach this host directly, so an inbound header
+ * is untrusted client input — honoring it would let any client file the user's
+ * credential into a per-user scope (`auth-users/<hash>.json`) instead of the
+ * workspace's shared `auth.json`, leaving every agent reading as disconnected.
+ * Same stance as the routine actor below and as ProxyChannel's relay
+ * (channel/proxy.ts).
+ */
+function trustedActingAs(
+  deps: AgentRouteDeps,
+  req: IncomingMessage,
+): string | undefined {
+  if (!deps.gatewayFronted) return undefined;
+  const value = req.headers[ACTING_AS_HEADER];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/**
  * The agent as the wire serves it: the record plus the deployment extras — the
  * real directory (`dir`, local profile only) and the Rust-era legacy `color`
  * (read from `.houston/agent.json`; the client overlay outranks it, see
@@ -346,6 +367,7 @@ export async function handleAgents(
   // new) serves from it. Must precede the generic dispatch.
   const capture = path.match(/^\/agents\/([^/]+)\/credential\/capture$/);
   if (capture && method === "POST") {
+    const actingAs = trustedActingAs(deps, req);
     const agentId = capture[1] ? decodeURIComponent(capture[1]) : undefined;
     if (!agentId) {
       json(res, 404, { error: "not found" });
@@ -369,7 +391,7 @@ export async function handleAgents(
     const provider =
       typeof body.provider === "string" ? body.provider : undefined;
     const result = await channel.captureCredential(
-      { workspace: authz.workspace, agent: authz.agent },
+      { workspace: authz.workspace, agent: authz.agent, actingAs },
       provider,
     );
     if (result.ok) json(res, 200, { ok: true, provider: result.provider });
@@ -387,6 +409,7 @@ export async function handleAgents(
   // agent from it — the provider showed connected again. Must precede dispatch.
   const forget = path.match(/^\/agents\/([^/]+)\/credential\/forget$/);
   if (forget && method === "POST") {
+    const actingAs = trustedActingAs(deps, req);
     const agentId = forget[1] ? decodeURIComponent(forget[1]) : undefined;
     if (!agentId) {
       json(res, 404, { error: "not found" });
@@ -408,7 +431,7 @@ export async function handleAgents(
       return true;
     }
     await channel.forgetCredential(
-      { workspace: authz.workspace, agent: authz.agent },
+      { workspace: authz.workspace, agent: authz.agent, actingAs },
       provider,
     );
     if (
@@ -438,6 +461,7 @@ export async function handleAgents(
   // standing runtime so it reads as connected at once). Must precede dispatch.
   const apiKey = path.match(/^\/agents\/([^/]+)\/credential\/api-key$/);
   if (apiKey && method === "POST") {
+    const actingAs = trustedActingAs(deps, req);
     const agentId = apiKey[1] ? decodeURIComponent(apiKey[1]) : undefined;
     if (!agentId) {
       json(res, 404, { error: "not found" });
@@ -468,7 +492,7 @@ export async function handleAgents(
     }
     try {
       await channel.saveApiKeyCredential(
-        { workspace: authz.workspace, agent: authz.agent },
+        { workspace: authz.workspace, agent: authz.agent, actingAs },
         provider,
         key.trim(),
       );
@@ -496,6 +520,7 @@ export async function handleAgents(
     /^\/agents\/([^/]+)\/credential\/claude-oauth$/,
   );
   if (claudeOAuth && method === "POST") {
+    const actingAs = trustedActingAs(deps, req);
     const agentId = claudeOAuth[1]
       ? decodeURIComponent(claudeOAuth[1])
       : undefined;
@@ -524,7 +549,7 @@ export async function handleAgents(
     }
     try {
       await channel.saveClaudeOAuthCredential(
-        { workspace: authz.workspace, agent: authz.agent },
+        { workspace: authz.workspace, agent: authz.agent, actingAs },
         parsed.value,
         // `?if_absent=1` marks a fill-only push of a CACHED snapshot (the
         // desktop reconcile) — never allowed to clobber a live central

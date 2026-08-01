@@ -15,6 +15,7 @@ import type {
   AddCustomIntegrationInput,
   AgentAssignment,
   CommunitySkillPreview,
+  CredentialScope,
   CustomEndpoint,
   EditableProfileUpdate,
   ComposioAppEntry as EngineComposioAppEntry,
@@ -1350,6 +1351,13 @@ export interface ProviderStatus {
    * chat model picker can show + select it. Absent for catalog-backed providers.
    */
   active_model?: string;
+  /**
+   * WHOSE credential produced this probe (HOU-976). Absent on desktop,
+   * self-host, and any deployment with no acting identity — there is exactly one
+   * credential there and nothing to disambiguate, so every pre-HOU-976 surface
+   * reads the shape it always read.
+   */
+  credentialScope?: CredentialScope;
 }
 
 /**
@@ -1384,6 +1392,10 @@ export const tauriProvider = {
         authenticated: p.authState === "authenticated",
         cli_name: p.cliName,
         active_model: p.activeModel,
+        // Copy the credential attribution THROUGH (HOU-976). This mapping only
+        // keeps fields it names explicitly, so omitting it would silently
+        // swallow which account answered. Absent stays absent.
+        credentialScope: p.credentialScope,
       };
     }),
   /**
@@ -1422,6 +1434,10 @@ export const tauriProvider = {
             authenticated: p.authState === "authenticated",
             cli_name: p.cliName,
             active_model: p.activeModel,
+            // Same explicit copy-through as checkStatus (HOU-976): the batched
+            // path feeds the chat model picker, which is where the account label
+            // is actually rendered.
+            credentialScope: p.credentialScope,
           };
         });
         return out;

@@ -14,13 +14,18 @@ const DEFAULT_INTERVAL_MS = 300_000;
 // also hydrate back on the next wake — a hydrate cap smaller than what sync
 // allows out is a delayed crash-loop (writes succeed today, the wake after
 // the next sleep fails forever). The gap below 10Gi leaves room for the
-// excluded scratch (tmp files, auth.json) that lives on the emptyDir but
-// never syncs.
+// excluded scratch (tmp files, runtime credentials) that lives on the emptyDir
+// but never syncs.
 const DEFAULT_MAX_HYDRATE_BYTES = 9 * 1024 * 1024 * 1024;
 // Warn while the agent is WRITING (actionable), not when a later wake fails:
 // crossing this fraction of the hydrate cap logs loudly on every sync.
 const SIZE_WARN_FRACTION = 0.8;
 
+/**
+ * Extra pod-local paths that must not reach the store. The runtime credential
+ * material (`auth.json`, `auth-users/`) is deliberately absent: `excluded()`
+ * drops it unconditionally, so no caller can configure the leak back in.
+ */
 export const STORE_SYNC_EXCLUDES = [
   "credentials.json",
   "claude-login/.credentials.json",

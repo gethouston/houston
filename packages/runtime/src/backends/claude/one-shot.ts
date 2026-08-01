@@ -7,6 +7,10 @@ import {
 import { resolveClaudeExecutable } from "./binary-path";
 import { toSdkModel } from "./model";
 import { claudeLoginConfigDir } from "./paths";
+import {
+  anthropicCredentialStorageDir,
+  assertAnthropicScopeCredential,
+} from "./scope-guard";
 import type { ClaudeQuery } from "./session";
 import { createStreamTranslator } from "./translate";
 
@@ -29,6 +33,14 @@ export interface ClaudeOneShotParams {
   systemPrompt: string;
   workspaceDir: string;
   readToken: () => ClaudeToken | undefined;
+  /**
+   * The runtime's data dir. Required whenever this can run under a PERSONAL
+   * scope (every production caller — pass `config.dataDir`): it locates that
+   * member's isolated Claude credential store, without which a mid-turn 401
+   * would recover onto the pod-shared team credential. Omitting it is a hard
+   * error on the personal path, never a silent fallback (`./scope-guard`).
+   */
+  dataDir?: string;
   /** pi model id to run with; mapped to the SDK model string. */
   modelId?: string;
   /** Injected for tests; production lazily imports the optional SDK. */
@@ -38,6 +50,16 @@ export interface ClaudeOneShotParams {
 export async function oneShotWithClaude(
   p: ClaudeOneShotParams,
 ): Promise<string> {
+  // Same read-side scope refusal a turn applies (see `./scope-guard`): this path
+  // pins the same pod-shared `CLAUDE_CONFIG_DIR`, so a personal scope with no
+  // personal token would authenticate as the team and let the SDK self-refresh
+  // the team's credential. Decided before the SDK is imported or the env built,
+  // reading the credential exactly once. Its mid-flight sibling — the isolated
+  // credential store that keeps a 401 from recovering onto the team account —
+  // rides `buildClaudeEnv` below.
+  const token = p.readToken();
+  assertAnthropicScopeCredential(token);
+
   let query = p.query;
   if (!query) {
     try {
@@ -53,7 +75,11 @@ export async function oneShotWithClaude(
   const pathToClaudeCodeExecutable = resolveClaudeExecutable();
   const options: Options = {
     cwd: p.workspaceDir,
-    env: buildClaudeEnv(claudeLoginConfigDir(), p.readToken()),
+    env: buildClaudeEnv(
+      claudeLoginConfigDir(),
+      token,
+      anthropicCredentialStorageDir(p.dataDir),
+    ),
     ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
     settingSources: [],
     allowedTools: [],

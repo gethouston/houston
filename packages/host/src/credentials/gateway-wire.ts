@@ -11,6 +11,7 @@ export interface GatewayCredential {
   expires: number;
   accountId?: string | null;
   enterpriseUrl?: string | null;
+  scope?: "personal" | "team";
 }
 
 /**
@@ -42,6 +43,7 @@ export function credentialFromGateway(
     ...(typeof body.enterpriseUrl === "string"
       ? { enterpriseUrl: body.enterpriseUrl }
       : {}),
+    scope: body.scope === "personal" ? "personal" : "team",
   };
 }
 

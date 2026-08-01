@@ -45,6 +45,22 @@ export type ModelUnavailableReason =
 export type QuotaScope = "free_tier" | "paid_plan" | "organization" | "unknown";
 
 /**
+ * WHICH credential ran the failed turn. Present only on a managed-cloud turn
+ * that carried an acting identity — absent on desktop, self-host, and any turn
+ * with no acting identity, where there is exactly one credential and nothing to
+ * name.
+ *
+ * It exists so a failure card can be HONEST about whose account hit the wall
+ * (HOU-976): in a team space every turn runs on the acting member's own AI
+ * account, so "your Anthropic account is rate limited" is a true sentence and a
+ * generic one is not. There is no fallback to offer — a team space has no shared
+ * AI credential — so this only names, it never unlocks an action.
+ */
+export interface ProviderErrorCredential {
+  scope: "personal" | "team";
+}
+
+/**
  * A typed provider/auth/model failure for a turn's model request. Mirrors the
  * relevant subset of the frontend `ProviderError` union (`@houston-ai/chat`) so
  * it renders as the matching inline card (UnauthenticatedCard / RateLimitedCard /
@@ -70,6 +86,8 @@ export type ProviderError =
        * which marks a send the ENGINE refused before persisting anything.
        */
       undelivered_prompt?: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
     }
   | {
       kind: "rate_limited";
@@ -77,6 +95,8 @@ export type ProviderError =
       model: string | null;
       retry_after_seconds: number | null;
       message: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
     }
   | {
       /**
@@ -93,6 +113,8 @@ export type ProviderError =
       /** Reset hint when the provider gives one; null = open-ended (top up / upgrade). */
       resets_at: string | null;
       message: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
     }
   | {
       /**
@@ -109,6 +131,8 @@ export type ProviderError =
       reason: ModelUnavailableReason;
       suggested_fallback: string | null;
       message: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
     }
   | {
       /**
@@ -129,12 +153,28 @@ export type ProviderError =
       context_window_tokens: number | null;
       prompt_tokens: number | null;
       message: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
     }
   | {
       kind: "provider_internal";
       provider: string;
       http_status: number | null;
       message: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
     }
-  | { kind: "network_unreachable"; provider: string; message: string }
-  | { kind: "unknown"; provider: string; raw_excerpt: string };
+  | {
+      kind: "network_unreachable";
+      provider: string;
+      message: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
+    }
+  | {
+      kind: "unknown";
+      provider: string;
+      raw_excerpt: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
+    };

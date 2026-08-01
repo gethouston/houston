@@ -36,10 +36,7 @@
  */
 
 import { useUIStore } from "../stores/ui";
-import {
-  isTransientPushError,
-  PUSH_RETRY_DELAYS_MS,
-} from "./claude-push-retry";
+import { pushClaudeCredentialWithRetry } from "./claude-credential-push";
 import { getEngine } from "./engine";
 import i18n from "./i18n";
 import { logger } from "./logger";
@@ -58,17 +55,6 @@ type Announce = (
 
 /** Poll until the engine reads the provider connected, or the window elapses. */
 type Confirm = (provider: string) => Promise<boolean>;
-
-/**
- * `getEngine()` is typed as the legacy engine-client, but the running instance
- * is the v3 host adapter, which adds this control-plane method. Feature-detected
- * exactly like `providerStatuses` in `tauri.ts`.
- */
-type ClaudeCredentialPusher = {
-  pushClaudeOAuthCredential?: (credentialJson: string) => Promise<void>;
-};
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export type ClaudeHandoffResult =
   | { ok: true }
@@ -99,27 +85,20 @@ async function pushMintedClaudeCredential(): Promise<ClaudeHandoffResult> {
   // unsynchronized source of the routing id: right after a space switch the
   // store can still hold the previous space's agents, so a freshly minted
   // credential would be pushed at an agent the active space does not have.
-  const engine = getEngine() as unknown as ClaudeCredentialPusher;
-  try {
-    if (!engine.pushClaudeOAuthCredential) {
-      throw new Error("This engine can't receive a pushed credential.");
-    }
-    for (let attempt = 0; ; attempt++) {
-      try {
-        await engine.pushClaudeOAuthCredential(credentialJson);
-        return { ok: true };
-      } catch (err) {
-        const delay = PUSH_RETRY_DELAYS_MS[attempt];
-        if (delay === undefined || !isTransientPushError(err)) throw err;
-        logger.warn(
-          `[claude-login] credential push failed (attempt ${attempt + 1}); retrying in ${delay}ms`,
-        );
-        await sleep(delay);
-      }
-    }
-  } catch (err) {
-    return { ok: false, reason: "push-failed", error: err };
-  }
+  //
+  // `pushClaudeOAuthCredential` is declared on `HoustonClient` itself (the legacy
+  // client rejects loudly, the v3 adapter implements it), so this needs no cast.
+  const result = await pushClaudeCredentialWithRetry({
+    push: (json) => getEngine().pushClaudeOAuthCredential(json),
+    credentialJson,
+    onRetry: (attempt, delay) =>
+      logger.warn(
+        `[claude-login] credential push failed (attempt ${attempt}); retrying in ${delay}ms`,
+      ),
+  });
+  return result.ok
+    ? { ok: true }
+    : { ok: false, reason: "push-failed", error: result.error };
 }
 
 /**

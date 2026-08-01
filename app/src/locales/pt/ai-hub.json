@@ -30,6 +30,10 @@
     "models_one": "{{count}} modelo",
     "models_other": "{{count}} modelos"
   },
+  "accounts": {
+    "title": "Suas contas",
+    "description": "Cada agente deste espaço de equipe usa a conta de IA de quem escreve para ele, então as contas que você conecta aqui são as suas."
+  },
   "directory": {
     "search": "Busque {{count}}+ modelos",
     "searchFew": "Buscar modelos",

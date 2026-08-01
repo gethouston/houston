@@ -38,3 +38,26 @@ export function pickerModelRows(
     ? [{ id: runtimeModelId, label: runtimeModelId, description: subtitle }]
     : [];
 }
+
+/**
+ * Name the ACCOUNT a model runs on at the end of its row subtitle (HOU-976 §6):
+ * "Best for complex work · your account".
+ *
+ * In a team space a provider may be connected twice — the member's own account
+ * and the team's shared one — and which of them answered is the difference
+ * between a limit that is theirs to wait out and one to raise with an admin. The
+ * label sits AFTER the model's own description so the reading order stays
+ * model-first; provenance is the qualifier, not the headline.
+ *
+ * `accountLabel` is undefined on every deployment that never said (desktop,
+ * self-host, a personal space, a gateway predating the field), and then the
+ * subtitle is returned verbatim — the picker reads exactly as it did before this
+ * feature. i18n-free by design: the caller passes the already-translated label.
+ */
+export function withAccountLabel(
+  description: string,
+  accountLabel: string | undefined,
+): string {
+  if (!accountLabel) return description;
+  return description ? `${description} · ${accountLabel}` : accountLabel;
+}

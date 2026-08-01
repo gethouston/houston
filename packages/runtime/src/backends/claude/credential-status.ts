@@ -1,5 +1,9 @@
 import { execFile } from "node:child_process";
 import { rmSync } from "node:fs";
+import {
+  currentCredentialScope,
+  isPersonalScope,
+} from "../../session/acting-context";
 import { buildClaudeEnv } from "./backend";
 import { resolveClaudeExecutable } from "./binary-path";
 import { claudeCredentialFileUsable } from "./credentials-file";
@@ -144,8 +148,16 @@ export async function refreshAnthropicCredential(
  * failed with the reconnect card. macOS-local caches in the Keychain (no file
  * to read), so a missing/dead file falls back to the last `claude auth status`
  * probe result (warmed by `getAuthStatus`).
+ *
+ * SCOPE (HOU-976): the shared login dir is POD-WIDE — one file, one Keychain
+ * entry, serving every member of a team space — so it is the TEAM's credential.
+ * A personal scope must not read it as its own: that would report a member
+ * "connected" on a credential that is not theirs and then run their turns on
+ * it. Under a personal scope the answer comes from that member's own auth file
+ * alone (`providerConnected`).
  */
 export function anthropicCredentialCached(): boolean {
+  if (isPersonalScope(currentCredentialScope().key)) return false;
   if (claudeCredentialFileUsable(claudeCredentialsFile())) return true;
   return cache ?? false;
 }

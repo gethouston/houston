@@ -145,6 +145,8 @@ export interface RuntimeLauncher {
 export interface ChannelCtx {
   workspace: Workspace;
   agent: Agent;
+  /** Gateway-minted acting identity for per-user credential operations. */
+  actingAs?: string;
   /**
    * The request body, already drained by the route. The turn path reads it
    * before dispatch to stamp mission attribution (activity-attribution.ts);
@@ -344,6 +346,8 @@ export interface WorkspaceCredential {
    * and it's served back so the runtime points the model at the enterprise API.
    */
   enterpriseUrl?: string;
+  /** Scope selected by the gateway when this credential was served. */
+  scope?: "personal" | "team";
 }
 
 /** A credential is an API key when explicitly tagged, or by the expiresAt=0 sentinel. */
@@ -352,10 +356,16 @@ export function isApiKeyCredential(cred: WorkspaceCredential): boolean {
 }
 
 /** Stores + serves the one connect-once credential per (workspace, provider). */
+export interface CredentialActing {
+  /** The gateway-minted acting-as token verbatim; undefined = team scope. */
+  actingAs?: string;
+}
+
 export interface CredentialStore {
   get(
     workspaceId: WorkspaceId,
     provider: string,
+    acting?: CredentialActing,
   ): Promise<WorkspaceCredential | null>;
   /**
    * Upsert (overwrite in place on refresh). `ifAbsent` makes it a FILL, not a
@@ -365,8 +375,15 @@ export interface CredentialStore {
    * makes the next central refresh trip the provider's refresh-token-reuse
    * detection, revoking the whole family (HOU-855).
    */
-  put(cred: WorkspaceCredential, opts?: { ifAbsent?: boolean }): Promise<void>;
-  remove(workspaceId: WorkspaceId, provider: string): Promise<void>;
+  put(
+    cred: WorkspaceCredential,
+    opts?: { ifAbsent?: boolean } & CredentialActing,
+  ): Promise<void>;
+  remove(
+    workspaceId: WorkspaceId,
+    provider: string,
+    acting?: CredentialActing,
+  ): Promise<void>;
   /**
    * Compare-and-delete: drop the credential only while its access token still
    * hashes to `accessSha256`. Resolves to whether anything was removed.
@@ -377,11 +394,18 @@ export interface CredentialStore {
    * arrives from a turn that may have started before the user reconnected, and
    * an unconditional remove would then delete the credential they just
    * created. A digest mismatch means the report is stale: no-op, not an error.
+   *
+   * `scope` says WHICH kind of row the reported token came from; for a personal
+   * one, `actingAs` says WHOSE (HOU-976). Personal credentials are keyed by
+   * (workspace, user, provider), so a remote store with no acting identity
+   * cannot address the row at all — the report would be rejected and the
+   * revoked token would keep 401ing that member's turns until it expires.
    */
   removeIfAccess(
     workspaceId: WorkspaceId,
     provider: string,
     accessSha256: string,
+    opts?: { scope?: "personal" | "team" } & CredentialActing,
   ): Promise<boolean>;
 }
 

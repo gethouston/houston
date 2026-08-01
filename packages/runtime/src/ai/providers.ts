@@ -8,6 +8,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 // purely dynamic providers (radius) with no static catalog entry.
 import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
 import { authFailureActive } from "../auth/credential-health";
+import { servedScopeFor } from "../auth/served-scope";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
 import { endpointReachableCached } from "./endpoint-reachability";
@@ -521,8 +522,14 @@ function safeModelIds(provider: ProviderId): string[] {
  *  status-surface truth (`providerUsable`): the frontend maps it straight to
  *  authenticated/unauthenticated for the AI Models page and the chat model
  *  picker, so it must mean "this provider's models can actually answer",
- *  not merely "some credential/config artifact exists". */
+ *  not merely "some credential/config artifact exists".
+ *
+ *  `credentialScope` names WHOSE credential produced `configured` (HOU-976), so
+ *  the picker can label a row "your account". Absent unless the request carries
+ *  an acting identity — desktop, self-host and every pre-HOU-976 caller see the
+ *  exact shape they saw before. */
 function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
+  const servedScope = servedScopeFor(id);
   return {
     id,
     name,
@@ -530,6 +537,7 @@ function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
     isActive: id === active,
     activeModel: modelFor(id),
     models: safeModelIds(id),
+    ...(servedScope ? { credentialScope: servedScope } : {}),
   };
 }
 

@@ -15,17 +15,23 @@ import {
  *    workspace-wide
  *    "Defaults for every agent" model ceiling was removed as overengineering, and
  *    the AI Models hub's "Workspace policy" tab stays gone — the hub keeps only
- *    Providers / Models. AI provider connections are org-level (C6), so a plain
- *    member has no account or policy to act on in the hub and loses its nav.
+ *    Providers / Models.
+ *  - ACCOUNTS (HOU-976) are per PERSON and only per person: a team space has no
+ *    shared AI account at all — every agent runs on the AI account of whoever
+ *    messages it — so the hub is visible to EVERYONE and shows each viewer their
+ *    own accounts, with no role-gated section inside it. The space-wide spend
+ *    roll-up did NOT open up with it: it lives in Settings > Admin, behind the
+ *    unchanged owner/admin gate.
  *  - Each member's own model pick lives in the composer, not the hub.
  *  - USAGE (how much of each connected AI account is left) belongs to the
  *    account, so it renders on the hub's Connected row. There is no separate
  *    usage screen anywhere (HOU-789).
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
- * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`) and
- * `/__test__/agent-settings` (the agent model ceiling); the `/v1/org` view load
- * is served by the fake host. See `@houston/fake-host` README +
+ * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`),
+ * `/__test__/workspaces` (the C8 team-space row the hub's account note keys
+ * off) and `/__test__/agent-settings` (the agent model ceiling); the `/v1/org`
+ * view load is served by the fake host. See `@houston/fake-host` README +
  * `knowledge-base/ui-testing.md`.
  */
 
@@ -36,11 +42,44 @@ const OWNER_CAPS = {
   role: "owner",
 };
 
+/** Teams + Spaces, so the switcher can reach an armed TEAM space. The hub's
+ *  "Your accounts" note exists only there — a personal space has one account. */
+const SPACES_CAPS = { multiplayer: true, teams: true, spaces: true };
+
+/** The armed team space (id `org:<16-hex>`), reachable through the switcher. */
+const TEAM = { slug: "00000000000000ab", name: "Acme Team" };
+
 async function armCapabilities(
   request: APIRequestContext,
   caps: Record<string, unknown>,
 ): Promise<void> {
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, { data: caps });
+}
+
+/** Arm the team-space row the C8 workspaces bridge serves. */
+async function armTeamWorkspace(request: APIRequestContext): Promise<void> {
+  await request.post(`${FAKE_HOST_URL}/__test__/workspaces`, {
+    data: { teams: [TEAM] },
+  });
+}
+
+/** A stable nav anchor that is ALWAYS present, so absence assertions never race
+ *  an unrendered sidebar. */
+const settlesShell = (page: Page) =>
+  expect(page.locator('[data-tour-target="nav-settings"]')).toBeVisible();
+
+/** Switch space through the REAL switcher UI the shell renders. */
+async function switchToTeam(page: Page): Promise<void> {
+  await page
+    .locator('[data-tour-target="spaceSwitcher"] button')
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: TEAM.name }).click();
+}
+
+/** Open the AI Models hub from the sidebar. */
+async function openHub(page: Page): Promise<void> {
+  await page.locator('[data-tour-target="nav-ai-hub"]').click();
 }
 
 /** Open Settings > Permissions (the agent list is the top level; per-agent
@@ -69,24 +108,96 @@ test("Teams owner: the AI hub keeps only Providers / Models, the Workspace polic
   );
 });
 
-// ── 2. Plain member: no AI Models nav ──────────────────────────────────────
+// ── 2. Plain member: the hub is theirs, but only their own accounts ─────────
 
-test("Teams member: the AI Models nav item is gone, the rest of the shell stays", async ({
+test("Teams member: the AI Models nav is there, and no usage screen is", async ({
   page,
   request,
 }) => {
-  // A plain member never sees the hub: providers are org-level and the model
-  // policy is per-agent, manager-owned. They pick their own model per agent in
-  // the composer.
-  await armCapabilities(request, { ...OWNER_CAPS, role: "user" });
+  // HOU-976 reversed the old rule. A member has their OWN AI account to connect,
+  // and the hub is the only surface that can manage it, so it is never hidden.
+  // No usage nav rides in with it: account usage belongs to the account (it
+  // renders on the hub's Connected row, HOU-789) and the space-wide roll-up
+  // stays in Settings > Admin.
+  await armCapabilities(request, { ...SPACES_CAPS, role: "user" });
+  await armTeamWorkspace(request);
   await page.goto("/");
+  await settlesShell(page);
 
-  await expect(page.locator('[data-tour-target="nav-ai-hub"]')).toHaveCount(0);
-  // Mission Control and Settings remain — only AI Models is gated off.
+  await expect(page.locator('[data-tour-target="nav-ai-hub"]')).toBeVisible();
+  await expect(page.locator('[data-tour-target="nav-usage"]')).toHaveCount(0);
   await expect(
     page.locator('[data-tour-target="nav-dashboard"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-tour-target="nav-settings"]')).toBeVisible();
+});
+
+test("Teams member in a team space: the hub is theirs, and says so", async ({
+  page,
+  request,
+}) => {
+  // A member with nothing connected must land on a surface that tells them the
+  // accounts here are their own and lets them connect one — no Team account
+  // section to mistake for theirs, and nobody to go ask. This is the whole
+  // self-serve promise of personal-only (HOU-976).
+  await armCapabilities(request, { ...SPACES_CAPS, role: "user" });
+  await armTeamWorkspace(request);
+  await page.goto("/");
+  await settlesShell(page);
+  await switchToTeam(page);
+  await openHub(page);
+
+  await expect(
+    page.getByRole("heading", { name: "Your accounts" }),
+  ).toBeVisible();
+  await expect(page.getByText("Team account", { exact: true })).toHaveCount(0);
+  // …and the connect the note promises is right there, on every provider this
+  // member has not connected yet. No approval step, nobody to go ask.
+  await expect(
+    page.getByRole("button", { name: "Connect OpenAI" }),
+  ).toBeVisible();
+});
+
+test("Teams owner in a team space: the same one surface, no account choice", async ({
+  page,
+  request,
+}) => {
+  // An owner has no extra AI-credential authority in a team space any more:
+  // there is no shared account to manage, so they see exactly what a member
+  // sees. A choice control here would be offering an account that cannot exist.
+  await armCapabilities(request, { ...SPACES_CAPS, role: "owner" });
+  await armTeamWorkspace(request);
+  await page.goto("/");
+  await settlesShell(page);
+  await switchToTeam(page);
+  await openHub(page);
+
+  await expect(
+    page.getByRole("heading", { name: "Your accounts" }),
+  ).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Team account" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText("Team account", { exact: true })).toHaveCount(0);
+});
+
+test("personal space: the hub renders NO account note at all", async ({
+  page,
+  request,
+}) => {
+  // The migration guarantee, asserted. One account means nothing to
+  // disambiguate, so the hub must look exactly like the pre-HOU-976 surface:
+  // no heading, no extra chrome.
+  await armCapabilities(request, { ...SPACES_CAPS, role: "owner" });
+  await armTeamWorkspace(request);
+  await page.goto("/");
+  await settlesShell(page);
+  await openHub(page);
+
+  await expect(page.getByText("Your accounts")).toHaveCount(0);
+  await expect(page.getByText("Team account", { exact: true })).toHaveCount(0);
+  // The hub itself is fully there, so the absence above is the frame, not a
+  // failed render.
+  await expect(page.getByRole("tab", { name: "Providers" })).toBeVisible();
 });
 
 // ── 3. Per-agent model ceiling editor ──────────────────────────────────────
@@ -163,4 +274,53 @@ test("account usage renders on the hub's Connected row and nowhere else", async 
   await expect(settingsRow(page, "organization")).toBeVisible();
   await expect(settingsRow(page, "permissions")).toBeVisible();
   await expect(settingsRow(page, "time-worked")).toHaveCount(0);
+});
+
+// ── 5. A member connects, and their own turns are configured (HOU-976) ─────
+
+test("a team-space member's connect configures THEIR turns, with no scope on the wire", async ({
+  page,
+  request,
+}) => {
+  // The end-to-end promise of personal-only. Two halves:
+  //
+  //  1. the hub a member opens is already showing THEIR resolution — the
+  //     Connected strip lists the providers that answer their own messages, and
+  //     the catalog offers a connect for the ones that do not yet;
+  //  2. that connect names no account on the wire. WHOSE credential it writes is
+  //     the gateway's call, derived from the space the request lands in. A
+  //     `?scope=` creeping back in would re-introduce a client-side resolution
+  //     the server now owns, and it is the one regression that would be
+  //     invisible in the UI.
+  await armCapabilities(request, { ...SPACES_CAPS, role: "user" });
+  await armTeamWorkspace(request);
+
+  const credentialCalls: string[] = [];
+  await page.route("**/*", async (route) => {
+    const url = route.request().url();
+    if (/\/credential\/|\/auth\//.test(url)) credentialCalls.push(url);
+    await route.continue();
+  });
+
+  await page.goto("/");
+  await settlesShell(page);
+  await switchToTeam(page);
+  await openHub(page);
+
+  // What already answers for THIS member. The strip is per-viewer by
+  // construction: it renders the provider status probe, which the pod resolves
+  // against the acting identity's own credential file.
+  await expect(page.getByRole("heading", { name: /^Connected/ })).toBeVisible();
+
+  // And the self-serve connect for one that does not.
+  await page.getByRole("button", { name: "Connect OpenAI" }).click();
+
+  // The login round-trip fired…
+  await expect
+    .poll(() => credentialCalls.length, { timeout: 15_000 })
+    .toBeGreaterThan(0);
+  // …and not one request named an account.
+  for (const url of credentialCalls) {
+    expect(url).not.toContain("scope=");
+  }
 });

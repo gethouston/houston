@@ -1,11 +1,14 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { ProviderError } from "@houston/protocol";
 import { accessDigest } from "@houston/protocol/access-digest";
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
 import { config } from "../config";
+import { runWithActingContext } from "../session/acting-context";
+import { authPathIn, servedProvidersPathIn } from "./auth-file";
 import { reportRevokedServedToken } from "./report-revoked";
+import { recordServedScope, resetServedScopes } from "./served-scope";
 
 /**
  * The reporter is a DELETE trigger for a workspace-wide credential, so the
@@ -69,6 +72,35 @@ function servedAnthropic(dataDir: string, access = "served-access"): void {
   );
 }
 
+/** The same, but in ONE member's files — where a per-identity serve sync lands. */
+function servedAnthropicFor(
+  dataDir: string,
+  scopeKey: string,
+  access: string,
+): void {
+  const authPath = authPathIn(dataDir, scopeKey);
+  mkdirSync(dirname(authPath), { recursive: true });
+  writeFileSync(
+    authPath,
+    JSON.stringify({
+      anthropic: { type: "oauth", access, refresh: "", expires: 0 },
+    }),
+  );
+  writeFileSync(
+    servedProvidersPathIn(dataDir, scopeKey),
+    JSON.stringify(["anthropic"]),
+  );
+}
+
+function actingToken(sub: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
+  return `acting-v1.${payload}.sig`;
+}
+
+const alice = { actingAs: actingToken("sub-alice") };
+
+afterEach(() => resetServedScopes());
+
 const revoked: ProviderError = {
   kind: "unauthenticated",
   provider: "anthropic",
@@ -89,6 +121,36 @@ test("reports a revoked served token, naming it by digest only", async () => {
   expect(captured?.body.accessSha256).toBe(accessDigest("the-revoked-token"));
   // The token itself must never leave the runtime.
   expect(JSON.stringify(captured?.body)).not.toContain("the-revoked-token");
+});
+
+test("a member's report names the acting identity, not just the scope", async () => {
+  // Without the acting token the gateway cannot tell WHICH member's row a
+  // personal digest-delete targets, so it answers 400 and the dead token
+  // survives — the whole HOU-952 failure this path exists to end.
+  const captured = await withServeMode(
+    (dir) => servedAnthropicFor(dir, "u:sub-alice", "alice-revoked-token"),
+    () =>
+      runWithActingContext(alice, () => {
+        recordServedScope("anthropic", "personal");
+        reportRevokedServedToken(revoked);
+      }),
+  );
+
+  expect(captured?.body.actingAs).toBe(alice.actingAs);
+  expect(captured?.body.scope).toBe("personal");
+  expect(captured?.body.accessSha256).toBe(accessDigest("alice-revoked-token"));
+});
+
+test("a team report carries no acting identity at all", async () => {
+  // Desktop, self-host and every pre-HOU-976 turn: the body stays exactly what
+  // it was, so an older control plane sees no new field.
+  const captured = await withServeMode(
+    (dir) => servedAnthropic(dir),
+    () => reportRevokedServedToken(revoked),
+  );
+
+  expect(captured?.body.scope).toBe("team");
+  expect(Object.hasOwn(captured?.body ?? {}, "actingAs")).toBe(false);
 });
 
 test("does NOT report a non-terminal auth failure", async () => {

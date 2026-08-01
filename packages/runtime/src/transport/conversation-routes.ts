@@ -1,5 +1,5 @@
 import { normalizeTurnMode, parseMentions } from "@houston/protocol";
-import type { ActingContext } from "../session/acting-context";
+import { actingFromHeaders } from "../session/acting-context";
 import { evict, isTurnRunning } from "../session/bus";
 import {
   cancelTurn,
@@ -236,15 +236,4 @@ function positiveInt(raw: string | null, min = 1): number | undefined {
   if (raw === null) return undefined;
   const n = Number.parseInt(raw, 10);
   return Number.isInteger(n) && n >= min ? n : undefined;
-}
-
-/** Extract the C2 acting-as identity from a message request's headers, or undefined. */
-function actingFromHeaders(
-  headers: RouteContext["req"]["headers"],
-): ActingContext | undefined {
-  const one = (v: string | string[] | undefined) =>
-    Array.isArray(v) ? v[0] : v;
-  const actingAs = one(headers["x-houston-acting-as"]);
-  const actingUser = one(headers["x-houston-acting-user"]);
-  return actingAs || actingUser ? { actingAs, actingUser } : undefined;
 }

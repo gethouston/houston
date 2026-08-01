@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { endpointFileIn, OPENAI_COMPATIBLE } from "../ai/openai-compatible";
 import { claudeCredentialsFile } from "../backends/claude/paths";
 import { config } from "../config";
-import { readAuthFile } from "./auth-file";
+import {
+  currentCredentialScope,
+  isPersonalScope,
+} from "../session/acting-context";
+import { authPathIn, readAuthFile } from "./auth-file";
 
 /**
  * Turn-time truth fed back into provider status.
@@ -36,8 +39,18 @@ import { readAuthFile } from "./auth-file";
  * state could wedge a provider off after an out-of-band fix.
  */
 
-/** provider id → fingerprint of the credential that failed authentication. */
+/**
+ * `${scopeKey}:${provider}` → fingerprint of the credential that failed
+ * authentication. Keyed by acting identity (HOU-976) because on a shared pod
+ * two members hold two different credentials for the same provider: one
+ * member's dead token must not report the OTHER member's provider disconnected.
+ */
 const failed = new Map<string, string>();
+
+/** The mark key for a provider under the CURRENT acting identity. */
+function markFor(id: string): string {
+  return `${currentCredentialScope().key}:${id}`;
+}
 
 function digest(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -60,11 +73,17 @@ function fileFingerprint(path: string): string {
  * OpenAI-compatible provider carries its endpoint config (same placeholder
  * key, different server = a different "credential": reconfiguring the
  * endpoint must heal a failure mark).
+ *
+ * Everything read here belongs to the CURRENT acting identity (HOU-976). The
+ * shared-dir credentials file is the exception in reverse: it is team material,
+ * so it only counts in the team scope — otherwise another member's credential
+ * push would heal (or re-break) a member's own mark.
  */
 function credentialFingerprint(id: string): string {
-  const cred = readAuthFile(join(config.dataDir, "auth.json"))[id];
+  const { key } = currentCredentialScope();
+  const cred = readAuthFile(authPathIn(config.dataDir, key))[id];
   const stored = cred ? digest(JSON.stringify(cred)) : "absent";
-  if (id === "anthropic")
+  if (id === "anthropic" && !isPersonalScope(key))
     return `${stored}|${fileFingerprint(claudeCredentialsFile())}`;
   if (id === OPENAI_COMPATIBLE)
     return `${stored}|${fileFingerprint(endpointFileIn(config.dataDir))}`;
@@ -74,14 +93,14 @@ function credentialFingerprint(id: string): string {
 /** Record that a turn failed authentication on this provider's current
  *  credential. `fingerprint` is injectable for tests. */
 export function noteAuthFailure(id: string, fingerprint?: string): void {
-  failed.set(id, fingerprint ?? credentialFingerprint(id));
+  failed.set(markFor(id), fingerprint ?? credentialFingerprint(id));
 }
 
 /** Heal the mark without a credential change — a turn that COMPLETED on this
  *  provider proved the credential works (exec-turn / turn-session call this on
  *  every clean turn; cheap no-op when nothing is marked). */
 export function clearAuthFailure(id: string): void {
-  failed.delete(id);
+  failed.delete(markFor(id));
 }
 
 /**
@@ -91,10 +110,11 @@ export function clearAuthFailure(id: string): void {
  * path (nothing marked) does no IO. `fingerprint` is injectable for tests.
  */
 export function authFailureActive(id: string, fingerprint?: string): boolean {
-  const marked = failed.get(id);
+  const mark = markFor(id);
+  const marked = failed.get(mark);
   if (marked === undefined) return false;
   if (marked !== (fingerprint ?? credentialFingerprint(id))) {
-    failed.delete(id);
+    failed.delete(mark);
     return false;
   }
   return true;

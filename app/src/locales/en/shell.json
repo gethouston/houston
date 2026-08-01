@@ -347,6 +347,9 @@
       "switchToFallback": "Switch to {{model}}",
       "pickAnother": "Pick another model"
     },
+    "credential": {
+      "modelUnavailableBody": "{{model}} is not available on your personal {{provider}} account."
+    },
     "unauthenticated": {
       "title": "Sign in to {{provider}} again",
       "bodyTokenExpired": "Your {{provider}} session expired. Reconnect to continue.",

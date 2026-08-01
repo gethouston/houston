@@ -194,14 +194,14 @@
           "title": "Aún no hay proveedores conectados.",
           "hint": "Conecta un modelo de IA para empezar a chatear."
         },
-        "teamCanConnect": {
-          "title": "Este espacio de equipo aún no tiene una conexión de IA.",
-          "hint": "Conecta un modelo de IA para este equipo y todos aquí podrán usarlo."
-        },
-        "teamAskAdmin": {
-          "title": "Este espacio de equipo aún no tiene una conexión de IA.",
-          "hint": "Pídele a un propietario o administrador del equipo que conecte un modelo de IA para este espacio."
+        "team": {
+          "title": "Aún no has conectado una cuenta de IA.",
+          "hint": "Conecta tu propia cuenta de IA y los agentes de este equipo te responderán."
         }
+      },
+      "account": {
+        "personal": "tu cuenta",
+        "team": "cuenta del equipo"
       },
       "hiddenByWorkspace_one": "{{count}} modelo más está desactivado en tu espacio de trabajo",
       "hiddenByWorkspace_other": "{{count}} modelos más están desactivados en tu espacio de trabajo"

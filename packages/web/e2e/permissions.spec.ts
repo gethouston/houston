@@ -245,6 +245,14 @@ test("agent Settings: a plain member sees access read-only (states visible, no c
     page.getByRole("heading", { name: "Which apps can this agent use?" }),
   ).toBeVisible();
   await expect(page.getByRole("radio", { name: "Any app" })).toBeDisabled();
+
+  // AI models likewise: a member SEES the agent's model ceiling with every
+  // control disabled. Read-only must never mean hidden. (There is no AI-account
+  // policy on an agent — every turn runs on the sender's own account, HOU-976.)
+  // `exact` disambiguates the settings rail's "AI models" row from the sidebar's
+  // "AI Models" hub entry, which a member now sees too (HOU-976).
+  await page.getByRole("button", { name: "AI models", exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Any model" })).toBeDisabled();
 });
 
 test("Admin People roster shows a member's gateway display name, email as a secondary line", async ({

@@ -1,6 +1,10 @@
 import { createServer } from "node:http";
 import { primeAnthropicCredential } from "../backends/claude/credential-status";
 import { config } from "../config";
+import {
+  actingFromHeaders,
+  runWithActingContext,
+} from "../session/acting-context";
 import { anyTurnRunning } from "../session/bus";
 import { handleAnonymizeRoute } from "./anonymize-route";
 import { handleConversationRoute } from "./conversation-routes";
@@ -47,9 +51,19 @@ async function handle(ctx: RouteContext) {
   json(ctx.res, 404, { error: "not found" });
 }
 
+/**
+ * Every runtime request runs inside the acting identity its headers carry
+ * (HOU-976), so credential resolution is scope-correct on ALL of them — not just
+ * the message route: `GET /providers`, `/auth/status`, `/auth/:p/login`,
+ * `/auth/export` and the serve sync they trigger each read or write a
+ * credential. The per-turn wrap in session/exec-turn.ts STAYS: a turn outlives
+ * the request that started it.
+ */
 export function createRuntimeServer() {
   return createServer((req, res) => {
-    handle(routeContext(req, res)).catch((e) => {
+    runWithActingContext(actingFromHeaders(req.headers), () =>
+      handle(routeContext(req, res)),
+    ).catch((e) => {
       console.error("[server] unhandled:", e);
       if (!res.headersSent) json(res, 500, { error: "internal error" });
       else if (!res.writableEnded) res.end();

@@ -48,9 +48,10 @@ describe("HOU-467 / HOU-529 card unification", () => {
   });
 
   it("RateLimitedCard becomes a RowCard with a clock + icon-free buttons", () => {
-    const src = read(
-      "../src/components/shell/provider-error-cards/transient.tsx",
-    );
+    // The account-shaped limit variants live in `limits.tsx` since HOU-976 split
+    // them from the retry-now transients; `transient.tsx` keeps network /
+    // provider-internal / malformed.
+    const src = read("../src/components/shell/provider-error-cards/limits.tsx");
     ok(src.includes("RateLimitedCard"), "card still exists");
     ok(src.includes("RowCard"), "rate-limit migrated to RowCard");
     // The rate-limit retry is the shared `RetryButton` — a text-only
@@ -67,10 +68,14 @@ describe("HOU-467 / HOU-529 card unification", () => {
       "rate-limit shows a clock, not the provider logo",
     );
     ok(!src.includes("ProviderGlyph"), "rate-limit dropped the provider glyph");
-    // Every transient variant now renders on the unified RowCard — none remain
-    // on the old ErrorCard layout.
+    // Every limit + transient variant renders on the unified RowCard — none
+    // remain on the old ErrorCard layout.
+    ok(!src.includes("ErrorCard"), "all limit variants migrated off ErrorCard");
+    const transient = read(
+      "../src/components/shell/provider-error-cards/transient.tsx",
+    );
     ok(
-      !src.includes("ErrorCard"),
+      transient.includes("RowCard") && !transient.includes("ErrorCard"),
       "all transient variants migrated off ErrorCard",
     );
 

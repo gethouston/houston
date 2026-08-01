@@ -1,5 +1,6 @@
 import { getOverflowPatterns } from "@earendil-works/pi-ai";
 import type { AuthFailureCause, ProviderError } from "@houston/runtime-client";
+import { servedScopeFor } from "../auth/served-scope";
 
 /**
  * Classify a failed model request into a typed `ProviderError` so the chat can
@@ -169,8 +170,8 @@ const COPILOT_BASE_FALLBACK = "gpt-4.1";
 const EXCERPT_MAX = 300;
 
 /**
- * Map a failed model request to a typed `ProviderError`. Pure — every branch is
- * unit-tested against verbatim provider strings (`provider-error.test.ts`).
+ * Map a failed model request to a typed `ProviderError`, then stamp WHOSE
+ * credential ran the turn (`stampCredentialScope`).
  *
  * Precedence is deliberate: auth first (a 401/session-kill is unambiguous and
  * the most actionable, and a session-kill body can also mention "limit"), then
@@ -180,6 +181,32 @@ const EXCERPT_MAX = 300;
 export function classifyProviderError(
   input: ProviderErrorInput,
 ): ProviderError {
+  return stampCredentialScope(classify(input));
+}
+
+/**
+ * Attach the credential context of the turn that failed: WHICH credential the
+ * gateway served for this provider under the ambient acting identity (HOU-976),
+ * so the card can name the account that hit the wall rather than the provider
+ * alone. It unlocks no action — a team space has no shared AI credential to
+ * offer instead.
+ *
+ * A no-op without an acting identity (desktop, self-host, routines) and for a
+ * provider this runtime was never served, so the wire shape is unchanged
+ * everywhere it was before. Exported for the paths that SYNTHESIZE a provider
+ * error instead of classifying one.
+ */
+export function stampCredentialScope(err: ProviderError): ProviderError {
+  const served = servedScopeFor(err.provider);
+  if (!served) return err;
+  return { ...err, credential: { scope: served } };
+}
+
+/**
+ * The classification itself. Pure — every branch is unit-tested against
+ * verbatim provider strings (`provider-error.test.ts`).
+ */
+function classify(input: ProviderErrorInput): ProviderError {
   const { provider } = input;
   const model = input.model ?? null;
   const message = input.message?.trim() || "Unknown provider error";

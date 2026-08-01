@@ -57,20 +57,29 @@ export function canSeeMembers(caps: Capabilities | null | undefined): boolean {
 }
 
 /**
- * Should the global AI Models hub be visible to this caller? In a Teams
- * workspace the hub is owner/admin territory: AI provider connections are
- * org-level (one credential per org — whoever connects, every member's agents
- * work; C6), so a plain member has no account to connect there. Members pick
- * their own model per agent in the composer instead. Everyone else —
- * single-player and non-Teams multiplayer — keeps the hub unchanged. A
- * cosmetic gate: the gateway is the real enforcer (a member's provider-connect
- * POST already 403s); this only hides an affordance that would be dead for a
- * plain member.
+ * Should the global AI Models hub be visible to this caller? ALWAYS — for
+ * everyone, in every deployment (HOU-976).
+ *
+ * It used to be owner/admin territory in a Teams workspace, on the premise that
+ * AI provider connections were org-level and a plain member therefore had no
+ * account to connect. That premise is gone: a team space has NO shared AI
+ * account — every turn runs on the AI account of the member who sent it — so the
+ * hub is where each of them connects their own. Hiding it left the only surface
+ * that can manage a personal account unreachable by the person who owns it, with
+ * no admin able to connect one on their behalf.
+ *
+ * Opening the hub does NOT widen anything else: the TEAM's own consumption is
+ * not on it. Per-account usage on a hub card is the caller's own account
+ * (HOU-789), while the space-wide roll-up lives in Admin > Usage behind
+ * {@link canSeeOrganization} (HOU-788), which is untouched.
+ *
+ * Kept as a function (rather than deleted at every call site) because it names
+ * WHY the surface is visible, and because the gateway remains the real enforcer
+ * of every write behind it.
  */
 export function canSeeAiModelsPage(
-  caps: Capabilities | null | undefined,
+  _caps: Capabilities | null | undefined,
 ): boolean {
-  if (isMultiplayer(caps) && caps?.teams === true) return canSeeMembers(caps);
   return true;
 }
 

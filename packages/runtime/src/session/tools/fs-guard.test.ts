@@ -8,7 +8,7 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
-import { PathEscapeError, WorkspaceGuard } from "./fs-guard";
+import { PathDeniedError, PathEscapeError, WorkspaceGuard } from "./fs-guard";
 
 /**
  * Gate #1 unit wall: every path shape a prompt-injected model could supply to
@@ -119,6 +119,119 @@ test("guard root is canonical even when the configured root holds symlinks (macO
   // macOS; the guard must compare against the canonical form or every
   // in-workspace path would be rejected.
   expect(guard.clamp("notes.txt").startsWith(guard.root)).toBe(true);
+});
+
+/**
+ * The runtime's own dataDir is a CHILD of the workspace root on every profile
+ * (`<agentDir>/.houston/runtime`, see host.ts), so containment alone leaves
+ * every team member's live provider tokens readable by the agent's file tools.
+ * These cover the deny wall: the credential FAMILY is refused at any depth, by
+ * both walls, for reads and writes — while ordinary `.houston` data stays open.
+ */
+function credentialRoot(): { root: string; guard: WorkspaceGuard } {
+  // Canonical from the start: on macOS /tmp is itself a symlink, and an absolute
+  // path through it would be rejected as an escape before the deny even runs.
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "houston-cred-")));
+  const runtime = join(root, ".houston", "runtime");
+  mkdirSync(join(runtime, "auth-users"), { recursive: true });
+  writeFileSync(join(runtime, "auth.json"), '{"anthropic":{"access":"tok"}}');
+  writeFileSync(
+    join(runtime, "auth-users", "deadbeefdeadbeef.json"),
+    '{"anthropic":{"access":"tok"}}',
+  );
+  writeFileSync(
+    join(runtime, "auth-users", "deadbeefdeadbeef.served-providers.json"),
+    '["anthropic"]',
+  );
+  writeFileSync(join(runtime, "served-providers.json"), '["anthropic"]');
+  writeFileSync(join(root, ".houston", "activity.json"), "[]");
+  mkdirSync(join(root, ".houston", "conversations"), { recursive: true });
+  writeFileSync(join(root, ".houston", "conversations", "c1.json"), "{}");
+  writeFileSync(join(root, "CLAUDE.md"), "# agent");
+  mkdirSync(join(root, "workspace"), { recursive: true });
+  writeFileSync(join(root, "workspace", "notes.txt"), "notes");
+  mkdirSync(join(root, "claude-login"), { recursive: true });
+  writeFileSync(join(root, "claude-login", ".credentials.json"), "{}");
+  return { root, guard: new WorkspaceGuard(root) };
+}
+
+const CREDENTIAL_PATHS = [
+  ".houston/runtime/auth.json",
+  ".houston/runtime/auth-users/deadbeefdeadbeef.json",
+  ".houston/runtime/auth-users/deadbeefdeadbeef.served-providers.json",
+  "./x/../.houston/runtime/auth.json",
+  "claude-login/.credentials.json",
+];
+
+test("clamp denies every credential path shape (relative, traversal, absolute)", () => {
+  const { root, guard } = credentialRoot();
+  for (const p of CREDENTIAL_PATHS) {
+    expect(() => guard.clamp(p), p).toThrow(PathDeniedError);
+    expect(() => guard.clamp(join(root, p)), `absolute ${p}`).toThrow(
+      PathDeniedError,
+    );
+  }
+});
+
+test("assertInside denies credential paths pi already resolved (inner wall)", () => {
+  const { guard } = credentialRoot();
+  for (const p of CREDENTIAL_PATHS) {
+    expect(() => guard.assertInside(join(guard.root, p)), p).toThrow(
+      PathDeniedError,
+    );
+  }
+});
+
+test("the credential deny is depth-independent and case-insensitive", () => {
+  const { guard } = credentialRoot();
+  // A deeper (or shallower) layout must not become readable, and a
+  // case-insensitive filesystem would otherwise serve auth.json for AUTH.JSON.
+  expect(() => guard.clamp("auth.json")).toThrow(PathDeniedError);
+  expect(() => guard.clamp("a/b/c/auth-users/x.json")).toThrow(PathDeniedError);
+  expect(() => guard.clamp(".houston/runtime/AUTH.json")).toThrow(
+    PathDeniedError,
+  );
+  expect(() => guard.clamp(".houston/runtime/Auth-Users/x.json")).toThrow(
+    PathDeniedError,
+  );
+});
+
+test("a symlink inside the workspace cannot launder a credential path", () => {
+  const { guard, root } = credentialRoot();
+  symlinkSync(
+    join(root, ".houston", "runtime", "auth.json"),
+    join(root, "innocent.txt"),
+  );
+  expect(() => guard.clamp("innocent.txt")).toThrow(PathDeniedError);
+});
+
+test("the deny message never quotes credential contents", () => {
+  const { guard } = credentialRoot();
+  let message = "";
+  try {
+    guard.clamp(".houston/runtime/auth.json");
+  } catch (err) {
+    message = (err as Error).message;
+  }
+  expect(message).not.toContain("tok");
+  expect(message).not.toContain("anthropic");
+});
+
+test("ordinary .houston data and workspace files stay allowed", () => {
+  const { guard } = credentialRoot();
+  for (const p of [
+    ".houston/activity.json",
+    // The TEAM served-providers manifest is a provider-name list, not a secret.
+    ".houston/runtime/served-providers.json",
+    ".houston/conversations/c1.json",
+    "CLAUDE.md",
+    "workspace/notes.txt",
+  ]) {
+    expect(guard.clamp(p), p).toBe(join(guard.root, p));
+    expect(guard.assertInside(join(guard.root, p)), p).toBe(
+      join(guard.root, p),
+    );
+  }
 });
 
 test("prefix-sibling directory does not pass the containment check", () => {

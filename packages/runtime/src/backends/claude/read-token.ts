@@ -24,6 +24,12 @@ import type { ClaudeToken } from "./backend";
  * expected), but a STORED value we can't classify (unexpected PiCred variant,
  * or an unrecognized prefix) returns `undefined` AND logs the concrete reason,
  * so a bad/corrupt entry surfaces in the logs instead of vanishing.
+ *
+ * SCOPE (HOU-976): `store.get` resolves the ambient acting identity, so on a
+ * shared pod this returns the ACTING member's anthropic token — read inside the
+ * turn's async subtree by every caller (conversation-cache, summarize,
+ * anonymize). Nothing here may fall back to the pod-shared login dir: that is
+ * the team's credential (credential-status.ts).
  */
 const [OAUTH_TOKEN_PREFIX, API_KEY_PREFIX] = ANTHROPIC_TOKEN_PREFIXES;
 

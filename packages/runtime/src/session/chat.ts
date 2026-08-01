@@ -2,6 +2,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import type { TurnMode } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { stampCredentialScope } from "../ai/provider-error";
 import {
   activeProvider,
   canonicalPinProvider,
@@ -104,14 +105,18 @@ export async function runTurn(
       turnId,
     });
     const message = `No provider connected for ${canonicalPinnedProvider}. Connect it first.`;
+    // Synthesized, so it must stamp the credential context itself (see the
+    // getConversation catch below): the card names WHOSE account is missing the
+    // provider, which in a team space is the acting member's own. A no-op
+    // without an acting identity, so the desktop wire shape is unchanged.
     appendAssistantMessage(id, "", {
-      providerError: {
+      providerError: stampCredentialScope({
         kind: "unauthenticated",
         provider: canonicalPinnedProvider,
         cause: "no_credentials",
         message,
         undelivered_prompt: text,
-      },
+      }),
       turnId,
     });
     publish(id, { type: "error", data: { message }, turnId });
@@ -165,20 +170,28 @@ export async function runTurn(
     const message = errMessage(err);
     const notConnected =
       /no local model configured|no provider connected/i.test(message);
+    // This error is SYNTHESIZED, not classified, so it must stamp the
+    // credential context itself — `classifyProviderError` does it for every
+    // error that goes through the classifier, and a card without the stamp
+    // cannot say WHOSE account is not connected: in a team space every turn
+    // runs on the acting member's own AI account (HOU-976). A no-op without an
+    // acting identity, so the desktop wire shape is unchanged.
     appendAssistantMessage(id, "", {
-      providerError: notConnected
-        ? {
-            kind: "unauthenticated",
-            provider: pin?.provider ?? "",
-            cause: "no_credentials",
-            message,
-            undelivered_prompt: text,
-          }
-        : {
-            kind: "unknown",
-            provider: pin?.provider ?? "unknown",
-            raw_excerpt: message,
-          },
+      providerError: stampCredentialScope(
+        notConnected
+          ? {
+              kind: "unauthenticated",
+              provider: pin?.provider ?? "",
+              cause: "no_credentials",
+              message,
+              undelivered_prompt: text,
+            }
+          : {
+              kind: "unknown",
+              provider: pin?.provider ?? "unknown",
+              raw_excerpt: message,
+            },
+      ),
       turnId,
     });
     publish(id, { type: "error", data: { message }, turnId });

@@ -57,7 +57,16 @@ export async function handleSandboxProviderUsage(
     json(res, 400, { error: `no central usage probe for ${provider}` });
     return true;
   }
-  const cred = await deps.credentials.get(claim.workspaceId, provider);
+  // WHOSE Copilot account this quota is for (HOU-976): the runtime forwards the
+  // gateway-minted acting-as token, exactly as it does for the credential serve.
+  // Absent (desktop, self-host, every pre-HOU-976 pod) = the single shared row.
+  const actingHeader = req.headers["x-houston-acting-as"];
+  const actingAs = Array.isArray(actingHeader) ? actingHeader[0] : actingHeader;
+  const cred = await deps.credentials.get(
+    claim.workspaceId,
+    provider,
+    actingAs ? { actingAs } : undefined,
+  );
   if (!cred?.refreshToken) {
     // Same authoritative marker as /sandbox/credential: the store's own
     // "not connected" answer, never a bare route-level 404.

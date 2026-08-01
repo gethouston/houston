@@ -1,6 +1,14 @@
 import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -16,9 +24,28 @@ import { fileURLToPath } from "node:url";
  * Shared roots (the org-shared mirror) get the same discipline — agents edit
  * the org original there by design. Callers rewrite the tool's path param to the clamped result, so a
  * normalization divergence from pi cannot escape an allowed root.
+ *
+ * Containment alone is NOT enough: the runtime's own dataDir sits INSIDE the
+ * workspace root (`<agentDir>/.houston/runtime`, wired in the host's
+ * `dataDirFor`), so the credential files — `auth.json`, every team member's
+ * `auth-users/<hash>.json`, and a materialized `claude-login/.credentials.json`
+ * — resolve to legal in-workspace paths. On a shared team pod that would let one
+ * prompt-injected agent read the whole space's live provider tokens with no bash
+ * tool at all. Hence the second rule below: a DENY list of credential path
+ * segments that every allowed root enforces, for reads and writes alike.
  */
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
+
+/**
+ * Path segments that mark runtime credential material, matched anywhere under
+ * an allowed root. Matching by SEGMENT (not by full path) is what makes the rule
+ * survive a layout change: moving the data dir deeper or shallower cannot open a
+ * hole. It deliberately over-denies — a user file that happens to be named
+ * `auth.json` is refused too, which is the safe direction for a wall whose
+ * failure mode is leaking every team member's access token.
+ */
+const DENIED_SEGMENTS = new Set(["auth.json", "auth-users", "claude-login"]);
 
 interface RootBoundary {
   canonical: string;
@@ -39,6 +66,20 @@ export class PathEscapeError extends Error {
       `Path is outside the agent workspace: ${raw} (file tools can only touch files under ${root})`,
     );
     this.name = "PathEscapeError";
+  }
+}
+
+/**
+ * A path inside an allowed root that holds sign-in credentials. The message is
+ * shown verbatim in a tool result, so it stays plain-language and never echoes
+ * anything but the path the model itself supplied.
+ */
+export class PathDeniedError extends Error {
+  constructor(raw: string) {
+    super(
+      `This file holds the sign-in credentials for the connected accounts, so it cannot be read or changed: ${raw}. Those accounts are already connected for you, and nothing in that file is needed to do the work.`,
+    );
+    this.name = "PathDeniedError";
   }
 }
 
@@ -99,10 +140,12 @@ export class WorkspaceGuard {
   }
 
   /**
-   * Resolve a model-supplied path and require it to land inside the workspace.
-   * Returns the absolute path to hand to the tool. Throws PathEscapeError on
-   * any escape: absolute path outside the root, `..` traversal, `~`, `@`- or
-   * file://-prefixed absolutes, or a symlink whose target leaves the root.
+   * Resolve a model-supplied path and require it to land inside an allowed
+   * root, on something that is not credential material. Returns the absolute
+   * path to hand to the tool. Throws PathEscapeError on any escape (absolute
+   * path outside every root, `..` traversal, `~`, `@`- or file://-prefixed
+   * absolutes, or a symlink whose target leaves the roots) and PathDeniedError
+   * on the runtime's credential files.
    */
   clamp(raw: string | undefined): string {
     return this.resolveAndAssert(raw, [
@@ -136,12 +179,25 @@ export class WorkspaceGuard {
     raw: string,
     allowedRoots: RootBoundary[],
   ): string {
-    const real = this.realNearest(abs);
-    for (const allowedRoot of allowedRoots) {
-      const lexicallyInside =
+    // Lexical containment first, so a path that never belonged here reads as an
+    // ESCAPE (a sibling `auth.json` outside every root is not "denied", it is
+    // out of bounds). The credential rule then runs on the cheap lexical form,
+    // before `realNearest`'s syscalls.
+    const inside = allowedRoots.filter(
+      (allowedRoot) =>
         this.contains(abs, allowedRoot.lexical) ||
-        this.contains(abs, allowedRoot.canonical);
-      if (lexicallyInside && this.contains(real, allowedRoot.canonical)) {
+        this.contains(abs, allowedRoot.canonical),
+    );
+    if (!inside.length) throw new PathEscapeError(raw, this.root);
+    if (inside.some((allowedRoot) => this.isCredential(abs, allowedRoot)))
+      throw new PathDeniedError(raw);
+    const real = this.realNearest(abs);
+    for (const allowedRoot of inside) {
+      if (this.contains(real, allowedRoot.canonical)) {
+        // A symlink inside an allowed root pointing at `auth.json` must not
+        // launder it, so the resolved form is judged too.
+        if (this.isCredential(real, allowedRoot))
+          throw new PathDeniedError(raw);
         return abs;
       }
     }
@@ -150,6 +206,24 @@ export class WorkspaceGuard {
 
   private contains(abs: string, root: string): boolean {
     return abs === root || abs.startsWith(root + sep);
+  }
+
+  /**
+   * Whether any segment of `abs` BELOW the allowed root it sits in names
+   * credential material. Judged relative to that root so a directory named
+   * `claude-login` ABOVE it (it appears as `..` from the root) can never deny
+   * the whole tree. Lower-cased because macOS and Windows filesystems are
+   * case-insensitive by default, so `AUTH.JSON` would otherwise open the very
+   * file `auth.json` denies.
+   */
+  private isCredential(abs: string, boundary: RootBoundary): boolean {
+    const base = this.contains(abs, boundary.canonical)
+      ? boundary.canonical
+      : boundary.lexical;
+    for (const segment of relative(base, abs).split(sep)) {
+      if (DENIED_SEGMENTS.has(segment.toLowerCase())) return true;
+    }
+    return false;
   }
 
   /**

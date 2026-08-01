@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
-import { RemoteCredentialStore } from "./remote-store";
+import { RemoteCredentialStore, scopeKeyOf } from "./remote-store";
 
 type FetchCall = { url: string; init?: RequestInit };
 
@@ -58,6 +58,10 @@ function requestBody(call: FetchCall): Record<string, unknown> {
   return JSON.parse(call.init.body) as Record<string, unknown>;
 }
 
+function actingAs(sub = "member-1"): string {
+  return `header.${Buffer.from(JSON.stringify({ sub })).toString("base64url")}.sig`;
+}
+
 test("get maps a 200 gateway credential and strips refresh", async () => {
   const { calls, fetchImpl } = fakeFetch((call) => {
     expect(call.url).toBe(PATH);
@@ -82,6 +86,7 @@ test("get maps a 200 gateway credential and strips refresh", async () => {
     expiresAt: 1_730_000_000_000,
     accountId: "acct-1",
     enterpriseUrl: "acme.ghe.com",
+    scope: "team",
   });
 });
 
@@ -167,6 +172,77 @@ test("positive cache absorbs repeated gets within the TTL", async () => {
   expect((await s.get("ws_1", "openai-codex"))?.accessToken).toBe("AT-cached");
   expect((await s.get("ws_2", "openai-codex"))?.workspaceId).toBe("ws_2");
   expect(calls).toHaveLength(1);
+});
+
+test("cache is isolated between the team and each acting user", async () => {
+  let calls = 0;
+  const { fetchImpl } = fakeFetch(() =>
+    json(gatewayCredential({ access: `AT-${++calls}` })),
+  );
+  const s = store(fetchImpl);
+
+  expect((await s.get("ws_1", "openai-codex"))?.accessToken).toBe("AT-1");
+  expect(
+    (await s.get("ws_1", "openai-codex", { actingAs: actingAs("a") }))
+      ?.accessToken,
+  ).toBe("AT-2");
+  expect(
+    (await s.get("ws_1", "openai-codex", { actingAs: actingAs("b") }))
+      ?.accessToken,
+  ).toBe("AT-3");
+});
+
+test("a personal get never adopts the legacy fallback", async () => {
+  const fallback: CredentialStore = {
+    get: async () => ({
+      workspaceId: "ws_1",
+      provider: "openai-codex",
+      accessToken: "AT-legacy",
+      refreshToken: "RT-legacy",
+      expiresAt: 123,
+    }),
+    put: async () => {},
+    remove: async () => {},
+    removeIfAccess: async () => false,
+  };
+  const { calls, fetchImpl } = fakeFetch(() =>
+    json({ error: "personal credential not connected" }, 404),
+  );
+
+  expect(
+    await store(fetchImpl, fallback).get("ws_1", "openai-codex", {
+      actingAs: actingAs(),
+    }),
+  ).toBeNull();
+  expect(calls).toHaveLength(1);
+  expect(calls[0]?.init?.method).toBeUndefined();
+});
+
+test("forwards the acting header on GET, PUT, and DELETE", async () => {
+  const token = actingAs();
+  const { calls, fetchImpl } = fakeFetch((call) => {
+    if (call.init?.method === "PUT" || call.init?.method === "DELETE")
+      return json({ ok: true });
+    return json(gatewayCredential());
+  });
+  const s = store(fetchImpl);
+  const acting = { actingAs: token };
+
+  await s.get("ws_1", "openai-codex", acting);
+  await s.put(
+    {
+      workspaceId: "ws_1",
+      provider: "openai-codex",
+      accessToken: "AT",
+      refreshToken: "RT",
+      expiresAt: 123,
+    },
+    acting,
+  );
+  await s.remove("ws_1", "openai-codex", acting);
+  expect(calls).toHaveLength(3);
+  for (const call of calls)
+    expect(headers(call)["x-houston-acting-as"]).toBe(token);
 });
 
 test("put with ifAbsent sends the gateway's fill-only header (HOU-855)", async () => {
@@ -342,4 +418,78 @@ test("remove deletes remotely and invalidates the provider cache", async () => {
     "DELETE",
     "GET",
   ]);
+});
+
+test("a personal revoked-token report says both WHICH row and WHOSE", async () => {
+  // The gateway keys personal credentials by (org, user, provider): the scope
+  // header alone leaves it unable to pick a row, so it refuses and the revoked
+  // token keeps 401ing that member's turns (HOU-952/HOU-976).
+  const token = actingAs("member-1");
+  const { calls, fetchImpl } = fakeFetch(() => json({ removed: true }));
+
+  expect(
+    await store(fetchImpl).removeIfAccess("ws_1", "openai-codex", "sha-1", {
+      scope: "personal",
+      actingAs: token,
+    }),
+  ).toBe(true);
+
+  expect(calls[0]?.init?.method).toBe("DELETE");
+  expect(headers(calls[0] as FetchCall)).toMatchObject({
+    Authorization: "Bearer pod-token",
+    "x-houston-acting-as": token,
+    "x-houston-credential-scope": "personal",
+    "x-houston-if-access-sha256": "sha-1",
+  });
+});
+
+test("a member's revoked-token report evicts only that member's cache entry", async () => {
+  let served = 0;
+  const { calls, fetchImpl } = fakeFetch((call) => {
+    if (call.init?.method === "DELETE") return json({ removed: true });
+    return json(gatewayCredential({ access: `AT-${++served}` }));
+  });
+  const s = store(fetchImpl);
+  const alice = { actingAs: actingAs("alice") };
+  const bob = { actingAs: actingAs("bob") };
+
+  expect((await s.get("ws_1", "openai-codex", alice))?.accessToken).toBe(
+    "AT-1",
+  );
+  expect((await s.get("ws_1", "openai-codex", bob))?.accessToken).toBe("AT-2");
+  await s.removeIfAccess("ws_1", "openai-codex", "sha-1", {
+    scope: "personal",
+    ...alice,
+  });
+
+  // Bob's credential is untouched by Alice's report: still cached, no refetch.
+  expect((await s.get("ws_1", "openai-codex", bob))?.accessToken).toBe("AT-2");
+  // Alice's is gone, so hers is re-resolved from the gateway.
+  expect((await s.get("ws_1", "openai-codex", alice))?.accessToken).toBe(
+    "AT-3",
+  );
+  expect(calls.map((c) => c.init?.method ?? "GET")).toEqual([
+    "GET",
+    "GET",
+    "DELETE",
+    "GET",
+  ]);
+});
+
+test("a cache key never embeds the acting token itself", async () => {
+  // The same rule as the runtime's credentialScopeKeyFor: these keys reach log
+  // lines and diagnostics, so an unreadable token is named by digest.
+  const unreadable = [
+    "no-payload-segment",
+    `header.${Buffer.from(JSON.stringify({ sub: 7 })).toString("base64url")}.sig`,
+    "header.!!not-base64-json!!.sig",
+  ];
+
+  const keys = unreadable.map((token) =>
+    scopeKeyOf({ actingAs: token }, "openai-codex"),
+  );
+  for (const [i, key] of keys.entries())
+    expect(key).not.toContain(unreadable[i]);
+  // Isolation is unchanged: distinct unreadable tokens keep distinct scopes.
+  expect(new Set(keys).size).toBe(unreadable.length);
 });

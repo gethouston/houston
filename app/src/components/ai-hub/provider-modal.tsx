@@ -9,14 +9,11 @@
  * `ProviderConnections`, exactly as the old provider-settings drove it.
  */
 
-import { Button } from "@houston-ai/core";
 import { X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocalBridgeStatus } from "../../hooks/use-local-bridge-status.ts";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types.ts";
-import { disconnectLocalModel } from "../../lib/local-model-connect.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import {
@@ -28,6 +25,8 @@ import { LiveStatus, SpecChip } from "./hub-badges.tsx";
 import { ModalShell } from "./modal-shell.tsx";
 import { ModelsBrowser } from "./models-browser.tsx";
 import { ConnectButton } from "./provider-modal-connect-button.tsx";
+import { ProviderModalFooter } from "./provider-modal-footer.tsx";
+import { useProviderModalLocal } from "./use-provider-modal-local.ts";
 
 export function ProviderModal({
   provider,
@@ -49,46 +48,33 @@ export function ProviderModal({
 }) {
   const { t } = useTranslation("aiHub");
   // Tri-state (HOU-979): only a CONFIRMED connection gets the live badge, the
-  // sign-out footer, and the local-bridge treatment; only a CONFIRMED
-  // disconnection gets the Connect CTA. An unconfirmable probe gets neither —
-  // a muted "Checking" stands in, so the modal never guesses in either
-  // direction about an account it cannot see.
+  // sign-out footer and the local-bridge treatment; only a CONFIRMED
+  // disconnection gets the Connect CTA. An unconfirmable probe gets neither, so
+  // the modal never guesses in either direction.
   const connection = connections.connectionState(provider);
   const connected = connection === "connected";
   const checking = connection === "checking";
-  const busy = connections.busy[provider.id];
   const models = useMemo(
     () => providerModels(catalog, provider),
     [catalog, provider],
   );
   const isLocal = provider.auth === "openaiCompatible";
 
-  // Local model: the bridge's live online/offline state + a "disconnect" that
-  // also tears the tunnel down (not just clears the credential). The tunnel pill
-  // shows ONLY when THIS session owns/owned a bridge; a direct/manual endpoint
-  // (or a tunnel another machine manages) reads as normally connected instead.
-  const localConnected = isLocal && connected;
+  // Local model: the bridge state + a disconnect that tears the tunnel down.
   const {
-    status: bridge,
-    ownsBridge,
-    appName: bridgeAppName,
-    reconnect: reconnectBridge,
+    showTunnelPill,
+    showConnectedBadge,
+    bridge,
+    bridgeAppName,
+    reconnectBridge,
     reconnecting,
-  } = useLocalBridgeStatus(localConnected);
-  const showTunnelPill = localConnected && ownsBridge;
-  const showConnectedBadge = connected && (!isLocal || !ownsBridge);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const disconnectLocal = useCallback(async () => {
-    setDisconnecting(true);
-    try {
-      await disconnectLocalModel();
-      connections.refresh();
-    } catch {
-      // disconnectLocalModel already toasted the real reason (Report-bug).
-    } finally {
-      setDisconnecting(false);
-    }
-  }, [connections]);
+    disconnecting,
+    disconnectLocal,
+  } = useProviderModalLocal({
+    isLocal,
+    connected,
+    onDisconnected: connections.refresh,
+  });
 
   const header = (
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
@@ -133,28 +119,14 @@ export function ProviderModal({
   );
 
   const footer = connected ? (
-    <div className="flex items-center justify-between gap-3">
-      <span className="min-w-0 truncate text-[13px] text-ink-muted">
-        {t("providerModal.signedInWith", { provider: provider.name })}
-      </span>
-      <div className="flex shrink-0 items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            isLocal ? void disconnectLocal() : connections.signOut(provider)
-          }
-          disabled={busy === "signingOut" || disconnecting}
-        >
-          {isLocal ? t("providerModal.disconnect") : t("providerModal.signOut")}
-        </Button>
-        {onSetDefault && (
-          <Button size="sm" onClick={() => onSetDefault(provider)}>
-            {t("providerModal.setDefault")}
-          </Button>
-        )}
-      </div>
-    </div>
+    <ProviderModalFooter
+      provider={provider}
+      connections={connections}
+      isLocal={isLocal}
+      disconnecting={disconnecting}
+      onDisconnectLocal={() => void disconnectLocal()}
+      onSetDefault={onSetDefault}
+    />
   ) : undefined;
 
   return (

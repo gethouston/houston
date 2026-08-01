@@ -1170,6 +1170,19 @@ export interface CommunitySkillPreview {
 export type CliInstallSource = "bundled" | "managed" | "path" | "missing";
 export type ProviderAuthState = "authenticated" | "unauthenticated" | "unknown";
 
+/**
+ * WHOSE AI-provider account ANSWERED a probe or ran a turn (HOU-976). A READ,
+ * never an address: the server decides whose credential a call resolves to from
+ * the space it is made in, so no client request carries a scope.
+ *
+ * `"personal"` is the acting member's own account, which is the only account a
+ * TEAM space has. `"team"` is the single workspace-level credential of a
+ * personal space / self-host / desktop, reported for the surfaces that predate
+ * the distinction. Absent means the deployment never said, which is the same
+ * "one account, nothing to disambiguate" world.
+ */
+export type CredentialScope = "personal" | "team";
+
 export interface ProviderStatus {
   provider: string;
   cliInstalled: boolean;
@@ -1186,6 +1199,13 @@ export interface ProviderStatus {
    * can show + select it. Absent for providers whose models live in the catalog.
    */
   activeModel?: string;
+  /**
+   * WHOSE credential produced this probe's answer (HOU-976). Absent on desktop,
+   * self-host, and any deployment/turn with no acting identity — there is
+   * exactly one credential there and nothing to disambiguate, so every
+   * pre-HOU-976 surface reads the shape it always read.
+   */
+  credentialScope?: CredentialScope;
 }
 
 /**

@@ -41,10 +41,18 @@ export async function handleSandboxCredentialRevoked(
   const body = (await readJson(req).catch(() => null)) as {
     provider?: unknown;
     accessSha256?: unknown;
+    scope?: unknown;
+    actingAs?: unknown;
   } | null;
   const provider = typeof body?.provider === "string" ? body.provider : "";
   const accessSha256 =
     typeof body?.accessSha256 === "string" ? body.accessSha256.trim() : "";
+  const scope = body?.scope === "personal" ? "personal" : "team";
+  // WHOSE row, for a personal credential: the reporter's acting-as token, which
+  // the store forwards so the gateway can key the delete by (org, user,
+  // provider). A team report has none, and must stay valid without one.
+  const actingAs =
+    typeof body?.actingAs === "string" ? body.actingAs : undefined;
   if (!provider || !accessSha256) {
     // Refuse rather than guess: a report without a token identity could only
     // be actioned as an unconditional delete, which is the one thing this
@@ -57,6 +65,7 @@ export async function handleSandboxCredentialRevoked(
     claim.workspaceId,
     provider,
     accessSha256,
+    { scope, actingAs },
   );
   // Both outcomes are success. `removed:false` means the report was superseded
   // — the workspace reconnected, or a sibling runtime reported the same dead

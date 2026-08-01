@@ -182,3 +182,40 @@ test("the verbatim provider text is logged once it is reduced to a card", () => 
     expect.stringContaining("401 expired"),
   );
 });
+
+/**
+ * The enum-mapped cards bypass `classifyProviderError`, which is where every
+ * other provider error gets its credential stamp — so they must stamp it
+ * themselves. Without it, a member whose OWN Anthropic account is rate limited
+ * reads a card that blames "Anthropic" in the abstract, on the provider whose
+ * limits users hit most (HOU-976).
+ */
+test("an enum-mapped card carries the acting identity's credential stamp", async () => {
+  const { runWithActingContext } = await import("../../session/acting-context");
+  const { recordServedScope, resetServedScopes } = await import(
+    "../../auth/served-scope"
+  );
+  resetServedScopes();
+  const actingAs = `acting-v1.${Buffer.from(
+    JSON.stringify({ sub: "sub-claude", agent: "acme", exp: 9_000_000_000 }),
+  ).toString("base64url")}.sig`;
+  runWithActingContext({ actingAs }, () => {
+    recordServedScope("anthropic", "personal");
+    expect(
+      mapSdkError("rate_limit", { message: "429 slow down", model: "m" }),
+    ).toMatchObject({
+      kind: "rate_limited",
+      credential: { scope: "personal" },
+    });
+    expect(
+      mapSdkError("authentication_failed", {
+        message: "401 expired",
+        model: "m",
+      }),
+    ).toMatchObject({
+      kind: "unauthenticated",
+      credential: { scope: "personal" },
+    });
+  });
+  resetServedScopes();
+});
