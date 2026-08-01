@@ -20,6 +20,27 @@
 //! On non-Windows this contributes nothing — the CLI has no shell gate there.
 
 use std::ffi::OsString;
+use std::path::PathBuf;
+
+/// Working directory for a child that will execute the Claude Code CLI.
+///
+/// The env repair below is not enough on its own: the CLI's Windows shell
+/// gate resolves `pwsh`/`powershell` with a which()-style lookup that
+/// DISCARDS any hit living under the child's current working directory (a
+/// cwd-hijack guard inside the CLI). A Houston launch that inherits
+/// `C:\Windows\System32` as cwd — the autostart Run key and `houston://`
+/// deep-link activations do — therefore filters out the built-in PowerShell
+/// 5.1 under `System32\WindowsPowerShell\v1.0`, and on a machine with no Git
+/// Bash and no PowerShell 7 the CLI exits 1 even though the PATH repair made
+/// `powershell` resolvable (HOUSTON-APP-4YP, still firing after the repair
+/// shipped). Pin the child to the user's home directory instead: it always
+/// exists and no shell binary lives under it. `None` (no resolvable home)
+/// keeps the inherited cwd — never fail a spawn over this.
+pub fn claude_spawn_cwd() -> Option<PathBuf> {
+    let var = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+    let home = PathBuf::from(std::env::var_os(var)?);
+    home.is_dir().then_some(home)
+}
 
 /// Env pairs to merge into a child that will execute the Claude Code CLI.
 /// Empty on non-Windows and on Windows machines that need no repair.
@@ -177,5 +198,13 @@ mod tests {
     #[test]
     fn claude_shell_env_is_inert_off_windows() {
         assert!(claude_shell_env().is_empty());
+    }
+
+    #[test]
+    fn claude_spawn_cwd_is_an_existing_home_dir() {
+        // Every CI/dev host has a resolvable home; the contract is "an
+        // existing directory the CLI's cwd-filter can't collide with".
+        let cwd = claude_spawn_cwd().expect("home dir resolves");
+        assert!(cwd.is_dir());
     }
 }
