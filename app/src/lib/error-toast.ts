@@ -1,3 +1,4 @@
+import { isSignedOutEngineError } from "@houston-ai/engine-client";
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import i18n from "./i18n";
@@ -117,6 +118,16 @@ export function showErrorToast(
   originalError?: unknown,
   options?: ErrorToastOptions,
 ): void {
+  // A hosted call answered by the transport's synthetic signed-out 401 is an
+  // EXPECTED lifecycle state (sign-out / account switch): the sign-in screen is
+  // the surface, nothing is broken, and there is no bug to report — so no red
+  // toast and no Sentry capture. Everything else still surfaces loudly (beta
+  // policy); a REAL rejected bearer never takes this branch because the
+  // transport only mints the synthetic body when no session exists at all.
+  if (isSignedOutEngineError(originalError)) {
+    console.warn(`[toast:${command}] suppressed: signed-out engine call`);
+    return;
+  }
   const addToast = useUIStore.getState().addToast;
   const description =
     options?.userMessage ?? i18n.t("shell:errorToast.genericDescription");

@@ -1,9 +1,5 @@
-import {
-  identityConfig,
-  SESSION_QUERY_KEY,
-  type Session,
-} from "@houston/app/lib/identity";
-import { queryClient } from "@houston/app/lib/query-client";
+import { applyExternalSession } from "@houston/app/lib/auth";
+import { identityConfig, type Session } from "@houston/app/lib/identity";
 import {
   initWebAuth,
   webOnIdTokenChanged,
@@ -54,9 +50,14 @@ export function CloudApp({ controlPlaneUrl }: { controlPlaneUrl: string }) {
     // Mirror the live SDK session into the engine bearer AND the ["session"]
     // TanStack cache (the shared auth gate source). onIdTokenChanged fires on
     // sign-in, sign-out, and every silent refresh, so the bearer stays fresh.
+    // The session cache write goes through applyExternalSession — NOT a direct
+    // setQueryData — so a uid change (account switch) trips the HOU-903
+    // identity-change reset and the previous account's caches/stores are
+    // dropped before the new account's world loads. The bearer is applied
+    // FIRST so post-reset refetches already carry the new identity.
     const unsub = webOnIdTokenChanged((session: Session | null) => {
       apply(session?.idToken ?? "");
-      queryClient.setQueryData<Session | null>(SESSION_QUERY_KEY, session);
+      applyExternalSession(session);
     });
     // The 401 → refresh → replay seam (HOU-687): the adapter's gatewayAuthFetch
     // calls this to force-mint a fresh ID token when the gateway rejects the

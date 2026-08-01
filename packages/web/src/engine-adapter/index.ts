@@ -16,6 +16,8 @@ export {
   HoustonClient,
   HoustonEngineError,
   isHoustonEngineError,
+  isSignedOutEngineError,
+  SIGNED_OUT_ERROR,
 } from "./client";
 // Local conversation cache (HOU-712): sign-out wipes the per-user cached
 // transcripts so nothing lingers on a shared machine. The scope helper also

@@ -30,8 +30,12 @@ function memoryStore(initial: Record<string, string>) {
       await writeFile(destination, body);
     },
     async upload(source, key) {
+      // Read BEFORE recording: `eventually()` polls `uploads`, and recording
+      // first opens a window where the upload is visible but `objects` still
+      // holds the previous bytes — a flaky TOCTOU on slow runners.
+      const body = await readFile(source);
+      objects.set(key, body);
       uploads.push(key);
-      objects.set(key, await readFile(source));
     },
   };
   return { objects, store, uploads };
