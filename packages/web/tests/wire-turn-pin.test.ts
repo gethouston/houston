@@ -32,10 +32,27 @@ test("open-catalog gateways keep the stored model verbatim", () => {
   ).toEqual({ provider: "opencode", model: "some-gateway-model" });
 });
 
-test("an unknown model pins the provider only — a strict-validated pin would fail the turn", () => {
+test("an unknown model pins verbatim — dropping it let the gateway substitute another provider (HOU-1103)", () => {
+  // Behind the hosted gateway a model-less pin reads as NO pin, and the
+  // gateway then injects the acting user's stored choice — provider included.
+  // A stale domain table must degrade to a visible runtime "model not
+  // available" on the CHOSEN provider, never a silent provider switch.
   expect(wireTurnPin({ provider: "anthropic", model: "claude-99" })).toEqual({
     provider: "anthropic",
+    model: "claude-99",
   });
+});
+
+test("the GPT-5.6 family rides the pin intact (HOU-1103 regression)", () => {
+  // These ids shipped in the picker while the domain catalog still ended at
+  // gpt-5.5, so every send dropped the model and the gateway swapped the turn
+  // onto the user's stored (e.g. Gemini) choice.
+  for (const model of ["gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra"]) {
+    expect(wireTurnPin({ provider: "openai", model })).toEqual({
+      provider: "openai-codex",
+      model,
+    });
+  }
 });
 
 test("a new pi-ai provider passes through — the open catalog means the adapter no longer gatekeeps provider ids", () => {

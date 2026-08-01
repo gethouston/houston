@@ -51,6 +51,9 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-5.4",
     "gpt-5.4-mini",
     "gpt-5.5",
+    "gpt-5.6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
   ]),
   minimax: new Set(["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"]),
   deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
@@ -79,6 +82,16 @@ test("the real legacy desktop inputs map to valid pi ids with no diagnostic", ()
   expect(claude.model).toBe("claude-opus-4-8");
   expect(claude.diagnostics).toEqual([]);
   assertValid(claude, "anthropic/claude-opus-4-8");
+});
+
+test("the GPT-5.6 family is valid Codex — a lagging table dropped it from wire pins (HOU-1103)", () => {
+  for (const model of ["gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra"]) {
+    const r = migrateProviderModel("openai", model);
+    expect(r.provider).toBe("openai-codex");
+    expect(r.model).toBe(model);
+    expect(r.diagnostics).toEqual([]);
+    assertValid(r, `openai/${model}`);
+  }
 });
 
 test("bare tier aliases resolve to the pi id at the SAME tier (no upgrade)", () => {
