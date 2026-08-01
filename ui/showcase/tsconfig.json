@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"],
+    "resolveJsonModule": true,
+    "allowJs": true
+  },
+  "include": ["scripts", "src", "specimens", "tests", "vite.config.ts"]
+}

@@ -12,9 +12,6 @@ const props = {
   agentName: "Cool Agent",
   slug: "cool-agent",
   instructions: "do the thing",
-  skillZipUrl: "https://example.com/a.zip",
-  copyPasteUrl: "https://example.com/a.md",
-  shareUrl: "https://example.com/a/cool-agent",
 };
 
 let container: HTMLDivElement;
@@ -32,12 +29,22 @@ afterEach(() => {
 });
 
 function clickOpenInHouston() {
-  const button = Array.from(container.querySelectorAll("button")).find((b) =>
-    b.textContent?.includes("Open in Houston"),
+  const trigger = Array.from(container.querySelectorAll("button")).find((b) =>
+    b.textContent?.includes("Try it now"),
   );
-  if (!button) throw new Error("Open in Houston button not found");
+  if (!trigger) throw new Error("Try it now trigger not found");
   act(() => {
-    button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    trigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  const item = Array.from(document.querySelectorAll("[role=menuitem]")).find(
+    (element) => element.textContent?.includes("Open in Houston"),
+  );
+  if (!item) throw new Error("Open in Houston menu item not found");
+  act(() => {
+    item.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    item.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    item.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
 }
 

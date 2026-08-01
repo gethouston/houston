@@ -1,4 +1,5 @@
 import { EngineError } from "@houston/runtime-client";
+import { TURN_FAILED_MESSAGE } from "@houston/sdk";
 import { describe, expect, test } from "vitest";
 import { configWriteToSettings, credentialSiblings } from "./synthetic";
 import {
@@ -40,14 +41,15 @@ test("turnErrorMessage unwraps the engine's plain message from a rejected send",
   );
 });
 
-test("turnErrorMessage falls back to the raw message for a non-JSON engine body", () => {
-  const err = new EngineError(500, "upstream exploded");
-  expect(turnErrorMessage(err)).toBe(err.message);
-});
-
-test("turnErrorMessage handles plain errors and non-errors", () => {
-  expect(turnErrorMessage(new Error("boom"))).toBe("boom");
-  expect(turnErrorMessage("just a string")).toBe("just a string");
+test("turnErrorMessage hides developer speak behind the product-voice fallback", () => {
+  // Only engine-authored `{error}` copy may reach the chat (HOU-705, HOU-721):
+  // a non-JSON body, a thrown bug, or a bare string all resolve to the generic
+  // product sentence, never the raw internals.
+  expect(turnErrorMessage(new EngineError(500, "upstream exploded"))).toBe(
+    TURN_FAILED_MESSAGE,
+  );
+  expect(turnErrorMessage(new Error("boom"))).toBe(TURN_FAILED_MESSAGE);
+  expect(turnErrorMessage("just a string")).toBe(TURN_FAILED_MESSAGE);
 });
 
 test("isNotConnectedError matches every runtime 'no provider connected' variant", () => {
@@ -157,16 +159,17 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         CONFIG,
         JSON.stringify({ provider: "anthropic", model: "opus" }),
       ),
-    ).toEqual({ activeProvider: "anthropic", model: "claude-opus-4-8" });
+    ).toEqual({ activeProvider: "anthropic", model: "claude-opus-5" });
   });
 
-  test("migrates an unknown provider to the default instead of dropping it", () => {
-    // Gemini was dropped — a stored gemini agent must NOT silently no-op (every
-    // turn would then run the active provider's default with no record). It
-    // migrates to the default provider + model so the turn still runs.
+  test("a new provider id passes through with the universal model floor", () => {
+    // The pi-ai catalog is open: a provider id we don't know is NOT invalid and
+    // must not be rewritten to the default provider. With no stored model and
+    // no DEFAULT_MODEL entry, the model falls to the universal floor (the
+    // default provider's model) so the turn still resolves.
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
-    ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
+    ).toEqual({ activeProvider: "gemini", model: "gpt-5.5" });
   });
 
   test("skips non-config files, missing provider, and bad JSON", () => {

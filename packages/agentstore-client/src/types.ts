@@ -87,6 +87,23 @@ export interface StoreCreatorPage {
   agents: StoreCatalogPage;
 }
 
+/** One creator in the public directory, with aggregate public-agent stats. */
+export interface CreatorDirectoryEntry {
+  handle: string;
+  displayName: string;
+  avatarUrl?: string;
+  verified: boolean;
+  bio?: string;
+  agentsCount: number;
+  installsCount: number;
+}
+
+/** One page of the public creator directory (server page size is fixed at 24). */
+export interface CreatorDirectoryPage {
+  items: CreatorDirectoryEntry[];
+  hasMore: boolean;
+}
+
 /** The result of an avatar upload (`POST /me/avatar`). */
 export interface AvatarUploadResult {
   avatarUrl: string;
@@ -136,6 +153,8 @@ export interface StoreAgentSummary {
   category: string;
   tags: string[];
   integrations: string[];
+  /** Skill identifiers; absent only when talking to a pre-skills gateway. */
+  skills?: { slug: string }[];
   creator: StoreCreator;
   installsCount: number;
   publishedAt: string | null;

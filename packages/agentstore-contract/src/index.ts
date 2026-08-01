@@ -11,3 +11,4 @@ export * from "./normalize";
 export * from "./secrets";
 export * from "./skill-frontmatter";
 export * from "./slug";
+export * from "./store-link";

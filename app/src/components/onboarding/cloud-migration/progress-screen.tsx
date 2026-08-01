@@ -1,24 +1,13 @@
-import { AsyncButton, Button } from "@houston-ai/core";
+import { AsyncButton, Button, Spinner } from "@houston-ai/core";
 import { useReducedMotion } from "framer-motion";
-import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { computeOverallProgress } from "../../../lib/cloud-migration-progress";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
-import { OrbitLoader } from "../../space/orbit-loader";
 import { MigrationProgressBar } from "./migration-progress-bar";
 import { AgentRow, RUNNING } from "./progress-agent-row";
 import { SpaceInvaders } from "./space-invaders";
 import { MigrationStatusCycle } from "./status-cycle";
 import { WizardFrame } from "./wizard-frame";
-
-// The OrbitLoader draws entirely from --ht-space-foreground/-star (white tones
-// tuned for the space photo). On the light wizard those would vanish, so for
-// this one usage we remap them to ink — a dark rocket + core on the light page.
-// The workspace-loading splash keeps the white-on-space loader untouched.
-const ORBIT_INK_VARS: CSSProperties = {
-  "--ht-space-foreground": "var(--ht-ink)",
-  "--ht-space-star": "var(--ht-ink-muted)",
-} as CSSProperties;
 
 /** The quiet "Migrate later" escape hatch — the same `onDefer` everywhere:
  *  while the run is still going AND on every error state, so a user stuck on
@@ -38,11 +27,10 @@ function DeferButton({ onDefer }: { onDefer: () => void }) {
 }
 
 /**
- * Live migration wait screen (HOU-719 redesign): the shared {@link OrbitLoader}
- * (the rocket in transit — the move made literal, remapped to ink for the light
- * page) over a status line that cycles through the real phases, so the wait
- * feels alive without exposing per-agent plumbing. Falls back to a per-agent
- * list panel only when something needs the user's attention (a failed agent).
+ * Live migration wait screen (HOU-719 redesign): a spinner over a status line
+ * that cycles through the real phases, so the wait feels alive without exposing
+ * per-agent plumbing. Falls back to a per-agent list panel only when something
+ * needs the user's attention (a failed agent).
  */
 export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   const { t } = useTranslation("migration");
@@ -86,13 +74,7 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
 
   return (
     <WizardFrame
-      mark={
-        waiting ? (
-          <div style={ORBIT_INK_VARS}>
-            <OrbitLoader />
-          </div>
-        ) : undefined
-      }
+      mark={waiting ? <Spinner className="size-8" /> : undefined}
       title={t("progress.title")}
       footer={
         startError ? (

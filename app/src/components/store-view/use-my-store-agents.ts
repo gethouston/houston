@@ -1,4 +1,4 @@
-import type { MyAgent } from "@houston-ai/engine-client";
+import type { AgentIdentityPatch, MyAgent } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +25,12 @@ const MY_AGENTS_KEY = ["store-my-agents"] as const;
  * the button downgrades to a disabled "pending review" state and cannot be
  * re-submitted blindly.
  */
+/** The public store SITE base, for "view page" links from the dashboard. */
+export const STORE_SITE_URL = (
+  (import.meta.env?.VITE_AGENTSTORE_SITE_URL as string | undefined) ??
+  "https://agents.gethouston.ai"
+).replace(/\/+$/, "");
+
 export function useMyStoreAgents(enabled: boolean) {
   const qc = useQueryClient();
   const { t } = useTranslation("store");
@@ -46,6 +52,12 @@ export function useMyStoreAgents(enabled: boolean) {
     reportError(command, `${command} failed`, err);
     addToast({ variant: "error", title: t("myAgents.actionFailed") });
   };
+
+  const publish = useMutation({
+    mutationFn: (id: string) => getEngine().publishStoreAgentById(id),
+    onSuccess: invalidate,
+    onError: (err) => surface("store_publish", err),
+  });
 
   const requestPublic = useMutation({
     mutationFn: (id: string) => getEngine().requestStorePublic(id),
@@ -75,9 +87,25 @@ export function useMyStoreAgents(enabled: boolean) {
     onError: (err) => surface("store_delete", err),
   });
 
-  const mutations = [requestPublic, makeUnlisted, unpublish, remove];
+  // No onError toast here: the Edit-listing dialog awaits `mutateAsync` and
+  // surfaces the rejection inline, where the user is looking. Sentry still
+  // gets the report from that path.
+  const editIdentity = useMutation({
+    mutationFn: ({
+      id,
+      identity,
+    }: {
+      id: string;
+      identity: AgentIdentityPatch;
+    }) => getEngine().updateStoreAgentIdentity(id, identity),
+    onSuccess: invalidate,
+    onError: (err) => reportError("store_edit_listing", "edit failed", err),
+  });
+
+  const mutations = [publish, requestPublic, makeUnlisted, unpublish, remove];
   const isBusy = (id: string): boolean =>
-    mutations.some((m) => m.isPending && m.variables === id);
+    mutations.some((m) => m.isPending && m.variables === id) ||
+    (editIdentity.isPending && editIdentity.variables?.id === id);
   const isRequestingPublic = (id: string): boolean =>
     requestPublic.isPending && requestPublic.variables === id;
   const wasRequestedPublic = (id: string): boolean =>
@@ -90,8 +118,10 @@ export function useMyStoreAgents(enabled: boolean) {
     refetch: query.refetch,
     requestPublic,
     makeUnlisted,
+    publish,
     unpublish,
     remove,
+    editIdentity,
     isBusy,
     isRequestingPublic,
     wasRequestedPublic,

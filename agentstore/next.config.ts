@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
     "@houston/agentstore-contract",
     "@houston/design-tokens",
     "@houston-ai/core",
+    "@houston-ai/store",
   ],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

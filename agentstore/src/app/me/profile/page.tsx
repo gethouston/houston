@@ -6,6 +6,8 @@
  * the gateway with a bearer.
  */
 import type { Metadata } from "next";
+import { StoreNav } from "@/components/store-nav";
+import { UserMenu } from "@/components/user-menu";
 import { ProfileClient } from "./profile-client";
 
 export const metadata: Metadata = {
@@ -15,8 +17,14 @@ export const metadata: Metadata = {
 
 export default function ProfilePage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-16">
-      <ProfileClient />
+    <main className="canvas-screen min-h-screen bg-background text-ink">
+      <StoreNav />
+      <div className="mx-auto w-full max-w-2xl px-6 pt-6 pb-16">
+        <div className="mb-6 flex justify-end">
+          <UserMenu />
+        </div>
+        <ProfileClient />
+      </div>
     </main>
   );
 }

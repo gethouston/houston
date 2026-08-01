@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit",
     "typecheck:e2e": "tsgo --noEmit -p e2e/tsconfig.json",
-    "test": "vitest run ./tests --testTimeout=30000",
+    "test": "vitest run ./tests ./src --testTimeout=30000",
     "test:e2e": "playwright test --project chromium --project auth --fail-on-flaky-tests",
     "test:e2e:webkit": "playwright test --config playwright.webkit.config.ts --fail-on-flaky-tests",
     "test:e2e:ui": "playwright test --ui",

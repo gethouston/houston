@@ -1,44 +1,73 @@
 "use client";
 
-import type { AgentPatch, StoreAgentSummary } from "@houston/agentstore-client";
+import type {
+  AgentIdentityPatch,
+  AgentPatch,
+  CreatorProfile,
+  StoreAgentSummary,
+  StoreCategory,
+} from "@houston/agentstore-client";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  Spinner,
-} from "@houston-ai/core";
-import { AlertTriangle, LogIn, UserPen } from "lucide-react";
+  ClaimProfileCard,
+  CreatorProfileScreen,
+  ProfileEditorSignedOut,
+  type ShareVisibility,
+  SocialLinks,
+  SortPills,
+  shareVisibilityOf,
+} from "@houston-ai/store";
 import Link from "next/link";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";
-import { deleteAgent, listMyAgents, patchAgent } from "@/lib/store-client";
-import { MeAgentCard } from "./me-agent-card";
-import { MeAnalytics } from "./me-analytics";
-import { MeEmpty, MeNotice } from "./me-empty";
+import { launchStoreInstall } from "@/lib/houston-launch";
+import { shareUrlForSlug } from "@/lib/site-config";
+import {
+  deleteAgent,
+  getMyProfile,
+  listCategories,
+  listMyAgents,
+  patchAgent,
+} from "@/lib/store-client";
 
-type LoadState =
+type Load =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; agents: StoreAgentSummary[] };
+  | {
+      status: "ready";
+      agents: StoreAgentSummary[];
+      profile: CreatorProfile | null;
+      categories: StoreCategory[];
+    };
+
+type Sort = "recent" | "installs";
+const SORTS: ReadonlyArray<{ value: Sort; label: string }> = [
+  { value: "recent", label: "Recent" },
+  { value: "installs", label: "Most installed" },
+];
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : "Something went wrong.";
 }
 
+/** The web owner view: THE SAME CreatorProfileScreen as the public page, in
+ *  owner mode (pencils + per-card manage menus). */
 export function MeClient() {
-  const { status: sessionStatus, user, signIn, getToken } = useSession();
-  const [load, setLoad] = React.useState<LoadState>({ status: "loading" });
+  const { status: sessionStatus, signIn, getToken } = useSession();
+  const [load, setLoad] = React.useState<Load>({ status: "loading" });
   const [pendingId, setPendingId] = React.useState<string | null>(null);
-  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [sort, setSort] = React.useState<Sort>("recent");
 
   const reload = React.useCallback(async () => {
     try {
       const token = await getToken();
       if (!token)
         throw new Error("Your session expired. Please sign in again.");
-      const agents = await listMyAgents(token);
-      setLoad({ status: "ready", agents });
+      const [agents, profile, categories] = await Promise.all([
+        listMyAgents(token),
+        getMyProfile(token),
+        listCategories(),
+      ]);
+      setLoad({ status: "ready", agents, profile, categories });
     } catch (err) {
       setLoad({ status: "error", message: errorText(err) });
     }
@@ -51,14 +80,13 @@ export function MeClient() {
   const runMutation = React.useCallback(
     async (id: string, mutate: (token: string) => Promise<void>) => {
       setPendingId(id);
-      setActionError(null);
       try {
         const token = await getToken();
         if (!token) throw new Error("Your session expired. Sign in again.");
         await mutate(token);
         await reload();
       } catch (err) {
-        setActionError(errorText(err));
+        setLoad({ status: "error", message: errorText(err) });
       } finally {
         setPendingId(null);
       }
@@ -66,113 +94,100 @@ export function MeClient() {
     [getToken, reload],
   );
 
-  if (sessionStatus === "unconfigured") {
+  if (sessionStatus === "unconfigured" || sessionStatus === "signed-out") {
     return (
-      <MeNotice
-        title="Sign-in is unavailable"
-        body="This deployment is not configured for accounts, so there is no dashboard here."
+      <ProfileEditorSignedOut
+        title="Your agents"
+        body="Sign in to see and manage the agents you have published."
+        onSignIn={() => {
+          void signIn().catch(() => {});
+        }}
       />
     );
   }
 
-  if (sessionStatus === "loading") {
-    return (
-      <div className="flex items-center gap-3 text-muted-foreground">
-        <Spinner /> Loading…
-      </div>
-    );
+  const ready = load.status === "ready" ? load : null;
+  if (ready && ready.profile === null) {
+    return <ClaimProfileCard editHref="/me/profile" LinkComponent={Link} />;
   }
 
-  if (sessionStatus === "signed-out" || !user) {
-    return (
-      <div className="flex flex-col items-start gap-5">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">
-            Your agents
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Sign in to see and manage the agents you have published.
-          </p>
-        </div>
-        <Button
-          size="lg"
-          onClick={() => {
-            void signIn().catch(() => {
-              /* popup dismissed */
-            });
-          }}
-        >
-          <LogIn aria-hidden className="size-4" /> Sign in
-        </Button>
-      </div>
-    );
-  }
+  const sorted = ready
+    ? [...ready.agents].sort((a, b) =>
+        sort === "installs"
+          ? b.installsCount - a.installsCount
+          : (b.publishedAt ?? b.updatedAt).localeCompare(
+              a.publishedAt ?? a.updatedAt,
+            ),
+      )
+    : [];
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">
-            Your agents
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Publish, unpublish, and manage the visibility of the agents you own.
-          </p>
-        </div>
-        <Button variant="outline" asChild>
-          <Link href="/me/profile">
-            <UserPen aria-hidden className="size-4" /> Edit profile
-          </Link>
-        </Button>
-      </header>
-
-      <MeAnalytics getToken={getToken} />
-
-      {actionError && (
-        <Alert variant="destructive">
-          <AlertTriangle aria-hidden />
-          <AlertTitle>That did not work</AlertTitle>
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      )}
-
-      {load.status === "loading" && (
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Spinner /> Loading your agents…
-        </div>
-      )}
-
-      {load.status === "error" && (
-        <Alert variant="destructive">
-          <AlertTriangle aria-hidden />
-          <AlertTitle>Could not load your agents</AlertTitle>
-          <AlertDescription>{load.message}</AlertDescription>
-        </Alert>
-      )}
-
-      {load.status === "ready" &&
-        (load.agents.length === 0 ? (
-          <MeEmpty />
-        ) : (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {load.agents.map((agent) => (
-              <li key={agent.id}>
-                <MeAgentCard
-                  agent={agent}
-                  busy={pendingId === agent.id}
-                  onPatch={(patch: AgentPatch) =>
-                    void runMutation(agent.id, (t) =>
-                      patchAgent(t, agent.id, patch),
-                    )
-                  }
-                  onDelete={() =>
-                    void runMutation(agent.id, (t) => deleteAgent(t, agent.id))
-                  }
-                />
-              </li>
-            ))}
-          </ul>
-        ))}
-    </div>
+    <CreatorProfileScreen
+      profile={ready?.profile ?? undefined}
+      agents={sorted}
+      stats={
+        ready
+          ? {
+              agents: ready.agents.length,
+              installs: ready.agents.reduce(
+                (total, agent) => total + agent.installsCount,
+                0,
+              ),
+            }
+          : undefined
+      }
+      socialLinks={
+        ready?.profile ? (
+          <SocialLinks links={ready.profile.links} className="mt-3" />
+        ) : null
+      }
+      actions={<SortPills value={sort} options={SORTS} onChange={setSort} />}
+      agentHref={(agent) => (agent.slug ? `/a/${agent.slug}` : "/me")}
+      LinkComponent={Link}
+      loading={sessionStatus === "loading" || load.status === "loading"}
+      failed={load.status === "error"}
+      onRetry={() => void reload()}
+      onTryAgent={(agent) => {
+        if (agent.slug) launchStoreInstall(agent.slug);
+      }}
+      owner={{
+        editHref: "/me/profile",
+        busyId: pendingId,
+        categories: ready?.categories ?? [],
+        onEditIdentity: async (id, identity) => {
+          const token = await getToken();
+          if (!token) throw new Error("Your session expired. Sign in again.");
+          await patchAgent(token, id, {
+            identity: identity as AgentIdentityPatch,
+          } as AgentPatch);
+          await reload();
+        },
+        shareHrefFor: (agent) =>
+          agent.slug ? shareUrlForSlug(agent.slug) : null,
+        onShareSelect: (id, next: ShareVisibility) => {
+          const agent = sorted.find((item) => item.id === id);
+          if (!agent) return;
+          const current = shareVisibilityOf(agent);
+          void runMutation(id, async (t) => {
+            if (next === "private") {
+              await patchAgent(t, id, { unpublish: true } as AgentPatch);
+            } else if (next === "hidden") {
+              await patchAgent(
+                t,
+                id,
+                (current === "public"
+                  ? { visibility: "unlisted" }
+                  : { publish: true }) as AgentPatch,
+              );
+            } else {
+              if (current === "private")
+                await patchAgent(t, id, { publish: true } as AgentPatch);
+              await patchAgent(t, id, { requestPublic: true } as AgentPatch);
+            }
+          });
+        },
+        onDelete: (id) => void runMutation(id, (t) => deleteAgent(t, id)),
+      }}
+    />
   );
 }

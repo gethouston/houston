@@ -1,30 +1,25 @@
-import type { AgentLearning } from "@houston/agentstore-contract";
-import { Separator } from "@houston-ai/core";
-import { Sparkles } from "lucide-react";
+import type { StoreAgentSummary } from "@houston/agentstore-client";
+import { AgentDetailScreen } from "@houston-ai/store";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AgentCreatorCredit } from "@/components/agent-creator-credit";
-import { AgentIcon } from "@/components/agent-icon";
+import { BioSection } from "@/components/bio-section";
+import { CreatorBlock } from "@/components/creator-block";
 import { InstallPanel } from "@/components/install-panel";
-import { IntegrationChips } from "@/components/integration-chips";
-import { Markdown } from "@/components/markdown";
 import { ReportDialog } from "@/components/report-dialog";
 import { SkillList } from "@/components/skill-list";
-import { resolveIntegrationLabels } from "@/lib/agents/integrations";
+import { StoreNav } from "@/components/store-nav";
 import { taglineOrDescription } from "@/lib/export/shared";
 import { buildInstallInstructions } from "@/lib/install/instructions";
 import { siteConfig } from "@/lib/site-config";
-import { getAgentBySlug } from "@/lib/store-api";
+import { getAgentBySlug, getCreator } from "@/lib/store-api";
 
-// Rendered dynamically so `next build` never calls the gateway; the per-fetch
-// `revalidate` (60s) still caches agent reads across requests at runtime.
 export const dynamic = "force-dynamic";
 
 interface PageParams {
   params: Promise<{ slug: string }>;
 }
 
-/** Absolute URLs the detail page and its install surface point at. */
 function agentUrls(slug: string) {
   const base = siteConfig.url.replace(/\/$/, "");
   return {
@@ -41,146 +36,98 @@ export async function generateMetadata({
   const { slug } = await params;
   const data = await getAgentBySlug(slug);
   if (!data) return { title: "Agent not found" };
-
   const { ir } = data;
-  const { name } = ir.identity;
   const summary = taglineOrDescription(ir, 200);
   const { pageUrl } = agentUrls(slug);
-
   return {
-    title: name,
+    title: ir.identity.name,
     description: summary,
     keywords: ir.identity.tags,
     alternates: { canonical: pageUrl },
     openGraph: {
       type: "website",
-      title: name,
+      title: ir.identity.name,
       description: summary,
       url: pageUrl,
       siteName: siteConfig.name,
     },
     twitter: {
       card: "summary_large_image",
-      title: name,
+      title: ir.identity.name,
       description: summary,
     },
   };
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 export default async function AgentDetailPage({ params }: PageParams) {
   const { slug } = await params;
   const data = await getAgentBySlug(slug);
   if (!data) notFound();
-
   const { ir, agent } = data;
   const { identity } = ir;
   const urls = agentUrls(slug);
-  const integrations = resolveIntegrationLabels(ir.integrations);
   const instructions = buildInstallInstructions(ir, {
     irUrl: urls.irUrl,
     bundleUrl: urls.skillZipUrl,
     pageUrl: urls.pageUrl,
   });
+  let moreAgents: StoreAgentSummary[] = [];
+  if (agent.creator.handle) {
+    const creator = await getCreator(agent.creator.handle);
+    moreAgents = (creator?.agents.items ?? [])
+      .filter((item) => item.id !== agent.id)
+      .slice(0, 3);
+  }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:py-16">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
-        <AgentIcon
-          icon={identity.icon}
-          name={identity.name}
-          className="size-16 text-3xl sm:size-20 sm:text-4xl"
-        />
-        <div className="min-w-0 flex-1">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-            {identity.name}
-          </h1>
-          {identity.tagline && (
-            <p className="mt-2 text-lg text-muted-foreground text-pretty">
-              {identity.tagline}
-            </p>
-          )}
-          <AgentCreatorCredit
-            creator={agent.creator}
-            fallback={identity.creator}
-          />
-        </div>
-      </header>
-
-      <Separator className="my-10" />
-
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex flex-col gap-12">
-          <section>
-            <h2 className="mb-4 font-display text-lg font-semibold">
-              About this agent
-            </h2>
-            <Markdown content={identity.description} />
-          </section>
-
-          {ir.skills.length > 0 && (
-            <section>
-              <h2 className="mb-4 font-display text-lg font-semibold">
-                What it can do
-              </h2>
-              <SkillList skills={ir.skills} />
-            </section>
-          )}
-
-          {integrations.length > 0 && (
-            <section>
-              <h2 className="mb-2 font-display text-lg font-semibold">
-                Built to work with
-              </h2>
-              <p className="mb-4 text-sm text-muted-foreground">
-                The apps this agent is designed around. It only acts on services
-                you have actually connected.
-              </p>
-              <IntegrationChips integrations={integrations} />
-            </section>
-          )}
-
-          {ir.learnings.length > 0 && (
-            <section>
-              <h2 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
-                <Sparkles aria-hidden className="size-4 text-primary" />
-                What it has learned
-              </h2>
-              <ul className="flex flex-col gap-2">
-                {ir.learnings.map((learning: AgentLearning) => (
-                  <li
-                    key={learning.id}
-                    className="rounded-lg border bg-card/50 px-4 py-3 text-sm text-foreground/90"
-                  >
-                    {learning.text}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </div>
-
-        <aside className="lg:sticky lg:top-8 lg:h-fit">
-          <div className="rounded-2xl border bg-card p-5 shadow-sm">
+    <main className="canvas-screen min-h-screen bg-background text-ink">
+      <StoreNav />
+      <div className="mx-auto w-full max-w-[1040px] px-6 pt-12 pb-16 md:px-8">
+        <AgentDetailScreen
+          agent={{
+            ...agent,
+            name: identity.name,
+            description: identity.description,
+            tagline: identity.tagline,
+            learningsCount: ir.learnings.length,
+          }}
+          skills={ir.skills}
+          creator={
+            <CreatorBlock
+              creator={agent.creator}
+              fallback={identity.creator}
+              compact
+            />
+          }
+          actions={
             <InstallPanel
               agentName={identity.name}
               slug={slug}
               instructions={instructions}
-              skillZipUrl={urls.skillZipUrl}
-              copyPasteUrl={urls.copyPasteUrl}
-              shareUrl={urls.pageUrl}
             />
-          </div>
-        </aside>
+          }
+          renderBio={(description, tagline) => (
+            <BioSection tagline={tagline ?? null} description={description} />
+          )}
+          renderSkills={() => <SkillList skills={ir.skills} />}
+          moreAgents={moreAgents}
+          agentHref={(item) => `/a/${item.slug}`}
+          LinkComponent={Link}
+          footer={
+            <footer className="flex items-center gap-4 text-ink-muted text-sm">
+              <span>Updated {formatDate(agent.updatedAt)}</span>
+              <ReportDialog slug={slug} agentName={identity.name} />
+            </footer>
+          }
+        />
       </div>
-
-      <Separator className="mt-12 mb-6" />
-
-      <footer className="flex items-center justify-between gap-4">
-        <p className="text-xs text-muted-foreground">
-          Something wrong with this agent? Let us know.
-        </p>
-        <ReportDialog slug={slug} agentName={identity.name} />
-      </footer>
     </main>
   );
 }

@@ -1,144 +1,108 @@
-import { Button, Spinner } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import type { StoreCatalogAgent } from "@houston-ai/engine-client";
 import {
   reportStoreCreator,
   StoreCatalogError,
 } from "@houston-ai/engine-client";
-import { ArrowLeft } from "lucide-react";
+import { CreatorProfileScreen } from "@houston-ai/store";
+import { FlagIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { reportError } from "../../../lib/error-report";
+import { showErrorToast } from "../../../lib/error-toast";
 import { ReportDialog } from "../report-dialog";
-import { StoreCatalogResults } from "../store-catalog-results";
-import { StoreDetailDialog } from "../store-detail-dialog";
+import { actionLink } from "../store-link";
+import { agentCardLabels } from "../store-shared-labels";
 import { useStoreInstall } from "../use-store-install";
-import { CreatorProfileHeader } from "./creator-profile-header";
+import { CreatorSocials } from "./creator-socials";
 import { useCreatorAgents } from "./use-creator-agents";
 
-/**
- * A creator's public profile pane: their identity header (avatar, name, verified
- * badge, bio, social links) over a grid of their public agents with the same
- * one-click install and detail dialog as Browse. Self-contained — it fetches
- * through {@link useCreatorAgents} and reads/writes the ui store directly, so a
- * caller only supplies the handle and a way back. Works signed out (a shared
- * `/@handle` link or an `houston://store/creator` deep link).
- */
 export function CreatorProfilePane({
   handle,
-  onBack,
+  onOpenAgent,
 }: {
   handle: string;
-  onBack: () => void;
+  onOpenAgent: (agent: StoreCatalogAgent) => void;
 }) {
   const { t } = useTranslation("store");
-  const {
-    profile,
-    items,
-    isPending,
-    isError,
-    error,
-    hasMore,
-    isFetchingMore,
-    showMore,
-    retry,
-  } = useCreatorAgents(handle);
-  const { install, installingSlug } = useStoreInstall();
+  const result = useCreatorAgents(handle);
   const [reportOpen, setReportOpen] = useState(false);
-  const [detailAgent, setDetailAgent] = useState<StoreCatalogAgent | null>(
-    null,
-  );
-
-  // A user-initiated profile load must never fail silently: even though the pane
-  // renders a visible error state, the reason still reaches Sentry (same path as
-  // the sibling store detail fetch).
   useEffect(() => {
-    if (error) {
-      reportError(
+    if (result.error) {
+      showErrorToast(
         "store_creator",
         `creator profile fetch failed (${handle})`,
-        error,
+        result.error,
+        {
+          userMessage: t("creator.loadFailed"),
+        },
       );
     }
-  }, [error, handle]);
-
-  const handleInstall = async (slug: string) => {
-    const opened = await install(slug);
-    if (opened) setDetailAgent(null);
-  };
-
-  const backButton = (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onBack}
-      className="-ml-2 text-ink-muted"
-    >
-      <ArrowLeft className="size-4" />
-      {t("creator.back")}
-    </Button>
-  );
-
-  if (isPending) {
-    return (
-      <div className="space-y-6">
-        {backButton}
-        <div className="flex justify-center py-16">
-          <Spinner className="size-5 text-ink-muted" />
-        </div>
-      </div>
-    );
-  }
-
-  if (isError || !profile) {
-    const notFound = error instanceof StoreCatalogError && error.status === 404;
-    return (
-      <div className="space-y-6">
-        {backButton}
-        <div className="flex flex-col items-center gap-3 py-16">
-          <p className="text-sm text-ink-muted">
-            {notFound ? t("creator.notFound") : t("creator.loadFailed")}
-          </p>
-          {notFound ? null : (
-            <Button variant="outline" className="rounded-full" onClick={retry}>
-              {t("retry")}
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
+  }, [result.error, handle, t]);
+  const { install } = useStoreInstall();
+  const LinkComponent = actionLink((href) => {
+    const agent = result.items.find((item) => `agent:${item.id}` === href);
+    if (agent) onOpenAgent(agent);
+  });
+  const notFound =
+    result.error instanceof StoreCatalogError && result.error.status === 404;
+  const profile = result.profile;
   return (
-    <div className="space-y-6">
-      {backButton}
-      <CreatorProfileHeader
+    <div className="flex flex-col gap-10">
+      <CreatorProfileScreen
+        onTryAgent={(agent) => {
+          if (agent.slug) void install(agent.slug);
+        }}
         profile={profile}
-        agentCount={items.length}
-        onReport={() => setReportOpen(true)}
-      />
-      {items.length === 0 ? (
-        <p className="py-12 text-center text-sm text-ink-muted">
-          {t("creator.noAgents")}
-        </p>
-      ) : (
-        <StoreCatalogResults
-          items={items}
-          isPending={false}
-          isError={false}
-          hasNextPage={hasMore}
-          isFetchingNextPage={isFetchingMore}
-          installingSlug={installingSlug}
-          onRetry={retry}
-          onShowMore={showMore}
-          onInstall={handleInstall}
-          onOpenDetail={setDetailAgent}
-        />
-      )}
-      <StoreDetailDialog
-        agent={detailAgent}
-        onClose={() => setDetailAgent(null)}
-        onInstall={handleInstall}
-        installing={installingSlug !== null}
+        agents={result.items}
+        agentHref={(agent) => `agent:${agent.id}`}
+        LinkComponent={LinkComponent}
+        agentCardLabels={agentCardLabels(t)}
+        loading={result.isPending}
+        failed={result.isError || !profile}
+        onRetry={notFound ? undefined : result.retry}
+        socialLinks={
+          profile ? (
+            <div className="mt-2.5 flex items-center gap-2">
+              <CreatorSocials links={profile.links} />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReportOpen(true)}
+                className="text-ink-muted"
+              >
+                <FlagIcon className="size-4" />
+                {t("creator.report")}
+              </Button>
+            </div>
+          ) : undefined
+        }
+        pagination={
+          result.hasMore ? (
+            <Button
+              variant="outline"
+              className="self-center rounded-full"
+              disabled={result.isFetchingMore}
+              onClick={result.showMore}
+            >
+              {t("showMore")}
+            </Button>
+          ) : null
+        }
+        labels={{
+          agents: t("browse.agents"),
+          agent: t("shared.agent"),
+          agentsNoun: t("shared.agents"),
+          install: t("analytics.totalInstalls_one", { count: 1 }).replace(
+            "1 ",
+            "",
+          ),
+          installs: t("shared.installs"),
+          noAgents: t("creator.noAgents"),
+          loadFailed: notFound
+            ? t("creator.notFound")
+            : t("creator.loadFailed"),
+          retry: t("retry"),
+        }}
       />
       <ReportDialog
         open={reportOpen}

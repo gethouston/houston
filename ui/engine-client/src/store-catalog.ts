@@ -22,6 +22,7 @@ import type {
   StoreCatalogQuery,
   StoreCatalogSort,
   StoreCategory,
+  StoreCreatorDirectoryPage,
   StoreCreatorPage,
 } from "./types.ts";
 
@@ -111,6 +112,18 @@ export async function fetchStoreCategories(
 ): Promise<StoreCategory[]> {
   try {
     return await catalogClient(fetchImpl).listCategories(ACCEPT_JSON);
+  } catch (err) {
+    throw asCatalogError(err);
+  }
+}
+
+/** One page of the public creator directory (anonymous). */
+export async function fetchStoreCreators(
+  page = 1,
+  fetchImpl: typeof fetch = fetch,
+): Promise<StoreCreatorDirectoryPage> {
+  try {
+    return await catalogClient(fetchImpl).listCreators(page, ACCEPT_JSON);
   } catch (err) {
     throw asCatalogError(err);
   }

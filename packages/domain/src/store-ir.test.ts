@@ -2,7 +2,11 @@ import type { AgentProvenance } from "@houston/agentstore-contract";
 import type { Learning, Routine } from "@houston/protocol";
 import { describe, expect, test } from "vitest";
 import type { PortableContent } from "./portable";
-import { irFromPortable, portableFromIr } from "./store-ir";
+import {
+  irFromPortable,
+  portableFromIr,
+  storePackageFromIrPayload,
+} from "./store-ir";
 
 const provenance: AgentProvenance = {
   createdVia: "houston",
@@ -164,5 +168,45 @@ describe("round-trip", () => {
     };
     const { content } = portableFromIr(irFromPortable(x, baseOpts));
     expect(content).toEqual({ ...x, routines: [] });
+  });
+});
+
+describe("storePackageFromIrPayload", () => {
+  const ir = irFromPortable(
+    {
+      claudeMd: "# Role\nYou sell things.",
+      skills: [{ slug: "research", body: "---\ntitle: Research\n---\nbody" }],
+      routines: [],
+      learnings: [],
+    },
+    baseOpts,
+  );
+
+  test("unwraps the gateway's {agent, ir} envelope into a package", () => {
+    const pkg = storePackageFromIrPayload(
+      { agent: { slug: "x" }, ir },
+      "9.9.9",
+    );
+    if ("error" in pkg) throw new Error(pkg.error);
+    expect(pkg.manifest.agentName).toBe("Sales Copilot");
+    expect(pkg.manifest.description).toBe("Handles inbound sales.");
+    expect(pkg.manifest.exporter).toBe("Dana");
+    expect(pkg.manifest.houstonVersion).toBe("9.9.9");
+    expect(pkg.manifest.anonymized).toBe(false);
+    expect(pkg.content.claudeMd).toBe("# Role\nYou sell things.");
+    expect(pkg.content.skills).toEqual([
+      { slug: "research", body: "---\ntitle: Research\n---\nbody" },
+    ]);
+  });
+
+  test("accepts a bare IR payload", () => {
+    const pkg = storePackageFromIrPayload(ir, "1.0.0");
+    expect("error" in pkg).toBe(false);
+  });
+
+  test("an unreadable IR surfaces the user-facing error, no throw", () => {
+    expect(storePackageFromIrPayload({ ir: { nope: true } }, "1.0.0")).toEqual({
+      error: "The shared agent could not be read (unexpected format).",
+    });
   });
 });

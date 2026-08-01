@@ -5,10 +5,10 @@ Mandatory context for every coding agent (Claude Code / Codex) before touching U
 Canonical sources, in precedence order: `packages/design-tokens/tokens/*.json` (source of truth — **tokens win on any conflict**) › `knowledge-base/design-system.md` (current-state doctrine) › this file (summary). If this file disagrees with the token JSON, the JSON is right — fix this file.
 
 ## 2. Product design identity
-Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy, not corporate. Current look = the **futuristic theme** (`app/src/styles/futuristic.css`, imported last so its overrides win).
+Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy, not corporate. Current look = the **futuristic theme**: the shared canvas `ui/core/src/canvas.css` (aurora, glass surfaces, depth utilities — imported after core globals so its overrides win; also consumed by the store playground and, eventually, agents.gethouston.ai) plus the app-only chrome left in `app/src/styles/futuristic.css` (AI-Hub `.ht-live-glow` / modal surface).
 - **Arc / Zen "canvas" layout.** Main content floats as a rounded "screen" card (`bg-background`, `.canvas-screen`) on a recessed window **gutter** (`bg-gutter`); the sidebar is transparent and melts into the gutter.
 - **Dark mode is the loved baseline** — a slow-drifting multi-radial **aurora glow** (blue/indigo/orange, 32s) on `body::before` + translucent **glass** surfaces with `backdrop-filter` blur.
-- **Light mode** — cool solid **"Aurora" palette** (gutter `#eef1f7`, screen `#fcfcfc`, cards over it), no glow mesh (read as glitter over solids). Clean by restraint.
+- **Light mode** — cool solid light palette (gutter, screen, and slightly recessed fields), no glow mesh (read as glitter over solids). Clean by restraint. ("Aurora" refers ONLY to the dark-mode glow — themes are just "light" and "dark".)
 - **Near-monochrome content, brand-coloured chrome.** Text/controls stay grayscale; colour lives in chrome (aurora, glass sheen, running-card glow) + semantic status + agent avatars + links. Never decorative colour on content surfaces.
 - Both themes ship on every screen via `[data-theme]`. Floating surfaces (modals, popovers) are **solid** in both themes — never glass, never bleed content.
 
@@ -19,10 +19,10 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
    - `app/src/main.tsx` — pre-boot fallback colour before tokens load
    - `app/index.html` + `packages/web/index.html` — the pre-paint theme frame + cache script (light screen `#fcfcfc` / dark gutter `#141416`; keep the two blocks identical)
    - `packages/web/src/new-engine/styles.ts` — entry-chunk boot-gate styles (render before any token CSS loads; gate surfaces mirror the same frame values)
-   - `futuristic.css` effects layer — aurora / `.ht-live-glow` / glass-sheen rgba (sanctioned effect values, not tokenized)
+   - the effects layer — aurora / glass-sheen rgba in `ui/core/src/canvas.css`, `.ht-live-glow` + AI-Hub chrome in `app/src/styles/futuristic.css` (sanctioned effect values, not tokenized)
 2. **Use `@houston-ai/core` primitives** (§ inventory). Never invent a parallel component; never import another component library. Search core + the shadcn registry before building.
 3. **Lucide icons only**, `currentColor`, 20px standard (`h-5 w-5`), 16px small, 24px large, stroke 2px. **No emoji as icons, ever.**
-4. **Every screen ships light AND dark** via `[data-theme]`. Pin a subtree with `data-theme="light|dark"` on a wrapper when it must defy the app theme (e.g. controls on the dark space backdrop). Keep the `:not(:where([data-theme="light"], …))` guard on any new dark-scoped descendant rule.
+4. **Every screen ships light AND dark** via `[data-theme]`. Pin a subtree with `data-theme="light|dark"` on a wrapper when it must defy the app theme (e.g. the first-run flow pins its calm light setup canvas). Keep the `:not(:where([data-theme="light"], …))` guard on any new dark-scoped descendant rule.
 5. **`ui/` (`@houston-ai/*`) stays generic**: props only — no Zustand/store/Tauri imports, no `app/` types, no `@/` aliases. **i18n-agnostic**: take `labels?` props with English defaults; the `app/` consumer passes `t()` results in. No `react-i18next` in `ui/`.
 6. **New/changed shared component → bump `design/inventory/inventory.yaml`** + `CHANGELOG.md` + every enforced surface manifest in the SAME PR; run `pnpm check:parity`. Desktop-only chrome is excluded — build in `app/`, don't inventory.
 7. No hover-only affordances. Pill buttons (`rounded-full`). No em dashes in user copy. Files ≤200 lines (CSS ≤500).
@@ -50,35 +50,34 @@ Section headers: sentence case, `text-sm font-medium`. Never uppercase / `tracki
 
 **Elevation** (`scale/elevation.json`): `edge` = `0 1px 0 rgba(0,0,0,0.05)` (default flat depth) · `composer` = the signature multi-shadow. In **dark mode use NO drop shadows** — depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen.
 
-**Semantic colour roles** (token | light → dark | use for):
+**Semantic colour roles** (token | use for). Live values: `packages/design-tokens/tokens/*.json`, or component showcase → Colors (`pnpm --filter @houston-ai/showcase dev`).
 
 Surface ladder (bottom → top):
-| token / utility | light → dark | use for |
-|---|---|---|
-| `bg-gutter` (`--ht-base`) | `#eef1f7` → `#141416` | window frame / gutter the sidebar melts into |
-| `bg-background` (`--ht-background`) | `#fcfcfc` → glass `rgba(38,38,40,.55)` | the floating "screen" — **standard main pane** (via `.canvas-screen`) |
-| `bg-input` (`--ht-input`) | `#ffffff` → `#1e1e1e` | floating white inputs, composer, pills |
-| `bg-card` (`--ht-card`) | glass `white-68` → glass `neutral-50` | cards/panels that **float above** the canvas |
-| `bg-popover` / `bg-dialog` | white → `#1e1e1e` | menus / modals — **SOLID both themes, never blur, never alpha** |
-| `bg-chip` / `bg-chip-subtle` | `ink-a035` → `white-a05` | recessed panels below the card tier (board columns, rows) |
+| token / utility | use for |
+|---|---|
+| `bg-gutter` (`--ht-base`) | window frame / gutter the sidebar melts into |
+| `bg-background` (`--ht-background`) | the floating "screen" — **standard main pane** (via `.canvas-screen`) |
+| `bg-input` (`--ht-input`) | fields, composer, pills — slightly recessed on the screen |
+| `bg-card` (`--ht-card`) | cards/panels that **float above** the canvas |
+| `bg-popover` / `bg-dialog` | menus / modals — **SOLID both themes, never blur, never alpha** |
+| `bg-chip` / `bg-chip-subtle` | recessed panels below the card tier (board columns, rows) |
 
 Text · interactive · lines:
-| token | light → dark | use for |
-|---|---|---|
-| `text-ink` | `#14161d` → `#e5e5e5` | primary text |
-| `text-ink-muted` | `#8e8e8e` → neutral-450 | secondary text |
-| `bg-action` / `text-action-text` | `#0d0d0d`/white → `#e5e5e5`/`#171717` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
-| `bg-hover` / `text-hover-text` | `#fcfcfc`→ / white-a08 | row + menu hover fill |
-| `bg-chip` / `text-chip-text` | soft fill | soft chips / badges |
-| `border-line` (`--ht-line`) | `rgba(60,70,120,.1)` → white-a10 | hairlines (prefer `.ht-hairline` outline on cards) |
-| `border-line-input` | `#e3e3e3` → neutral-700 | field borders |
-| `ring-focus` (`--ht-focus`) | `#0d0d0d` → `#e5e5e5` | focus ring — **near-ink, NOT blue** |
+| token | use for |
+|---|---|
+| `text-ink` | primary text |
+| `text-ink-muted` | secondary text |
+| `bg-action` / `text-action-text` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
+| `bg-hover` / `text-hover-text` | row + menu hover fill |
+| `bg-chip` / `text-chip-text` | soft chips / badges |
+| `border-line` (`--ht-line`) | hairlines (prefer `.ht-hairline` outline on cards) |
+| `border-line-input` | field borders |
+| `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** |
 
-Status (each has a `-text`): `danger` `#e02e2a`→`#ef4444` · `success` `#00a240`→`#22c55e` · `warning` `#e0ac00`→`#eab308` · `highlight` (brand wash + ink `-text`).
+Status (each has a `-text`): `danger` · `success` · `warning` · `highlight` (brand wash + ink `-text`).
 
 Reserved families — do not reach for outside their home:
 - `sidebar*` (`-text`/`-line`/`-hover`/`-active`): sidebar is transparent; `sidebar-active` is the selected-row fill, a clear step above hover.
-- `space-*`: theme-invariant **dark**, ONLY for the storage-unavailable gate and the cloud-migration `OrbitLoader` (`app/src/components/space/`); the workspace-loading splash moved to the standard screen tokens (`bg-background`). Any themed control placed on a space surface must pin `data-theme="dark"`.
 - `agent.{charcoal,forest,navy,purple,crimson,orange,golden}`: AGENT avatar palette — resolve stored ids via `resolveAgentColor` from `@houston-ai/core`, never app-local helpers. Use `HoustonAvatar`. The same tokens are bridged as `text-agent-*` utilities for the agent's NAME in chat; pick that class with `agentNameToneClass(stored)` (`@houston-ai/core`), which measures the colour against each theme's chat surface and falls back to `text-ink` below 4.5:1 — never hand-write a `text-agent-*` class.
 - `filetype.{pdf,doc,sheet,slide,image,video,audio,archive,code,generic}`: FILE-TYPE identity palette — one muted hue per family, themed both ways, worn ONLY by the Lucide glyph inside the Files icon tile (`FileTypeTile`, `@houston-ai/agent`) via a `text-filetype-*` utility. Identity like an agent's helmet, never status; folders stay `text-ink-muted`. Contrast on the tile (`bg-input`) is guarded by `packages/design-tokens/test/contrast.test.ts`.
 - `person-{slate,sage,mauve,taupe,indigo}` + `person-initials` + `person-overflow`/`person-overflow-text`: HUMAN avatar palette (mission face stacks). Deliberately desaturated so teammates never compete with agent helmets. Pick a tone with `personToneClass(id)` from `@houston-ai/board` — never by list index, or a person's colour changes when the roster does.
@@ -91,7 +90,7 @@ Merge the tokenized scale (§4) with these craft rules:
 - Animate **only `transform` + `opacity`.** Never layout/color/box-shadow per frame.
 - Never from `scale(0)` — start ≥ `scale(0.95)` (see AI-Hub modal: `0.98→1`).
 - **NO animation on high-frequency interactions** — menus, dropdowns, keyboard-driven actions open instantly.
-- Respect `prefers-reduced-motion`: collapse to opacity-only or static (the aurora + OrbitLoader already branch on it).
+- Respect `prefers-reduced-motion`: collapse to opacity-only or static (the aurora already branches on it).
 - Gestures / drags → springs, interruptible (Framer `{type:"spring", stiffness:300, damping:30}`); reordering lists use the `layout` prop + `AnimatePresence mode="popLayout"`.
 
 ## 6. Banned generic-AI defaults (never produce)

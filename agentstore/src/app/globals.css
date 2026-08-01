@@ -1,120 +1,42 @@
-@import "tailwindcss";
+/* THE Tailwind bridge lives in @houston-ai/core and is imported, never copied:
+   it pulls in Tailwind, the generated @houston/design-tokens variables (--ht-*
+   on :root / [data-theme]), the data-theme dark variant, and the `@theme
+   inline` block that re-exports every token as a --color-* utility. Copying it
+   is what broke this file before — the copy still mapped --ht-foreground /
+   -primary / -border / -ring, renamed away with the July 2026 token
+   vocabulary, so every utility here resolved to nothing and the core
+   components (ink / action / chip / line / focus) had no bridge at all.
 
-/* Semantic colour tokens: --ht-* on :root (light) and [data-theme="dark"].
-   SINGLE SOURCE OF TRUTH is @houston/design-tokens. The `@theme inline` block
-   below re-exports these to Tailwind's --color-* utilities. Mirrors the wiring
-   in ui/core/src/globals.css so @houston-ai/core components render identically
-   here. */
-@import "@houston/design-tokens/css";
+   It already does `@import "tailwindcss"` — importing Tailwind again here
+   would emit the whole framework twice. */
+@import "@houston-ai/core/src/globals.css";
+@import "@houston-ai/core/src/canvas.css";
 
-/* @houston-ai/core ships TypeScript source (not a prebuilt stylesheet), so
-   Tailwind must scan its components for the utility classes they use. Point at
-   the workspace symlink in node_modules — Tailwind skips node_modules unless a
-   source is registered explicitly. */
+/* Tailwind resolves `@source` relative to the file that declares it, and the
+   `@import "tailwindcss"` that seeds automatic detection now sits inside
+   ui/core — so both trees are registered here explicitly: this app's own
+   source, and @houston-ai/core's components (they ship TypeScript source, and
+   Tailwind skips node_modules unless a source says otherwise). */
+@source "../../src";
 @source "../../node_modules/@houston-ai/core/src";
+@source "../../node_modules/@houston-ai/store/src";
 
-/* Dark mode via data-theme="dark" on an ancestor (NOT a .dark class), matching
-   ui/core. A subtree can pin itself light with data-theme="light"; the :not()
-   keeps `dark:` utilities from leaking into such a subtree. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *):not(:where([data-theme="light"], [data-theme="light"] *)));
-
-[data-theme="dark"] {
-  color-scheme: dark;
-}
-[data-theme="light"] {
-  color-scheme: light;
-}
-
-/* Corner radius kept as a plain :root var (not a @theme token) so direct
-   var(--radius) consumers in @houston-ai/core keep resolving — `@theme inline`
-   emits nothing to :root. */
-:root {
-  --radius: 0.5rem;
-}
-
-/* `@theme inline` (NOT plain `@theme`) is load-bearing for subtree theme
-   pinning: it emits each utility as `background-color: var(--ht-background)`
-   resolved at the CONSUMING element, so a pinned subtree re-resolves every
-   colour. Nothing may read `var(--color-*)` directly — all consumers use
-   `var(--ht-*)`. */
-@theme inline {
-  --color-background: var(--ht-background);
-  --color-foreground: var(--ht-foreground);
-  --color-card: var(--ht-card);
-  --color-card-hover: var(--ht-card-hover);
-  --color-card-foreground: var(--ht-card-fg);
-  --color-dialog: var(--ht-dialog);
-  --color-popover: var(--ht-popover);
-  --color-popover-foreground: var(--ht-popover-fg);
-  --color-primary: var(--ht-primary);
-  --color-primary-foreground: var(--ht-primary-fg);
-  --color-secondary: var(--ht-secondary);
-  --color-secondary-foreground: var(--ht-secondary-fg);
-  --color-muted: var(--ht-muted);
-  --color-muted-foreground: var(--ht-muted-fg);
-  --color-accent: var(--ht-accent);
-  --color-accent-foreground: var(--ht-accent-fg);
-  --color-destructive: var(--ht-destructive);
-  --color-destructive-foreground: var(--ht-destructive-fg);
-  --color-border: var(--ht-border);
-  --color-input: var(--ht-input);
-  --color-ring: var(--ht-ring);
-  --color-sidebar: var(--ht-sidebar);
-  --color-sidebar-foreground: var(--ht-sidebar-fg);
-  --color-sidebar-border: var(--ht-sidebar-border);
-  --color-sidebar-accent: var(--ht-sidebar-accent);
-  --color-sidebar-accent-foreground: var(--ht-sidebar-accent-fg);
-  --color-success: var(--ht-success);
-  --color-success-foreground: var(--ht-success-fg);
-  --color-warning: var(--ht-warning);
-  --color-warning-foreground: var(--ht-warning-fg);
-  --color-highlight: var(--ht-highlight);
-  --color-highlight-foreground: var(--ht-highlight-fg);
-  /* Typography matches gethouston.ai exactly: system stack for body copy,
-     General Sans (fontshare, loaded in layout.tsx) for display headings and
-     the wordmark. */
+/* The store uses the same system stack for body and display typography. */
+@theme {
   --font-sans:
     ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial,
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-display:
-    "General Sans", ui-sans-serif, -apple-system, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji";
+    ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-@layer base {
-  * {
-    border-color: var(--ht-border);
-  }
-  body {
-    /* Transparent: the fixed space background (space.css, layered behind at
-       negative z-index) is the page ground; html carries the dark base. */
-    background-color: transparent;
-    color: var(--ht-foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-}
-
-button,
-[role="button"],
-a,
-summary {
-  cursor: pointer;
-}
-
-/* Custom scrollbars — match the Houston app's thin, theme-aware treatment. */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--ht-foreground) 15%, transparent);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--ht-foreground) 30%, transparent);
+/* Unlayered, exactly like core's own body rule — an `@layer base` copy would
+   lose to it (unlayered CSS outranks every layer). The website remains
+   scrollable while using the shared canvas background.
+   Everything else — colour, smoothing, cursors, scrollbars, the
+   `* { border-color }` base rule — comes from core. */
+body {
+  overflow: visible;
+  font-family: var(--font-sans);
 }

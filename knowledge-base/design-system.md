@@ -10,7 +10,7 @@ that `/DESIGN.md`'s telegraphic tables can't hold. Precedence on any conflict:
 
 The current look is the **futuristic theme** — a calm, futuristic desktop AI
 product ("quiet expert"). Dark mode is the loved baseline (aurora glow + glass);
-light mode is the cool solid "Aurora" palette. Content stays near-monochrome;
+light mode is the cool solid light palette. Content stays near-monochrome;
 colour lives in the chrome. Everything below describes the current system.
 (Pre-futuristic monochrome doctrine is archived in
 `knowledge-base/design-system-history.md` — history only, don't copy from it.)
@@ -29,7 +29,7 @@ re-declaration re-resolves every `var(--ht-*)`, and thus every Tailwind
 `data-theme="light"` this way, so a dark-mode user still gets a light
 first-run). The `dark` Tailwind
 variant (`ui/core/src/globals.css`) and every `[data-theme="dark"]` descendant
-rule (`futuristic.css`, app `globals.css`) carry a
+rule (`ui/core/src/canvas.css`, `app/src/styles/futuristic.css`, app `globals.css`) carry a
 `:not(:where([data-theme="light"], [data-theme="light"] *))` guard so dark
 chrome never leaks into a pinned subtree through the `<html>` ancestor — keep
 the guard on any new dark-scoped descendant rule. Outputs:
@@ -70,8 +70,11 @@ Capable, calm, invisible. Quiet expert. Not flashy, not corporate, not techy. Li
 
 ## Color
 
-Both light and dark ship on every screen. Primary ink is near-black `#0d0d0d`,
-NEVER pure black. Content stays near-monochrome; the **chrome** (window
+Live values: `packages/design-tokens/tokens/*.json`, or component showcase →
+Colors (`pnpm --filter @houston-ai/showcase dev`).
+
+Both light and dark ship on every screen. Primary ink is near-black, NEVER pure
+black. Content stays near-monochrome; the **chrome** (window
 background, glass, aurora glow) carries deliberate brand colour.
 
 ### Tokens
@@ -83,17 +86,16 @@ its transparency inside the value).
 
 The owner vocabulary (say these words to direct changes):
 - **Grounds**: `gutter` (`--ht-base`, the window frame the sidebar melts into) →
-  `background` (the main pane / floating "screen", light `#fcfcfc`) → `input`
-  (the white `#fff` surface — fields, composer, floating cards).
+  `background` (the main pane / floating "screen") → `input` (fields, composer,
+  floating cards, slightly recessed on the screen).
 - **Elevated**: `card` / `card-hover` (glass) / `card-solid` (solid board card)
   / `popover` / `dialog` (both SOLID — floating surfaces never bleed).
 - **Text**: `ink`, `ink-muted` (+ per-surface `card-text`, `popover-text`).
 - **Interactive**: `action`/`action-text` (filled CTA), `hover` (row/menu hover
-  fill, light `#efefef`), `chip`/`chip-text` + `chip-subtle` (soft fills).
+  fill), `chip`/`chip-text` + `chip-subtle` (soft fills).
 - **Lines & focus**: `line` (hairlines), `line-input` (field borders), `focus`.
 - **Status**: `danger`, `success`, `warning`, `highlight` (each with `-text`).
-- Untouched families: `space-*` (the storage-unavailable gate + the cloud-migration OrbitLoader),
-  `agent.*` (agent avatar palette),
+- Untouched families: `agent.*` (agent avatar palette),
   `person-*` (HUMAN avatar palette — `slate` / `sage` / `mauve` / `taupe` /
   `indigo` fills, `person-initials`, and the `person-overflow` /
   `person-overflow-text` pair for the "+N" chip. Deliberately DESATURATED so a
@@ -112,77 +114,51 @@ under Animation → First-run flow for why the alias was renamed.
 ### The surface ladder (real tokens)
 
 There is **no `layer-*` token** — the surface stack is expressed through the
-grounds/elevated tokens above. Bottom → top (with the Tailwind utility, and
-light → dark value):
+grounds/elevated tokens above. Bottom → top (with the Tailwind utility and
+role):
 
-- **`bg-gutter`** (`--ht-base`, `#eef1f7` → `#141416`) — the recessed window
+- **`bg-gutter`** (`--ht-base`) — the recessed window
   frame the sidebar melts into. Sits one step BELOW `background` so the screen
-  reads as raised (in `futuristic.css` this is `body`'s `background-color`).
-- **`bg-background`** (`--ht-background`, `#fcfcfc` → glass `rgba(38,38,40,.55)`)
-  — the floating "screen" and the **standard main pane** every content surface
+  reads as raised (in `ui/core/src/canvas.css` this is `body`'s `background-color`).
+- **`bg-background`** (`--ht-background`) — the floating "screen" and the
+  **standard main pane** every content surface
   sits on (board, chat, routines, integrations, files, settings, AI hub…).
   Applied via the `.canvas-screen` class (which also carries the dark
   frosted-glass blur); `bg-background` stays on the element as the theme-off
-  opaque fallback. In light it is a calm light-gray, NOT white, so white cards,
-  the composer, inputs and popovers **float** on it rather than vanishing
-  white-on-white.
-- **`bg-input`** (`--ht-input`, `#ffffff` → `#1e1e1e`) — floating white inputs,
-  the composer, white pills. NOT a pane background (a pane painted `bg-input`
-  becomes a white slab on the gray canvas).
+  opaque fallback. Fields (`bg-input`) sit slightly recessed on it, and
+  cards/popovers separate via hairlines
+  (`border-line` / `.ht-hairline`) rather than surface contrast.
+- **`bg-input`** (`--ht-input`) — inputs, the composer, pills. NOT a pane
+  background (a pane painted `bg-input` becomes a slab on the canvas).
 - **`bg-card` / `bg-card-hover`** (glass `white-68`/`white-76` → glass
   `neutral-50`/`neutral-58`) — cards/panels that should **float above** the
   canvas (mission cards, settings group cards, AI-hub material). White + border +
   sheen is what makes them lift off the gray.
-- **`bg-popover` / `bg-dialog`** (white → `#1e1e1e`) — menus / modals; **SOLID in
+- **`bg-popover` / `bg-dialog`** — menus / modals; **SOLID in
   both themes** (see Modals below).
-- **`bg-chip` / `bg-chip-subtle`** (`ink-a035` = `rgba(13,13,13,.035)` →
-  `white-a05`) — recessed panels that sit BELOW the card tier (board columns,
-  provider rows, soft chips).
+- **`bg-chip` / `bg-chip-subtle`** — recessed panels that sit BELOW the card
+  tier (board columns, provider rows, soft chips).
 
 The `futuristic.css` AI-Hub material comment states the same ladder as its depth
 vocabulary: `bg-background → bg-card → bg-card-hover → bg-popover`, with depth
 from HAIRLINE INSET RINGS (`.ht-hairline`), not opaque borders or drop shadows —
 real shadow is reserved for floating chrome (modals/popovers).
 
-### `--ht-space-*` (space boot surfaces)
-A deliberately **theme-invariant** group — both `color.light.json` and
-`color.dark.json` alias the same `color.space.*` primitives, so the space
-backdrop reads identically in light and dark. It now backs ONLY the
-**storage-unavailable gate** (`auth/storage-unavailable-screen.tsx`) and the
-`OrbitLoader` / `SuccessCheck` (cloud-migration wizard) — the workspace-loading
-splash moved OFF the space theme to a flat themed screen (2026-07, see
-Animation → Workspace loading splash), and the first-run gates, sign-in,
-onboarding, and the cloud-migration wizard moved OFF the space photo to a flat
-light page (see Animation → First-run flow). Feeds the shared
-`SpaceScreen` backdrop (see Animation → Space screen backdrop): `--ht-space-canvas`
-`#07080f` (near-black indigo base + the photo scrim's only colour, via
-`color-mix`) · `-canvas-glow` `#101430` (decode-gradient top) ·
-`-nebula-1` `#38346b` / `-nebula-core` `#b8b2e8` / `-star-warm` `#f6e7cd` —
-the `SuccessCheck` celebratory gradient · `-star` `#dce2f7` (OrbitLoader ring
-+ comet tail) · `-foreground` `#ffffff` (space-screen content, currentColor) ·
-`-foreground-muted` `#8e96b8` (status lines on the space surface).
-The `OrbitLoader` rocket + comet trail reuse `-foreground` (pure white, head)
-and `-star` (cool white, tail) — no dedicated comet tokens. (`-nebula-2`,
-`-nebula-dust`, `-haze` were deleted with the procedural nebula/starfield —
-see Animation → Space screen backdrop.) The **migration progress screen**
-reuses the same `OrbitLoader` but remaps `-foreground`/`-star` to
-`--ht-ink`/`--ht-ink-muted` via an inline wrapper (`ORBIT_INK_VARS`), so the
-rocket reads as dark-on-light there without a component change.
-**Deleted:** `--ht-space-glass` / `-glass-border` / `-glass-light` (the old
-white-glass card material for cards floating on the photo). The first-run
-flow is flat light with plain white cards now, so nothing floats on the photo
-— the `glass.space-75` + `glass.white-92` primitives went with them.
+### Retired space scene
+The app space scene and its `space-*` token family were retired. The boot
+splash is the themed screen surface (see Animation → Workspace loading splash);
+secure-storage and migration progress states use simple semantic-token screens
+with the shared `Spinner`.
 
 ### Borders & lines
 The "invisible borders" principle holds: hairlines are very low opacity (5–15%).
 Reach for the **`border-line`** token (`--ht-line`) or the **`.ht-hairline`**
 inset-ring utility (a 1px `outline` in the `--ht-line` colour, so it composes
 with glass sheen and Tailwind ring/shadow utilities) — never a raw `rgba`.
-Field borders use **`border-line-input`** (`--ht-line-input`, `#e3e3e3` light).
+Field borders use **`border-line-input`** (`--ht-line-input`).
 
 ### Status
-`success #00a240` → bright `#22c55e` · `warning #e0ac00` → `#eab308` ·
-`danger #e02e2a` → `#ef4444` (each with a `-text`), plus `highlight` (brand
+`success` · `warning` · `danger` (each with a `-text`), plus `highlight` (brand
 wash + ink). Links use the same semantic status/highlight family.
 
 ### Color restraint
@@ -248,8 +224,8 @@ Grid: leading (attach) | primary (text) | trailing (send).
 ## Cards
 `bg-card` (or `bg-input` for a floating white card), `border-line` /
 `.ht-hairline`, `rounded-xl`, hover lift. Running state = `card-running-glow`
-animation border. Kanban resting cards use one token, `--ht-card-solid`
-(`#2c2c2b` dark / white light), unified across resting + running + needs-you.
+animation border. Kanban resting cards use one token, `--ht-card-solid`, unified
+across resting + running + needs-you.
 
 ### RowCard (inline notice + integration cards)
 One shared component (`app/src/components/cards/row-card.tsx`) for the compact horizontal cards in chat and integration surfaces: monochrome logo/icon left (`size-8 rounded-lg` media box), `text-[13px]` title + `text-[11px]` muted description, single right-side action slot. Always grey `bg-chip`, `rounded-xl`, `px-3 py-2.5`. The `inline` prop renders a `<span>` row so it can sit inside assistant markdown prose; `size="md"` gives a roomier modal-heading variant. Pair with `RowCardButton` (`h-7 rounded-full` pill) — its `icon` is **optional**, so action buttons are text-only by default (only the Composio cards pass a trailing link icon), and it is built on `AsyncButton` (HOU-465 rage-click guard). The media slot takes either a `ProviderGlyph` (`shell/provider-logos.tsx`) — monochrome, never full-color brand marks, keyed by provider id with an initial fallback — or a lucide icon. Used by: reconnect / sign-in (`UnauthenticatedCard`, `ProviderReconnectCard`), rate-limit (`RateLimitedCard`, clock icon), the provider-switch dialog, and the inline Composio `#houston_toolkit` link card. **Not** the interaction-card stepper's connect/signin STEPS — those compose the shared `InteractionModal` shell (`ui/chat`, reference "Coworker card" look, landed in inventory v19, reshaped in v41): the `(icon) action` title (brand logo `sm` beside "Connect {app}" at REGULAR weight, via `InteractionModalTitle`) is on the same header row as the pager + dismiss X; the connect body is the agent's foreground reason, while sign-in retains its muted explainer. The FOOTER is the unified "Not now" + Esc hint beside a filled CTA with a return-key glyph, and the free-text alternate-instruction row follows it in the modal's trailing region. Weight is restrained: color tone carries the hierarchy, so the title and labels are regular — `font-medium` survives only on the Recommended chip, the number badge, and the CTA label; no competing bolds. "Not now" travels WITH the CTA (present wherever the CTA is, including a reconsidered skip). The signin/connect body renders its OWN `InteractionModal` wired with the stepper's `StepChrome` (pager + dismiss), so ui/chat stays auth/Composio-unaware. See `chat-connect-interaction-card.tsx` / `chat-signin-interaction-card.tsx`.
@@ -312,8 +288,7 @@ token inside resolves light. **No space photo, no glass, no `backdrop-blur`** �
 the space/galaxy look is OUT for first-run.
 - **Cards** are the shared `SetupCard` (`components/onboarding/setup-card.tsx`):
   a `bg-card` white card + `border-line` hairline + soft shadow. There is no
-  `onSpace` prop and no glass remap any more — `SPACE_CARD_VARS` and the
-  `--ht-space-glass*` tokens were deleted.
+  photo-backdrop variant or glass remap.
 - **Sign-in** (`auth/sign-in-screen.tsx`) is a white card with the filled
   `bg-action` value panel; ink is normal `text-ink` (the last-sign-in hint on
   `text-ink-muted`, the provider halo on `--ht-focus`, both retuned for white).
@@ -330,9 +305,8 @@ the space/galaxy look is OUT for first-run.
   and `SetupCard`s for the done-steps; `MigrationProgressBar` (normal `bg-chip`
   track + `bg-action` fill), `SpaceInvaders` (paints `text-ink`), the status
   cycle, and `WizardBadge` (the `onPhoto` variant was removed) all render on
-  light tokens. The progress `OrbitLoader` is remapped to ink (`ORBIT_INK_VARS`,
-  see `--ht-space-*` above). The done congrats keeps the one colour accent, the
-  `SuccessCheck`.
+  light tokens. Progress uses the shared `Spinner`; the done congrats uses the
+  semantic success treatment in `SuccessCheck`.
 - **`base` colour naming gotcha (RESOLVED, 2026-07): `text-base` is a plain
   font-size utility again.** The gutter token's Tailwind alias was renamed
   `--color-base` → `--color-gutter` (`ui/core/src/globals.css`) precisely because
@@ -369,63 +343,12 @@ Inline is safe on both shells: Tauri's `security.csp` is `null`
 `frame-ancestors 'none'` (`packages/web/firebase.json`). Playwright contexts
 start with empty storage, so the visual suite is unaffected.
 
-### Space screen backdrop (boot gate states)
-`SpaceScreen` (`app/src/components/space/space-screen.tsx`) is the **shared
-full-screen space layout**: the `--ht-space-canvas` base, the `SpaceBackground`
-backdrop (the landing page's Milky Way photograph under its readability scrim),
-and a `z-10` content slot on top. Its sole consumer is the **storage-unavailable
-gate** (`components/auth/storage-unavailable-screen.tsx`) — content sits
-directly on the dark backdrop, using the space-foreground token family
-(`--ht-space-foreground` / `-foreground-muted`). The canvas is theme-invariant
-DARK while `action` follows the app theme, so any themed control placed on it
-(e.g. the storage gate's Retry `Button`) must pin `data-theme="dark"` on its
-subtree or it turns near-black-on-black in light mode.
-The whole space rendering cluster lives in **`app/src/components/space/`**.
-
-**`OrbitLoader`** (`space/orbit-loader.tsx` + geometry/trail constants in
-`space/orbit-path.ts`) is the cloud-migration progress centrepiece (formerly
-also the splash loader): a 240px inline-SVG scene — a soft pulsing core
-(the workspace being assembled), a barely-there tilted elliptical orbit ring
-(`--ht-space-star` @ 0.16), and a rocket ship (a single closed compound `<path>`:
-ogive nose cone, cylindrical body, swept tail fins, tapered engine base) travelling
-the ellipse via SMIL `<animateMotion rotate="auto">` (6s lap, unhurried; the path
-points nose-first along +x). The comet streak is 12 soft blurred capsule ellipses
-riding the SAME `<mpath>` path with negative `begin` offsets + decreasing
-opacity/scale, so they overlap into one continuous glowing streak rather than
-reading as discrete blobs. All white: it fades mainly via opacity, with a subtle
-tone shift from `--ht-space-foreground` (pure white, head) to `--ht-space-star`
-(cool white, tail) for depth — no amber/blue, no colour literals. No JS loop, no
-per-frame allocation. SMIL ignores `prefers-reduced-motion`, so it
-branches on framer-motion `useReducedMotion()` → a single static ship parked on
-the ring beside the static core, zero `<animate*>` elements.
-
-`SpaceBackground` (`app/src/components/space/space-background.tsx`) is the
-space layer itself — an `aria-hidden`, `pointer-events-none` absolute layer.
-It is **the landing page's Milky Way photograph** (ESO panorama eso0932a,
-ESO/S. Brunier, CC BY 4.0), the SAME assets the website uses
-(`app/src/assets/space/milkyway-*.{avif,webp,jpg}`, copied from
-`website/src/assets/space/`), so the marketing site and the app's first-run
-experience read as one scene. Three stacked sublayers:
-
-**(1) Base gradient** — a near-black indigo `linear-gradient` (canvas-glow →
-canvas), always painted so nothing flashes while the photo decodes.
-
-**(2) The photograph** — a `<picture>` with AVIF/WebP/JPEG srcsets at
-1280/1920/2560 widths, `object-cover`, framed at the landing page's
-`center 42%` so the galactic core sits in the upper third behind the card.
-Fades in over 700ms on decode (`motion-reduce:transition-none`).
-
-**(3) Scrim** — the landing readability veil ported 1:1 (gradient stops a
-touch stronger through the middle, 0.5 vs the landing's 0.4, because the app
-centers text over the galactic core): a radial vignette + 180° gradient whose
-only colour is `--ht-space-canvas` via `color-mix`, plus the same near-invisible
-SVG fractal-noise film (0.025 alpha) against banding on the dark ramps.
-
-**History:** this replaced the procedural WebGL-nebula + canvas-starfield
-system (`nebula-gl/shader/noise/program`, `starfield/-model/-sprites` — deleted;
-in git history if ever needed). The `--ht-space-nebula-2` / `-nebula-dust` /
-`-haze` tokens went with it. Restraint over spectacle — it is a backdrop,
-never the show.
+### Boot gate states
+The legacy space scene was retired: the `space-*` token family, `SpaceScreen`,
+`OrbitLoader`, and the Milky Way assets are gone (git history if ever needed).
+The workspace-loading splash is the themed screen surface above; the
+storage-unavailable gate and the cloud-migration progress screen render on the
+standard semantic canvas with the shared `Spinner`.
 
 ## Icons
 Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px (or 1.5px lighter). `currentColor`.
@@ -445,10 +368,28 @@ Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px
 1. `/frontend-design` — before building a new surface (3–5 genuinely distinct variants, two-pass discipline)
 2. `/design-review` — the screenshot self-critique loop, mandatory before calling any UI done
 
+## Component showcase (`ui/showcase`)
+
+`pnpm --filter @houston-ai/showcase dev` → http://localhost:5199 — the living
+reference for the design system. Landing page: Foundations → Colors (all
+semantic `--ht-*` tokens with live theme-resolved values, plus the aurora/glass
+Effects). Nav tiers: Foundations · Primitives (all ui/core components:
+Variants/States/Sizes/Props/allowed Tokens, derived from source) · Product
+areas (Activity, Chat, Routines, Skills, Your Agents, Agent Store — the
+feature-package components under the app's real tab names). Every page shows
+"Used in" chips generated from real import sites (`pnpm --filter
+@houston-ai/showcase gen:usage`; staleness is test-enforced). New/changed ui
+components get a specimen in the same PR; a broken specimen fails the SSR test
+suite.
+
 ## Futuristic theme
 
-The current desktop look. One revert-able layer, `app/src/styles/futuristic.css`
-(delete its `@import` in `app/src/styles/globals.css` to fully revert), plus a
+The current desktop look. Two revert-able layers imported by
+`app/src/styles/globals.css` (delete the `@import`s to fully revert): the
+**shared canvas** `ui/core/src/canvas.css` (aurora, glass surfaces, arc canvas,
+depth utilities — also consumed by the store playground so store components
+preview on the real canvas) and the **app-only chrome** left in
+`app/src/styles/futuristic.css` (`.ht-live-glow`, AI-Hub modal surface). Plus a
 few targeted component/token changes. Surface colours route through `--ht-*`
 tokens, re-exported to Tailwind as `--color-*`, so the theme is mostly token
 overrides — not a 20-component rewrite.
@@ -463,10 +404,10 @@ and the floating screen is `--ht-background` (`bg-background`).
 **The canvas is the standard main surface — a light gray, not white (light
 mode).** `bg-background` (`--ht-background`) is the tone every content pane
 (board, chat, routines, integrations, files, settings, AI hub, agent settings…)
-sits on. In **light** it is `#fcfcfc` (`neutral.50`) — a calm gray promoted to
-the ONE standard so white cards, the composer, inputs, and popovers **float** on
-it rather than vanishing white-on-white. In **dark** it is frosted glass
-(`glass.screen-55` = `rgba(38,38,40,.55)`); the light change never moves dark.
+sits on. In **light** it is a calm gray promoted to the ONE standard so cards,
+the composer, inputs, and popovers **float** on it rather than vanishing
+white-on-white. In **dark** it is frosted glass (`glass.screen-55`); the light
+change never moves dark.
 Consumers reference the SAME tone as one source of truth: the chat panel
 (`ui/chat/chat-panel.tsx`) is `bg-background dark:bg-transparent` (transparent in
 dark to let the pane's glass through). The two shell panes
@@ -481,19 +422,18 @@ dark glass); the light-gray value is purely the token.
 sidebar) with `backdrop-filter` blur. FLOATING surfaces (`popover`, `dialog`)
 are NOT glass — they are solid in both themes (see "Modals" below).
 
-**Light mode** — the cool, solid **"Aurora" palette** (no glow mesh — it read as
-"glitter" over solid surfaces): gutter `#eef1f7` (`cool.gutter`), screen
-`#fcfcfc` (the standard light-gray canvas — see above), near-white glass cards
-(`bg-card` = `glass.white-68`), cool blue/indigo border. Clean and futuristic by
-restraint, not decoration.
+**Light mode** — the cool, solid light palette (no glow mesh — it read as
+"glitter" over solid surfaces): `cool.gutter`, the standard light-gray canvas,
+near-white glass cards (`bg-card`), and a cool blue/indigo border. Clean and
+futuristic by restraint, not decoration.
 
 **Modals and popovers: SOLID in both themes.** All modal primitives —
 `DialogContent` (`ui/core/components/dialog.tsx`), `AlertDialogContent`,
 `SheetContent`, and the AI-Hub `ModalShell` — render on the dedicated
 **`bg-dialog`** surface token; menus/popovers on **`bg-popover`**. Both tokens
-are OPAQUE: white in light, `{color.neutral.800}` (#1e1e1e) in dark. They were
-glass once, but a floating surface that sits over content must never bleed it
-through: the glass fills read as solid only via `backdrop-filter`, which
+are OPAQUE in both themes. They were glass once, but a floating surface that
+sits over content must never bleed it through: the glass fills read as solid
+only via `backdrop-filter`, which
 WebView2 does not reliably composite (GPU/driver dependent, silently no-ops),
 so desktop modals painted see-through — solid tokens fix it everywhere, web
 included, with no per-platform fallback. Never re-add alpha to these tokens or
@@ -502,7 +442,7 @@ surface. The token is separate from `card` on purpose: `card` stays glass for
 NON-floating surfaces (cards over the canvas). Wired: `dialog`/`popover` in
 `tokens/semantic/color.{light,dark}.json` → `--ht-dialog`/`--ht-popover` →
 `@theme` (`ui/core/src/globals.css`) → Tailwind `bg-dialog`/`bg-popover`; the
-top-sheen rules stay in `futuristic.css`. The scrims are deliberately light:
+top-sheen rules live in `ui/core/src/canvas.css`. The scrims are deliberately light:
 Dialog overlay `bg-black/25`, Alert/Sheet `bg-black/35`. Change the surface
 centrally in those primitives — no modal should hardcode its own background.
 
@@ -527,8 +467,8 @@ browse below. Its skeleton and "Show all N" expander sit inside the panel paddin
 with no doubled framing.
 
 **Primary button** — flat and sober (`[data-variant="default"]:is(button, a)`),
-not a glossy slab. Kanban resting cards use one token, `--ht-card-solid` (`#2c2c2b`
-dark / white light), unified across resting + running + needs-you.
+not a glossy slab. Kanban resting cards use one token, `--ht-card-solid`,
+unified across resting + running + needs-you.
 
 **Seamless title bar (macOS desktop only)** — `titleBarStyle: "Overlay"` +
 `hiddenTitle`; the content extends to the top so the traffic lights float over
@@ -537,8 +477,8 @@ gated to `osIsTauri() && isMac`). `applyTheme` also calls
 `getCurrentWindow().setTheme()` so the native chrome tracks the app theme.
 Capabilities: `core:window:allow-set-theme` + `…allow-start-dragging`.
 
-**Tuning knobs** live as comments in `futuristic.css` (aurora alphas, glass
-blur, `--ht-card-solid`, the canvas tokens). Dark mode is the loved baseline —
+**Tuning knobs** live as comments in `ui/core/src/canvas.css` (aurora alphas,
+glass blur, `--ht-card-solid`, the canvas tokens). Dark mode is the loved baseline —
 when adjusting, scope changes to light (`:root`) and pin dark
 (`[data-theme="dark"]`) so it stays put.
 
@@ -566,7 +506,7 @@ now shares `max-w-5xl` (cards render wider than before, by design).
 The owner is refactoring top-level pages against flat reference designs (the
 Integrations page's reference is ChatGPT's Plugins page). The vocabulary, all
 tokens: the page sits directly on `background`; list rows are TRANSPARENT at
-rest and paint the `hover` fill (`bg-hover`, light `#efefef`) on hover/focus,
+rest and paint the `hover` fill (`bg-hover`) on hover/focus,
 never a bordered card around every row; section headers are sentence-case
 `text-sm font-medium` with a small trailing `ChevronRight` in `ink-muted`
 (`SectionHeader`, `components/integrations/section-header.tsx`, a

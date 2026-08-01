@@ -103,14 +103,14 @@ export function ClaimManage({
         <h1 className="font-display text-3xl font-semibold tracking-tight">
           Publish {agent.name}
         </h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="mt-2 text-ink-muted">
           This agent is now yours. Add your creator name, then publish to get a
           shareable link.
         </p>
       </header>
 
       {agent.tagline && (
-        <p className="rounded-lg border bg-card/50 px-4 py-3 text-sm text-muted-foreground">
+        <p className="rounded-lg border bg-card/50 px-4 py-3 text-sm text-ink-muted">
           {agent.tagline}
         </p>
       )}
@@ -133,7 +133,7 @@ export function ClaimManage({
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="creator-url" className="text-sm font-medium">
-            Link <span className="text-muted-foreground">(optional)</span>
+            Link <span className="text-ink-muted">(optional)</span>
           </label>
           <Input
             id="creator-url"
@@ -151,7 +151,7 @@ export function ClaimManage({
           {urlError && (
             <p
               id="creator-url-error"
-              className="text-sm font-medium text-destructive"
+              className="text-sm font-medium text-danger"
             >
               {urlError}
             </p>

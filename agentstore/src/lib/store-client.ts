@@ -23,6 +23,7 @@ import {
   type HandleAvailability,
   type ReportInput,
   type StoreAgentSummary,
+  type StoreCategory,
   type StoreRequestOptions,
 } from "@houston/agentstore-client";
 import { clientGatewayBase } from "./store-api-types";
@@ -41,6 +42,11 @@ function authed(token: string): AgentStoreClient {
 /** An SDK client for anonymous mutations (no bearer). */
 function anon(): AgentStoreClient {
   return new AgentStoreClient({ baseUrl: clientGatewayBase() });
+}
+
+/** The store's category vocabulary (`GET /categories`), for the listing editor. */
+export function listCategories(): Promise<StoreCategory[]> {
+  return anon().listCategories();
 }
 
 /** The caller's agents in every state (`GET /me/agents`). */

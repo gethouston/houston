@@ -22,6 +22,7 @@ import type {
   CreateAgentRequest,
   CreateAgentResponse,
   CreatorAnalytics,
+  CreatorDirectoryPage,
   CreatorProfile,
   CreatorProfilePatch,
   CreatorReport,
@@ -32,6 +33,7 @@ import type {
   ReportInput,
   ReportStatus,
   StoreAgentDetail,
+  StoreAgentSummary,
   StoreCatalogPage,
   StoreCatalogQuery,
   StoreCatalogSort,
@@ -91,26 +93,28 @@ export class AgentStoreClient {
   // ── Anonymous ─────────────────────────────────────────────────────────────
 
   /** One page of published, public agents for the browsable catalog. */
-  listAgents(
+  async listAgents(
     query: StoreCatalogQuery = {},
     options?: StoreRequestOptions,
   ): Promise<StoreCatalogPage> {
-    return this.requestJson<StoreCatalogPage>("GET", "/agents", {
+    const page = await this.requestJson<StoreCatalogPage>("GET", "/agents", {
       query: catalogQuery(query),
       options,
     });
+    return normalizeCatalogPage(page);
   }
 
   /** A published agent by slug, with its full IR snapshot. */
-  getAgent(
+  async getAgent(
     slug: string,
     options?: StoreRequestOptions,
   ): Promise<StoreAgentDetail> {
-    return this.requestJson<StoreAgentDetail>(
+    const detail = await this.requestJson<StoreAgentDetail>(
       "GET",
       `/agents/${encodeURIComponent(slug)}`,
       { options },
     );
+    return { ...detail, agent: normalizeAgentSummary(detail.agent) };
   }
 
   /** The controlled category vocabulary for the filter chips. */
@@ -150,7 +154,7 @@ export class AgentStoreClient {
   }
 
   /** A creator's public page: their profile plus one page of public agents. */
-  getCreator(
+  async getCreator(
     handle: string,
     query: { page?: number; sort?: StoreCatalogSort } = {},
     options?: StoreRequestOptions,
@@ -158,11 +162,25 @@ export class AgentStoreClient {
     const params = new URLSearchParams();
     if (query.sort) params.set("sort", query.sort);
     if (query.page && query.page > 1) params.set("page", String(query.page));
-    return this.requestJson<StoreCreatorPage>(
+    const page = await this.requestJson<StoreCreatorPage>(
       "GET",
       `/creators/${encodeURIComponent(handle)}`,
       { query: params, options },
     );
+    return { ...page, agents: normalizeCatalogPage(page.agents) };
+  }
+
+  /** One page of creators with aggregate public-agent and install counts. */
+  listCreators(
+    page = 1,
+    options?: StoreRequestOptions,
+  ): Promise<CreatorDirectoryPage> {
+    const query = new URLSearchParams();
+    if (page > 1) query.set("page", String(page));
+    return this.requestJson<CreatorDirectoryPage>("GET", "/creators", {
+      query,
+      options,
+    });
   }
 
   /** File an anonymous abuse report against a creator. */
@@ -189,7 +207,7 @@ export class AgentStoreClient {
         options,
       },
     );
-    return body.items;
+    return body.items.map(normalizeAgentSummary);
   }
 
   /** Create (and optionally publish) an owned agent (`POST /agents`). */
@@ -205,16 +223,17 @@ export class AgentStoreClient {
   }
 
   /** Apply one edit intent to an owned agent (`PATCH /agents/{id}`). */
-  patchAgent(
+  async patchAgent(
     id: string,
     patch: AgentPatch,
     options?: StoreRequestOptions,
   ): Promise<PatchAgentResponse> {
-    return this.requestJson<PatchAgentResponse>(
+    const response = await this.requestJson<PatchAgentResponse>(
       "PATCH",
       `/agents/${encodeURIComponent(id)}`,
       { auth: true, body: patch, options },
     );
+    return { ...response, agent: normalizeAgentSummary(response.agent) };
   }
 
   /** Soft-delete an owned agent (`DELETE /agents/{id}`). */
@@ -329,7 +348,7 @@ export class AgentStoreClient {
       "/admin/queue",
       { auth: true, options },
     );
-    return body.items;
+    return body.items.map(normalizeAgentSummary);
   }
 
   /** Approve (make public) or reject a queued agent (`POST /admin/queue/{id}`). */
@@ -553,6 +572,16 @@ function catalogQuery(query: StoreCatalogQuery): URLSearchParams {
   if (query.sort) params.set("sort", query.sort);
   if (query.page && query.page > 1) params.set("page", String(query.page));
   return params;
+}
+
+/** Backfill additive summary fields when talking to an older gateway. */
+function normalizeAgentSummary(agent: StoreAgentSummary): StoreAgentSummary {
+  return { ...agent, skills: agent.skills ?? [] };
+}
+
+/** Backfill every summary in a catalog-shaped response. */
+function normalizeCatalogPage(page: StoreCatalogPage): StoreCatalogPage {
+  return { ...page, items: page.items.map(normalizeAgentSummary) };
 }
 
 /** Read a non-OK gateway response into a {@link StoreApiError}. */

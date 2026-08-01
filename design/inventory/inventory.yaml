@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 51
+version: 53
 
 components:
   - id: agent-avatar
@@ -930,3 +930,103 @@ components:
       the dot is decorative; status is carried by the visible label
       (dot-with-label) or an sr-only label (dot-only rows), never color alone.
     since: 33
+
+  - id: agent-store-navigation
+    title: Agent Store navigation
+    purpose: Brand and destination navigation shared by every Agent Store pane.
+    anatomy: [brand-link, contextual-actions, publish-action]
+    states: [default]
+    variants: [website, in-app]
+    behavior: The surface supplies links or callback-backed navigation and its own contextual actions.
+    a11y: Navigation landmark with visible, keyboard-focusable destination labels.
+    since: 52
+
+  - id: agent-store-controls
+    title: Agent Store catalog controls
+    purpose: Instant search, category, result-kind, and sort controls for the public directory.
+    anatomy: [search-field, category-menu, view-menu, sort-menu]
+    states: [default, filtered]
+    variants: [agents, creators]
+    behavior: Controlled values update the visible in-memory catalog without submitting a page form.
+    a11y: Search has an accessible label; menus expose the selected option and keyboard focus.
+    since: 52
+
+  - id: agent-store-agent-card
+    title: Agent Store agent card
+    purpose: Public listing summary used in browse, detail recommendations, and creator pages.
+    anatomy: [agent-tile, name, skill-and-integration-summary, description, creator, install-count]
+    states: [new, installed-count]
+    variants: [grid]
+    behavior: Activating the card opens its full detail pane through the surface navigation seam.
+    a11y: One focusable link with a visible focus ring and descriptive text.
+    since: 52
+
+  - id: agent-store-creator-card
+    title: Agent Store creator card
+    purpose: Creator directory summary used in browse search and creator discovery.
+    anatomy: [creator-face, identity, verification, bio, agent-count, install-count]
+    states: [with-bio, fallback-bio]
+    variants: [grid]
+    behavior: Activating the card opens the creator profile through the surface navigation seam.
+    a11y: One focusable link; verification has a text alternative.
+    since: 52
+
+  - id: agent-store-detail
+    title: Agent Store detail layout
+    purpose: Full-pane presentation of one agent before installation.
+    anatomy: [header, creator, primary-action, bio, skills, integrations, learnings, recommendations]
+    states: [summary, enriched, installing]
+    variants: [website, in-app]
+    behavior: Detail enrichment is read-only; the surface owns install and navigation actions.
+    a11y: Semantic headings preserve section order and the primary action remains keyboard reachable.
+    since: 52
+
+  - id: agent-store-skill-list
+    title: Agent Store skill list
+    purpose: Two-column preview of the procedures included with an agent.
+    anatomy: [skill-grid, skill-row, more-action, detail-dialog]
+    states: [collapsed, expanded, dialog-open]
+    variants: [detail-pane]
+    behavior: The surface supplies the safe rich-content renderer used inside the skill dialog.
+    a11y: Skill rows are buttons; the modal traps focus and has the selected skill title.
+    since: 52
+
+  - id: agent-store-creator-block
+    title: Agent Store creator block
+    purpose: Reusable creator identity shown in agent detail headers and public profiles.
+    anatomy: [creator-face, display-name, verification]
+    states: [verified, unverified]
+    variants: [compact, profile]
+    behavior: Optionally navigates to the creator profile through the surface link seam.
+    a11y: Linked variants have visible focus; verification has a text alternative.
+    since: 52
+
+  - id: agent-store-home-screen
+    title: Agent Store home screen
+    purpose: Canonical marketplace hero, controls, filtering, result grids, and loading, empty, and error states.
+    anatomy: [hero, catalog-controls, agent-grid, creator-grid, pagination]
+    states: [loading, ready, filtered-empty, empty, error]
+    variants: [website, in-app]
+    behavior: Owns in-memory filtering and state notifications while surfaces supply navigation and URL synchronization.
+    a11y: One centered h1, labeled controls, focusable results, and a visible retry action.
+    since: 53
+
+  - id: agent-store-agent-detail-screen
+    title: Agent Store agent detail screen
+    purpose: Canonical full agent detail composition across public and in-app surfaces.
+    anatomy: [header, creator, actions, bio, skills, integrations, learnings, recommendations, footer]
+    states: [loading, ready, error]
+    variants: [website, in-app]
+    behavior: Surfaces inject actions and safe content renderers without recomposing the screen.
+    a11y: Semantic headings preserve reading order and failures expose a keyboard-accessible retry.
+    since: 53
+
+  - id: agent-store-creator-profile-screen
+    title: Agent Store creator profile screen
+    purpose: Canonical creator identity header and public agent grid.
+    anatomy: [avatar, identity, verification, bio, socials, agent-grid, pagination]
+    states: [loading, ready, empty, error]
+    variants: [website, in-app]
+    behavior: Surfaces supply navigation, social actions, and pagination without owning profile composition.
+    a11y: Identity uses semantic headings, links have visible focus, and failures expose a retry.
+    since: 53

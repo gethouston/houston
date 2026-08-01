@@ -82,13 +82,13 @@ export function CreatorsTab({
           <h2 className="font-display text-base font-semibold">
             Manage a creator
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-ink-muted">
             Look up a creator by handle to verify, unverify, or release it.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted">
               @
             </span>
             <Input

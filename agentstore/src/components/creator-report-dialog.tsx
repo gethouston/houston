@@ -93,7 +93,7 @@ export function CreatorReportDialog({ handle }: CreatorReportDialogProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground hover:text-foreground"
+          className="text-ink-muted hover:text-ink"
         >
           <Flag aria-hidden className="size-3.5" />
           Report this creator
@@ -102,7 +102,7 @@ export function CreatorReportDialog({ handle }: CreatorReportDialogProps) {
       <DialogContent>
         {status === "success" ? (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <CheckCircle2 aria-hidden className="size-8 text-primary" />
+            <CheckCircle2 aria-hidden className="size-8 text-action" />
             <DialogTitle>Report received</DialogTitle>
             <DialogDescription>
               Thank you. Our team will review @{handle} and take action if they
@@ -135,8 +135,7 @@ export function CreatorReportDialog({ handle }: CreatorReportDialogProps) {
                 htmlFor="creator-report-details"
                 className="text-sm font-medium"
               >
-                Details{" "}
-                <span className="text-muted-foreground">(optional)</span>
+                Details <span className="text-ink-muted">(optional)</span>
               </label>
               <Textarea
                 id="creator-report-details"
@@ -153,8 +152,7 @@ export function CreatorReportDialog({ handle }: CreatorReportDialogProps) {
                 htmlFor="creator-report-contact"
                 className="text-sm font-medium"
               >
-                Your contact{" "}
-                <span className="text-muted-foreground">(optional)</span>
+                Your contact <span className="text-ink-muted">(optional)</span>
               </label>
               <Input
                 id="creator-report-contact"

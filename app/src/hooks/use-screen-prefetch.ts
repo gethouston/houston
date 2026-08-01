@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { defaultStoreCatalogQueryOptions } from "../components/store-view/store-browse";
+import { storeBrowseQueryOptions } from "../components/store-view/store-browse";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import { screenPrefetchPlan } from "../lib/screen-prefetch-plan";
@@ -54,9 +54,10 @@ export function useScreenPrefetch() {
         });
       }
       if (item === "store-catalog") {
-        void queryClient.prefetchInfiniteQuery({
-          ...defaultStoreCatalogQueryOptions(),
-        });
+        const store = storeBrowseQueryOptions();
+        void queryClient.prefetchQuery(store.catalog);
+        void queryClient.prefetchQuery(store.categories);
+        void queryClient.prefetchQuery(store.creators);
       }
     }
   }, [agentsLoaded, capabilities]);

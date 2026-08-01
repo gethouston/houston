@@ -243,7 +243,10 @@ describe("AgentStoreClient — method path + verb coverage", () => {
       jsonRes({ items: [{ id: "1" }], hasMore: true }),
     );
     const page = await client(fetchImpl).listAgents();
-    expect(page).toEqual({ items: [{ id: "1" }], hasMore: true });
+    expect(page).toEqual({
+      items: [{ id: "1", skills: [] }],
+      hasMore: true,
+    });
     expect(calls[0].init.method).toBe("GET");
     expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/agents`);
   });
@@ -291,7 +294,7 @@ describe("AgentStoreClient — method path + verb coverage", () => {
   it("listMyAgents → GET /me/agents, unwrapping items", async () => {
     const { fetchImpl, calls } = stubFetch(jsonRes({ items: [{ id: "1" }] }));
     const mine = await client(fetchImpl, token).listMyAgents();
-    expect(mine).toEqual([{ id: "1" }]);
+    expect(mine).toEqual([{ id: "1", skills: [] }]);
     expect(calls[0].init.method).toBe("GET");
     expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/me/agents`);
   });
@@ -357,7 +360,7 @@ describe("AgentStoreClient — method path + verb coverage", () => {
   it("adminListQueue → GET /admin/queue, unwrapping items", async () => {
     const { fetchImpl, calls } = stubFetch(jsonRes({ items: [{ id: "q1" }] }));
     const queue = await client(fetchImpl, token).adminListQueue();
-    expect(queue).toEqual([{ id: "q1" }]);
+    expect(queue).toEqual([{ id: "q1", skills: [] }]);
     expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/admin/queue`);
   });
 
@@ -431,12 +434,41 @@ describe("AgentStoreClient — creator profiles", () => {
       sort: "installs",
     });
     expect(page.profile.handle).toBe("felipe");
-    expect(page.agents.items).toEqual([{ id: "1" }]);
+    expect(page.agents.items).toEqual([{ id: "1", skills: [] }]);
     expect(calls[0].init.method).toBe("GET");
     const url = new URL(calls[0].url);
     expect(url.pathname).toBe(`${STORE_API_PREFIX}/creators/felipe`);
     expect(url.searchParams.get("page")).toBe("2");
     expect(url.searchParams.get("sort")).toBe("installs");
+  });
+
+  it("listCreators → GET /creators with crawlable page query", async () => {
+    const directory = {
+      items: [
+        {
+          handle: "felipe",
+          displayName: "Felipe",
+          verified: true,
+          agentsCount: 3,
+          installsCount: 1200,
+        },
+      ],
+      hasMore: true,
+    };
+    const { fetchImpl, calls } = stubFetch(jsonRes(directory));
+    expect(await client(fetchImpl).listCreators(2)).toEqual(directory);
+    const url = new URL(calls[0].url);
+    expect(url.pathname).toBe(`${STORE_API_PREFIX}/creators`);
+    expect(url.searchParams.get("page")).toBe("2");
+    expect(headersOf(calls[0]).has("authorization")).toBe(false);
+  });
+
+  it("listCreators omits page=1", async () => {
+    const { fetchImpl, calls } = stubFetch(
+      jsonRes({ items: [], hasMore: false }),
+    );
+    await client(fetchImpl).listCreators(1);
+    expect(calls[0].url).toBe(`${BASE}${STORE_API_PREFIX}/creators`);
   });
 
   it("getCreator omits page=1 and an absent sort", async () => {

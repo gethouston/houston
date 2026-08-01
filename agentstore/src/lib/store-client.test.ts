@@ -41,7 +41,7 @@ describe("listMyAgents", () => {
   it("sends the bearer and unwraps items", async () => {
     fetchMock.mockResolvedValue(json({ items: [{ id: "a" }] }));
     const agents = await listMyAgents("tok123");
-    expect(agents).toEqual([{ id: "a" }]);
+    expect(agents).toEqual([{ id: "a", skills: [] }]);
     expect(lastHeaders().get("authorization")).toBe("Bearer tok123");
     expect(lastInit().cache).toBe("no-store");
   });

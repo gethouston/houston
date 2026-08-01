@@ -91,14 +91,14 @@ export function GrantHandleForm({
     <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
       <div>
         <h2 className="font-display text-base font-semibold">Grant a handle</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-ink-muted">
           Assign a handle to a user id. Reserved handles are allowed, so this
           mints official handles like @houston.
         </p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative sm:w-40">
-          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-muted">
             @
           </span>
           <Input

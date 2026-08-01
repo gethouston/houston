@@ -1,6 +1,6 @@
 import { Badge } from "@houston-ai/core";
+import type { IntegrationLabel } from "@houston-ai/store";
 import { Plug } from "lucide-react";
-import type { IntegrationLabel } from "@/lib/agents/integrations";
 
 /**
  * Presentational chip row. Labels are resolved upstream from the integrations

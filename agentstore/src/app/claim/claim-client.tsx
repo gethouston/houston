@@ -104,7 +104,7 @@ export function ClaimClient() {
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
       {(state.status === "loading" || state.status === "claiming") && (
-        <div className="flex items-center gap-3 text-muted-foreground">
+        <div className="flex items-center gap-3 text-ink-muted">
           <Spinner />
           {state.status === "claiming" ? "Claiming your agent…" : "Loading…"}
         </div>
@@ -137,7 +137,7 @@ export function ClaimClient() {
             <h1 className="font-display text-3xl font-semibold tracking-tight">
               Claim your agent
             </h1>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-2 text-ink-muted">
               Sign in to take ownership of this agent and publish it.
             </p>
           </div>

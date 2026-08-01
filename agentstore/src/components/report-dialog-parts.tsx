@@ -42,7 +42,7 @@ export function ReasonRadioGroup({
       {REASONS.map((option) => (
         <label
           key={option.value}
-          className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/60 px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+          className="flex cursor-pointer items-center gap-3 rounded-lg border border-line/60 px-3 py-2 text-sm has-[:checked]:border-action has-[:checked]:bg-action/5"
         >
           <input
             type="radio"
@@ -50,7 +50,7 @@ export function ReasonRadioGroup({
             value={option.value}
             checked={value === option.value}
             onChange={() => onChange(option.value)}
-            className="size-4 accent-primary"
+            className="size-4 accent-action"
           />
           {option.label}
         </label>
@@ -69,7 +69,7 @@ export function ReportSuccess({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 py-4 text-center">
-      <CheckCircle2 aria-hidden className="size-8 text-primary" />
+      <CheckCircle2 aria-hidden className="size-8 text-action" />
       <DialogTitle>Report received</DialogTitle>
       <DialogDescription>
         Thank you. Our team will review {agentName} and take action if it breaks

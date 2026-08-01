@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SiteHeader } from "@/components/site-header";
 import { ClaimClient } from "./claim-client";
 
 // The claim flow is driven entirely client-side from the URL fragment
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default function ClaimPage() {
-  return <ClaimClient />;
+  return (
+    <>
+      <SiteHeader />
+      <ClaimClient />
+    </>
+  );
 }

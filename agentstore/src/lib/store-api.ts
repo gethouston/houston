@@ -15,8 +15,8 @@
  */
 import {
   AgentStoreClient,
+  type CreatorDirectoryPage,
   type StoreAgentDetail,
-  type StoreAgentSummary,
   StoreApiError,
   type StoreCatalogPage,
   type StoreCatalogQuery,
@@ -27,7 +27,16 @@ import {
   type StoreRequestOptions,
 } from "@houston/agentstore-client";
 import type { AgentIR } from "@houston/agentstore-contract";
+import { alphabetizeCatalogPage } from "./catalog-sort";
+import {
+  collectPublicCreatorHandles,
+  collectPublicSlugs,
+} from "./catalog-walk";
 import { serverGatewayBase } from "./store-api-types";
+
+type StoreListQuery = Omit<StoreCatalogQuery, "sort"> & {
+  sort?: StoreCatalogSort | "alphabetical";
+};
 
 /** Revalidate window (seconds) for catalog + agent-page reads. */
 const CATALOG_REVALIDATE = 60;
@@ -55,25 +64,37 @@ function revalidate(seconds: number): StoreRequestOptions {
  * integration toolkit slug, and omit the default `recent` sort so it never
  * appears in the query string.
  */
-function toCatalogQuery(params: StoreCatalogQuery): StoreCatalogQuery {
+function toCatalogQuery(params: StoreListQuery): StoreCatalogQuery {
   const integration = params.integration?.trim();
   return {
     q: params.q,
     category: params.category,
     integration: integration ? integration.toUpperCase() : undefined,
-    sort: params.sort === "installs" ? "installs" : undefined,
+    sort:
+      params.sort === "installs" || params.sort === "alphabetical"
+        ? "installs"
+        : undefined,
     page: params.page,
   };
 }
 
 /** One page of published, public agents for the browsable catalog. */
-export function listAgents(
-  params: StoreCatalogQuery,
+export async function listAgents(
+  params: StoreListQuery,
 ): Promise<StoreCatalogPage> {
-  return client().listAgents(
+  const page = await client().listAgents(
     toCatalogQuery(params),
     revalidate(CATALOG_REVALIDATE),
   );
+  if (params.sort !== "alphabetical") return page;
+  // Exact while the catalog fits one page. When the gateway supports sort=name,
+  // pass that through here instead so alphabetical pagination is globally exact.
+  return alphabetizeCatalogPage(page);
+}
+
+/** One page of creators ranked by aggregate public installs. */
+export function listCreators(page = 1): Promise<CreatorDirectoryPage> {
+  return client().listCreators(page, revalidate(CATALOG_REVALIDATE));
 }
 
 /** The controlled category vocabulary for the filter/chips rows. */
@@ -122,29 +143,12 @@ export async function getAgentBySlug(
   }
 }
 
-/**
- * Walk the public catalog page by page (24/page), invoking `visit` for each
- * agent, until `hasMore` is false or the page cap is hit — the cap bounds a
- * hostile/huge catalog to a predictable request count. Shared by the sitemap
- * enumerations so they never diverge on how far they crawl.
- */
-async function walkPublicCatalog(
-  visit: (agent: StoreAgentSummary) => void,
-): Promise<void> {
-  for (let page = 1; page <= SITEMAP_MAX_PAGES; page++) {
-    const { items, hasMore } = await listAgents({ sort: "recent", page });
-    for (const agent of items) visit(agent);
-    if (!hasMore) break;
-  }
-}
-
 /** Every public slug, newest first, for the sitemap. */
-export async function listAllPublicSlugs(): Promise<string[]> {
-  const slugs: string[] = [];
-  await walkPublicCatalog((agent) => {
-    if (agent.slug) slugs.push(agent.slug);
-  });
-  return slugs;
+export function listAllPublicSlugs(): Promise<string[]> {
+  return collectPublicSlugs(
+    (page) => listAgents({ sort: "recent", page }),
+    SITEMAP_MAX_PAGES,
+  );
 }
 
 /**
@@ -152,13 +156,11 @@ export async function listAllPublicSlugs(): Promise<string[]> {
  * creator pages. A creator with no public agent is intentionally omitted (there
  * would be nothing to crawl on their page); one walk of the same catalog.
  */
-export async function listAllPublicCreatorHandles(): Promise<string[]> {
-  const handles = new Set<string>();
-  await walkPublicCatalog((agent) => {
-    const handle = agent.creator.handle;
-    if (handle) handles.add(handle);
-  });
-  return [...handles];
+export function listAllPublicCreatorHandles(): Promise<string[]> {
+  return collectPublicCreatorHandles(
+    (page) => listAgents({ sort: "recent", page }),
+    SITEMAP_MAX_PAGES,
+  );
 }
 
 /**

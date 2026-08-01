@@ -194,6 +194,13 @@ export function isHostedGatewayEngine(): boolean {
   return Boolean(HOSTED_ENGINE_URL);
 }
 
+/** The hosted gateway's URL when in hosted mode, else null. Lets callers that
+ *  target a SPECIFIC gateway (e.g. the Agent Store) decide whether the engine
+ *  already points there or a separate target must be installed. */
+export function hostedEngineUrl(): string | null {
+  return HOSTED_ENGINE_URL ?? null;
+}
+
 /**
  * True when the active engine is NOT co-located with this client — a baked host
  * URL or a hosted gateway. Callers that decide OAuth loopback-vs-device-code

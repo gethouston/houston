@@ -41,6 +41,9 @@ only touch the engine note the engine crate version in parentheses.
   See `store/README.md` for the format.
 
 ### Changed
+- The in-app Agent Store now renders the same Home, agent detail, and creator
+  profile screens as the public website, including shared filtering and
+  loading, empty, and retry states.
 - README points devs at `examples/smartbooks/` as the template for
   building on top of `houston-engine`
 - **Bundled Legal agent — full skill rewrite (v0.2.0).** All 40 Actions

@@ -14,7 +14,7 @@ export interface AgentIconProps {
  */
 export function AgentIcon({ icon, name, className }: AgentIconProps) {
   const tile = cn(
-    "flex items-center justify-center overflow-hidden rounded-2xl bg-primary/10",
+    "flex items-center justify-center overflow-hidden rounded-2xl bg-action/10",
     className,
   );
 

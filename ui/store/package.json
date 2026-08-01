@@ -1,0 +1,25 @@
+{
+  "name": "@houston-ai/store",
+  "version": "0.5.9",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@houston-ai/core": "workspace:*",
+    "lucide-react": "^0.577.0",
+    "@houston/agentstore-contract": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "4.23.0"
+  },
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsgo --noEmit"
+  }
+}

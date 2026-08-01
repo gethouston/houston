@@ -3,7 +3,7 @@
  * rules are unit-testable under node:test.
  */
 
-import type { MyAgent, StoreCatalogAgent } from "@houston-ai/engine-client";
+import type { StoreCatalogAgent } from "@houston-ai/engine-client";
 
 /** The art a listing renders: its emoji when it shipped one, else the name's
  *  first grapheme as a letter avatar. URL icons render as letters too — the
@@ -27,28 +27,6 @@ export function formatInstalls(count: number, locale: string): string {
 }
 
 /** How the owner row's "request public listing" control presents. */
-export type RequestPublicMode =
-  | "hidden"
-  | "available"
-  | "pending"
-  | "requested";
-
-/** Resolve that control's mode. The gateway does not echo a public-request flag
- *  on the agent summary, so the owner panel carries two client-side facts: the
- *  in-flight mutation (`inFlight`) and a request already sent this session
- *  (`requested`). Without them a successful request would leave the row
- *  byte-for-byte identical and read as broken, so eligibility alone is not
- *  enough — a sent request downgrades the button to a disabled acknowledgment. */
-export function requestPublicMode(
-  agent: Pick<MyAgent, "state" | "visibility">,
-  flags: { inFlight: boolean; requested: boolean },
-): RequestPublicMode {
-  const eligible = agent.state === "published" && agent.visibility !== "public";
-  if (!eligible) return "hidden";
-  if (flags.inFlight) return "pending";
-  if (flags.requested) return "requested";
-  return "available";
-}
 
 /** The connected-app options the browse integration filter offers: the deduped,
  *  lowercased union of toolkit slugs across the given listings (the wire ships

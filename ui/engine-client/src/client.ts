@@ -18,6 +18,7 @@ import type {
   AddOrgMemberResult,
   Agent,
   AgentAssignment,
+  AgentIdentityPatch,
   AgentModelChoice,
   AgentModelChoiceInfo,
   AgentMoveStart,
@@ -2605,6 +2606,31 @@ export class HoustonClient {
       "PATCH",
       `/agentstore/agents/${this.seg(storeAgentId)}`,
       { visibility: "unlisted" },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Publish (or re-publish) an owned listing (`PATCH … {publish}`). */
+  async publishStoreAgentById(storeAgentId: string): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { publish: true },
+      undefined,
+      undefined,
+      false,
+    );
+  }
+  /** Edit an owned listing's store metadata (`PATCH … {identity}`). */
+  async updateStoreAgentIdentity(
+    storeAgentId: string,
+    identity: AgentIdentityPatch,
+  ): Promise<void> {
+    await this.request(
+      "PATCH",
+      `/agentstore/agents/${this.seg(storeAgentId)}`,
+      { identity },
       undefined,
       undefined,
       false,

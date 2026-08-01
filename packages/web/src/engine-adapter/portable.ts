@@ -13,7 +13,6 @@
 
 import {
   filterPackage,
-  type PortableContent,
   type PortablePackage,
   packageSeed,
   scanContent,
@@ -40,7 +39,17 @@ import { packagePreview, toWireSelection } from "./portable-map";
 /** Unpacked uploads awaiting install, keyed by the packageId handed to the wizard. */
 const uploads = new Map<string, PortablePackage>();
 
-async function hostFetch(
+/** Park an unpacked package for the wizard and hand back its preview handle. */
+export function parkUpload(
+  pkg: PortablePackage,
+): PortableUploadPreviewResponse {
+  const packageId = crypto.randomUUID();
+  uploads.set(packageId, pkg);
+  return { packageId, ...packagePreview(pkg) };
+}
+
+/** The engine transport for the host's portable routes (shared with `portable-from-store.ts`). */
+export async function hostFetch(
   cfg: ControlPlaneConfig,
   path: string,
   init?: RequestInit,
@@ -123,34 +132,7 @@ export function previewUpload(
   bytes: ArrayBuffer | Uint8Array,
 ): PortableUploadPreviewResponse {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  const pkg = unpackAgent(u8);
-  const packageId = crypto.randomUUID();
-  uploads.set(packageId, pkg);
-  return { packageId, ...packagePreview(pkg) };
-}
-
-/**
- * Install from an Agent Store share link. The host fetches the published agent's
- * IR (SSRF-guarded) and returns it as portable content; here we rebuild the
- * package and park it in the SAME registry a file upload uses, so the wizard's
- * scan/name/install steps downstream are byte-for-byte the file-upload flow.
- */
-export async function importFromStoreLink(
-  cfg: ControlPlaneConfig,
-  url: string,
-): Promise<PortableUploadPreviewResponse> {
-  const res = await hostFetch(cfg, "/v1/portable/fetch-from-store", {
-    method: "POST",
-    body: JSON.stringify({ url }),
-  });
-  const { manifest, content } = (await res.json()) as {
-    manifest: PortablePackage["manifest"];
-    content: PortableContent;
-  };
-  const pkg: PortablePackage = { manifest, ...content };
-  const packageId = crypto.randomUUID();
-  uploads.set(packageId, pkg);
-  return { packageId, ...packagePreview(pkg) };
+  return parkUpload(unpackAgent(u8));
 }
 
 /**

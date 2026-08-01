@@ -3,8 +3,12 @@
 @import "@houston-ai/core/src/styles.css";
 @import "@houston-ai/chat/src/styles.css";
 @import "@houston-ai/routines/src/styles.css";
-/* Futuristic aurora + glass layer — imported LAST so its token
-   overrides win at use-time. Delete this line to fully revert. */
+/* The shared Houston canvas (aurora + glass), imported LAST so its
+   token overrides win at use-time — the SAME plane the Agent Store
+   playground and the catalog site render on. Delete this line to fully
+   revert. `futuristic.css` follows it with the app-only chrome that
+   sits ON the canvas (the AI-Hub glow + modal motion). */
+@import "@houston-ai/core/src/canvas.css";
 @import "./futuristic.css";
 
 /* Scan local source + @houston-ai packages for Tailwind classes */
@@ -18,6 +22,7 @@
 @source "../../node_modules/@houston-ai/routines/src";
 @source "../../node_modules/@houston-ai/skills/src";
 @source "../../node_modules/@houston-ai/agent/src";
+@source "../../node_modules/@houston-ai/store/src";
 /* Streamdown (chat markdown renderer) emits Tailwind utilities of its own
    (list-inside, list-disc, …). It lives under ui/chat's node_modules, so scan
    it through the workspace symlink or its classes never get generated and

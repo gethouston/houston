@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 4
+inventoryVersion: 42
 
 components:
   agent-avatar:
@@ -214,3 +214,34 @@ components:
   status-badge:
     status: implemented
     ref: "ui/core/src/components/status-badge.tsx (@houston-ai/core StatusBadge / StatusDot)"
+
+  agent-store-navigation:
+    status: implemented
+    ref: "@houston-ai/store StoreNav"
+  agent-store-controls:
+    status: implemented
+    ref: "@houston-ai/store CatalogControls"
+  agent-store-agent-card:
+    status: implemented
+    ref: "@houston-ai/store AgentCard / AgentGrid"
+  agent-store-creator-card:
+    status: implemented
+    ref: "@houston-ai/store CreatorCard / CreatorGrid"
+  agent-store-detail:
+    status: implemented
+    ref: "@houston-ai/store AgentDetailLayout"
+  agent-store-skill-list:
+    status: implemented
+    ref: "@houston-ai/store SkillList"
+  agent-store-creator-block:
+    status: implemented
+    ref: "@houston-ai/store CreatorBlock"
+  agent-store-home-screen:
+    status: implemented
+    ref: "@houston-ai/store StoreHomeScreen"
+  agent-store-agent-detail-screen:
+    status: implemented
+    ref: "@houston-ai/store AgentDetailScreen"
+  agent-store-creator-profile-screen:
+    status: implemented
+    ref: "@houston-ai/store CreatorProfileScreen"

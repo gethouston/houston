@@ -60,40 +60,13 @@
         "$value": "#14161d"
       },
       "gutter": {
-        "$value": "#eef1f7"
+        "$value": "#f2f5f9"
       },
       "gutter-dark": {
         "$value": "#141416"
       },
       "surface": {
         "$value": "#f4f6fc"
-      }
-    },
-    "space": {
-      "$type": "color",
-      "canvas": {
-        "$value": "#07080f"
-      },
-      "canvas-glow": {
-        "$value": "#101430"
-      },
-      "nebula-1": {
-        "$value": "#38346b"
-      },
-      "nebula-core": {
-        "$value": "#b8b2e8"
-      },
-      "star": {
-        "$value": "#dce2f7"
-      },
-      "star-warm": {
-        "$value": "#f6e7cd"
-      },
-      "foreground": {
-        "$value": "#ffffff"
-      },
-      "foreground-muted": {
-        "$value": "#8e96b8"
       }
     },
     "status": {

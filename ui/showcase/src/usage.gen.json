@@ -1,0 +1,711 @@
+{
+  "agents-app-sidebar": {
+    "surfaces": [
+      "App shell"
+    ],
+    "fileCount": 1
+  },
+  "agents-files-browser": {
+    "surfaces": [
+      "Files"
+    ],
+    "fileCount": 1
+  },
+  "agents-sidebar-group-header": {
+    "surfaces": [
+      "ui/layout (internal)"
+    ],
+    "fileCount": 2
+  },
+  "agents-sidebar-nav-item": {
+    "surfaces": [
+      "ui/layout (internal)"
+    ],
+    "fileCount": 1
+  },
+  "agents-split-view": {
+    "surfaces": [
+      "ui/board (library)"
+    ],
+    "fileCount": 1
+  },
+  "agents-tab-bar": {
+    "surfaces": [
+      "App shell"
+    ],
+    "fileCount": 1
+  },
+  "agents-workspace-switcher": {
+    "surfaces": [
+      "App shell"
+    ],
+    "fileCount": 1
+  },
+  "board-bulk-action-bar": {
+    "surfaces": [
+      "ui/board (internal)"
+    ],
+    "fileCount": 1
+  },
+  "board-kanban-board": {
+    "surfaces": [
+      "ui/board (internal)"
+    ],
+    "fileCount": 3
+  },
+  "board-kanban-column": {
+    "surfaces": [
+      "ui/board (internal)"
+    ],
+    "fileCount": 1
+  },
+  "board-kanban-detail-panel": {
+    "surfaces": [
+      "ui/board (internal)"
+    ],
+    "fileCount": 1
+  },
+  "board-kanban-list": {
+    "surfaces": [
+      "Archived",
+      "ui/board (internal)"
+    ],
+    "fileCount": 3
+  },
+  "board-kanban-people": {
+    "surfaces": [
+      "Activity",
+      "ui/board (internal)"
+    ],
+    "fileCount": 4
+  },
+  "chat-attachment-message": {
+    "surfaces": [
+      "Chat",
+      "Skills"
+    ],
+    "fileCount": 2
+  },
+  "chat-conversation": {
+    "surfaces": [
+      "ui/chat (internal)"
+    ],
+    "fileCount": 1
+  },
+  "chat-input": {
+    "surfaces": [
+      "Routines",
+      "ui/chat (internal)"
+    ],
+    "fileCount": 2
+  },
+  "chat-message": {
+    "surfaces": [
+      "App shell",
+      "ui/chat (internal)"
+    ],
+    "fileCount": 3
+  },
+  "chat-plan-ready-card": {
+    "surfaces": [
+      "Chat"
+    ],
+    "fileCount": 1
+  },
+  "chat-queued-messages": {
+    "surfaces": [
+      "ui/chat (internal)"
+    ],
+    "fileCount": 1
+  },
+  "chat-status-line": {
+    "surfaces": [
+      "Chat",
+      "ui/chat (internal)"
+    ],
+    "fileCount": 3
+  },
+  "chat-suggest-reusable-card": {
+    "surfaces": [
+      "Chat"
+    ],
+    "fileCount": 1
+  },
+  "chat-thinking-indicator": {
+    "surfaces": [
+      "Chat",
+      "ui/chat (internal)"
+    ],
+    "fileCount": 3
+  },
+  "chat-tool-block": {
+    "surfaces": [
+      "App shell",
+      "ui/chat (internal)"
+    ],
+    "fileCount": 3
+  },
+  "core-alert": {
+    "surfaces": [
+      "Store website",
+      "Store website (admin)"
+    ],
+    "fileCount": 12
+  },
+  "core-alert-dialog": {
+    "surfaces": [
+      "Onboarding"
+    ],
+    "fileCount": 1
+  },
+  "core-async-button": {
+    "surfaces": [
+      "AI Models",
+      "Activity",
+      "App shell",
+      "Integrations",
+      "Onboarding",
+      "Organization",
+      "Routines",
+      "Settings"
+    ],
+    "fileCount": 15
+  },
+  "core-avatar": {
+    "surfaces": [
+      "Activity",
+      "Agent Store (in app)",
+      "Import & export",
+      "Organization",
+      "Permissions",
+      "Settings",
+      "Store website",
+      "ui/board (library)",
+      "ui/store (library)"
+    ],
+    "fileCount": 15
+  },
+  "core-badge": {
+    "surfaces": [
+      "Agent Settings",
+      "Agent Store (in app)",
+      "Import & export",
+      "Integrations",
+      "Routines",
+      "Settings",
+      "Store website",
+      "Usage",
+      "Web app",
+      "Your Agents",
+      "ui/board (library)",
+      "ui/events (library)"
+    ],
+    "fileCount": 15
+  },
+  "core-button": {
+    "surfaces": [
+      "AI Models",
+      "Activity",
+      "Agent Settings",
+      "Agent Store (in app)",
+      "App shell",
+      "Chat",
+      "Files",
+      "Import & export",
+      "Integrations",
+      "Mission Control",
+      "Onboarding",
+      "Organization",
+      "Permissions",
+      "Routines",
+      "Settings",
+      "Sign in",
+      "Skills",
+      "Store website",
+      "Store website (admin)",
+      "Usage",
+      "Your Agents",
+      "ui/agent (library)",
+      "ui/board (library)",
+      "ui/chat (library)",
+      "ui/review (library)",
+      "ui/routines (library)",
+      "ui/skills (library)"
+    ],
+    "fileCount": 147
+  },
+  "core-button-group": {
+    "surfaces": [
+      "ui/chat (library)"
+    ],
+    "fileCount": 1
+  },
+  "core-card": {
+    "surfaces": [
+      "Store website (admin)",
+      "ui/board (library)"
+    ],
+    "fileCount": 2
+  },
+  "core-catalog": {
+    "surfaces": [
+      "AI Models",
+      "Agent Store (in app)",
+      "Integrations",
+      "Permissions",
+      "Skills"
+    ],
+    "fileCount": 12
+  },
+  "core-catalog-detail-dialog": {
+    "surfaces": [
+      "Agent Store (in app)",
+      "Integrations"
+    ],
+    "fileCount": 3
+  },
+  "core-catalog-row": {
+    "surfaces": [
+      "AI Models",
+      "Agent Store (in app)",
+      "Integrations",
+      "Permissions",
+      "Skills",
+      "ui/skills (library)"
+    ],
+    "fileCount": 11
+  },
+  "core-catalog-search-field": {
+    "surfaces": [
+      "AI Models",
+      "Integrations",
+      "Skills"
+    ],
+    "fileCount": 4
+  },
+  "core-catalog-shell": {
+    "surfaces": [
+      "AI Models",
+      "Integrations",
+      "Skills"
+    ],
+    "fileCount": 4
+  },
+  "core-collapsible": {
+    "surfaces": [
+      "ui/chat (library)",
+      "ui/skills (library)"
+    ],
+    "fileCount": 5
+  },
+  "core-command": {
+    "surfaces": [
+      "App shell",
+      "Permissions",
+      "ui/chat (library)",
+      "ui/routines (library)",
+      "ui/skills (library)"
+    ],
+    "fileCount": 6
+  },
+  "core-confirm-dialog": {
+    "surfaces": [
+      "AI Models",
+      "Agent Store (in app)",
+      "App shell",
+      "Import & export",
+      "Integrations",
+      "Organization",
+      "Permissions",
+      "Routines",
+      "Settings",
+      "Skills",
+      "ui/board (library)",
+      "ui/routines (library)",
+      "ui/skills (library)"
+    ],
+    "fileCount": 20
+  },
+  "core-dialog": {
+    "surfaces": [
+      "AI Models",
+      "Activity",
+      "Agent Store (in app)",
+      "App shell",
+      "Chat",
+      "Files",
+      "Import & export",
+      "Integrations",
+      "Onboarding",
+      "Organization",
+      "Permissions",
+      "Routines",
+      "Settings",
+      "Store website",
+      "Your Agents",
+      "ui/skills (library)",
+      "ui/store (library)"
+    ],
+    "fileCount": 44
+  },
+  "core-dropdown-menu": {
+    "surfaces": [
+      "Activity",
+      "Chat",
+      "Permissions",
+      "Store website",
+      "Your Agents",
+      "ui/agent (library)",
+      "ui/board (library)",
+      "ui/chat (library)",
+      "ui/layout (library)",
+      "ui/routines (library)",
+      "ui/skills (library)",
+      "ui/store (library)"
+    ],
+    "fileCount": 20
+  },
+  "core-empty": {
+    "surfaces": [
+      "AI Models",
+      "Activity",
+      "Agent Settings",
+      "App shell",
+      "Archived",
+      "Integrations",
+      "Mission Control",
+      "Organization",
+      "Permissions",
+      "Settings",
+      "Skills",
+      "Usage",
+      "ui/events (library)",
+      "ui/routines (library)",
+      "ui/skills (library)"
+    ],
+    "fileCount": 22
+  },
+  "core-highlighted-text": {
+    "surfaces": [
+      "ui/board (library)"
+    ],
+    "fileCount": 1
+  },
+  "core-houston-avatar": {
+    "surfaces": [
+      "App shell",
+      "Chat",
+      "Import & export",
+      "Onboarding",
+      "Organization",
+      "Permissions",
+      "Usage",
+      "Your Agents",
+      "ui/chat (library)",
+      "ui/store (library)"
+    ],
+    "fileCount": 19
+  },
+  "core-hover-card": {
+    "surfaces": [
+      "Chat",
+      "ui/chat (library)",
+      "ui/layout (library)"
+    ],
+    "fileCount": 3
+  },
+  "core-input": {
+    "surfaces": [
+      "Activity",
+      "Agent Store (in app)",
+      "Import & export",
+      "Onboarding",
+      "Organization",
+      "Permissions",
+      "Settings",
+      "Sign in",
+      "Store website",
+      "Store website (admin)",
+      "ui/review (library)"
+    ],
+    "fileCount": 27
+  },
+  "core-input-group": {
+    "surfaces": [
+      "ui/chat (library)"
+    ],
+    "fileCount": 1
+  },
+  "core-input-otp": {
+    "surfaces": [
+      "Sign in"
+    ],
+    "fileCount": 1
+  },
+  "core-kbd": {
+    "surfaces": [
+      "Chat",
+      "Settings",
+      "ui/chat (library)"
+    ],
+    "fileCount": 3
+  },
+  "core-model-picker": {
+    "surfaces": [
+      "Chat"
+    ],
+    "fileCount": 1
+  },
+  "core-popover": {
+    "surfaces": [
+      "App shell",
+      "Chat",
+      "Permissions",
+      "ui/board (library)",
+      "ui/chat (library)",
+      "ui/routines (library)",
+      "ui/skills (library)"
+    ],
+    "fileCount": 11
+  },
+  "core-progress": {
+    "surfaces": [
+      "Chat",
+      "Settings"
+    ],
+    "fileCount": 2
+  },
+  "core-scroll-area": {
+    "surfaces": [
+      "ui/chat (library)",
+      "ui/layout (library)"
+    ],
+    "fileCount": 4
+  },
+  "core-select": {
+    "surfaces": [
+      "AI Models",
+      "Agent Store (in app)",
+      "Import & export",
+      "Organization",
+      "Routines",
+      "Settings",
+      "ui/chat (library)"
+    ],
+    "fileCount": 9
+  },
+  "core-separator": {
+    "surfaces": [
+      "Store website"
+    ],
+    "fileCount": 1
+  },
+  "core-skeleton": {
+    "surfaces": [
+      "Activity",
+      "Integrations",
+      "Settings",
+      "Skills",
+      "Store website"
+    ],
+    "fileCount": 5
+  },
+  "core-spinner": {
+    "surfaces": [
+      "AI Models",
+      "Activity",
+      "Agent Settings",
+      "Agent Store (in app)",
+      "App shell",
+      "Integrations",
+      "Onboarding",
+      "Organization",
+      "Permissions",
+      "Routines",
+      "Settings",
+      "Skills",
+      "Store website",
+      "Store website (admin)",
+      "Usage",
+      "Your Agents",
+      "ui/skills (library)"
+    ],
+    "fileCount": 46
+  },
+  "core-status-badge": {
+    "surfaces": [
+      "AI Models",
+      "Integrations",
+      "ui/skills (library)"
+    ],
+    "fileCount": 5
+  },
+  "core-switch": {
+    "surfaces": [
+      "AI Models",
+      "Agent Settings",
+      "Import & export",
+      "Integrations",
+      "Onboarding",
+      "Settings",
+      "ui/routines (library)"
+    ],
+    "fileCount": 10
+  },
+  "core-tabs": {
+    "surfaces": [
+      "Agent Store (in app)",
+      "Permissions",
+      "Store website (admin)",
+      "Usage"
+    ],
+    "fileCount": 6
+  },
+  "core-textarea": {
+    "surfaces": [
+      "Agent Store (in app)",
+      "Import & export",
+      "Store website"
+    ],
+    "fileCount": 5
+  },
+  "core-toast-container": {
+    "surfaces": [
+      "App shell",
+      "Onboarding"
+    ],
+    "fileCount": 3
+  },
+  "core-tooltip": {
+    "surfaces": [
+      "Activity",
+      "Agent Store (in app)",
+      "App shell",
+      "Import & export",
+      "Usage",
+      "ui/board (library)",
+      "ui/chat (library)",
+      "ui/layout (library)",
+      "ui/routines (library)"
+    ],
+    "fileCount": 19
+  },
+  "core-verified-badge": {
+    "surfaces": [
+      "Agent Store (in app)",
+      "Import & export",
+      "ui/store (library)"
+    ],
+    "fileCount": 5
+  },
+  "routines-draft-row": {
+    "surfaces": [
+      "ui/routines (internal)"
+    ],
+    "fileCount": 1
+  },
+  "routines-grid": {
+    "surfaces": [
+      "Routines",
+      "ui/routines (internal)"
+    ],
+    "fileCount": 2
+  },
+  "routines-grid-empty": {
+    "surfaces": [
+      "ui/routines (internal)"
+    ],
+    "fileCount": 1
+  },
+  "routines-row": {
+    "surfaces": [
+      "ui/routines (internal)"
+    ],
+    "fileCount": 2
+  },
+  "routines-row-controls": {
+    "surfaces": [
+      "ui/routines (internal)"
+    ],
+    "fileCount": 1
+  },
+  "routines-schedule-builder": {
+    "surfaces": [
+      "Onboarding",
+      "ui/routines (internal)"
+    ],
+    "fileCount": 2
+  },
+  "routines-timezone-picker": {
+    "surfaces": [
+      "Routines"
+    ],
+    "fileCount": 1
+  },
+  "routines-trigger-status-badge": {
+    "surfaces": [
+      "ui/routines (internal)"
+    ],
+    "fileCount": 2
+  },
+  "skills-add-skill-dialog": {
+    "surfaces": [
+      "Skills"
+    ],
+    "fileCount": 1
+  },
+  "skills-category-select": {
+    "surfaces": [
+      "ui/skills (internal)"
+    ],
+    "fileCount": 2
+  },
+  "skills-edit-modal": {
+    "surfaces": [
+      "Skills"
+    ],
+    "fileCount": 2
+  },
+  "skills-marketplace-grid": {
+    "surfaces": [
+      "ui/skills (internal)"
+    ],
+    "fileCount": 1
+  },
+  "skills-marketplace-row": {
+    "surfaces": [
+      "ui/skills (internal)"
+    ],
+    "fileCount": 2
+  },
+  "skills-marketplace-shelves": {
+    "surfaces": [
+      "ui/skills (internal)"
+    ],
+    "fileCount": 2
+  },
+  "skills-owner-avatar": {
+    "surfaces": [
+      "ui/skills (internal)"
+    ],
+    "fileCount": 2
+  },
+  "skills-preview-modal": {
+    "surfaces": [
+      "Skills"
+    ],
+    "fileCount": 1
+  },
+  "skills-skill-row": {
+    "surfaces": [
+      "ui/skills (internal)"
+    ],
+    "fileCount": 1
+  },
+  "store-design-sheet": {
+    "surfaces": [
+      "ui/store (internal)"
+    ],
+    "fileCount": 1
+  }
+}

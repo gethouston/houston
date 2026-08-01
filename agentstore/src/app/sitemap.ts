@@ -10,7 +10,7 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * The public sitemap: the two static routes plus every public agent page,
+ * The public sitemap: Home plus every public agent and creator page,
  * enumerated by walking the gateway catalog. A gateway failure surfaces as a real
  * error rather than a silently truncated sitemap.
  */
@@ -23,12 +23,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "daily",
       priority: 1,
-    },
-    {
-      url: `${base}/explore`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
     },
   ];
 
