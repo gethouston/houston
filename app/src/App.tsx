@@ -33,6 +33,7 @@ import { useReadCursorTracker } from "./hooks/use-read-cursors";
 import { useScreenPrefetch } from "./hooks/use-screen-prefetch";
 import { SessionUnavailableError, useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
+import { useSpacesLiveRefresh } from "./hooks/use-spaces-live-refresh";
 import { analytics } from "./lib/analytics";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 import { newEngineActive } from "./lib/engine";
@@ -69,6 +70,9 @@ export default function App() {
   useReadCursorTracker();
   useNotificationNudges();
   useAgentInvalidation();
+  // A team the user was just added to appears in the switcher without a
+  // relaunch (quiet focus + interval re-list; spaces-capable hosts only).
+  useSpacesLiveRefresh();
   useAnalyticsSubscriber();
   useIntegrationSessionSync();
   // Keep the Agent Store adapter pointed at the gateway with the user's session

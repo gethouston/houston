@@ -240,6 +240,16 @@ async function surfaceError(
 export const tauriWorkspaces = {
   list: () =>
     call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
+  /** Background space-list sync (the live-spaces refresher): failures are
+   *  logged only — the next tick retries, and a red toast per poll would turn
+   *  an offline hour into a toast storm. User-initiated loads use `list`. */
+  listQuiet: () =>
+    call<Workspace[]>(
+      "list_workspaces",
+      () => getEngine().listWorkspaces(),
+      undefined,
+      { surface: false },
+    ),
   create: (name: string) =>
     call<Workspace>("create_workspace", () =>
       getEngine().createWorkspace({ name }),

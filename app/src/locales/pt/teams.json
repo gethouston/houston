@@ -264,15 +264,15 @@
     "open": "Abrir {{name}}"
   },
   "createTeam": {
-    "trigger": "Criar equipe",
-    "title": "Criar uma equipe",
-    "description": "As equipes permitem compartilhar agentes e trabalhar em conjunto. Você pode convidar pessoas depois que ela existir.",
-    "nameLabel": "Nome da equipe",
+    "trigger": "Criar organização",
+    "title": "Criar uma organização",
+    "description": "As organizações permitem compartilhar agentes e trabalhar em conjunto. Você pode convidar pessoas depois que ela existir.",
+    "nameLabel": "Nome da organização",
     "namePlaceholder": "ex.: Marketing",
-    "submit": "Criar equipe",
+    "submit": "Criar organização",
     "creating": "Criando…",
     "tooLong": "Use um nome com menos de {{max}} caracteres.",
-    "successTitle": "Equipe \"{{name}}\" criada",
+    "successTitle": "Organização \"{{name}}\" criada",
     "successBody": "Convide pessoas para trabalharem juntas.",
     "successAction": "Convide sua equipe"
   },
