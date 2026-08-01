@@ -28,7 +28,7 @@ describe("required onboarding email path", () => {
     assert.doesNotMatch(mission, /<ChatInteractionCard/);
   });
 
-  it("removes every pre-conversation skip route", () => {
+  it("keeps every in-card skip route out of the pre-conversation steps", () => {
     const connectEmail = read(
       "../src/components/onboarding/missions/connect-email.tsx",
     );
@@ -46,9 +46,10 @@ describe("required onboarding email path", () => {
     assert.doesNotMatch(connectEmail, /\b(?:skip|omit)\b/i);
     assert.doesNotMatch(flow, /shouldOfferConnectSkip/);
     assert.doesNotMatch(onboarding, /skipEmailSteps/);
-    // The skip escape hatch is failure-gated: the session derives `showSkip`
-    // from shouldOfferSkip (behavior covered in email-skip.test.ts), so no
-    // standalone pre-conversation skip route exists.
+    // The in-card skip stays failure-gated: the session derives `showSkip`
+    // from shouldOfferSkip (behavior covered in email-skip.test.ts). The one
+    // always-available exit is the bottom-of-screen support escape hatch,
+    // covered in onboarding-escape-hatch.test.ts.
     assert.match(session, /showSkip = shouldOfferSkip\(\{/);
   });
 });

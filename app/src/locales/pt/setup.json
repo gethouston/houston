@@ -39,7 +39,8 @@
     "brand": "Houston",
     "nav": {
       "back": "Voltar",
-      "continue": "Continuar"
+      "continue": "Continuar",
+      "skipOnboarding": "Pular a configuração"
     },
     "errors": {
       "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente.",

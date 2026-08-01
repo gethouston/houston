@@ -39,7 +39,8 @@
     "brand": "Houston",
     "nav": {
       "back": "Back",
-      "continue": "Continue"
+      "continue": "Continue",
+      "skipOnboarding": "Skip onboarding"
     },
     "errors": {
       "setupFailed": "We couldn't finish setting up your workspace. Please try again.",
