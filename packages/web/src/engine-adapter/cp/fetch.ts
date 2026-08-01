@@ -68,8 +68,13 @@ const signedOutResponse = () =>
  * (HOU-687): the bearer is read LIVE per attempt (never a pinned copy), and a
  * 401 triggers one single-flight session refresh and one replay with the fresh
  * token. A 401 that survives the refresh is returned as-is — a real sign-out
- * must surface, not spin. With no refresher installed (static tokens, tests)
- * the refresh resolves null and this degrades to a plain live-token fetch.
+ * must surface, not spin. A refresh beaten TRANSIENTLY by the network (a
+ * sleep-wake reconnect still settling — HOU-1106) throws the transport-shaped
+ * TypeError `refreshLiveToken` mints, exactly as if the request itself had
+ * dropped: `transientRetryFetch` re-attempts reads (re-running the refresh
+ * each time), and a persistent failure surfaces as connectivity, never as a
+ * bogus auth error. With no refresher installed (static tokens, tests) the
+ * refresh resolves null and this degrades to a plain live-token fetch.
  *
  * With NO bearer at all in hosted mode the request is not sent: the refresher
  * is asked once (bridging the boot race where queries fire before the restored

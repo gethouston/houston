@@ -70,7 +70,11 @@ export function subscribeEvents(
     fetch: (input, init) => fetch(input, init),
     signal: ac.signal,
     onUnauthorized: () => {
-      void refreshLiveToken();
+      // Fire-and-forget: the stream's own retry loop re-attempts the connect,
+      // so a refresh beaten transiently by the network (the transport-shaped
+      // throw, HOU-1106) has nothing to surface here — swallow it, or it
+      // becomes an unhandled rejection.
+      void refreshLiveToken().catch(() => {});
     },
     // The catch-up seam (HOU-981). This feed has NO replay cursor: every event
     // emitted while the stream was down is lost for good, and the surfaces it
