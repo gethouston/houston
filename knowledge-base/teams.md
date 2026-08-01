@@ -512,6 +512,19 @@ per team, each `{ id: "org:" + slug, kind: "org" }` where `slug` is `[a-f0-9]{16
   the workspace store's `loadError` for the Settings retry.
 - **Restore last space**: `resolveActiveWorkspace` (`app/src/lib/workspace-switch.ts`)
   restores the persisted `last_workspace_id`, else default, else first.
+- **Live space list (no relaunch needed)**: `useSpacesLiveRefresh`
+  (`app/src/hooks/use-spaces-live-refresh.ts`, mounted in App, gated on
+  `caps.spaces`) quietly re-lists workspaces on window focus + a 60s interval so
+  a team the user was just added to appears without reopening the app (the
+  member-added email points at the switcher). Merge decision is pure —
+  `planSpacesRefresh` (`app/src/lib/workspace-refresh.ts`, unit-tested):
+  unchanged ⇒ no-op; changed ⇒ swap the list keeping the selection; active
+  space VANISHED (kicked from the team) ⇒ fall back to default/first and re-pin
+  + reset caches like a user switch. The store's `refreshWorkspaces` never
+  flips `loading` (no re-splash) and uses `tauriWorkspaces.listQuiet`
+  (`surface:false` — a background poll must not toast per offline tick). Why
+  polling, not events: the gateway /v1/events hub is per-replica, so a
+  membership event emitted on one replica misses subscribers on the other.
 
 ### Create-team
 
@@ -519,7 +532,10 @@ The switcher's create action routes on `caps.spaces`
 (`app/src/components/shell/sidebar-chrome.tsx`): a Spaces host opens the
 **Create-team dialog** (`create-team-dialog.tsx`, validation in
 `create-team-model.ts`: trimmed, non-empty, `<= 60` chars, and the gateway
-re-validates); a non-spaces host keeps the local "create workspace" action. On
+re-validates); a non-spaces host keeps the local "create workspace" action.
+User-facing copy says **"Create organization"** (the `teams:createTeam.*`
+locale block, renamed from "Create team" per Felipe, Jul 2026) — code
+identifiers keep the `createTeam` name. On
 success `useCreateTeam` (`app/src/hooks/queries/use-orgs.ts`) invalidates the
 spaces list and reloads the workspace store so the new team bridges in as an
 `org:*` workspace. `POST /v1/orgs` is NOT idempotent: a lost response is

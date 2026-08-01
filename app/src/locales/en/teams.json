@@ -264,15 +264,15 @@
     "open": "Open {{name}}"
   },
   "createTeam": {
-    "trigger": "Create team",
-    "title": "Create a team",
-    "description": "Teams let you share agents and work together. You can invite people once it exists.",
-    "nameLabel": "Team name",
+    "trigger": "Create organization",
+    "title": "Create an organization",
+    "description": "Organizations let you share agents and work together. You can invite people once it exists.",
+    "nameLabel": "Organization name",
     "namePlaceholder": "e.g. Marketing",
-    "submit": "Create team",
+    "submit": "Create organization",
     "creating": "Creating…",
     "tooLong": "Keep the name under {{max}} characters.",
-    "successTitle": "Team \"{{name}}\" created",
+    "successTitle": "Organization \"{{name}}\" created",
     "successBody": "Invite people so you can work together.",
     "successAction": "Invite your team"
   },
