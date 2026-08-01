@@ -72,6 +72,14 @@ pub(super) fn build_login_command(bin: &Path, config_dir: &Path) -> Command {
     for (key, value) in crate::shell_env::claude_shell_env() {
         cmd.env(key, value);
     }
+    // Spawn from the user's home dir, NOT the inherited cwd: the CLI's shell
+    // probe discards which() hits inside its own cwd, so an inherited
+    // `C:\Windows\System32` (autostart / deep-link launches) silently filters
+    // out the very PowerShell the env repair above made reachable
+    // (HOUSTON-APP-4YP's post-repair residue).
+    if let Some(cwd) = crate::shell_env::claude_spawn_cwd() {
+        cmd.current_dir(cwd);
+    }
     #[cfg(windows)]
     {
         // `claude.exe` is a console binary and this GUI app has no console:
@@ -195,6 +203,16 @@ mod tests {
         assert_eq!(extract_visit_url("Opening browser to sign in"), None);
         // Marker but no http(s) token.
         assert_eq!(extract_visit_url("please visit: the docs"), None);
+    }
+
+    #[test]
+    fn build_login_command_pins_cwd_to_home() {
+        // The login child must never inherit the app's cwd — an inherited
+        // `C:\Windows\System32` makes the CLI's shell probe filter out the
+        // built-in PowerShell and fail the sign-in (HOUSTON-APP-4YP).
+        let cmd = build_login_command(Path::new("/nonexistent/claude"), Path::new("/tmp/config"));
+        let expected = crate::shell_env::claude_spawn_cwd().expect("home dir resolves");
+        assert_eq!(cmd.as_std().get_current_dir(), Some(expected.as_path()));
     }
 
     #[test]
