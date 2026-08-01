@@ -6,6 +6,7 @@ import { resetCacheForSpaceChange } from "../lib/space-cache";
 import { orgSlugFromWorkspaceId } from "../lib/space-id";
 import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
 import type { Workspace } from "../lib/types";
+import { planSpacesRefresh } from "../lib/workspace-refresh";
 import { resolveActiveWorkspace } from "../lib/workspace-switch";
 
 interface WorkspaceState {
@@ -24,6 +25,13 @@ interface WorkspaceState {
    *  has no workspace (a neutral empty state). */
   loadError: boolean;
   loadWorkspaces: () => Promise<void>;
+  /** Background space-list sync (HOU live-spaces): re-lists quietly and merges
+   *  changes in place — a space the user was just added to appears without a
+   *  relaunch, and a space they were removed from disappears (falling back to
+   *  the default space when it was the active one). Never flips `loading`, so
+   *  no screen re-splashes; failures are logged by the wire layer and simply
+   *  retried on the next tick. */
+  refreshWorkspaces: () => Promise<void>;
   setCurrent: (ws: Workspace) => void;
   create: (name: string) => Promise<Workspace>;
   delete: (id: string) => Promise<void>;
@@ -35,7 +43,7 @@ interface WorkspaceState {
   reset: () => void;
 }
 
-export const useWorkspaceStore = create<WorkspaceState>((set) => ({
+export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: [],
   current: null,
   // Start "not settled" so App.tsx renders the loading splash on first paint
@@ -74,6 +82,31 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       set({ loadError: true });
     } finally {
       set({ loading: false, loaded: true });
+    }
+  },
+
+  refreshWorkspaces: async () => {
+    const before = get();
+    // Never race the boot load or a user-initiated reload; they own `loading`.
+    if (!before.loaded || before.loading) return;
+    let fresh: Workspace[];
+    try {
+      fresh = await tauriWorkspaces.listQuiet();
+    } catch {
+      return; // logged by the wire layer; the next tick retries
+    }
+    const prev = get();
+    if (prev.loading) return; // a real load started mid-flight; it wins
+    const plan = planSpacesRefresh(prev.workspaces, prev.current, fresh);
+    if (plan.kind === "unchanged") return;
+    set({ workspaces: plan.workspaces, current: plan.current });
+    if (plan.kind === "reselect" && plan.current) {
+      // The active space vanished (removed from the team while the app was
+      // open): re-pin like setCurrent — staying pinned to a space the gateway
+      // now 403s would strand every request.
+      tauriPreferences.set("last_workspace_id", plan.current.id);
+      const orgChanged = setActiveOrg(orgSlugFromWorkspaceId(plan.current.id));
+      resetCacheForSpaceChange(queryClient, orgChanged);
     }
   },
 
