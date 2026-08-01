@@ -5,7 +5,9 @@ import {
 } from "../src/engine-adapter/client";
 import {
   getMyProfile,
+  getSkillsManifest,
   listInstalledConfigs,
+  putSkillsManifest,
 } from "../src/engine-adapter/control-plane";
 
 /**
@@ -156,4 +158,39 @@ test("every other /v1/me/profile failure still propagates — never swallowed", 
   await expect(getMyProfile(CFG)).rejects.toThrow(
     "profile exploded (engine error 500)",
   );
+});
+
+/**
+ * HOU-1105 (Sentry HOUSTON-APP-544): the per-agent shared-skills manifest
+ * route shipped with HOU-1027, but cloud engine pods pick it up only as they
+ * re-wake onto the new image — a freshly auto-updated desktop talking to an
+ * old pod 404'd and red-toasted on a read the user never initiated. A missing
+ * manifest means "nothing enabled" (ADR 0003), so the read degrades to the
+ * empty manifest; the write stays loud so a toggle never silently no-ops.
+ */
+
+test("a 404 on the skills-manifest read is the empty manifest — no toast (HOU-1105)", async () => {
+  const calls = stubFetch(json(404, { error: "not found" }));
+
+  await expect(getSkillsManifest(CFG, "a1")).resolves.toEqual({
+    version: 1,
+    enabled: [],
+  });
+  expect(calls).toEqual(["https://gateway.example/agents/a1/skills-manifest"]);
+});
+
+test("every other skills-manifest read failure still propagates", async () => {
+  stubFetch(json(500, { error: "manifest exploded" }));
+
+  await expect(getSkillsManifest(CFG, "a1")).rejects.toThrow(
+    "manifest exploded (engine error 500)",
+  );
+});
+
+test("the skills-manifest WRITE still surfaces a 404 — a toggle must never silently no-op", async () => {
+  stubFetch(json(404, { error: "not found" }));
+
+  await expect(
+    putSkillsManifest(CFG, "a1", { version: 1, enabled: ["research"] }),
+  ).rejects.toThrow("not found (engine error 404)");
 });

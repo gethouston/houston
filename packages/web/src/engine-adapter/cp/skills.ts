@@ -3,6 +3,7 @@ import type {
   SkillSummary,
   SkillsManifest,
 } from "../../../../../ui/engine-client/src/types";
+import { HoustonEngineError } from "../client/errors";
 import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
 
 type HostSkillSummary = Omit<SkillSummary, "inputs" | "promptTemplate">;
@@ -158,12 +159,25 @@ export async function deleteSharedSkill(
   );
 }
 
+/**
+ * A 404 reads as the empty manifest, not an error: an engine pod predating the
+ * skills-manifest route (HOU-1027 rolls out to cloud pods only as they
+ * re-wake) has nothing enabled — the same degenerate state as a missing file,
+ * which ADR 0003 defines as valid. Every other failure propagates, and the
+ * write below stays loud: a toggle that didn't persist must never look saved.
+ */
 export async function getSkillsManifest(
   cfg: ControlPlaneConfig,
   agentId: string,
 ): Promise<SkillsManifest> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills-manifest`);
-  return (await res.json()) as SkillsManifest;
+  try {
+    const res = await cpFetch(cfg, `${agentPath(agentId)}/skills-manifest`);
+    return (await res.json()) as SkillsManifest;
+  } catch (err) {
+    if (err instanceof HoustonEngineError && err.status === 404)
+      return { version: 1, enabled: [] };
+    throw err;
+  }
 }
 
 export async function putSkillsManifest(
