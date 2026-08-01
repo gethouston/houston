@@ -28,6 +28,7 @@ export * from "./state-providers";
 export * from "./state-routines";
 export * from "./state-shared-skills";
 export * from "./state-skills";
+export * from "./state-spaces";
 export * from "./state-store";
 export * from "./state-teams";
 export * from "./state-workspace";

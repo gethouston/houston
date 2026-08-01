@@ -1951,6 +1951,24 @@ export const tauriOrg = {
     call<void>("delete_org_invite", () =>
       getEngine().deleteOrgInvite(inviteId),
     ),
+  /** C8: accept an invite addressed to the caller, joining that team. Distinct
+   *  from `deleteInvite` (the owner's revoke). Callers pass `silence` for the
+   *  expected gateway states they explain themselves (see `invite-model.ts`). */
+  acceptInvite: (inviteId: string, options?: EngineCallOptions) =>
+    call(
+      "accept_org_invite",
+      () => getEngine().acceptOrgInvite(inviteId),
+      undefined,
+      options,
+    ),
+  /** C8: decline an invite addressed to the caller. */
+  declineInvite: (inviteId: string, options?: EngineCallOptions) =>
+    call<void>(
+      "decline_org_invite",
+      () => getEngine().declineOrgInvite(inviteId),
+      undefined,
+      options,
+    ),
   removeMember: (userId: string) =>
     call("remove_org_member", () => getEngine().removeOrgMember(userId)),
   setMemberRole: (

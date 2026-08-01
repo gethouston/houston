@@ -74,6 +74,7 @@ They drive the failure/reactivity scenarios the specs assert against:
 | `/__test__/agent-settings` | `{ allowedToolkits?, orgAllowedToolkits?, allowedModels?, access? }` | Set the Teams v2 ceilings served at `/v1/agents/:slug/settings` + `/v1/org/settings` (`allowedToolkits`/`orgAllowedToolkits`: `null` = unrestricted, `[]` = none). The `effectiveAllowlist` = agent ∩ org drives the tab's connectable-vs-locked partition. Returns the merged settings. |
 | `/__test__/org` | `{ members?: [{ userId, email?, role, displayName?, photoUrl? }], agents?: [...] }` | Arm the org roster `GET /v1/org` serves (owner/admin only) and the co-member directory `GET /v1/org/people` serves to EVERY member. `displayName`/`photoUrl` are the stored GCIP profile: a member without a `displayName` is still served, and the client decides who is @mentionable. Arming also SEEDS the identity-provider fallback behind `/v1/me/profile` from the `u-self` row, so clearing a custom name/photo has something honest to fall back to. Pair with `/__test__/capabilities` `{ multiplayer:true, teams:true, role:"owner" }`. Returns `{ members, agents }`. |
 | `/__test__/workspaces` | `{ teams: [{ slug, name }] }` | Arm the team-space rows the C8 Spaces workspaces bridge serves at `GET /v1/workspaces` (alongside the always-present personal seed row). Each `slug` (exactly `[a-f0-9]{16}`) becomes an `{ id:"org:<slug>", kind:"org" }` switcher row. Pair with `/__test__/capabilities` `{ spaces:true }`. `{ teams: [] }` (and reset) restores personal-only. Returns the armed `{ teams }`. |
+| `/__test__/space-invites` | `{ invites: [{ orgName, role?, invitedBy?, orgSlug?, id?, reject? }] }` | Arm the INVITEE-side invite inbox `GET /v1/orgs` surfaces in `invites` (C8 Spaces) — the sidebar cards under the workspace switcher. Only `orgName` is required (`role` defaults to `user`, the id and the 16-hex `orgSlug` the accepted team lands under are minted). `invitedBy` is the raw gateway field: the card names the inviter only when it is human-readable (an email, or a name with whitespace). `reject` forces THAT invite's answer — `needs_upgrade` (403, invite kept), `already_member` (409, invite kept), `invite_not_found` (404, invite dropped: the revoked-behind-your-back case). The card is capability-gated on the CLIENT, so pair with `/__test__/capabilities` `{ spaces:true }`. `{ invites: [] }` (and reset) empties the inbox. Returns the normalized `{ invites }`. |
 | `/__test__/provider-usage` | `{ rows: ProviderUsage[] \| null }` | Arm the live per-account usage `GET /providers/usage` serves — what the AI Models hub's Connected rows meter with (windows, plan, credits, metered tokens, and the honest `unsupported`/`unauthenticated`/`error` rows). `null` (and reset) restores the default seed: the connected Claude subscription on plan `max`, its session window 42% used and its weekly 12%. Returns the served `{ rows }`. |
 | `/__test__/compute-usage` | `{ seed: { rows, awakeNow } \| null }` | Arm the per-agent running-time dataset `GET /v1/org/compute-usage` serves (Settings > Time worked). `null` (the default) 404s the route, mirroring desktop/self-host. Pair with `/__test__/capabilities` `{ computeUsage:true }`. Returns `{ seed }`. |
 
@@ -107,6 +108,18 @@ They drive the failure/reactivity scenarios the specs assert against:
   `POST /v1/org/members` (invite path: an unknown email mints a pending invite,
   `202 { invited:true }`, then surfaced in `/v1/org`'s `invites`;
   `DELETE /v1/org/invites/:id` revokes).
+- `/v1/orgs` + `/v1/org-invites/*` — the C8 Spaces CROSS-org surface, which
+  ignores the `x-houston-org` active-space pin: `GET /v1/orgs` →
+  `{orgs, invites}` (every team the caller belongs to, plus every pending invite
+  addressed to them), `POST /v1/orgs {name}` → `201 OrgSummary` (mints a team,
+  caller = owner), `POST /v1/org-invites/:id/accept` → `201 {org}` and
+  `DELETE /v1/org-invites/:id` → `204` (the INVITEE's own accept/decline — not
+  the owner's revoke at `/v1/org/invites/:id`). Memberships have one source of
+  truth: the same team-space rows `/v1/workspaces` bridges, so accepting an
+  invite puts the team in the switcher and in `orgs` at once. The rejection
+  bodies are flat `{error, code}`, exactly as the Go gateway writes them —
+  that `code` is what the client's invite taxonomy reads. Arm the inbox with
+  `/__test__/space-invites`.
 - `/v1/agents/:slug/settings` + `/v1/org/settings` (Teams v2, the gateway-only
   allowlist/model ceilings `getAgentSettings` / `getOrgSettings` read; GET + the
   manager/owner PUT). Seeded unrestricted; armed by `/__test__/agent-settings`.

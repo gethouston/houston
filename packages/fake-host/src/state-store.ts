@@ -168,11 +168,57 @@ export interface FakeInvite {
  * `kind` is `"org"`. Armed by `/__test__/workspaces`; served alongside the
  * always-present personal seed row. Empty (the default) = personal-only, so the
  * list stays byte-identical to a single-workspace deployment.
+ *
+ * The same rows are the caller's team MEMBERSHIPS, which `GET /v1/orgs`
+ * enumerates (`state-spaces.ts`) — one source of truth, so joining a team puts
+ * it in the switcher and the org list at once, as the gateway does. `role` and
+ * `memberCount` ride along for that list; both fall back to the advertised
+ * capabilities role / a lone member when a spec armed only `{slug, name}`.
  */
 export interface FakeTeamWorkspace {
   /** `"org:" + [a-f0-9]{16}`. */
   id: string;
   name: string;
+  /** The caller's role in this team; defaults to the advertised caps role. */
+  role?: OrgRole;
+  /** People in the team; defaults to 1 (the caller alone). */
+  memberCount?: number;
+}
+
+/**
+ * A gateway rejection a spec can force on one invite, so the invitee-side
+ * error paths are reachable without racing a real state change. Mirrors the C8
+ * accept/decline codes (`cloud/internal/edge/spaces_routes.go`):
+ * `needs_upgrade` (403, the invite STAYS — an upgrade makes it acceptable
+ * again), `already_member` (409, also kept), `invite_not_found` (404, and the
+ * invite is dropped from the served list — the revoked-between-fetch-and-click
+ * case, whose refetch is what makes the stale card disappear).
+ */
+export type SpaceInviteRejection =
+  | "needs_upgrade"
+  | "already_member"
+  | "invite_not_found";
+
+/**
+ * A pending invite addressed to the CALLER (C8 Spaces), as `GET /v1/orgs`
+ * surfaces it in `invites` — the invitee-side inbox the sidebar renders under
+ * the workspace switcher. NOT {@link FakeInvite}, which is an invite the ACTIVE
+ * org's owner SENT and `GET /v1/org` surfaces to owner/admin.
+ *
+ * `orgSlug` is the 16-hex slug the joined team lands under in the workspaces
+ * bridge (`org:<slug>`); it never reaches the wire (the summary carries only
+ * `id`/`orgName`/`role`/`invitedBy`), it is what accepting turns into a
+ * membership. `invitedBy` is the inviter's user id on the shipped gateway,
+ * which the client deliberately refuses to render — a spec arms an email or a
+ * spaced name to reach the "<name> invited you" headline.
+ */
+export interface FakeSpaceInvite {
+  id: string;
+  orgName: string;
+  orgSlug: string;
+  role: OrgRole;
+  invitedBy?: string;
+  reject?: SpaceInviteRejection;
 }
 
 /**
@@ -393,9 +439,18 @@ export interface HostState {
   /**
    * The team-space rows `GET /v1/workspaces` bridges in (C8 Spaces), armed by
    * `/__test__/workspaces`. Empty (the default) = personal-only, keeping the
-   * switcher byte-identical to a single-workspace host.
+   * switcher byte-identical to a single-workspace host. The same rows are the
+   * memberships `GET /v1/orgs` enumerates.
    */
   teamWorkspaces: FakeTeamWorkspace[];
+  /**
+   * The invitee-side inbox `GET /v1/orgs` surfaces in `invites` (C8 Spaces),
+   * armed by `/__test__/space-invites`. Empty (the default) = nothing pending,
+   * so the sidebar renders no invite chrome at all.
+   */
+  spaceInvites: FakeSpaceInvite[];
+  /** Monotonic counter for minted team-space slugs (`POST /v1/orgs`). */
+  teamSeq: number;
   /** connectionId -> the acting user's connected account. */
   connections: Map<string, IntegrationConnection>;
   /** Per-user preference key -> value (locale, timezone, …). */
@@ -473,6 +528,8 @@ function freshState(): HostState {
     orgInvites: [],
     inviteSeq: 0,
     teamWorkspaces: [],
+    spaceInvites: [],
+    teamSeq: 0,
     connections,
     preferences: new Map(),
     sidebarLayouts: new Map(),

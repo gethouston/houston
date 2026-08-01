@@ -368,9 +368,9 @@ contract: `cloud/docs/contracts/C8-spaces-billing.md`.
 Wire types in `ui/engine-client/src/types.ts` (`OrgSummary`, `OrgInviteSummary`,
 `OrgsList`, `BillingSummary`, `BillingCheckout`, `AgentMoveStart`,
 `AgentMoveStatus`, `Workspace.kind`). Client methods in `client.ts`: `listOrgs`,
-`createOrg`, `moveAgent`, `getMoveStatus`, `acceptInvite`, `declineInvite`,
-`getBilling`, `createCheckout`, `createPortal`, plus `setActiveOrg` (the
-active-space pin, below).
+`createOrg`, `moveAgent`, `getMoveStatus`, `acceptOrgInvite`,
+`declineOrgInvite`, `getBilling`, `createCheckout`, `createPortal`, plus
+`setActiveOrg` (the active-space pin, below).
 
 ### The switcher (`org:<slug>` workspace bridge)
 
@@ -553,6 +553,111 @@ success `useCreateTeam` (`app/src/hooks/queries/use-orgs.ts`) invalidates the
 spaces list and reloads the workspace store so the new team bridges in as an
 `org:*` workspace. `POST /v1/orgs` is NOT idempotent: a lost response is
 reconciled via `listOrgs` (`reconcileCreatedTeam`), never blind-retried.
+
+### Invite inbox (the INVITEE side)
+
+The auto-join only fires on an account's FIRST-EVER contact with the gateway, so
+for every EXISTING user a pending invite is inert until they answer it. That
+answer lives directly under the workspace switcher, in the sidebar's
+`headerBelow` band (`AppSidebar`, `ui/layout/src/sidebar.tsx`):
+
+- **Where** — `app/src/components/shell/pending-invites.tsx` (+ the row itself,
+  `invite-card.tsx`). `SidebarInviteInbox` is the mounted container (it owns the
+  capability + query gate, so the switcher header stays about switching spaces);
+  `PendingInviteList` renders one always-visible `InviteCard` per invite (team
+  name, the role you'd join as, Accept + Decline) directly beneath the switcher;
+  on the COLLAPSED rail
+  `PendingInvitesRailButton` renders a labelled count that expands the sidebar
+  onto the real cards. Deliberately NOT inside the switcher's dropdown and never
+  hover-gated: an invitation is the one thing on this surface the user has not
+  been told about, so it may not hide behind a click.
+- **Its own full-width row, NOT the header slot** — expanded, the sidebar header
+  shares its line with the collapse toggle (`flex items-center`), so cards
+  rendered inside `header` were inset by the toggle's column (right edge out of
+  line with every row below) AND dragged the vertically-centred toggle down to
+  the middle of the card stack. `AppSidebar` therefore takes a separate
+  `headerBelow` slot that spans the rail; `header` is the switcher again.
+- **Bounded, and bounded at a card boundary** — the list scrolls inside itself
+  (`max-h-72`): the sidebar header is a fixed non-scrolling region above the nav,
+  so an unbounded list would push the navigation down and get clipped by the
+  rail's `overflow-hidden`. The bound shows two WHOLE cards plus the TOP of a
+  third — at the earlier `max-h-52` the cut fell through the second card's own
+  Accept / Decline row, which reads as a rendering fault rather than "scroll for
+  more" (macOS overlay scrollbars show nothing until you scroll). Team names
+  carry `break-words` **and `line-clamp-3`**: the gateway allows 200 characters,
+  possibly one unbroken token, which otherwise wrapped to a dozen lines and
+  pushed a lone invitation's buttons below the fold (the full name stays in the
+  DOM and in `title`).
+- **Spaces-gated on BOTH sides** — the fetch via `useOrgs(hasSpaces(caps))`, the
+  RENDER via `visibleInvites(spacesEnabled, …)` (`invite-model.ts`). Gating only
+  the fetch is a bug: disabling a React Query does NOT clear its cache, so a
+  session that loses the capability keeps painting the last fetch's invites over
+  a deployment whose mutators throw off-cloud. `hasSpaces(null)` is false while
+  capabilities load, so the same gate is the no-flash-on-boot rule.
+- **Accept and Decline exclude each other** — `createInviteActionLock()`
+  (`invite-model.ts`), one lock per list, keyed by invite id, claimed
+  SYNCHRONOUSLY before either mutation starts and released in a `finally`.
+  `AsyncButton`'s rage-click guard is per BUTTON and the `busy` prop only lands
+  on the next commit, so a rapid Accept then Decline in one frame fired both
+  calls and the loser toasted `already_member` / `invite_not_found` at a user
+  who did nothing wrong.
+- **Who invited you is usually NOT shown, on purpose.**
+  `OrgInviteSummary.invitedBy` is the inviter's USER ID on the shipped gateway
+  (`principal.UserID`), and the invitee is not in that org yet, so no
+  client-side read can resolve it (`GET /v1/org/profiles` is scoped to
+  co-members of the ACTIVE space). `inviterDisplayName`
+  (`app/src/lib/invite-model.ts`) therefore shows the inviter ONLY when the
+  value is human-readable (an email or a name with whitespace) and falls back to
+  naming the TEAM alone. If the gateway ever sends a display name/email in that
+  field, the card names the inviter with no client change.
+- **Hooks** — `useAcceptInvite` / `useDeclineInvite`
+  (`app/src/hooks/queries/use-invites.ts`). Both invalidate `queryKeys.orgs()`
+  on BOTH paths, not just on success: `already_member` and `invite_not_found`
+  mean the server's truth already moved on, so the stale card must vanish either
+  way. The invalidation fires FIRST and is never awaited behind the workspace
+  reload, so the answered card leaves the sidebar immediately. Accept then
+  awaits `loadWorkspaces()` — a joined team reaches the switcher through
+  `GET /v1/workspaces`, a Zustand store no invalidation can reach. That reload
+  **swallows its own failure** (it only records `loadError`), so the toast asks
+  `teamIsInSwitcher(store.workspaces, org.slug)` before promising anything:
+  confirmed ⇒ "switch to it from the space menu" (`joinedBody`), unconfirmed ⇒
+  `joinedBodyUnconfirmed`, which says the refresh did not land instead of
+  pointing at a menu the team may not be in. **Nothing switches the active
+  space**: joining is not going there (unlike create-team, where the user asked
+  for a new home).
+- **Error taxonomy** — `invite-model.ts` `classifyInviteError` /
+  `isExpectedInviteError`: `403 needs_upgrade` (the team's trial ended; the
+  invite STAYS, an upgrade makes it acceptable again), `409 already_member`,
+  `404 invite_not_found` (revoked, used, or addressed to another email — the
+  gateway deliberately cannot tell them apart). Each is silenced from `call()`'s
+  red bug toast and gets ONE plain informational toast instead
+  (`teams:inviteInbox.errors.*`); anything else keeps the standard toast +
+  Sentry report. `needs_upgrade` gets its own invitee-shaped copy rather than
+  the generic `degrade.writeBlocked*` write-block toast.
+- **Wire** — `acceptOrgInvite` / `declineOrgInvite` in
+  `packages/web/src/engine-adapter/cp/spaces-billing.ts` (+ the mixin and the
+  `ui/engine-client` shim), app wrappers `tauriOrg.acceptInvite` /
+  `tauriOrg.declineInvite`. The routes are the CROSS-org
+  `POST /v1/org-invites/:id/accept` (`201 {org}`, unwrapped by the client) and
+  `DELETE /v1/org-invites/:id` (`204`) — NOT the org-scoped
+  `DELETE /v1/org/invites/:id`, which is the OWNER's revoke (`deleteOrgInvite` /
+  `useDeleteInvite`). Neither degrades: every rejection is a state the invitee
+  must see. Tests: `app/tests/invite-model.test.ts`,
+  `packages/web/tests/org-invites.test.ts`,
+  `ui/engine-client/tests/client-teams.test.ts`, and the end-to-end
+  `packages/web/e2e/team-invites.spec.ts` (render + placement, accept joins the
+  team into the switcher, decline, the non-red `needs_upgrade` toast, the
+  revoked-invite disappearance, the collapsed rail count, and the
+  capability-off no-render) against the fake host's C8 routes — armed with
+  `/__test__/space-invites` (`knowledge-base/ui-testing.md`).
+
+> **Gateway error bodies are FLAT `{error, code}`.** `shareErrorCode`
+> (`app/src/lib/share-via-team.ts`) now reads `body.code`, because
+> `HoustonEngineError.code` only understands the NESTED `{error: {code}}` shape.
+> Until that fix every flat rejection classified as its English SENTENCE, so
+> `needs_upgrade` / `personal_space` / `already_member` fell through to the red
+> "report a bug" toast in production while the unit tests (written against
+> synthetic `{code}` objects) stayed green.
 
 ### Share-via-team pipeline (order is law)
 
@@ -892,10 +997,11 @@ unlikely.
   > **C8 changed acceptance.** The old "one-org-per-user, consumed atomically at
   > first sign-in" rule is gone: a user can belong to many teams. A NEW user's
   > pending invites auto-accept oldest-first after the personal space is minted;
-  > an EXISTING user accepts explicitly via `acceptInvite` / declines via
-  > `declineInvite` (invites addressed to them ride `GET /v1/orgs`'s `invites`,
-  > `OrgInviteSummary`). Personal is ALWAYS minted, never replaced. See the
-  > **Spaces** section and `cloud/docs/contracts/C8-spaces-billing.md`.
+  > an EXISTING user accepts explicitly via `acceptOrgInvite` / declines via
+  > `declineOrgInvite` (invites addressed to them ride `GET /v1/orgs`'s
+  > `invites`, `OrgInviteSummary`). Personal is ALWAYS minted, never replaced.
+  > The invitee-side surface is **Spaces > Invite inbox** below; see also
+  > `cloud/docs/contracts/C8-spaces-billing.md`.
 - **Member emails** — `OrgMember.email` populated on `GET /org` when the host
   exposes it; the roster shows them.
 - **Audit** — `orgAudit({limit?, before?})` → `AuditEntry[]` newest-first

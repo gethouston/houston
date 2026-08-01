@@ -123,6 +123,36 @@ describe("HoustonClient Teams v2 — invites, audit, usage", () => {
     strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org/invites/inv-1");
   });
 
+  // The INVITEE's own pair (C8) lives on the CROSS-org `/org-invites/*` routes,
+  // deliberately NOT the org-scoped revoke route asserted above: an invitee has
+  // no active membership in that org to scope a request with.
+  it("acceptOrgInvite POSTs /org-invites/:id/accept and unwraps {org}", async () => {
+    const org = {
+      id: "o1",
+      slug: "0123456789abcdef",
+      name: "Acme",
+      kind: "team",
+      role: "user",
+      memberCount: 2,
+      degraded: false,
+    };
+    const { client, calls } = makeClient({ org });
+    const joined = await client.acceptOrgInvite("inv-1");
+    strictEqual(calls[0].method, "POST");
+    strictEqual(
+      calls[0].url,
+      "http://127.0.0.1:9999/v1/org-invites/inv-1/accept",
+    );
+    deepStrictEqual(joined, org);
+  });
+
+  it("declineOrgInvite DELETEs /org-invites/:id", async () => {
+    const { client, calls } = makeClient();
+    await client.declineOrgInvite("inv-2");
+    strictEqual(calls[0].method, "DELETE");
+    strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org-invites/inv-2");
+  });
+
   it("orgAudit passes before/limit query and unwraps entries", async () => {
     const entries = [
       {

@@ -111,6 +111,12 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
  * "Create team"; otherwise it falls back to the caller's `onCreate` (the local
  * workspace-create dialog) and reads the truthful "Create workspace" label —
  * the old "createOrganization" copy was a known mislabel.
+ *
+ * Pending invitations addressed to the caller render directly BELOW this
+ * header, in the sidebar's `headerBelow` band (`SidebarInviteInbox`,
+ * `pending-invites.tsx`) — same place in the user's eye, but its own full-width
+ * row: the header line is shared with the collapse toggle, which would both
+ * squeeze the cards and drag the toggle down to the middle of them.
  */
 export function SidebarWorkspaceHeader(props: {
   t: ShellT;

@@ -125,6 +125,15 @@ controls arm it (documented in the `@houston/fake-host` README):
   (agent ∩ org) splits the browse catalog into connectable vs locked rows
   (`integrations-locked.spec.ts`). `null` = unrestricted, `[]` = none.
 
+**C8 Spaces arming.** The fake host serves the whole cross-org surface
+(`@houston/fake-host` `routes-spaces.ts`): `GET /v1/orgs` → `{orgs, invites}`,
+`POST /v1/orgs`, and the invitee's own `POST /v1/org-invites/:id/accept` /
+`DELETE /v1/org-invites/:id`. `POST /__test__/space-invites` arms the invite
+inbox and can force a per-invite `needs_upgrade` / `already_member` /
+`invite_not_found` rejection; pair it with `/__test__/capabilities`
+`{ spaces:true }`, because the sidebar cards are capability-gated on the client
+(`team-invites.spec.ts`).
+
 The seeded catalog (`SEED_TOOLKIT_SLUGS`, exported for specs) holds 15 A-Z apps,
 enough that a tight allowlist blocks past the locked preview cap (8) so the
 "+N more" overflow is exercisable.
