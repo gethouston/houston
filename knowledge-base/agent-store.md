@@ -328,7 +328,9 @@ Houston surfaces (SDK: profile/creator/analytics methods on
 - **Frontend image** `.github/workflows/agentstore-image.yml` builds + pushes the
   container to Artifact Registry, then fires a `repository_dispatch` to
   `gethouston/cloud`, which does the GKE roll. Deploy paths: a push to `main`
-  touching `agentstore/**` / `packages/agentstore-contract/**` dispatches
+  touching the site's workspace-dependency closure (`agentstore/**`,
+  `packages/agentstore-{contract,client}/**`, `ui/{core,store}/**`,
+  `packages/design-tokens/**`) dispatches
   `roll-agentstore` → cloud's `roll-agentstore-staging.yml` rolls STAGING;
   **PROD (agents.gethouston.ai) ships on the ship train** — publishing a
   `cloud-v*` release runs `ship-train.yml`'s `promote-agentstore` job, which

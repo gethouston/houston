@@ -100,8 +100,17 @@ jobs:
           BUILD=true
           if [ -n "$BASE" ] && [ "$BASE" != "0000000000000000000000000000000000000000" ] \
               && git fetch --depth=1 origin "$BASE" 2>/dev/null; then
+            # The full workspace-dependency closure of the site build: the app
+            # itself, its direct workspace deps (@houston/agentstore-contract,
+            # @houston/agentstore-client, @houston-ai/core, @houston-ai/store),
+            # and their transitive dep @houston/design-tokens. A change in ANY
+            # of these alters the compiled bundle, so all must gate the build —
+            # ui/store was missed when the redesign made the site consume the
+            # shared screens, which would have shipped app-only store changes.
             if git diff --name-only "$BASE" "${{ github.sha }}" -- \
-                agentstore packages/agentstore-contract .github/workflows/agentstore-image.yml \
+                agentstore packages/agentstore-contract packages/agentstore-client \
+                ui/core ui/store packages/design-tokens \
+                .github/workflows/agentstore-image.yml \
                 | grep -q .; then
               BUILD=true
             else
