@@ -117,7 +117,8 @@
     "timeout": "Claude sign-in timed out. Please try connecting again.",
     "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again.",
     "autoFailedTitle": "Couldn't finish connecting automatically",
-    "autoFailedBody": "Paste a Claude setup token to finish connecting."
+    "autoFailedBody": "Paste a Claude setup token to finish connecting.",
+    "helperUnsupported": "This computer's processor is too old to run the Claude sign-in helper, so a Claude subscription can't be connected on this machine."
   },
   "localModel": {
     "title": "Connect a local model",

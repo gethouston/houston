@@ -24,9 +24,13 @@
 //! Two Tauri events carry the flow to the webview:
 //!   * `claude-login://url`  — payload is the authorize URL `String` (emitted at
 //!     most once, when the CLI prints its `visit:` line).
-//!   * `claude-login://done` — payload `{ success: bool, error: string | null }`.
+//!   * `claude-login://done` — payload
+//!     `{ success: bool, error: string | null, helperUnavailable?: bool }`.
 //!     A `null` error on `success: false` is a benign CANCEL (the frontend
 //!     treats it as a silent dismissal, not a failure to toast).
+//!     `helperUnavailable: true` means the helper binary cannot run on this
+//!     machine at all (pre-AVX2 CPU, signal death) — the frontend degrades a
+//!     remote-engine login to the runtime's paste flow instead of toasting.
 //!
 //! Cancel + child kill run through `ClaudeLoginState`; the background task that
 //! owns the child polls a shared cancel flag and tears the child down when set.
@@ -41,6 +45,7 @@
 // resolves the sibling `__cmd__*` items in the module where the command lives, so
 // a re-export of just the fn would not carry them.
 pub(crate) mod code_input;
+mod cpu;
 pub(crate) mod credential;
 pub(crate) mod discard;
 mod resolve;
@@ -122,6 +127,23 @@ pub async fn start_claude_login(
     state: State<'_, ClaudeLoginState>,
     handoff: bool,
 ) -> Result<(), String> {
+    // Don't spawn a binary that dies instantly with SIGILL: Bun-compiled
+    // helpers need AVX2 on x86-64, and a pre-2013 CPU produced only an
+    // inscrutable "exit signal" toast users retried in vain
+    // (HOUSTON-APP-543). Report through the `done` event — not `Err` — so
+    // the frontend's one failure router can degrade a remote-engine login
+    // to the runtime's paste flow.
+    if let Some(reason) = cpu::unsupported_reason() {
+        let error = format!("Claude sign-in helper cannot run: {reason}");
+        tracing::error!("[claude-login] {error}");
+        app.emit(
+            EVENT_DONE,
+            serde_json::json!({ "success": false, "error": error, "helperUnavailable": true }),
+        )
+        .map_err(|e| format!("Could not report the sign-in result: {e}"))?;
+        return Ok(());
+    }
+
     let config_dir = config_dir_for(handoff);
     // The CLI writes the cached credential here; it must exist first.
     std::fs::create_dir_all(&config_dir).map_err(|e| {

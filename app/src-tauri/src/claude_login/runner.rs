@@ -100,6 +100,13 @@ where
         }
         Ok(LoginOutcome::Exited(Ok(status))) => {
             let tail = collect_stderr(stderr_task).await;
+            // A signal death is never a user decision (declines exit with a
+            // code; our own cancel/timeout kills take the branches below) —
+            // it means the helper binary cannot run here at all, e.g. SIGILL
+            // from a pre-AVX2 CPU (HOUSTON-APP-543). Flag it so the frontend
+            // can degrade to the runtime's paste flow instead of toasting an
+            // error a retry can only reproduce.
+            let helper_unavailable = status.code().is_none();
             let code = status
                 .code()
                 .map(|c| c.to_string())
@@ -110,7 +117,10 @@ where
                 error.push_str(tail.trim());
             }
             tracing::error!("[claude-login] {error}");
-            emit(EVENT_DONE, json!({ "success": false, "error": error }));
+            emit(
+                EVENT_DONE,
+                json!({ "success": false, "error": error, "helperUnavailable": helper_unavailable }),
+            );
         }
         Ok(LoginOutcome::Exited(Err(e))) => {
             let error = format!("Claude sign-in could not be monitored: {e}");
@@ -312,6 +322,31 @@ mod tests {
 
     #[cfg(unix)]
     #[tokio::test]
+    async fn run_login_flags_a_signal_killed_helper_as_unavailable() {
+        // A helper that dies from a signal (the shape of a Bun binary
+        // SIGILL-ing on a pre-AVX2 CPU, HOUSTON-APP-543) must carry the
+        // `helperUnavailable` flag so the frontend can degrade to the
+        // runtime's paste flow instead of a dead retry loop.
+        let dir = unique_tmp_dir("sigill");
+        let script = write_fake_claude(&dir, "claude", "#!/bin/sh\nkill -ILL $$\n");
+        let config_dir = dir.join("config");
+
+        let (events, emit) = collect();
+        run_login(&script, &config_dir, Arc::new(AtomicBool::new(false)), emit).await;
+
+        let got = events.lock().expect("events lock");
+        let done = got.last().expect("done event");
+        assert_eq!(done.0, EVENT_DONE);
+        assert_eq!(done.1["success"], json!(false));
+        assert_eq!(done.1["helperUnavailable"], json!(true));
+        let error = done.1["error"].as_str().expect("error string");
+        assert!(error.contains("exit signal"), "error was: {error}");
+
+        std::fs::remove_dir_all(&dir).expect("cleanup");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
     async fn run_login_reports_failure_on_nonzero_exit() {
         let dir = unique_tmp_dir("fail");
         let script = write_fake_claude(
@@ -339,6 +374,9 @@ mod tests {
             error.contains("authentication was declined"),
             "error was: {error}"
         );
+        // A plain non-zero exit (e.g. a declined authorization) is NOT a
+        // helper-can't-run condition — it must never reroute to the paste flow.
+        assert_eq!(done.1["helperUnavailable"], json!(false));
 
         std::fs::remove_dir_all(&dir).expect("cleanup");
     }

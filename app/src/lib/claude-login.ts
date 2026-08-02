@@ -36,7 +36,14 @@
  * how one family ended up behind several rotating stores (HOU-950 root cause).
  */
 
-import { finishRemoteClaudeLogin } from "./claude-login-remote";
+import {
+  type ClaudeLoginDone,
+  classifyClaudeLoginFailure,
+} from "./claude-login-failure";
+import {
+  fallbackToPaste,
+  finishRemoteClaudeLogin,
+} from "./claude-login-remote";
 import { isRemoteEngine } from "./engine";
 import { publishLocalHoustonEvent } from "./events";
 import i18n from "./i18n";
@@ -60,11 +67,6 @@ const LOGIN_TIMEOUT_MS = 15 * 60_000;
  *  credential as connected (the /providers probe re-reads `claude auth status`). */
 const CONFIRM_TIMEOUT_MS = 30_000;
 const CONFIRM_POLL_MS = 800;
-
-interface ClaudeLoginDone {
-  success: boolean;
-  error: string | null;
-}
 
 /** Announce the outcome on the client bus so every provider surface reacts. */
 function announce(provider: string, success: boolean, error: string | null) {
@@ -168,9 +170,26 @@ export async function beginClaudeBrowserLogin(
         cleanup();
         const { success, error } = ev.payload;
         if (!success) {
-          // The browser login itself failed (declined) or was cancelled
-          // (error: null → silent dismissal). Not a remote-handoff failure.
-          announce(frontendProviderId, false, error);
+          // The browser login failed before any remote handoff: declined,
+          // cancelled (silent), or the helper binary can't run on this
+          // machine at all — the router decides which surface each gets.
+          const route = classifyClaudeLoginFailure(ev.payload, handoff);
+          switch (route.kind) {
+            case "paste-fallback":
+              // The paste flow runs in the remote runtime; no local helper
+              // needed (HOUSTON-APP-543: pre-AVX2 Macs SIGILL the helper).
+              fallbackToPaste(frontendProviderId, route.reason, announce);
+              break;
+            case "helper-unsupported":
+              announce(
+                frontendProviderId,
+                false,
+                i18n.t("providers:claudeLogin.helperUnsupported"),
+              );
+              break;
+            default:
+              announce(frontendProviderId, false, error);
+          }
           return;
         }
         if (handoff) {

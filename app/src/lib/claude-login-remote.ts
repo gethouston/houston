@@ -153,8 +153,12 @@ export async function finishRemoteClaudeLogin(
  * friendly toast. Calls `providerLogin` DIRECTLY (not `launchLogin`, which would
  * re-enter the desktop browser login). If even starting the paste flow fails,
  * `announce(false)` clears the pending row so nothing spins forever.
+ *
+ * Exported for `claude-login.ts`: a helper that cannot RUN on this machine
+ * (pre-AVX2 CPU, signal death — HOUSTON-APP-543) degrades the same way, since
+ * the paste flow runs in the (remote) runtime and needs no local binary.
  */
-function fallbackToPaste(
+export function fallbackToPaste(
   frontendProviderId: string,
   reason: unknown,
   announce: Announce,
