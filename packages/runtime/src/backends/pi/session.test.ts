@@ -180,7 +180,7 @@ test("subscribe maps a turn_end with usage to a usage frame", () => {
   ]);
 });
 
-test("subscribe surfaces an errored turn_end as a typed provider_error", () => {
+test("subscribe surfaces an errored turn_end as a typed provider_error once the prompt settles", () => {
   const { stub, session } = make();
   const events: WireEvent[] = [];
   session.subscribe((e) => events.push(e));
@@ -195,6 +195,9 @@ test("subscribe surfaces an errored turn_end as a typed provider_error", () => {
       }),
     ),
   );
+  // Held until the prompt settles — pi may still auto-recover (HOU-1057).
+  expect(events).toEqual([]);
+  stub.emit({ type: "agent_settled" } as AgentSessionEvent);
 
   expect(events).toEqual([
     {
