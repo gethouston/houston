@@ -34,12 +34,21 @@ export function runtimeClientFor(
  * first agent exists — the host runs it in a dedicated hidden runtime whose
  * captured credential lands on the personal workspace, so the agent created
  * right after is already connected.
+ *
+ * Reads ride the SAME transient-retry wrapper the per-agent client uses. This
+ * runtime is cold BY DEFINITION — first-run reaches it before anything has ever
+ * run — and the host now answers its probe routes (`/providers`,
+ * `/providers/usage`, `/auth/status`) with 503 + `Retry-After` while it boots
+ * (HOU-1153). Without the wrapper first-run setup took that 503 as a real
+ * failure, while an agent probe one route over quietly retried and succeeded.
  */
 export function setupRuntimeClientFor(
   cfg: ControlPlaneConfig,
 ): HoustonEngineClient {
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/setup-runtime`,
-    fetch: gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
+    fetch: transientRetryFetch(
+      gatewayAuthFetch(cfg.token, () => cfg.activeOrgSlug),
+    ),
   });
 }

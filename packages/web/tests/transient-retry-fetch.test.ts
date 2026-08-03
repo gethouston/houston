@@ -1,6 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import {
   runtimeClientFor,
+  setupRuntimeClientFor,
   transientRetryFetch,
 } from "../src/engine-adapter/control-plane";
 
@@ -79,6 +80,30 @@ test("a POST never blind-retries", async () => {
   const res = await doFetch("https://gw.example/x", { method: "POST" });
   expect(res.status).toBe(503);
   expect(inner).toHaveBeenCalledTimes(1);
+});
+
+test("the SETUP runtime's provider probe bridges a cold-boot 503 too", async () => {
+  // HOU-1153: the host answers probe routes 503 + Retry-After while the runtime
+  // cold-boots, and the setup runtime is cold BY DEFINITION — first-run reaches
+  // it before anything has ever run there. It was built on a bare auth fetch,
+  // so that 503 surfaced as a hard failure while the identical probe against an
+  // agent's runtime quietly retried.
+  vi.useFakeTimers();
+  let calls = 0;
+  globalThis.fetch = vi.fn(async () => {
+    calls++;
+    if (calls === 1) return json(503, { error: "runtime starting" });
+    return json(200, [{ id: "anthropic", configured: false }]);
+  }) as unknown as typeof fetch;
+
+  const engine = setupRuntimeClientFor({
+    baseUrl: "https://gw.example",
+    token: "tok",
+  });
+  const pending = engine.listProviders();
+  await vi.advanceTimersByTimeAsync(500);
+  expect(await pending).toEqual([{ id: "anthropic", configured: false }]);
+  expect(calls).toBe(2);
 });
 
 test("runtimeClientFor's history read bridges a transient 503", async () => {
