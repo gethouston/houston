@@ -48,6 +48,26 @@ test("Codex session-kill → unauthenticated / token_revoked (terminal, not tran
   if (err.kind === "unauthenticated") expect(err.cause).toBe("token_revoked");
 });
 
+test.each([
+  "401 Your session has ended. Please log in again.",
+  "401 Unauthorized. Please login again to continue.",
+  "401 Unauthorized: session terminated",
+])("loose terminal phrasing still reads token_revoked: %s", (message) => {
+  // The CARD copy stays generous: any 401 that reads terminal should say "your
+  // access was revoked, sign in again". What these phrasings must NOT do is
+  // trigger the workspace-wide revoked-token report — that gate keeps its own
+  // strict marker list in `auth/report-revoked.ts` (tested there), so a
+  // provider wording a transient blip this way can no longer delete a live
+  // credential for every runtime in the workspace.
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.1-codex",
+    message,
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("token_revoked");
+});
+
 test("pi prompt-time 'No API key found' → unauthenticated / no_credentials (HOU-718)", () => {
   // pi RAISES this (formatNoApiKeyFoundMessage) when the user logged out of a
   // provider that stayed selected — it never arrives as an errored
