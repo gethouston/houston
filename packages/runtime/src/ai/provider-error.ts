@@ -397,7 +397,18 @@ function isServerError(lower: string, status: number | null): boolean {
     lower.includes("overloaded") ||
     // opencode.ai's gateway body when its upstream stream breaks mid-response —
     // often with no status at all. Transient; retry helps (HOU-929).
-    lower.includes("streaming response failed")
+    lower.includes("streaming response failed") ||
+    // OpenAI-compatible streams that END with an abnormal `finish_reason`:
+    // OpenRouter answers `finish_reason: "error"` when the UPSTREAM provider
+    // died mid-generation (its error detail rides a separate field pi-ai does
+    // not surface), and some gateways emit `"network_error"` for the same
+    // break. pi-ai flattens both to `Provider finish_reason: <reason>` with no
+    // status and no body. Server-side and transient — retry helps — so they
+    // read as provider_internal, never the report-bug `unknown` (HOU-930).
+    // Deliberately NOT a bare `finish_reason:` match: `content_filter` (a
+    // policy refusal, not an outage) must keep falling through to `unknown`.
+    lower.includes("finish_reason: error") ||
+    lower.includes("finish_reason: network_error")
   );
 }
 
