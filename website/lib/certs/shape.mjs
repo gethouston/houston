@@ -20,6 +20,18 @@ import { formatEventDate, isoDateParts } from "./format.mjs";
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /**
+ * Shape a certificate code has to have to name a file and a URL.
+ *
+ * Mirrors cloud's `certs.CodePattern` (and the `cert_attendees.code` check
+ * constraint behind it), but is enforced HERE too: the code is remote data that
+ * becomes `_site/c/<CODE>.png` in the renderer and `/c/<CODE>.html` in the
+ * share-page permalink. `path.join` normalizes `..`, so a code like
+ * `../../../x` writes outside the output directory — trusting a constraint in
+ * another repo is not a defense the build can rely on.
+ */
+const CODE_RE = /^HOU-[0-9A-Z]{5}-[0-9A-Z]{5}$/;
+
+/**
  * Slugs that would collide with a static page we already ship.
  *
  * An event page is `/certificates/<slug>/`, so an event slugged `verify` writes
@@ -44,7 +56,22 @@ export function shapeExport(events, items) {
 
   const mappedItems = [];
   let orphans = 0;
+  let malformed = 0;
+  let badNames = 0;
   for (const item of items) {
+    // The code names a file and a URL, so it is checked before anything else
+    // is derived from it.
+    if (!CODE_RE.test(typeof item?.code === "string" ? item.code : "")) {
+      malformed += 1;
+      continue;
+    }
+    // The gateway enforces the display-name policy at write time, but the name
+    // lands in <title>, og tags, JSON-LD and the PNGs — the same trust rule as
+    // the code above applies: remote data gets checked where it is consumed.
+    if (!isRenderableName(item.display_name)) {
+      badNames += 1;
+      continue;
+    }
     const event = eventsBySlug.get(item.event_slug);
     // An item whose event is unpublished (or was just rejected above) has
     // nothing to render on a page or a PNG. Skip it rather than emitting a
@@ -55,6 +82,16 @@ export function shapeExport(events, items) {
     }
     mappedItems.push(mapItem(item, event));
   }
+  if (malformed > 0) {
+    console.warn(
+      `[certificates] skipped ${malformed} certificate(s) whose code is not a HOU-XXXXX-XXXXX code.`,
+    );
+  }
+  if (badNames > 0) {
+    console.warn(
+      `[certificates] skipped ${badNames} certificate(s) whose display name is not renderable.`,
+    );
+  }
   if (orphans > 0) {
     console.warn(
       `[certificates] skipped ${orphans} certificate(s) with no published event.`,
@@ -62,6 +99,25 @@ export function shapeExport(events, items) {
   }
 
   return { events: mappedEvents, items: mappedItems };
+}
+
+/**
+ * Mirror of the gateway's display-name policy (cloud internal/certs
+ * NormalizeDisplayName), reduced to what rendering cares about: 1..80 chars
+ * of visible text with no control characters, bidi overrides or zero-width
+ * marks (ZWNJ/ZWJ excepted — they shape glyphs, they cannot hide or reorder).
+ */
+function isRenderableName(name) {
+  if (typeof name !== "string") return false;
+  const trimmed = name.trim();
+  if (trimmed.length === 0 || [...trimmed].length > 80) return false;
+  // C0/C1 controls, bidi embedding/override/isolate marks, zero-width + BOM.
+  const forbidden =
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting them is the point
+    /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200b\u2060\ufeff]/;
+  if (forbidden.test(trimmed)) return false;
+  // At least one letter or digit — rejects punctuation/whitespace-only names.
+  return /[\p{L}\p{N}]/u.test(trimmed);
 }
 
 /** Can this event own a page at `/certificates/<slug>/` without breaking one? */

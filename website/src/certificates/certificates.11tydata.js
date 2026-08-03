@@ -26,9 +26,6 @@ const en = {
   emailPlaceholder: "you@company.com",
   submit: "Find my certificate",
   submitting: "Searching",
-  opening: "Opening your certificate",
-  successTitle: "Found it.",
-  successBody: "Your certificate code is",
   viewCertificate: "View your certificate",
   notFoundTitle: "We could not find that email",
   notFound:
@@ -46,6 +43,32 @@ const en = {
   supportLine: "Still stuck? Write to",
   verifyPrompt: "Checking someone else's certificate?",
   verifyLink: "Verify a certificate",
+  // ── Claim step 2: confirm the name that goes on the certificate ──
+  nameStepTitle: "You're on the list!",
+  nameStepLead: "One last look at your name before we finish.",
+  nameLabel: "Your name",
+  nameHint: "This is exactly how your name will appear on the certificate.",
+  nameContinue: "Looks good, continue",
+  nameSaving: "Saving",
+  nameBack: "Use a different email",
+  nameRequired: "Write your name first.",
+  nameTooLong: "That name is too long. Use 80 characters or fewer.",
+  nameRejected:
+    "We could not save that name. Use between 1 and 80 characters and try again.",
+  nameGone:
+    "We lost track of that certificate. Go back and search with your email again.",
+  nameRateLimited: "Too many changes in a row. Wait a minute and save again.",
+  nameNetwork:
+    "We could not reach Houston to save your name. Check your connection and try again.",
+  nameServer:
+    "Something went wrong while saving your name. Try again in a moment.",
+  // ── Claim, done ──
+  doneTitle: "Your certificate is ready.",
+  doneBody: "Issued to {name}.",
+  regenerating:
+    "Your certificate is being regenerated with this name, it will show up there in a few minutes.",
+  shareHint:
+    "The link is public: share it anywhere, and anyone can check from that page that it is real.",
   // ── Share page ──
   shareEyebrow: "Certificate of completion",
   imageAlt: "Houston certificate of completion for {name}, {event}",
@@ -77,9 +100,6 @@ const es = {
   emailPlaceholder: "tu@empresa.com",
   submit: "Buscar mi certificado",
   submitting: "Buscando",
-  opening: "Abriendo tu certificado",
-  successTitle: "Lo encontramos.",
-  successBody: "El código de tu certificado es",
   viewCertificate: "Ver tu certificado",
   notFoundTitle: "No encontramos ese correo",
   notFound:
@@ -96,6 +116,31 @@ const es = {
   supportLine: "¿Sigues sin encontrarlo? Escríbenos a",
   verifyPrompt: "¿Quieres comprobar el certificado de otra persona?",
   verifyLink: "Verificar un certificado",
+  nameStepTitle: "¡Estás en la lista!",
+  nameStepLead: "Revisa tu nombre una última vez antes de terminar.",
+  nameLabel: "Tu nombre",
+  nameHint: "Así aparecerá exactamente tu nombre en el certificado.",
+  nameContinue: "Está bien, continuar",
+  nameSaving: "Guardando",
+  nameBack: "Usar otro correo",
+  nameRequired: "Escribe tu nombre primero.",
+  nameTooLong: "Ese nombre es muy largo. Usa 80 caracteres o menos.",
+  nameRejected:
+    "No pudimos guardar ese nombre. Usa entre 1 y 80 caracteres e inténtalo de nuevo.",
+  nameGone:
+    "Perdimos el rastro de ese certificado. Vuelve y busca otra vez con tu correo.",
+  nameRateLimited:
+    "Demasiados cambios seguidos. Espera un minuto y guarda de nuevo.",
+  nameNetwork:
+    "No pudimos conectar con Houston para guardar tu nombre. Revisa tu conexión e inténtalo de nuevo.",
+  nameServer:
+    "Algo falló al guardar tu nombre. Inténtalo de nuevo en un momento.",
+  doneTitle: "Tu certificado está listo.",
+  doneBody: "Emitido a nombre de {name}.",
+  regenerating:
+    "Estamos regenerando tu certificado con este nombre, aparecerá ahí en unos minutos.",
+  shareHint:
+    "El enlace es público: compártelo donde quieras y cualquiera puede comprobar en esa página que es real.",
   shareEyebrow: "Certificado de finalización",
   imageAlt: "Certificado de finalización de Houston de {name}, {event}",
   ogTitle: "{name} completó {event}",

@@ -364,6 +364,79 @@
   overflow-wrap: anywhere;
 }
 
+/* ── 2b. Claim wizard (email → name → done, inside the one card) ──────────── */
+
+/* Steps swap in place: the card never changes size abruptly enough to lose the
+   reader, and the page never reloads. Step 1 is the markup default, so with no
+   JS the card stays the plain email form. */
+.cert-step[hidden] {
+  display: none;
+}
+/* The step heading is the answer to "did it work?", so it carries the weight of
+   a section title without competing with the page h1. */
+.cert-step-title {
+  font-weight: 500;
+  font-size: clamp(20px, 2.4vw, 25px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+}
+/* Focus is moved here programmatically on every step change and the heading is
+   outside the tab order, so there is no ring to draw. */
+.cert-step-title:focus {
+  outline: none;
+}
+.cert-step-lead {
+  margin-top: 8px;
+  margin-bottom: 22px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+/* The way back. A second pill would argue with the primary, so this is a text
+   control: underlined at rest, never revealed by hover. */
+.cert-back {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-standard),
+    text-decoration-color var(--dur-fast) var(--ease-standard);
+}
+.cert-back:hover {
+  color: var(--ink-strong);
+  text-decoration-color: var(--ink-strong);
+}
+.cert-back[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+/* The code sits between the confirmation and the way out, so it is read before
+   anything navigates. */
+.cert-done-code {
+  margin-top: 6px;
+  margin-bottom: 22px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cert-done-arrow {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
 /* A quiet second-language line (the verify page is English-first with a short
    Spanish echo, so a Spanish speaker is never stuck). */
 .cert-alt-lang {

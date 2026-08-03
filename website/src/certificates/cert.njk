@@ -58,7 +58,11 @@ eleventyComputed:
 {# LinkedIn "Add to profile": organizationId is the precise form (it binds the
    credential to Houston's real company page). organizationName is the fallback
    for as long as an event has no org id on record. #}
-{% set liOrg = "organizationId=" + cert.linkedinOrgId if cert.linkedinOrgId else "organizationName=Houston" %}
+{# The org id is remote admin data and lands in a query string, so it is encoded
+   like every other interpolated value below: an unencoded `&` or `=` would
+   inject extra LinkedIn parameters and silently rewrite the credential the
+   visitor adds to their profile. #}
+{% set liOrg = "organizationId=" + (cert.linkedinOrgId | urlencode) if cert.linkedinOrgId else "organizationName=Houston" %}
 {# issueYear/issueMonth are precomputed in lib/certs/fetch.mjs and are null when
    the event carries no usable date. LinkedIn accepts the form without them, so
    the credential still adds — it just carries no issue date. #}

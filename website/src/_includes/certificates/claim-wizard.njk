@@ -1,0 +1,200 @@
+{# ── Claim wizard flow ────────────────────────────────────────────────────────
+   Drives the card rendered by certificates/claim-form.njk: email → name → done,
+   swapped in place, no reload. Holds no copy (every string comes off the form's
+   data-* attributes, so en and es share one script) and no DOM plumbing (that
+   is window.certCardUi, certificates/card-ui.njk, loaded first).
+
+   Two invariants: the attendee's address lives ONLY in this closure (never the
+   URL, storage, a data-* attribute or the console — the name call needs it, and
+   that is the only place it goes), and every outcome (404 / 400 / 429 / other
+   status / network failure / a gateway that never answers) lands in a visible
+   AND announced message. Nothing fails silently and nothing hangs. #}
+<script>
+(function () {
+  var form = document.getElementById('certClaimForm');
+  var ui = window.certCardUi;
+  if (!form || !ui) return;
+
+  var GATEWAY = '{{ env.certsGatewayUrl }}';
+  var REQUEST_TIMEOUT_MS = 15000;   // mirrors lib/certs/fetch.mjs
+  var PROBE_TIMEOUT_MS = 8000;
+  var NAME_MAX = 80;
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  var d = form.dataset;
+  var el = function (id) { return document.getElementById(id); };
+  var stepEmail = el('certStepEmail'), stepName = el('certStepName'), stepDone = el('certStepDone');
+  var emailEl = el('certEmail'), eventEl = el('certEvent'), nameEl = el('certName');
+  var claimBtn = el('certClaimSubmit'), nameBtn = el('certNameSubmit'), backBtn = el('certBack');
+  var claimMsg = el('certClaimMsg'), nameMsg = el('certNameMsg'), doneMsg = el('certDoneMsg');
+  var support = el('certClaimSupport'), nameTitle = el('certNameTitle'), doneTitle = el('certDoneTitle');
+  var doneBody = el('certDoneBody'), doneCode = el('certDoneCode');
+  var doneLink = el('certDoneLink'), doneLinkLabel = el('certDoneLinkLabel');
+  // Kept so a second claim after a failed probe does not inherit the previous
+  // one's "verify instead" wording.
+  var viewLabel = doneLinkLabel.textContent;
+
+  var step = 'email', busy = false;
+  // `email` is the closure-only address (see the header); `issued` is the name
+  // the gateway currently has on the certificate.
+  var email = '', code = '', issued = '';
+  var probe = null, probeId = 0;   // probe: null = still asking, else answered
+
+  // The support line ("write to us") belongs to step 1 alone, so it rides with
+  // step 1's message and step 2 has no use for the argument.
+  function clearClaim() { ui.clear(claimMsg); support.hidden = true; }
+  function failClaim(title, body, withSupport) {
+    ui.message(claimMsg, 'error', title, body);
+    support.hidden = !withSupport;
+  }
+  function failName(body) { ui.message(nameMsg, 'error', '', body); }
+  function claimBusy(on) {
+    busy = on;
+    ui.busy(claimBtn, el('certClaimSpinner'), el('certClaimLabel'), on, d.labelSubmit, d.labelSubmitting);
+  }
+  function nameBusy(on) {
+    busy = on;
+    ui.busy(nameBtn, el('certNameSpinner'), el('certNameLabel'), on, d.labelContinue, d.labelSaving);
+  }
+
+  // Only the step on screen may be operated: its siblings' buttons are disabled,
+  // so neither Tab nor implicit submission (Enter in a field) can reach one.
+  function show(next) {
+    step = next;
+    stepEmail.hidden = next !== 'email';
+    stepName.hidden = next !== 'name';
+    stepDone.hidden = next !== 'done';
+    claimBtn.disabled = next !== 'email';
+    nameBtn.disabled = next !== 'name';
+    backBtn.disabled = next !== 'name';
+  }
+
+  // Is there a static share page for this code yet? An attendee imported after
+  // the last site deploy has none, and sending them there blind would drop them
+  // on the generic 404. Asked at claim time, so the answer is in by step 2's end.
+  function startProbe() {
+    var mine = ++probeId;
+    probe = null;
+    fetch('/c/' + encodeURIComponent(code), { method: 'HEAD', signal: ui.budget(PROBE_TIMEOUT_MS) })
+      .then(function (res) { return res.ok; })
+      .catch(function () { return false; })
+      .then(function (ok) {
+        if (mine !== probeId) return;   // a second claim has overtaken this one
+        probe = ok;
+        if (step === 'done') applyProbe();
+      });
+  }
+
+  // No page yet: point at the verifier, which resolves the code live from the
+  // gateway. While the probe is out we keep the canonical link, right for all
+  // but the freshly imported attendee.
+  function applyProbe() {
+    if (probe !== false) return;
+    doneLink.href = '/certificates/verify/?code=' + encodeURIComponent(code);
+    doneLinkLabel.textContent = d.labelVerify;
+  }
+
+  function submitEmail() {
+    var value = (emailEl.value || '').trim();
+    if (!value) { failClaim('', d.msgMissingEmail, false); emailEl.focus(); return; }
+    if (!EMAIL_RE.test(value)) { failClaim('', d.msgInvalidEmail, false); emailEl.focus(); return; }
+    // #certEvent is absent (no events published), hidden and always filled, or
+    // a real <select> — only the last of the three can be left unanswered.
+    var slug = eventEl ? (eventEl.value || '') : '';
+    if (eventEl && eventEl.tagName === 'SELECT' && !slug) { failClaim('', d.msgMissingEvent, false); eventEl.focus(); return; }
+
+    var body = { email: value };
+    if (slug) body.event_slug = slug;
+    clearClaim();
+    claimBusy(true);
+    ui.postJson(GATEWAY + '/v1/certs/claim', body, REQUEST_TIMEOUT_MS)
+      .then(function (r) {
+        claimBusy(false);
+        if (r.status === 200 && r.json && r.json.code) {
+          email = value;
+          code = String(r.json.code);
+          issued = String(r.json.display_name || '');
+          nameEl.value = issued;
+          startProbe();
+          ui.clear(nameMsg);
+          show('name');
+          nameTitle.focus();
+          return;
+        }
+        if (r.status === 404) { failClaim(d.msgNotFoundTitle, d.msgNotFound, true); return; }
+        if (r.status === 429) { failClaim('', d.msgRateLimited, false); return; }
+        ui.warn('claim', r.status, r.json);
+        failClaim('', d.msgServer, true);
+      })
+      .catch(function (err) {
+        // Includes the AbortError from the budget: a request that never came
+        // back reads to the visitor exactly like a network failure.
+        claimBusy(false);
+        console.warn('[certificates] claim request failed:', err && err.name);
+        failClaim('', d.msgNetwork, true);
+      });
+  }
+
+  function submitName() {
+    var value = (nameEl.value || '').trim();
+    if (!value) { failName(d.msgNameRequired); nameEl.focus(); return; }
+    if (value.length > NAME_MAX) { failName(d.msgNameTooLong); nameEl.focus(); return; }
+    // Nothing to change is not a request to make.
+    if (value === issued.trim()) { finish(false); return; }
+
+    ui.clear(nameMsg);
+    nameBusy(true);
+    // The code identifies the certificate; the email proves it is the
+    // attendee's. It comes from the closure, never from a re-read of the DOM.
+    var body = { code: code, email: email, display_name: value };
+    ui.postJson(GATEWAY + '/v1/certs/name', body, REQUEST_TIMEOUT_MS)
+      .then(function (r) {
+        nameBusy(false);
+        // The code is stable across a rename, so the probe still holds.
+        if (r.status === 200 && r.json && r.json.code) { issued = value; finish(true); return; }
+        if (r.status === 400) { failName(d.msgNameRejected); nameEl.focus(); return; }
+        if (r.status === 404) { failName(d.msgNameGone); return; }
+        if (r.status === 429) { failName(d.msgNameRateLimited); return; }
+        ui.warn('name', r.status, r.json);
+        failName(d.msgNameServer);
+      })
+      .catch(function (err) {
+        nameBusy(false);
+        console.warn('[certificates] name request failed:', err && err.name);
+        failName(d.msgNameNetwork);
+      });
+  }
+
+  function finish(regenerated) {
+    doneCode.textContent = code;
+    // Function replacement: a name containing $& or $1 must land verbatim.
+    doneBody.textContent = d.msgDoneBody.replace('{name}', function () { return issued; });
+    doneLink.href = '/c/' + encodeURIComponent(code);
+    doneLinkLabel.textContent = viewLabel;
+    applyProbe();
+    ui.clear(doneMsg);
+    show('done');
+    doneTitle.focus();
+    // The regenerated certificate is not there yet, so say so: otherwise they
+    // open the link, see the old name and think it did not work.
+    if (regenerated) ui.message(doneMsg, 'success', '', d.msgRegenerating);
+  }
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (busy) return;
+    if (step === 'email') submitEmail();
+    else if (step === 'name') submitName();
+  });
+
+  backBtn.addEventListener('click', function () {
+    if (busy) return;
+    ui.clear(nameMsg);
+    clearClaim();
+    show('email');
+    emailEl.focus();
+  });
+
+  show('email');
+})();
+</script>
