@@ -6,7 +6,7 @@
  *
  * The one hard rule everything here enforces: only CONNECTED providers and their
  * models are ever visible. Disconnected providers simply do not appear — the only
- * path to them is the picker's "Connect more providers…" footer.
+ * path to them is the picker's "Connect another AI…" footer.
  */
 
 import type {

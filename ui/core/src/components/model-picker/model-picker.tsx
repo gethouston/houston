@@ -29,7 +29,7 @@ const SEARCH_THRESHOLD = 8;
  * always-visible back header. On level 2 an in-dropdown search appears once the
  * provider's list runs long (> 8 rows) and filters it via cmdk's built-in
  * scorer; short lists omit it. Disconnected providers never appear — the paths
- * to them are the "Connect more providers…" footer and, when NOTHING is
+ * to them are the "Connect another AI…" footer and, when NOTHING is
  * connected, level 1's explained empty state (which carries the same action).
  *
  * cmdk provides the accessible input, list semantics, and ↑↓/Enter roving; this

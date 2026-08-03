@@ -182,21 +182,21 @@
     },
     "picker": {
       "searchPlaceholder": "Search models…",
-      "connectMore": "Connect more providers…",
+      "connectMore": "Connect another AI…",
       "back": "Back",
       "providersLabel": "Providers",
       "modelsLabel": "Models",
-      "loading": "Loading providers…",
+      "loading": "Loading AIs…",
       "empty": "No models found.",
       "noProviders": {
-        "action": "Connect an AI model",
+        "action": "Connect AI",
         "personal": {
-          "title": "No providers connected yet.",
-          "hint": "Connect an AI model to start chatting."
+          "title": "Connect an AI to chat with Houston",
+          "hint": "Houston answers using an AI like Claude or ChatGPT. Connect one to get started."
         },
         "team": {
-          "title": "You have not connected an AI account yet.",
-          "hint": "Connect your own AI account and this team's agents will answer you."
+          "title": "Connect your AI to chat with this team's agents",
+          "hint": "Team agents answer using your own AI account. Connect yours to get started."
         }
       },
       "account": {
@@ -224,7 +224,8 @@
       "gemini-3_1-flash-lite": "Lightweight and quick for simpler tasks.",
       "gemma-4-26b-a4b-it": "Google's open Gemma model. Fast and efficient.",
       "gemma-4-31b-it": "Google's open Gemma model. More capable."
-    }
+    },
+    "connectMore": "Connect another AI…"
   },
   "reasoning": {
     "thinking": "Thinking...",

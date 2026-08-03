@@ -19,14 +19,14 @@ test("composer is replaced by the connect-AI empty state when no provider is con
   await page.goto("/");
   await page.locator('[data-tour-target="newMission"]').click();
 
-  await expect(
-    page.getByRole("button", { name: "Connect an AI model" }),
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Connect AI" })).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(
     page.getByPlaceholder("What should the agent work on?"),
   ).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Connect an AI model" }).click();
+  await page.getByRole("button", { name: "Connect AI" }).click();
   await expect(page.getByRole("heading", { name: "AI Models" })).toBeVisible();
 });
 
@@ -38,7 +38,5 @@ test("composer renders normally while the provider is connected", async ({
   await expect(
     page.getByPlaceholder("What should the agent work on?"),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Connect an AI model" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Connect AI" })).toHaveCount(0);
 });

@@ -339,9 +339,9 @@
     },
     "unauthenticated": {
       "title": "Conecte-se ao {{provider}} novamente",
-      "titleGeneric": "Conecte um provedor de IA",
-      "bodyGeneric": "O Houston precisa de um provedor de IA conectado para poder responder.",
-      "connectProvider": "Conectar um provedor",
+      "titleGeneric": "Conecte uma IA",
+      "bodyGeneric": "O Houston precisa de uma IA conectada para poder responder.",
+      "connectProvider": "Conectar IA",
       "reconnectedTitleGeneric": "Conectado",
       "bodyTokenExpired": "Sua sessão do {{provider}} expirou. Reconecte para continuar.",
       "bodyNoCredentials": "O Houston precisa que você entre no {{provider}} antes de responder.",

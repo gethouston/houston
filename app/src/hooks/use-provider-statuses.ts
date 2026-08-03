@@ -35,7 +35,7 @@ export interface ProviderStatusesState {
    * but `unknown`s, which means the engine was unreachable (HOU-1153). Consumers
    * that make a claim about the world (the connect-AI composer's "you have no
    * AI connected") must fail closed on this; the picker settles on its
-   * "Connect more providers" state, because a spinner with no end is worse.
+   * "Connect another AI" state, because a spinner with no end is worse.
    */
   isError: boolean;
 }

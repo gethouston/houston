@@ -1,6 +1,6 @@
 /**
  * The interaction half of `ChatModelSelector`: owns the popover open state and
- * the select handler, wires the "Connect more providers…" footer to the AI Hub,
+ * the select handler, wires the "Connect another AI…" footer to the AI Hub,
  * and wraps the derived view-models (`usePickerViewModels`) into the single
  * object the container's JSX renders. Split from both the component and the
  * derivation hook so each stays under the file-size budget.
@@ -114,7 +114,7 @@ export function useChatModelPicker(opts: {
     [onSelect, setOpen],
   );
 
-  // "Connect more providers…" leaves chat for the AI Hub — the one surface that
+  // "Connect another AI…" leaves chat for the AI Hub — the one surface that
   // lists every provider and owns the full connect flow (OAuth / api-key /
   // local). The per-provider inline connect cards are gone: disconnected
   // providers never appear in the picker anymore.

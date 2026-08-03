@@ -1,6 +1,6 @@
 /**
  * The one rule that decides whether the chat composer is replaced by the
- * "Connect an AI model" empty state.
+ * "Connect AI" empty state.
  *
  * Why it exists: with NO provider connected the composer still rendered a full
  * input row — a model picker showing a phantom model (the effective-provider

@@ -1,11 +1,10 @@
 /**
- * The composer's "no AI model connected" state: what stands where the chat
- * input normally is, until the user connects a provider.
+ * The composer's "no AI connected" state: what stands where the chat input
+ * normally is, until the user connects an AI.
  *
  * It sits in the composer slot (`chat-panel.tsx` hides the whole `ChatInput`
- * while a `replace`-mode override is present), so it stays COMPACT — roughly
- * the height of the input it replaces, tighter padding than a full-pane empty
- * state, title at body size rather than the `Empty` default display size.
+ * while a `replace`-mode override is present) and renders the standard
+ * `Empty` presentation, same idiom as `mission-board-empty-state`.
  *
  * The copy is the model picker's own no-providers copy (`noProviders.*`): the
  * two surfaces tell the user the same thing about the same fact, so they say it
@@ -39,12 +38,12 @@ export function ChatConnectAiEmptyState({
 }: ChatConnectAiEmptyStateProps) {
   const { t } = useTranslation("chat");
   return (
-    <Empty className="border-0 gap-4 p-4 md:p-4">
-      <EmptyHeader className="gap-1.5">
+    <Empty className="border-0">
+      <EmptyHeader>
         <EmptyMedia variant="icon">
           <PlugZapIcon />
         </EmptyMedia>
-        <EmptyTitle className="text-base font-medium">
+        <EmptyTitle>
           {t(`modelSelector.picker.noProviders.${variant}.title`)}
         </EmptyTitle>
         <EmptyDescription>

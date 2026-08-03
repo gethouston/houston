@@ -33,7 +33,7 @@ export interface PickerEmptyStateDecision {
   variant: PickerEmptyState;
   /**
    * Whether the viewer can reach the AI Models hub — gates BOTH the empty
-   * state's button and the picker's "Connect more providers…" footer.
+   * state's button and the picker's "Connect another AI…" footer.
    */
   canConnect: boolean;
 }
