@@ -452,7 +452,16 @@ function isServerError(lower: string, status: number | null): boolean {
     // the honest one in both deployments: retry is the remedy either way, and
     // a genuinely dead local network fails the NEXT attempt with fetch/ECONN
     // errors that still route to network_unreachable below.
-    lower.includes("websocket closed")
+    lower.includes("websocket closed") ||
+    // OpenAI's generic server-side failure body — "An error occurred while
+    // processing your request. You can retry your request, or contact us
+    // through our help center at help.openai.com if the error persists.
+    // Please include the request ID <uuid> …" — the standard 500/server_error
+    // wording, but the Codex path flattens it to "Codex error: <body>" with NO
+    // status, so the 5xx short-circuit above never sees it. The body itself
+    // says retry helps; without this pattern it degraded to the report-bug
+    // `unknown` card (HOU-898).
+    lower.includes("error occurred while processing your request")
   );
 }
 
