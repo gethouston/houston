@@ -206,7 +206,7 @@ test("buildPickerProviders: keeps only providers that own models, with connectio
     [
       ["testprov", "connected"],
       // No status + not loading → disconnected (the picker hides it; the only
-      // path to it is the "Connect more providers…" footer).
+      // path to it is the "Connect another AI…" footer).
       ["openrouter", "disconnected"],
     ],
   );

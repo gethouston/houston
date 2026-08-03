@@ -1,7 +1,7 @@
 import { getProvider } from "../../../lib/providers";
 import { LocalModelDialog } from "../local-model-dialog";
 import { ProviderApiKeyDialog } from "../provider-api-key-dialog";
-import type { ReconnectSurface } from "./auth-presentation";
+import type { ReconnectSurface } from "./reconnect-surface";
 
 /**
  * The non-OAuth reconnect surfaces of the `UnauthenticatedCard`: the SAME

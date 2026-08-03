@@ -4,6 +4,7 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
 import { queryKeys } from "../../lib/query-keys";
+import { sharedSkillsAvailable } from "../../lib/shared-skills-availability";
 import { tauriSharedSkills, tauriSkillsManifest } from "../../lib/tauri";
 import type { SkillSummary } from "../../lib/types";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -34,22 +35,32 @@ export function useAgentSharedSkills(agentPath: string): {
   const queryClient = useQueryClient();
   const { capabilities } = useCapabilities();
   const workspaceId = useWorkspaceStore((s) => s.current?.id ?? null);
-  const available = capabilities?.sharedSkills === true && workspaceId !== null;
+  const advertised =
+    capabilities?.sharedSkills === true && workspaceId !== null;
 
   const shared = useQuery({
     queryKey: queryKeys.sharedSkills(workspaceId ?? ""),
     queryFn: () => tauriSharedSkills.list(workspaceId ?? ""),
-    enabled: available,
+    enabled: advertised,
     staleTime: Number.POSITIVE_INFINITY,
     refetchOnWindowFocus: false,
   });
+  // The manifest is agent-local and independent of the store, so it loads in
+  // PARALLEL with the store query — gating it on the store's answer would
+  // serialize two round trips for every configured deployment.
   const manifest = useQuery({
     queryKey: queryKeys.skillsManifest(agentPath),
     queryFn: () => tauriSkillsManifest.get(agentPath),
-    enabled: available,
+    enabled: advertised,
     staleTime: Number.POSITIVE_INFINITY,
     refetchOnWindowFocus: false,
   });
+
+  // The gateway advertises `capabilities.sharedSkills` unconditionally, even
+  // where no skill store is actually bound — so the store's own answer is the
+  // last word: the section hides rather than showing a permanently empty
+  // "From your workspace" (HOU-1153).
+  const available = sharedSkillsAvailable(advertised, shared.data);
 
   const [busy, setBusy] = useState<string | null>(null);
   const setEnabled = async (slug: string, on: boolean) => {

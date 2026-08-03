@@ -19,6 +19,9 @@
  * two hooks cannot drift apart again.
  */
 
+import { scanIsUnreachable } from "../hooks/provider-connections/unreachable-scan.ts";
+import type { ProviderStatus } from "./tauri.ts";
+
 /** The agent-store signals the gate reads. */
 export interface AgentsSettledSignals {
   /** True once `loadAgents` has settled at least once (even on failure). */
@@ -76,4 +79,64 @@ export function providerStatusesLoading(opts: {
 }): boolean {
   if (opts.hasData) return false;
   return opts.queryIsLoading || !opts.probeReady;
+}
+
+/**
+ * What a resolved `checkAllStatuses` scan is actually worth (HOU-1153).
+ *
+ * The engine adapter's batched `providerStatuses()` NEVER rejects: an
+ * unreachable engine (a host still booting, a cold pod, a wedged sidecar), and
+ * the window where per-agent routing has not settled, both resolve every
+ * provider as `unknown`. That shape is indistinguishable from a fetch that
+ * succeeded, so the picker's query settled "successfully" knowing nothing —
+ * `unknown` renders as `checking`, and the picker spun on "Loading providers…"
+ * for good while the connect-AI composer (which fails closed on anything
+ * `checking`) never appeared.
+ *
+ * So the picker classifies the RESULT instead of trusting the resolution. An
+ * all-unknown scan is a probe FAILURE and must be thrown, which is what buys
+ * the retry, the honest error state, and the re-probe below.
+ *
+ * The AI hub's sibling hook keeps consuming the raw all-unknown shape on
+ * purpose — it has a last-known painted snapshot to protect, so it drops the
+ * scan silently rather than surfacing a failure.
+ */
+export type StatusScanClassification = "definitive" | "unreachable";
+
+/** Classify a scan; see {@link StatusScanClassification}. */
+export function classifyStatusScan(
+  probedIds: readonly string[],
+  byId: Record<string, ProviderStatus>,
+): StatusScanClassification {
+  return scanIsUnreachable(probedIds, byId) ? "unreachable" : "definitive";
+}
+
+/** The rejection an unreachable scan produces, so the failure is typed rather
+ *  than a bare string the UI would have to pattern-match. */
+export class ProviderProbeUnreachableError extends Error {
+  constructor() {
+    super("Could not reach the engine to check provider connections.");
+    this.name = "ProviderProbeUnreachableError";
+  }
+}
+
+/** How often the picker re-probes while the last answer was a failure. Short
+ *  enough that a host which was merely booting is picked up within a beat of
+ *  becoming ready, long enough not to hammer one that is genuinely down. */
+export const PROVIDER_STATUS_REPROBE_MS = 5_000;
+
+/**
+ * The self-heal timer (HOU-1153): while the last probe FAILED, keep re-probing;
+ * the moment a definitive answer lands, stop.
+ *
+ * This is what closes the loop with no user action — a host that answered
+ * "still booting" is reachable seconds later, and the next tick lands the real
+ * statuses. `pending` deliberately gets no timer: TanStack's own retry/backoff
+ * owns the first-fetch window, and a second schedule on top of it would stack
+ * overlapping probes.
+ */
+export function providerStatusesRefetchInterval(query: {
+  status: "pending" | "error" | "success";
+}): number | false {
+  return query.status === "error" ? PROVIDER_STATUS_REPROBE_MS : false;
 }

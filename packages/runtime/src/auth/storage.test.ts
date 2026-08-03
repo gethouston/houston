@@ -55,7 +55,10 @@ test("providerConnected(anthropic): the shared-dir credential probe counts with 
   expect(providerConnected(store, "anthropic")).toBe(false);
   // The browser login populated the shared dir → the probe reads logged-in,
   // even though auth.json holds no anthropic credential.
-  await refreshAnthropicCredential(async () => true);
+  await refreshAnthropicCredential(async () => ({
+    known: true,
+    loggedIn: true,
+  }));
   expect(providerConnected(store, "anthropic")).toBe(true);
   // Sign out clears the shared-dir credential → disconnected again.
   resetAnthropicCredentialCache(false);
@@ -64,7 +67,11 @@ test("providerConnected(anthropic): the shared-dir credential probe counts with 
 
 test("providerConnected(anthropic): a pasted setup token also counts (degraded fallback)", async () => {
   const store = tmpStore();
-  await refreshAnthropicCredential(async () => false); // shared dir empty
+  // shared dir empty → the probe ANSWERS logged-out
+  await refreshAnthropicCredential(async () => ({
+    known: true,
+    loggedIn: false,
+  }));
   expect(providerConnected(store, "anthropic")).toBe(false);
   store.set("anthropic", { type: "api_key", key: "sk-ant-oat01-x" });
   expect(providerConnected(store, "anthropic")).toBe(true);
@@ -118,7 +125,10 @@ test("providerConnected: an EXPIRED access-only oauth entry no longer counts as 
   expect(providerConnected(store, "openai-codex")).toBe(true);
 
   // Anthropic's auth.json entry follows the same rule (the probe stays off).
-  await refreshAnthropicCredential(async () => false);
+  await refreshAnthropicCredential(async () => ({
+    known: true,
+    loggedIn: false,
+  }));
   resetAnthropicCredentialCache(false);
   store.set("anthropic", {
     type: "oauth",

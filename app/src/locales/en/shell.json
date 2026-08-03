@@ -354,6 +354,10 @@
     },
     "unauthenticated": {
       "title": "Sign in to {{provider}} again",
+      "titleGeneric": "Connect an AI",
+      "bodyGeneric": "Houston needs an AI connected before it can answer.",
+      "connectProvider": "Connect AI",
+      "reconnectedTitleGeneric": "Connected",
       "bodyTokenExpired": "Your {{provider}} session expired. Reconnect to continue.",
       "bodyNoCredentials": "Houston needs you to sign in to {{provider}} before it can answer.",
       "bodyInvalidApiKey": "The {{provider}} API key Houston has is no longer valid. Update it and try again.",

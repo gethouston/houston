@@ -66,15 +66,16 @@ export interface ModelPickerLabels {
 
 export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
   searchPlaceholder: "Search models…",
-  connectMore: "Connect more providers…",
+  connectMore: "Connect another AI…",
   back: "Back",
   providersLabel: "Providers",
   modelsLabel: "Models",
-  loading: "Loading providers…",
+  loading: "Loading AIs…",
   empty: "No models found.",
-  noProviders: "No providers connected yet.",
-  noProvidersHint: "Connect an AI model to start chatting.",
-  noProvidersAction: "Connect an AI model",
+  noProviders: "Connect an AI to chat with Houston",
+  noProvidersHint:
+    "Houston answers using an AI like Claude or ChatGPT. Connect one to get started.",
+  noProvidersAction: "Connect AI",
 };
 
 export interface ModelPickerProps {

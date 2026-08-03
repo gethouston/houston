@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { expect, test } from "vitest";
+import { accessDigest } from "@houston/protocol/access-digest";
+import { beforeEach, expect, test } from "vitest";
+import { sharedCredentialRefresher } from "../credentials/refresh-coalescer";
 import { RemoteCredentialDeadError } from "../credentials/remote-store";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { CredentialStore, CredentialVault } from "../ports";
@@ -30,9 +32,12 @@ const vault: CredentialVault = {
     t === "sbx" ? { workspaceId: "w1", agentId: "a1" } : null,
 };
 
-function mockReq(token = "sbx"): IncomingMessage {
+function mockReq(token = "sbx", actingAs?: string): IncomingMessage {
   return {
-    headers: { authorization: `Bearer ${token}` },
+    headers: {
+      authorization: `Bearer ${token}`,
+      ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
+    },
   } as unknown as IncomingMessage;
 }
 
@@ -73,6 +78,8 @@ const call = (
   opts: {
     gatewayFronted?: boolean;
     credentialHealer?: CredentialServeHealer;
+    /** WHOSE credential this serve is for (HOU-976); absent = the team row. */
+    actingAs?: string;
   } = {},
 ) =>
   handleSandboxCredential(
@@ -85,12 +92,19 @@ const call = (
     "GET",
     "/sandbox/credential",
     new URL(`http://x/sandbox/credential?provider=${provider}`),
-    mockReq(),
+    mockReq("sbx", opts.actingAs),
     out.res,
   );
 
 /** A far-future expiry: not "expiring" for any test run. */
 const FRESH_EXPIRES = Date.now() + 60 * 60 * 1000;
+
+/** A gateway-minted acting-as token naming one member (its payload carries the sub). */
+const ACTING = `h.${Buffer.from(JSON.stringify({ sub: "u-1" })).toString("base64url")}.sig`;
+
+// The refresher is process-wide (that is what makes it coalesce). Clear its
+// single-flight + result cache so tests can't serve each other's tokens.
+beforeEach(() => sharedCredentialRefresher.reset());
 
 test("serve miss heals once and serves the fresh central credential", async () => {
   const credentials = new MemoryCredentialStore();
@@ -246,6 +260,117 @@ test("a terminally-rejected refresh disconnects the credential (marked 404)", as
   }
 });
 
+test("a rejected refresh keeps a credential that was rotated underneath", async () => {
+  // The rejection condemns ONE token, and the store can move on while the token
+  // endpoint is still answering — a reconnect, or a sibling host that rotated
+  // the credential. A blind remove here would delete the connection the user
+  // just made and sign them out for someone else's dead token. Compare-and-
+  // delete: the digest doesn't match, nothing is dropped, and the serve
+  // continues with what the store holds NOW.
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "expired-AT",
+    refreshToken: "rt.dead",
+    expiresAt: 1,
+  });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    // Racing the exchange: this lands after the refresher re-read the store and
+    // before its rejection reaches the route.
+    await credentials.put({
+      workspaceId: "w1",
+      provider: "openai-codex",
+      accessToken: "reconnected-AT",
+      refreshToken: "rt.fresh",
+      expiresAt: FRESH_EXPIRES,
+    });
+    return new Response(JSON.stringify({ error: "invalid_grant" }), {
+      status: 400,
+    });
+  }) as typeof fetch;
+  try {
+    const r = mockRes();
+    expect(await call(credentials, "openai-codex", r)).toBe(true);
+    expect(r.out.status).toBe(200);
+    expect(r.out.body.access).toBe("reconnected-AT");
+    expect((await credentials.get("w1", "openai-codex"))?.accessToken).toBe(
+      "reconnected-AT",
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("a rejected personal refresh never touches the team credential", async () => {
+  // Scope is part of the delete, not decoration (HOU-976): one member's dead
+  // subscription must not disconnect the workspace's shared one. The store call
+  // carries both WHICH kind of row (scope) and WHOSE (the acting identity).
+  const memory = new MemoryCredentialStore();
+  const removals: {
+    accessSha256: string;
+    opts?: { scope?: "personal" | "team"; actingAs?: string };
+  }[] = [];
+  const credentials: CredentialStore = {
+    get: (workspaceId, provider, acting) =>
+      memory.get(workspaceId, provider, acting),
+    put: (cred, opts) => memory.put(cred, opts),
+    remove: (workspaceId, provider, acting) =>
+      memory.remove(workspaceId, provider, acting),
+    removeIfAccess: (workspaceId, provider, accessSha256, opts) => {
+      removals.push({ accessSha256, opts });
+      return memory.removeIfAccess(workspaceId, provider, accessSha256, opts);
+    },
+  };
+  await memory.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "team-AT",
+    refreshToken: "rt.team",
+    expiresAt: FRESH_EXPIRES,
+  });
+  await memory.put(
+    {
+      workspaceId: "w1",
+      provider: "openai-codex",
+      accessToken: "member-AT",
+      refreshToken: "rt.dead",
+      expiresAt: 1,
+      scope: "personal",
+    },
+    { actingAs: ACTING },
+  );
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: "invalid_grant" }), {
+      status: 400,
+    })) as typeof fetch;
+  try {
+    const r = mockRes();
+    expect(
+      await call(credentials, "openai-codex", r, { actingAs: ACTING }),
+    ).toBe(true);
+    expect(r.out.status).toBe(404);
+    expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
+    // The member's row is gone; the team's is untouched.
+    expect(await memory.get("w1", "openai-codex", { actingAs: ACTING })).toBe(
+      null,
+    );
+    expect((await memory.get("w1", "openai-codex"))?.accessToken).toBe(
+      "team-AT",
+    );
+    expect(removals).toEqual([
+      {
+        accessSha256: accessDigest("member-AT"),
+        opts: { scope: "personal", actingAs: ACTING },
+      },
+    ]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test("a transient refresh failure keeps serving the existing token", async () => {
   const credentials = new MemoryCredentialStore();
   await credentials.put({
@@ -256,8 +381,11 @@ test("a transient refresh failure keeps serving the existing token", async () =>
     expiresAt: 1,
   });
   const realFetch = globalThis.fetch;
-  globalThis.fetch = (async () =>
-    new Response("upstream sad", { status: 503 })) as typeof fetch;
+  let exchanges = 0;
+  globalThis.fetch = (async () => {
+    exchanges++;
+    return new Response("upstream sad", { status: 503 });
+  }) as typeof fetch;
   try {
     const r = mockRes();
     expect(await call(credentials, "openai-codex", r)).toBe(true);
@@ -265,6 +393,100 @@ test("a transient refresh failure keeps serving the existing token", async () =>
     expect(r.out.body.access).toBe("maybe-still-good-AT");
     // A blip must not sign the workspace out.
     expect(await credentials.get("w1", "openai-codex")).not.toBeNull();
+    // And it must not be retried: a 5xx can land after the endpoint already
+    // rotated the refresh token, so attempt 2 would spend a spent grant.
+    expect(exchanges).toBe(1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("a credential disconnected mid-refresh answers marked 404 without a delete", async () => {
+  // The user hit Disconnect between the route's read and the coalescer's
+  // critical section. Refreshing anyway recreates the row they deleted; the
+  // route must simply report "not connected".
+  const memory = new MemoryCredentialStore();
+  await memory.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "expiring-AT",
+    refreshToken: "rt.rotating",
+    expiresAt: 1,
+  });
+  let reads = 0;
+  let removals = 0;
+  const credentials: CredentialStore = {
+    get: async (workspaceId, provider, acting) =>
+      ++reads === 1 ? memory.get(workspaceId, provider, acting) : null,
+    put: (cred, opts) => memory.put(cred, opts),
+    remove: (workspaceId, provider, acting) =>
+      memory.remove(workspaceId, provider, acting),
+    removeIfAccess: async () => {
+      removals++;
+      return false;
+    },
+  };
+  const realFetch = globalThis.fetch;
+  let exchanges = 0;
+  globalThis.fetch = (async () => {
+    exchanges++;
+    throw new Error("the token endpoint must never be called");
+  }) as typeof fetch;
+  try {
+    const r = mockRes();
+    expect(await call(credentials, "openai-codex", r)).toBe(true);
+    expect(r.out.status).toBe(404);
+    expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
+    expect(exchanges).toBe(0);
+    expect(removals).toBe(0);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("concurrent serves of an expiring credential refresh it exactly once", async () => {
+  // One runtime process per agent serves per turn AND per /providers poll, so
+  // the same expiring credential lands here several times at once. openai-codex
+  // rotates the refresh token on use: refreshing twice makes the second
+  // exchange invalid_grant, which the route reads as "session ended" and the
+  // user's provider disconnects itself. One burst = one exchange.
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "expiring-AT",
+    refreshToken: "rt.rotating",
+    expiresAt: 1,
+  });
+  let exchanges = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    exchanges++;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return new Response(
+      JSON.stringify({
+        access_token: "rotated-AT",
+        refresh_token: "rt.rotated",
+        expires_in: 3600,
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch;
+  try {
+    const a = mockRes();
+    const b = mockRes();
+    await Promise.all([
+      call(credentials, "openai-codex", a),
+      call(credentials, "openai-codex", b),
+    ]);
+    expect(exchanges).toBe(1);
+    expect(a.out.status).toBe(200);
+    expect(b.out.status).toBe(200);
+    expect(a.out.body.access).toBe("rotated-AT");
+    expect(b.out.body.access).toBe("rotated-AT");
+    expect((await credentials.get("w1", "openai-codex"))?.refreshToken).toBe(
+      "rt.rotated",
+    );
   } finally {
     globalThis.fetch = realFetch;
   }

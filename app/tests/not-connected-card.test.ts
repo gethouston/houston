@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { FeedItem, ProviderError } from "@houston-ai/chat";
 import {
   continuesTaskAfterReconnect,
+  errorCardProvider,
   isInlineAuthCard,
   providerErrorRetryText,
   reconnectContinueText,
@@ -38,6 +39,88 @@ describe("resolveProviderErrorForChat", () => {
       message: "session expired",
     };
     deepStrictEqual(resolveProviderErrorForChat(wireCard, "openai"), wireCard);
+  });
+
+  it("leaves the card unlabeled when there is no provider evidence", () => {
+    // A guessed label sends the user to the WRONG sign-in — better a generic
+    // card than "Connect Anthropic" shown to someone on OpenAI.
+    const resolved = resolveProviderErrorForChat(notConnectedCard, null);
+    strictEqual(resolved.provider, "");
+    deepStrictEqual(resolved, notConnectedCard);
+  });
+
+  it("never turns an evidence-less card into the composer's default", () => {
+    const resolved = resolveProviderErrorForChat(
+      notConnectedCard,
+      errorCardProvider({
+        activityProvider: null,
+        agentProvider: null,
+        lastUsedProvider: null,
+      }),
+    );
+    strictEqual(resolved.provider, "");
+  });
+});
+
+describe("errorCardProvider", () => {
+  it("prefers the turn's activity provider over weaker evidence", () => {
+    strictEqual(
+      errorCardProvider({
+        activityProvider: "openai",
+        agentProvider: "anthropic",
+        lastUsedProvider: "google",
+      }),
+      "openai",
+    );
+  });
+
+  it("falls back to the agent's provider, then the last used one", () => {
+    strictEqual(
+      errorCardProvider({
+        activityProvider: null,
+        agentProvider: "anthropic",
+        lastUsedProvider: "google",
+      }),
+      "anthropic",
+    );
+    strictEqual(
+      errorCardProvider({
+        activityProvider: null,
+        agentProvider: null,
+        lastUsedProvider: "google",
+      }),
+      "google",
+    );
+  });
+
+  it("treats empty strings as absent evidence", () => {
+    strictEqual(
+      errorCardProvider({
+        activityProvider: "",
+        agentProvider: "",
+        lastUsedProvider: "openai",
+      }),
+      "openai",
+    );
+    strictEqual(
+      errorCardProvider({
+        activityProvider: "",
+        agentProvider: "",
+        lastUsedProvider: "",
+      }),
+      null,
+    );
+  });
+
+  it("returns null with no evidence — never a guessed default", () => {
+    strictEqual(
+      errorCardProvider({
+        activityProvider: null,
+        agentProvider: null,
+        lastUsedProvider: null,
+      }),
+      null,
+    );
   });
 });
 

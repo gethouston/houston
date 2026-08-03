@@ -7,6 +7,16 @@ import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 import { providerRoutingSettled } from "./provider-routing";
 
+/**
+ * How long the batched status probe waits for the runtime before calling it
+ * unreachable (HOU-1153). A host that accepts the connection but never answers
+ * — a wedged desktop sidecar, a pod stuck mid-boot — used to leave this promise
+ * pending for the life of the app, which the picker rendered as a permanent
+ * "Loading providers…". A bounded probe turns that into the same "unknown"
+ * answer any other unreachable engine produces, which the caller retries.
+ */
+const PROBE_TIMEOUT_MS = 15_000;
+
 export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
   // Internal label only (the exported factory is the contract). Named to avoid
   // shadowing the imported ui `ProviderStatus` type the verbatim bodies return.
@@ -45,6 +55,12 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
       // network drop) reports "unknown" instead: fabricating "unauthenticated"
       // flips every provider card to Connect and blocks the local-model tunnel
       // auto-reconnect, for connections that are still registered server-side.
+      //
+      // What an all-"unknown" scan is WORTH is the caller's call, and the two
+      // callers differ on purpose (HOU-1153): the AI hub keeps painting its
+      // last-known snapshot, while the chat picker classifies it as a probe
+      // failure and re-probes until a definitive answer lands. This method
+      // stays non-throwing so both readings remain possible.
       let reachable = false;
       try {
         // Do NOT probe before the active space's agent list has settled
@@ -57,7 +73,10 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
         if (providerRoutingSettled(this.ctx)) {
           const engine = this.ctx.providerEngine();
           if (engine) {
-            for (const p of await engine.listProviders()) byId.set(p.id, p);
+            const list = await engine.listProviders({
+              signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+            });
+            for (const p of list) byId.set(p.id, p);
             reachable = true;
           }
         }

@@ -123,8 +123,15 @@ export class HoustonEngineClient {
   }
 
   // --- providers, settings & auth (subscription OAuth) ---
-  listProviders() {
-    return this.json<ProviderInfo[]>("/providers");
+  /**
+   * Every provider the runtime knows, with its `configured` flag and active
+   * model. `opts.signal` bounds the call: this is the status probe's only
+   * round-trip, and a host that accepts the connection but never answers (a
+   * wedged sidecar, a pod stuck mid-boot) would otherwise leave the caller
+   * pending forever with no failure to react to (HOU-1153).
+   */
+  listProviders(opts?: { signal?: AbortSignal }) {
+    return this.json<ProviderInfo[]>("/providers", { signal: opts?.signal });
   }
   /**
    * Live per-account usage for every CONNECTED provider — rate-limit windows

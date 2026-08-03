@@ -32,30 +32,6 @@ export function authCauseBodyKey(cause: UnauthCause): string {
   }
 }
 
-/**
- * Which surface the Reconnect button opens. Only OAuth providers have a browser
- * sign-in; sending an api-key provider through `launchLogin` is a guaranteed
- * 400 ("nvidia does not use OAuth sign-in") that flips the card to its failed
- * phase and dead-ends the user (HOU-1077) — those reconnect by re-pasting the
- * key in the same connect dialog settings uses. The local provider keeps its
- * guided endpoint dialog.
- */
-export type ReconnectSurface =
-  | "oauth_login"
-  | "api_key_dialog"
-  | "local_model_dialog";
-
-export function reconnectSurface(
-  providerId: string,
-  auth: "oauth" | "apiKey" | "openaiCompatible" | undefined,
-): ReconnectSurface {
-  if (providerId === "openai-compatible") return "local_model_dialog";
-  if (auth === "apiKey") return "api_key_dialog";
-  // OAuth — or an id the catalog doesn't resolve, where only the engine knows
-  // the method: the engine-side launch keeps its own non-OAuth guard.
-  return "oauth_login";
-}
-
 /** The action a button fires. A `badge` button is a disabled status pill. */
 export type AuthCardAction = "reconnect" | "cancel";
 
@@ -73,8 +49,49 @@ export interface AuthCardPresentation {
 }
 
 /**
+ * The `done` phase, parameterised by its title only: the bodies never name a
+ * provider, so the generic (unknown-provider) card reuses them verbatim and
+ * differs solely in the title it confirms with.
+ */
+function donePresentation(args: {
+  titleKey: string;
+  hasFailedPrompt: boolean;
+  hasRetry: boolean;
+}): AuthCardPresentation {
+  const { titleKey, hasFailedPrompt, hasRetry } = args;
+
+  if (hasFailedPrompt) {
+    return {
+      variant: "done",
+      titleKey,
+      bodyKey: `${K}.reconnectedResending`,
+      button: { kind: "badge", labelKey: `${K}.signedIn` },
+    };
+  }
+  if (hasRetry) {
+    return {
+      variant: "done",
+      titleKey,
+      bodyKey: `${K}.reconnectedResuming`,
+      button: { kind: "badge", labelKey: `${K}.signedIn` },
+    };
+  }
+  return {
+    variant: "done",
+    titleKey,
+    bodyKey: `${K}.reconnectedBody`,
+    button: null,
+  };
+}
+
+/**
  * Resolve the card's title/body/button from its phase.
  *
+ * - `hasProvider: false`: the error named no provider (nothing is connected at
+ *   all), so EVERY provider-named string is off the table — `{{provider}}`
+ *   would interpolate to an empty string, and the old guess ("anthropic") lied.
+ *   The card becomes a generic "connect an AI provider" prompt whose action
+ *   opens the AI Hub instead of a sign-in that cannot be launched.
  * - `done` with a retry handler: the resume already auto-fired, so the pill
  *   is a disabled "Signed in" badge. The body says what resumed: the refused
  *   send's message (`hasFailedPrompt`) or the interrupted task.
@@ -84,35 +101,41 @@ export interface AuthCardPresentation {
  */
 export function resolveAuthCardPresentation(args: {
   phase: LoginPhase;
+  hasProvider: boolean;
   hasFailedPrompt: boolean;
   hasRetry: boolean;
   causeBodyKey: string;
 }): AuthCardPresentation {
-  const { phase, hasFailedPrompt, hasRetry, causeBodyKey } = args;
+  const { phase, hasProvider, hasFailedPrompt, hasRetry, causeBodyKey } = args;
+
+  if (!hasProvider) {
+    if (phase === "done") {
+      return donePresentation({
+        titleKey: `${K}.reconnectedTitleGeneric`,
+        hasFailedPrompt,
+        hasRetry,
+      });
+    }
+    // idle / failed / waiting alike: the generic action never leaves the app
+    // for a browser, so there is no browser wait to narrate or cancel.
+    return {
+      variant: "active",
+      titleKey: `${K}.titleGeneric`,
+      bodyKey: `${K}.bodyGeneric`,
+      button: {
+        kind: "action",
+        labelKey: `${K}.connectProvider`,
+        action: "reconnect",
+      },
+    };
+  }
 
   if (phase === "done") {
-    if (hasFailedPrompt) {
-      return {
-        variant: "done",
-        titleKey: `${K}.reconnectedTitle`,
-        bodyKey: `${K}.reconnectedResending`,
-        button: { kind: "badge", labelKey: `${K}.signedIn` },
-      };
-    }
-    if (hasRetry) {
-      return {
-        variant: "done",
-        titleKey: `${K}.reconnectedTitle`,
-        bodyKey: `${K}.reconnectedResuming`,
-        button: { kind: "badge", labelKey: `${K}.signedIn` },
-      };
-    }
-    return {
-      variant: "done",
+    return donePresentation({
       titleKey: `${K}.reconnectedTitle`,
-      bodyKey: `${K}.reconnectedBody`,
-      button: null,
-    };
+      hasFailedPrompt,
+      hasRetry,
+    });
   }
 
   if (phase === "waiting") {

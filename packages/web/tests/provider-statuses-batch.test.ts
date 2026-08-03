@@ -123,6 +123,21 @@ test("an unreachable runtime reports every card UNKNOWN without throwing", async
   expect(statuses.map((s) => s.authState)).toEqual(["unknown", "unknown"]);
 });
 
+test("the probe is bounded by an abort signal, so a wedged host cannot pend forever", async () => {
+  // HOU-1153: a host that accepts the connection but never answers (wedged
+  // sidecar, pod stuck mid-boot) left this promise pending for the life of the
+  // app — which the picker rendered as a permanent "Loading providers…". The
+  // timeout turns it into the ordinary unreachable answer, which the caller
+  // classifies as a failure and re-probes.
+  listProviders.mockResolvedValue([]);
+
+  await (await settledClient()).providerStatuses(["anthropic"]);
+
+  const [opts] = listProviders.mock.calls[0];
+  expect(opts.signal).toBeInstanceOf(AbortSignal);
+  expect(opts.signal.aborted).toBe(false);
+});
+
 test("a reachable runtime still gives a confirmed unauthenticated for absent providers", async () => {
   listProviders.mockResolvedValue([{ id: "anthropic", configured: true }]);
 

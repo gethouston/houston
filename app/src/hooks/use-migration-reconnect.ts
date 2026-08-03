@@ -58,10 +58,17 @@ export function useMigrationReconnect(): MigrationReconnectState {
     staleTime: 30_000,
   });
 
-  const { statuses, isLoading: statusesLoading } = useProviderStatuses();
+  const {
+    statuses,
+    isLoading: statusesLoading,
+    isError: statusesError,
+  } = useProviderStatuses();
   // Both provider signals come from the ONE shared derivation (HOU-979): an
   // `unknown` probe is "not yet known", never "not connected", so it defers the
-  // gate rather than firing it at a migrated user who IS connected.
+  // gate rather than firing it at a migrated user who IS connected. A FAILED
+  // probe says exactly the same thing and arrives with no statuses at all
+  // (HOU-1153), so it defers through `statusesError` below — without that the
+  // empty map would read as a confident "nothing is connected".
   const { hasProvider, unconfirmable } = migrationProviderSignals(
     Object.values(statuses),
   );
@@ -89,6 +96,7 @@ export function useMigrationReconnect(): MigrationReconnectState {
       (coLocated && migratedQuery.isLoading) ||
       dismissedQuery.isLoading ||
       statusesLoading ||
+      statusesError ||
       unconfirmable,
   });
 

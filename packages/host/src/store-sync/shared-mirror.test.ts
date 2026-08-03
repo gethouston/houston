@@ -4,8 +4,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { ManifestObjectStore } from "@houston/runtime-client/object-sync";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { SharedMirrorController } from "./shared-mirror";
+
+// Headroom over eventually()'s 15s deadline; the default 5s test timeout
+// left none and made these watcher-driven tests flake under suite load.
+vi.setConfig({ testTimeout: 20_000 });
 
 const md5 = (body: Buffer) => createHash("md5").update(body).digest("base64");
 
@@ -41,13 +45,30 @@ function memoryStore(initial: Record<string, string>) {
   return { objects, store, uploads };
 }
 
-async function eventually(assertion: () => void): Promise<void> {
-  const deadline = Date.now() + 2_000;
+/**
+ * Polls the assertion, periodically rewriting `file` with the SAME bytes.
+ * macOS FSEvents subscriptions activate asynchronously, so a write landing
+ * right after the controller starts can be missed entirely; the controller
+ * has no periodic fallback, so only a fresh FS event recovers. Identical
+ * bytes are hash-skipped by syncSharedMirror, so retouches never add
+ * uploads once a push has landed.
+ */
+async function eventuallyWithRetouch(
+  file: string,
+  content: string,
+  assertion: () => void,
+): Promise<void> {
+  const deadline = Date.now() + 15_000;
+  let lastTouch = Date.now();
   while (Date.now() < deadline) {
     try {
       assertion();
       return;
     } catch {
+      if (Date.now() - lastTouch > 1_000) {
+        writeFileSync(file, content);
+        lastTouch = Date.now();
+      }
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
   }
@@ -152,7 +173,9 @@ test("the watcher debounces local edits into a prompt push-only cycle", async ()
 
   writeFileSync(file, "a local v2");
   writeFileSync(file, "a local v3");
-  await eventually(() => expect(remote.uploads).toEqual(["skills/a/SKILL.md"]));
+  await eventuallyWithRetouch(file, "a local v3", () =>
+    expect(remote.uploads).toEqual(["skills/a/SKILL.md"]),
+  );
 
   expect(remote.objects.get("skills/a/SKILL.md")?.toString()).toBe(
     "a local v3",
@@ -231,8 +254,9 @@ test("a watcher push failure logs the real error and retries next cycle", async 
   });
   controller.wake();
   await controller.beforeTurn();
-  writeFileSync(join(mirrorDir, "skills", "a", "SKILL.md"), "retry this edit");
-  await eventually(() =>
+  const retryFile = join(mirrorDir, "skills", "a", "SKILL.md");
+  writeFileSync(retryFile, "retry this edit");
+  await eventuallyWithRetouch(retryFile, "retry this edit", () =>
     expect(logs).toContainEqual({
       message: "[shared-mirror] watcher push failed; using current mirror",
       error: expect.objectContaining({ message: "shared PUT unavailable" }),

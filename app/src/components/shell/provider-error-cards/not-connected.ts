@@ -1,4 +1,5 @@
 import type { FeedItem, ProviderError } from "@houston-ai/chat";
+import { preferredProvider } from "../../chat-effective-provider.ts";
 
 /**
  * Pure helpers for the not-connected reconnect card (HOU-676).
@@ -18,14 +19,39 @@ import type { FeedItem, ProviderError } from "@houston-ai/chat";
 /**
  * Label a provider-error card with THIS chat's provider when the engine
  * couldn't name one. Never rewrites a card that already names a provider —
- * a foreign provider's card must stay honest about who failed.
+ * a foreign provider's card must stay honest about who failed. With no
+ * provider to fill in (`null`), the card is left unlabeled rather than
+ * guessed at: see `errorCardProvider`.
  */
 export function resolveProviderErrorForChat(
   err: ProviderError,
-  chatProvider: string,
+  chatProvider: string | null,
 ): ProviderError {
   if (err.provider) return err;
+  if (!chatProvider) return err;
   return { ...err, provider: chatProvider };
+}
+
+/**
+ * The provider an UNLABELED error card may be attributed to — evidence only.
+ *
+ * Same evidence chain the composer resolves against (`preferredProvider`), so
+ * the two can never drift; what differs is the last resort. The composer's
+ * "anthropic" default is right for a fresh composer and wrong here: a guessed
+ * label sends the user to the wrong sign-in — OpenAI users were told to
+ * "Connect Anthropic". No evidence returns `null`, so the card stays generic
+ * and asks for no specific provider.
+ */
+export function errorCardProvider(args: {
+  activityProvider: string | null;
+  agentProvider: string | null;
+  lastUsedProvider: string | null;
+}): string | null {
+  return preferredProvider(
+    args.activityProvider,
+    args.agentProvider,
+    args.lastUsedProvider,
+  );
 }
 
 /**

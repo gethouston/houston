@@ -58,18 +58,23 @@ async function withServeMode(
   }
 }
 
-/** A served anthropic oauth credential on disk, as a serve sync would leave it. */
-function servedAnthropic(dataDir: string, access = "served-access"): void {
+/** A served oauth credential on disk, as a serve sync would leave it. */
+function servedOauth(dataDir: string, provider: string, access: string): void {
   writeFileSync(
     join(dataDir, "auth.json"),
     JSON.stringify({
-      anthropic: { type: "oauth", access, refresh: "", expires: 0 },
+      [provider]: { type: "oauth", access, refresh: "", expires: 0 },
     }),
   );
   writeFileSync(
     join(dataDir, "served-providers.json"),
-    JSON.stringify(["anthropic"]),
+    JSON.stringify([provider]),
   );
+}
+
+/** The common case: anthropic, the provider most turns run on. */
+function servedAnthropic(dataDir: string, access = "served-access"): void {
+  servedOauth(dataDir, "anthropic", access);
 }
 
 /** The same, but in ONE member's files — where a per-identity serve sync lands. */
@@ -165,6 +170,91 @@ test("does NOT report a non-terminal auth failure", async () => {
       } as ProviderError),
   );
   expect(captured).toBeNull();
+});
+
+test.each([
+  [
+    "a session that merely 'ended'",
+    "401 Your session has ended. Please log in again.",
+  ],
+  [
+    "a bare re-login prompt",
+    "401 Unauthorized. Please login again to continue.",
+  ],
+  ["prose about a terminated session", "401 Unauthorized: session terminated"],
+])("does NOT report %s — loose copy, no confirmed revocation", async (_label, message) => {
+  // These phrasings legitimately produce the `token_revoked` CARD (both
+  // classifiers map them), but providers also reach for them on transient
+  // auth blips. Reporting one deletes the workspace's credential on a single
+  // failed turn, so the destructive half needs a machine-emitted marker.
+  const captured = await withServeMode(
+    (dir) => servedAnthropic(dir),
+    () => reportRevokedServedToken({ ...revoked, message }),
+  );
+  expect(captured).toBeNull();
+});
+
+test.each([
+  [
+    "a negated revocation",
+    "401 Unauthorized: the token was checked and has not been revoked",
+  ],
+  ["an unrelated field that merely spells it", '401 {"revoked_scopes":[]}'],
+])("does NOT report %s — the marker must be anchored", async (_label, message) => {
+  // The bare substring "revoked" reads a NEGATION and a field name as a
+  // confirmed revocation, and this gate deletes the credential for every
+  // runtime in the workspace. The anchored phrases ("has been revoked",
+  // "access revoked", "token_revoked") survive neither.
+  const captured = await withServeMode(
+    (dir) => servedAnthropic(dir),
+    () => reportRevokedServedToken({ ...revoked, message }),
+  );
+  expect(captured).toBeNull();
+});
+
+test.each([
+  [
+    "the provider stating it outright",
+    '401 {"error":{"message":"OAuth access token has been revoked"}}',
+  ],
+  ["a structured revocation code", '401 {"error":{"code":"token_revoked"}}'],
+  ["prose naming the access", "401 Unauthorized: access revoked by the admin"],
+])("reports %s (anchored marker)", async (_label, message) => {
+  // The anthropic path (backends/claude/errors.ts) hands the provider's verbatim
+  // text straight through, so these are the shapes the strict list must keep
+  // catching after anchoring.
+  const captured = await withServeMode(
+    (dir) => servedAnthropic(dir, "the-revoked-token"),
+    () => reportRevokedServedToken({ ...revoked, message }),
+  );
+  expect(captured?.body.accessSha256).toBe(accessDigest("the-revoked-token"));
+});
+
+test.each([
+  [
+    "Codex's structured session kill",
+    "OpenAI API error (401): Your session has ended. Please log in again. (app_session_terminated)",
+  ],
+  [
+    "OpenAI's invalidated refresh token",
+    '401 {"error":{"code":"refresh_token_invalidated"}}',
+  ],
+])("reports %s", async (_label, message) => {
+  const captured = await withServeMode(
+    (dir) => servedOauth(dir, "openai-codex", "codex-revoked-token"),
+    () =>
+      reportRevokedServedToken({
+        ...revoked,
+        provider: "openai-codex",
+        message,
+      }),
+  );
+
+  expect(captured?.url).toBe(
+    "http://control-plane.test/sandbox/credential/revoked",
+  );
+  expect(captured?.body.provider).toBe("openai-codex");
+  expect(captured?.body.accessSha256).toBe(accessDigest("codex-revoked-token"));
 });
 
 test("does NOT report a credential this runtime owns locally", async () => {

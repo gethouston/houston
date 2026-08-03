@@ -12,8 +12,12 @@ import {
   type ObjectStore,
   ObjectTooLargeError,
 } from "@houston/runtime-client/object-sync";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { StoreSyncDaemon } from "./daemon";
+
+// Headroom over eventually()'s 15s deadline; the default 5s test timeout
+// left none and made these watcher-driven tests flake under suite load.
+vi.setConfig({ testTimeout: 20_000 });
 
 function setup() {
   const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-remote-"));
@@ -24,13 +28,20 @@ function setup() {
     store,
     rootDir: localRoot,
     quietMs: 20,
-    intervalMs: 60_000,
+    // Short interval: macOS FSEvents subscriptions activate asynchronously,
+    // so a write landing right after start() can be missed by the watcher.
+    // The periodic sync is the daemon's designed fallback for exactly that;
+    // give it a test-scale period instead of the production 5 minutes.
+    intervalMs: 250,
     log: (message, err) => logs.push({ message, err }),
   });
   return { daemon, localRoot, logs, remoteRoot, store };
 }
 
-async function eventually(assertion: () => void, timeoutMs = 5_000) {
+// Generous deadline: these tests ride real FS-watcher events and debounce
+// timers, which slip well past the nominal quiet period when the suite runs
+// under full-worker load. Polling keeps green runs fast regardless.
+async function eventually(assertion: () => void, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;
   let error: unknown;
   while (Date.now() < deadline) {
@@ -217,6 +228,7 @@ test("warns only after synced data crosses 80% of the hydration cap", async () =
     store: new LocalDirStore(remoteRoot),
     rootDir: localRoot,
     quietMs: 20,
+    intervalMs: 250, // see setup(): fallback for missed watcher startup events
     maxHydrateBytes: 1000,
     log: (message) => logs.push(message),
   });
@@ -247,6 +259,7 @@ test("final sync warns when the tree is past 80% of the cap", async () => {
     store: new LocalDirStore(remoteRoot),
     rootDir: localRoot,
     quietMs: 20,
+    intervalMs: 250, // see setup(): fallback for missed watcher startup events
     maxHydrateBytes: 1000,
     log: (message) => logs.push(message),
   });

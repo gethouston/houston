@@ -2,9 +2,9 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   authCauseBodyKey,
-  reconnectSurface,
   resolveAuthCardPresentation,
 } from "../src/components/shell/provider-error-cards/auth-presentation.ts";
+import { reconnectSurface } from "../src/components/shell/provider-error-cards/reconnect-surface.ts";
 
 // The card once labeled two opposite actions "Try again". These assert the
 // state -> title/body/button mapping so each phase names its real action:
@@ -84,6 +84,7 @@ describe("resolveAuthCardPresentation", () => {
     deepStrictEqual(
       resolveAuthCardPresentation({
         phase: "idle",
+        hasProvider: true,
         hasFailedPrompt: false,
         hasRetry: false,
         causeBodyKey: CAUSE,
@@ -105,6 +106,7 @@ describe("resolveAuthCardPresentation", () => {
     deepStrictEqual(
       resolveAuthCardPresentation({
         phase: "waiting",
+        hasProvider: true,
         hasFailedPrompt: true,
         hasRetry: true,
         causeBodyKey: CAUSE,
@@ -126,6 +128,7 @@ describe("resolveAuthCardPresentation", () => {
     deepStrictEqual(
       resolveAuthCardPresentation({
         phase: "failed",
+        hasProvider: true,
         hasFailedPrompt: false,
         hasRetry: true,
         causeBodyKey: CAUSE,
@@ -147,6 +150,7 @@ describe("resolveAuthCardPresentation", () => {
     deepStrictEqual(
       resolveAuthCardPresentation({
         phase: "done",
+        hasProvider: true,
         hasFailedPrompt: true,
         hasRetry: true,
         causeBodyKey: CAUSE,
@@ -167,6 +171,7 @@ describe("resolveAuthCardPresentation", () => {
     deepStrictEqual(
       resolveAuthCardPresentation({
         phase: "done",
+        hasProvider: true,
         hasFailedPrompt: false,
         hasRetry: true,
         causeBodyKey: CAUSE,
@@ -184,13 +189,157 @@ describe("resolveAuthCardPresentation", () => {
   });
 
   it("done without a retry handler: no button at all", () => {
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "done",
+        hasProvider: true,
+        hasFailedPrompt: false,
+        hasRetry: false,
+        causeBodyKey: CAUSE,
+      }),
+      {
+        variant: "done",
+        titleKey: "providerError.unauthenticated.reconnectedTitle",
+        bodyKey: "providerError.unauthenticated.reconnectedBody",
+        button: null,
+      },
+    );
+  });
+});
+
+// An unauthenticated error can arrive with NO provider (nothing connected at
+// all). Every string above interpolates `{{provider}}`, so the whole card has
+// to switch to provider-free copy: naming an empty provider read as broken, and
+// the guess it replaced ("anthropic") named a provider the user never had.
+describe("resolveAuthCardPresentation without a provider", () => {
+  it("idle: generic title + body, and the button says Connect a provider", () => {
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "idle",
+        hasProvider: false,
+        hasFailedPrompt: false,
+        hasRetry: false,
+        causeBodyKey: CAUSE,
+      }),
+      {
+        variant: "active",
+        titleKey: "providerError.unauthenticated.titleGeneric",
+        bodyKey: "providerError.unauthenticated.bodyGeneric",
+        button: {
+          kind: "action",
+          labelKey: "providerError.unauthenticated.connectProvider",
+          action: "reconnect",
+        },
+      },
+    );
+  });
+
+  it("failed: the same generic prompt, never the provider-named failure body", () => {
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "failed",
+        hasProvider: false,
+        hasFailedPrompt: false,
+        hasRetry: true,
+        causeBodyKey: CAUSE,
+      }),
+      {
+        variant: "active",
+        titleKey: "providerError.unauthenticated.titleGeneric",
+        bodyKey: "providerError.unauthenticated.bodyGeneric",
+        button: {
+          kind: "action",
+          labelKey: "providerError.unauthenticated.connectProvider",
+          action: "reconnect",
+        },
+      },
+    );
+  });
+
+  it("the cause body is ignored: every cause key names a provider", () => {
     const pres = resolveAuthCardPresentation({
-      phase: "done",
+      phase: "idle",
+      hasProvider: false,
       hasFailedPrompt: false,
       hasRetry: false,
-      causeBodyKey: CAUSE,
+      causeBodyKey: authCauseBodyKey("token_expired"),
     });
-    strictEqual(pres.variant, "done");
-    strictEqual(pres.button, null);
+    strictEqual(pres.bodyKey, "providerError.unauthenticated.bodyGeneric");
+  });
+
+  it("waiting cannot be provider-named either (the generic action opens no browser)", () => {
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "waiting",
+        hasProvider: false,
+        hasFailedPrompt: false,
+        hasRetry: true,
+        causeBodyKey: CAUSE,
+      }),
+      {
+        variant: "active",
+        titleKey: "providerError.unauthenticated.titleGeneric",
+        bodyKey: "providerError.unauthenticated.bodyGeneric",
+        button: {
+          kind: "action",
+          labelKey: "providerError.unauthenticated.connectProvider",
+          action: "reconnect",
+        },
+      },
+    );
+  });
+
+  it("done: generic confirmation title, unchanged resume bodies + Signed-in badge", () => {
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "done",
+        hasProvider: false,
+        hasFailedPrompt: true,
+        hasRetry: true,
+        causeBodyKey: CAUSE,
+      }),
+      {
+        variant: "done",
+        titleKey: "providerError.unauthenticated.reconnectedTitleGeneric",
+        bodyKey: "providerError.unauthenticated.reconnectedResending",
+        button: {
+          kind: "badge",
+          labelKey: "providerError.unauthenticated.signedIn",
+        },
+      },
+    );
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "done",
+        hasProvider: false,
+        hasFailedPrompt: false,
+        hasRetry: true,
+        causeBodyKey: CAUSE,
+      }),
+      {
+        variant: "done",
+        titleKey: "providerError.unauthenticated.reconnectedTitleGeneric",
+        bodyKey: "providerError.unauthenticated.reconnectedResuming",
+        button: {
+          kind: "badge",
+          labelKey: "providerError.unauthenticated.signedIn",
+        },
+      },
+    );
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "done",
+        hasProvider: false,
+        hasFailedPrompt: false,
+        hasRetry: false,
+        causeBodyKey: CAUSE,
+      }),
+      {
+        variant: "done",
+        titleKey: "providerError.unauthenticated.reconnectedTitleGeneric",
+        bodyKey: "providerError.unauthenticated.reconnectedBody",
+        button: null,
+      },
+    );
   });
 });

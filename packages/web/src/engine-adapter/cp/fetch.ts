@@ -1,6 +1,7 @@
 import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
 import { refreshLiveToken } from "../session-refresh";
 import { appVersionHeader, noteUpgradeRequired } from "../update-floor";
+import { transientRetryFetch } from "./transient-retry";
 
 /**
  * Control-plane mode for the web adapter.
@@ -123,52 +124,12 @@ export function gatewayAuthFetch(
   };
 }
 
-/** Gateway statuses that mean "rolling deploy / pod handoff in progress", not a
- *  real answer: worth a brief blind retry for reads. */
-const TRANSIENT_STATUSES = new Set([502, 503, 504]);
-/** Two retries, ~2s total — bridges a gateway roll's LB handoff, without
- *  masking a real outage for long. */
-const TRANSIENT_RETRY_DELAYS_MS = [500, 1500];
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 /**
- * Wrap a fetch so GET/HEAD attempts ride through a rolling deploy / pod
- * handoff: transient gateway statuses and network-level drops (connection
- * refused/reset mid-roll) get two brief blind retries. Writes never
- * blind-retry — a thrown network error on a POST may have reached the
- * gateway; the caller decides.
- */
-export function transientRetryFetch(inner: typeof fetch): typeof fetch {
-  return async (input, init) => {
-    const method = (init?.method ?? "GET").toUpperCase();
-    const retriable = method === "GET" || method === "HEAD";
-    let res: Response | undefined;
-    let failure: unknown;
-    for (let i = 0; ; i++) {
-      failure = undefined;
-      res = undefined;
-      try {
-        res = await inner(input, init);
-      } catch (err) {
-        failure = err;
-      }
-      const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
-      if (!transient || !retriable || i >= TRANSIENT_RETRY_DELAYS_MS.length) {
-        break;
-      }
-      await sleep(TRANSIENT_RETRY_DELAYS_MS[i]);
-    }
-    if (res === undefined) throw failure;
-    return res;
-  };
-}
-
-/**
- * The shared gateway JSON fetch: live-bearer auth + active-space header + a
- * transient-retry wrapper on reads, with a non-2xx surfaced as a
- * {@link HoustonEngineError} carrying the host's reason. Every control-plane
- * module routes its requests through here.
+ * The shared gateway JSON fetch: live-bearer auth + active-space header + the
+ * reason-aware read retry (`./transient-retry` — a rolling deploy gets ~2s of
+ * patience, a pod the gateway says is still waking gets a cold-start budget),
+ * with a non-2xx surfaced as a {@link HoustonEngineError} carrying the host's
+ * reason. Every control-plane module routes its requests through here.
  */
 export async function cpFetch(
   cfg: ControlPlaneConfig,

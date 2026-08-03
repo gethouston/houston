@@ -2,50 +2,29 @@
  * UnauthenticatedCard — drives the user back into the provider's connect flow.
  * Body copy varies by cause (see `authCauseBodyKey`) so the user understands WHY
  * they must reconnect. The state -> title/body/button mapping lives in
- * `./auth-presentation`; this component owns only the side effects.
+ * `./auth-presentation`; every side effect (launch, cancel, auto-resume) lives
+ * in `./use-provider-login`. This component only renders what those two decide.
  *
- * Reconnect lifecycle (the button must not fire-and-forget): `launchLogin`
- * resolves when the engine STARTS sign-in, not when the user finishes in the
- * browser — completion arrives later as the `ProviderLoginComplete` event. So
- * the card holds a "finish in your browser" state (the pill becomes a Cancel
- * that frees the login slot and re-arms) until that event flips it to a green
- * confirmation, the failure, or a benign cancel.
- *
- * Signing in IS the remaining intent, so a successful reconnect resumes the
- * conversation automatically (once), then shows a disabled "Signed in" badge.
- * What gets sent depends on what failed: a refused SEND (`failed_prompt`: the
- * message never reached the engine) resends the original prompt; a mid-turn
- * failure sends a hidden auto-continue nudge (that turn already has
- * server-side context) — the split lives in the panel's `onRetry`.
- *
- * Every launch is cancelLogin -> launchLogin: the engine keeps one login slot
- * per provider and rejects a second launch as "already pending", so a relaunch
- * frees the slot first (cancelLogin is idempotent). The benign completion our
- * own cancel triggers is ignored via `relaunchingRef` so the card does not
- * flicker to idle mid-relaunch.
+ * When the error names NO provider (nothing is connected yet), the card drops
+ * every brand-specific element — glyph, name, sign-in launch — and becomes a
+ * generic "connect an AI provider" prompt that opens the AI Hub. Any provider's
+ * successful connect then satisfies it and triggers the same auto-resume.
  */
 
 import type { ProviderError } from "@houston-ai/chat";
-import type { HoustonEvent } from "@houston-ai/core";
-import { CheckCircle2Icon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CheckCircle2Icon, PlugZapIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { subscribeHoustonEvents } from "../../../lib/events";
-import { getProvider } from "../../../lib/providers";
-import { tauriProvider } from "../../../lib/tauri";
-import { useUIStore } from "../../../stores/ui";
 import { RowCard } from "../../cards/row-card";
 import { RowCardButton } from "../../cards/row-card-button";
 import { ProviderGlyph } from "../provider-logos";
 import {
   type AuthCardButton,
   authCauseBodyKey,
-  type LoginPhase,
-  reconnectSurface,
   resolveAuthCardPresentation,
 } from "./auth-presentation";
 import { ReconnectDialog } from "./reconnect-dialog";
 import { providerLabel } from "./shared";
+import { useProviderLogin } from "./use-provider-login";
 
 export function UnauthenticatedCard({
   error,
@@ -55,105 +34,13 @@ export function UnauthenticatedCard({
   onRetry?: () => Promise<void> | void;
 }) {
   const { t } = useTranslation(["shell", "common"]);
-  const setAuthRequired = useUIStore((s) => s.setAuthRequired);
-  const [phase, setPhase] = useState<LoginPhase>("idle");
-  const [launching, setLaunching] = useState(false);
-  const [failureDetail, setFailureDetail] = useState<string | null>(null);
-  const [retrying, setRetrying] = useState(false);
-  const [showConnectDialog, setShowConnectDialog] = useState(false);
-  const relaunchingRef = useRef(false);
-  // The auto-resend must fire ONCE per card — a second fire (the provider can
-  // complete several logins while the chat stays open) would double-send.
-  const autoResendFiredRef = useRef(false);
+  const login = useProviderLogin(error, onRetry);
+  const hasProvider = !!error.provider;
   const provider = providerLabel(error.provider);
-  // In a ref so the subscription mounts once (resubscribing per render could
-  // drop a completion event in the gap).
-  const onRetryRef = useRef(onRetry);
-  onRetryRef.current = onRetry;
-
-  useEffect(() => {
-    return subscribeHoustonEvents((ev: HoustonEvent) => {
-      if (ev.type !== "ProviderLoginComplete") return;
-      if (ev.data.provider !== error.provider) return;
-      if (ev.data.success) {
-        setPhase("done");
-        setFailureDetail(null);
-        // Login succeeded — clear the global flag so other surfaces (store
-        // reconnect card, error suppression) stop treating it as signed out.
-        if (useUIStore.getState().authRequired === error.provider) {
-          setAuthRequired(null);
-        }
-        if (onRetryRef.current && !autoResendFiredRef.current) {
-          autoResendFiredRef.current = true;
-          setRetrying(true);
-          void Promise.resolve(onRetryRef.current())
-            // The send surfaces its own failure (toast + Report bug); this
-            // catch only stops an unhandled rejection.
-            .catch(() => {})
-            .finally(() => setRetrying(false));
-        }
-      } else if (ev.data.error) {
-        setPhase("failed");
-        setFailureDetail(ev.data.error);
-      } else if (!relaunchingRef.current) {
-        // Benign cancel (user gave up on the OAuth tab) — re-arm quietly.
-        // Skipped when WE issued the cancel as the first half of a relaunch:
-        // the new login is spawning and the card must stay in its waiting state.
-        setPhase("idle");
-      }
-    });
-  }, [error.provider, setAuthRequired]);
-
-  // Which surface Reconnect opens: OAuth's browser login, the api-key paste
-  // dialog, or the local endpoint dialog. Non-OAuth providers must NEVER hit
-  // launchLogin — the engine 400s ("nvidia does not use OAuth sign-in") and
-  // the card dead-ends in its failed phase with no way out (HOU-1077). Both
-  // dialogs fire the same `ProviderLoginComplete` on a successful connect, so
-  // the auto-resume above runs for every surface.
-  const surface = reconnectSurface(
-    error.provider,
-    getProvider(error.provider)?.auth,
-  );
-
-  const reconnect = async () => {
-    if (launching) return;
-    if (surface !== "oauth_login") {
-      setFailureDetail(null);
-      setShowConnectDialog(true);
-      setPhase("waiting");
-      return;
-    }
-    setLaunching(true);
-    relaunchingRef.current = true;
-    setFailureDetail(null);
-    try {
-      await tauriProvider.cancelLogin(error.provider);
-      await tauriProvider.launchLogin(error.provider);
-      setPhase("waiting");
-    } catch {
-      setPhase("failed");
-    } finally {
-      relaunchingRef.current = false;
-      setLaunching(false);
-    }
-  };
-
-  const cancelSignIn = async () => {
-    // Dialog surfaces: nothing engine-side to cancel — close and re-arm.
-    if (surface !== "oauth_login") {
-      setShowConnectDialog(false);
-      setPhase("idle");
-      return;
-    }
-    try {
-      await tauriProvider.cancelLogin(error.provider);
-    } finally {
-      setPhase("idle");
-    }
-  };
 
   const pres = resolveAuthCardPresentation({
-    phase,
+    phase: login.phase,
+    hasProvider,
     hasFailedPrompt: !!error.failed_prompt,
     hasRetry: !!onRetry,
     causeBodyKey: authCauseBodyKey(error.cause),
@@ -170,18 +57,18 @@ export function UnauthenticatedCard({
           label={t(button.labelKey)}
           onClick={() => {}}
           disabled
-          loading={retrying}
+          loading={login.retrying}
           variant="outline"
         />
       );
     }
-    const handler = button.action === "cancel" ? cancelSignIn : reconnect;
+    const isCancel = button.action === "cancel";
     return (
       <RowCardButton
         label={t(button.labelKey)}
-        onClick={handler}
-        loading={button.action === "reconnect" ? launching : false}
-        variant={button.action === "cancel" ? "outline" : "default"}
+        onClick={isCancel ? login.cancelSignIn : login.reconnect}
+        loading={isCancel ? false : login.launching}
+        variant={isCancel ? "outline" : "default"}
       />
     );
   };
@@ -192,24 +79,30 @@ export function UnauthenticatedCard({
         media={
           pres.variant === "done" ? (
             <CheckCircle2Icon className="size-5 text-green-600" />
-          ) : (
+          ) : hasProvider ? (
             <ProviderGlyph providerId={error.provider} />
+          ) : (
+            // No id to draw: the glyph would fall back to a Monogram seeded
+            // from "" — an empty tile. A plug icon reads as "connect one".
+            <PlugZapIcon className="size-5" />
           )
         }
         title={t(pres.titleKey, { provider })}
-        description={t(pres.bodyKey, { provider, detail: failureDetail ?? "" })}
+        description={t(pres.bodyKey, {
+          provider,
+          detail: login.failureDetail ?? "",
+        })}
         action={renderButton(pres.button)}
       />
 
-      <ReconnectDialog
-        surface={surface}
-        providerId={error.provider}
-        open={showConnectDialog}
-        onClose={() => {
-          setShowConnectDialog(false);
-          setPhase((p) => (p === "waiting" ? "idle" : p));
-        }}
-      />
+      {login.surface && (
+        <ReconnectDialog
+          surface={login.surface}
+          providerId={error.provider}
+          open={login.showConnectDialog}
+          onClose={login.closeConnectDialog}
+        />
+      )}
     </div>
   );
 }

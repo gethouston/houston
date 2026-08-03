@@ -60,6 +60,11 @@ export function useRoutineChatSetup(
   // probe (HOU-979): "we could not check" is not "nothing is connected", so it
   // defers to the generic prompt rather than naming a partial list as if it
   // were the whole truth. Membership itself is the ONE shared derivation.
+  //
+  // A FAILED probe (HOU-1153) is the same "we could not check", and it arrives
+  // with NO statuses rather than a map of `unknown`s — so it must defer through
+  // `isError`, or an empty map would be handed to the kickoff as a confident
+  // "you have nothing connected".
   const providerStatuses = useProviderStatuses();
   const statusValues = Object.values(providerStatuses.statuses);
   const statusesUnconfirmable = statusValues.some(
@@ -67,7 +72,9 @@ export function useRoutineChatSetup(
   );
   const connectedProvidersRef = useRef<ConnectedProviderRef[] | null>(null);
   connectedProvidersRef.current =
-    providerStatuses.isLoading || statusesUnconfirmable
+    providerStatuses.isLoading ||
+    providerStatuses.isError ||
+    statusesUnconfirmable
       ? null
       : statusValues
           .filter((s) => providerIsConnected(s))

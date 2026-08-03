@@ -31,7 +31,17 @@ export interface ProviderErrorInput {
   status?: number | null;
 }
 
-/** Terminal server-side session-kill markers: the provider ENDED the session. */
+/**
+ * Terminal server-side session-kill markers: the provider ENDED the session.
+ *
+ * Loose on purpose — these drive CARD COPY ("your access was revoked, sign in
+ * again"), which is the right thing to say about any 401 that reads terminal,
+ * and being wrong costs nothing but a reconnect prompt. They must never drive a
+ * destructive action: the workspace-wide revoked-token report gates on its own,
+ * strict marker list (`auth/report-revoked.ts`), so a provider that phrases a
+ * transient blip as "please log in again" cannot delete a live credential. Add
+ * loose phrasings here freely; add to that list almost never.
+ */
 const TERMINAL_SESSION_PATTERNS = [
   "app_session_terminated",
   "your session has ended",

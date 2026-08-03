@@ -214,3 +214,101 @@ describe("tool_call placeholder dedup across the narration flush", () => {
     strictEqual(messages[2].tools[0].result?.content, "listing");
   });
 });
+
+// A turn runs on ONE provider, so provider-error cards dedup by KIND alone.
+// The same failure reaches the chat on two channels and one of them often
+// omits the provider name (`provider: ""`); keying the dedup on the provider
+// let the unlabeled and the labeled card both render as separate reconnect
+// cards for a single failure.
+describe("provider-error dedup keys on kind, not provider", () => {
+  const authError = (provider: string, id: string): FeedItem => ({
+    feed_type: "provider_error",
+    data: {
+      kind: "unauthenticated",
+      provider,
+      cause: "unknown",
+      message: "Your session has ended.",
+    },
+    id,
+  });
+
+  it("upgrades the unlabeled card in place when a labeled one follows", () => {
+    const messages = feedItemsToMessages([
+      user("hi"),
+      authError("", "e1"),
+      authError("openai", "e2"),
+    ]);
+    const cards = messages.filter((m) => m.providerError);
+    strictEqual(cards.length, 1);
+    strictEqual(cards[0].providerError?.provider, "openai");
+    // Same key as the first card: the payload is upgraded in place, so React
+    // keeps the mounted card instead of remounting it.
+    strictEqual(cards[0].key, "provider-error-e1-unauthenticated");
+  });
+
+  // The upgrade adds a LABEL, it does not replace the payload. Only the first
+  // card carries the retry state (`undelivered_prompt` / `failed_prompt` /
+  // `credential` / `retry_after_seconds`), so overwriting the whole payload
+  // left auto-resume with nothing to re-send (HOU-718's failure mode).
+  it("keeps the first card's retry state when upgrading its label", () => {
+    const messages = feedItemsToMessages([
+      user("hi"),
+      {
+        feed_type: "provider_error",
+        data: {
+          kind: "unauthenticated",
+          provider: "",
+          cause: "no_credentials",
+          message: "Your session has ended.",
+          undelivered_prompt: "original ask",
+        },
+        id: "e1",
+      } as FeedItem,
+      authError("openai", "e2"),
+    ]);
+    const cards = messages.filter((m) => m.providerError);
+    strictEqual(cards.length, 1);
+    const card = cards[0].providerError;
+    strictEqual(card?.provider, "openai");
+    strictEqual(
+      card?.kind === "unauthenticated" ? card.undelivered_prompt : undefined,
+      "original ask",
+    );
+    // The more specific cause survives the generic duplicate too.
+    strictEqual(
+      card?.kind === "unauthenticated" ? card.cause : undefined,
+      "no_credentials",
+    );
+  });
+
+  it("keeps the label when the labeled card arrives first", () => {
+    const messages = feedItemsToMessages([
+      user("hi"),
+      authError("openai", "e1"),
+      authError("", "e2"),
+    ]);
+    const cards = messages.filter((m) => m.providerError);
+    strictEqual(cards.length, 1);
+    strictEqual(cards[0].providerError?.provider, "openai");
+    strictEqual(cards[0].key, "provider-error-e1-unauthenticated");
+  });
+
+  it("collapses two identically labeled cards", () => {
+    const messages = feedItemsToMessages([
+      user("hi"),
+      authError("openai", "e1"),
+      authError("openai", "e2"),
+    ]);
+    strictEqual(messages.filter((m) => m.providerError).length, 1);
+  });
+
+  it("gives each turn its own card", () => {
+    const messages = feedItemsToMessages([
+      user("first"),
+      authError("", "e1"),
+      user("second"),
+      authError("", "e2"),
+    ]);
+    strictEqual(messages.filter((m) => m.providerError).length, 2);
+  });
+});

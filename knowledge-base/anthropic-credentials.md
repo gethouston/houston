@@ -102,6 +102,74 @@ refresh-less and remain safe to replace on every serve cycle.
   NAMED ENTRY in the caller-supplied list (`STORE_SYNC_EXCLUDES`,
   `packages/host/src/store-sync/daemon.ts`).
 
+## Central refresh — the single-rotator rule, enforced in process
+
+"One refresh-token family = one rotator" (trap #4 below) is the RULE;
+`packages/host/src/credentials/refresh-coalescer.ts` is what enforces it INSIDE
+one host. Every OAuth refresh now goes through the
+process-wide `sharedCredentialRefresher` — both the serve route
+(`routes/credential.ts`) and the turn path (`turn/fresh-credential.ts`, split out
+of `start-turn.ts` precisely so it lands in the same flight; it brings its own
+injected refresher rather than keeping a private rotator).
+
+- **Single-flight + 30s result cache, keyed (workspace, SCOPE, provider)** — scope
+  in the key so one member's rotation is never handed to another member's serve
+  (HOU-976). One runtime process per agent serves per turn AND per `/providers`
+  poll, so an expiring credential produced N simultaneous refreshes of the SAME
+  refresh token; a rotating provider (openai-codex) answers the first and rejects
+  the rest with `invalid_grant`, which the serve route read as "the session ended"
+  and deleted the credential. The user watched their provider disconnect itself.
+  The cache holds FULL credentials, so every write sweeps aged-out entries; a
+  failure is never cached, and `forget()` drops one key after a disconnect
+  (in-flight state is deliberately untouched — evicting a live flight would open a
+  second concurrent exchange of the same rotating token).
+- **The flight re-reads the credential inside the critical section** (`load`): a
+  sibling host may have rotated it already, and serving that costs nothing while
+  refreshing again would burn a rotated token. `null` there means the user
+  disconnected mid-flight → `CredentialGoneError`, which the serve route answers
+  with the marked 404 and the turn path reads as "no credential". A queued refresh
+  can therefore never RESURRECT the row the user just deleted.
+
+### What may sign a user out (`credentials/oauth-token-exchange.ts`)
+
+One `grant_type=refresh_token` POST, 10s timeout, three failure classes — only
+the first is destructive:
+
+- **`RefreshRejectedError`** — a 400/401 whose body names `invalid_grant` or
+  `refresh_token_invalidated` (both shapes parsed: RFC 6749's `{"error":"…"}` and
+  OpenAI's nested `{"error":{"code":"…"}}`). Terminal: dead until the user
+  reconnects. `invalid_client` is deliberately NOT terminal — it condemns
+  Houston's ONE hardcoded public client id, not the user's token, so honoring it
+  would delete every workspace's credential on its next refresh with no path back.
+  An unparseable body yields no code and stays non-terminal.
+- **`TransientRefreshError`** — the request provably never left this process
+  (`ENOTFOUND` / `EAI_AGAIN` / `ECONNREFUSED` on the fetch's `cause`). The ONLY
+  retryable class (`refreshCredential`, default 2 attempts, jittered 250-500ms).
+  `ECONNRESET` is excluded: a reset can land after the grant was consumed.
+- **plain `Error`** — timeout, abort, 5xx, 429, any other 4xx. One attempt, never
+  retried: the endpoint may already have consumed the rotating refresh token and
+  rotated it into a response we never read, so a second POST spends a grant we no
+  longer hold and earns `invalid_grant` — signing the user out over a blip. The
+  serve route serves the stored token best-effort and the next serve tries again.
+
+### A rejected refresh deletes ONLY the token that was rejected
+
+`credentials/disconnect.ts` `disconnectRejectedCredential` is the whole policy
+behind the serve route's `RefreshRejectedError` branch. It calls
+`credentials.removeIfAccess(...)` with the digest of the REJECTED access token
+(`accessDigest` — the same "name the token, never ship it" rule the revoked-token
+report follows), so a reconnect, or a sibling host's rotation, that landed in the
+window between our read and the endpoint's verdict survives untouched. Dropped →
+the marked 404 (`x-houston-not-connected`), the runtime removes its served entry
+(provenance-gated) and the provider reads signed out; the credential IS the
+switch. Not dropped → re-read the store and serve the SUPERSEDING credential
+through the route's remaining checks (anthropic staleness included). A re-read
+answering the same digest is confirmation, not supersession — `RemoteCredentialStore`
+serves `get` from a short-lived cache — and still ends in the marked 404. Either
+way the coalescer's cached result for that key is forgotten, and a failure of the
+re-read itself degrades to "absent" rather than escaping as a 500 in place of the
+404 the runtime knows how to act on.
+
 ## The six traps (each was a live bug, or a guarded near-miss)
 
 1. **`USER` must reach the SDK subprocess.** The CLI names its Keychain
@@ -132,7 +200,8 @@ refresh-less and remain safe to replace on every serve cycle.
    after the push (exclusive handoff), and cached snapshots are never pushed.
    No locking or freshness check makes a shared family safe; the invalidation
    happens at Anthropic. Separate spaces get separate families (Anthropic
-   allows many concurrent families per account).
+   allows many concurrent families per account). Inside a single host the rule
+   is enforced by the coalescer — see "Central refresh" above.
 5. **Windows: the CLI needs a shell BEFORE it does anything — even
    `auth login`.** At startup on Windows the CLI exits 1 unless it finds Git
    Bash or PowerShell (`pwsh` on PATH → three pwsh install dirs → plain
@@ -242,3 +311,29 @@ export → gateway PUT → runtime scrub transaction, then re-reads and serves t
 gateway-verified access token in the same request. A successful scrub leaves
 the pod access-only and restores the gateway as the credential family's single
 refresh-token rotator; transport failures never trigger an upload.
+
+### The anthropic probe: unanswerable is NOT signed out
+
+macOS caches the browser login in the Keychain (nothing to stat), so the only
+cross-platform "is anthropic connected?" signal is asking the binary:
+`claude auth status --json`, scoped to the shared login dir with the ambient
+credential env scrubbed (`packages/runtime/src/backends/claude/auth-cli.ts` —
+subprocess mechanics live there so `credential-status.ts` stays pure cache
+policy). A subprocess can fail to ANSWER, and reading that as "logged out" is what
+flapped a signed-in user's chat to "Connect Anthropic" mid-session. So the probe
+is three-valued: `{known: true, loggedIn}` ONLY when stdout parses as JSON with a
+boolean `loggedIn`; a killed/timed-out child, empty stdout, non-JSON, or an
+unrecognized shape is `{known: false, reason}`. A non-zero exit is NOT itself a
+failure — `claude auth status` exits non-zero while printing a valid
+`{"loggedIn": false}`. Only ENOENT (no binary at all) rejects.
+
+`credential-status.ts` then treats an unknown answer as no answer: the cache keeps
+its LAST KNOWN value, the concrete reason is logged, and a 15s respawn backoff
+stops the `/providers` poll cadence spawning a subprocess per request. That branch
+deliberately does NOT stamp the TTL clock — the clock times how fresh the cached
+ANSWER is, and stamping it made the two knobs stack (after the backoff expired the
+30s connected TTL kept blocking, freezing status for 30s instead of the 15s the
+backoff promises). TTLs are asymmetric on purpose: connected 30s (stable — our own
+login/logout routes force a refresh), disconnected 2s (must flip within a poll
+cycle of the user signing in). `force` bypasses both TTL and backoff, and
+concurrent callers share one in-flight subprocess.

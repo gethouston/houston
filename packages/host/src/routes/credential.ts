@@ -1,9 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { disconnectRejectedCredential } from "../credentials/disconnect";
+import { RefreshRejectedError } from "../credentials/oauth-token-exchange";
+import { isExpiring } from "../credentials/refresh";
 import {
-  isExpiring,
-  RefreshRejectedError,
-  refreshCredential,
-} from "../credentials/refresh";
+  CredentialGoneError,
+  sharedCredentialRefresher,
+} from "../credentials/refresh-coalescer";
 import { RemoteCredentialDeadError } from "../credentials/remote-store";
 import {
   type CredentialStore,
@@ -12,6 +14,18 @@ import {
 } from "../ports";
 import type { CredentialServeHealer } from "./credential-healer";
 import { bearer, json } from "./http";
+
+/**
+ * The store's authoritative "not connected" answer, and the ONLY way this route
+ * writes a 404. The marker is load-bearing: the runtime drops a served
+ * credential only on a MARKED 404 — a bare one (old host, wrong control-plane
+ * URL) must never read as a logout — so it can never be forgotten at one of the
+ * several places that degrade to "not connected".
+ */
+function notConnected(res: ServerResponse, error: string): true {
+  json(res, 404, { error }, { "x-houston-not-connected": "1" });
+  return true;
+}
 
 /**
  * Sandbox-facing (connect-once): an agent runtime serves a FRESH subscription
@@ -52,15 +66,8 @@ export async function handleSandboxCredential(
   // make this host a second rotator of a refresh token family the pod already
   // owns. The marked 404 is the store's authoritative "not served here" answer;
   // the runtime's provenance manifest keeps it from deleting anything local.
-  if (provider === "anthropic" && !deps.gatewayFronted) {
-    json(
-      res,
-      404,
-      { error: "anthropic is not served on this deployment" },
-      { "x-houston-not-connected": "1" },
-    );
-    return true;
-  }
+  if (provider === "anthropic" && !deps.gatewayFronted)
+    return notConnected(res, "anthropic is not served on this deployment");
   // WHOSE credential this serve is for (HOU-976). The gateway mints the header;
   // absent (desktop, self-host, every pre-HOU-976 pod) means the single shared
   // scope, so the whole path below is byte-identical to before.
@@ -90,54 +97,67 @@ export async function handleSandboxCredential(
   }
   if (!cred) {
     if (deadError) throw deadError;
-    // The marker makes this 404 the store's own authoritative "not connected"
-    // answer. The runtime only drops served credentials on marked 404s — a bare
-    // 404 (old host, wrong control-plane URL) must never read as a logout.
-    json(
-      res,
-      404,
-      { error: "workspace not connected" },
-      { "x-houston-not-connected": "1" },
-    );
-    return true;
+    return notConnected(res, "workspace not connected");
   }
   if (isExpiring(cred) && cred.refreshToken) {
+    const refreshing = cred.provider;
     try {
-      cred = await refreshCredential(cred);
-      await deps.credentials.put(cred, acting);
+      // Single-flight: one runtime process per agent serves this per turn AND
+      // per /providers poll, so the same expiring credential arrives here N
+      // times at once. Refreshing it N times rotates the refresh token N times;
+      // every loser gets invalid_grant and the catch below disconnects the
+      // user. The coalescer makes the burst one exchange.
+      cred = await sharedCredentialRefresher.run({
+        workspaceId: claim.workspaceId,
+        provider: refreshing,
+        acting,
+        load: () => deps.credentials.get(claim.workspaceId, refreshing, acting),
+        persist: (c) => deps.credentials.put(c, acting),
+      });
     } catch (err) {
-      if (err instanceof RefreshRejectedError) {
-        // The OAuth server rejected the refresh token itself (invalid_grant /
-        // refresh_token_invalidated — e.g. the session was ended server-side).
-        // That never heals: retrying every serve loops this error forever
-        // while turns fail on the expired access token. Drop the dead
-        // credential and answer the marked 404 so the runtime removes its
-        // served entry (provenance-gated) and the provider reads signed-out
-        // with the reconnect flow — the credential IS the switch.
-        console.error(
-          `[sandbox/credential] refresh token rejected for ${cred.provider}, disconnecting:`,
-          err.message,
-        );
-        await deps.credentials.remove(claim.workspaceId, cred.provider, acting);
-        json(
-          res,
-          404,
-          { error: `${cred.provider} session ended; reconnect the provider` },
-          { "x-houston-not-connected": "1" },
-        );
-        return true;
+      if (err instanceof CredentialGoneError) {
+        // The user disconnected the provider while this refresh was queued.
+        // Nothing was refreshed and nothing was written; the store's answer is
+        // simply "not connected", and there is no dead token to compare-and-
+        // delete.
+        return notConnected(res, "workspace not connected");
       }
-      // No refresh path for this provider, or a transient failure (network,
-      // 5xx). Serve the existing token best-effort instead of 500-ing every
-      // turn: it may still be valid, and a genuinely expired one surfaces as a
-      // clear auth error on the real API call. This also stops the runtime's
-      // multi-provider serve loop from spamming serve 500s for a stale, unused
-      // credential (e.g. a leftover Claude login while the agent runs
-      // OpenCode).
-      console.error(
-        `[sandbox/credential] refresh failed for ${cred.provider}, serving existing token:`,
-        err instanceof Error ? err.message : err,
-      );
+      if (err instanceof RefreshRejectedError) {
+        // The refresh TOKEN itself was rejected — dead until the user
+        // reconnects. The policy (compare-and-delete, never a blind remove)
+        // lives in credentials/disconnect.ts; it answers with the credential
+        // that superseded ours, or null when the dead one is confirmed gone.
+        const superseding = await disconnectRejectedCredential({
+          credentials: deps.credentials,
+          workspaceId: claim.workspaceId,
+          rejected: cred,
+          acting,
+          reason: err.message,
+        });
+        // Confirmed dead: the marked 404 makes the runtime drop its served
+        // entry (provenance-gated) and the provider reads signed-out with the
+        // reconnect flow — the credential IS the switch. Otherwise serve what
+        // the store holds NOW, through every check below (anthropic staleness
+        // included).
+        if (!superseding)
+          return notConnected(
+            res,
+            `${cred.provider} session ended; reconnect the provider`,
+          );
+        cred = superseding;
+      } else {
+        // No refresh path for this provider, or a transient failure (network,
+        // 5xx). Serve the existing token best-effort instead of 500-ing every
+        // turn: it may still be valid, and a genuinely expired one surfaces as
+        // a clear auth error on the real API call. This also stops the
+        // runtime's multi-provider serve loop from spamming serve 500s for a
+        // stale, unused credential (e.g. a leftover Claude login while the
+        // agent runs OpenCode).
+        console.error(
+          `[sandbox/credential] refresh failed for ${cred.provider}, serving existing token:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
     }
   }
   // Never serve a STALE anthropic token. Unlike every other provider, a served
@@ -147,15 +167,8 @@ export async function handleSandboxCredential(
   // still-working self-refreshing credential. Degrading to the marked 404
   // makes the runtime drop the served entry (provenance-gated) and fall back
   // to that file path instead.
-  if (cred.provider === "anthropic" && isExpiring(cred)) {
-    json(
-      res,
-      404,
-      { error: "anthropic credential is stale" },
-      { "x-houston-not-connected": "1" },
-    );
-    return true;
-  }
+  if (cred.provider === "anthropic" && isExpiring(cred))
+    return notConnected(res, "anthropic credential is stale");
   // Access token ONLY (Gate #2): the refresh token never leaves this process.
   // A stolen sandbox credential is then worth minutes, not an account. The
   // ChatGPT backend needs accountId, so that still ships. `kind` tells the
