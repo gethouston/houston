@@ -4,6 +4,7 @@ import { readAgentModelOverrides } from "../lib/agent-model-overrides";
 import { buildAiGenerationProps } from "../lib/ai-generation";
 import { analytics, classifyAnalyticsError } from "../lib/analytics";
 import { subscribeHoustonEvents } from "../lib/events";
+import { perfSpans } from "../lib/perf-spans";
 import { tauriConfig } from "../lib/tauri";
 
 /** What the `final_result` feed frame carries (ui/chat FeedEntry). */
@@ -76,6 +77,17 @@ export function useAnalyticsSubscriber() {
     const unlisten = subscribeHoustonEvents((p: HoustonEvent) => {
       switch (p.type) {
         case "FeedItem": {
+          // Perf span completion (HOU-1011): the FIRST visible agent output
+          // after a send — a streaming frame when the model streams, the
+          // finalized reply when it doesn't. perfSpans pairs it with the
+          // armed send mark and no-ops otherwise, so firing on every frame
+          // is safe (only the first one after a send completes anything).
+          if (
+            p.data.item.feed_type === "assistant_text_streaming" ||
+            p.data.item.feed_type === "assistant_text"
+          ) {
+            perfSpans.firstAssistantOutput();
+          }
           // Activation signal: user got a finalized assistant reply.
           // "assistant_text_streaming" is skipped — it fires continuously
           // during streaming and would inflate counts. "assistant_text" is

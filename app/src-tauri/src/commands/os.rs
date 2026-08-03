@@ -7,10 +7,34 @@
 //! desktop-only.
 
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::process::Command;
 
 fn expand(p: &str) -> PathBuf {
     super::expand_tilde(&PathBuf::from(p))
+}
+
+// -- Launch timestamp (HOU-1011 client perf spans) --
+
+static LAUNCH_T0_MS: OnceLock<u64> = OnceLock::new();
+
+/// Stamp "Houston's own code started" as early as `run()` allows. The webview's
+/// `performance.timeOrigin` starts only at webview creation, missing the
+/// shell's boot — this stamp is the app-open T0 the perf spans measure from.
+/// Idempotent; the first call wins.
+pub fn stamp_launch_t0() {
+    let _ = LAUNCH_T0_MS.set(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0),
+    );
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn launch_t0_ms() -> Option<u64> {
+    LAUNCH_T0_MS.get().copied().filter(|&ms| ms > 0)
 }
 
 // -- Directory Picker --

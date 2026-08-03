@@ -476,3 +476,16 @@ export function onDictationModelProgress(
     handler(ev.payload),
   );
 }
+
+/** The shell's process-start stamp (epoch ms) — the app-open T0 the perf
+ *  spans measure from (HOU-1011). `null` outside Tauri or on a shell too old
+ *  to serve the command (the caller falls back to `performance.timeOrigin`). */
+export async function osLaunchT0Ms(): Promise<number | null> {
+  if (!osIsTauri()) return null;
+  try {
+    return (await invoke<number | null>("launch_t0_ms")) ?? null;
+  } catch {
+    // Older shell without the command — the webview clock is close enough.
+    return null;
+  }
+}

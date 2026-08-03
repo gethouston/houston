@@ -6,6 +6,7 @@ import type { Activity } from "../../data/activity";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { classifyFileKind } from "../../lib/file-kind";
+import { perfSpans } from "../../lib/perf-spans";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
 import type { AgentDefinition } from "../../lib/types";
@@ -63,6 +64,7 @@ export function useArchivedSendMessage({
           modeOverride: DEFAULT_TURN_MODE,
           mentions,
         });
+        perfSpans.messageSent();
         analytics.track("chat_message_sent", {
           provider: effectiveProvider,
           model: effectiveModel,

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { classifyFileKind } from "../../lib/file-kind";
+import { perfSpans } from "../../lib/perf-spans";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
 import type { Agent, AgentDefinition } from "../../lib/types";
@@ -65,6 +66,7 @@ export function useMissionControlArchivedSend({
           modeOverride: DEFAULT_TURN_MODE,
           mentions,
         });
+        perfSpans.messageSent();
         analytics.track("chat_message_sent", {
           provider: providerOverride,
           model: modelOverride,
