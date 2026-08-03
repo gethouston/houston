@@ -22,5 +22,9 @@
 /pricing/      /#pricing      301
 /pricing/es/   /#pricing      301
 
+# The waitlist was folded into the download gate (HOU-1168): downloading asks
+# for the same info the waitlist collected.
+/waitlist/     /#download     301
+
 # Agent store bridge. 302 until the store.gethouston.ai domain is proven, then flip to 301.
 /agent-store   https://store.gethouston.ai   302

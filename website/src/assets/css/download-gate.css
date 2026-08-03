@@ -1,12 +1,4 @@
-/*
- * Download gate modal — invite-code closed beta (Mac + Windows).
- * The shared subpage shell (subpage.njk) includes landing/download-modals.njk
- * but not landing-hero.css, where the landing's own copy of these rules lives.
- * This file carries the gate styling for every subpage so the overlay stays
- * hidden until a [data-dl-trigger] opens it. Same warm-bone values as the
- * landing's copy; palette + motion come from site-tokens.css.
- */
-
+/* Shared download lead form for the landing and every subpage. */
 .dl-overlay {
   position: fixed;
   inset: 0;
@@ -26,98 +18,294 @@
   visibility: visible;
 }
 .dl-card {
+  position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  padding: 30px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 20px;
-  padding: 30px;
   color: var(--ink);
-  box-shadow: 0 32px 80px -32px rgba(40, 36, 28, 0.22);
+  box-shadow: 0 32px 80px -32px rgba(0, 0, 0, 0.22);
   transform: translateY(8px) scale(0.98);
   transition: transform var(--dur-elegant) var(--ease-entrance);
 }
 .dl-overlay.open .dl-card {
-  transform: translateY(0) scale(1);
+  transform: none;
 }
 .dl-card h3 {
-  font-weight: 600;
-  font-size: 23px;
-  letter-spacing: -0.02em;
-  color: var(--ink-strong);
   margin-bottom: 8px;
+  color: var(--ink-strong);
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
-.dl-card > p {
-  font-size: 14.5px;
-  color: var(--ink-muted);
-  line-height: 1.5;
+.dl-card > p,
+.dl-card > div > p {
   margin-bottom: 18px;
+  color: var(--ink-muted);
+  font-size: 14.5px;
+  line-height: 1.5;
 }
-.dl-input {
+.dl-card [hidden] {
+  display: none !important;
+}
+.dl-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-subtle);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.dl-close:hover {
+  color: var(--ink);
+}
+.dl-field {
+  margin-bottom: 12px;
+}
+.dl-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dl-field label .dl-opt {
+  color: var(--ink-subtle);
+  font-weight: 400;
+}
+.dl-field input,
+.dl-field select {
   width: 100%;
-  height: 48px;
-  padding: 0 16px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
   border-radius: 12px;
   background: var(--ground);
-  border: 1px solid var(--line-strong);
   color: var(--ink);
-  font-size: 16px;
   font-family: var(--sans);
-  margin-bottom: 14px;
+  font-size: 15px;
   transition: border-color var(--dur-fast) var(--ease-standard),
     box-shadow var(--dur-fast) var(--ease-standard);
 }
-.dl-input::placeholder {
+.dl-field input::placeholder {
   color: var(--ink-subtle);
 }
-.dl-input:focus {
+.dl-field input:focus,
+.dl-field select:focus {
+  border-color: var(--action);
   outline: none;
-  border-color: var(--action);
+  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.06);
 }
-.dl-input.valid {
+.dl-field select {
+  appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239b9b9b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  cursor: pointer;
+}
+.dl-phone-group {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--ground);
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+.dl-phone-group:focus-within {
   border-color: var(--action);
-  box-shadow: 0 0 0 3px rgba(40, 36, 28, 0.14);
+  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.06);
+}
+.dl-phone-group > input {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.dl-phone-group > input:focus {
+  border: 0;
+  box-shadow: none;
+}
+.dl-phone-divider {
+  width: 1px;
+  height: 24px;
+  flex: 0 0 1px;
+  background: var(--line-strong);
+}
+.dl-cc {
+  position: relative;
+  height: 100%;
+  flex: 0 0 auto;
+}
+.dl-cc-toggle {
+  display: inline-flex;
+  height: 100%;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dl-cc-flag {
+  font-size: 17px;
+  line-height: 1;
+}
+.dl-cc-abbr {
+  font-weight: 500;
+}
+.dl-cc-toggle .dl-cc-dial {
+  color: var(--ink-muted);
+}
+.dl-cc-caret {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-subtle);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.dl-cc.open .dl-cc-caret {
+  transform: rotate(180deg);
+}
+.dl-cc-menu {
+  position: fixed;
+  z-index: 200;
+  display: none;
+  width: 290px;
+  max-height: 300px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ground);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
+  list-style: none;
+}
+.dl-cc.open .dl-cc-menu {
+  display: block;
+}
+.dl-cc-item {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+.dl-cc-item:hover,
+.dl-cc-item.selected {
+  background: var(--panel);
+}
+.dl-cc-name {
+  flex: 1;
+}
+.dl-cc-item .dl-cc-dial {
+  color: var(--ink-muted);
+}
+.dl-field.invalid input,
+.dl-field.invalid select,
+.dl-field.invalid .dl-phone-group {
+  border-color: var(--app-danger);
+}
+.dl-err {
+  display: none;
+  margin-top: 5px;
+  color: var(--app-danger);
+  font-size: 12px;
+}
+.dl-field.invalid .dl-err {
+  display: block;
+}
+#dl-submit {
+  width: 100%;
+  margin-top: 6px;
+}
+.dl-form-err {
+  margin-top: 10px;
+  color: var(--app-danger);
+  font-size: 13px;
+  text-align: center;
 }
 .dl-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.dl-actions .btn {
+.dl-actions .btn,
+#dl-mac-group .btn,
+#dl-windows-group .btn {
   width: 100%;
+}
+#dl-mac-group,
+#dl-windows-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .btn-disabled {
   opacity: 0.4;
   pointer-events: none;
 }
-.dl-divider {
-  text-align: center;
-  font-size: 12.5px;
-  color: var(--ink-subtle);
-  margin: 4px 0;
-}
 .dl-fineprint {
-  font-size: 11px;
-  color: var(--ink-subtle);
-  line-height: 1.5;
   margin: 8px 0 0;
+  color: var(--ink-subtle);
+  font-size: 11px;
+  line-height: 1.5;
   text-align: center;
 }
-.dl-fineprint a {
-  color: var(--link);
+.dl-fineprint a,
+.dl-skip-body a {
+  color: var(--ink);
   text-decoration: underline;
+}
+.dl-os-alt {
+  align-self: center;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.dl-os-alt:hover {
+  color: var(--ink);
 }
 .dl-skip {
   margin-top: 18px;
-  border-top: 1px solid var(--line);
   padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 .dl-skip summary {
+  color: var(--ink);
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink);
-  cursor: pointer;
   list-style: none;
+  cursor: pointer;
 }
 .dl-skip summary::-webkit-details-marker {
   display: none;
@@ -126,14 +314,12 @@
   margin-top: 10px;
 }
 .dl-skip-body p {
-  font-size: 13px;
-  color: var(--ink-muted);
-  line-height: 1.5;
   margin-bottom: 8px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 .dl-skip-body a {
   font-size: 13px;
-  color: var(--link);
   font-weight: 600;
-  text-decoration: underline;
 }

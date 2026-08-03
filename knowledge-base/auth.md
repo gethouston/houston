@@ -18,8 +18,9 @@ mints the bearer the cloud gateway verifies.
 > **`knowledge-base/auth-migration.md`**. `app/src/lib/supabase.ts` was deleted;
 > auth now lives in `app/src/lib/identity/` + `app/src/lib/auth.ts`.
 >
-> **The website waitlist still uses Supabase** (`website/`, anon `POST
-> /rest/v1/waitlist`) — that is a pure data write with no auth session and is
+> **The website download gate still uses Supabase** (`website/`, anon `POST
+> /rest/v1/waitlist` from the lead form that replaced the waitlist page in
+> HOU-1168) — that is a pure data write with no auth session and is
 > intentionally left alone. Don't "finish" the migration by ripping it out.
 
 ## The gateway bearer contract (shared desktop + web)

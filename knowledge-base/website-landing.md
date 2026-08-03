@@ -72,6 +72,22 @@ on the white bar/sheet.
   `[data-cl-count]` ticks up. Reduced motion: static list stands.
 - Auto-rotating `data-swap-group` switchers (5s, pause on hover/user takeover).
 
+## Download gate (HOU-1168, Aug 2026)
+
+One two-step modal replaces the old invite-code gates AND the standalone
+`/waitlist/` page (deleted; 301 → `/#download`): step 1 is the waitlist's lead
+form (name, email, phone with country-code dropdown, LinkedIn, country), step 2
+the OS-aware download buttons (Windows keeps the x64/ARM64 promote logic in
+scripts.njk via the preserved `dl-windows-*` ids). Pieces: markup
+`landing/download-modals.njk`, logic `assets/download-gate{,-form,-countries}.js`
+(classic scripts, config via `landing/scripts-download.njk`), styles
+`assets/css/download-gate.css` — the ONE gate stylesheet, loaded by the landing
+AND subpages (the old duplicate block in landing-hero.css is gone). Writes go to
+the same Supabase `waitlist` table (`source: "download_gate"`) + Sheet mirror;
+`localStorage.houston_dl_registered` skips the form for returning visitors;
+failures surface inline (`#dl-form-err`). Details + funnel events:
+`production-infra.md` → Download gate.
+
 ## History note
 
 The session that produced this also trialled and DISCARDED: Oro-style poster

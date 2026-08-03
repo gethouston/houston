@@ -13,6 +13,7 @@
     "redirects": [
       { "source": "/pricing/", "destination": "/#pricing", "type": 301 },
       { "source": "/pricing/es/", "destination": "/#pricing", "type": 301 },
+      { "source": "/waitlist/", "destination": "/#download", "type": 301 },
       {
         "source": "/agent-store",
         "destination": "https://agents.gethouston.ai",

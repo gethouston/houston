@@ -7,7 +7,6 @@ Houston lets anyone hire AI agents that actually complete tasks across the apps 
 ## Core pages
 - [Home](https://gethouston.ai/): What Houston is and how the agents work.
 - [For Startups](https://gethouston.ai/startups/): Build your AI native product fast on Houston.
-- [Waitlist](https://gethouston.ai/waitlist/): Join the beta waiting list.
 - [Changelog](https://gethouston.ai/changelog/): Every release in plain language.
 
 ## Developers
