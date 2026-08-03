@@ -30,6 +30,31 @@ export function loginKey(agentId: string | null, pid: string): string {
 }
 
 /**
+ * The runtime the in-flight login for `pid` is pinned to, recovered from the
+ * `activeLogins` key the connect poll registered when the login STARTED: an
+ * agent id, `null` for the hidden setup runtime, `undefined` when no login is
+ * in flight. Submit and cancel MUST route by this pin, never re-derive at call
+ * time — `providerAgentId()`'s answer moves when the first agent materializes
+ * mid-login (onboarding), and the relayed OAuth code then landed on a pod that
+ * never saw the login: "no active login for openai-codex" (HOU-1113). With
+ * concurrent entries (a retry started before the old poll ended) the LAST
+ * match wins — Set iteration is insertion-ordered, so that is the newest login.
+ */
+export function pinnedLoginAgentId(
+  ctx: AdapterContext,
+  pid: ProviderId,
+): string | null | undefined {
+  const suffix = `:${pid}`;
+  let pinned: string | null | undefined;
+  for (const key of ctx.activeLogins) {
+    if (!key.endsWith(suffix)) continue;
+    const agent = key.slice(0, -suffix.length);
+    pinned = agent === SETUP_LOGIN_KEY ? null : agent;
+  }
+  return pinned;
+}
+
+/**
  * True iff this provider's login is genuinely DONE — not merely `configured`.
  * A stale stored credential leaves `configured: true` while the just-launched
  * OAuth is still `awaiting_user`, and treating that as success completed the

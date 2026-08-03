@@ -41,6 +41,7 @@ import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
 } from "./claude-login";
+import { cancelCodexLoopback } from "./codex-loopback";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
@@ -1695,9 +1696,20 @@ export const tauriProvider = {
    * `ProviderLoginUrl` WS event, the UI shows the dialog, and this
    * call relays the code back to the CLI's stdin.
    */
-  submitLoginCode: (provider: string, code: string) =>
-    call<void>("submit_provider_login_code", () =>
-      getEngine().submitProviderLoginCode(provider, code),
+  submitLoginCode: (
+    provider: string,
+    code: string,
+    // `surface: false` is the codex loopback relay's contract: a lost-login
+    // failure is recoverable (auto-restarted sign-in), so the relay owns the
+    // FINAL surface itself — see codex-relay-recovery.ts. Every other caller
+    // keeps the default toast + capture.
+    opts?: Pick<EngineCallOptions, "surface">,
+  ) =>
+    call<void>(
+      "submit_provider_login_code",
+      () => getEngine().submitProviderLoginCode(provider, code),
+      undefined,
+      opts,
     ),
   /**
    * Abort an in-flight sign-in the user gave up on (closed the OAuth
@@ -1710,6 +1722,11 @@ export const tauriProvider = {
    */
   cancelLogin: (provider: string) =>
     call<void>("cancel_provider_login", () => {
+      // A Codex loopback relay may be armed for this provider: tear down its
+      // callback listener too, so approving the abandoned browser tab later
+      // can't relay a code into the login this cancel just killed ("no active
+      // login" + a spurious toast). No-op for every other flow.
+      cancelCodexLoopback(provider);
       // Anthropic on the desktop ran the native browser login (not the runtime),
       // so its cancel must kill THAT child — the runtime's cancelProviderLogin
       // would be a no-op and leave the `claude` helper running. Mirror the
