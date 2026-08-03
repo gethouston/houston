@@ -1,15 +1,11 @@
 import type { ServerResponse } from "node:http";
 import type { ChatMessage } from "@houston/protocol";
 import { readEventStream } from "@houston/runtime-client";
-import { isExpiring } from "../credentials/refresh";
 import type { Agent, Workspace } from "../domain/types";
-import {
-  isApiKeyCredential,
-  type TurnPin,
-  type WorkspaceCredential,
-} from "../ports";
+import { isApiKeyCredential, type TurnPin } from "../ports";
 import { resolveCloudTurn } from "./cloud-provider";
 import { json, prefixFor, type TurnDeps } from "./deps";
+import { freshCredential } from "./fresh-credential";
 import { TurnQuotaError } from "./quota";
 
 /**
@@ -18,25 +14,6 @@ import { TurnQuotaError } from "./quota";
  * access credential included), and pump the runtime's SSE frames into the
  * relay where this conversation's subscribers receive them.
  */
-
-/**
- * The workspace's credential for `provider`, refreshed centrally when expiring
- * (an API-key credential never expires, so it's served as-is). Null = the
- * workspace hasn't connected that provider.
- */
-export async function freshCredential(
-  deps: TurnDeps,
-  wsId: string,
-  provider: string,
-): Promise<WorkspaceCredential | null> {
-  let cred = await deps.credentials.get(wsId, provider);
-  if (!cred) return null;
-  if (isExpiring(cred)) {
-    cred = await deps.refresh(cred);
-    await deps.credentials.put(cred);
-  }
-  return cred;
-}
 
 /** Outcome of asking the per-turn runtime to start a turn. */
 export type TurnStart =

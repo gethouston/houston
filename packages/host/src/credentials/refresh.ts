@@ -1,9 +1,9 @@
 import { githubCopilotProvider } from "@earendil-works/pi-ai/providers/github-copilot";
+import { isApiKeyCredential, type WorkspaceCredential } from "../ports";
 import {
-  type CredentialStore,
-  isApiKeyCredential,
-  type WorkspaceCredential,
-} from "../ports";
+  exchangeRefreshToken,
+  TransientRefreshError,
+} from "./oauth-token-exchange";
 
 /**
  * pi-ai's Copilot OAuth flow, reached through the provider's `auth.oauth`
@@ -27,21 +27,18 @@ const OAUTH: Record<string, { tokenUrl: string; clientId: string }> = {
   // anthropic uses a different (PKCE) refresh; added when Claude connect lands.
 };
 
-/**
- * The token endpoint's verdict on the refresh token itself (HTTP 400/401:
- * `invalid_grant`, `refresh_token_invalidated`, ...). Unlike a network blip or
- * a 5xx, this never heals on retry — the credential is dead until the user
- * reconnects the provider.
- */
-export class RefreshRejectedError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "RefreshRejectedError";
-  }
+export interface RefreshOptions {
+  /** Total attempts, including the first. Default 2. */
+  attempts?: number;
+  /** Injectable delay (tests pass a spy; production waits for real). */
+  sleep?: (ms: number) => Promise<void>;
 }
+
+const realSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Jittered ~250-500ms — spreads a fleet's retries off a recovering resolver. */
+const backoffMs = (): number => 250 + Math.floor(Math.random() * 250);
 
 /**
  * True if the access token is within `skewMs` of expiry (or already expired). An
@@ -59,9 +56,16 @@ export function isExpiring(
  * Exchange the refresh token for a new access (+ rotated refresh) token. Throws
  * on any failure — a stale token is never returned silently. An API-key
  * credential has nothing to refresh and is returned unchanged.
+ *
+ * ONLY failures that provably predate the connection (DNS, refused socket) are
+ * retried, up to `opts.attempts` (default 2) with a jittered backoff. Anything
+ * that could have reached the server — a timeout, an abort, a 5xx, a 429, any
+ * 4xx — is NEVER retried: the endpoint may already have consumed the rotating
+ * refresh token, and a second attempt would spend a grant we no longer hold.
  */
 export async function refreshCredential(
   cred: WorkspaceCredential,
+  opts: RefreshOptions = {},
 ): Promise<WorkspaceCredential> {
   if (isApiKeyCredential(cred)) return cred;
 
@@ -102,57 +106,21 @@ export async function refreshCredential(
   if (!cfg)
     throw new Error(`no OAuth refresh config for provider ${cred.provider}`);
 
-  const res = await fetch(cfg.tokenUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: cfg.clientId,
-      refresh_token: cred.refreshToken,
-    }),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    const message = `OAuth refresh failed (${res.status}) for ${cred.provider}: ${body.slice(0, 200)}`;
-    if (res.status === 400 || res.status === 401)
-      throw new RefreshRejectedError(message, res.status);
-    throw new Error(message);
+  const attempts = Math.max(1, opts.attempts ?? 2);
+  const sleep = opts.sleep ?? realSleep;
+  let transient: TransientRefreshError | undefined;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt > 0) await sleep(backoffMs());
+    try {
+      return await exchangeRefreshToken(cfg, cred);
+    } catch (err) {
+      // Terminal rejections and unretryable 4xx propagate immediately.
+      if (!(err instanceof TransientRefreshError)) throw err;
+      transient = err;
+    }
   }
-  const json = (await res.json()) as {
-    access_token?: string;
-    refresh_token?: string;
-    expires_in?: number;
-  };
-  if (
-    !json.access_token ||
-    !json.refresh_token ||
-    typeof json.expires_in !== "number"
-  ) {
-    throw new Error(
-      `OAuth refresh response missing fields for ${cred.provider}`,
-    );
-  }
-  return {
-    workspaceId: cred.workspaceId,
-    provider: cred.provider,
-    accessToken: json.access_token,
-    refreshToken: json.refresh_token, // rotation-safe: persist whatever comes back
-    accountId: cred.accountId, // the refresh endpoint doesn't return it; it's stable
-    expiresAt: Date.now() + json.expires_in * 1000,
-  };
-}
-
-/**
- * Return a currently-valid access token for a stored credential, refreshing it
- * (and persisting the rotated token back to the store) when it's near expiry.
- * This is what the per-turn "serve" endpoint calls.
- */
-export async function validAccessToken(
-  store: CredentialStore,
-  cred: WorkspaceCredential,
-): Promise<string> {
-  if (!isExpiring(cred)) return cred.accessToken;
-  const fresh = await refreshCredential(cred);
-  await store.put(fresh);
-  return fresh.accessToken;
+  // Exhausted: never a RefreshRejectedError, so the serve route keeps the
+  // credential and falls back to the stored token instead of signing the user
+  // out over an outage.
+  throw transient ?? new Error(`OAuth refresh failed for ${cred.provider}`);
 }
