@@ -1,0 +1,47 @@
+---
+# One claim page per published event. The whole page renders in the EVENT's
+# language: an attendee of a Spanish bootcamp should never meet an English
+# form.
+pagination:
+  data: certificates.events
+  size: 1
+  alias: event
+permalink: "/certificates/{{ event.slug }}/"
+eleventyComputed:
+  lang: "{{ event.lang }}"
+---
+{% extends "subpage.njk" %}
+{% set c = certCopy[event.lang] or certCopy.en %}
+{% block title %}{{ c.title }} · {{ event.title }}{% endblock %}
+{% block meta %}
+<meta name="description" content="{{ c.leadEvent | replace('{event}', event.title) }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai/certificates/{{ event.slug }}/">
+<meta property="og:title" content="{{ c.title }} · {{ event.title }}">
+<meta property="og:description" content="{{ c.leadEvent | replace('{event}', event.title) }}">
+<meta property="og:site_name" content="Houston">
+<meta property="og:locale" content="{{ 'es_ES' if event.lang == 'es' else 'en_US' }}">
+<meta name="twitter:card" content="summary_large_image">
+{% endblock %}
+{% block subpageStyles %}
+<link rel="stylesheet" href="/assets/css/certificates.css">
+{% endblock %}
+{% block subpageContent %}
+{% from "certificates/claim-form.njk" import claimForm %}
+<div class="cert-wrap">
+  <p class="cert-eyebrow">{{ c.eyebrow }}</p>
+  <h1 class="cert-title">{{ event.title }}</h1>
+  <p class="cert-lead">{{ c.leadEvent | replace('{event}', event.title) }}</p>
+  <p class="cert-alt-lang">
+    {{ event.eventDateDisplay }}{% if event.location %} · {{ event.location }}{% endif %}
+  </p>
+
+  {{ claimForm(c, [], event.slug, certSupportEmail) }}
+
+  <p class="cert-foot">
+    {{ c.verifyPrompt }}
+    <a href="/certificates/verify/">{{ c.verifyLink }}</a>.
+  </p>
+</div>
+{% include "certificates/scripts.njk" %}
+{% endblock %}

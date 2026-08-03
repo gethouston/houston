@@ -1,0 +1,82 @@
+{# ── Claim form ───────────────────────────────────────────────────────────────
+   ONE form for both claim surfaces: the entry page (/certificates/, visitor
+   picks the event) and a per-event page (/certificates/<slug>/, event locked).
+   The only difference is how the event slug is supplied, so the markup, the
+   ids and the script (certificates/scripts.njk) stay identical.
+
+   Arguments:
+     c            copy dict for this page's language (certCopy.en / certCopy.es)
+     events       published events (may be empty when the export is not wired)
+     lockedSlug   event slug to submit, or "" to let the visitor choose
+     supportEmail address shown on every failure path
+
+   Localised strings the script needs travel on data-* attributes so the JS
+   holds no copy of its own.
+
+   NO CONTROL IN THIS FORM CARRIES A `name`. The form has no action and no
+   method: if the script never attaches (JS off, inline script blocked, script
+   error) the browser falls back to a GET at this very URL, and a named email
+   field would put the attendee's address into the address bar, the history,
+   the hosting access log and — once JS is merely late rather than absent —
+   into the PostHog and GA4 pageview URL. Without names that fallback submits
+   nothing. Autofill is driven by `autocomplete`, and the script reads by id,
+   so nothing is lost. #}
+
+{% macro claimForm(c, events, lockedSlug, supportEmail) %}
+<form class="cert-card" id="certClaimForm" novalidate
+  data-msg-invalid-email="{{ c.invalidEmail }}"
+  data-msg-missing-email="{{ c.missingEmail }}"
+  data-msg-missing-event="{{ c.missingEvent }}"
+  data-msg-not-found-title="{{ c.notFoundTitle }}"
+  data-msg-not-found="{{ c.notFound }}"
+  data-msg-rate-limited="{{ c.rateLimited }}"
+  data-msg-network="{{ c.networkError }}"
+  data-msg-server="{{ c.serverError }}"
+  data-msg-success-title="{{ c.successTitle }}"
+  data-msg-success-body="{{ c.successBody }}"
+  data-msg-view="{{ c.viewCertificate }}"
+  data-label-verify="{{ c.verifyLink }}"
+  data-label-submit="{{ c.submit }}"
+  data-label-submitting="{{ c.submitting }}"
+  data-label-opening="{{ c.opening }}">
+  {% if lockedSlug %}
+  {# Event locked by the page itself. #}
+  <input type="hidden" id="certEvent" value="{{ lockedSlug }}">
+  {% elif events | length == 1 %}
+  {# Exactly one published event: there is no choice to make, so we do not ask
+     one. The hidden field keeps the submit path identical. #}
+  <input type="hidden" id="certEvent" value="{{ events[0].slug }}">
+  {% elif events | length > 1 %}
+  <label class="cert-field" for="certEvent">
+    <span class="cert-field-label">{{ c.eventLabel }}</span>
+    <span class="cert-select-wrap">
+      <select class="cert-select" id="certEvent" required>
+        <option value="" selected disabled>{{ c.eventPlaceholder }}</option>
+        {% for e in events %}
+        <option value="{{ e.slug }}">{{ e.title }}</option>
+        {% endfor %}
+      </select>
+    </span>
+  </label>
+  {% endif %}
+  <label class="cert-field" for="certEmail">
+    <span class="cert-field-label">{{ c.emailLabel }}</span>
+    <input class="cert-input" type="email" id="certEmail"
+      placeholder="{{ c.emailPlaceholder }}" autocomplete="email"
+      inputmode="email" spellcheck="false" required>
+    {% if not lockedSlug and events | length == 0 %}
+    {# No published events in the build (export not configured yet). The claim
+       endpoint takes the email alone, so the visitor is never blocked by it. #}
+    <span class="cert-field-hint">{{ c.noEvents }}</span>
+    {% endif %}
+  </label>
+  <button type="submit" class="btn btn-ink cert-submit" id="certClaimSubmit">
+    <span class="cert-spinner" id="certClaimSpinner" hidden></span>
+    <span id="certClaimLabel">{{ c.submit }}</span>
+  </button>
+  <div class="cert-msg" id="certClaimMsg" role="status" aria-live="polite" hidden></div>
+  <p class="cert-field-hint" id="certClaimSupport" hidden>
+    {{ c.supportLine }} <a href="mailto:{{ supportEmail }}">{{ supportEmail }}</a>
+  </p>
+</form>
+{% endmacro %}

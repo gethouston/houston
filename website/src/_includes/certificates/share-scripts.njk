@@ -1,0 +1,45 @@
+{# ── Share page behaviour ─────────────────────────────────────────────────────
+   The only interactive element on /c/<CODE> is the copy-link button. Everything
+   else on that page is a plain link on purpose: a shared certificate has to
+   work with JavaScript off. #}
+<script>
+(function () {
+  // The button itself is the confirmation (the marketing site has no toast
+  // channel), and it falls back to a selection-based copy on browsers without
+  // the async clipboard API so the action never silently does nothing.
+  var btn = document.getElementById('certCopy');
+  if (!btn) return;
+  var url = btn.dataset.url;
+  var revert = null;
+
+  function confirmCopied() {
+    btn.classList.add('is-copied');
+    window.clearTimeout(revert);
+    revert = window.setTimeout(function () { btn.classList.remove('is-copied'); }, 2400);
+  }
+
+  function legacyCopy() {
+    var field = document.createElement('textarea');
+    field.value = url;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.appendChild(field);
+    field.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(field);
+    return ok;
+  }
+
+  btn.addEventListener('click', function () {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(confirmCopied, function (err) {
+        console.warn('[certificates] clipboard write failed, falling back:', err);
+        if (legacyCopy()) { confirmCopied(); } else { window.prompt('', url); }
+      });
+      return;
+    }
+    if (legacyCopy()) { confirmCopied(); } else { window.prompt('', url); }
+  });
+})();
+</script>

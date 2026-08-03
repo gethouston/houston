@@ -1,0 +1,177 @@
+{# ── Claim form behaviour ─────────────────────────────────────────────────────
+   Drives the form rendered by certificates/claim-form.njk. Holds no copy: every
+   string comes off the form's data-* attributes, so en and es share one script.
+   Every outcome (404 / 429 / other status / network failure / a gateway that
+   never answers) lands in a visible AND announced message; nothing fails
+   silently and nothing hangs. #}
+<script>
+(function () {
+  var form = document.getElementById('certClaimForm');
+  if (!form) return;
+
+  var GATEWAY = '{{ env.certsGatewayUrl }}';
+  // A gateway that accepts the socket and then never answers would otherwise
+  // leave the button disabled and spinning forever, with no message and no way
+  // back. Mirrors the build-time budget in lib/certs/fetch.mjs.
+  var CLAIM_TIMEOUT_MS = 15000;
+  var PROBE_TIMEOUT_MS = 8000;
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Error codes we are willing to echo into the console. The website cannot
+  // constrain what the gateway puts in a payload, and an error body that
+  // included the submitted address would otherwise be logged client-side.
+  var ERROR_CODE_RE = /^[a-z0-9_]{1,64}$/;
+
+  var d = form.dataset;
+  var emailEl = document.getElementById('certEmail');
+  var eventEl = document.getElementById('certEvent');
+  var btn = document.getElementById('certClaimSubmit');
+  var labelEl = document.getElementById('certClaimLabel');
+  var spinner = document.getElementById('certClaimSpinner');
+  var msg = document.getElementById('certClaimMsg');
+  var support = document.getElementById('certClaimSupport');
+  var busy = false;
+
+  // AbortSignal.timeout is missing on older Safari; asking for it there would
+  // throw on the way into fetch, so we degrade to "no budget" instead.
+  function budget(ms) {
+    return (window.AbortSignal && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+  }
+
+  function clearMessage() {
+    msg.hidden = true;
+    msg.textContent = '';
+    support.hidden = true;
+  }
+
+  function span(text, className) {
+    var el = document.createElement('span');
+    if (className) el.className = className;
+    el.textContent = text;
+    return el;
+  }
+
+  // Text only, built with DOM nodes rather than innerHTML: no page copy or API
+  // value is ever parsed as markup.
+  //
+  // A polite live region only announces content INSERTED while the region is
+  // already in the accessibility tree. Filling it while it is still `hidden`
+  // (display:none) and un-hiding afterwards is silent in NVDA, JAWS and
+  // VoiceOver — so the empty region is un-hidden first and filled a tick later.
+  // setTimeout, not requestAnimationFrame: rAF does not run in a background
+  // tab, and a message that never arrives is worse than one that arrives late.
+  function announce(kind, nodes) {
+    msg.textContent = '';
+    msg.className = 'cert-msg' + (kind ? ' is-' + kind : '');
+    msg.hidden = false;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < nodes.length; i++) frag.appendChild(nodes[i]);
+    window.setTimeout(function () { msg.appendChild(frag); }, 50);
+  }
+
+  function fail(title, body, showSupport) {
+    var nodes = [];
+    if (title) nodes.push(span(title, 'cert-msg-title'));
+    if (body) nodes.push(span(body, ''));
+    announce('error', nodes);
+    support.hidden = !showSupport;
+  }
+
+  function setBusy(on) {
+    busy = on;
+    btn.disabled = on;
+    spinner.hidden = !on;
+    labelEl.textContent = on ? d.labelSubmitting : d.labelSubmit;
+  }
+
+  // Is there a static share page for this code yet? An attendee imported after
+  // the last site deploy has none, and navigating blind would drop them on the
+  // generic 404 with no mention of certificates.
+  function pageExists(url) {
+    return fetch(url, { method: 'HEAD', signal: budget(PROBE_TIMEOUT_MS) })
+      .then(function (res) { return res.ok; })
+      .catch(function () { return false; });
+  }
+
+  function found(data) {
+    var code = String(data.code);
+    var url = '/c/' + encodeURIComponent(code);
+    var link = document.createElement('a');
+    link.className = 'btn btn-ink btn-sm';
+    link.href = url;
+    link.textContent = d.msgView;
+    // The code is shown HERE, before anything navigates, so the trip is never
+    // wasted even if the page turns out not to exist yet.
+    announce('success', [
+      span(d.msgSuccessTitle, 'cert-msg-title'),
+      span(d.msgSuccessBody + ' ' + code + '.', ''),
+      link
+    ]);
+    labelEl.textContent = d.labelOpening;
+
+    pageExists(url).then(function (ok) {
+      if (ok) {
+        // Short beat so the code is read before the page changes under them.
+        window.setTimeout(function () { window.location.href = url; }, 1400);
+        return;
+      }
+      // No page yet: stay put and point at the verifier, which resolves the
+      // code live from the gateway.
+      setBusy(false);
+      link.href = '/certificates/verify/?code=' + encodeURIComponent(code);
+      link.textContent = d.labelVerify;
+    });
+  }
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (busy) return;
+
+    var email = (emailEl.value || '').trim();
+    if (!email) { fail('', d.msgMissingEmail, false); emailEl.focus(); return; }
+    if (!EMAIL_RE.test(email)) { fail('', d.msgInvalidEmail, false); emailEl.focus(); return; }
+    var slug = eventEl ? (eventEl.value || '') : '';
+    if (eventEl && eventEl.tagName === 'SELECT' && !slug) {
+      fail('', d.msgMissingEvent, false);
+      eventEl.focus();
+      return;
+    }
+
+    var body = { email: email };
+    if (slug) body.event_slug = slug;
+
+    clearMessage();
+    setBusy(true);
+
+    fetch(GATEWAY + '/v1/certs/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: budget(CLAIM_TIMEOUT_MS)
+    })
+      .then(function (res) {
+        return res.json()
+          .catch(function () { return null; })
+          .then(function (json) { return { status: res.status, json: json }; });
+      })
+      .then(function (r) {
+        if (r.status === 200 && r.json && r.json.code) {
+          found(r.json);   // stays busy: we may be navigating away
+          return;
+        }
+        setBusy(false);
+        if (r.status === 404) { fail(d.msgNotFoundTitle, d.msgNotFound, true); return; }
+        if (r.status === 429) { fail('', d.msgRateLimited, false); return; }
+        var reason = r.json && ERROR_CODE_RE.test(String(r.json.error)) ? String(r.json.error) : '';
+        console.warn('[certificates] claim returned ' + r.status + (reason ? ' (' + reason + ')' : ''));
+        fail('', d.msgServer, true);
+      })
+      .catch(function (err) {
+        // Includes the AbortError from the budget above: a request that never
+        // came back reads to the visitor exactly like a network failure.
+        setBusy(false);
+        console.warn('[certificates] claim request failed:', err && err.name);
+        fail('', d.msgNetwork, true);
+      });
+  });
+})();
+</script>

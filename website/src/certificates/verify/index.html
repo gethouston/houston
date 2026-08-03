@@ -1,0 +1,87 @@
+---
+lang: en
+---
+{% extends "subpage.njk" %}
+{% block title %}Verify a Houston certificate{% endblock %}
+{% block meta %}
+<meta name="description" content="Check that a Houston certificate is real. Enter the certificate code or paste the certificate link.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai/certificates/verify/">
+<meta property="og:title" content="Verify a Houston certificate">
+<meta property="og:description" content="Check that a Houston certificate is real. Enter the certificate code or paste the certificate link.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+{% endblock %}
+{% block subpageStyles %}
+<link rel="stylesheet" href="/assets/css/certificates.css">
+{% endblock %}
+{% block subpageContent %}
+<div class="cert-wrap">
+  <p class="cert-eyebrow">Certificates</p>
+  <h1 class="cert-title">Verify a certificate</h1>
+  <p class="cert-lead">
+    Enter the certificate code, or paste the whole certificate link. We check it
+    against Houston's records live.
+  </p>
+  {# lang="es" on every Spanish echo: without it a screen reader in an
+     English document pronounces the Spanish with English phonetics. #}
+  <span class="cert-alt-lang" lang="es">
+    Escribe el código del certificado o pega el enlace completo. Lo comprobamos
+    en vivo contra los registros de Houston.
+  </span>
+
+  {# Localised strings ride on data-* attributes so certificates/verify-scripts
+     holds no copy of its own, exactly like the claim form.
+
+     `name="code"` is deliberate here and deliberately ABSENT on the claim form:
+     with no JS this form falls back to a GET at `?code=…`, which is the very
+     prefill this page already supports — so it degrades into working. A
+     certificate code is public by design; an attendee's email is not. #}
+  <form class="cert-card" id="certVerifyForm" novalidate
+    data-msg-empty="Enter a certificate code."
+    data-msg-empty-es="Escribe un código de certificado."
+    data-msg-invalid="That is not a Houston certificate code. Codes look like HOU-XXXXX-XXXXX."
+    data-msg-invalid-es="Ese no es un código de Houston. Los códigos son así: HOU-XXXXX-XXXXX."
+    data-msg-verified="Verified certificate"
+    data-msg-verified-es="Certificado verificado"
+    data-msg-not-found="No certificate carries that code. Check it for typos, or paste the certificate link instead."
+    data-msg-not-found-es="Ningún certificado tiene ese código. Revisa que esté bien escrito o pega el enlace del certificado."
+    data-msg-not-found-title="Not found"
+    data-msg-rate-limited="Too many tries. Wait a minute and try again."
+    data-msg-rate-limited-es="Demasiados intentos. Espera un minuto e inténtalo de nuevo."
+    data-msg-network="We could not reach Houston. Check your connection and try again."
+    data-msg-network-es="No pudimos conectar con Houston. Revisa tu conexión e inténtalo de nuevo."
+    data-msg-server="Something went wrong on our side. Try again in a moment."
+    data-msg-server-es="Algo falló de nuestro lado. Inténtalo de nuevo en un momento."
+    data-label-issued="Issued by Houston"
+    data-label-view="View certificate"
+    data-label-submit="Verify"
+    data-label-submitting="Checking">
+    <label class="cert-field" for="certCode">
+      <span class="cert-field-label">Certificate code</span>
+      <input class="cert-input cert-input-code" type="text" id="certCode" name="code"
+        placeholder="HOU-XXXXX-XXXXX" autocomplete="off" autocapitalize="characters"
+        spellcheck="false" required>
+      <span class="cert-field-hint">
+        It is printed on the certificate itself.
+        <span class="cert-alt-lang" lang="es">Está impreso en el propio certificado.</span>
+      </span>
+    </label>
+    <button type="submit" class="btn btn-ink cert-submit" id="certVerifySubmit">
+      <span class="cert-spinner" id="certVerifySpinner" hidden></span>
+      <span id="certVerifyLabel">Verify</span>
+    </button>
+    <div class="cert-msg" id="certVerifyMsg" role="status" aria-live="polite" hidden></div>
+  </form>
+
+  <p class="cert-foot">
+    Looking for your own certificate?
+    <a href="/certificates/">Get it here</a>.
+    <span class="cert-alt-lang" lang="es">
+      ¿Buscas tu propio certificado? <a href="/certificates/">Obtenlo aquí</a>.
+    </span>
+  </p>
+</div>
+
+{% include "certificates/verify-scripts.njk" %}
+{% endblock %}

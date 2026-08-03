@@ -53,6 +53,16 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/robots.txt");
   eleventyConfig.addPassthroughCopy("src/llms.txt");
 
+  // Certificate images. Every issued certificate gets a printable PNG and a
+  // social card written into _site/c/ after the site is written — the same
+  // build-time export the /c/ pages are generated from, rendered with satori +
+  // resvg (see lib/certs/render.mjs). Imported lazily so the image toolchain is
+  // only loaded when a build actually runs.
+  eleventyConfig.on("eleventy.after", async ({ dir }) => {
+    const { renderAllCertificates } = await import("./lib/certs/render.mjs");
+    await renderAllCertificates(dir.output);
+  });
+
   return {
     dir: {
       input: "src",
