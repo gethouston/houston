@@ -1,6 +1,33 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { resolveEffectiveProvider } from "../src/components/chat-effective-provider.ts";
+import {
+  preferredProvider,
+  resolveEffectiveProvider,
+} from "../src/components/chat-effective-provider.ts";
+
+// ONE preference chain, shared by the composer and the error cards. It used to
+// be written twice with different operators (`??` here, `||` in
+// `errorCardProvider`), so an empty-string provider counted as a real pick on
+// one path and as absent on the other.
+describe("preferredProvider", () => {
+  it("takes the strongest evidence first", () => {
+    strictEqual(preferredProvider("openai", "anthropic", "gemini"), "openai");
+    strictEqual(preferredProvider(null, "anthropic", "gemini"), "anthropic");
+    strictEqual(preferredProvider(null, null, "gemini"), "gemini");
+  });
+
+  it("returns null with no evidence at all", () => {
+    strictEqual(preferredProvider(null, null, null), null);
+  });
+
+  it("treats an empty string as absent, not as a pick", () => {
+    // `provider: ""` is what an unattributed record carries. Honoring it would
+    // freeze the composer on nothing and label an error card blank.
+    strictEqual(preferredProvider("", "anthropic", null), "anthropic");
+    strictEqual(preferredProvider("", "", "gemini"), "gemini");
+    strictEqual(preferredProvider("", "", ""), null);
+  });
+});
 
 describe("resolveEffectiveProvider", () => {
   it("uses an explicit (activity/agent) provider for a fresh chat when it is connected", () => {
@@ -81,6 +108,15 @@ describe("resolveEffectiveProvider", () => {
       resolveEffectiveProvider(null, null, null, ["openai"], false),
       "openai",
     );
+  });
+
+  it("ignores an empty-string activity provider and uses the next evidence", () => {
+    strictEqual(
+      resolveEffectiveProvider("", "openai", null, ["openai"], true),
+      "openai",
+    );
+    // Nothing but empty strings = no preference, so the default applies.
+    strictEqual(resolveEffectiveProvider("", "", "", [], true), "anthropic");
   });
 
   it("keeps the preferred fallback when statuses haven't loaded (empty)", () => {

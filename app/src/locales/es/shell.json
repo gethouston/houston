@@ -354,6 +354,10 @@
     },
     "unauthenticated": {
       "title": "Conéctate a {{provider}} de nuevo",
+      "titleGeneric": "Conecta un proveedor de IA",
+      "bodyGeneric": "Houston necesita un proveedor de IA conectado para poder responder.",
+      "connectProvider": "Conectar un proveedor",
+      "reconnectedTitleGeneric": "Conectado",
       "bodyTokenExpired": "Tu sesión de {{provider}} expiró. Vuelve a conectarte para continuar.",
       "bodyNoCredentials": "Houston necesita que inicies sesión en {{provider}} antes de responder.",
       "bodyInvalidApiKey": "La clave de API de {{provider}} que tiene Houston ya no es válida. Actualízala y vuelve a intentar.",

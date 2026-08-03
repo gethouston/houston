@@ -162,6 +162,7 @@ import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
   continuesTaskAfterReconnect,
+  errorCardProvider,
   isInlineAuthCard,
   providerErrorRetryText,
   reconnectContinueText,
@@ -1874,6 +1875,15 @@ export function useAgentChatPanel({
     },
     [attachmentLabels],
   );
+  // What an UNLABELED provider-error card may be attributed to: evidence
+  // only, never the composer's "anthropic" last resort — a guessed label sends
+  // the user to the wrong sign-in (OpenAI users were told to "Connect
+  // Anthropic"). No evidence leaves the card generic.
+  const cardProvider = errorCardProvider({
+    activityProvider,
+    agentProvider,
+    lastUsedProvider,
+  });
   const renderSystemMessage = useCallback(
     (msg: ChatMessage) => {
       if (msg.compaction)
@@ -1918,11 +1928,12 @@ export function useAgentChatPanel({
       // OpenAI reconnect card never appeared in chat.
       if (msg.providerError) {
         // The not-connected card arrives provider-less (the refusal can't name
-        // one — nothing was connected); label it with THIS chat's provider so
-        // its reconnect flow targets the provider the send actually used.
+        // one — nothing was connected); label it only from evidence of what
+        // this chat actually used, so its reconnect flow targets that provider
+        // and never a guessed one.
         const providerError = resolveProviderErrorForChat(
           msg.providerError,
-          displayModelPin.provider,
+          cardProvider,
         );
         return (
           <ProviderErrorCard
@@ -1979,7 +1990,15 @@ export function useAgentChatPanel({
       if (isProviderAuthMessage(msg.content)) return null;
       return undefined;
     },
-    [displayModelPin, turnMode, selectModel, path, selectedSessionKey, t],
+    [
+      displayModelPin,
+      cardProvider,
+      turnMode,
+      selectModel,
+      path,
+      selectedSessionKey,
+      t,
+    ],
   );
   // The welcome chat's greeting (HOU-713): a hardcoded, localized agent
   // message derived from the `welcome-` session key — prepended at render

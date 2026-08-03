@@ -1,4 +1,25 @@
 /**
+ * The provider this chat has evidence for, strongest first: the turn's own
+ * activity pin, then the agent's configured provider, then the provider the
+ * chat last actually used. `null` when there is no evidence at all.
+ *
+ * Empty strings are ABSENT, not picks: an empty id reaches us from records the
+ * engine could not attribute (`provider: ""`), and treating one as a choice
+ * would both freeze the composer on nothing and label an error card with a
+ * blank provider name. This is THE preference chain — `resolveEffectiveProvider`
+ * (composer) and `errorCardProvider` (error cards) differ only in what they do
+ * when it yields nothing: the composer falls back to `"anthropic"`, the card
+ * stays generic rather than guessing a provider the user may never have used.
+ */
+export function preferredProvider(
+  activityProvider: string | null,
+  agentProvider: string | null,
+  lastUsedProvider: string | null,
+): string | null {
+  return activityProvider || agentProvider || lastUsedProvider || null;
+}
+
+/**
  * Provider the chat composer should use. Drives the model-selector dropdown and
  * the provider forwarded to the engine on send. Mirrors the engine's
  * `ResolveMode::Interactive`.
@@ -47,7 +68,8 @@ export function resolveEffectiveProvider(
   unconfirmedProviders: readonly string[] = [],
 ): string {
   const preferred =
-    activityProvider ?? agentProvider ?? lastUsedProvider ?? "anthropic";
+    preferredProvider(activityProvider, agentProvider, lastUsedProvider) ??
+    "anthropic";
 
   // Mid-conversation: freeze. Honor `preferred` as-is even when logged out so a
   // logout surfaces the reconnect card instead of silently switching providers.
