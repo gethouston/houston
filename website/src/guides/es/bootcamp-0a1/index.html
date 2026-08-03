@@ -587,6 +587,18 @@ a.cbtn.onink:hover{border-color:var(--on-ink);opacity:1}
   .guide-shell{width:min(1150px, calc(100% - 32px)); margin:0 auto; padding:0 40px}
   @media (max-width:920px){ .guide-shell{width:calc(100% - 24px); padding:0 18px} }
 
+
+  /* chapter videos */
+  .gvideo{margin:22px 0 10px}
+  .gvideo .vlabel{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gray7); margin-bottom:10px}
+  .gvideo .vlabel svg{width:16px; height:16px}
+  .gvideo .vframe{position:relative; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 6px 24px rgba(40,36,28,0.16); background:#0f1115}
+  .gvideo .vframe iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
+  .gvideo .vchaps{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+  .gvideo .vchaps a{display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; color:var(--gray7); text-decoration:none; background:var(--panel); border:1px solid var(--border); border-radius:999px; padding:7px 13px; transition:.15s border-color}
+  .gvideo .vchaps a:hover{border-color:var(--line-strong); color:var(--ink)}
+  .gvideo .vchaps a svg{width:13px; height:13px; flex:none}
+  @media print{ .gvideo{display:none !important} }
 </style>
 {% endblock %}
 {% block subpageContent %}
@@ -648,6 +660,14 @@ a.cbtn.onink:hover{border-color:var(--on-ink);opacity:1}
         <span class="chip">💻 Mac, Windows o Linux</span>
         <span class="chip">🚫 Sin programar</span>
       </div>
+    <div class="gvideo" data-chapter="cap1">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>Mira el capítulo en video · Bienvenida y encuadre (6:34)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap1" class="gyt-embed" data-chapter="cap1" src="https://www.youtube-nocookie.com/embed/dpvAnmxXMt4?rel=0&enablejsapi=1" title="Bootcamp: De 0 a 1 con agentes de IA · Cap. 1 Bienvenida y encuadre" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+      <div class="vchaps"><a href="https://www.youtube.com/playlist?list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Ver la playlist completa del bootcamp (14 videos)</a></div>
+    </div>
+
       <p class="hnote">houston no es un ejercicio del bootcamp: es un producto real y lo puedes poner a trabajar en tu empresa. Al final de la guía te cuento <a href="#empresa">cómo lo hacemos con equipos</a> y cómo entrar al programa beta. Primero, construye el tuyo.</p>
     </div>
 
@@ -877,6 +897,17 @@ a.cbtn.onink:hover{border-color:var(--on-ink);opacity:1}
       <div class="badge">1</div>
       <div><div class="stepno">Paso 1 de 6</div><h2 style="margin-top:2px">De qué está hecho un agente</h2><div class="est">~20 minutos</div></div>
     </div>
+    <div class="gvideo" data-chapter="cap2">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>El capítulo en video · Qué es un agente de IA (7:20)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap2" class="gyt-embed" data-chapter="cap2" src="https://www.youtube-nocookie.com/embed/0AstsnzD204?rel=0&enablejsapi=1" title="Cap. 2 Qué es un agente de IA (y qué no)" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+      <div class="vchaps"><a href="https://www.youtube.com/watch?v=_VepbBKae3M&list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Cap. 3 · La identidad del agente (4:31)</a>
+        <a href="https://www.youtube.com/watch?v=b9cH8SpMUQc&list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Cap. 4 · Las habilidades (Skills) (12:31)</a>
+        <a href="https://www.youtube.com/watch?v=bzTvbZnYZ4o&list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Cap. 5 · Herramientas e integraciones (10:11)</a>
+        <a href="https://www.youtube.com/watch?v=BRTMbtl2JYY&list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Cap. 6 · La memoria y el modelo (9:07)</a></div>
+    </div>
+
     <p>Veinte minutos de lectura que te ahorran semanas de dar palos de ciego. Aquí están las diapositivas de la sesión, en el mismo orden. Si prefieres arrancar con las manos, salta al <a class="inline" href="#paso3">Paso 3</a> y vuelve después.</p>
 
     <div class="hcta dl">
@@ -1068,6 +1099,14 @@ Después pregúntame lo que el documento no dice: las excepciones y los criterio
       <div class="badge">2</div>
       <div><div class="stepno">Paso 2 de 6</div><h2 style="margin-top:2px">Elige el problema correcto</h2><div class="est">~20 minutos</div></div>
     </div>
+    <div class="gvideo" data-chapter="cap8">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>El capítulo en video · De problema a agente: la metodología (21:09)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap8" class="gyt-embed" data-chapter="cap8" src="https://www.youtube-nocookie.com/embed/GLtOLj2zen8?rel=0&enablejsapi=1" title="Cap. 8 De problema a agente: la metodología" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+      <div class="vchaps"><a href="https://www.youtube.com/watch?v=bf8DotEN9g0&list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Cap. 9 · Cómo priorizar el dolor (5:26)</a></div>
+    </div>
+
     <p>El error más caro es empezar por la tecnología. Un buen agente empieza en un dolor. Este es el marco que usamos en vivo para pasar de "quiero un agente de IA" a un agente concreto y útil.</p>
 
     <h3>Primero, un buen candidato</h3>
@@ -1122,6 +1161,13 @@ Al final propóneme el agente concreto que debería construir y qué habilidades
       <div class="badge">3</div>
       <div><div class="stepno">Paso 3 de 6</div><h2 style="margin-top:2px">Instala houston</h2><div class="est">~15 minutos</div></div>
     </div>
+    <div class="gvideo" data-chapter="cap11a">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>El capítulo en video · Instala el stack del taller (8:41)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap11a" class="gyt-embed" data-chapter="cap11a" src="https://www.youtube-nocookie.com/embed/aRHTYr7DR2w?rel=0&enablejsapi=1" title="Cap. 11 Instala el stack del taller" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+
     <p>Aquí empieza el teclado. Si ya lo tenías instalado de antes, <b>descarga otra vez la última versión</b>: la Tienda de agentes que vas a usar en el Paso 5 sólo aparece en las versiones nuevas.</p>
 
     <ol class="steps">
@@ -1176,6 +1222,13 @@ Al final propóneme el agente concreto que debería construir y qué habilidades
       <div class="badge">4</div>
       <div><div class="stepno">Paso 4 de 6</div><h2 style="margin-top:2px">Abre Apify y OpenRouter</h2><div class="est">~15 minutos</div></div>
     </div>
+    <div class="gvideo" data-chapter="cap11b">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>El mismo capítulo te acompaña en este paso · Instala el stack del taller (8:41)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap11b" class="gyt-embed" data-chapter="cap11b" src="https://www.youtube-nocookie.com/embed/aRHTYr7DR2w?rel=0&enablejsapi=1" title="Cap. 11 Instala el stack del taller" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+
     <p>Dos cuentas, dos piezas del agente.</p>
 
     <div class="toolgrid">
@@ -1309,6 +1362,13 @@ Al final propóneme el agente concreto que debería construir y qué habilidades
       <div class="badge">5</div>
       <div><div class="stepno">Paso 5 de 6</div><h2 style="margin-top:2px">Instala el agente <span class="accent">Representante ventas</span></h2><div class="est">~10 minutos</div></div>
     </div>
+    <div class="gvideo" data-chapter="cap13">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>El capítulo en video · Tráete mi agente (9:49)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap13" class="gyt-embed" data-chapter="cap13" src="https://www.youtube-nocookie.com/embed/xp_nAEUyhks?rel=0&enablejsapi=1" title="Cap. 13 Tráete mi agente" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+
     <p>Este es el agente que viste trabajando en vivo. Viene con sus instrucciones, su habilidad de prospección y las memorias que aprendió trabajando. Se instala desde la Tienda de agentes, como una app.</p>
 
     <figure class="slide app">
@@ -1368,6 +1428,13 @@ Al final propóneme el agente concreto que debería construir y qué habilidades
       <div class="badge">6</div>
       <div><div class="stepno">Paso 6 de 6</div><h2 style="margin-top:2px">Ponlo a prospectar</h2><div class="est">~30 minutos</div></div>
     </div>
+    <div class="gvideo" data-chapter="cap7">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>El capítulo en video · Demo en vivo: prospección en LinkedIn (15:15)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap7" class="gyt-embed" data-chapter="cap7" src="https://www.youtube-nocookie.com/embed/cnreMCMnSnU?rel=0&enablejsapi=1" title="Cap. 7 Demo en vivo: prospección en LinkedIn" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+    </div>
+
     <p>El agente ya sabe qué hacer. Ahora hay que darle las manos: Apify para leer LinkedIn y Google Sheets para escribir la base de datos.</p>
 
     <div class="conngrid">
@@ -1487,6 +1554,15 @@ https://www.linkedin.com/posts/...</span></div>
     <span class="kicker">Extra</span>
     <h2>Hazlo <span class="accent">tuyo</span></h2>
     <p class="sub">Ya tienes el método y un agente funcionando. Ahora aplícalo a algo que te duela de verdad.</p>
+    <div class="gvideo" data-chapter="cap16">
+      <div class="vlabel"><svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2"><path d="M4 5h16v14H4z" stroke-linejoin="round"/><path d="M10 9l5 3-5 3z" fill="#fdba74" stroke="none"/></svg>El capítulo en video · Crea tu propio agente (13:04)</div>
+      <div class="vframe">
+        <iframe id="gyt-cap16" class="gyt-embed" data-chapter="cap16" src="https://www.youtube-nocookie.com/embed/pLqG3G-qwbs?rel=0&enablejsapi=1" title="Cap. 16 Crea tu propio agente" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      </div>
+      <div class="vchaps"><a href="https://www.youtube.com/watch?v=9vP3UkJNVpw&list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Cap. 14 · Integraciones y rutinas (15:25)</a>
+        <a href="https://www.youtube.com/watch?v=qOCtcwXTksI&list=PLdO5ucPRDPI4" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>Cap. 15 · Cuentas y espacios de trabajo (8:08)</a></div>
+    </div>
+
 
     <h3>Empieza por lo aburrido, no por lo importante</h3>
     <p>Suena al revés y no lo es. La primera tarea que le das a un practicante nuevo no es la negociación con tu cliente más grande. Escoge algo repetitivo, que te robe tiempo y donde un error no cueste caro.</p>
@@ -2218,6 +2294,42 @@ Regla de decisión:
 })();
 
 
+</script>
+
+
+<script>
+(function(){
+  function track(name, props){
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture){ try { window.posthog.capture(name, payload); } catch(e){} }
+    if (typeof window.gtag === 'function'){ try { window.gtag('event', name, payload); } catch(e){} }
+  }
+  var frames = document.querySelectorAll('iframe.gyt-embed');
+  if (!frames.length) return;
+  var fired = {};
+  function onReady(){
+    frames.forEach(function(f){
+      try {
+        new YT.Player(f.id, {
+          events: {
+            onStateChange: function(e){
+              var ch = f.getAttribute('data-chapter');
+              if (e.data === YT.PlayerState.PLAYING && !fired[ch]){
+                fired[ch] = true;
+                track('guide_video_play', { guide: 'AI Agents Bootcamp 0 to 1', lang: 'es', chapter: ch });
+              }
+            }
+          }
+        });
+      } catch(e){}
+    });
+  }
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+  if (window.YT && window.YT.Player){ onReady(); }
+  else { window.onYouTubeIframeAPIReady = onReady; }
+})();
 </script>
 
 {% endblock %}
