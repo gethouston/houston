@@ -2,9 +2,11 @@ import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
 import { logAndReportError } from "../../lib/error-report";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
+import { isToolkitOauthUnavailableError } from "../../lib/toolkit-oauth-unavailable";
 import {
   connectFlowRegistry,
   useConnectFlowStore,
@@ -128,8 +130,35 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
         // Agent context: pass the agent slug so the gateway enforces the
         // agent's effective allowlist on connect (Teams v2). Undefined on the
         // account-level Integrations page.
-        mintLink: (slug) =>
-          tauriIntegrations.connect(INTEGRATION_PROVIDER, slug, agentId),
+        //
+        // An OAuth-unavailable refusal (the toolkit only signs in via OAuth
+        // and Houston has no app registered for it yet — HOU-1110, highlevel)
+        // is a Houston-side setup gap, not a crash: the engine call is
+        // silenced for it, so THIS is its one surface — friendly copy, plus an
+        // analytics event so demand for the missing app stays visible.
+        mintLink: async (slug) => {
+          try {
+            return await tauriIntegrations.connect(
+              INTEGRATION_PROVIDER,
+              slug,
+              agentId,
+            );
+          } catch (err) {
+            if (isToolkitOauthUnavailableError(err)) {
+              analytics.track("integration_connect_unavailable", {
+                integration_slug: slug,
+              });
+              addToast({
+                title: t("connectResult.unavailableTitle", {
+                  app: appName(slug),
+                }),
+                description: t("connectResult.unavailable"),
+                variant: "error",
+              });
+            }
+            throw err;
+          }
+        },
         openUrl: (url) => tauriSystem.openUrl(url),
         readConnection: (connectionId) =>
           tauriIntegrations.connection(INTEGRATION_PROVIDER, connectionId),
@@ -150,7 +179,17 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
       entry.promise = run;
       return { outcome: await run, initiated: true };
     },
-    [agentId, announce, qc, setNotice, setOrigin, setStep],
+    [
+      agentId,
+      announce,
+      appName,
+      addToast,
+      t,
+      qc,
+      setNotice,
+      setOrigin,
+      setStep,
+    ],
   );
 
   const reopen = useCallback(async (toolkit: string) => {

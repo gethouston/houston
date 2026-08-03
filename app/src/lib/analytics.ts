@@ -99,6 +99,10 @@ export type AnalyticsEventName =
   | "conversation_map_back_to_latest_clicked"
   // Feature adoption
   | "integration_connected"
+  // A connect was refused because Houston has no OAuth app registered for the
+  // toolkit (HOU-1110) — carries `integration_slug`, so demand for a missing
+  // app registration stays visible without a Sentry issue per click.
+  | "integration_connect_unavailable"
   | "integration_disconnected"
   | "custom_integration_started"
   // A custom integration landed via the manual add form (carries
