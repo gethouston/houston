@@ -16,7 +16,11 @@ import ArchivedTab from "./archived-tab";
  * board, and the archived list carries its own labelled back button in its
  * header (HOU-1043).
  */
-export default function BoardTab({ agent, agentDef }: TabProps) {
+export default function BoardTab({
+  agent,
+  agentDef,
+  isActive = false,
+}: TabProps) {
   const { t } = useTranslation(["dashboard"]);
   const mode = useUIStore((s) => s.agentBoardMode);
   const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
@@ -31,7 +35,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
         <ArchivedTab agent={agent} agentDef={agentDef} onBack={showActive} />
       ) : (
         <>
-          <MissionBoard source={source} />
+          <MissionBoard source={source} isActive={isActive} />
           <ArchivedBoardButton
             label={t("dashboard:archived.button")}
             onClick={() => setAgentBoardMode("archived")}
