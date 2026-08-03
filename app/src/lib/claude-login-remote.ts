@@ -32,12 +32,20 @@
  * SAFETY: this ships unsupervised, so EVERY user-initiated failure here
  * (extraction not-found, malformed cred, push non-200 after retries, network)
  * degrades to the existing setup-token paste flow with a friendly toast. A
- * bug in the push must never leave the user on a dead spinner.
+ * bug in the push must never leave the user on a dead spinner. But a push
+ * TRANSPORT failure alone is not proof the credential didn't land (HOU-1143):
+ * before degrading, the settlement policy (`claude-login-settle`) asks the
+ * engine's own usability probe — connected means connected, dialog withheld.
  */
 
 import { useUIStore } from "../stores/ui";
 import { pushClaudeCredentialWithRetry } from "./claude-credential-push";
+import {
+  type ClaudeHandoffResult,
+  settleRemoteClaudeLogin,
+} from "./claude-login-settle";
 import { getEngine } from "./engine";
+import { reportError } from "./error-report";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import {
@@ -55,10 +63,6 @@ type Announce = (
 
 /** Poll until the engine reads the provider connected, or the window elapses. */
 type Confirm = (provider: string) => Promise<boolean>;
-
-export type ClaudeHandoffResult =
-  | { ok: true }
-  | { ok: false; reason: "no-credential" | "push-failed"; error: unknown };
 
 /**
  * Read the handoff dir's freshly minted Claude credential and push it to the
@@ -121,8 +125,11 @@ async function discardHandoffCopy(): Promise<void> {
 
 /**
  * Extract the freshly minted Anthropic credential from the handoff dir, push
- * it to the cloud, and destroy the local copy, then confirm the connection.
- * Any failure falls back to the paste flow. Never rejects.
+ * it to the cloud, and destroy the local copy, then settle the outcome from
+ * the engine's own view (`claude-login-settle`): a push whose TRANSPORT
+ * failed but whose credential landed anyway announces success (HOU-1143 —
+ * the spurious paste dialog over a working connect), and only a genuinely
+ * disconnected anthropic falls back to the paste flow. Never rejects.
  */
 export async function finishRemoteClaudeLogin(
   frontendProviderId: string,
@@ -131,21 +138,37 @@ export async function finishRemoteClaudeLogin(
 ): Promise<void> {
   const result = await pushMintedClaudeCredential();
   await discardHandoffCopy();
-  if (!result.ok) {
-    fallbackToPaste(frontendProviderId, result.error, announce);
-    return;
-  }
-
-  // Stored + materialized on the pod. Poll until its runtime reads anthropic
-  // connected, then flip the card. A confirm timeout is NOT a handoff failure
-  // (the credential IS on the pod), so surface it like the co-located
-  // confirmTimeout rather than dropping into the paste flow.
-  const ok = await confirmConnected(frontendProviderId);
-  announce(
-    frontendProviderId,
-    ok,
-    ok ? null : i18n.t("providers:claudeLogin.confirmTimeout"),
+  const settlement = await settleRemoteClaudeLogin(result, () =>
+    confirmConnected(frontendProviderId),
   );
+  switch (settlement.kind) {
+    case "connected":
+      if (settlement.recovered) {
+        // The connect WORKED, so no user-facing failure — but the transport
+        // error that almost cost this user a manual token paste must reach
+        // Sentry, or the whole class stays invisible (HOU-1143 was reported
+        // by a user; nothing had been captured).
+        reportError(
+          "push_claude_oauth_credential",
+          "Claude credential push failed in transit, but the engine reads anthropic connected — recovered without the paste flow",
+          !result.ok ? result.error : undefined,
+        );
+      }
+      announce(frontendProviderId, true, null);
+      return;
+    case "confirm-timeout":
+      // NOT a handoff failure (the credential IS stored) — surface it like
+      // the co-located confirmTimeout rather than dropping into paste.
+      announce(
+        frontendProviderId,
+        false,
+        i18n.t("providers:claudeLogin.confirmTimeout"),
+      );
+      return;
+    case "paste":
+      fallbackToPaste(frontendProviderId, settlement.reason, announce);
+      return;
+  }
 }
 
 /**
@@ -160,9 +183,15 @@ function fallbackToPaste(
   announce: Announce,
 ): void {
   // The real reason (an extraction/push/network error, NEVER the token) goes to
-  // the log tail for the bug report, not a raw toast dump.
+  // the log tail AND to Sentry — the degrade used to be console-only, so every
+  // paste fallback in the wild was invisible until a user filed it (HOU-1143).
   console.warn(
     "[claude-login] remote credential handoff failed; falling back to paste:",
+    reason,
+  );
+  reportError(
+    "push_claude_oauth_credential",
+    "Claude credential handoff failed and anthropic reads disconnected — degrading to the setup-token paste flow",
     reason,
   );
   useUIStore.getState().addToast({
