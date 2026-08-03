@@ -1,11 +1,13 @@
 /**
  * Bounded transient retry for control-plane READS that boot the app.
  *
- * `cpFetch` already blind-retries 502/503/504 twice (~2s, `transientRetryFetch`)
- * — enough to ride a load-balancer handoff, nowhere near a pod cold start or a
- * longer gateway roll. Reads whose failure has a lasting consequence (the
- * workspace list decides which SPACE the whole session runs in) wrap themselves
- * here for a second, slower layer of attempts before they give up and throw.
+ * `cpFetch` already retries 502/503/504 (`transientRetryFetch`) on a schedule
+ * chosen from the gateway's own reason: ~2s for a load-balancer handoff, ~15s
+ * when the gateway says the agent's pod is waking. Neither covers a longer
+ * gateway roll, and neither knows which reads MATTER. Reads whose failure has a
+ * lasting consequence (the workspace list decides which SPACE the whole session
+ * runs in) wrap themselves here for a second, slower layer of attempts before
+ * they give up and throw.
  *
  * Deliberately NOT applied to every read: a retry costs the user latency, and
  * most reads are re-triggered cheaply by the query layer.

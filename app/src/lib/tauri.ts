@@ -57,6 +57,7 @@ import { isMissingSkillError } from "./missing-skill";
 import { isNetworkTransportError } from "./network-transport-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
+import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
 import { isNeedsUpgradeError, isPersonalSpaceError } from "./team-status-model";
 import { isToolkitOauthUnavailableError } from "./toolkit-oauth-unavailable";
 import type {
@@ -767,10 +768,33 @@ export const tauriSkills = {
 };
 
 export const tauriSharedSkills = {
-  list: (workspaceId: string) =>
-    call("list_shared_skills", async () => {
-      const result = await getEngine().listSharedSkills(workspaceId);
+  /**
+   * The workspace skill store, or the typed "this deployment has no store"
+   * answer.
+   *
+   * A deployment with no blob store bound answers every shared-skills route
+   * `503 {"error":"shared skills not configured"}` — feature ABSENCE, not a
+   * failure. Left as a rejection it re-fired the red bug toast (and a Sentry
+   * issue) every time a Skills surface mounted, and kept the query in an error
+   * state that refetched forever (HOU-1153). Resolving it to
+   * `configured: false` lets the surfaces render their empty state once and
+   * stop asking.
+   *
+   * This is NOT a silent fallback: `call` still logs the failure to the
+   * frontend log tail, the predicate is typed on the wire body rather than a
+   * message string, and every OTHER failure is rethrown to toast and report
+   * exactly as before.
+   */
+  list: async (workspaceId: string) => {
+    try {
+      const result = await call(
+        "list_shared_skills",
+        () => getEngine().listSharedSkills(workspaceId),
+        undefined,
+        { silence: isSharedSkillsUnconfiguredError },
+      );
       return {
+        configured: true,
         diagnostics: result.diagnostics,
         items: result.items.map((s) => ({
           name: s.name,
@@ -797,7 +821,11 @@ export const tauriSharedSkills = {
           prompt_template: s.promptTemplate ?? null,
         })),
       };
-    }),
+    } catch (err) {
+      if (!isSharedSkillsUnconfiguredError(err)) throw err;
+      return { configured: false, diagnostics: [], items: [] };
+    }
+  },
   load: (workspaceId: string, slug: string) =>
     call<SkillDetail>("load_shared_skill", () =>
       getEngine().loadSharedSkill(workspaceId, slug),

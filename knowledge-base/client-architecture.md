@@ -105,8 +105,9 @@ end-state is that it dissolves into direct SDK consumption
   (`client/context.ts`, held by `client/base.ts` as `this.ctx` — the single source
   of truth for `engine`/`sdk`/`authFetch`/`activeLogins`/routing helpers).
   `control-plane.ts` is a barrel re-exporting `cp/*` modules (`fetch.ts` is the
-  shared transport: `cpFetch`, `gatewayAuthFetch`, `transientRetryFetch`) — the ONE
-  import site callers and `vi.mock` use. Every file is ≤200 lines. Unsupported
+  shared transport: `cpFetch`, `gatewayAuthFetch`; `transient-retry.ts` is the
+  read-retry layer) — the ONE import site callers and `vi.mock` use. Every file
+  is ≤200 lines. Unsupported
   legacy desktop/Rust methods throw explicitly (`client/legacy-unsupported-mixin.ts`);
   there is no catch-all Proxy returning silent `[]`.
 
@@ -132,6 +133,34 @@ method: it builds the public MCP / A2A / missions addresses client-side
 (`lib/agent-connect-model.ts`) from the gateway origin
 (`window.__HOUSTON_ENGINE__.baseUrl`), the hosted agent id (= public slug), and
 the org slug (team workspace id, else the personal membership from `GET /v1/orgs`).
+
+**Gateway 5xx are not one thing — read the body before you toast (HOU-1170).**
+The managed cloud sleeps one engine pod per agent, so a normal chat open fires a
+burst of reads at a pod that may still be booting. `cp/transient-retry.ts` is the
+ONE place the gateway's 5xx bodies are parsed, turning prose into the typed
+`UnavailableReason` union and picking that reason's backoff:
+
+| Gateway answer | Reason | Client behavior |
+| --- | --- | --- |
+| `503 {"error":"engine unavailable","detail":"agent is waking"}` (+`Retry-After`) | `engine-waking` | 4 extra attempts, `WAKE_RETRY_DELAYS_MS` = 15s of client patience on top of the gateway's own 8s `ensure-awake` leg per attempt. No toast unless the budget is spent. |
+| `503 {"error":"shared skills not configured"}` | `feature-absent` | Answered on the first attempt — retrying a deployment shape is pure waste. |
+| any other 502/503/504, or a transport drop | `handoff` | The original 2 blind retries (~2s, HOU-731). |
+
+Two rules that fall out of this and are easy to get wrong:
+- **`Retry-After` is unreadable.** The gateway sends no
+  `Access-Control-Expose-Headers`, and `Retry-After` is not CORS-safelisted, so a
+  browser cannot see it cross-origin. Classify on the BODY (read off a
+  `res.clone()` so the caller's parse is untouched).
+- **`capabilities.sharedSkills` lies.** The gateway hardcodes it `true` even with
+  no blob store bound, so it cannot gate the call. The 503 body is the only
+  honest signal: `tauriSharedSkills.list` resolves it to `configured: false`
+  (`app/src/lib/shared-skills-availability.ts`) so the surface renders its empty
+  state once and the query stops refetching — the capability flag itself is a
+  gateway-side fix.
+
+This does NOT weaken **no silent failures**: a wake 503 retried to success is not
+a failure the user's action produced, and an exhausted budget, a non-503, or any
+unrecognized body still throws and toasts exactly as before.
 
 **Strict-additive / iOS-safe rule.** `@houston/sdk` is consumed by BOTH web AND
 the native iOS app (via the JavaScriptCore bridge, `bridge/entry.ts`). iOS reaches

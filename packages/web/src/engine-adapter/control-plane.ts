@@ -74,3 +74,4 @@ export * from "./cp/retry";
 export * from "./cp/runtime-clients";
 export * from "./cp/skills";
 export * from "./cp/spaces-billing";
+export * from "./cp/transient-retry";

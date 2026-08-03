@@ -1,9 +1,6 @@
 import { HoustonEngineClient } from "@houston/runtime-client";
-import {
-  type ControlPlaneConfig,
-  gatewayAuthFetch,
-  transientRetryFetch,
-} from "./fetch";
+import { type ControlPlaneConfig, gatewayAuthFetch } from "./fetch";
+import { transientRetryFetch } from "./transient-retry";
 
 /**
  * A runtime client scoped to ONE agent, via the control plane's transparent proxy.
