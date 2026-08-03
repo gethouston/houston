@@ -192,6 +192,39 @@ test("a routine row opens its chat in the panel and highlights as selected", asy
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 });
 
+test("switching tabs never stacks two chat panels in the shared shell panel (HOU-1165)", async ({
+  page,
+}) => {
+  const agentId = await seedAgentId();
+  await seedRoutine(agentId, "Morning brief");
+
+  await page.goto("/");
+
+  // Open a mission's chat on the Activity tab: the ONE shared shell panel holds
+  // exactly one conversation (each ChatPanel owns exactly one composer textarea).
+  await page.getByText("Plan a trip to Tokyo").click();
+  const panel = page.getByTestId("mission-panel");
+  await expect(panel.getByText("Mission: Plan a trip to Tokyo")).toBeVisible();
+  await expect(panel.locator("textarea")).toHaveCount(1);
+
+  // Every agent tab stays mounted (only CSS-hidden). Before HOU-1165 the hidden
+  // Activity board kept its selected mission and kept portaling its detail panel
+  // into this SAME container while the Routines tab portaled the routine's chat —
+  // two stacked panels, the chat "broken in half". The hidden tab must now yield
+  // the panel: opening a routine leaves exactly one conversation, the routine's.
+  await openRoutinesTab(page);
+  const row = page
+    .locator('[data-testid="routine-row"]')
+    .filter({ hasText: "Morning brief" });
+  await row.getByText("Morning brief").click();
+
+  await expect(panel.getByText("Routine: Morning brief")).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(panel.getByText("Mission: Plan a trip to Tokyo")).toHaveCount(0);
+  await expect(panel.locator("textarea")).toHaveCount(1);
+});
+
 test("the row switch pauses the routine on disk", async ({ page }) => {
   const agentId = await seedAgentId();
   await seedRoutine(agentId, "Pausable");

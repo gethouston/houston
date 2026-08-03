@@ -7,6 +7,7 @@ import { useRoutineRuns, useRoutines } from "../../hooks/queries";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
+import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useRoutineLeadingIcon } from "./routine-leading-icon";
 import {
@@ -56,6 +57,14 @@ export default function RoutinesTab({
   // surfaces have no board to drive it themselves.
   const { selected } = nav;
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
+  // The chat portals into the ONE shared shell panel that every tab reuses. Only
+  // the visible tab of the visible screen may portal into it — otherwise this
+  // (hidden) tab stacks its routine chat on top of the Activity tab's open
+  // mission panel, splitting the chat in half (HOU-1165). Gate the portal target
+  // on screen + tab visibility; a null container renders the (already hidden)
+  // board's inline fallback instead, which paints nothing.
+  const screenActive = useIsActiveView();
+  const portalContainer = isActive && screenActive ? panelContainer : null;
   useEffect(() => {
     if (!shouldSyncRoutinesPanel(isActive)) return;
     setPanelOpen(!!selected);
@@ -203,7 +212,7 @@ export default function RoutinesTab({
           chatSetup={chatSetup}
           accountTimezone={h.tz.timezone ?? "UTC"}
           triggersAvailable={triggers.triggersEnabled}
-          panelContainer={panelContainer}
+          panelContainer={portalContainer}
           onIntakeComplete={nav.handleIntakeComplete}
           onIntakeDismiss={nav.dismissIntake}
           onIntakeSend={nav.handleIntakeComposerSend}
