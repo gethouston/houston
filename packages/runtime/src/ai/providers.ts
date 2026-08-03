@@ -13,6 +13,11 @@ import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
 import { endpointReachableCached } from "./endpoint-reachability";
 import {
+  MINIMAX_PROVIDER,
+  MINIMAX_TOKEN_PLAN_MODEL_ID,
+  minimaxTokenPlanModelFor,
+} from "./minimax";
+import {
   buildActiveCustomModel,
   customEndpointConfigured,
   customModelId,
@@ -421,6 +426,12 @@ export function safeGetModel(
   modelId: string,
   pinned: boolean,
 ) {
+  // MiniMax token/coding plan: pi-ai's minimax catalog has no `[1m]` variant, so
+  // hand-build it (same provider/endpoint/auth) before consulting pi's getModel —
+  // otherwise a saved id falls back to the pay-as-you-go SKU and a pinned id throws.
+  const minimaxTokenPlan = minimaxTokenPlanModelFor(provider, modelId);
+  if (minimaxTokenPlan) return minimaxTokenPlan;
+
   const pp = provider as BuiltinProvider;
   const mp = modelId as Parameters<typeof getModel>[1];
   if (pinned) {
@@ -508,13 +519,17 @@ export function resolveModel(
   return safeGetModel(provider, override || modelFor(provider), !!override);
 }
 
-function safeModelIds(provider: ProviderId): string[] {
+export function safeModelIds(provider: ProviderId): string[] {
   // The OpenAI-compatible provider has no pi catalog; its only "model" is the
   // single one the user configured on the endpoint.
   if (provider === OPENAI_COMPATIBLE) {
     const m = customModelId();
     return m ? [m] : [];
   }
+  // MiniMax's token-plan model (`MiniMax-M3[1m]`) is hand-built, not in pi's
+  // catalog — surface it in the picker alongside pi's pay-as-you-go minimax ids.
+  if (provider === MINIMAX_PROVIDER)
+    return [MINIMAX_TOKEN_PLAN_MODEL_ID, ...piModelIds(provider)];
   return piModelIds(provider);
 }
 

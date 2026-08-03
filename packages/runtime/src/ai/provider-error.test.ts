@@ -428,6 +428,27 @@ test("opencode CreditsError classifies off the body even with no parsed status",
   expect(err.kind).toBe("quota_exhausted");
 });
 
+test("MiniMax 'insufficient balance (1008)' under 500 → quota_exhausted, not provider_internal", () => {
+  // MiniMax's Anthropic-compatible endpoint ships its out-of-quota error as an
+  // HTTP 500 api_error (the HOU-1160 "usage ran out" report). The
+  // insufficient-balance body check runs BEFORE the 5xx branch — this test pins
+  // that load-bearing order: a 500-status quota body must show the "pay or
+  // switch" card (a token-plan user on the wrong SKU can act on that), never a
+  // retryable-looking server error.
+  const err = classifyProviderError({
+    provider: "minimax",
+    model: "MiniMax-M3",
+    message:
+      '{"type":"error","error":{"type":"api_error","message":"insufficient balance (1008)"}}',
+    status: 500,
+  });
+  expect(err.kind).toBe("quota_exhausted");
+  if (err.kind === "quota_exhausted") {
+    expect(err.resets_at).toBeNull();
+    expect(err.message).toContain("insufficient balance");
+  }
+});
+
 test("opencode ModelError 'is not supported' under 401 → model_unavailable, not a reconnect", () => {
   const err = classifyProviderError({
     provider: "opencode",

@@ -4,6 +4,7 @@ import {
   buildProviderCatalog,
   piModelToCatalogEntry,
   piProviderToCatalog,
+  withMinimaxTokenPlan,
 } from "./pi-catalog";
 
 /**
@@ -136,4 +137,24 @@ test("buildProviderCatalog serves the full pi-ai registry", () => {
       }
     }
   }
+});
+
+test("catalog surfaces MiniMax's token-plan model MiniMax-M3[1m]", () => {
+  // HOU-1160: pi-ai's minimax catalog has no `[1m]` variant, so the catalog must
+  // inject it (cloned from MiniMax-M3) or the picker can't offer the token-plan SKU.
+  const minimax = buildProviderCatalog().find((p) => p.id === "minimax");
+  expect(minimax).toBeDefined();
+  const ids = minimax?.models.map((m) => m.id) ?? [];
+  expect(ids).toContain("MiniMax-M3[1m]");
+  expect(ids).toContain("MiniMax-M3");
+  // The clone keeps M3's 1M context window and pricing.
+  const tokenPlan = minimax?.models.find((m) => m.id === "MiniMax-M3[1m]");
+  const base = minimax?.models.find((m) => m.id === "MiniMax-M3");
+  expect(tokenPlan?.contextWindow).toBe(base?.contextWindow);
+  expect(tokenPlan?.pricing).toEqual(base?.pricing);
+});
+
+test("withMinimaxTokenPlan is a no-op without the base MiniMax-M3 model", () => {
+  const noBase: Model<Api>[] = [];
+  expect(withMinimaxTokenPlan(noBase)).toEqual([]);
 });

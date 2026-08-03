@@ -20,6 +20,7 @@ import {
   providerDefaultModel,
   resolveModel,
   safeGetModel,
+  safeModelIds,
 } from "./providers";
 
 /**
@@ -91,7 +92,7 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("amazon-bedrock")).toBe(
     "anthropic.claude-sonnet-4-6",
   );
-  expect(providerDefaultModel("minimax")).toBe("MiniMax-M3");
+  expect(providerDefaultModel("minimax")).toBe("MiniMax-M3[1m]");
   // Unknown falls back to the Codex default (never throws / undefined).
   expect(providerDefaultModel("nope")).toBe("gpt-5.5");
 });
@@ -108,6 +109,25 @@ test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {
   expect(
     (safeGetModel("minimax", "MiniMax-M3", false) as { id?: string }).id,
   ).toBe("MiniMax-M3");
+});
+
+test("MiniMax token-plan model MiniMax-M3[1m] resolves on the minimax provider", () => {
+  // The token/coding-plan SKU is hand-built (not in pi's catalog): it must resolve
+  // to a real model on the minimax provider (same endpoint/auth), verbatim id, for
+  // both a saved pick and a hard pin — never fall back to the pay-as-you-go SKU or
+  // throw "not available" (HOU-1160).
+  for (const pinned of [false, true]) {
+    const m = safeGetModel("minimax", "MiniMax-M3[1m]", pinned) as {
+      id?: string;
+      provider?: string;
+      baseUrl?: string;
+    };
+    expect(m.id).toBe("MiniMax-M3[1m]");
+    expect(m.provider).toBe("minimax");
+    expect(m.baseUrl).toBe("https://api.minimax.io/anthropic");
+  }
+  // It is also offered in the picker id list (so it survives the saved-id gate).
+  expect(safeModelIds("minimax")).toContain("MiniMax-M3[1m]");
 });
 
 test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {
