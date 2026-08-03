@@ -7,6 +7,13 @@
  * tinted Houston helmet), so the preview reads as a genuine multi-person
  * conversation doing complex work across real tool integrations, not a demo.
  *
+ * Text is translated: it comes from window.HOUSTON_I18N (js.chat and js.people,
+ * emitted by _includes/landing/i18n-data.njk before this asset), with the
+ * English copy below as the fallback. The structure mirrors _data/landing.js
+ * chat — pill order, helmet colors, the people in each room and who speaks each
+ * turn — which stays the source of truth; a classic script cannot import it, so
+ * the small structure is copied here.
+ *
  * Presentational only, no network. Loaded `defer`. Scenario 0 (Sales) is also
  * inlined in multiplayer.njk so JS-off shows a full settled thread; with
  * prefers-reduced-motion this script renders the settled thread and does NOT
@@ -16,149 +23,129 @@
   var root = document.querySelector("[data-chat-demo]");
   if (!root) return;
 
+  function t(path, fallback) {
+    return window.houstonT ? window.houstonT(path, fallback) : fallback;
+  }
+
   // Human participants — real teammate photos (astronaut headshots), circular.
   var PEOPLE = {
     julian: {
-      name: "Julian",
+      name: t("people.julian", "Julian"),
       s: "/assets/img/julian-48.webp",
       d: "/assets/img/julian-96.webp",
     },
     felipe: {
-      name: "Felipe",
+      name: t("people.felipe", "Felipe"),
       s: "/assets/img/felipe-48.webp",
       d: "/assets/img/felipe-96.webp",
     },
   };
 
-  // Each scenario: the shared agent (name + helmet-color av), the mission, the
-  // people in the room, and the thread. `who` is a PEOPLE key or "agent". Every
-  // story is complex, multi-step work with a SECOND human jumping in to redirect
-  // (the multiplayer signal). Agents act across their real integrations only.
-  var SCENARIOS = [
+  // Structure of each scenario: the shared agent's helmet-color av, the people
+  // in the room, and who speaks each turn (a PEOPLE key or "agent"). Zips by
+  // index with the locale's turns. Every story is complex, multi-step work with
+  // a SECOND human jumping in to redirect (the multiplayer signal). Agents act
+  // across their real integrations only.
+  var STRUCTURE = [
     {
-      label: "Sales",
-      agent: "Sales Rep",
+      id: "sales",
       av: "av-c",
-      mission: "Rebuild the Q3 pipeline report",
       people: ["julian", "felipe"],
-      thread: [
-        {
-          who: "julian",
-          text: "Rebuild the Q3 pipeline report. Pull every open deal from HubSpot, match it against the email threads in Gmail, and tell me what will really close.",
-        },
-        {
-          who: "agent",
-          text: "Working through it. 63 open deals in HubSpot, cross-checked against Gmail. 12 have gone quiet for 3+ weeks, and 5 are stuck waiting on a contract from us.",
-        },
-        {
-          who: "felipe",
-          text: "Exclude the churned accounts, and add the renewals coming up this quarter. @Julian the stalled ones are your call.",
-        },
-        {
-          who: "agent",
-          text: "Updated. Dropped 4 churned accounts, added 9 renewals. Weighted pipeline is $1.4M, with $380K at real risk from the stalled threads.",
-        },
-        {
-          who: "julian",
-          text: "Chase the stalled ones. Put it where the whole team can see it.",
-        },
-        {
-          who: "agent",
-          text: "Done. The report is on the shared board, at-risk deals flagged, a follow-up drafted for each. @Julian please confirm and I'll send all 12.",
-        },
-      ],
+      turns: ["julian", "agent", "felipe", "agent", "julian", "agent"],
     },
     {
-      label: "Bookkeeping",
-      agent: "Bookkeeper",
+      id: "bookkeeping",
       av: "av-o",
-      mission: "Close last month's books",
       people: ["felipe", "julian"],
-      thread: [
-        {
-          who: "felipe",
-          text: "Close out last month. Pull every transaction from Stripe and the bank, match them up, and flag anything that does not reconcile.",
-        },
-        {
-          who: "agent",
-          text: "On it. 842 transactions across Stripe and the bank feed. 838 matched cleanly. 3 bank charges have no invoice, and 1 refund is logged twice. @Julian that refund looks like yours, can you confirm?",
-        },
-        {
-          who: "julian",
-          text: "Confirmed, we issued it by mistake. Categorize the 3 charges as software.",
-        },
-        {
-          who: "agent",
-          text: "Done. Refund noted, 3 charges filed under software. The books balance to the cent.",
-        },
-        { who: "felipe", text: "Great. Send it to the accountant." },
-        {
-          who: "agent",
-          text: "Sent. The reconciled month is with the accountant. @Felipe the one-page summary is in the shared folder for your sign-off.",
-        },
-      ],
+      turns: ["felipe", "agent", "julian", "agent", "felipe", "agent"],
     },
     {
-      label: "Hiring",
-      agent: "HR Manager",
+      id: "hiring",
       av: "av-g",
-      mission: "Hire a senior designer",
       people: ["julian", "felipe"],
-      thread: [
-        {
-          who: "julian",
-          text: "Open the senior designer role. Post it, then screen everyone who applies against the brief.",
-        },
-        {
-          who: "agent",
-          text: "Posted to LinkedIn and the careers page. 41 applicants so far, each scored against the brief. Prioritizing product design and B2B experience.",
-        },
-        {
-          who: "felipe",
-          text: "Push anyone with fintech experience to the top. @Julian you'll want to see the first two.",
-        },
-        {
-          who: "agent",
-          text: "Reordered. Top 9 now, 4 with fintech backgrounds. Notes and portfolios are attached for each.",
-        },
-        { who: "julian", text: "Set up calls with the top 3." },
-        {
-          who: "agent",
-          text: "Booked. Three intro calls on your calendar this week. @Felipe should I add you to the panel invites?",
-        },
-      ],
+      turns: ["julian", "agent", "felipe", "agent", "julian", "agent"],
     },
     {
-      label: "Support",
-      agent: "Support Rep",
+      id: "support",
       av: "av-b",
-      mission: "Clear the support queue",
       people: ["felipe", "julian"],
-      thread: [
-        {
-          who: "felipe",
-          text: "The support queue is backed up, 34 open tickets in two days. Triage them and clear what you can.",
-        },
-        {
-          who: "agent",
-          text: "Going through all 34. 19 are the same billing question after the price change, 8 are password resets, and 7 need a human.",
-        },
-        {
-          who: "julian",
-          text: "Send the billing 19 the new pricing FAQ, and reset the 8 passwords.",
-        },
-        {
-          who: "agent",
-          text: "Done. 27 tickets answered and closed from the shared inbox. The 7 that need judgment are tagged and waiting.",
-        },
-        { who: "felipe", text: "Who are the 7 for?" },
-        {
-          who: "agent",
-          text: "Five feature questions with replies drafted, and two refunds over our limit. @Felipe please approve those and everything goes out today.",
-        },
-      ],
+      turns: ["felipe", "agent", "julian", "agent", "felipe", "agent"],
     },
   ];
+
+  // English fallback copy, same shape as window.HOUSTON_I18N.chat.scenarios.
+  var FALLBACK = {
+    sales: {
+      label: "Sales",
+      agent: "Sales Rep",
+      mission: "Rebuild the Q3 pipeline report",
+      turns: [
+        "Rebuild the Q3 pipeline report. Pull every open deal from HubSpot, match it against the email threads in Gmail, and tell me what will really close.",
+        "Working through it. 63 open deals in HubSpot, cross-checked against Gmail. 12 have gone quiet for 3+ weeks, and 5 are stuck waiting on a contract from us.",
+        "Exclude the churned accounts, and add the renewals coming up this quarter. @Julian the stalled ones are your call.",
+        "Updated. Dropped 4 churned accounts, added 9 renewals. Weighted pipeline is $1.4M, with $380K at real risk from the stalled threads.",
+        "Chase the stalled ones. Put it where the whole team can see it.",
+        "Done. The report is on the shared board, at-risk deals flagged, a follow-up drafted for each. @Julian please confirm and I'll send all 12.",
+      ],
+    },
+    bookkeeping: {
+      label: "Bookkeeping",
+      agent: "Bookkeeper",
+      mission: "Close last month's books",
+      turns: [
+        "Close out last month. Pull every transaction from Stripe and the bank, match them up, and flag anything that does not reconcile.",
+        "On it. 842 transactions across Stripe and the bank feed. 838 matched cleanly. 3 bank charges have no invoice, and 1 refund is logged twice. @Julian that refund looks like yours, can you confirm?",
+        "Confirmed, we issued it by mistake. Categorize the 3 charges as software.",
+        "Done. Refund noted, 3 charges filed under software. The books balance to the cent.",
+        "Great. Send it to the accountant.",
+        "Sent. The reconciled month is with the accountant. @Felipe the one-page summary is in the shared folder for your sign-off.",
+      ],
+    },
+    hiring: {
+      label: "Hiring",
+      agent: "HR Manager",
+      mission: "Hire a senior designer",
+      turns: [
+        "Open the senior designer role. Post it, then screen everyone who applies against the brief.",
+        "Posted to LinkedIn and the careers page. 41 applicants so far, each scored against the brief. Prioritizing product design and B2B experience.",
+        "Push anyone with fintech experience to the top. @Julian you'll want to see the first two.",
+        "Reordered. Top 9 now, 4 with fintech backgrounds. Notes and portfolios are attached for each.",
+        "Set up calls with the top 3.",
+        "Booked. Three intro calls on your calendar this week. @Felipe should I add you to the panel invites?",
+      ],
+    },
+    support: {
+      label: "Support",
+      agent: "Support Rep",
+      mission: "Clear the support queue",
+      turns: [
+        "The support queue is backed up, 34 open tickets in two days. Triage them and clear what you can.",
+        "Going through all 34. 19 are the same billing question after the price change, 8 are password resets, and 7 need a human.",
+        "Send the billing 19 the new pricing FAQ, and reset the 8 passwords.",
+        "Done. 27 tickets answered and closed from the shared inbox. The 7 that need judgment are tagged and waiting.",
+        "Who are the 7 for?",
+        "Five feature questions with replies drafted, and two refunds over our limit. @Felipe please approve those and everything goes out today.",
+      ],
+    },
+  };
+
+  var SCENARIOS = STRUCTURE.map((s) => {
+    var fb = FALLBACK[s.id];
+    var key = `chat.scenarios.${s.id}.`;
+    var texts = t(`${key}turns`, fb.turns);
+    if (!Array.isArray(texts)) texts = fb.turns;
+    return {
+      label: t(`${key}label`, fb.label),
+      agent: t(`${key}agent`, fb.agent),
+      av: s.av,
+      mission: t(`${key}mission`, fb.mission),
+      people: s.people,
+      thread: s.turns.map((who, i) => ({
+        who: who,
+        text: texts[i] || fb.turns[i],
+      })),
+    };
+  });
 
   var tabs = root.querySelectorAll(".chat-tab");
   var thread = root.querySelector("#cd-thread");
@@ -170,11 +157,30 @@
 
   var reduceMq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 
-  function mentionize(t) {
-    return t.replace(
-      /@(Julian|Felipe|Maya)\b/g,
-      '<span class="mention">@$1</span>',
-    );
+  // Mentions are matched by NAME, so the pattern is built from the locale's
+  // people (longest first, so one name can never mask a longer one).
+  function escapeRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function mentionRe() {
+    var names = ["Julian", "Felipe", "Maya"];
+    var people = t("people", null);
+    var translated = [];
+    if (people && typeof people === "object") {
+      translated = Object.keys(people)
+        .map((k) => people[k])
+        .filter((n) => typeof n === "string" && n);
+    }
+    if (translated.length) names = translated;
+    names.sort((a, b) => b.length - a.length);
+    return new RegExp(`@(${names.map(escapeRe).join("|")})\\b`, "g");
+  }
+
+  var MENTIONS = mentionRe();
+
+  function mentionize(text) {
+    return text.replace(MENTIONS, '<span class="mention">@$1</span>');
   }
 
   function esc(s) {

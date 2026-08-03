@@ -1,72 +1,60 @@
+{# Faces for this section: `landing.people` holds the identity (photo file or
+   initials + tone), `t.js.people` the display name. `face` is the head's face
+   stack; `avatar` is the bare, unlabelled shape the thread and the composer
+   use, so the caller names the class it needs. #}
+{%- macro face(id) %}{% set p = landing.people[id] %}{% if p.img %}<span class="face face-img" title="{{ t.js.people[id] or p.initials }}"><img src="/assets/img/{{ p.img }}-48.webp" srcset="/assets/img/{{ p.img }}-96.webp 2x" width="48" height="48" alt=""></span>{% else %}<span class="face {{ p.tone }}" title="{{ t.js.people[id] or p.initials }}">{{ p.initials }}</span>{% endif %}{% endmacro %}
+{%- macro avatar(id, cls) %}{% set p = landing.people[id] %}{% if p.img %}<span class="{{ cls }} face-img"><img src="/assets/img/{{ p.img }}-48.webp" srcset="/assets/img/{{ p.img }}-96.webp 2x" width="48" height="48" alt=""></span>{% else %}<span class="{{ cls }} {{ p.tone }}">{{ p.initials }}</span>{% endif %}{% endmacro -%}
 <section id="multiplayer" class="section">
   {# Hidden alias so cross-site links to #features still resolve. #}
   <span id="features" class="anchor-alias" aria-hidden="true"></span>
   <div class="mp-head reveal">
-    <h2 class="sec-title">AI stopped being single-player.</h2>
+    <h2 class="sec-title">{{ t.multiplayer.title }}</h2>
   </div>
 
   {# Two big phrases left, the live multiplayer chat right. The phrases ARE the
      copy for this section; everything deeper lives in the Q&A. #}
   <div class="mp-split reveal reveal-d1">
     <div class="mp-phrases">
-      <p class="mp-phrase">AI is locked in private chats.</p>
-      <p class="mp-phrase is-strong">Houston puts your agents in front of the whole team.</p>
+      <p class="mp-phrase">{{ t.multiplayer.phrase1 }}</p>
+      <p class="mp-phrase is-strong">{{ t.multiplayer.phrase2 }}</p>
     </div>
 
     <div class="mp-chat-col">
 <div class="chat-demo reveal reveal-d1" data-chat-demo>
-    <div class="chat-tabs" role="tablist" aria-label="Use cases">
-      <button class="chat-tab active" data-uc="0" role="tab" aria-selected="true">Sales</button>
-      <button class="chat-tab" data-uc="1" role="tab" aria-selected="false">Bookkeeping</button>
-      <button class="chat-tab" data-uc="2" role="tab" aria-selected="false">Hiring</button>
-      <button class="chat-tab" data-uc="3" role="tab" aria-selected="false">Support</button>
+    <div class="chat-tabs" role="tablist" aria-label="{{ t.multiplayer.tabsLabel }}">
+{%- for tab in t.multiplayer.tabs %}
+      <button class="chat-tab{% if loop.first %} active{% endif %}" data-uc="{{ loop.index0 }}" role="tab" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">{{ tab }}</button>
+{%- endfor %}
     </div>
 
     <div class="chat-win win">
       <div class="chat-head">
         <span class="chat-agent">
-          <span class="av av-c" id="cd-agent-av" aria-hidden="true"></span>
+          <span class="av {{ landing.multiplayer.chat.av }}" id="cd-agent-av" aria-hidden="true"></span>
           <span class="chat-agent-meta">
-            <span class="chat-agent-name" id="cd-agent-name">Sales Rep</span>
-            <span class="chat-mission" id="cd-mission">Rebuild the Q3 pipeline report</span>
+            <span class="chat-agent-name" id="cd-agent-name">{{ t.multiplayer.agentName }}</span>
+            <span class="chat-mission" id="cd-mission">{{ t.multiplayer.mission }}</span>
           </span>
         </span>
-        <span class="chat-people" id="cd-people" role="group" aria-label="People in this chat">
-          <span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
-          <span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span>
+        <span class="chat-people" id="cd-people" role="group" aria-label="{{ t.multiplayer.peopleLabel }}">
+{%- for id in landing.multiplayer.chat.people %}
+          {{ face(id) }}
+{%- endfor %}
         </span>
       </div>
 
       <div class="chat-thread" id="cd-thread">
-        <div class="cmsg cmsg-human">
-          <span class="cmsg-av face-img"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
-          <div class="cmsg-main"><span class="cmsg-name">Julian</span><div class="cmsg-text">Rebuild the Q3 pipeline report. Pull every open deal from HubSpot, match it against the email threads in Gmail, and tell me what will really close.</div></div>
+{%- for m in landing.multiplayer.chat.msgs %}{% set msg = t.multiplayer.msgs[loop.index0] %}
+        <div class="cmsg cmsg-{{ m.who }}">
+          {% if m.who == "agent" %}<span class="cmsg-av av {{ landing.multiplayer.chat.av }}"></span>{% else %}{{ avatar(m.human, "cmsg-av") }}{% endif %}
+          <div class="cmsg-main"><span class="cmsg-name">{{ msg.who }}</span><div class="cmsg-text">{{ msg.textHtml | safe }}</div></div>
         </div>
-        <div class="cmsg cmsg-agent">
-          <span class="cmsg-av av av-c"></span>
-          <div class="cmsg-main"><span class="cmsg-name">Sales Rep</span><div class="cmsg-text">Working through it. 63 open deals in HubSpot, cross-checked against Gmail. 12 have gone quiet for 3+ weeks, and 5 are stuck waiting on a contract from us.</div></div>
-        </div>
-        <div class="cmsg cmsg-human">
-          <span class="cmsg-av face-img"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span>
-          <div class="cmsg-main"><span class="cmsg-name">Felipe</span><div class="cmsg-text">Exclude the churned accounts, and add the renewals coming up this quarter. <span class="mention">@Julian</span> the stalled ones are your call.</div></div>
-        </div>
-        <div class="cmsg cmsg-agent">
-          <span class="cmsg-av av av-c"></span>
-          <div class="cmsg-main"><span class="cmsg-name">Sales Rep</span><div class="cmsg-text">Updated. Dropped 4 churned accounts, added 9 renewals. Weighted pipeline is $1.4M, with $380K at real risk from the stalled threads.</div></div>
-        </div>
-        <div class="cmsg cmsg-human">
-          <span class="cmsg-av face-img"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
-          <div class="cmsg-main"><span class="cmsg-name">Julian</span><div class="cmsg-text">Chase the stalled ones. Put it where the whole team can see it.</div></div>
-        </div>
-        <div class="cmsg cmsg-agent">
-          <span class="cmsg-av av av-c"></span>
-          <div class="cmsg-main"><span class="cmsg-name">Sales Rep</span><div class="cmsg-text">Done. The report is on the shared board, at-risk deals flagged, a follow-up drafted for each. <span class="mention">@Julian</span> please confirm and I'll send all 12.</div></div>
-        </div>
+{%- endfor %}
       </div>
 
       <div class="chat-composer">
-        <span class="cc-avatar face-img"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span>
-        <span class="cc-placeholder">Message your team and the agent...</span>
+        {{ avatar(landing.multiplayer.chat.composerAvatar, "cc-avatar") }}
+        <span class="cc-placeholder">{{ t.multiplayer.composer }}</span>
         <span class="cc-send" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></span>
       </div>
     </div>

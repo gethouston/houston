@@ -5,15 +5,15 @@
    the bone token layer (site-tokens + landing + subpage css).
 
    In-page nav/footer anchors (#multiplayer, #pricing, …) point at landing
-   sections, so `root` prefixes them to "/#…"; on the landing itself `root` is
-   unset (empty) and the anchors stay bare. `subpage` flags nav.njk to render
-   its solid (non-hero) variant.
+   sections, so `root` (computed in _data/eleventyComputed.js) prefixes them
+   with the page's locale root: "/#…" here, "/es/#…" on a Spanish subpage. On
+   the landing itself `root` is empty and the anchors stay bare. `subpage`
+   flags nav.njk to render its solid (non-hero) variant.
 
    Pages extend this and fill:
      block subpageStyles   — page-specific CSS (essay/legal/timeline layout)
      block subpageContent  — the <main> content #}
 {% extends "base.njk" %}
-{% set root = "/" %}
 {% set subpage = true %}
 {# Self-hosted Hanken Grotesk (via site-tokens) is the whole type system here,
    exactly like the landing — drop base.njk's render-blocking Fontshare request. #}
@@ -27,6 +27,8 @@
 <link rel="stylesheet" href="/assets/css/landing.css">
 <link rel="stylesheet" href="/assets/css/subpage.css">
 <link rel="stylesheet" href="/assets/css/download-gate.css">
+<link rel="stylesheet" href="/assets/css/lang-switch.css">
+<link rel="stylesheet" href="/assets/css/dl-dropdown.css">
 {% block subpageStyles %}{% endblock %}
 {% endblock %}
 {% block body %}

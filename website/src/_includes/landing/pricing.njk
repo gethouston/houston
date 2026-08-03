@@ -3,53 +3,51 @@
      CTAs rather than 404ing. #}
   <span id="download" class="anchor-alias" aria-hidden="true"></span>
   <div class="pricing-head reveal">
-    <h2 class="sec-title pricing-title">Ready to 10x your team overnight?</h2>
-    <p class="sec-lead">Free for the first three people. Upgrade when the whole team wants in.</p>
+    <h2 class="sec-title pricing-title">{{ t.pricing.title }}</h2>
+    <p class="sec-lead">{{ t.pricing.lead }}</p>
   </div>
 
   {# Annual price leads (the convention people expect); the monthly price is
-     the small line. The Team card inverts to ink — the one loud object on the
-     band. All prices render from _data/pricing.js, never hardcoded. #}
+     the small line. The Team card inverts to ink, the one loud object on the
+     band. All prices render from _data/pricing.js, never hardcoded, and the
+     Team note takes its monthly figure through the {price} placeholder so no
+     translation ever carries a number. #}
   <div class="pricing-grid reveal reveal-d1">
     <div class="price-col">
-      <div class="price-name">Free</div>
+      <div class="price-name">{{ t.pricing.free.name }}</div>
       <div class="price-amt"><span class="amount">{{ pricing.currency }}0</span></div>
-      <div class="price-note">for yourself, or a team of up to three</div>
+      <div class="price-note">{{ t.pricing.free.note }}</div>
       <ul class="price-list">
-        <li>Your personal workspace, free forever</li>
-        <li>Up to three people when you're ready</li>
-        <li>All 1,000+ integrations</li>
-        <li>Works with your AI subscription</li>
-        <li>Community agents from the store</li>
+{%- for item in t.pricing.free.items %}
+        <li>{{ item }}</li>
+{%- endfor %}
       </ul>
-      <div class="price-cta"><button class="btn btn-outline" data-dl-trigger data-dl-source="pricing">Download the app</button></div>
+      <div class="price-cta"><button class="btn btn-outline" data-dl-trigger data-dl-source="pricing">{{ t.pricing.free.cta }}</button></div>
     </div>
 
     <div class="price-col featured">
-      <span class="price-chip">Most popular</span>
-      <div class="price-name">Team</div>
-      <div class="price-amt"><span class="amount">{{ pricing.currency }}{{ pricing.teamAnnual }}</span><span class="per">/seat/mo</span></div>
-      <div class="price-note">billed annually · {{ pricing.currency }}{{ pricing.teamMonthly }} billed monthly</div>
+      <span class="price-chip">{{ t.pricing.team.chip }}</span>
+      <div class="price-name">{{ t.pricing.team.name }}</div>
+      <div class="price-amt"><span class="amount">{{ pricing.currency }}{{ pricing.teamAnnual }}</span><span class="per">{{ t.pricing.team.per }}</span></div>
+      <div class="price-note">{{ t.pricing.team.note | replace("{price}", pricing.currency + pricing.teamMonthly) }}</div>
       <ul class="price-list">
-        <li>Everything in Free</li>
-        <li>Unlimited teammates</li>
-        <li>Unlimited usage, agents around the clock</li>
-        <li>Shared agents and team spaces</li>
-        <li>Roles and guardrails</li>
+{%- for item in t.pricing.team.items %}
+        <li>{{ item }}</li>
+{%- endfor %}
       </ul>
-      <div class="price-cta"><button class="btn btn-white" data-dl-trigger data-dl-source="pricing-team">Start free trial</button></div>
+      <div class="price-cta"><button class="btn btn-white" data-dl-trigger data-dl-source="pricing-team">{{ t.pricing.team.cta }}</button></div>
     </div>
 
     <div class="price-col">
-      <div class="price-name">Enterprise</div>
-      <div class="price-amt"><span class="amount">Custom</span></div>
-      <div class="price-note">for larger teams</div>
+      <div class="price-name">{{ t.pricing.enterprise.name }}</div>
+      <div class="price-amt"><span class="amount">{{ t.pricing.enterprise.amount }}</span></div>
+      <div class="price-note">{{ t.pricing.enterprise.note }}</div>
       <ul class="price-list">
-        <li>SSO</li>
-        <li>Security review</li>
-        <li>Onboarding for the whole team</li>
+{%- for item in t.pricing.enterprise.items %}
+        <li>{{ item }}</li>
+{%- endfor %}
       </ul>
-      <div class="price-cta"><a class="btn btn-outline" href="mailto:{{ pricing.salesEmail }}?subject=Houston%20Enterprise">Talk to us</a></div>
+      <div class="price-cta"><a class="btn btn-outline" href="mailto:{{ pricing.salesEmail }}?subject=Houston%20Enterprise">{{ t.pricing.enterprise.cta }}</a></div>
     </div>
   </div>
 </section>

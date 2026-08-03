@@ -12,7 +12,8 @@
     ],
     "redirects": [
       { "source": "/pricing/", "destination": "/#pricing", "type": 301 },
-      { "source": "/pricing/es/", "destination": "/#pricing", "type": 301 },
+      { "source": "/pricing/es/", "destination": "/es/#pricing", "type": 301 },
+      { "source": "/pricing/pt/", "destination": "/pt/#pricing", "type": 301 },
       { "source": "/waitlist/", "destination": "/#download", "type": 301 },
       {
         "source": "/agent-store",

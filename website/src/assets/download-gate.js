@@ -19,6 +19,35 @@
   var dmgUrl = null;
   var winX64Url = null;
   var winArm64Url = null;
+  var savedY = 0;
+
+  // window.houstonT comes from the inline i18n block; fall back to the English
+  // literal if a page ever loads this script without it.
+  function tr(path, fallback) {
+    return window.houstonT ? window.houstonT(path, fallback) : fallback;
+  }
+
+  // The landing drives the page with Lenis smooth scroll. Freezing the native
+  // scroll alone is not enough: Lenis keeps its own position, so it has to be
+  // stopped and restored too, or a wheel over the modal scrolls the page.
+  function lockScroll() {
+    if (document.documentElement.classList.contains("dl-modal-open")) return;
+    savedY = window.scrollY;
+    var gutter = window.innerWidth - document.documentElement.clientWidth;
+    document.documentElement.style.setProperty("--dl-sbw", `${gutter}px`);
+    if (window.lenis?.stop) window.lenis.stop();
+    document.documentElement.classList.add("dl-modal-open");
+  }
+
+  function unlockScroll() {
+    document.documentElement.classList.remove("dl-modal-open");
+    if (window.lenis?.start) {
+      window.lenis.start();
+      window.lenis.scrollTo(savedY, { immediate: true });
+    } else {
+      window.scrollTo(0, savedY);
+    }
+  }
 
   function isRegistered() {
     try {
@@ -58,13 +87,16 @@
       windowsGroup.hidden = true;
       windowsSkip.hidden = true;
       osAlt.hidden = false;
-      osAlt.textContent = "Need it for Windows instead?";
+      osAlt.textContent = tr(
+        "gate.needWindows",
+        "Need it for Windows instead?",
+      );
     } else if (currentOs === "windows") {
       macGroup.hidden = true;
       windowsGroup.hidden = false;
       windowsSkip.hidden = false;
       osAlt.hidden = false;
-      osAlt.textContent = "Need it for Mac instead?";
+      osAlt.textContent = tr("gate.needMac", "Need it for Mac instead?");
     } else {
       macGroup.hidden = false;
       windowsGroup.hidden = false;
@@ -95,10 +127,13 @@
       }, 200);
     }
     overlay.classList.add("open");
+    lockScroll();
   }
 
   function closeModal() {
+    if (!overlay.classList.contains("open")) return;
     overlay.classList.remove("open");
+    unlockScroll();
   }
 
   osAlt.addEventListener("click", () => {
@@ -150,9 +185,9 @@
   });
   closeButton.addEventListener("click", closeModal);
   document.addEventListener("keydown", (event) => {
-    // With the country-code menu open, Escape closes just the menu (its own
-    // handler in download-gate-form.js), not the whole modal.
-    if (event.key === "Escape" && !document.querySelector(".dl-cc.open"))
+    // With a dropdown open, Escape closes just that menu (the component stops
+    // propagation; this guard is the belt to its braces), not the whole modal.
+    if (event.key === "Escape" && !document.querySelector(".dl-dd.open"))
       closeModal();
   });
 

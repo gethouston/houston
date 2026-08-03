@@ -1,64 +1,41 @@
+{# One teammate face. `landing.people` holds the identity (photo file or
+   initials + tone), `t.js.people` the display name. #}
+{%- macro face(id) %}{% set p = landing.people[id] %}{% if p.img %}<span class="face face-img" title="{{ t.js.people[id] or p.initials }}"><img src="/assets/img/{{ p.img }}-48.webp" srcset="/assets/img/{{ p.img }}-96.webp 2x" width="48" height="48" alt=""></span>{% else %}<span class="face {{ p.tone }}" title="{{ t.js.people[id] or p.initials }}">{{ p.initials }}</span>{% endif %}{% endmacro -%}
 <section id="parallel" class="section is-dark">
   {# Hidden alias: cross-site links to #agents land on the multi-agent story. #}
   <span id="agents" class="anchor-alias" aria-hidden="true"></span>
 
   {# Split: one agent's mission column left (real app card anatomy: agent
      helmet, human face stacks, status dots; top 5 of many missions shown),
-     the why right. data-swap pills switch the agent; JS-off shows the first. #}
+     the why right. data-swap pills switch the agent; JS-off shows the first.
+     The four columns are one loop: landing.parallel.agents carries the DOM
+     order, the avatar tone and the face roster, t.parallel.agents the copy. #}
   <div class="split reveal">
     <div class="split-visual">
       <div class="acol-demo" data-swap-group="acol">
-        <div class="chat-tabs acol-tabs" role="tablist" aria-label="Agents">
-          <button class="chat-tab active" data-swap="0" role="tab" aria-selected="true">Sales Rep</button>
-          <button class="chat-tab" data-swap="1" role="tab" aria-selected="false">Bookkeeper</button>
-          <button class="chat-tab" data-swap="2" role="tab" aria-selected="false">HR Manager</button>
-          <button class="chat-tab" data-swap="3" role="tab" aria-selected="false">Support Rep</button>
+        <div class="chat-tabs acol-tabs" role="tablist" aria-label="{{ t.parallel.tabsLabel }}">
+{%- for a in landing.parallel.agents %}
+          <button class="chat-tab{% if loop.first %} active{% endif %}" data-swap="{{ loop.index0 }}" role="tab" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">{{ t.parallel.agents[a.id].name }}</button>
+{%- endfor %}
         </div>
-        <div class="acol swap-panel active" role="img" aria-label="The Sales Rep's mission column: 18 missions running in parallel, the top five shown">
-          <div class="acol-h"><span class="av av-c" aria-hidden="true"></span>Sales Rep<span class="acol-n">18 missions</span></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-c" aria-hidden="true"></span><span class="tc-agent">Sales Rep</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Rebuild the Q3 pipeline report</div><div class="tc-desc">Cross-checking 63 deals against Gmail</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-c" aria-hidden="true"></span><span class="tc-agent">Sales Rep</span></div><div class="tc-title">Prep the Acme renewal</div><div class="tc-desc">Pricing needs your approval</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-c" aria-hidden="true"></span><span class="tc-agent">Sales Rep</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Follow up with 12 stale leads</div><div class="tc-desc">3 replies drafted, 2 deals moving</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-c" aria-hidden="true"></span><span class="tc-agent">Sales Rep</span></div><div class="tc-title">Draft the Meridian proposal</div><div class="tc-desc">Scope pulled from the last three calls</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="face hp-3" title="Maya">M</span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-c" aria-hidden="true"></span><span class="tc-agent">Sales Rep</span></div><div class="tc-title">Log the week in HubSpot</div><div class="tc-desc">Every call and reply, filed</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span><span class="face hp-3" title="Maya">M</span></div></div>
-          <div class="acol-more">+13 more missions</div>
+{%- for a in landing.parallel.agents %}{% set ta = t.parallel.agents[a.id] %}{% set isFirst = loop.first %}
+        <div class="acol swap-panel{% if isFirst %} active{% endif %}" role="img" aria-label="{{ ta.alt }}">
+          <div class="acol-h"><span class="av {{ a.av }}" aria-hidden="true"></span>{{ ta.name }}<span class="acol-n">{{ ta.missionCount }}</span></div>
+{%- for s in a.cards %}{% set c = ta.cards[loop.index0] %}
+          <div class="tcard"><div class="tc-head"><span class="av {{ a.av }}" aria-hidden="true"></span><span class="tc-agent">{{ ta.name }}</span>{% if s.running %}<span class="ast ast-run" aria-hidden="true"></span>{% endif %}</div><div class="tc-title">{{ c.title }}</div><div class="tc-desc">{{ c.desc }}</div><div class="faces" role="group" aria-label="{{ t.parallel.peopleLabel }}">{% for id in s.people %}{{ face(id) }}{% endfor %}</div></div>
+{%- endfor %}
+          <div class="acol-more">{{ ta.more }}</div>
         </div>
-        <div class="acol swap-panel" role="img" aria-label="The Bookkeeper's mission column: 14 missions running in parallel, the top five shown">
-          <div class="acol-h"><span class="av av-o" aria-hidden="true"></span>Bookkeeper<span class="acol-n">14 missions</span></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-o" aria-hidden="true"></span><span class="tc-agent">Bookkeeper</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Reconcile March</div><div class="tc-desc">Matching QuickBooks against the bank feed</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-o" aria-hidden="true"></span><span class="tc-agent">Bookkeeper</span></div><div class="tc-title">File the Q1 expense report</div><div class="tc-desc">2 receipts missing, flagged for you</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-o" aria-hidden="true"></span><span class="tc-agent">Bookkeeper</span></div><div class="tc-title">Chase 4 overdue invoices</div><div class="tc-desc">2 paid, 2 promised this week</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-o" aria-hidden="true"></span><span class="tc-agent">Bookkeeper</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Prepare the tax pack</div><div class="tc-desc">Collecting statements for the accountant</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-o" aria-hidden="true"></span><span class="tc-agent">Bookkeeper</span></div><div class="tc-title">Categorize new subscriptions</div><div class="tc-desc">3 tools found in the card statement</div><div class="faces" role="group" aria-label="People on this mission"><span class="face hp-3" title="Maya">M</span></div></div>
-          <div class="acol-more">+9 more missions</div>
-        </div>
-        <div class="acol swap-panel" role="img" aria-label="The HR Manager's mission column: 21 missions running in parallel, the top five shown">
-          <div class="acol-h"><span class="av av-b" aria-hidden="true"></span>HR Manager<span class="acol-n">21 missions</span></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-b" aria-hidden="true"></span><span class="tc-agent">HR Manager</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Screen the designer applicants</div><div class="tc-desc">34 profiles against the role brief</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-b" aria-hidden="true"></span><span class="tc-agent">HR Manager</span></div><div class="tc-title">Draft the referral policy</div><div class="tc-desc">First draft ready for your review</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-b" aria-hidden="true"></span><span class="tc-agent">HR Manager</span></div><div class="tc-title">Onboard Maya</div><div class="tc-desc">Accounts created, intro doc sent</div><div class="faces" role="group" aria-label="People on this mission"><span class="face hp-3" title="Maya">M</span><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-b" aria-hidden="true"></span><span class="tc-agent">HR Manager</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Schedule the final interviews</div><div class="tc-desc">5 candidates, calendars matched</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="face hp-3" title="Maya">M</span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-b" aria-hidden="true"></span><span class="tc-agent">HR Manager</span></div><div class="tc-title">Renew the health plan</div><div class="tc-desc">Three quotes compared, one flagged</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="acol-more">+16 more missions</div>
-        </div>
-        <div class="acol swap-panel" role="img" aria-label="The Support Rep's mission column: 16 missions running in parallel, the top five shown">
-          <div class="acol-h"><span class="av av-p" aria-hidden="true"></span>Support Rep<span class="acol-n">16 missions</span></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-p" aria-hidden="true"></span><span class="tc-agent">Support Rep</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Clear the weekend queue</div><div class="tc-desc">41 tickets, drafting replies</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-p" aria-hidden="true"></span><span class="tc-agent">Support Rep</span></div><div class="tc-title">Escalate the billing bug</div><div class="tc-desc">3 reports match, needs an engineer</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-p" aria-hidden="true"></span><span class="tc-agent">Support Rep</span></div><div class="tc-title">Send the weekly digest</div><div class="tc-desc">Top issues summarized for the team</div><div class="faces" role="group" aria-label="People on this mission"><span class="face hp-3" title="Maya">M</span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-p" aria-hidden="true"></span><span class="tc-agent">Support Rep</span><span class="ast ast-run" aria-hidden="true"></span></div><div class="tc-title">Update the help center</div><div class="tc-desc">4 articles rewritten from real tickets</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span><span class="face hp-3" title="Maya">M</span></div></div>
-          <div class="tcard"><div class="tc-head"><span class="av av-p" aria-hidden="true"></span><span class="tc-agent">Support Rep</span></div><div class="tc-title">Tag feature requests</div><div class="tc-desc">12 filed for the product review</div><div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span></div></div>
-          <div class="acol-more">+11 more missions</div>
-        </div>
+{%- endfor %}
       </div>
     </div>
 
     <div class="split-copy">
-      <h2 class="sec-title">Multi-agent by design.</h2>
-      <p class="split-line">Different teams and projects need different agents. Houston is built multi-agent from day zero.</p>
-      <p class="split-line">And every agent is multi-chat: each card is its own conversation. That's how you run many projects, with many people, in parallel.</p>
-      <p class="split-line">Create an agent for your business in minutes, or start from one the community already built.</p>
-      <a class="btn btn-ghost btn-sm split-cta" href="https://agents.gethouston.ai">Explore the Agent Store</a>
+      <h2 class="sec-title">{{ t.parallel.title }}</h2>
+{%- for line in t.parallel.lines %}
+      <p class="split-line">{{ line }}</p>
+{%- endfor %}
+      <a class="btn btn-ghost btn-sm split-cta" href="https://agents.gethouston.ai">{{ t.parallel.cta }}</a>
     </div>
   </div>
 </section>

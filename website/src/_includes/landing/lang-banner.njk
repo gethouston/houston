@@ -1,0 +1,61 @@
+{# Language nudge — English landing only.
+   A visitor whose browser asks for Spanish or Portuguese gets one quiet card
+   offering the translated landing, written in the language it offers. Both
+   variants ship in the HTML and stay hidden; the inline script below unhides
+   the one that matches navigator.language. Any stored language preference
+   (this card, the nav switcher, the footer row) silences it for good.
+   It is a bottom-left card on purpose: nothing above the fold moves, so the
+   fixed nav and the hero choreography are untouched. #}
+{% if isLandingPage and locale.isDefault %}
+<div class="lang-nudge" id="lang-nudge" hidden>
+  {%- for code in ["es", "pt"] %}
+  {%- set banner = i18n[code].langBanner %}
+  <div class="lang-nudge-card" data-lang-nudge="{{ code }}" lang="{{ locales[code].htmlLang }}" role="region" aria-label="{{ banner.text }}" hidden>
+    <p class="lang-nudge-text">{{ banner.text }}</p>
+    <div class="lang-nudge-actions">
+      <a class="lang-nudge-cta" href="{{ locales[code].dir }}">{{ banner.cta }}</a>
+      <button type="button" class="lang-nudge-dismiss">{{ banner.dismiss }}</button>
+    </div>
+  </div>
+  {%- endfor %}
+</div>
+<script>
+  // Show the nudge only to a first-time visitor whose browser prefers Spanish
+  // or Portuguese. Taking the offer stores that language; dismissing stores
+  // "en". Either way the card never comes back.
+  (function () {
+    var KEY = "houston_lang_pref";
+    var root = document.getElementById("lang-nudge");
+    if (!root) return;
+    var stored;
+    try {
+      stored = window.localStorage.getItem(KEY);
+    } catch (e) {
+      return; // no storage, no way to remember a choice: stay quiet
+    }
+    if (stored) return;
+    var pref = (navigator.languages && navigator.languages[0]) || navigator.language || "";
+    pref = pref.toLowerCase();
+    var target = "";
+    if (pref.indexOf("es") === 0) target = "es";
+    else if (pref.indexOf("pt") === 0) target = "pt";
+    if (!target) return;
+    var card = root.querySelector('[data-lang-nudge="' + target + '"]');
+    if (!card) return;
+    function remember(value) {
+      try {
+        window.localStorage.setItem(KEY, value);
+      } catch (e) {}
+    }
+    card.querySelector(".lang-nudge-cta").addEventListener("click", function () {
+      remember(target);
+    });
+    card.querySelector(".lang-nudge-dismiss").addEventListener("click", function () {
+      remember("en");
+      root.hidden = true;
+    });
+    card.hidden = false;
+    root.hidden = false;
+  })();
+</script>
+{% endif %}

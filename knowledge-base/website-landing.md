@@ -72,6 +72,31 @@ on the white bar/sheet.
   `[data-cl-count]` ticks up. Reduced motion: static list stands.
 - Auto-rotating `data-swap-group` switchers (5s, pause on hover/user takeover).
 
+## i18n (HOU-1177, Aug 2026) — en / es / pt landings
+
+The landing ships at `/`, `/es/`, `/pt/`. Architecture: **structure and copy are
+split**. Text lives in `website/src/_data/i18n/{en,es,pt}.js` (identical key
+trees, validated by `npm run check:locales`: key/array parity, no em dashes);
+non-translatable structure (avatar classes, face rosters, brand SVG paths) in
+`_data/landing.js`, zipped BY INDEX with the i18n arrays. Locale plumbing:
+`_data/locales.js` + `_data/eleventyComputed.js` compute `t`, `locale`, and
+`root` per page from front-matter/directory `lang` (`src/es/es.11tydata.js`).
+The three landing pages are stubs extending `_includes/landing.njk`, which owns
+meta/OG/JSON-LD/hreflang (generated from locales.js, never hand-written).
+Browser JS reads `window.HOUSTON_I18N` (the `js` subtree, emitted by
+`landing/i18n-data.njk` via the `jsonScript` filter) through
+`window.houstonT(path, enFallback)` — hero demo, chat scenarios, learnings
+pool, gate labels. Chrome (nav/footer/gate) localizes on EVERY page including
+`/guides/es/`. Language switcher: nav dropdown (`[data-menu]`, hidden <880px —
+the nav has no mobile layout, HOU-1180) + footer row + a first-visit
+suggestion card on `/` only (`lang-banner.njk`, keyed off navigator.language,
+choice stored in `localStorage.houston_lang_pref`, never auto-redirects).
+Sitemap is now GENERATED (`src/sitemap.njk` → /sitemap.xml with xhtml
+alternates); es = LatAm neutral (tú), pt = Brazilian (você); scope excludes
+vision/startups/legal/changelog. Spanish demo copy keeps @Mentions and person
+names; country names in the gate localize via Intl.DisplayNames while the
+POSTED value stays the English name.
+
 ## Download gate (HOU-1168, Aug 2026)
 
 One two-step modal replaces the old invite-code gates AND the standalone
@@ -87,6 +112,17 @@ the same Supabase `waitlist` table (`source: "download_gate"`) + Sheet mirror;
 `localStorage.houston_dl_registered` skips the form for returning visitors;
 failures surface inline (`#dl-form-err`). Details + funnel events:
 `production-infra.md` → Download gate.
+
+Gate v2 (HOU-1178): opening the modal scroll-locks the page (`lockScroll()` in
+download-gate.js: `lenis.stop()` + `html.dl-modal-open`; `data-lenis-prevent`
+on `.dl-card` and menus — Lenis otherwise eats wheel events over the
+fixed-position dropdowns). Both the country-code menu and the Country field
+use ONE searchable dropdown component (`assets/download-gate-dropdown.js`,
+`window.HoustonDropdown`; styles `assets/css/dl-dropdown.css`): fixed
+positioning with flip/clamp, keyboard + ARIA combobox semantics, Escape closes
+the menu not the modal. The Country field's hidden input dispatches a
+synthetic bubbling `input` event on select — without it the submit button
+never enables.
 
 ## History note
 

@@ -1,3 +1,7 @@
+{# One teammate face. `landing.people` carries the identity (photo file or
+   initials + tone), `t.js.people` the display name. Photo people render the
+   webp pair; the rest render initials on a tone class. #}
+{%- macro face(id) %}{% set p = landing.people[id] %}{% if p.img %}<span class="face face-img" title="{{ t.js.people[id] or p.initials }}"><img src="/assets/img/{{ p.img }}-48.webp" srcset="/assets/img/{{ p.img }}-96.webp 2x" width="48" height="48" alt=""></span>{% else %}<span class="face {{ p.tone }}" title="{{ t.js.people[id] or p.initials }}">{{ p.initials }}</span>{% endif %}{% endmacro -%}
 <header class="hero">
   {# Houston's own black and white: flat near-black ground, one neutral white
      bloom, centered statement, then the REAL app window inside the same dark
@@ -8,11 +12,11 @@
 
   <div class="hero-fold">
     <div class="hero-intro hero-load">
-      <h1 class="hero-h1">Where people and agents work&nbsp;together</h1>
-      <p class="hero-sub">Shared agents that learn from your whole team. What one person teaches, everyone keeps.</p>
+      <h1 class="hero-h1">{{ t.hero.h1Html | safe }}</h1>
+      <p class="hero-sub">{{ t.hero.sub }}</p>
       <div class="hero-cta">
-        <button class="btn btn-white" data-dl-trigger data-dl-source="hero">Download the app</button>
-        <a class="btn btn-ghost" href="#multiplayer">See how it works</a>
+        <button class="btn btn-white" data-dl-trigger data-dl-source="hero">{{ t.hero.ctaDownload }}</button>
+        <a class="btn btn-ghost" href="#multiplayer">{{ t.hero.ctaSeeHow }}</a>
       </div>
     </div>
 
@@ -22,67 +26,66 @@
        JS-off / reduced-motion leaves this finished state standing. #}
     <div class="hero-visual hero-load">
       <div class="hero-stage">
-<div class="win" data-hero-demo role="img" aria-label="Houston, the desktop app: a team's shared mission board where agents move tasks across Running, Needs you, and Done, with the teammates on each mission shown as face stacks">
+<div class="win" data-hero-demo role="img" aria-label="{{ t.hero.windowAlt }}">
       <div class="win-body">
         <aside class="sb">
           <span class="sb-lights" aria-hidden="true"><i class="tl-r"></i><i class="tl-y"></i><i class="tl-g"></i></span>
           <div class="sb-ws">
-            <span class="ws-name">Acme Studio<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+            <span class="ws-name">{{ t.hero.app.workspace }}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
             <svg class="ws-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>
           </div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Mission Control</div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect width="8" height="8" x="14" y="2" rx="1"/></svg>Integrations</div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/></svg>AI Models</div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>Usage</div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg>Agent Store</div>
-          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>Settings</div>
-          <div class="sb-group"><span class="sg-label">Shared Agents</span><svg class="sg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><svg class="sg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
-          <div class="agent-row on" data-agent="houston"><span class="av av-p" aria-hidden="true"></span><span class="a-name">Personal Assistant</span><span class="a-count">1</span></div>
-          <div class="agent-row" data-agent="chief-of-staff"><span class="av av-b" aria-hidden="true"></span><span class="a-name">Chief of Staff</span><span class="a-count">2</span></div>
-          <div class="agent-row" data-agent="bookkeeper"><span class="av av-o" aria-hidden="true"></span><span class="a-name">Bookkeeper</span></div>
-          <div class="agent-row" data-agent="sales-rep"><span class="av av-c" aria-hidden="true"></span><span class="a-name">Sales Rep</span><span class="a-count">1</span></div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>{{ t.hero.app.nav.missionControl }}</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect width="8" height="8" x="14" y="2" rx="1"/></svg>{{ t.hero.app.nav.integrations }}</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/></svg>{{ t.hero.app.nav.models }}</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>{{ t.hero.app.nav.usage }}</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg>{{ t.hero.app.nav.agentStore }}</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>{{ t.hero.app.nav.settings }}</div>
+          <div class="sb-group"><span class="sg-label">{{ t.hero.app.sharedAgents }}</span><svg class="sg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><svg class="sg-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+{%- for row in landing.hero.app.sidebar %}
+          <div class="agent-row{% if row.active %} on{% endif %}" data-agent="{{ row.id }}"><span class="av {{ row.av }}" aria-hidden="true"></span><span class="a-name">{{ t.hero.app.agents[row.id] }}</span>{% if row.count %}<span class="a-count">{{ row.count }}</span>{% endif %}</div>
+{%- endfor %}
         </aside>
 
         <section class="screen">
           <div class="screen-head">
-            <span class="sh-title" id="hd-board-title">Personal Assistant</span>
-            <span class="sh-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>Search missions</span>
-            <span class="sh-guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg>Guide me</span>
-            <span class="sh-new"><span class="glyph" aria-hidden="true"></span>New mission</span>
+            <span class="sh-title" id="hd-board-title">{{ t.hero.app.boardTitle }}</span>
+            <span class="sh-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>{{ t.hero.app.search }}</span>
+            <span class="sh-guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg>{{ t.hero.app.guide }}</span>
+            <span class="sh-new"><span class="glyph" aria-hidden="true"></span>{{ t.hero.app.newMission }}</span>
           </div>
           <div class="tabs">
-            <span class="tab on">Activity<span class="t-count" id="hd-activity-count">1</span></span>
-            <span class="tab">Routines</span>
-            <span class="tab">Integrations</span>
-            <span class="tab">Files</span>
-            <span class="tab">Archived</span>
-            <span class="tab">Agent Settings</span>
+            <span class="tab on">{{ t.hero.app.tabs.activity }}<span class="t-count" id="hd-activity-count">{{ landing.hero.app.counts.activity }}</span></span>
+            <span class="tab">{{ t.hero.app.tabs.routines }}</span>
+            <span class="tab">{{ t.hero.app.tabs.integrations }}</span>
+            <span class="tab">{{ t.hero.app.tabs.files }}</span>
+            <span class="tab">{{ t.hero.app.tabs.archived }}</span>
+            <span class="tab">{{ t.hero.app.tabs.agentSettings }}</span>
           </div>
           <div class="cols">
             <div class="col">
-              <div class="col-h">Running<span class="c-count" id="hd-run-count">0</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
+              <div class="col-h">{{ t.hero.app.cols.running }}<span class="c-count" id="hd-run-count">{{ landing.hero.app.counts.running }}</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
               <div class="card-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></div>
               <div class="col-body" id="hd-running"></div>
             </div>
             <div class="col">
-              <div class="col-h">Needs you<span class="c-count">1</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
+              <div class="col-h">{{ t.hero.app.cols.needsYou }}<span class="c-count">{{ landing.hero.app.counts.needsYou }}</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
               <div class="col-body">
                 <div class="tcard">
-                  <div class="tc-head"><span class="av av-p" id="hd-needs-avatar" aria-hidden="true"></span><span class="tc-agent" id="hd-needs-agent">Personal Assistant</span><span class="tc-actions" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span></div>
-                  <div class="tc-title" id="hd-needs-title">Approve the vendor renewal</div>
-                  <div class="tc-desc" id="hd-needs-desc">Terms compared, waiting on your sign-off</div>
-                  <div class="faces" id="hd-needs-people" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span></div>
+                  <div class="tc-head"><span class="av {{ landing.hero.app.needsCard.av }}" id="hd-needs-avatar" aria-hidden="true"></span><span class="tc-agent" id="hd-needs-agent">{{ t.hero.app.agents[landing.hero.app.needsCard.agent] }}</span><span class="tc-actions" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span></div>
+                  <div class="tc-title" id="hd-needs-title">{{ t.hero.app.needsCard.title }}</div>
+                  <div class="tc-desc" id="hd-needs-desc">{{ t.hero.app.needsCard.desc }}</div>
+                  <div class="faces" id="hd-needs-people" role="group" aria-label="{{ t.hero.app.peopleGroup }}">{% for id in landing.hero.app.needsCard.people %}{{ face(id) }}{% endfor %}</div>
                 </div>
               </div>
             </div>
             <div class="col">
-              <div class="col-h">Done<span class="c-count" id="hd-done-count">1</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
+              <div class="col-h">{{ t.hero.app.cols.done }}<span class="c-count" id="hd-done-count">{{ landing.hero.app.counts.done }}</span><span class="c-menu" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span></div>
               <div class="col-body" id="hd-done">
                 <div class="tcard">
-                  <div class="tc-head"><span class="av av-p" aria-hidden="true"></span><span class="tc-agent">Personal Assistant</span><span class="tc-actions" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span></div>
-                  <div class="tc-title">Follow up on urgent email</div>
-                  <div class="tc-desc">4 replies ready, 17 archived</div>
-                  <div class="faces" role="group" aria-label="People on this mission"><span class="face face-img" title="Julian"><img src="/assets/img/julian-48.webp" srcset="/assets/img/julian-96.webp 2x" width="48" height="48" alt=""></span><span class="face face-img" title="Felipe"><img src="/assets/img/felipe-48.webp" srcset="/assets/img/felipe-96.webp 2x" width="48" height="48" alt=""></span></div>
+                  <div class="tc-head"><span class="av {{ landing.hero.app.doneCard.av }}" aria-hidden="true"></span><span class="tc-agent">{{ t.hero.app.agents[landing.hero.app.doneCard.agent] }}</span><span class="tc-actions" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span></div>
+                  <div class="tc-title">{{ t.hero.app.doneCard.title }}</div>
+                  <div class="tc-desc">{{ t.hero.app.doneCard.desc }}</div>
+                  <div class="faces" role="group" aria-label="{{ t.hero.app.peopleGroup }}">{% for id in landing.hero.app.doneCard.people %}{{ face(id) }}{% endfor %}</div>
                 </div>
               </div>
             </div>

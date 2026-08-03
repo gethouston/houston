@@ -13,19 +13,51 @@
  * helmet. Different missions carry different people, so the shared board visibly
  * belongs to a team.
  *
+ * Text is translated: it comes from window.HOUSTON_I18N (js.heroDemo, emitted by
+ * _includes/landing/i18n-data.njk before this asset), with the English copy
+ * below as the fallback. The structure mirrors _data/landing.js heroDemo — agent
+ * order, avatar classes and face rosters — which stays the source of truth; a
+ * classic script cannot import it, so the small structure is copied here.
+ *
  * Loaded before hero-demo.js (both `defer`, in order), which reads
  * `window.HERO_DEMO`.
  *
  * Copy rules: plain English, non-technical, no em dashes.
  */
-window.HERO_DEMO = {
-  agents: {
-    houston: { name: "Personal Assistant", av: "av-p" },
-    "sales-rep": { name: "Sales Rep", av: "av-c" },
-    bookkeeper: { name: "Bookkeeper", av: "av-o" },
-    "chief-of-staff": { name: "Chief of Staff", av: "av-b" },
-  },
-  scripts: [
+(() => {
+  function t(path, fallback) {
+    return window.houstonT ? window.houstonT(path, fallback) : fallback;
+  }
+
+  // Face identities, keyed like _data/landing.js `people`. Anonymous teammates
+  // (initials only) carry no name to translate.
+  var PEOPLE = {
+    julian: { img: "/assets/img/julian-96.webp", name: "Julian" },
+    felipe: { img: "/assets/img/felipe-96.webp", name: "Felipe" },
+    rl: { initials: "RL", tone: "hp-3" },
+    tp: { initials: "TP", tone: "hp-4" },
+    sb: { initials: "SB", tone: "hp-5" },
+  };
+
+  function faces(ids) {
+    return ids.map((id) => {
+      var p = PEOPLE[id];
+      return p.img
+        ? { img: p.img, label: t(`people.${id}`, p.name) }
+        : { initials: p.initials, tone: p.tone };
+    });
+  }
+
+  // Sidebar order.
+  var AGENTS = [
+    { id: "houston", av: "av-p", name: "Personal Assistant" },
+    { id: "sales-rep", av: "av-c", name: "Sales Rep" },
+    { id: "bookkeeper", av: "av-o", name: "Bookkeeper" },
+    { id: "chief-of-staff", av: "av-b", name: "Chief of Staff" },
+  ];
+
+  // Loop order, one mission per agent.
+  var SCRIPTS = [
     {
       agent: "houston",
       mission: "Clear the inbox",
@@ -33,15 +65,12 @@ window.HERO_DEMO = {
         title: "Follow up on urgent email",
         running: "Reading 23 unread, drafting replies",
         done: "4 replies ready, 17 archived",
-        people: [
-          { img: "/assets/img/julian-96.webp", label: "Julian" },
-          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
-        ],
+        people: ["julian", "felipe"],
       },
       needsYou: {
         title: "Approve the vendor renewal",
         desc: "Terms compared, waiting on your sign-off",
-        people: [{ img: "/assets/img/julian-96.webp", label: "Julian" }],
+        people: ["julian"],
       },
     },
     {
@@ -51,19 +80,12 @@ window.HERO_DEMO = {
         title: "Rebuild the Q3 pipeline report",
         running: "Matching HubSpot deals to Gmail threads",
         done: "Report ready, 6 deals flagged at risk",
-        people: [
-          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
-          { initials: "RL", tone: "hp-3" },
-          { initials: "TP", tone: "hp-4" },
-        ],
+        people: ["felipe", "rl", "tp"],
       },
       needsYou: {
         title: "Approve the Acme renewal",
         desc: "Draft ready, waiting on your sign-off",
-        people: [
-          { initials: "RL", tone: "hp-3" },
-          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
-        ],
+        people: ["rl", "felipe"],
       },
     },
     {
@@ -73,15 +95,12 @@ window.HERO_DEMO = {
         title: "Reconcile 842 transactions",
         running: "Matching Stripe to the bank feed",
         done: "838 matched, 4 flagged for review",
-        people: [{ initials: "TP", tone: "hp-4" }],
+        people: ["tp"],
       },
       needsYou: {
         title: "Review 4 flagged charges",
         desc: "No invoice on file, needs your call",
-        people: [
-          { initials: "TP", tone: "hp-4" },
-          { img: "/assets/img/julian-96.webp", label: "Julian" },
-        ],
+        people: ["tp", "julian"],
       },
     },
     {
@@ -91,20 +110,40 @@ window.HERO_DEMO = {
         title: "Prepare the board update",
         running: "Pulling KPIs and open threads",
         done: "One-pager waiting in your inbox",
-        people: [
-          { initials: "SB", tone: "hp-5" },
-          { img: "/assets/img/julian-96.webp", label: "Julian" },
-        ],
+        people: ["sb", "julian"],
       },
       needsYou: {
         title: "Approve the launch plan",
         desc: "Timeline staged, waiting on your OK",
-        people: [
-          { initials: "SB", tone: "hp-5" },
-          { img: "/assets/img/felipe-96.webp", label: "Felipe" },
-          { initials: "RL", tone: "hp-3" },
-        ],
+        people: ["sb", "felipe", "rl"],
       },
     },
-  ],
-};
+  ];
+
+  var agents = {};
+  AGENTS.forEach((a) => {
+    agents[a.id] = { name: t(`heroDemo.agents.${a.id}`, a.name), av: a.av };
+  });
+
+  window.HERO_DEMO = {
+    agents: agents,
+    scripts: SCRIPTS.map((s) => {
+      var key = `heroDemo.scripts.${s.agent}.`;
+      return {
+        agent: s.agent,
+        mission: t(`${key}mission`, s.mission),
+        card: {
+          title: t(`${key}card.title`, s.card.title),
+          running: t(`${key}card.running`, s.card.running),
+          done: t(`${key}card.done`, s.card.done),
+          people: faces(s.card.people),
+        },
+        needsYou: {
+          title: t(`${key}needsYou.title`, s.needsYou.title),
+          desc: t(`${key}needsYou.desc`, s.needsYou.desc),
+          people: faces(s.needsYou.people),
+        },
+      };
+    }),
+  };
+})();

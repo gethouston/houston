@@ -1,111 +1,99 @@
 (() => {
-  function flagOf(iso) {
-    return iso
-      .toUpperCase()
-      .replace(/./g, (ch) => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+  // window.houstonT comes from the inline i18n block; fall back to the English
+  // literal if a page ever loads this script without it.
+  function tr(path, fallback) {
+    return window.houstonT ? window.houstonT(path, fallback) : fallback;
+  }
+
+  function rowHtml(row, withDial) {
+    return (
+      `<span class="dl-dd-flag">${row.flag}</span>` +
+      `<span class="dl-dd-name">${row.display}</span>` +
+      (withDial ? `<span class="dl-dd-dial">${row.dial}</span>` : "")
+    );
   }
 
   function init(opts) {
-    var countries = window.HOUSTON_COUNTRIES || [];
+    var dropdowns = window.HoustonDropdown;
     var form = document.getElementById("dl-form");
     var submit = document.getElementById("dl-submit");
     var formError = document.getElementById("dl-form-err");
     var country = document.getElementById("dl-country");
-    var cc = document.getElementById("dl-cc");
-    var ccToggle = document.getElementById("dl-cc-toggle");
-    var ccMenu = document.getElementById("dl-cc-menu");
+    var countryValue = document.getElementById("dl-country-value");
+    var phoneCode = document.getElementById("dl-phone-code");
     var ccFlag = document.getElementById("dl-cc-flag");
     var ccAbbr = document.getElementById("dl-cc-abbr");
     var ccDial = document.getElementById("dl-cc-dial");
-    var phoneCode = document.getElementById("dl-phone-code");
-    if (!form || !submit || !country || !cc || !ccToggle || !ccMenu) return;
+    var ccRoot = document.getElementById("dl-cc");
+    var countryRoot = document.getElementById("dl-country-dd");
+    if (!form || !submit || !country || !phoneCode || !dropdowns) return;
+    if (!ccRoot || !countryRoot) return;
 
-    var sorted = countries.slice().sort((a, b) => a[0].localeCompare(b[0]));
-    var dialCodes = sorted.slice();
-    var usIndex = -1;
-    dialCodes.forEach((entry, index) => {
-      if (entry[1] === "US") usIndex = index;
-    });
-    if (usIndex > -1) dialCodes.unshift(dialCodes.splice(usIndex, 1)[0]);
-
-    sorted.forEach((entry) => {
-      var option = document.createElement("option");
-      option.value = entry[0];
-      option.textContent = entry[0];
-      country.appendChild(option);
+    var locale = window.HOUSTON_LOCALE || "en";
+    var rows = dropdowns.countryRows(window.HOUSTON_COUNTRIES || [], locale);
+    var byIso = {};
+    rows.forEach((row) => {
+      byIso[row.iso] = row;
     });
 
-    function selectCode(entry) {
-      ccFlag.textContent = flagOf(entry[1]);
-      ccAbbr.textContent = entry[1];
-      ccDial.textContent = entry[2];
-      phoneCode.value = entry[2];
-      Array.prototype.forEach.call(ccMenu.children, (item) => {
-        item.classList.toggle("selected", item.dataset.iso === entry[1]);
-      });
-    }
+    // The dial-code menu leads with the United States, then follows the same
+    // locale-sorted order as the country menu.
+    var dialRows = rows.slice();
+    var usIndex = dialRows.findIndex((row) => row.iso === "US");
+    if (usIndex > -1) dialRows.unshift(dialRows.splice(usIndex, 1)[0]);
 
-    function closeCC() {
-      cc.classList.remove("open");
-      ccToggle.setAttribute("aria-expanded", "false");
-    }
-
-    dialCodes.forEach((entry) => {
-      var item = document.createElement("li");
-      item.className = "dl-cc-item";
-      item.setAttribute("role", "option");
-      item.dataset.iso = entry[1];
-      item.title = entry[0];
-      item.innerHTML =
-        '<span class="dl-cc-flag">' +
-        flagOf(entry[1]) +
-        '</span><span class="dl-cc-name">' +
-        entry[0] +
-        '</span><span class="dl-cc-dial">' +
-        entry[2] +
-        "</span>";
-      item.addEventListener("click", () => {
-        selectCode(entry);
-        closeCC();
-      });
-      ccMenu.appendChild(item);
-    });
-
-    function openCC() {
-      // Fixed positioning avoids clipping inside the scrolling modal card.
-      var rect = ccToggle.getBoundingClientRect();
-      ccMenu.style.top = `${rect.bottom + 6}px`;
-      ccMenu.style.left = `${rect.left}px`;
-      ccMenu.scrollTop = 0;
-      cc.classList.add("open");
-      ccToggle.setAttribute("aria-expanded", "true");
-    }
-
-    ccToggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      cc.classList.contains("open") ? closeCC() : openCC();
-    });
-    document.addEventListener("click", (event) => {
-      if (!cc.contains(event.target)) closeCC();
-    });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeCC();
-    });
-    window.addEventListener(
-      "scroll",
-      (event) => {
-        if (
-          event.target &&
-          event.target.nodeType === 1 &&
-          ccMenu.contains(event.target)
-        )
-          return;
-        closeCC();
+    var codeMenu = dropdowns.create({
+      root: ccRoot,
+      toggle: document.getElementById("dl-cc-toggle"),
+      menu: document.getElementById("dl-cc-menu"),
+      list: document.getElementById("dl-cc-list"),
+      search: document.getElementById("dl-cc-search"),
+      empty: document.getElementById("dl-cc-empty"),
+      menuWidth: 290,
+      items: dialRows.map((row) => ({
+        id: row.iso,
+        value: row.dial,
+        label: row.display,
+        search: `${row.haystack} ${row.dial}`,
+        html: rowHtml(row, true),
+      })),
+      onSelect: (item) => {
+        var row = byIso[item.id];
+        ccFlag.textContent = row.flag;
+        ccAbbr.textContent = row.iso;
+        ccDial.textContent = row.dial;
+        phoneCode.value = row.dial;
       },
-      true,
-    );
-    window.addEventListener("resize", closeCC);
-    if (dialCodes.length) selectCode(dialCodes[0]);
+    });
+
+    dropdowns.create({
+      root: countryRoot,
+      toggle: document.getElementById("dl-country-toggle"),
+      menu: document.getElementById("dl-country-menu"),
+      list: document.getElementById("dl-country-list"),
+      search: document.getElementById("dl-country-search"),
+      empty: document.getElementById("dl-country-empty"),
+      // The posted value stays the English name so Supabase rows keep matching
+      // the ones written before the gate was localized.
+      items: rows.map((row) => ({
+        id: row.iso,
+        value: row.english,
+        label: row.display,
+        search: row.haystack,
+        html: rowHtml(row, false),
+      })),
+      onSelect: (item) => {
+        country.value = item.value;
+        countryValue.textContent = item.label;
+        countryValue.classList.remove("is-placeholder");
+        document.getElementById("dl-f-country").dataset.touched = "1";
+        // A hidden input never fires "input" on its own; the validator listens
+        // for it, so raise it by hand.
+        country.dispatchEvent(new Event("input", { bubbles: true }));
+      },
+    });
+
+    if (dialRows.length) codeMenu.select(dialRows[0].iso);
 
     var fields = [
       {
@@ -151,8 +139,7 @@
     }
 
     fields.forEach((field) => {
-      var eventName = field.el.tagName === "SELECT" ? "change" : "input";
-      field.el.addEventListener(eventName, () => {
+      field.el.addEventListener("input", () => {
         paint(field, false);
         refreshButton();
       });
@@ -207,7 +194,7 @@
         paint(field, true);
       });
       if (!formValid()) return;
-      submit.textContent = "Preparing your download…";
+      submit.textContent = tr("gate.preparing", "Preparing your download…");
       submit.disabled = true;
       submit.classList.add("btn-disabled");
       var payload = {
@@ -224,7 +211,7 @@
           opts.onSubmitted(payload);
         })
         .catch(() => {
-          submit.textContent = "Continue to download";
+          submit.textContent = tr("gate.submit", "Continue to download");
           submit.disabled = false;
           submit.classList.remove("btn-disabled");
           formError.hidden = false;

@@ -1,0 +1,83 @@
+{# The landing page, one layout for all three locales. Text comes from `t`
+   (_data/i18n/<lang>.js), structure from `landing` (_data/landing.js), and the
+   URL prefixes from `locale` / `locales` (_data/locales.js). The page files
+   (src/index.njk, src/es/index.njk, src/pt/index.njk) are stubs: they set the
+   permalink and, through directory data, the language. Nothing else. #}
+{% extends "base.njk" %}
+{% block title %}{{ t.meta.title }}{% endblock %}
+{% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
+{% block meta %}
+<meta name="description" content="{{ t.meta.description }}">
+<!-- Open Graph / Facebook / Slack / LinkedIn -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai{{ locale.dir }}">
+<meta property="og:title" content="{{ t.meta.ogTitle }}">
+<meta property="og:description" content="{{ t.meta.ogDescription }}">
+<meta property="og:site_name" content="Houston">
+<meta property="og:locale" content="{{ locale.ogLocale }}">
+{%- for code in locales.order %}{% if code != locale.code %}
+<meta property="og:locale:alternate" content="{{ locales[code].ogLocale }}">
+{%- endif %}{% endfor %}
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:url" content="https://gethouston.ai{{ locale.dir }}">
+<meta name="twitter:title" content="{{ t.meta.twTitle }}">
+<meta name="twitter:description" content="{{ t.meta.twDescription }}">
+<meta name="twitter:creator" content="@ja818_">
+{# Every locale of the landing emits the SAME alternate set, absolute URLs, so
+   a crawler reaching any one of them finds the other two. x-default points at
+   the English root. #}
+{%- for code in locales.order %}
+<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ locales[code].dir }}">
+{%- endfor %}
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/">
+
+<script type="application/ld+json">
+{ "@context":"https://schema.org","@type":"SoftwareApplication","name":"Houston","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/gethouston/houston/releases","softwareVersion":"beta","description":"{{ t.meta.jsonLdDescription }}" }
+</script>
+{% endblock %}
+{% block headScripts %}
+<script>
+  document.documentElement.className += " js";
+  // Synchronous flag (before paint) so the hero's GSAP load choreography can
+  // pre-hide its pieces with no flash. Only when motion is allowed; hero-motion.js
+  // clears it if the vendored libraries fail to load. Landing-only.
+  try {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+      document.documentElement.className += " gsap-hero";
+    }
+  } catch (e) {}
+</script>
+{% endblock %}
+{% block stylesheets %}
+{# The landing types in the system stack (+ General Sans for the wordmark via
+   base.njk's Fontshare block), so there is no self-hosted font to preload. #}
+<link rel="stylesheet" href="/assets/css/site-tokens.css">
+<link rel="stylesheet" href="/assets/css/landing.css">
+<link rel="stylesheet" href="/assets/css/landing-hero.css">
+<link rel="stylesheet" href="/assets/css/landing-app-window.css">
+<link rel="stylesheet" href="/assets/css/landing-chat.css">
+<link rel="stylesheet" href="/assets/css/landing-marketing.css">
+<link rel="stylesheet" href="/assets/css/landing-multiplayer.css">
+<link rel="stylesheet" href="/assets/css/landing-splits.css">
+<link rel="stylesheet" href="/assets/css/landing-motion.css">
+<link rel="stylesheet" href="/assets/css/download-gate.css">
+<link rel="stylesheet" href="/assets/css/dl-dropdown.css">
+<link rel="stylesheet" href="/assets/css/lang-switch.css">
+{% endblock %}
+{% block body %}
+{% include "landing/lang-banner.njk" %}
+{% include "landing/nav.njk" %}
+<main id="main">
+{% include "landing/hero.njk" %}
+{% include "landing/multiplayer.njk" %}
+{% include "landing/parallel.njk" %}
+{% include "landing/compound.njk" %}
+{% include "landing/stack.njk" %}
+{% include "landing/pricing.njk" %}
+{% include "landing/faq.njk" %}
+</main>
+{% include "landing/footer.njk" %}
+{% include "landing/download-modals.njk" %}
+{% include "landing/scripts.njk" %}
+{% endblock %}
