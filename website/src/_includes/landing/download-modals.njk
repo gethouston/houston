@@ -1,75 +1,92 @@
 <div class="dl-overlay" id="dl-overlay" role="dialog" aria-modal="true" aria-labelledby="dl-title">
-  <div class="dl-card">
-    <button type="button" class="dl-close" id="dl-close" aria-label="Close">
+  {# data-lenis-prevent keeps the landing's smooth-scroll instance from
+     stealing wheel events aimed at the card or the dropdowns inside it. #}
+  <div class="dl-card" data-lenis-prevent>
+    <button type="button" class="dl-close" id="dl-close" aria-label="{{ t.gate.close }}">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
 
     <div id="dl-step-form">
-      <h3 id="dl-title">Get Houston</h3>
-      <p>Tell us who you are and your download starts right away.</p>
+      <h3 id="dl-title">{{ t.gate.title }}</h3>
+      <p>{{ t.gate.lead }}</p>
       <form id="dl-form" novalidate>
         <div class="dl-field" id="dl-f-name">
-          <label for="dl-name">Complete name</label>
-          <input id="dl-name" type="text" autocomplete="name" placeholder="Jane Doe">
-          <span class="dl-err">Please enter your full name to continue.</span>
+          <label for="dl-name">{{ t.gate.name.label }}</label>
+          <input id="dl-name" type="text" autocomplete="name" placeholder="{{ t.gate.name.placeholder }}">
+          <span class="dl-err">{{ t.gate.name.error }}</span>
         </div>
         <div class="dl-field" id="dl-f-email">
-          <label for="dl-email">Email</label>
-          <input id="dl-email" type="email" autocomplete="email" placeholder="jane@company.com">
-          <span class="dl-err">Please enter a valid email to continue.</span>
+          <label for="dl-email">{{ t.gate.email.label }}</label>
+          <input id="dl-email" type="email" autocomplete="email" placeholder="{{ t.gate.email.placeholder }}">
+          <span class="dl-err">{{ t.gate.email.error }}</span>
         </div>
         <div class="dl-field" id="dl-f-phone">
-          <label for="dl-phone">Phone number <span class="dl-opt">(best to reach you on WhatsApp)</span></label>
+          <label for="dl-phone">{{ t.gate.phone.label }} <span class="dl-opt">{{ t.gate.phone.optional }}</span></label>
           <div class="dl-phone-group">
-            <div class="dl-cc" id="dl-cc">
-              <button type="button" class="dl-cc-toggle" id="dl-cc-toggle" aria-haspopup="listbox" aria-expanded="false">
+            <div class="dl-dd dl-cc" id="dl-cc">
+              <button type="button" class="dl-cc-toggle" id="dl-cc-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="dl-cc-menu" aria-label="{{ t.gate.phone.ccLabel }}">
                 <span class="dl-cc-flag" id="dl-cc-flag">🇺🇸</span>
                 <span class="dl-cc-abbr" id="dl-cc-abbr">US</span>
                 <span class="dl-cc-dial" id="dl-cc-dial">+1</span>
                 <svg class="dl-cc-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
               </button>
-              <ul class="dl-cc-menu" id="dl-cc-menu" role="listbox" aria-label="Country code"></ul>
+              <div class="dl-dd-menu" id="dl-cc-menu">
+                <div class="dl-dd-search"><input type="text" id="dl-cc-search" autocomplete="off" placeholder="{{ t.js.gate.ccSearch }}" aria-label="{{ t.js.gate.ccSearch }}"></div>
+                <ul class="dl-dd-list" id="dl-cc-list" role="listbox" aria-label="{{ t.gate.phone.ccLabel }}"></ul>
+                <p class="dl-dd-empty" id="dl-cc-empty" hidden>{{ t.gate.country.empty }}</p>
+              </div>
             </div>
             <span class="dl-phone-divider"></span>
-            <input id="dl-phone" type="tel" autocomplete="tel" placeholder="555 123 4567">
+            <input id="dl-phone" type="tel" autocomplete="tel" placeholder="{{ t.gate.phone.placeholder }}">
             <input id="dl-phone-code" type="hidden" value="+1">
           </div>
-          <span class="dl-err">Please enter your phone number to continue.</span>
+          <span class="dl-err">{{ t.gate.phone.error }}</span>
         </div>
         <div class="dl-field" id="dl-f-linkedin">
-          <label for="dl-linkedin">LinkedIn</label>
-          <input id="dl-linkedin" type="url" autocomplete="url" placeholder="https://www.linkedin.com/in/you">
-          <span class="dl-err">Please enter a valid LinkedIn URL to continue.</span>
+          <label for="dl-linkedin">{{ t.gate.linkedin.label }}</label>
+          <input id="dl-linkedin" type="url" autocomplete="url" placeholder="{{ t.gate.linkedin.placeholder }}">
+          <span class="dl-err">{{ t.gate.linkedin.error }}</span>
         </div>
         <div class="dl-field" id="dl-f-country">
-          <label for="dl-country">Country</label>
-          <select id="dl-country"><option value="" selected disabled hidden>Select your country</option></select>
-          <span class="dl-err">Please select your country to continue.</span>
+          <label for="dl-country-toggle">{{ t.gate.country.label }}</label>
+          <div class="dl-dd" id="dl-country-dd">
+            <button type="button" class="dl-dd-toggle" id="dl-country-toggle" aria-haspopup="listbox" aria-expanded="false" aria-controls="dl-country-menu">
+              <span class="dl-dd-value is-placeholder" id="dl-country-value">{{ t.gate.country.placeholder }}</span>
+              <svg class="dl-dd-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="dl-dd-menu" id="dl-country-menu">
+              <div class="dl-dd-search"><input type="text" id="dl-country-search" autocomplete="off" placeholder="{{ t.gate.country.searchPlaceholder }}" aria-label="{{ t.gate.country.searchPlaceholder }}"></div>
+              <ul class="dl-dd-list" id="dl-country-list" role="listbox" aria-label="{{ t.gate.country.menuLabel }}"></ul>
+              <p class="dl-dd-empty" id="dl-country-empty" hidden>{{ t.gate.country.empty }}</p>
+            </div>
+          </div>
+          <input type="hidden" id="dl-country" value="">
+          <span class="dl-err">{{ t.gate.country.error }}</span>
         </div>
-        <button type="submit" id="dl-submit" class="btn btn-ink btn-disabled" disabled>Continue to download</button>
-        <p class="dl-form-err" id="dl-form-err" hidden>Something went wrong. Please try again.</p>
-        <p class="dl-fineprint">By continuing you agree to receive product updates from Houston. Unsubscribe anytime. See our <a href="/privacy/">Privacy Policy</a>.</p>
+        <button type="submit" id="dl-submit" class="btn btn-ink btn-disabled" disabled>{{ t.gate.submit }}</button>
+        <p class="dl-form-err" id="dl-form-err" hidden>{{ t.gate.formError }}</p>
+        <p class="dl-fineprint">{{ t.gate.fineprintHtml | safe }}</p>
       </form>
     </div>
 
     <div id="dl-step-download" hidden>
-      <h3>You're all set</h3>
-      <p>Pick your download and you're off.</p>
+      <h3>{{ t.gate.done.title }}</h3>
+      <p>{{ t.gate.done.lead }}</p>
       <div class="dl-actions">
         <div id="dl-mac-group" hidden>
-          <a id="dl-btn" class="btn btn-ink btn-disabled"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Download for Mac</a>
+          <a id="dl-btn" class="btn btn-ink btn-disabled"><svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> {{ t.gate.macBtn }}</a>
         </div>
         <div id="dl-windows-group" hidden>
-          <a id="dl-windows-x64-btn" class="btn btn-ink btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Windows (x64 / Intel / AMD)</a>
-          <a id="dl-windows-arm64-btn" class="btn btn-outline btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Windows (ARM64 / Surface, Snapdragon)</a>
+          <a id="dl-windows-x64-btn" class="btn btn-ink btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> {{ t.gate.winX64 }}</a>
+          <a id="dl-windows-arm64-btn" class="btn btn-outline btn-disabled"><svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> {{ t.gate.winArm }}</a>
         </div>
         <button type="button" class="dl-os-alt" id="dl-os-alt" hidden></button>
       </div>
       <details class="dl-skip" id="dl-windows-skip" hidden>
-        <summary>Not sure which one to pick?</summary>
+        <summary>{{ t.gate.notSure }}</summary>
         <div class="dl-skip-body">
-          <p>Most laptops and desktops are x64 (Intel or AMD CPUs). Only a Surface Pro X, Surface Pro 9 5G, a Snapdragon X laptop, or another ARM-based Windows machine needs ARM64. On first install you'll see one SmartScreen "Run anyway" prompt; we're working on full code-signing.</p>
-          <a href="#" id="dl-windows-switch-arch">Wrong one? Switch to the other version →</a>
+          <p>{{ t.gate.notSureBody }}</p>
+          <a href="#" id="dl-windows-switch-arch">{{ t.gate.switchArch }}</a>
         </div>
       </details>
     </div>

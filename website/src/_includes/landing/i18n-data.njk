@@ -1,0 +1,23 @@
+{# Runtime translations for the landing's browser scripts.
+
+   MUST be included BEFORE any deferred script asset (hero-demo*.js, chat.js,
+   download-gate*.js). Deferred scripts run after the document is parsed, but
+   this inline block has to already be in the document for them to read
+   window.HOUSTON_I18N at all, and putting it first also keeps the order
+   obvious for anyone adding a new asset.
+
+   The blob is the `js` subtree of _data/i18n/<locale>.js, serialized by the
+   `jsonScript` filter (escapes `<`, U+2028 and U+2029 so it is safe inside a
+   <script> element). #}
+<script>
+window.HOUSTON_LOCALE = "{{ locale.code }}";
+window.HOUSTON_I18N = {{ t.js | jsonScript | safe }};
+window.houstonT = function (path, fallback) {
+  var cur = window.HOUSTON_I18N, parts = String(path).split(".");
+  for (var i = 0; i < parts.length; i++) {
+    if (!cur || typeof cur !== "object") return fallback;
+    cur = cur[parts[i]];
+  }
+  return cur == null ? fallback : cur;
+};
+</script>

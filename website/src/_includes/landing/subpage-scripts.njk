@@ -1,3 +1,4 @@
+{% include "landing/i18n-data.njk" %}
 {# Behaviours for the subpage shell: the shared navbar (Resources dropdown +
    mobile menu) and the invite-code download gate. A lean subset of the
    landing's scripts.njk — no hero/board/chat/reveal assets, since subpages
@@ -5,24 +6,56 @@
    so no scroll-state handler is needed. #}
 {% include "installer-urls.njk" %}
 <script>
-  // Resources dropdown: click toggles, Escape / outside click closes.
+  // Nav dropdowns (Resources, language): every [data-menu] container owns a
+  // direct <button> child that toggles it. Click toggles, Escape / outside
+  // click closes, and opening one closes the others.
   (function () {
-    var res = document.getElementById("lnav-res");
-    var btn = document.getElementById("lnav-res-btn");
-    if (!res || !btn) return;
-    function setOpen(open) {
-      res.classList.toggle("open", open);
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    var menus = Array.prototype.slice.call(
+      document.querySelectorAll("[data-menu]")
+    );
+    if (!menus.length) return;
+    function setOpen(menu, open) {
+      menu.classList.toggle("open", open);
+      var btn = menu.querySelector(":scope > button");
+      if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
     }
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      setOpen(!res.classList.contains("open"));
+    function closeAll(except) {
+      menus.forEach(function (menu) {
+        if (menu !== except) setOpen(menu, false);
+      });
+    }
+    menus.forEach(function (menu) {
+      var btn = menu.querySelector(":scope > button");
+      if (!btn) return;
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var open = !menu.classList.contains("open");
+        closeAll(menu);
+        setOpen(menu, open);
+      });
     });
     document.addEventListener("click", function (e) {
-      if (!res.contains(e.target)) setOpen(false);
+      menus.forEach(function (menu) {
+        if (!menu.contains(e.target)) setOpen(menu, false);
+      });
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closeAll(null);
+    });
+  })();
+
+  // Language picks are remembered, so a later visit can honor the choice.
+  // Navigation is untouched: the link follows through to the localized page.
+  (function () {
+    document.querySelectorAll("[data-lang-choice]").forEach(function (link) {
+      link.addEventListener("click", function () {
+        try {
+          localStorage.setItem(
+            "houston_lang_pref",
+            link.getAttribute("data-lang-choice")
+          );
+        } catch (e) {}
+      });
     });
   })();
 

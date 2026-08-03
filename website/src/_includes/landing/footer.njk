@@ -1,45 +1,55 @@
+{#- The Guides hub is per locale, same rule as nav.njk: a path in the copy tree
+    wins, anything else falls back to the English hub. -#}
+{%- set guidesHref = t.nav.links.guides -%}
 <footer class="lfoot">
   <div class="lfoot-inner">
     <div class="lfoot-top">
       <div class="lfoot-brand">
-        <a class="lnav-brand" href="/">Houston</a>
-        <p>The workspace where people and AI agents work together. Free to try, for the whole team when you are ready.</p>
-        <button class="btn btn-ghost btn-sm" data-dl-trigger data-dl-source="footer">Download</button>
+        <a class="lnav-brand" href="{{ localeRoot }}">Houston</a>
+        <p>{{ t.footer.blurb }}</p>
+        <button class="btn btn-ghost btn-sm" data-dl-trigger data-dl-source="footer">{{ t.footer.download }}</button>
         <p class="dl-os-links">
-          <button class="dl-os-link" data-dl-trigger data-dl-source="footer-os" data-dl-os="mac">macOS</button> ·
-          <button class="dl-os-link" data-dl-trigger data-dl-source="footer-os" data-dl-os="windows">Windows</button>
+          <button class="dl-os-link" data-dl-trigger data-dl-source="footer-os" data-dl-os="mac">{{ t.footer.mac }}</button> ·
+          <button class="dl-os-link" data-dl-trigger data-dl-source="footer-os" data-dl-os="windows">{{ t.footer.windows }}</button>
         </p>
       </div>
       <div class="lfoot-col">
-        <h4>Product</h4>
-        <a href="{{ root }}#multiplayer">Multiplayer</a>
-        <a href="{{ root }}#agents">Agents</a>
-        <a href="{{ root }}#compound">Features</a>
-        <a href="{{ root }}#pricing">Pricing</a>
-        <a href="{{ root }}#faq">Questions</a>
+        <h4>{{ t.footer.product }}</h4>
+        <a href="{{ root }}#multiplayer">{{ t.nav.multiplayer }}</a>
+        <a href="{{ root }}#agents">{{ t.nav.agents }}</a>
+        <a href="{{ root }}#compound">{{ t.nav.features }}</a>
+        <a href="{{ root }}#pricing">{{ t.nav.pricing }}</a>
+        <a href="{{ root }}#faq">{{ t.nav.faq }}</a>
       </div>
       <div class="lfoot-col">
-        <h4>Company</h4>
-        <a href="/vision/">Vision</a>
-        <a href="mailto:hello@gethouston.ai">Contact</a>
+        <h4>{{ t.footer.company }}</h4>
+        <a href="/vision/">{{ t.nav.vision }}</a>
+        <a href="mailto:hello@gethouston.ai">{{ t.footer.contact }}</a>
       </div>
       <div class="lfoot-col">
-        <h4>Resources</h4>
-        <a href="https://agents.gethouston.ai">Agent Store</a>
-        <a href="/guides/">Guides</a>
-        <a href="/changelog/">Changelog</a>
-        <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer">GitHub</a>
-        <a href="https://x.com/ja818_" target="_blank" rel="noopener noreferrer">Twitter / X</a>
+        <h4>{{ t.footer.resources }}</h4>
+        <a href="https://agents.gethouston.ai">{{ t.nav.agentStore }}</a>
+        <a href="{{ guidesHref }}">{{ t.nav.guides }}</a>
+        <a href="/changelog/">{{ t.nav.changelog }}</a>
+        <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer">{{ t.nav.github }}</a>
+        <a href="https://x.com/ja818_" target="_blank" rel="noopener noreferrer">{{ t.footer.twitter }}</a>
       </div>
     </div>
     <div class="lfoot-bottom">
       <span class="lfoot-credit">
-        Houston. Open source.
+        {{ t.footer.credit }}
       </span>
+      {# The quiet second way to switch language, for anyone who reads to the
+         end of the page. Same [data-lang-choice] contract as the nav menu. #}
+      <nav class="lfoot-lang" aria-label="{{ t.footer.langLabel }}">
+        {%- for code in locales.order %}
+        <a href="{{ locales[code].dir }}" data-lang-choice="{{ code }}"{% if code == locale.code %} class="is-active" aria-current="true"{% endif %}>{{ locales[code].label }}</a>
+        {%- endfor %}
+      </nav>
       <span class="lfoot-legal">
-        <a href="/privacy/">Privacy Policy</a>
-        <a href="/terms/">Terms of Service</a>
-        <a href="mailto:hello@gethouston.ai?subject=Unsubscribe&amp;body=Please%20remove%20this%20email%20address%20from%20Houston%20marketing.">Unsubscribe</a>
+        <a href="/privacy/">{{ t.footer.privacy }}</a>
+        <a href="/terms/">{{ t.footer.terms }}</a>
+        <a href="mailto:hello@gethouston.ai?subject={{ t.footer.unsubscribeSubject | urlencode }}&amp;body={{ t.footer.unsubscribeBody | urlencode }}">{{ t.footer.unsubscribe }}</a>
       </span>
     </div>
   </div>

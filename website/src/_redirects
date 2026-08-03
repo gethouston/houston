@@ -17,10 +17,10 @@
 # Live campaigns: (add rules below this line)
 
 # /pricing/ was folded into the landing page's pricing section (#pricing).
-# No Spanish landing page exists yet, so /pricing/es/ also falls back to the
-# English landing's pricing section.
+# Each language lands on its own translated pricing section.
 /pricing/      /#pricing      301
-/pricing/es/   /#pricing      301
+/pricing/es/   /es/#pricing   301
+/pricing/pt/   /pt/#pricing   301
 
 # The waitlist was folded into the download gate (HOU-1168): downloading asks
 # for the same info the waitlist collected.

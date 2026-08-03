@@ -1,0 +1,50 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+---
+{#- The sitemap is a template, not a static file, so the landing trio and its
+    hreflang block stay in sync with _data/locales.js. Two kinds of entry:
+    translated pages carry reciprocal <xhtml:link rel="alternate"> sets (every
+    language points at every language, x-default at the English one), and
+    single-language pages stay plain. Add a page here when you add a page. -#}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+{%- for code in locales.order %}
+  <url>
+    <loc>https://gethouston.ai{{ locales[code].dir }}</loc>
+    <lastmod>2026-08-03</lastmod>
+    {%- for alt in locales.order %}
+    <xhtml:link rel="alternate" hreflang="{{ locales[alt].hreflang }}" href="https://gethouston.ai{{ locales[alt].dir }}"/>
+    {%- endfor %}
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gethouston.ai/"/>
+  </url>
+{%- endfor %}
+  <url>
+    <loc>https://gethouston.ai/guides/</loc>
+    <lastmod>2026-07-02</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gethouston.ai/guides/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/"/>
+  </url>
+  <url>
+    <loc>https://gethouston.ai/guides/es/</loc>
+    <lastmod>2026-07-02</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://gethouston.ai/guides/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://gethouston.ai/guides/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gethouston.ai/guides/"/>
+  </url>
+  <url><loc>https://gethouston.ai/startups/</loc><lastmod>2026-06-28</lastmod></url>
+  <url><loc>https://gethouston.ai/changelog/</loc><lastmod>2026-06-28</lastmod></url>
+  <url><loc>https://gethouston.ai/guides/revenue-manager/</loc><lastmod>2026-08-03</lastmod></url>
+  <url><loc>https://gethouston.ai/guides/es/revenue-manager/</loc><lastmod>2026-08-03</lastmod></url>
+  <url><loc>https://gethouston.ai/guides/sdr-linkedin/</loc><lastmod>2026-08-03</lastmod></url>
+  <url><loc>https://gethouston.ai/guides/es/sdr-linkedin/</loc><lastmod>2026-08-03</lastmod></url>
+  <url><loc>https://gethouston.ai/guides/bootcamp-0a1/</loc><lastmod>2026-08-03</lastmod></url>
+  <url><loc>https://gethouston.ai/guides/es/bootcamp-0a1/</loc><lastmod>2026-08-03</lastmod></url>
+  <url><loc>https://gethouston.ai/developers/</loc><lastmod>2026-07-12</lastmod></url>
+  <url><loc>https://gethouston.ai/developers/missions/</loc><lastmod>2026-07-12</lastmod></url>
+  <url><loc>https://gethouston.ai/developers/a2a/</loc><lastmod>2026-07-12</lastmod></url>
+  <url><loc>https://gethouston.ai/developers/mcp/</loc><lastmod>2026-07-12</lastmod></url>
+  <url><loc>https://gethouston.ai/privacy/</loc><lastmod>2026-06-28</lastmod></url>
+  <url><loc>https://gethouston.ai/terms/</loc><lastmod>2026-06-28</lastmod></url>
+</urlset>

@@ -1,3 +1,4 @@
+{% include "landing/i18n-data.njk" %}
 {% include "installer-urls.njk" %}
 <script>
   // Nav scroll state — transparent over the hero, frosted once scrolled, and
@@ -23,24 +24,56 @@
     check();
   })();
 
-  // Resources dropdown: click toggles, Escape / outside click closes.
+  // Nav dropdowns (Resources, language): every [data-menu] container owns a
+  // direct <button> child that toggles it. Click toggles, Escape / outside
+  // click closes, and opening one closes the others.
   (function () {
-    var res = document.getElementById("lnav-res");
-    var btn = document.getElementById("lnav-res-btn");
-    if (!res || !btn) return;
-    function setOpen(open) {
-      res.classList.toggle("open", open);
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    var menus = Array.prototype.slice.call(
+      document.querySelectorAll("[data-menu]")
+    );
+    if (!menus.length) return;
+    function setOpen(menu, open) {
+      menu.classList.toggle("open", open);
+      var btn = menu.querySelector(":scope > button");
+      if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
     }
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      setOpen(!res.classList.contains("open"));
+    function closeAll(except) {
+      menus.forEach(function (menu) {
+        if (menu !== except) setOpen(menu, false);
+      });
+    }
+    menus.forEach(function (menu) {
+      var btn = menu.querySelector(":scope > button");
+      if (!btn) return;
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var open = !menu.classList.contains("open");
+        closeAll(menu);
+        setOpen(menu, open);
+      });
     });
     document.addEventListener("click", function (e) {
-      if (!res.contains(e.target)) setOpen(false);
+      menus.forEach(function (menu) {
+        if (!menu.contains(e.target)) setOpen(menu, false);
+      });
     });
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closeAll(null);
+    });
+  })();
+
+  // Language picks are remembered, so a later visit can honor the choice.
+  // Navigation is untouched: the link follows through to the localized page.
+  (function () {
+    document.querySelectorAll("[data-lang-choice]").forEach(function (link) {
+      link.addEventListener("click", function () {
+        try {
+          localStorage.setItem(
+            "houston_lang_pref",
+            link.getAttribute("data-lang-choice")
+          );
+        } catch (e) {}
+      });
     });
   })();
 
@@ -109,22 +142,24 @@
     if (!panel || !countEl) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
 
-    function face(img, initial, name) {
+    function face(img, initial, tone, name) {
       if (!img) {
-        return '<span class="face hp-3 feat-face" title="' + name + '">' + initial + "</span>";
+        return '<span class="face ' + tone + ' feat-face" title="' + name + '">' + initial + "</span>";
       }
       return (
         '<span class="face face-img feat-face" title="' + name + '">' +
         '<img src="/assets/img/' + img + '-48.webp" srcset="/assets/img/' + img + '-96.webp 2x" width="48" height="48" alt="' + name + '"></span>'
       );
     }
+    // The rotating pool: notes and teammate names come from the page's locale
+    // (_data/i18n/*, js.compound), the avatars from _data/landing.js
+    // compoundLive, zipped by index.
+    var justNow = {{ t.js.compound.justNow | jsonScript | safe }};
     var pool = [
-      { t: "Quote annual pricing in the customer's currency", f: face("felipe", "", "Felipe") },
-      { t: "Loop in support when a deal mentions bugs", f: face("julian", "", "Julian") },
-      { t: "Never promise a date without checking the roadmap", f: face(null, "M", "Maya") },
-      { t: "Summarize every demo call in the deal notes", f: face("julian", "", "Julian") },
-      { t: "Flag competitors named in any thread", f: face("felipe", "", "Felipe") },
-      { t: "Send recap emails before noon, customer's timezone", f: face(null, "A", "Ana") }
+      {%- for entry in t.js.compound.pool %}
+      {%- set person = landing.people[landing.compoundLive.pool[loop.index0].person] %}
+      { t: {{ entry.note | jsonScript | safe }}, f: face({{ person.img | jsonScript | safe }}, {{ person.initials | jsonScript | safe }}, {{ person.tone | jsonScript | safe }}, {{ entry.who | jsonScript | safe }}) }{{ "," if not loop.last }}
+      {%- endfor %}
     ];
     var i = 0;
     var visible = false;
@@ -138,8 +173,9 @@
       i++;
       var row = document.createElement("div");
       row.className = "feat-row cl-enter";
-      row.innerHTML = '<span class="feat-note"></span><span class="feat-when">just now</span>' + item.f;
+      row.innerHTML = '<span class="feat-note"></span><span class="feat-when"></span>' + item.f;
       row.querySelector(".feat-note").textContent = item.t;
+      row.querySelector(".feat-when").textContent = justNow;
       panel.insertBefore(row, panel.firstChild);
       var rows = panel.querySelectorAll(".feat-row");
       if (rows.length > 5) panel.removeChild(rows[rows.length - 1]);

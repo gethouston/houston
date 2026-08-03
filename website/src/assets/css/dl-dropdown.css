@@ -1,0 +1,139 @@
+/* Searchable dropdown used by the download gate (country code + country).
+   The menu is fixed-positioned by download-gate-dropdown.js so it can hang
+   outside the modal card without being clipped by its scroll container. */
+.dl-dd {
+  position: relative;
+}
+.dl-dd-toggle {
+  display: flex;
+  width: 100%;
+  height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+.dl-dd-toggle:focus-visible,
+.dl-dd.open > .dl-dd-toggle {
+  border-color: var(--action);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.06);
+}
+.dl-dd-value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dl-dd-value.is-placeholder {
+  color: var(--ink-subtle);
+}
+.dl-dd-caret {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: var(--ink-subtle);
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.dl-dd.open .dl-dd-caret {
+  transform: rotate(180deg);
+}
+.dl-dd-menu {
+  position: fixed;
+  z-index: 200;
+  display: none;
+  max-height: 360px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--ground);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
+}
+.dl-dd.open .dl-dd-menu {
+  display: flex;
+}
+.dl-dd-search {
+  flex: 0 0 auto;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+/* Scoped through .dl-dd so the gate's generic `.dl-field input` sizing, which
+   also matches this nested input, loses on specificity instead of load order. */
+.dl-dd .dl-dd-search input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  box-shadow: none;
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.dl-dd .dl-dd-search input::placeholder {
+  color: var(--ink-subtle);
+}
+.dl-dd .dl-dd-search input:focus {
+  border-color: var(--action);
+  outline: none;
+  box-shadow: none;
+}
+.dl-dd-list {
+  max-height: 300px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.dl-dd-item {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+.dl-dd-item:hover,
+.dl-dd-item.is-active,
+.dl-dd-item.selected {
+  background: var(--panel);
+}
+.dl-dd-flag {
+  font-size: 17px;
+  line-height: 1;
+}
+.dl-dd-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dl-dd-dial {
+  color: var(--ink-muted);
+}
+.dl-dd-empty {
+  margin: 0;
+  padding: 14px 12px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.dl-field.invalid .dl-dd-toggle {
+  border-color: var(--app-danger);
+}

@@ -10,6 +10,17 @@ export default function (eleventyConfig) {
     return marked.parse(str);
   });
 
+  // Serialize a data value for embedding inside a <script> element. Escapes
+  // `<` (so a string can never open a tag) plus U+2028 / U+2029, which are
+  // valid in JSON but are line terminators in JavaScript. Used by
+  // _includes/landing/i18n-data.njk to ship the runtime translations.
+  eleventyConfig.addFilter("jsonScript", (v) =>
+    JSON.stringify(v)
+      .replace(/</g, "\\u003c")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029"),
+  );
+
   // Pass through static assets unchanged
   eleventyConfig.addPassthroughCopy("src/favicon.svg");
   eleventyConfig.addPassthroughCopy("src/houston-black.svg");
@@ -37,10 +48,9 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/_headers");
   eleventyConfig.addPassthroughCopy("src/_redirects");
   // SEO + AI-crawler files. Served verbatim at the site root (/robots.txt,
-  // /sitemap.xml, /llms.txt). The 404 page is a template with its own
-  // permalink, so it does not need a passthrough entry.
+  // /llms.txt). The 404 page and the sitemap are templates with their own
+  // permalinks, so they do not need passthrough entries.
   eleventyConfig.addPassthroughCopy("src/robots.txt");
-  eleventyConfig.addPassthroughCopy("src/sitemap.xml");
   eleventyConfig.addPassthroughCopy("src/llms.txt");
 
   return {

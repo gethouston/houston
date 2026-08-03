@@ -1,4 +1,14 @@
 /* Shared download lead form for the landing and every subpage. */
+
+/* Scroll lock. --dl-sbw replaces the width the scrollbar gave back so the
+   page does not jump sideways; download-gate.js also stops Lenis. */
+html.dl-modal-open {
+  overflow: hidden;
+  padding-right: var(--dl-sbw, 0px);
+}
+html.dl-modal-open body {
+  overflow: hidden;
+}
 .dl-overlay {
   position: fixed;
   inset: 0;
@@ -23,6 +33,7 @@
   max-width: 440px;
   max-height: calc(100dvh - 40px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 30px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -86,8 +97,7 @@
   color: var(--ink-subtle);
   font-weight: 400;
 }
-.dl-field input,
-.dl-field select {
+.dl-field input {
   width: 100%;
   height: 44px;
   padding: 0 14px;
@@ -103,19 +113,10 @@
 .dl-field input::placeholder {
   color: var(--ink-subtle);
 }
-.dl-field input:focus,
-.dl-field select:focus {
+.dl-field input:focus {
   border-color: var(--action);
   outline: none;
   box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.06);
-}
-.dl-field select {
-  appearance: none;
-  padding-right: 40px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239b9b9b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  cursor: pointer;
 }
 .dl-phone-group {
   display: flex;
@@ -186,48 +187,8 @@
 .dl-cc.open .dl-cc-caret {
   transform: rotate(180deg);
 }
-.dl-cc-menu {
-  position: fixed;
-  z-index: 200;
-  display: none;
-  width: 290px;
-  max-height: 300px;
-  margin: 0;
-  padding: 6px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--ground);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
-  list-style: none;
-}
-.dl-cc.open .dl-cc-menu {
-  display: block;
-}
-.dl-cc-item {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: var(--ink);
-  font-size: 14px;
-  cursor: pointer;
-}
-.dl-cc-item:hover,
-.dl-cc-item.selected {
-  background: var(--panel);
-}
-.dl-cc-name {
-  flex: 1;
-}
-.dl-cc-item .dl-cc-dial {
-  color: var(--ink-muted);
-}
-.dl-field.invalid input,
-.dl-field.invalid select,
+/* Direct child only: the dropdown menus nest their own inputs under a field. */
+.dl-field.invalid > input,
 .dl-field.invalid .dl-phone-group {
   border-color: var(--app-danger);
 }
