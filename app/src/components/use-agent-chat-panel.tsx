@@ -58,6 +58,7 @@ import {
   useSkills,
 } from "../hooks/queries";
 import { useCapabilities } from "../hooks/use-capabilities";
+import { useConnectAiComposer } from "../hooks/use-connect-ai-composer";
 import {
   useConversationFeed,
   useConversationVm,
@@ -541,7 +542,11 @@ export function useAgentChatPanel({
   // rather than a stale preference, so a no-provider agent never lands on a
   // logged-out account (#483) — and an unconfirmable probe is kept separate, so
   // it neither becomes a fallback target nor disqualifies the preferred one.
-  const { statuses: providerStatuses } = useProviderStatuses();
+  const {
+    statuses: providerStatuses,
+    isLoading: providerStatusesLoading,
+    isError: providerStatusesError,
+  } = useProviderStatuses();
   const authedProviders = useMemo(
     () =>
       Object.values(providerStatuses)
@@ -556,6 +561,18 @@ export function useAgentChatPanel({
         .map((s) => s.provider),
     [providerStatuses],
   );
+
+  // With nothing connected the composer had no honest job: its picker showed a
+  // phantom model (the effective-provider default) and its textarea accepted a
+  // message no provider could answer. The whole input area is replaced by one
+  // CTA into the AI Hub, and returns by itself once a provider connects (the
+  // status query is invalidated on ProviderLoginComplete).
+  const connectAiComposer = useConnectAiComposer({
+    connectedCount: authedProviders.length,
+    checkingCount: unconfirmedProviders.length,
+    statusesLoading: providerStatusesLoading,
+    statusesError: providerStatusesError,
+  });
 
   // This conversation's reactive feed — the SDK conversation VM, the app's one
   // turn-state source (history seeded by the adapter on load; live turns
@@ -1484,6 +1501,11 @@ export function useAgentChatPanel({
     mode: "above" | "replace";
   }>(() => {
     const none = { node: undefined, mode: "above" as const };
+    // No AI model connected wins over everything: there is no provider to run a
+    // stepper's turn or a plan against either, so the connect CTA is the only
+    // thing the composer slot can honestly offer.
+    if (connectAiComposer.node)
+      return { mode: "replace" as const, node: connectAiComposer.node };
     if (!agent || !activeInteraction) return none;
     // Abandoned interactions stay suppressed while this conversation is open,
     // whatever their kind, and the composer stands alone.
@@ -1798,6 +1820,7 @@ export function useAgentChatPanel({
       ),
     };
   }, [
+    connectAiComposer.node,
     agent,
     activeInteraction,
     interactionKey,
@@ -2058,6 +2081,13 @@ export function useAgentChatPanel({
       // One card per chat, and the inline one carries the true provider.
       const hasInlineAuthCard = feedItems.some(isInlineAuthCard);
       if (hasInlineAuthCard) return null;
+      // The connect-AI empty state already owns the one "connect a model" CTA
+      // for this chat, and it says the truer thing (nothing is connected at
+      // all, versus this provider needs reconnecting). Two CTAs stacked would
+      // just make the user choose between them. Inline historical
+      // provider-error cards in the transcript are untouched — they are a
+      // record of what happened, not an action.
+      if (connectAiComposer.active) return null;
       const signalKey = providerAuthSignalKey(feedItems);
       // Always hand the card THIS chat's provider so it can match the global
       // `authRequired` flag against the provider this chat actually uses — a
@@ -2070,7 +2100,7 @@ export function useAgentChatPanel({
         />
       );
     },
-    [effectiveProvider],
+    [effectiveProvider, connectAiComposer.active],
   );
 
   // Shared-agent clarity (contract §6): when the agent is shared with more than

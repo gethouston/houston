@@ -134,6 +134,21 @@ deliberately not filtered by provider on this path (a FAILURE always is: this ca
 launched nothing, so an unrelated abandoned login says nothing about it) — and
 fires the same one-shot auto-resume.
 
+**The composer itself is gated on zero connected providers.** Before any error
+can happen, `useAgentChatPanel` replaces the ENTIRE chat input (textarea + the
+footer with the model picker, which otherwise shows a phantom model from the
+effective-provider default) with `ChatConnectAiEmptyState` — reusing the
+picker's `chat:modelSelector.picker.noProviders.*` copy and a "Connect an AI
+model" CTA into the AI Hub. Decision helper: `shouldReplaceComposerWithConnectAi`
+(`app/src/lib/composer-connect-ai.ts`) — CONFIRMED-zero only: statuses loaded
+without error, catalog ready, capabilities loaded, zero connected AND zero
+still-checking providers; any uncertainty falls back to the normal composer
+(no startup flash). Wiring: `app/src/hooks/use-connect-ai-composer.tsx` →
+first branch of `composerOverrideState` (`mode: "replace"`). While active it
+also suppresses the store `ProviderReconnectCard` (one CTA, not two).
+`ProviderLoginComplete` invalidation restores the composer with no extra
+wiring. E2E: `packages/web/e2e/connect-ai-empty-state.spec.ts`.
+
 **Feed dedup upgrades the label in place** (`ui/chat/src/feed-to-messages.ts`).
 Provider-error cards dedupe per turn on KIND ALONE; `provider` is deliberately out
 of the key, because the same failure routinely arrives unlabeled on one channel
