@@ -635,6 +635,56 @@ test("'Provider finish_reason: content_filter' stays unknown — a refusal, not 
   expect(err.kind).toBe("unknown");
 });
 
+// undici's fetch abort: a bare `TypeError: terminated` fires when the HTTP
+// socket to the gateway closes while the streamed body is still being read —
+// pi-ai flattens it to the single word "terminated", no status, no body
+// (HOU-902's verbatim report, provider opencode-go). The stream had already
+// started, so it's the same mid-response break as HOU-929 detected one layer
+// lower: provider_internal (Retry card), never the report-bug `unknown`.
+test("undici 'terminated' mid-stream socket close → provider_internal, not unknown (HOU-902)", () => {
+  const err = classifyProviderError({
+    provider: "opencode-go",
+    model: null,
+    message: "terminated",
+  });
+  expect(err).toEqual({
+    kind: "provider_internal",
+    provider: "opencode-go",
+    http_status: null,
+    message: "terminated",
+  });
+});
+
+test("'TypeError: terminated' wrapper classifies the same way", () => {
+  const err = classifyProviderError({
+    provider: "opencode-go",
+    model: "qwen3-coder",
+    message: "TypeError: terminated",
+  });
+  expect(err.kind).toBe("provider_internal");
+});
+
+test("a body merely CONTAINING 'terminated' does not read as an outage", () => {
+  // Whole-message match only: an account-termination notice is not transient.
+  const err = classifyProviderError({
+    provider: "opencode-go",
+    model: null,
+    message: "Your account has been terminated for abuse",
+  });
+  expect(err.kind).toBe("unknown");
+});
+
+test("session-kill bodies ending in 'terminated' still win the reconnect card", () => {
+  // Auth precedence is untouched: `(app_session_terminated)` style bodies are
+  // claimed by the auth branch before the server-error branch ever runs.
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: null,
+    message: "Your session was terminated",
+  });
+  expect(err.kind).toBe("unauthenticated");
+});
+
 test("a genuine opencode 401 invalid key still reads as unauthenticated", () => {
   // The fix must not blunt real auth failures: an invalid key under 401 stays a
   // reconnect prompt.

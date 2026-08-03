@@ -472,7 +472,20 @@ function isServerError(lower: string, status: number | null): boolean {
     // status, so the 5xx short-circuit above never sees it. The body itself
     // says retry helps; without this pattern it degraded to the report-bug
     // `unknown` card (HOU-898).
-    lower.includes("error occurred while processing your request")
+    lower.includes("error occurred while processing your request") ||
+    // undici's fetch abort — the bare `terminated` (TypeError) — fires from
+    // Socket.onHttpSocketClose when the socket drops while the streamed body
+    // is still being read. The response had already STARTED (an unreachable
+    // network reads "fetch failed"/"socket hang up" instead, via `isNetwork`),
+    // so this is the gateway killing the stream mid-response — the same break
+    // HOU-929 caught when opencode reported it in-body; here it surfaces from
+    // the transport itself instead of an error body (HOU-902's verbatim
+    // report, provider opencode-go). Whole-message match on purpose: a
+    // session-kill body ("app_session_terminated") is claimed by the auth
+    // branch, and an "account terminated" style body must never read as a
+    // transient outage.
+    lower === "terminated" ||
+    lower.endsWith(": terminated")
   );
 }
 
