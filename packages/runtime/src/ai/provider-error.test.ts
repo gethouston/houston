@@ -469,6 +469,46 @@ test("opencode stream failure classifies inside a JSON error envelope too", () =
   expect(err.kind).toBe("provider_internal");
 });
 
+// OpenRouter ends the stream with `finish_reason: "error"` when its UPSTREAM
+// provider dies mid-generation; pi-ai flattens that to the bare string
+// `Provider finish_reason: error` — no status, no body (HOU-930's verbatim
+// report). Server-side and transient, so it must read as provider_internal
+// (Retry card), never the report-bug `unknown`.
+test("openrouter 'Provider finish_reason: error' → provider_internal, not unknown (HOU-930)", () => {
+  const err = classifyProviderError({
+    provider: "openrouter",
+    model: "anthropic/claude-sonnet-4.5",
+    message: "Provider finish_reason: error",
+  });
+  expect(err).toEqual({
+    kind: "provider_internal",
+    provider: "openrouter",
+    http_status: null,
+    message: "Provider finish_reason: error",
+  });
+});
+
+test("'Provider finish_reason: network_error' → provider_internal too", () => {
+  // pi-ai's dedicated mapping for gateways that name the upstream break
+  // "network_error" — the provider's network, not the user's, so it must NOT
+  // read as network_unreachable ("check your connection" would be wrong).
+  const err = classifyProviderError({
+    provider: "openrouter",
+    model: null,
+    message: "Provider finish_reason: network_error",
+  });
+  expect(err.kind).toBe("provider_internal");
+});
+
+test("'Provider finish_reason: content_filter' stays unknown — a refusal, not an outage", () => {
+  const err = classifyProviderError({
+    provider: "openrouter",
+    model: "openai/gpt-5.5",
+    message: "Provider finish_reason: content_filter",
+  });
+  expect(err.kind).toBe("unknown");
+});
+
 test("a genuine opencode 401 invalid key still reads as unauthenticated", () => {
   // The fix must not blunt real auth failures: an invalid key under 401 stays a
   // reconnect prompt.
