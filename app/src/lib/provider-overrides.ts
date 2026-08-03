@@ -565,7 +565,9 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     name: "MiniMax",
     subtitle: "Global API",
     description: "Fast, affordable models for agent work.",
-    cost: "Coding/token plan or pay-as-you-go on your MiniMax account",
+    // The Coding Plan key is separate from a pay-as-you-go key and they are NOT
+    // interchangeable (HOU-1160) — the card must say which one to paste.
+    cost: "Coding Plan subscription (paste that plan's API key) or pay-as-you-go",
     installUrl: "https://platform.minimax.io",
     apiKeyUrl:
       "https://platform.minimax.io/user-center/basic-information/interface-key",

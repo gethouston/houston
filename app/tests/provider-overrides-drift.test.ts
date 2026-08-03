@@ -60,7 +60,19 @@ describe("PROVIDER_OVERRIDES stay in sync with the shipped pi-ai catalog", () =>
     });
 
     for (const modelId of Object.keys(override.models ?? {})) {
-      if (HOUSTON_INJECTED_MODELS.has(`${piId}/${modelId}`)) continue;
+      if (HOUSTON_INJECTED_MODELS.has(`${piId}/${modelId}`)) {
+        // Self-expiring exemption: the moment pi-ai ships this id natively, the
+        // hand-built injection (host withMinimaxTokenPlan + runtime
+        // buildMinimaxTokenPlanModel) and this exemption are dead weight —
+        // fail loudly so they get removed instead of shadowing pi's entry.
+        it(`${houstonId}/${modelId} is still absent from pi-ai (injected by Houston)`, () => {
+          ok(
+            pi.getModel(piId, modelId) == null,
+            `pi-ai now ships "${modelId}" natively for "${piId}": remove the Houston injection (host withMinimaxTokenPlan / runtime buildMinimaxTokenPlanModel) and this HOUSTON_INJECTED_MODELS exemption.`,
+          );
+        });
+        continue;
+      }
       it(`${houstonId}/${modelId} exists in pi-ai`, () => {
         ok(
           pi.getModel(piId, modelId) != null,
