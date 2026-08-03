@@ -34,7 +34,7 @@ Key invariants:
 
 ## frpc bundling (release builds)
 
-`frpc` (fatedier/frp, Apache-2.0, pinned to the relay's version) ships as a second Tauri `externalBin`. `scripts/fetch-frpc.sh <triple>` downloads + sha256-verifies the per-arch binary; `app/src-tauri/build.rs` stages it. A missing `frpc` at build time stages a loud-fail placeholder (never a silent no-op) — so **release CI must run `scripts/fetch-frpc.sh` before packaging**, same as the host sidecar.
+`frpc` (fatedier/frp, Apache-2.0, pinned to the relay's version) ships as a second Tauri `externalBin`. `scripts/build-frpc.sh <triple>` builds it **from source** (shallow clone of the pinned tag, verified against a pinned commit, `go build -trimpath`, CGO off so any host cross-compiles any target); `app/src-tauri/build.rs` stages it. From source, NOT the upstream release download (HOU-1170): frp is a favorite attacker tunneling tool, so the stock release binaries are on antivirus blocklists — Avira quarantined the bundled `frpc.exe` as `TR/W64.Malware`. Our build ships different bytes, keeps Go symbols (stripped binaries score worse with AV heuristics), and on Windows is Authenticode-signed with the rest of the bundle by tauri-bundler's sidecar signing. A missing `frpc` at build time stages a loud-fail placeholder (never a silent no-op) — so **release CI must run `scripts/build-frpc.sh` before packaging**, same as the host sidecar.
 
 ## Limitation
 

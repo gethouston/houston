@@ -51,7 +51,7 @@ fn main() {
     // Tauri's `externalBin`. Unlike the host sidecar, a missing frpc NEVER fails
     // the build (even release) — it stages a placeholder that exits non-zero so
     // a tunnel attempt surfaces a clear error instead of blocking packaging. A
-    // shippable tunnel needs `scripts/fetch-frpc.sh <triple>` run first (release
+    // shippable tunnel needs `scripts/build-frpc.sh <triple>` run first (release
     // CI wires this in, same as build-host-sidecar.sh).
     if let Err(e) = stage_frpc_sidecar() {
         println!("cargo:warning=frpc staging skipped: {e}");
@@ -517,7 +517,7 @@ fn sidecar_paths_differ(workspace: &Path, base_args: &[&str]) -> Result<bool, St
 /// `binaries/frpc-<triple>`.
 ///
 /// Source: `target/frpc/frpc-<triple>[.exe]`, produced by
-/// `scripts/fetch-frpc.sh` (or the release CI frpc-fetch step). Missing frpc →
+/// `scripts/build-frpc.sh` (or the release CI frpc-build step). Missing frpc →
 /// a placeholder that exits non-zero (so a tunnel attempt fails loudly), NOT a
 /// build failure: frp is only needed when the user actually tunnels a local
 /// model, so an app build must never hard-depend on having fetched it.
@@ -563,14 +563,14 @@ fn stage_frpc_sidecar() -> Result<(), String> {
         }
         None => {
             let placeholder = if cfg!(windows) {
-                "@echo off\r\necho frpc not bundled - run scripts/fetch-frpc.sh 1>&2\r\nexit /b 1\r\n"
+                "@echo off\r\necho frpc not bundled - run scripts/build-frpc.sh 1>&2\r\nexit /b 1\r\n"
             } else {
-                "#!/bin/sh\necho 'frpc not bundled - run scripts/fetch-frpc.sh' >&2\nexit 1\n"
+                "#!/bin/sh\necho 'frpc not bundled - run scripts/build-frpc.sh' >&2\nexit 1\n"
             };
             std::fs::write(&dest, placeholder)
                 .map_err(|e| format!("write frpc placeholder: {e}"))?;
             println!(
-                "cargo:warning=frpc binary not fetched - staged a placeholder at {} (run scripts/fetch-frpc.sh for a real tunnel)",
+                "cargo:warning=frpc binary not built - staged a placeholder at {} (run scripts/build-frpc.sh for a real tunnel)",
                 dest.display()
             );
         }

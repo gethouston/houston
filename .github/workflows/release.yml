@@ -646,18 +646,23 @@ jobs:
             app/src-tauri/binaries/houston-engine-universal-apple-darwin \
             app/src-tauri/binaries/claude-universal-apple-darwin
 
-      # Fetch the frpc tunnel client (fatedier/frp, Apache-2.0) for both arches
-      # and lipo a universal fat binary, mirroring the host sidecar above.
-      # build.rs::stage_frpc_sidecar also stages per-arch copies during tauri's
-      # per-arch cargo runs, but the `--target universal-apple-darwin` bundle
-      # ships this fat binary at binaries/frpc-universal-apple-darwin. Without it
-      # the local-model tunnel ships a loud-fail placeholder and never connects.
-      - name: Fetch + lipo universal frpc tunnel client (aarch64 + x86_64)
+      # Build the frpc tunnel client (fatedier/frp, Apache-2.0) FROM SOURCE for
+      # both arches and lipo a universal fat binary, mirroring the host sidecar
+      # above. From source (not the upstream release binary) because the stock
+      # frp binaries sit on antivirus blocklists — HOU-1170, see
+      # scripts/build-frpc.sh. build.rs::stage_frpc_sidecar also stages per-arch
+      # copies during tauri's per-arch cargo runs, but the `--target
+      # universal-apple-darwin` bundle ships this fat binary at
+      # binaries/frpc-universal-apple-darwin. Without it the local-model tunnel
+      # ships a loud-fail placeholder and never connects. Go is preinstalled on
+      # GitHub's macOS runners; GOTOOLCHAIN=auto fetches the exact version
+      # frp's go.mod demands.
+      - name: Build + lipo universal frpc tunnel client (aarch64 + x86_64)
         run: |
           set -euo pipefail
           for TRIPLE in aarch64-apple-darwin x86_64-apple-darwin; do
-            echo "=== fetching frpc for $TRIPLE ==="
-            scripts/fetch-frpc.sh "$TRIPLE"
+            echo "=== building frpc for $TRIPLE ==="
+            scripts/build-frpc.sh "$TRIPLE"
             test -x "target/frpc/frpc-$TRIPLE" \
               || { echo "::error::frpc missing for $TRIPLE"; exit 1; }
           done
@@ -1351,16 +1356,24 @@ jobs:
           echo "Sidecar size:"
           ls -lah target/host-sidecar/houston-host-${{ matrix.target }}.exe
 
-      # Fetch the frpc tunnel client (fatedier/frp, Apache-2.0) for the matrix
-      # target BEFORE tauri build. build.rs::stage_frpc_sidecar copies
+      # Build the frpc tunnel client (fatedier/frp, Apache-2.0) FROM SOURCE for
+      # the matrix target BEFORE tauri build. From source (not the upstream
+      # release binary) because the stock frpc.exe is on antivirus blocklists —
+      # Avira quarantined it as "TR/W64.Malware" out of Program Files
+      # (HOU-1170, see scripts/build-frpc.sh). Our build then gets
+      # Authenticode-signed with the rest of the bundle by tauri-bundler's
+      # sidecar signing. build.rs::stage_frpc_sidecar copies
       # target/frpc/frpc-<target>.exe to the externalBin name
       # binaries/frpc-<target>.exe (same pattern as the host sidecar). Without it
       # the local-model tunnel ships a loud-fail placeholder and never connects.
-      - name: Fetch frpc tunnel client (${{ matrix.target }})
+      # Go is preinstalled on GitHub's windows-latest AND windows-11-arm
+      # runners; GOTOOLCHAIN=auto fetches the exact version frp's go.mod
+      # demands.
+      - name: Build frpc tunnel client (${{ matrix.target }})
         shell: bash
         run: |
           set -euo pipefail
-          scripts/fetch-frpc.sh ${{ matrix.target }}
+          scripts/build-frpc.sh ${{ matrix.target }}
           test -x "target/frpc/frpc-${{ matrix.target }}.exe" \
             || { echo "::error::frpc missing for ${{ matrix.target }}"; exit 1; }
           ls -lah target/frpc/frpc-${{ matrix.target }}.exe
@@ -1595,7 +1608,12 @@ jobs:
             --clobber
 
           echo "::notice::Windows MSI + .sig uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
-          echo "::warning::This MSI is UNSIGNED (code-signing wise) — Windows SmartScreen will warn on first install. The updater minisign signature above is separate; it covers in-app auto-update verification, not OS code-signing. SignPath integration lands in a follow-up PR."
+          # Stale-truth guard: only warn about missing Authenticode when the
+          # AZURE_* signing secrets really were absent for this run (the signed
+          # path is verified by the "Verify Authenticode signature" step above).
+          if [ -z "${AZURE_CLIENT_SECRET:-}" ]; then
+            echo "::warning::This MSI is UNSIGNED (Authenticode) — AZURE_* secrets absent, Windows SmartScreen will warn on first install. The updater minisign .sig above is separate; it covers in-app auto-update verification, not OS code-signing."
+          fi
 
   # ============================================================================
   # Linux desktop build — x86_64 AppImage. Runs IN PARALLEL with the mac and
@@ -1703,12 +1721,14 @@ jobs:
 
       # frpc is a Tauri externalBin (the local-model bridge tunnel client). The
       # exit-1 placeholder build.rs stages when frpc is absent is not an ELF, so
-      # linuxdeploy's ldd pass aborts the AppImage bundling. Fetch the real,
-      # SHA256-verified frpc so build.rs stages binaries/frpc-x86_64-unknown-linux-gnu.
-      - name: Fetch frpc tunnel client (x86_64-unknown-linux-gnu)
+      # linuxdeploy's ldd pass aborts the AppImage bundling. Build the real,
+      # commit-pinned frpc from source (AV false-positive mitigation, HOU-1170 —
+      # see scripts/build-frpc.sh) so build.rs stages
+      # binaries/frpc-x86_64-unknown-linux-gnu.
+      - name: Build frpc tunnel client (x86_64-unknown-linux-gnu)
         run: |
           set -euo pipefail
-          scripts/fetch-frpc.sh x86_64-unknown-linux-gnu
+          scripts/build-frpc.sh x86_64-unknown-linux-gnu
           test -f target/frpc/frpc-x86_64-unknown-linux-gnu \
             || { echo "::error::frpc missing for x86_64-unknown-linux-gnu"; exit 1; }
 
