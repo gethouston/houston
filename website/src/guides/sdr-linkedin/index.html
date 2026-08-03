@@ -471,6 +471,12 @@ lang: en
   }
 
   @media print{ .mc-head .hm, .have .hic svg{filter:none} }
+
+  /* print: hide the fixed site chrome (it overlaps/repeats in print) */
+  @media print{
+    .lnav, .lfoot, .guide-toolbar, .gprog{display:none !important}
+    main.subpage{padding-top:0 !important; padding-bottom:0 !important}
+  }
 </style>
 {% endblock %}
 {% block subpageContent %}

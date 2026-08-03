@@ -599,6 +599,13 @@ a.cbtn.onink:hover{border-color:var(--on-ink);opacity:1}
   .gvideo .vchaps a:hover{border-color:var(--line-strong); color:var(--ink)}
   .gvideo .vchaps a svg{width:13px; height:13px; flex:none}
   @media print{ .gvideo{display:none !important} }
+
+  /* print: hide the fixed site chrome (it overlaps/repeats in print) */
+  @media print{
+    .lnav, .lfoot, .guide-toolbar, .gprog{display:none !important}
+    main.subpage{padding-top:0 !important; padding-bottom:0 !important}
+    .hcta, .toolcard, .qrcard, .mk{break-inside:avoid}
+  }
 </style>
 {% endblock %}
 {% block subpageContent %}
