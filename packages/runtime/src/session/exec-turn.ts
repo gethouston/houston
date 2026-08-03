@@ -215,6 +215,31 @@ export async function execTurn(
   // the markers on the partial message.
   let providerSwitch: ChatMessage["providerSwitch"];
   let compaction: ChatMessage["compaction"];
+  /**
+   * The provider this turn actually resolved onto — the only honest label for a
+   * throw. `conv.provider` is the CACHED session's LAST provider (written only
+   * at conversation build, a backend switch, or after a successful `setModel`
+   * below), so a turn that throws before that write would be attributed to
+   * whatever provider the conversation happened to be created on: a GPT-5.6
+   * user got a "Connect Gemini" card, and — worse — the auth-failure mark and
+   * the revoked-token report below would fire on an innocent provider.
+   * Undefined ONLY when `resolveModel` itself failed, in which case the turn
+   * ran on nothing and must name no provider.
+   */
+  let turnProvider: string | undefined;
+  /**
+   * WHO a failed turn names when `resolveModel` never returned a provider. The
+   * turn's PIN is the next-best evidence: it is the user's (or the routine's)
+   * own statement of what this turn was to run on, so a routine pinned to
+   * `openai-codex` whose saved model id went stale still gets a card that names
+   * Codex instead of a blank. Canonicalized exactly as `resolveModel` would have
+   * (`openai` → `openai-codex`), so every consumer keys on the same id.
+   * `fallback` is what remains when the turn carried no pin either — and it
+   * differs by call site, see each below.
+   */
+  const attributedProvider = (fallback: string) =>
+    turnProvider ??
+    (pin?.provider ? canonicalPinProvider(pin.provider) : fallback);
   try {
     // Resolve the model for THIS turn from current settings (a routine's
     // provider/model pin wins, else the workspace's active provider/model).
@@ -225,6 +250,10 @@ export async function execTurn(
     // firing on ITS provider no matter what other chats picked in between.
     // A bad model id throws here → surfaces as the turn's error event.
     const model = resolveModel(pin?.model, pin?.provider);
+    // From here on, EVERY failure of this turn belongs to this provider — the
+    // canonical id (resolveModel already applied canonicalPinProvider), so the
+    // catch's health mark and revocation report name the row that actually ran.
+    turnProvider = model.provider;
     // The turn's execution mode: the pin's, else execute. Never inherited from
     // Settings. Routine fire paths pin auto; an actually unpinned turn is execute.
     // Held in a MUTABLE ref: a mid-turn Mode-pill switch (`POST
@@ -566,7 +595,13 @@ export async function execTurn(
     const thrown =
       providerError ??
       classifyProviderError({
-        provider: pin?.provider ?? conv.provider,
+        // The provider the turn RESOLVED onto, never the cached session's last
+        // one; else the turn's pin. Empty only when neither exists: "provider
+        // unknown" is the established shape for a TYPED card (chat.ts's
+        // pre-session failure emits it too — the client repairs the label from
+        // the error's own evidence), and it renders the generic "connect an AI
+        // provider" card rather than naming a provider this turn never reached.
+        provider: attributedProvider(""),
         model: pin?.model ?? null,
         message: errMessage(err),
       });
@@ -585,7 +620,14 @@ export async function execTurn(
     // so feed it into the status surface here — e.g. a refresh-bearing entry
     // whose refresh token was rejected raises at prompt time, before any
     // stream exists (auth/credential-health.ts).
-    if (thrown.kind === "unauthenticated" && !providerError) {
+    // Guarded on a NAMED provider: a throw from resolveModel itself carries the
+    // empty id, and marking "" unusable (or POSTing a revocation for it) would
+    // corrupt the status surface with a provider that does not exist.
+    if (
+      thrown.kind === "unauthenticated" &&
+      !providerError &&
+      thrown.provider
+    ) {
       noteAuthFailure(canonicalPinProvider(thrown.provider));
       // A REVOKED served token is invisible to the control plane (HOU-952).
       reportRevokedServedToken(thrown);
@@ -598,8 +640,13 @@ export async function execTurn(
       providerSwitch,
       compaction,
       providerError: typed ?? {
+        // The UNKNOWN card interpolates this word into its copy ("we could not
+        // classify this <provider> error") and into the bug-report id, so an
+        // empty string leaves a double space and a dangling
+        // `provider_error:unknown:` — hence "unknown" rather than "" here, the
+        // same choice chat.ts makes for its pre-session unknown failure.
         kind: "unknown",
-        provider: pin?.provider ?? conv.provider,
+        provider: attributedProvider("unknown"),
         raw_excerpt: errMessage(err),
       },
       turnId,
