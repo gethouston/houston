@@ -565,15 +565,23 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     name: "MiniMax",
     subtitle: "Global API",
     description: "Fast, affordable models for agent work.",
-    cost: "Pay-as-you-go on your MiniMax account",
+    cost: "Coding/token plan or pay-as-you-go on your MiniMax account",
     installUrl: "https://platform.minimax.io",
     apiKeyUrl:
       "https://platform.minimax.io/user-center/basic-information/interface-key",
-    defaultModel: "MiniMax-M3",
+    // The 1M-context tier MiniMax's Coding/Token plan bills against; also works
+    // pay-as-you-go. A subscription key run on bare MiniMax-M3 reads as
+    // "usage ran out" (HOU-1160), so this is the connect default.
+    defaultModel: "MiniMax-M3[1m]",
     models: {
+      "MiniMax-M3[1m]": {
+        label: "MiniMax M3 (1M)",
+        description:
+          "Best default. 1M-context tier for the MiniMax coding/token plan or pay-as-you-go.",
+      },
       "MiniMax-M3": {
         label: "MiniMax M3",
-        description: "Best default. Long-context multimodal model.",
+        description: "Long-context multimodal model, pay-as-you-go.",
       },
       "MiniMax-M2.7": {
         label: "MiniMax M2.7",

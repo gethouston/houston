@@ -55,7 +55,12 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-5.6-sol",
     "gpt-5.6-terra",
   ]),
-  minimax: new Set(["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"]),
+  minimax: new Set([
+    "MiniMax-M3[1m]",
+    "MiniMax-M2.7",
+    "MiniMax-M2.7-highspeed",
+    "MiniMax-M3",
+  ]),
   deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
 };
 
@@ -187,9 +192,19 @@ test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
 
   const fallback = migrateProviderModel("minimax", "MiniMax-M1");
   expect(fallback.provider).toBe("minimax");
-  expect(fallback.model).toBe("MiniMax-M3");
+  expect(fallback.model).toBe("MiniMax-M3[1m]");
   expect(fallback.diagnostics[0]?.message).toContain("MiniMax-M1");
   assertValid(fallback, "minimax fallback");
+});
+
+test("MiniMax token-plan SKU MiniMax-M3[1m] is kept verbatim, never rewritten", () => {
+  // The subscription/coding-plan model id — hand-built on the minimax provider
+  // (not in pi's catalog) but a valid id, so migration must NOT rewrite it to the
+  // pay-as-you-go SKU (HOU-1160).
+  const r = migrateProviderModel("minimax", "MiniMax-M3[1m]");
+  expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M3[1m]" });
+  expect(r.diagnostics).toEqual([]);
+  assertValid(r, "minimax/MiniMax-M3[1m]");
 });
 
 test("deepseek provider models migrate against its finite pi catalog", () => {

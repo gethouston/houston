@@ -33,6 +33,13 @@ const pi = (await import(
   getProviders(): string[];
 };
 
+// Models Houston hand-builds ON a pi provider that pi-ai's catalog does NOT ship,
+// so they are legitimately absent from `getModel` yet still valid to curate. Keyed
+// `${piProvider}/${modelId}`. Today: MiniMax's token/coding-plan SKU, injected by
+// the host catalog (`withMinimaxTokenPlan`) and the runtime (`buildMinimaxTokenPlanModel`)
+// on the `minimax` provider (same endpoint/auth, 1M-context tier — HOU-1160).
+const HOUSTON_INJECTED_MODELS = new Set(["minimax/MiniMax-M3[1m]"]);
+
 // Houston provider id → pi provider id (reverse of PROVIDER_ID_RENAME, which is
 // pi → Houston, e.g. `openai-codex` → `openai`). Identity for every other id.
 const houstonToPi: Record<string, string> = {};
@@ -53,6 +60,7 @@ describe("PROVIDER_OVERRIDES stay in sync with the shipped pi-ai catalog", () =>
     });
 
     for (const modelId of Object.keys(override.models ?? {})) {
+      if (HOUSTON_INJECTED_MODELS.has(`${piId}/${modelId}`)) continue;
       it(`${houstonId}/${modelId} exists in pi-ai`, () => {
         ok(
           pi.getModel(piId, modelId) != null,

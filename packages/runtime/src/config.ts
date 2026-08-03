@@ -57,8 +57,14 @@ export const config = {
   geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3.5-flash",
   /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock` model id. */
   bedrockModel: env.HOUSTON_BEDROCK_MODEL || "anthropic.claude-sonnet-4-6",
-  /** Default MiniMax global model (API-key provider). A pi-ai `minimax` model id. */
-  minimaxModel: env.HOUSTON_MINIMAX_MODEL || "MiniMax-M3",
+  /**
+   * Default MiniMax model (API-key provider). Defaults to the token/coding-plan
+   * SKU `MiniMax-M3[1m]` (1M-context): MiniMax's Anthropic endpoint documents this
+   * id, and a subscription-plan key billed against bare `MiniMax-M3` reads as
+   * "usage ran out" (HOU-1160). Pay-as-you-go keys accept it too (same model,
+   * larger context ceiling). Bare `MiniMax-M3`/`M2.7` stay selectable.
+   */
+  minimaxModel: env.HOUSTON_MINIMAX_MODEL || "MiniMax-M3[1m]",
   /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
   openrouterModel:
     env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",

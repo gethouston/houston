@@ -77,10 +77,13 @@ test("OpenRouter, DeepSeek, Gemini, Bedrock, and MiniMax are registered but LOCA
   expect(isCloudProvider("amazon-bedrock")).toBe(false);
   expect(isCloudProvider("minimax")).toBe(false);
   expect(hostProvider("minimax")?.models).toEqual([
+    "MiniMax-M3[1m]",
     "MiniMax-M2.7",
     "MiniMax-M2.7-highspeed",
     "MiniMax-M3",
   ]);
+  // The token/coding-plan SKU is the connect default (HOU-1160).
+  expect(hostProvider("minimax")?.defaultModel).toBe("MiniMax-M3[1m]");
 });
 
 test("openai-compatible is registered, NOT api-key, and LOCAL-only", () => {

@@ -72,7 +72,8 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   deepseek: "deepseek-v4-flash",
   google: "gemini-3.5-flash",
   "amazon-bedrock": "anthropic.claude-sonnet-4-6",
-  minimax: "MiniMax-M3",
+  // The token/coding-plan SKU (1M context) — see runtime `ai/minimax.ts` (HOU-1160).
+  minimax: "MiniMax-M3[1m]",
   // No catalog default — the model is whatever the user's local server serves.
   "openai-compatible": "",
 };
@@ -127,7 +128,15 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "gpt-5.6-sol",
     "gpt-5.6-terra",
   ]),
-  minimax: new Set(["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"]),
+  // `MiniMax-M3[1m]` is the token/coding-plan SKU: hand-built on the minimax
+  // provider (not in pi's catalog), so it must be a VALID id here or the migration
+  // rewrites it to bare `MiniMax-M3` (HOU-1160).
+  minimax: new Set([
+    "MiniMax-M3[1m]",
+    "MiniMax-M2.7",
+    "MiniMax-M2.7-highspeed",
+    "MiniMax-M3",
+  ]),
   deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
 };
 

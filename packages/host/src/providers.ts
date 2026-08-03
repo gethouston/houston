@@ -144,8 +144,15 @@ export const PROVIDERS: readonly HostProvider[] = [
     // `cloud: false` = off the legacy cloudrun per-turn listing only; served
     // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
-    models: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"],
-    defaultModel: "MiniMax-M3",
+    // `MiniMax-M3[1m]` is the subscription token/coding-plan SKU (1M context); it
+    // leads because it is the connect default (HOU-1160). Bare ids stay selectable.
+    models: [
+      "MiniMax-M3[1m]",
+      "MiniMax-M2.7",
+      "MiniMax-M2.7-highspeed",
+      "MiniMax-M3",
+    ],
+    defaultModel: "MiniMax-M3[1m]",
   },
   {
     id: "openai-compatible",
