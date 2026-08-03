@@ -158,6 +158,27 @@ const INSUFFICIENT_BALANCE_PATTERNS = [
 ];
 
 /**
+ * The PLAN's token/usage allowance is spent — same "pay or switch" outcome as a
+ * credit exhaustion, NOT a wait-a-moment rate limit (HOU-1154: OpenAI rendered
+ * the rate-limit card — "Alcanzaste un límite de velocidad" — when the account
+ * simply had no tokens left). Both OpenAI shapes ride HTTP 429, identical to a
+ * genuine burst limit, so the BODY decides and this check must run BEFORE the
+ * rate-limit branch:
+ *  - API key accounts: `insufficient_quota` / "You exceeded your current quota,
+ *    please check your plan and billing details."
+ *  - ChatGPT OAuth (Codex) plans: "You have hit your ChatGPT usage limit (pro
+ *    plan). Try again in ~45 min." (also `usage_limit_reached`).
+ * Bare "quota" stays in `isRateLimited`: per-minute quota bodies (Gemini's
+ * "Quota exceeded for quota metric '… requests per minute'") ARE rate limits.
+ */
+const PLAN_LIMIT_PATTERNS = [
+  "insufficient_quota",
+  "exceeded your current quota",
+  "usage limit",
+  "usage_limit",
+];
+
+/**
  * A GitHub Copilot model EVERY Copilot plan (incl. Copilot Free) serves, offered
  * as the concrete switch target on a `model_unavailable` card. Copilot's premium
  * models (Claude, GPT-5.x) require Copilot Pro; its base models (gpt-4.1 / gpt-4o)
@@ -229,8 +250,10 @@ function classify(input: ProviderErrorInput): ProviderError {
   // "Insufficient Balance" all ride it — so the status alone decides, no body
   // wording required; the text patterns catch the same failures when a gateway
   // ships them under another status (opencode's 401 CreditsError, Anthropic's
-  // 400 credit floor, Vercel's no-card block).
-  if (status === 402 || isInsufficientBalance(lower)) {
+  // 400 credit floor, Vercel's no-card block). Plan-allowance exhaustion
+  // (OpenAI `insufficient_quota`, ChatGPT usage limit) is the same verdict and
+  // MUST be decided here, before the rate-limit branch claims its 429 (HOU-1154).
+  if (status === 402 || isInsufficientBalance(lower) || isPlanLimit(lower)) {
     return {
       kind: "quota_exhausted",
       provider,
@@ -357,9 +380,9 @@ function isRateLimited(lower: string, status: number | null): boolean {
     // Bedrock prefixes throttling as "Throttling error: Too many tokens, …" —
     // semantically a rate limit, and matching it here is what keeps it out of
     // the context-overflow branch below (pi's own non-overflow exclusion).
+    // Bare "quota" belongs here (per-minute quota bodies are throttling);
+    // plan-allowance exhaustion is claimed earlier by `isPlanLimit` (HOU-1154).
     lower.includes("throttl") ||
-    lower.includes("usage limit") ||
-    lower.includes("usage_limit") ||
     lower.includes("quota")
   );
 }
@@ -436,6 +459,10 @@ function positiveInt(raw: string): number | null {
 
 function isInsufficientBalance(lower: string): boolean {
   return INSUFFICIENT_BALANCE_PATTERNS.some((p) => lower.includes(p));
+}
+
+function isPlanLimit(lower: string): boolean {
+  return PLAN_LIMIT_PATTERNS.some((p) => lower.includes(p));
 }
 
 /**

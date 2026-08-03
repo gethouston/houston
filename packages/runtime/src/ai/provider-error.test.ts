@@ -174,18 +174,48 @@ test("Anthropic 429 → rate_limited (no retry window in body → null), carries
   });
 });
 
-test("Codex usage limit → rate_limited with retry window parsed from minutes", () => {
+// HOU-1154: the plan's tokens are SPENT — the "no more tokens" quota card, not
+// the rate-limit card the same message used to render ("Alcanzaste un límite
+// de velocidad" on an account that had simply run out of plan).
+test("Codex usage limit → quota_exhausted, not rate_limited", () => {
   const err = classifyProviderError({
     provider: "openai-codex",
     model: "gpt-5.1-codex",
     message:
       "You have hit your ChatGPT usage limit (pro plan). Try again in ~45 min.",
   });
-  expect(err.kind).toBe("rate_limited");
-  if (err.kind === "rate_limited") {
-    expect(err.retry_after_seconds).toBe(45 * 60);
+  expect(err.kind).toBe("quota_exhausted");
+  if (err.kind === "quota_exhausted") {
     expect(err.model).toBe("gpt-5.1-codex");
+    expect(err.resets_at).toBeNull();
   }
+});
+
+// HOU-1154: OpenAI's out-of-credit failure rides HTTP 429 exactly like a burst
+// limit — the `insufficient_quota` body is what separates "top up your account"
+// from "wait a moment", so it must win over the 429 short-circuit.
+test("OpenAI insufficient_quota under 429 → quota_exhausted, not rate_limited", () => {
+  const err = classifyProviderError({
+    provider: "openai",
+    model: "gpt-5.2",
+    message:
+      'OpenAI API error (429): {"error":{"message":"You exceeded your current quota, please check your plan and billing details.","type":"insufficient_quota","param":null,"code":"insufficient_quota"}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+  if (err.kind === "quota_exhausted") expect(err.model).toBe("gpt-5.2");
+});
+
+// A genuine burst limit stays a rate limit: "quota" wording scoped to a
+// per-minute window is throttling, not exhaustion (the Gemini free-tier shape).
+test("per-minute quota body stays rate_limited", () => {
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-2.5-pro",
+    message:
+      "got status: 429 Too Many Requests. Quota exceeded for quota metric 'Generate Content API requests per minute'. Please retry in 21s.",
+  });
+  expect(err.kind).toBe("rate_limited");
+  if (err.kind === "rate_limited") expect(err.retry_after_seconds).toBe(21);
 });
 
 test("OpenAI 429 with retry-after header echoed → rate_limited / retry_after_seconds", () => {
