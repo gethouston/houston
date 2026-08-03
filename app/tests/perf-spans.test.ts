@@ -87,6 +87,30 @@ describe("PerfSpans", () => {
     deepStrictEqual(sent.flat(), [{ span: "app_to_board", ms: 10 }]);
   });
 
+  it("holds a batch across repeated failures until the transport recovers", async () => {
+    // The session-not-ready case: send() throws until the token loads, and
+    // the earliest spans (app_to_board) must survive to the eventual flush.
+    let now = 0;
+    let ready = false;
+    const sent: PerfSpanObservation[][] = [];
+    const spans = new PerfSpans({ t0Ms: 0, now: () => now });
+    spans.configure({
+      async send(batch) {
+        if (!ready) throw new Error("session not ready");
+        sent.push(batch);
+      },
+    });
+    now = 900;
+    spans.boardRendered();
+    await spans.flush();
+    await spans.flush();
+    await spans.flush();
+    strictEqual(sent.length, 0);
+    ready = true;
+    await spans.flush();
+    deepStrictEqual(sent.flat(), [{ span: "app_to_board", ms: 900 }]);
+  });
+
   it("only moves T0 earlier", async () => {
     const { spans, sent, tick } = harness(100_000);
     spans.setLaunchT0(150_000); // late bogus stamp — ignored

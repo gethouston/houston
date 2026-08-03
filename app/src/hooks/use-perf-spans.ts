@@ -38,9 +38,12 @@ export function usePerfSpans(): void {
     perfSpans.configure({
       async send(spans: PerfSpanObservation[]) {
         const token = tokenRef.current;
-        // No session → nothing to authenticate as; drop rather than queue
-        // forever (PostHog already mirrored the spans).
-        if (!token) return;
+        // No session yet → throw so PerfSpans RE-QUEUES the batch (bounded)
+        // instead of counting it delivered. The earliest span of a session
+        // (app_to_board) routinely beats the async session load — dropping
+        // here silently under-counted exactly the journey we care most about.
+        // The token-arrival effect below re-flushes the queue.
+        if (!token) throw new Error("session not ready");
         const res = await fetch(`${CLIENT_METRICS_URL}/v1/client-metrics`, {
           method: "POST",
           headers: {
@@ -69,4 +72,12 @@ export function usePerfSpans(): void {
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
   }, []);
+
+  // Session arrived after early spans were measured (the common cold-start
+  // order): drain the re-queued batches now instead of waiting for the next
+  // observation to schedule a flush.
+  const token = session?.idToken ?? null;
+  useEffect(() => {
+    if (token) void perfSpans.flush();
+  }, [token]);
 }

@@ -2,7 +2,14 @@ import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem, MessageMention } from "@houston-ai/chat";
 import { messagePreviewText } from "@houston-ai/chat";
 import { useQueryClient } from "@tanstack/react-query";
-import { createElement, useCallback, useMemo, useRef, useState } from "react";
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../hooks/queries";
 import { useUserProfiles } from "../hooks/queries/use-user-profiles";
@@ -24,6 +31,7 @@ import {
 } from "../lib/mission-people";
 import { ARCHIVED_STATUS, DONE_STATUS } from "../lib/mission-selection";
 import { isMultiplayer } from "../lib/org-roles";
+import { perfSpans } from "../lib/perf-spans";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
 import {
@@ -76,6 +84,20 @@ export function useMissionControl(agents: Agent[]) {
   // variant) paint instead, and `isLoaded` waits for a genuine, SETTLED success
   // (`sweepIsAuthoritative` — TanStack calls the placeholder paint a success
   // too) so "empty" only ever means "successfully empty".
+  // App-open → board perf mark (HOU-1011) for the DEFAULT surface: since
+  // Everyone-first scope, the first mission cards a user sees come from THIS
+  // cross-agent sweep, not a per-agent board (whose hook carries the same
+  // mark — perfSpans latches once per session, so both firing is free).
+  // Authoritative-settled only: a placeholder or failed sweep is not "the
+  // user sees their cards". The rAF waits for the paint that shows them.
+  const sweepSettled = sweepIsAuthoritative({ isSuccess, isPlaceholderData });
+  useEffect(() => {
+    if (!sweepSettled) return;
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(() => perfSpans.boardRendered());
+    else perfSpans.boardRendered();
+  }, [sweepSettled]);
+
   const convos = useMemo(
     () =>
       sweptConvos ??
