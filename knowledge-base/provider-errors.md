@@ -51,7 +51,8 @@ client fingerprints `[provider_error]` lines by `(provider, kind)`
 (`packages/runtime-client/src/sentry/client.ts`), so each family is its own
 countable issue. The ritual: search Sentry for `kind=unknown`, and promote any
 family that repeats into a classifier pattern (verbatim fixture first — see the
-HOU-1156 batch: Codex `WebSocket closed 1006` → network, OpenRouter
+HOU-1156 batch: Codex `WebSocket closed 1006` → provider_internal (HOU-848:
+the socket drops pod-side, so the check-your-connection card was wrong), OpenRouter
 `Stream ended without finish_reason` → provider_internal, Gemini gRPC
 `UNAVAILABLE`/embedded `"code": 5xx` → provider_internal, Google billing
 `dunning` → quota, opencode `RegionError` → model_unavailable).
