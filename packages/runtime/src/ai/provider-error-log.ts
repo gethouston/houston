@@ -42,6 +42,14 @@ export function logProviderError(
     `[provider_error] provider=${error.provider} model=${ctx.model ?? "?"} ` +
     `status=${ctx.status ?? "?"}${ctx.sdkError ? ` error=${ctx.sdkError}` : ""} ` +
     `kind=${error.kind} :: ${verbatim}`;
-  if (EXPECTED_KINDS.has(error.kind)) console.warn(line);
+  // `no_credentials` is the one auth cause that is an expected USER state, not
+  // broken custody: the provider was simply never connected (or the user
+  // logged out with it still selected). It became loggable when the
+  // pre-session guards started reporting (HOU-1156) — keep it a warning or
+  // every fresh install fires Sentry errors.
+  const expected =
+    EXPECTED_KINDS.has(error.kind) ||
+    (error.kind === "unauthenticated" && error.cause === "no_credentials");
+  if (expected) console.warn(line);
   else console.error(line);
 }

@@ -13,6 +13,7 @@ import {
   OPENAI_COMPATIBLE,
 } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
+import { logProviderError } from "../ai/provider-error-log";
 import {
   activeEffort,
   canonicalPinProvider,
@@ -570,6 +571,11 @@ export async function execTurn(
         model: pin?.model ?? null,
         message: errMessage(err),
       });
+    // The streamed path logged when it classified; a THROWN failure only
+    // becomes visible to Sentry if this catch logs it too — before this,
+    // every thrown `unknown` was a card in a user's chat that we never heard
+    // about (HOU-1156).
+    if (!providerError) logProviderError(thrown, { model: pin?.model ?? null });
     // An auth throw with NOTHING streamed = pi's prompt-time credential guard,
     // which raises BEFORE recording the user message in pi's session store —
     // neither the live context nor a rebuild will ever see it. Carry the text

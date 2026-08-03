@@ -13,6 +13,7 @@ import type {
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { registerCustomProviderIfConfigured } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
+import { logProviderError } from "../ai/provider-error-log";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
 import { createPiBackend } from "../backends/pi/backend";
@@ -339,6 +340,10 @@ export async function runPiTurn(
         model: pin?.model ?? null,
         message,
       });
+      // The streamed path logged when it classified; a THROWN failure is
+      // invisible to Sentry unless this catch logs it too (HOU-1156;
+      // mirrors exec-turn).
+      logProviderError(thrown, { model: pin?.model ?? null });
       // Prompt-time credential guard: pi raised BEFORE recording the user
       // message in its session store, so the reconnect retry must re-deliver
       // the text (mirrors exec-turn).

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { TurnMode } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { stampCredentialScope } from "../ai/provider-error";
+import { logProviderError } from "../ai/provider-error-log";
 import {
   activeProvider,
   canonicalPinProvider,
@@ -176,24 +177,25 @@ export async function runTurn(
     // cannot say WHOSE account is not connected: in a team space every turn
     // runs on the acting member's own AI account (HOU-976). A no-op without an
     // acting identity, so the desktop wire shape is unchanged.
-    appendAssistantMessage(id, "", {
-      providerError: stampCredentialScope(
-        notConnected
-          ? {
-              kind: "unauthenticated",
-              provider: pin?.provider ?? "",
-              cause: "no_credentials",
-              message,
-              undelivered_prompt: text,
-            }
-          : {
-              kind: "unknown",
-              provider: pin?.provider ?? "unknown",
-              raw_excerpt: message,
-            },
-      ),
-      turnId,
-    });
+    const synthesized = stampCredentialScope(
+      notConnected
+        ? {
+            kind: "unauthenticated",
+            provider: pin?.provider ?? "",
+            cause: "no_credentials",
+            message,
+            undelivered_prompt: text,
+          }
+        : {
+            kind: "unknown",
+            provider: pin?.provider ?? "unknown",
+            raw_excerpt: message,
+          },
+    );
+    // Synthesized outside the classifier = outside its log site too; without
+    // this, a pre-session failure was a card we never heard about (HOU-1156).
+    logProviderError(synthesized, { model: pin?.model ?? null });
+    appendAssistantMessage(id, "", { providerError: synthesized, turnId });
     publish(id, { type: "error", data: { message }, turnId });
     return;
   }
