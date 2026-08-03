@@ -73,10 +73,30 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
           /* already gone */
         }
       },
-      // Fires once when the child exits — whether we killed it or it crashed on
-      // its own. The launcher uses this to drop a dead runtime from its live-set
-      // so a crash doesn't leave a phantom "running" entry behind.
-      onExit: (cb) => child.once("exit", cb),
+      // Fires once when the child is gone — whether we killed it, it crashed on
+      // its own, or it never started at all. The launcher uses this to drop a
+      // dead runtime from its live-set (no phantom "running" entry) and to
+      // abort a boot in flight.
+      //
+      // All THREE events matter, and which one lands depends on how the child
+      // died: a normal death emits 'exit' then 'close'; a child that never
+      // spawned (missing/unstaged runtime binary → ENOENT) emits 'error' and
+      // 'close' and NEVER 'exit'. Listening for 'exit' alone made that failure
+      // invisible, so the launcher polled a corpse's port for the whole 60s
+      // health budget before failing the user's first message. Whichever fires
+      // first wins and the others are unsubscribed, so each registration's
+      // callback runs exactly once (and no listener outlives the child).
+      onExit: (cb) => {
+        const fire = () => {
+          child.off("exit", fire);
+          child.off("close", fire);
+          child.off("error", fire);
+          cb();
+        };
+        child.once("exit", fire);
+        child.once("close", fire);
+        child.once("error", fire);
+      },
     };
   }
 }

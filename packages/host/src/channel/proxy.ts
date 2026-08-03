@@ -14,6 +14,7 @@ import {
 import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
 import { captureRuntimeCredential } from "./capture-credential";
 import { errorCodeFrom, TurnFireError } from "./fire-error";
+import { wakeForDispatch } from "./probe-wake";
 
 /**
  * Forwards one authorized request to a standing runtime and streams the reply
@@ -71,8 +72,17 @@ export class ProxyChannel implements RuntimeChannel {
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
-    // First touch spins the runtime up (a GKE cold start can take a minute or two).
-    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    // First touch spins the runtime up (a GKE cold start can take a minute or
+    // two). Read-only probes don't hold the socket for all of it — they answer
+    // "retry shortly" and let the boot finish in the background.
+    const endpoint = await wakeForDispatch(
+      this.opts.launcher,
+      ctx,
+      method,
+      rest,
+      res,
+    );
+    if (!endpoint) return; // already answered 503; the boot lives on
 
     // Collect the raw body for non-GET so arbitrary payloads ({text}, {code},
     // {activeProvider}) pass through untouched. Strip the caller's `token` auth
