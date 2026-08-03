@@ -42,10 +42,11 @@ now lives in git).
 
 ## Deliberate exceptions — Supabase that stays (do NOT "finish" the migration by removing these)
 
-- **Website waitlist / early-access stays on Supabase.** `website/src/waitlist/index.html`
-  does an anon `POST /rest/v1/waitlist` with the public anon key — a pure data write,
-  no auth session, no gateway link. Isolated from client auth; the Supabase project
-  stays alive to serve it.
+- **Website download gate / early-access stays on Supabase.** The download gate's
+  lead form (`website/src/assets/download-gate-form.js`; it replaced the waitlist
+  page in HOU-1168) does an anon `POST /rest/v1/waitlist` with the public anon
+  key — a pure data write, no auth session, no gateway link. Isolated from client
+  auth; the Supabase project stays alive to serve it.
 - **Server-side gateway JWT verification** (`packages/host/src/config.ts` `CP_SUPABASE_*`)
   is a **separate `cloud/` change** — the Go gateway is authoritative; the issuer/JWKS
   swap to Firebase happens there (tracked below), not in this repo's client.

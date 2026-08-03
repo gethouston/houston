@@ -11,7 +11,7 @@
   var token = window.__eaToken || null;
 
   // Best-effort background write on a static page (no toast channel here, so we
-  // log a warning on failure, same convention as the waitlist Sheet mirror).
+  // log a warning on failure, same convention as the download gate's Sheet mirror).
   // A failure must never block the download the user came for.
   function rpc(fn, body) {
     if (!token || !SUPABASE_ANON_KEY) return;
