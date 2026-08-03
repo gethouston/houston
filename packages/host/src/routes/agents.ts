@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { loadRoutineRuns, seedSchemas } from "@houston/domain";
+import {
+  invalidAgentNameMessage,
+  loadRoutineRuns,
+  seedSchemas,
+  validateAgentName,
+} from "@houston/domain";
 import {
   type CustomEndpoint,
   type HoustonEvent,
@@ -230,6 +235,13 @@ export async function handleAgents(
       json(res, 400, { error: "missing 'name'" });
       return true;
     }
+    // Surfaces validate before submitting (HOU-1166); this is the wire-level
+    // backstop, answering a clean 400 instead of a store-level 500.
+    const nameCheck = validateAgentName(name);
+    if (!nameCheck.ok) {
+      json(res, 400, { error: invalidAgentNameMessage(nameCheck.reason) });
+      return true;
+    }
     // Optional create-time content: CLAUDE.md instructions + a flat seed-file
     // map (skills, seeded .houston data, working files). Builtin templates and
     // portable installs supply these; the Rust engine wrote them on install, so
@@ -247,7 +259,10 @@ export async function handleAgents(
       seeds = parsed;
     }
     const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-    const agent = await deps.store.createAgent({ workspaceId: ws.id, name });
+    const agent = await deps.store.createAgent({
+      workspaceId: ws.id,
+      name: nameCheck.name,
+    });
     // Seed the .houston JSON schemas beside the (future) docs so the agent and
     // external tools can validate what they write. Skipped only when no vfs is
     // wired (legacy gke-only deploys); the typed-data routes 503 there anyway.
@@ -301,11 +316,17 @@ export async function handleAgents(
     }
 
     if (method === "PATCH") {
-      const { name } = await readJson(req);
-      if (!name || typeof name !== "string") {
+      const { name: rawName } = await readJson(req);
+      if (!rawName || typeof rawName !== "string") {
         json(res, 400, { error: "missing 'name'" });
         return true;
       }
+      const renameCheck = validateAgentName(rawName);
+      if (!renameCheck.ok) {
+        json(res, 400, { error: invalidAgentNameMessage(renameCheck.reason) });
+        return true;
+      }
+      const name = renameCheck.name;
       // Quiesce the agent's standing runtime BEFORE the rename moves its
       // directory. A warm local runtime holds absolute paths into the OLD
       // directory (cwd + HOUSTON_DATA_DIR) and stays keyed under the OLD id in

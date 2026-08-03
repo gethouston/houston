@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { AgentNameConflictError } from "../ports";
+import { AgentNameConflictError, InvalidAgentNameError } from "../ports";
 import { LocalWorkspaceStore } from "./local";
 
 /**
@@ -81,10 +81,10 @@ test("createAgent rejects a name with a slash or traversal", async () => {
   const store = new LocalWorkspaceStore(tree({ Work: [] }));
   await expect(
     store.createAgent({ workspaceId: "Work", name: "a/b" }),
-  ).rejects.toThrow("invalid agent name");
+  ).rejects.toThrow(InvalidAgentNameError);
   await expect(
     store.createAgent({ workspaceId: "Work", name: ".." }),
-  ).rejects.toThrow("invalid agent name");
+  ).rejects.toThrow(InvalidAgentNameError);
 });
 
 test("listWorkspacesForUser returns everything (single local user); listAllAgents flattens", async () => {

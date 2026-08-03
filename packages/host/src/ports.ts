@@ -1,4 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import {
+  type InvalidAgentNameReason,
+  invalidAgentNameMessage,
+} from "@houston/domain";
 import type {
   ClaudeOAuthCredential,
   CustomEndpoint,
@@ -28,6 +32,21 @@ import type {
 export class AgentNameConflictError extends Error {
   constructor(readonly agentName: string) {
     super(`an agent named "${agentName}" already exists in this workspace`);
+  }
+}
+
+/**
+ * A name `validateAgentName` (@houston/domain) rejects — empty, over-long, or
+ * carrying path separators / control characters. Stores throw it as a typed
+ * backstop so a route that skipped pre-validation still answers 400, not a
+ * raw 500 (HOU-1166).
+ */
+export class InvalidAgentNameError extends Error {
+  constructor(
+    readonly agentName: string,
+    readonly reason: InvalidAgentNameReason,
+  ) {
+    super(invalidAgentNameMessage(reason));
   }
 }
 

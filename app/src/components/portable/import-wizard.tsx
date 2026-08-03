@@ -38,6 +38,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
+import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { analytics } from "../../lib/analytics";
@@ -63,11 +64,12 @@ interface Selection {
 }
 
 export function ImportAgentWizard() {
-  const { t } = useTranslation("portable");
+  const { t } = useTranslation(["portable", "agents"]);
   const open = useUIStore((s) => s.importFromFriendOpen);
   const setOpen = useUIStore((s) => s.setImportFromFriendOpen);
   const addToast = useUIStore((s) => s.addToast);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
+  const existingAgents = useAgentStore((s) => s.agents);
   const adoptAgent = useAgentStore((s) => s.adopt);
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -234,6 +236,24 @@ export function ImportAgentWizard() {
     if (!uploaded || !currentWorkspace) return;
     if (!name.trim()) {
       addToast({ variant: "error", title: t("import.errors.nameRequired") });
+      return;
+    }
+    // Same pre-submit rule as the create dialog (HOU-1166): reject bad shapes
+    // and duplicates with friendly copy before the install round-trip.
+    const issue = agentNameIssue(
+      name,
+      existingAgents.map((a) => a.name),
+    );
+    if (issue) {
+      addToast({
+        variant: "error",
+        title:
+          issue === "taken"
+            ? t("agents:toasts.nameConflict", { name: name.trim() })
+            : issue === "tooLong"
+              ? t("agents:nameErrors.tooLong", { max: AGENT_NAME_MAX_LENGTH })
+              : t("agents:nameErrors.invalidChars"),
+      });
       return;
     }
     const resolved = pickDefaultProviderModel({

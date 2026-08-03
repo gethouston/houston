@@ -566,6 +566,9 @@ importers:
 
   packages/sdk:
     dependencies:
+      '@houston/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol

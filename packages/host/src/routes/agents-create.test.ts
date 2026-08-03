@@ -138,3 +138,44 @@ test("a failed seed write rolls back the agent record and its folder", async () 
   const root = DEFAULT_PATHS.agentRoot(ws, rolledBack);
   expect(await vfs.list(root)).toEqual([]);
 });
+
+test("an invalid name answers 400 with a clean message, not a 500 (HOU-1166)", async () => {
+  for (const bad of [
+    "hello/",
+    "back\\slash",
+    "a..b",
+    ".hidden",
+    "x".repeat(65),
+  ]) {
+    const response = res();
+    const handled = await handleAgents(
+      deps,
+      "alice",
+      "POST",
+      "/agents",
+      new URL("/agents", "http://host.local"),
+      req(JSON.stringify({ name: bad })),
+      response,
+    );
+    expect(handled).toBe(true);
+    expect(response.status).toBe(400);
+    expect(String(JSON.parse(response.body).error)).toMatch(/agent name/);
+  }
+  const ws = await store.getOrCreatePersonalWorkspace("alice");
+  expect(await store.listAgents(ws.id)).toEqual([]);
+});
+
+test("create trims the submitted name before storing it", async () => {
+  const response = res();
+  await handleAgents(
+    deps,
+    "alice",
+    "POST",
+    "/agents",
+    new URL("/agents", "http://host.local"),
+    req(JSON.stringify({ name: "  Padded  " })),
+    response,
+  );
+  expect(response.status).toBe(201);
+  expect(JSON.parse(response.body).name).toBe("Padded");
+});

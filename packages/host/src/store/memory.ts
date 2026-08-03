@@ -1,3 +1,4 @@
+import { validateAgentName } from "@houston/domain";
 import type {
   Agent,
   AgentId,
@@ -6,7 +7,11 @@ import type {
   WorkspaceId,
   WorkspaceRuntime,
 } from "../domain/types";
-import { AgentNameConflictError, type WorkspaceStore } from "../ports";
+import {
+  AgentNameConflictError,
+  InvalidAgentNameError,
+  type WorkspaceStore,
+} from "../ports";
 
 /** DNS-safe slug for a workspace (used for the K8s namespace). */
 function slugify(name: string): string {
@@ -87,6 +92,8 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
     workspaceId: WorkspaceId;
     name: string;
   }): Promise<Agent> {
+    const v = validateAgentName(input.name);
+    if (!v.ok) throw new InvalidAgentNameError(input.name, v.reason);
     const agent: Agent = {
       id: this.id("agent"),
       workspaceId: input.workspaceId,
@@ -100,6 +107,8 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
   async renameAgent(id: AgentId, name: string): Promise<Agent> {
     const agent = this.agents.get(id);
     if (!agent) throw new Error(`renameAgent: unknown agent ${id}`);
+    const v = validateAgentName(name);
+    if (!v.ok) throw new InvalidAgentNameError(name, v.reason);
     if (name === agent.name) return agent;
     // Same contract as the disk store: a sibling already holding the name is a
     // typed conflict, never a raw backend failure (#172).
