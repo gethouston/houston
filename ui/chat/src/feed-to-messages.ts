@@ -80,14 +80,20 @@ export interface ChatMessage {
 export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let cur: ChatMessage | null = null;
-  // One provider-error card per (kind, provider) PER TURN. The engine can
-  // surface the same failure on two channels — e.g. codex auth lands on both
-  // the stdout parser (persisted) and the transient stderr classifier — and a
-  // backoff loop should never stack identical reconnect cards. Keep the
-  // first. The set resets at every user_message: a NEW turn that fails the
-  // same way (e.g. the session dies again after a successful reconnect) must
-  // show a fresh card, not be swallowed by the previous turn's.
-  let seenProviderErrors = new Set<string>();
+  // One provider-error card per KIND per turn, mapped to the index of the
+  // card already pushed. The engine can surface the same failure on two
+  // channels — e.g. codex auth lands on both the stdout parser (persisted) and
+  // the transient stderr classifier — and a backoff loop should never stack
+  // identical reconnect cards. Keep the first. A turn runs on ONE provider, so
+  // `provider` is deliberately NOT part of the key: the same failure often
+  // arrives unlabeled (`provider: ""`) on one channel and labeled ("openai") on
+  // the other, and keying on it rendered both. The map resets at every
+  // user_message: a NEW turn that fails the same way (e.g. the session dies
+  // again after a successful reconnect) must show a fresh card, not be
+  // swallowed by the previous turn's. Accepted edge: if the backend is switched
+  // mid-turn and BOTH providers fail unauthenticated, the two failures collapse
+  // into one card — rare, and a turn ultimately resolves onto one provider.
+  let seenProviderErrors = new Map<ProviderError["kind"], number>();
   // A failed turn surfaces BOTH a typed error card (provider_error /
   // tool_runtime_error) and the engine's session-status echo, which ui/core
   // (`use-session-events`) materializes as a raw `"Session error: …"`
@@ -152,7 +158,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       case "user_message": {
         flush();
         // New turn — provider-error dedup + error-echo suppression are per turn.
-        seenProviderErrors = new Set<string>();
+        seenProviderErrors = new Map<ProviderError["kind"], number>();
         turnHadErrorCard = false;
         const { source, text } = extractSource(item.data);
         messages.push({
@@ -293,11 +299,31 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         // A real error card covered this turn (even if a duplicate is collapsed
         // below) — lets the trailing session-status echo be suppressed.
         turnHadErrorCard = true;
-        // Collapse duplicates (same kind + provider) to a single card.
-        const providerErrorKey = `${item.data.kind}:${item.data.provider}`;
-        if (seenProviderErrors.has(providerErrorKey)) break;
-        seenProviderErrors.add(providerErrorKey);
+        // Collapse duplicates of the same kind to a single card. When the card
+        // already shown is the unlabeled one and this duplicate names the
+        // provider, upgrade the payload in place — same message key, so the
+        // card gains its provider label without React remounting it.
+        const seenIndex = seenProviderErrors.get(item.data.kind);
+        if (seenIndex !== undefined) {
+          const seen = messages[seenIndex];
+          if (seen.providerError && !seen.providerError.provider) {
+            // Merge ONLY the label. The duplicate is the same failure seen on
+            // a thinner channel: the first card is the one that carried the
+            // retry state (`undelivered_prompt` / `failed_prompt` /
+            // `credential` / `retry_after_seconds` / `raw_excerpt`, and often a
+            // more specific `cause`), so replacing the payload wholesale left
+            // auto-resume with nothing to re-send (HOU-718).
+            if (item.data.provider) {
+              seen.providerError = {
+                ...seen.providerError,
+                provider: item.data.provider,
+              };
+            }
+          }
+          break;
+        }
         flush();
+        seenProviderErrors.set(item.data.kind, messages.length);
         messages.push({
           key: `${keyFor("provider-error", item)}-${item.data.kind}`,
           from: "system",
