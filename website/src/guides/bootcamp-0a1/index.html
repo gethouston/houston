@@ -587,6 +587,12 @@ a.cbtn.onink:hover{border-color:var(--on-ink);opacity:1}
   .guide-shell{width:min(1150px, calc(100% - 32px)); margin:0 auto; padding:0 40px}
   @media (max-width:920px){ .guide-shell{width:calc(100% - 24px); padding:0 18px} }
 
+
+  /* print: hide the fixed site chrome (it overlaps/repeats in print) */
+  @media print{
+    .lnav, .lfoot, .guide-toolbar, .gprog{display:none !important}
+    main.subpage{padding-top:0 !important; padding-bottom:0 !important}
+  }
 </style>
 {% endblock %}
 {% block subpageContent %}
