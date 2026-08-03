@@ -49,6 +49,7 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
+import { isEngineWakingError } from "./engine-waking-error";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { logger } from "./logger";
@@ -217,6 +218,18 @@ async function surfaceError(
   if (isNetworkTransportError(err)) {
     const { showConnectivityErrorToast } = await import("./error-toast");
     showConnectivityErrorToast(label, message);
+    return;
+  }
+
+  // Expected environment state, not a bug: the gateway's "engine unavailable"
+  // 503 — the agent's engine pod is provisioning or cold-starting (HOU-1114: a
+  // just-installed store agent's background writes hit this and showed the red
+  // bug pair while the agent was in fact starting fine). The request succeeds
+  // once the pod wakes; surface it as one deduped "waking up" notice, no
+  // Sentry. The raw diagnostic is already in the log tail above.
+  if (isEngineWakingError(err)) {
+    const { showEngineWakingToast } = await import("./error-toast");
+    showEngineWakingToast(label, message);
     return;
   }
 

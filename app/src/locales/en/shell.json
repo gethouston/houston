@@ -65,7 +65,9 @@
     "reportSentDescription": "Reference #{{id}}.",
     "copyId": "Copy code",
     "offlineTitle": "Houston, connection lost",
-    "offlineDescription": "We can't reach Houston right now. Check your internet connection and try again."
+    "offlineDescription": "We can't reach Houston right now. Check your internet connection and try again.",
+    "engineWakingTitle": "Houston, your agent is waking up",
+    "engineWakingDescription": "It will be ready in a moment. Try again shortly."
   },
   "agentDelete": {
     "title": "Delete agent?",
