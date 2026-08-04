@@ -215,6 +215,15 @@ export class ProcessLauncher implements RuntimeLauncher {
   private async spawnUntilHealthy(agent: Agent): Promise<RuntimeEndpoint> {
     const token = this.opts.mintToken(agent);
     const port = await this.allocatePort();
+    // Re-check the latch after the first await: a boot that entered before
+    // hold() was acquired is invisible to sleep() until the running entry
+    // exists (set synchronously below), so this port-allocation gap was the
+    // one window where a rename's quiesce could miss a runtime entirely and
+    // let it come up bound to the old directory mid-move.
+    if (this.held.has(agent.id))
+      throw new Error(
+        `agent '${agent.id}' is being renamed — retry with its new id`,
+      );
     const cred = this.opts.credentialServing;
     const handle = this.opts.spawner.spawn({
       workspaceDir: this.opts.workspaceDirFor(agent),

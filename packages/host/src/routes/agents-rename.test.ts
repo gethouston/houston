@@ -55,7 +55,9 @@ class SpyChannel implements RuntimeChannel {
     this.calls.push(`quiesce:${ctx.agent.id}`);
     return await fn();
   }
-  async teardown() {}
+  async teardown(ctx: ChannelCtx) {
+    this.calls.push(`teardown:${ctx.agent.id}`);
+  }
   async captureCredential(): Promise<CaptureResult> {
     return { ok: true, provider: "anthropic" };
   }
@@ -286,4 +288,25 @@ test("rename trims the submitted name before storing it", async () => {
   const { status, json } = await rename("  Marketing  ");
   expect(status).toBe(200);
   expect(json.name).toBe("Marketing");
+});
+
+test("DELETE runs inside the quiesced span too (a stale dispatch must not resurrect a deleted agent)", async () => {
+  const path = `/agents/${encodeURIComponent(agentId)}`;
+  const response = res();
+  const handled = await handleAgents(
+    deps(channel),
+    "alice",
+    "DELETE",
+    path,
+    new URL(path, "http://host.local"),
+    reqWithBody({}),
+    response,
+  );
+  expect(handled).toBe(true);
+  expect(response.status).toBe(200);
+  // The teardown + record drop happen INSIDE the latch: quiesce first, so a
+  // dispatch landing between teardown and directory removal cannot respawn a
+  // runtime into the doomed directory (HOU-827's sibling for delete).
+  expect(calls).toEqual([`quiesce:${agentId}`, `teardown:${agentId}`]);
+  expect(await memory.getAgent(agentId)).toBeNull();
 });

@@ -262,6 +262,35 @@ test("ensureAwake during a drain waits for the exit instead of racing a second c
   expect(endpoint.baseUrl).toBe("http://127.0.0.1:5002");
 });
 
+test("a hold acquired MID-BOOT aborts the boot before the child spawns", async () => {
+  // The port-allocation await is the one window where a boot exists but no
+  // running entry does — invisible to sleep(). A rename that begins inside
+  // it must abort the boot, not let a runtime come up bound to the old
+  // directory mid-move.
+  let releasePort: ((port: number) => void) | undefined;
+  let spawned = 0;
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      spawned += 1;
+      return { port: 5000, kill: () => {} };
+    },
+  };
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      allocatePort: () =>
+        new Promise<number>((resolve) => {
+          releasePort = resolve;
+        }),
+    }),
+  );
+  const boot = launcher.ensureAwake(agent("mid-boot"));
+  const release = launcher.hold("mid-boot");
+  releasePort?.(5001);
+  await expect(boot).rejects.toThrow("is being renamed");
+  expect(spawned).toBe(0);
+  release();
+});
+
 test("hold() blocks ensureAwake for the id until released (the rename latch)", async () => {
   const { spawner } = recordingSpawner();
   const launcher = new ProcessLauncher(opts(spawner));

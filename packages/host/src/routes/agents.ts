@@ -371,14 +371,22 @@ export async function handleAgents(
 
     // DELETE: tear the agent's runtime-side state down first (so a failure is
     // retryable with the record intact), then drop the record. Errors surface —
-    // never a silent orphan.
+    // never a silent orphan. Same quiesced span as rename (HOU-827's sibling):
+    // a stale dispatch landing between the teardown and the directory removal
+    // would respawn a runtime into the doomed directory, whose next write
+    // recreates it — a DELETED agent reappearing in the sidebar.
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    await channel.teardown({ workspace: authz.workspace, agent: authz.agent });
-    await deps.store.deleteAgent(agentId);
+    const ctx = { workspace: authz.workspace, agent: authz.agent };
+    const doDelete = async () => {
+      await channel.teardown(ctx);
+      await deps.store.deleteAgent(agentId);
+    };
+    if (channel.withQuiesced) await channel.withQuiesced(ctx, doDelete);
+    else await doDelete();
     deps.events?.emit(authz.workspace.ownerUserId, {
       type: "AgentsChanged",
       workspaceId: authz.workspace.id,
