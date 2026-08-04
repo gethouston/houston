@@ -1,9 +1,10 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  autolinkDisplay,
   classifyMarkdownLink,
-  collapsedUrlText,
   markdownLinkText,
+  URL_DISPLAY_MAX,
 } from "../src/markdown-link.ts";
 
 describe("markdownLinkText", () => {
@@ -153,20 +154,51 @@ describe("classifyMarkdownLink", () => {
   });
 });
 
-describe("collapsedUrlText", () => {
-  it("reassembles a URL label markdown broke across lines", () => {
-    assert.equal(
-      collapsedUrlText("https://docs.google.com/spreadsheets/d/1JO-\nrR9/edit"),
-      "https://docs.google.com/spreadsheets/d/1JO-rR9/edit",
+describe("autolinkDisplay", () => {
+  it("reassembles a URL label markdown broke across lines (HOU-1071)", () => {
+    assert.deepEqual(
+      autolinkDisplay("https://docs.google.com/spreadsheets/d/1JO-\nrR9/edit"),
+      {
+        text: "https://docs.google.com/spreadsheets/d/1JO-rR9/edit",
+        shortened: false,
+      },
     );
   });
 
-  it("returns null for an unwrapped URL so streaming children render as-is", () => {
-    assert.equal(collapsedUrlText("https://example.com"), null);
+  it("shortens a long URL to its head plus an ellipsis (HOU-1152)", () => {
+    // The live shape from the issue: a ~95-char Docs share link that used to
+    // wrap across three lines of noise (or, pre-HOU-1071, clip into a pill).
+    const url =
+      "https://docs.google.com/presentation/d/1qObQZ8EL3YcTan_dPkyZfoR_9cp4hiWoBMgic6y9ZoE/edit";
+    const display = autolinkDisplay(url);
+    assert.ok(display?.shortened);
+    assert.equal(display.text.length, URL_DISPLAY_MAX);
+    assert.ok(display.text.endsWith("…"));
+    assert.equal(display.text, `${url.slice(0, URL_DISPLAY_MAX - 1)}…`);
+  });
+
+  it("reassembles AND shortens a wrapped long URL", () => {
+    const wrapped =
+      "https://docs.google.com/spreadsheets/d/1JOOOml-  \nrR9HmaliG4UX6UxZipaFoFE3zB13FWiPz-Y/edit?usp=sharing";
+    const reassembled = wrapped.replace(/\s+/g, "");
+    assert.deepEqual(autolinkDisplay(wrapped), {
+      text: `${reassembled.slice(0, URL_DISPLAY_MAX - 1)}…`,
+      shortened: true,
+    });
+  });
+
+  it("returns null for a short unwrapped URL so streaming children render as-is", () => {
+    assert.equal(autolinkDisplay("https://example.com"), null);
+  });
+
+  it("keeps a URL at exactly the display limit verbatim", () => {
+    const url = `https://example.com/${"a".repeat(URL_DISPLAY_MAX - 20)}`;
+    assert.equal(url.length, URL_DISPLAY_MAX);
+    assert.equal(autolinkDisplay(url), null);
   });
 
   it("returns null for plain labels and non-text children", () => {
-    assert.equal(collapsedUrlText("Open the sheet"), null);
-    assert.equal(collapsedUrlText({ href: "x" }), null);
+    assert.equal(autolinkDisplay("Open the sheet"), null);
+    assert.equal(autolinkDisplay({ href: "x" }), null);
   });
 });

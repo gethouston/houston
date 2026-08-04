@@ -39,7 +39,7 @@ import {
 } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { MarkdownCodeBlock } from "../markdown-code-block";
-import { classifyMarkdownLink, collapsedUrlText } from "../markdown-link";
+import { autolinkDisplay, classifyMarkdownLink } from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
 import type { MentionRehypeOptions } from "../mention-rehype.ts";
 import { mentionRehypePlugin } from "../mention-rehype.ts";
@@ -437,7 +437,7 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
  * so a link looks identical whether its message rendered markdown or not.
  */
 export const AUTOLINK_CLASS =
-  "text-action underline-offset-4 hover:underline [overflow-wrap:anywhere] group-[.is-peer]:underline group-[.is-user]:text-input group-[.is-user]:underline dark:group-[.is-user]:text-ink";
+  "text-action underline underline-offset-4 [overflow-wrap:anywhere] group-[.is-user]:text-input dark:group-[.is-user]:text-ink";
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
@@ -500,21 +500,26 @@ export const MessageResponse = memo(
           // render it interactive when there's an open handler; otherwise it
           // would look clickable but do nothing.
           //
-          // Both BUBBLE variants underline the link permanently, never on
-          // hover: inside a filled bubble `text-action` sits within ~1.05:1 of
-          // the body ink (identical in dark), so colour carries no signal and
-          // the underline is the whole affordance. Only the assistant's prose,
-          // on the plain canvas, may keep it hover-enhanced.
+          // Every surface underlines the link permanently, never on hover:
+          // `text-action` sits within ~1.05:1 of the body ink on the canvas
+          // and inside the bubbles alike, so colour carries no signal and
+          // the underline is the whole affordance (HOU-1152).
           if (kind === "autolink") {
             // A URL label markdown broke across lines flattens with a
             // softbreak in it (HOU-1071) — show the reassembled URL, not
-            // the raw children with a stray space mid-URL.
-            const label = collapsedUrlText(children) ?? children;
-            if (!fn) return <span>{label}</span>;
+            // the raw children with a stray space mid-URL. A long URL
+            // shows its head plus an ellipsis, Slack-style (HOU-1152);
+            // the href keeps the full destination, and title surfaces it
+            // on hover (enhancement only — the link works without it).
+            const display = autolinkDisplay(children);
+            const label = display?.text ?? children;
+            const title = display?.shortened ? url : undefined;
+            if (!fn) return <span title={title}>{label}</span>;
             return (
               <a
                 href={url}
                 rel="noreferrer"
+                title={title}
                 onClick={(e) => {
                   e.preventDefault();
                   onOpen();
