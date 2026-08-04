@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { analytics } from "../lib/analytics";
+import { bakedUrl } from "../lib/baked-url";
 import { osLaunchT0Ms } from "../lib/os-bridge";
 import { type PerfSpanObservation, perfSpans } from "../lib/perf-spans";
 import { currentPlatformOs } from "../lib/platform";
@@ -11,10 +12,10 @@ import { useSession } from "./use-session";
  * for grafana.gethouston.ai). Same target in local-sidecar AND gateway-fronted
  * modes — the route is gateway-owned, never proxied to a pod.
  */
-const CLIENT_METRICS_URL = (
-  (import.meta.env?.VITE_CLIENT_METRICS_GATEWAY_URL as string | undefined) ??
-  "https://gateway.gethouston.ai"
-).replace(/\/+$/, "");
+const CLIENT_METRICS_URL = bakedUrl(
+  import.meta.env?.VITE_CLIENT_METRICS_GATEWAY_URL as string | undefined,
+  "https://gateway.gethouston.ai",
+);
 
 const APP_VERSION =
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";

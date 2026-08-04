@@ -81,6 +81,14 @@ jobs:
       - name: Build packages/web
         env:
           VITE_CONTROL_PLANE_URL: ${{ secrets.HOSTED_ENGINE_URL_STAGING }}
+          # The Agent Store + client-metrics targets are resolved SEPARATELY from
+          # the gateway URL and both fall back to a hardcoded PRODUCTION literal
+          # when unset (app/src/lib/store-gateway-session.ts,
+          # app/src/hooks/use-perf-spans.ts). Unbaked, this staging bundle
+          # published agents into the real prod catalog and folded QA timings into
+          # the prod Prometheus histograms. Same secret as the gateway above.
+          VITE_AGENTSTORE_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL_STAGING }}
+          VITE_CLIENT_METRICS_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL_STAGING }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}

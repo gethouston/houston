@@ -467,6 +467,23 @@ jobs:
       # channel gated: a non-cloud build has no gateway to authenticate against, so
       # it stays '' and lib.rs's empty-filter keeps integrations off there.
       HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
+      # Agent Store gateway. Without this the store falls back to the hardcoded
+      # PRODUCTION default (`DEFAULT_STORE_GATEWAY` in
+      # ui/engine-client/src/store-catalog.ts, `STORE_GATEWAY_URL` in
+      # app/src/lib/store-gateway-session.ts), so the STAGING QA DMG browsed AND
+      # PUBLISHED against the real prod catalog while everything else on it spoke
+      # to staging. One var fixes both halves: store-gateway-session installs its
+      # `window.__HOUSTON_STORE__` override only when the hosted engine URL and
+      # the store URL DIFFER, so once they match on staging it steps aside and
+      # store-catalog reads this value for browse. On the prod leg this resolves
+      # to the same URL the hardcoded default already produced — no change to the
+      # shipping build.
+      VITE_AGENTSTORE_GATEWAY_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
+      # Client perf-span ingest (`/v1/client-metrics`, app/src/hooks/use-perf-spans.ts)
+      # has the same prod-literal fallback, so every QA session on a staging DMG was
+      # folding its timings into the PROD Prometheus histograms behind
+      # grafana.gethouston.ai. Same split, same prod no-op.
+      VITE_CLIENT_METRICS_GATEWAY_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1915,6 +1932,13 @@ jobs:
       - name: Build packages/web
         env:
           VITE_CONTROL_PLANE_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+          # Declared explicitly so this bundle and web-staging.yml's read as a
+          # pair: both resolve the store + client-metrics targets independently of
+          # the gateway URL. Production's value is what the hardcoded fallback
+          # already produced, so this is a no-op here — it exists so the staging
+          # side can differ without the difference looking accidental.
+          VITE_AGENTSTORE_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+          VITE_CLIENT_METRICS_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}

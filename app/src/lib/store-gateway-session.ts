@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSession } from "../hooks/use-session";
+import { bakedUrl } from "./baked-url";
 import { hostedEngineUrl } from "./engine";
 
 /**
@@ -16,10 +17,10 @@ import { hostedEngineUrl } from "./engine";
  * the local host token, not the session.
  */
 
-const STORE_GATEWAY_URL = (
-  (import.meta.env?.VITE_AGENTSTORE_GATEWAY_URL as string | undefined) ??
-  "https://gateway.gethouston.ai"
-).replace(/\/+$/, "");
+const STORE_GATEWAY_URL = bakedUrl(
+  import.meta.env?.VITE_AGENTSTORE_GATEWAY_URL as string | undefined,
+  "https://gateway.gethouston.ai",
+);
 
 declare global {
   interface Window {
