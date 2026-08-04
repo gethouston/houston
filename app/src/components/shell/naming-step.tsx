@@ -24,6 +24,8 @@ interface NamingStepProps {
   existingPath: string | null;
   /** The create request is in flight — lock the submit and show progress. */
   creating: boolean;
+  /** The typed name fails pre-submit validation — lock the submit. */
+  nameInvalid?: boolean;
   /** Show "Link existing project" option (opt-in via agent features). */
   showLinkProject?: boolean;
   onNameChange: (value: string) => void;
@@ -40,6 +42,7 @@ export function NamingStep({
   error,
   existingPath,
   creating,
+  nameInvalid,
   onNameChange,
   onColorChange,
   onExistingPathChange,
@@ -160,7 +163,7 @@ export function NamingStep({
         {error && <p className="text-xs text-danger text-center">{error}</p>}
         <Button
           type="submit"
-          disabled={!name.trim() || creating}
+          disabled={!name.trim() || nameInvalid || creating}
           className="w-full rounded-full"
         >
           {creating ? (

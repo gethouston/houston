@@ -14,6 +14,10 @@
     "./react": {
       "types": "./src/react/index.ts",
       "import": "./src/react/index.ts"
+    },
+    "./agent-name": {
+      "types": "./src/agent-name.ts",
+      "import": "./src/agent-name.ts"
     }
   },
   "files": [
@@ -41,6 +45,7 @@
     "vitest": "3.2.6"
   },
   "dependencies": {
+    "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*"
   }

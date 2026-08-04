@@ -11,6 +11,15 @@
  * (the kernel composes them); a host uses `new HoustonSdk(...)`, not a factory.
  */
 
+// The agent-name rule lives once in @houston/domain; surfaces import it from
+// here so they can validate BEFORE submitting instead of rendering the
+// server's rejection (HOU-1166).
+export {
+  AGENT_NAME_MAX_LENGTH,
+  type AgentNameValidation,
+  type InvalidAgentNameReason,
+  validateAgentName,
+} from "@houston/domain";
 // ===== Kernel =========================================================
 export {
   type AuthExpiryNotifier,

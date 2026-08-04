@@ -322,20 +322,27 @@ export const tauriAgents = {
     seeds?: Record<string, string>,
     existingPath?: string,
   ) =>
-    call<CreateAgentResult>("create_agent", async () => {
-      const r = await getEngine().createAgent(workspaceId, {
-        name,
-        configId,
-        color,
-        claudeMd,
-        installedPath,
-        seeds,
-        existingPath,
-      });
-      return {
-        agent: toAgent(r.agent),
-      };
-    }),
+    call<CreateAgentResult>(
+      "create_agent",
+      async () => {
+        const r = await getEngine().createAgent(workspaceId, {
+          name,
+          configId,
+          color,
+          claudeMd,
+          installedPath,
+          seeds,
+          existingPath,
+        });
+        return {
+          agent: toAgent(r.agent),
+        };
+      },
+      undefined,
+      // A 409 (name already taken) renders as friendly inline copy in the
+      // create dialog — the generic red bug toast would double-surface it.
+      { silence: isAgentNameConflictError },
+    ),
   delete: (workspaceId: string, id: string) =>
     call<void>("delete_agent", () => getEngine().deleteAgent(workspaceId, id)),
   rename: (workspaceId: string, id: string, newName: string) => {

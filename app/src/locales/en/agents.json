@@ -49,6 +49,10 @@
     "switchedModel": "Switched to {{provider}} ({{model}})",
     "timezoneSet": "Timezone set to {{zone}}"
   },
+  "nameErrors": {
+    "invalidChars": "Agent names can't contain slashes or special characters",
+    "tooLong": "Agent names can be at most {{max}} characters"
+  },
   "empty": {
     "title": "No agents yet",
     "description": "Build your AI team and start a mission."

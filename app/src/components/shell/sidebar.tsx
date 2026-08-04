@@ -13,6 +13,7 @@ import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
+import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { showExpectedStateToast } from "../../lib/error-toast";
 import { renameAgentWithFollowUp } from "../../lib/rename-agent-follow-up";
@@ -131,6 +132,24 @@ export function Sidebar({ children }: { children: ReactNode }) {
 
   const handleRename = async (agentId: string, newName: string) => {
     if (!currentWorkspace) return;
+    // Validate BEFORE the PATCH (HOU-1166): bad shapes and known duplicates
+    // get the expected-state toast without a round-trip. The 409 catch below
+    // stays for races (a sibling took the name after this list loaded).
+    const issue = agentNameIssue(
+      newName,
+      agents.filter((a) => a.id !== agentId).map((a) => a.name),
+    );
+    if (issue) {
+      showExpectedStateToast(
+        issue === "taken"
+          ? t("agents:toasts.nameConflict", { name: newName.trim() })
+          : issue === "tooLong"
+            ? t("agents:nameErrors.tooLong", { max: AGENT_NAME_MAX_LENGTH })
+            : t("agents:nameErrors.invalidChars"),
+        t("agents:toasts.nameConflictDescription"),
+      );
+      return;
+    }
     try {
       await renameAgentWithFollowUp({
         workspaceId: currentWorkspace.id,

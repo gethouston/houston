@@ -2,12 +2,14 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   applyOverrides,
   filterPackage,
+  invalidAgentNameMessage,
   type PortablePackage,
   packAgent,
   packageSeed,
   portableInventory,
   seedSchemas,
   unpackAgent,
+  validateAgentName,
 } from "@houston/domain";
 import type {
   PortableExportOverrides,
@@ -142,6 +144,11 @@ export async function handlePortableAccount(
     json(res, 400, { error: "missing 'agentName' or 'archive' (base64)" });
     return true;
   }
+  const nameCheck = validateAgentName(body.agentName);
+  if (!nameCheck.ok) {
+    json(res, 400, { error: invalidAgentNameMessage(nameCheck.reason) });
+    return true;
+  }
   let pkg: PortablePackage;
   try {
     pkg = unpackAgent(new Uint8Array(Buffer.from(body.archive, "base64")));
@@ -158,7 +165,7 @@ export async function handlePortableAccount(
   const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
   const agent = await deps.store.createAgent({
     workspaceId: ws.id,
-    name: body.agentName,
+    name: nameCheck.name,
   });
   const root = paths.agentRoot(ws, agent);
   await seedSchemas(deps.vfs, root);

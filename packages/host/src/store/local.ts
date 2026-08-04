@@ -7,6 +7,7 @@ import {
   statSync,
 } from "node:fs";
 import { join } from "node:path";
+import { validateAgentName } from "@houston/domain";
 import type {
   Agent,
   AgentId,
@@ -15,7 +16,11 @@ import type {
   WorkspaceId,
   WorkspaceRuntime,
 } from "../domain/types";
-import { AgentNameConflictError, type WorkspaceStore } from "../ports";
+import {
+  AgentNameConflictError,
+  InvalidAgentNameError,
+  type WorkspaceStore,
+} from "../ports";
 
 /**
  * The local profile's WorkspaceStore — the desktop tree on disk is the source
@@ -123,9 +128,8 @@ export class LocalWorkspaceStore implements WorkspaceStore {
     workspaceId: WorkspaceId;
     name: string;
   }): Promise<Agent> {
-    if (input.name.includes("/") || input.name.includes("..")) {
-      throw new Error(`invalid agent name: ${input.name}`);
-    }
+    const v = validateAgentName(input.name);
+    if (!v.ok) throw new InvalidAgentNameError(input.name, v.reason);
     mkdirSync(join(this.root, input.workspaceId, input.name), {
       recursive: true,
     });
@@ -135,8 +139,8 @@ export class LocalWorkspaceStore implements WorkspaceStore {
   async renameAgent(id: AgentId, name: string): Promise<Agent> {
     const agent = await this.getAgent(id);
     if (!agent) throw new Error(`renameAgent: unknown agent ${id}`);
-    if (name.includes("/") || name.includes(".."))
-      throw new Error(`invalid agent name: ${name}`);
+    const v = validateAgentName(name);
+    if (!v.ok) throw new InvalidAgentNameError(name, v.reason);
     if (name === agent.name) return agent;
     // Check BEFORE renameSync: moving onto an existing directory throws a raw
     // ENOTEMPTY that would surface as a 500 (#172).

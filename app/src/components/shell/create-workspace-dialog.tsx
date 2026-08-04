@@ -13,6 +13,8 @@ import { loadStoreTemplate } from "../../agents/builtin/store-template-loader";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
+import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
+import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { pickDefaultProviderModel } from "../../lib/default-provider-model";
@@ -43,11 +45,12 @@ interface CreatedAgent {
 }
 
 export function CreateAgentDialog() {
-  const { t, i18n } = useTranslation("shell");
+  const { t, i18n } = useTranslation(["shell", "agents"]);
   const open = useUIStore((s) => s.createAgentDialogOpen);
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const uiTourActive = useUIStore((s) => s.uiTourActive);
   const agentDefs = useAgentCatalogStore((s) => s.agents);
+  const existingAgents = useAgentStore((s) => s.agents);
   const createAgent = useAgentStore((s) => s.create);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const { capabilities } = useCapabilities();
@@ -153,11 +156,41 @@ export function CreateAgentDialog() {
     tauriProvider.setLastUsed(nextProvider, nextModel).catch(() => {});
   };
 
+  // Live pre-submit validation (HOU-1166): bad shapes and duplicate names get
+  // localized inline copy under the field instead of the server's raw
+  // rejection, and the submit button locks while the name is invalid.
+  const nameIssue = agentNameIssue(
+    name,
+    existingAgents.map((a) => a.name),
+  );
+  const nameIssueMessage =
+    nameIssue === "invalidChars"
+      ? t("agents:nameErrors.invalidChars")
+      : nameIssue === "tooLong"
+        ? t("agents:nameErrors.tooLong", { max: AGENT_NAME_MAX_LENGTH })
+        : nameIssue === "taken"
+          ? t("agents:toasts.nameConflict", { name: name.trim() })
+          : null;
+
+  // Typing again clears a stale server rejection so the live validation copy
+  // (or nothing) takes over.
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (error) setError(null);
+  };
+
   const handleCreateAgent = async () => {
     const trimmed = name.trim();
     // `creating` also gates re-entry: the submit button is disabled while in
     // flight, but Enter in the name input still fires the form's onSubmit.
-    if (creating || !trimmed || !selectedConfigId || !currentWorkspace) return;
+    if (
+      creating ||
+      !trimmed ||
+      nameIssue ||
+      !selectedConfigId ||
+      !currentWorkspace
+    )
+      return;
     const resolved = pickDefaultProviderModel({
       lastUsedProvider: lastUsed?.provider,
       lastUsedModel: lastUsed?.model,
@@ -199,7 +232,13 @@ export function CreateAgentDialog() {
       created = agent;
       agentPath = agent.folderPath;
     } catch (err) {
-      setError(String(err));
+      // A 409 is the expected "name already taken" state (a sibling created
+      // it while the dialog was open) — friendly copy, not the wire error.
+      setError(
+        isAgentNameConflictError(err)
+          ? t("agents:toasts.nameConflict", { name: trimmed })
+          : String(err),
+      );
       setCreating(false);
       return;
     }
@@ -367,13 +406,14 @@ export function CreateAgentDialog() {
             name={name}
             color={color}
             instructions={generatedClaudeMd ?? ""}
-            onNameChange={setName}
+            onNameChange={handleNameChange}
             onColorChange={setColor}
             onInstructionsChange={setGeneratedClaudeMd}
             onBack={() => setStep(aiReviewBackStep())}
             onSubmit={handleCreateAgent}
             creating={creating}
-            error={error}
+            error={error ?? nameIssueMessage}
+            nameInvalid={nameIssue !== null}
           />
         ) : step === "connect" && createdAgent ? (
           <ConnectAppsStep
@@ -386,13 +426,14 @@ export function CreateAgentDialog() {
             selectedAgent={selectedDef}
             name={name}
             color={color}
-            error={error}
+            error={error ?? nameIssueMessage}
             existingPath={existingPath}
             creating={creating}
+            nameInvalid={nameIssue !== null}
             showLinkProject={selectedDef?.config.features?.includes(
               "link-project",
             )}
-            onNameChange={setName}
+            onNameChange={handleNameChange}
             onColorChange={setColor}
             onExistingPathChange={setExistingPath}
             onBack={() => setStep(1)}

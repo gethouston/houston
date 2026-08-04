@@ -49,6 +49,10 @@
     "switchedModel": "Mudou para {{provider}} ({{model}})",
     "timezoneSet": "Fuso horário definido como {{zone}}"
   },
+  "nameErrors": {
+    "invalidChars": "O nome do agente não pode conter barras nem caracteres especiais",
+    "tooLong": "O nome do agente pode ter no máximo {{max}} caracteres"
+  },
   "empty": {
     "title": "Ainda não há agentes",
     "description": "Crie sua equipe de IA e inicie uma missão."

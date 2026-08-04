@@ -267,3 +267,18 @@ test("ProxyChannel.quiesce sleeps the agent's runtime without destroying it", as
   expect(slept).toEqual([agentId]);
   expect(destroyed).toEqual([]);
 });
+
+test("an invalid name answers 400 without touching runtime or store (HOU-1166)", async () => {
+  for (const bad of ["has/slash", "back\\slash", "a..b", ".hidden"]) {
+    const { status, json } = await rename(bad);
+    expect(status).toBe(400);
+    expect(String(json.error)).toMatch(/agent name/);
+  }
+  expect(calls).toEqual([]); // no quiesce, no rename
+});
+
+test("rename trims the submitted name before storing it", async () => {
+  const { status, json } = await rename("  Marketing  ");
+  expect(status).toBe(200);
+  expect(json.name).toBe("Marketing");
+});

@@ -23,6 +23,8 @@ interface AiReviewStepProps {
   onSubmit: () => void;
   creating: boolean;
   error: string | null;
+  /** The typed name fails pre-submit validation — lock the submit. */
+  nameInvalid?: boolean;
 }
 
 export function AiReviewStep({
@@ -36,6 +38,7 @@ export function AiReviewStep({
   onSubmit,
   creating,
   error,
+  nameInvalid,
 }: AiReviewStepProps) {
   const { t } = useTranslation("shell");
   const resolvedColor = resolveAgentColor(color);
@@ -128,7 +131,7 @@ export function AiReviewStep({
         onBack={onBack}
         primaryLabel={t("naming.createAgent")}
         onPrimary={onSubmit}
-        primaryDisabled={!name.trim()}
+        primaryDisabled={!name.trim() || nameInvalid}
         primaryLoading={creating}
       />
     </div>
