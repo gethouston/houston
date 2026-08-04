@@ -124,6 +124,23 @@
     "confirmDescription": "This will permanently delete this workspace and all its agents. This cannot be undone.",
     "confirmLabel": "Delete"
   },
+  "deleteAccount": {
+    "title": "Delete account",
+    "description": "Permanently delete your account, your agents, and everything they know, everywhere.",
+    "button": "Delete account",
+    "confirmTitle": "Delete your account forever?",
+    "confirmBody": "This permanently deletes your account, your agents, and all your data, on every device. There is no way to get any of it back.",
+    "typeToConfirm": "Type {{word}} to confirm.",
+    "confirmWord": "DELETE",
+    "cancel": "Cancel",
+    "confirm": "Delete my account",
+    "dialogClose": "Close",
+    "errors": {
+      "teamMember": "You are still part of a team. Leave your teams, or hand them to someone else, then try again.",
+      "network": "We couldn't reach Houston. Check your connection and try again.",
+      "generic": "Something went wrong and your account was not deleted. Please try again."
+    }
+  },
   "shortcuts": {
     "title": "Keyboard shortcuts",
     "description": "Run Houston without touching the mouse."

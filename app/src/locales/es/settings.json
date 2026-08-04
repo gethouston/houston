@@ -124,6 +124,23 @@
     "confirmDescription": "Esto eliminará de forma permanente este espacio de trabajo y todos sus agentes. No se puede deshacer.",
     "confirmLabel": "Eliminar"
   },
+  "deleteAccount": {
+    "title": "Eliminar cuenta",
+    "description": "Elimina de forma permanente tu cuenta, tus agentes y todo lo que saben, en todas partes.",
+    "button": "Eliminar cuenta",
+    "confirmTitle": "¿Eliminar tu cuenta para siempre?",
+    "confirmBody": "Esto elimina de forma permanente tu cuenta, tus agentes y todos tus datos, en todos tus dispositivos. No hay forma de recuperar nada.",
+    "typeToConfirm": "Escribe {{word}} para confirmar.",
+    "confirmWord": "ELIMINAR",
+    "cancel": "Cancelar",
+    "confirm": "Eliminar mi cuenta",
+    "dialogClose": "Cerrar",
+    "errors": {
+      "teamMember": "Todavía formas parte de un equipo. Sal de tus equipos, o pásaselos a otra persona, y vuelve a intentarlo.",
+      "network": "No pudimos conectar con Houston. Revisa tu conexión y vuelve a intentarlo.",
+      "generic": "Algo salió mal y tu cuenta no fue eliminada. Vuelve a intentarlo."
+    }
+  },
   "shortcuts": {
     "title": "Atajos de teclado",
     "description": "Usa Houston sin tocar el mouse."

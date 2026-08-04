@@ -454,6 +454,8 @@ pub fn run() {
             commands::save_file::save_download,
             commands::update::current_app_bundle_path,
             commands::update::relaunch_app_from_path,
+            // Post account-deletion local wipe (HOU-991).
+            commands::wipe::wipe_local_data,
             // Hidden Sentry smoke command for native stack verification.
             commands::diagnostics::sentry_native_stack_smoke_test,
             // Logging (writes to local log files).

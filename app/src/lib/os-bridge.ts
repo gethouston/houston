@@ -163,6 +163,13 @@ export function osAuthRemoveItem(key: string): Promise<void> {
   return invoke<void>("auth_remove_item", { key });
 }
 
+/** Delete the local Houston data tree (`~/.houston`) after a hosted account
+ * deletion (HOU-991), leaving an empty data dir behind. Rejects with the real
+ * filesystem reason on failure — the caller surfaces it, never swallows. */
+export function osWipeLocalData(): Promise<void> {
+  return invoke<void>("wipe_local_data");
+}
+
 /** Bind a one-shot localhost listener for the Codex/OpenAI OAuth redirect. On
  * success the native side emits `codex-oauth://callback` with the raw
  * `code=...&state=...` query string once OpenAI bounces the browser back;
