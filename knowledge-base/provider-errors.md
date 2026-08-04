@@ -16,6 +16,46 @@
 Skim the table of contents and load the section that
 touches what you are doing.
 
+## Current map (TS engine) — where every error card comes from
+
+The full audit behind this section is HOU-1156 (2026-08). Eight wire kinds
+(`packages/protocol/src/provider-error.ts`): `unauthenticated`, `rate_limited`,
+`quota_exhausted`, `model_unavailable`, `context_overflow`, `provider_internal`,
+`network_unreachable`, `unknown`. The frontend union (`ui/chat/src/types.ts`)
+additionally still declares the Rust-era kinds `usage_limit_paused`,
+`session_resume_missing`, `malformed_response`, `spawn_failed`, `cancelled` —
+no TS backend emits them; their cards are dormant.
+
+**Entry points → classifier:**
+
+| Path | Where | Notes |
+|------|-------|-------|
+| pi backend (all non-Anthropic-SDK providers) | `packages/runtime/src/backends/pi/wire.ts` (`turn_end`, `stopReason:"error"`) | status read from pi diagnostics, else parsed from the message. Held until `agent_settled`; discarded if pi recovers (HOU-1057). |
+| Claude Agent SDK backend | `packages/runtime/src/backends/claude/translate.ts` → `errors.ts` (`mapSdkError`: SDK enum table, falls through to `classifyText`) | one card per turn (`emittedError` latch); dangling resume auto-retries fresh (HOU-892). |
+| Thrown turn failures | `packages/runtime/src/session/exec-turn.ts` catch, `packages/runtime/src/turn/turn-session.ts` catch | pi raises missing credentials at prompt time — this catch is where they become the reconnect card (HOU-718). |
+| Pre-session guards | `packages/runtime/src/session/chat.ts` (`getConversation` catch + serve-mode pin guard) | synthesized, not classified; typed card persisted, but the LIVE frame is still a generic `error` frame. |
+
+**Classifier:** `packages/runtime/src/ai/provider-error.ts` — pure, every branch
+unit-tested against verbatim provider strings (`provider-error.test.ts`).
+Precedence: auth → quota/billing (before rate-limit: both ride 429, HOU-1154) →
+rate-limit → context overflow → 5xx → network → model-unavailable → `unknown`
+(which keeps a **300-char** `raw_excerpt` — the UnknownErrorCard renders it, so
+an unclassified card is never content-free).
+
+**The triage loop (how WE find out):** every classified failure logs exactly
+once through `packages/runtime/src/ai/provider-error-log.ts` — expected kinds
+(rate limit, quota, 5xx, network, overflow, model-unavailable, and
+`unauthenticated`/`no_credentials`) at WARN (Sentry breadcrumb), everything
+else — `unknown` and real auth failures — at ERROR (Sentry event). The Sentry
+client fingerprints `[provider_error]` lines by `(provider, kind)`
+(`packages/runtime-client/src/sentry/client.ts`), so each family is its own
+countable issue. The ritual: search Sentry for `kind=unknown`, and promote any
+family that repeats into a classifier pattern (verbatim fixture first — see the
+HOU-1156 batch: Codex `WebSocket closed 1006` → network, OpenRouter
+`Stream ended without finish_reason` → provider_internal, Gemini gRPC
+`UNAVAILABLE`/embedded `"code": 5xx` → provider_internal, Google billing
+`dunning` → quota, opencode `RegionError` → model_unavailable).
+
 ## TL;DR
 
 Every AI provider's CLI failure collapses into one variant of the
@@ -49,7 +89,7 @@ now removed.)
 | `MalformedResponse`        | CLI emitted unparseable JSON mid-stream.                                                 | Retry.                                               |
 | `SpawnFailed`              | CLI couldn't even spawn (binary missing, killed by OS).                                  | Report bug.                                          |
 | `Cancelled`                | User pressed Stop. Distinct so the UI shows nothing (no toast, no retry).                | none (rendered as `null`).                           |
-| `Unknown`                  | No classifier matched. Carries `raw_excerpt` (≤500 chars).                              | Report bug.                                          |
+| `Unknown`                  | No classifier matched. Carries `raw_excerpt` (≤300 chars), rendered on the card (HOU-1156). | Report bug.                                      |
 
 ### `credential` — WHOSE account failed (HOU-976)
 

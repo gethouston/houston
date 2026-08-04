@@ -74,12 +74,28 @@ export function UnknownErrorCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
+  const raw = error.raw_excerpt.trim();
   return (
     <div className="w-full px-1 py-2">
       <RowCard
         media={<CloudOffIcon className="size-5" />}
         title={t("providerError.unknown.title")}
-        description={t("providerError.unknown.body", { provider })}
+        description={
+          // The provider's verbatim text rides under the body: for an
+          // unclassified failure it is the ONLY identifying detail the user
+          // (and our bug reports) have — Anthropic's "accept the new terms in
+          // claude.ai" arrives exactly here (HOU-1156).
+          raw ? (
+            <>
+              {t("providerError.unknown.body", { provider })}
+              <span className="mt-1 block font-mono text-[10px] text-ink/50 [overflow-wrap:anywhere]">
+                {t("providerError.unknown.rawLabel")}: {raw}
+              </span>
+            </>
+          ) : (
+            t("providerError.unknown.body", { provider })
+          )
+        }
         action={
           <ReportBugButton
             command={`provider_error:unknown:${error.provider}`}

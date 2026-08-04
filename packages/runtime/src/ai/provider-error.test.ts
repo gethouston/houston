@@ -764,3 +764,100 @@ test("overflow text without numbers still classifies, with null token counts", (
     expect(err.prompt_tokens).toBeNull();
   }
 });
+
+// HOU-1156: verbatim shapes of the `unknown` families the 90-day Sentry audit
+// surfaced — each was rendering the content-free "Something unexpected
+// happened" card. Fixtures mirror the real payloads (identifiers synthetic).
+
+test("Codex 'WebSocket closed 1006' → network_unreachable, not unknown (HOU-1156)", () => {
+  // pi-ai flattens an abnormal mid-turn drop of Codex's WebSocket to this
+  // exact string — no status, no body. 584 events / 137 users in 90 days.
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    message: "WebSocket closed 1006",
+  });
+  expect(err).toEqual({
+    kind: "network_unreachable",
+    provider: "openai-codex",
+    message: "WebSocket closed 1006",
+  });
+});
+
+test("openrouter 'Stream ended without finish_reason' → provider_internal (HOU-1156)", () => {
+  const err = classifyProviderError({
+    provider: "openrouter",
+    model: "openrouter/free",
+    message: "Stream ended without finish_reason",
+  });
+  expect(err.kind).toBe("provider_internal");
+});
+
+test("Google gRPC UNAVAILABLE overload → provider_internal with the embedded 503 (HOU-1156)", () => {
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.5-flash",
+    message:
+      'got status: UNAVAILABLE. {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}',
+  });
+  expect(err.kind).toBe("provider_internal");
+  if (err.kind === "provider_internal") expect(err.http_status).toBe(503);
+});
+
+test("Google double-encoded 429 body → rate_limited via the embedded code (HOU-1156)", () => {
+  // The status lives ONLY inside the escaped inner JSON: `\"code\": 429`.
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3-flash-preview",
+    message:
+      '{"error":{"message":"{\\n  \\"error\\": {\\n    \\"code\\": 429,\\n    \\"message\\": \\"Resource has been exhausted (e.g. check quota).\\",\\n    \\"status\\": \\"RESOURCE_EXHAUSTED\\"\\n  }\\n}"}}',
+  });
+  expect(err.kind).toBe("rate_limited");
+});
+
+test("Google billing dunning denial → quota_exhausted, not unknown (HOU-1156)", () => {
+  // 403 whose body names a billing-delinquency ("dunning") decision: paying,
+  // not reconnecting, is the fix.
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.5-flash",
+    message:
+      '{"error":{"message":"{\\n  \\"error\\": {\\n    \\"code\\": 403,\\n    \\"message\\": \\"Lightning dunning decision is deny for project: projects/000000000000\\",\\n    \\"status\\": \\"PERMISSION_DENIED\\"\\n  }\\n}"}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
+test("opencode RegionError → model_unavailable / region_restricted (HOU-1156)", () => {
+  // The credential is fine and nothing resets: only the MODEL needs a region
+  // opt-in, so the switch-model card is the honest surface.
+  const err = classifyProviderError({
+    provider: "opencode-go",
+    model: "deepseek-v4-flash",
+    message:
+      '403: {"type":"RegionError","message":"The latest version of this model is only available hosted in China and requires explicit opt in: https://opencode.ai/workspace"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.reason).toBe("region_restricted");
+});
+
+test("embedded code extraction stays out of 1xx-3xx (HOU-1156)", () => {
+  // A stray non-HTTP application code must never veto the auth branch.
+  expect(extractHttpStatus('{"code": 200, "message": "ok-ish"}')).toBeNull();
+  expect(extractHttpStatus('{"error":{"code":503}}')).toBe(503);
+  expect(extractHttpStatus('{"code": "invalid_api_key"}')).toBeNull();
+});
+
+test("Anthropic consumer-terms 400 stays unknown with the actionable excerpt (HOU-1156)", () => {
+  // No taxonomy kind fits (nothing to retry, reconnect, or pay for) — the
+  // provider's own sentence IS the remedy, and the unknown card now shows it.
+  const message =
+    "API Error: 400 We've updated our Consumer Terms and Privacy Policy. You'll need to accept them in claude.ai with the email in /status to continue.";
+  const err = classifyProviderError({
+    provider: "anthropic",
+    model: null,
+    message,
+  });
+  expect(err.kind).toBe("unknown");
+  if (err.kind === "unknown") expect(err.raw_excerpt).toBe(message);
+});

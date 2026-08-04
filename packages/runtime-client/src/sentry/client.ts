@@ -68,6 +68,21 @@ function redactCredentials(message: string): string {
 const NODE_PROCESS_WARNING = /^\(node:\d+\)/;
 
 /**
+ * The stable line `logProviderError` (runtime `ai/provider-error-log.ts`)
+ * emits for every classified provider failure. Provider and kind are enough to
+ * name a family; anything finer (model, the verbatim text) is unbounded
+ * cardinality and stays in the message.
+ */
+const PROVIDER_ERROR_LINE = /^\[provider_error\] provider=(\S+) .*?kind=(\S+)/;
+
+function providerErrorFingerprint(
+  message: string,
+): { fingerprint: string[] } | null {
+  const m = PROVIDER_ERROR_LINE.exec(message);
+  return m ? { fingerprint: ["provider_error", m[1] ?? "", m[2] ?? ""] } : null;
+}
+
+/**
  * Plain fetch transport — the one path that works identically on Node 22
  * (pods, self-host, dev) and inside the Bun-compiled sidecar. The heavier
  * `@sentry/node` SDK is deliberately NOT used: its OpenTelemetry require-hooks
@@ -216,6 +231,14 @@ export function createEngineSentry(
             scope.captureEvent({
               message,
               level: "error",
+              // Grouping: bare-string events would otherwise group on the
+              // synthetic thread stack, which is identical for every line a
+              // shared log helper emits — 90 days of `[provider_error]` lines
+              // (Codex WebSocket drops, Gemini 503s, billing denials, …)
+              // collapsed into ONE Sentry issue titled by whichever message
+              // came first (HOU-1156). Fingerprint those lines by
+              // (provider, kind) so each family is its own countable issue.
+              ...(providerErrorFingerprint(message) ?? {}),
               threads: {
                 values: [
                   {

@@ -104,6 +104,27 @@ describe("createEngineSentry", () => {
     expect(frames[frames.length - 1]?.filename).toMatch(/client\.test\.ts$/);
   });
 
+  it("captureLog: [provider_error] lines fingerprint by (provider, kind)", async () => {
+    // Without this, every provider_error line groups on the identical
+    // synthetic thread stack at the log helper and Sentry shows ONE issue for
+    // every family (HOU-1156).
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", [
+      "[provider_error] provider=openai-codex model=gpt-5.5 status=? kind=unknown :: WebSocket closed 1006",
+    ]);
+    sentry.captureLog("ERROR", ["a non-provider failure"]);
+    await sentry.flush();
+
+    expect(events).toHaveLength(2);
+    expect(events[0]?.fingerprint).toEqual([
+      "provider_error",
+      "openai-codex",
+      "unknown",
+    ]);
+    // Everything else keeps default grouping.
+    expect(events[1]?.fingerprint).toBeUndefined();
+  });
+
   it("captureLog: Node process warnings via console.error stay breadcrumbs", async () => {
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", [

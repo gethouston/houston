@@ -128,6 +128,12 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // for integrator "vscode-chat". Available models: […]` — same plan-doesn't-
   // serve-this-model failure as its older `model_not_supported` code (HOU-977).
   "requested model is not available",
+  // opencode.ai's region gate: 403 `{"type":"RegionError","message":"The
+  // latest version of this model is only available hosted in China and
+  // requires explicit opt in: <url>"}` — the credential is fine; the MODEL
+  // needs a region opt-in, so the switch-model card is the honest one
+  // (HOU-1156). The type name carries the `region_restricted` reason.
+  "regionerror",
 ];
 
 /**
@@ -165,6 +171,10 @@ const INSUFFICIENT_BALANCE_PATTERNS = [
   "out of credits",
   // NVIDIA NIM: "Cloud credits expired - Please contact NVIDIA representatives".
   "credits expired",
+  // Google Cloud's billing-delinquency denial: 403 `"Lightning dunning
+  // decision is deny for project: projects/…"` — the project's billing is past
+  // due, so paying (not reconnecting) is the fix (HOU-1156).
+  "dunning decision is deny",
 ];
 
 /**
@@ -322,7 +332,7 @@ function classify(input: ProviderErrorInput): ProviderError {
       kind: "model_unavailable",
       provider,
       model,
-      reason: "unknown",
+      reason: modelUnavailableReason(lower),
       // Offer a concrete switch target only when we know one AND it isn't the
       // failing model itself (a base Copilot model never reports unavailable).
       suggested_fallback:
@@ -418,7 +428,19 @@ function isServerError(lower: string, status: number | null): boolean {
     // Deliberately NOT a bare `finish_reason:` match: `content_filter` (a
     // policy refusal, not an outage) must keep falling through to `unknown`.
     lower.includes("finish_reason: error") ||
-    lower.includes("finish_reason: network_error")
+    lower.includes("finish_reason: network_error") ||
+    // OpenRouter when the upstream closes the stream without ever sending a
+    // finish_reason — the same mid-generation upstream death as
+    // `finish_reason: error` above (HOU-930 family), flattened by pi-ai with
+    // no status and no body (HOU-1156).
+    lower.includes("stream ended without finish_reason") ||
+    // Google (Gemini) overload arrives as a gRPC-style prefix with the real
+    // status buried in nested JSON: `got status: UNAVAILABLE. {"error":
+    // {"code":503,"message":"This model is currently experiencing high
+    // demand …"}}`. The embedded `"code"` extractor usually recovers the 503;
+    // these keep the verdict when the body is truncated (HOU-1156).
+    lower.includes("got status: unavailable") ||
+    lower.includes("experiencing high demand")
   );
 }
 
@@ -431,6 +453,12 @@ function isNetwork(lower: string): boolean {
     lower.includes("etimedout") ||
     lower.includes("eai_again") ||
     lower.includes("socket hang up") ||
+    // Codex rides a WebSocket to the ChatGPT backend; pi-ai flattens an
+    // abnormal mid-turn drop to `WebSocket closed 1006` — no close frame, the
+    // transport died (sleep, flaky Wi-Fi, a server-side hang-up). Transient;
+    // retry helps. This was the single largest unclassified card in
+    // production (HOU-1156: 584 events / 137 users in 90 days).
+    lower.includes("websocket closed") ||
     lower.includes("network error") ||
     lower.includes("connection refused") ||
     lower.includes("connection reset")
@@ -439,6 +467,19 @@ function isNetwork(lower: string): boolean {
 
 function isModelUnavailable(lower: string): boolean {
   return MODEL_UNAVAILABLE_PATTERNS.some((p) => lower.includes(p));
+}
+
+/**
+ * The card copy keys off the message either way; the tag exists for the
+ * frontend union. Only region gating is identifiable from real payloads today
+ * (opencode.ai's RegionError / "hosted in China" opt-in body).
+ */
+function modelUnavailableReason(
+  lower: string,
+): "region_restricted" | "unknown" {
+  return lower.includes("regionerror") || lower.includes("hosted in china")
+    ? "region_restricted"
+    : "unknown";
 }
 
 function isContextOverflow(message: string): boolean {
@@ -508,6 +549,14 @@ export function extractHttpStatus(message: string): number | null {
     const n = Number(labelled[1]);
     if (n >= 100 && n <= 599) return n;
   }
+  // Some providers carry the status ONLY as a JSON `"code"` field — Google's
+  // nested `{"error":{"code":503,…}}`, often double-encoded so the quote
+  // arrives escaped (`\"code\": 503`). Last resort, and restricted to 4xx/5xx:
+  // a 3-digit `"code"` in that range is an HTTP status in every payload we
+  // have seen, while accepting 1xx–3xx would let a stray application code veto
+  // the auth branch's known-non-auth-status check (HOU-1156).
+  const embedded = message.match(/"code"\s*:\s*"?([45]\d{2})\b/);
+  if (embedded) return Number(embedded[1]);
   return null;
 }
 
