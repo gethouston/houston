@@ -73,21 +73,21 @@ export async function googleDesktopSession(
 }
 
 /**
- * Microsoft: loopback tokens → `signInWithIdp` → SignInOutcome (provider
- * "microsoft.com"). Returns `null` when the loopback authorize was benignly
- * cancelled.
+ * Microsoft: GCIP-brokered loopback (`createAuthUri` → loopback → GCIP redeems
+ * the code server-side) → `signInWithIdpSession` → SignInOutcome (provider
+ * "microsoft.com"). Brokered because neither Entra nor GCIP accepts a
+ * client-side Microsoft token exchange (see microsoft-authorize.ts). Returns
+ * `null` when the authorize was benignly cancelled.
  */
 export async function microsoftDesktopSession(
   opts?: LoopbackAuthorizeOptions,
 ): Promise<SignInOutcome | null> {
   const authorized = await authorizeMicrosoftDesktop(opts);
   if (authorized === null) return null; // benign cancel
-  const { idToken, accessToken } = authorized;
-  const result = await signInWithIdp({
+  const result = await signInWithIdpSession({
     apiKey: identityConfig.apiKey,
-    providerId: "microsoft.com",
-    idToken,
-    accessToken,
+    requestUri: authorized.requestUri,
+    sessionId: authorized.sessionId,
   });
   return {
     session: sessionFromIdp(await withProfileBackfill(result), "microsoft.com"),

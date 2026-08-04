@@ -83,13 +83,14 @@ now lives in git).
   client (PKCE) with the `127.0.0.1` loopback ports as authorized redirect URIs; and an
   Azure app registration for the `microsoft.com` provider whose redirect includes those
   loopback ports (public PKCE client, no secret).
-  **CONFIRMED LIVE (2026-07-16):** the Azure app (`78465f4b-…`) has the GCIP handler
-  registered but NOT the desktop loopback URIs — personal (MSA) accounts fail after the
-  account picker with "We're unable to complete your request / invalid_request:
-  redirect_uri is not valid" on `login.live.com`. Fix: Azure Portal → the app →
-  Authentication → **Mobile and desktop applications** → add all four exact URIs
-  `http://127.0.0.1:8975/auth/callback` … `:8978` (login.live.com matches exactly;
-  it does not do Entra's port-agnostic loopback matching).
+  **RESOLVED (2026-08-03, HOU-1112):** the loopback URIs were missing/misregistered
+  AND the direct client-side exchange turned out to be impossible for Microsoft
+  (AADSTS90023 origin policy in the webview; GCIP refuses externally obtained MS
+  tokens). Desktop Microsoft is now GCIP-BROKERED over the loopback; the Azure app
+  (`78465f4b-…`) needs the four `http://localhost:<8975-8978>/auth/callback` URIs
+  on its **Web** platform (login.live.com matches exactly; Entra's Web platform
+  only allows plain http for `localhost`). See `knowledge-base/auth.md` →
+  "Microsoft — desktop".
 - **[HIGH — coord] Gateway verifier.** The issuer/JWKS swap to Firebase is a `cloud`
   Go change + `cloud/INTEGRATION.md`; the gateway must accept Firebase tokens before or
   with the client cutover. The email-OTP `POST /v1/auth/email-otp/{start,verify}`

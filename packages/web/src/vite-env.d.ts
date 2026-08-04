@@ -11,7 +11,6 @@ declare const __FIREBASE_AUTH_DOMAIN__: string;
 declare const __FIREBASE_PROJECT_ID__: string;
 declare const __GOOGLE_DESKTOP_CLIENT_ID__: string;
 declare const __GOOGLE_DESKTOP_CLIENT_SECRET__: string;
-declare const __MICROSOFT_DESKTOP_CLIENT_ID__: string;
 declare const __HOUSTON_AUTH_STORAGE_MODE__: string;
 declare const __HOUSTON_AUTH_STORAGE_SCOPE__: string;
 declare const __SENTRY_DSN__: string;

@@ -24,6 +24,7 @@ import {
   googleDesktopSession,
   microsoftDesktopSession,
 } from "./identity/desktop-signin";
+import { identityLog } from "./identity/log";
 import { osIsTauri } from "./os-bridge";
 import { applyExternalSession, cacheSession } from "./session-cache";
 import {
@@ -61,6 +62,16 @@ async function guardAuthCall(
     const err = isIdentityError(e)
       ? e
       : new IdentityError("unknown", { cause: e });
+    // The UI collapses codes into a handful of copy buckets, so without this
+    // line the failure's identity (rawCode / HTTP status) exists NOWHERE — a
+    // sign-in bug then has zero diagnostics (HOU-1112 was invisible for weeks).
+    identityLog(
+      "error",
+      `sign-in failed: ${err.code}${err.rawCode ? ` (${err.rawCode})` : ""}${
+        err.httpStatus ? ` [http ${err.httpStatus}]` : ""
+      }`,
+      "auth",
+    );
     if (opts.emit ?? true) emitAuthError(err.code);
     throw err;
   }

@@ -1,4 +1,6 @@
-// Desktop loopback + PKCE authorize driver, shared by Google & Microsoft.
+// Desktop loopback + PKCE authorize driver (Google). Microsoft is GCIP-
+// BROKERED instead (brokered-loopback.ts): neither Entra nor GCIP accepts a
+// client-side Microsoft token exchange, so only Google runs this PKCE path.
 //
 // One call = one sign-in attempt: mint PKCE + CSRF state, ask the Rust shell to
 // bind a one-shot loopback listener (`osStartOauthLoopback` → redirect_uri),
@@ -11,9 +13,9 @@
 // Starting a new authorize CANCELS any previous pending one (benign `null`); the
 // timeout and `cancelPendingAuthorize()` also resolve `null`, so an abandoned
 // browser tab never produces a minutes-later error toast. Only a genuine
-// callback error rejects typed. The caller (google-authorize /
-// microsoft-authorize) then redeems `code` + `codeVerifier` at the provider's
-// token endpoint; a `null` here means "benign cancel — no session, no error".
+// callback error rejects typed. The caller (google-authorize) then redeems
+// `code` + `codeVerifier` at the provider's token endpoint; a `null` here
+// means "benign cancel — no session, no error".
 
 import {
   type OauthLoopbackStart,
@@ -117,8 +119,8 @@ export async function runLoopbackAuthorize(
     // Already typed (the pre-browser deadline fired) — keep the specific code.
     if (isIdentityError(e)) throw e;
     // The loopback bind failed (all ports busy). We must NOT fall back to a
-    // `houston://auth-callback` custom-scheme redirect_uri: Google/Microsoft
-    // reject custom-scheme redirects on direct OAuth (guaranteed
+    // `houston://auth-callback` custom-scheme redirect_uri: Google rejects
+    // custom-scheme redirects on direct OAuth (guaranteed
     // redirect_uri_mismatch). Surface a typed error for the generic retry UI
     // instead of letting a raw invoke rejection propagate untyped.
     throw new IdentityError("unknown", {
@@ -136,6 +138,12 @@ export async function runLoopbackAuthorize(
     );
     return null;
   }
+  if (started.status === "portBusy") {
+    // Only produced for an `exactPort` request, which this PKCE flow never
+    // makes (it binds the first free candidate). Treat a stray one as a bind
+    // failure rather than proceeding without a listener.
+    throw new IdentityError("unknown", { rawCode: "loopback_bind_failed" });
+  }
   const { redirectUri, attemptId } = started;
 
   const url = new URL(params.authorizeBase);
@@ -147,9 +155,8 @@ export async function runLoopbackAuthorize(
   q.set("code_challenge", codeChallenge);
   q.set("code_challenge_method", "S256");
   q.set("state", state);
-  // Provider-specific authorize params (e.g. Google's `access_type=offline`,
-  // Microsoft's `prompt=select_account`) come from the caller — nothing
-  // Google-only rides on every provider's URL.
+  // Provider-specific authorize params (e.g. Google's `access_type=offline`)
+  // come from the caller.
   for (const [k, v] of Object.entries(params.extraParams ?? {})) q.set(k, v);
 
   const code = await awaitLoopbackCallback({

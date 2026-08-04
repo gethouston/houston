@@ -84,8 +84,12 @@ export function osOpenUrl(url: string): Promise<void> {
 export type OauthLoopbackStart =
   | {
       status: "listening";
-      /** `http://127.0.0.1:<port>/auth/callback` — the provider's redirect target. */
+      /** `http://127.0.0.1:<port>/auth/callback` — the redirect target for the
+       *  loopback+PKCE flow (the GCIP-brokered flow derives its `localhost`
+       *  continueUri from `port` instead). */
       redirectUri: string;
+      /** The bound loopback port; both `127.0.0.1` and `::1` listen on it. */
+      port: number;
       /** Identifies this attempt's listener. `osCancelOauthLoopback` only acts
        *  when it carries this id, so a late cancel can never free a NEWER
        *  attempt's port. */
@@ -96,6 +100,12 @@ export type OauthLoopbackStart =
        *  invocation bound nothing and released anything it held. The caller
        *  treats it as a benign supersession — no error, no session. */
       status: "superseded";
+    }
+  | {
+      /** The requested `exactPort` is held by a foreign process (only returned
+       *  when `exactPort` was given). The GCIP-brokered caller re-mints its
+       *  authorize URL for the next candidate port and asks again. */
+      status: "portBusy";
     };
 
 /** Start a one-shot localhost listener for the OAuth sign-in redirect. Keeps
@@ -106,13 +116,18 @@ export type OauthLoopbackStart =
  * old redirect can no longer consume the port this sign-in is waiting on.
  * Resolves `{ status: "superseded" }` when a NEWER click already claimed the
  * loopback (concurrent starts are ordered by when the user clicked, not by which
- * invocation finishes binding first). Desktop only; web clients have no local
- * listener and use the firebase-js-sdk popup instead. */
+ * invocation finishes binding first). `exactPort` binds that one port or
+ * resolves `{ status: "portBusy" }` — the GCIP-brokered flow mints its
+ * authorize URL for a single port up front, so it cannot accept "some other
+ * free port". Desktop only; web clients have no local listener and use the
+ * firebase-js-sdk popup instead. */
 export function osStartOauthLoopback(
   expectedState: string,
+  exactPort?: number,
 ): Promise<OauthLoopbackStart> {
   return invoke<OauthLoopbackStart>("start_oauth_loopback", {
     expected_state: expectedState,
+    ...(exactPort === undefined ? {} : { exact_port: exactPort }),
   });
 }
 

@@ -43,7 +43,6 @@
 #   FIREBASE_PROJECT_ID                — Firebase / GCP Identity Platform project id
 #   GOOGLE_DESKTOP_CLIENT_ID           — Google "Desktop app" OAuth client id (loopback + PKCE)
 #   GOOGLE_DESKTOP_CLIENT_SECRET       — Google installed-app secret (non-confidential; baked in)
-#   MICROSOFT_DESKTOP_CLIENT_ID        — Microsoft/Entra public client id (PKCE, no secret)
 #   HOSTED_ENGINE_URL                  — (CLOUD channel only, tag `cloud-v*`) Base URL of the
 #                                        managed Houston Cloud gateway the desktop app connects to.
 #                                        Baked in as VITE_HOSTED_ENGINE_URL so cloud users just sign
@@ -747,7 +746,6 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
           GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
-          MICROSOFT_DESKTOP_CLIENT_ID: ${{ secrets.MICROSOFT_DESKTOP_CLIENT_ID }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -1454,7 +1452,6 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
           GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
-          MICROSOFT_DESKTOP_CLIENT_ID: ${{ secrets.MICROSOFT_DESKTOP_CLIENT_ID }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -1738,7 +1735,6 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
           GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
-          MICROSOFT_DESKTOP_CLIENT_ID: ${{ secrets.MICROSOFT_DESKTOP_CLIENT_ID }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -1907,7 +1903,7 @@ jobs:
       # the app's own GCP Identity Platform (Firebase Auth) sign-in — the web
       # bundle authenticates with firebase-js-sdk's popup, so FIREBASE_API_KEY is
       # load-bearing and must be present (it has no build-time default). The
-      # desktop-only OAuth vars (GOOGLE_DESKTOP_*, MICROSOFT_DESKTOP_CLIENT_ID)
+      # desktop-only OAuth vars (GOOGLE_DESKTOP_*)
       # are the loopback/PKCE flow that never runs in a browser tab, so they are
       # deliberately NOT baked here (vite.config.ts defaults them to ""). POSTHOG_*
       # /SENTRY_DSN power the shared analytics + crash reporting. The deploy

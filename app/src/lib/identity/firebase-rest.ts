@@ -119,7 +119,8 @@ export async function signInWithIdp(params: {
 
 /**
  * Session-based federated sign-in completion, the second half of the
- * GCIP-BROKERED flow (Apple): `createAuthUri` minted the authorize URL and a
+ * GCIP-BROKERED flows (Apple via the gateway deep-link bridge, Microsoft via
+ * the loopback): `createAuthUri` minted the authorize URL and a
  * `sessionId`; after the provider bounced through GCIP's handler back to the
  * loopback `continueUri`, the FULL callback URL goes back as `requestUri` and
  * GCIP redeems the pair itself — no provider token exchange on the client, no
@@ -155,11 +156,12 @@ export async function signInWithIdpSession(params: {
 
 /**
  * Mint a provider authorize URL through GCIP (`accounts:createAuthUri`) for the
- * brokered desktop flow: GCIP builds the URL (its handler is the redirect the
- * provider is registered with) and returns the `sessionId` that later pairs
- * with the callback in {@link signInWithIdpSession}. `continueUri` is where
- * GCIP's handler bounces the browser after the provider consents — the desktop
- * loopback (must be an authorized domain on the identity project).
+ * brokered desktop flows: GCIP builds the URL, carrying its own CSRF `state`,
+ * and returns the `sessionId` that later pairs with the callback in
+ * {@link signInWithIdpSession}. `continueUri` is passed to the provider
+ * VERBATIM as `redirect_uri` (GCIP does NOT bounce through its `/__/auth`
+ * handler), so it must be a redirect URI registered on the provider's app —
+ * Apple's gateway bridge, or Microsoft's `http://localhost:<port>` loopback.
  */
 export async function createAuthUri(params: {
   apiKey: string;
