@@ -1,0 +1,101 @@
+{# ── Certificate card plumbing ────────────────────────────────────────────────
+   Everything the claim card needs that is NEITHER the flow NOR any copy: the
+   request budget, the live region every outcome lands in, and the busy state of
+   a submit button. Element-parameterised and string-free, so the wizard
+   (certificates/claim-wizard.njk) owns the flow and none of this plumbing.
+
+   Handed over on `window.certCardUi`, loaded first. The site's other multi-file
+   scripts (assets/hero-demo*.js) share state the same way. #}
+<script>
+window.certCardUi = (function () {
+  // Error codes we are willing to echo into the console. The website cannot
+  // constrain what the gateway puts in a payload, and an error body that
+  // included the submitted address would otherwise be logged client-side.
+  var ERROR_CODE_RE = /^[a-z0-9_]{1,64}$/;
+
+  // A gateway that accepts the socket and then never answers would otherwise
+  // leave the button disabled and spinning forever, with no message and no way
+  // back. AbortSignal.timeout is missing on older Safari, and asking for it
+  // there would throw on the way into fetch, so we degrade to "no budget".
+  function budget(ms) {
+    return (window.AbortSignal && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+  }
+
+  function span(text, className) {
+    var node = document.createElement('span');
+    if (className) node.className = className;
+    node.textContent = text;
+    return node;
+  }
+
+  // Text only, built with DOM nodes rather than innerHTML: no page copy or API
+  // value is ever parsed as markup.
+  //
+  // A polite live region only announces content INSERTED while the region is
+  // already in the accessibility tree. Filling it while it is still `hidden`
+  // (display:none) and un-hiding afterwards is silent in NVDA, JAWS and
+  // VoiceOver — so the empty region is un-hidden first and filled a tick later.
+  // setTimeout, not requestAnimationFrame: rAF does not run in a background
+  // tab, and a message that never arrives is worse than one that arrives late.
+  function announce(target, kind, nodes) {
+    target.textContent = '';
+    target.className = 'cert-msg' + (kind ? ' is-' + kind : '');
+    target.hidden = false;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < nodes.length; i++) frag.appendChild(nodes[i]);
+    window.setTimeout(function () { target.appendChild(frag); }, 50);
+  }
+
+  function clear(target) {
+    target.hidden = true;
+    target.textContent = '';
+  }
+
+  // Optional bold title over an optional body: the shape every outcome uses.
+  function message(target, kind, title, body) {
+    var nodes = [];
+    if (title) nodes.push(span(title, 'cert-msg-title'));
+    if (body) nodes.push(span(body, ''));
+    announce(target, kind, nodes);
+  }
+
+  function busy(button, spinner, label, on, idle, working) {
+    button.disabled = on;
+    spinner.hidden = !on;
+    label.textContent = on ? working : idle;
+  }
+
+  // One shape for every gateway answer, including a body that is not JSON:
+  // { status, json }. Rejects only when the request itself never landed.
+  function postJson(url, body, ms) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: budget(ms)
+    }).then(function (res) {
+      return res.json()
+        .catch(function () { return null; })
+        .then(function (json) { return { status: res.status, json: json }; });
+    });
+  }
+
+  // Status and an allowlisted error code only: the gateway's payload is not
+  // ours to echo into the console.
+  function warn(what, status, json) {
+    var reason = json && ERROR_CODE_RE.test(String(json.error)) ? String(json.error) : '';
+    console.warn('[certificates] ' + what + ' returned ' + status + (reason ? ' (' + reason + ')' : ''));
+  }
+
+  return {
+    budget: budget,
+    span: span,
+    announce: announce,
+    clear: clear,
+    message: message,
+    busy: busy,
+    postJson: postJson,
+    warn: warn
+  };
+})();
+</script>

@@ -1,0 +1,38 @@
+---
+lang: en
+---
+{% extends "subpage.njk" %}
+{% block title %}Get your Houston certificate{% endblock %}
+{% block meta %}
+<meta name="description" content="Attended a Houston workshop or bootcamp? Enter the email you registered with and get your certificate of completion.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai/certificates/">
+<meta property="og:title" content="Get your Houston certificate">
+<meta property="og:description" content="Attended a Houston workshop or bootcamp? Enter the email you registered with and get your certificate of completion.">
+<meta property="og:site_name" content="Houston">
+<meta name="twitter:card" content="summary_large_image">
+{% endblock %}
+{% block subpageStyles %}
+<link rel="stylesheet" href="/assets/css/certificates.css">
+{% endblock %}
+{% block subpageContent %}
+{% from "certificates/claim-form.njk" import claimForm %}
+{% set c = certCopy.en %}
+{% set events = certificates.events or [] %}
+<div class="cert-wrap">
+  <p class="cert-eyebrow">{{ c.eyebrow }}</p>
+  <h1 class="cert-title">{{ c.title }}</h1>
+  <p class="cert-lead">{{ c.lead }}</p>
+  {# lang="es" so assistive tech does not read the Spanish echo with English
+     phonetics inside this lang="en" document. #}
+  <span class="cert-alt-lang" lang="es">{{ certCopy.es.lead }}</span>
+
+  {{ claimForm(c, events, "", certSupportEmail) }}
+
+  <p class="cert-foot">
+    {{ c.verifyPrompt }}
+    <a href="/certificates/verify/">{{ c.verifyLink }}</a>.
+  </p>
+</div>
+{% include "certificates/scripts.njk" %}
+{% endblock %}

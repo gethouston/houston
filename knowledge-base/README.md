@@ -11,6 +11,7 @@ Load on demand.
 | [design-system.md](design-system.md) | Current futuristic theme — tokens, typography, components, animation (deep narrative; `/DESIGN.md` is the compact spec) |
 | [design-system-history.md](design-system-history.md) | _HISTORICAL_ — superseded pre-futuristic monochrome ("ChatGPT-like") doctrine, kept for archaeology |
 | [website-landing.md](website-landing.md) | The landing's black-and-white system — section rhythm, section-aware nav, component language, motion stack |
+| [website-certificates.md](website-certificates.md) | Bootcamp certificates — gateway contract, build-time render pipeline (satori/resvg), `/c/<CODE>` pages, share + LinkedIn URLs, operator ritual for a new event |
 | [client-architecture.md](client-architecture.md) | Three-surface client contract — SDK / tokens / inventory / parity, change-flow procedures |
 | [files-first.md](files-first.md) | `.houston/` layout, atomic writes, schemas, AI-native reactivity |
 | [files-ui.md](files-ui.md) | Files tab — FilesBrowser component map, query/host data flow, upload caps + batching, shared byte cache, view scoping |

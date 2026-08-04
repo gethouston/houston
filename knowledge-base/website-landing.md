@@ -124,6 +124,16 @@ the menu not the modal. The Country field's hidden input dispatches a
 synthetic bubbling `input` event on select — without it the submit button
 never enables.
 
+
+## Certificates (same system, rendered at build time)
+
+The bootcamp certificate art extends this black/white system off the page and
+into PNGs: the printable certificate is white ground + hairline frame + one
+solid ink bar, the social card is the same ink ground as `.section.is-dark`, and
+both use the site's own helmet mark and Hanken Grotesk — no color, no second
+language of forms. It is generated with satori + resvg at build time, not styled
+in CSS, so the rules live elsewhere: see `website-certificates.md`.
+
 ## History note
 
 The session that produced this also trialled and DISCARDED: Oro-style poster

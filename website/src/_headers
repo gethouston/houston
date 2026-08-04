@@ -19,6 +19,19 @@
 /slack/*
   X-Robots-Tag: noindex, nofollow
 
+# Certificates are personal artefacts: shareable by their owner, never a search
+# result. The pages carry meta robots=noindex; a header is the only way to say
+# the same about the PNGs, which show the attendee's full name as pixels.
+/c/*
+  X-Robots-Tag: noindex, nofollow
+
+# Certificate images are NOT content-addressed — /c/<CODE>.png keeps its URL
+# when the certificate is re-rendered (a corrected name, a template change).
+# `immutable` would therefore pin a wrong name in every cache for a year, so
+# this is a short TTL plus revalidation, not a fingerprinted-asset policy.
+/c/*.png
+  Cache-Control: public, max-age=3600, must-revalidate
+
 /*.html
   Cache-Control: public, max-age=60, must-revalidate
 

@@ -1,0 +1,142 @@
+{# ── Claim wizard ─────────────────────────────────────────────────────────────
+   ONE card for both claim surfaces: the entry page (/certificates/, visitor
+   picks the event) and a per-event page (/certificates/<slug>/, event locked).
+   The only difference is how the event slug is supplied, so the markup, the
+   ids and the script (certificates/scripts.njk) stay identical.
+
+   Two steps plus a result, swapped client-side inside this one card:
+     1. email  (+ event when there is a choice)   → POST /v1/certs/claim
+     2. name   (prefilled from the claim)          → POST /v1/certs/name
+     done      code, the way to the certificate, the share hint
+
+   PROGRESSIVE ENHANCEMENT. Step 1 is the markup default and the later steps
+   ship `hidden` with their buttons `disabled`, so with no JS the card is
+   exactly the plain email form it has always been — nothing half-wired is
+   reachable, and the form's implicit submission can only ever hit the button
+   of the step on screen.
+
+   Arguments:
+     c            copy dict for this page's language (certCopy.en / certCopy.es)
+     events       published events (may be empty when the export is not wired)
+     lockedSlug   event slug to submit, or "" to let the visitor choose
+     supportEmail address shown on every failure path
+
+   Localised strings the script needs travel on data-* attributes so the JS
+   holds no copy of its own.
+
+   NO CONTROL IN THIS FORM CARRIES A `name`. The form has no action and no
+   method: if the script never attaches (JS off, inline script blocked, script
+   error) the browser falls back to a GET at this very URL, and a named email
+   field would put the attendee's address into the address bar, the history,
+   the hosting access log and — once JS is merely late rather than absent —
+   into the PostHog and GA4 pageview URL. Without names that fallback submits
+   nothing. Autofill is driven by `autocomplete`, and the script reads by id,
+   so nothing is lost. #}
+
+{% macro claimForm(c, events, lockedSlug, supportEmail) %}
+{% set emailHint = (not lockedSlug) and (events | length == 0) %}
+<form class="cert-card" id="certClaimForm" novalidate
+  data-msg-invalid-email="{{ c.invalidEmail }}"
+  data-msg-missing-email="{{ c.missingEmail }}"
+  data-msg-missing-event="{{ c.missingEvent }}"
+  data-msg-not-found-title="{{ c.notFoundTitle }}"
+  data-msg-not-found="{{ c.notFound }}"
+  data-msg-rate-limited="{{ c.rateLimited }}"
+  data-msg-network="{{ c.networkError }}"
+  data-msg-server="{{ c.serverError }}"
+  data-msg-name-required="{{ c.nameRequired }}"
+  data-msg-name-too-long="{{ c.nameTooLong }}"
+  data-msg-name-rejected="{{ c.nameRejected }}"
+  data-msg-name-gone="{{ c.nameGone }}"
+  data-msg-name-rate-limited="{{ c.nameRateLimited }}"
+  data-msg-name-network="{{ c.nameNetwork }}"
+  data-msg-name-server="{{ c.nameServer }}"
+  data-msg-done-body="{{ c.doneBody }}"
+  data-msg-regenerating="{{ c.regenerating }}"
+  data-label-verify="{{ c.verifyLink }}"
+  data-label-submit="{{ c.submit }}"
+  data-label-submitting="{{ c.submitting }}"
+  data-label-continue="{{ c.nameContinue }}"
+  data-label-saving="{{ c.nameSaving }}">
+
+  {# ── Step 1 — who are you? (the no-JS default) ───────────────────────── #}
+  <div class="cert-step" id="certStepEmail">
+    {% if lockedSlug %}
+    {# Event locked by the page itself. #}
+    <input type="hidden" id="certEvent" value="{{ lockedSlug }}">
+    {% elif events | length == 1 %}
+    {# Exactly one published event: there is no choice to make, so we do not ask
+       one. The hidden field keeps the submit path identical. #}
+    <input type="hidden" id="certEvent" value="{{ events[0].slug }}">
+    {% elif events | length > 1 %}
+    <div class="cert-field">
+      <label class="cert-field-label" for="certEvent">{{ c.eventLabel }}</label>
+      <span class="cert-select-wrap">
+        <select class="cert-select" id="certEvent" required>
+          <option value="" selected disabled>{{ c.eventPlaceholder }}</option>
+          {% for e in events %}
+          <option value="{{ e.slug }}">{{ e.title }}</option>
+          {% endfor %}
+        </select>
+      </span>
+    </div>
+    {% endif %}
+    <div class="cert-field">
+      <label class="cert-field-label" for="certEmail">{{ c.emailLabel }}</label>
+      <input class="cert-input" type="email" id="certEmail"
+        placeholder="{{ c.emailPlaceholder }}" autocomplete="email"
+        inputmode="email" spellcheck="false" required
+        {% if emailHint %}aria-describedby="certEmailHint"{% endif %}>
+      {% if emailHint %}
+      {# No published events in the build (export not configured yet). The claim
+         endpoint takes the email alone, so the visitor is never blocked by it. #}
+      <span class="cert-field-hint" id="certEmailHint">{{ c.noEvents }}</span>
+      {% endif %}
+    </div>
+    <button type="submit" class="btn btn-ink cert-submit" id="certClaimSubmit">
+      <span class="cert-spinner" id="certClaimSpinner" hidden></span>
+      <span id="certClaimLabel">{{ c.submit }}</span>
+    </button>
+    <div class="cert-msg" id="certClaimMsg" role="status" aria-live="polite" hidden></div>
+    <p class="cert-field-hint" id="certClaimSupport" hidden>
+      {{ c.supportLine }} <a href="mailto:{{ supportEmail }}">{{ supportEmail }}</a>
+    </p>
+  </div>
+
+  {# ── Step 2 — is this your name? ─────────────────────────────────────── #}
+  <div class="cert-step" id="certStepName" hidden>
+    {# tabindex="-1" so the script can move focus here on the step change: the
+       heading is what tells the visitor the search worked. It is not in the tab
+       order, so nobody ever lands on it by tabbing. #}
+    <h2 class="cert-step-title" id="certNameTitle" tabindex="-1">{{ c.nameStepTitle }}</h2>
+    <p class="cert-step-lead">{{ c.nameStepLead }}</p>
+    <div class="cert-field">
+      <label class="cert-field-label" for="certName">{{ c.nameLabel }}</label>
+      <input class="cert-input" type="text" id="certName" autocomplete="name"
+        maxlength="80" spellcheck="false" aria-describedby="certNameHint">
+      <span class="cert-field-hint" id="certNameHint">{{ c.nameHint }}</span>
+    </div>
+    <button type="submit" class="btn btn-ink cert-submit" id="certNameSubmit" disabled>
+      <span class="cert-spinner" id="certNameSpinner" hidden></span>
+      <span id="certNameLabel">{{ c.nameContinue }}</span>
+    </button>
+    <button type="button" class="cert-back" id="certBack" disabled>{{ c.nameBack }}</button>
+    <div class="cert-msg" id="certNameMsg" role="status" aria-live="polite" hidden></div>
+  </div>
+
+  {# ── Done — the code, and the way to the certificate ─────────────────── #}
+  <div class="cert-step" id="certStepDone" hidden>
+    <h2 class="cert-step-title" id="certDoneTitle" tabindex="-1">{{ c.doneTitle }}</h2>
+    <p class="cert-step-lead" id="certDoneBody"></p>
+    <span class="cert-code cert-done-code">
+      <span class="cert-code-label">{{ c.codeLabel }}</span><span id="certDoneCode"></span>
+    </span>
+    <a class="btn btn-ink cert-submit" id="certDoneLink" href="/certificates/verify/">
+      <span id="certDoneLinkLabel">{{ c.viewCertificate }}</span>
+      <span class="cert-done-arrow" aria-hidden="true">&rarr;</span>
+    </a>
+    <p class="cert-field-hint">{{ c.shareHint }}</p>
+    <div class="cert-msg" id="certDoneMsg" role="status" aria-live="polite" hidden></div>
+  </div>
+</form>
+{% endmacro %}

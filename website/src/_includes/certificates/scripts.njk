@@ -1,0 +1,9 @@
+{# ── Claim card behaviour ─────────────────────────────────────────────────────
+   The single entry point the claim pages include (/certificates/ and
+   /certificates/<slug>/). Order matters: the plumbing publishes
+   window.certCardUi, the wizard consumes it.
+
+   Both halves are progressive enhancement. The card renders and reads as a
+   plain email form with neither of them (certificates/claim-form.njk). #}
+{% include "certificates/card-ui.njk" %}
+{% include "certificates/claim-wizard.njk" %}

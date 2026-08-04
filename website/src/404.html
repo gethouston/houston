@@ -36,5 +36,55 @@ eleventyExcludeFromCollections: true
       <a href="/#download">Download Houston</a>
     </div>
   </main>
+  <script>
+    // A 404 on a certificate share link (/c/<CODE>) is never really "page not
+    // found" — it is a case-mangled link or a certificate issued since the last
+    // deploy. Both have an answer; the generic copy above has none.
+    (function () {
+      var match = /^\/c\/([a-zA-Z0-9-]+)((?:\.og)?\.png)?$/.exec(location.pathname);
+      if (!match) return;
+      var code = match[1].toUpperCase();
+
+      // 1. Codes get typed and pasted in lowercase, but /c/ is case-sensitive
+      //    on both Firebase Hosting and Cloudflare Pages. Retry in the
+      //    canonical form. This cannot loop and needs no flag to prove it: the
+      //    retry URL is already uppercase, so a second visit fails this test
+      //    and falls through. (A sessionStorage guard here used to make every
+      //    repeat visit to a working lowercase link dead-end on this page.)
+      if ("/c/" + code + (match[2] || "") !== location.pathname) {
+        location.replace("/c/" + code + (match[2] || "") + location.search + location.hash);
+        return;
+      }
+
+      // 2. The canonical URL really has no page. If the code is well formed,
+      //    the certificate probably exists and simply predates no deploy —
+      //    send them to the verifier, which resolves it live from the gateway.
+      if (!/^HOU-[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(code)) return;
+      var wrap = document.querySelector(".wrap");
+      var h1 = wrap.querySelector("h1");
+      var lead = wrap.querySelector("p");
+      var btn = wrap.querySelector(".btn");
+      var links = wrap.querySelector(".links");
+      h1.textContent = "We could not find that certificate page.";
+      lead.textContent =
+        "It may have been issued after our last update. Check the code against Houston's records — it takes a second.";
+      btn.textContent = "Verify this certificate";
+      btn.href = "/certificates/verify/?code=" + encodeURIComponent(code);
+      links.textContent = "";
+      var es = document.createElement("a");
+      es.href = "/certificates/verify/?code=" + encodeURIComponent(code);
+      es.lang = "es";
+      es.textContent = "Comprueba tu certificado";
+      links.appendChild(es);
+      var mine = document.createElement("a");
+      mine.href = "/certificates/";
+      mine.textContent = "Get your certificate";
+      links.appendChild(mine);
+      var home = document.createElement("a");
+      home.href = "/";
+      home.textContent = "Back to Houston";
+      links.appendChild(home);
+    })();
+  </script>
 </body>
 </html>

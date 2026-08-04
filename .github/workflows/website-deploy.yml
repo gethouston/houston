@@ -37,6 +37,11 @@ name: Website Deploy
 #                         Cloudflare Pages, which held the key in its dashboard).
 # Optional (committed defaults exist):
 #   SUPABASE_URL, WAITLIST_SHEET_ENDPOINT, POSTHOG_HOST
+#   CERTS_EXPORT_TOKEN  - bearer token for the gateway's /v1/certs/export
+#                         endpoint, read at build time to generate the
+#                         certificate pages and images. Deliberately NOT
+#                         guarded: the data layer warns and yields an empty
+#                         certificate set, so the rest of the site still ships.
 
 on:
   push:
@@ -91,6 +96,8 @@ jobs:
           WAITLIST_SHEET_ENDPOINT: ${{ secrets.WAITLIST_SHEET_ENDPOINT }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          CERTS_EXPORT_TOKEN: ${{ secrets.CERTS_EXPORT_TOKEN }}
+          CERTS_GATEWAY_URL: https://gateway.gethouston.ai
 
       - name: Auth to GCP
         uses: google-github-actions/auth@v2

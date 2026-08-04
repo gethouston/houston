@@ -1,0 +1,464 @@
+/*
+ * Certificates — the three attendee-facing page types, in the site's
+ * black-and-white editorial voice:
+ *   1. the share page   (/c/<CODE>)               .cert-share
+ *   2. the claim pages  (/certificates/, /certificates/<event>/)
+ *   3. the verify page  (/certificates/verify/)
+ *
+ * Palette, type, buttons (.btn/.btn-ink/.btn-outline) and the page frame come
+ * from site-tokens.css + landing.css + subpage.css. This file adds ONLY the
+ * certificate-specific objects and consumes custom properties exclusively —
+ * no literal colours, so the whole surface follows a token change.
+ */
+
+/* ── Shared page frame (narrower than prose: the artefact is the hero) ────── */
+.cert-wrap {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+.cert-wrap-wide {
+  width: min(880px, 100%);
+}
+.cert-eyebrow {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin-bottom: 16px;
+}
+.cert-title {
+  font-weight: 340;
+  font-size: clamp(30px, 4.4vw, 46px);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+}
+.cert-lead {
+  font-size: clamp(15.5px, 1.5vw, 18px);
+  line-height: 1.55;
+  color: var(--ink-muted);
+  margin-top: 16px;
+  max-width: 56ch;
+  text-wrap: pretty;
+}
+
+/* ── 1. Share page ────────────────────────────────────────────────────────── */
+
+/* The certificate itself, matted like a framed print. The mat is the panel
+   tone so the white artwork reads as an object on the page. */
+.cert-frame {
+  margin-top: clamp(28px, 4vw, 40px);
+  padding: clamp(10px, 1.6vw, 18px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: clamp(16px, 2vw, 22px);
+  box-shadow: 0 30px 60px -48px rgba(13, 13, 13, 0.35);
+}
+.cert-frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+/* Identity block under the frame. */
+.cert-meta {
+  margin-top: clamp(26px, 4vw, 36px);
+  text-align: center;
+}
+.cert-meta .cert-name {
+  font-weight: 500;
+  font-size: clamp(24px, 3.2vw, 34px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+}
+.cert-meta .cert-event {
+  margin-top: 10px;
+  font-size: clamp(15px, 1.6vw, 17px);
+  line-height: 1.5;
+  color: var(--ink-muted);
+  text-wrap: pretty;
+}
+.cert-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 18px;
+  padding: 7px 15px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  background: var(--card);
+}
+.cert-code .cert-code-label {
+  color: var(--ink-subtle);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+/* Action stack: one loud primary, then the quiet row. */
+.cert-actions {
+  margin-top: clamp(26px, 4vw, 34px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.cert-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.cert-row .btn {
+  flex: 0 1 auto;
+}
+/* Icon-led quiet buttons never shrink their glyph on a 360px phone. */
+.cert-row .btn svg {
+  width: 16px;
+  height: 16px;
+}
+.cert-share-label {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+/* Copy-link confirmation: the button states it, no toast infrastructure here. */
+.cert-copy.is-copied {
+  border-color: var(--ink-strong);
+  color: var(--ink-strong);
+}
+.cert-copy .cert-copy-done {
+  display: none;
+}
+.cert-copy.is-copied .cert-copy-idle {
+  display: none;
+}
+.cert-copy.is-copied .cert-copy-done {
+  display: inline;
+}
+
+.cert-foot {
+  margin-top: clamp(34px, 5vw, 48px);
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-subtle);
+}
+.cert-foot a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+.cert-foot a:hover {
+  color: var(--ink-strong);
+  text-decoration-color: var(--ink-strong);
+}
+
+/* ── 2 + 3. Form card (claim + verify share one object) ───────────────────── */
+.cert-card {
+  margin-top: clamp(28px, 4vw, 40px);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--panel-radius);
+  padding: clamp(26px, 4vw, 40px);
+  box-shadow: 0 30px 60px -48px rgba(13, 13, 13, 0.28);
+}
+.cert-field {
+  display: block;
+  margin-bottom: 18px;
+}
+.cert-field-label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  margin-bottom: 8px;
+}
+.cert-field-hint {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+  margin-top: 8px;
+}
+.cert-input,
+.cert-select {
+  width: 100%;
+  height: 50px;
+  padding: 0 15px;
+  font-family: var(--sans);
+  font-size: 16px; /* 16px keeps iOS Safari from zooming on focus */
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+.cert-input::placeholder {
+  color: var(--ink-subtle);
+}
+.cert-input:focus,
+.cert-select:focus {
+  outline: none;
+  border-color: var(--ink-strong);
+  box-shadow: 0 0 0 3px rgba(13, 13, 13, 0.07);
+}
+.cert-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+}
+/* The caret is a rotated border on the wrapper, not a background image: it
+   inherits a token colour, so no hex ever enters this file. */
+.cert-select-wrap {
+  display: block;
+  position: relative;
+}
+.cert-select-wrap::after {
+  content: "";
+  position: absolute;
+  right: 17px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin-top: -6px;
+  border-right: 1.5px solid var(--ink-muted);
+  border-bottom: 1.5px solid var(--ink-muted);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+/* The mono code field on /certificates/verify/ — a code is read, not prose. */
+.cert-input-code {
+  font-family: var(--mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.cert-submit {
+  width: 100%;
+  margin-top: 4px;
+}
+.cert-submit[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cert-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: cert-spin 640ms linear infinite;
+}
+@keyframes cert-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cert-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* Messages. Never silent: every failure lands in one of these. */
+.cert-msg {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.cert-msg[hidden] {
+  display: none;
+}
+.cert-msg a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+.cert-msg.is-error {
+  border-color: var(--app-danger);
+}
+.cert-msg.is-success {
+  border-color: var(--app-success);
+}
+.cert-msg-title {
+  display: block;
+  font-weight: 600;
+  color: var(--ink-strong);
+  margin-bottom: 4px;
+}
+.cert-msg .btn {
+  margin-top: 14px;
+}
+
+/* Verify result: the green check is the whole answer, read at a glance. */
+.cert-result {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.cert-check {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--app-success);
+  color: var(--action-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cert-check svg {
+  width: 18px;
+  height: 18px;
+}
+.cert-result-body {
+  min-width: 0;
+}
+.cert-result-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.cert-result-line {
+  margin-top: 6px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+.cert-result-code {
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink-subtle);
+  overflow-wrap: anywhere;
+}
+
+/* ── 2b. Claim wizard (email → name → done, inside the one card) ──────────── */
+
+/* Steps swap in place: the card never changes size abruptly enough to lose the
+   reader, and the page never reloads. Step 1 is the markup default, so with no
+   JS the card stays the plain email form. */
+.cert-step[hidden] {
+  display: none;
+}
+/* The step heading is the answer to "did it work?", so it carries the weight of
+   a section title without competing with the page h1. */
+.cert-step-title {
+  font-weight: 500;
+  font-size: clamp(20px, 2.4vw, 25px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--ink-strong);
+  text-wrap: balance;
+}
+/* Focus is moved here programmatically on every step change and the heading is
+   outside the tab order, so there is no ring to draw. */
+.cert-step-title:focus {
+  outline: none;
+}
+.cert-step-lead {
+  margin-top: 8px;
+  margin-bottom: 22px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+/* The way back. A second pill would argue with the primary, so this is a text
+   control: underlined at rest, never revealed by hover. */
+.cert-back {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-standard),
+    text-decoration-color var(--dur-fast) var(--ease-standard);
+}
+.cert-back:hover {
+  color: var(--ink-strong);
+  text-decoration-color: var(--ink-strong);
+}
+.cert-back[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+/* The code sits between the confirmation and the way out, so it is read before
+   anything navigates. */
+.cert-done-code {
+  margin-top: 6px;
+  margin-bottom: 22px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cert-done-arrow {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+/* A quiet second-language line (the verify page is English-first with a short
+   Spanish echo, so a Spanish speaker is never stuck). */
+.cert-alt-lang {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+}
+
+/* ── Phones (360px is the floor we hold) ──────────────────────────────────── */
+@media (max-width: 520px) {
+  .cert-row {
+    width: 100%;
+  }
+  .cert-row .btn {
+    flex: 1 1 auto;
+    min-width: 132px;
+  }
+  .cert-code {
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+}

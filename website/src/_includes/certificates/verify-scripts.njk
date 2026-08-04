@@ -1,0 +1,200 @@
+{# ── Verify page behaviour ────────────────────────────────────────────────────
+   Drives the form on /certificates/verify/. Same shape as the claim script
+   (certificates/scripts.njk): holds no copy of its own — every string comes off
+   the form's data-* attributes — every outcome lands in a message that is both
+   visible and announced, and every request carries a timeout. #}
+<script>
+(function () {
+  var form = document.getElementById('certVerifyForm');
+  if (!form) return;
+
+  var GATEWAY = '{{ env.certsGatewayUrl }}';
+  // Codes are HOU- plus two five-character groups.
+  //
+  // Two patterns on purpose. A code TYPED into the field must match end to end,
+  // or a typo with one character too many (HOU-ABCDE-FGHIJK) would match its
+  // first fifteen characters and cheerfully verify somebody else's certificate.
+  // Only when the input is a pasted URL do we search inside it.
+  var CODE_EXACT_RE = /^HOU-[A-Z0-9]{5}-[A-Z0-9]{5}$/;
+  var CODE_IN_URL_RE = /\/C\/(HOU-[A-Z0-9]{5}-[A-Z0-9]{5})(?:[./?#]|$)/;
+  // A hung gateway must not leave the button spinning with no message.
+  var VERIFY_TIMEOUT_MS = 15000;
+  var ERROR_CODE_RE = /^[a-z0-9_]{1,64}$/;
+
+  var d = form.dataset;
+  var input = document.getElementById('certCode');
+  var btn = document.getElementById('certVerifySubmit');
+  var labelEl = document.getElementById('certVerifyLabel');
+  var spinner = document.getElementById('certVerifySpinner');
+  var msg = document.getElementById('certVerifyMsg');
+  var busy = false;
+
+  // AbortSignal.timeout is missing on older Safari; asking for it there would
+  // throw on the way into fetch, so we degrade to "no budget" instead.
+  function budget(ms) {
+    return (window.AbortSignal && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+  }
+
+  // Accepts a bare code, a lowercase code, or a full share link with query
+  // string. Anything else comes back empty and is reported as invalid.
+  function normalize(raw) {
+    var text = String(raw || '').trim().toUpperCase();
+    if (CODE_EXACT_RE.test(text)) return text;
+    var match = text.match(CODE_IN_URL_RE);
+    return match ? match[1] : '';
+  }
+
+  function line(text, className) {
+    var el = document.createElement(className === 'cert-msg-title' ? 'span' : 'div');
+    el.className = className;
+    // Spanish echoes have to say so, or a screen reader reads them with
+    // English phonetics inside this lang="en" document.
+    if (className === 'cert-alt-lang') el.lang = 'es';
+    el.textContent = text;
+    return el;
+  }
+
+  // A polite live region only announces content INSERTED while the region is
+  // already in the accessibility tree; filling it while it is still `hidden`
+  // (display:none) and un-hiding afterwards is silent in NVDA, JAWS and
+  // VoiceOver. So: un-hide the empty region, then fill it a tick later.
+  // setTimeout rather than requestAnimationFrame, which does not run in a
+  // background tab.
+  function announce(kind, nodes) {
+    msg.textContent = '';
+    msg.className = 'cert-msg' + (kind ? ' is-' + kind : '');
+    msg.hidden = false;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < nodes.length; i++) frag.appendChild(nodes[i]);
+    window.setTimeout(function () { msg.appendChild(frag); }, 50);
+  }
+
+  function report(kind, title, body, bodyEs) {
+    var nodes = [];
+    if (title) nodes.push(line(title, 'cert-msg-title'));
+    if (body) nodes.push(line(body, ''));
+    if (bodyEs) nodes.push(line(bodyEs, 'cert-alt-lang'));
+    announce(kind, nodes);
+  }
+
+  function setBusy(on) {
+    busy = on;
+    btn.disabled = on;
+    spinner.hidden = !on;
+    labelEl.textContent = on ? d.labelSubmitting : d.labelSubmit;
+  }
+
+  function formatDate(iso, lang) {
+    if (!iso) return '';
+    try {
+      return new Intl.DateTimeFormat(lang === 'es' ? 'es-419' : 'en-US', {
+        year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+      }).format(new Date(iso + 'T00:00:00Z'));
+    } catch (err) {
+      console.warn('[certificates] could not format date ' + iso, err);
+      return iso;
+    }
+  }
+
+  function renderFound(data) {
+    var ev = data.event || {};
+    var row = document.createElement('div');
+    row.className = 'cert-result';
+
+    var mark = document.createElement('span');
+    mark.className = 'cert-check';
+    mark.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M20 6 9 17l-5-5"/></svg>';
+
+    var body = document.createElement('div');
+    body.className = 'cert-result-body';
+    body.appendChild(line(d.msgVerified, 'cert-msg-title'));
+    body.appendChild(line(data.display_name || '', 'cert-result-name'));
+
+    var when = formatDate(ev.event_date, ev.lang);
+    var detail = [ev.title, when, ev.location].filter(Boolean).join(' · ');
+    if (detail) body.appendChild(line(detail, 'cert-result-line'));
+    body.appendChild(line(d.labelIssued, 'cert-result-line'));
+    body.appendChild(line(data.code, 'cert-result-code'));
+
+    var link = document.createElement('a');
+    link.className = 'btn btn-ink btn-sm';
+    link.href = '/c/' + encodeURIComponent(data.code);
+    link.textContent = d.labelView;
+    body.appendChild(link);
+
+    row.appendChild(mark);
+    row.appendChild(body);
+    announce('success', [row, line(d.msgVerifiedEs, 'cert-alt-lang')]);
+  }
+
+  function verify(code) {
+    setBusy(true);
+    fetch(GATEWAY + '/v1/certs/' + encodeURIComponent(code), {
+      signal: budget(VERIFY_TIMEOUT_MS)
+    })
+      .then(function (res) {
+        return res.json()
+          .catch(function () { return null; })
+          .then(function (json) { return { status: res.status, json: json }; });
+      })
+      .then(function (r) {
+        setBusy(false);
+        if (r.status === 200 && r.json && r.json.code) { renderFound(r.json); return; }
+        if (r.status === 404) {
+          report('error', d.msgNotFoundTitle, d.msgNotFound, d.msgNotFoundEs);
+          return;
+        }
+        // Rate limiting is the likeliest non-404 on a public, unauthenticated
+        // lookup. Telling that visitor "something went wrong on our side"
+        // invites an immediate retry, which extends the block.
+        if (r.status === 429) {
+          report('error', '', d.msgRateLimited, d.msgRateLimitedEs);
+          return;
+        }
+        // Status and an allowlisted error code only: the gateway's payload is
+        // not ours to echo into the console.
+        var reason = r.json && ERROR_CODE_RE.test(String(r.json.error)) ? String(r.json.error) : '';
+        console.warn('[certificates] verify returned ' + r.status + (reason ? ' (' + reason + ')' : ''));
+        report('error', '', d.msgServer, d.msgServerEs);
+      })
+      .catch(function (err) {
+        // Includes the AbortError from the budget above: a request that never
+        // came back reads to the visitor exactly like a network failure.
+        setBusy(false);
+        console.warn('[certificates] verify request failed:', err && err.name);
+        report('error', '', d.msgNetwork, d.msgNetworkEs);
+      });
+  }
+
+  // Typing lowercase is fine; the field shows the canonical shape immediately.
+  input.addEventListener('input', function () {
+    var start = input.selectionStart;
+    var upper = input.value.toUpperCase();
+    if (upper !== input.value) {
+      input.value = upper;
+      input.setSelectionRange(start, start);
+    }
+  });
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (busy) return;
+    var raw = input.value.trim();
+    if (!raw) { report('error', '', d.msgEmpty, d.msgEmptyEs); input.focus(); return; }
+    var code = normalize(raw);
+    if (!code) { report('error', '', d.msgInvalid, d.msgInvalidEs); input.focus(); return; }
+    input.value = code;
+    verify(code);
+  });
+
+  // ?code=… (the link printed on a certificate, and the "verify this one"
+  // link on every share page) prefills and checks immediately.
+  var prefill = normalize(new URLSearchParams(window.location.search).get('code'));
+  if (prefill) {
+    input.value = prefill;
+    verify(prefill);
+  }
+})();
+</script>
