@@ -392,6 +392,18 @@ category-aware empty string, e.g. `integrations:home.connectedNoneInCategory` /
 `agentTab.empty.category*` / `teams:integrations.allowlist.allowedEmptyCategory`,
 so an empty filtered list never falsely claims the surface has no apps).
 
+**Unsupported-app demand (HOU-1193).** A SETTLED catalog search (1.2s debounce)
+that matches nothing in the WHOLE catalog — name, slug, or description, ignoring
+the category filter and connected-exclusion — fires the PostHog event
+`integration_unsupported_searched` (`search_query` normalized lowercase +
+`surface`: `integrations` / `agent-integrations`), once per query per mount.
+The pure decision is `unsupportedQueryOf`
+(`integrations-view/unsupported-search.ts`, node-tested); the wiring lives in
+the shared `useCatalogSurface`. Storage IS PostHog: one vote per user = count
+UNIQUE PERSONS per `search_query` (the app aliases install-id → Firebase UID, so
+devices merge); an app crossing ~10 unique persons is worth adding. No UI
+changes — the zero-result state still renders `picker.noResults` only.
+
 **Global page (personal catalog, all modes)** — `app/src/components/integrations-view/`,
 top-level view `INTEGRATIONS_VIEW_ID = "integrations-home"` (NOT `"integrations"`, which is
 the per-agent tab id — a shared slug would shadow the tab; like `dashboard`/`settings`
