@@ -38,7 +38,14 @@ and supplies every callback. Inside `ui/agent/src/`:
 App-side helpers: `files-tab-labels.ts` (label bundles), `files-upload-intake.ts` (validation +
 toasts), `files-upload-pickers.tsx` (the two hidden inputs), `files-delete-confirm.tsx` +
 `files-delete-copy.ts` (the confirm dialog and its pure, unit-tested copy),
-`file-preview-dialog.tsx` + `hooks/use-file-preview-loader.ts` (previews).
+`file-preview-dialog.tsx` + `hooks/use-file-preview-loader.ts` (previews). The dialog
+renders HTML files LIVE in a sandboxed iframe (`allow-scripts` only, never
+`allow-same-origin` — the blob document runs in an opaque origin, so agent-built decks
+run their JS without reaching the app's origin/session), in a near-fullscreen dialog
+(`95vw × 92vh`, sized from the `.html` extension so it opens full-size — decks are
+mostly 16:9 and need the window's horizontal shape);
+single-file decks render fully, relative subresources don't resolve (blob URLs have no
+base path).
 
 ## Layout (a minimal library's structure in Houston's tokens)
 
@@ -298,8 +305,10 @@ as the New menu's items.
   single target (file vs folder description), counted through the plural API for a batch.
 - `ui/agent/tests/format-modified.test.ts` — every branch of the friendly date, plus locales.
 - `packages/design-tokens/test/contrast.test.ts` — each `filetype.*` tint on the tile, both themes.
-- `packages/web/e2e/files.spec.ts` — 33 tests over the whole tab against `@houston/fake-host`:
-  grid/list navigation, click-opens-preview, the checkbox gutter (partial/indeterminate/select-all,
+- `packages/web/e2e/files.spec.ts` — 35 tests over the whole tab against `@houston/fake-host`:
+  grid/list navigation, click-opens-preview, the HTML preview (uploaded `.html` opens as a
+  RENDERED sandboxed iframe — script ran, `sandbox="allow-scripts"` asserted, no source dump),
+  the checkbox gutter (partial/indeterminate/select-all,
   folders excluded), the counted batch delete through one confirm (cancel preserves the checks),
   row thumbnails, the New menu driving every upload + new-folder flow, the icon-only Download all,
   kebab menus, rename, the named single delete, search states, folder upload, the size cap, the
