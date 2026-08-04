@@ -61,6 +61,28 @@ export VITE_NEW_ENGINE_URL= VITE_NEW_ENGINE_TOKEN=
 # Agent store follows the same gateway unless .env.staging overrides it.
 export VITE_AGENTSTORE_GATEWAY_URL="${VITE_AGENTSTORE_GATEWAY_URL:-$VITE_CONTROL_PLANE_URL}"
 
-echo "→ desktop → staging gateway: $VITE_CONTROL_PLANE_URL"
+# Version floor pre-flight. The hosted gateway enforces a per-channel minimum
+# app version and answers EVERY request with `426 app update required` below it
+# (app/src/lib/update-floor.ts). A hosted build identifies as
+# `<package.json version>+cloud`, and this checkout's version is whatever main
+# carries — which lags the released line, because the release cut commits the
+# version bump only under the tag and never pushes it to main. When that lag
+# grows past the floor, the whole app dies at boot with an unexplained
+# "Something unexpected went wrong" and a console full of 426s.
+#
+# We can't read the floor without a bearer, so compare against the newest
+# cloud-v tag as the proxy: below it means this checkout predates a shipped
+# release and may be under the floor. A WARNING, never a hard stop — a one-patch
+# lag right after a cut is normal and harmless.
+REPO_VERSION="$(node -p "require('$ROOT/app/package.json').version" 2>/dev/null || echo "")"
+LATEST_TAG="$(git -C "$ROOT" tag --list 'cloud-v*' --sort=-v:refname 2>/dev/null | head -1 | sed 's/^cloud-v//')"
+if [ -n "$REPO_VERSION" ] && [ -n "$LATEST_TAG" ] && [ "$REPO_VERSION" != "$LATEST_TAG" ] &&
+  [ "$(printf '%s\n%s\n' "$REPO_VERSION" "$LATEST_TAG" | sort -V | head -1)" = "$REPO_VERSION" ]; then
+  echo "⚠ This checkout builds as ${REPO_VERSION}+cloud, behind the newest release (${LATEST_TAG})." >&2
+  echo "  If the gateway's floor is above ${REPO_VERSION}, EVERY request 426s and the app dies at boot." >&2
+  echo "  Fix: ./scripts/version.sh ${LATEST_TAG}   (then rebuild)" >&2
+fi
+
+echo "→ desktop → staging gateway: $VITE_CONTROL_PLANE_URL  (as ${REPO_VERSION:-?}+cloud)"
 cd app
 exec pnpm tauri dev
