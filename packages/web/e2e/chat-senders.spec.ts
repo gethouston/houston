@@ -49,7 +49,7 @@ const SELF = { userId: E2E_VIEWER.uid, name: E2E_VIEWER.displayName };
 
 const ASKED = "Rebuild the Q3 pipeline report";
 /** Carries a bare URL: a link inside the recessed peer bubble has to be
- *  underlined without hovering (colour alone is ~1:1 against the bubble ink). */
+ *  a visible link chip without hovering (HOU-1152: tint is the affordance). */
 const PEER_LINK = "https://example.com/q3-pipeline";
 const ADA_AGAIN = `And drop anything below ten thousand, see ${PEER_LINK}`;
 const REPLIED = "Sixty-three open deals, cross-checked.";
@@ -146,11 +146,15 @@ test("a shared chat gives every speaker a side, a face and a name", async ({
   await expect(nameLine(again)).toHaveCount(0);
   await expect(face(again)).toHaveCount(0);
 
-  // The link she sent is underlined AS RENDERED, not on hover: inside a filled
-  // bubble the link colour sits within ~1.05:1 of the body ink (identical in
-  // dark), so the underline is the only affordance there is.
+  // The link she sent renders as the Slack-style link chip (HOU-1152): the
+  // soft link tint IS the resting affordance (underline only ADDS on hover),
+  // so what must hold as rendered is the tint — the link token at 10% alpha.
   const peerLink = again.locator(`a[href="${PEER_LINK}"]`);
-  await expect(peerLink).toHaveCSS("text-decoration-line", "underline");
+  await expect(peerLink).toBeVisible();
+  const peerLinkBg = await peerLink.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  expect(peerLinkBg).toMatch(/\/ 0\.1\)$/);
 
   // The agent's own turn: the Houston mark (an inline glyph) plus its name,
   // carrying the agent's own colour.
