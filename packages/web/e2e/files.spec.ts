@@ -952,8 +952,13 @@ test("renames and deletes a file from the context menu", async ({ page }) => {
   const input = page.getByRole("textbox");
   await expect(input).toHaveValue("Q3 report.pdf");
   await input.fill("Q3 final.pdf");
+  // Guard the fill before committing: the rename field selects its basename a
+  // frame after mounting, and when that frame lands mid-fill the inserted text
+  // only replaced the selection ("Q3 final.pdf.pdf"). Substring matchers below
+  // would let that corruption slide to a confusing dialog assertion.
+  await expect(input).toHaveValue("Q3 final.pdf");
   await input.press("Enter");
-  await expect(page.getByText("Q3 final.pdf")).toBeVisible();
+  await expect(page.getByText("Q3 final.pdf", { exact: true })).toBeVisible();
 
   // Deleting is confirmed first, by NAME, and cancelling leaves the file alone.
   await page.getByText("Q3 final.pdf").click({ button: "right" });
