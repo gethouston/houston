@@ -162,10 +162,39 @@ never learns it exists, even though the Skills UI still lists it. Keep
    - `renderUserMessage` — decodes skill + attachment markers into cards
 6. Both **BoardTab** (per-agent kanban) and **Dashboard** (Mission Control / cross-agent kanban) consume this hook so the right panel is identical in both views.
 
+## Org skill by default (HOU-1192)
+
+Since HOU-1027 a workspace also has an **org/workspace skill store** (`ws/<org>/shared/skills/`
+cloud, `<Workspace>/.shared/skills/` desktop; ADR 0003): a shared skill lives ONCE,
+agents load it via their per-agent manifest (`.houston/skills-manifest/`), and agent
+edits hit the one org copy. HOU-1192 makes that the DEFAULT for skills **created with
+an agent** (the create-with-AI chat): the moment the heal stamps the chat↔skill link
+from the skill's own forward `setup_activity_id` — the one signal with agent-written
+provenance; rule 1 only matches an unstamped chat, so it fires exactly once per
+creation — the client promotes the SKILL.md verbatim into the store, enables it in
+EVERY agent's manifest (explicit per-agent writes, per ADR 0003; this module's
+writers are serialized per agent), and deletes the creator's local copy only when it
+is still byte-identical, checked directly before the delete (a mid-flight edit
+survives as that agent's override). Flow + ordering live in
+`app/src/lib/org-skill-share.ts` (node-tested); the binding hook is
+`app/src/components/tabs/use-org-skill-default.ts`, invoked from
+`use-skill-chat-setup.ts` (heal `reason: "forward_link"` ONLY — orphan adoption and
+the list-delta fallback claim never share: the catalog stays interactive beside a
+draft chat, so a store install could satisfy the delta heuristic). The share runs
+even before `/v1/capabilities` resolves (the claim is one-shot); where the store is
+absent or declines (409 slug collision, 403 member role, 404 route absent, typed 503
+unconfigured — `isOrgSkillShareDeclined`), the skill stays agent-local exactly as
+before, silently.
+Store/GitHub installs and the per-agent from-scratch dialog remain agent-scoped
+("shared, not installed" applies to agent-created skills); the GLOBAL page's
+from-scratch dialog already creates in the store. Ad-hoc creations in a normal
+mission chat (no setup-chat claim signal) stay agent-local — share via the Skills
+page.
+
 ## Global Skills page (sidebar "Skills", HOU-792)
 
-Skills are stored ON each agent (`<agent>/.agents/skills/` — there is no shared
-or org-level store; that was HOU-792's misconception). The top-level **Skills**
+Agent-owned skills are stored ON each agent (`<agent>/.agents/skills/`); shared
+skills live once in the workspace store (see above). The top-level **Skills**
 page (`app/src/components/skills-view/`, viewMode `skills-home`, sidebar entry
 between Integrations and AI Models) is a pure client aggregation over the
 existing per-agent routes — the host's skill routes already accept ANY agent

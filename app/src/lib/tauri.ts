@@ -855,10 +855,21 @@ export const tauriSharedSkills = {
         content,
       }),
     ),
-  /** "Share to workspace": full SKILL.md verbatim, at the exact slug. */
-  promote: (workspaceId: string, slug: string, content: string) =>
-    call<SkillDetail>("promote_shared_skill", () =>
-      getEngine().promoteSharedSkill(workspaceId, slug, content),
+  /** "Share to workspace": full SKILL.md verbatim, at the exact slug. The
+   *  org-share default (HOU-1192) passes a `silence` classifier for the
+   *  expected declines (collision / role / no store) it degrades on inline;
+   *  the explicit Skills-page action passes none and toasts as before. */
+  promote: (
+    workspaceId: string,
+    slug: string,
+    content: string,
+    options?: EngineCallOptions,
+  ) =>
+    call<SkillDetail>(
+      "promote_shared_skill",
+      () => getEngine().promoteSharedSkill(workspaceId, slug, content),
+      undefined,
+      options,
     ),
   delete: (workspaceId: string, slug: string) =>
     call<void>("delete_shared_skill", () =>

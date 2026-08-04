@@ -22,6 +22,7 @@ import {
 import { tauriActivity } from "../../lib/tauri";
 import type { Agent, SkillSummary } from "../../lib/types";
 import { readAgentRunOverrides } from "./routine-run-overrides";
+import { useOrgSkillDefault } from "./use-org-skill-default";
 
 /**
  * Owns a custom skill's setup chat (HOU-791 — the Automations-tab experience
@@ -41,6 +42,7 @@ export function useSkillChatSetup(
   const queryClient = useQueryClient();
   const { data: rawItems } = useActivity(path);
   const [pending, setPending] = useState(false);
+  const shareNewSkill = useOrgSkillDefault(agent);
 
   const mode = SKILL_SETUP_AGENT_MODE;
   const missionTitle = t("setupChat.missionTitle");
@@ -90,14 +92,20 @@ export function useSkillChatSetup(
     healingRef.current = true;
     tauriActivity
       .update(path, patch.id, patch.update)
-      .then(() =>
-        queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) }),
-      )
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
+        // A forward-link stamp IS the "agent just created this skill in its
+        // create chat" moment (rule 1 only matches an unstamped chat, so it
+        // fires exactly once per creation) — apply the org-share default
+        // (HOU-1192). Orphan adoption repairs an existing skill's lost chat
+        // and must not share it.
+        if (heal?.reason === "forward_link") shareNewSkill(heal.slug);
+      })
       .catch((err) => logger.error(`[skill-chat] heal failed: ${err}`))
       .finally(() => {
         healingRef.current = false;
       });
-  }, [rawItems, skills, path, queryClient]);
+  }, [rawItems, skills, path, queryClient, shareNewSkill]);
 
   /**
    * Start a brand-new create-chat. Always creates a fresh one — "Create with

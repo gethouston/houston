@@ -201,8 +201,9 @@
     },
     "chatPick": {
       "title": "Who should build it with you?",
-      "description": "The chat runs with this agent, and the skill is created there first. You can share it with other agents afterwards."
+      "description": "The chat runs with this agent. The finished skill is shared with all your agents automatically."
     },
+    "autoShared": "Skill shared with all your agents",
     "createdShared": "Skill added to your workspace",
     "enabledForAll_one": "Enabled for {{count}} agent",
     "enabledForAll_other": "Enabled for {{count}} agents",

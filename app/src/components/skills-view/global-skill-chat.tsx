@@ -76,8 +76,29 @@ export function GlobalSkillChat({
     );
   }
   if (selected?.kind === "skill") {
-    const skill = skills?.find((s) => s.name === selected.slug);
-    if (!skill) return null;
+    // The claimed skill may have just left the agent-LOCAL list this prop
+    // carries: the org-share default (HOU-1192) moves a freshly created skill
+    // into the workspace store moments after the claim. The conversation must
+    // survive that move, so a miss falls back to a minimal row — the chat
+    // resolves its activity by the durable reverse stamp anyway.
+    const skill: SkillSummary = skills?.find(
+      (s) => s.name === selected.slug,
+    ) ?? {
+      name: selected.slug,
+      title: null,
+      description: "",
+      version: 1,
+      tags: [],
+      created: null,
+      last_used: null,
+      category: null,
+      featured: false,
+      integrations: [],
+      image: null,
+      setup_activity_id: null,
+      inputs: [],
+      prompt_template: null,
+    };
     return (
       <SkillSetupChat
         agent={agent}

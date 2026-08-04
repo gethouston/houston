@@ -82,6 +82,11 @@ export function useSkillSetupView(
     const slug = claimNewlyCreatedSkill(prev, skills, chatSetup.activities);
     if (!slug) return;
     setSelected({ kind: "skill", slug });
+    // Deliberately NO org-share default (HOU-1192) here: this claim is a
+    // list-delta heuristic, and the catalog stays interactive beside a draft
+    // chat — a store/GitHub install landing during the chat can satisfy it,
+    // and installs are specified as agent-scoped. Only the heal's forward-
+    // link stamp (provenance the agent itself wrote) triggers the share.
     tauriActivity
       .update(agent.folderPath, activityId, { skill_slug: slug })
       .then(() =>

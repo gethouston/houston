@@ -201,8 +201,9 @@
     },
     "chatPick": {
       "title": "¿Quién la construye contigo?",
-      "description": "El chat se abre con este agente y la skill se crea ahí primero. Después puedes compartirla con otros agentes."
+      "description": "El chat se abre con este agente. La skill terminada se comparte automáticamente con todos tus agentes."
     },
+    "autoShared": "Skill compartida con todos tus agentes",
     "createdShared": "Skill agregada a tu espacio de trabajo",
     "enabledForAll_one": "Activada para {{count}} agente",
     "enabledForAll_other": "Activada para {{count}} agentes",

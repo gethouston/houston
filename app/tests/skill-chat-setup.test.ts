@@ -247,7 +247,12 @@ describe("skill chat setup message", () => {
         [{ id: "a1", agent: SKILL_SETUP_AGENT_MODE }],
         [{ name: "weekly-update", setup_activity_id: "a1" }],
       ),
-      { kind: "stamp_activity", activityId: "a1", slug: "weekly-update" },
+      {
+        kind: "stamp_activity",
+        activityId: "a1",
+        slug: "weekly-update",
+        reason: "forward_link",
+      },
     );
     // Already stamped → nothing to do (the effect loop terminates).
     deepStrictEqual(
@@ -298,7 +303,12 @@ describe("skill chat setup message", () => {
         [{ name: "meeting-prep" }],
         skillDisplayTitle,
       ),
-      { kind: "stamp_activity", activityId: "a1", slug: "meeting-prep" },
+      {
+        kind: "stamp_activity",
+        activityId: "a1",
+        slug: "meeting-prep",
+        reason: "orphan_adoption",
+      },
     );
     // Frontmatter title wins over the humanized slug, same as everywhere.
     deepStrictEqual(
@@ -311,6 +321,7 @@ describe("skill chat setup message", () => {
         kind: "stamp_activity",
         activityId: "a1",
         slug: "preparar-reunion",
+        reason: "orphan_adoption",
       },
     );
     // Ambiguous (two skills share the display title) → never guess.

@@ -111,8 +111,9 @@ export type AnalyticsEventName =
   | "custom_integration_added"
   | "skill_used"
   // A skill landed in the agent (carries `skill_slug` + `source`:
-  // community / repo / scratch) — adoption of the skills surface itself,
-  // distinct from `skill_used` (execution in chat).
+  // community / repo / scratch / promoted / workspace-enable / org-default) —
+  // adoption of the skills surface itself, distinct from `skill_used`
+  // (execution in chat).
   | "skill_installed"
   | "skill_edited"
   | "skill_deleted"
