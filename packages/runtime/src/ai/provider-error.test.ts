@@ -606,6 +606,26 @@ test("other observed close codes classify the same way", () => {
   }
 });
 
+// OpenAI's generic server-side failure — "An error occurred while processing
+// your request. You can retry your request, or …" — arrives via the Codex path
+// as "Codex error: <body>" with no HTTP status anywhere in the string, so the
+// 5xx short-circuit never fires (HOU-898's verbatim report). The body itself
+// says retry helps: provider_internal (Retry card), never the report-bug
+// `unknown`.
+test("Codex 'An error occurred while processing your request' → provider_internal, not unknown (HOU-898)", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.1-codex",
+    message:
+      "Codex error: An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists. Please include the request ID 21cbc7f3-020b-4f21-bd24-63a4bfbffe10 in your message.",
+  });
+  expect(err.kind).toBe("provider_internal");
+  if (err.kind === "provider_internal") {
+    expect(err.provider).toBe("openai-codex");
+    expect(err.http_status).toBeNull();
+  }
+});
+
 test("'Provider finish_reason: content_filter' stays unknown — a refusal, not an outage", () => {
   const err = classifyProviderError({
     provider: "openrouter",
