@@ -18,7 +18,14 @@ import {
  * `fetchImpl` is injected, so no network is touched.
  */
 
-const BASE = "https://gateway.gethouston.ai";
+const BASE = "https://gateway.example.com";
+
+// The catalog has no hardcoded fallback host: it reads the shell-installed
+// target or the build-time bake, and throws when a build supplies neither.
+// Stand in for the shell so the request-shape assertions below have a base.
+(globalThis as { window?: unknown }).window = {
+  __HOUSTON_STORE__: { baseUrl: BASE, token: "" },
+};
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -37,8 +44,43 @@ function capture(body: unknown = { items: [], hasMore: false }) {
 }
 
 describe("storeCatalogApiBase", () => {
-  it("defaults to the production gateway outside a browser build", () => {
+  it("uses the target the shell installed", () => {
     strictEqual(storeCatalogApiBase(), BASE);
+  });
+
+  it("trims a trailing slash off the installed target", () => {
+    const win = (globalThis as { window: { __HOUSTON_STORE__: unknown } })
+      .window;
+    const restore = win.__HOUSTON_STORE__;
+    win.__HOUSTON_STORE__ = { baseUrl: `${BASE}/`, token: "" };
+    try {
+      strictEqual(storeCatalogApiBase(), BASE);
+    } finally {
+      win.__HOUSTON_STORE__ = restore;
+    }
+  });
+
+  // No hardcoded production host to fall back on: a build that was given no
+  // store target has no store, loudly. A literal here would silently override
+  // whatever the environment meant, which is how the staging QA DMG spent
+  // releases publishing into the production catalog.
+  it("throws when the build configured no store gateway", () => {
+    const win = (globalThis as { window: { __HOUSTON_STORE__: unknown } })
+      .window;
+    const restore = win.__HOUSTON_STORE__;
+    win.__HOUSTON_STORE__ = undefined;
+    try {
+      let caught: unknown;
+      try {
+        storeCatalogApiBase();
+      } catch (err) {
+        caught = err;
+      }
+      ok(caught instanceof StoreCatalogError);
+      strictEqual((caught as StoreCatalogError).status, 0);
+    } finally {
+      win.__HOUSTON_STORE__ = restore;
+    }
   });
 });
 

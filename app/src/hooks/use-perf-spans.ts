@@ -1,20 +1,28 @@
 import { useEffect, useRef } from "react";
 import { analytics } from "../lib/analytics";
+import { bakedUrl } from "../lib/baked-url";
 import { osLaunchT0Ms } from "../lib/os-bridge";
-import { type PerfSpanObservation, perfSpans } from "../lib/perf-spans";
+import {
+  type PerfSpanObservation,
+  type PerfSpanTransport,
+  perfSpans,
+} from "../lib/perf-spans";
 import { currentPlatformOs } from "../lib/platform";
 import { useSession } from "./use-session";
 
 /**
- * Where client perf spans land: the public gateway's `/v1/client-metrics`
- * ingest (session-authed; the gateway folds them into Prometheus histograms
- * for grafana.gethouston.ai). Same target in local-sidecar AND gateway-fronted
- * modes — the route is gateway-owned, never proxied to a pod.
+ * Where client perf spans land: the gateway's `/v1/client-metrics` ingest
+ * (session-authed; the gateway folds them into Prometheus histograms). Same
+ * target in local-sidecar AND gateway-fronted modes — the route is
+ * gateway-owned, never proxied to a pod.
+ *
+ * Baked at build time (`VITE_CLIENT_METRICS_GATEWAY_URL`), never a literal:
+ * see {@link bakedUrl}. `undefined` means this build has no ingest, so we
+ * install a mirror-only transport instead of posting at a guessed host.
  */
-const CLIENT_METRICS_URL = (
-  (import.meta.env?.VITE_CLIENT_METRICS_GATEWAY_URL as string | undefined) ??
-  "https://gateway.gethouston.ai"
-).replace(/\/+$/, "");
+const CLIENT_METRICS_URL = bakedUrl(
+  import.meta.env?.VITE_CLIENT_METRICS_GATEWAY_URL as string | undefined,
+);
 
 const APP_VERSION =
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
@@ -35,8 +43,14 @@ export function usePerfSpans(): void {
     void osLaunchT0Ms().then((t0) => {
       if (t0 !== null) perfSpans.setLaunchT0(t0);
     });
-    perfSpans.configure({
-      async send(spans: PerfSpanObservation[]) {
+    const transport: PerfSpanTransport = {
+      mirror(span, ms) {
+        analytics.track("perf_span", { span, duration_ms: ms });
+      },
+    };
+    const ingest = CLIENT_METRICS_URL;
+    if (ingest) {
+      transport.send = async (spans: PerfSpanObservation[]) => {
         const token = tokenRef.current;
         // No session yet → throw so PerfSpans RE-QUEUES the batch (bounded)
         // instead of counting it delivered. The earliest span of a session
@@ -44,7 +58,7 @@ export function usePerfSpans(): void {
         // here silently under-counted exactly the journey we care most about.
         // The token-arrival effect below re-flushes the queue.
         if (!token) throw new Error("session not ready");
-        const res = await fetch(`${CLIENT_METRICS_URL}/v1/client-metrics`, {
+        const res = await fetch(`${ingest}/v1/client-metrics`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -61,11 +75,9 @@ export function usePerfSpans(): void {
         // 404 = older gateway without the ingest; treat as delivered.
         if (!res.ok && res.status !== 404)
           throw new Error(`client-metrics rejected: ${res.status}`);
-      },
-      mirror(span, ms) {
-        analytics.track("perf_span", { span, duration_ms: ms });
-      },
-    });
+      };
+    }
+    perfSpans.configure(transport);
     const onHide = () => {
       if (document.visibilityState === "hidden") void perfSpans.flush();
     };

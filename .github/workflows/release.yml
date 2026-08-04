@@ -466,6 +466,25 @@ jobs:
       # channel gated: a non-cloud build has no gateway to authenticate against, so
       # it stays '' and lib.rs's empty-filter keeps integrations off there.
       HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
+      # Agent Store gateway + client-metrics ingest. These are resolved SEPARATELY
+      # from the engine gateway above, and the client no longer carries a
+      # hardcoded production host to fall back on (a literal silently overrode
+      # whatever the environment meant — it is why the STAGING QA DMG browsed AND
+      # PUBLISHED against the real prod catalog, and folded QA timings into the
+      # prod Prometheus histograms, while everything else on it spoke to staging).
+      # So every packaged build must bake them or ship without a store.
+      #
+      # NOT cloud-channel gated, unlike the engine URL: the Agent Store is one
+      # public catalog that local `v*` builds use too. Only the flavor split
+      # applies — the staging leg gets the staging gateway, everything else prod.
+      #
+      # One var fixes both halves of the store path: store-gateway-session
+      # installs its `window.__HOUSTON_STORE__` override only when the hosted
+      # engine URL and the store URL DIFFER, so once they match on staging it
+      # steps aside and publish rides the engine base, while store-catalog reads
+      # this value for browse.
+      VITE_AGENTSTORE_GATEWAY_URL: ${{ matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
+      VITE_CLIENT_METRICS_GATEWAY_URL: ${{ matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1271,6 +1290,11 @@ jobs:
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
       # See build-macos: bake the integrations gateway URL for the local engine.
       HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      # See build-macos: the store + client-metrics targets carry no hardcoded
+      # production fallback, so every packaged build bakes them or ships without
+      # a store. Windows has no staging flavor, so both legs are prod.
+      VITE_AGENTSTORE_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+      VITE_CLIENT_METRICS_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
     strategy:
       # Both arches build in parallel. fail-fast=false so a transient
       # ARM-runner outage doesn't kill the x64 release that 90%+ of
@@ -1620,6 +1644,11 @@ jobs:
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
       # See build-macos: bake the integrations gateway URL for the local engine.
       HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      # See build-macos: the store + client-metrics targets carry no hardcoded
+      # production fallback, so every packaged build bakes them or ships without
+      # a store. Linux has no staging flavor, so both legs are prod.
+      VITE_AGENTSTORE_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+      VITE_CLIENT_METRICS_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
       # AppImage packaging on headless CI: don't strip (keeps the bundled
       # sidecar intact) and extract-and-run the AppImage tooling (no FUSE on
       # GitHub runners).
@@ -1911,6 +1940,13 @@ jobs:
       - name: Build packages/web
         env:
           VITE_CONTROL_PLANE_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+          # Declared explicitly so this bundle and web-staging.yml's read as a
+          # pair: both resolve the store + client-metrics targets independently of
+          # the gateway URL. Production's value is what the hardcoded fallback
+          # already produced, so this is a no-op here — it exists so the staging
+          # side can differ without the difference looking accidental.
+          VITE_AGENTSTORE_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+          VITE_CLIENT_METRICS_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
