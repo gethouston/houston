@@ -1,107 +1,16 @@
-import {
-  centred,
-  HAIRLINE,
-  INK,
-  INK_MUTED,
-  INK_SUBTLE,
-  SCRIPT_FONT,
-  text,
-} from "./chrome.mjs";
+import { INK, INK_MUTED, text } from "./chrome.mjs";
 import h from "./h.mjs";
-import { SIGNERS } from "./signers.mjs";
 
 /**
- * The certificate's lower band: who attested to it, and how anyone can check.
+ * The certificate's lower band: how anyone can check it is real.
  *
  * It lives apart from the layout in template-cert.mjs because it is the half of
- * the document that has nothing to do with the attendee — the signers and the
- * verification affordance are the same on every certificate Houston issues.
+ * the document that has nothing to do with the attendee — the verification
+ * affordance is the same on every certificate Houston issues.
  *
- * Both rows sit on the deepest stops of the glass panel (panel.mjs), which is
- * what buys them their contrast over the sunrise burning through behind them.
+ * The row sits on the deepest stops of the glass panel (panel.mjs), which is
+ * what buys it its contrast over the sunrise burning through behind it.
  */
-
-/**
- * One signer: the script signature, a rule, the name and the title.
- *
- * `image` (a scan) wins when we have one; until then the name is set in Great
- * Vibes, which is a signature typeface rather than a claim to be somebody's
- * actual hand.
- */
-function signature(signer) {
-  return h(
-    "div",
-    {
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        width: 500,
-      },
-    },
-    signer.image
-      ? h("img", {
-          src: signer.image,
-          height: 72,
-          style: { display: "flex", marginBottom: 10 },
-        })
-      : centred(signer.script, {
-          height: 78,
-          alignItems: "center",
-          fontFamily: SCRIPT_FONT,
-          fontSize: 62,
-          fontWeight: 400,
-          // Great Vibes sets very tight; without this the words of a two-part
-          // name run into each other and stop reading as two words. satori
-          // ignores `wordSpacing`, so the tracking has to do that job.
-          letterSpacing: 2,
-          color: INK,
-        }),
-    h("div", {
-      style: {
-        display: "flex",
-        width: "100%",
-        height: 1,
-        marginTop: 10,
-        backgroundColor: HAIRLINE,
-      },
-    }),
-    centred(signer.name, {
-      marginTop: 16,
-      fontSize: 22,
-      fontWeight: 600,
-      letterSpacing: 1.2,
-      color: INK,
-    }),
-    centred(signer.title, {
-      marginTop: 8,
-      fontSize: 19,
-      fontWeight: 400,
-      color: INK_SUBTLE,
-    }),
-  );
-}
-
-/**
- * Both signers, pushed out to the sides of the panel so the core of the sunrise
- * comes through the glass between them rather than under either of them.
- */
-export function signatureRow() {
-  return h(
-    "div",
-    {
-      style: {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "flex-end",
-        justifyContent: "space-between",
-        width: "100%",
-        padding: "0 56px",
-      },
-    },
-    ...SIGNERS.map(signature),
-  );
-}
 
 /**
  * Code and verification URL on the left, QR on the right — the panel's two

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import satori from "satori";
-import { BODY_FONT, SCRIPT_FONT } from "./chrome.mjs";
+import { BODY_FONT } from "./chrome.mjs";
 import { coveredCodePoints } from "./font-coverage.mjs";
 import { qrDataUrl } from "./qr.mjs";
 import {
@@ -26,9 +26,6 @@ const FONT_FILES = [
   { file: "HankenGrotesk-Light.ttf", name: BODY_FONT, weight: 300 },
   { file: "HankenGrotesk-Regular.ttf", name: BODY_FONT, weight: 400 },
   { file: "HankenGrotesk-SemiBold.ttf", name: BODY_FONT, weight: 600 },
-  // The signature hand. Only ever set from `signers.mjs`, never from attendee
-  // data, so it is excluded from the coverage check below.
-  { file: "GreatVibes-Regular.ttf", name: SCRIPT_FONT, weight: 400 },
 ];
 
 /** Memoized so a whole build reads the font files exactly once. */

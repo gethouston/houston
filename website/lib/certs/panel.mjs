@@ -18,7 +18,7 @@ import h from "./h.mjs";
  *     is a pane of something there. Without it the panel reads as a smudge.
  *
  * The tint is a gradient, not a flat wash, for one reason: the sunrise sits
- * behind the panel's lower third, exactly where the signatures, the code and
+ * behind the panel's lower third, exactly where the code and
  * the QR are. Deepening the last stops buys those their contrast while the
  * middle of the panel stays open enough for the glow to come through, which is
  * the whole point of putting the panel on this photograph at all.

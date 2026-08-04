@@ -1,4 +1,4 @@
-import { signatureRow, verificationRow } from "./attestation.mjs";
+import { verificationRow } from "./attestation.mjs";
 import { backdrop } from "./backdrop.mjs";
 import { BODY_FONT, lockup, navy } from "./chrome.mjs";
 import { citation } from "./citation.mjs";
@@ -10,8 +10,8 @@ import { canvas, panel, tint } from "./panel.mjs";
  * The printable certificate: 2000x1414 landscape, the Houston photograph
  * full-bleed, and one pane of glass centred on it carrying the document.
  *
- * Everything is inside the panel — lockup, claim, name, event, date,
- * signatures, code and QR — so the picture is never asked to be a background
+ * Everything is inside the panel — lockup, claim, name, event, date, code and
+ * QR — so the picture is never asked to be a background
  * for type and a picture at the same time. Outside the panel it is just the
  * photograph: sky above, the Earth's limb and the sunrise below and around.
  */
@@ -26,18 +26,20 @@ const INSET = 96;
  *
  * It runs the other way from the obvious one. The sky at the top needs the most
  * tint, because that is where the type is smallest and the picture emptiest.
- * Through the middle it THINS to 0.37 — the sunrise sits behind that band, and
- * every extra hundredth there turns warm light into grey haze. Only the last
- * eighth deepens again, to 0.60, and only because the code and the QR sit on
- * the brightest pixels in the photograph.
+ * Through the middle it THINS to 0.47 — the sunrise sits behind that band and
+ * still has to read through the glass. Only the last eighth deepens again, to
+ * 0.72, because the code and the QR sit on the brightest pixels in the
+ * photograph. The whole ramp runs ~0.10 deeper than the first iteration did,
+ * at the founder's request — the darker glass reads calmer and the type
+ * snaps harder.
  */
 const PANEL = tint([
-  [0.46, 0],
-  [0.42, 30],
-  [0.38, 55],
-  [0.37, 70],
-  [0.46, 86],
-  [0.64, 100],
+  [0.56, 0],
+  [0.52, 30],
+  [0.48, 55],
+  [0.47, 70],
+  [0.56, 86],
+  [0.72, 100],
 ]);
 
 /**
@@ -82,7 +84,6 @@ export function certificateElement(item, qrSrc) {
       // out through the bottom of the glass. Letting the gap close to nothing
       // is a worse-looking certificate; clipping the QR is a broken one.
       h("div", { style: { display: "flex", flex: 1 } }),
-      signatureRow(),
       verificationRow(item, copy, qrSrc),
     ),
   );

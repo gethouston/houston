@@ -4,7 +4,7 @@ import h from "./h.mjs";
 /**
  * The certificate's citation: the claim, the recipient, the event, the date.
  *
- * Everything above the signatures, centred on the glass panel's axis. It is the
+ * Everything above the verification row, centred on the glass panel's axis. It is the
  * only part of the document that changes per attendee, which is why it lives
  * apart from the panel that holds it and the attestation beneath it.
  */

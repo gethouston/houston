@@ -17,7 +17,6 @@ import { HELMET_RATIO, helmetDataUrl } from "./logo.mjs";
 
 /** Family names as registered in raster.mjs. */
 export const BODY_FONT = "Hanken Grotesk";
-export const SCRIPT_FONT = "Great Vibes";
 
 /**
  * Warm white on deep navy. The type never uses pure #fff: the photograph is a
