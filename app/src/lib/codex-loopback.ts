@@ -17,6 +17,7 @@
 import { shouldUseCodexLoopback } from "../components/shell/provider-login-url";
 import { useUIStore } from "../stores/ui";
 import { runCodexDeviceCodeFallback } from "./codex-device-code-fallback";
+import { recoverFailedCodexRelay } from "./codex-relay-recovery";
 import { genericErrorDescription, logAndReportError } from "./error-report";
 import i18n from "./i18n";
 import {
@@ -41,6 +42,25 @@ const CODEX_OAUTH_CALLBACK_EVENT = "codex-oauth://callback";
 const CALLBACK_TIMEOUT_MS = 5 * 60_000;
 
 type Unlisten = Awaited<ReturnType<typeof legacyListen>>;
+
+/**
+ * The armed relay attempt per provider, torn down by {@link
+ * cancelCodexLoopback}. Without this, a CANCELLED sign-in left its callback
+ * listener armed for the full 5-minute window: approving the abandoned
+ * browser tab afterwards relayed a code into a login the engine no longer
+ * held — a doomed "no active login" submit and a spurious error toast (or,
+ * worse, an unwanted auto-restarted sign-in) for a flow the user gave up on.
+ */
+const activeLoopbackCleanups = new Map<string, () => void>();
+
+/**
+ * Tear down the armed loopback relay for a provider (listener + timeout), so
+ * a late browser approval can't relay into a cancelled login. Called from
+ * `cancelLogin`'s engine-call choke point; a no-op when nothing is armed.
+ */
+export function cancelCodexLoopback(frontendProviderId: string): void {
+  activeLoopbackCleanups.get(frontendProviderId)?.();
+}
 
 /** Reuse the existing "couldn't open sign-in" toast key with the provider's
  *  display name; falls back to the raw id for an unknown provider. */
@@ -78,17 +98,39 @@ function fallBackToDeviceCode(
   });
 }
 
-/** Relay the callback's query string to the engine. `submitLoginCode`'s
- *  engine-call wrapper already surfaces a failure toast + Sentry report, so the
- *  catch here only keeps the promise from floating unhandled. */
+/** Last auto-restart per provider (see `recoverFailedCodexRelay`'s cooldown). */
+const relayRestartAt = new Map<string, number>();
+
+/**
+ * Relay the callback's query string to the engine. The submit runs with
+ * `surface: false` because the failure that actually happens in the wild — the
+ * engine pod recycled mid-consent, answering "no active login" (HOU-1113) — is
+ * RECOVERABLE: restart the same browser sign-in and OpenAI redirects the
+ * already-consented app straight through. `recoverFailedCodexRelay` owns the
+ * one-restart budget and the dead-end surface (Sentry + failure toast), so a
+ * recovered relay never shows the user an error for a sign-in that succeeds.
+ */
 async function relayCodexCode(
   frontendProviderId: string,
   payload: string,
 ): Promise<void> {
   try {
-    await tauriProvider.submitLoginCode(frontendProviderId, payload);
+    await tauriProvider.submitLoginCode(frontendProviderId, payload, {
+      surface: false,
+    });
   } catch (err) {
-    console.error("[codex-loopback] submitLoginCode failed:", err);
+    await recoverFailedCodexRelay(err, {
+      report: (cause) => logAndReportError("codex_loopback_relay", cause),
+      restartLogin: () =>
+        tauriProvider.launchLogin(frontendProviderId, {
+          deviceAuth: false,
+          toast: false,
+        }),
+      fail: (cause) => failCodexLogin(frontendProviderId, cause),
+      lastRestartAt: () => relayRestartAt.get(frontendProviderId) ?? null,
+      noteRestart: () => relayRestartAt.set(frontendProviderId, Date.now()),
+      now: () => Date.now(),
+    });
   }
 }
 
@@ -119,7 +161,11 @@ export async function beginCodexBrowserLogin(
       unlisten();
       unlisten = null;
     }
+    // Only this attempt's own registration — a newer begin may have replaced it.
+    if (activeLoopbackCleanups.get(frontendProviderId) === cleanup)
+      activeLoopbackCleanups.delete(frontendProviderId);
   };
+  activeLoopbackCleanups.set(frontendProviderId, cleanup);
 
   // Register the callback listener BEFORE binding the loopback so a fast
   // redirect can't race ahead of us.

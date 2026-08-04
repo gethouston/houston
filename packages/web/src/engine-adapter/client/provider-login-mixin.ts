@@ -6,6 +6,7 @@ import type { BaseCtor } from "./mixin";
 import { surfaceTypedLoginFailure } from "./provider-login-failure";
 import {
   loginKey,
+  pinnedLoginAgentId,
   pollProviderConnect,
   stopLoginWatch,
   watchLoginCompletion,
@@ -123,28 +124,51 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
     async submitProviderLoginCode(name: string, code: string): Promise<void> {
       const pid = toNewProvider(name);
       if (!pid) return;
-      // Same target the login started in: the agent's runtime, or the setup
-      // runtime when first-run connected pre-agent.
-      const engine = this.ctx.cp ? this.ctx.providerEngine() : this.ctx.engine;
+      const cp = this.ctx.cp;
+      if (!cp) {
+        await this.ctx.engine.completeLogin(pid, code);
+        return;
+      }
+      // The SAME runtime the login STARTED in, pinned by the connect poll's
+      // `activeLogins` entry — never re-derived here: `providerAgentId()`'s
+      // answer moves when the first agent materializes mid-login (onboarding
+      // tears the setup pod down at that moment), and the relayed OAuth code
+      // then landed on a pod that never saw the login — "no active login for
+      // openai-codex" (HOU-1113). Live derivation is only the fallback when no
+      // pin exists (the poll already ended, or a legacy paste dialog).
+      const pinned = pinnedLoginAgentId(this.ctx, pid);
+      const engine =
+        pinned === undefined
+          ? this.ctx.providerEngine()
+          : pinned === null
+            ? controlPlane.setupRuntimeClientFor(cp)
+            : controlPlane.runtimeClientFor(cp, pinned);
       await engine.completeLogin(pid, code);
     }
     async cancelProviderLogin(name?: string): Promise<void> {
       const pid = name ? toNewProvider(name) : undefined;
       if (!name || !pid) return;
       if (this.ctx.cp) {
-        // Key mirrors pollProviderConnect: the agent's id, or the setup-runtime
-        // sentinel when the first-run login started before any agent existed.
-        const agentId = this.ctx.providerAgentId();
+        // The pinned key mirrors what pollProviderConnect registered at start:
+        // the agent's id, or the setup-runtime sentinel when the first-run
+        // login started before any agent existed. Pinned — NOT re-derived via
+        // providerAgentId(), whose answer moves once the first agent
+        // materializes mid-login: the delete would then miss the poll's real
+        // key (the poll keeps running) and the cancel would land on a runtime
+        // that never saw the login (HOU-1113).
+        const pinned = pinnedLoginAgentId(this.ctx, pid);
+        const agentId =
+          pinned === undefined ? this.ctx.providerAgentId() : pinned;
         this.ctx.activeLogins.delete(loginKey(agentId, pid)); // stop the poll
         // Kill the runtime-side login too, in the same runtime the login started
         // in (the agent's sandbox, or the hidden setup runtime pre-agent) —
         // otherwise it keeps polling the provider until timeout and a retry
         // collides with the stale flow ("sign-in already pending", HOU-664 /
         // the HOU-438 failure class).
-        await this.ctx
-          .providerEngine()
-          .cancelLogin(pid)
-          .catch(benignCancelMiss);
+        const engine = agentId
+          ? this.ctx.providerEngineFor(agentId)
+          : controlPlane.setupRuntimeClientFor(this.ctx.cp);
+        await engine.cancelLogin(pid).catch(benignCancelMiss);
         return;
       }
       stopLoginWatch(this.ctx, name);
