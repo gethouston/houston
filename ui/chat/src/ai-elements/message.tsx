@@ -38,6 +38,7 @@ import {
   useState,
 } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
+import { Autolink } from "../autolink";
 import { MarkdownCodeBlock } from "../markdown-code-block";
 import { autolinkDisplay, classifyMarkdownLink } from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
@@ -431,17 +432,6 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
   mentions?: readonly MentionTarget[];
 };
 
-/**
- * A bare URL rendered inline in a chat message — shared by the markdown
- * autolink override below and the plain-text path (`plain-message-text.tsx`),
- * so a link looks identical whether its message rendered markdown or not.
- * Slack-blue via the `link` token (HOU-1152) on the canvas and peer bubbles;
- * inside the USER's action-filled bubble the blue fails contrast against the
- * fill, so those keep the bubble's own ink.
- */
-export const AUTOLINK_CLASS =
-  "text-link underline underline-offset-4 [overflow-wrap:anywhere] group-[.is-user]:text-input dark:group-[.is-user]:text-ink";
-
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 export const MessageResponse = memo(
@@ -498,39 +488,22 @@ export const MessageResponse = memo(
               return <>{custom}</>;
             }
           }
-          // Bare URL the agent dropped in chat → inline, clickable link that
+          // Bare URL the agent dropped in chat → inline link chip that
           // opens in the system browser (issue #358), not dead text. Only
           // render it interactive when there's an open handler; otherwise it
           // would look clickable but do nothing.
-          //
-          // Every surface underlines the link permanently, never on hover:
-          // `text-action` sits within ~1.05:1 of the body ink on the canvas
-          // and inside the bubbles alike, so colour carries no signal and
-          // the underline is the whole affordance (HOU-1152).
           if (kind === "autolink") {
             // A URL label markdown broke across lines flattens with a
             // softbreak in it (HOU-1071) — show the reassembled URL, not
-            // the raw children with a stray space mid-URL. A long URL
-            // shows its head plus an ellipsis, Slack-style (HOU-1152);
-            // the href keeps the full destination, and title surfaces it
-            // on hover (enhancement only — the link works without it).
-            const display = autolinkDisplay(children);
-            const label = display?.text ?? children;
-            const title = display?.shortened ? url : undefined;
-            if (!fn) return <span title={title}>{label}</span>;
+            // the raw children with a stray space mid-URL, scheme-stripped
+            // and capped Slack-style (HOU-1152); the href keeps the full
+            // destination.
+            const label = autolinkDisplay(children) ?? children;
+            if (!fn) return <span>{label}</span>;
             return (
-              <a
-                href={url}
-                rel="noreferrer"
-                title={title}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onOpen();
-                }}
-                className={AUTOLINK_CLASS}
-              >
+              <Autolink href={url} onOpen={onOpen}>
                 {label}
-              </a>
+              </Autolink>
             );
           }
           // Labeled link (text distinct from URL) → button with text + icon.

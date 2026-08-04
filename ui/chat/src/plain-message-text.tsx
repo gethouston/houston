@@ -9,13 +9,13 @@
  *   matcher the markdown path uses (`findMentionSpans`), so a shared
  *   conversation reads identically on both render paths. Offsets index into
  *   the NFC-normalized text, so this component slices its own normalized copy.
- * - Bare URLs (HOU-960 / #358): a pasted link stays clickable and underlined
+ * - Bare URLs (HOU-960 / #358): a pasted link stays a clickable link chip
  *   inside the bubble — the same anatomy as the markdown autolink, without a
  *   handler it degrades to plain text rather than a dead-looking link.
  */
 
 import { Fragment, type ReactNode } from "react";
-import { AUTOLINK_CLASS } from "./ai-elements/message";
+import { Autolink } from "./autolink";
 import { MentionChip } from "./mention-chip";
 import { findMentionSpans, type MentionTarget } from "./mention-spans.ts";
 import { normalizeMentionText } from "./mention-text.ts";
@@ -50,18 +50,9 @@ function linkify(
       );
     }
     parts.push(
-      <a
-        key={keyBase + start}
-        href={url}
-        rel="noreferrer"
-        onClick={(e) => {
-          e.preventDefault();
-          onOpenLink(url);
-        }}
-        className={AUTOLINK_CLASS}
-      >
+      <Autolink key={keyBase + start} href={url} onOpen={() => onOpenLink(url)}>
         {url}
-      </a>,
+      </Autolink>,
     );
     cursor = start + url.length;
   }

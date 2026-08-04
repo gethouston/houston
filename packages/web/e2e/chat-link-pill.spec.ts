@@ -25,9 +25,10 @@ const WRAPPED_LABEL =
   "https://docs.google.com/spreadsheets/d/1JOOOml-  \nrR9HmaliG4UX6UxZipaFoFE3zB13FWiPz-Y/edit";
 const REASSEMBLED =
   "https://docs.google.com/spreadsheets/d/1JOOOml-rR9HmaliG4UX6UxZipaFoFE3zB13FWiPz-Y/edit";
-/** Mirrors URL_DISPLAY_MAX in ui/chat/src/markdown-link.ts (HOU-1152). */
+/** Mirrors autolinkDisplay in ui/chat/src/markdown-link.ts (HOU-1152):
+ *  scheme stripped, then capped at URL_DISPLAY_MAX with an ellipsis. */
 const URL_DISPLAY_MAX = 64;
-const SHORTENED = `${REASSEMBLED.slice(0, URL_DISPLAY_MAX - 1)}…`;
+const SHORTENED = `${REASSEMBLED.replace(/^https:\/\//, "").slice(0, URL_DISPLAY_MAX - 1)}…`;
 
 test("hard-wrapped URL label renders inline and shortened, not as a clipped pill (HOU-1071 / HOU-1152)", async ({
   page,
@@ -67,18 +68,16 @@ test("hard-wrapped URL label renders inline and shortened, not as a clipped pill
 
   // Nor a pill by stylesheet: a blanket `.is-assistant a[href]` rule once
   // re-skinned every anchor as a fixed-height pill, clipping long URLs
-  // (HOU-1152). The link must render as underlined inline text.
+  // (HOU-1152). The link must render as an INLINE chip: link-token blue on
+  // the soft link tint, flowing with the text (never a fixed-height flexbox).
   const style = await link.evaluate((el) => {
     const s = getComputedStyle(el);
-    return {
-      background: s.backgroundColor,
-      display: s.display,
-      underlined: s.textDecorationLine,
-    };
+    return { background: s.backgroundColor, display: s.display };
   });
-  expect(style.background).toBe("rgba(0, 0, 0, 0)");
   expect(style.display).toBe("inline");
-  expect(style.underlined).toContain("underline");
+  // bg-link/10: the link token at 10% alpha (Tailwind computes via oklab —
+  // assert the tint's alpha rather than a color-space-dependent literal).
+  expect(style.background).toMatch(/\/ 0\.1\)$/);
 });
 
 test("bare long URL displays shortened with the full href intact (HOU-1152)", async ({
