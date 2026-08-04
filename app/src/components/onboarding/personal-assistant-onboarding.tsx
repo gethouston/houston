@@ -350,11 +350,11 @@ export function PersonalAssistantOnboarding({
         />
       )}
 
-      {/* Hidden until the assistant is provisioned, because `markCompleted`
-          is permanent and skipping with zero agents would strand the user in
-          an empty shell. Hidden on the finished screen, whose primary CTA
-          already exits. */}
-      {agent && step !== "finished" && (
+      {/* Available from the very first step: a zero-agent skip lands on the
+          shell's empty state, whose "New agent" CTA is the way back (only
+          agent-creating users ever mount onboarding). Hidden on the finished
+          screen, whose primary CTA already exits. */}
+      {step !== "finished" && (
         <SkipOnboardingButton
           onSkip={() => skipOnboarding(step, "escape_hatch")}
         />

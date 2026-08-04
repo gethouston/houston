@@ -441,6 +441,18 @@ export default function App() {
             onContinue={async (segment) => {
               await onboardingSegment.saveSegment(segment);
             }}
+            onSkip={() => {
+              // Terminal escape hatch, mirroring the orchestrator's
+              // skipOnboarding. The segment screen mounts BEFORE the
+              // orchestrator, so no pending flag or tutorialActive exists yet:
+              // marking completed is the whole teardown, and it flips this
+              // route to the shell synchronously (query cache set first).
+              analytics.track("onboarding_skipped", {
+                step: "segment",
+                source: "escape_hatch",
+              });
+              void markCompleted();
+            }}
           />
         )
       ) : firstRunRoute === "onboarding" ? (

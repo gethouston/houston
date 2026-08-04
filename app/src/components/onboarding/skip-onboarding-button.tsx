@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 /**
  * Support escape hatch pinned to the bottom of the first-run screen, on the
  * gutter below the card: a broken onboarding step must never trap the user,
- * and support can always say "click Skip onboarding". The orchestrator gates
- * it on a provisioned assistant, because completion is permanent and skipping
- * with zero agents would strand the user in an empty shell.
+ * and support can always say "click Skip onboarding". Shown from the first
+ * step onward — a zero-agent skip lands on the shell's empty state, whose
+ * "New agent" CTA is the recovery path.
  */
 export function SkipOnboardingButton({ onSkip }: { onSkip: () => void }) {
   const { t } = useTranslation("setup");
