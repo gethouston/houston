@@ -111,6 +111,7 @@ jobs:
     # build-macos header for the full staging contract.
     outputs:
       macos_flavors: ${{ steps.flavors.outputs.macos_flavors }}
+      windows_legs: ${{ steps.winlegs.outputs.windows_legs }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -181,6 +182,28 @@ jobs:
             echo 'macos_flavors=["prod","staging"]' >> "$GITHUB_OUTPUT"
           else
             echo 'macos_flavors=["prod"]' >> "$GITHUB_OUTPUT"
+          fi
+
+      # windows_legs does for build-windows what macos_flavors does for
+      # build-macos, except a Windows leg varies by ARCH as well as flavor, so
+      # the whole `include:` list is computed here rather than a flavor list
+      # crossed with a fixed matrix.
+      #
+      # Both channels build the two prod arches (x64 + arm64). A `cloud-v*` tag
+      # adds exactly ONE staging leg, x86_64 only: staging is a QA aid, x64 is
+      # the overwhelming majority of Windows installs, and a second staging arch
+      # would double Windows CI minutes for coverage nobody uses. A local `v*`
+      # tag is byte-identical to before this output existed.
+      - name: Compute Windows build legs
+        id: winlegs
+        run: |
+          X64='{"arch":"x86_64","target":"x86_64-pc-windows-msvc","runner":"windows-latest","flavor":"prod"}'
+          ARM='{"arch":"aarch64","target":"aarch64-pc-windows-msvc","runner":"windows-11-arm","flavor":"prod"}'
+          X64_STAGING='{"arch":"x86_64","target":"x86_64-pc-windows-msvc","runner":"windows-latest","flavor":"staging"}'
+          if [[ "$GITHUB_REF_NAME" == cloud-* ]]; then
+            echo "windows_legs=[$X64,$ARM,$X64_STAGING]" >> "$GITHUB_OUTPUT"
+          else
+            echo "windows_legs=[$X64,$ARM]" >> "$GITHUB_OUTPUT"
           fi
 
       # Resolve `release-notes.md`. Two paths:
@@ -1267,6 +1290,7 @@ jobs:
   #      updater consumes.
   build-windows:
     needs: prep
+    name: Build Windows (${{ matrix.arch }}, ${{ matrix.flavor }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     # Job-level so the upload step's `if: ${{ env.SENTRY_AUTH_TOKEN != '' }}`
@@ -1276,7 +1300,12 @@ jobs:
     # process tree (tauri → artifact-signing-cli) reads the credentials from
     # the environment.
     env:
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # Prod legs get the Sentry token; the staging leg deliberately does NOT —
+      # a QA build's symbols must never reach Sentry. Written secret-as-truthy
+      # branch for the same reason as build-macos (GitHub's `&&/||` returns the
+      # operand value, and an empty-string "true" branch is falsy, so the
+      # `== 'staging'` form would fall through and leak the token).
+      SENTRY_AUTH_TOKEN: ${{ matrix.flavor != 'staging' && secrets.SENTRY_AUTH_TOKEN || '' }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
@@ -1285,37 +1314,36 @@ jobs:
       AZURE_SIGNING_PROFILE: ${{ secrets.AZURE_SIGNING_PROFILE }}
       # See build-macos: cloud channel bakes the managed gateway URL (a secret)
       # so cloud users just sign in with Google. Empty on the local `v*` channel.
+      # Flavor split matches build-macos: the staging leg bakes the STAGING
+      # gateway so QA hits the staging engine fleet, prod legs bake prod.
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
-      VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
       # See build-macos: bake the integrations gateway URL for the local engine.
-      HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
+      HOUSTON_INTEGRATIONS_URL: ${{ startsWith(github.ref_name, 'cloud-') && (matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL) || '' }}
       # See build-macos: the store + client-metrics targets carry no hardcoded
       # production fallback, so every packaged build bakes them or ships without
-      # a store. Windows has no staging flavor, so both legs are prod.
-      VITE_AGENTSTORE_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
-      VITE_CLIENT_METRICS_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL }}
+      # a store. Not cloud-channel gated; only the flavor split applies.
+      VITE_AGENTSTORE_GATEWAY_URL: ${{ matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
+      VITE_CLIENT_METRICS_GATEWAY_URL: ${{ matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
     strategy:
-      # Both arches build in parallel. fail-fast=false so a transient
-      # ARM-runner outage doesn't kill the x64 release that 90%+ of
-      # Windows users actually install.
+      # Legs run in parallel. fail-fast=false so a transient ARM-runner outage
+      # doesn't kill the x64 release that 90%+ of Windows users actually
+      # install, and so a staging-leg failure never kills a shipping leg.
+      #
+      # The include list comes from `prep` (see its "Compute Windows build legs"
+      # step): two prod arches on every channel, plus one x86_64 STAGING leg on
+      # the cloud channel. The arm64 entry uses the GitHub-hosted Windows-on-ARM
+      # runner — native arm64 keeps two things simple: the Tauri app shell links
+      # for aarch64 without a cross toolchain, and setup-bun compiles the host
+      # sidecar for windows-arm64 natively (avoiding the flakier cross-target
+      # compile). See https://github.com/actions/partner-runner-images/issues/61
+      # — if that label ever disappears, fall back to `windows-latest` plus
+      # `rustup target add aarch64-pc-windows-msvc` and the ARM64 VS Build Tools
+      # component, but prefer the native runner whenever it's up.
       fail-fast: false
       matrix:
-        include:
-          - arch: x86_64
-            target: x86_64-pc-windows-msvc
-            runner: windows-latest
-          - arch: aarch64
-            target: aarch64-pc-windows-msvc
-            # GitHub-hosted Windows-on-ARM runner. Native arm64 keeps two things
-            # simple: the Tauri app shell links for aarch64 without a cross
-            # toolchain, and setup-bun compiles the host sidecar for windows-arm64
-            # natively (avoiding the flakier cross-target compile). See
-            # https://github.com/actions/partner-runner-images/issues/61 — if this
-            # label ever disappears, fall back to `runner: windows-latest` plus
-            # `rustup target add aarch64-pc-windows-msvc` and the ARM64 VS Build
-            # Tools component, but prefer the native runner whenever it's up.
-            runner: windows-11-arm
+        include: ${{ fromJSON(needs.prep.outputs.windows_legs) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1405,10 +1433,21 @@ jobs:
       # CLOUD channel only: repoint the updater at `latest-cloud.json` before the
       # build bakes tauri.conf.json in (see build-macos for the why). The script
       # is Node-based so it also runs on windows-11-arm, where jq is absent.
-      - name: Point updater at cloud manifest (cloud channel)
-        if: ${{ env.IS_CLOUD == 'true' }}
+      - name: Point updater at cloud manifest (prod cloud flavor)
+        if: ${{ env.IS_CLOUD == 'true' && matrix.flavor == 'prod' }}
         shell: bash
         run: bash scripts/ci/point-updater-at-cloud-manifest.sh
+
+      # STAGING flavor: neutralize the updater instead — point it at a
+      # never-created tag so the launch-time check 404s forever and the staging
+      # install is never force-updated into the published prod build (the app's
+      # update check is fail-open). Identical to the build-macos staging leg;
+      # `staging` only ever appears on the cloud channel, so this implies
+      # IS_CLOUD.
+      - name: Neutralize updater (staging flavor)
+        if: ${{ matrix.flavor == 'staging' }}
+        shell: bash
+        run: bash scripts/ci/point-updater-at-staging-noop.sh
 
       # Authenticode signing via Azure Artifact Signing. Gated on the
       # AZURE_* secrets so forks and pre-onboarding releases still build
@@ -1599,6 +1638,7 @@ jobs:
             "target/${{ matrix.target }}/release/houston_app.pdb"
 
       - name: Upload Windows MSI + updater signature to draft release
+        if: ${{ matrix.flavor != 'staging' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -1617,6 +1657,25 @@ jobs:
 
           echo "::notice::Windows MSI + .sig uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
           echo "::warning::This MSI is UNSIGNED (code-signing wise) — Windows SmartScreen will warn on first install. The updater minisign signature above is separate; it covers in-app auto-update verification, not OS code-signing. SignPath integration lands in a follow-up PR."
+
+      # Staging flavor only: upload EXACTLY the MSI, renamed so it's unmistakable
+      # in the draft's asset list — no .sig (staging must never enter the
+      # auto-updater feed), no Sentry upload. The rename is a pure `mv` AFTER
+      # Authenticode signing, which covers the file's contents, not its name, so
+      # the signature stays valid. Mirrors the build-macos staging DMG step.
+      - name: Upload staging QA MSI to draft release (staging flavor)
+        if: ${{ matrix.flavor == 'staging' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
+          SRC="${{ steps.artifacts-windows.outputs.msi }}"
+          DEST="$(dirname "$SRC")/Houston_staging_${VERSION}_x64_en-US.msi"
+          mv "$SRC" "$DEST"
+          gh release upload "$GITHUB_REF_NAME" "$DEST" --clobber
+          echo "::notice::Staging QA MSI (Houston_staging_${VERSION}_x64_en-US.msi) uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME — it talks to the staging gateway and is NOT in any updater manifest."
 
   # ============================================================================
   # Linux desktop build — x86_64 AppImage. Runs IN PARALLEL with the mac and
