@@ -16,6 +16,10 @@ import h from "./h.mjs";
  * Code and verification URL on the left, QR on the right — the panel's two
  * bottom corners, with the bright core of the glow left alone between them.
  *
+ * The row sets no margin of its own. How far it sits from the citation is a
+ * property of the panel's composition, not of the row, and template-cert.mjs
+ * owns that (see `AIR`).
+ *
  * @param {object} item Mapped certificate item.
  * @param {object} copy Result of `certCopy(item.lang)`.
  * @param {string} qrSrc QR code as a data URL.
@@ -30,22 +34,21 @@ export function verificationRow(item, copy, qrSrc) {
         alignItems: "flex-end",
         justifyContent: "space-between",
         width: "100%",
-        marginTop: 40,
       },
     },
     h(
       "div",
       { style: { display: "flex", flexDirection: "column" } },
       text(item.code, {
-        fontSize: 31,
+        fontSize: 34,
         fontWeight: 600,
-        letterSpacing: 4.4,
+        letterSpacing: 4.8,
         color: INK,
       }),
       // The smallest type on the busiest ground: it gets the brighter ink.
       text(`${copy.verifyAt} gethouston.ai/certificates/verify`, {
         marginTop: 12,
-        fontSize: 20,
+        fontSize: 21,
         fontWeight: 400,
         color: INK_MUTED,
       }),

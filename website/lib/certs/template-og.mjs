@@ -36,11 +36,11 @@ const INSET = 40;
  * a photograph and a grey rectangle in a feed.
  */
 const PANEL = tint([
-  [0.52, 0],
-  [0.46, 36],
-  [0.42, 62],
-  [0.5, 82],
-  [0.62, 100],
+  [0.42, 0],
+  [0.36, 36],
+  [0.32, 62],
+  [0.4, 82],
+  [0.52, 100],
 ]);
 
 /** A vignette, nothing more — the panel carries the contrast. */

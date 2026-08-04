@@ -1,16 +1,52 @@
-import { centred, HAIRLINE, INK, INK_MUTED, INK_SUBTLE } from "./chrome.mjs";
+import { centred, HAIRLINE, INK, INK_MUTED } from "./chrome.mjs";
 import h from "./h.mjs";
 
 /**
  * The certificate's citation: the claim, the recipient, the event, the date.
  *
- * Everything above the verification row, centred on the glass panel's axis. It is the
- * only part of the document that changes per attendee, which is why it lives
- * apart from the panel that holds it and the attestation beneath it.
+ * The reading column of the document, centred on the glass panel's axis between
+ * the letterhead and the verification row. It is the only part that changes per
+ * attendee, which is why it lives apart from the panel that holds it, the
+ * letterhead above it and the attestation beneath it.
  */
 
 /** Widest a line may run inside the panel, in panel-content pixels. */
 const MEASURE = 1420;
+
+/**
+ * The vertical rhythm, as gaps between the stack's blocks.
+ *
+ * Grouped, not evenly spaced: "this certifies that" belongs to the name it
+ * introduces and "for completing" belongs to the event it introduces, so each
+ * label hugs its subject and the air goes BETWEEN the two pairs. The date, which
+ * qualifies nothing, is pushed furthest away and closes the stack.
+ */
+const GAP = {
+  /** Claim to the name — a hug. */
+  name: 14,
+  /** Name to "for completing": the widest gap inside the citation. */
+  event: 30,
+  /** "for completing" to the event title — the other hug. */
+  title: 20,
+  /** Title to its tagline: a subtitle, so it stays inside the event's group. */
+  tagline: 16,
+  /**
+   * Event group to the date rule. The widest gap in the stack after the one
+   * under the name — the date belongs to no pair, and the rule has to read as
+   * the line the citation stops on, not as another beat of the event block.
+   */
+  date: 48,
+};
+
+/**
+ * Height reserved for the name, whatever rung of the ladder it lands on.
+ *
+ * Two pixels over the tallest line box the ladder can produce (146 x 1.14), so
+ * a short name and a long one put the rest of the stack on the same line of the
+ * glass. A name long enough to WRAP grows past it — deliberately: the panel's
+ * flex spacers give that growth somewhere to go (see template-cert.mjs).
+ */
+const NAME_BAND = 168;
 
 /**
  * Display size for the recipient's name. Stepped (not fluid) so every
@@ -22,16 +58,21 @@ const MEASURE = 1420;
  */
 export function nameSize(name) {
   const len = [...name].length;
-  if (len <= 18) return 128;
-  if (len <= 26) return 110;
-  if (len <= 36) return 94;
-  return 78;
+  if (len <= 18) return 146;
+  if (len <= 26) return 126;
+  if (len <= 36) return 108;
+  return 88;
 }
 
 /** A hairline flanking the date. */
 const flank = () =>
   h("div", {
-    style: { display: "flex", width: 92, height: 1, backgroundColor: HAIRLINE },
+    style: {
+      display: "flex",
+      width: 150,
+      height: 1,
+      backgroundColor: HAIRLINE,
+    },
   });
 
 /** The rule-and-date row. */
@@ -43,13 +84,13 @@ const dateRow = (dateDisplay) =>
         display: "flex",
         flexDirection: "row",
         alignItems: "center",
-        marginTop: 28,
+        marginTop: GAP.date,
       },
     },
     flank(),
     centred(dateDisplay, {
-      margin: "0 26px",
-      fontSize: 25,
+      margin: "0 30px",
+      fontSize: 27,
       fontWeight: 400,
       letterSpacing: 1.4,
       color: INK_MUTED,
@@ -58,12 +99,16 @@ const dateRow = (dateDisplay) =>
   );
 
 /**
- * The citation stack.
+ * The citation stack: the claim, the recipient, the event, the date.
  *
- * Top-anchored inside the panel, so the recipient's name lands on the same line
- * of the glass on every certificate in a cohort whatever else the event does or
- * does not have. The two optional lines (tagline, date) drop out entirely
- * rather than reserving empty space.
+ * Sits in the panel's reading band, between the letterhead above and the
+ * verification row below, with the spare glass split around it by the spacers
+ * in template-cert.mjs. It carries no leading margin of its own: the air over
+ * the claim is that split's business, not the stack's.
+ *
+ * The two optional lines (tagline, date) drop out entirely rather than
+ * reserving empty space — an event without a tagline gets a taller band of air
+ * around a shorter citation, not a hole where the tagline would have been.
  *
  * @param {object} item Mapped certificate item.
  * @param {object} copy Result of `certCopy(item.lang)`.
@@ -80,16 +125,8 @@ export function citation(item, copy) {
         width: "100%",
       },
     },
-    centred(copy.certificateOf, {
-      marginTop: 40,
-      fontSize: 23,
-      fontWeight: 400,
-      letterSpacing: 5.4,
-      color: INK_SUBTLE,
-    }),
     centred(copy.thisCertifies, {
-      marginTop: 30,
-      fontSize: 31,
+      fontSize: 34,
       fontWeight: 300,
       color: INK_MUTED,
     }),
@@ -102,7 +139,8 @@ export function citation(item, copy) {
           alignItems: "center",
           justifyContent: "center",
           width: "100%",
-          minHeight: 148,
+          marginTop: GAP.name,
+          minHeight: NAME_BAND,
         },
       },
       centred(item.displayName, {
@@ -117,18 +155,19 @@ export function citation(item, copy) {
       }),
     ),
     centred(copy.forCompleting, {
-      fontSize: 27,
+      marginTop: GAP.event,
+      fontSize: 30,
       fontWeight: 300,
       color: INK_MUTED,
     }),
     // The event lines run to a narrower measure than the name: a long title
     // reads better broken than run edge to edge of the glass.
     centred(item.eventTitle, {
-      marginTop: 16,
+      marginTop: GAP.title,
       width: MEASURE,
       justifyContent: "center",
       textAlign: "center",
-      fontSize: 47,
+      fontSize: 56,
       fontWeight: 600,
       lineHeight: 1.24,
       color: INK,
@@ -136,11 +175,11 @@ export function citation(item, copy) {
     ...(item.eventTagline
       ? [
           centred(item.eventTagline, {
-            marginTop: 14,
+            marginTop: GAP.tagline,
             width: MEASURE,
             justifyContent: "center",
             textAlign: "center",
-            fontSize: 26,
+            fontSize: 30,
             fontWeight: 300,
             lineHeight: 1.3,
             color: INK_MUTED,
