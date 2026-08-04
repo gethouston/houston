@@ -435,9 +435,12 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
  * A bare URL rendered inline in a chat message — shared by the markdown
  * autolink override below and the plain-text path (`plain-message-text.tsx`),
  * so a link looks identical whether its message rendered markdown or not.
+ * Slack-blue via the `link` token (HOU-1152) on the canvas and peer bubbles;
+ * inside the USER's action-filled bubble the blue fails contrast against the
+ * fill, so those keep the bubble's own ink.
  */
 export const AUTOLINK_CLASS =
-  "text-action underline underline-offset-4 [overflow-wrap:anywhere] group-[.is-user]:text-input dark:group-[.is-user]:text-ink";
+  "text-link underline underline-offset-4 [overflow-wrap:anywhere] group-[.is-user]:text-input dark:group-[.is-user]:text-ink";
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 

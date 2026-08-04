@@ -89,6 +89,12 @@
       "danger-bright": {
         "$value": "#ef4444"
       },
+      "link": {
+        "$value": "#1264a3"
+      },
+      "link-bright": {
+        "$value": "#1d9bd1"
+      },
       "highlight-ink-light": {
         "$value": "#3f2d00"
       },

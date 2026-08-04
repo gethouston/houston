@@ -68,6 +68,7 @@ Text · interactive · lines:
 | `text-ink` | primary text |
 | `text-ink-muted` | secondary text |
 | `bg-action` / `text-action-text` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
+| `text-link` | inline links in chat/prose — Slack-blue, always underlined; the ONE sanctioned blue |
 | `bg-hover` / `text-hover-text` | row + menu hover fill |
 | `bg-chip` / `text-chip-text` | soft chips / badges |
 | `border-line` (`--ht-line`) | hairlines (prefer `.ht-hairline` outline on cards) |
