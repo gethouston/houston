@@ -327,29 +327,33 @@ export async function handleAgents(
         return true;
       }
       const name = renameCheck.name;
-      // Quiesce the agent's standing runtime BEFORE the rename moves its
-      // directory. A warm local runtime holds absolute paths into the OLD
-      // directory (cwd + HOUSTON_DATA_DIR) and stays keyed under the OLD id in
-      // the launcher, so a rename under it leaks the process and its next
-      // write (conversation store, usage ledger, logs — all mkdir-recursive)
+      // Rename inside the channel's quiesced span: the standing runtime is
+      // stopped (confirmed exit — SIGKILL escalation, loud failure) AND the
+      // id is latched against respawn until the directory has moved. A warm
+      // local runtime holds absolute paths into the OLD directory (cwd +
+      // HOUSTON_DATA_DIR), so a rename under it leaks the process and its
+      // next write (conversation store, usage ledger — all mkdir-recursive)
       // RESURRECTS the old-named folder, which the directory-derived local
-      // store then re-lists as an agent with the old name ("my rename
-      // reverted"). On Windows the live child's cwd even locks the directory
-      // against the rename itself. The runtime respawns on the next dispatch
-      // (pi's continueRecent restores its sessions from the renamed tree). A
-      // quiesce failure surfaces — never rename under a live runtime.
-      if (name !== authz.agent.name) {
-        const channel = channelFor(deps, authz.workspace);
-        if (channel?.quiesce) {
-          await channel.quiesce({
-            workspace: authz.workspace,
-            agent: authz.agent,
-          });
-        }
-      }
+      // store re-lists as an agent with the old name ("my rename reverted").
+      // The latch closes the second half of HOU-827: the app's reconnect
+      // storm dispatches with the OLD id within ~500ms of the stop, and an
+      // unlatched ensureAwake booted a fresh runtime into the directory
+      // being renamed. On Windows the live child's cwd even locks the
+      // directory against the rename itself. The runtime respawns on the
+      // next dispatch (pi's continueRecent restores its sessions from the
+      // renamed tree). A quiesce failure surfaces — never rename under a
+      // live runtime.
+      const doRename = () => deps.store.renameAgent(agentId, name);
+      const channel = channelFor(deps, authz.workspace);
       let renamed: Agent;
       try {
-        renamed = await deps.store.renameAgent(agentId, name);
+        renamed =
+          name !== authz.agent.name && channel?.withQuiesced
+            ? await channel.withQuiesced(
+                { workspace: authz.workspace, agent: authz.agent },
+                doRename,
+              )
+            : await doRename();
       } catch (err) {
         if (err instanceof AgentNameConflictError) {
           json(res, 409, { error: err.message });

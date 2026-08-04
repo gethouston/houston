@@ -11,6 +11,13 @@ export interface RuntimeHandle {
   port: number;
   kill(): void;
   /**
+   * Non-negotiable kill (SIGKILL) for a child that ignored kill()'s SIGTERM.
+   * The launcher escalates to this before it will report the runtime gone —
+   * a rename must never proceed over a live child (HOU-827). Optional for
+   * test stubs whose processes cannot wedge.
+   */
+  forceKill?(): void;
+  /**
    * Register a one-shot callback fired when the underlying process exits on its
    * own (crash, OOM, the runtime's own SIGTERM handler). Lets the launcher reap
    * a dead child from its live-set so a phantom "running" entry never hands a
@@ -71,6 +78,14 @@ export interface ProcessLauncherOptions {
 interface Running {
   handle: RuntimeHandle;
   token: string;
+  /**
+   * Present while a sleep() is waiting for this child to actually exit. The
+   * entry stays in the live-set for the whole drain: deleting it up front
+   * made status() report "asleep" for a process that was still alive, and a
+   * dispatch arriving in that window respawned a SECOND runtime over the
+   * same directory (HOU-827's resurrect vector during a rename).
+   */
+  draining?: Promise<void>;
 }
 
 /** Default free-port allocator: bind :0, read the assigned port, release it. */
@@ -128,6 +143,8 @@ async function pollHealth(port: number): Promise<void> {
 export class ProcessLauncher implements RuntimeLauncher {
   private readonly running = new Map<AgentId, Running>();
   private readonly booting = new Map<AgentId, Promise<RuntimeEndpoint>>();
+  /** Refcounted rename latch — see hold(). */
+  private readonly held = new Map<AgentId, number>();
   private readonly allocatePort: () => Promise<number>;
   private readonly waitHealthy: (port: number, token: string) => Promise<void>;
 
@@ -137,6 +154,15 @@ export class ProcessLauncher implements RuntimeLauncher {
   }
 
   async ensureAwake(agent: Agent): Promise<RuntimeEndpoint> {
+    // Held = a rename is moving this id's directory RIGHT NOW. Refuse loudly:
+    // the app's own reconnect storm (SSE resume within ~500ms, watchdog polls,
+    // provider probes) arrives with the old id during the quiesce window, and
+    // a runtime spawned for it would be born pointing at the directory being
+    // renamed — its module-eval alone re-mkdirs the old tree (HOU-827).
+    if (this.held.has(agent.id))
+      throw new Error(
+        `agent '${agent.id}' is being renamed — retry with its new id`,
+      );
     // Single-flight per agent: the `running` entry exists BEFORE the child is
     // healthy (so sleep/shutdown can kill a mid-boot process), so a concurrent
     // caller must not read it as "awake" — it would be handed a port nobody has
@@ -146,6 +172,14 @@ export class ProcessLauncher implements RuntimeLauncher {
     const inflight = this.booting.get(agent.id);
     if (inflight) return inflight;
     const existing = this.running.get(agent.id);
+    if (existing?.draining) {
+      // A sleep is mid-drain: the process is alive but dying. Its port is a
+      // corpse-to-be, and spawning now would race two children over one
+      // directory — wait the drain out, then re-enter (respawn or, if the
+      // child refused to die, hand back the live entry).
+      await existing.draining.catch(() => {});
+      return this.ensureAwake(agent);
+    }
     if (existing)
       return {
         baseUrl: `http://127.0.0.1:${existing.handle.port}`,
@@ -159,6 +193,23 @@ export class ProcessLauncher implements RuntimeLauncher {
     } finally {
       this.booting.delete(agent.id);
     }
+  }
+
+  /**
+   * Latch an agent id against respawn while an operation invalidates its
+   * id→directory mapping (rename). Refcounted so overlapping holds compose;
+   * the returned release is idempotent per acquisition.
+   */
+  hold(agentId: AgentId): () => void {
+    this.held.set(agentId, (this.held.get(agentId) ?? 0) + 1);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const n = (this.held.get(agentId) ?? 1) - 1;
+      if (n <= 0) this.held.delete(agentId);
+      else this.held.set(agentId, n);
+    };
   }
 
   private async spawnUntilHealthy(agent: Agent): Promise<RuntimeEndpoint> {
@@ -227,29 +278,73 @@ export class ProcessLauncher implements RuntimeLauncher {
     return endpoint;
   }
 
-  async sleep(agentId: AgentId, timeoutMs = 5_000): Promise<void> {
+  async sleep(
+    agentId: AgentId,
+    timeoutMs = 5_000,
+    forceTimeoutMs = 2_000,
+  ): Promise<void> {
     const r = this.running.get(agentId);
     if (!r) return; // already asleep — pi's continueRecent restores on next wake
-    // Subscribe to the exit BEFORE killing, then wait (bounded) for the child
-    // to ACTUALLY be gone: callers sleep an agent to get its directory quiet
-    // (a rename is about to move it; on Windows a live child's cwd even locks
-    // it), and SIGTERM alone resolves while the process is still flushing.
+    // Single-flight: a concurrent sleep joins the drain already in progress
+    // (and shares its outcome) instead of double-killing or — worse — seeing
+    // the entry gone and reporting "asleep" while the child still lives.
+    if (r.draining) return r.draining;
     // Handles without onExit (test stubs) count as already exited — same
     // posture as shutdownAllAndWait.
-    const exited = r.handle.onExit
-      ? new Promise<void>((resolve) => r.handle.onExit?.(() => resolve()))
-      : undefined;
-    r.handle.kill();
-    this.running.delete(agentId);
-    if (exited) {
-      await Promise.race([
-        exited,
-        new Promise<void>((resolve) => {
-          const timer = setTimeout(resolve, timeoutMs);
-          timer.unref?.();
-        }),
-      ]);
+    if (!r.handle.onExit) {
+      r.handle.kill();
+      this.running.delete(agentId);
+      return;
     }
+    const drain = this.drainUntilExit(agentId, r, timeoutMs, forceTimeoutMs);
+    r.draining = drain;
+    try {
+      await drain;
+    } finally {
+      r.draining = undefined;
+    }
+  }
+
+  /**
+   * Kill the child and wait for it to ACTUALLY be gone: callers sleep an
+   * agent to get its directory quiet (a rename is about to move it; on
+   * Windows a live child's cwd even locks it), and SIGTERM alone resolves
+   * while the process is still flushing. A child that outlives the SIGTERM
+   * budget (wedged drain, blocked event loop) is SIGKILLed; one that
+   * survives even that fails the sleep LOUDLY — resolving silently here is
+   * what let a rename proceed under a live runtime, whose next write
+   * resurrected the old-named directory (HOU-827). The live-set entry is
+   * removed only once the exit is confirmed, so status() stays truthful for
+   * the whole drain.
+   */
+  private async drainUntilExit(
+    agentId: AgentId,
+    r: Running,
+    timeoutMs: number,
+    forceTimeoutMs: number,
+  ): Promise<void> {
+    // Subscribe BEFORE killing so a fast exit cannot be missed.
+    const exited = new Promise<boolean>((resolve) =>
+      r.handle.onExit?.(() => resolve(true)),
+    );
+    const expire = (ms: number) =>
+      new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => resolve(false), ms);
+        timer.unref?.();
+      });
+    r.handle.kill();
+    let gone = await Promise.race([exited, expire(timeoutMs)]);
+    if (!gone) {
+      r.handle.forceKill?.();
+      gone = await Promise.race([exited, expire(forceTimeoutMs)]);
+    }
+    if (!gone)
+      throw new Error(
+        `runtime for '${agentId}' is still alive after SIGTERM and SIGKILL — refusing to report it asleep`,
+      );
+    // The crash reaper (onExit in spawnUntilHealthy) usually got here first;
+    // guard against clobbering a respawn that raced in after it.
+    if (this.running.get(agentId) === r) this.running.delete(agentId);
   }
 
   async destroy(agentId: AgentId): Promise<void> {

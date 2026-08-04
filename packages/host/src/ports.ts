@@ -158,6 +158,15 @@ export interface RuntimeLauncher {
   /** Permanently delete the runtime. Keeps the volume unless dropVolume. */
   destroy(agentId: AgentId, opts?: { dropVolume?: boolean }): Promise<void>;
   status(agentId: AgentId): Promise<RuntimeState>;
+  /**
+   * Latch an agent id against ensureAwake for the duration of an operation
+   * that invalidates its id→storage mapping (rename). Returns the release.
+   * While held, ensureAwake throws instead of spawning: a runtime born in
+   * this window would point at the OLD storage and recreate it on its first
+   * write (HOU-827). Optional: launchers whose storage is keyed by a stable
+   * id (pods) need no latch.
+   */
+  hold?(agentId: AgentId): () => void;
 }
 
 /** The (workspace, agent) pair every channel operation is scoped to. */
@@ -254,17 +263,22 @@ export interface RuntimeChannel {
     items: { id: string; text: string }[],
   ): Promise<{ id: string; text: string; summary: string }[]>;
   /**
-   * Stop the agent's STANDING runtime (kill / scale to zero), persisting its
-   * state — destroying nothing; the runtime respawns on the next dispatch.
-   * Called before operations that move the agent's on-disk identity (rename):
+   * Run `fn` with the agent's STANDING runtime stopped (kill / scale to zero,
+   * persisting its state — destroying nothing; the runtime respawns on the
+   * next dispatch) AND the agent id latched against respawn until `fn`
+   * settles. For operations that move the agent's on-disk identity (rename):
    * a live local runtime holds absolute paths into the old directory (cwd,
    * data dir) and its next write would resurrect the old-named folder, which
-   * the directory-derived local store re-lists as an agent with the OLD name.
-   * On Windows the live child's cwd also locks the directory against the
-   * rename itself. Optional: channels with no standing runtime (per-turn)
-   * have nothing to quiesce and omit it.
+   * the directory-derived local store re-lists as an agent with the OLD name;
+   * on Windows the live child's cwd also locks the directory against the
+   * rename itself. The latch matters as much as the stop (HOU-827): the app
+   * reconnects its streams within ~500ms of the runtime dying, and a dispatch
+   * on the still-old id during the stop window would boot a FRESH runtime
+   * bound to the old path — resurrecting it with zero further user activity.
+   * Optional: channels with no standing runtime (per-turn) have nothing to
+   * quiesce and omit it.
    */
-  quiesce?(ctx: ChannelCtx): Promise<void>;
+  withQuiesced?<T>(ctx: ChannelCtx, fn: () => Promise<T>): Promise<T>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /**

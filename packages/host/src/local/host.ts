@@ -304,10 +304,23 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
 
   // agent.id is "<Workspace>/<Agent>" — split it back into the on-disk dir.
   const agentDir = (id: string) => join(opts.workspacesRoot, ...id.split("/"));
+  // Spawns fail closed on a stale id: after a rename (or delete) the old id
+  // maps to a directory that no longer exists, and a runtime spawned against
+  // it would recreate the tree on its first mkdir-recursive write — the
+  // HOU-827 ghost agent. Any late dispatch still holding the old id (client
+  // caches, a scheduler tick that crossed the rename) errors visibly instead.
+  const liveAgentDir = (id: string) => {
+    const dir = agentDir(id);
+    if (!existsSync(dir))
+      throw new Error(
+        `agent directory for '${id}' is gone (renamed or deleted?)`,
+      );
+    return dir;
+  };
   const launcher = new ProcessLauncher({
     spawner,
-    workspaceDirFor: (a) => agentDir(a.id),
-    dataDirFor: (a) => join(agentDir(a.id), ".houston", "runtime"),
+    workspaceDirFor: (a) => liveAgentDir(a.id),
+    dataDirFor: (a) => join(liveAgentDir(a.id), ".houston", "runtime"),
     sharedSkillsDirFor: sharedMirrorDir
       ? () => join(sharedMirrorDir, "skills")
       : opts.gatewayFronted
