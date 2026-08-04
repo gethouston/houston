@@ -33,18 +33,20 @@ const INSET = 96;
  *
  * It runs the other way from the obvious one. The sky at the top needs the most
  * tint, because that is where the type is smallest and the picture emptiest.
- * Through the middle it THINS to 0.37 — the sunrise sits behind that band and
+ * Through the middle it THINS to 0.55 — the sunrise sits behind that band and
  * still has to read through the glass. Only the last eighth deepens again, to
- * 0.64, because the code and the QR sit on the brightest pixels in the
- * photograph.
+ * 0.82, because the code and the QR sit on the brightest pixels in the
+ * photograph. The whole ramp runs deep at the founder's explicit request
+ * ("MAKE IT DARKER"): the glass is unmistakably smoked, the photo a glow
+ * behind it rather than a picture through it.
  */
 const PANEL = tint([
-  [0.46, 0],
-  [0.42, 30],
-  [0.38, 55],
-  [0.37, 70],
-  [0.46, 86],
-  [0.64, 100],
+  [0.68, 0],
+  [0.62, 30],
+  [0.56, 55],
+  [0.55, 70],
+  [0.66, 86],
+  [0.82, 100],
 ]);
 
 /**
