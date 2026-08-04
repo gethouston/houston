@@ -1,24 +1,50 @@
+import { signatureRow, verificationRow } from "./attestation.mjs";
+import {
+  BODY_FONT,
+  backdrop,
+  centred,
+  HAIRLINE,
+  INK,
+  INK_MUTED,
+  INK_SUBTLE,
+  lockup,
+  NAVY,
+  navy,
+} from "./chrome.mjs";
 import { certCopy } from "./copy.mjs";
 import h from "./h.mjs";
-import { HELMET_RATIO, helmetDataUrl } from "./logo.mjs";
 
 /**
- * The printable certificate: 2000x1414 landscape (A4/letter ratio at ~170dpi),
- * white ground, hairline frame, one black bar at the top edge of the frame.
+ * The printable certificate: 2000x1414 landscape, the Houston photograph
+ * full-bleed, every word set straight onto it in warm white.
  *
- * Written as a satori element tree (see h.mjs). satori implements a SUBSET of
- * flexbox and has no block layout, so every container declares `display:"flex"`
- * and an explicit `flexDirection`; spacing is explicit margins, never collapse.
+ * The composition is dictated by the photograph. Its top two thirds are deep
+ * navy sky and carry the document's voice — issuer, claim, name, event. The
+ * sunrise on the horizon is left empty and becomes the gap BETWEEN the two
+ * signatures; the code and the QR take the darker bottom corners so nothing
+ * sits on the bright core of the glow.
  */
 export const CERT_WIDTH = 2000;
 export const CERT_HEIGHT = 1414;
 
-const FONT = "Hanken Grotesk";
-const INK = "#0d0d0d";
-const INK_MUTED = "#5d5d5d";
-const INK_SUBTLE = "#676767";
-const RULE = "#e3e3e3";
-const FRAME_LINE = "rgba(13, 13, 13, 0.16)";
+/**
+ * The scrim, in one gradient (see chrome.mjs).
+ *
+ * Heaviest across the sky, where the type is, and gone by the horizon so the
+ * sunrise is the photographer's, not ours. It lifts again over the last tenth
+ * as a plain vignette, which is what buys the code its contrast over the city
+ * lights without putting a panel behind it.
+ */
+const SCRIM = [
+  "linear-gradient(180deg",
+  `${navy(0.46)} 0%`,
+  `${navy(0.54)} 42%`,
+  `${navy(0.34)} 58%`,
+  `${navy(0.1)} 70%`,
+  `${navy(0.05)} 78%`,
+  `${navy(0.33)} 92%`,
+  `${navy(0.62)} 100%)`,
+].join(", ");
 
 /**
  * Display size for the recipient's name. Stepped (not fluid) so every
@@ -31,39 +57,20 @@ const FRAME_LINE = "rgba(13, 13, 13, 0.16)";
 function nameSize(name) {
   const len = [...name].length;
   if (len <= 18) return 132;
-  if (len <= 26) return 112;
-  if (len <= 36) return 92;
-  return 76;
+  if (len <= 26) return 114;
+  if (len <= 36) return 96;
+  return 80;
 }
 
-/**
- * A line of text.
- *
- * satori adds the tracking after the LAST glyph too, so a centred, tracked line
- * lands letterSpacing/2 to the left of the true axis (measured: -4px on the
- * wordmark). Shrink-to-fit lines get a compensating left margin — flex centring
- * splits it evenly, so one full step of margin moves the ink back by half. Full
- * width lines centre their own text and need no correction.
- */
-const text = (content, style) => {
-  const track = style.width ? 0 : (style.letterSpacing ?? 0);
-  return h(
-    "div",
-    {
-      style: {
-        display: "flex",
-        ...(track ? { marginLeft: track } : {}),
-        ...style,
-      },
-    },
-    content,
-  );
-};
+/** A hairline flanking the date. */
+const flank = () =>
+  h("div", {
+    style: { display: "flex", width: 96, height: 1, backgroundColor: HAIRLINE },
+  });
 
 export function certificateElement(item, qrSrc) {
   const copy = certCopy(item.lang);
   const size = nameSize(item.displayName);
-  const helmetHeight = 88;
 
   return h(
     "div",
@@ -71,225 +78,136 @@ export function certificateElement(item, qrSrc) {
       style: {
         display: "flex",
         flexDirection: "column",
+        position: "relative",
+        overflow: "hidden",
         width: CERT_WIDTH,
         height: CERT_HEIGHT,
-        padding: 88,
-        backgroundColor: "#ffffff",
-        fontFamily: FONT,
+        backgroundColor: NAVY,
+        fontFamily: BODY_FONT,
       },
     },
+    ...backdrop(CERT_WIDTH, CERT_HEIGHT, { focusY: 0.5, scrim: SCRIM }),
     h(
       "div",
       {
         style: {
           display: "flex",
           flexDirection: "column",
-          flex: 1,
-          border: `2px solid ${FRAME_LINE}`,
+          alignItems: "center",
+          width: "100%",
+          height: "100%",
+          padding: "76px 140px 84px 140px",
         },
       },
-      // The signature band: a solid bar filling the top of the frame.
-      h("div", {
-        style: {
-          display: "flex",
-          width: "100%",
-          height: 22,
-          backgroundColor: "#0a0a0a",
-        },
+      lockup({ helmet: 92, word: 34, domain: 17, centred: true }),
+      // ── The claim ────────────────────────────────────────────────────────
+      // Top-anchored, so the recipient's name lands on the same line of the sky
+      // on every certificate in a cohort whatever else the event does or does
+      // not have.
+      centred(copy.certificateOf, {
+        marginTop: 68,
+        fontSize: 23,
+        fontWeight: 400,
+        letterSpacing: 5.4,
+        color: INK_SUBTLE,
       }),
+      centred(copy.thisCertifies, {
+        marginTop: 42,
+        fontSize: 31,
+        fontWeight: 300,
+        color: INK_MUTED,
+      }),
+      // Fixed height: the name ladder must not shift everything under it.
       h(
         "div",
         {
           style: {
             display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            padding: "0 96px 56px 96px",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            minHeight: 166,
+            marginTop: 6,
           },
         },
-        // ── Centred document column ──────────────────────────────────────
-        h(
-          "div",
-          {
-            style: {
-              display: "flex",
-              flexDirection: "column",
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              width: "100%",
-            },
-          },
-          h("img", {
-            src: helmetDataUrl(INK),
-            width: Math.round(helmetHeight * HELMET_RATIO),
-            height: helmetHeight,
-            style: { display: "flex" },
-          }),
-          text("HOUSTON", {
-            marginTop: 18,
-            fontSize: 32,
-            fontWeight: 600,
-            letterSpacing: 6.4,
-            color: INK,
-          }),
-          text(copy.certificateOf, {
-            marginTop: 44,
-            fontSize: 22,
-            fontWeight: 400,
-            letterSpacing: 4.84,
-            color: INK_SUBTLE,
-          }),
-          h("div", {
-            style: {
-              display: "flex",
-              width: "40%",
-              height: 1,
-              marginTop: 30,
-              backgroundColor: RULE,
-            },
-          }),
-          text(copy.thisCertifies, {
-            marginTop: 44,
-            fontSize: 30,
-            fontWeight: 400,
-            color: INK_MUTED,
-          }),
-          text(item.displayName, {
-            marginTop: 14,
-            width: "100%",
-            justifyContent: "center",
-            textAlign: "center",
-            fontSize: size,
-            fontWeight: 300,
-            letterSpacing: size * -0.03,
-            lineHeight: 1.2,
-            color: INK,
-          }),
-          text(copy.forCompleting, {
-            marginTop: 22,
-            fontSize: 26,
-            fontWeight: 400,
-            color: INK_MUTED,
-          }),
-          text(item.eventTitle, {
-            marginTop: 14,
-            width: "100%",
-            justifyContent: "center",
-            textAlign: "center",
-            fontSize: 46,
-            fontWeight: 600,
-            lineHeight: 1.25,
-            color: INK,
-          }),
-          // Optional: events without a tagline drop the line entirely rather
-          // than reserving empty space for it.
-          ...(item.eventTagline
-            ? [
-                text(item.eventTagline, {
-                  marginTop: 12,
-                  width: "100%",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  fontSize: 26,
-                  fontWeight: 400,
-                  lineHeight: 1.3,
-                  color: INK_MUTED,
-                }),
-              ]
-            : []),
-          // Optional for the same reason as the tagline: an event with no
-          // usable date drops the line rather than reserving a blank one.
-          ...(item.eventDateDisplay
-            ? [
-                text(item.eventDateDisplay, {
-                  marginTop: 34,
-                  fontSize: 28,
-                  fontWeight: 400,
-                  color: INK,
-                }),
-              ]
-            : []),
-        ),
-        // ── Footer: issuer · verification code · QR ──────────────────────
-        // Three equal columns rather than a bare space-between row, so the
-        // code block sits on the document's true optical centre even though
-        // the issuer text and the QR have very different widths.
-        h(
-          "div",
-          {
-            style: {
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "flex-end",
-              justifyContent: "space-between",
-              width: "100%",
-            },
-          },
-          h(
-            "div",
-            {
-              style: {
-                display: "flex",
-                flexDirection: "column",
-                flex: 1,
-                alignItems: "flex-start",
-              },
-            },
-            text(copy.issuedBy, {
-              fontSize: 22,
-              fontWeight: 400,
-              color: INK_SUBTLE,
-            }),
-            text("gethouston.ai", {
-              marginTop: 8,
-              fontSize: 22,
-              fontWeight: 400,
-              color: INK_SUBTLE,
-            }),
-          ),
-          h(
-            "div",
-            {
-              style: {
-                display: "flex",
-                flexDirection: "column",
-                flex: 1,
-                alignItems: "center",
-              },
-            },
-            text(item.code, {
-              fontSize: 30,
-              fontWeight: 600,
-              letterSpacing: 4.2,
-              color: INK,
-            }),
-            text(`${copy.verifyAt} gethouston.ai/certificates/verify`, {
-              marginTop: 10,
-              fontSize: 20,
-              fontWeight: 400,
-              color: INK_SUBTLE,
-            }),
-          ),
-          h(
-            "div",
-            {
-              style: {
-                display: "flex",
-                flexDirection: "column",
-                flex: 1,
-                alignItems: "flex-end",
-              },
-            },
-            h("img", {
-              src: qrSrc,
-              width: 200,
-              height: 200,
-              style: { display: "flex" },
-            }),
-          ),
-        ),
+        centred(item.displayName, {
+          width: "100%",
+          justifyContent: "center",
+          textAlign: "center",
+          fontSize: size,
+          fontWeight: 300,
+          letterSpacing: size * -0.03,
+          lineHeight: 1.14,
+          color: INK,
+        }),
       ),
+      centred(copy.forCompleting, {
+        marginTop: 4,
+        fontSize: 27,
+        fontWeight: 300,
+        color: INK_MUTED,
+      }),
+      // The event lines run to a narrower measure than the name: it keeps a
+      // long title off the ship flying through the right of the frame, and a
+      // tagline reads better short anyway.
+      centred(item.eventTitle, {
+        marginTop: 16,
+        width: 1400,
+        justifyContent: "center",
+        textAlign: "center",
+        fontSize: 47,
+        fontWeight: 600,
+        lineHeight: 1.24,
+        color: INK,
+      }),
+      // Optional: events without a tagline drop the line entirely rather than
+      // reserving empty space for it.
+      ...(item.eventTagline
+        ? [
+            centred(item.eventTagline, {
+              marginTop: 14,
+              width: 1400,
+              justifyContent: "center",
+              textAlign: "center",
+              fontSize: 26,
+              fontWeight: 300,
+              lineHeight: 1.3,
+              color: INK_MUTED,
+            }),
+          ]
+        : []),
+      // Optional for the same reason: an event with no usable date drops the
+      // rule-and-date row rather than leaving two hairlines around nothing.
+      ...(item.eventDateDisplay
+        ? [
+            h(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: 38,
+                },
+              },
+              flank(),
+              centred(item.eventDateDisplay, {
+                margin: "0 26px",
+                fontSize: 25,
+                fontWeight: 400,
+                letterSpacing: 1.4,
+                color: INK_MUTED,
+              }),
+              flank(),
+            ),
+          ]
+        : []),
+      // Bottom-anchored from here down: the signatures straddle the sunrise and
+      // the footer takes the two dark corners, both fixed against the horizon
+      // rather than floating on the length of the copy above.
+      h("div", { style: { display: "flex", flex: 1 } }),
+      signatureRow(),
+      verificationRow(item, copy, qrSrc),
     ),
   );
 }

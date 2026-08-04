@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import satori from "satori";
+import { BODY_FONT, SCRIPT_FONT } from "./chrome.mjs";
 import { coveredCodePoints } from "./font-coverage.mjs";
 import { qrDataUrl } from "./qr.mjs";
 import {
@@ -22,9 +23,12 @@ import { OG_HEIGHT, OG_WIDTH, ogCardElement } from "./template-og.mjs";
 const FONT_DIR = new URL("./fonts/", import.meta.url);
 
 const FONT_FILES = [
-  { file: "HankenGrotesk-Light.ttf", weight: 300 },
-  { file: "HankenGrotesk-Regular.ttf", weight: 400 },
-  { file: "HankenGrotesk-SemiBold.ttf", weight: 600 },
+  { file: "HankenGrotesk-Light.ttf", name: BODY_FONT, weight: 300 },
+  { file: "HankenGrotesk-Regular.ttf", name: BODY_FONT, weight: 400 },
+  { file: "HankenGrotesk-SemiBold.ttf", name: BODY_FONT, weight: 600 },
+  // The signature hand. Only ever set from `signers.mjs`, never from attendee
+  // data, so it is excluded from the coverage check below.
+  { file: "GreatVibes-Regular.ttf", name: SCRIPT_FONT, weight: 400 },
 ];
 
 /** Memoized so a whole build reads the font files exactly once. */
@@ -32,8 +36,8 @@ let fontsPending = null;
 
 export function loadFonts() {
   fontsPending ??= Promise.all(
-    FONT_FILES.map(async ({ file, weight }) => ({
-      name: "Hanken Grotesk",
+    FONT_FILES.map(async ({ file, name, weight }) => ({
+      name,
       data: await readFile(fileURLToPath(new URL(file, FONT_DIR))),
       weight,
       style: "normal",
@@ -46,11 +50,14 @@ export function loadFonts() {
 let coveragePending = null;
 
 /**
- * Every code point the bundled fonts can render.
+ * Every code point the BODY family can render.
  *
- * The three files are Latin cuts of one family, so the union is the real
+ * Its three files are Latin cuts of one family, so their union is the real
  * coverage. Callers use it to refuse to ship a name as empty boxes — satori
- * substitutes `.notdef` silently and would otherwise do exactly that.
+ * substitutes `.notdef` silently and would otherwise do exactly that. The
+ * script face is left out on purpose: it never draws attendee text, so counting
+ * it would let a character it happens to carry pass the check and then render
+ * as a box in the body face.
  *
  * @returns {Promise<Set<number>>}
  */
@@ -58,6 +65,7 @@ export function loadFontCoverage() {
   coveragePending ??= loadFonts().then((fonts) => {
     const covered = new Set();
     for (const font of fonts) {
+      if (font.name !== BODY_FONT) continue;
       for (const cp of coveredCodePoints(font.data)) covered.add(cp);
     }
     return covered;
