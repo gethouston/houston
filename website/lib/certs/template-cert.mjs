@@ -1,210 +1,86 @@
 import { signatureRow, verificationRow } from "./attestation.mjs";
-import {
-  BODY_FONT,
-  backdrop,
-  centred,
-  HAIRLINE,
-  INK,
-  INK_MUTED,
-  INK_SUBTLE,
-  lockup,
-  NAVY,
-  navy,
-} from "./chrome.mjs";
+import { backdrop } from "./backdrop.mjs";
+import { BODY_FONT, lockup, navy } from "./chrome.mjs";
+import { citation } from "./citation.mjs";
 import { certCopy } from "./copy.mjs";
 import h from "./h.mjs";
+import { canvas, panel, tint } from "./panel.mjs";
 
 /**
  * The printable certificate: 2000x1414 landscape, the Houston photograph
- * full-bleed, every word set straight onto it in warm white.
+ * full-bleed, and one pane of glass centred on it carrying the document.
  *
- * The composition is dictated by the photograph. Its top two thirds are deep
- * navy sky and carry the document's voice — issuer, claim, name, event. The
- * sunrise on the horizon is left empty and becomes the gap BETWEEN the two
- * signatures; the code and the QR take the darker bottom corners so nothing
- * sits on the bright core of the glow.
+ * Everything is inside the panel — lockup, claim, name, event, date,
+ * signatures, code and QR — so the picture is never asked to be a background
+ * for type and a picture at the same time. Outside the panel it is just the
+ * photograph: sky above, the Earth's limb and the sunrise below and around.
  */
 export const CERT_WIDTH = 2000;
 export const CERT_HEIGHT = 1414;
 
-/**
- * The scrim, in one gradient (see chrome.mjs).
- *
- * Heaviest across the sky, where the type is, and gone by the horizon so the
- * sunrise is the photographer's, not ours. It lifts again over the last tenth
- * as a plain vignette, which is what buys the code its contrast over the city
- * lights without putting a panel behind it.
- */
-const SCRIM = [
-  "linear-gradient(180deg",
-  `${navy(0.46)} 0%`,
-  `${navy(0.54)} 42%`,
-  `${navy(0.34)} 58%`,
-  `${navy(0.1)} 70%`,
-  `${navy(0.05)} 78%`,
-  `${navy(0.33)} 92%`,
-  `${navy(0.62)} 100%)`,
-].join(", ");
+/** Photograph left visible on all four sides of the panel. */
+const INSET = 96;
 
 /**
- * Display size for the recipient's name. Stepped (not fluid) so every
- * certificate in a cohort reads as the same document; counted over code points
- * rather than UTF-16 units so an accented name steps at the width it looks.
+ * The panel tint (see panel.mjs for why it is a ramp).
  *
- * The bundled fonts are Latin only — a name outside that coverage is caught and
- * reported by `warnAboutMissingGlyphs` in render.mjs, not silently sized here.
+ * It runs the other way from the obvious one. The sky at the top needs the most
+ * tint, because that is where the type is smallest and the picture emptiest.
+ * Through the middle it THINS to 0.37 — the sunrise sits behind that band, and
+ * every extra hundredth there turns warm light into grey haze. Only the last
+ * eighth deepens again, to 0.60, and only because the code and the QR sit on
+ * the brightest pixels in the photograph.
  */
-function nameSize(name) {
-  const len = [...name].length;
-  if (len <= 18) return 132;
-  if (len <= 26) return 114;
-  if (len <= 36) return 96;
-  return 80;
-}
+const PANEL = tint([
+  [0.46, 0],
+  [0.42, 30],
+  [0.38, 55],
+  [0.37, 70],
+  [0.46, 86],
+  [0.64, 100],
+]);
 
-/** A hairline flanking the date. */
-const flank = () =>
-  h("div", {
-    style: { display: "flex", width: 96, height: 1, backgroundColor: HAIRLINE },
-  });
+/**
+ * The wash on the photograph itself, now that the panel carries the contrast.
+ *
+ * A vignette and nothing else, and a faint one: the old full-bleed scrim ran to
+ * 0.54 across the sky because the type used to sit straight on it. Anything
+ * near that here crushes the frame's top strip to flat black and throws away
+ * the stars the panel is supposed to be floating in front of.
+ */
+const VIGNETTE = `linear-gradient(180deg, ${navy(0.09)} 0%, ${navy(0.01)} 24%, ${navy(0)} 58%, ${navy(0.03)} 82%, ${navy(0.14)} 100%)`;
 
 export function certificateElement(item, qrSrc) {
   const copy = certCopy(item.lang);
-  const size = nameSize(item.displayName);
 
   return h(
     "div",
-    {
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        overflow: "hidden",
+    { style: canvas(CERT_WIDTH, CERT_HEIGHT, BODY_FONT) },
+    ...backdrop(CERT_WIDTH, CERT_HEIGHT, { focusY: 0.5, scrim: VIGNETTE }),
+    panel(
+      {
         width: CERT_WIDTH,
         height: CERT_HEIGHT,
-        backgroundColor: NAVY,
-        fontFamily: BODY_FONT,
+        inset: INSET,
+        radius: 26,
+        // Near-square inner margins: the QR chip is a solid white block in the
+        // bottom corner, and an uneven gap round it is the first thing the eye
+        // finds. The foot is 8px tighter than the sides only because the code
+        // beside the chip carries descender space the chip does not.
+        padding: "52px 76px 68px 76px",
+        background: PANEL,
+        centred: true,
       },
-    },
-    ...backdrop(CERT_WIDTH, CERT_HEIGHT, { focusY: 0.5, scrim: SCRIM }),
-    h(
-      "div",
-      {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          width: "100%",
-          height: "100%",
-          padding: "76px 140px 84px 140px",
-        },
-      },
-      lockup({ helmet: 92, word: 34, domain: 17, centred: true }),
-      // ── The claim ────────────────────────────────────────────────────────
-      // Top-anchored, so the recipient's name lands on the same line of the sky
-      // on every certificate in a cohort whatever else the event does or does
-      // not have.
-      centred(copy.certificateOf, {
-        marginTop: 68,
-        fontSize: 23,
-        fontWeight: 400,
-        letterSpacing: 5.4,
-        color: INK_SUBTLE,
-      }),
-      centred(copy.thisCertifies, {
-        marginTop: 42,
-        fontSize: 31,
-        fontWeight: 300,
-        color: INK_MUTED,
-      }),
-      // Fixed height: the name ladder must not shift everything under it.
-      h(
-        "div",
-        {
-          style: {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            minHeight: 166,
-            marginTop: 6,
-          },
-        },
-        centred(item.displayName, {
-          width: "100%",
-          justifyContent: "center",
-          textAlign: "center",
-          fontSize: size,
-          fontWeight: 300,
-          letterSpacing: size * -0.03,
-          lineHeight: 1.14,
-          color: INK,
-        }),
-      ),
-      centred(copy.forCompleting, {
-        marginTop: 4,
-        fontSize: 27,
-        fontWeight: 300,
-        color: INK_MUTED,
-      }),
-      // The event lines run to a narrower measure than the name: it keeps a
-      // long title off the ship flying through the right of the frame, and a
-      // tagline reads better short anyway.
-      centred(item.eventTitle, {
-        marginTop: 16,
-        width: 1400,
-        justifyContent: "center",
-        textAlign: "center",
-        fontSize: 47,
-        fontWeight: 600,
-        lineHeight: 1.24,
-        color: INK,
-      }),
-      // Optional: events without a tagline drop the line entirely rather than
-      // reserving empty space for it.
-      ...(item.eventTagline
-        ? [
-            centred(item.eventTagline, {
-              marginTop: 14,
-              width: 1400,
-              justifyContent: "center",
-              textAlign: "center",
-              fontSize: 26,
-              fontWeight: 300,
-              lineHeight: 1.3,
-              color: INK_MUTED,
-            }),
-          ]
-        : []),
-      // Optional for the same reason: an event with no usable date drops the
-      // rule-and-date row rather than leaving two hairlines around nothing.
-      ...(item.eventDateDisplay
-        ? [
-            h(
-              "div",
-              {
-                style: {
-                  display: "flex",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: 38,
-                },
-              },
-              flank(),
-              centred(item.eventDateDisplay, {
-                margin: "0 26px",
-                fontSize: 25,
-                fontWeight: 400,
-                letterSpacing: 1.4,
-                color: INK_MUTED,
-              }),
-              flank(),
-            ),
-          ]
-        : []),
-      // Bottom-anchored from here down: the signatures straddle the sunrise and
-      // the footer takes the two dark corners, both fixed against the horizon
-      // rather than floating on the length of the copy above.
+      lockup({ helmet: 88, word: 33, domain: 17, centred: true }),
+      citation(item, copy),
+      // Bottom-anchored from here down: the attestation sits on the panel's
+      // lower edge whatever the length of the citation above it.
+      //
+      // Pure `flex:1`, deliberately — no minimum. A floor here would look like
+      // it guarantees air, and in the one case that matters (an event with a
+      // title long enough to run to three lines) it would instead push the QR
+      // out through the bottom of the glass. Letting the gap close to nothing
+      // is a worse-looking certificate; clipping the QR is a broken one.
       h("div", { style: { display: "flex", flex: 1 } }),
       signatureRow(),
       verificationRow(item, copy, qrSrc),

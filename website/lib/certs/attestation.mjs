@@ -16,6 +16,9 @@ import { SIGNERS } from "./signers.mjs";
  * It lives apart from the layout in template-cert.mjs because it is the half of
  * the document that has nothing to do with the attendee — the signers and the
  * verification affordance are the same on every certificate Houston issues.
+ *
+ * Both rows sit on the deepest stops of the glass panel (panel.mjs), which is
+ * what buys them their contrast over the sunrise burning through behind them.
  */
 
 /**
@@ -33,17 +36,17 @@ function signature(signer) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        width: 470,
+        width: 500,
       },
     },
     signer.image
       ? h("img", {
           src: signer.image,
-          height: 76,
-          style: { display: "flex", marginBottom: 12 },
+          height: 72,
+          style: { display: "flex", marginBottom: 10 },
         })
       : centred(signer.script, {
-          height: 88,
+          height: 78,
           alignItems: "center",
           fontFamily: SCRIPT_FONT,
           fontSize: 62,
@@ -64,7 +67,7 @@ function signature(signer) {
       },
     }),
     centred(signer.name, {
-      marginTop: 18,
+      marginTop: 16,
       fontSize: 22,
       fontWeight: 600,
       letterSpacing: 1.2,
@@ -80,8 +83,8 @@ function signature(signer) {
 }
 
 /**
- * Both signers, pushed out to the sides so the sunrise on the horizon sits
- * between them rather than under either of them.
+ * Both signers, pushed out to the sides of the panel so the core of the sunrise
+ * comes through the glass between them rather than under either of them.
  */
 export function signatureRow() {
   return h(
@@ -93,7 +96,7 @@ export function signatureRow() {
         alignItems: "flex-end",
         justifyContent: "space-between",
         width: "100%",
-        padding: "0 108px",
+        padding: "0 56px",
       },
     },
     ...SIGNERS.map(signature),
@@ -101,8 +104,8 @@ export function signatureRow() {
 }
 
 /**
- * Code and verification URL on the left, QR on the right — the two dark bottom
- * corners of the photograph, with the bright core of the glow left alone.
+ * Code and verification URL on the left, QR on the right — the panel's two
+ * bottom corners, with the bright core of the glow left alone between them.
  *
  * @param {object} item Mapped certificate item.
  * @param {object} copy Result of `certCopy(item.lang)`.
@@ -118,7 +121,7 @@ export function verificationRow(item, copy, qrSrc) {
         alignItems: "flex-end",
         justifyContent: "space-between",
         width: "100%",
-        marginTop: 96,
+        marginTop: 40,
       },
     },
     h(

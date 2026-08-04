@@ -1,18 +1,17 @@
-// Certificate signers. PLACEHOLDER names/titles — swap for the real founders
-// before the first real event ships, and replace `script` with an `image`
-// (SVG/PNG data URL of the real handwritten signature) when scans exist.
-// Templates render `image` when present, else the `script` text in Great Vibes.
+// Certificate signers. `script` renders in Great Vibes as the signature line;
+// replace with `image` (SVG/PNG data URL of the real handwritten signature)
+// when scans exist — the template prefers `image` when non-null.
 export const SIGNERS = [
   {
-    name: "Founder Name",
+    name: "Felipe Salinas",
     title: "Co-founder & CEO",
-    script: "Founder Name",
+    script: "Felipe Salinas",
     image: null,
   },
   {
-    name: "Cofounder Name",
+    name: "Julian Arango",
     title: "Co-founder & CTO",
-    script: "Cofounder Name",
+    script: "Julian Arango",
     image: null,
   },
 ];
