@@ -12,6 +12,7 @@ import {
 import { HoustonLogo } from "../shell/experience-card";
 import { FirstRunScreen } from "./first-run-screen";
 import { SetupCard } from "./setup-card";
+import { SkipOnboardingButton } from "./skip-onboarding-button";
 
 interface SegmentOption {
   id: OnboardingSegment;
@@ -21,11 +22,15 @@ interface SegmentOption {
 interface OnboardingSegmentScreenProps {
   onContinue: (segment: OnboardingSegment) => Promise<void>;
   saving: boolean;
+  /** Terminal escape hatch: marks onboarding completed and lands on the
+   *  shell's empty state, leaving the segment question unanswered. */
+  onSkip: () => void;
 }
 
 export function OnboardingSegmentScreen({
   onContinue,
   saving,
+  onSkip,
 }: OnboardingSegmentScreenProps) {
   const { t } = useTranslation(["setup", "common"]);
   const [selected, setSelected] = useState<OnboardingSegment | null>(null);
@@ -121,6 +126,7 @@ export function OnboardingSegmentScreen({
           </div>
         </div>
       </SetupCard>
+      <SkipOnboardingButton onSkip={onSkip} />
     </FirstRunScreen>
   );
 }

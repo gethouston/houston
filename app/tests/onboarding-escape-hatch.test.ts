@@ -12,14 +12,26 @@ describe("onboarding skip escape hatch", () => {
   const button = read(
     "../src/components/onboarding/skip-onboarding-button.tsx",
   );
+  const segment = read("../src/components/onboarding/segment-screen.tsx");
+  const app = read("../src/App.tsx");
 
-  it("pins a global skip button below the card, gated on a provisioned assistant", () => {
-    // Gate matters: `markCompleted` is permanent, so a skip before the
-    // assistant exists would strand the user in an empty shell forever.
-    assert.match(onboarding, /\{agent && step !== "finished" && \(/);
+  it("pins a global skip button below the card, from the very first step", () => {
+    // No agent gate: a zero-agent skip lands on the shell's empty state,
+    // whose "New agent" CTA is the way back (only agent-creating users ever
+    // mount onboarding). Only the finished screen hides it — its own CTA exits.
+    assert.match(onboarding, /\{step !== "finished" && \(/);
+    assert.doesNotMatch(onboarding, /\{agent && step !== "finished"/);
     assert.match(onboarding, /skipOnboarding\(step, "escape_hatch"\)/);
     assert.match(button, /variant="ghost"/);
     assert.match(button, /tutorial\.nav\.skipOnboarding/);
+  });
+
+  it("shows the same escape hatch on the segment screen", () => {
+    // The segment screen mounts BEFORE the orchestrator (App-level route), so
+    // it carries its own SkipOnboardingButton; App.tsx supplies the terminal
+    // handler (analytics + markCompleted — no pending flag exists yet).
+    assert.match(segment, /<SkipOnboardingButton onSkip=\{onSkip\} \/>/);
+    assert.match(app, /step: "segment",\s*source: "escape_hatch"/);
   });
 
   it("routes every skip source through the one terminal teardown", () => {

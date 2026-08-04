@@ -55,12 +55,16 @@ describe("required onboarding email path", () => {
 });
 
 describe("required onboarding role selection", () => {
-  it("removes the helper and skip, and keeps every subtitle to five words", () => {
+  it("keeps the in-card helper and skip removed, subtitles to five words", () => {
     const screen = read("../src/components/onboarding/segment-screen.tsx");
     const locales = ["en", "es", "pt"] as const;
 
-    assert.doesNotMatch(screen, /\bonSkip\b/);
+    // The question itself stays required: no in-card helper or per-question
+    // skip copy. The ONLY skip on this screen is the global bottom-of-screen
+    // SkipOnboardingButton escape hatch, which exits ALL of onboarding
+    // (covered in onboarding-escape-hatch.test.ts).
     assert.doesNotMatch(screen, /onboardingSegment\.(?:helper|skip)/);
+    assert.match(screen, /<SkipOnboardingButton onSkip=\{onSkip\} \/>/);
 
     for (const locale of locales) {
       const setup = JSON.parse(read(`../src/locales/${locale}/setup.json`)) as {
