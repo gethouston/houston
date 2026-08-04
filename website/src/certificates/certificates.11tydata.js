@@ -70,21 +70,22 @@ const en = {
   shareHint:
     "The link is public: share it anywhere, and anyone can check from that page that it is real.",
   // ── Share page ──
-  shareEyebrow: "Certificate of completion",
-  imageAlt: "Houston certificate of completion for {name}, {event}",
-  ogTitle: "{name} completed {event}",
+  shareEyebrow: "Certificate of participation",
+  imageAlt: "Houston certificate of participation for {name}, {event}",
+  ogTitle: "{name} took part in {event}",
   ogDescription:
-    "{event}, {date}. Certificate of completion issued by Houston.",
+    "{event}, {date}. Certificate of participation issued by Houston.",
   // Used when the event carries no usable date, so the sentence never ships
   // with a hole in it.
-  ogDescriptionNoDate: "{event}. Certificate of completion issued by Houston.",
+  ogDescriptionNoDate:
+    "{event}. Certificate of participation issued by Houston.",
   download: "Download",
   addToLinkedIn: "Add to your LinkedIn profile",
   shareLabel: "Share",
   copyLink: "Copy link",
   copied: "Copied",
   codeLabel: "Code",
-  shareText: "I completed {event} with Houston.",
+  shareText: "I took part in {event} with Houston.",
   verifyFoot: "Anyone can check that this certificate is real at",
 };
 
@@ -141,20 +142,20 @@ const es = {
     "Estamos regenerando tu certificado con este nombre, aparecerá ahí en unos minutos.",
   shareHint:
     "El enlace es público: compártelo donde quieras y cualquiera puede comprobar en esa página que es real.",
-  shareEyebrow: "Certificado de finalización",
-  imageAlt: "Certificado de finalización de Houston de {name}, {event}",
-  ogTitle: "{name} completó {event}",
+  shareEyebrow: "Certificado de participación",
+  imageAlt: "Certificado de participación de Houston de {name}, {event}",
+  ogTitle: "{name} participó en {event}",
   ogDescription:
-    "{event}, {date}. Certificado de finalización emitido por Houston.",
+    "{event}, {date}. Certificado de participación emitido por Houston.",
   ogDescriptionNoDate:
-    "{event}. Certificado de finalización emitido por Houston.",
+    "{event}. Certificado de participación emitido por Houston.",
   download: "Descargar",
   addToLinkedIn: "Añádelo a tu perfil de LinkedIn",
   shareLabel: "Compartir",
   copyLink: "Copiar enlace",
   copied: "Copiado",
   codeLabel: "Código",
-  shareText: "Completé {event} con Houston.",
+  shareText: "Participé en {event} con Houston.",
   verifyFoot: "Cualquiera puede comprobar que este certificado es real en",
 };
 
