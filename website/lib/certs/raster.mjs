@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import satori from "satori";
-import { BODY_FONT } from "./chrome.mjs";
+import { BRAND_FONT, FALLBACK_FONT } from "./chrome.mjs";
 import { coveredCodePoints } from "./font-coverage.mjs";
 import { qrDataUrl } from "./qr.mjs";
 import {
@@ -14,18 +14,30 @@ import { OG_HEIGHT, OG_WIDTH, ogCardElement } from "./template-og.mjs";
 
 // Rasterisation: satori (element tree -> SVG) then resvg (SVG -> PNG).
 //
-// satori cannot read the site's variable woff2, so the three weights ship here
-// as static TTF instances cut from the upstream variable font with fonttools
-// (fonts/README-less by design: OFL.txt sits beside them). satori embeds the
-// glyphs as paths, so resvg needs no system fonts — the output is identical on
-// macOS and on the ubuntu-latest CI runner.
+// General Sans is the site's own typeface — the wordmark's face, loaded from
+// Fontshare by `src/_includes/base.njk` — so it is the certificate's face too.
+// satori reads TTF/OTF/WOFF and not the woff2 the browser gets, so the four
+// weights ship here as the `.ttf` sources the same Fontshare stylesheet lists
+// (LICENCE-GeneralSans.txt records the exact URLs).
+//
+// Hanken Grotesk stays registered behind it as a FALLBACK family, not as a
+// role: General Sans is Latin-only and Hanken's cuts carry ~190 code points it
+// does not (Vietnamese, mostly). satori falls through the `fonts` array for a
+// glyph the first family cannot draw, so an accented name that would otherwise
+// be empty boxes still renders — see `loadFontCoverage`.
+//
+// satori embeds the glyphs as paths, so resvg needs no system fonts — the
+// output is identical on macOS and on the ubuntu-latest CI runner.
 
 const FONT_DIR = new URL("./fonts/", import.meta.url);
 
 const FONT_FILES = [
-  { file: "HankenGrotesk-Light.ttf", name: BODY_FONT, weight: 300 },
-  { file: "HankenGrotesk-Regular.ttf", name: BODY_FONT, weight: 400 },
-  { file: "HankenGrotesk-SemiBold.ttf", name: BODY_FONT, weight: 600 },
+  { file: "GeneralSans-Regular.ttf", name: BRAND_FONT, weight: 400 },
+  { file: "GeneralSans-Medium.ttf", name: BRAND_FONT, weight: 500 },
+  { file: "GeneralSans-Semibold.ttf", name: BRAND_FONT, weight: 600 },
+  { file: "GeneralSans-Bold.ttf", name: BRAND_FONT, weight: 700 },
+  { file: "HankenGrotesk-Regular.ttf", name: FALLBACK_FONT, weight: 400 },
+  { file: "HankenGrotesk-SemiBold.ttf", name: FALLBACK_FONT, weight: 600 },
 ];
 
 /** Memoized so a whole build reads the font files exactly once. */
@@ -47,14 +59,14 @@ export function loadFonts() {
 let coveragePending = null;
 
 /**
- * Every code point the BODY family can render.
+ * Every code point the certificate can actually draw.
  *
- * Its three files are Latin cuts of one family, so their union is the real
- * coverage. Callers use it to refuse to ship a name as empty boxes — satori
- * substitutes `.notdef` silently and would otherwise do exactly that. The
- * script face is left out on purpose: it never draws attendee text, so counting
- * it would let a character it happens to carry pass the check and then render
- * as a box in the body face.
+ * The union across ALL registered files, which is the honest answer now that
+ * every one of them is reachable: satori resolves a glyph against the whole
+ * `fonts` array, so a character Hanken carries and General Sans does not still
+ * lands on the page rather than as `.notdef`. Callers use this to refuse to
+ * ship a name as empty boxes — satori substitutes silently and would otherwise
+ * do exactly that.
  *
  * @returns {Promise<Set<number>>}
  */
@@ -62,7 +74,6 @@ export function loadFontCoverage() {
   coveragePending ??= loadFonts().then((fonts) => {
     const covered = new Set();
     for (const font of fonts) {
-      if (font.name !== BODY_FONT) continue;
       for (const cp of coveredCodePoints(font.data)) covered.add(cp);
     }
     return covered;

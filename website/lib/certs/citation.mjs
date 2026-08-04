@@ -1,79 +1,89 @@
-import { centred, HAIRLINE, INK, INK_MUTED } from "./chrome.mjs";
+import {
+  centred,
+  INK,
+  INK_MUTED,
+  INK_SUBTLE,
+  LEADING,
+  rule,
+  TRACK,
+  WEIGHT,
+} from "./chrome.mjs";
 import h from "./h.mjs";
 
 /**
  * The certificate's citation: the claim, the recipient, the event, the date.
  *
  * The reading column of the document, centred on the glass panel's axis between
- * the letterhead and the verification row. It is the only part that changes per
- * attendee, which is why it lives apart from the panel that holds it, the
- * letterhead above it and the attestation beneath it.
+ * the letterhead and the verification foot. It is the only part that changes
+ * per attendee, which is why it lives apart from all three.
+ *
+ * The hierarchy is the landing page's, not a document convention: ONE display
+ * line at `.hero-h1` weight and tracking (the name), a semibold sub-head under
+ * it (the event), and everything that merely introduces them dropped to quiet
+ * body type. Before this the connectives ran at 30-34px against a 56px title
+ * and the whole band read flat.
  */
 
 /** Widest a line may run inside the panel, in panel-content pixels. */
-const MEASURE = 1420;
+const MEASURE = 1400;
 
 /**
  * The vertical rhythm, as gaps between the stack's blocks.
  *
  * Grouped, not evenly spaced: "this certifies that" belongs to the name it
- * introduces and "for completing" belongs to the event it introduces, so each
- * label hugs its subject and the air goes BETWEEN the two pairs. The date, which
- * qualifies nothing, is pushed furthest away and closes the stack.
+ * introduces and "for participating in" belongs to the event it introduces, so
+ * each label hugs its subject and the air goes BETWEEN the two pairs. The date,
+ * which qualifies nothing, is pushed furthest away and closes the stack.
+ *
+ * The steps are the landing's own section rhythm scaled to this canvas: a hug
+ * is ~0.7x the connective size, the gap between the two groups ~1.7x, and the
+ * closing gap ~2.1x — the ratio `--section-pad` (104px) keeps against the
+ * site's 16px body type.
  */
 const GAP = {
-  /** Claim to the name — a hug. */
-  name: 14,
-  /** Name to "for completing": the widest gap inside the citation. */
-  event: 30,
-  /** "for completing" to the event title — the other hug. */
+  /** Claim to the name, and title to tagline — the two hugs. */
+  name: 18,
+  tagline: 18,
+  /** Name to "for participating in": the widest gap inside the citation. */
+  event: 44,
+  /** "for participating in" to the event title — the third hug. */
   title: 20,
-  /** Title to its tagline: a subtitle, so it stays inside the event's group. */
-  tagline: 16,
   /**
    * Event group to the date rule. The widest gap in the stack after the one
    * under the name — the date belongs to no pair, and the rule has to read as
    * the line the citation stops on, not as another beat of the event block.
    */
-  date: 48,
+  date: 54,
 };
 
-/**
- * Height reserved for the name, whatever rung of the ladder it lands on.
- *
- * Two pixels over the tallest line box the ladder can produce (146 x 1.14), so
- * a short name and a long one put the rest of the stack on the same line of the
- * glass. A name long enough to WRAP grows past it — deliberately: the panel's
- * flex spacers give that growth somewhere to go (see template-cert.mjs).
- */
-const NAME_BAND = 168;
+/** Size of the connective lines that introduce the name and the event. */
+const LABEL = 26;
 
 /**
  * Display size for the recipient's name. Stepped (not fluid) so every
  * certificate in a cohort reads as the same document; counted over code points
  * rather than UTF-16 units so an accented name steps at the width it looks.
  *
- * The bundled fonts are Latin only — a name outside that coverage is caught and
- * reported by `warnAboutMissingGlyphs` in render.mjs, not silently sized here.
+ * Re-cut for General Sans, a wider face than the Hanken Light this used to be
+ * set in and now set at the wordmark's weight: the same name covers MORE of the
+ * panel at a SMALLER size than the old ladder gave it. Each rung is the largest
+ * size at which the longest name of that length still clears the panel's 1632px
+ * of content with an optical margin either side.
+ *
+ * A name outside the bundle's coverage is caught and reported by
+ * `warnAboutMissingGlyphs` in render.mjs, not silently sized here.
  */
 export function nameSize(name) {
   const len = [...name].length;
-  if (len <= 18) return 146;
-  if (len <= 26) return 126;
-  if (len <= 36) return 108;
-  return 88;
+  if (len <= 12) return 164;
+  if (len <= 20) return 142;
+  if (len <= 28) return 112;
+  if (len <= 34) return 96;
+  if (len <= 42) return 88;
+  // Past here the name wraps whatever we do, so the rung's job changes: keep
+  // the second line from pushing the foot off the glass.
+  return 76;
 }
-
-/** A hairline flanking the date. */
-const flank = () =>
-  h("div", {
-    style: {
-      display: "flex",
-      width: 150,
-      height: 1,
-      backgroundColor: HAIRLINE,
-    },
-  });
 
 /** The rule-and-date row. */
 const dateRow = (dateDisplay) =>
@@ -87,24 +97,23 @@ const dateRow = (dateDisplay) =>
         marginTop: GAP.date,
       },
     },
-    flank(),
+    rule(170),
     centred(dateDisplay, {
-      margin: "0 30px",
-      fontSize: 27,
-      fontWeight: 400,
-      letterSpacing: 1.4,
+      margin: "0 34px",
+      fontSize: 24,
+      fontWeight: WEIGHT.body,
+      letterSpacing: 24 * TRACK.meta,
       color: INK_MUTED,
     }),
-    flank(),
+    rule(170),
   );
 
 /**
  * The citation stack: the claim, the recipient, the event, the date.
  *
- * Sits in the panel's reading band, between the letterhead above and the
- * verification row below, with the spare glass split around it by the spacers
- * in template-cert.mjs. It carries no leading margin of its own: the air over
- * the claim is that split's business, not the stack's.
+ * Sits in the panel's reading band, with the spare glass split around it by the
+ * spacers in template-cert.mjs. It carries no leading margin of its own: the
+ * air over the claim is that split's business, not the stack's.
  *
  * The two optional lines (tagline, date) drop out entirely rather than
  * reserving empty space — an event without a tagline gets a taller band of air
@@ -123,42 +132,38 @@ export function citation(item, copy) {
         flexDirection: "column",
         alignItems: "center",
         width: "100%",
+        // The panel is a fixed-height flex column, so an over-long citation
+        // would otherwise be SHRUNK by yoga rather than allowed to overflow —
+        // and a shrunk block draws its lines on top of the letterhead above it.
+        // Overrunning the bottom padding is survivable; overlapping type is not.
+        flexShrink: 0,
       },
     },
     centred(copy.thisCertifies, {
-      fontSize: 34,
-      fontWeight: 300,
-      color: INK_MUTED,
+      fontSize: LABEL,
+      fontWeight: WEIGHT.body,
+      color: INK_SUBTLE,
     }),
-    // Fixed height: the name ladder must not shift everything under it.
-    h(
-      "div",
-      {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          marginTop: GAP.name,
-          minHeight: NAME_BAND,
-        },
-      },
-      centred(item.displayName, {
-        width: "100%",
-        justifyContent: "center",
-        textAlign: "center",
-        fontSize: size,
-        fontWeight: 300,
-        letterSpacing: size * -0.03,
-        lineHeight: 1.14,
-        color: INK,
-      }),
-    ),
+    // No reserved name band: a fixed slot sized for the tallest rung left up
+    // to 97px of dead air around a long name, right where the founder saw the
+    // hole. The stack flows; the panel's flex spacers keep it optically
+    // centred whatever height it comes to.
+    centred(item.displayName, {
+      marginTop: GAP.name,
+      width: "100%",
+      justifyContent: "center",
+      textAlign: "center",
+      fontSize: size,
+      fontWeight: WEIGHT.display,
+      letterSpacing: size * TRACK.display,
+      lineHeight: LEADING.display,
+      color: INK,
+    }),
     centred(copy.forCompleting, {
       marginTop: GAP.event,
-      fontSize: 30,
-      fontWeight: 300,
-      color: INK_MUTED,
+      fontSize: LABEL,
+      fontWeight: WEIGHT.body,
+      color: INK_SUBTLE,
     }),
     // The event lines run to a narrower measure than the name: a long title
     // reads better broken than run edge to edge of the glass.
@@ -167,9 +172,10 @@ export function citation(item, copy) {
       width: MEASURE,
       justifyContent: "center",
       textAlign: "center",
-      fontSize: 56,
-      fontWeight: 600,
-      lineHeight: 1.24,
+      fontSize: 58,
+      fontWeight: WEIGHT.strong,
+      letterSpacing: 58 * TRACK.title,
+      lineHeight: LEADING.title,
       color: INK,
     }),
     ...(item.eventTagline
@@ -179,9 +185,9 @@ export function citation(item, copy) {
             width: MEASURE,
             justifyContent: "center",
             textAlign: "center",
-            fontSize: 30,
-            fontWeight: 300,
-            lineHeight: 1.3,
+            fontSize: 28,
+            fontWeight: WEIGHT.body,
+            lineHeight: LEADING.body,
             color: INK_MUTED,
           }),
         ]

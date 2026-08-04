@@ -1,13 +1,16 @@
 import { backdrop } from "./backdrop.mjs";
 import {
-  BODY_FONT,
+  BRAND_FONT,
   HAIRLINE,
   INK,
   INK_MUTED,
   INK_SUBTLE,
+  LEADING,
   lockup,
   navy,
+  TRACK,
   text,
+  WEIGHT,
 } from "./chrome.mjs";
 import { certCopy } from "./copy.mjs";
 import h from "./h.mjs";
@@ -46,12 +49,19 @@ const PANEL = tint([
 /** A vignette, nothing more — the panel carries the contrast. */
 const VIGNETTE = `linear-gradient(180deg, ${navy(0.1)} 0%, ${navy(0.01)} 28%, ${navy(0)} 62%, ${navy(0.12)} 100%)`;
 
-/** One notch smaller than the printed certificate's ladder. */
+/**
+ * The certificate's ladder at feed scale — the same rungs, ~0.58x.
+ *
+ * Cut for General Sans at the wordmark's weight, exactly like the printed
+ * ladder (citation.mjs), so the two images step at the same name lengths and a
+ * cohort's cards look like one set.
+ */
 function nameSize(name) {
   const len = [...name].length;
-  if (len <= 18) return 96;
-  if (len <= 26) return 78;
-  if (len <= 36) return 64;
+  if (len <= 12) return 100;
+  if (len <= 20) return 88;
+  if (len <= 28) return 70;
+  if (len <= 34) return 60;
   return 54;
 }
 
@@ -64,7 +74,7 @@ export function ogCardElement(item) {
 
   return h(
     "div",
-    { style: canvas(OG_WIDTH, OG_HEIGHT, BODY_FONT) },
+    { style: canvas(OG_WIDTH, OG_HEIGHT, BRAND_FONT) },
     ...backdrop(OG_WIDTH, OG_HEIGHT, { focusY: 0.5, scrim: VIGNETTE }),
     panel(
       {
@@ -72,7 +82,7 @@ export function ogCardElement(item) {
         height: OG_HEIGHT,
         inset: INSET,
         radius: 22,
-        padding: "38px 48px 46px 48px",
+        padding: "44px 54px 48px 54px",
         background: PANEL,
       },
       // ── Issuer left, credential metadata right ───────────────────────────
@@ -87,17 +97,20 @@ export function ogCardElement(item) {
             width: "100%",
           },
         },
-        lockup({ helmet: 44, word: 21, domain: 12 }),
+        lockup({ helmet: 60, word: 29, domain: 13 }),
         text(meta, {
           fontSize: 18,
-          fontWeight: 400,
-          letterSpacing: 1.4,
+          fontWeight: WEIGHT.body,
+          letterSpacing: 18 * TRACK.meta,
           color: INK_SUBTLE,
         }),
       ),
       // ── The claim ────────────────────────────────────────────────────────
-      // Bottom-anchored on the glass: a name long enough to wrap grows UP into
-      // the dark half of the panel, never down onto the sunrise.
+      // CENTRED in the glass left under the header, not pinned to the floor.
+      // Bottom-anchored, it pooled every spare pixel — over 200 of them — into
+      // one band across the card's middle, and with the panel tint this opaque
+      // there is no photograph coming through it to justify the emptiness. A
+      // name long enough to wrap now grows both ways into air it already has.
       h(
         "div",
         {
@@ -105,38 +118,39 @@ export function ogCardElement(item) {
             display: "flex",
             flexDirection: "column",
             flex: 1,
-            justifyContent: "flex-end",
+            justifyContent: "center",
             alignItems: "flex-start",
             width: "100%",
           },
         },
         text(copy.certificateOf, {
-          // Right pad is 9px short so the pill reads optically centred: satori
+          // Right pad is 6px short so the pill reads optically centred: satori
           // adds the letter spacing after the final glyph, and the closing "N"
           // carries a right sidebearing on top of it.
-          padding: "9px 13px 9px 22px",
+          padding: "9px 16px 9px 22px",
           border: `1px solid ${HAIRLINE}`,
           borderRadius: 999,
-          fontSize: 18,
-          fontWeight: 400,
-          letterSpacing: 3.6,
+          fontSize: 17,
+          fontWeight: WEIGHT.strong,
+          letterSpacing: 17 * TRACK.eyebrow,
           color: INK_MUTED,
         }),
         text(item.displayName, {
-          marginTop: 26,
+          marginTop: 24,
           width: "100%",
           fontSize: size,
-          fontWeight: 300,
-          letterSpacing: size * -0.03,
-          lineHeight: 1.14,
+          fontWeight: WEIGHT.display,
+          letterSpacing: size * TRACK.display,
+          lineHeight: LEADING.display,
           color: INK,
         }),
         text(item.eventTitle, {
           marginTop: 14,
           width: "100%",
-          fontSize: 30,
-          fontWeight: 600,
-          lineHeight: 1.3,
+          fontSize: 29,
+          fontWeight: WEIGHT.strong,
+          letterSpacing: 29 * TRACK.title,
+          lineHeight: LEADING.title,
           color: INK,
         }),
       ),

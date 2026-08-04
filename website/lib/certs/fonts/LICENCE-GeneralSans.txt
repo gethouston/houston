@@ -1,0 +1,41 @@
+General Sans — Indian Type Foundry (Fontshare)
+==============================================
+
+Files: GeneralSans-Regular.ttf, GeneralSans-Medium.ttf,
+       GeneralSans-Semibold.ttf, GeneralSans-Bold.ttf
+
+Designer:  Frode Helland
+Foundry:   Indian Type Foundry — https://indiantypefoundry.com
+Family:    https://www.fontshare.com/fonts/general-sans
+Licence:   ITF Free Font Licence (FFL) — https://www.fontshare.com/licenses/itf-ffl
+           Terms of use — https://fontshare.com/terms
+Version:   2.000
+
+Copyright 2017-2021 Indian Type Foundry. All rights reserved.
+"General" is a trademark of the Indian Type Foundry.
+
+Embedded licence notice from the font's own `name` table (ID 13):
+
+  This Font Software is protected under domestic and international trademark
+  and copyright law. You agree to identify the ITF fonts by name and credit
+  the ITF's ownership of the trademarks and copyrights in any design or
+  production credits.
+
+Where these files came from
+---------------------------
+Downloaded verbatim from the Fontshare CDN, via the same stylesheet the
+website's `src/_includes/base.njk` loads at runtime:
+
+  https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700
+
+The `.ttf` sources that stylesheet lists, one per weight:
+
+  400  https://cdn.fontshare.com/wf/MFQT7HFGCR2L5ULQTW6YXYZXXHMPKLJ3/YWQ244D6TACUX5JBKATPOW5I5MGJ3G73/7YY3ZAAE3TRV2LANYOLXNHTPHLXVWTKH.ttf
+  500  https://cdn.fontshare.com/wf/3RZHWSNONLLWJK3RLPEKUZOMM56GO4LJ/BPDRY7AHVI3MCDXXVXTQQ76H3UXA63S3/SB2OEB6IKZPRR6JT4GFJ2TFT6HBB6AZN.ttf
+  600  https://cdn.fontshare.com/wf/K46YRH762FH3QJ25IQM3VAXAKCHEXXW4/ISLWQPUZHZF33LRIOTBMFOJL57GBGQ4B/3ZLMEXZEQPLTEPMHTQDAUXP5ZZXCZAEN.ttf
+  700  https://cdn.fontshare.com/wf/KWXO5X3YW4X7OLUMPO4X24HQJGJU7E2Q/VOWUQZS3YLP66ZHPTXAFSH6YACY4WJHT/NIQ54PVBBIWVK3PFSOIOUJSXIJ5WTNDP.ttf
+
+They ship as `.ttf` rather than the `.woff2` the browser gets because satori
+reads TTF/OTF/WOFF only. The site loads 500/600/700 (the wordmark's weight and
+its two heavier siblings); the certificate additionally needs 400, which is the
+same family cut from the same release.
