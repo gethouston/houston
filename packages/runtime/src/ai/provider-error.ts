@@ -440,7 +440,19 @@ function isServerError(lower: string, status: number | null): boolean {
     // demand …"}}`. The embedded `"code"` extractor usually recovers the 503;
     // these keep the verdict when the body is truncated (HOU-1156).
     lower.includes("got status: unavailable") ||
-    lower.includes("experiencing high demand")
+    lower.includes("experiencing high demand") ||
+    // Codex (ChatGPT OAuth) rides a WebSocket transport; when that socket dies
+    // mid-turn pi-ai flattens it to `WebSocket closed <code>` — no status, no
+    // body (HOU-848: codes 1006 abnormal closure, 1000 server closed mid-turn,
+    // 1012 service restart, all seen in the wild). HOU-1156 first classified
+    // this as network_unreachable, but every production event originates on a
+    // cloud engine pod, where "check your internet" points at the wrong
+    // network — the pod↔OpenAI socket broke, not the user's connection. The
+    // provider_internal card ("<provider> is having a problem, try again") is
+    // the honest one in both deployments: retry is the remedy either way, and
+    // a genuinely dead local network fails the NEXT attempt with fetch/ECONN
+    // errors that still route to network_unreachable below.
+    lower.includes("websocket closed")
   );
 }
 
@@ -453,12 +465,6 @@ function isNetwork(lower: string): boolean {
     lower.includes("etimedout") ||
     lower.includes("eai_again") ||
     lower.includes("socket hang up") ||
-    // Codex rides a WebSocket to the ChatGPT backend; pi-ai flattens an
-    // abnormal mid-turn drop to `WebSocket closed 1006` — no close frame, the
-    // transport died (sleep, flaky Wi-Fi, a server-side hang-up). Transient;
-    // retry helps. This was the single largest unclassified card in
-    // production (HOU-1156: 584 events / 137 users in 90 days).
-    lower.includes("websocket closed") ||
     lower.includes("network error") ||
     lower.includes("connection refused") ||
     lower.includes("connection reset")

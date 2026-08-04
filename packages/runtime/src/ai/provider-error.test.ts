@@ -571,6 +571,41 @@ test("'Provider finish_reason: network_error' → provider_internal too", () => 
   expect(err.kind).toBe("provider_internal");
 });
 
+// Codex's WebSocket transport dying mid-turn arrives as the bare string
+// `WebSocket closed <code>` — no status, no body (HOU-848's verbatim report;
+// 584 Sentry events across 137 users read as `unknown`). HOU-1156 first
+// classified it network_unreachable, but every production event comes from a
+// cloud engine pod — "check your internet" points at the wrong network. A
+// dropped socket is a transient server-side stream break — retry helps — so
+// it reads as provider_internal (Retry card), never the report-bug `unknown`
+// and never the check-your-connection card.
+test("codex 'WebSocket closed 1006' → provider_internal, not unknown (HOU-848)", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    message: "WebSocket closed 1006",
+  });
+  expect(err).toEqual({
+    kind: "provider_internal",
+    provider: "openai-codex",
+    http_status: null,
+    message: "WebSocket closed 1006",
+  });
+});
+
+test("other observed close codes classify the same way", () => {
+  // 1000 (server closed the socket cleanly mid-turn) and 1012 (service
+  // restart) both appear in the same Sentry bucket — same transient verdict.
+  for (const code of [1000, 1012]) {
+    const err = classifyProviderError({
+      provider: "openai-codex",
+      model: "gpt-5.6-sol",
+      message: `WebSocket closed ${code}`,
+    });
+    expect(err.kind).toBe("provider_internal");
+  }
+});
+
 test("'Provider finish_reason: content_filter' stays unknown — a refusal, not an outage", () => {
   const err = classifyProviderError({
     provider: "openrouter",
@@ -768,21 +803,9 @@ test("overflow text without numbers still classifies, with null token counts", (
 // HOU-1156: verbatim shapes of the `unknown` families the 90-day Sentry audit
 // surfaced — each was rendering the content-free "Something unexpected
 // happened" card. Fixtures mirror the real payloads (identifiers synthetic).
-
-test("Codex 'WebSocket closed 1006' → network_unreachable, not unknown (HOU-1156)", () => {
-  // pi-ai flattens an abnormal mid-turn drop of Codex's WebSocket to this
-  // exact string — no status, no body. 584 events / 137 users in 90 days.
-  const err = classifyProviderError({
-    provider: "openai-codex",
-    model: "gpt-5.5",
-    message: "WebSocket closed 1006",
-  });
-  expect(err).toEqual({
-    kind: "network_unreachable",
-    provider: "openai-codex",
-    message: "WebSocket closed 1006",
-  });
-});
+// (The Codex `WebSocket closed <code>` family from that audit lives with the
+// mid-stream break tests above — reclassified network_unreachable →
+// provider_internal by HOU-848.)
 
 test("openrouter 'Stream ended without finish_reason' → provider_internal (HOU-1156)", () => {
   const err = classifyProviderError({
