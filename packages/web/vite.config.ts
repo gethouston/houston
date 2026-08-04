@@ -107,9 +107,6 @@ export default defineConfig(({ mode }) => {
       __GOOGLE_DESKTOP_CLIENT_SECRET__: JSON.stringify(
         env.GOOGLE_DESKTOP_CLIENT_SECRET ?? "",
       ),
-      __MICROSOFT_DESKTOP_CLIENT_ID__: JSON.stringify(
-        env.MICROSOFT_DESKTOP_CLIENT_ID ?? "",
-      ),
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify("browser"),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify("web"),
       __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),

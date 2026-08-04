@@ -1,79 +1,67 @@
-// Desktop Microsoft sign-in: loopback+PKCE authorize → PUBLIC-client token
-// exchange (NO client_secret) → id_token and/or access_token.
+// Desktop Microsoft sign-in: GCIP-BROKERED authorize over the loopback.
 //
-// Uses the `common` tenant so both work and personal Microsoft accounts sign
-// in, with `prompt=select_account` so a shared machine can switch accounts and
-// `offline_access` so a refresh token is issued. auth.ts (Wave B) feeds the
-// id_token to `signInWithIdp({ providerId: "microsoft.com" })`, falling back to
-// the access_token when no id_token is returned.
+// WHY brokered and not loopback+PKCE like Google (HOU-1112): Entra refuses a
+// public-client code redemption made from a webview (the fetch carries an
+// `Origin` header, and AADSTS90023 restricts cross-origin redemption to SPA
+// registrations), and GCIP refuses Microsoft tokens it did not obtain itself
+// (`INVALID_CREDENTIAL_OR_PROVIDER_ID`) — so a client-side token exchange can
+// never produce a Microsoft session. Instead GCIP mints the authorize URL
+// (`createAuthUri`, carrying its own CSRF `state`), the loopback catches the
+// redirect, and GCIP redeems the code server-side with the client secret from
+// the identity project's provider config (`signInWithIdpSession` in
+// desktop-signin.ts). No Microsoft client id or secret ships in this app.
+//
+// Setup (human, one-time): the Azure app's **Web** platform must list every
+// candidate loopback redirect as `http://localhost:<port>/auth/callback`
+// (Entra's Web platform only allows plain http for `localhost`), and the
+// microsoft.com provider on the identity project holds the same app's client
+// id + secret (cloud terraform `identity.tf`).
 
+import { osCancelOauthLoopback, osStartOauthLoopback } from "../os-bridge";
+import { tauriSystem } from "../tauri";
 import {
-  type LoopbackAuthorizeOptions,
-  postTokenForm,
-  runLoopbackAuthorize,
-} from "./desktop-oauth.ts";
-import { IdentityError } from "./errors.ts";
+  type BrokeredLoopbackResult,
+  runBrokeredLoopbackAuthorize,
+} from "./brokered-loopback.ts";
+import { identityConfig } from "./config.ts";
+import { listenDeepLink } from "./deep-link-listen.ts";
+import type { LoopbackAuthorizeOptions } from "./desktop-oauth.ts";
+import { createAuthUri } from "./firebase-rest.ts";
+import { identityLog } from "./log.ts";
 
-const MS_AUTHORIZE =
-  "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
-const MS_TOKEN = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-const MS_SCOPE = "openid email profile offline_access";
-
-function microsoftClientId(): string {
-  return typeof __MICROSOFT_DESKTOP_CLIENT_ID__ !== "undefined"
-    ? __MICROSOFT_DESKTOP_CLIENT_ID__
-    : "";
-}
+const LOG_CTX = "identity/microsoft-authorize";
 
 /**
- * Drive the desktop Microsoft flow. Returns whichever credential Entra minted,
- * or `null` when the authorize was benignly cancelled (superseded / unmount /
- * timeout).
+ * Drive the desktop Microsoft flow up to the redeemable (`requestUri`,
+ * `sessionId`) pair, or `null` when the authorize was benignly cancelled
+ * (superseded / unmount / timeout).
  */
-export async function authorizeMicrosoftDesktop(
+export function authorizeMicrosoftDesktop(
   opts?: LoopbackAuthorizeOptions,
-): Promise<{ idToken?: string; accessToken?: string } | null> {
-  const clientId = microsoftClientId();
-  if (!clientId) {
-    // No baked MS client id for this build — surface it, never a silent no-op.
-    throw new IdentityError("operation_not_allowed", {
-      rawCode: "microsoft_desktop_client_id_missing",
-    });
-  }
-
-  const authorized = await runLoopbackAuthorize(
+): Promise<BrokeredLoopbackResult | null> {
+  return runBrokeredLoopbackAuthorize(
     {
-      authorizeBase: MS_AUTHORIZE,
-      clientId,
-      scope: MS_SCOPE,
-      extraParams: { prompt: "select_account" },
+      mint: (continueUri) =>
+        createAuthUri({
+          apiKey: identityConfig.apiKey,
+          providerId: "microsoft.com",
+          continueUri,
+        }),
+      startLoopback: osStartOauthLoopback,
+      releaseLoopback: (attemptId, why) => {
+        // Best-effort: a failure just means the port frees at the native 300s
+        // self-timeout, so log rather than toast (same policy as desktop-oauth).
+        void osCancelOauthLoopback(attemptId).catch((e) =>
+          identityLog(
+            "warn",
+            `failed to free loopback port (${why}): ${String(e)}`,
+            LOG_CTX,
+          ),
+        );
+      },
+      listen: listenDeepLink,
+      openUrl: tauriSystem.openUrl,
     },
     opts,
   );
-  if (!authorized) return null; // benign cancel
-  const { code, redirectUri, codeVerifier } = authorized;
-
-  const body = await postTokenForm(MS_TOKEN, {
-    client_id: clientId,
-    code,
-    code_verifier: codeVerifier,
-    redirect_uri: redirectUri,
-    grant_type: "authorization_code",
-    scope: MS_SCOPE,
-  });
-
-  const idToken =
-    typeof body.id_token === "string" && body.id_token.length > 0
-      ? body.id_token
-      : undefined;
-  const accessToken =
-    typeof body.access_token === "string" && body.access_token.length > 0
-      ? body.access_token
-      : undefined;
-  if (!idToken && !accessToken) {
-    throw new IdentityError("malformed_response", {
-      rawCode: "microsoft_token_missing_credential",
-    });
-  }
-  return { idToken, accessToken };
 }

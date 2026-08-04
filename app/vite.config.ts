@@ -94,9 +94,6 @@ export default defineConfig(({ mode }) => {
       ),
       // Desktop-only: the Microsoft (Entra) native/public OAuth client for the
       // loopback + PKCE sign-in. Public client — no secret in the exchange.
-      __MICROSOFT_DESKTOP_CLIENT_ID__: JSON.stringify(
-        env.MICROSOFT_DESKTOP_CLIENT_ID ?? "",
-      ),
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify(authStorageMode),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify(authStorageScope),
       __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),

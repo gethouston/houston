@@ -9,8 +9,9 @@
 //! answered with the "stale tab" page and the listener KEEPS WAITING.
 
 use tauri::AppHandle;
-use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 
+use super::listener::BoundSockets;
 use super::pages::{stale_page, success_page};
 use crate::loopback_util::{read_request_target, split_target, write_response};
 
@@ -84,19 +85,33 @@ async fn respond(stream: &mut tokio::net::TcpStream, status: &str, body: &str) {
     }
 }
 
+/// Accept one connection from whichever loopback stack the browser picked. The
+/// redirect target may be `127.0.0.1` (Google) or `localhost` (the brokered
+/// flow), and a browser resolving `localhost` may connect over `::1` — so both
+/// bound listeners are served; `v6` is absent on IPv6-less machines.
+async fn accept_any(sockets: &BoundSockets) -> Result<TcpStream, String> {
+    let accepted = match &sockets.v6 {
+        Some(v6) => tokio::select! {
+            r = sockets.v4.accept() => r,
+            r = v6.accept() => r,
+        },
+        None => sockets.v4.accept().await,
+    };
+    accepted
+        .map(|(stream, _)| stream)
+        .map_err(|e| format!("accept failed: {e}"))
+}
+
 /// Accept connections until one carries THIS attempt's callback, then handle it
 /// and return. Non-callback probes (favicon, etc.) get a 404 and stale callbacks
 /// get the stale page; in both cases we keep waiting.
 pub async fn serve_callback(
-    listener: &TcpListener,
+    sockets: &BoundSockets,
     app: &AppHandle,
     expected_state: &str,
 ) -> Result<(), String> {
     loop {
-        let (mut stream, _) = listener
-            .accept()
-            .await
-            .map_err(|e| format!("accept failed: {e}"))?;
+        let mut stream = accept_any(sockets).await?;
 
         let target = match read_request_target(&mut stream).await {
             Ok(t) => t,
@@ -137,6 +152,26 @@ pub async fn serve_callback(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn accept_any_takes_connections_from_either_stack() {
+        // A browser resolving `localhost` may arrive on `::1` while another
+        // arrives on `127.0.0.1` — both must reach the same attempt.
+        use super::super::listener::{bind_exact, BindOutcome};
+        let BindOutcome::Bound(sockets) = bind_exact(18975).await.expect("bind") else {
+            return; // port busy on this machine; nothing to prove
+        };
+        let _v4 = tokio::net::TcpStream::connect(("127.0.0.1", 18975))
+            .await
+            .expect("v4 connect");
+        accept_any(&sockets).await.expect("accepts the v4 client");
+        if sockets.v6.is_some() {
+            let _v6 = tokio::net::TcpStream::connect(("::1", 18975))
+                .await
+                .expect("v6 connect");
+            accept_any(&sockets).await.expect("accepts the v6 client");
+        }
+    }
 
     #[test]
     fn query_param_reads_a_value_or_none() {

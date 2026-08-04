@@ -58,36 +58,63 @@ the desktop bundle ships **zero** firebase-js-sdk). Every failure becomes a type
 `IdentityError`; user-initiated calls emit the `.code` on the auth-error bus AND
 rethrow (see "Error surfacing").
 
-### Google / Microsoft — desktop (loopback + PKCE → GCIP REST)
+### Google — desktop (loopback + PKCE → GCIP REST)
 
 ```
-User clicks "Continue with Google" (or Microsoft) in SignInScreen
- → auth.ts signInWithGoogle() / signInWithMicrosoft():
+User clicks "Continue with Google" in SignInScreen
+ → auth.ts signInWithGoogle():
     1. runLoopbackAuthorize(): mint PKCE verifier + CSRF state,
        osStartOauthLoopback(state) → { status, redirectUri: 127.0.0.1:
-       <8975-8978>/auth/callback, attemptId } ("superseded" → benign null),
-       open the provider authorize URL in the SYSTEM browser (onBrowserOpened()
-       frees the sign-in buttons the instant it opens; a 15s deadline bounds
-       everything up to that point, releasing a late listener if it wins)
+       <8975-8978>/auth/callback, port, attemptId } ("superseded" → benign
+       null), open the provider authorize URL in the SYSTEM browser
+       (onBrowserOpened() frees the sign-in buttons the instant it opens; a
+       15s deadline bounds everything up to that point, releasing a late
+       listener if it wins)
  → provider consent in the system browser
  → 302 → 127.0.0.1:<port>/auth/callback?code=…&state=…
  → oauth_loopback/ matches the state, emits `auth://deep-link`, brings the
    window front (a foreign state gets the stale page and we keep listening)
  → oauth-callback.ts parseCallbackUrl(): validate CSRF `state` FIRST, then code
-    2. exchange code at the provider token endpoint (google-authorize.ts /
-       microsoft-authorize.ts) → provider id_token (Google also sends its
-       installed-app client_secret; Microsoft is a public PKCE client, no secret)
+    2. exchange code at Google's token endpoint (google-authorize.ts; the
+       installed-app client_secret rides along — Google's "Desktop app"
+       clients require it even though they are non-confidential)
     3. firebase-rest.ts signInWithIdp({ providerId, idToken }) → Firebase session
     4. session-from-idp.ts assembles the Session; saveSession() → Keychain;
        cacheSession() flips the gate; startProactiveRefresh(); PostHog track
        (steps 3-4 live in sign-in-establish.ts)
 ```
 
+### Microsoft — desktop (GCIP-BROKERED over the loopback, HOU-1112)
+
+Microsoft can NOT run the Google-style client-side exchange, for two
+independently fatal reasons (both verified live):
+
+* Entra refuses a public-client code redemption made from a webview — the
+  fetch carries an `Origin` header (`http://tauri.localhost` on Windows), and
+  **AADSTS90023** restricts cross-origin redemption to SPA registrations.
+* GCIP refuses Microsoft tokens it did not obtain itself:
+  `signInWithIdp({ id_token | access_token })` for `microsoft.com` always
+  fails with `INVALID_CREDENTIAL_OR_PROVIDER_ID`, with or without a nonce.
+
+So the desktop uses the GCIP-brokered shape instead (`brokered-loopback.ts` +
+`microsoft-authorize.ts`): for each candidate port, `createAuthUri` mints the
+Entra authorize URL for `continueUri = http://localhost:<port>/auth/callback`
+(GCIP owns the CSRF `state`), `osStartOauthLoopback(state, exactPort)` binds
+EXACTLY that port (`portBusy` → re-mint for the next candidate), and after the
+loopback catches the redirect, `signInWithIdpSession({ requestUri, sessionId })`
+lets GCIP redeem the code SERVER-SIDE with the client secret from the identity
+project's provider config. No Microsoft client id or secret ships in the app.
+
 The loopback ports `8975-8978` must be **Authorized redirect URIs** on the
-**Desktop OAuth client** (Google) / Azure app registration (Microsoft). The Rust
-loopback (`app/src-tauri/src/oauth_loopback/`) forwards `?code=&state=` verbatim
-on the `auth://deep-link` event and never sees the client secret or does a token
-exchange (TS owns both).
+**Desktop OAuth client** as `http://127.0.0.1:<port>/auth/callback` (Google)
+and on the Azure app registration's **Web** platform as
+`http://localhost:<port>/auth/callback` (Microsoft — Entra only allows plain
+http on the Web platform for `localhost`, and login.live.com matches exactly,
+no port-agnostic loopback). The Rust loopback
+(`app/src-tauri/src/oauth_loopback/`) binds BOTH `127.0.0.1` and `::1` (a
+browser resolving `localhost` may pick IPv6), forwards `?code=&state=` verbatim
+on the `auth://deep-link` event, and never sees a client secret or does a token
+exchange.
 
 **The loopback is attempt-scoped** (`oauth_loopback/`: `mod.rs` commands,
 `state.rs` registry, `listener.rs` bind/supersede, `callback.rs` serve loop,

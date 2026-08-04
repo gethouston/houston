@@ -1,16 +1,22 @@
 //! One-shot localhost loopback listener for the OAuth sign-in redirect.
 //!
 //! Replaces the gethouston.ai relay page for the **desktop** app. After
-//! provider consent (Google / Microsoft), the identity provider 302-redirects
-//! the user's system browser straight to
-//! `http://127.0.0.1:<port>/auth/callback?code=...&state=...`. Because that's a
+//! provider consent, the browser is 302-redirected straight to the loopback:
+//! `http://127.0.0.1:<port>/auth/callback?code=...&state=...` for Google's
+//! loopback+PKCE flow, or `http://localhost:<port>/auth/callback?...` for the
+//! GCIP-BROKERED Microsoft flow (whose authorize URL is minted by GCIP
+//! `createAuthUri` for ONE exact port — hence `exact_port` + `PortBusy` below —
+//! and whose code is redeemed by GCIP server-side, never by this client). Both
+//! loopback stacks (`127.0.0.1` and `::1`) are bound, because a browser
+//! resolving `localhost` may connect over IPv6. Because the redirect is a
 //! plain HTTP navigation (not a custom `houston://` scheme), the browser shows
 //! NO "open this app?" dialog — it just loads the page. We then:
 //!   1. check the `state` is OURS (a foreign one gets the stale page and we
 //!      keep listening — see `callback.rs`),
 //!   2. hand the query to the webview via the `auth://deep-link` event so the
-//!      PKCE exchange + GCIP (Firebase) sign-in run in JS with the in-memory
-//!      verifier (see `app/src/lib/identity/*`),
+//!      code redemption + GCIP (Firebase) sign-in run in JS (PKCE verifier for
+//!      Google, `signInWithIdp` session for Microsoft — see
+//!      `app/src/lib/identity/*`),
 //!   3. serve a "you're signed in, return to Houston" page,
 //!   4. pull the app window to the front — the old macOS deep-link path never
 //!      did this, which is a big part of why users thought sign-in "hung",
@@ -45,7 +51,7 @@ use tauri::{AppHandle, State};
 use tokio::sync::oneshot;
 
 use callback::CALLBACK_PATH;
-use listener::{bind_first_free, spawn_listener, supersede, ListenerTask};
+use listener::{bind_exact, bind_first_free, spawn_listener, supersede, BindOutcome, ListenerTask};
 pub use state::OauthLoopbackState;
 use state::{ActiveListener, Claim, Installed};
 
@@ -56,8 +62,12 @@ pub enum LoopbackStart {
     /// A listener is bound and waiting for this attempt's redirect.
     #[serde(rename_all = "camelCase")]
     Listening {
-        /// The `redirect_uri` the frontend gives the provider.
+        /// The `redirect_uri` the frontend gives the provider (the `127.0.0.1`
+        /// spelling; the brokered flow derives its `localhost` continueUri from
+        /// `port` instead).
         redirect_uri: String,
+        /// The bound loopback port. Both `127.0.0.1` and `::1` listen on it.
+        port: u16,
         /// Identifies this listener; `cancel_oauth_loopback` only acts on a match.
         attempt_id: u64,
     },
@@ -66,6 +76,11 @@ pub enum LoopbackStart {
     /// treats it as a benign supersession — no error, no session: the newer
     /// attempt is the one the user is actually watching.
     Superseded,
+    /// The requested `exact_port` is held by a foreign process (only produced
+    /// when `exact_port` was given). NOT an error: the GCIP-brokered caller
+    /// minted its authorize URL for that one port, so it re-mints for the next
+    /// candidate and asks again.
+    PortBusy,
 }
 
 /// Start a one-shot loopback listener for the attempt whose CSRF `state` is
@@ -80,6 +95,7 @@ pub async fn start_oauth_loopback(
     app: AppHandle,
     state: State<'_, OauthLoopbackState>,
     expected_state: String,
+    exact_port: Option<u16>,
 ) -> Result<LoopbackStart, String> {
     // Mint the generation FIRST: it records when the user clicked, not which
     // coroutine happens to reach `install` last.
@@ -99,7 +115,22 @@ pub async fn start_oauth_loopback(
         Claim::Won(None) => {}
     }
 
-    let (listener, port) = bind_first_free().await?;
+    // The GCIP-brokered flow minted its authorize URL for ONE port, so it asks
+    // for exactly that port and steps + re-mints on `PortBusy`; the PKCE flow
+    // takes the first free candidate.
+    let sockets = match exact_port {
+        Some(port) => match bind_exact(port).await? {
+            BindOutcome::Bound(sockets) => sockets,
+            BindOutcome::Busy => {
+                tracing::info!(
+                    "[oauth-loopback] attempt {attempt_id}: exact port {port} is busy"
+                );
+                return Ok(LoopbackStart::PortBusy);
+            }
+        },
+        None => bind_first_free().await?,
+    };
+    let port = sockets.port;
     let redirect_uri = format!("http://127.0.0.1:{port}{CALLBACK_PATH}");
     tracing::info!("[oauth-loopback] attempt {attempt_id} listening on {redirect_uri}");
 
@@ -121,20 +152,19 @@ pub async fn start_oauth_loopback(
         Installed::Ok(None) => {}
         Installed::Stale { newest } => {
             // A newer click claimed the loopback while we were binding. Free
-            // the socket we just bound (dropping it releases the port) and tell
-            // the frontend this attempt lost — never install it as current.
+            // the sockets we just bound (dropping them releases the port) and
+            // tell the frontend this attempt lost — never install it as current.
             tracing::info!(
                 "[oauth-loopback] attempt {attempt_id} lost to {newest} while binding; releasing port {port}"
             );
-            drop(listener);
+            drop(sockets);
             return Ok(LoopbackStart::Superseded);
         }
     }
 
     spawn_listener(ListenerTask {
         app,
-        socket: listener,
-        port,
+        sockets,
         attempt_id,
         expected_state,
         cancel_rx,
@@ -143,6 +173,7 @@ pub async fn start_oauth_loopback(
 
     Ok(LoopbackStart::Listening {
         redirect_uri,
+        port,
         attempt_id,
     })
 }
