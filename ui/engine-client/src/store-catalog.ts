@@ -48,19 +48,34 @@ declare global {
   }
 }
 
-const DEFAULT_STORE_GATEWAY = "https://gateway.gethouston.ai";
-
 /** GET reads announce JSON, matching the former plain-fetch requests. */
 const ACCEPT_JSON = { headers: { Accept: "application/json" } };
 
-/** The gateway base the public catalog reads go to. */
+/**
+ * The gateway base the public catalog reads go to: the desktop shell's
+ * installed target, else the build-time `VITE_AGENTSTORE_GATEWAY_URL`.
+ *
+ * There is deliberately no hardcoded production fallback. A store gateway is
+ * deployment configuration that differs per environment and can move, so a
+ * literal here does not "keep things working" — it silently overrides whatever
+ * the environment meant, which is how the staging QA DMG spent releases
+ * browsing and publishing against the real production catalog. A build with no
+ * store target has no store, loudly.
+ */
 export function storeCatalogApiBase(): string {
   const installed =
     typeof window !== "undefined" ? window.__HOUSTON_STORE__?.baseUrl : "";
   const built = (
     import.meta as unknown as { env?: Record<string, string | undefined> }
   ).env?.VITE_AGENTSTORE_GATEWAY_URL;
-  return (installed || built || DEFAULT_STORE_GATEWAY).replace(/\/+$/, "");
+  const base = (installed || built || "").trim().replace(/\/+$/, "");
+  if (!base) {
+    throw new StoreCatalogError(0, {
+      error:
+        "No Agent Store gateway configured for this build (VITE_AGENTSTORE_GATEWAY_URL).",
+    });
+  }
+  return base;
 }
 
 /** A store client bound to the resolved gateway base and the given fetch. */

@@ -17,9 +17,15 @@ import { hostedEngineUrl } from "./engine";
  * the local host token, not the session.
  */
 
+/**
+ * The store gateway this build talks to, baked at build time
+ * (`VITE_AGENTSTORE_GATEWAY_URL`) — never a literal, see {@link bakedUrl}.
+ * `undefined` means this build was given no store target, so we install none
+ * rather than guess a host: the publish path then falls through to the engine
+ * base, which surfaces a real error instead of silently writing somewhere else.
+ */
 const STORE_GATEWAY_URL = bakedUrl(
   import.meta.env?.VITE_AGENTSTORE_GATEWAY_URL as string | undefined,
-  "https://gateway.gethouston.ai",
 );
 
 declare global {
@@ -31,7 +37,7 @@ declare global {
 /** Install (or clear on sign-out) the store gateway target + current bearer. */
 function setStoreGatewaySession(token: string | null): void {
   if (typeof window === "undefined") return;
-  if (!token) {
+  if (!token || !STORE_GATEWAY_URL) {
     delete window.__HOUSTON_STORE__;
     return;
   }

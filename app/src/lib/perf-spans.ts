@@ -22,8 +22,13 @@ export interface PerfSpanObservation {
 }
 
 export interface PerfSpanTransport {
-  /** POST a batch to the gateway; absent session → don't call configure yet. */
-  send(spans: PerfSpanObservation[]): Promise<void>;
+  /**
+   * POST a batch to the gateway; absent session → don't call configure yet.
+   * Omitted entirely when the build bakes no ingest URL (there is no default
+   * host to fall back to): spans are still measured and mirrored, just never
+   * shipped, and the queue is dropped instead of growing forever.
+   */
+  send?(spans: PerfSpanObservation[]): Promise<void>;
   /** Per-span mirror (PostHog). Fire-and-forget. */
   mirror?(span: PerfSpanName, ms: number): void;
 }
@@ -103,6 +108,9 @@ export class PerfSpans {
     if (!this.transport || this.queue.length === 0) return;
     const batch = this.queue;
     this.queue = [];
+    // Mirror-only build (no ingest URL baked): drop the batch rather than let
+    // it accumulate for a transport that will never exist.
+    if (!this.transport.send) return;
     try {
       await this.transport.send(batch);
     } catch {
