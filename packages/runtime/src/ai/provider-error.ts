@@ -68,6 +68,17 @@ const INVALID_KEY_PATTERNS = [
   // classified `unknown` (generic error card instead of the reconnect card,
   // and "could not verify" instead of "didn't accept this key") (HOU-1077).
   "authorization failed",
+  // Google Gemini API keys: 403 with `"status": "PERMISSION_DENIED"` — the
+  // key's GCP project is blocked ("Your project has been denied access.
+  // Please contact support.") or otherwise not permitted to call the API. The
+  // whole credential is unusable, so the remedy is pasting a different key —
+  // the reconnect card, never the report-bug `unknown` card (HOU-920).
+  // "permission_denied" is Google's canonical gRPC status label; Anthropic's
+  // resource-level authZ marker is "permission_error", which deliberately
+  // stays OUT of this list (re-keying doesn't fix it — see the 403 note in
+  // `isAuth` and its test).
+  "permission_denied",
+  "project has been denied access",
 ];
 
 /**

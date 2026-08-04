@@ -736,6 +736,39 @@ test("Qwen Token Plan 401 'Invalid API-key provided' → unauthenticated / inval
   if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
 });
 
+test("Google 403 PERMISSION_DENIED 'project has been denied access' → unauthenticated / invalid_api_key (HOU-920)", () => {
+  // Verbatim generativelanguage.googleapis.com body when the API key's GCP
+  // project is blocked by Google. The whole credential is unusable — every
+  // request fails — so the remedy is pasting a different key (google is an
+  // apiKey provider: the card opens the re-paste dialog, HOU-1077). The
+  // embedded `"code":403` extractor (HOU-1156) recovers the status, but a 403
+  // is deliberately auth only when the BODY names an auth failure — without
+  // the PERMISSION_DENIED patterns it fell through to `unknown`.
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.5-flash",
+    message:
+      '{"error":{"message":"{\\n  \\"error\\": {\\n    \\"code\\": 403,\\n    \\"message\\": \\"Your project has been denied access. Please contact support.\\",\\n    \\"status\\": \\"PERMISSION_DENIED\\"\\n  }\\n}\\n","code":403,"status":"Forbidden"}}',
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+});
+
+test("Google PERMISSION_DENIED status label alone → unauthenticated (HOU-920)", () => {
+  // Google's other 403s ride the same canonical gRPC label (key restrictions,
+  // SERVICE_DISABLED, suspended consumer) — all mean this key/project cannot
+  // call the API, all reconnect. Anthropic's resource-level "permission_error"
+  // must NOT trip this (its own test above asserts it stays out of the
+  // reconnect card).
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.5-flash",
+    message:
+      '{"error":{"code":403,"message":"Method doesn\'t allow unregistered callers (callers without established identity). Please use API Key or other form of API consumer identity to call this API.","status":"PERMISSION_DENIED"}}',
+  });
+  expect(err.kind).toBe("unauthenticated");
+});
+
 // ---------------------------------------------------------------------------
 // Context overflow — the conversation no longer fits the model's window.
 // The Jan fixture is the VERBATIM llama.cpp rejection from the production
