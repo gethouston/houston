@@ -395,6 +395,50 @@ test("a click on a file opens the preview and selects nothing", async ({
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("an HTML file previews as a rendered page, not raw markup", async ({
+  page,
+}) => {
+  await openFilesTab(page);
+
+  // People build presentations as HTML files; the preview must render the
+  // document (scripts and all), never dump its source as text.
+  const chooser = await openUploadChooser(page, "Upload files");
+  await chooser.setFiles({
+    name: "deck.html",
+    mimeType: "text/html",
+    buffer: Buffer.from(
+      "<h1>Launch plan</h1><script>document.title = 'ran'</script>",
+    ),
+  });
+  await expect(page.getByText("deck.html")).toBeVisible();
+
+  await page.getByText("deck.html", { exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "deck.html" });
+  await expect(dialog).toBeVisible();
+
+  // A deck gets the whole viewport, not a document-sized modal: most HTML
+  // files are presentations, and horizontal layout needs the window's shape.
+  const viewport = page.viewportSize() ?? { width: 1280, height: 800 };
+  const box = await dialog.boundingBox();
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(viewport.width * 0.9);
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(viewport.height * 0.85);
+
+  // A rendered document inside a sandboxed frame: scripts may run, but the
+  // deck must never share the app's origin (no allow-same-origin, ever).
+  const iframe = dialog.locator("iframe");
+  await expect(iframe).toHaveAttribute("sandbox", "allow-scripts");
+  const frame = iframe.contentFrame();
+  await expect(
+    frame.getByRole("heading", { name: "Launch plan" }),
+  ).toBeVisible();
+
+  // And no source dump anywhere: the markup is not on the page as text.
+  await expect(dialog.getByText("<h1>")).toHaveCount(0);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
 test("the checkbox gutter selects without opening anything", async ({
   page,
 }) => {

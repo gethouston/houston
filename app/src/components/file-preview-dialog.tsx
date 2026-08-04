@@ -1,5 +1,6 @@
 import {
   Button,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,7 +17,8 @@ import { fetchFileBytes } from "../lib/file-bytes-cache";
 
 /**
  * In-app preview for a workspace file (web build, cloud pods, remote hosts).
- * Images, PDFs and text-ish files render inline; everything else (pptx,
+ * Images, PDFs, HTML (rendered live in a sandboxed iframe — agent-built decks
+ * preview as pages, not source) and text-ish files render inline; everything else (pptx,
  * xlsx, …) gets a "download to open" fallback. Bytes come over the
  * authenticated download route, so nothing here assumes a local filesystem,
  * and a file the Files grid already thumbnailed is served from the shared byte
@@ -30,7 +32,7 @@ const TEXT_PREVIEW_LIMIT = 256 * 1024;
 type Loaded =
   | { state: "loading" }
   | { state: "error"; message: string }
-  | { state: "image" | "pdf"; url: string; blob: Blob }
+  | { state: "image" | "pdf" | "html"; url: string; blob: Blob }
   | { state: "text"; text: string; blob: Blob }
   | { state: "binary"; blob: Blob };
 
@@ -74,6 +76,9 @@ export function FilePreviewDialog({
         } else if (contentType.includes("pdf")) {
           objectUrl = URL.createObjectURL(blob);
           setLoaded({ state: "pdf", url: objectUrl, blob });
+        } else if (contentType.includes("html")) {
+          objectUrl = URL.createObjectURL(blob);
+          setLoaded({ state: "html", url: objectUrl, blob });
         } else if (
           contentType.startsWith("text/") ||
           contentType.includes("json") ||
@@ -100,9 +105,21 @@ export function FilePreviewDialog({
 
   const blob = "blob" in loaded ? loaded.blob : null;
 
+  // HTML files are mostly agent-built presentations: give them the whole
+  // viewport so a 16:9 deck lays out horizontally. Sized from the NAME, not
+  // the loaded state, so the dialog opens at full size instead of jumping
+  // when the bytes land.
+  const fullPage = /\.html?$/i.test(fileName);
+
   return (
     <Dialog open={!!filePath} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        className={
+          fullPage
+            ? "h-[92vh] max-w-[95vw] sm:max-w-[95vw] grid-rows-[auto_minmax(0,1fr)_auto]"
+            : "max-w-3xl"
+        }
+      >
         <DialogHeader>
           <DialogTitle className="truncate">{fileName}</DialogTitle>
           {loaded.state === "binary" && (
@@ -111,7 +128,14 @@ export function FilePreviewDialog({
             </DialogDescription>
           )}
         </DialogHeader>
-        <div className="min-h-[200px] max-h-[60vh] overflow-auto rounded-md border border-line bg-chip-subtle/20">
+        <div
+          className={cn(
+            "rounded-md border border-line bg-chip-subtle/20",
+            fullPage
+              ? "min-h-0 overflow-hidden"
+              : "min-h-[200px] max-h-[60vh] overflow-auto",
+          )}
+        >
           {loaded.state === "loading" && (
             <p className="p-6 text-sm text-ink-muted">
               {t("files.preview.loading")}
@@ -139,6 +163,23 @@ export function FilePreviewDialog({
               src={loaded.url}
               title={fileName}
               className="h-[58vh] w-full border-0"
+            />
+          )}
+          {loaded.state === "html" && (
+            // `allow-scripts` WITHOUT `allow-same-origin`: decks need their JS,
+            // but a workspace file must never reach the app's origin, storage
+            // or session. The blob document runs in an opaque origin. bg-white
+            // mirrors the browser's default page canvas (iframes are otherwise
+            // transparent, and an unstyled page over the dialog's dark surface
+            // would be unreadable).
+            <iframe
+              src={loaded.url}
+              title={fileName}
+              sandbox="allow-scripts"
+              className={cn(
+                "w-full border-0 bg-white",
+                fullPage ? "h-full" : "h-[58vh]",
+              )}
             />
           )}
           {loaded.state === "text" && (
