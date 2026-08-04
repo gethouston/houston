@@ -68,6 +68,7 @@
   --color-popover-text: var(--ht-popover-text);
   --color-action: var(--ht-action);
   --color-action-text: var(--ht-action-text);
+  --color-link: var(--ht-link);
   --color-chip: var(--ht-chip);
   --color-chip-solid: var(--ht-chip-solid);
   --color-chip-solid-hover: var(--ht-chip-solid-hover);

@@ -38,8 +38,9 @@ import {
   useState,
 } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
+import { Autolink } from "../autolink";
 import { MarkdownCodeBlock } from "../markdown-code-block";
-import { classifyMarkdownLink, collapsedUrlText } from "../markdown-link";
+import { autolinkDisplay, classifyMarkdownLink } from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
 import type { MentionRehypeOptions } from "../mention-rehype.ts";
 import { mentionRehypePlugin } from "../mention-rehype.ts";
@@ -431,14 +432,6 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
   mentions?: readonly MentionTarget[];
 };
 
-/**
- * A bare URL rendered inline in a chat message — shared by the markdown
- * autolink override below and the plain-text path (`plain-message-text.tsx`),
- * so a link looks identical whether its message rendered markdown or not.
- */
-export const AUTOLINK_CLASS =
-  "text-action underline-offset-4 hover:underline [overflow-wrap:anywhere] group-[.is-peer]:underline group-[.is-user]:text-input group-[.is-user]:underline dark:group-[.is-user]:text-ink";
-
 const streamdownPlugins = { cjk, code, math, mermaid };
 
 export const MessageResponse = memo(
@@ -495,34 +488,22 @@ export const MessageResponse = memo(
               return <>{custom}</>;
             }
           }
-          // Bare URL the agent dropped in chat → inline, clickable link that
+          // Bare URL the agent dropped in chat → inline link chip that
           // opens in the system browser (issue #358), not dead text. Only
           // render it interactive when there's an open handler; otherwise it
           // would look clickable but do nothing.
-          //
-          // Both BUBBLE variants underline the link permanently, never on
-          // hover: inside a filled bubble `text-action` sits within ~1.05:1 of
-          // the body ink (identical in dark), so colour carries no signal and
-          // the underline is the whole affordance. Only the assistant's prose,
-          // on the plain canvas, may keep it hover-enhanced.
           if (kind === "autolink") {
             // A URL label markdown broke across lines flattens with a
             // softbreak in it (HOU-1071) — show the reassembled URL, not
-            // the raw children with a stray space mid-URL.
-            const label = collapsedUrlText(children) ?? children;
+            // the raw children with a stray space mid-URL, scheme-stripped
+            // and capped Slack-style (HOU-1152); the href keeps the full
+            // destination.
+            const label = autolinkDisplay(children) ?? children;
             if (!fn) return <span>{label}</span>;
             return (
-              <a
-                href={url}
-                rel="noreferrer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onOpen();
-                }}
-                className={AUTOLINK_CLASS}
-              >
+              <Autolink href={url} onOpen={onOpen}>
                 {label}
-              </a>
+              </Autolink>
             );
           }
           // Labeled link (text distinct from URL) → button with text + icon.

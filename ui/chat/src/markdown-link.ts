@@ -86,15 +86,32 @@ export function classifyMarkdownLink(
 }
 
 /**
- * Display text for an autolink whose label is a URL that markdown broke
- * across lines (the HOU-1071 shape): the whitespace-free URL to render
- * instead of the raw children, which would show a stray space mid-URL.
- * Null when the children should render as-is — the common case, which
- * keeps Streamdown's streaming animation wrappers intact.
+ * Longest link text rendered verbatim. Anything longer displays as its head
+ * plus an ellipsis, Slack-style (HOU-1152) — 64 characters keeps a shortened
+ * URL on a single line at the chat bubble's width instead of wrapping a
+ * ~100-character share link across three lines of noise.
  */
-export function collapsedUrlText(children: unknown): string | null {
+export const URL_DISPLAY_MAX = 64;
+
+/**
+ * Display text for an autolink, Slack-style (HOU-1152): reassemble a URL
+ * that markdown broke across lines (the HOU-1071 shape — raw children would
+ * show a stray space mid-URL), strip the `https://` scheme, and cap at
+ * {@link URL_DISPLAY_MAX} with an ellipsis. Only the visible text changes;
+ * the href keeps the full destination (the link chip surfaces it as a hover
+ * title). Null when the children should render as-is — non-web autolinks
+ * like relative paths, which keep Streamdown's streaming animation wrappers
+ * intact.
+ */
+export function autolinkDisplay(children: unknown): string | null {
   const text = markdownLinkText(children);
   if (text === null) return null;
   const collapsed = text.replace(/\s+/g, "");
-  return collapsed !== text && URL_TEXT.test(collapsed) ? collapsed : null;
+  const url = URL_TEXT.test(collapsed) ? collapsed : text;
+  const stripped = url.replace(/^https?:\/\//, "");
+  const capped =
+    stripped.length > URL_DISPLAY_MAX
+      ? `${stripped.slice(0, URL_DISPLAY_MAX - 1)}…`
+      : stripped;
+  return capped === text ? null : capped;
 }

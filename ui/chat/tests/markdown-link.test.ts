@@ -1,9 +1,10 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  autolinkDisplay,
   classifyMarkdownLink,
-  collapsedUrlText,
   markdownLinkText,
+  URL_DISPLAY_MAX,
 } from "../src/markdown-link.ts";
 
 describe("markdownLinkText", () => {
@@ -153,20 +154,43 @@ describe("classifyMarkdownLink", () => {
   });
 });
 
-describe("collapsedUrlText", () => {
-  it("reassembles a URL label markdown broke across lines", () => {
+describe("autolinkDisplay", () => {
+  it("reassembles a URL label markdown broke across lines and strips the scheme (HOU-1071/HOU-1152)", () => {
     assert.equal(
-      collapsedUrlText("https://docs.google.com/spreadsheets/d/1JO-\nrR9/edit"),
-      "https://docs.google.com/spreadsheets/d/1JO-rR9/edit",
+      autolinkDisplay("https://docs.google.com/spreadsheets/d/1JO-\nrR9/edit"),
+      "docs.google.com/spreadsheets/d/1JO-rR9/edit",
     );
   });
 
-  it("returns null for an unwrapped URL so streaming children render as-is", () => {
-    assert.equal(collapsedUrlText("https://example.com"), null);
+  it("strips the scheme and caps a long URL with an ellipsis (HOU-1152)", () => {
+    // The live shape from the issue: a ~95-char Docs share link that used to
+    // wrap across three lines of noise (or, pre-HOU-1071, clip into a pill).
+    const url =
+      "https://docs.google.com/presentation/d/1qObQZ8EL3YcTan_dPkyZfoR_9cp4hiWoBMgic6y9ZoE/edit";
+    const stripped = url.replace(/^https:\/\//, "");
+    const display = autolinkDisplay(url);
+    assert.equal(display, `${stripped.slice(0, URL_DISPLAY_MAX - 1)}…`);
+    assert.equal(display?.length, URL_DISPLAY_MAX);
+  });
+
+  it("strips the scheme from a short URL, Slack-style", () => {
+    assert.equal(autolinkDisplay("https://example.com"), "example.com");
+    assert.equal(autolinkDisplay("http://example.com/x"), "example.com/x");
+  });
+
+  it("keeps a scheme-stripped URL at the display limit without an ellipsis", () => {
+    const url = `https://example.com/${"a".repeat(URL_DISPLAY_MAX - 12)}`;
+    const display = autolinkDisplay(url);
+    assert.equal(display?.length, URL_DISPLAY_MAX);
+    assert.ok(!display?.endsWith("…"));
+  });
+
+  it("returns null for relative-path autolinks so streaming children render as-is", () => {
+    assert.equal(autolinkDisplay("perfil.md"), null);
   });
 
   it("returns null for plain labels and non-text children", () => {
-    assert.equal(collapsedUrlText("Open the sheet"), null);
-    assert.equal(collapsedUrlText({ href: "x" }), null);
+    assert.equal(autolinkDisplay("Open the sheet"), null);
+    assert.equal(autolinkDisplay({ href: "x" }), null);
   });
 });

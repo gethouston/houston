@@ -15,6 +15,7 @@
     "ink-muted": { "$value": "{color.neutral.450}" },
     "action": { "$value": "{color.neutral.150}" },
     "action-text": { "$value": "{color.neutral.900}" },
+    "link": { "$value": "{color.status.link-bright}" },
     "hover": { "$value": "{color.alpha.white-a08}" },
     "hover-text": { "$value": "{color.neutral.250}" },
     "chip": { "$value": "{color.alpha.white-a05}" },
