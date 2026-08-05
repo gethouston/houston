@@ -124,6 +124,23 @@
     "confirmDescription": "Isso exclui este espaço de trabalho e todos os seus agentes de forma permanente. Não dá para desfazer.",
     "confirmLabel": "Excluir"
   },
+  "deleteAccount": {
+    "title": "Excluir conta",
+    "description": "Exclui de forma permanente a sua conta, os seus agentes e tudo o que está guardado no Houston.",
+    "button": "Excluir conta",
+    "confirmTitle": "Excluir sua conta para sempre?",
+    "confirmBody": "Isso exclui de forma permanente a sua conta, os seus agentes e todos os seus dados guardados no Houston, e encerra sua sessão em todos os seus dispositivos. Não dá para recuperar nada depois. Os arquivos salvos no seu computador ficam onde estão.",
+    "typeToConfirm": "Digite {{word}} para confirmar.",
+    "confirmWord": "EXCLUIR",
+    "cancel": "Cancelar",
+    "confirm": "Excluir minha conta",
+    "dialogClose": "Fechar",
+    "errors": {
+      "teamMember": "Você ainda faz parte de uma equipe. Saia das suas equipes, ou passe para outra pessoa, e tente de novo.",
+      "network": "Não conseguimos falar com o Houston. Verifique sua conexão e tente de novo.",
+      "generic": "Algo deu errado e sua conta não foi excluída. Tente de novo."
+    }
+  },
   "shortcuts": {
     "title": "Atalhos de teclado",
     "description": "Use o Houston sem tocar no mouse."

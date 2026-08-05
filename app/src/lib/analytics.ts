@@ -35,6 +35,9 @@ export type AnalyticsEventName =
   // the activation funnel key on this single event.
   | "user_signed_up"
   | "user_signed_out"
+  // The user permanently deleted their hosted account (HOU-991). Tracked
+  // BEFORE the sign-out teardown resets the analytics identity.
+  | "account_deleted"
   // Onboarding
   | "onboarding_started"
   | "onboarding_completed"

@@ -443,6 +443,30 @@ post-success path (persist, remember-last-sign-in, arm refresh, analytics pair) 
 reactively**: `cacheSession(null)` → `["session"]` null → `HostedEngineGate` effect
 calls `setHostedEngineSessionToken(null)`.
 
+### Account deletion (HOU-991) — sign-out's stronger sibling
+
+`deleteAccountAndSignOut()` (`app/src/lib/delete-account-flow.ts`) is the client
+side of `DELETE {gateway}/v1/me` (contract: `cloud/docs/contracts/C12-account-deletion.md`):
+the gateway purges every piece of hosted data (GCS, secrets, Composio, the org
+namespace, the GCIP user, then Postgres) for the caller's PERSONAL org, and
+refuses with `409 team_member` (deleting nothing) while the user still belongs
+to team spaces. The wire client is `identity/delete-account.ts` — the same
+live-bearer + one-refresh-replay idiom as `cloud-migration-transport.ts`.
+
+After the 204 the teardown always runs to the end, and it is slightly deeper
+than `signOut()`: every `houston.*` localStorage key is purged
+(`houston-local-state.ts` — plain sign-out deliberately keeps those), then the
+full `signOut()` lifecycle finishes the device. The on-disk `~/.houston` tree
+is deliberately NOT touched — those are the user's machine-local files;
+deletion removes the hosted account and hosted data only.
+
+The surface is `settings/sections/delete-account.tsx` (Danger zone,
+type-to-confirm). Availability = identity configured + session + (hosted
+gateway engine, or web): in local-sidecar desktop mode `window.__HOUSTON_ENGINE__`
+is the co-located host, so there is no gateway to delete against. Other signed-in
+devices converge via the existing deleted-account terminal path: their next token
+refresh gets `USER_NOT_FOUND` → terminal sign-out (PR #999, `identity/refresh.ts`).
+
 ### Identity reset — in-place, no cross-account bleed (HOU-903)
 
 When the signed-in identity CHANGES — a different account signs in, or the current
