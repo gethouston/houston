@@ -453,14 +453,12 @@ refuses with `409 team_member` (deleting nothing) while the user still belongs
 to team spaces. The wire client is `identity/delete-account.ts` — the same
 live-bearer + one-refresh-replay idiom as `cloud-migration-transport.ts`.
 
-After the 204 the teardown always runs to the end, and it is deliberately
-DEEPER than `signOut()`: desktop wipes the whole `~/.houston` tree (Tauri
-`wipe_local_data`, `commands/wipe.rs` — hosted mode never spawns the local
-sidecar, so nothing of ours holds handles there), every `houston.*` localStorage
-key is purged (`houston-local-state.ts` — plain sign-out deliberately keeps
-those), and then the full `signOut()` lifecycle finishes the device. A failed
-local wipe surfaces as `local_data_clear_failed` on the auth-error bus (the
-settings toaster is unmounting; the sign-in screen renders the bus).
+After the 204 the teardown always runs to the end, and it is slightly deeper
+than `signOut()`: every `houston.*` localStorage key is purged
+(`houston-local-state.ts` — plain sign-out deliberately keeps those), then the
+full `signOut()` lifecycle finishes the device. The on-disk `~/.houston` tree
+is deliberately NOT touched — those are the user's machine-local files;
+deletion removes the hosted account and hosted data only.
 
 The surface is `settings/sections/delete-account.tsx` (Danger zone,
 type-to-confirm). Availability = identity configured + session + (hosted

@@ -10,7 +10,6 @@ pub mod portable;
 pub mod save_file;
 pub mod terminal;
 pub mod update;
-pub mod wipe;
 
 /// Expand a leading `~` to the user's home directory.
 ///

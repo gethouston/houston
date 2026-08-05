@@ -268,10 +268,6 @@ export async function invoke<T = unknown>(
     // browser tab has no such folder (detect_legacy_houston returns empty, so
     // the wizard never reaches the backup step on web).
     case "backup_houston_data":
-    // The post-account-deletion local wipe removes the desktop's `~/.houston`
-    // tree; a browser tab has none. The flow gates on `osIsTauri()`, so web
-    // never invokes it — surface a clear error if it somehow does.
-    case "wipe_local_data":
     case "pick_directory":
     case "reveal_file":
     case "reveal_agent":
