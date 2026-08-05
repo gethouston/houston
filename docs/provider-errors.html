@@ -125,6 +125,17 @@
     padding: 2px 10px;
     margin-top: 6px;
   }
+  .dormant {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    border: 1px solid var(--line-input);
+    border-radius: 9999px;
+    padding: 1px 10px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
   .examples { font-size: 12px; color: var(--muted); margin-top: 8px; }
   .examples code { display: inline-block; margin: 2px 2px 0 0; }
   .cell-note { font-size: 14px; color: var(--muted); margin-top: 6px; }
@@ -227,6 +238,18 @@
             <p class="cell-note">Top up or upgrade on the provider's billing page (the card links it when known), wait for the reset when one is shown, or switch to a provider with remaining quota. Note: opencode returns this as a 401, but it is a billing problem, not a sign-in problem.</p>
           </td>
         </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-warning"></span>Usage limit paused<span class="dormant">dormant</span></span>
+            <span class="kind">usage_limit_paused</span>
+            <p class="examples">Examples: <code>you've hit your session limit</code> <code>usage limit ... reset at 3:30pm</code></p>
+          </td>
+          <td>A plan-window limit was hit, historically the Anthropic 5-hour subscription session limit. Retrying now fails; the limit lifts at the reset time (<code>resets_at</code>). The current engine classifies these as <code>quota_exhausted</code> with a reset time, so no backend emits this kind today; the card still renders when an old chat carries it.</td>
+          <td>
+            <span class="cta">Switch model</span>
+            <p class="cell-note">Wait for the shown reset time, or switch to a different provider (each has its own limits). Routines show "Waiting, resumes at HH:MM" and continue on their own.</p>
+          </td>
+        </tr>
       </tbody>
     </table>
   </section>
@@ -300,6 +323,60 @@
   </section>
 
   <section>
+    <h2>Legacy kinds</h2>
+    <p class="section-note">Declared by the frontend and still rendered when an old chat carries one, but the current in-process engine never emits them. They date from the removed CLI-era engine, where providers ran as spawned processes.</p>
+    <table>
+      <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Session could not resume<span class="dormant">dormant</span></span>
+            <span class="kind">session_resume_missing</span>
+            <p class="examples">Examples: <code>no rollout found</code> <code>corrupt session transcript</code></p>
+          </td>
+          <td>The saved session the provider was asked to resume is gone or unreadable, so it could not pick up where it left off. The runner automatically restarted a fresh session; the card is informational.</td>
+          <td>
+            <span class="cta">Try again</span>
+            <p class="cell-note">Re-send the message; it runs on the fresh session. Earlier context from the broken session is not recoverable.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Malformed response<span class="dormant">dormant</span></span>
+            <span class="kind">malformed_response</span>
+          </td>
+          <td>The provider CLI emitted output mid-stream that could not be parsed, so the turn's result is unusable.</td>
+          <td>
+            <span class="cta">Retry</span>
+            <p class="cell-note">Retry the turn; a clean run replaces the broken one.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-danger"></span>Could not start the provider<span class="dormant">dormant</span></span>
+            <span class="kind">spawn_failed</span>
+          </td>
+          <td>The provider CLI process could not start at all: binary missing, or killed by the operating system before it produced anything.</td>
+          <td>
+            <span class="cta">Report bug</span>
+            <p class="cell-note">Nothing user-recoverable; the report bundles the logs that explain the failed launch.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Cancelled<span class="dormant">dormant</span></span>
+            <span class="kind">cancelled</span>
+          </td>
+          <td>The user pressed Stop. Kept as a distinct kind so the UI can tell it apart from a real failure.</td>
+          <td>
+            <p class="cell-note">Nothing to fix. Deliberately renders no card, no toast, and no retry.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
     <h2>Everything else</h2>
     <table>
       <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
@@ -320,7 +397,7 @@
   </section>
 
   <div class="sources">
-    <p>Source of truth: wire type <code>packages/protocol/src/provider-error.ts</code>, classifier <code>packages/runtime/src/ai/provider-error.ts</code>, cards <code>app/src/components/shell/provider-error-cards/</code>.</p>
+    <p>Source of truth: wire type <code>packages/protocol/src/provider-error.ts</code>, frontend union (including the legacy kinds) <code>ui/chat/src/types.ts</code>, classifier <code>packages/runtime/src/ai/provider-error.ts</code>, cards <code>app/src/components/shell/provider-error-cards/</code>.</p>
     <p>Deep dive, including attribution rules and the triage loop: <code>knowledge-base/provider-errors.md</code>. When the taxonomy changes, update this page in the same PR.</p>
   </div>
 </main>
