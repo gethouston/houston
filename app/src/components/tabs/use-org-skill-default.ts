@@ -16,7 +16,6 @@ import {
   tauriSkillsManifest,
 } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
-import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
@@ -26,10 +25,10 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 const inFlight = new Set<string>();
 
 /** Per-agent serialization of THIS module's manifest read-modify-writes: two
- *  skills finishing their create chats concurrently must not race each
- *  other's GET → PUT and drop a slug (last-writer-wins). Other surfaces'
- *  manifest writers keep their own existing GET → PUT pattern; this queue
- *  only closes the race the org-share default itself introduces. */
+ *  skills finishing their create chats concurrently on the same agent must
+ *  not race each other's GET → PUT and drop a slug (last-writer-wins). Other
+ *  surfaces' manifest writers keep their own existing GET → PUT pattern; this
+ *  queue only closes the race the org-share default itself introduces. */
 const manifestQueues = new Map<string, Promise<void>>();
 function enqueueManifestWrite(
   path: string,
@@ -45,17 +44,17 @@ function enqueueManifestWrite(
 /**
  * Org skill by default (HOU-1192): returns the fire-and-forget callback the
  * claim sites invoke with a freshly agent-created skill's slug. On shared-
- * store deployments it moves the skill to the workspace store and enables it
- * for every agent (`lib/org-skill-share.ts` owns the flow + ordering); where
- * the store is absent or declines, the skill stays agent-local exactly as
- * before, so the callback is safe to call unconditionally.
+ * store deployments it moves the skill to the workspace store and installs
+ * it to the ONE agent that built it (`lib/org-skill-share.ts` owns the flow
+ * + ordering) — the other agents see it in the store, ready for the user to
+ * enable. Where the store is absent or declines, the skill stays agent-local
+ * exactly as before, so the callback is safe to call unconditionally.
  */
 export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
   const { t } = useTranslation("skills");
   const queryClient = useQueryClient();
   const { capabilities } = useCapabilities();
   const workspaceId = useWorkspaceStore((s) => s.current?.id ?? null);
-  const agents = useAgentStore((s) => s.agents);
   const addToast = useUIStore((s) => s.addToast);
   // Optimistic while capabilities are still loading (`null`): the claim is a
   // one-shot signal, so deferring would drop it forever on a startup race.
@@ -70,7 +69,6 @@ export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
       const key = `${workspaceId}/${slug}`;
       if (inFlight.has(key)) return;
       inFlight.add(key);
-      const agentPaths = agents.map((a) => a.folderPath);
       shareNewSkillToWorkspace(
         {
           loadLocalContent: async (path, name) => {
@@ -114,7 +112,7 @@ export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
           },
           deleteLocal: (path, name) => tauriSkills.delete(path, name),
         },
-        { workspaceId, creatorPath: agent.folderPath, agentPaths, slug },
+        { workspaceId, creatorPath: agent.folderPath, slug },
       )
         .then((result) => {
           if (result.outcome !== "shared") {
@@ -126,26 +124,26 @@ export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
           queryClient.invalidateQueries({
             queryKey: queryKeys.sharedSkills(workspaceId),
           });
-          for (const path of agentPaths) {
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.skillsManifest(path),
-            });
-            queryClient.invalidateQueries({ queryKey: queryKeys.skills(path) });
-            queryClient.invalidateQueries({ queryKey: ["skill-detail", path] });
-          }
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.skillsManifest(agent.folderPath),
+          });
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.skills(agent.folderPath),
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["skill-detail", agent.folderPath],
+          });
           analytics.track("skill_installed", {
             skill_slug: slug,
             source: "org-default",
           });
-          if (result.enableFailures.length === 0) {
-            addToast({ title: t("global.autoShared"), variant: "success" });
+          if (result.creatorEnabled) {
+            addToast({ title: t("global.createdShared"), variant: "success" });
           } else {
-            // Each failed manifest write already toasted its real reason
-            // through call() — a blanket "shared with all your agents"
-            // beside those would contradict them, so only the log ties the
-            // failures to the share.
+            // The failed manifest write already toasted its real reason
+            // through call(); a success toast beside it would contradict it.
             logger.error(
-              `[org-skill] '${slug}' enable failed for ${result.enableFailures.length} agent(s)`,
+              `[org-skill] '${slug}' creator manifest enable failed`,
             );
           }
         })
@@ -156,14 +154,6 @@ export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
         )
         .finally(() => inFlight.delete(key));
     },
-    [
-      advertised,
-      workspaceId,
-      agents,
-      agent.folderPath,
-      queryClient,
-      addToast,
-      t,
-    ],
+    [advertised, workspaceId, agent.folderPath, queryClient, addToast, t],
   );
 }

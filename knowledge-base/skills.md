@@ -171,11 +171,13 @@ edits hit the one org copy. HOU-1192 makes that the DEFAULT for skills **created
 an agent** (the create-with-AI chat): the moment the heal stamps the chat↔skill link
 from the skill's own forward `setup_activity_id` — the one signal with agent-written
 provenance; rule 1 only matches an unstamped chat, so it fires exactly once per
-creation — the client promotes the SKILL.md verbatim into the store, enables it in
-EVERY agent's manifest (explicit per-agent writes, per ADR 0003; this module's
-writers are serialized per agent), and deletes the creator's local copy only when it
-is still byte-identical, checked directly before the delete (a mid-flight edit
-survives as that agent's override). Flow + ordering live in
+creation — the client promotes the SKILL.md verbatim into the store, enables it
+ONLY in the creator's manifest (one explicit write, per ADR 0003; this module's
+manifest writers are serialized per agent), and deletes the creator's local copy
+only when it is still byte-identical, checked directly before the delete (a
+mid-flight edit survives as that agent's override). Other agents are deliberately
+NOT installed to: the skill sits in the workspace store, and the user enables it
+per agent from the Skills page / the per-agent "From your workspace" section. Flow + ordering live in
 `app/src/lib/org-skill-share.ts` (node-tested); the binding hook is
 `app/src/components/tabs/use-org-skill-default.ts`, invoked from
 `use-skill-chat-setup.ts` (heal `reason: "forward_link"` ONLY — orphan adoption and

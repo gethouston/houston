@@ -7,9 +7,11 @@ import {
 } from "../src/lib/org-skill-share.ts";
 
 // HOU-1192: a skill created with an agent lands in the workspace store by
-// default. The flow must never lose the skill: every failure path leaves it
-// usable somewhere, and the local copy dies only when the creator can already
-// load the shared one and nothing diverged.
+// default and is installed ONLY to the agent that built it — other agents see
+// it in the store and are enabled explicitly by the user. The flow must never
+// lose the skill: every failure path leaves it usable somewhere, and the local
+// copy dies only when the creator can already load the shared one and nothing
+// diverged.
 
 /** The shape `HoustonEngineError` carries: the status plus the parsed body. */
 const engineError = (status: number, body: unknown = null) => ({
@@ -20,7 +22,6 @@ const engineError = (status: number, body: unknown = null) => ({
 const ARGS = {
   workspaceId: "ws1",
   creatorPath: "/ws/Creator",
-  agentPaths: ["/ws/Creator", "/ws/Other", "/ws/Third"],
   slug: "meeting-prep",
 };
 
@@ -76,23 +77,22 @@ describe("isOrgSkillShareDeclined", () => {
 });
 
 describe("shareNewSkillToWorkspace", () => {
-  it("happy path: promote, creator first, fan-out, byte-identical delete", async () => {
+  it("happy path: promote, creator-only enable, byte-identical delete", async () => {
     const { calls, deps } = makeDeps();
     const result = await shareNewSkillToWorkspace(deps, ARGS);
     deepStrictEqual(result, {
       outcome: "shared",
-      enableFailures: [],
+      creatorEnabled: true,
       localDeleted: true,
     });
-    // Ordering: load → promote → creator enable → others → beforeDelete
-    // (cache refresh) → reload → delete, with the reload/compare directly
-    // against the delete so a concurrent edit has the narrowest window.
+    // Ordering: load → promote → creator enable (the ONLY enable — other
+    // agents are never installed to) → beforeDelete (cache refresh) →
+    // reload → delete, with the reload/compare directly against the delete
+    // so a concurrent edit has the narrowest window.
     deepStrictEqual(calls, [
       "load:/ws/Creator:meeting-prep",
       "promote:ws1:meeting-prep",
       "enable:/ws/Creator:meeting-prep",
-      "enable:/ws/Other:meeting-prep",
-      "enable:/ws/Third:meeting-prep",
       "beforeDelete",
       "load:/ws/Creator:meeting-prep",
       "delete:/ws/Creator:meeting-prep",
@@ -140,31 +140,18 @@ describe("shareNewSkillToWorkspace", () => {
     const { calls, deps } = makeDeps();
     deps.enable = async (path, slug) => {
       calls.push(`enable:${path}:${slug}`);
-      if (path === "/ws/Creator") throw new Error("manifest write failed");
+      throw new Error("manifest write failed");
     };
     const result = await shareNewSkillToWorkspace(deps, ARGS);
     deepStrictEqual(result, {
       outcome: "shared",
-      enableFailures: ["/ws/Creator"],
+      creatorEnabled: false,
       localDeleted: false,
     });
     strictEqual(
       calls.some((c) => c.startsWith("delete:")),
       false,
     );
-  });
-
-  it("other agents' enable failures are collected, never fatal", async () => {
-    const { deps } = makeDeps();
-    deps.enable = async (path) => {
-      if (path === "/ws/Other") throw new Error("forbidden");
-    };
-    const result = await shareNewSkillToWorkspace(deps, ARGS);
-    deepStrictEqual(result, {
-      outcome: "shared",
-      enableFailures: ["/ws/Other"],
-      localDeleted: true,
-    });
   });
 
   it("a copy the agent edited mid-flight survives as an override", async () => {
@@ -179,7 +166,7 @@ describe("shareNewSkillToWorkspace", () => {
     const result = await shareNewSkillToWorkspace(deps, ARGS);
     deepStrictEqual(result, {
       outcome: "shared",
-      enableFailures: [],
+      creatorEnabled: true,
       localDeleted: false,
     });
     strictEqual(
@@ -199,7 +186,7 @@ describe("shareNewSkillToWorkspace", () => {
     const result = await shareNewSkillToWorkspace(deps, ARGS);
     deepStrictEqual(result, {
       outcome: "shared",
-      enableFailures: [],
+      creatorEnabled: true,
       localDeleted: true,
     });
     strictEqual(
@@ -217,7 +204,7 @@ describe("shareNewSkillToWorkspace", () => {
     const result = await shareNewSkillToWorkspace(deps, ARGS);
     deepStrictEqual(result, {
       outcome: "shared",
-      enableFailures: [],
+      creatorEnabled: true,
       localDeleted: false,
     });
   });

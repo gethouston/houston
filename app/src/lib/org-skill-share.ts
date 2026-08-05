@@ -1,8 +1,9 @@
 // Org skill by default (HOU-1192): a skill an agent creates in a
 // create-with-AI chat is promoted into the workspace/org skill store the
-// moment the client detects it, and enabled for every agent via the same
-// explicit per-agent manifest writes ADR 0003 prescribes — shared with the
-// other agents instead of installed to them. Dependency-injected and
+// moment the client detects it, and enabled ONLY for the agent that built it
+// (one explicit manifest write, per ADR 0003). The other agents are NOT
+// installed to — the skill sits in the workspace store where the user can
+// enable it per agent from the Skills surfaces. Dependency-injected and
 // framework-free so the whole flow is node-testable
 // (app/tests/org-skill-share.test.ts); the hook wrapper
 // (components/tabs/use-org-skill-default.ts) binds it to the engine client.
@@ -51,25 +52,26 @@ export interface OrgSkillShareDeps {
 }
 
 export type OrgSkillShareResult =
-  /** In the store, manifests written; `localDeleted` is false when the
-   *  creator's copy diverged mid-flight (it stays as an override). */
-  | { outcome: "shared"; enableFailures: string[]; localDeleted: boolean }
+  /** In the store; `creatorEnabled` is the creator's one manifest write.
+   *  `localDeleted` is false when the creator's copy diverged mid-flight
+   *  (it stays as an override). */
+  | { outcome: "shared"; creatorEnabled: boolean; localDeleted: boolean }
   /** The store declined (collision / role / no store) — skill stays local. */
   | { outcome: "kept-local" }
   /** No local copy to share (already promoted, or deleted) — nothing to do. */
   | { outcome: "skipped" };
 
 /**
- * Promote a freshly agent-created skill to the workspace store and enable it
- * for every agent. Ordering is load-bearing:
+ * Promote a freshly agent-created skill to the workspace store and install it
+ * to the ONE agent that built it. Other agents are deliberately untouched —
+ * the store row is where the user installs it to them. Ordering is
+ * load-bearing:
  *
  * 1. Promote first — until it succeeds nothing else may move.
- * 2. Enable the CREATOR's manifest before anything else: the local copy is
- *    only deleted after the creator can load the shared one, so there is no
- *    window where the skill exists nowhere for the agent that just built it.
- * 3. Other agents' manifests in parallel; individual failures are collected,
- *    never fatal (Teams: some agents may not be manageable by this user).
- * 4. Delete the local copy only when it is still byte-identical to what was
+ * 2. Enable the CREATOR's manifest: the local copy is only deleted after the
+ *    creator can load the shared one, so there is no window where the skill
+ *    exists nowhere for the agent that just built it.
+ * 3. Delete the local copy only when it is still byte-identical to what was
  *    promoted AND the creator's enable landed — a copy the agent edited
  *    mid-flight survives as that agent's override (never data loss).
  *
@@ -78,15 +80,9 @@ export type OrgSkillShareResult =
  */
 export async function shareNewSkillToWorkspace(
   deps: OrgSkillShareDeps,
-  args: {
-    workspaceId: string;
-    creatorPath: string;
-    /** Every agent in the workspace, creator included. */
-    agentPaths: string[];
-    slug: string;
-  },
+  args: { workspaceId: string; creatorPath: string; slug: string },
 ): Promise<OrgSkillShareResult> {
-  const { workspaceId, creatorPath, agentPaths, slug } = args;
+  const { workspaceId, creatorPath, slug } = args;
   const content = await deps.loadLocalContent(creatorPath, slug);
   if (content === null) return { outcome: "skipped" };
 
@@ -97,23 +93,15 @@ export async function shareNewSkillToWorkspace(
     throw err;
   }
 
-  const enableFailures: string[] = [];
   let creatorEnabled = false;
   try {
     await deps.enable(creatorPath, slug);
     creatorEnabled = true;
   } catch {
-    enableFailures.push(creatorPath);
+    // The failed manifest write surfaced through the caller's path; the
+    // identical local copy stays (no delete below), so the creator keeps
+    // the skill either way.
   }
-  const others = agentPaths.filter((p) => p !== creatorPath);
-  const settled = await Promise.allSettled(
-    others.map((path) => deps.enable(path, slug)),
-  );
-  settled.forEach((r, i) => {
-    const path = others[i];
-    if (r.status === "rejected" && path !== undefined)
-      enableFailures.push(path);
-  });
 
   let localDeleted = false;
   if (creatorEnabled) {
@@ -132,5 +120,5 @@ export async function shareNewSkillToWorkspace(
     }
   }
 
-  return { outcome: "shared", enableFailures, localDeleted };
+  return { outcome: "shared", creatorEnabled, localDeleted };
 }
