@@ -56,6 +56,17 @@ const REASON_COPY: Record<
   provider_unavailable: "apiKey.errorProviderUnavailable",
 };
 
+/**
+ * NVIDIA's `key_restricted` is an ACCOUNT gate, not key settings: NVIDIA has
+ * to enable "Public API Endpoints" on the account's org, so the generic
+ * "create a new key" remedy would send users in circles (HOU-890).
+ */
+function reasonCopyKey(providerId: string, reason: ApiKeyConnectReason) {
+  if (providerId === "nvidia" && reason === "key_restricted")
+    return "apiKey.errorNvidiaAccountGated" as const;
+  return REASON_COPY[reason];
+}
+
 export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   const { t } = useTranslation("providers");
   const [key, setKey] = useState("");
@@ -100,7 +111,9 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // Sentry capture already happened in the tauri call wrapper.
       const reason = apiKeyConnectReason(err);
       if (reason) {
-        setError(t(REASON_COPY[reason], { name: provider.name }));
+        setError(
+          t(reasonCopyKey(provider.id, reason), { name: provider.name }),
+        );
       } else {
         const detail = verifyFailureDetail(err);
         console.error(`[provider_api_key_submit] ${detail}`);

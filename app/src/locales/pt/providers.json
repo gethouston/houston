@@ -74,6 +74,7 @@
     "cancel": "Cancelar",
     "errorInvalidKey": "{{name}} não aceitou esta chave. Confira e cole de novo.",
     "errorKeyRestricted": "Esta chave está bloqueada pelas configurações da sua conta {{name}}. Crie uma chave nova sem restrições usando o botão acima e cole aqui.",
+    "errorNvidiaAccountGated": "Sua chave parece válida, mas sua conta NVIDIA ainda não pode usar a API de chat. Peça ao suporte da NVIDIA para habilitar \"Public API Endpoints\" na sua conta e conecte de novo. Uma chave nova não vai ajudar até que eles façam isso.",
     "errorProviderUnavailable": "Não conseguimos acessar {{name}} para verificar sua chave, então nada foi salvo. Tente de novo em instantes."
   },
   "copilot": {

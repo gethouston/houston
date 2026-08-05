@@ -156,6 +156,50 @@ test("a gated model (together's 'Unable to access model') proves auth — verifi
   await expect(verifyApiKey("together", "sk-valid")).resolves.toBeUndefined();
 });
 
+test("nvidia: a body-less 410 (Public API Endpoints gate) rejects as key_restricted", async () => {
+  // The key PASSED auth (a bad key answers 403 "Authorization failed"), but
+  // the NVIDIA account's org lacks the "Public API Endpoints" permission, so
+  // every completion dies with an empty 410/404 (HOU-890). Re-pasting a key
+  // can never fix it, so the verdict must be key_restricted with NVIDIA's
+  // remedy — NOT provider_unavailable ("try again in a moment") and NOT
+  // invalid_key ("paste it again").
+  completeSimple.mockResolvedValue(
+    reply({ stopReason: "error", errorMessage: "410 status code (no body)" }),
+  );
+  await expect(verifyApiKey("nvidia", "nvapi-valid")).rejects.toMatchObject({
+    name: "ApiKeyVerifyError",
+    reason: "key_restricted",
+    message: expect.stringMatching(/Public API Endpoints/),
+  });
+});
+
+test("nvidia: 404 'Function not found for account' rejects as key_restricted", async () => {
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage: "404 Function not found for account",
+    }),
+  );
+  await expect(verifyApiKey("nvidia", "nvapi-valid")).rejects.toMatchObject({
+    reason: "key_restricted",
+  });
+});
+
+test("nvidia: 403 'Authorization failed' still rejects as invalid_key", async () => {
+  // A genuinely bad or revoked key — the HOU-1077 classification must keep
+  // owning this shape; only the 404/410 gate reads key_restricted.
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        '403: {"status":403,"title":"Forbidden","detail":"Authorization failed"}',
+    }),
+  );
+  await expect(verifyApiKey("nvidia", "nvapi-bad")).rejects.toMatchObject({
+    reason: "invalid_key",
+  });
+});
+
 test("an abort/timeout maps to a readable did-not-answer message", () => {
   // Tested on the pure mapper: rejecting the mocked completeSimple with an
   // abort-named error trips vitest's runner (it attributes the error object to

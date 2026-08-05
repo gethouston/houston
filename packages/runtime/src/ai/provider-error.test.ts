@@ -791,6 +791,60 @@ test("NVIDIA NIM 403 'Authorization failed' → unauthenticated / invalid_api_ke
   if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
 });
 
+test("NVIDIA body-less 410 (Public API Endpoints gate) → unauthenticated (HOU-890)", () => {
+  // Verbatim OpenAI-SDK flattening of integrate.api.nvidia.com's empty 410:
+  // the key authenticated (a bad key answers 403 "Authorization failed"), but
+  // the account's org lacks the "Public API Endpoints" permission, so EVERY
+  // chat completion dies while /v1/models still works. Routed to the reconnect
+  // surface, whose re-verify names NVIDIA's remedy (key_restricted).
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "google/gemma-3-12b-it",
+    message: "410 status code (no body)",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+});
+
+test("NVIDIA body-less 404 (same gate, NVIDIA's newer status) → unauthenticated (HOU-890)", () => {
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "google/gemma-3-12b-it",
+    message: "404 status code (no body)",
+  });
+  expect(err.kind).toBe("unauthenticated");
+});
+
+test("NVIDIA 404 'Function not found for account' → unauthenticated (HOU-890)", () => {
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "meta/llama-3.3-70b-instruct",
+    message: "404 Function not found for account",
+  });
+  expect(err.kind).toBe("unauthenticated");
+});
+
+test("NVIDIA 404 WITH a real error body stays out of the gate branch", () => {
+  // A JSON detail sentence means a specific failure (e.g. a retired model id),
+  // not the account gate — must keep falling through, never the reconnect card.
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "meta/llama-3.1-70b-instruct",
+    message:
+      '404: {"status":404,"title":"Not Found","detail":"Model meta/llama-3.1-70b-instruct not found"}',
+  });
+  expect(err.kind).toBe("unknown");
+});
+
+test("a body-less 410 from another provider stays unknown", () => {
+  const err = classifyProviderError({
+    provider: "openrouter",
+    model: "some/model",
+    message: "410 status code (no body)",
+  });
+  expect(err.kind).toBe("unknown");
+});
+
 test("Qwen Token Plan 401 'Invalid API-key provided' → unauthenticated / invalid_api_key", () => {
   // Verbatim token-plan.ap-southeast-1.maas.aliyuncs.com body (HOU-1077). The
   // endpoint only accepts a DEDICATED Token Plan key — a regular Model Studio

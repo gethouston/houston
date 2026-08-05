@@ -1,5 +1,9 @@
 import { completeSimple } from "@earendil-works/pi-ai/compat";
-import { classifyProviderError } from "../ai/provider-error";
+import {
+  classifyProviderError,
+  extractHttpStatus,
+  isNvidiaEndpointGated,
+} from "../ai/provider-error";
 import { modelFor, safeGetModel } from "../ai/providers";
 
 /**
@@ -104,6 +108,25 @@ export async function verifyApiKey(
     // pi raises (rather than resolving an errored message) for pre-request
     // failures; a timeout lands here too. Same classification path.
     message = raisedMessage(e, providerId);
+  }
+
+  // NVIDIA's "Public API Endpoints" account gate (HOU-890): the key passed
+  // auth (a bad key answers 403), but the ACCOUNT cannot call chat completions
+  // until NVIDIA enables that permission. Checked before classification, which
+  // deliberately reads this shape as `unauthenticated` for the chat surface —
+  // here that verdict would say "re-paste the key", the one remedy that can't
+  // work, so the typed reason must be `key_restricted` with NVIDIA's fix.
+  if (
+    isNvidiaEndpointGated(
+      providerId,
+      message.toLowerCase(),
+      extractHttpStatus(message),
+    )
+  ) {
+    throw new ApiKeyVerifyError(
+      `${providerId} accepted the key, but this NVIDIA account cannot call the chat API until NVIDIA enables its "Public API Endpoints" permission (${message})`,
+      "key_restricted",
+    );
   }
 
   const classified = classifyProviderError({

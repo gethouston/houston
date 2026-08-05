@@ -222,6 +222,34 @@ const COPILOT_BASE_FALLBACK = "gpt-4.1";
 const EXCERPT_MAX = 300;
 
 /**
+ * NVIDIA's account-level "Public API Endpoints" gate (HOU-890). Since mid-2026
+ * integrate.api.nvidia.com serves POST /chat/completions only to NVIDIA
+ * accounts whose org carries the "Public API Endpoints" permission; an account
+ * without it fails EVERY completion with a body-less 410 or a 404 ("Function
+ * not found for account") — while /v1/models still lists everything and the
+ * key itself passes auth (a bad key answers 403 "Authorization failed"
+ * instead, already classified via INVALID_KEY_PATTERNS). Re-keying never
+ * fixes it; only NVIDIA enabling the permission does — so the connect-time
+ * verifier throws `key_restricted` off this same predicate and the chat
+ * classifier routes it to the reconnect surface, whose re-verify then names
+ * that remedy. Body-less statuses arrive from the OpenAI SDK flattened to
+ * `<status> status code (no body)`; a REAL NVIDIA failure (e.g. a retired
+ * model id) carries a JSON body with a detail sentence and must not trip this.
+ */
+export function isNvidiaEndpointGated(
+  provider: string,
+  lowerMessage: string,
+  status: number | null,
+): boolean {
+  if (provider !== "nvidia") return false;
+  if (status !== 404 && status !== 410) return false;
+  return (
+    lowerMessage.includes("(no body)") ||
+    lowerMessage.includes("function not found")
+  );
+}
+
+/**
  * Map a failed model request to a typed `ProviderError`, then stamp WHOSE
  * credential ran the turn (`stampCredentialScope`).
  *
@@ -265,6 +293,19 @@ function classify(input: ProviderErrorInput): ProviderError {
   const lower = message.toLowerCase();
   const status = input.status ?? extractHttpStatus(message);
 
+  // NVIDIA's "Public API Endpoints" account gate reads as an auth failure on
+  // purpose: the reconnect card is the same surface its 403 key rejection
+  // already uses (HOU-1077), and reconnecting re-runs verification, which
+  // names the real remedy. Checked before `isAuth`, whose known-non-auth
+  // status guard would veto the 404/410.
+  if (isNvidiaEndpointGated(provider, lower, status)) {
+    return {
+      kind: "unauthenticated",
+      provider,
+      cause: "invalid_api_key",
+      message,
+    };
+  }
   if (isAuth(lower, status)) {
     return {
       kind: "unauthenticated",
