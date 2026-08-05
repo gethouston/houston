@@ -122,6 +122,48 @@ test("an unwatchable root throws to the caller", () => {
   expect(() => linuxWatch(missing, [])).toThrow();
 });
 
+test("ENOSPC on the root degrades instead of crashing the caller (HOU-1232)", () => {
+  const root = mkdtempSync(join(tmpdir(), "houston-tree-"));
+  const onError = vi.fn();
+  const watchDir: WatchDirFn = () => {
+    throw Object.assign(new Error("ENOSPC: watchers exhausted"), {
+      code: "ENOSPC",
+    });
+  };
+  let watcher: TreeWatch | undefined;
+  expect(() => {
+    watcher = linuxWatch(root, [], onError, watchDir);
+  }).not.toThrow();
+  expect(onError).toHaveBeenCalledTimes(1);
+  watcher?.close();
+});
+
+test(".git is never watched (HOU-1232)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "houston-tree-"));
+  mkdirSync(join(root, ".git", "objects"), { recursive: true });
+  const watchedDirs: string[] = [];
+  const watchDir: WatchDirFn = (dir, cb) => {
+    watchedDirs.push(dir);
+    return watch(dir, cb);
+  };
+  const events: Array<{ type: string; rel: string }> = [];
+  const watcher = linuxWatch(root, events, () => {}, watchDir);
+  try {
+    await new Promise((r) => setTimeout(r, 100));
+    writeFileSync(join(root, ".git", "objects", "pack"), "x");
+    await new Promise((r) => setTimeout(r, 200));
+    // The one true guarantee: no watch handle ever opens under .git — a
+    // parent directory's own watch can still surface a shallow notification
+    // for its ".git" child changing (harmless; classify.ts nulls it anyway),
+    // but nothing should ever report from inside it.
+    expect(watchedDirs).not.toContain(join(root, ".git"));
+    expect(watchedDirs).not.toContain(join(root, ".git", "objects"));
+    expect(events.some((e) => e.rel.startsWith(".git/"))).toBe(false);
+  } finally {
+    watcher.close();
+  }
+});
+
 test("a removed subtree releases its watchers", async () => {
   const root = mkdtempSync(join(tmpdir(), "houston-tree-"));
   mkdirSync(join(root, "gone", "deep"), { recursive: true });
