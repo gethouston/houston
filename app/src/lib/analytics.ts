@@ -5,7 +5,14 @@ import { tauriPreferences } from "./tauri";
 
 // __POSTHOG_KEY__, __POSTHOG_HOST__, __APP_VERSION__ declared in vite-env.d.ts,
 // baked at build time by Vite from POSTHOG_KEY / POSTHOG_HOST env vars.
-const KEY = typeof __POSTHOG_KEY__ !== "undefined" ? __POSTHOG_KEY__ : "";
+// KEY is read LAZILY, never captured at module scope: in `vite dev` the define
+// is not text-replaced (client define replacement is build-only) — the value
+// arrives late as a global via /@vite/env, AFTER this module evaluates. A
+// module-scope const would freeze "" forever and dev analytics could never
+// turn on, key or no key.
+function KEY(): string {
+  return typeof __POSTHOG_KEY__ !== "undefined" ? __POSTHOG_KEY__ : "";
+}
 const HOST =
   typeof __POSTHOG_HOST__ !== "undefined" && __POSTHOG_HOST__
     ? __POSTHOG_HOST__
@@ -310,9 +317,9 @@ function baseSuperProps() {
 }
 
 function bootstrap() {
-  if (bootstrapped || !KEY) return;
+  if (bootstrapped || !KEY()) return;
   bootstrapped = true;
-  posthog.init(KEY, {
+  posthog.init(KEY(), {
     api_host: HOST,
     defaults: "2026-01-30",
     person_profiles: "identified_only",
@@ -467,7 +474,7 @@ export const analytics = {
    * first install.
    */
   init: async (): Promise<{ installId: string; isNew: boolean }> => {
-    if (!KEY) return { installId: "", isNew: false };
+    if (!KEY()) return { installId: "", isNew: false };
     const { id, isNew } = await getInstallId();
     const { firstInstallVersion, firstInstallDate } =
       await ensureFirstInstallProps();
@@ -489,7 +496,7 @@ export const analytics = {
   },
 
   trackActive: async () => {
-    if (!KEY) return;
+    if (!KEY()) return;
     const today = activeDate();
     const last = await tauriPreferences.get(ACTIVE_DATE_KEY).catch(() => null);
     if (last === today) return;
@@ -498,7 +505,7 @@ export const analytics = {
   },
 
   track: (event: AnalyticsEventName, props?: Props) => {
-    if (!KEY) return;
+    if (!KEY()) return;
     try {
       posthog.capture(event, cleanProps(props));
       // Maintain the `is_activated` person property — flips to true on the
@@ -534,7 +541,7 @@ export const analytics = {
    * the app.
    */
   trackAiGeneration: (props: Record<string, string | number | boolean>) => {
-    if (!KEY) return;
+    if (!KEY()) return;
     try {
       posthog.capture("$ai_generation", props);
     } catch {
@@ -565,7 +572,7 @@ export const analytics = {
    * joins do not carry over — this is a fresh platform, by design.
    */
   identifyUser: (userId: string, identity?: UserIdentity) => {
-    if (!KEY) return;
+    if (!KEY()) return;
     try {
       const email = cleanEmail(identity?.email);
       const name = identity?.name?.trim() || undefined;
@@ -589,7 +596,7 @@ export const analytics = {
   },
 
   captureException: (error: unknown, props?: Props) => {
-    if (!KEY) return;
+    if (!KEY()) return;
     try {
       const normalized =
         error instanceof Error ? error : new Error(String(error));
@@ -609,7 +616,7 @@ export const analytics = {
    * across a sign-out — no explicit unset needed.
    */
   reset: () => {
-    if (!KEY) return;
+    if (!KEY()) return;
     try {
       posthog.reset();
       posthog.register({ ...baseSuperProps(), auth_status: "anonymous" });
