@@ -126,10 +126,10 @@
   },
   "deleteAccount": {
     "title": "Delete account",
-    "description": "Permanently delete your account, your agents, and everything they know, everywhere.",
+    "description": "Permanently delete your account, your agents, and everything stored in Houston.",
     "button": "Delete account",
     "confirmTitle": "Delete your account forever?",
-    "confirmBody": "This permanently deletes your account, your agents, and all your data, on every device. There is no way to get any of it back.",
+    "confirmBody": "This permanently deletes your account, your agents, and all your data stored in Houston, and signs you out on every device. There is no way to get any of it back. Files saved on your computer stay where they are.",
     "typeToConfirm": "Type {{word}} to confirm.",
     "confirmWord": "DELETE",
     "cancel": "Cancel",

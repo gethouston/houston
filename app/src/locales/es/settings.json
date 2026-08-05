@@ -126,10 +126,10 @@
   },
   "deleteAccount": {
     "title": "Eliminar cuenta",
-    "description": "Elimina de forma permanente tu cuenta, tus agentes y todo lo que saben, en todas partes.",
+    "description": "Elimina de forma permanente tu cuenta, tus agentes y todo lo guardado en Houston.",
     "button": "Eliminar cuenta",
     "confirmTitle": "¿Eliminar tu cuenta para siempre?",
-    "confirmBody": "Esto elimina de forma permanente tu cuenta, tus agentes y todos tus datos, en todos tus dispositivos. No hay forma de recuperar nada.",
+    "confirmBody": "Esto elimina de forma permanente tu cuenta, tus agentes y todos tus datos guardados en Houston, y cierra tu sesión en todos tus dispositivos. No hay forma de recuperar nada. Los archivos guardados en tu computador se quedan donde están.",
     "typeToConfirm": "Escribe {{word}} para confirmar.",
     "confirmWord": "ELIMINAR",
     "cancel": "Cancelar",

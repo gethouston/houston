@@ -126,10 +126,10 @@
   },
   "deleteAccount": {
     "title": "Excluir conta",
-    "description": "Exclui de forma permanente a sua conta, os seus agentes e tudo o que eles sabem, em todo lugar.",
+    "description": "Exclui de forma permanente a sua conta, os seus agentes e tudo o que está guardado no Houston.",
     "button": "Excluir conta",
     "confirmTitle": "Excluir sua conta para sempre?",
-    "confirmBody": "Isso exclui de forma permanente a sua conta, os seus agentes e todos os seus dados, em todos os seus dispositivos. Não dá para recuperar nada depois.",
+    "confirmBody": "Isso exclui de forma permanente a sua conta, os seus agentes e todos os seus dados guardados no Houston, e encerra sua sessão em todos os seus dispositivos. Não dá para recuperar nada depois. Os arquivos salvos no seu computador ficam onde estão.",
     "typeToConfirm": "Digite {{word}} para confirmar.",
     "confirmWord": "EXCLUIR",
     "cancel": "Cancelar",
