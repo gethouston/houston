@@ -183,20 +183,126 @@ test("sleep resolves only after the child has ACTUALLY exited", async () => {
   expect(await launcher.status("slow")).toBe("asleep");
 });
 
-test("sleep gives up waiting after its bound when a child hangs on SIGTERM", async () => {
+test("a child that ignores SIGTERM is SIGKILLed; sleep resolves once it actually dies", async () => {
+  let exitCb: (() => void) | undefined;
+  const signals: string[] = [];
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      return {
+        port: 5000,
+        kill: () => signals.push("TERM"), // ignored — wedged drain
+        forceKill: () => {
+          signals.push("KILL");
+          exitCb?.();
+        },
+        onExit: (cb) => {
+          exitCb = cb;
+        },
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("wedged"));
+  await launcher.sleep("wedged", 20, 20);
+  expect(signals).toEqual(["TERM", "KILL"]);
+  expect(await launcher.status("wedged")).toBe("asleep");
+});
+
+test("sleep REJECTS when the child survives even SIGKILL — a live child is never reported asleep (HOU-827)", async () => {
+  // The old contract resolved silently after the bound, and the rename then
+  // moved the directory under a live child whose next write resurrected the
+  // old-named folder. Fail closed instead: the PATCH surfaces a 500 and the
+  // directory does not move.
   const spawner: RuntimeSpawner = {
     spawn() {
       return {
         port: 5000,
         kill: () => {},
-        onExit: () => {}, // exit never fires — a truly hung process
+        forceKill: () => {},
+        onExit: () => {}, // exit never fires — a truly unkillable process
       };
     },
   };
   const launcher = new ProcessLauncher(opts(spawner));
   await launcher.ensureAwake(agent("hung"));
-  await launcher.sleep("hung", 20); // bounded — resolves despite no exit
-  expect(await launcher.status("hung")).toBe("asleep");
+  await expect(launcher.sleep("hung", 20, 20)).rejects.toThrow(
+    "refusing to report it asleep",
+  );
+  // status stays truthful: the process is still alive.
+  expect(await launcher.status("hung")).toBe("running");
+});
+
+test("ensureAwake during a drain waits for the exit instead of racing a second child over the directory", async () => {
+  let exitCb: (() => void) | undefined;
+  let spawned = 0;
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      spawned += 1;
+      const mine = spawned;
+      return {
+        port: 5000 + mine,
+        kill: () => {
+          // First child exits 30ms after SIGTERM — a realistic drain.
+          if (mine === 1) setTimeout(() => exitCb?.(), 30);
+        },
+        onExit: (cb) => {
+          if (mine === 1) exitCb = cb;
+        },
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("drainy"));
+  const sleeping = launcher.sleep("drainy", 5_000);
+  // Arrives mid-drain (the entry still exists, child still alive): must not
+  // be handed the dying child's port, must not spawn until the drain ends.
+  const endpoint = await launcher.ensureAwake(agent("drainy"));
+  await sleeping;
+  expect(spawned).toBe(2);
+  expect(endpoint.baseUrl).toBe("http://127.0.0.1:5002");
+});
+
+test("a hold acquired MID-BOOT aborts the boot before the child spawns", async () => {
+  // The port-allocation await is the one window where a boot exists but no
+  // running entry does — invisible to sleep(). A rename that begins inside
+  // it must abort the boot, not let a runtime come up bound to the old
+  // directory mid-move.
+  let releasePort: ((port: number) => void) | undefined;
+  let spawned = 0;
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      spawned += 1;
+      return { port: 5000, kill: () => {} };
+    },
+  };
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      allocatePort: () =>
+        new Promise<number>((resolve) => {
+          releasePort = resolve;
+        }),
+    }),
+  );
+  const boot = launcher.ensureAwake(agent("mid-boot"));
+  const release = launcher.hold("mid-boot");
+  releasePort?.(5001);
+  await expect(boot).rejects.toThrow("is being renamed");
+  expect(spawned).toBe(0);
+  release();
+});
+
+test("hold() blocks ensureAwake for the id until released (the rename latch)", async () => {
+  const { spawner } = recordingSpawner();
+  const launcher = new ProcessLauncher(opts(spawner));
+  const release = launcher.hold("held-agent");
+  await expect(launcher.ensureAwake(agent("held-agent"))).rejects.toThrow(
+    "is being renamed",
+  );
+  // Other agents are unaffected.
+  await launcher.ensureAwake(agent("other-agent"));
+  release();
+  release(); // idempotent
+  await launcher.ensureAwake(agent("held-agent"));
 });
 
 test("a runtime that never becomes healthy is killed and not cached (the turn errors visibly)", async () => {

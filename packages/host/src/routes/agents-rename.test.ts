@@ -19,9 +19,13 @@ import { handleAgents } from "./agents";
  * runtime kept running with absolute paths into the OLD directory; the
  * runtime's next write resurrected the old-named folder, which the
  * directory-derived store re-listed as an agent with the old name ("my rename
- * reverted"). The route must quiesce the standing runtime BEFORE the store
- * rename — and surface a quiesce failure instead of renaming under a live
- * runtime. Also covers the legacy Rust-era color riding rename/list payloads.
+ * reverted"). The route must run the store rename INSIDE the channel's
+ * quiesced span (runtime stopped with a confirmed exit AND the id latched
+ * against respawn until the directory has moved — HOU-827's second vector was
+ * the app's reconnect storm booting a fresh runtime into the old directory
+ * during the stop window) — and surface a quiesce failure instead of renaming
+ * under a live runtime. Also covers the legacy Rust-era color riding
+ * rename/list payloads.
  */
 
 class SpyChannel implements RuntimeChannel {
@@ -46,11 +50,14 @@ class SpyChannel implements RuntimeChannel {
   async busy() {
     return false;
   }
-  async quiesce(ctx: ChannelCtx) {
+  async withQuiesced<T>(ctx: ChannelCtx, fn: () => Promise<T>): Promise<T> {
     if (this.quiesceError) throw this.quiesceError;
     this.calls.push(`quiesce:${ctx.agent.id}`);
+    return await fn();
   }
-  async teardown() {}
+  async teardown(ctx: ChannelCtx) {
+    this.calls.push(`teardown:${ctx.agent.id}`);
+  }
   async captureCredential(): Promise<CaptureResult> {
     return { ok: true, provider: "anthropic" };
   }
@@ -235,7 +242,7 @@ test("an agent with no legacy metadata serves no color at all", async () => {
   expect("color" in json).toBe(false);
 });
 
-test("ProxyChannel.quiesce sleeps the agent's runtime without destroying it", async () => {
+test("ProxyChannel.withQuiesced sleeps the agent's runtime without destroying it", async () => {
   const { ProxyChannel } = await import("../channel/proxy");
   const slept: string[] = [];
   const destroyed: string[] = [];
@@ -263,7 +270,7 @@ test("ProxyChannel.quiesce sleeps the agent's runtime without destroying it", as
   const ws = await memory.getWorkspace(workspaceId);
   const agent = await memory.getAgent(agentId);
   if (!ws || !agent) throw new Error("fixture agent missing");
-  await proxy.quiesce({ workspace: ws, agent });
+  await proxy.withQuiesced({ workspace: ws, agent }, async () => {});
   expect(slept).toEqual([agentId]);
   expect(destroyed).toEqual([]);
 });
@@ -281,4 +288,25 @@ test("rename trims the submitted name before storing it", async () => {
   const { status, json } = await rename("  Marketing  ");
   expect(status).toBe(200);
   expect(json.name).toBe("Marketing");
+});
+
+test("DELETE runs inside the quiesced span too (a stale dispatch must not resurrect a deleted agent)", async () => {
+  const path = `/agents/${encodeURIComponent(agentId)}`;
+  const response = res();
+  const handled = await handleAgents(
+    deps(channel),
+    "alice",
+    "DELETE",
+    path,
+    new URL(path, "http://host.local"),
+    reqWithBody({}),
+    response,
+  );
+  expect(handled).toBe(true);
+  expect(response.status).toBe(200);
+  // The teardown + record drop happen INSIDE the latch: quiesce first, so a
+  // dispatch landing between teardown and directory removal cannot respawn a
+  // runtime into the doomed directory (HOU-827's sibling for delete).
+  expect(calls).toEqual([`quiesce:${agentId}`, `teardown:${agentId}`]);
+  expect(await memory.getAgent(agentId)).toBeNull();
 });

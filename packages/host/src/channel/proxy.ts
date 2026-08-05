@@ -275,19 +275,33 @@ export class ProxyChannel implements RuntimeChannel {
     return this.opts.launcher.status(ctx.agent.id);
   }
 
-  async quiesce(ctx: ChannelCtx): Promise<void> {
+  async withQuiesced<T>(ctx: ChannelCtx, fn: () => Promise<T>): Promise<T> {
     // Sleep, not destroy: the runtime's state stays on disk and the next
     // dispatch respawns it (pi's continueRecent restores its sessions). The
-    // launcher's sleep waits for the child to ACTUALLY exit, so a caller that
-    // needs the agent's directory quiet (rename) can rely on it.
+    // launcher's sleep waits for the child to ACTUALLY exit — escalating to
+    // SIGKILL and failing loudly rather than reporting a live child asleep —
+    // so a caller that needs the agent's directory quiet (rename) can rely
+    // on it.
     //
-    // Quiesce is idempotent by contract: an absent runtime is ALREADY quiet.
-    // The launcher's sleep deliberately rejects sleeping an unknown sandbox
+    // The hold spans sleep AND fn: the app reconnects its streams within
+    // ~500ms of the runtime dying and dispatches with the OLD id; without
+    // the latch, ensureAwake spawned a fresh runtime bound to the directory
+    // being renamed, and its first write resurrected the old name (HOU-827).
+    //
+    // Idempotent by contract: an absent runtime is ALREADY quiet. The
+    // launcher's sleep deliberately rejects sleeping an unknown sandbox
     // (a genuine sleep-of-absent elsewhere is a bug it must not paper over),
     // so only an existing runtime is slept — renaming a never-woken agent
     // must succeed, not 500.
-    if ((await this.opts.launcher.status(ctx.agent.id)) === "absent") return;
-    await this.opts.launcher.sleep(ctx.agent.id);
+    const release = this.opts.launcher.hold?.(ctx.agent.id) ?? (() => {});
+    try {
+      if ((await this.opts.launcher.status(ctx.agent.id)) !== "absent") {
+        await this.opts.launcher.sleep(ctx.agent.id);
+      }
+      return await fn();
+    } finally {
+      release();
+    }
   }
 
   async teardown(ctx: ChannelCtx): Promise<void> {

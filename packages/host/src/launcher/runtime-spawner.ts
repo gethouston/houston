@@ -65,10 +65,21 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
     return {
       port: spec.port,
       kill: () => {
-        // SIGTERM lets the runtime drain; it exits on its own. A hung process is
-        // reaped by the supervisor's process-tree teardown, not here.
+        // SIGTERM lets the runtime drain; it exits on its own.
         try {
           child.kill("SIGTERM");
+        } catch {
+          /* already gone */
+        }
+      },
+      forceKill: () => {
+        // Escalation for a child that ignored the SIGTERM (wedged drain,
+        // blocked event loop). The launcher only reports the runtime asleep
+        // once it has ACTUALLY exited — a rename must never run over a live
+        // child (HOU-827) — so a hung process is ended here, not left for the
+        // supervisor's app-quit teardown.
+        try {
+          child.kill("SIGKILL");
         } catch {
           /* already gone */
         }
