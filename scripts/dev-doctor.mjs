@@ -17,7 +17,18 @@ import {
 } from "./dev/doctor-lib.mjs";
 
 const root = process.cwd();
-const cloudDir = process.env.CLOUD_DIR || path.resolve(root, "..", "cloud");
+// .env.local is parsed here (not only in the env section below) because
+// CLOUD_DIR may live there: the panes source .env.local via scripts/dev/env.sh,
+// so the doctor must resolve the SAME cloud checkout they will run, or it
+// fails the sibling-default path the panes never use. Precedence mirrors the
+// shell: an inline env var outranks the file, the file outranks the default.
+const local = parseEnvFile(path.join(root, ".env.local"));
+const expandHome = (p) =>
+  p?.startsWith("~/") ? path.join(homedir(), p.slice(2)) : p;
+const cloudDir =
+  expandHome(process.env.CLOUD_DIR) ||
+  expandHome(local.CLOUD_DIR) ||
+  path.resolve(root, "..", "cloud");
 const fails = [];
 const warns = [];
 
@@ -38,7 +49,7 @@ if (
   fails.push("mprocs not installed. Run: pnpm install");
 if (!existsSync(path.join(cloudDir, "go.mod"))) {
   fails.push(
-    `cloud repo not found at ${paint.bold(cloudDir)}. Clone gethouston/cloud beside this checkout, or set CLOUD_DIR=/path/to/cloud.`,
+    `cloud repo not found at ${paint.bold(cloudDir)}. Clone gethouston/cloud beside this checkout, or set CLOUD_DIR=/path/to/cloud (inline or in .env.local).`,
   );
 } else {
   for (const cmd of ["cmd/gateway", "cmd/control-plane"]) {
@@ -65,9 +76,8 @@ if (!tryRun("docker info"))
     "Docker daemon not reachable (needed ONLY for the dev Postgres container). Start Docker Desktop, then re-run.",
   );
 
-// ── env: the two-file contract ───────────────────────────────────────────────
+// ── env: the two-file contract (`local` parsed above for CLOUD_DIR) ──────────
 const committed = parseEnvFile(path.join(root, ".env.development"));
-const local = parseEnvFile(path.join(root, ".env.local"));
 if (Object.keys(committed).length === 0)
   fails.push(
     ".env.development missing or empty — it is committed; restore it (git checkout .env.development).",
