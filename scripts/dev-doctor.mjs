@@ -165,6 +165,7 @@ ${paint.bold("── pnpm dev · feature matrix ──────────�
   ${integrations ? on : off} integrations   ${integrations ? "Composio configured" : "set COMPOSIO_API_KEY in .env.local to enable connected apps"}
   ${env.ANTHROPIC_API_KEY ? on : off} agent turns    ${env.ANTHROPIC_API_KEY ? "engines seeded with ANTHROPIC_API_KEY" : "no ANTHROPIC_API_KEY — connect a provider in-app per agent"}
   ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? on : off} triggers       ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? "Composio key + webhook secret present" : "need COMPOSIO_API_KEY + COMPOSIO_WEBHOOK_SECRET"}
+  ${env.GW_ACCOUNT_PURGE_GCIP === "off" ? off : on} account delete ${env.GW_ACCOUNT_PURGE_GCIP === "off" ? "hosted data purged; the GCIP auth user SURVIVES (GW_ACCOUNT_PURGE_GCIP=off — dev shares the prod identity project)" : "full purge including the GCIP auth user"}
   ${off} billing        dev runs without Stripe — teams are free
   ${off} analytics      PostHog/Sentry are no-ops in dev (by design)
 ${paint.bold("───────────────────────────────────────────────────────────────")}
