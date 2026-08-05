@@ -115,7 +115,6 @@ export function AgentIntegrationsBody({
     catalog,
     connections,
     allowlist,
-    surface: "agent-integrations",
   });
 
   return (

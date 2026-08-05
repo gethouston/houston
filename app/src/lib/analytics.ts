@@ -110,10 +110,6 @@ export type AnalyticsEventName =
   // toolkit (HOU-1110) — carries `integration_slug`, so demand for a missing
   // app registration stays visible without a Sentry issue per click.
   | "integration_connect_unavailable"
-  // A settled catalog search matched NOTHING in the whole catalog (HOU-1193) —
-  // carries `search_query` + `surface`. Demand for apps Houston doesn't have;
-  // one vote per user = count unique persons per query in PostHog.
-  | "integration_unsupported_searched"
   | "integration_disconnected"
   | "custom_integration_started"
   // A custom integration landed via the manual add form (carries
@@ -202,8 +198,6 @@ type AnalyticsProperty =
   | "integration_slug"
   // Custom integration connection type: openapi / mcp (custom_integration_added)
   | "integration_kind"
-  // The normalized zero-result catalog query (integration_unsupported_searched)
-  | "search_query"
   | "skill_slug"
   | "routine_id"
   | "wake_kind"
@@ -262,7 +256,6 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "agent_count",
   "integration_slug",
   "integration_kind",
-  "search_query",
   "skill_slug",
   "routine_id",
   "wake_kind",

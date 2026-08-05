@@ -73,7 +73,6 @@ export function IntegrationsReady({
     active: apps.activeRows,
     catalog: apps.catalogData,
     connections: apps.connData,
-    surface: "integrations",
   });
   const {
     tab,
