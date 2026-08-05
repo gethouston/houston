@@ -123,6 +123,11 @@ export type SkillChatHeal = {
   kind: "stamp_activity";
   activityId: string;
   slug: string;
+  /** Which rule produced the heal: `forward_link` is the normal agent-created
+   *  claim (the moment a create-chat's skill first exists — the org-share
+   *  default keys on it, HOU-1192); `orphan_adoption` repairs an existing
+   *  skill's lost chat and must never trigger sharing. */
+  reason: "forward_link" | "orphan_adoption";
 };
 
 /**
@@ -156,7 +161,12 @@ export function findSkillChatHeal(
     const a = acts.find((x) => x.id === s.setup_activity_id);
     // Only stamp an unstamped activity — never reassign one.
     if (a && isSkillSetupMode(a.agent) && !a.skill_slug) {
-      return { kind: "stamp_activity", activityId: a.id, slug: s.name };
+      return {
+        kind: "stamp_activity",
+        activityId: a.id,
+        slug: s.name,
+        reason: "forward_link",
+      };
     }
   }
   if (displayTitle) {
@@ -171,6 +181,7 @@ export function findSkillChatHeal(
           kind: "stamp_activity",
           activityId: orphan.id,
           slug: match.name,
+          reason: "orphan_adoption",
         };
       }
     }
