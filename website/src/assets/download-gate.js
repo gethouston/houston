@@ -181,7 +181,13 @@
     });
   });
   overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) closeModal();
+    if (event.target !== overlay) return;
+    // The dropdown menus are fixed-positioned, so they can hang over the
+    // backdrop. A near-miss on a country row must not throw away the whole
+    // filled-in form: with a menu open the backdrop only dismisses the menu
+    // (the dropdown's own outside-click handler does that), same as Escape.
+    if (document.querySelector(".dl-dd.open")) return;
+    closeModal();
   });
   closeButton.addEventListener("click", closeModal);
   document.addEventListener("keydown", (event) => {

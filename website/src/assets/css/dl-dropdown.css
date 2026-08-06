@@ -90,8 +90,14 @@
   outline: none;
   box-shadow: none;
 }
+/* The list absorbs whatever height is left after the search row. min-height:0
+   lets it shrink past its content so the max-height download-gate-dropdown.js
+   measures against the visual viewport actually takes effect — otherwise a menu
+   opened with a phone keyboard up keeps its full height and its last rows sit
+   under the keyboard, unreachable. */
 .dl-dd-list {
-  max-height: 300px;
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0;
   padding: 6px;
   overflow-y: auto;

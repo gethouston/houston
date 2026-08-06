@@ -75,6 +75,10 @@ jobs:
         working-directory: website
         run: npm ci
 
+      - name: Unit tests
+        working-directory: website
+        run: npm test
+
       # env.js falls back to an empty posthogKey and base.njk then silently
       # omits the whole PostHog snippet, so a missing secret would ship a site
       # with no analytics and a green build. Fail loudly instead.
