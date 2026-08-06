@@ -122,6 +122,10 @@ export class ConnectManager {
 
     void oauth
       .login({
+        // pi ≥0.84 requires a concrete abort signal. Bound the poll loop to
+        // the bus state's TTL: the device code expires well before, and an
+        // orphaned flow (user never approves) must not poll forever.
+        signal: AbortSignal.timeout(STATE_TTL_SEC * 1000),
         prompt: async (p) => {
           // Headless: always the device-code path. The manual-code/text
           // prompts exist for other providers' flows and must never fire

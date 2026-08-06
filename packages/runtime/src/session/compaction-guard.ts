@@ -123,9 +123,18 @@ export function makeCompactionGuard(
       }
 
       try {
-        // Same auth pi's own compaction resolves (model-registry).
+        // Same auth pi's own compaction resolves (model-registry). Since pi
+        // 0.84 the headers carry `null` deletion markers; pi's default path
+        // strips them before compact(), so the bounded path must too.
         const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
         if (!auth.ok || !auth.apiKey) return undefined;
+        const headers = auth.headers
+          ? Object.fromEntries(
+              Object.entries(auth.headers).filter(
+                (entry): entry is [string, string] => entry[1] !== null,
+              ),
+            )
+          : undefined;
         const bounded: Preparation = {
           ...prep,
           messagesToSummarize: history.kept,
@@ -135,7 +144,7 @@ export function makeCompactionGuard(
           bounded,
           model,
           auth.apiKey,
-          auth.headers,
+          headers,
           event.customInstructions,
           event.signal,
           undefined,
