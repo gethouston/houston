@@ -72,8 +72,15 @@
     "save": "Conectar",
     "saving": "Conectando...",
     "cancel": "Cancelar",
+    "guide": {
+      "title": "Cómo obtener tu clave",
+      "nvidia1": "Abre la página de claves de NVIDIA con el botón de arriba e inicia sesión, o crea una cuenta gratis.",
+      "nvidia2": "Haz clic en \"Generate Personal Key\" y en \"Services Included\" marca \"Public API Endpoints\".",
+      "nvidia3": "Copia la clave que empieza con \"nvapi-\" y pégala abajo."
+    },
     "errorInvalidKey": "{{name}} no aceptó esta clave. Revísala y pégala de nuevo.",
     "errorKeyRestricted": "Esta clave está bloqueada por la configuración de tu cuenta de {{name}}. Crea una clave nueva sin restricciones con el botón de arriba y pégala aquí.",
+    "errorNvidiaAccountGated": "Tu clave es válida, pero NVIDIA no está sirviendo modelos de chat a tu cuenta en este momento. Asegúrate de que tu clave sea una Personal Key de org.ngc.nvidia.com con \"Public API Endpoints\" en Services Included. Si aun así falla, pide al soporte de NVIDIA que habilite el acceso a modelos para tu cuenta.",
     "errorProviderUnavailable": "No pudimos conectar con {{name}} para verificar tu clave, así que no se guardó nada. Inténtalo de nuevo en un momento."
   },
   "copilot": {

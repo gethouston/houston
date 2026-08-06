@@ -222,6 +222,46 @@ const COPILOT_BASE_FALLBACK = "gpt-4.1";
 const EXCERPT_MAX = 300;
 
 /**
+ * NVIDIA's per-account model gate (HOU-890). integrate.api.nvidia.com serves
+ * each hosted model ("function") per account: since mid-2026 an account may
+ * lack the whole "Public API Endpoints" permission (every completion fails)
+ * or, verified live against a real key, just PART of the catalog — gemma /
+ * kimi / glm / nemotron answered `404 Function '<uuid>': Not found for
+ * account '<id>'` while llama / gpt-oss / minimax served fine on the same
+ * key. /v1/models still lists everything and the key itself passes auth (a
+ * bad key answers 403 "Authorization failed" instead, already classified via
+ * INVALID_KEY_PATTERNS). The statuses also arrive body-less (a 410 wave in
+ * July, then 404s) — the OpenAI SDK flattens those to `<status> status code
+ * (no body)`. Re-keying never fixes a gated model; switching models usually
+ * does — so the chat classifier turns this into `model_unavailable` with a
+ * broadly-served fallback, and the connect-time verifier retries those
+ * fallbacks before giving a verdict (`key_restricted` only when every probe
+ * is gated).
+ */
+export function isNvidiaFunctionGated(
+  provider: string,
+  lowerMessage: string,
+  status: number | null,
+): boolean {
+  if (provider !== "nvidia") return false;
+  if (status !== 404 && status !== 410) return false;
+  return (
+    lowerMessage.includes("(no body)") ||
+    lowerMessage.includes("function not found") ||
+    lowerMessage.includes("not found for account")
+  );
+}
+
+/**
+ * The NVIDIA model offered as the one-click switch target on a gated model's
+ * `model_unavailable` card — served to every account we have evidence from
+ * (including the partially-gated one above). Duplicated from the runtime's
+ * NVIDIA default on purpose, like COPILOT_BASE_FALLBACK, so this classifier
+ * stays pure.
+ */
+const NVIDIA_BROAD_FALLBACK = "meta/llama-3.3-70b-instruct";
+
+/**
  * Map a failed model request to a typed `ProviderError`, then stamp WHOSE
  * credential ran the turn (`stampCredentialScope`).
  *
@@ -265,6 +305,23 @@ function classify(input: ProviderErrorInput): ProviderError {
   const lower = message.toLowerCase();
   const status = input.status ?? extractHttpStatus(message);
 
+  // NVIDIA's per-account model gate: the credential is fine, THIS model is
+  // simply not served for the account (`isNvidiaFunctionGated`), so the
+  // honest card is switch-model with a broadly-served one-click target —
+  // never the reconnect card (re-keying can't fix it) and never the generic
+  // unknown card. Checked first: the body-less 404/410 carries none of the
+  // wording the later branches key on.
+  if (model && isNvidiaFunctionGated(provider, lower, status)) {
+    return {
+      kind: "model_unavailable",
+      provider,
+      model,
+      reason: "unknown",
+      suggested_fallback:
+        model === NVIDIA_BROAD_FALLBACK ? null : NVIDIA_BROAD_FALLBACK,
+      message,
+    };
+  }
   if (isAuth(lower, status)) {
     return {
       kind: "unauthenticated",

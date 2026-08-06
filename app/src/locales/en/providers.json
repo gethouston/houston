@@ -72,8 +72,15 @@
     "save": "Connect",
     "saving": "Connecting...",
     "cancel": "Cancel",
+    "guide": {
+      "title": "How to get your key",
+      "nvidia1": "Open the NVIDIA key page with the button above and sign in, or create a free account.",
+      "nvidia2": "Click \"Generate Personal Key\" and under \"Services Included\" check \"Public API Endpoints\".",
+      "nvidia3": "Copy the key that starts with \"nvapi-\" and paste it below."
+    },
     "errorInvalidKey": "{{name}} didn't accept this key. Check it and paste it again.",
     "errorKeyRestricted": "This key is blocked by settings in your {{name}} account. Create a new key without restrictions using the button above, then paste it here.",
+    "errorNvidiaAccountGated": "Your key is valid, but NVIDIA isn't serving any chat models to your account right now. Make sure your key is a Personal Key from org.ngc.nvidia.com with \"Public API Endpoints\" under Services Included. If it still fails, ask NVIDIA support to enable model access for your account.",
     "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment."
   },
   "copilot": {

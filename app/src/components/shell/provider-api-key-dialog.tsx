@@ -17,6 +17,7 @@ import {
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { ProviderApiKeyField } from "./provider-api-key-field";
+import { ProviderApiKeyGuide } from "./provider-api-key-guide";
 
 /**
  * The host's own reason for a rejected connect ("openrouter rejected this API
@@ -55,6 +56,17 @@ const REASON_COPY: Record<
   key_restricted: "apiKey.errorKeyRestricted",
   provider_unavailable: "apiKey.errorProviderUnavailable",
 };
+
+/**
+ * NVIDIA's `key_restricted` is an ACCOUNT gate, not key settings: NVIDIA has
+ * to enable "Public API Endpoints" on the account's org, so the generic
+ * "create a new key" remedy would send users in circles (HOU-890).
+ */
+function reasonCopyKey(providerId: string, reason: ApiKeyConnectReason) {
+  if (providerId === "nvidia" && reason === "key_restricted")
+    return "apiKey.errorNvidiaAccountGated" as const;
+  return REASON_COPY[reason];
+}
 
 export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   const { t } = useTranslation("providers");
@@ -100,7 +112,9 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // Sentry capture already happened in the tauri call wrapper.
       const reason = apiKeyConnectReason(err);
       if (reason) {
-        setError(t(REASON_COPY[reason], { name: provider.name }));
+        setError(
+          t(reasonCopyKey(provider.id, reason), { name: provider.name }),
+        );
       } else {
         const detail = verifyFailureDetail(err);
         console.error(`[provider_api_key_submit] ${detail}`);
@@ -140,6 +154,8 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
               {t("apiKey.getKey")}
             </Button>
           )}
+
+          <ProviderApiKeyGuide providerId={provider.id} />
 
           <ProviderApiKeyField
             label={t("apiKey.label")}

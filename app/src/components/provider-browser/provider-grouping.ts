@@ -201,6 +201,7 @@ export type ProviderDescriptionKey =
   | "google"
   | "amazon-bedrock"
   | "minimax"
+  | "nvidia"
   | "openai-compatible";
 
 /**
@@ -222,6 +223,7 @@ const DESCRIPTION_KEY_BY_ID = {
   google: "google",
   "amazon-bedrock": "amazon-bedrock",
   minimax: "minimax",
+  nvidia: "nvidia",
   "openai-compatible": "openai-compatible",
 } satisfies Record<string, ProviderDescriptionKey>;
 
