@@ -51,7 +51,8 @@ fn repair_script(exe_path: &str) -> String {
         r#"$exe = {exe}
 $dirs = @(
   (Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar'),
-  [Environment]::GetFolderPath('Desktop')
+  [Environment]::GetFolderPath('Desktop'),
+  [Environment]::GetFolderPath('CommonDesktopDirectory')
 )
 $shell = New-Object -ComObject WScript.Shell
 $installerCache = Join-Path $env:windir 'Installer'
@@ -61,7 +62,10 @@ foreach ($dir in $dirs) {{
     try {{
       $lnk = $shell.CreateShortcut($file.FullName)
       if (-not $lnk.TargetPath -or ($lnk.TargetPath -ine $exe)) {{ continue }}
-      $icon = ($lnk.IconLocation -split ',')[0].Trim()
+      $raw = $lnk.IconLocation
+      $comma = $raw.LastIndexOf(',')
+      $icon = if ($comma -ge 0) {{ $raw.Substring(0, $comma) }} else {{ $raw }}
+      $icon = [Environment]::ExpandEnvironmentVariables($icon.Trim().Trim('"'))
       if (-not $icon -or ($icon -ieq $exe)) {{ continue }}
       $dead = -not (Test-Path -LiteralPath $icon)
       $cached = $icon.StartsWith($installerCache, [System.StringComparison]::OrdinalIgnoreCase)
@@ -184,11 +188,16 @@ mod tests {
     }
 
     #[test]
-    fn repair_script_embeds_exe_and_targets_pins_and_desktop() {
+    fn repair_script_embeds_exe_and_targets_pins_and_desktops() {
         let script = repair_script(r"C:\Program Files\Houston\Houston.exe");
         assert!(script.contains(r"$exe = 'C:\Program Files\Houston\Houston.exe'"));
         assert!(script.contains(r"User Pinned\TaskBar"));
+        // Both desktops: the per-machine MSI writes its shortcut to the
+        // PUBLIC desktop; user-copied shortcuts live on the user's.
         assert!(script.contains("GetFolderPath('Desktop')"));
+        assert!(script.contains("GetFolderPath('CommonDesktopDirectory')"));
+        // Icon path parsed from the LAST comma (paths may contain commas).
+        assert!(script.contains("LastIndexOf(',')"));
         // Only rewrites icons that are dead or in the installer icon cache.
         assert!(script.contains("$dead -or $cached"));
         // Never retargets the shortcut itself, only its icon.
