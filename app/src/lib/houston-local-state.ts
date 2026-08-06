@@ -34,11 +34,18 @@ export function purgeHoustonLocalState(storage: KeyedStorage): void {
  *  - `houston.web.agents` / `houston.web.agentfile:` — the standalone
  *    (no-host) adapter's local agent store: the browser analog of the
  *    `~/.houston` tree, which sign-out never wipes (HOU-991).
+ *  - `houston.pendingAgentMoves` — the crash-recovery ticket for an in-flight
+ *    C8 agent move (HOU-817). The gateway's move lock outlives the mover and
+ *    ONLY a re-POST of the recorded move can free the agent; wiping the ticket
+ *    at sign-out would leave the agent 503-locked forever. Tenancy is safe:
+ *    the gateway refuses a wrong-account resume and `useMoveResume` keeps the
+ *    record for the owning account's next sign-in.
  */
 const DEVICE_LOCAL_KEY_PREFIXES = [
   "houston.web.engine",
   "houston.web.agents",
   "houston.web.agentfile:",
+  "houston.pendingAgentMoves",
 ] as const;
 
 /** Remove every ACCOUNT-scoped `houston.*` key — prefs mirrors, sidebar

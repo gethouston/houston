@@ -35,11 +35,12 @@ test("purgeAccountLocalState removes account traces, keeps device keys", () => {
     ["houston.web.cp.agentColors", "{}"],
     ["houston.sdk.some-state", "{}"],
     ["houston.theme.cache", "dark"],
-    // Device-level — must survive sign-out.
+    // Device-level / recovery — must survive sign-out.
     ["houston.web.engine.new", '{"url":"https://my-vps.example"}'],
     ["houston.web.engine", '{"url":"legacy"}'],
     ["houston.web.agents", "[]"],
     ["houston.web.agentfile:ws/agent", "data"],
+    ["houston.pendingAgentMoves", '[{"agentId":"a1"}]'],
     // Not ours — never touched.
     ["other-app.key", "keep"],
   ]);
@@ -47,6 +48,7 @@ test("purgeAccountLocalState removes account traces, keeps device keys", () => {
   purgeAccountLocalState(keyedStorage(store));
 
   assert.deepStrictEqual([...store.keys()].sort(), [
+    "houston.pendingAgentMoves",
     "houston.web.agentfile:ws/agent",
     "houston.web.agents",
     "houston.web.engine",
