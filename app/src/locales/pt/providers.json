@@ -124,7 +124,8 @@
     "timeout": "O login do Claude expirou. Tente conectar novamente.",
     "confirmTimeout": "Você entrou no Claude, mas o Houston não conseguiu confirmar a conexão. Tente novamente.",
     "autoFailedTitle": "Não foi possível concluir a conexão automaticamente",
-    "autoFailedBody": "Cole um token de configuração do Claude para concluir a conexão."
+    "autoFailedBody": "Cole um token de configuração do Claude para concluir a conexão.",
+    "helperUnsupported": "O processador deste computador é muito antigo para executar o assistente de login do Claude, então não é possível conectar uma assinatura do Claude nesta máquina."
   },
   "localModel": {
     "title": "Conecte um modelo local",

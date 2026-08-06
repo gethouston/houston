@@ -124,7 +124,8 @@
     "timeout": "El inicio de sesión de Claude expiró. Intenta conectarte de nuevo.",
     "confirmTimeout": "Iniciaste sesión en Claude, pero Houston no pudo confirmar la conexión. Inténtalo de nuevo.",
     "autoFailedTitle": "No se pudo completar la conexión automáticamente",
-    "autoFailedBody": "Pega un token de configuración de Claude para terminar de conectar."
+    "autoFailedBody": "Pega un token de configuración de Claude para terminar de conectar.",
+    "helperUnsupported": "El procesador de este computador es demasiado antiguo para ejecutar el asistente de inicio de sesión de Claude, así que no se puede conectar una suscripción de Claude en esta máquina."
   },
   "localModel": {
     "title": "Conecta un modelo local",
