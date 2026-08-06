@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Provider errors | Houston docs</title>
+<!--
+  Standalone reference for the AI provider error taxonomy (HOU-1191).
+  Open directly in a browser, no build step.
+
+  Source of truth (this page mirrors, never replaces):
+    - wire type:   packages/protocol/src/provider-error.ts
+    - classifier:  packages/runtime/src/ai/provider-error.ts
+    - deep dive:   knowledge-base/provider-errors.md
+
+  Colors are the resolved values of the design tokens in
+  packages/design-tokens/tokens (a standalone page cannot import them).
+-->
+<style>
+  :root, [data-theme="light"] {
+    --bg: #f2f5f9;            /* ht-base (gutter) */
+    --screen: #ffffff;        /* ht-background */
+    --ink: #14161d;           /* ht-ink */
+    --muted: #8e8e8e;         /* ht-ink-muted */
+    --line: rgba(60, 70, 120, 0.1);   /* ht-line */
+    --line-input: #e3e3e3;    /* ht-line-input */
+    --chip: rgba(13, 13, 13, 0.035);  /* ht-chip */
+    --chip-text: #0d0d0d;
+    --hover: #efefef;         /* ht-hover */
+    --action: #0d0d0d;        /* ht-action */
+    --action-text: #ffffff;
+    --danger: #e02e2a;
+    --warning: #e0ac00;
+    --success: #00a240;
+    --edge: 0 1px 0 rgba(0, 0, 0, 0.05);
+  }
+  [data-theme="dark"] {
+    --bg: #141416;            /* ht-base dark */
+    --screen: #1d1d1f;        /* ht-background (glass screen, flattened) */
+    --ink: #e5e5e5;
+    --muted: #9a9a9a;
+    --line: rgba(255, 255, 255, 0.1);
+    --line-input: #383838;
+    --chip: rgba(255, 255, 255, 0.05);
+    --chip-text: #e5e5e5;
+    --hover: rgba(255, 255, 255, 0.08);
+    --action: #e5e5e5;
+    --action-text: #141414;
+    --danger: #ef4444;
+    --warning: #eab308;
+    --success: #22c55e;
+    --edge: none;             /* no drop shadows in dark */
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); }
+  body {
+    font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.55;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .screen {
+    max-width: 1040px;
+    margin: 0 auto;
+    background: var(--screen);
+    border-radius: 16px;
+    box-shadow: var(--edge), inset 0 0 0 1px var(--line);
+    padding: 40px 48px 48px;
+  }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  h1 { font-size: 28px; font-weight: 400; text-wrap: balance; }
+  .subtitle { color: var(--muted); margin-top: 8px; max-width: 62ch; }
+  .subtitle code, td code, .sources code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    background: var(--chip);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .theme-toggle {
+    flex-shrink: 0;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--line-input);
+    border-radius: 9999px;
+    padding: 6px 16px;
+    cursor: pointer;
+  }
+  .theme-toggle:hover { background: var(--hover); }
+  .theme-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  section { margin-top: 40px; }
+  h2 { font-size: 14px; font-weight: 500; }
+  .section-note { font-size: 14px; color: var(--muted); margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line-input);
+  }
+  td { vertical-align: top; padding: 14px 12px; border-bottom: 1px solid var(--line); }
+  tr:hover td { background: var(--hover); }
+  th:nth-child(1), td:nth-child(1) { width: 30%; padding-left: 0; }
+  th:nth-child(2), td:nth-child(2) { width: 33%; }
+  th:nth-child(3), td:nth-child(3) { width: 37%; padding-right: 0; }
+  .error-name { font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 9999px; flex-shrink: 0; }
+  .dot-danger { background: var(--danger); }
+  .dot-warning { background: var(--warning); }
+  .dot-muted { background: var(--muted); }
+  .kind {
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--chip-text);
+    background: var(--chip);
+    border-radius: 9999px;
+    padding: 2px 10px;
+    margin-top: 6px;
+  }
+  .dormant {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    border: 1px solid var(--line-input);
+    border-radius: 9999px;
+    padding: 1px 10px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .examples { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .examples code { display: inline-block; margin: 2px 2px 0 0; }
+  .cell-note { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  td ul { list-style: none; margin-top: 6px; }
+  td li { padding-left: 14px; position: relative; margin-top: 4px; font-size: 14px; }
+  td li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 5px; height: 5px; border-radius: 9999px; background: var(--muted); }
+  .cta {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--action-text);
+    background: var(--action);
+    border-radius: 9999px;
+    padding: 2px 10px;
+    margin: 0 4px 4px 0;
+  }
+  .sources { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line-input); font-size: 14px; color: var(--muted); }
+  .sources p { margin-top: 4px; }
+  @media (max-width: 720px) {
+    body { padding: 12px; }
+    .screen { padding: 24px 20px 32px; }
+    table, thead, tbody, tr { display: block; }
+    thead { display: none; }
+    td { display: block; width: 100% !important; padding: 6px 0; border-bottom: none; }
+    tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<main class="screen">
+  <header>
+    <div>
+      <h1>Provider errors</h1>
+      <p class="subtitle">
+        Every failure from an AI provider collapses into one variant of the
+        <code>ProviderError</code> taxonomy and renders as one typed card in chat.
+        This page lists each error, what causes it, and how to get unstuck.
+      </p>
+    </div>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle color theme">Dark</button>
+  </header>
+
+  <section>
+    <h2>Sign-in and credentials</h2>
+    <p class="section-note">The credential is the problem. Reconnecting the provider fixes it; retrying without reconnecting never does.</p>
+    <table>
+      <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-danger"></span>Not signed in / unauthorized</span>
+            <span class="kind">unauthenticated</span>
+            <p class="examples">Examples: <code>401 Unauthorized</code> <code>app_session_terminated</code> <code>your session has ended</code> <code>invalid api key</code></p>
+          </td>
+          <td>
+            The provider rejected the credential. The <code>cause</code> field narrows it:
+            <ul>
+              <li><code>no_credentials</code>: this provider was never connected.</li>
+              <li><code>token_expired</code>: the sign-in lapsed; signing in again recovers it.</li>
+              <li><code>token_revoked</code>: the provider ended the session server-side (for example Codex kills the ChatGPT session).</li>
+              <li><code>invalid_api_key</code>: a pasted key the provider rejected.</li>
+            </ul>
+          </td>
+          <td>
+            <span class="cta">Reconnect</span>
+            <p class="cell-note">The card's Reconnect button opens the right surface for the provider (browser OAuth sign-in, or the API-key dialog), then auto-resumes the turn once sign-in completes. If the message never reached the model, the retry re-delivers it.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Rate and usage limits</h2>
+    <p class="section-note">The credential is fine; the account hit a limit. The two differ in whether waiting helps.</p>
+    <table>
+      <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-warning"></span>Rate limited</span>
+            <span class="kind">rate_limited</span>
+            <p class="examples">Examples: <code>429 Too Many Requests</code> <code>rate limit exceeded</code> <code>overloaded, throttled</code></p>
+          </td>
+          <td>A short-window throttle: too many requests per minute. Waiting a moment helps. When the provider names a delay, the card carries <code>retry_after_seconds</code> and counts it down.</td>
+          <td>
+            <span class="cta">Retry</span><span class="cta">Switch model</span>
+            <p class="cell-note">Wait out the countdown and retry, or switch to another model or provider for the moment.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-warning"></span>Out of quota or credit</span>
+            <span class="kind">quota_exhausted</span>
+            <p class="examples">Examples: <code>insufficient balance</code> <code>you've hit your usage limit</code> <code>billing hard limit reached</code></p>
+          </td>
+          <td>A billing-period or plan limit: the account is out of credit, or spent its subscription allowance (for example the Codex ChatGPT-plan allowance, or an Anthropic 5-hour session window). Waiting does not help unless the provider gave a reset time (<code>resets_at</code>).</td>
+          <td>
+            <span class="cta">Upgrade plan</span><span class="cta">Switch provider</span>
+            <p class="cell-note">Top up or upgrade on the provider's billing page (the card links it when known), wait for the reset when one is shown, or switch to a provider with remaining quota. Note: opencode returns this as a 401, but it is a billing problem, not a sign-in problem.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-warning"></span>Usage limit paused<span class="dormant">dormant</span></span>
+            <span class="kind">usage_limit_paused</span>
+            <p class="examples">Examples: <code>you've hit your session limit</code> <code>usage limit ... reset at 3:30pm</code></p>
+          </td>
+          <td>A plan-window limit was hit, historically the Anthropic 5-hour subscription session limit. Retrying now fails; the limit lifts at the reset time (<code>resets_at</code>). The current engine classifies these as <code>quota_exhausted</code> with a reset time, so no backend emits this kind today; the card still renders when an old chat carries it.</td>
+          <td>
+            <span class="cta">Switch model</span>
+            <p class="cell-note">Wait for the shown reset time, or switch to a different provider (each has its own limits). Routines show "Waiting, resumes at HH:MM" and continue on their own.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Model and context</h2>
+    <p class="section-note">The account works; this specific model or this specific conversation does not.</p>
+    <table>
+      <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-warning"></span>Model unavailable</span>
+            <span class="kind">model_unavailable</span>
+            <p class="examples">Examples: <code>model_not_supported</code> <code>model not found</code> <code>RegionError</code></p>
+          </td>
+          <td>The requested model is not available to this account: not included in the plan (GitHub Copilot Free rejects premium models), preview-gated, deprecated, or restricted in the account's region. In a team space the card names whose personal account lacks it.</td>
+          <td>
+            <span class="cta">Use suggested model</span><span class="cta">Pick another model</span>
+            <p class="cell-note">Switch to the fallback the card suggests (<code>suggested_fallback</code>) or pick any model the plan includes. Upgrading the provider plan also unlocks the original model.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-warning"></span>Conversation too long</span>
+            <span class="kind">context_overflow</span>
+            <p class="examples">Examples: <code>prompt is too long</code> <code>context_length_exceeded</code> <code>exceed_context_size_error</code></p>
+          </td>
+          <td>The conversation no longer fits the model's context window, so the provider rejected the request outright. The card carries the provider's own numbers (<code>context_window_tokens</code>, <code>prompt_tokens</code>) when it named them.</td>
+          <td>
+            <span class="cta">New conversation</span><span class="cta">Switch model</span>
+            <p class="cell-note">Start a fresh conversation, or switch to a model with a larger context window and retry.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Transient and infrastructure</h2>
+    <p class="section-note">Nothing is wrong with the account or the request. Retrying usually works.</p>
+    <table>
+      <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Provider had a problem</span>
+            <span class="kind">provider_internal</span>
+            <p class="examples">Examples: <code>500 / 502 / 503</code> <code>overloaded_error</code> <code>streaming response failed</code> <code>WebSocket closed 1006</code></p>
+          </td>
+          <td>A 5xx or transient failure inside the provider's own infrastructure: overloaded servers, a dropped stream, a closed connection on their side. Not a problem on this computer.</td>
+          <td>
+            <span class="cta">Retry</span><span class="cta">Check status page</span>
+            <p class="cell-note">Retry after a moment; these usually clear on their own. If it persists, the card links the provider's status page to check for an outage.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Network unreachable</span>
+            <span class="kind">network_unreachable</span>
+            <p class="examples">Examples: <code>fetch failed</code> <code>ECONNREFUSED</code> <code>ENOTFOUND</code> <code>ETIMEDOUT</code></p>
+          </td>
+          <td>The provider's API could not be reached at all: no internet, DNS failure, or a firewall, VPN, or proxy blocking the connection.</td>
+          <td>
+            <span class="cta">Retry</span>
+            <p class="cell-note">Check the internet connection, VPN, and firewall, then retry. If the network is fine, check the provider's status page.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Legacy kinds</h2>
+    <p class="section-note">Declared by the frontend and still rendered when an old chat carries one, but the current in-process engine never emits them. They date from the removed CLI-era engine, where providers ran as spawned processes.</p>
+    <table>
+      <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Session could not resume<span class="dormant">dormant</span></span>
+            <span class="kind">session_resume_missing</span>
+            <p class="examples">Examples: <code>no rollout found</code> <code>corrupt session transcript</code></p>
+          </td>
+          <td>The saved session the provider was asked to resume is gone or unreadable, so it could not pick up where it left off. The runner automatically restarted a fresh session; the card is informational.</td>
+          <td>
+            <span class="cta">Try again</span>
+            <p class="cell-note">Re-send the message; it runs on the fresh session. Earlier context from the broken session is not recoverable.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Malformed response<span class="dormant">dormant</span></span>
+            <span class="kind">malformed_response</span>
+          </td>
+          <td>The provider CLI emitted output mid-stream that could not be parsed, so the turn's result is unusable.</td>
+          <td>
+            <span class="cta">Retry</span>
+            <p class="cell-note">Retry the turn; a clean run replaces the broken one.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-danger"></span>Could not start the provider<span class="dormant">dormant</span></span>
+            <span class="kind">spawn_failed</span>
+          </td>
+          <td>The provider CLI process could not start at all: binary missing, or killed by the operating system before it produced anything.</td>
+          <td>
+            <span class="cta">Report bug</span>
+            <p class="cell-note">Nothing user-recoverable; the report bundles the logs that explain the failed launch.</p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Cancelled<span class="dormant">dormant</span></span>
+            <span class="kind">cancelled</span>
+          </td>
+          <td>The user pressed Stop. Kept as a distinct kind so the UI can tell it apart from a real failure.</td>
+          <td>
+            <p class="cell-note">Nothing to fix. Deliberately renders no card, no toast, and no retry.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Everything else</h2>
+    <table>
+      <thead><tr><th>Error</th><th>Cause</th><th>Possible fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="error-name"><span class="dot dot-muted"></span>Unknown error</span>
+            <span class="kind">unknown</span>
+          </td>
+          <td>No classifier pattern matched. The card shows the first 300 characters of the raw provider message (<code>raw_excerpt</code>) so it is never content-free.</td>
+          <td>
+            <span class="cta">Report bug</span>
+            <p class="cell-note">Use the card's Report bug button; it bundles the recent logs. Any unknown error that repeats gets promoted into a typed variant above (each family is tracked in Sentry by provider and kind).</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="sources">
+    <p>Source of truth: wire type <code>packages/protocol/src/provider-error.ts</code>, frontend union (including the legacy kinds) <code>ui/chat/src/types.ts</code>, classifier <code>packages/runtime/src/ai/provider-error.ts</code>, cards <code>app/src/components/shell/provider-error-cards/</code>.</p>
+    <p>Deep dive, including attribution rules and the triage loop: <code>knowledge-base/provider-errors.md</code>. When the taxonomy changes, update this page in the same PR.</p>
+  </div>
+</main>
+<script>
+  const root = document.documentElement;
+  const toggle = document.getElementById("theme-toggle");
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  function apply(theme) {
+    root.dataset.theme = theme;
+    toggle.textContent = theme === "dark" ? "Light" : "Dark";
+  }
+  apply(media.matches ? "dark" : "light");
+  toggle.addEventListener("click", () => {
+    apply(root.dataset.theme === "dark" ? "light" : "dark");
+  });
+</script>
+</body>
+</html>
