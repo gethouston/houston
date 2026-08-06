@@ -42,7 +42,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
         ui.setJobDescriptionTarget(semanticTarget(kind));
         ui.setViewMode("job-description");
       }
-      ui.setMissionPanelOpen(false);
+      ui.closeMissionPanel();
     },
     [agentPath, capabilities],
   );

@@ -9,7 +9,7 @@ import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { MissionControlToolbar } from "../mission-control-toolbar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
+import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { ArchivedEmptyState } from "../tabs/archived-empty-state";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useMissionSearch } from "../use-mission-search";
@@ -31,9 +31,8 @@ export function MissionControlArchived({
   onShowActive: () => void;
 }) {
   const { t } = useTranslation("board");
-  const panelContainer = useDetailPanelContainer();
+  const { panelContainer, setPanelOpen } = useShellDetailPanel();
   const addToast = useUIStore((s) => s.addToast);
-  const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const data = useMissionControlArchived(agents);
@@ -143,7 +142,7 @@ export function MissionControlArchived({
               isSearchingText={missionSearch.isSearchingText}
             />
           }
-          onPanelOpenChange={setMissionPanelOpen}
+          onPanelOpenChange={setPanelOpen}
           onOpenLink={openHref}
           onNotice={(message) => addToast({ title: message })}
           prepareAttachments={attachmentValidation.prepareAttachments}
