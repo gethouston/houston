@@ -150,8 +150,8 @@
         "body": "Puedes crear otro agente aquí cuando quieras, o seguir trabajando con el que ya tienes."
       },
       "agentStore": {
-        "title": "Elige por dónde empezar",
-        "body": "Elige Empezar desde cero para un agente en blanco, o toma uno de los nuestros desde la tienda y ajústalo a tu medida."
+        "title": "La Tienda de agentes",
+        "body": "Explora aquí agentes listos para usar, gratis, y agrega uno a tu espacio con un clic."
       },
       "outro": {
         "title": "Ahora ve a construir algo increíble",
@@ -237,10 +237,6 @@
     "downloadAction": "Descargar la actualización",
     "checkAction": "Buscar actualizaciones"
   },
-  "store": {
-    "searchPlaceholder": "Buscar en la biblioteca...",
-    "noResults": "Ningún agente coincide con tu búsqueda"
-  },
   "naming": {
     "dialogTitle": "Nombra tu agente",
     "newAgentFallback": "Nuevo agente",
@@ -251,64 +247,10 @@
   },
   "newAgent": {
     "dialogTitle": "Nuevo agente",
-    "createSection": "Crear",
-    "librarySection": "De la biblioteca",
-    "fromScratchCard": "Desde cero",
-    "fromScratchDescription": "Un agente en blanco, sin instrucciones ni acciones. Constrúyelo a tu manera."
-  },
-  "aiAssist": {
-    "cardTitle": "Crear con IA",
-    "cardDescription": "Describe tu trabajo y un consultor de IA diseña el agente por ti",
-    "stepTitle": "Informa a tu consultor de IA",
-    "stepDescription": "Cuéntanos sobre tu rol, las tareas que te quitan tiempo y las herramientas que usas. Tu consultor diseña el trabajo del agente en torno a eso.",
-    "briefLabel": "¿Qué debería quitarte de encima este agente?",
-    "briefPlaceholder": "p. ej. Dirijo las ventas en una agencia pequeña. Paso horas persiguiendo seguimientos, actualizando la hoja del pipeline y escribiendo correos de resumen después de las llamadas...",
-    "examplesLabel": "O empieza desde un ejemplo",
-    "examples": {
-      "sales": "Lidero las ventas y pierdo horas en correos de seguimiento y en mantener el CRM al día",
-      "inbox": "Mi bandeja de entrada está desbordada. Quiero un resumen matutino y borradores para respuestas rutinarias",
-      "reports": "Cada viernes armo un informe de estado del equipo a partir de actualizaciones y hojas dispersas",
-      "research": "Necesito investigación de mercado y de la competencia resumida en informes que pueda compartir"
-    },
-    "modelLabel": "Modelo de IA",
-    "generateButton": "Diseñar mi agente",
-    "generatingMessage": "Tu consultor está diseñando el agente...",
-    "cancelButton": "Cancelar",
-    "generatedTitle": "Aquí están las instrucciones de tu agente",
-    "generatedHelper": "Revisa y edita las instrucciones abajo, luego continúa cuando estés listo",
-    "nameLabel": "Nombre del agente",
-    "namePlaceholder": "p. ej. Gestor de bandeja de entrada",
-    "errorTitle": "Error en la generación",
-    "errorDescription": "No se pudieron generar las instrucciones. Asegúrate de que tu proveedor de IA esté conectado e intenta de nuevo."
-  },
-  "aiReview": {
-    "stepTitle": "Revisa tu agente",
-    "instructionsLabel": "Instrucciones del agente",
-    "instructionsHelper": "Revisa y edita las instrucciones abajo"
-  },
-  "aiIntegrations": {
-    "stepTitle": "Conecta tus aplicaciones",
-    "stepDescription": "Estas aplicaciones funcionan bien con tu agente. Conéctalas ahora o desde la pestaña Integraciones después.",
-    "notInstalledNote": "Puedes conectar integraciones desde la pestaña Integraciones después de crear tu agente.",
-    "needsAuthNote": "Inicia sesión en Composio para conectar aplicaciones ahora, o hazlo después de crear tu agente.",
-    "signIn": "Iniciar sesión",
-    "connected": "Conectado",
-    "connect": "Conectar",
-    "continueButton": "Continuar"
-  },
-  "aiRoutine": {
-    "stepTitle": "Configura ejecuciones automáticas",
-    "stepDescription": "Tu agente puede correr en automático en un horario. Ajusta los detalles y actívalo cuando estés listo.",
-    "nameLabel": "Nombre de la rutina",
-    "promptLabel": "Qué debe hacer cada vez",
-    "scheduleLabel": "Cuándo se ejecuta",
-    "consentTitle": "Antes de activarlo",
-    "consentScheduled": "Se ejecuta solo según un horario.",
-    "consentUsage": "Cada ejecución usa IA, así que cuenta para tu uso.",
-    "consentNeedsApp": "Si usa una aplicación, esa aplicación debe estar conectada o la rutina no podrá ejecutarse.",
-    "laterNote": "Puedes crear, cambiar o desactivar rutinas cuando quieras desde la pestaña Rutinas del agente.",
-    "enableLabel": "Activar esta rutina",
-    "continueButton": "Continuar"
+    "storeCard": "Importar desde la tienda",
+    "storeCardDescription": "Agentes listos para usar, gratis. Explora la tienda y elige uno.",
+    "createCard": "Crear nuevo agente",
+    "createCardDescription": "Empieza desde cero y construye tu agente a tu manera."
   },
   "engineGate": {
     "starting": "Cargando tus agentes…",

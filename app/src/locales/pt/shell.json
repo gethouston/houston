@@ -150,8 +150,8 @@
         "body": "Você pode criar outro agente aqui a qualquer momento, ou continuar com o que já tem."
       },
       "agentStore": {
-        "title": "Escolha por onde começar",
-        "body": "Escolha Começar do zero para um agente em branco, ou pegue um dos nossos na loja e ajuste do seu jeito."
+        "title": "A Loja de agentes",
+        "body": "Explore aqui agentes prontos para usar, gratuitos, e adicione um ao seu espaço com um clique."
       },
       "outro": {
         "title": "Agora vai construir algo incrível",
@@ -237,10 +237,6 @@
     "downloadAction": "Baixar a atualização",
     "checkAction": "Buscar atualizações"
   },
-  "store": {
-    "searchPlaceholder": "Buscar na biblioteca...",
-    "noResults": "Nenhum agente corresponde à sua busca"
-  },
   "naming": {
     "dialogTitle": "Dê um nome ao seu agente",
     "newAgentFallback": "Novo agente",
@@ -251,54 +247,10 @@
   },
   "newAgent": {
     "dialogTitle": "Novo agente",
-    "createSection": "Criar",
-    "librarySection": "Da biblioteca",
-    "fromScratchCard": "Do zero",
-    "fromScratchDescription": "Um agente em branco, sem instruções ou ações. Construa do seu jeito."
-  },
-  "aiAssist": {
-    "cardTitle": "Criar com IA",
-    "cardDescription": "Descreva seu trabalho e um consultor de IA desenha o agente para você",
-    "stepTitle": "Oriente seu consultor de IA",
-    "stepDescription": "Conte sobre seu papel, as tarefas que consomem seu tempo e as ferramentas que você usa. Seu consultor desenha o trabalho do agente em torno disso.",
-    "briefLabel": "O que este agente deve tirar da sua rotina?",
-    "briefPlaceholder": "ex. Cuido das vendas em uma agência pequena. Passo horas cobrando follow-ups, atualizando a planilha do funil e escrevendo e-mails de resumo depois das ligações...",
-    "examplesLabel": "Ou comece a partir de um exemplo",
-    "examples": {
-      "sales": "Lidero as vendas e perco horas com e-mails de follow-up e mantendo o CRM em dia",
-      "inbox": "Minha caixa de entrada está lotada. Quero um resumo pela manhã e rascunhos para respostas rotineiras",
-      "reports": "Toda sexta eu monto um relatório de status da equipe a partir de atualizações e planilhas espalhadas",
-      "research": "Preciso de pesquisa de mercado e da concorrência resumida em briefings que eu possa compartilhar"
-    },
-    "modelLabel": "Modelo de IA",
-    "generateButton": "Projetar meu agente",
-    "generatingMessage": "Seu consultor está desenhando o agente...",
-    "cancelButton": "Cancelar",
-    "generatedTitle": "Aqui estão as instruções do seu agente",
-    "generatedHelper": "Revise e edite as instruções abaixo, depois continue quando estiver pronto",
-    "nameLabel": "Nome do agente",
-    "namePlaceholder": "ex. Gerenciador de caixa de entrada",
-    "errorTitle": "Falha na geração",
-    "errorDescription": "Não foi possível gerar as instruções. Verifique se seu provedor de IA está conectado e tente de novo."
-  },
-  "aiReview": {
-    "stepTitle": "Revise seu agente",
-    "instructionsLabel": "Instruções do agente",
-    "instructionsHelper": "Revise e edite as instruções abaixo"
-  },
-  "aiRoutine": {
-    "stepTitle": "Configure execuções automáticas",
-    "stepDescription": "Seu agente pode rodar em automático em um horário. Ajuste os detalhes e ative quando estiver pronto.",
-    "nameLabel": "Nome da rotina",
-    "promptLabel": "O que ele deve fazer a cada vez",
-    "scheduleLabel": "Quando ele roda",
-    "consentTitle": "Antes de ativar",
-    "consentScheduled": "Ele roda sozinho em um horário.",
-    "consentUsage": "Cada execução usa IA, então conta para o seu uso.",
-    "consentNeedsApp": "Se usar um aplicativo, esse aplicativo precisa estar conectado ou a rotina não poderá rodar.",
-    "laterNote": "Você pode criar, alterar ou desativar rotinas quando quiser na aba Rotinas do agente.",
-    "enableLabel": "Ativar esta rotina",
-    "continueButton": "Continuar"
+    "storeCard": "Importar da loja",
+    "storeCardDescription": "Agentes prontos para usar, gratuitos. Explore a loja e escolha um.",
+    "createCard": "Criar novo agente",
+    "createCardDescription": "Comece do zero e construa seu agente do seu jeito."
   },
   "engineGate": {
     "starting": "Carregando seus agentes…",
@@ -451,15 +403,5 @@
     "successWithId": "O centro de controle está cuidando disso. Referência: {{id}}",
     "successNoId": "O centro de controle está cuidando disso.",
     "errorTitle": "Não foi possível enviar o relatório"
-  },
-  "aiIntegrations": {
-    "stepTitle": "Conecte seus aplicativos",
-    "stepDescription": "Esses aplicativos funcionam bem com seu agente. Conecte-os agora ou faça isso depois na aba Integrações.",
-    "notInstalledNote": "Você pode conectar integrações na aba Integrações depois de criar seu agente.",
-    "needsAuthNote": "Entre no Composio para conectar aplicativos agora, ou faça isso depois de criar seu agente.",
-    "signIn": "Entrar",
-    "connected": "Conectado",
-    "connect": "Conectar",
-    "continueButton": "Continuar"
   }
 }
