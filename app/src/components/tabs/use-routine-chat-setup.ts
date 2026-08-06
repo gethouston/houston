@@ -4,14 +4,10 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { useProviderStatuses } from "../../hooks/use-provider-statuses";
+import { useConnectedProviders } from "../../hooks/use-connected-providers";
 import { analytics } from "../../lib/analytics";
+import { connectedProviderIds } from "../../lib/connected-providers";
 import { createMission } from "../../lib/create-mission";
-import {
-  providerConnectionState,
-  providerIsConnected,
-} from "../../lib/provider-connection";
-import { providerName } from "../../lib/providers";
 import { queryKeys } from "../../lib/query-keys";
 import {
   encodeRoutineModifyMessage,
@@ -54,31 +50,15 @@ export function useRoutineChatSetup(
   const missionTitle = t("setupChat.missionTitle");
 
   // The kickoffs name the user's connected providers so the agent never pins
-  // a routine to one that isn't (e.g. "use deepseek" with no DeepSeek login).
-  // While statuses are still loading, `null` keeps the prompt generic instead
-  // of wrongly claiming nothing is connected — and so does an UNCONFIRMABLE
-  // probe (HOU-979): "we could not check" is not "nothing is connected", so it
-  // defers to the generic prompt rather than naming a partial list as if it
-  // were the whole truth. Membership itself is the ONE shared derivation.
-  //
-  // A FAILED probe (HOU-1153) is the same "we could not check", and it arrives
-  // with NO statuses rather than a map of `unknown`s — so it must defer through
-  // `isError`, or an empty map would be handed to the kickoff as a confident
-  // "you have nothing connected".
-  const providerStatuses = useProviderStatuses();
-  const statusValues = Object.values(providerStatuses.statuses);
-  const statusesUnconfirmable = statusValues.some(
-    (s) => providerConnectionState(s, false) === "checking",
-  );
+  // a routine to one that isn't (e.g. "use deepseek" with no DeepSeek login),
+  // and the SAME set decides which provider the kickoff turn itself runs on
+  // (PRODUCT-1236) — an agent configured for a provider the user never
+  // connected must not open its setup chat there. `null` (still loading,
+  // failed, or unconfirmable) keeps both decisions deferred rather than
+  // claiming nothing is connected; the derivation is shared
+  // (`confirmedConnectedProviders`).
   const connectedProvidersRef = useRef<ConnectedProviderRef[] | null>(null);
-  connectedProvidersRef.current =
-    providerStatuses.isLoading ||
-    providerStatuses.isError ||
-    statusesUnconfirmable
-      ? null
-      : statusValues
-          .filter((s) => providerIsConnected(s))
-          .map((s) => ({ id: s.provider, name: providerName(s.provider) }));
+  connectedProvidersRef.current = useConnectedProviders();
 
   // Every unlinked, live create-chat for this agent — a person can be building
   // several at once (legacy reaction drafts included).
@@ -115,8 +95,12 @@ export function useRoutineChatSetup(
         const { conversationId } = await createMission(agent, "", {
           title: missionTitle,
           agentMode: mode,
-          // Pin the agent's configured brain onto the kickoff turn (see helper).
-          ...(await readAgentRunOverrides(path)),
+          // Pin the agent's configured brain onto the kickoff turn, gated on
+          // what the user has actually connected (see helper).
+          ...(await readAgentRunOverrides(
+            path,
+            connectedProviderIds(connectedProvidersRef.current),
+          )),
           // Setup chats always run as Ask first: the interview needs ask_user
           // (auto strips it) and must never open read-only in Planner.
           modeOverride: "execute",
@@ -162,7 +146,10 @@ export function useRoutineChatSetup(
             agentMode: mode,
             // Same brain pin as startDraft (see readAgentRunOverrides), and the
             // same Ask first pin — setup chats are interactive by design.
-            ...(await readAgentRunOverrides(path)),
+            ...(await readAgentRunOverrides(
+              path,
+              connectedProviderIds(connectedProvidersRef.current),
+            )),
             modeOverride: "execute",
           },
         );
