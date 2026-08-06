@@ -59,7 +59,6 @@
     var selectedId = null;
     var activeIndex = -1;
     var opened = false;
-    var queued = false;
     var typed = "";
     var typedAt = 0;
 
@@ -127,41 +126,17 @@
       setActive(shown.length ? 0 : -1, false);
     }
 
-    function position() {
-      var rect = toggle.getBoundingClientRect();
-      var width = opts.menuWidth || Math.max(Math.round(rect.width), 260);
-      menu.style.width = `${width}px`;
-      var height = menu.offsetHeight;
-      var top = rect.bottom + 6;
-      if (top + height > window.innerHeight - 8) {
-        const above = rect.top - 6 - height;
-        top = above >= 8 ? above : Math.max(8, window.innerHeight - 8 - height);
-      }
-      var maxLeft = window.innerWidth - width - 8;
-      menu.style.top = `${top}px`;
-      menu.style.left = `${Math.max(8, Math.min(rect.left, maxLeft))}px`;
-    }
+    // Follows the toggle instead of closing when the viewport moves.
+    var anchor = window.HoustonDropdownAnchor.create({
+      toggle: toggle,
+      menu: menu,
+      menuWidth: opts.menuWidth,
+      isOpen: () => opened,
+      onDetached: () => close(),
+    });
 
     function onDocumentClick(event) {
       if (!root.contains(event.target)) close();
-    }
-
-    // A scroll inside the menu is the menu's own; a scroll of the modal card
-    // only moves the anchor, so reposition instead of closing.
-    function onScroll(event) {
-      var target = event.target;
-      var node = target && target.nodeType === 1 ? target : null;
-      if (node && menu.contains(node)) return;
-      if (node?.closest?.(".dl-card")) {
-        if (queued) return;
-        queued = true;
-        window.requestAnimationFrame(() => {
-          queued = false;
-          if (opened) position();
-        });
-        return;
-      }
-      close();
     }
 
     function open() {
@@ -174,11 +149,14 @@
         search.setAttribute("aria-expanded", "true");
       }
       render();
-      position();
-      focusTarget().focus();
+      anchor.position();
+      // preventScroll keeps iOS from scrolling the document to reveal the
+      // search box, which would immediately drag the anchor out from under us.
+      focusTarget().focus({ preventScroll: true });
       document.addEventListener("click", onDocumentClick);
-      window.addEventListener("scroll", onScroll, true);
-      window.addEventListener("resize", close);
+      anchor.bind(true);
+      // The keyboard animates in after focus; re-place once it has settled.
+      anchor.sync();
     }
 
     function close() {
@@ -190,8 +168,7 @@
       if (search) search.setAttribute("aria-expanded", "false");
       focusTarget().removeAttribute("aria-activedescendant");
       document.removeEventListener("click", onDocumentClick);
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", close);
+      anchor.bind(false);
     }
 
     // fromUi selections dismiss the menu and hand focus back to the toggle;
@@ -252,7 +229,7 @@
     if (search) {
       search.addEventListener("input", () => {
         render();
-        position();
+        anchor.position();
       });
     }
     root.addEventListener("keydown", (event) => {

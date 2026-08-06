@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npx @11ty/eleventy",
     "check:locales": "node scripts/check-locales.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
     "dev": "npx @11ty/eleventy --serve",
     "deploy": "npm run build && npx --yes firebase-tools@15 deploy --only hosting:gethouston-site --project gethouston --non-interactive"
   },
