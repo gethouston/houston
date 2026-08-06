@@ -11,9 +11,12 @@ import type {
 
 /**
  * Renders the section selected in the settings rail into the right pane. Heavy
- * editors live in their own files; the self-contained people-with-access section
- * renders in a plain centered column. Name / color / delete are not sections
- * here — those actions live on the sidebar agent row.
+ * editors live in their own files. The access sections carry no padding of
+ * their own (the Permissions drill-in mounts them inside its PageContainer),
+ * so THIS surface owns their page column: people in a narrow centered column,
+ * the apps/models editors in the same max-w-3xl column the configuration
+ * sections use. Name / color / delete are not sections here — those actions
+ * live on the sidebar agent row.
  */
 export function AgentAdminScreenView({
   agent,
@@ -37,8 +40,16 @@ export function AgentAdminScreenView({
         </div>
       );
     case "integrations":
-      return <AgentAdminIntegrations agent={agent} readOnly={readOnly} />;
+      return (
+        <div className="mx-auto w-full max-w-3xl px-8 py-10">
+          <AgentAdminIntegrations agent={agent} readOnly={readOnly} />
+        </div>
+      );
     case "model":
-      return <AgentAdminModel agent={agent} readOnly={readOnly} />;
+      return (
+        <div className="mx-auto w-full max-w-3xl px-8 py-10">
+          <AgentAdminModel agent={agent} readOnly={readOnly} />
+        </div>
+      );
   }
 }
