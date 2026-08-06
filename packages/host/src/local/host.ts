@@ -48,6 +48,7 @@ import { MemoryTurnBus } from "../turn/bus";
 import { UsageSampler } from "../usage/sampler";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
+import { agentDirFor, liveAgentDirFor } from "./agent-dirs";
 import { formatHostListeningBanner } from "./banner";
 
 /** The single local user every request resolves to. */
@@ -302,21 +303,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       onLog: opts.onRuntimeLog,
     });
 
-  // agent.id is "<Workspace>/<Agent>" — split it back into the on-disk dir.
-  const agentDir = (id: string) => join(opts.workspacesRoot, ...id.split("/"));
-  // Spawns fail closed on a stale id: after a rename (or delete) the old id
-  // maps to a directory that no longer exists, and a runtime spawned against
-  // it would recreate the tree on its first mkdir-recursive write — the
-  // HOU-827 ghost agent. Any late dispatch still holding the old id (client
-  // caches, a scheduler tick that crossed the rename) errors visibly instead.
-  const liveAgentDir = (id: string) => {
-    const dir = agentDir(id);
-    if (!existsSync(dir))
-      throw new Error(
-        `agent directory for '${id}' is gone (renamed or deleted?)`,
-      );
-    return dir;
-  };
+  // Stale-id fail-closed resolution + the setup-runtime carve-out live in
+  // agent-dirs.ts (HOU-827 / HOU-1239) so both behaviors stay unit-tested.
+  const agentDir = (id: string) => agentDirFor(opts.workspacesRoot, id);
+  const liveAgentDir = (id: string) => liveAgentDirFor(opts.workspacesRoot, id);
   const launcher = new ProcessLauncher({
     spawner,
     workspaceDirFor: (a) => liveAgentDir(a.id),
