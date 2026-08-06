@@ -3,22 +3,17 @@ import {
   Boxes,
   Brain,
   FileText,
-  LibraryBig,
   type LucideIcon,
   Sparkles,
   Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useLearnings, useSkills } from "../../../hooks/queries";
-import { useCapabilities } from "../../../hooks/use-capabilities";
-import { mergeSharedIntoAgentSkills } from "../../../lib/agent-shared-skills";
+import { useLearnings } from "../../../hooks/queries";
 import type { Agent } from "../../../lib/types";
-import { useAgentSharedSkills } from "../use-agent-shared-skills";
-import { type AgentAdminScreen, agentAdminCards } from "./agent-admin-nav.ts";
+import type { AgentAdminScreen } from "./agent-admin-nav.ts";
 
 const ICONS: Record<AgentAdminScreen, LucideIcon> = {
   instructions: FileText,
-  skills: LibraryBig,
   knowledge: Brain,
   people: Users,
   integrations: Boxes,
@@ -26,13 +21,12 @@ const ICONS: Record<AgentAdminScreen, LucideIcon> = {
 };
 
 /**
- * Title i18n key per nav item. Instructions/skills reuse the existing
- * `agents:subTabs.*` titles; the rest are `teams:agentAdmin.rows.*.title` keys
+ * Title i18n key per nav item. Instructions reuses the existing
+ * `agents:subTabs.*` title; the rest are `teams:agentAdmin.rows.*.title` keys
  * (listed explicitly so every key is type-checked and locale-validated).
  */
 const ROW_TITLES = {
   instructions: "agents:subTabs.instructions",
-  skills: "agents:subTabs.skills",
   knowledge: "agentAdmin.rows.knowledge.title",
   people: "agentAdmin.rows.people.title",
   integrations: "agentAdmin.rows.integrations.title",
@@ -40,48 +34,31 @@ const ROW_TITLES = {
 } as const satisfies Record<AgentAdminScreen, string>;
 
 /**
- * The slim settings nav rail for the manager-only Agent Settings tab: one flat
- * list of every row from the pure {@link agentAdminCards} (single-player drops
- * the access rows), in card order, with no visible group separation. Each nav
- * item surfaces its skill / note / people counts as bare-number badges, so a
+ * The slim nav rail the Context and Admin tabs share: one flat list of the
+ * rows the owning tab passes in, in order, with no visible group separation.
+ * Each nav item surfaces its note / people counts as bare-number badges, so a
  * manager reads it without opening the section. The selected item is styled
  * like the app sidebar nav (`bg-hover`, aria-current) with no hover-only
  * affordance.
  */
 export function AgentAdminSidebar({
   agent,
+  rows,
+  ariaLabel,
   selected,
   onSelect,
-  readOnly = false,
 }: {
   agent: Agent;
+  rows: AgentAdminScreen[];
+  ariaLabel: string;
   selected: AgentAdminScreen;
   onSelect: (screen: AgentAdminScreen) => void;
-  readOnly?: boolean;
 }) {
   const { t } = useTranslation(["teams", "agents"]);
-  const { capabilities } = useCapabilities();
-  const path = agent.folderPath;
-  const { data: skills } = useSkills(path);
-  const shared = useAgentSharedSkills(path);
-  const { data: learnings } = useLearnings(path);
-  // The badge counts what the Skills section shows: local skills PLUS the
-  // workspace-store skills this agent's manifest enables (ADR 0003).
-  const skillCount = mergeSharedIntoAgentSkills({
-    local: skills ?? [],
-    shared: shared.items,
-    enabled: shared.activeSlugs,
-  }).skills.length;
-  // Flatten the gated card model into one flat, in-order row list — the cards
-  // still gate which rows show (single-player drops the access rows); the rail
-  // renders them as a single sequence with no group separation.
-  const rows = agentAdminCards(capabilities, readOnly).flatMap(
-    (card) => card.rows,
-  );
+  const { data: learnings } = useLearnings(agent.folderPath);
 
-  // Skill / note / people counts render as bare-number badges.
+  // Note / people counts render as bare-number badges.
   const badgeCount = (s: AgentAdminScreen): number | undefined => {
-    if (s === "skills" && skillCount) return skillCount;
     if (s === "knowledge" && learnings?.entries.length) {
       return learnings.entries.length;
     }
@@ -93,7 +70,7 @@ export function AgentAdminSidebar({
 
   return (
     <nav
-      aria-label={t("agentAdmin.title")}
+      aria-label={ariaLabel}
       className="w-56 shrink-0 overflow-y-auto border-r border-line px-3 py-4"
     >
       <div className="space-y-0.5">

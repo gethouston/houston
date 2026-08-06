@@ -8,7 +8,6 @@ import type {
   AgentAdminScreen,
   AgentAdminScreenProps,
 } from "./agent-admin-nav.ts";
-import { AgentAdminSkills } from "./agent-admin-skills";
 
 /**
  * Renders the section selected in the settings rail into the right pane. Heavy
@@ -24,11 +23,9 @@ export function AgentAdminScreenView({
   const { data: org } = useOrg(screen === "people");
   switch (screen) {
     case "instructions":
-      return <AgentAdminInstructions agent={agent} />;
-    case "skills":
-      return <AgentAdminSkills agent={agent} />;
+      return <AgentAdminInstructions agent={agent} readOnly={readOnly} />;
     case "knowledge":
-      return <AgentAdminKnowledge agent={agent} />;
+      return <AgentAdminKnowledge agent={agent} readOnly={readOnly} />;
     case "people":
       return (
         <div className="mx-auto w-full max-w-xl px-8 py-10">

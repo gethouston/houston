@@ -17,11 +17,7 @@ const SKILL = {
 
 async function openAgentCustomTab(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-job-description"]').click();
-  await page
-    .getByLabel("Agent settings")
-    .getByRole("button", { name: "Skills" })
-    .click();
+  await page.locator('[data-tour-target="tab-skills"]').click();
   await page.getByRole("tab", { name: "Custom skills" }).click();
 }
 
