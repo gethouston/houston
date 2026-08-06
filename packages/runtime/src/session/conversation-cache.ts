@@ -20,7 +20,9 @@ import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeCustomIntegrationTools } from "./tools/custom-integrations";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
+import { makeMissionTools } from "./tools/missions";
 import { makePlanReadyTool } from "./tools/plan-ready";
+import { makeReadMissionTool } from "./tools/read-mission";
 import { makeRunCodeTool } from "./tools/run-code";
 import { makeSaveLearningTool } from "./tools/save-learning";
 import { makeSaveRoutineTool } from "./tools/save-routine";
@@ -122,11 +124,26 @@ const saveLearningTool = hostReachable
     })
   : null;
 
+// The mission-board tools (PRODUCT-1244): start_mission / list_missions /
+// update_mission_status proxy to /sandbox/missions/* with the same trust
+// posture as save_routine; read_mission reads this runtime's own transcript
+// store in-process. All four ride the host-reachability gate together.
+const missionTools = hostReachable
+  ? [
+      ...makeMissionTools({
+        baseUrl: config.controlPlaneUrl,
+        sandboxToken: config.sandboxToken,
+      }),
+      makeReadMissionTool(),
+    ]
+  : [];
+
 const toolSelection = buildToolSelection({
   codeExecution: config.codeExecution,
   integrations: integrationTools.length > 0,
   saveRoutine: hostReachable,
   saveLearning: hostReachable,
+  missions: hostReachable,
 });
 const runCodeTool = toolSelection.includeRunCode
   ? makeRunCodeTool({
@@ -160,6 +177,7 @@ const piBackend = createPiBackend({
     ...(runCodeTool ? [runCodeTool] : []),
     ...(saveRoutineTool ? [saveRoutineTool] : []),
     ...(saveLearningTool ? [saveLearningTool] : []),
+    ...missionTools,
     ...integrationTools,
     ...customIntegrationTools,
   ],

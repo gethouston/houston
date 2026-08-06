@@ -83,6 +83,7 @@ export function useAgentBoardData({
         agentName: agent.name,
         agentModes,
         routineLabel: t("board:tags.routine"),
+        agentStartedLabel: t("board:tags.agentStarted"),
       }),
     [agent.name, agentModes, rawItems, t],
   );

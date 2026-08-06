@@ -759,6 +759,9 @@ export interface Activity {
   updated_at?: string;
   provider?: string;
   model?: string;
+  /** The conversation this mission was started from, present only when the
+   *  agent created the mission itself (PRODUCT-1244). Server-stamped. */
+  origin_session_key?: string;
   pending_interaction?: PendingInteraction;
   /** The human who created this mission (Teams attribution). Server-stamped
    *  from the gateway acting-as identity; absent on desktop/single-player. */
@@ -1013,6 +1016,9 @@ export interface ConversationEntry {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The conversation this mission was started from, present only when the
+   *  agent created the mission itself (PRODUCT-1244). Server-stamped. */
+  origin_session_key?: string;
   /** The human who created this mission (Teams attribution). Server-stamped
    *  from the gateway acting-as identity; absent on desktop/single-player. */
   created_by?: string;

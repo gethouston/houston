@@ -16,6 +16,7 @@ export function buildAgentBoardItems({
   agentName,
   agentModes,
   routineLabel,
+  agentStartedLabel,
 }: {
   activities: Activity[];
   /** Shown as the card's group line — one agent's board, so it's constant. */
@@ -23,6 +24,8 @@ export function buildAgentBoardItems({
   agentModes?: Pick<AgentMode, "id" | "name">[];
   /** Translated tag for a mission a routine started. */
   routineLabel: string;
+  /** Translated tag for a mission the agent started itself (PRODUCT-1244). */
+  agentStartedLabel: string;
 }): KanbanItem[] {
   return selectActive(activities).map((activity) => ({
     id: activity.id,
@@ -38,6 +41,8 @@ export function buildAgentBoardItems({
       agentModes,
       routineId: activity.routine_id,
       routineLabel,
+      originSessionKey: activity.origin_session_key,
+      agentStartedLabel,
     }),
     metadata: {
       ...(activity.session_key ? { sessionKey: activity.session_key } : {}),

@@ -12,6 +12,7 @@
  * agent knows how to create Skills/Routines/learnings out of the box.
  */
 
+import { missionsGuidance } from "./houston-prompt-missions";
 import { routinesGuidance } from "./houston-prompt-routines";
 
 const BASE = `You are an AI assistant running inside Houston, a desktop app for non-technical users.
@@ -205,5 +206,5 @@ Talk about the outcome, not the machinery: say "I connected Acme for you", never
  */
 export function houstonSystemPrompt(opts?: { triggers?: boolean }): string {
   const routines = routinesGuidance(opts?.triggers === true);
-  return `${BASE}\n\n---\n\n${SKILLS_AND_MEMORY}\n\n---\n\n${routines}\n\n---\n\n${INTEGRATIONS}`;
+  return `${BASE}\n\n---\n\n${SKILLS_AND_MEMORY}\n\n---\n\n${routines}\n\n---\n\n${missionsGuidance}\n\n---\n\n${INTEGRATIONS}`;
 }

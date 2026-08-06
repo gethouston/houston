@@ -176,6 +176,8 @@ export function useMissionControl(agents: Agent[]) {
             agentModes,
             routineId: c.routine_id,
             routineLabel: t("board:tags.routine"),
+            originSessionKey: c.origin_session_key,
+            agentStartedLabel: t("board:tags.agentStarted"),
           }),
           metadata: {
             agentPath: c.agent_path,

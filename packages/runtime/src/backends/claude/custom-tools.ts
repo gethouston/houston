@@ -17,7 +17,9 @@ import {
   type IntegrationToolOptions,
   makeIntegrationTools,
 } from "../../session/tools/integrations";
+import { makeMissionTools } from "../../session/tools/missions";
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
+import { makeReadMissionTool } from "../../session/tools/read-mission";
 import { makeSaveLearningTool } from "../../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../../session/tools/save-routine";
 import { makeSuggestActionsTool } from "../../session/tools/suggest-actions";
@@ -149,6 +151,12 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
     // save_learning reaches the host with the SAME sandbox token, and has the
     // same reach as save_routine: execute/auto, never plan.
     ...(input.integrations ? [makeSaveLearningTool(input.integrations)] : []),
+    // The mission-board tools (PRODUCT-1244) ride the same host-reachability
+    // gate and the same execute/auto reach; read_mission is in-process but is
+    // useless without list_missions, so it shares the gate.
+    ...(input.integrations
+      ? [...makeMissionTools(input.integrations), makeReadMissionTool()]
+      : []),
     ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
     ...(input.integrations
       ? makeCustomIntegrationTools(input.integrations)

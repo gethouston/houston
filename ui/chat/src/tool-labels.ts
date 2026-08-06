@@ -47,6 +47,10 @@ const ACTIVE_LABELS: Record<string, string> = {
   custom_integration_detect: "Inspecting a custom app",
   custom_integration_add: "Adding a custom app",
   plan_ready: "Sharing the plan",
+  start_mission: "Starting a mission",
+  list_missions: "Checking the board",
+  read_mission: "Reviewing a mission",
+  update_mission_status: "Updating the board",
 };
 
 const DONE_LABELS: Record<string, string> = {
@@ -79,6 +83,10 @@ const DONE_LABELS: Record<string, string> = {
   custom_integration_detect: "Inspected a custom app",
   custom_integration_add: "Added a custom app",
   plan_ready: "Shared the plan",
+  start_mission: "Started a mission",
+  list_missions: "Checked the board",
+  read_mission: "Reviewed a mission",
+  update_mission_status: "Updated the board",
 };
 
 /** The bare tool name with any MCP `server__tool` prefix stripped. */

@@ -63,6 +63,10 @@ export async function handleActivitiesData(
       json(res, 400, { error: "invalid 'id'" });
       return;
     }
+    // `origin_session_key` marks a mission the AGENT started for itself and is
+    // stamped only by the missions sandbox route — never trusted from a client
+    // create, or any client could dress a mission up as agent-started.
+    delete body.origin_session_key;
     const activity = createActivity(
       body as unknown as NewActivity,
       (body.id as string | undefined) ?? crypto.randomUUID(),

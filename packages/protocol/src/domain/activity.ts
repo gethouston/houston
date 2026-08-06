@@ -53,6 +53,14 @@ export interface Activity {
   /** The one thing this mission is waiting on the user for, if any. Present
    *  drives the `needs_you` card; absent means the mission needs nothing. */
   pending_interaction?: PendingInteraction;
+  /**
+   * The conversation this mission was started FROM, present only when the
+   * agent itself created the mission with the `start_mission` tool
+   * (PRODUCT-1244). Server-stamped by the missions sandbox route; presence is
+   * what marks a mission as agent-started (the board's "Started by agent"
+   * tag), and the value links back to the parent chat.
+   */
+  origin_session_key?: string;
   /** The human who created this mission (Teams attribution). Server-stamped. */
   created_by?: string;
   /** Humans who started or collaborated on this mission (Teams attribution).
@@ -116,6 +124,12 @@ export interface NewActivity {
   worktree_path?: string;
   provider?: string;
   model?: string;
+  /**
+   * The parent conversation, set ONLY by the host's missions sandbox route
+   * when the agent starts a mission for itself (`start_mission`). Client
+   * creates never send it.
+   */
+  origin_session_key?: string;
 }
 
 export interface Learning {

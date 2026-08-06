@@ -3,7 +3,13 @@ import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { CUSTOM_INTEGRATION_TOOL_NAMES } from "./tools/custom-integrations";
 import { INTEGRATION_TOOL_NAMES } from "./tools/integrations";
+import {
+  LIST_MISSIONS_TOOL_NAME,
+  START_MISSION_TOOL_NAME,
+  UPDATE_MISSION_STATUS_TOOL_NAME,
+} from "./tools/missions";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
+import { READ_MISSION_TOOL_NAME } from "./tools/read-mission";
 import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SAVE_ROUTINE_TOOL_NAME } from "./tools/save-routine";
 import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
@@ -31,6 +37,15 @@ export interface ToolSelectionInput {
    * off and the agent falls back to the raw file, which records neither.
    */
   saveLearning?: boolean;
+  /**
+   * Whether this runtime can reach its host with a sandbox token — the SAME
+   * reachability the other host-proxying tools need. Adds the mission-board
+   * tools (PRODUCT-1244): `start_mission`, `list_missions`, `read_mission`,
+   * `update_mission_status` — how the agent starts new missions for itself and
+   * reviews them. `read_mission` is in-process but rides the same gate: reading
+   * missions without being able to list them is useless.
+   */
+  missions?: boolean;
 }
 
 export interface ToolSelection {
@@ -160,6 +175,19 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // PLAN_MODE_TOOL_NAMES omits it so planToolNames filters it out, and it
       // isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps it.
       ...(input.saveLearning ? [SAVE_LEARNING_TOOL_NAME] : []),
+      // The mission-board tools share save_routine's reach: execute AND auto
+      // (an orchestrating turn is usually execute; an autopilot run may still
+      // check or start missions), never plan — PLAN_MODE_TOOL_NAMES omits them
+      // so planToolNames filters them out, and none are in
+      // AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
+      ...(input.missions
+        ? [
+            START_MISSION_TOOL_NAME,
+            LIST_MISSIONS_TOOL_NAME,
+            READ_MISSION_TOOL_NAME,
+            UPDATE_MISSION_STATUS_TOOL_NAME,
+          ]
+        : []),
       ...executable,
       ...(input.integrations
         ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]

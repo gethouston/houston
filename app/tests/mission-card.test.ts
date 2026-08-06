@@ -39,4 +39,39 @@ describe("missionCardTags", () => {
       undefined,
     );
   });
+
+  it("tags an agent-started mission (PRODUCT-1244)", () => {
+    deepStrictEqual(
+      missionCardTags({
+        agentModes: modes,
+        routineLabel: "Routine",
+        originSessionKey: "conv-parent",
+        agentStartedLabel: "Started by agent",
+      }),
+      ["Started by agent"],
+    );
+  });
+
+  it("mode and routine tags outrank the agent-started tag", () => {
+    deepStrictEqual(
+      missionCardTags({
+        agent: "research",
+        agentModes: modes,
+        routineLabel: "Routine",
+        originSessionKey: "conv-parent",
+        agentStartedLabel: "Started by agent",
+      }),
+      ["Research"],
+    );
+    deepStrictEqual(
+      missionCardTags({
+        routineId: "routine-id",
+        agentModes: modes,
+        routineLabel: "Routine",
+        originSessionKey: "conv-parent",
+        agentStartedLabel: "Started by agent",
+      }),
+      ["Routine"],
+    );
+  });
 });

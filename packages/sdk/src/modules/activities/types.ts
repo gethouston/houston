@@ -46,6 +46,9 @@ export interface ActivityItem {
   sessionKey: string;
   /** Present when this activity is a routine's chat. */
   routineId?: string;
+  /** The parent conversation, present only when the agent started this
+   *  mission itself (PRODUCT-1244). Additive VM field. */
+  originSessionKey?: string;
   /** The agent-mode/config the mission runs under, when set. */
   agent?: string;
   worktreePath?: string | null;
@@ -186,6 +189,9 @@ export function toActivityItem(a: Activity): ActivityItem {
     ...(a.description ? { description: a.description } : {}),
     ...(a.updated_at !== undefined ? { updatedAt: a.updated_at } : {}),
     ...(a.routine_id !== undefined ? { routineId: a.routine_id } : {}),
+    ...(a.origin_session_key !== undefined
+      ? { originSessionKey: a.origin_session_key }
+      : {}),
     ...(a.agent !== undefined ? { agent: a.agent } : {}),
     ...(a.worktree_path !== undefined ? { worktreePath: a.worktree_path } : {}),
     ...(a.provider !== undefined ? { provider: a.provider } : {}),

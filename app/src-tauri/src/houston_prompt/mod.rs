@@ -7,12 +7,14 @@
 
 mod base;
 mod integrations;
+mod missions;
 mod onboarding;
 mod routines;
 mod skills_memory;
 
 pub use base::HOUSTON_SYSTEM_PROMPT;
 pub use integrations::PI_INTEGRATIONS_GUIDANCE;
+pub use missions::MISSIONS_GUIDANCE;
 pub use onboarding::ONBOARDING_GUIDANCE;
 pub use routines::ROUTINES_GUIDANCE;
 pub use skills_memory::SELF_IMPROVEMENT_GUIDANCE;
@@ -23,7 +25,7 @@ pub use skills_memory::SELF_IMPROVEMENT_GUIDANCE;
 /// card (HOU-670).
 pub fn system_prompt_pi() -> String {
     format!(
-        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}{PI_INTEGRATIONS_GUIDANCE}"
+        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}\n\n---\n\n{MISSIONS_GUIDANCE}{PI_INTEGRATIONS_GUIDANCE}"
     )
 }
 
