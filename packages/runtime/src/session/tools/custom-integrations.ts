@@ -52,10 +52,13 @@ const AddParams = Type.Object({
   endpoint: Type.Optional(
     Type.String({ description: "For kind 'mcp': the MCP server URL." }),
   ),
-  auth: Type.Union([Type.Literal("none"), Type.Literal("credential")], {
-    description:
-      "'credential' when the service needs an API key/token (then call request_credential next); 'none' when it is public or the user said no key is needed.",
-  }),
+  auth: Type.Union(
+    [Type.Literal("none"), Type.Literal("credential"), Type.Literal("oauth")],
+    {
+      description:
+        "'credential' when the service needs an API key/token (then call request_credential next); 'oauth' (MCP only) when custom_integration_detect reported the server signs in with its own account flow AND said sign-in is supported; 'none' when it is public or the user said no key is needed.",
+    },
+  ),
   replace: Type.Optional(
     Type.Boolean({
       description:
@@ -75,12 +78,17 @@ interface DetectResponse {
   name?: string;
   suggestedSlug?: string;
   requiresAuthentication?: boolean;
+  requiresOAuth?: boolean;
+  /** Present with `requiresOAuth`: whether THIS deployment can run the
+   *  browser sign-in (PRODUCT-1172). */
+  oauthSupported?: boolean;
   toolCount?: number;
 }
 
 interface AddResponse {
   slug: string;
   name: string;
+  auth?: "none" | "credential" | "oauth";
   state:
     | { status: "active"; toolCount: number }
     | { status: "pending" }
@@ -140,9 +148,13 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
               `Detected: ${r.kind === "openapi" ? "an OpenAPI-described HTTP API" : "an MCP server"}.`,
               r.name ? `Name: ${r.name}.` : "",
               r.toolCount != null ? `It exposes ${r.toolCount} tools.` : "",
-              r.requiresAuthentication
-                ? "It requires authentication - after adding it, call request_credential so the user can enter their key securely."
-                : "",
+              r.requiresOAuth
+                ? r.oauthSupported
+                  ? "It signs in with its own account flow (OAuth): add it with auth 'oauth', then tell the user to press Sign in on the integration's card in the Integrations page. NEVER collect an API key for it - a key cannot satisfy its sign-in."
+                  : "It only signs in with its own account flow, which Houston cannot connect to on this install yet: say so honestly, never collect an API key for it, and check whether the service also offers a plain API-key or documented REST API to connect instead."
+                : r.requiresAuthentication
+                  ? "It requires authentication - after adding it, call request_credential so the user can enter their key securely."
+                  : "",
               `Next: call custom_integration_add with kind '${r.kind}'.`,
             ]
               .filter(Boolean)
@@ -187,7 +199,9 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
         r.state.status === "active"
           ? `Added '${r.name}' (slug: ${r.slug}) with ${r.state.toolCount} available actions. Its actions now appear in integration_search results.`
           : r.state.status === "pending"
-            ? `Added '${r.name}' (slug: ${r.slug}). It is waiting for the user's API key: call request_credential with toolkit '${r.slug}' now so Houston shows a secure entry card - NEVER ask the user to paste a key into the chat.`
+            ? r.auth === "oauth"
+              ? `Added '${r.name}' (slug: ${r.slug}). It is waiting for the user to sign in: tell them to open the Integrations page and press Sign in on '${r.name}' - their browser opens the service's own sign-in. NEVER ask for an API key for it.`
+              : `Added '${r.name}' (slug: ${r.slug}). It is waiting for the user's API key: call request_credential with toolkit '${r.slug}' now so Houston shows a secure entry card - NEVER ask the user to paste a key into the chat.`
             : `Adding '${r.name}' failed: ${r.state.message}`;
       return {
         content: [{ type: "text" as const, text }],

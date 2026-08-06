@@ -6,7 +6,7 @@ import {
   StatusBadge,
 } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
-import { KeyRound } from "lucide-react";
+import { KeyRound, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./app-logo";
 import {
@@ -56,22 +56,31 @@ export function CustomDetailDialog({
   integration,
   onClose,
   onEnterKey,
+  onSignIn,
   onRemove,
 }: {
   integration: CustomIntegrationView | null;
   onClose: () => void;
   onEnterKey: (integration: CustomIntegrationView) => void;
+  /** OAuth integration (PRODUCT-1172): open the browser sign-in — the
+   *  pending CTA, and the re-auth affordance once active. */
+  onSignIn: (integration: CustomIntegrationView) => void;
   onRemove: (integration: CustomIntegrationView) => void;
 }) {
   const { t, i18n } = useTranslation("integrations");
   if (!integration) return null;
 
   const state = integration.state;
+  const oauth = integration.auth === "oauth";
   const body =
     state.status === "active"
       ? t("custom.details.activeBody")
       : state.status === "pending"
-        ? t("custom.details.pendingBody")
+        ? t(
+            oauth
+              ? "custom.details.pendingSignInBody"
+              : "custom.details.pendingBody",
+          )
         : t("custom.details.errorBody", { message: state.message });
   const canTakeKey = customAuthMethod(integration) !== null;
 
@@ -87,7 +96,7 @@ export function CustomDetailDialog({
             toolkit: integration.slug,
             name: integration.name,
             description: "",
-            logoUrl: "",
+            logoUrl: integration.iconUrl ?? "",
           }}
           size="xl"
           className="rounded-xl"
@@ -103,7 +112,11 @@ export function CustomDetailDialog({
             status={state.status}
             label={
               state.status === "pending"
-                ? t("custom.status.pendingKey")
+                ? t(
+                    oauth
+                      ? "custom.status.pendingSignIn"
+                      : "custom.status.pendingKey",
+                  )
                 : t(`status.${state.status}`)
             }
           />
@@ -120,18 +133,32 @@ export function CustomDetailDialog({
           >
             {t("custom.delete.confirm")}
           </Button>
-          {canTakeKey && (
+          {oauth ? (
             <Button
               type="button"
               variant={state.status === "pending" ? "default" : "outline"}
-              onClick={() => onEnterKey(integration)}
+              onClick={() => onSignIn(integration)}
               className="gap-1.5"
             >
-              <KeyRound className="size-4" />
+              <LogIn className="size-4" />
               {state.status === "pending"
-                ? t("custom.enterKey")
-                : t("custom.details.updateKey")}
+                ? t("custom.signIn")
+                : t("custom.signInAgain")}
             </Button>
+          ) : (
+            canTakeKey && (
+              <Button
+                type="button"
+                variant={state.status === "pending" ? "default" : "outline"}
+                onClick={() => onEnterKey(integration)}
+                className="gap-1.5"
+              >
+                <KeyRound className="size-4" />
+                {state.status === "pending"
+                  ? t("custom.enterKey")
+                  : t("custom.details.updateKey")}
+              </Button>
+            )
           )}
         </div>
       }

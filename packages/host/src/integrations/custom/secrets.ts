@@ -10,6 +10,7 @@ import {
 import { dirname } from "node:path";
 import type { CredentialProvider } from "@executor-js/sdk/core";
 import { Effect } from "effect";
+import { parseBundle, resolveOAuthValue } from "./oauth-bundle";
 
 /**
  * Secret storage for custom-integration credentials (API keys, MCP tokens).
@@ -232,15 +233,27 @@ export const HOUSTON_PROVIDER_KEY = "houston";
  * connections reference secrets by id (`from: {provider:"houston", id}`) and
  * the executor resolves values lazily at request time — it never copies them
  * into its own state.
+ *
+ * OAuth-aware (PRODUCT-1172): a stored value that parses as a token bundle
+ * resolves to its CURRENT access token (refreshing + persisting first when it
+ * is about to expire), so the executor renders `Authorization: Bearer` with a
+ * live token on every request and rotation never needs a rewire. Plain API
+ * keys pass through untouched.
  */
 export function houstonCredentialProvider(
   store: CustomSecretStore,
 ): CredentialProvider {
+  const resolve = async (id: string): Promise<string | null> => {
+    const raw = await store.get(id);
+    if (raw === null) return null;
+    const bundle = parseBundle(raw);
+    return bundle ? resolveOAuthValue(store, id, raw, bundle) : raw;
+  };
   return {
     // The key is a branded string on the executor side; ours is a constant.
     key: HOUSTON_PROVIDER_KEY as CredentialProvider["key"],
     writable: true as const,
-    get: (id: string) => Effect.promise(() => store.get(id)),
+    get: (id: string) => Effect.promise(() => resolve(id)),
     has: (id: string) =>
       Effect.promise(async () => (await store.get(id)) !== null),
     set: (id: string, value: string) =>

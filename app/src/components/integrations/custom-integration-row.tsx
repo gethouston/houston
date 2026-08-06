@@ -1,6 +1,6 @@
 import { Button } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
-import { KeyRound, Trash2 } from "lucide-react";
+import { KeyRound, LogIn, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./app-logo";
 import { customKindBadgeKey } from "./custom-integrations-model";
@@ -10,6 +10,8 @@ interface CustomIntegrationRowProps {
   /** Row-body click: open the integration's detail card (HOU-980). */
   onOpen: (integration: CustomIntegrationView) => void;
   onEnterKey: (integration: CustomIntegrationView) => void;
+  /** Pending OAuth integration (PRODUCT-1172): open the browser sign-in. */
+  onSignIn: (integration: CustomIntegrationView) => void;
   onRemove: (integration: CustomIntegrationView) => void;
 }
 
@@ -31,7 +33,11 @@ function StatusLine({ integration }: { integration: CustomIntegrationView }) {
   if (state.status === "pending")
     return (
       <span className="block text-[11px] text-ink-muted">
-        {t("custom.status.pendingKey")}
+        {t(
+          integration.auth === "oauth"
+            ? "custom.status.pendingSignIn"
+            : "custom.status.pendingKey",
+        )}
       </span>
     );
   return (
@@ -59,10 +65,12 @@ export function CustomIntegrationRow({
   integration,
   onOpen,
   onEnterKey,
+  onSignIn,
   onRemove,
 }: CustomIntegrationRowProps) {
   const { t } = useTranslation("integrations");
   const pending = integration.state.status === "pending";
+  const oauth = integration.auth === "oauth";
 
   return (
     <div className="flex items-center gap-1.5 rounded-2xl px-3 py-3 transition-colors hover:bg-hover">
@@ -76,7 +84,7 @@ export function CustomIntegrationRow({
             toolkit: integration.slug,
             name: integration.name,
             description: "",
-            logoUrl: "",
+            logoUrl: integration.iconUrl ?? "",
           }}
           size="lg"
         />
@@ -97,10 +105,16 @@ export function CustomIntegrationRow({
             size="sm"
             variant="outline"
             className="gap-1.5"
-            onClick={() => onEnterKey(integration)}
+            onClick={() =>
+              oauth ? onSignIn(integration) : onEnterKey(integration)
+            }
           >
-            <KeyRound className="size-3.5" />
-            {t("custom.enterKey")}
+            {oauth ? (
+              <LogIn className="size-3.5" />
+            ) : (
+              <KeyRound className="size-3.5" />
+            )}
+            {t(oauth ? "custom.signIn" : "custom.enterKey")}
           </Button>
         )}
         <Button

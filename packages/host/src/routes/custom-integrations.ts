@@ -56,10 +56,11 @@ export type CustomTarget =
   | { kind: "definitions" }
   | { kind: "definition"; slug: string }
   | { kind: "credential"; slug: string }
-  | { kind: "tools"; slug: string };
+  | { kind: "tools"; slug: string }
+  | { kind: "oauthStart"; slug: string };
 
 const TARGET =
-  /^(?:detect|definitions(?:\/([^/]+)(?:\/(credential|tools))?)?)$/;
+  /^(?:detect|definitions(?:\/([^/]+)(?:\/(credential|tools|oauth\/start))?)?)$/;
 
 export function customTargetOf(rest: string): CustomTarget | null {
   const m = rest.match(TARGET);
@@ -76,6 +77,7 @@ export function customTargetOf(rest: string): CustomTarget | null {
   }
   if (m[2] === "credential") return { kind: "credential", slug };
   if (m[2] === "tools") return { kind: "tools", slug };
+  if (m[2] === "oauth/start") return { kind: "oauthStart", slug };
   return { kind: "definition", slug };
 }
 
@@ -91,8 +93,15 @@ export function parseAddInput(
 ): AddCustomIntegrationInput | string {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return "missing 'name'";
+  if (body.auth === "oauth" && body.kind !== "mcp") {
+    return "auth 'oauth' is only supported for MCP servers";
+  }
   const auth =
-    body.auth === "credential" ? ("credential" as const) : ("none" as const);
+    body.auth === "credential"
+      ? ("credential" as const)
+      : body.auth === "oauth"
+        ? ("oauth" as const)
+        : ("none" as const);
   const slug = typeof body.slug === "string" ? body.slug : undefined;
   if (body.kind === "openapi") {
     const url = typeof body.url === "string" ? body.url.trim() : "";

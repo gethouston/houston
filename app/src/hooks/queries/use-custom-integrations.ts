@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
 import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
-import { tauriIntegrations } from "../../lib/tauri";
+import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { useCapabilities } from "../use-capabilities";
 
@@ -115,6 +115,30 @@ export function useSubmitCustomCredential(agentId?: string) {
         ? tauriIntegrations.customCredentialForAgent(agentId, slug, values)
         : tauriIntegrations.customCredential(slug, values),
     onSuccess: () => invalidateCustom(qc),
+  });
+}
+
+/**
+ * Start the browser sign-in for an OAuth custom integration (PRODUCT-1172):
+ * mint the authorize URL and open it. The outcome lands on the host's
+ * callback and arrives here as a `CustomIntegrationsChanged` event, which
+ * flips the row to active — no client-side poll. Failures toast via the
+ * `call()` wrapper.
+ */
+export function useStartCustomOAuth(agentId?: string) {
+  return useMutation({
+    mutationFn: async (slug: string) => {
+      const { authorizeUrl } = await tauriIntegrations.customOAuthStart(
+        slug,
+        agentId,
+      );
+      await tauriSystem.openUrl(authorizeUrl);
+    },
+    onSuccess: (_data, slug) => {
+      analytics.track("custom_integration_oauth_started", {
+        integration_slug: slug,
+      });
+    },
   });
 }
 

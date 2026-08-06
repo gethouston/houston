@@ -40,6 +40,7 @@ const VIEW: CustomIntegrationView = {
   slug: "acme",
   name: "Acme",
   kind: "openapi",
+  auth: "none",
   addedAtMs: 1,
   state: { status: "active", toolCount: 1 },
 };

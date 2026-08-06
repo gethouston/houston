@@ -89,6 +89,14 @@ describe("detectSummaryKey", () => {
       "custom.add.detected.mcpOauth",
     );
     strictEqual(
+      detectSummaryKey({
+        kind: "mcp",
+        requiresOAuth: true,
+        oauthSupported: true,
+      }),
+      "custom.add.detected.mcpOauthOk",
+    );
+    strictEqual(
       detectSummaryKey({ kind: "unknown" }),
       "custom.add.detected.unknown",
     );
@@ -135,6 +143,34 @@ describe("addInputFrom", () => {
       },
     );
   });
+
+  it("a supported OAuth verdict upgrades an mcp add to auth oauth", () => {
+    deepStrictEqual(
+      addInputFrom(
+        form({ kind: "mcp", name: "Acme MCP", url: "https://mcp.acme.com" }),
+        { kind: "mcp", requiresOAuth: true, oauthSupported: true },
+      ),
+      {
+        kind: "mcp",
+        name: "Acme MCP",
+        endpoint: "https://mcp.acme.com",
+        auth: "oauth",
+      },
+    );
+    // Unsupported (or unchecked) stays on the key/none path.
+    deepStrictEqual(
+      addInputFrom(
+        form({ kind: "mcp", name: "Acme MCP", url: "https://mcp.acme.com" }),
+        { kind: "mcp", requiresOAuth: true },
+      ),
+      {
+        kind: "mcp",
+        name: "Acme MCP",
+        endpoint: "https://mcp.acme.com",
+        auth: "none",
+      },
+    );
+  });
 });
 
 describe("oauthBlocked", () => {
@@ -155,6 +191,16 @@ describe("oauthBlocked", () => {
       false,
     );
     strictEqual(oauthBlocked(form({ kind: "mcp" }), null), false);
+    // A deployment that CAN run the sign-in does not block (PRODUCT-1172).
+    strictEqual(
+      oauthBlocked(form({ kind: "mcp" }), {
+        kind: "mcp",
+        requiresAuthentication: true,
+        requiresOAuth: true,
+        oauthSupported: true,
+      }),
+      false,
+    );
     strictEqual(
       oauthBlocked(form({ kind: "openapi" }), {
         kind: "mcp",

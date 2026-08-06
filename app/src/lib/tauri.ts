@@ -1988,6 +1988,14 @@ export const tauriIntegrations = {
         ? getEngine().addAgentCustomIntegration(agentId, input)
         : getEngine().addCustomIntegration(input),
     ),
+  // OAuth sign-in start (PRODUCT-1172): mint the authorize URL for a custom
+  // MCP integration's browser sign-in. Same transport-agent rule as add.
+  customOAuthStart: (slug: string, agentId?: string) =>
+    call("custom_integration_oauth_start", () =>
+      agentId
+        ? getEngine().startAgentCustomIntegrationOAuth(agentId, slug)
+        : getEngine().startCustomIntegrationOAuth(slug),
+    ),
 };
 
 /**

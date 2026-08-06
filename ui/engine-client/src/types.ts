@@ -93,6 +93,13 @@ export interface Capabilities {
   /** Workspace-shared skills store served by this deployment (ADR 0003). */
   sharedSkills: boolean;
   /**
+   * Whether a custom integration can sign in through its own OAuth flow
+   * (PRODUCT-1172): the host serves a browser-reachable callback. Absent/false
+   * = the UI keeps the honest "can't connect yet" verdict instead of offering
+   * a sign-in that can only fail.
+   */
+  customIntegrationOAuth?: boolean;
+  /**
    * Whether this deployment runs in multiplayer (paid org) mode: members,
    * roles, per-agent assignment. Absent/false = single personal workspace.
    * Optional so every existing single-player host/profile stays valid.
@@ -2076,9 +2083,13 @@ export interface CustomDetectResult {
   suggestedSlug?: string;
   /** MCP probe: does the server demand auth before listing tools? */
   requiresAuthentication?: boolean;
-  /** MCP probe: the auth is the server's OWN sign-in flow (OAuth), which the
-   *  custom provider cannot drive — a pasted API key will never work. */
+  /** MCP probe: the auth is the server's OWN sign-in flow (OAuth) — a pasted
+   *  API key will never work; the browser sign-in is the path (when
+   *  `oauthSupported`). */
   requiresOAuth?: boolean;
+  /** Present with `requiresOAuth`: whether THIS deployment can run the
+   *  browser sign-in (PRODUCT-1172). */
+  oauthSupported?: boolean;
   toolCount?: number;
 }
 
@@ -2101,7 +2112,9 @@ export type AddCustomIntegrationInput =
       kind: "mcp";
       name: string;
       endpoint: string;
-      auth: "none" | "credential";
+      /** `oauth` (PRODUCT-1172): the server signs in with its own browser
+       *  flow — the add lands `pending` until the user presses Sign in. */
+      auth: "none" | "credential" | "oauth";
       slug?: string;
     };
 
@@ -2110,8 +2123,15 @@ export interface CustomIntegrationView {
   slug: string;
   name: string;
   kind: "openapi" | "mcp";
+  /** How this integration authenticates — `oauth` turns the pending state's
+   *  affordance into Sign in (browser flow) instead of Enter key. Optional:
+   *  an older host omits it (treat as key-based). */
+  auth?: "none" | "credential" | "oauth";
   /** The service URL shown to the user (spec url / MCP endpoint). */
   displayUrl?: string;
+  /** Favicon of the service the definition talks to; absent when none can
+   *  exist (IP/localhost endpoints, unparseable blob specs). */
+  iconUrl?: string;
   addedAtMs: number;
   state: CustomIntegrationState;
   /** Present when a credential can be (re)provided — the fields to collect. */

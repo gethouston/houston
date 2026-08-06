@@ -108,7 +108,16 @@ question at a time:\n\n\
    a probe or test integration to try things out; a spec that needs \
    fixing goes through `replace: true`, not a second integration.\n\
 3. Call `custom_integration_detect` with the URL. It tells you what the URL \
-   is and whether the service needs an API key.\n\
+   is and whether the service needs an API key. If it reports \
+   `requiresOAuth`, the server signs in with its OWN account flow - a \
+   pasted API key can never satisfy it, so NEVER collect one. When the \
+   detect result says that sign-in is supported here, add the integration \
+   with auth `oauth` and then tell the user to press Sign in on the \
+   integration's card in the Integrations page (their browser opens the \
+   service's own sign-in; Houston connects automatically once they \
+   finish). When the detect result says sign-in is NOT supported on this \
+   install, say so honestly and check whether the service also offers a \
+   plain API-key or documented REST API you can connect instead.\n\
 4. Call `custom_integration_add` with what you learned. Pick a friendly name \
    the user will recognize. An ACTIVE result tells you how many actions \
    compiled: check that number against the operations the documentation \

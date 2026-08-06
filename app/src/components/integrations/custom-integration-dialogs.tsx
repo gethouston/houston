@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   useCustomIntegrationsFor,
   useRemoveCustomIntegration,
+  useStartCustomOAuth,
 } from "../../hooks/queries";
 import { CustomDeleteDialog } from "./custom-delete-dialog";
 import { CustomDetailDialog } from "./custom-detail-dialog";
@@ -65,6 +66,7 @@ export function CustomIntegrationDialogs({
 }) {
   const list = useCustomIntegrationsFor(agentId);
   const remove = useRemoveCustomIntegration(agentId);
+  const signIn = useStartCustomOAuth(agentId);
   const items = useMemo(() => list.data ?? [], [list.data]);
   const bySlug = (slug: string | null) =>
     slug === null ? null : (items.find((i) => i.slug === slug) ?? null);
@@ -90,6 +92,11 @@ export function CustomIntegrationDialogs({
         onEnterKey={(integration) => {
           selection.closeDetail();
           selection.openKey(integration.slug);
+        }}
+        onSignIn={(integration) => {
+          // The browser carries the rest of the flow; the card stays open
+          // and flips to active on the CustomIntegrationsChanged event.
+          signIn.mutate(integration.slug);
         }}
         onRemove={(integration) => {
           selection.closeDetail();

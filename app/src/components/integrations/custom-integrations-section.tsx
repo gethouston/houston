@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   useCustomIntegrationsFor,
   useCustomTransportAgentId,
+  useStartCustomOAuth,
 } from "../../hooks/queries";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -71,6 +72,7 @@ export function CustomIntegrationsSection({
     : viewMode === INTEGRATIONS_VIEW_ID;
   const chatSetup = useIntegrationChatSetup();
   const selection = useCustomSelection();
+  const signIn = useStartCustomOAuth(transportAgentId);
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -134,6 +136,7 @@ export function CustomIntegrationsSection({
           integration={integration}
           onOpen={(i) => selection.openDetail(i.slug)}
           onEnterKey={(i) => selection.openKey(i.slug)}
+          onSignIn={(i) => signIn.mutate(i.slug)}
           onRemove={(i) => selection.openRemove(i.slug)}
         />
       ))}
