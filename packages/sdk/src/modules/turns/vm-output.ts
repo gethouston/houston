@@ -61,6 +61,8 @@ interface HistoryFrame {
   ts?: number;
   author?: FeedAuthor;
   mentions?: FeedMention[];
+  turnId?: string;
+  toolIndex?: number;
 }
 
 /** A single reactive feed entry: a stable id plus the machinery's push payload. */
@@ -117,6 +119,23 @@ export interface FeedItemVM {
    * data); a surface that does not render it simply ignores it.
    */
   failed?: boolean;
+  /**
+   * The turn this entry belongs to — the dedup identity (HOU-1214). Carried
+   * from the history fold's `FeedFrame.turnId` on seeded entries and from the
+   * turn state on live pushes, so a re-delivered copy of a turn's content (a
+   * running-sync replay over a seeded feed, a settle re-push after a resync)
+   * UPDATES the entry already on screen instead of appending a duplicate.
+   * Optional/additive: absent on pre-turn-id transcripts and optimistic sends;
+   * entries without it keep the append-only fold.
+   */
+  turnId?: string;
+  /**
+   * This entry's index among its turn's `tool_call`s / `tool_result`s — with
+   * {@link turnId}, the identity that pairs a replayed tool row with the entry
+   * it duplicates (tool rows are many-per-turn). Optional/additive, tool rows
+   * only.
+   */
+  toolIndex?: number;
 }
 
 /** A message queued while a turn runs — rendered in the composer, removable. */
@@ -186,6 +205,40 @@ const FINAL_OF: Record<string, string> = {
   assistant_text: "assistant_text_streaming",
   thinking: "thinking_streaming",
 };
+
+/** Streaming feed_type -> the final feed_type that closes it (FINAL_OF inverted). */
+const STREAMED_AS: Record<string, string> = {
+  assistant_text_streaming: "assistant_text",
+  thinking_streaming: "thinking",
+};
+
+/**
+ * Feed types a turn produces exactly ONCE, deduped by `turnId` alone
+ * (HOU-1214). Tool rows are many-per-turn and dedupe by (turnId, toolIndex)
+ * instead. `system_message` is deliberately NOT here — a turn can legitimately
+ * carry several (a stop line plus a reload-failure line). Everything else
+ * stays append-only.
+ */
+const SINGLETON_TYPES = new Set([
+  "assistant_text",
+  "thinking",
+  "final_result",
+  "file_changes",
+  "provider_error",
+]);
+
+/** Last matching entry — local helper (`Array.findLast` is ES2023; the SDK
+ *  targets ES2022 and runs in older WKWebViews). */
+function findLast<T>(
+  arr: readonly T[],
+  pred: (v: T) => boolean,
+): T | undefined {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const v = arr[i];
+    if (v !== undefined && pred(v)) return v;
+  }
+  return undefined;
+}
 
 /**
  * How many conversations' folded transcripts are retained in memory at once.
@@ -293,18 +346,12 @@ export class ConversationVmOutput implements FeedOutput {
   ): void {
     const s = this.state(agentPath, sessionKey);
     // History frames carry their source `ChatMessage.ts` (absent for a pre-`ts`
-    // transcript) and, in multiplayer, its `author` + `mentions`; pass all three
-    // through verbatim — a seeded frame is historical, so it is never stamped
-    // with the wall clock the way a live push is, and its author and mentions
-    // are the persisted ones.
-    s.feed = frames.map((f) => ({
-      id: `f${s.seq++}`,
-      feed_type: f.feed_type,
-      data: f.data,
-      ...(f.ts !== undefined ? { ts: f.ts } : {}),
-      ...(f.author !== undefined ? { author: f.author } : {}),
-      ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
-    }));
+    // transcript), in multiplayer its `author` + `mentions`, and their turn
+    // identity (`turnId`/`toolIndex` — what live re-pushes dedupe against,
+    // HOU-1214); pass all of them through verbatim — a seeded frame is
+    // historical, so it is never stamped with the wall clock the way a live
+    // push is, and its author and mentions are the persisted ones.
+    s.feed = frames.map((f) => this.mintHistoryEntry(s, f));
     s.streaming.clear();
     // A windowed server read stamps its window; a cache paint / full-history
     // seed passes none and CLEARS any prior stamp — the feed no longer maps to
@@ -327,33 +374,48 @@ export class ConversationVmOutput implements FeedOutput {
     window: HistoryWindowVM,
   ): void {
     const s = this.state(agentPath, sessionKey);
-    s.feed = [
-      ...frames.map((f) => ({
-        id: `f${s.seq++}`,
-        feed_type: f.feed_type,
-        data: f.data,
-        ...(f.ts !== undefined ? { ts: f.ts } : {}),
-        ...(f.author !== undefined ? { author: f.author } : {}),
-        ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
-      })),
-      ...s.feed,
-    ];
+    s.feed = [...frames.map((f) => this.mintHistoryEntry(s, f)), ...s.feed];
     s.historyWindow = window;
     this.publish(agentPath, sessionKey, s);
   }
 
+  /** Mint one seeded feed entry from a history frame (seed + prepend share it). */
+  private mintHistoryEntry(s: ConvState, f: HistoryFrame): FeedItemVM {
+    return {
+      id: `f${s.seq++}`,
+      feed_type: f.feed_type,
+      data: f.data,
+      ...(f.ts !== undefined ? { ts: f.ts } : {}),
+      ...(f.author !== undefined ? { author: f.author } : {}),
+      ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
+      ...(f.turnId !== undefined ? { turnId: f.turnId } : {}),
+      ...(f.toolIndex !== undefined ? { toolIndex: f.toolIndex } : {}),
+    };
+  }
+
   pushFeedItem(agentPath: string, sessionKey: string, item: unknown): void {
     const s = this.state(agentPath, sessionKey);
-    const { feed_type, data, ts, pending, fails_pending, author, mentions } =
-      item as {
-        feed_type: string;
-        data: unknown;
-        ts?: number;
-        pending?: boolean;
-        fails_pending?: boolean;
-        author?: FeedAuthor;
-        mentions?: FeedMention[];
-      };
+    const {
+      feed_type,
+      data,
+      ts,
+      pending,
+      fails_pending,
+      author,
+      mentions,
+      turnId,
+      toolIndex,
+    } = item as {
+      feed_type: string;
+      data: unknown;
+      ts?: number;
+      pending?: boolean;
+      fails_pending?: boolean;
+      author?: FeedAuthor;
+      mentions?: FeedMention[];
+      turnId?: string;
+      toolIndex?: number;
+    };
     // An optimistic (pending) push is NOT server evidence, so it never confirms a
     // sibling optimistic bubble — two queued prompts both keep their clock. ANY
     // other push resolves EVERY currently pending entry at once: a
@@ -364,19 +426,19 @@ export class ConversationVmOutput implements FeedOutput {
       else this.clearPending(s);
     }
     const finalOf = FINAL_OF[feed_type];
+    const run =
+      finalOf !== undefined ? this.openRun(s, finalOf, turnId) : undefined;
     if (feed_type.endsWith("_streaming")) {
-      this.upsertStreaming(s, feed_type, data, ts);
-    } else if (finalOf !== undefined && s.streaming.has(finalOf)) {
-      const id = s.streaming.get(finalOf);
-      const entry = s.feed.find((f) => f.id === id);
-      if (entry) {
-        // Finalizing an open stream mutates the SAME entry: keep its original
-        // `ts` (the bubble is timed by when it opened), only swap type + data.
-        entry.feed_type = feed_type;
-        entry.data = data;
-      }
+      this.upsertStreaming(s, feed_type, data, ts, turnId);
+    } else if (finalOf !== undefined && run !== undefined) {
+      // Finalizing an open stream mutates the SAME entry: keep its original
+      // `ts` (the bubble is timed by when it opened), only swap type + data
+      // (and stamp the turn identity when the push knows it).
+      run.feed_type = feed_type;
+      run.data = data;
+      if (turnId !== undefined) run.turnId ??= turnId;
       s.streaming.delete(finalOf);
-    } else {
+    } else if (!this.upsertByTurn(s, feed_type, data, turnId, toolIndex)) {
       // A fresh entry: carry a supplied `ts`, else stamp the wall clock now; an
       // optimistic push carries `pending: true` until server evidence clears it,
       // and (multiplayer) the sender's `author` plus the teammates the message
@@ -390,9 +452,68 @@ export class ConversationVmOutput implements FeedOutput {
         ...(pending === true ? { pending: true } : {}),
         ...(author !== undefined ? { author } : {}),
         ...(mentions !== undefined ? { mentions } : {}),
+        ...(turnId !== undefined ? { turnId } : {}),
+        ...(toolIndex !== undefined ? { toolIndex } : {}),
       });
     }
     this.publish(agentPath, sessionKey, s);
+  }
+
+  /**
+   * Turn-identity dedup (HOU-1214): fold a pushed item into the entry the SAME
+   * turn already put on this feed, instead of appending a duplicate. This is
+   * what makes the fold idempotent under re-delivery — a running-sync replay
+   * over a history-seeded feed (the reply persists BEFORE the terminal frame,
+   * so a chat-open read can seed it while the snapshot still says `running`), a
+   * stale-running snapshot replaying a finished turn, or a settle-from-history
+   * re-push all UPDATE what is already on screen. Returns whether it consumed
+   * the push; false (no identity, or first delivery) keeps the append path.
+   */
+  private upsertByTurn(
+    s: ConvState,
+    feed_type: string,
+    data: unknown,
+    turnId: string | undefined,
+    toolIndex: number | undefined,
+  ): boolean {
+    if (turnId === undefined) return false;
+    if (SINGLETON_TYPES.has(feed_type)) {
+      // Also match the type's open/orphaned streaming counterpart — a dead
+      // sink can leave one behind, and the re-delivered final must close it,
+      // not sit next to it.
+      const streaming = FINAL_OF[feed_type];
+      const entry = findLast(
+        s.feed,
+        (f) =>
+          f.turnId === turnId &&
+          (f.feed_type === feed_type || f.feed_type === streaming),
+      );
+      if (!entry) return false;
+      // `final_result` keeps its FIRST data: the seeded copy carries the
+      // turn's persisted usage, which a re-settle's invisible final (empty
+      // usage) must not clobber — the context indicator reads it.
+      if (feed_type !== "final_result") {
+        entry.feed_type = feed_type;
+        entry.data = data;
+      }
+      return true;
+    }
+    if (
+      (feed_type === "tool_call" || feed_type === "tool_result") &&
+      toolIndex !== undefined
+    ) {
+      const entry = findLast(
+        s.feed,
+        (f) =>
+          f.turnId === turnId &&
+          f.feed_type === feed_type &&
+          f.toolIndex === toolIndex,
+      );
+      if (!entry) return false;
+      entry.data = data;
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -421,25 +542,80 @@ export class ConversationVmOutput implements FeedOutput {
       }
   }
 
+  /**
+   * The open streaming run's entry for `streamingType`, or undefined. A
+   * registration whose entry belongs to a DIFFERENT turn than the push is
+   * STALE — a prior turn's bubble a dead sink left open — and reusing it would
+   * splice the new turn's content into the old turn's entry (keeping the old
+   * identity); it is dropped instead, side-effectfully, so callers fall
+   * through to adopt-or-append. A registration whose entry vanished from the
+   * feed (a reseed raced the push) is dropped the same way.
+   */
+  private openRun(
+    s: ConvState,
+    streamingType: string,
+    turnId: string | undefined,
+  ): FeedItemVM | undefined {
+    const id = s.streaming.get(streamingType);
+    if (id === undefined) return undefined;
+    const entry = s.feed.find((f) => f.id === id);
+    if (
+      entry !== undefined &&
+      (turnId === undefined ||
+        entry.turnId === undefined ||
+        entry.turnId === turnId)
+    ) {
+      return entry;
+    }
+    s.streaming.delete(streamingType);
+    return undefined;
+  }
+
   private upsertStreaming(
     s: ConvState,
     feed_type: string,
     data: unknown,
     ts?: number,
+    turnId?: string,
   ): void {
-    const existingId = s.streaming.get(feed_type);
-    if (existingId !== undefined) {
-      const entry = s.feed.find((f) => f.id === existingId);
+    const entry = this.openRun(s, feed_type, turnId);
+    if (entry) {
+      // A streaming delta updates data only — the entry keeps the `ts` it was
+      // stamped with when the stream opened (and adopts the turn identity the
+      // moment a push knows it).
+      entry.data = data;
+      if (turnId !== undefined) entry.turnId ??= turnId;
+      return;
+    }
+    // No open run — but the SAME turn's bubble may already be on the feed
+    // (HOU-1214): a history seed painted the persisted reply while the
+    // snapshot still said `running`, or a prior sink's entry survived a
+    // terminal status. Adopt that entry as this run's target instead of
+    // opening a duplicate; its feed_type is left as-is (a final stays final —
+    // deltas only ever touch data) and the final flush closes it in place.
+    if (turnId !== undefined) {
+      const finalType = STREAMED_AS[feed_type];
+      const entry = findLast(
+        s.feed,
+        (f) =>
+          f.turnId === turnId &&
+          (f.feed_type === feed_type || f.feed_type === finalType),
+      );
       if (entry) {
-        // A streaming delta updates data only — the entry keeps the `ts` it was
-        // stamped with when the stream opened.
         entry.data = data;
+        s.streaming.set(feed_type, entry.id);
         return;
       }
     }
     // Opening the stream's entry: carry a supplied `ts`, else stamp now.
     const id = `f${s.seq++}`;
-    s.feed.push({ id, feed_type, data, ts: ts ?? Date.now() });
+    s.feed.push({
+      id,
+      feed_type,
+      data,
+      ts: ts ?? Date.now(),
+      ...(turnId !== undefined ? { turnId } : {}),
+    });
     s.streaming.set(feed_type, id);
   }
 

@@ -85,7 +85,14 @@ describe("turn send → stream → settle", () => {
       feed: [
         // The optimistic push — the ONE user bubble (its echo never renders).
         { id: "f0", feed_type: "user_message", data: "Ping" },
-        { id: "f1", feed_type: "assistant_text", data: cannedReply("Ping") },
+        {
+          id: "f1",
+          feed_type: "assistant_text",
+          data: cannedReply("Ping"),
+          // Live pushes carry the adopted turn id — the VM fold's dedup
+          // identity (HOU-1214).
+          turnId: expect.any(String) as unknown as string,
+        },
         {
           id: "f2",
           feed_type: "final_result",
@@ -95,6 +102,7 @@ describe("turn send → stream → settle", () => {
             duration_ms: null,
             usage: seedUsage,
           },
+          turnId: expect.any(String) as unknown as string,
         },
       ],
     } satisfies ConversationVM);

@@ -28,6 +28,14 @@ export interface TurnState {
   /** The turn's prompt — carried on the not-connected card so "Send again"
    *  can resend the exact text the runtime refused (it was never delivered). */
   prompt: string | null;
+  /**
+   * OUR turn's wire id, once known (nonce-matched echo / attaching sync — the
+   * sink owns adoption; see `turn-identity.ts`). Every {@link push} stamps it
+   * on the item so the VM fold can dedupe re-delivered turn content by
+   * identity (HOU-1214). Undefined until adopted (and forever on legacy
+   * servers that stamp no turn ids — those keep the append-only fold).
+   */
+  turnId: string | undefined;
   text: string;
   thinking: string;
   /**
@@ -76,6 +84,7 @@ export function newTurnState(
     output,
     provider: send?.provider ?? null,
     prompt: send?.prompt ?? null,
+    turnId: undefined,
     text: "",
     thinking: "",
     toolsSeen: 0,
@@ -88,9 +97,15 @@ export function newTurnState(
   };
 }
 
-/** Emit one FeedItem for this turn's session — the sink and settles share it. */
-export const push = (s: TurnState, item: unknown): void =>
-  s.output.pushFeedItem(s.agentPath, s.sessionKey, item);
+/** Emit one FeedItem for this turn's session — the sink and settles share it.
+ *  Stamps the turn's id (once adopted) so the VM fold dedupes re-delivered
+ *  content by identity (HOU-1214); an item never carries its own. */
+export const push = (s: TurnState, item: object): void =>
+  s.output.pushFeedItem(
+    s.agentPath,
+    s.sessionKey,
+    s.turnId === undefined ? item : { ...item, turnId: s.turnId },
+  );
 
 const invisibleFinal = (s: TurnState) =>
   push(s, {

@@ -31,18 +31,22 @@ export function applyTurnFrame(
       push(s, { feed_type: "thinking_streaming", data: s.thinking });
       break;
     case "tool_start":
-      s.toolsSeen++;
+      // `toolIndex` = position among the turn's tool calls — with the turn id
+      // the identity a replayed row dedupes on in the VM fold (HOU-1214).
       push(s, {
         feed_type: "tool_call",
         data: { name: ev.data.name, input: ev.data.args },
+        toolIndex: s.toolsSeen,
       });
+      s.toolsSeen++;
       break;
     case "tool_end":
-      s.toolResultsSeen++;
       push(s, {
         feed_type: "tool_result",
         data: { content: ev.data.content ?? "", is_error: ev.data.isError },
+        toolIndex: s.toolResultsSeen,
       });
+      s.toolResultsSeen++;
       break;
     case "usage":
       // Stash the turn's usage; finishOk attaches it to the final_result.

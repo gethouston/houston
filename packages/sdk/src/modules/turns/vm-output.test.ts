@@ -630,3 +630,169 @@ test("a pushed item carries its mentions; an unmentioning push carries no key", 
   expect(snap().feed[0]?.mentions).toEqual([{ userId: "user_a", name: "Ada" }]);
   expect(snap().feed[1]).not.toHaveProperty("mentions");
 });
+
+// ── HOU-1214: turn-identity dedup — re-delivered content updates, never appends ──
+
+test("a streaming push for a turn whose reply is already seeded adopts that bubble (HOU-1214)", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    { feed_type: "user_message", data: "hi", turnId: "t-1" },
+    { feed_type: "assistant_text", data: "Correo enviado", turnId: "t-1" },
+  ]);
+  // The stale-running replay: same turn, cumulative partial.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "Correo enviado",
+    turnId: "t-1",
+  });
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text",
+    data: "Correo enviado",
+    turnId: "t-1",
+  });
+
+  const texts = snap().feed.filter((f) => f.feed_type === "assistant_text");
+  expect(texts).toHaveLength(1);
+  expect(snap().feed).toHaveLength(2); // user + the ONE reply
+});
+
+test("a settle re-push (assistant_text, no open stream) folds into the seeded entry", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    { feed_type: "assistant_text", data: "done", turnId: "t-1" },
+  ]);
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text",
+    data: "done",
+    turnId: "t-1",
+  });
+  expect(snap().feed).toHaveLength(1);
+});
+
+test("tool rows dedupe by (turnId, toolIndex); a NEW index still appends", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    {
+      feed_type: "tool_call",
+      data: { name: "ls", input: {} },
+      turnId: "t-1",
+      toolIndex: 0,
+    },
+    {
+      feed_type: "tool_result",
+      data: { content: "ok", is_error: false },
+      turnId: "t-1",
+      toolIndex: 0,
+    },
+  ]);
+  // Replayed rows — same identity, no growth.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "tool_call",
+    data: { name: "ls", input: {} },
+    turnId: "t-1",
+    toolIndex: 0,
+  });
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "tool_result",
+    data: { content: "ok", is_error: false },
+    turnId: "t-1",
+    toolIndex: 0,
+  });
+  expect(snap().feed).toHaveLength(2);
+  // A genuinely new call of the same turn appends.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "tool_call",
+    data: { name: "read", input: {} },
+    turnId: "t-1",
+    toolIndex: 1,
+  });
+  expect(snap().feed).toHaveLength(3);
+});
+
+test("final_result keeps its FIRST data — a re-settle's empty final never clobbers usage", () => {
+  const usage = { context_tokens: 9, output_tokens: 1, cached_tokens: 0 };
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    {
+      feed_type: "final_result",
+      data: { result: "done", cost_usd: null, duration_ms: null, usage },
+      turnId: "t-1",
+    },
+  ]);
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "final_result",
+    data: { result: "", cost_usd: null, duration_ms: null, usage: null },
+    turnId: "t-1",
+  });
+  expect(snap().feed).toHaveLength(1);
+  expect((snap().feed[0]?.data as { usage: unknown }).usage).toEqual(usage);
+});
+
+test("pushes without a turnId keep the append-only fold (legacy servers)", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [{ feed_type: "assistant_text", data: "done" }]);
+  vm.pushFeedItem("a", "c1", { feed_type: "assistant_text", data: "done" });
+  expect(snap().feed).toHaveLength(2); // no identity — cannot dedup safely
+});
+
+test("identical text from a DIFFERENT turn still appends (dedup is by identity, not content)", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    { feed_type: "assistant_text", data: "done", turnId: "t-1" },
+  ]);
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text",
+    data: "done",
+    turnId: "t-2",
+  });
+  expect(snap().feed).toHaveLength(2);
+});
+
+test("a NEW turn's streaming push never reuses a stale open bubble from a prior turn", () => {
+  const { vm, snap } = harness();
+  // Turn A streams, then its sink dies with NO terminal status (external
+  // teardown keeps live state) — the streaming registration stays open.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "turn A partial",
+    turnId: "t-A",
+  });
+  // Turn B's stream arrives on the same conversation.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "turn B",
+    turnId: "t-B",
+  });
+
+  expect(snap().feed).toHaveLength(2); // B opened its own bubble
+  expect(snap().feed[0]?.data).toBe("turn A partial"); // A's content survives
+  expect(snap().feed[1]?.data).toBe("turn B");
+  expect(snap().feed[1]?.turnId).toBe("t-B");
+});
+
+test("file_changes and provider_error dedupe by turn like the reply does", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    {
+      feed_type: "file_changes",
+      data: { created: ["a.md"], modified: [] },
+      turnId: "t-1",
+    },
+    {
+      feed_type: "provider_error",
+      data: { kind: "rate_limited", provider: "anthropic" },
+      turnId: "t-1",
+    },
+  ]);
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "file_changes",
+    data: { created: ["a.md"], modified: [] },
+    turnId: "t-1",
+  });
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "provider_error",
+    data: { kind: "rate_limited", provider: "anthropic" },
+    turnId: "t-1",
+  });
+  expect(snap().feed).toHaveLength(2);
+});
