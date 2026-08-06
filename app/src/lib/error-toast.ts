@@ -1,71 +1,24 @@
 import { isSignedOutEngineError } from "@houston-ai/engine-client";
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
+import { createBurstGate } from "./error-burst";
 import i18n from "./i18n";
 import {
   captureException as sentryCapture,
   sentrySuppressedInDev,
 } from "./sentry";
-import { devNoSendToastSpec } from "./sentry-dev";
 import { createSentryReportError } from "./sentry-report-error";
 import { markReportedToSentry } from "./sentry-reported-mark";
 
-const GREEN_TOAST_DELAY_MS = 700;
-
-/**
- * Surface an error to the user as a toast pair:
- *
- *   1. Red toast — the branded "we have a problem" title + a friendly,
- *      localized body. Shown immediately, no action button (auto-report
- *      supersedes it). The body is `options.userMessage` when the caller has
- *      authored product copy for the failure, else the generic fallback —
- *      NEVER the raw `message`: diagnostics like "Engine error 202" or
- *      WebKit's "Load failed" are developer speak, not something a
- *      non-technical user can act on (HOU-721). The raw `message` still
- *      reaches the frontend log (callers log before toasting), Sentry, and
- *      analytics classification, so genericizing the copy costs us nothing.
- *   2. Green follow-up toast — "report sent" + the Sentry event ID, ~700ms
- *      later, with a "Copy code" action that copies the FULL event id so it
- *      can be quoted to support / looked up in Sentry.
- *
- * Copy deliberately exposes the whole 32-char id (the toast text shows the
- * short prefix for readability). The wording is "report sent" — an honest
- * "the envelope left the queue" claim, NOT "we have a solution": the flush
- * confirms the transport accepted it, not that Sentry ingested or triaged it.
- *
- * `command` is a short machine-readable tag (e.g. "list_workspaces",
- * "uncaught_error") used as the Sentry tag for triage.
- *
- * Sentry not configured or not flushed → no green toast. Red toast still
- * shown. This is the right behavior for forks / personal builds and for
- * network failures where we cannot honestly say the report was sent.
- *
- * A toast whose DISPLAYED body is identical to one shown moments ago is
- * deduped (toast pair skipped, Sentry capture kept): one root cause failing N
- * concurrent calls — a dozen queries all hitting the same rejected bearer
- * during a cloud deploy (HOU-687) — must read as ONE problem, not a toast
- * storm. Keying on the displayed body (not the raw diagnostic) means a burst
- * of distinct engine failures also collapses into one generic toast, which is
- * exactly how a non-technical user should experience it.
- */
-const TOAST_DEDUPE_WINDOW_MS = 5_000;
-const recentToasts = new Map<string, number>();
-
-function isDuplicateToast(message: string, now: number): boolean {
-  const last = recentToasts.get(message);
-  recentToasts.set(message, now);
-  // The map only ever holds messages from the current burst — evict as we go.
-  for (const [msg, at] of recentToasts) {
-    if (now - at > TOAST_DEDUPE_WINDOW_MS) recentToasts.delete(msg);
-  }
-  return last !== undefined && now - last <= TOAST_DEDUPE_WINDOW_MS;
-}
+/** Collapses one root cause's burst of failures into a single counted event. */
+const errorBurst = createBurstGate();
 
 export interface ErrorToastOptions {
-  /** Authored, localized product copy to show as the toast body instead of
-   *  the generic fallback. Pass ONLY curated copy (a `t()` result), never a
-   *  raw `err.message` — raw diagnostics belong in `message`, which is
-   *  reported but not displayed. */
+  /** Authored, localized product copy for this specific failure (a `t()`
+   *  result, never a raw `err.message`). Since HOU-1245 it is no longer
+   *  displayed; it survives as the burst key, which is what keeps two
+   *  genuinely different failures counted separately while one failure hitting
+   *  N callers counts once. */
   userMessage?: string;
 }
 
@@ -100,7 +53,7 @@ export function showConnectivityErrorToast(
 ): void {
   console.error(`[toast:${command}] ${message}`);
   const description = i18n.t("shell:errorToast.offlineDescription");
-  if (isDuplicateToast(description, Date.now())) return;
+  if (!errorBurst.isFirst(description, Date.now())) return;
   analytics.track("app_error_shown", {
     source: command,
     error_kind: classifyAnalyticsError(message),
@@ -126,7 +79,7 @@ export function showConnectivityErrorToast(
 export function showEngineWakingToast(command: string, message: string): void {
   console.error(`[toast:${command}] ${message}`);
   const description = i18n.t("shell:errorToast.engineWakingDescription");
-  if (isDuplicateToast(description, Date.now())) return;
+  if (!errorBurst.isFirst(description, Date.now())) return;
   analytics.track("app_error_shown", {
     source: command,
     error_kind: classifyAnalyticsError(message),
@@ -138,6 +91,33 @@ export function showEngineWakingToast(command: string, message: string): void {
   });
 }
 
+/**
+ * Report an unexpected error — WITHOUT showing the user anything (HOU-1245).
+ *
+ * This used to render a toast pair: the red branded "Houston, we have a
+ * problem!" box, then a green "report sent — Reference #<id>" follow-up with a
+ * copy-the-code action. Both are gone. A generic red box a non-technical user
+ * cannot act on, followed by a Sentry event id that means nothing to them, cost
+ * more in alarm than it bought in information — and the errors that a user CAN
+ * act on (a name that's already taken, no microphone, an expired trial) never
+ * came through here: they have authored copy at their own call sites, and they
+ * still toast exactly as before. So do the informational states
+ * (`showConnectivityErrorToast`, `showEngineWakingToast`) above.
+ *
+ * NOTE this is a deliberate, scoped exception to the repo's no-silent-failures
+ * beta policy: silent to the USER, never silent to us. Every reporting path is
+ * untouched, so the failure still reaches:
+ *   - the frontend log, via the `console.error` below (mirrored to the log file
+ *     and bundled into a Report-bug submission);
+ *   - PostHog, via `app_error_shown` (the event name is kept despite nothing
+ *     being shown, so the existing error-rate dashboards stay continuous);
+ *   - Sentry, via `captureException` with `command` as the triage tag.
+ * Losing the toast means losing the user-reported half of a bug report, which
+ * makes those three the whole signal — do not quiet them too.
+ *
+ * `command` is a short machine-readable tag (e.g. "list_workspaces",
+ * "uncaught_error") used as the Sentry tag for triage.
+ */
 export function showErrorToast(
   command: string,
   message: string,
@@ -146,94 +126,41 @@ export function showErrorToast(
 ): void {
   // A hosted call answered by the transport's synthetic signed-out 401 is an
   // EXPECTED lifecycle state (sign-out / account switch): the sign-in screen is
-  // the surface, nothing is broken, and there is no bug to report — so no red
-  // toast and no Sentry capture. Everything else still surfaces loudly (beta
-  // policy); a REAL rejected bearer never takes this branch because the
-  // transport only mints the synthetic body when no session exists at all.
+  // the surface, nothing is broken, and there is no bug to report — so not even
+  // a Sentry capture. A REAL rejected bearer never takes this branch because
+  // the transport only mints the synthetic body when no session exists at all.
   if (isSignedOutEngineError(originalError)) {
     console.warn(`[toast:${command}] suppressed: signed-out engine call`);
     return;
   }
-  const addToast = useUIStore.getState().addToast;
-  const description =
-    options?.userMessage ?? i18n.t("shell:errorToast.genericDescription");
 
-  // The raw diagnostic no longer appears in the toast, so guarantee it in the
-  // frontend log (console.error is mirrored there) regardless of the caller.
+  // With no toast left, this line is the failure's only trace on the user's
+  // machine — guarantee it here rather than trusting each caller to log.
   console.error(`[toast:${command}] ${message}`);
 
-  if (isDuplicateToast(description, Date.now())) {
-    // Still worth the report (Sentry dedupes server-side); just not a second
-    // identical red toast within the window. The analytics event, though, tracks
-    // a SHOWN toast — so it fires only past the dedupe, else N concurrent calls
-    // failing on one root cause (HOU-687) would N-count a single problem.
-    const error = createSentryReportError(command, message, originalError);
-    if (!sentrySuppressedInDev) {
-      markReportedToSentry(originalError);
-      void sentryCapture(error, {
-        source: command,
-        error_kind: classifyAnalyticsError(message),
-      }).catch((flushErr: unknown) => {
-        console.error("[sentry] failed to flush captured error", flushErr);
-      });
-    }
-    return;
-  }
-
-  analytics.track("app_error_shown", {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  });
-
-  addToast({
-    title: i18n.t("shell:errorToast.problemTitle"),
-    description,
-    variant: "error",
-  });
-
-  // Dev build with Sentry suppressed: don't capture (initSentry already bailed),
-  // and replace the green "report sent" toast with a dev-only notice so the
-  // developer knows the error stayed local and how to opt into sending.
-  if (sentrySuppressedInDev) {
-    setTimeout(() => {
-      addToast(devNoSendToastSpec());
-    }, GREEN_TOAST_DELAY_MS);
-    return;
-  }
-
-  markReportedToSentry(originalError);
-  const error = createSentryReportError(command, message, originalError);
-  void sentryCapture(error, {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  })
-    .then((eventId) => {
-      if (!eventId) return;
-
-      const shortId = eventId.slice(0, 8);
-      setTimeout(() => {
-        addToast({
-          title: i18n.t("shell:errorToast.reportSentTitle"),
-          description: i18n.t("shell:errorToast.reportSentDescription", {
-            id: shortId,
-          }),
-          variant: "success",
-          action: {
-            label: i18n.t("shell:errorToast.copyId"),
-            onClick: () => {
-              void navigator.clipboard
-                .writeText(eventId)
-                .catch((copyErr: unknown) =>
-                  console.error("[sentry] copy event id failed", copyErr),
-                );
-            },
-          },
-        });
-      }, GREEN_TOAST_DELAY_MS);
-    })
-    .catch((flushErr: unknown) => {
-      console.error("[sentry] failed to flush captured error", flushErr);
+  // Burst key: the copy this failure WOULD have displayed. Analytics counts a
+  // problem, so one root cause failing N concurrent callers (HOU-687) must
+  // count once, while two distinct authored failures still count separately.
+  const surfacedAs =
+    options?.userMessage ?? i18n.t("shell:errorToast.genericDescription");
+  if (errorBurst.isFirst(surfacedAs, Date.now())) {
+    analytics.track("app_error_shown", {
+      source: command,
+      error_kind: classifyAnalyticsError(message),
     });
+  }
+
+  // Sentry keeps EVERY occurrence (it dedupes server-side, and the per-event
+  // context is what tells one user's outage from a fleet-wide one).
+  // Dev build with Sentry suppressed: initSentry already bailed, so don't.
+  if (sentrySuppressedInDev) return;
+  markReportedToSentry(originalError);
+  void sentryCapture(createSentryReportError(command, message, originalError), {
+    source: command,
+    error_kind: classifyAnalyticsError(message),
+  }).catch((flushErr: unknown) => {
+    console.error("[sentry] failed to flush captured error", flushErr);
+  });
 }
 
 export function raiseJavascriptSentrySmokeTest(): never {
