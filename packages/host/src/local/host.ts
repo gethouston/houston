@@ -568,6 +568,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     ? new StoreSyncDaemon({
         ...opts.storeSync,
         rootDir: dirname(opts.workspacesRoot),
+        // FsWatcher above already watches this subtree for reactivity —
+        // don't pay for a second, redundant inotify watch over it (HOU-1237).
+        watchExcludeDirs: [opts.workspacesRoot],
         log: severityLog,
       })
     : undefined;
