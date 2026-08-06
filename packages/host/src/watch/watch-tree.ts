@@ -5,7 +5,7 @@ import {
   statSync,
   watch,
 } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 import { isBenignRecursiveWatchRace } from "./watcher-race";
 
 export type TreeWatchListener = (eventType: string, relPath: string) => void;
@@ -95,7 +95,6 @@ class DirTreeWatcher implements TreeWatch {
     private readonly onError: (err: unknown) => void,
     private readonly watchDir: WatchDirFn = (dir, cb) => watch(dir, cb),
   ) {
-    // Parity with fs.watch: an unwatchable root throws to the caller.
     this.addDir(root, true);
   }
 
@@ -113,16 +112,28 @@ class DirTreeWatcher implements TreeWatch {
 
   private addDir(dir: string, isRoot = false): void {
     if (this.closed || this.degraded || this.watchers.has(dir)) return;
+    // .git is never watched: agentFileEventType (packages/domain) already
+    // classifies every .git/ path as a null event, so a watch there only
+    // spends inotify budget for changes nobody sees. Checked here (not just
+    // in the readdir scan below) because a rename event for a pre-existing
+    // dir can call addDir directly, bypassing that scan.
+    if (!isRoot && basename(dir) === ".git") return;
     let watcher: FSWatcher;
     try {
       watcher = this.watchDir(dir, (eventType, filename) =>
         this.onDirEvent(dir, eventType, filename),
       );
     } catch (err) {
-      if (isRoot) throw err;
+      const isMissing = (err as NodeJS.ErrnoException).code === "ENOENT";
+      // Parity with fs.watch: a root that doesn't exist is a caller/setup
+      // bug worth failing loudly on. Anything else on root — ENOSPC (the
+      // inotify budget is spent) chief among them — degrades exactly like a
+      // mid-tree failure below: a crashed pod serves nobody, a pod that boots
+      // with no live watching still serves the store-sync daemon's fallback.
+      if (isRoot && isMissing) throw err;
       // A dir deleted between the parent event and this watch is the normal
       // transient-dir race (see watcher-race.ts) — just skip it.
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+      if (!isRoot && isMissing) return;
       this.degraded = true;
       this.reportOnce(err);
       return;
