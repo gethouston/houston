@@ -16,11 +16,7 @@ import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
 import type { UIMessage } from "ai";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ExternalLinkIcon,
-} from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type {
   AnchorHTMLAttributes,
   ComponentProps,
@@ -488,40 +484,31 @@ export const MessageResponse = memo(
               return <>{custom}</>;
             }
           }
-          // Bare URL the agent dropped in chat → inline link chip that
-          // opens in the system browser (issue #358), not dead text. Only
-          // render it interactive when there's an open handler; otherwise it
+          // Every remaining link — the bare URL the agent dropped in chat
+          // (issue #358) and the labeled `[Open report](…)` alike — is the
+          // same inline chip that opens in the system browser (HOU-1152).
+          // A labeled link used to render as a solid button pill, the one
+          // variant still wearing the pre-Slack styling; a descriptive label
+          // is not a call to action and reading it as a second link shape
+          // made the same message look like two different products.
+          //
+          // Only an autolink shortens: a URL label markdown broke across
+          // lines flattens with a softbreak in it (HOU-1071), so show the
+          // reassembled URL rather than raw children with a stray space
+          // mid-URL, scheme-stripped and capped (HOU-1152). A label is the
+          // author's own words and renders verbatim, wrapping inline instead
+          // of clipping the way the fixed-height pill did.
+          const label =
+            kind === "autolink"
+              ? (autolinkDisplay(children) ?? children)
+              : children;
+          // Only interactive when there's an open handler; otherwise it
           // would look clickable but do nothing.
-          if (kind === "autolink") {
-            // A URL label markdown broke across lines flattens with a
-            // softbreak in it (HOU-1071) — show the reassembled URL, not
-            // the raw children with a stray space mid-URL, scheme-stripped
-            // and capped Slack-style (HOU-1152); the href keeps the full
-            // destination.
-            const label = autolinkDisplay(children) ?? children;
-            if (!fn) return <span>{label}</span>;
-            return (
-              <Autolink href={url} onOpen={onOpen}>
-                {label}
-              </Autolink>
-            );
-          }
-          // Labeled link (text distinct from URL) → button with text + icon.
-          // max-w-full + truncate: a long label ellipsizes instead of
-          // overflowing the fixed-height pill as clipped wrapped lines.
-          // overflow-hidden: even a child that defeats truncate (a <br>, an
-          // image) stays clipped inside the pill's rounded bounds.
+          if (!fn) return <span>{label}</span>;
           return (
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              className="max-w-full overflow-hidden"
-              onClick={onOpen}
-            >
-              <span className="min-w-0 truncate">{children}</span>
-              <ExternalLinkIcon size={11} strokeWidth={2} />
-            </Button>
+            <Autolink href={url} onOpen={onOpen}>
+              {label}
+            </Autolink>
           );
         },
       };

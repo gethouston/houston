@@ -10,12 +10,17 @@
  *   conversation reads identically on both render paths. Offsets index into
  *   the NFC-normalized text, so this component slices its own normalized copy.
  * - Bare URLs (HOU-960 / #358): a pasted link stays a clickable link chip
- *   inside the bubble — the same anatomy as the markdown autolink, without a
- *   handler it degrades to plain text rather than a dead-looking link.
+ *   inside the bubble — the same anatomy as the markdown autolink, including
+ *   its scheme-stripped, length-capped display text (HOU-1152), so a link the
+ *   person pasted and a link the agent replied with read identically. Verbatim
+ *   is about the person's PROSE; the chip is presentation and the full
+ *   destination stays in the href. Without a handler it degrades to plain text
+ *   rather than a dead-looking link.
  */
 
 import { Fragment, type ReactNode } from "react";
 import { Autolink } from "./autolink";
+import { autolinkDisplay } from "./markdown-link";
 import { MentionChip } from "./mention-chip";
 import { findMentionSpans, type MentionTarget } from "./mention-spans.ts";
 import { normalizeMentionText } from "./mention-text.ts";
@@ -51,7 +56,7 @@ function linkify(
     }
     parts.push(
       <Autolink key={keyBase + start} href={url} onOpen={() => onOpenLink(url)}>
-        {url}
+        {autolinkDisplay(url) ?? url}
       </Autolink>,
     );
     cursor = start + url.length;

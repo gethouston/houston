@@ -8,7 +8,10 @@ import { expect, test } from "./support/fixtures";
  * unreadable black bar.
  *
  * HOU-1152: a long URL's visible text shortens to its head plus an ellipsis
- * (Slack-style) while the href keeps the full destination.
+ * (Slack-style) while the href keeps the full destination — and EVERY link
+ * variant wears that one chip: the labeled `[Open the deck](…)` link (which
+ * kept the pre-Slack solid button pill through the first pass) and a URL a
+ * person pasted into their own bubble included.
  *
  * Seeded through `/__test__/chat-history`, so this exercises the REAL
  * browser pipeline: history → feed → Streamdown → `classifyMarkdownLink` →
@@ -105,4 +108,59 @@ test("bare long URL displays shortened with the full href intact (HOU-1152)", as
   await expect(link).toBeVisible({ timeout: 15_000 });
   await expect(link).toHaveText(SHORTENED);
   await expect(link).toHaveAttribute("title", REASSEMBLED);
+});
+
+test("a labeled link is the same inline chip as a bare URL, never a button pill (HOU-1152)", async ({
+  page,
+  request,
+}) => {
+  const missionId = "act-hou-1152-labeled";
+  const labeledHref =
+    "https://docs.google.com/presentation/d/1qObQZ8EL3Yc/edit";
+  const label = "Open the deck";
+  await request.post(`${FAKE_HOST_URL}/agents/houston-assistant/activities`, {
+    data: { id: missionId, title: "Labeled link", status: "needs_you" },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-history`, {
+    data: {
+      conversationId: `activity-${missionId}`,
+      messages: [
+        // The person's own pasted URL, in the human bubble.
+        { role: "user", content: `deck please: ${REASSEMBLED}`, ts: 1 },
+        {
+          role: "assistant",
+          content: `Done: [${label}](${labeledHref})`,
+          ts: 2,
+        },
+      ],
+    },
+  });
+
+  await page.goto("/");
+  await page.getByText("Labeled link").first().click();
+
+  // The labeled link: an inline anchor wearing its label verbatim (a label is
+  // the author's words, not a URL to shorten), with the destination on hover.
+  const labeled = page.locator(`a[href="${labeledHref}"]`);
+  await expect(labeled).toBeVisible({ timeout: 15_000 });
+  await expect(labeled).toHaveText(label);
+  await expect(labeled).toHaveAttribute("title", labeledHref);
+
+  // Not the old solid button pill — the one link variant that still looked
+  // like a call to action while every other link had become a chip.
+  await expect(page.locator("button", { hasText: label })).toHaveCount(0);
+
+  // Same chip anatomy as a bare URL: inline flow on the soft link tint.
+  const labeledStyle = await labeled.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { background: s.backgroundColor, display: s.display };
+  });
+  expect(labeledStyle.display).toBe("inline");
+  expect(labeledStyle.background).toMatch(/\/ 0\.1\)$/);
+
+  // And the URL the PERSON pasted shortens exactly like the agent's does —
+  // the human path renders plain text, but a chip is a chip on both sides.
+  const pasted = page.locator(`a[href="${REASSEMBLED}"]`);
+  await expect(pasted).toHaveText(SHORTENED);
+  await expect(pasted).toHaveAttribute("title", REASSEMBLED);
 });
