@@ -22,7 +22,7 @@ export function AgentPickerStep({ onCreateBlank }: AgentPickerStepProps) {
   const setViewMode = useUIStore((s) => s.setViewMode);
 
   return (
-    <div className="grid grid-cols-1 gap-3 px-6 pb-6 pt-1 sm:grid-cols-2">
+    <div className="flex flex-col gap-3 px-6 pb-6 pt-1">
       <ChoiceCard
         icon={Store}
         title={t("newAgent.storeCard")}
@@ -57,12 +57,12 @@ function ChoiceCard({
     <button
       type="button"
       onClick={onClick}
-      className="ht-hairline flex flex-col items-start gap-3 rounded-xl bg-card p-5 text-left transition duration-200 hover:bg-hover active:scale-[0.98]"
+      className="ht-hairline flex items-center gap-4 rounded-xl bg-card p-5 text-left transition duration-200 hover:bg-hover active:scale-[0.98]"
     >
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-chip text-ink">
         <Icon className="h-5 w-5" />
       </span>
-      <span className="flex flex-col gap-1">
+      <span className="flex min-w-0 flex-col gap-1">
         <span className="text-sm font-semibold text-ink">{title}</span>
         <span className="text-xs leading-relaxed text-ink-muted">
           {description}
