@@ -134,6 +134,9 @@
     "minimax": {
       "description": "Fast, affordable models tuned for agent work."
     },
+    "nvidia": {
+      "description": "Free NVIDIA-hosted models: Llama, Nemotron, GPT-OSS and more."
+    },
     "openai-compatible": {
       "description": "Run models on your own computer with Ollama, LM Studio, and friends."
     }

@@ -17,6 +17,7 @@ import {
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { ProviderApiKeyField } from "./provider-api-key-field";
+import { ProviderApiKeyGuide } from "./provider-api-key-guide";
 
 /**
  * The host's own reason for a rejected connect ("openrouter rejected this API
@@ -153,6 +154,8 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
               {t("apiKey.getKey")}
             </Button>
           )}
+
+          <ProviderApiKeyGuide providerId={provider.id} />
 
           <ProviderApiKeyField
             label={t("apiKey.label")}

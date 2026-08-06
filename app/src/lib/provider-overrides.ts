@@ -646,7 +646,11 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "NIM inference",
     cost: "Free credits, then pay as you go",
     installUrl: "https://build.nvidia.com",
-    apiKeyUrl: "https://build.nvidia.com/settings/api-keys",
+    // The NGC Personal Key page, NOT build.nvidia.com's quick key flow: only
+    // NGC offers the "Public API Endpoints" service picker a working key
+    // needs (HOU-890) — the connect dialog walks the user through it
+    // (`provider-api-key-guide.tsx`).
+    apiKeyUrl: "https://org.ngc.nvidia.com/setup/api-keys",
   },
   // Alibaba's prepaid token bundles for Qwen (+ hosted open models). The
   // endpoint only accepts the DEDICATED Token Plan API key minted after
