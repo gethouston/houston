@@ -84,7 +84,7 @@
     "provenanceMission": "De {{mission}}"
   },
   "subTabs": {
-    "instructions": "Instrucciones",
+    "instructions": "Descripción del puesto",
     "skills": "Skills",
     "learnings": "Aprendizajes"
   },
