@@ -59,11 +59,7 @@
     "nativeTriggeredDescription": "Confira o Sentry para sentry-native-stack-smoke-test."
   },
   "errorToast": {
-    "problemTitle": "Houston, temos um problema!",
     "genericDescription": "Algo inesperado deu errado. Tente novamente.",
-    "reportSentTitle": "Houston, relatório enviado",
-    "reportSentDescription": "Referência #{{id}}.",
-    "copyId": "Copiar código",
     "offlineTitle": "Houston, sem conexão",
     "offlineDescription": "Não conseguimos conectar ao Houston agora. Verifique sua conexão com a internet e tente novamente.",
     "engineWakingTitle": "Houston, seu agente está acordando",

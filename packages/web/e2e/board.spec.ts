@@ -459,11 +459,16 @@ test("keeps the healthy agents' missions when one agent's reads fail", async ({
 
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByText("Draft the launch email")).toBeVisible();
-  // Partial is not silent: the user is told the board is incomplete (beta
-  // no-silent-failures policy), rather than quietly missing an agent.
+  // HOU-1245 retired the generic error-toast pair, and this notice rode it: an
+  // incomplete sweep now recovers QUIETLY. The recovery itself is unchanged and
+  // still covered — `stepSweepRecovery` schedules the bounded re-sweep, unit
+  // tested in app/tests/all-conversations-recovery.test.ts — and the sweep's
+  // Sentry capture plus `app_error_shown` event are untouched, so WE still see
+  // it even though the user no longer does. What this asserts is only that the
+  // healthy agents' missions never depended on the toast.
   await expect(
     page.getByText("Some missions could not load. We are trying again."),
-  ).toBeVisible();
+  ).toHaveCount(0);
 });
 
 /**
