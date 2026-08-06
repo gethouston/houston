@@ -13,7 +13,9 @@ export interface ToastItem {
   count?: number;
 }
 
-export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
+/** Deep-link target inside the agent's Context tab (PRODUCT-1256). Skills has
+ * its own tab now, so navigating there is a plain viewMode change. */
+export type ContextTarget = "instructions" | "learnings";
 export type AgentBoardMode = "active" | "archived";
 
 /** A workspace file queued for the global in-app preview dialog (chat file
@@ -100,7 +102,7 @@ interface UIState {
    *  a card is selected; fired by Escape when the composer is not
    *  focused (the first Escape blurs the composer, the second closes). */
   onPanelClose: (() => void) | null;
-  jobDescriptionTarget: JobDescriptionTarget | null;
+  contextTarget: ContextTarget | null;
   /** Pin the first-run tutorial UI in front of the workspace shell. Set true
    * while the orchestrator is mid-flight, cleared on graduation or skip. */
   tutorialActive: boolean;
@@ -185,7 +187,7 @@ interface UIState {
   ) => void;
   setOnBoardOpen: (cb: (() => void) | null) => void;
   setOnPanelClose: (cb: (() => void) | null) => void;
-  setJobDescriptionTarget: (target: JobDescriptionTarget | null) => void;
+  setContextTarget: (target: ContextTarget | null) => void;
   setTutorialActive: (active: boolean) => void;
   setUiTourActive: (active: boolean) => void;
   setShareAgentId: (agentId: string | null) => void;
@@ -240,7 +242,7 @@ const initialUIState = {
   onBoardNavigate: null,
   onBoardOpen: null,
   onPanelClose: null,
-  jobDescriptionTarget: null,
+  contextTarget: null,
   tutorialActive: false,
   uiTourActive: false,
   shareAgentId: null,
@@ -397,8 +399,7 @@ export const useUIStore = create<UIState>()(
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
       setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
       setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
-      setJobDescriptionTarget: (jobDescriptionTarget) =>
-        set({ jobDescriptionTarget }),
+      setContextTarget: (contextTarget) => set({ contextTarget }),
       setTutorialActive: (tutorialActive) => set({ tutorialActive }),
       setUiTourActive: (uiTourActive) => set({ uiTourActive }),
       setShareAgentId: (shareAgentId) => set({ shareAgentId }),

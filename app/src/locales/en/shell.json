@@ -116,9 +116,13 @@
         "title": "Archived",
         "body": "Use this button to revisit missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
       },
-      "tabJobDescription": {
-        "title": "Settings",
-        "body": "Shape how your assistant works: its instructions, skills, and access. Update them any time."
+      "tabContext": {
+        "title": "Context",
+        "body": "Your assistant's job description and everything it has learned. Update them any time."
+      },
+      "tabSkills": {
+        "title": "Skills",
+        "body": "Teach your assistant reusable skills it can apply across its missions."
       },
       "missionControl": {
         "title": "Mission Control",

@@ -29,18 +29,13 @@ test("skills surfaces render without React integrity errors", async ({
   });
 
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-job-description"]').click();
-  await page
-    .getByLabel("Agent settings")
-    .getByRole("button", { name: "Skills" })
-    .click();
+  await page.locator('[data-tour-target="tab-skills"]').click();
   await page.getByRole("tab", { name: "Custom skills" }).click();
   await expect(page.getByText("From your workspace")).toBeVisible();
 
-  await page
-    .getByRole("button", { name: "Skills", exact: true })
-    .first()
-    .click();
+  // The global Skills page, via the sidebar nav anchor (disambiguates it from
+  // the agent's own Skills tab).
+  await page.locator('[data-tour-target="nav-skills"]').click();
   await expect(page.getByRole("tab", { name: "Custom skills" })).toBeVisible();
 
   const react = errors.filter(

@@ -70,12 +70,12 @@ async function openFinance(page: Page): Promise<void> {
 }
 
 /**
- * Open the agent workspace Settings tab, where access controls now live in the
- * same rail as agent configuration.
+ * Open the agent workspace Admin tab (PRODUCT-1256 split the old Settings tab),
+ * where the access controls live in their own rail.
  */
-async function openAgentSettings(page: Page): Promise<void> {
+async function openAgentAdmin(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-job-description"]').click();
+  await page.locator('[data-tour-target="tab-admin"]').click();
 }
 
 test("the agent list is the top level, and opening an agent shows the three tabs", async ({
@@ -174,18 +174,18 @@ test("AI Models tab: the model ceiling editor is present", async ({
 });
 
 /**
- * The same access sections also mount in agent Settings, Teams-gated and visible
- * to everyone who can open the agent, editable for a manager and read-only for a
- * member, so a user always sees why their agent can or can't use something.
+ * The same access sections also mount on the agent's Admin tab (PRODUCT-1256),
+ * which only the workspace owner and agent managers see. A plain member gets
+ * no Admin (and no Skills) tab at all; they keep a read-only Context tab.
  */
 
-test("agent Settings: a manager gets editable access controls, and a People change round-trips", async ({
+test("agent Admin tab: a manager gets editable access controls, and a People change round-trips", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
-  await openAgentSettings(page);
+  await openAgentAdmin(page);
 
   await page.getByRole("button", { name: "People" }).click();
 
@@ -199,20 +199,20 @@ test("agent Settings: a manager gets editable access controls, and a People chan
   await expect(bob).toContainText("No access");
 
   // GET round-trip: a full reload re-reads /agents; the write reached the gateway.
-  await openAgentSettings(page);
+  await openAgentAdmin(page);
   await page.getByRole("button", { name: "People" }).click();
   await expect(
     page.getByRole("button", { name: "Change access for bob@acme.test" }),
   ).toContainText("No access");
 });
 
-test("agent Settings: a plain member sees access read-only (states visible, no controls)", async ({
+test("agent tabs: a plain member gets no Admin or Skills tab, and Context is read-only", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, MEMBER_CAPS);
-  // The member can only USE this agent (access "user"); the gateway serves them
-  // no roster (owner/admin only), so the People tab must degrade honestly.
+  // The member can only USE this agent (access "user"), so the manager
+  // surfaces must not exist for them at all (PRODUCT-1256).
   await request.post(`${FAKE_HOST_URL}/__test__/org`, {
     data: {
       agents: [
@@ -225,34 +225,20 @@ test("agent Settings: a plain member sees access read-only (states visible, no c
       ],
     },
   });
-  await openAgentSettings(page);
+  await page.goto("/");
 
-  await expect(page.getByRole("button", { name: "People" })).toBeVisible();
+  // Context renders for the member; Skills and Admin never do.
+  await expect(page.locator('[data-tour-target="tab-context"]')).toBeVisible();
+  await expect(page.locator('[data-tour-target="tab-skills"]')).toHaveCount(0);
+  await expect(page.locator('[data-tour-target="tab-admin"]')).toHaveCount(0);
 
-  // People degrades to the honest viewer line — no roster, and NO access control.
-  await expect(
-    page.getByText(
-      "You can use this agent. Someone who manages it can change who has access.",
-    ),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Change access/ })).toHaveCount(
+  // Context opens read-only: the Memory section renders its entries with no
+  // add-learning affordance for a non-manager.
+  await page.locator('[data-tour-target="tab-context"]').click();
+  await page.getByText("Memory", { exact: true }).click();
+  await expect(page.getByRole("button", { name: "Add learning" })).toHaveCount(
     0,
   );
-
-  // Integrations is read-only too: the ceiling shows, but its choice is disabled.
-  await page.getByRole("button", { name: "Apps" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Which apps can this agent use?" }),
-  ).toBeVisible();
-  await expect(page.getByRole("radio", { name: "Any app" })).toBeDisabled();
-
-  // AI models likewise: a member SEES the agent's model ceiling with every
-  // control disabled. Read-only must never mean hidden. (There is no AI-account
-  // policy on an agent — every turn runs on the sender's own account, HOU-976.)
-  // `exact` disambiguates the settings rail's "AI models" row from the sidebar's
-  // "AI Models" hub entry, which a member now sees too (HOU-976).
-  await page.getByRole("button", { name: "AI models", exact: true }).click();
-  await expect(page.getByRole("radio", { name: "Any model" })).toBeDisabled();
 });
 
 test("Admin People roster shows a member's gateway display name, email as a secondary line", async ({

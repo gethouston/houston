@@ -121,9 +121,9 @@ export function WorkspaceShell({
   ).length;
   const isAgentView = !isTopLevelView(viewMode);
   // Resolve against the CALLER-visible tab set, not the raw standard ids:
-  // `job-description` (Agent Settings) is a standard id but hidden from plain
+  // `context` / `skills` / `admin` are standard ids but hidden from plain
   // members, so a STANDARD_TAB_IDS check would let a member's viewMode land on
-  // it and strand them on a blank pane (AgentRenderer marks no visible tab
+  // one and strand them on a blank pane (AgentRenderer marks no visible tab
   // active). With no current agent the standard set is the only thing we can
   // check, and the empty state renders regardless.
   const tabOr = (id: string) =>
@@ -472,10 +472,16 @@ export function WorkspaceShell({
                 },
               },
               {
-                title: t("shell:uiTour.steps.tabJobDescription.title"),
-                body: t("shell:uiTour.steps.tabJobDescription.body"),
-                targetSelector: "[data-tour-target='tab-job-description']",
-                onEnter: () => setViewMode(tabOr("job-description")),
+                title: t("shell:uiTour.steps.tabContext.title"),
+                body: t("shell:uiTour.steps.tabContext.body"),
+                targetSelector: "[data-tour-target='tab-context']",
+                onEnter: () => setViewMode(tabOr("context")),
+              },
+              {
+                title: t("shell:uiTour.steps.tabSkills.title"),
+                body: t("shell:uiTour.steps.tabSkills.body"),
+                targetSelector: "[data-tour-target='tab-skills']",
+                onEnter: () => setViewMode(tabOr("skills")),
               },
               {
                 title: t("shell:uiTour.steps.tabIntegrations.title"),
@@ -570,15 +576,19 @@ export function WorkspaceShell({
             if (step.targetSelector === "[data-tour-target='spaceSwitcher']") {
               return hasSpaces(capabilities);
             }
-            // The Agent Settings (job-description) step targets a tab plain
-            // members never see. Drop it for them so the tour never
-            // highlights a missing anchor or leaves them on a blank pane.
-            if (
-              step.targetSelector === "[data-tour-target='tab-job-description']"
-            ) {
+            // The Context and Skills steps target tabs some callers never see
+            // (Context is hidden from non-Teams members, Skills is
+            // manager-only). Drop them so the tour never highlights a missing
+            // anchor or leaves the user on a blank pane. The Admin tab gets no
+            // tour step: it is a manager surface, not part of the everyday
+            // loop the tour teaches.
+            const gatedTab = ["context", "skills"].find(
+              (id) => step.targetSelector === `[data-tour-target='tab-${id}']`,
+            );
+            if (gatedTab) {
               return (
                 !!currentAgent &&
-                isVisibleAgentTab(capabilities, currentAgent, "job-description")
+                isVisibleAgentTab(capabilities, currentAgent, gatedTab)
               );
             }
             if (

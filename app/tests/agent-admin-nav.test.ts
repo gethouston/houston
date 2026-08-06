@@ -1,9 +1,9 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston-ai/engine-client";
 import {
-  type AgentAdminCard,
-  agentAdminCards,
+  adminScreens,
+  contextScreens,
   targetToScreen,
 } from "../src/components/tabs/agent-admin/agent-admin-nav.ts";
 
@@ -19,93 +19,46 @@ const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
   ...over,
 });
 
-const multiplayer = (role: OrgRole): Capabilities =>
-  caps({ multiplayer: true, role });
+describe("contextScreens — the Context tab's rows", () => {
+  it("always carries instructions and knowledge, in order", () => {
+    deepStrictEqual(contextScreens(), ["instructions", "knowledge"]);
+  });
+});
 
-const cardIds = (cards: AgentAdminCard[]) => cards.map((c) => c.id);
-const rowsOf = (cards: AgentAdminCard[], id: string) =>
-  cards.find((c) => c.id === id)?.rows ?? null;
-
-describe("agentAdminCards — card + row visibility", () => {
-  it("single-player: Configuration only, no Access", () => {
-    deepStrictEqual(cardIds(agentAdminCards(caps())), ["configuration"]);
-    strictEqual(
-      agentAdminCards(caps()).some((c) => c.id === "access"),
-      false,
-    );
+describe("adminScreens — the Admin tab's rows", () => {
+  it("single-player: no rows at all (the Admin tab is hidden there)", () => {
+    deepStrictEqual(adminScreens(caps()), []);
     // A null capabilities host (legacy / pre-Teams) behaves the same.
-    deepStrictEqual(cardIds(agentAdminCards(null)), ["configuration"]);
+    deepStrictEqual(adminScreens(null), []);
   });
 
-  it("Configuration always carries the three config rows (no model)", () => {
-    for (const c of [caps(), multiplayer("owner"), multiplayer("user")]) {
-      deepStrictEqual(rowsOf(agentAdminCards(c), "configuration"), [
-        "instructions",
-        "skills",
-        "knowledge",
-      ]);
-    }
-  });
-
-  it("single-player has no model row anywhere (model moved to Access)", () => {
-    for (const cards of [agentAdminCards(caps()), agentAdminCards(null)]) {
-      const allRows = cards.flatMap((c) => c.rows);
-      strictEqual(allRows.includes("model"), false);
-    }
-  });
-
-  it("Teams: adds the Access card with people, apps, and models", () => {
-    for (const role of ["owner", "admin", "user"] as const) {
-      const cards = agentAdminCards(
-        caps({ multiplayer: true, teams: true, role }),
-      );
-      deepStrictEqual(cardIds(cards), ["configuration", "access"]);
-      deepStrictEqual(rowsOf(cards, "access"), [
-        "people",
-        "integrations",
-        "model",
-      ]);
-    }
-  });
-
-  it("legacy multiplayer without Teams keeps the People row", () => {
-    const cards = agentAdminCards(caps({ multiplayer: true, teams: false }));
-    deepStrictEqual(cardIds(cards), ["configuration", "access"]);
-    deepStrictEqual(rowsOf(cards, "access"), ["people"]);
-  });
-
-  it("read-only Settings keeps only access rows", () => {
-    deepStrictEqual(
-      cardIds(agentAdminCards(caps({ multiplayer: true, teams: true }), true)),
-      ["access"],
-    );
-    deepStrictEqual(
-      rowsOf(
-        agentAdminCards(caps({ multiplayer: true, teams: true }), true),
-        "access",
-      ),
-      ["people", "integrations", "model"],
-    );
-  });
-
-  it("no Connect card anywhere — even on an apiKeys gateway (HOU-806)", () => {
-    deepStrictEqual(cardIds(agentAdminCards(caps({ apiKeys: true }))), [
-      "configuration",
+  it("Teams: people, apps, and models", () => {
+    deepStrictEqual(adminScreens(caps({ multiplayer: true, teams: true })), [
+      "people",
+      "integrations",
+      "model",
     ]);
-    const hosted = agentAdminCards(
-      caps({ multiplayer: true, teams: true, role: "owner", apiKeys: true }),
-    );
-    deepStrictEqual(cardIds(hosted), ["configuration", "access"]);
-    for (const c of [caps(), caps({ apiKeys: false }), null]) {
-      deepStrictEqual(cardIds(agentAdminCards(c)), ["configuration"]);
+  });
+
+  it("legacy multiplayer without Teams keeps the People row only", () => {
+    deepStrictEqual(adminScreens(caps({ multiplayer: true, teams: false })), [
+      "people",
+    ]);
+  });
+
+  it("no Connect row anywhere — even on an apiKeys gateway (HOU-806)", () => {
+    for (const c of [
+      caps({ apiKeys: true }),
+      caps({ multiplayer: true, teams: true, apiKeys: true }),
+    ]) {
+      strictEqual(adminScreens(c).includes("connect" as never), false);
     }
   });
 });
 
 describe("targetToScreen — deep-link mapping", () => {
-  it("maps learnings to the knowledge screen, others pass through", () => {
+  it("maps learnings to the knowledge screen, instructions passes through", () => {
     strictEqual(targetToScreen("instructions"), "instructions");
-    strictEqual(targetToScreen("skills"), "skills");
     strictEqual(targetToScreen("learnings"), "knowledge");
   });
 });

@@ -116,9 +116,13 @@
         "title": "Arquivadas",
         "body": "Use este botão para revisar as missões que este agente já concluiu. Envie uma mensagem para reabrir uma e ela volta direto para o painel ativo."
       },
-      "tabJobDescription": {
-        "title": "Configurações",
-        "body": "Defina como o seu assistente trabalha: suas instruções, skills e acessos. Atualize quando quiser."
+      "tabContext": {
+        "title": "Contexto",
+        "body": "A descrição de trabalho do seu assistente e tudo o que ele aprendeu. Atualize quando quiser."
+      },
+      "tabSkills": {
+        "title": "Skills",
+        "body": "Ensine ao seu assistente skills reutilizáveis que ele pode aplicar nas missões."
       },
       "missionControl": {
         "title": "Central de Missão",
