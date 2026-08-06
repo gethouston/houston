@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
 import {
   canCreateAgents,
+  canDeleteWorkspace,
   canManageMembers,
   canSeeAiModelsPage,
   canSeeBilling,
@@ -139,6 +140,23 @@ describe("canSeeBillingTab (C8)", () => {
     strictEqual(canSeeBillingTab(multiplayer("owner"), true), false); // no spaces flag
     strictEqual(canSeeBillingTab(caps(), true), false);
     strictEqual(canSeeBillingTab(null, true), false);
+  });
+});
+
+describe("canDeleteWorkspace (PRODUCT-1247)", () => {
+  it("single-player always allowed — the sole user owns every workspace", () => {
+    strictEqual(canDeleteWorkspace(caps()), true);
+    strictEqual(canDeleteWorkspace(null), true);
+  });
+
+  it("multiplayer: owner only — admin ('Manager' in the UI) and user cannot", () => {
+    strictEqual(canDeleteWorkspace(multiplayer("owner")), true);
+    strictEqual(canDeleteWorkspace(multiplayer("admin")), false);
+    strictEqual(canDeleteWorkspace(multiplayer("user")), false);
+  });
+
+  it("multiplayer without an explicit role denies (least privilege)", () => {
+    strictEqual(canDeleteWorkspace(caps({ multiplayer: true })), false);
   });
 });
 
