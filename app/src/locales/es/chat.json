@@ -248,11 +248,13 @@
   "filesUpdated_other": "{{count}} archivos actualizados",
   "contextCompacted": "Resumimos la conversación anterior para que el chat pueda continuar",
   "conversationMap": {
-    "title": "Mapa de conversación",
-    "view": "Ver mapa",
-    "hide": "Ocultar mapa",
+    "title": "Buscar en el chat",
+    "view": "Buscar en el chat",
+    "hide": "Cerrar búsqueda en el chat",
+    "searchPlaceholder": "Buscar mensajes",
+    "clearSearch": "Borrar búsqueda",
+    "noResults": "Ningún mensaje coincide con tu búsqueda.",
     "backToLatest": "Volver al final",
-    "empty": "Esta conversación aún no tiene suficientes momentos para navegar.",
     "selected": "Mensaje seleccionado",
     "messagePosition": "Mensaje {{position}}",
     "types": {

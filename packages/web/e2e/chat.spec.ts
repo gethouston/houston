@@ -229,10 +229,7 @@ test("sends a follow-up inside an existing mission", async ({ page }) => {
   });
 });
 
-// Skipped while the conversation map is deliberately hidden (see
-// ui/chat/src/conversation-map-panel.tsx CONVERSATION_MAP_VISIBLE) — the
-// feature stays wired; un-skip when the panel is re-shown.
-test.skip("navigates a long conversation with the conversation map", async ({
+test("searches and navigates a long conversation with the map", async ({
   page,
 }) => {
   await page.goto("/");
@@ -252,9 +249,22 @@ test.skip("navigates a long conversation with the conversation map", async ({
     timeout: 15_000,
   });
 
-  await page.getByRole("button", { name: "View map" }).click();
-  const map = page.getByRole("navigation", { name: "Conversation map" });
+  await page.getByRole("button", { name: "Search chat" }).click();
+  const map = page.getByRole("navigation", { name: "Search chat" });
   await expect(map).toBeVisible();
+  const search = page.getByRole("searchbox", { name: "Search messages" });
+  await expect(search).toHaveValue("");
+  await expect(map.getByRole("button")).toHaveCount(4);
+
+  await search.fill("hotels");
+  await expect(map.getByRole("button")).toHaveCount(2);
+  await expect(map).toContainText("now the hotels");
+
+  await search.fill("no matching message");
+  await expect(map.getByText("No messages match your search.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(map.getByRole("button")).toHaveCount(4);
 
   const firstMoment = map.getByRole("button").first();
   await firstMoment.click();
@@ -265,4 +275,8 @@ test.skip("navigates a long conversation with the conversation map", async ({
     "aria-current",
     "true",
   );
+
+  await search.focus();
+  await search.press("Escape");
+  await expect(page.getByRole("button", { name: "Search chat" })).toBeFocused();
 });

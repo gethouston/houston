@@ -6,6 +6,7 @@ import {
   type ResolvedConversationMapLabels,
 } from "./conversation-map-labels";
 import type { ConversationMoment } from "./conversation-map-model";
+import { searchConversationMoments } from "./conversation-map-model";
 import { ConversationMapPanel } from "./conversation-map-panel";
 
 export type { ConversationMapLabels } from "./conversation-map-labels";
@@ -35,6 +36,7 @@ export function ConversationMap({
 }: ConversationMapProps) {
   const { scrollRef, scrollToBottom } = useStickToBottomContext();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [activeMessageKey, setActiveMessageKey] = useState<string | null>(null);
   const resolvedLabels = useMemo<ResolvedConversationMapLabels>(
     () => ({
@@ -48,6 +50,7 @@ export function ConversationMap({
   const changeOpen = useCallback(
     (next: boolean) => {
       setOpen(next);
+      if (!next) setQuery("");
       onOpenChange?.(next, conversationLength);
     },
     [conversationLength, onOpenChange],
@@ -107,15 +110,25 @@ export function ConversationMap({
     onBackToLatest?.(conversationLength);
   }, [conversationLength, moments, onBackToLatest, scrollToBottom]);
 
+  const searchResult = useMemo(
+    () => searchConversationMoments(moments, query),
+    [moments, query],
+  );
+
   return (
     <ConversationMapPanel
       activeMessageKey={activeMessageKey}
+      availableMomentCount={moments.length}
+      hasQuery={searchResult.hasQuery}
       labels={resolvedLabels}
-      moments={moments}
+      moments={searchResult.moments}
       onBackToLatest={backToLatest}
       onOpenChange={changeOpen}
+      onQueryChange={setQuery}
       onSelectMoment={selectMoment}
       open={open}
+      query={query}
+      rangesById={searchResult.rangesById}
     />
   );
 }

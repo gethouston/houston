@@ -248,11 +248,13 @@
   "filesUpdated_other": "{{count}} files updated",
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
   "conversationMap": {
-    "title": "Conversation map",
-    "view": "View map",
-    "hide": "Hide map",
+    "title": "Search chat",
+    "view": "Search chat",
+    "hide": "Close chat search",
+    "searchPlaceholder": "Search messages",
+    "clearSearch": "Clear search",
+    "noResults": "No messages match your search.",
     "backToLatest": "Back to latest",
-    "empty": "This conversation does not have enough moments to navigate yet.",
     "selected": "Selected message",
     "messagePosition": "Message {{position}}",
     "types": {

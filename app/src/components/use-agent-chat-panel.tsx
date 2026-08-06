@@ -342,8 +342,10 @@ export function useAgentChatPanel({
         title: t("chat:conversationMap.title"),
         view: t("chat:conversationMap.view"),
         hide: t("chat:conversationMap.hide"),
+        searchPlaceholder: t("chat:conversationMap.searchPlaceholder"),
+        clearSearch: t("chat:conversationMap.clearSearch"),
+        noResults: t("chat:conversationMap.noResults"),
         backToLatest: t("chat:conversationMap.backToLatest"),
-        empty: t("chat:conversationMap.empty"),
         selected: t("chat:conversationMap.selected"),
         messagePosition: (position: number) =>
           t("chat:conversationMap.messagePosition", { position }),

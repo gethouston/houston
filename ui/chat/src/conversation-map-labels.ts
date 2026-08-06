@@ -4,8 +4,10 @@ export interface ConversationMapLabels {
   title?: string;
   view?: string;
   hide?: string;
+  searchPlaceholder?: string;
+  clearSearch?: string;
+  noResults?: string;
   backToLatest?: string;
-  empty?: string;
   selected?: string;
   messagePosition?: (position: number) => string;
   types?: Partial<Record<ConversationMomentType, string>>;
@@ -15,19 +17,23 @@ export interface ResolvedConversationMapLabels {
   title: string;
   view: string;
   hide: string;
+  searchPlaceholder: string;
+  clearSearch: string;
+  noResults: string;
   backToLatest: string;
-  empty: string;
   selected: string;
   messagePosition: (position: number) => string;
   types: Record<ConversationMomentType, string>;
 }
 
 export const DEFAULT_CONVERSATION_MAP_LABELS: ResolvedConversationMapLabels = {
-  title: "Conversation map",
-  view: "View map",
-  hide: "Hide map",
+  title: "Search chat",
+  view: "Search chat",
+  hide: "Close chat search",
+  searchPlaceholder: "Search messages",
+  clearSearch: "Clear search",
+  noResults: "No messages match your search.",
   backToLatest: "Back to latest",
-  empty: "This conversation does not have enough moments to navigate yet.",
   selected: "Selected message",
   messagePosition: (position) => `Message ${position}`,
   types: {

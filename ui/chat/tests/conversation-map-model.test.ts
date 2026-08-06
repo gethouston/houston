@@ -1,6 +1,9 @@
 import { deepEqual, equal } from "node:assert";
 import { describe, it } from "node:test";
-import { deriveConversationMoments } from "../src/conversation-map-model.ts";
+import {
+  deriveConversationMoments,
+  searchConversationMoments,
+} from "../src/conversation-map-model.ts";
 import type { ChatMessage } from "../src/feed-to-messages.ts";
 
 function message(overrides: Partial<ChatMessage>): ChatMessage {
@@ -85,15 +88,86 @@ describe("deriveConversationMoments", () => {
     equal(moments[0]?.preview.endsWith("..."), true);
   });
 
-  it("caps long histories while preserving their beginning and end", () => {
+  it("keeps every searchable moment from a long history", () => {
     const moments = deriveConversationMoments(
       Array.from({ length: 40 }, (_, index) =>
         message({ key: `assistant-${index}`, content: `Response ${index}` }),
       ),
     );
 
-    equal(moments.length, 24);
+    equal(moments.length, 40);
     equal(moments[0].messageKey, "assistant-0");
     equal(moments.at(-1)?.messageKey, "assistant-39");
+  });
+});
+
+describe("searchConversationMoments", () => {
+  const moments = deriveConversationMoments([
+    message({ key: "user-0", from: "user", content: "Plan the launch" }),
+    message({ key: "assistant-1", content: "I reviewed the budget" }),
+    message({ key: "user-2", from: "user", content: "Open São Paulo next" }),
+  ]);
+
+  it("shows the conversation map by default when the query is empty", () => {
+    const result = searchConversationMoments(moments, "   ");
+
+    equal(result.hasQuery, false);
+    deepEqual(result.moments, moments);
+    deepEqual(result.rangesById, {});
+  });
+
+  it("filters by an accent-insensitive exact phrase and highlights it", () => {
+    const result = searchConversationMoments(moments, "  sao   PAULO ");
+
+    equal(result.hasQuery, true);
+    deepEqual(
+      result.moments.map((moment) => moment.messageKey),
+      ["user-2"],
+    );
+    deepEqual(
+      result.rangesById["user-2"].map((range) =>
+        result.moments[0].preview.slice(range.start, range.end),
+      ),
+      ["São Paulo"],
+    );
+  });
+
+  it("searches every message before compacting the visible results", () => {
+    const longHistory = deriveConversationMoments(
+      Array.from({ length: 60 }, (_, index) =>
+        message({
+          key: `assistant-${index}`,
+          content:
+            index === 37 ? "Needle in the full history" : `Response ${index}`,
+        }),
+      ),
+    );
+
+    const result = searchConversationMoments(longHistory, "needle");
+
+    deepEqual(
+      result.moments.map((moment) => moment.messageKey),
+      ["assistant-37"],
+    );
+  });
+
+  it("finds text beyond the default preview and shows it in a result excerpt", () => {
+    const longMessage = deriveConversationMoments([
+      message({
+        key: "assistant-long",
+        content: `${"Opening context ".repeat(12)}hidden itinerary detail`,
+      }),
+    ]);
+
+    const result = searchConversationMoments(longMessage, "itinerary");
+
+    equal(result.moments.length, 1);
+    equal(result.moments[0].preview.includes("itinerary"), true);
+    deepEqual(
+      result.rangesById["assistant-long"].map((range) =>
+        result.moments[0].preview.slice(range.start, range.end),
+      ),
+      ["itinerary"],
+    );
   });
 });

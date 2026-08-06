@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v54 - 2026-08-06
+
+Added the conversation map search: a visible chat search trigger opens an
+unfiltered map of prior messages by default, then narrows that map with a
+case- and accent-insensitive text filter. Results jump to and highlight the
+selected message, while the footer returns directly to the latest reply.
+
 ## v53 - 2026-07-31
 
 Promoted the Agent Store Home, agent detail, and creator profile compositions

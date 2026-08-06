@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 42
+inventoryVersion: 54
 
 components:
   agent-avatar:
@@ -30,6 +30,10 @@ components:
   conversation-feed:
     status: implemented
     ref: "@houston-ai/chat ChatPanel / ChatMessages / Conversation"
+
+  conversation-map-search:
+    status: implemented
+    ref: "@houston-ai/chat ConversationMap / ConversationMapPanel"
 
   assistant-message:
     status: implemented
