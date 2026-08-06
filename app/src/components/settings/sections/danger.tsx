@@ -2,12 +2,15 @@ import { Button, ConfirmDialog } from "@houston-ai/core";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../../hooks/use-capabilities";
+import { canDeleteWorkspace } from "../../../lib/org-roles";
 import { useAgentStore } from "../../../stores/agents";
 import { useWorkspaceStore } from "../../../stores/workspaces";
 import { SettingsControlRow } from "../settings-row";
 
 export function DangerSection() {
   const { t } = useTranslation("settings");
+  const { capabilities } = useCapabilities();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
@@ -16,6 +19,9 @@ export function DangerSection() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   if (!currentWorkspace) return null;
+  // Owner-only (PRODUCT-1247): capabilities carry the caller's role for the
+  // ACTIVE space, which is exactly the workspace this section deletes.
+  if (!canDeleteWorkspace(capabilities)) return null;
 
   const isOnlyWorkspace = workspaces.length <= 1;
 
