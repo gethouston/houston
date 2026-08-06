@@ -9,7 +9,11 @@
  *                Never a button pill — a pill clips a long URL into an
  *                unreadable black bar.
  * - `labeled`  — the link has descriptive text distinct from the URL
- *                (`[Open report](https://…)`). Render the labeled button.
+ *                (`[Open report](https://…)`). Renders as the SAME inline
+ *                link chip as an autolink, wearing the label instead of the
+ *                shortened URL (HOU-1152): every link in a message reads as
+ *                one thing. The kind still matters — a labeled link shows its
+ *                label verbatim, an autolink shortens its URL.
  */
 export type MarkdownLinkKind = "plain" | "autolink" | "labeled";
 
