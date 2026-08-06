@@ -146,6 +146,61 @@ Loader parity rule (pi's, now both backends): a SKILL.md with **no
 never learns it exists, even though the Skills UI still lists it. Keep
 `description` mandatory in anything that writes skills.
 
+## Finding a skill from chat (`find_skills` / `install_skill`, PRODUCT-1238)
+
+"Is there a skill for X?" is answered by the agent itself, not by sending the
+user to browse the Skills page. Two tools, on by default in EVERY agent:
+
+- **`find_skills(query)`** — searches skills.sh and returns candidates with
+  their real descriptions and install counts.
+- **`install_skill(source, skillId)`** — installs one into the calling agent's
+  `.agents/skills/` tree.
+
+**Why native tools and not Vercel's `find-skills` skill installed everywhere.**
+That skill (2.8M installs, the one the issue pointed at) is a procedure whose
+every step is a CLI call (`npx skills find`, `npx skills add -g -y`). Three
+things break here: pi ships **no tool CLIs**, `npx skills add` writes to
+`~/.claude` rather than the `.agents/skills/` tree pi's loader reads, and the
+product prompt forbids naming a CLI to a non-technical user. Everything that
+skill does over the CLI, the host already did in-process for the Skills UI — so
+the capability is native, needs no per-agent install, and no manifest entry.
+
+**The wiring** (mirrors `save_learning` exactly — read that first):
+
+| Layer | Where |
+|---|---|
+| Tools | `packages/runtime/src/session/tools/find-skills.ts` |
+| Name allowlist + mode reach | `packages/runtime/src/session/tool-selection.ts` (`skillDirectory` gate) |
+| pi registration | `packages/runtime/src/session/conversation-cache.ts` |
+| Claude backend mirror | `packages/runtime/src/backends/claude/custom-tools.ts` |
+| Host routes | `packages/host/src/routes/skills-sandbox.ts` (`POST /sandbox/skills/{search,install}`) |
+| Prompt guidance (BOTH copies) | `packages/host/src/houston-prompt.ts` + `app/src-tauri/src/houston_prompt/skills_memory.rs` |
+
+Four things that are load-bearing:
+
+1. **Gate = host reachability**, the same one `save_routine` / `save_learning`
+   use — not a Composio key and not a feature flag. The directory lives behind
+   the host, so the tools exist wherever the sandbox token reaches it.
+2. **Reach is execute + auto, never plan.** Finding is a read, but installing is
+   a real write, and a plan turn that could find a skill it cannot add would
+   just dead-end.
+3. **The token names the agent, the request body cannot.** An install can only
+   ever land in the tree of the agent the sandbox token resolves to.
+4. **A mid-turn install is invisible to the model.** `<available_skills>` is
+   built at session start, so `install_skill` returns the SKILL.md **path** and
+   tells the agent to Read it if it's running the skill in this same turn.
+
+Search hits are enriched with real descriptions via the shared `PreviewDirectory`
+(top 5 only — each is a cached GitHub SKILL.md lookup). Enrichment is
+best-effort **per hit**: an unreachable SKILL.md still returns as a candidate
+without a description rather than failing the whole answer. Both the search and
+preview caches are the SAME process-wide singletons the marketplace UI uses
+(exported from `skills-directory.ts` as `communityDirectory` / `previewDirectory`)
+— two instances would double the outbound rate against a service that
+rate-limits, and the request spacing that keeps us under it is per-instance.
+`CommunityDirectory` captures its fetch at construction, which is why the route
+takes the directory itself as the test seam rather than a `fetchImpl`.
+
 ## Render pipeline
 
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.

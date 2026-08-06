@@ -158,6 +158,44 @@ describe("buildToolSelection", () => {
       "save_learning",
     );
   });
+
+  test("the skill-directory tools are added when the host is reachable, off by default", () => {
+    const off = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+    });
+    expect(off.toolNames).not.toContain("find_skills");
+    expect(off.toolNames).not.toContain("install_skill");
+
+    const on = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+      skillDirectory: true,
+    });
+    // Same reachability gate as save_learning, independent of Composio: the
+    // open skills directory lives behind the host, not behind an integration.
+    expect(on.toolNames).toEqual([
+      ...CLAMPED_FILE_TOOL_NAMES,
+      "ask_user",
+      "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
+      "find_skills",
+      "install_skill",
+    ]);
+  });
+
+  test("the skill-directory tools reach execute and auto but never plan", () => {
+    const on = buildToolSelection({
+      codeExecution: "disabled",
+      integrations: false,
+      skillDirectory: true,
+    });
+    for (const name of ["find_skills", "install_skill"]) {
+      expect(toolNamesForMode("execute", on.toolNames)).toContain(name);
+      expect(toolNamesForMode("auto", on.toolNames)).toContain(name);
+      expect(toolNamesForMode("plan", on.toolNames)).not.toContain(name);
+    }
+  });
 });
 
 describe("planToolNames", () => {
