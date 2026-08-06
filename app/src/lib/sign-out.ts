@@ -7,6 +7,7 @@
 import { cancelAllConnectFlows } from "../stores/connect-flow";
 import { analytics } from "./analytics";
 import { emitAuthError } from "./auth-error-bus";
+import { purgeAccountLocalState } from "./houston-local-state";
 import { clearSession, stopProactiveRefresh } from "./identity";
 import { cancelPendingAuthorize } from "./identity/desktop-oauth";
 import { resetForIdentityChange } from "./identity-reset";
@@ -66,6 +67,11 @@ export async function signOut(): Promise<void> {
     // (HOU-712). Contained: an IndexedDB rejection must not skip the in-memory
     // reset below, or the outgoing account's world rides into the next sign-in.
     await clearPersistedLocalData();
+    // And the account-scoped `houston.*` localStorage mirrors — prefs, layouts,
+    // read cursors, onboarding + last-sign-in hints (PRODUCT-1235). Device-level
+    // keys (host connection, standalone local data) survive; see
+    // `houston-local-state.ts`.
+    purgeAccountLocalState(window.localStorage);
   } catch (e) {
     localDataFailure = e;
     logger.error(`[auth] sign-out could not wipe persisted local data: ${e}`);
