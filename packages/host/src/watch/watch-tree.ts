@@ -29,6 +29,8 @@ export interface TreeWatchOptions {
   platform?: NodeJS.Platform;
   /** Test override for the per-directory watch (Linux strategy only). */
   watchDir?: WatchDirFn;
+  /** Absolute paths never descended into (Linux strategy only) — HOU-1237. */
+  excludeDirs?: string[];
 }
 
 export interface TreeWatch {
@@ -41,14 +43,12 @@ export interface TreeWatch {
  * macOS/Windows: native `fs.watch(root, { recursive: true })` (FSEvents /
  * ReadDirectoryChangesW) — one OS handle for the whole tree.
  *
- * Linux: Node has no native recursive watch; its userland fallback
- * (`internal/fs/recursive_watch`) registers one inotify watch per FILE and
- * re-registers on every file that appears — atomic-write temp files included.
- * inotify watches are a kernel budget shared by every pod on the node, so a
- * busy tree exhausts it and every later file op throws ENOSPC (HOU-841).
- * A directory inotify watch already reports create/modify/delete of its
- * direct children, so this strategy watches DIRECTORIES only: watch count
- * drops from files+dirs to dirs, and file churn registers nothing new.
+ * Linux: Node's userland recursive fallback registers one inotify watch per
+ * FILE, re-registering on every file that appears (atomic-write temp files
+ * included) — a busy tree exhausts the kernel's per-pod-shared budget and
+ * every later file op throws ENOSPC (HOU-841). A directory watch already
+ * reports its direct children's create/modify/delete, so this strategy
+ * watches DIRECTORIES only: file churn registers nothing new.
  */
 export function watchTree(
   root: string,
@@ -57,7 +57,13 @@ export function watchTree(
 ): TreeWatch {
   const platform = opts.platform ?? process.platform;
   if (platform !== "linux") return watchNative(root, listener, opts.onError);
-  return new DirTreeWatcher(root, listener, opts.onError, opts.watchDir);
+  return new DirTreeWatcher(
+    root,
+    listener,
+    opts.onError,
+    opts.watchDir,
+    opts.excludeDirs,
+  );
 }
 
 function watchNative(
@@ -94,6 +100,7 @@ class DirTreeWatcher implements TreeWatch {
     private readonly listener: TreeWatchListener,
     private readonly onError: (err: unknown) => void,
     private readonly watchDir: WatchDirFn = (dir, cb) => watch(dir, cb),
+    private readonly excludeDirs: string[] = [],
   ) {
     this.addDir(root, true);
   }
@@ -110,14 +117,15 @@ class DirTreeWatcher implements TreeWatch {
     this.onError(err);
   }
 
+  // .git is reactivity-dead; excludeDirs skips a subtree another watcher
+  // owns (HOU-1237) — matters for a rename-reached pre-existing dir too.
+  private isSkipped(dir: string): boolean {
+    return basename(dir) === ".git" || this.excludeDirs.includes(dir);
+  }
+
   private addDir(dir: string, isRoot = false): void {
     if (this.closed || this.degraded || this.watchers.has(dir)) return;
-    // .git is never watched: agentFileEventType (packages/domain) already
-    // classifies every .git/ path as a null event, so a watch there only
-    // spends inotify budget for changes nobody sees. Checked here (not just
-    // in the readdir scan below) because a rename event for a pre-existing
-    // dir can call addDir directly, bypassing that scan.
-    if (!isRoot && basename(dir) === ".git") return;
+    if (!isRoot && this.isSkipped(dir)) return;
     let watcher: FSWatcher;
     try {
       watcher = this.watchDir(dir, (eventType, filename) =>

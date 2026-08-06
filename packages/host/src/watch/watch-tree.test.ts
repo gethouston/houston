@@ -21,11 +21,13 @@ function linuxWatch(
   events: Array<{ type: string; rel: string }>,
   onError: (err: unknown) => void = () => {},
   watchDir?: WatchDirFn,
+  excludeDirs?: string[],
 ): TreeWatch {
   return watchTree(root, (type, rel) => events.push({ type, rel }), {
     onError,
     platform: "linux",
     watchDir,
+    excludeDirs,
   });
 }
 
@@ -159,6 +161,28 @@ test(".git is never watched (HOU-1232)", async () => {
     expect(watchedDirs).not.toContain(join(root, ".git"));
     expect(watchedDirs).not.toContain(join(root, ".git", "objects"));
     expect(events.some((e) => e.rel.startsWith(".git/"))).toBe(false);
+  } finally {
+    watcher.close();
+  }
+});
+
+test("excludeDirs is never watched, even for a pre-existing subtree (HOU-1237)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "houston-tree-"));
+  mkdirSync(join(root, "workspaces", "deep"), { recursive: true });
+  const excluded = join(root, "workspaces");
+  const watchedDirs: string[] = [];
+  const watchDir: WatchDirFn = (dir, cb) => {
+    watchedDirs.push(dir);
+    return watch(dir, cb);
+  };
+  const events: Array<{ type: string; rel: string }> = [];
+  const watcher = linuxWatch(root, events, () => {}, watchDir, [excluded]);
+  try {
+    await new Promise((r) => setTimeout(r, 100));
+    writeFileSync(join(root, "workspaces", "deep", "file.txt"), "x");
+    await new Promise((r) => setTimeout(r, 200));
+    expect(watchedDirs).not.toContain(excluded);
+    expect(watchedDirs).not.toContain(join(excluded, "deep"));
   } finally {
     watcher.close();
   }

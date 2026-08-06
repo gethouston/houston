@@ -84,6 +84,30 @@ test("uploads created files after the quiet period", async () => {
   await daemon.stop();
 });
 
+test("a change inside an excluded watch subtree still syncs via the periodic pass (HOU-1237)", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-local-"));
+  const excludedDir = join(localRoot, "excluded");
+  mkdirSync(excludedDir, { recursive: true });
+  const daemon = new StoreSyncDaemon({
+    store: new LocalDirStore(remoteRoot),
+    rootDir: localRoot,
+    quietMs: 20,
+    intervalMs: 250,
+    watchExcludeDirs: [excludedDir],
+    log: () => {},
+  });
+  await daemon.hydrate();
+  daemon.start();
+  writeFileSync(join(excludedDir, "created.txt"), "created");
+  await eventually(() => {
+    expect(
+      readFileSync(join(remoteRoot, "excluded", "created.txt"), "utf8"),
+    ).toBe("created");
+  });
+  await daemon.stop();
+});
+
 test("deletes remotely when a hydrated file is deleted locally", async () => {
   const { daemon, localRoot, remoteRoot } = setup();
   writeFileSync(join(remoteRoot, "delete-me.txt"), "old");

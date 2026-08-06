@@ -38,6 +38,13 @@ export interface StoreSyncOptions {
   store: ObjectStore;
   rootDir: string;
   excludes?: string[];
+  /**
+   * Absolute paths the filesystem watcher never descends into (HOU-1237,
+   * distinct from `excludes` above — object-store keys, not watch paths).
+   * The unfiltered periodic sync still covers them, so this only trades a
+   * ~3s debounce for the interval one inside the excluded subtree.
+   */
+  watchExcludeDirs?: string[];
   quietMs?: number;
   intervalMs?: number;
   maxHydrateBytes?: number;
@@ -92,6 +99,7 @@ export class StoreSyncDaemon {
     this.started = true;
     try {
       this.watcher = watchTree(this.opts.rootDir, () => this.markDirty(), {
+        excludeDirs: this.opts.watchExcludeDirs,
         // Fires at most once (ENOSPC on the pod's inotify budget — HOU-841);
         // the tree watch keeps whatever coverage it already has, and the
         // periodic pass guarantees eventual sync regardless.
