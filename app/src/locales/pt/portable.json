@@ -1,9 +1,5 @@
 {
   "exportMenu": "Exportar uma cópia",
-  "newAgent": {
-    "fromFriendCard": "De um amigo",
-    "fromFriendDescription": "Traga um agente que alguém compartilhou com você, de um arquivo ou um link."
-  },
   "export": {
     "eyebrow": "Exportando {{name}}",
     "loading": "Carregando seu agente.",

@@ -146,8 +146,8 @@
         "body": "You can spin up another agent here any time, or keep working with the one you have."
       },
       "agentStore": {
-        "title": "Pick where to start",
-        "body": "Choose Start from scratch for a blank agent, or pick one of ours from the store and tweak it to fit."
+        "title": "The Agent Store",
+        "body": "Browse ready-made agents here, free to install, and bring one into your workspace with a click."
       },
       "outro": {
         "title": "Now go build something amazing",
@@ -233,10 +233,6 @@
     "downloadAction": "Download the update",
     "checkAction": "Check for updates"
   },
-  "store": {
-    "searchPlaceholder": "Search the library...",
-    "noResults": "No agents match your search"
-  },
   "naming": {
     "dialogTitle": "Name your Agent",
     "newAgentFallback": "New Agent",
@@ -247,64 +243,10 @@
   },
   "newAgent": {
     "dialogTitle": "New agent",
-    "createSection": "Create",
-    "librarySection": "From library",
-    "fromScratchCard": "From scratch",
-    "fromScratchDescription": "A blank agent with no instructions or actions. Build it your way."
-  },
-  "aiAssist": {
-    "cardTitle": "Create with AI",
-    "cardDescription": "Describe your work and an AI consultant designs the agent for you",
-    "stepTitle": "Brief your AI consultant",
-    "stepDescription": "Tell us about your role, the tasks that eat your time, and the tools you use. Your consultant designs the agent's job around it.",
-    "briefLabel": "What should this agent take off your plate?",
-    "briefPlaceholder": "e.g. I run sales at a small agency. I spend hours chasing follow-ups, updating the pipeline sheet, and writing recap emails after calls...",
-    "examplesLabel": "Or start from an example",
-    "examples": {
-      "sales": "I lead sales and lose hours to follow-up emails and keeping the CRM current",
-      "inbox": "My inbox is overflowing. I want a morning digest and drafts for routine replies",
-      "reports": "Every Friday I compile a team status report from scattered updates and sheets",
-      "research": "I need market and competitor research summarized into briefs I can share"
-    },
-    "modelLabel": "AI model",
-    "generateButton": "Design my agent",
-    "generatingMessage": "Your consultant is designing the agent...",
-    "cancelButton": "Cancel",
-    "generatedTitle": "Here are your agent's instructions",
-    "generatedHelper": "Review and edit the instructions below, then continue when ready",
-    "nameLabel": "Agent name",
-    "namePlaceholder": "e.g. Email Inbox Manager",
-    "errorTitle": "Generation failed",
-    "errorDescription": "Could not generate instructions. Make sure your AI provider is connected and try again."
-  },
-  "aiReview": {
-    "stepTitle": "Review your agent",
-    "instructionsLabel": "Agent instructions",
-    "instructionsHelper": "Review and edit the instructions below"
-  },
-  "aiIntegrations": {
-    "stepTitle": "Connect your apps",
-    "stepDescription": "These apps work well with your agent. Connect them now or do it later from the Integrations tab.",
-    "notInstalledNote": "You can connect integrations from the Integrations tab after creating your agent.",
-    "needsAuthNote": "Sign in to Composio to connect apps now, or do it after creating your agent.",
-    "signIn": "Sign in",
-    "connected": "Connected",
-    "connect": "Connect",
-    "continueButton": "Continue"
-  },
-  "aiRoutine": {
-    "stepTitle": "Set up automatic runs",
-    "stepDescription": "Based on what you described, this agent can run on a schedule by itself. Edit anything before you turn it on.",
-    "nameLabel": "Routine name",
-    "promptLabel": "What it should do each time",
-    "scheduleLabel": "When it runs",
-    "consentTitle": "Before you turn this on",
-    "consentScheduled": "It runs by itself on a schedule.",
-    "consentUsage": "Every run uses AI, so it counts toward your usage.",
-    "consentNeedsApp": "If it uses an app, that app must be connected or the routine can't run.",
-    "laterNote": "You can create, change, or turn off routines anytime in the agent's Routines tab.",
-    "enableLabel": "Enable this routine",
-    "continueButton": "Continue"
+    "storeCard": "Import from the store",
+    "storeCardDescription": "Ready-made agents, free to install. Browse the store and pick one.",
+    "createCard": "Create new agent",
+    "createCardDescription": "Start from scratch and build your agent your way."
   },
   "engineGate": {
     "starting": "Loading your agents…",
