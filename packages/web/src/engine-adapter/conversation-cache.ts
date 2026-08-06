@@ -137,6 +137,10 @@ export async function writeCachedConversation(
         ...(f.ts !== undefined ? { ts: f.ts } : {}),
         ...(f.author !== undefined ? { author: f.author } : {}),
         ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
+        // Turn identity (HOU-1214): a cache-painted feed must stay dedupable
+        // against a live replay of the same turn.
+        ...(f.turnId !== undefined ? { turnId: f.turnId } : {}),
+        ...(f.toolIndex !== undefined ? { toolIndex: f.toolIndex } : {}),
       })),
       updatedAt: Date.now(),
     });

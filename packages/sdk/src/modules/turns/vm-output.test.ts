@@ -747,3 +747,52 @@ test("identical text from a DIFFERENT turn still appends (dedup is by identity, 
   });
   expect(snap().feed).toHaveLength(2);
 });
+
+test("a NEW turn's streaming push never reuses a stale open bubble from a prior turn", () => {
+  const { vm, snap } = harness();
+  // Turn A streams, then its sink dies with NO terminal status (external
+  // teardown keeps live state) — the streaming registration stays open.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "turn A partial",
+    turnId: "t-A",
+  });
+  // Turn B's stream arrives on the same conversation.
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "assistant_text_streaming",
+    data: "turn B",
+    turnId: "t-B",
+  });
+
+  expect(snap().feed).toHaveLength(2); // B opened its own bubble
+  expect(snap().feed[0]?.data).toBe("turn A partial"); // A's content survives
+  expect(snap().feed[1]?.data).toBe("turn B");
+  expect(snap().feed[1]?.turnId).toBe("t-B");
+});
+
+test("file_changes and provider_error dedupe by turn like the reply does", () => {
+  const { vm, snap } = harness();
+  vm.seedHistory("a", "c1", [
+    {
+      feed_type: "file_changes",
+      data: { created: ["a.md"], modified: [] },
+      turnId: "t-1",
+    },
+    {
+      feed_type: "provider_error",
+      data: { kind: "rate_limited", provider: "anthropic" },
+      turnId: "t-1",
+    },
+  ]);
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "file_changes",
+    data: { created: ["a.md"], modified: [] },
+    turnId: "t-1",
+  });
+  vm.pushFeedItem("a", "c1", {
+    feed_type: "provider_error",
+    data: { kind: "rate_limited", provider: "anthropic" },
+    turnId: "t-1",
+  });
+  expect(snap().feed).toHaveLength(2);
+});

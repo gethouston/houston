@@ -215,9 +215,17 @@ const STREAMED_AS: Record<string, string> = {
 /**
  * Feed types a turn produces exactly ONCE, deduped by `turnId` alone
  * (HOU-1214). Tool rows are many-per-turn and dedupe by (turnId, toolIndex)
- * instead; everything else stays append-only.
+ * instead. `system_message` is deliberately NOT here — a turn can legitimately
+ * carry several (a stop line plus a reload-failure line). Everything else
+ * stays append-only.
  */
-const SINGLETON_TYPES = new Set(["assistant_text", "thinking", "final_result"]);
+const SINGLETON_TYPES = new Set([
+  "assistant_text",
+  "thinking",
+  "final_result",
+  "file_changes",
+  "provider_error",
+]);
 
 /** Last matching entry — local helper (`Array.findLast` is ES2023; the SDK
  *  targets ES2022 and runs in older WKWebViews). */
@@ -418,19 +426,17 @@ export class ConversationVmOutput implements FeedOutput {
       else this.clearPending(s);
     }
     const finalOf = FINAL_OF[feed_type];
+    const run =
+      finalOf !== undefined ? this.openRun(s, finalOf, turnId) : undefined;
     if (feed_type.endsWith("_streaming")) {
       this.upsertStreaming(s, feed_type, data, ts, turnId);
-    } else if (finalOf !== undefined && s.streaming.has(finalOf)) {
-      const id = s.streaming.get(finalOf);
-      const entry = s.feed.find((f) => f.id === id);
-      if (entry) {
-        // Finalizing an open stream mutates the SAME entry: keep its original
-        // `ts` (the bubble is timed by when it opened), only swap type + data
-        // (and stamp the turn identity when the push knows it).
-        entry.feed_type = feed_type;
-        entry.data = data;
-        if (turnId !== undefined) entry.turnId ??= turnId;
-      }
+    } else if (finalOf !== undefined && run !== undefined) {
+      // Finalizing an open stream mutates the SAME entry: keep its original
+      // `ts` (the bubble is timed by when it opened), only swap type + data
+      // (and stamp the turn identity when the push knows it).
+      run.feed_type = feed_type;
+      run.data = data;
+      if (turnId !== undefined) run.turnId ??= turnId;
       s.streaming.delete(finalOf);
     } else if (!this.upsertByTurn(s, feed_type, data, turnId, toolIndex)) {
       // A fresh entry: carry a supplied `ts`, else stamp the wall clock now; an
@@ -536,6 +542,35 @@ export class ConversationVmOutput implements FeedOutput {
       }
   }
 
+  /**
+   * The open streaming run's entry for `streamingType`, or undefined. A
+   * registration whose entry belongs to a DIFFERENT turn than the push is
+   * STALE — a prior turn's bubble a dead sink left open — and reusing it would
+   * splice the new turn's content into the old turn's entry (keeping the old
+   * identity); it is dropped instead, side-effectfully, so callers fall
+   * through to adopt-or-append. A registration whose entry vanished from the
+   * feed (a reseed raced the push) is dropped the same way.
+   */
+  private openRun(
+    s: ConvState,
+    streamingType: string,
+    turnId: string | undefined,
+  ): FeedItemVM | undefined {
+    const id = s.streaming.get(streamingType);
+    if (id === undefined) return undefined;
+    const entry = s.feed.find((f) => f.id === id);
+    if (
+      entry !== undefined &&
+      (turnId === undefined ||
+        entry.turnId === undefined ||
+        entry.turnId === turnId)
+    ) {
+      return entry;
+    }
+    s.streaming.delete(streamingType);
+    return undefined;
+  }
+
   private upsertStreaming(
     s: ConvState,
     feed_type: string,
@@ -543,15 +578,14 @@ export class ConversationVmOutput implements FeedOutput {
     ts?: number,
     turnId?: string,
   ): void {
-    const existingId = s.streaming.get(feed_type);
-    if (existingId !== undefined) {
-      const entry = s.feed.find((f) => f.id === existingId);
-      if (entry) {
-        // A streaming delta updates data only — the entry keeps the `ts` it was
-        // stamped with when the stream opened.
-        entry.data = data;
-        return;
-      }
+    const entry = this.openRun(s, feed_type, turnId);
+    if (entry) {
+      // A streaming delta updates data only — the entry keeps the `ts` it was
+      // stamped with when the stream opened (and adopts the turn identity the
+      // moment a push knows it).
+      entry.data = data;
+      if (turnId !== undefined) entry.turnId ??= turnId;
+      return;
     }
     // No open run — but the SAME turn's bubble may already be on the feed
     // (HOU-1214): a history seed painted the persisted reply while the
