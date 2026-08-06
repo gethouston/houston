@@ -206,11 +206,27 @@ function saveSettings(s: Settings) {
   renameSync(tmp, settingsFile);
 }
 
+/**
+ * Uncurated providers whose alphabetically-first catalog model is a bad
+ * default. NVIDIA serves each hosted model per ACCOUNT (HOU-890): the
+ * catalog's first row (google/gemma-3-12b-it) answers `404 Function not
+ * found for account` for many accounts, so defaulting to it broke both key
+ * verification and the first chat; meta/llama-3.3-70b-instruct is served to
+ * every account we have evidence from (keep in sync with the classifier's
+ * NVIDIA_BROAD_FALLBACK and the verifier's NVIDIA_VERIFY_FALLBACKS).
+ */
+const UNCURATED_DEFAULT_MODEL: Record<string, string> = {
+  nvidia: "meta/llama-3.3-70b-instruct",
+};
+
 function defaultModel(provider: ProviderId): string {
   const found = PROVIDERS.find((p) => p.id === provider);
   if (found) return found.defaultModel;
-  // Uncurated pi provider: no configured default, so start on the first model
-  // pi lists for it rather than hard-failing the picker/turn.
+  // Uncurated pi provider: no configured default, so start on the hand-picked
+  // override when one exists (and pi still lists it), else the first model pi
+  // lists, rather than hard-failing the picker/turn.
+  const preferred = UNCURATED_DEFAULT_MODEL[provider];
+  if (preferred && piModelIds(provider).includes(preferred)) return preferred;
   const first = firstCatalogModel(provider);
   if (first) return first;
   throw new Error(`unknown provider: ${provider}`);

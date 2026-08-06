@@ -791,47 +791,63 @@ test("NVIDIA NIM 403 'Authorization failed' → unauthenticated / invalid_api_ke
   if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
 });
 
-test("NVIDIA body-less 410 (Public API Endpoints gate) → unauthenticated (HOU-890)", () => {
+test("NVIDIA body-less 410 (per-account model gate) → model_unavailable with the broad fallback (HOU-890)", () => {
   // Verbatim OpenAI-SDK flattening of integrate.api.nvidia.com's empty 410:
   // the key authenticated (a bad key answers 403 "Authorization failed"), but
-  // the account's org lacks the "Public API Endpoints" permission, so EVERY
-  // chat completion dies while /v1/models still works. Routed to the reconnect
-  // surface, whose re-verify names NVIDIA's remedy (key_restricted).
+  // THIS model isn't served for the account, while /v1/models still lists it.
+  // The switch-model card with a one-click broadly-served target is the
+  // honest surface — re-keying can never fix a gated model.
   const err = classifyProviderError({
     provider: "nvidia",
     model: "google/gemma-3-12b-it",
     message: "410 status code (no body)",
   });
-  expect(err.kind).toBe("unauthenticated");
-  if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBe("meta/llama-3.3-70b-instruct");
 });
 
-test("NVIDIA body-less 404 (same gate, NVIDIA's newer status) → unauthenticated (HOU-890)", () => {
+test("NVIDIA body-less 404 (same gate, NVIDIA's newer status) → model_unavailable (HOU-890)", () => {
   const err = classifyProviderError({
     provider: "nvidia",
     model: "google/gemma-3-12b-it",
     message: "404 status code (no body)",
   });
-  expect(err.kind).toBe("unauthenticated");
+  expect(err.kind).toBe("model_unavailable");
 });
 
-test("NVIDIA 404 'Function not found for account' → unauthenticated (HOU-890)", () => {
+test("NVIDIA 404 'Not found for account' body → model_unavailable (HOU-890)", () => {
+  // Verbatim shape from a live partially-gated account (uuids/ids synthetic):
+  // gemma/kimi/glm answered this while llama/gpt-oss served fine on the SAME
+  // key — proof the gate is per-model, not per-key.
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "moonshotai/kimi-k2.6",
+    message:
+      '404: {"status":404,"title":"Not Found","detail":"Function \'23d4f03a-0000-4adb-a183-000000000000\': Not found for account \'AAAA_0TTwo6g9X0i9D1GDz8lMxxCukw55Lpk8aPhW0I\'"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+});
+
+test("NVIDIA gate on the broad fallback itself offers no fallback", () => {
   const err = classifyProviderError({
     provider: "nvidia",
     model: "meta/llama-3.3-70b-instruct",
-    message: "404 Function not found for account",
+    message: "404 status code (no body)",
   });
-  expect(err.kind).toBe("unauthenticated");
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
 });
 
-test("NVIDIA 404 WITH a real error body stays out of the gate branch", () => {
-  // A JSON detail sentence means a specific failure (e.g. a retired model id),
-  // not the account gate — must keep falling through, never the reconnect card.
+test("NVIDIA 404 WITH an unrelated error body stays out of the gate branch", () => {
+  // A detail sentence that names neither a function nor the account means a
+  // different failure — must keep falling through to `unknown`.
   const err = classifyProviderError({
     provider: "nvidia",
     model: "meta/llama-3.1-70b-instruct",
     message:
-      '404: {"status":404,"title":"Not Found","detail":"Model meta/llama-3.1-70b-instruct not found"}',
+      '404: {"status":404,"title":"Not Found","detail":"Model meta/llama-3.1-70b-instruct does not exist"}',
   });
   expect(err.kind).toBe("unknown");
 });

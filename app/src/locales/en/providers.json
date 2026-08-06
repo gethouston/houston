@@ -74,7 +74,7 @@
     "cancel": "Cancel",
     "errorInvalidKey": "{{name}} didn't accept this key. Check it and paste it again.",
     "errorKeyRestricted": "This key is blocked by settings in your {{name}} account. Create a new key without restrictions using the button above, then paste it here.",
-    "errorNvidiaAccountGated": "Your key looks valid, but it can't use NVIDIA's chat API. Generate a Personal Key at org.ngc.nvidia.com/setup/api-keys with \"Public API Endpoints\" under Services Included, then paste that key here. If that option doesn't appear, ask NVIDIA support to enable it for your account.",
+    "errorNvidiaAccountGated": "Your key is valid, but NVIDIA isn't serving any chat models to your account right now. Make sure your key is a Personal Key from org.ngc.nvidia.com with \"Public API Endpoints\" under Services Included. If it still fails, ask NVIDIA support to enable model access for your account.",
     "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment."
   },
   "copilot": {

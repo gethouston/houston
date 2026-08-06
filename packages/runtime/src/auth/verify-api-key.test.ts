@@ -17,7 +17,7 @@ vi.mock("@earendil-works/pi-ai/compat", async (importOriginal) => ({
 }));
 vi.mock("../ai/providers", () => ({
   modelFor: () => "test-model",
-  safeGetModel: (provider: string) =>
+  safeGetModel: (provider: string, modelId: string) =>
     provider === "google"
       ? {
           id: "gemini-3.5-flash",
@@ -25,7 +25,7 @@ vi.mock("../ai/providers", () => ({
           api: "google-generative-ai",
           baseUrl: "https://generativelanguage.googleapis.com/v1beta",
         }
-      : { id: "test-model", provider: "openrouter" },
+      : { id: modelId ?? "test-model", provider },
 }));
 
 import {
@@ -156,32 +156,54 @@ test("a gated model (together's 'Unable to access model') proves auth — verifi
   await expect(verifyApiKey("together", "sk-valid")).resolves.toBeUndefined();
 });
 
-test("nvidia: a body-less 410 (Public API Endpoints gate) rejects as key_restricted", async () => {
-  // The key PASSED auth (a bad key answers 403 "Authorization failed"), but
-  // the NVIDIA account's org lacks the "Public API Endpoints" permission, so
-  // every completion dies with an empty 410/404 (HOU-890). Re-pasting a key
-  // can never fix it, so the verdict must be key_restricted with NVIDIA's
-  // remedy — NOT provider_unavailable ("try again in a moment") and NOT
-  // invalid_key ("paste it again").
-  completeSimple.mockResolvedValue(
-    reply({ stopReason: "error", errorMessage: "410 status code (no body)" }),
-  );
+const nvidiaGate = (model: string) =>
+  reply({
+    stopReason: "error",
+    errorMessage: `404: {"status":404,"title":"Not Found","detail":"Function '23d4f03a-0000-4adb-a183-000000000000': Not found for account 'AAAA_synthetic'"} (${model})`,
+  });
+
+test("nvidia: a gated probe model retries a broadly-served fallback — key verified", async () => {
+  // Live evidence (HOU-890): the SAME key answered `404 Not found for
+  // account` on gemma and 200 on llama — NVIDIA gates models per account, so
+  // one gated probe proves nothing about the key. The verifier must try the
+  // fallback list before any verdict.
+  completeSimple
+    .mockResolvedValueOnce(nvidiaGate("test-model"))
+    .mockResolvedValueOnce(reply({}));
+  await expect(verifyApiKey("nvidia", "nvapi-valid")).resolves.toBeUndefined();
+  expect(completeSimple).toHaveBeenCalledTimes(2);
+  // The fallback probe ran against a model NVIDIA serves broadly.
+  const fallbackModel = completeSimple.mock.calls[1][0] as { id: string };
+  expect(fallbackModel.id).toBe("meta/llama-3.3-70b-instruct");
+});
+
+test("nvidia: every probe gated rejects as key_restricted", async () => {
+  // The account-level "Public API Endpoints" wall: primary + both fallbacks
+  // all answer the gate. NOT provider_unavailable ("try again in a moment")
+  // and NOT invalid_key ("paste it again") — neither remedy can work.
+  completeSimple.mockResolvedValue(nvidiaGate("any"));
   await expect(verifyApiKey("nvidia", "nvapi-valid")).rejects.toMatchObject({
     name: "ApiKeyVerifyError",
     reason: "key_restricted",
-    message: expect.stringMatching(/Public API Endpoints/),
+    message: expect.stringMatching(/not being served/),
   });
+  expect(completeSimple).toHaveBeenCalledTimes(3);
 });
 
-test("nvidia: 404 'Function not found for account' rejects as key_restricted", async () => {
-  completeSimple.mockResolvedValue(
-    reply({
-      stopReason: "error",
-      errorMessage: "404 Function not found for account",
-    }),
-  );
-  await expect(verifyApiKey("nvidia", "nvapi-valid")).rejects.toMatchObject({
-    reason: "key_restricted",
+test("nvidia: a gated probe then a 403 on the fallback rejects as invalid_key", async () => {
+  // A non-gate failure on a fallback probe hands the verdict to the normal
+  // classification path — here NVIDIA's bad-key rejection.
+  completeSimple
+    .mockResolvedValueOnce(nvidiaGate("test-model"))
+    .mockResolvedValueOnce(
+      reply({
+        stopReason: "error",
+        errorMessage:
+          '403: {"status":403,"title":"Forbidden","detail":"Authorization failed"}',
+      }),
+    );
+  await expect(verifyApiKey("nvidia", "nvapi-bad")).rejects.toMatchObject({
+    reason: "invalid_key",
   });
 });
 

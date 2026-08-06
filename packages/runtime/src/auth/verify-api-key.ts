@@ -1,18 +1,29 @@
 import { completeSimple } from "@earendil-works/pi-ai/compat";
-import {
-  classifyProviderError,
-  extractHttpStatus,
-  isNvidiaEndpointGated,
-} from "../ai/provider-error";
+import { classifyProviderError } from "../ai/provider-error";
 import { modelFor, safeGetModel } from "../ai/providers";
+import { nvidiaGated, retryNvidiaFallbacks } from "./nvidia-verify";
+import {
+  ApiKeyVerifyError,
+  noVerdict,
+  raisedMessage,
+  rejected,
+  VERIFY_TIMEOUT_MS,
+} from "./verify-errors";
+
+export type { ApiKeyVerifyReason } from "./verify-errors";
+// The stable public surface (host routes, login, tests) predates the module
+// split — keep serving it from here.
+export { ApiKeyVerifyError, raisedMessage } from "./verify-errors";
 
 /**
  * Prove a pasted API key actually authenticates before it is stored (HOU: any
  * pasted string — even "aa" — used to read "connected" and only fail on the
  * first chat turn). One 1-token completion against the model a chat would use,
  * with the CANDIDATE key passed per-request (`StreamOptions.apiKey`) so nothing
- * touches auth.json until the provider accepts it. Google is the exception —
- * see `verifyGoogleApiKey`.
+ * touches auth.json until the provider accepts it. Two provider exceptions:
+ * Google rides the models-LIST endpoint (`verifyGoogleApiKey`), and NVIDIA
+ * retries broadly-served models when the probe model is gated per-account
+ * (`nvidia-verify.ts`, HOU-890).
  *
  * Accept/reject is decided on the shared `ProviderError` taxonomy:
  *  - the completion succeeds → verified;
@@ -24,7 +35,6 @@ import { modelFor, safeGetModel } from "../ai/providers";
  *    and the key is NOT stored. Beta policy: a connect that can't be proven is
  *    a visible failure, never a silent "connected".
  */
-const VERIFY_TIMEOUT_MS = 20_000;
 
 /** Error kinds that prove the credential was ACCEPTED by the provider. */
 const PROVES_AUTH = new Set([
@@ -33,48 +43,6 @@ const PROVES_AUTH = new Set([
   "model_unavailable",
   "context_overflow",
 ]);
-
-/**
- * Human-readable text for an exception the verify request RAISED (vs a resolved
- * errored reply). An abort/timeout DOMException reads like a bug ("The
- * operation was aborted due to timeout"), so name what actually happened —
- * that text reaches the user verbatim through the connect dialog.
- */
-export function raisedMessage(e: unknown, providerId: string): string {
-  if (
-    e instanceof Error &&
-    (e.name === "TimeoutError" || e.name === "AbortError")
-  ) {
-    return `${providerId} did not answer within ${VERIFY_TIMEOUT_MS / 1000}s`;
-  }
-  return e instanceof Error ? e.message : String(e);
-}
-
-/**
- * Why a key failed verification, carried on the wire (`/auth/:provider/api-key`
- * 401 body `reason`) so the connect dialog can show actionable copy instead of
- * a generic failure:
- *  - `invalid_key` — the provider rejected the credential itself; re-paste.
- *  - `key_restricted` — the key authenticates but its OWN settings block
- *    Houston (Google: the Gemini API is not enabled on the key's Cloud
- *    project, or a referrer/IP allowlist a server-side call can never
- *    satisfy); the fix is a new unrestricted key, not re-pasting this one.
- *  - `provider_unavailable` — no verdict (5xx / network / timeout); retry.
- */
-export type ApiKeyVerifyReason =
-  | "invalid_key"
-  | "key_restricted"
-  | "provider_unavailable";
-
-export class ApiKeyVerifyError extends Error {
-  constructor(
-    message: string,
-    public readonly reason: ApiKeyVerifyReason,
-  ) {
-    super(message);
-    this.name = "ApiKeyVerifyError";
-  }
-}
 
 export async function verifyApiKey(
   providerId: string,
@@ -89,7 +57,39 @@ export async function verifyApiKey(
     return;
   }
 
-  let message: string;
+  let message = await probeCompletion(providerId, model, key);
+  if (message === null) return;
+
+  // NVIDIA serves each model per account (HOU-890): the probe model being
+  // gated proves nothing about the KEY, so retry broadly-served models before
+  // any verdict (all-gated throws key_restricted from nvidia-verify.ts).
+  if (nvidiaGated(providerId, message)) {
+    message = await retryNvidiaFallbacks(providerId, model.id, message, (m) =>
+      probeCompletion(providerId, m, key),
+    );
+    if (message === null) return;
+  }
+
+  const classified = classifyProviderError({
+    provider: providerId,
+    model: model.id,
+    message,
+  });
+  if (PROVES_AUTH.has(classified.kind)) return;
+  if (classified.kind === "unauthenticated")
+    throw rejected(providerId, message);
+  throw noVerdict(providerId, message);
+}
+
+/**
+ * One 1-token completion probe. `null` = the provider ACCEPTED the request
+ * (key verified); otherwise the failure text for classification.
+ */
+async function probeCompletion(
+  providerId: string,
+  model: Parameters<typeof completeSimple>[0],
+  key: string,
+): Promise<string | null> {
   try {
     const reply = await completeSimple(
       model,
@@ -102,42 +102,13 @@ export async function verifyApiKey(
         signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       },
     );
-    if (reply.stopReason !== "error") return;
-    message = reply.errorMessage ?? "unknown provider error";
+    if (reply.stopReason !== "error") return null;
+    return reply.errorMessage ?? "unknown provider error";
   } catch (e) {
     // pi raises (rather than resolving an errored message) for pre-request
     // failures; a timeout lands here too. Same classification path.
-    message = raisedMessage(e, providerId);
+    return raisedMessage(e, providerId);
   }
-
-  // NVIDIA's "Public API Endpoints" account gate (HOU-890): the key passed
-  // auth (a bad key answers 403), but the ACCOUNT cannot call chat completions
-  // until NVIDIA enables that permission. Checked before classification, which
-  // deliberately reads this shape as `unauthenticated` for the chat surface —
-  // here that verdict would say "re-paste the key", the one remedy that can't
-  // work, so the typed reason must be `key_restricted` with NVIDIA's fix.
-  if (
-    isNvidiaEndpointGated(
-      providerId,
-      message.toLowerCase(),
-      extractHttpStatus(message),
-    )
-  ) {
-    throw new ApiKeyVerifyError(
-      `${providerId} accepted the key, but this NVIDIA account cannot call the chat API until NVIDIA enables its "Public API Endpoints" permission (${message})`,
-      "key_restricted",
-    );
-  }
-
-  const classified = classifyProviderError({
-    provider: providerId,
-    model: model.id,
-    message,
-  });
-  if (PROVES_AUTH.has(classified.kind)) return;
-  if (classified.kind === "unauthenticated")
-    throw rejected(providerId, message);
-  throw noVerdict(providerId, message);
 }
 
 /**
@@ -189,18 +160,4 @@ async function googleErrorMessage(res: Response): Promise<string> {
     // Not JSON — surface the raw body below.
   }
   return text || `status ${res.status}`;
-}
-
-function rejected(providerId: string, message: string): ApiKeyVerifyError {
-  return new ApiKeyVerifyError(
-    `${providerId} rejected this API key — check the key and paste it again (${message})`,
-    "invalid_key",
-  );
-}
-
-function noVerdict(providerId: string, message: string): ApiKeyVerifyError {
-  return new ApiKeyVerifyError(
-    `could not verify the ${providerId} API key: ${message} — the key was not saved; try again`,
-    "provider_unavailable",
-  );
 }
