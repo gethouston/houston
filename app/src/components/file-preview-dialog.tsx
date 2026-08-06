@@ -11,30 +11,26 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOpenAgentHref } from "../hooks/use-open-agent-file";
 import { useSaveDownload } from "../hooks/use-save-download";
 import { genericErrorDescription } from "../lib/error-report";
 import { fetchFileBytes } from "../lib/file-bytes-cache";
+import { FilePreviewBody, type Loaded } from "./file-preview-body";
 
 /**
  * In-app preview for a workspace file (web build, cloud pods, remote hosts).
  * Images, PDFs, HTML (rendered live in a sandboxed iframe — agent-built decks
- * preview as pages, not source) and text-ish files render inline; everything else (pptx,
- * xlsx, …) gets a "download to open" fallback. Bytes come over the
- * authenticated download route, so nothing here assumes a local filesystem,
- * and a file the Files grid already thumbnailed is served from the shared byte
- * cache (`lib/file-bytes-cache.ts`) instead of downloaded twice. Opened from
- * the Files tab and from chat file surfaces (file cards, turn summaries, prose
- * file pills) via `useOpenAgentFile`.
+ * preview as pages, not source), markdown (rendered as formatted prose) and
+ * other text-ish files render inline; everything else (pptx, xlsx, …) gets a
+ * "download to open" fallback — see `file-preview-body.tsx` for the rendering.
+ * Bytes come over the authenticated download route, so nothing here assumes a
+ * local filesystem, and a file the Files grid already thumbnailed is served
+ * from the shared byte cache (`lib/file-bytes-cache.ts`) instead of downloaded
+ * twice. Opened from the Files tab and from chat file surfaces (file cards,
+ * turn summaries, prose file pills) via `useOpenAgentFile`.
  */
 
 const TEXT_PREVIEW_LIMIT = 256 * 1024;
-
-type Loaded =
-  | { state: "loading" }
-  | { state: "error"; message: string }
-  | { state: "image" | "pdf" | "html"; url: string; blob: Blob }
-  | { state: "text"; text: string; blob: Blob }
-  | { state: "binary"; blob: Blob };
 
 interface Props {
   agentPath: string;
@@ -59,6 +55,7 @@ export function FilePreviewDialog({
   const { t } = useTranslation("agents");
   const save = useSaveDownload();
   const queryClient = useQueryClient();
+  const openHref = useOpenAgentHref(agentPath || null);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
 
   useEffect(() => {
@@ -120,78 +117,36 @@ export function FilePreviewDialog({
             : "max-w-3xl"
         }
       >
-        <DialogHeader>
-          <DialogTitle className="truncate">{fileName}</DialogTitle>
+        <DialogHeader className="min-w-0">
+          {/* `pr-8` clears the dialog's absolutely-positioned close button, so
+              a long name ellipsizes before it runs under the X rather than
+              after. `title` keeps the full name reachable on hover. */}
+          <DialogTitle className="truncate pr-8" title={fileName}>
+            {fileName}
+          </DialogTitle>
           {loaded.state === "binary" && (
             <DialogDescription>
               {t("files.preview.unsupportedDescription")}
             </DialogDescription>
           )}
         </DialogHeader>
+        {/* `min-w-0` + `overflow-x-hidden`: the frame is the hard boundary the
+            content may never cross. Anything genuinely unwrappable (a code
+            block, a wide table) scrolls inside its own child frame. */}
         <div
           className={cn(
-            "rounded-md border border-line bg-chip-subtle/20",
+            "min-w-0 rounded-md border border-line bg-chip-subtle/20",
             fullPage
               ? "min-h-0 overflow-hidden"
-              : "min-h-[200px] max-h-[60vh] overflow-auto",
+              : "min-h-[200px] max-h-[60vh] overflow-y-auto overflow-x-hidden",
           )}
         >
-          {loaded.state === "loading" && (
-            <p className="p-6 text-sm text-ink-muted">
-              {t("files.preview.loading")}
-            </p>
-          )}
-          {loaded.state === "error" && (
-            <div className="p-6 space-y-1">
-              <p className="text-sm font-medium">
-                {t("files.preview.errorTitle")}
-              </p>
-              <p className="text-sm text-ink-muted break-all">
-                {loaded.message}
-              </p>
-            </div>
-          )}
-          {loaded.state === "image" && (
-            <img
-              src={loaded.url}
-              alt={fileName}
-              className="mx-auto max-h-[58vh] object-contain"
-            />
-          )}
-          {loaded.state === "pdf" && (
-            <iframe
-              src={loaded.url}
-              title={fileName}
-              className="h-[58vh] w-full border-0"
-            />
-          )}
-          {loaded.state === "html" && (
-            // `allow-scripts` WITHOUT `allow-same-origin`: decks need their JS,
-            // but a workspace file must never reach the app's origin, storage
-            // or session. The blob document runs in an opaque origin. bg-white
-            // mirrors the browser's default page canvas (iframes are otherwise
-            // transparent, and an unstyled page over the dialog's dark surface
-            // would be unreadable).
-            <iframe
-              src={loaded.url}
-              title={fileName}
-              sandbox="allow-scripts"
-              className={cn(
-                "w-full border-0 bg-white",
-                fullPage ? "h-full" : "h-[58vh]",
-              )}
-            />
-          )}
-          {loaded.state === "text" && (
-            <pre className="p-4 text-xs whitespace-pre-wrap break-all">
-              {loaded.text}
-            </pre>
-          )}
-          {loaded.state === "binary" && (
-            <p className="p-6 text-sm text-ink-muted">
-              {t("files.preview.unsupportedTitle")}
-            </p>
-          )}
+          <FilePreviewBody
+            loaded={loaded}
+            fileName={fileName}
+            fullPage={fullPage}
+            onOpenLink={openHref}
+          />
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>

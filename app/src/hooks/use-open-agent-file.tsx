@@ -1,7 +1,11 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { fileNameOf, toWorkspaceRelative } from "../lib/agent-file-paths";
+import {
+  decodeMarkdownHref,
+  fileNameOf,
+  toWorkspaceRelative,
+} from "../lib/agent-file-paths";
 import { isCoLocatedEngine, newEngineActive } from "../lib/engine";
 import { genericErrorDescription } from "../lib/error-report";
 import { logger } from "../lib/logger";
@@ -89,6 +93,10 @@ export function useOpenAgentFile(agentPath: string | null): {
  *   2. Relative or bare file paths (`perfil.md`, `./report.pdf`) — the
  *      agent's prompt structure encourages dropping these right after
  *      writing a file → `useOpenAgentFile` (OS open or in-app preview).
+ *
+ * Shape 2 is percent-DECODED first (PRODUCT-1231): markdown normalizes link
+ * destinations, so a name with a space arrives as `Tropical%20Food.md` and no
+ * such file exists. URLs keep their encoding — that is what the browser wants.
  */
 export function useOpenAgentHref(
   agentPath: string | null,
@@ -104,7 +112,7 @@ export function useOpenAgentHref(
         });
         return;
       }
-      openFile(trimmed);
+      openFile(decodeMarkdownHref(trimmed));
     },
     [openFile],
   );

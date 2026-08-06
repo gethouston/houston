@@ -39,6 +39,7 @@ import {
 } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { Autolink } from "../autolink";
+import { FILE_PATH_ATTR, fileLinkRehypePlugin } from "../file-link-rehype";
 import { MarkdownCodeBlock } from "../markdown-code-block";
 import { autolinkDisplay, classifyMarkdownLink } from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
@@ -443,18 +444,33 @@ export const MessageResponse = memo(
     ...props
   }: MessageResponseProps) => {
     // Streamdown REPLACES its own plugin chain when `rehypePlugins` is set, so
-    // the mention pass is appended to the defaults — `raw` → `sanitize` →
-    // `harden` still run, and our spans are minted after them (nothing strips
-    // them). Tuple form: Streamdown keys its compiled-processor cache on the
-    // plugin name plus JSON-stringified options, so the targets must ride in
-    // the options or two messages would share one processor.
+    // we rebuild it around the defaults rather than beside them. Order is
+    // load-bearing:
+    //
+    //   raw → sanitize → FILE LINKS → harden → mentions
+    //
+    // The file-link pass sits between `sanitize` and `harden` on purpose: after
+    // sanitize, whose attribute whitelist would strip the `data-file-path` it
+    // mints, and before harden, which would otherwise BLOCK every bare relative
+    // file link outright (PRODUCT-1231). Mentions still run last, so the spans
+    // they mint are never stripped and the sanitizer stays fully in force.
+    //
+    // Tuple form for mentions: Streamdown keys its compiled-processor cache on
+    // the plugin name plus JSON-stringified options, so the targets must ride
+    // in the options or two messages would share one processor.
     const rehypePlugins = useMemo(() => {
-      if (!mentions || mentions.length === 0) return undefined;
-      const mentionPass: [typeof mentionRehypePlugin, MentionRehypeOptions] = [
-        mentionRehypePlugin,
-        { targets: mentions },
+      const { harden, ...beforeHarden } = defaultRehypePlugins;
+      const chain: unknown[] = [
+        ...Object.values(beforeHarden),
+        fileLinkRehypePlugin,
+        harden,
       ];
-      return [...Object.values(defaultRehypePlugins), mentionPass];
+      if (mentions && mentions.length > 0) {
+        const mentionPass: [typeof mentionRehypePlugin, MentionRehypeOptions] =
+          [mentionRehypePlugin, { targets: mentions }];
+        chain.push(mentionPass);
+      }
+      return chain as ComponentProps<typeof Streamdown>["rehypePlugins"];
     }, [mentions]);
 
     const components = useMemo(() => {
@@ -470,13 +486,22 @@ export const MessageResponse = memo(
           href,
           children,
           node: _node,
-        }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) => {
-          const kind = classifyMarkdownLink(href, children);
-          // No href → nothing to open.
+          ...rest
+        }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+          node?: unknown;
+          [FILE_PATH_ATTR]?: string;
+        }) => {
+          // A link to a workspace file opens its PATH, not the href: harden
+          // rewrites `./plan.md` to `/plan.md` and re-encodes it, which names
+          // no real file. `data-file-path` carries the pristine, decoded
+          // destination the file-link pass recorded (PRODUCT-1231).
+          const filePath = rest[FILE_PATH_ATTR];
+          const url = filePath ?? (href as string);
+          const kind = classifyMarkdownLink(url, children);
+          // No destination → nothing to open.
           if (kind === "plain") {
             return <span>{children}</span>;
           }
-          const url = href as string;
           const onOpen = () => fn?.(url);
           // The app's custom renderer gets first say on every link (its
           // contract). When it returns undefined/null we fall through to
