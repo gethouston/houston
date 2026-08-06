@@ -1,0 +1,40 @@
+{
+  "id": "research",
+  "name": "Research",
+  "description": "Run competitive analysis, market research, and due diligence. Monitor competitors, summarize trends, build prospect dossiers, and surface signals from the web. Outputs structured briefs, comparison tables, and watchlists — never posts or sends anything on your behalf.",
+  "icon": "Telescope",
+  "category": "business",
+  "author": "Houston",
+  "tags": [
+    "research",
+    "competitive-intel",
+    "market-research",
+    "due-diligence",
+    "dossiers",
+    "trends",
+    "monitoring"
+  ],
+  "agentSeeds": {
+    "outputs.json": "[]",
+    "watchlist.json": "[]",
+    "config/context-ledger.json": "{\n  \"universal\": {},\n  \"domains\": {\n    \"competitive\": {},\n    \"market\": {},\n    \"prospects\": {},\n    \"monitoring\": {}\n  }\n}\n",
+    ".houston/routines/routines.json": "[{\"id\": \"weekly-competitor-pulse\", \"name\": \"Weekly competitor pulse\", \"description\": \"Every Monday morning: checks each company on your watchlist for pricing changes, new features, funding news, and job postings. Only surfaces if something changed. Silent week = nothing moved.\", \"prompt\": \"Run the weekly competitor pulse.\\n\\nFor each company in watchlist.json:\\n1. Re-scrape their homepage and pricing page via Firecrawl.\\n2. Pull last 7 days of news via Perplexity: \\\"{company}\\\" (pricing OR launch OR feature OR funding OR layoffs OR hiring).\\n3. Compare to the baseline in briefs/{slug}.md. What changed?\\n\\nIf anything changed for a company: write a concise update to watchlist-updates/{slug}-{today}.md. Note: what changed, source URL, date. Append to outputs.json type: \\\"watchlist-update\\\".\\n\\nIf nothing changed for a company: update last_checked in watchlist.json. Stay silent for that company.\\n\\nAfter all companies checked: if ANY had changes, summarize them in chat (company name + what changed, one line each). If NONE changed, end with ROUTINE_OK.\\n\\nOn first run (watchlist.json empty): end with ROUTINE_OK.\", \"schedule\": \"0 8 * * 1\", \"enabled\": true, \"suppress_when_silent\": true, \"created_at\": \"2026-06-28T00:00:00Z\", \"updated_at\": \"2026-06-28T00:00:00Z\"}, {\"id\": \"monthly-market-digest\", \"name\": \"Monthly market digest\", \"description\": \"Every 1st of the month: summarizes the top 5 trends in your industry from the past 30 days. Always surfaces, even if quiet. A slow month is also useful signal.\", \"prompt\": \"Run the monthly market digest.\\n\\n1. Read config/context-ledger.json. Get domains.market.primary_market. If not set, use domains.competitive.monitoring_keywords. If neither set, use \\\"AI software tools\\\" as default and note that I should set my industry in context.\\n\\n2. Run track-a-trend for the primary market with scope=last-30-days.\\n\\n3. Also check: any competitor on my watchlist that had activity this month (read watchlist-updates/ for this month). Surface their names with a one-line update.\\n\\n4. Write digest to trends/monthly-digest-{YYYY-MM}.md. Append to outputs.json type: \\\"monthly-digest\\\".\\n\\n5. Always surface in chat: month name + top 3 themes (one line each) + any watchlist companies that moved. Even if the month was quiet, say so.\", \"schedule\": \"0 8 1 * *\", \"enabled\": true, \"suppress_when_silent\": false, \"created_at\": \"2026-06-28T00:00:00Z\", \"updated_at\": \"2026-06-28T00:00:00Z\"}]"
+  },
+  "version": "0.1.0",
+  "image": "telescope",
+  "integrations": [
+    "ahrefs",
+    "firecrawl",
+    "gmail",
+    "googledocs",
+    "googledrive",
+    "googlesheets",
+    "linkedin",
+    "notion",
+    "perplexityai",
+    "reddit",
+    "twitter"
+  ],
+  "bundled": false,
+  "registered_at": "2026-06-28"
+}
