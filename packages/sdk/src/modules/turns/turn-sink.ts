@@ -33,8 +33,6 @@ type SyncTool = {
  */
 export class TurnSink {
   private readonly s: TurnState;
-  /** OUR turn's id, once known (nonce-matched echo / attaching sync). */
-  private turnId: string | undefined;
   /** Evidence a turn was in flight on our watch (frames or a running sync). */
   private sawRunning = false;
   private sawSync = false;
@@ -114,7 +112,7 @@ export class TurnSink {
       this.onUser(ev);
       return;
     }
-    switch (classifyFrame(this.turnId, ev.turnId)) {
+    switch (classifyFrame(this.s.turnId, ev.turnId)) {
       case "foreign":
         // Narrow adoption for a stamped TERMINAL frame with no adopted id
         // after our send was ACCEPTED: a turn that fails before executing
@@ -127,9 +125,9 @@ export class TurnSink {
         if (
           (ev.type === "error" || ev.type === "done") &&
           this.accepted &&
-          this.turnId === undefined
+          this.s.turnId === undefined
         ) {
-          this.turnId = ev.turnId;
+          this.s.turnId = ev.turnId;
           break;
         }
         return; // another turn's frame — never fold it into ours
@@ -154,14 +152,14 @@ export class TurnSink {
     // history hydration covers observed turns), so echoes are never rendered.
     if (this.o.mode === "turn" && this.o.nonce === ev.data.nonce) {
       // OUR echo: the turn started — adopt its id (absent on legacy servers).
-      this.turnId = ev.turnId;
+      this.s.turnId = ev.turnId;
       this.accepted = true;
       this.sawRunning = true;
       this.s.delivered = true; // the engine echoed our send — it landed
       this.cancelPresettlePoll(); // the turn is demonstrably live on the stream
       return;
     }
-    if (classifyFrame(this.turnId, ev.turnId) === "boundary") {
+    if (classifyFrame(this.s.turnId, ev.turnId) === "boundary") {
       // Another writer started the NEXT turn: ours is over, terminal lost.
       this.settleFromHistorySoon();
     }
@@ -221,14 +219,14 @@ export class TurnSink {
     tools?: SyncTool[];
   }): void {
     const mayAdopt = this.o.mode === "observer" || this.accepted;
-    switch (classifyRunningSync(this.turnId, data.turnId, mayAdopt)) {
+    switch (classifyRunningSync(this.s.turnId, data.turnId, mayAdopt)) {
       case "foreign":
         return; // another writer's turn, seen pre-send — not ours to render
       case "boundary":
         this.settleFromHistorySoon(); // ours ended; a new turn runs
         return;
       case "adopt":
-        this.turnId = data.turnId;
+        this.s.turnId = data.turnId;
         break;
       case "ours":
         break;
@@ -269,27 +267,32 @@ export class TurnSink {
     const tools = data.tools ?? [];
     // A tool whose call we already pushed may have ENDED while we were away —
     // close it first (tools run serially, so results land in call order).
+    // Every tool push carries its per-turn `toolIndex` so the VM fold can
+    // dedupe a replayed row against a history-seeded one (HOU-1214).
     while (s.toolResultsSeen < Math.min(s.toolsSeen, tools.length)) {
       const t = tools[s.toolResultsSeen];
       if (t.isError === undefined) break;
       push(s, {
         feed_type: "tool_result",
         data: { content: t.content ?? "", is_error: t.isError },
+        toolIndex: s.toolResultsSeen,
       });
       s.toolResultsSeen++;
     }
     // Then the calls we never saw, each with its result when it already ended.
     while (s.toolsSeen < tools.length) {
       const t = tools[s.toolsSeen];
-      s.toolsSeen++;
       push(s, {
         feed_type: "tool_call",
         data: { name: t.name, input: t.input ?? {} },
+        toolIndex: s.toolsSeen,
       });
+      s.toolsSeen++;
       if (t.isError !== undefined) {
         push(s, {
           feed_type: "tool_result",
           data: { content: t.content ?? "", is_error: t.isError },
+          toolIndex: s.toolResultsSeen,
         });
         s.toolResultsSeen++;
       }
@@ -318,7 +321,7 @@ export class TurnSink {
     void reloadAndSettle(
       this.s,
       this.o.reloadHistory,
-      this.turnId,
+      this.s.turnId,
       this.o.historyGuard,
       this.o.stop,
     );
@@ -371,7 +374,7 @@ export class TurnSink {
     const settled = await presettleFromHistory(
       this.s,
       this.o.reloadHistory,
-      this.turnId,
+      this.s.turnId,
       this.o.historyGuard,
       () => this.sawRunning,
     );

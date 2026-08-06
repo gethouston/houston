@@ -64,11 +64,13 @@ describe("turns/history — fold persisted transcript", () => {
         data: "Ping",
         author: undefined,
         ts: expect.any(Number),
+        turnId: expect.any(String),
       },
       {
         feed_type: "assistant_text",
         data: cannedReply("Ping"),
         ts: expect.any(Number),
+        turnId: expect.any(String),
       },
       {
         feed_type: "final_result",
@@ -79,6 +81,7 @@ describe("turns/history — fold persisted transcript", () => {
           usage: seedUsage,
         },
         ts: expect.any(Number),
+        turnId: expect.any(String),
       },
     ]);
     // Each folded frame carries its source ChatMessage.ts (epoch ms).

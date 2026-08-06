@@ -34,6 +34,16 @@ export interface CachedFrame {
    * mentioned nobody and on records written before this field existed.
    */
   mentions?: { userId: string; name?: string }[];
+  /**
+   * The turn this frame belongs to — the VM fold's dedup identity (HOU-1214),
+   * carried so a cache-painted feed folds a live replay of the same turn into
+   * the entries already on screen instead of duplicating them. Absent on
+   * records written before this field existed (those keep the append fold).
+   */
+  turnId?: string;
+  /** With {@link turnId}, this tool row's per-turn index (HOU-1214). Tool
+   *  frames only; same absence semantics as `turnId`. */
+  toolIndex?: number;
 }
 
 /** A stored transcript: its frames plus a write stamp (prune order). */

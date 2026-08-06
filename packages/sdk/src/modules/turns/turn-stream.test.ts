@@ -9,6 +9,7 @@ import { EngineError } from "@houston/runtime-client";
 import { afterEach, expect, test } from "vitest";
 import { ScopeStore } from "../../store";
 import type { FeedOutput } from "./feed-output";
+import { historyToFeed } from "./history";
 import { TURN_DIED_MESSAGE } from "./settle-from-history";
 import {
   SEND_IN_FLIGHT_MESSAGE,
@@ -872,7 +873,9 @@ test("frames from the NEXT turn are a boundary: our turn settles from history by
   );
 
   const texts = items.filter((i) => i.feed_type === "assistant_text");
-  expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hello full" }]);
+  expect(texts).toEqual([
+    { feed_type: "assistant_text", data: "Hello full", turnId: "t-1" },
+  ]);
   // The foreign turn's frames were never folded into ours.
   expect(items.some((i) => String(i.data ?? "").includes("FOREIGN"))).toBe(
     false,
@@ -927,6 +930,7 @@ test("a resync naming a DIFFERENT running turn settles ours; a dead turn settles
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: TURN_DIED_MESSAGE,
+    turnId: "t-1",
   });
   expect(sessionStatuses).toEqual(["running", "error"]);
 });
@@ -973,7 +977,9 @@ test("a running resync for OUR turn replaces accumulated text — empty partial 
   expect(streaming).toEqual(["Hello wor", "", "Restarted"]);
   // ...so the settle carries only what the server actually produced.
   const texts = items.filter((i) => i.feed_type === "assistant_text");
-  expect(texts).toEqual([{ feed_type: "assistant_text", data: "Restarted" }]);
+  expect(texts).toEqual([
+    { feed_type: "assistant_text", data: "Restarted", turnId: "t-1" },
+  ]);
 });
 
 // ── Fatal classification + failure budget ────────────────────────────────────
@@ -1147,6 +1153,7 @@ test("an observer mid-render settles visibly when the failure budget runs out", 
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: STREAM_LOST_MESSAGE,
+    turnId: "t-9",
   });
   expect(sessionStatuses).toEqual(["running", "error"]);
 });
@@ -1209,7 +1216,9 @@ test("handoff on 202: the observer is disposed and the turn resumes from its cur
   expect(observerAborted).toBe(true);
   expect(afters).toEqual([undefined, 4]); // resumed exactly from the observer's cursor
   const texts = items.filter((i) => i.feed_type === "assistant_text");
-  expect(texts).toEqual([{ feed_type: "assistant_text", data: "yo" }]);
+  expect(texts).toEqual([
+    { feed_type: "assistant_text", data: "yo", turnId: "t-B" },
+  ]);
   expect(finals(items)).toHaveLength(1);
 });
 
@@ -1608,7 +1617,9 @@ test("a transport-failed send whose turn actually started renders and settles no
   expect(sessionStatuses).not.toContain("error");
   expect(finals(items)).toHaveLength(1);
   const texts = items.filter((i) => i.feed_type === "assistant_text");
-  expect(texts).toEqual([{ feed_type: "assistant_text", data: "Done" }]);
+  expect(texts).toEqual([
+    { feed_type: "assistant_text", data: "Done", turnId: "t-1" },
+  ]);
   // No misleading transport-error line reached the feed.
   expect(items.map((i) => i.data)).not.toContain("Load failed");
   expect(items.map((i) => i.data)).not.toContain(SEND_LOST_MESSAGE);
@@ -2002,4 +2013,178 @@ test("a stamped error BEFORE the send is accepted stays foreign (replay tail is 
   sink.dispose();
 
   expect(sink.settled).toBe(false);
+});
+
+// ── HOU-1214: a seeded feed meeting a replayed turn never duplicates content ──
+// The cloud race this reproduces: the runtime persists the reply BEFORE it
+// publishes the terminal frame, so a chat-open history read can seed the full
+// transcript while the conversation snapshot still says `running`. The observer
+// that attaches right after then receives a running sync replaying the whole
+// turn (partial text, thinking, tools) over a feed that already shows it — and
+// used to append every piece a second time, permanently ("Correo enviado" ×4).
+
+test("HOU-1214: observing a turn already seeded from history duplicates nothing", async () => {
+  const reply = "Correo enviado";
+  const messages: ChatMessage[] = [
+    { role: "user", content: "manda el correo", ts: 1, turnId: "t-1" },
+    {
+      role: "assistant",
+      content: reply,
+      ts: 2,
+      turnId: "t-1",
+      thinking: "drafting…",
+      tools: [
+        {
+          name: "integration_execute",
+          input: { tool: "GMAIL_SEND_EMAIL" },
+          result: "sent",
+          isError: false,
+        },
+      ],
+      usage: { context_tokens: 10, output_tokens: 5, cached_tokens: 0 },
+    },
+  ];
+  const store = new ScopeStore();
+  const vm = new ConversationVmOutput(store);
+  vm.seedHistory("Houston/Bo", "activity-1214", historyToFeed(messages), {
+    earliestLoaded: 0,
+    total: messages.length,
+  });
+
+  const { engine } = fakeEngine(
+    [
+      (o) => {
+        // The stale-running snapshot replays the ENTIRE finished turn…
+        o.onEvent({
+          type: "sync",
+          data: {
+            running: true,
+            partial: reply,
+            seq: 5,
+            turnId: "t-1",
+            thinking: "drafting…",
+            tools: [
+              {
+                name: "integration_execute",
+                input: { tool: "GMAIL_SEND_EMAIL" },
+                isError: false,
+                content: "sent",
+              },
+            ],
+          },
+          seq: 5,
+        });
+        // …then the terminal frame lands.
+        o.onEvent({ type: "done", data: null, turnId: "t-1", seq: 6 });
+      },
+    ],
+    messages,
+  );
+  observeConversation(
+    engine,
+    "Houston/Bo",
+    "activity-1214",
+    vm,
+    messages.length,
+    registry,
+    fast,
+  );
+
+  const feedOf = () =>
+    (
+      store.getSnapshot(
+        conversationScope("Houston/Bo", "activity-1214"),
+      ) as ConversationVM
+    ).feed;
+  await waitFor(
+    () =>
+      (
+        store.getSnapshot(
+          conversationScope("Houston/Bo", "activity-1214"),
+        ) as ConversationVM
+      ).sessionStatus === "completed",
+  );
+
+  const counts = feedOf().reduce<Record<string, number>>((acc, f) => {
+    acc[f.feed_type] = (acc[f.feed_type] ?? 0) + 1;
+    return acc;
+  }, {});
+  // One of everything — the replay folded into the seeded entries in place.
+  expect(counts).toEqual({
+    user_message: 1,
+    thinking: 1,
+    tool_call: 1,
+    tool_result: 1,
+    assistant_text: 1,
+    final_result: 1,
+  });
+  const texts = feedOf().filter((f) => f.feed_type === "assistant_text");
+  expect(texts.map((f) => f.data)).toEqual([reply]);
+  // The seeded final_result kept its persisted usage (the context indicator).
+  const final = feedOf().find((f) => f.feed_type === "final_result");
+  expect((final?.data as { usage: unknown }).usage).toEqual({
+    context_tokens: 10,
+    output_tokens: 5,
+    cached_tokens: 0,
+  });
+});
+
+test("HOU-1214: repeated seed+observe cycles stay duplicate-free (the ×4 accumulator)", async () => {
+  const reply = "Correo enviado";
+  const messages: ChatMessage[] = [
+    { role: "user", content: "manda el correo", ts: 1, turnId: "t-1" },
+    { role: "assistant", content: reply, ts: 2, turnId: "t-1" },
+  ];
+  const store = new ScopeStore();
+  const vm = new ConversationVmOutput(store);
+
+  // Every ConversationsChanged invalidation refires the windowed read → seed →
+  // observe. Each observer sees the stale-running snapshot replay the turn.
+  for (let round = 0; round < 4; round++) {
+    vm.seedHistory("Houston/Bo", "activity-1214b", historyToFeed(messages), {
+      earliestLoaded: 0,
+      total: messages.length,
+    });
+    const { engine } = fakeEngine(
+      [
+        (o) => {
+          o.onEvent(sync(true, reply, 5 + round, { turnId: "t-1" }));
+          o.onEvent({
+            type: "done",
+            data: null,
+            turnId: "t-1",
+            seq: 6 + round,
+          });
+        },
+      ],
+      messages,
+    );
+    observeConversation(
+      engine,
+      "Houston/Bo",
+      "activity-1214b",
+      vm,
+      messages.length,
+      registry,
+      fast,
+    );
+    await waitFor(
+      () =>
+        (
+          store.getSnapshot(
+            conversationScope("Houston/Bo", "activity-1214b"),
+          ) as ConversationVM
+        ).sessionStatus === "completed",
+    );
+    registry.disposeAll();
+  }
+
+  const feed = (
+    store.getSnapshot(
+      conversationScope("Houston/Bo", "activity-1214b"),
+    ) as ConversationVM
+  ).feed;
+  expect(
+    feed.filter((f) => f.feed_type === "assistant_text").map((f) => f.data),
+  ).toEqual([reply]);
 });

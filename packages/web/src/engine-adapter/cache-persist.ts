@@ -36,6 +36,11 @@ export function cachePersistOutput(): FeedOutput {
           // the message's @mention chips (HOU-944).
           ...(f.author !== undefined ? { author: f.author } : {}),
           ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
+          // Turn identity survives too (HOU-1214): a cache-painted feed must
+          // stay dedupable against a live replay, or the duplication returns
+          // on exactly the cold opens the cache exists for.
+          ...(f.turnId !== undefined ? { turnId: f.turnId } : {}),
+          ...(f.toolIndex !== undefined ? { toolIndex: f.toolIndex } : {}),
         })),
       );
     },
