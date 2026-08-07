@@ -25,18 +25,20 @@ import {
   currentCredentialScope,
   isPersonalScope,
 } from "../session/acting-context";
-import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
+import { runAnthropicConnect } from "./anthropic-cli-login";
 import { preflightCodexCallbackPort } from "./codex-port-preflight";
 import { authStorage, modelRuntime, providerConnected } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
  *
- * - anthropic (Claude): the sanctioned setup-token flow. The direct OAuth PKCE
- *   replay is server-blocked since 2026-04, so we drive Anthropic's own
- *   `claude setup-token` (or take a pasted token) and store the resulting
- *   `sk-ant-oat01…` as an api_key. Same `auth_code` + completeLogin wire shape as
- *   before — see auth/anthropic-setup-token.ts.
+ * - anthropic (Claude): the pod-side CLI relay — the pod's own
+ *   `claude auth login --claudeai` mints the credential where the gateway
+ *   captures it, the user just approves in the browser and pastes the code
+ *   claude.ai shows (nothing installed locally). Degrades to the sanctioned
+ *   setup-token paste flow where the CLI can't run (the direct OAuth PKCE
+ *   replay stays server-blocked since 2026-04). Both ride the same `auth_code`
+ *   + completeLogin wire shape — see auth/anthropic-cli-login.ts.
  * - openai-codex (ChatGPT/Codex): the CLIENT picks. A co-located desktop client
  *   sends `deviceAuth: false` and gets the browser/loopback login — the user
  *   approves in their own browser and the localhost callback finishes it, no
@@ -398,13 +400,15 @@ export async function startLogin(
     },
   };
 
-  // Anthropic uses the sanctioned setup-token flow (the direct OAuth replay is
-  // server-blocked), NOT pi's OAuth login. It emits the same `auth_code`
-  // wire shape and reuses the paste promise, then stores the captured token as an
-  // api_key credential — see auth/anthropic-setup-token.ts.
+  // Anthropic connects through the pod's own Claude CLI (NOT pi's OAuth
+  // login): the authorize URL rides the `auth_code` wire shape and the paste
+  // promise feeds the approval code back to the CLI's stdin. Where the CLI
+  // can't run, the flow degrades to the sanctioned setup-token paste dialog,
+  // which stores the pasted token as an api_key credential — see
+  // auth/anthropic-cli-login.ts.
   const login: Promise<unknown> =
     provider === "anthropic"
-      ? runAnthropicSetupTokenLogin(
+      ? runAnthropicConnect(
           {
             onAuth: ({ url, instructions }) => {
               state.info = { kind: "auth_code", url, instructions };
@@ -414,8 +418,9 @@ export async function startLogin(
             onManualCodeInput: () => pastePromise,
           },
           {
-            store: (key) =>
+            storeToken: (key) =>
               authStorage.set("anthropic", { type: "api_key", key }),
+            signal: abort.signal,
           },
         )
       : runProviderOAuthLogin(provider, interaction);
