@@ -1,5 +1,6 @@
 import { deepEqual, equal } from "node:assert";
 import { describe, it } from "node:test";
+import { getChatDisplayItems } from "../src/chat-process-groups.ts";
 import {
   deriveConversationMoments,
   searchConversationMoments,
@@ -18,9 +19,13 @@ function message(overrides: Partial<ChatMessage>): ChatMessage {
   };
 }
 
+function deriveMoments(messages: ChatMessage[]) {
+  return deriveConversationMoments(getChatDisplayItems(messages, "ready"));
+}
+
 describe("deriveConversationMoments", () => {
   it("indexes visible user, assistant, artifact, and error messages", () => {
-    const moments = deriveConversationMoments([
+    const moments = deriveMoments([
       message({ key: "user-0", from: "user", content: "Find competitors" }),
       message({ key: "assistant-1", content: "I found three competitors" }),
       message({
@@ -55,7 +60,7 @@ describe("deriveConversationMoments", () => {
   });
 
   it("never exposes internal thinking or empty system messages", () => {
-    const moments = deriveConversationMoments([
+    const moments = deriveMoments([
       message({
         key: "thinking",
         reasoning: { content: "private", isStreaming: false },
@@ -66,10 +71,29 @@ describe("deriveConversationMoments", () => {
     equal(moments.length, 0);
   });
 
+  it("uses the rendered anchor for a tool reply with visible content", () => {
+    const moments = deriveMoments([
+      message({
+        key: "assistant-tool",
+        content: "The researched answer",
+        tools: [
+          {
+            name: "search",
+            input: {},
+            result: { content: "Found it", is_error: false },
+          },
+        ],
+      }),
+    ]);
+
+    equal(moments.length, 1);
+    equal(moments[0]?.messageKey, "assistant-tool-content");
+  });
+
   it("decodes an interaction-answers marker into a clean preview", () => {
     const body =
       '<!--houston:interaction-answers {"lines":[{"question":"To whom?","answer":"john@example.com"},{"question":"Saying what?","answer":"Running late"}]}-->\n\nTo whom?: john@example.com\nSaying what?: Running late';
-    const moments = deriveConversationMoments([
+    const moments = deriveMoments([
       message({ key: "user-0", from: "user", content: body }),
     ]);
 
@@ -81,7 +105,7 @@ describe("deriveConversationMoments", () => {
   });
 
   it("uses an ASCII ellipsis when truncating a long preview", () => {
-    const moments = deriveConversationMoments([
+    const moments = deriveMoments([
       message({ key: "long", content: "x".repeat(120) }),
     ]);
 
@@ -89,7 +113,7 @@ describe("deriveConversationMoments", () => {
   });
 
   it("keeps every searchable moment from a long history", () => {
-    const moments = deriveConversationMoments(
+    const moments = deriveMoments(
       Array.from({ length: 40 }, (_, index) =>
         message({ key: `assistant-${index}`, content: `Response ${index}` }),
       ),
@@ -102,17 +126,20 @@ describe("deriveConversationMoments", () => {
 });
 
 describe("searchConversationMoments", () => {
-  const moments = deriveConversationMoments([
+  const moments = deriveMoments([
     message({ key: "user-0", from: "user", content: "Plan the launch" }),
     message({ key: "assistant-1", content: "I reviewed the budget" }),
     message({ key: "user-2", from: "user", content: "Open São Paulo next" }),
   ]);
 
-  it("shows the conversation map by default when the query is empty", () => {
+  it("shows user prompts as the conversation outline by default", () => {
     const result = searchConversationMoments(moments, "   ");
 
     equal(result.hasQuery, false);
-    deepEqual(result.moments, moments);
+    deepEqual(
+      result.moments.map((moment) => moment.messageKey),
+      ["user-0", "user-2"],
+    );
     deepEqual(result.rangesById, {});
   });
 
@@ -133,7 +160,7 @@ describe("searchConversationMoments", () => {
   });
 
   it("searches every message before compacting the visible results", () => {
-    const longHistory = deriveConversationMoments(
+    const longHistory = deriveMoments(
       Array.from({ length: 60 }, (_, index) =>
         message({
           key: `assistant-${index}`,
@@ -152,7 +179,7 @@ describe("searchConversationMoments", () => {
   });
 
   it("finds text beyond the default preview and shows it in a result excerpt", () => {
-    const longMessage = deriveConversationMoments([
+    const longMessage = deriveMoments([
       message({
         key: "assistant-long",
         content: `${"Opening context ".repeat(12)}hidden itinerary detail`,

@@ -252,31 +252,135 @@ test("searches and navigates a long conversation with the map", async ({
   await page.getByRole("button", { name: "Search chat" }).click();
   const map = page.getByRole("navigation", { name: "Search chat" });
   await expect(map).toBeVisible();
-  const search = page.getByRole("searchbox", { name: "Search messages" });
+  const search = page.getByRole("combobox", { name: "Search messages" });
   await expect(search).toHaveValue("");
-  await expect(map.getByRole("button")).toHaveCount(4);
+  await expect(map.getByRole("option")).toHaveCount(3);
 
   await search.fill("hotels");
-  await expect(map.getByRole("button")).toHaveCount(2);
+  await expect(map.getByRole("option")).toHaveCount(3);
   await expect(map).toContainText("now the hotels");
 
   await search.fill("no matching message");
   await expect(map.getByText("No messages match your search.")).toBeVisible();
 
   await page.getByRole("button", { name: "Clear search" }).click();
-  await expect(map.getByRole("button")).toHaveCount(4);
+  await expect(map.getByRole("option")).toHaveCount(3);
 
-  const firstMoment = map.getByRole("button").first();
+  const firstMoment = map.getByRole("option").first();
   await firstMoment.click();
-  await expect(firstMoment).toHaveAttribute("aria-current", "true");
+  await expect(map).not.toBeVisible();
+  await expect(page.getByLabel("Selected message")).toBeFocused();
 
-  await page.getByRole("button", { name: "Back to latest" }).click();
-  await expect(map.getByRole("button").last()).toHaveAttribute(
-    "aria-current",
-    "true",
-  );
+  await page.getByRole("button", { name: "Search chat" }).click();
+  await map.getByRole("option", { name: "Back to latest" }).click();
+  await expect(map).not.toBeVisible();
 
+  await page.getByRole("button", { name: "Search chat" }).click();
   await search.focus();
   await search.press("Escape");
   await expect(page.getByRole("button", { name: "Search chat" })).toBeFocused();
+});
+
+test("a map result scrolls its message into the conversation viewport", async ({
+  page,
+  request,
+}) => {
+  const missionId = "act-map-jump";
+  await request.post(`${FAKE_HOST_URL}/agents/houston-assistant/activities`, {
+    data: { id: missionId, title: "Map jump", status: "needs_you" },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-history`, {
+    data: {
+      conversationId: `activity-${missionId}`,
+      messages: Array.from({ length: 30 }, (_, index) => ({
+        role: index % 2 === 0 ? "user" : "assistant",
+        content: `Checkpoint ${index}. ${"Long conversation detail. ".repeat(8)}`,
+        ts: index + 1,
+      })),
+    },
+  });
+
+  await page.goto("/");
+  await page.getByText("Map jump").first().click();
+
+  const scrollPane = page.locator(".conversation-scroll-pane");
+  await expect
+    .poll(() =>
+      scrollPane.evaluate(
+        (element) =>
+          element.scrollHeight - element.clientHeight - element.scrollTop,
+      ),
+    )
+    .toBeLessThan(2);
+  const before = await scrollPane.evaluate((element) => element.scrollTop);
+
+  await page.getByRole("button", { name: "Search chat" }).click();
+  await page
+    .getByRole("combobox", { name: "Search messages" })
+    .fill("Checkpoint 0");
+  await page.getByRole("option", { name: /Checkpoint 0/ }).click();
+
+  await expect
+    .poll(() => scrollPane.evaluate((element) => element.scrollTop))
+    .toBeLessThan(before / 2);
+  const target = page
+    .locator("[data-conversation-message-key]")
+    .filter({ hasText: "Checkpoint 0" })
+    .first();
+  await expect(target).toBeFocused();
+  await expect
+    .poll(async () => {
+      const paneBox = await scrollPane.boundingBox();
+      const targetBox = await target.boundingBox();
+      if (!paneBox || !targetBox) return false;
+      return (
+        targetBox.y >= paneBox.y &&
+        targetBox.y + targetBox.height <= paneBox.y + paneBox.height
+      );
+    })
+    .toBe(true);
+});
+
+test("a tool-backed answer uses its rendered message anchor", async ({
+  page,
+  request,
+}) => {
+  const missionId = "act-map-tool-anchor";
+  await request.post(`${FAKE_HOST_URL}/agents/houston-assistant/activities`, {
+    data: { id: missionId, title: "Tool anchor", status: "needs_you" },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-history`, {
+    data: {
+      conversationId: `activity-${missionId}`,
+      messages: [
+        { role: "user", content: "Research this", ts: 1 },
+        {
+          role: "assistant",
+          content: "Tool-backed answer near the beginning",
+          thinking: "I should search first",
+          tools: [{ name: "search", result: "Found it" }],
+          ts: 2,
+        },
+        ...Array.from({ length: 24 }, (_, index) => ({
+          role: index % 2 === 0 ? "user" : "assistant",
+          content: `Later message ${index}. ${"More detail. ".repeat(8)}`,
+          ts: index + 3,
+        })),
+      ],
+    },
+  });
+
+  await page.goto("/");
+  await page.getByText("Tool anchor").first().click();
+  await page.getByRole("button", { name: "Search chat" }).click();
+  await page
+    .getByRole("combobox", { name: "Search messages" })
+    .fill("Tool-backed answer");
+  await page.getByRole("option", { name: /Tool-backed answer/ }).click();
+
+  const target = page.locator('[data-conversation-message-key$="-content"]', {
+    hasText: "Tool-backed answer near the beginning",
+  });
+  await expect(target).toBeFocused();
+  await expect(target).toHaveAttribute("aria-label", "Selected message");
 });

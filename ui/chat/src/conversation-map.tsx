@@ -34,7 +34,7 @@ export function ConversationMap({
   onBackToLatest,
   onMomentHighlight,
 }: ConversationMapProps) {
-  const { scrollRef, scrollToBottom } = useStickToBottomContext();
+  const { scrollRef, scrollToBottom, stopScroll } = useStickToBottomContext();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeMessageKey, setActiveMessageKey] = useState<string | null>(null);
@@ -82,9 +82,7 @@ export function ConversationMap({
       { root, threshold: 0.45 },
     );
     for (const moment of moments) {
-      const target = root.querySelector<HTMLElement>(
-        `[data-conversation-message-key="${moment.messageKey}"]`,
-      );
+      const target = findMessageElement(root, moment.messageKey);
       if (target) observer.observe(target);
     }
     return () => observer.disconnect();
@@ -92,16 +90,27 @@ export function ConversationMap({
 
   const selectMoment = useCallback(
     (moment: ConversationMoment) => {
-      const target = scrollRef.current?.querySelector<HTMLElement>(
-        `[data-conversation-message-key="${moment.messageKey}"]`,
-      );
+      const root = scrollRef.current;
+      const target = root
+        ? findMessageElement(root, moment.messageKey)
+        : undefined;
       if (!target) return;
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      stopScroll();
+      target.scrollIntoView({ behavior: "auto", block: "center" });
+      target.focus({ preventScroll: true });
       setActiveMessageKey(moment.messageKey);
       onMomentHighlight?.(moment.messageKey);
       onMomentClick?.(moment, conversationLength);
+      changeOpen(false);
     },
-    [conversationLength, onMomentClick, onMomentHighlight, scrollRef],
+    [
+      changeOpen,
+      conversationLength,
+      onMomentClick,
+      onMomentHighlight,
+      scrollRef,
+      stopScroll,
+    ],
   );
 
   const backToLatest = useCallback(() => {
@@ -131,4 +140,13 @@ export function ConversationMap({
       rangesById={searchResult.rangesById}
     />
   );
+}
+
+function findMessageElement(
+  root: HTMLElement,
+  messageKey: string,
+): HTMLElement | undefined {
+  return [
+    ...root.querySelectorAll<HTMLElement>("[data-conversation-message-key]"),
+  ].find((element) => element.dataset.conversationMessageKey === messageKey);
 }

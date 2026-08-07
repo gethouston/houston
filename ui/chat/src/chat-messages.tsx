@@ -76,8 +76,8 @@ export function ChatMessages({
     [messages, status],
   );
   const moments = useMemo(
-    () => deriveConversationMoments(messages),
-    [messages],
+    () => deriveConversationMoments(displayItems),
+    [displayItems],
   );
   // Name + face print once per change of speaker, not once per message
   // (HOU-960). Computed over the DISPLAY items so a process block between two

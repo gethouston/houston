@@ -1,4 +1,5 @@
 import type { HighlightRange } from "@houston-ai/core";
+import type { ChatDisplayItem } from "./chat-process-groups";
 import {
   conversationSearchRanges,
   conversationSearchSnippet,
@@ -35,9 +36,11 @@ export interface ConversationMomentSearchResult {
 
 /** Derives searchable navigation moments from every message currently rendered. */
 export function deriveConversationMoments(
-  messages: ChatMessage[],
+  displayItems: ChatDisplayItem[],
 ): ConversationMoment[] {
-  const moments = messages.flatMap((message, index) => {
+  const moments = displayItems.flatMap((item) => {
+    if (item.kind === "process") return [];
+    const { message, sourceIndex } = item;
     const type = momentTypeFor(message);
     if (!type) return [];
     const searchText = searchTextFor(message.content);
@@ -48,7 +51,7 @@ export function deriveConversationMoments(
         type,
         preview: previewFor(searchText),
         searchText,
-        position: index + 1,
+        position: sourceIndex + 1,
       },
     ];
   });
@@ -74,7 +77,7 @@ export function searchConversationMoments(
           },
         ];
       })
-    : moments;
+    : moments.filter((moment) => moment.type === "user");
   const visible = capMoments(matched);
   const rangesById = query
     ? Object.fromEntries(
