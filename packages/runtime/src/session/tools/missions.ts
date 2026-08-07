@@ -2,6 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
+import { currentTurnModel, type TurnModel } from "../turn-model-context";
 import { CONVERSATION_ID_HEADER } from "./save-learning";
 
 /**
@@ -70,6 +71,33 @@ export interface MissionToolOptions {
   sandboxToken: string;
 }
 
+/**
+ * The child mission's model pin: the agent's explicit choice, defaulting to the
+ * PARENT turn's resolved provider/model — "omit to use the current one". The
+ * default is load-bearing, not cosmetic: on managed cloud the runtime holds no
+ * standing provider (the gateway injects one per USER send), so an unpinned
+ * child turn is refused with "No provider connected". A model named WITHOUT a
+ * provider rides the inherited provider; a provider named without a model gets
+ * that provider's default (no cross-provider mixing of the parent's model id).
+ */
+export function missionPin(
+  params: { provider?: string; model?: string },
+  inherited: TurnModel | undefined,
+): { provider?: string; model?: string } {
+  if (params.provider) {
+    return {
+      provider: params.provider,
+      ...(params.model ? { model: params.model } : {}),
+    };
+  }
+  const provider = inherited?.provider;
+  const model = params.model ?? inherited?.model;
+  return {
+    ...(provider ? { provider } : {}),
+    ...(model ? { model } : {}),
+  };
+}
+
 export function makeMissionTools(opts: MissionToolOptions) {
   const base = opts.baseUrl.replace(/\/$/, "");
 
@@ -118,7 +146,11 @@ export function makeMissionTools(opts: MissionToolOptions) {
     parameters: StartMissionParams,
     executionMode: "sequential",
     async execute(_id, params: StartMissionParams, signal) {
-      const r = (await call("POST", "/start", params, signal)) as {
+      const body = {
+        ...params,
+        ...missionPin(params, currentTurnModel()),
+      };
+      const r = (await call("POST", "/start", body, signal)) as {
         id: string;
         title: string;
       };

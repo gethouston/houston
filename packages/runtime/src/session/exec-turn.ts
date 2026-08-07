@@ -57,6 +57,7 @@ import { switchNeedsCompaction } from "./provider-switch";
 import { renderReplayPreamble, replayCharBudget } from "./replay-transcript";
 import { createStallWatchdog } from "./stall-watchdog";
 import { runWithTurnMode, type TurnModeRef } from "./turn-mode-context";
+import { runWithTurnModel } from "./turn-model-context";
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
@@ -442,8 +443,12 @@ export async function execTurn(
       await runWithActingContext(acting, () =>
         runWithConversationId(id, () =>
           runWithTurnMode(liveMode, () =>
-            runWithInteractionCapture(interaction, () =>
-              conv.session.prompt(promptText),
+            runWithTurnModel(
+              { provider: model.provider, model: model.id },
+              () =>
+                runWithInteractionCapture(interaction, () =>
+                  conv.session.prompt(promptText),
+                ),
             ),
           ),
         ),
