@@ -119,14 +119,26 @@ test("every file link renders as one file chip, whatever shape the agent wrote (
     "informes/Q3 reporte.pdf",
   );
 
-  // A file never wears the web link's clothes: no external-link arrow, and
-  // never the `text-link` blue that is reserved for destinations leaving the
-  // app. The web link beside them still does.
+  // A file never wears the web link's clothes. Since HOU-1152 every URL is the
+  // same `Autolink` anchor on the reserved link tint, so the file chip must be
+  // neither an anchor nor blue — that contrast is what tells the reader whether
+  // a click leaves Houston.
   const fileChip = page.getByRole("button", { name: "Perfil" });
-  await expect(fileChip.locator("svg.lucide-external-link")).toHaveCount(0);
-  const webLink = page.getByRole("button", { name: "el informe" });
+  await expect(fileChip).toHaveJSProperty("tagName", "BUTTON");
+  const chipBackground = await fileChip.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  // bg-link/10 is the link tint's signature (Tailwind emits it via oklab, so
+  // assert on the alpha rather than a colour-space-dependent literal).
+  expect(chipBackground).not.toMatch(/\/ 0\.1\)$/);
+
+  // The web link beside it IS the blue anchor chip, unchanged.
+  const webLink = page.locator('a[href="https://example.com/report"]');
   await expect(webLink).toBeVisible();
-  await expect(webLink.locator("svg")).not.toHaveCount(0);
+  const linkBackground = await webLink.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  expect(linkBackground).toMatch(/\/ 0\.1\)$/);
 });
 
 test("a markdown file whose name has spaces previews as rendered prose (PRODUCT-1231)", async ({

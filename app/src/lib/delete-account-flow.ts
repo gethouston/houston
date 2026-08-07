@@ -1,10 +1,11 @@
 // The full client side of account deletion (HOU-991): server purge, then a
-// slightly-deeper-than-sign-out local teardown. On top of `signOut()` this
-// also purges `houston.*` localStorage keys (sidebar layout, read cursors,
-// migration outcome) that plain sign-out deliberately keeps for a returning
-// user. The on-disk `~/.houston` tree is left alone ON PURPOSE: those are the
-// user's local files (deliberate product decision — deletion removes the
-// hosted account and data, never the user's machine-local files).
+// slightly-deeper-than-sign-out local teardown. On top of `signOut()` (which
+// already purges the ACCOUNT-scoped `houston.*` keys, PRODUCT-1235) this
+// purges ALL `houston.*` localStorage keys, including the device-level ones
+// sign-out keeps (host connection, standalone local data). The on-disk
+// `~/.houston` tree is left alone ON PURPOSE: those are the user's local
+// files (deliberate product decision — deletion removes the hosted account
+// and data, never the user's machine-local files).
 
 import { analytics } from "./analytics";
 import { purgeHoustonLocalState } from "./houston-local-state";

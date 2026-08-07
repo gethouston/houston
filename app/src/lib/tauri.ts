@@ -21,7 +21,6 @@ import type {
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
-  GenerateInstructionsResult,
   MessageMention,
   ProviderAuthState,
   ProviderUsage,
@@ -360,16 +359,6 @@ export const tauriAgents = {
   updateColor: (workspaceId: string, id: string, color: string) =>
     call<Agent>("update_agent_color", async () =>
       toAgent(await getEngine().updateAgent(workspaceId, id, { color })),
-    ),
-  generateInstructions: (
-    description: string,
-    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
-  ) =>
-    call<GenerateInstructionsResult>(
-      "generate_agent_instructions",
-      () => getEngine().generateAgentInstructions(description, opts),
-      undefined,
-      { toast: false },
     ),
   /** Agent configs installed on disk (bundled + user-authored), merged with the
    *  built-in templates by the agent loader to populate the create-agent gallery. */

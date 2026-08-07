@@ -84,7 +84,7 @@
     "provenanceMission": "De {{mission}}"
   },
   "subTabs": {
-    "instructions": "Instruções",
+    "instructions": "Descrição do cargo",
     "skills": "Skills",
     "learnings": "Aprendizados"
   },
@@ -92,7 +92,8 @@
     "activity": "Atividade",
     "routines": "Rotinas",
     "files": "Arquivos",
-    "job-description": "Configurações",
+    "context": "Contexto",
+    "admin": "Admin",
     "integrations": "Integrações",
     "chat": "Chat",
     "board": "Quadro",

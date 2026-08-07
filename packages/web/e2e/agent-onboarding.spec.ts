@@ -11,17 +11,13 @@ import { expect, test } from "./support/fixtures";
  * visible bubble is `agentOnboarding:setupMission.kickoff` ("Help me get set
  * up") and its board card is `setupMission.title` ("Getting set up"); the real
  * directive rides the hidden `buildPrompt` and never renders.
- *
- * There is no in-dialog "connect" step here: it appears only when the template
- * declares integrations AND the deployment serves them, and the fake host
- * advertises `integrations: []`, so a from-scratch create closes the dialog.
  */
 
 /** Open the create dialog and make an agent from scratch (leaves the dialog to
  *  close itself and the setup-mission panel to auto-open). */
 async function createFromScratch(page: Page, name: string) {
   await page.getByRole("button", { name: "New agent" }).click();
-  const scratch = page.getByText("From scratch");
+  const scratch = page.getByText("Create new agent");
   await scratch.waitFor({ state: "visible" });
   await scratch.click();
   const nameField = page.getByPlaceholder("e.g. Product manager, Sales, Jerry");

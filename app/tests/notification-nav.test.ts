@@ -232,7 +232,6 @@ describe("shouldNavigateOnAppActivation", () => {
 describe("skillChatNavDecision", () => {
   const base = {
     prevAgentId: "a1",
-    jobDescriptionTarget: null as string | null,
     agentId: "a1",
     skillsHomeViewId: "skills-home",
   };
@@ -240,7 +239,7 @@ describe("skillChatNavDecision", () => {
   // Regression: "New skill" on the global Skills page opens the setup chat in
   // the page's own right panel; the chat's turn finishing while backgrounded
   // armed a nav, and the next bare macOS refocus yanked the user to the
-  // agent's Skills section. Already-hosting surfaces must never be yanked
+  // agent's Skills tab. Already-hosting surfaces must never be yanked
   // (HOU-980's rule, extended to skill chats).
   it("stays put on the global Skills page", () => {
     strictEqual(
@@ -249,36 +248,27 @@ describe("skillChatNavDecision", () => {
     );
   });
 
-  it("reopens in place on the owning agent's Skills section", () => {
+  it("reopens in place on the owning agent's Skills tab", () => {
     strictEqual(
-      skillChatNavDecision({
-        ...base,
-        prevViewMode: "job-description",
-        jobDescriptionTarget: "skills",
-      }),
+      skillChatNavDecision({ ...base, prevViewMode: "skills" }),
       "reopen-in-place",
     );
   });
 
-  it("navigates from another agent's Skills section", () => {
+  it("navigates from another agent's Skills tab", () => {
     strictEqual(
       skillChatNavDecision({
         ...base,
-        prevViewMode: "job-description",
-        jobDescriptionTarget: "skills",
+        prevViewMode: "skills",
         prevAgentId: "a2",
       }),
       "navigate",
     );
   });
 
-  it("navigates from another Agent Settings sub-target", () => {
+  it("navigates from the same agent's Context tab", () => {
     strictEqual(
-      skillChatNavDecision({
-        ...base,
-        prevViewMode: "job-description",
-        jobDescriptionTarget: "instructions",
-      }),
+      skillChatNavDecision({ ...base, prevViewMode: "context" }),
       "navigate",
     );
   });

@@ -126,6 +126,20 @@ export function canSeeBillingTab(
 }
 
 /**
+ * Can this caller DELETE the active workspace? Owner only (PRODUCT-1247) — an
+ * admin ("Manager" in the Teams UI) may run the space day-to-day but must not
+ * be able to destroy it, and a plain member never could. Single-player (null
+ * role) is always allowed: the sole user owns every local workspace, mirroring
+ * `canCreateAgents`. A cosmetic gate: the gateway is the real enforcer.
+ */
+export function canDeleteWorkspace(
+  caps: Capabilities | null | undefined,
+): boolean {
+  const role = orgRole(caps);
+  return role === null || role === "owner";
+}
+
+/**
  * The roles an owner may GRANT when adding or re-roling a member. Owner is the
  * single billing seat and is never handed out from the UI (ownership transfer
  * is out of scope for v1).

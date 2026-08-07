@@ -16,11 +16,7 @@ import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
 import type { UIMessage } from "ai";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ExternalLinkIcon,
-} from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type {
   AnchorHTMLAttributes,
   ComponentProps,
@@ -515,58 +511,54 @@ export const MessageResponse = memo(
               return <>{custom}</>;
             }
           }
-          // DESTINATION KIND decides the affordance, BEFORE label shape does.
-          // A workspace file is one action, so it gets one look no matter how
-          // the agent wrote the markdown — `[Perfil](perfil.md)` and
-          // `[plan.md](plan.md)` used to split across the button-pill and
-          // autolink branches below and render as two different things
-          // (PRODUCT-1231). Label shape still decides among URLs, where it
-          // genuinely matters.
+          // DESTINATION KIND decides the affordance, before anything about
+          // the label does. A workspace file is not a link: it opens a preview
+          // INSIDE Houston (or hands off to the OS), so it must not wear the
+          // web's clothes. It gets the file vocabulary instead — the
+          // per-extension glyph on the recessed chip, the same mark the Files
+          // tab and the turn summary use — and it gets ONE look regardless of
+          // how the agent wrote the markdown (PRODUCT-1231).
+          //
+          // That also keeps link blue meaning something: after HOU-1152 every
+          // URL is the same Slack chip, so blue now reads as "this leaves
+          // Houston" and the neutral chip as "this is yours".
           if (filePath !== undefined) {
             // The agent's own label when it wrote one; otherwise the file
-            // name, since the raw path reads as noise mid-sentence.
-            const label = kind === "autolink" ? fileNameOf(filePath) : children;
-            if (!fn) return <span>{label}</span>;
+            // name, since a raw path reads as noise mid-sentence.
+            const fileLabel =
+              kind === "autolink" ? fileNameOf(filePath) : children;
+            if (!fn) return <span>{fileLabel}</span>;
             return (
               <FileChip path={filePath} onOpen={onOpen}>
-                {label}
+                {fileLabel}
               </FileChip>
             );
           }
-          // Bare URL the agent dropped in chat → inline link chip that
-          // opens in the system browser (issue #358), not dead text. Only
-          // render it interactive when there's an open handler; otherwise it
+          // Every remaining link — the bare URL the agent dropped in chat
+          // (issue #358) and the labeled `[Open report](…)` alike — is the
+          // same inline chip that opens in the system browser (HOU-1152).
+          // A labeled link used to render as a solid button pill, the one
+          // variant still wearing the pre-Slack styling; a descriptive label
+          // is not a call to action and reading it as a second link shape
+          // made the same message look like two different products.
+          //
+          // Only an autolink shortens: a URL label markdown broke across
+          // lines flattens with a softbreak in it (HOU-1071), so show the
+          // reassembled URL rather than raw children with a stray space
+          // mid-URL, scheme-stripped and capped (HOU-1152). A label is the
+          // author's own words and renders verbatim, wrapping inline instead
+          // of clipping the way the fixed-height pill did.
+          const label =
+            kind === "autolink"
+              ? (autolinkDisplay(children) ?? children)
+              : children;
+          // Only interactive when there's an open handler; otherwise it
           // would look clickable but do nothing.
-          if (kind === "autolink") {
-            // A URL label markdown broke across lines flattens with a
-            // softbreak in it (HOU-1071) — show the reassembled URL, not
-            // the raw children with a stray space mid-URL, scheme-stripped
-            // and capped Slack-style (HOU-1152); the href keeps the full
-            // destination.
-            const label = autolinkDisplay(children) ?? children;
-            if (!fn) return <span>{label}</span>;
-            return (
-              <Autolink href={url} onOpen={onOpen}>
-                {label}
-              </Autolink>
-            );
-          }
-          // Labeled link (text distinct from URL) → button with text + icon.
-          // max-w-full + truncate: a long label ellipsizes instead of
-          // overflowing the fixed-height pill as clipped wrapped lines.
-          // overflow-hidden: even a child that defeats truncate (a <br>, an
-          // image) stays clipped inside the pill's rounded bounds.
+          if (!fn) return <span>{label}</span>;
           return (
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              className="max-w-full overflow-hidden"
-              onClick={onOpen}
-            >
-              <span className="min-w-0 truncate">{children}</span>
-              <ExternalLinkIcon size={11} strokeWidth={2} />
-            </Button>
+            <Autolink href={url} onOpen={onOpen}>
+              {label}
+            </Autolink>
           );
         },
       };

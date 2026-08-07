@@ -84,7 +84,7 @@
     "provenanceMission": "From {{mission}}"
   },
   "subTabs": {
-    "instructions": "Instructions",
+    "instructions": "Job description",
     "skills": "Skills",
     "learnings": "Learnings"
   },
@@ -92,7 +92,8 @@
     "activity": "Activity",
     "routines": "Routines",
     "files": "Files",
-    "job-description": "Settings",
+    "context": "Context",
+    "admin": "Admin",
     "integrations": "Integrations",
     "chat": "Chat",
     "board": "Board",

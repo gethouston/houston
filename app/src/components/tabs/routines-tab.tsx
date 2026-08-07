@@ -1,7 +1,7 @@
 import { Badge, Button, cn } from "@houston-ai/core";
 import { RoutinesGrid, TimezonePicker } from "@houston-ai/routines";
 import { Plus } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineRuns, useRoutines } from "../../hooks/queries";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
@@ -10,10 +10,7 @@ import type { TabProps } from "../../lib/types";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useRoutineLeadingIcon } from "./routine-leading-icon";
-import {
-  latestRunByRoutine,
-  shouldSyncRoutinesPanel,
-} from "./routines-tab-model";
+import { latestRunByRoutine } from "./routines-tab-model";
 import { RoutinesTabPane } from "./routines-tab-pane";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
 import { useRoutineTabHandlers } from "./use-routine-tab-handlers";
@@ -65,20 +62,14 @@ export default function RoutinesTab({
   // board's inline fallback instead, which paints nothing.
   const screenActive = useIsActiveView();
   const portalContainer = isActive && screenActive ? panelContainer : null;
+  // The claim tracks exactly what this tab renders: a selection while it is the
+  // visible tab, nothing otherwise. Releasing on the way out is safe because the
+  // claim is this tab's own — it can't clobber a mission navigation that just
+  // opened the Activity board's panel (PRODUCT-1229). `useShellDetailPanel`
+  // releases it again on unmount.
   useEffect(() => {
-    if (!shouldSyncRoutinesPanel(isActive)) return;
-    setPanelOpen(!!selected);
+    setPanelOpen(isActive && !!selected);
   }, [isActive, selected, setPanelOpen]);
-  // All agent tabs stay mounted. Only the active Routines tab may close its
-  // shell panel, otherwise an inactive tab can clobber a mission navigation.
-  const isActiveRef = useRef(isActive);
-  isActiveRef.current = isActive;
-  useEffect(
-    () => () => {
-      if (isActiveRef.current) setPanelOpen(false);
-    },
-    [setPanelOpen],
-  );
   // Per-row identity glyph — the triggering app's logo (or a webhook mark) for
   // event routines, the grid's default clock for schedule ones.
   const leadingIcon = useRoutineLeadingIcon(triggers.triggersEnabled);

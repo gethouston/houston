@@ -13,7 +13,6 @@ import {
   type TurnSummaryItem,
 } from "../lib/turn-summary-items";
 import { useAgentStore } from "../stores/agents";
-import type { JobDescriptionTarget } from "../stores/ui";
 import { useUIStore } from "../stores/ui";
 import { getFileIcon } from "./file-card";
 
@@ -35,14 +34,19 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
       const agents = useAgentStore.getState().agents;
       const agent = agents.find((a) => a.folderPath === agentPath);
       const ui = useUIStore.getState();
-      // Semantic Settings sections are manager-only. Members can inspect the
-      // access rows, but their Settings screen ignores this deep-link target.
+      // Semantic updates land on manager-editable surfaces: skills on the
+      // Skills tab, instructions and learnings on the Context tab's matching
+      // section. Non-managers keep their read-only Context view untouched.
       if (agent && isAgentManager(capabilities, agent)) {
         useAgentStore.getState().setCurrent(agent);
-        ui.setJobDescriptionTarget(semanticTarget(kind));
-        ui.setViewMode("job-description");
+        if (kind === "skills") {
+          ui.setViewMode("skills");
+        } else {
+          ui.setContextTarget(kind);
+          ui.setViewMode("context");
+        }
       }
-      ui.setMissionPanelOpen(false);
+      ui.closeMissionPanel();
     },
     [agentPath, capabilities],
   );
@@ -135,10 +139,6 @@ function SummarySection({
       )}
     </div>
   );
-}
-
-function semanticTarget(kind: SemanticUpdateKind): JobDescriptionTarget {
-  return kind;
 }
 
 function semanticIcon(kind: SemanticUpdateKind) {
