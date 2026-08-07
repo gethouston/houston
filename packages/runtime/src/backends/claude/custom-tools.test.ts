@@ -100,6 +100,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "request_connection",
       "custom_integration_detect",
       "custom_integration_add",
+      "custom_integration_remove",
       "request_credential",
     ]),
   );
@@ -115,6 +116,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "mcp__houston__request_connection",
       "mcp__houston__custom_integration_detect",
       "mcp__houston__custom_integration_add",
+      "mcp__houston__custom_integration_remove",
       "mcp__houston__request_credential",
     ]),
   );
@@ -228,6 +230,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
       "request_connection",
       "custom_integration_detect",
       "custom_integration_add",
+      "custom_integration_remove",
       "request_credential",
     ]),
   );
@@ -242,6 +245,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
       "mcp__houston__request_connection",
       "mcp__houston__custom_integration_detect",
       "mcp__houston__custom_integration_add",
+      "mcp__houston__custom_integration_remove",
       "mcp__houston__request_credential",
     ]),
   );

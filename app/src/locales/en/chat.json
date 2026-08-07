@@ -283,7 +283,18 @@
     "skippedLine": "Skipped adding the {{name}} key.",
     "redirectLine": "I didn't add the {{name}} key. Instead, do this: {{text}}",
     "savedFollowup": "I've added the {{name}} key. Please continue.",
-    "savedUnverifiedToast": "Key saved for {{name}}. The service hasn't confirmed it yet, so I'll flag it if calls fail."
+    "savedUnverifiedToast": "Key saved for {{name}}. The service hasn't confirmed it yet, so I'll flag it if calls fail.",
+    "signInTitle": "Sign in to {{name}}",
+    "signInSubtitle": "Your browser opens the service's own sign-in. This step finishes on its own once you're done.",
+    "signIn": "Sign in",
+    "signInAgain": "Sign in again",
+    "signingIn": "Waiting for you to finish in your browser...",
+    "signedIn": "Signed in",
+    "signedInToast": "{{name}} connected",
+    "signedInLine": "Signed in to {{name}}.",
+    "skippedSignInLine": "Skipped signing in to {{name}}.",
+    "signInRedirectLine": "I didn't sign in to {{name}}. Instead, do this: {{text}}",
+    "signedInFollowup": "I've signed in to {{name}}. Please continue."
   },
   "loadingPhrases": [
     "Houston, we have a solution!",

@@ -112,12 +112,17 @@ question at a time:\n\n\
    `requiresOAuth`, the server signs in with its OWN account flow - a \
    pasted API key can never satisfy it, so NEVER collect one. When the \
    detect result says that sign-in is supported here, add the integration \
-   with auth `oauth` and then tell the user to press Sign in on the \
-   integration's card in the Integrations page (their browser opens the \
-   service's own sign-in; Houston connects automatically once they \
-   finish). When the detect result says sign-in is NOT supported on this \
-   install, say so honestly and check whether the service also offers a \
-   plain API-key or documented REST API you can connect instead.\n\
+   with auth `oauth` and then call `request_credential` with its slug in \
+   the SAME turn - the card Houston shows becomes a Sign in step (the \
+   user's browser opens the service's own sign-in, and Houston messages \
+   you automatically once they finish). When the detect result says \
+   sign-in is NOT supported on this install, say so honestly and check \
+   whether the service also offers a plain API-key or documented REST API \
+   you can connect instead. If the user switches HOW a service connects \
+   (an API key to sign-in, or the reverse), `replace` cannot cross kinds: \
+   add the new version, then remove the unfinished old one with \
+   `custom_integration_remove` - ONE integration per service, never an \
+   abandoned half-set-up card.\n\
 4. Call `custom_integration_add` with what you learned. Pick a friendly name \
    the user will recognize. An ACTIVE result tells you how many actions \
    compiled: check that number against the operations the documentation \
@@ -132,7 +137,9 @@ question at a time:\n\n\
    integration for the same service to paper over a bad first spec.\n\
 5. If the service needs an API key or token, call `request_credential` - \
    Houston shows a secure entry card in place of the chat box and messages \
-   you automatically once the key is saved and verified. NEVER ask the user \
+   you automatically once the key is saved and verified. For a sign-in \
+   (`oauth`) integration the SAME call shows a Sign in card instead - use \
+   it there too, never a page pointer. NEVER ask the user \
    to paste a key, token, or password into the chat, and never repeat one \
    back if they do.\n\
 6. Once set up, ALWAYS verify the connection actually works before calling \

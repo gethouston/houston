@@ -99,7 +99,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
   const base = opts.baseUrl.replace(/\/$/, "");
 
   async function post<T>(
-    path: "detect" | "add",
+    path: "detect" | "add" | "remove",
     body: unknown,
     signal: AbortSignal | undefined,
   ): Promise<T> {
@@ -150,7 +150,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
               r.toolCount != null ? `It exposes ${r.toolCount} tools.` : "",
               r.requiresOAuth
                 ? r.oauthSupported
-                  ? "It signs in with its own account flow (OAuth): add it with auth 'oauth', then tell the user to press Sign in on the integration's card in the Integrations page. NEVER collect an API key for it - a key cannot satisfy its sign-in."
+                  ? "It signs in with its own account flow (OAuth): add it with auth 'oauth', then call request_credential with its slug in the same turn - the card shows a Sign in button for the user. NEVER collect an API key for it - a key cannot satisfy its sign-in."
                   : "It only signs in with its own account flow, which Houston cannot connect to on this install yet: say so honestly, never collect an API key for it, and check whether the service also offers a plain API-key or documented REST API to connect instead."
                 : r.requiresAuthentication
                   ? "It requires authentication - after adding it, call request_credential so the user can enter their key securely."
@@ -200,7 +200,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
           ? `Added '${r.name}' (slug: ${r.slug}) with ${r.state.toolCount} available actions. Its actions now appear in integration_search results.`
           : r.state.status === "pending"
             ? r.auth === "oauth"
-              ? `Added '${r.name}' (slug: ${r.slug}). It is waiting for the user to sign in: tell them to open the Integrations page and press Sign in on '${r.name}' - their browser opens the service's own sign-in. NEVER ask for an API key for it.`
+              ? `Added '${r.name}' (slug: ${r.slug}). It is waiting for the user to sign in: call request_credential with toolkit '${r.slug}' now - Houston shows a Sign in card in place of the chat input and messages you automatically once they finish. NEVER ask for an API key for it.`
               : `Added '${r.name}' (slug: ${r.slug}). It is waiting for the user's API key: call request_credential with toolkit '${r.slug}' now so Houston shows a secure entry card - NEVER ask the user to paste a key into the chat.`
             : `Adding '${r.name}' failed: ${r.state.message}`;
       return {
@@ -210,12 +210,51 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
     },
   });
 
-  return [detect, add, makeRequestCredentialTool()];
+  const RemoveParams = Type.Object({
+    slug: Type.String({
+      description:
+        "The custom integration's slug (from a custom_integration_add result or an earlier setup in this conversation).",
+    }),
+  });
+  type RemoveParams = Static<typeof RemoveParams>;
+
+  const remove = defineTool({
+    name: "custom_integration_remove",
+    label: "Remove a custom integration",
+    description:
+      "Remove a custom integration you set up, including its saved key or sign-in. Use it when the user asks to remove one, or to clean up an unfinished setup after switching a service to a different connection method (one integration per service - never leave an abandoned card behind). Never remove a working integration the user did not ask to change.",
+    promptSnippet: "Remove a custom integration",
+    parameters: RemoveParams,
+    executionMode: "sequential",
+    async execute(
+      _id: string,
+      params: RemoveParams,
+      signal: AbortSignal | undefined,
+    ) {
+      assertNotPlanMode("add or change the user's integrations");
+      const slug = params.slug.trim().toLowerCase();
+      if (!slug)
+        throw new Error("custom_integration_remove needs a non-empty slug.");
+      await post<{ ok: boolean }>("remove", { slug }, signal);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Removed the custom integration '${slug}' (its saved credential is gone too). Tell the user in plain words - never mention slugs.`,
+          },
+        ],
+        details: { slug },
+      };
+    },
+  });
+
+  return [detect, add, remove, makeRequestCredentialTool()];
 }
 
 /** The tool names — pi's allowlist needs the names alongside the objects. */
 export const CUSTOM_INTEGRATION_TOOL_NAMES = [
   "custom_integration_detect",
   "custom_integration_add",
+  "custom_integration_remove",
   REQUEST_CREDENTIAL_TOOL_NAME,
 ];

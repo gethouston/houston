@@ -83,6 +83,7 @@ describe("buildToolSelection", () => {
       "request_connection",
       "custom_integration_detect",
       "custom_integration_add",
+      "custom_integration_remove",
       "request_credential",
     ]);
   });
@@ -226,6 +227,7 @@ describe("autoToolNames", () => {
       "request_connection",
       "custom_integration_detect",
       "custom_integration_add",
+      "custom_integration_remove",
       "request_credential",
     ]);
     expect(autoToolNames(local.toolNames)).not.toContain("ask_user");

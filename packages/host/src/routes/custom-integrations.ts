@@ -145,7 +145,9 @@ export async function handleSandboxCustomIntegrations(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
-  const m = path.match(/^\/sandbox\/integrations\/custom\/(detect|add)$/);
+  const m = path.match(
+    /^\/sandbox\/integrations\/custom\/(detect|add|remove)$/,
+  );
   if (!m || method !== "POST") return false;
 
   const sbToken = bearer(req, url);
@@ -173,6 +175,19 @@ export async function handleSandboxCustomIntegrations(
         return true;
       }
       json(res, 200, await manager.detect(body.url.trim()));
+      return true;
+    }
+    // The agent's cleanup path (PRODUCT-1172 follow-up): switching a service
+    // between connection methods can need a cross-kind re-add, which
+    // `replace` refuses by design — the abandoned definition is removed
+    // instead of lingering as a dead card.
+    if (m[1] === "remove") {
+      if (typeof body.slug !== "string" || !body.slug.trim()) {
+        json(res, 400, { error: "missing 'slug'" });
+        return true;
+      }
+      await manager.remove(body.slug.trim());
+      json(res, 200, { ok: true });
       return true;
     }
     const input = parseAddInput(body);
