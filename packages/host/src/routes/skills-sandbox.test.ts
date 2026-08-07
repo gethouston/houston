@@ -202,6 +202,36 @@ test("search returns hits enriched with their real descriptions", async () => {
   });
 });
 
+test("EVERY ranked hit comes back, not just the enriched ones", async () => {
+  // The marketplace UI shows the user all ~100 hits skills.sh returns. An agent
+  // handed only the enrichable head would confidently report "there's nothing
+  // for that" about a tail it was never shown — which is exactly how a search
+  // that DID contain popular publishers past the head got reported as empty.
+  const many = Array.from({ length: 30 }, (_, i) => ({
+    ...HIT,
+    skillId: `skill-${i}`,
+    name: `skill-${i}`,
+    installs: 1000 - i,
+  }));
+  const r = await call(
+    "search",
+    { query: "design" },
+    { deps: { directory: { search: async () => many } } },
+  );
+  expect(r.status).toBe(200);
+  const { skills } = r.body as { skills: Array<{ description?: string }> };
+  expect(skills).toHaveLength(30);
+  // Descriptions are budgeted (fetch cost), visibility is not: the head carries
+  // descriptions, the tail is still returned and still installable.
+  expect(skills.filter((s) => s.description).length).toBe(10);
+  expect(skills[29]).toEqual({
+    skillId: "skill-29",
+    source: "vercel-labs/agent-skills",
+    name: "skill-29",
+    installs: 971,
+  });
+});
+
 test("a hit whose preview fails still comes back, just without a description", async () => {
   const r = await call(
     "search",

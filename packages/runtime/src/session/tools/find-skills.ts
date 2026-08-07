@@ -124,7 +124,7 @@ export function makeFindSkillsTool(opts: SkillDirectoryToolOptions) {
           {
             type: "text" as const,
             text: skills.length
-              ? `${JSON.stringify(skills)}\n\nPick the best fit on description and install count. Describe it to the user in plain words and ask whether to add it, then call install_skill with that skill's exact source and skillId.`
+              ? `${JSON.stringify(skills)}\n\nThese are ALL the matches, ranked by relevance - the same list the user would see browsing the skills page. Only the first few carry a fetched description; the rest are real, installable candidates too, so read the whole list before judging what is available. Never tell the user something isn't there without checking every entry. Pick the best fit on relevance, description, and install count, describe it in plain words, and ask whether to add it - then call install_skill with that skill's exact source and skillId.`
               : "No published skill matches that. Tell the user plainly, and offer to do the task directly or save your own steps as a Skill afterwards.",
           },
         ],

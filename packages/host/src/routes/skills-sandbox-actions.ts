@@ -16,10 +16,19 @@ import type { SandboxSkillsDeps } from "./skills-sandbox";
  * copy of Vercel's CLI-driven `find-skills` skill).
  */
 
-/** How many search hits get enriched with their real description. Each is a
- *  cached GitHub SKILL.md lookup, so this is the latency/quality knob: without
- *  a description the agent can only judge a skill by its slug. */
-const ENRICH_LIMIT = 5;
+/**
+ * How many of the ranked hits get enriched with their real description. Each
+ * enrichment is a cached GitHub SKILL.md lookup, so this bounds latency — it
+ * does NOT bound how many candidates the agent sees.
+ *
+ * That distinction is load-bearing. skills.sh answers a search with up to 100
+ * ranked hits and the marketplace UI shows the user every one of them; an agent
+ * handed only the first few would confidently report "there's nothing for that"
+ * about a whole tail it was never shown (e.g. `mattpocock/skills` sits at rank
+ * 6+ on plenty of queries with 300k+ installs each). The agent must see the SAME
+ * option space the user would see in the Skills page.
+ */
+const ENRICH_LIMIT = 10;
 
 /** What the agent gets back per hit — the search row plus the description the
  *  recommendation actually rests on. */
@@ -32,12 +41,16 @@ interface FoundSkill {
 }
 
 /**
- * Search skills.sh, then enrich the top hits with their real descriptions.
+ * Search skills.sh and return EVERY ranked hit — the same set the marketplace
+ * UI puts in front of the user — with the top {@link ENRICH_LIMIT} carrying
+ * their real descriptions.
  *
  * Enrichment is best-effort per skill: a SKILL.md that can't be located (moved,
  * renamed, private) still returns as a hit without a description rather than
  * failing the whole search — the agent can then judge it on name and installs,
- * which is exactly what it would have had anyway.
+ * which is exactly what it would have had anyway. Un-enriched tail hits are
+ * returned the same way, so ranking, not fetch budget, decides what the agent
+ * can consider.
  */
 export async function searchAction(
   deps: SandboxSkillsDeps,
@@ -54,13 +67,16 @@ export async function searchAction(
   try {
     const hits = await (deps.directory ?? communityDirectory).search(query);
     const enriched = await Promise.all(
-      hits.slice(0, ENRICH_LIMIT).map(async (hit): Promise<FoundSkill> => {
+      hits.map(async (hit, rank): Promise<FoundSkill> => {
         const base: FoundSkill = {
           skillId: hit.skillId,
           source: hit.source,
           name: hit.name,
           installs: hit.installs,
         };
+        // Past the enrichment budget the hit still ships — ranked, named, and
+        // installable — just without a fetched description.
+        if (rank >= ENRICH_LIMIT) return base;
         try {
           const preview = await (deps.previews ?? previewDirectory).preview(
             fetchImpl,
