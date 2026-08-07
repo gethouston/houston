@@ -22,6 +22,31 @@ fn powershell_escape(s: &str) -> String {
     s.replace('\'', "''")
 }
 
+/// Decode a Windows dialog script's stdout into the chosen path.
+///
+/// The scripts print the path base64(UTF-8)-encoded rather than raw:
+/// PowerShell encodes redirected stdout in the console's OEM code page
+/// (cp850 on Spanish Windows), so an accented character anywhere in the
+/// chosen path (`C:\Users\Muñoz\…`) arrived here as bytes that are not
+/// valid UTF-8, turned into U+FFFD, and the save then failed with
+/// "El sistema no puede encontrar la ruta especificada. (os error 3)"
+/// (PRODUCT-1260). Base64 keeps the pipe pure ASCII, which every code
+/// page maps identically. Empty output means the user cancelled.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn decode_dialog_path(stdout: &[u8]) -> Result<Option<String>, String> {
+    use base64::Engine as _;
+    let trimmed = String::from_utf8_lossy(stdout).trim().to_string();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(trimmed.as_bytes())
+        .map_err(|e| format!("The dialog returned an unreadable path: {e}"))?;
+    let path = String::from_utf8(bytes)
+        .map_err(|e| format!("The dialog returned an unreadable path: {e}"))?;
+    Ok(if path.is_empty() { None } else { Some(path) })
+}
+
 #[cfg(target_os = "macos")]
 pub(crate) async fn save_dialog(
     prompt: &str,
@@ -61,7 +86,7 @@ $dlg = New-Object System.Windows.Forms.SaveFileDialog
 $dlg.FileName = '{}'
 $dlg.Filter = '{}'
 if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
-    Write-Output $dlg.FileName
+    Write-Output ([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($dlg.FileName)))
 }}
 "#,
         powershell_escape(default_name),
@@ -72,8 +97,7 @@ if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
         .output()
         .await
         .map_err(|e| format!("Failed to open save dialog: {e}"))?;
-    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(if path.is_empty() { None } else { Some(path) })
+    decode_dialog_path(&output.stdout)
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -121,7 +145,7 @@ Add-Type -AssemblyName System.Windows.Forms | Out-Null
 $dlg = New-Object System.Windows.Forms.OpenFileDialog
 $dlg.Filter = '{}'
 if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
-    Write-Output $dlg.FileName
+    Write-Output ([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($dlg.FileName)))
 }}
 "#,
         powershell_escape(filter),
@@ -131,8 +155,7 @@ if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
         .output()
         .await
         .map_err(|e| format!("Failed to open file dialog: {e}"))?;
-    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(if path.is_empty() { None } else { Some(path) })
+    decode_dialog_path(&output.stdout)
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -141,4 +164,40 @@ pub(crate) async fn open_dialog(
     _win_filter: Option<&str>,
 ) -> Result<Option<String>, String> {
     Err("Open dialog not yet implemented on this platform.".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decode_dialog_path;
+    use base64::Engine as _;
+
+    fn b64(s: &str) -> Vec<u8> {
+        base64::engine::general_purpose::STANDARD
+            .encode(s.as_bytes())
+            .into_bytes()
+    }
+
+    #[test]
+    fn decodes_accented_path() {
+        // The PRODUCT-1260 shape: an accented Windows user folder that the
+        // old raw-stdout decoding mangled into a nonexistent directory.
+        let mut out = b64("C:\\Users\\Muñoz\\Descargas\\reporte.xlsx");
+        out.extend_from_slice(b"\r\n");
+        assert_eq!(
+            decode_dialog_path(&out).unwrap(),
+            Some("C:\\Users\\Muñoz\\Descargas\\reporte.xlsx".to_string()),
+        );
+    }
+
+    #[test]
+    fn empty_output_is_a_cancel() {
+        assert_eq!(decode_dialog_path(b"").unwrap(), None);
+        assert_eq!(decode_dialog_path(b"  \r\n").unwrap(), None);
+        assert_eq!(decode_dialog_path(&b64("")).unwrap(), None);
+    }
+
+    #[test]
+    fn garbage_output_errors_instead_of_saving_nowhere() {
+        assert!(decode_dialog_path(b"not base64!!").is_err());
+    }
 }

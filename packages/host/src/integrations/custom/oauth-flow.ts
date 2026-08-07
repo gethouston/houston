@@ -88,12 +88,11 @@ export async function beginCustomOAuth(
   attempt: CustomOAuthAttempt;
 }> {
   // The OAuth flow owns its HTTP seam like the executor does (HOU-1083):
-  // this host process runs with pi's patched global fetch/dispatcher, whose
-  // altered message framing crashed third-party endpoints that answer plain
-  // curl fine (staging: Croma's Vercel functions 405/FUNCTION_INVOCATION_FAILED
-  // on the pod's registration while the same request succeeded everywhere
-  // else). guardedFetch strips the framing headers and lets the current fetch
-  // compute them itself, deterministically.
+  // this host process runs with pi's patched global fetch/dispatcher, which
+  // once broke every executor POST through altered message framing.
+  // guardedFetch strips the framing headers and lets the current fetch
+  // compute them itself, deterministically — hardening against that class
+  // for discovery/registration/exchange/refresh alike.
   const fetchFn = opts.fetchFn ?? guardedFetch;
   const { statePrefix } = opts;
   let info: Awaited<ReturnType<typeof discoverOAuthServerInfo>>;
