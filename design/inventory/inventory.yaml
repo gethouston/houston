@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 54
+version: 55
 
 components:
   - id: agent-avatar
@@ -174,7 +174,10 @@ components:
     behavior: >-
       Shown while a turn is in flight with no visible stream (deriveStatus =
       submitted); yields to the stream once tokens appear. Reasoning content is
-      thinking / thinking_streaming feed items.
+      thinking / thinking_streaming feed items. The pre-token wait renders as
+      the turn-status line itself (one component, one size) playing the rotating
+      phrase deck; the deck plays ONLY in this connecting state -- an executing
+      agent's header names the concrete task instead (PRODUCT-1226).
     a11y: aria-live=polite status text; expand/collapse is a labeled toggle button.
     since: 1
 
@@ -300,6 +303,9 @@ components:
     behavior: >-
       Label + active flag come from deriveStatus over the feed; shimmer marks an
       ongoing/pending state. Inline-safe so it can sit inside markdown prose.
+      While the agent executes, the label holds the current task (tool verb /
+      integration brand), folding a run of consecutive identical activities
+      into one label with an "xN" repeat counter (PRODUCT-1226).
     a11y: status role; label announced politely; shimmer is presentational only.
     since: 1
 

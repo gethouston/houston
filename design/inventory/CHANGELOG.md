@@ -3,6 +3,14 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v55 - 2026-08-07
+
+Chat status messages rework (PRODUCT-1226), no new components. The
+thinking-indicator's pre-token wait now renders as the turn-status line itself
+(one component, one size) and the rotating phrase deck plays only while
+connecting; an executing agent's header always names the concrete task,
+folding consecutive identical activities into an "xN" repeat counter.
+
 ## v54 - 2026-08-06
 
 A workspace file named in an agent's prose stops dressing as a web link. It
