@@ -190,12 +190,21 @@ export async function handleIntegrations(
       return true;
     }
     if (sub === "search" && method === "POST") {
-      const { query } = await readJson(req);
+      const { query, app } = await readJson(req);
       if (typeof query !== "string") {
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
-      json(res, 200, { items: await provider.search(userId, query) });
+      // Optional `app` hard-scopes discovery to one named app (PRODUCT-1274);
+      // the desktop gateway adapter forwards it here verbatim.
+      json(res, 200, {
+        items: await provider.search(
+          userId,
+          query,
+          undefined,
+          typeof app === "string" && app ? app : undefined,
+        ),
+      });
       return true;
     }
     if (sub === "execute" && method === "POST") {

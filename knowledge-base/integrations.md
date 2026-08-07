@@ -91,16 +91,28 @@ the agent which of four speech acts to perform:
 `connected === false` matches discoverable for the in-chat connect card);
 `status` is the additive superset.
 
-**Direct-adapter search** (`composio.ts` → `composio-search.ts`): the old
-connected-scoped short-circuit is GONE (its bug: a connected-Gmail user could not
-discover Google Sheets, because a scoped hit `return`ed before global ran). Search
-now runs THREE lookups and merges them (scoped first, deduped by action, then
-catalog entries):
-1. **scoped** query over the user's CONNECTED toolkits (precision; degrades to
+**Direct-adapter search** (`composio.ts` → `composio-search.ts`; resolvers in
+`composio-resolve.ts`, status stamping in `composio-annotate.ts`): discovery is
+PROGRESSIVE (PRODUCT-1274 — a "get top users in PostHog" query once returned a
+globally ranked list where GitHub actions drowned PostHog's out). The old
+connected-scoped short-circuit is also GONE (its bug: a connected-Gmail user
+could not discover Google Sheets, because a scoped hit `return`ed before global
+ran). The lookups, merged in order and deduped by action:
+1. **named-app** lookups — the tool's explicit `app` scope (a loose name or
+   slug, resolved by `resolveScopeToolkits`: exact normalized match wins, else
+   both-way substring), or apps resolved from the query text. Each runs the
+   query hard-scoped via `toolkit_slug`; with an EXPLICIT scope a zero score
+   degrades to LISTING the toolkit's actions (Composio's deterministic direct
+   retrieval — full-text scores everyday phrasings at zero), and the named
+   app's results are the WHOLE response (a hard filter, per Composio's own
+   discovery guidance). Query-resolved apps skip the listing fallback so a
+   loose text match ("linear" inside "linear regression") cannot flood the
+   result — the toolkit row + an `app`-scoped re-search cover that.
+2. **scoped** query over the user's CONNECTED toolkits (precision; degrades to
    LISTING their actions on a zero-hit everyday phrasing), then
-2. **global** query — ALWAYS runs, never short-circuited, so new apps are
+3. **global** query — ALWAYS runs, never short-circuited, so new apps are
    discoverable, then
-3. **catalog resolution** — Composio's action full-text scores ~zero for a plain
+4. **catalog resolution** — Composio's action full-text scores ~zero for a plain
    app NAME, so the query is resolved against the toolkits catalog
    (`GET /api/v3/toolkits`, cached in-process, 1h TTL, shared in-flight promise)
    to a real slug and surfaced as a **toolkit-level entry** (`action: ""`) even
@@ -108,6 +120,15 @@ catalog entries):
    `request_connection`. Status is derived from the acting user's active
    connections (`connected`/`connectable`; the direct adapter cannot emit
    `blocked`/`unknown`).
+
+The `app` scope travels the whole path: `integration_search`'s optional `app`
+param → sandbox proxy body → `IntegrationProvider.search(userId, query, acting,
+app)` → each provider (Composio hard-scopes; the custom provider filters its
+integrations and lists a scoped app's tools on a zero score). The gateway
+adapter (`remote.ts`) forwards `app` verbatim; a cloud gateway that predates the
+field ignores it and serves the unscoped result (today's behavior, never an
+error) — the Go gateway needs the same scoping for the managed cloud to get the
+hard filter.
 
 **Gateway adapter** (`remote.ts`) reads each `/search` item TOLERANTLY: a valid
 `status` passes through verbatim (a future gateway sending `blocked`); an absent

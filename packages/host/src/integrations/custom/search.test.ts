@@ -58,6 +58,42 @@ test("a zero-token query (empty or symbols-only) returns no matches", () => {
   expect(searchCustomTools("!!!", pingTools, defs)).toEqual([]);
 });
 
+// ── Explicit app scope (PRODUCT-1274) ────────────────────────────────────────
+
+test("an app scope is a hard filter: only that integration's tools come back", () => {
+  const results = searchCustomTools("ping", pingTools, defs, "Acme");
+  expect(results.map((m) => m.action)).toEqual(["tools.acme.org.default.ping"]);
+});
+
+test("a scoped zero-score query degrades to listing the app's tools", () => {
+  // "nonexistent-term" scores nothing, but the user named the app — its tools
+  // must surface (the deterministic fallback), never an empty result.
+  const results = searchCustomTools(
+    "nonexistent-term",
+    pingTools,
+    defs,
+    "acme",
+  );
+  expect(results.map((m) => m.action)).toEqual(["tools.acme.org.default.ping"]);
+});
+
+test("a scope matching no custom integration yields nothing (another provider owns it)", () => {
+  expect(searchCustomTools("ping", pingTools, defs, "posthog")).toEqual([]);
+});
+
+test("a scoped integration with no compiled tool still surfaces as an app row", () => {
+  const results = searchCustomTools("anything", [], defs, "beta");
+  expect(results).toEqual([
+    {
+      action: "",
+      toolkit: "beta",
+      description: "Beta (custom integration)",
+      connected: true,
+      status: "connected",
+    },
+  ]);
+});
+
 test("results are capped at 20 even when every tool scores", () => {
   const manyTools: CustomToolRow[] = Array.from({ length: 25 }, (_, i) => ({
     address: `tools.gen.org.default.t${i}`,

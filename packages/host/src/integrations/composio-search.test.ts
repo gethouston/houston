@@ -1,6 +1,12 @@
 import { expect, test } from "vitest";
-import { normalizeAppName, resolveCatalogToolkits } from "./composio-search";
-import type { Toolkit } from "./types";
+import { multiAccountsByToolkit } from "./composio-annotate";
+import {
+  normalizeAppName,
+  resolveCatalogToolkits,
+  resolveScopeToolkits,
+} from "./composio-resolve";
+import { type SearchDeps, searchComposio } from "./composio-search";
+import type { Connection, Toolkit, ToolMatch } from "./types";
 
 /**
  * The pure catalog resolver: it turns an app-naming query into real toolkit
@@ -57,10 +63,168 @@ test("no match for a query that names no app, and an empty query", () => {
   expect(resolveCatalogToolkits(CATALOG, "   ")).toEqual([]);
 });
 
-// ── Multi-account annotation (HOU-901) ───────────────────────────────────────
+// ── Explicit app-scope resolution (PRODUCT-1274) ─────────────────────────────
 
-import { multiAccountsByToolkit, searchComposio } from "./composio-search";
-import type { Connection, ToolMatch } from "./types";
+test("resolveScopeToolkits: an exact name/slug match wins outright", () => {
+  expect(resolveScopeToolkits(CATALOG, "PostHog")).toEqual([]);
+  expect(
+    resolveScopeToolkits(CATALOG, "Google Sheets").map((t) => t.slug),
+  ).toEqual(["googlesheets"]);
+  expect(resolveScopeToolkits(CATALOG, "gmail").map((t) => t.slug)).toEqual([
+    "gmail",
+  ]);
+  // Exact beats every substring hit, even when others would also match.
+  const many: Toolkit[] = [
+    { slug: "google", name: "Google" },
+    { slug: "googlesheets", name: "Google Sheets" },
+  ];
+  expect(resolveScopeToolkits(many, "google").map((t) => t.slug)).toEqual([
+    "google",
+  ]);
+});
+
+test("resolveScopeToolkits: near matches work both ways, closest length first", () => {
+  // Scope shorter than the name ("google sheet" ⊂ "googlesheets").
+  expect(
+    resolveScopeToolkits(CATALOG, "google sheet").map((t) => t.slug),
+  ).toEqual(["googlesheets"]);
+  // Name shorter than the scope ("gmail" ⊂ "gmail inbox").
+  expect(
+    resolveScopeToolkits(CATALOG, "gmail inbox").map((t) => t.slug),
+  ).toEqual(["gmail"]);
+  // Too short to scope safely.
+  expect(resolveScopeToolkits(CATALOG, "gm")).toEqual([]);
+});
+
+// ── The merged search + progressive named-app discovery ──────────────────────
+
+/** Deps double that records every /tools query and answers via `reply`. */
+function fakeDeps(opts: {
+  connections?: Connection[];
+  catalog?: Toolkit[];
+  reply: (q: Record<string, string>) => ToolMatch[];
+}): { deps: SearchDeps; calls: Record<string, string>[] } {
+  const calls: Record<string, string>[] = [];
+  return {
+    calls,
+    deps: {
+      listConnections: async () => opts.connections ?? [],
+      catalog: async () => opts.catalog ?? [],
+      queryTools: async (q) => {
+        calls.push(q);
+        return opts.reply(q);
+      },
+    },
+  };
+}
+
+const PH_CATALOG: Toolkit[] = [
+  { slug: "github", name: "GitHub" },
+  { slug: "posthog", name: "PostHog" },
+];
+const PH_CONNS: Connection[] = [
+  { toolkit: "github", connectionId: "ca_g", status: "active" },
+  { toolkit: "posthog", connectionId: "ca_p", status: "active" },
+];
+const GH_NOISE: ToolMatch = {
+  action: "GITHUB_LIST_REPOS",
+  toolkit: "github",
+  description: "List repositories",
+};
+const PH_TOOL: ToolMatch = {
+  action: "POSTHOG_LIST_PERSONS",
+  toolkit: "posthog",
+  description: "List persons by activity",
+};
+
+test("explicit app scope: ONLY the named app's actions, via the listing fallback", async () => {
+  // The PRODUCT-1274 regression: Composio's full-text scores the phrasing at
+  // zero for the named app while unrelated connected apps dominate globally.
+  const { deps, calls } = fakeDeps({
+    connections: PH_CONNS,
+    catalog: PH_CATALOG,
+    reply: (q) => {
+      if (q.toolkit_slug === "posthog") return q.query ? [] : [PH_TOOL];
+      return [GH_NOISE];
+    },
+  });
+  const out = await searchComposio(
+    deps,
+    "get the most active users",
+    "PostHog",
+  );
+  expect(out.map((m) => m.action)).toEqual(["POSTHOG_LIST_PERSONS"]);
+  expect(out[0]?.status).toBe("connected");
+  // Hard filter: no global or connected-scoped query ever ran.
+  expect(calls.every((q) => q.toolkit_slug === "posthog")).toBe(true);
+});
+
+test("explicit app scope with no action match still returns the app row", async () => {
+  const { deps } = fakeDeps({
+    catalog: PH_CATALOG,
+    reply: () => [],
+  });
+  const out = await searchComposio(deps, "do something odd", "posthog");
+  expect(out).toEqual([
+    {
+      action: "",
+      toolkit: "posthog",
+      description: "PostHog",
+      connected: false,
+      status: "connectable",
+    },
+  ]);
+});
+
+test("an unresolvable explicit scope falls back to the merged search, never a false not-found", async () => {
+  const { deps, calls } = fakeDeps({
+    connections: PH_CONNS,
+    catalog: PH_CATALOG,
+    reply: () => [GH_NOISE],
+  });
+  const out = await searchComposio(deps, "list my repos", "frobnicator");
+  expect(out.map((m) => m.action)).toEqual(["GITHUB_LIST_REPOS"]);
+  // The merged search ran (a global, un-scoped query is among the calls).
+  expect(calls.some((q) => !q.toolkit_slug)).toBe(true);
+});
+
+test("a query NAMING an app ranks that app's matches before scoped/global noise", async () => {
+  const { deps } = fakeDeps({
+    connections: PH_CONNS,
+    catalog: PH_CATALOG,
+    reply: (q) => {
+      if (q.toolkit_slug === "posthog") return [PH_TOOL];
+      return [GH_NOISE];
+    },
+  });
+  const out = await searchComposio(deps, "in posthog, get the top users");
+  expect(out.map((m) => m.action)).toEqual([
+    "POSTHOG_LIST_PERSONS",
+    "GITHUB_LIST_REPOS",
+  ]);
+});
+
+test("the auto (query-resolved) path never floods via the listing fallback", async () => {
+  // Named query scores zero → the app surfaces as a toolkit ROW (the model
+  // re-searches with `app` for the deterministic listing), NOT as 50 actions.
+  const { deps, calls } = fakeDeps({
+    connections: PH_CONNS,
+    catalog: PH_CATALOG,
+    reply: (q) => {
+      if (q.toolkit_slug === "posthog") return [];
+      return [GH_NOISE];
+    },
+  });
+  const out = await searchComposio(deps, "in posthog, get the top users");
+  expect(out.map((m) => m.action)).toEqual(["GITHUB_LIST_REPOS", ""]);
+  expect(out[1]?.toolkit).toBe("posthog");
+  // No query-less listing call for the named app was made.
+  expect(calls.some((q) => q.toolkit_slug === "posthog" && !q.query)).toBe(
+    false,
+  );
+});
+
+// ── Multi-account annotation (HOU-901) ───────────────────────────────────────
 
 const CONNS: Connection[] = [
   {

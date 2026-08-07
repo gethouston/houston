@@ -22,16 +22,57 @@ const tokenize = (q: string): string[] =>
     .split(/[^a-z0-9]+/)
     .filter((t) => t.length > 1);
 
+/** Loose app-scope match: "PostHog" hits slug "posthog" or name "PostHog EU". */
+const scopeMatches = (scope: string, slug: string, name: string): boolean => {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const want = norm(scope);
+  return (
+    want.length >= 3 &&
+    [norm(slug), norm(name)].some(
+      (s) => s.length >= 3 && (s.includes(want) || want.includes(s)),
+    )
+  );
+};
+
 /**
  * Score custom tools against a plain-language query: token hits on the tool
  * name/description weigh 1, hits on the integration's slug/name weigh 2 (the
  * user usually names the app: "acme create ticket"). Zero-hit tools drop out.
+ *
+ * `app` (optional) is the agent's HARD scope (PRODUCT-1274): only integrations
+ * matching it are searched, and a zero-score scoped search degrades to LISTING
+ * the scoped integration's tools (the deterministic fallback — a named app must
+ * surface its actions, not an empty result, when the phrasing scores zero).
  */
 export function searchCustomTools(
   query: string,
   tools: CustomToolRow[],
   defs: CustomDefRow[],
+  app?: string,
 ): ToolMatch[] {
+  if (app) {
+    const scopedDefs = defs.filter((d) => scopeMatches(app, d.slug, d.name));
+    if (scopedDefs.length === 0) return [];
+    const slugs = new Set(scopedDefs.map((d) => d.slug));
+    const scopedTools = tools.filter((t) => slugs.has(t.integration));
+    const scored = searchCustomTools(query, scopedTools, scopedDefs);
+    if (scored.some((m) => m.action !== "")) return scored;
+    const nameOf = new Map(
+      scopedDefs.map((d) => [d.slug, d.name.toLowerCase()]),
+    );
+    const listed = scopedTools
+      .slice(0, MAX_MATCHES)
+      .map((t) => toMatch(t, nameOf));
+    if (listed.length > 0) return listed;
+    // An integration with no compiled tool still surfaces as an app row.
+    return scopedDefs.map((d) => ({
+      action: "",
+      toolkit: d.slug,
+      description: `${d.name} (custom integration)`,
+      connected: true,
+      status: "connected" as const,
+    }));
+  }
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
   const nameOf = new Map(defs.map((d) => [d.slug, d.name.toLowerCase()]));

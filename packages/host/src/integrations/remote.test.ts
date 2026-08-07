@@ -261,6 +261,14 @@ test("disconnect forwards the narrowing connectionId; omits it when absent", asy
   expect(calls[1]?.body).toEqual({ toolkit: "gmail", connectionId: "ca_2" });
 });
 
+test("search forwards the app scope; omits it when absent (PRODUCT-1274)", async () => {
+  const { provider, calls } = harness(() => ({ body: { items: [] } }), "tok");
+  await provider.search("u", "get top users");
+  expect(calls[0]?.body).toEqual({ query: "get top users" });
+  await provider.search("u", "get top users", undefined, "posthog");
+  expect(calls[1]?.body).toEqual({ query: "get top users", app: "posthog" });
+});
+
 test("execute forwards the target account; omits it when absent", async () => {
   const { provider, calls } = harness(
     () => ({ body: { successful: true } }),

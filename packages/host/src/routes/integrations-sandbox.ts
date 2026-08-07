@@ -105,6 +105,10 @@ export async function handleSandboxIntegrations(
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
+      // Optional `app`: the agent's HARD scope when the task names an app —
+      // each provider returns only that app's actions (PRODUCT-1274).
+      const app =
+        typeof body.app === "string" && body.app ? body.app : undefined;
       const providerIds = explicit ? [explicit] : registry.ids();
       // Fan out and merge. One provider failing must not hide another's
       // results (desktop signed out: the gateway adapter throws while the
@@ -114,7 +118,7 @@ export async function handleSandboxIntegrations(
       // sign-in card).
       const settled = await Promise.allSettled(
         providerIds.map((id) =>
-          registry.get(id).search(ws.ownerUserId, query, acting),
+          registry.get(id).search(ws.ownerUserId, query, acting, app),
         ),
       );
       const items = settled.flatMap((s) =>

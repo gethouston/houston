@@ -19,8 +19,14 @@ import { assertNotPlanMode } from "../live-mode-gate";
 const SearchParams = Type.Object({
   query: Type.String({
     description:
-      "Plain-language description of what you want to do. Include the app name when you know it — 'gmail send email' finds better matches than 'send an email'. Returns matching action slugs + their input parameters.",
+      "Plain-language description of ONE specific thing you want to do (e.g. 'send an email', 'query analytics for the most active users'). A task with several independent steps gets one search per step — do not lump them into one loose query. Include the app name when you know it. Returns matching action slugs + their input parameters.",
   }),
+  app: Type.Optional(
+    Type.String({
+      description:
+        "The app the task names ('posthog', 'gmail', 'google sheets'). When set, results are scoped to ONLY that app's actions — ALWAYS set it when the user names the app. Omit it only when no app was named and you are discovering which app could do the task.",
+    }),
+  ),
 });
 type SearchParams = Static<typeof SearchParams>;
 
@@ -345,7 +351,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_search",
     label: "Find an app action",
     description:
-      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute.",
+      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute. When the user names an app, pass it as `app` so results are scoped to it. Never conclude an app has no actions from an unscoped result where other apps dominate: if the app appears only as an app row (no actions), search again with `app` set to it before reporting any capability gap.",
     promptSnippet: "Search the user's connected apps for an action to run",
     parameters: SearchParams,
     executionMode: "sequential",
@@ -358,7 +364,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       try {
         ({ items } = await post<{ items: ToolMatch[] }>(
           "search",
-          { query: params.query },
+          { query: params.query, ...(params.app ? { app: params.app } : {}) },
           signal,
         ));
       } catch (err) {
@@ -377,14 +383,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       }
       if (items.length === 0) {
         // Genuinely empty: not a policy block, not "unavailable" - no such app
-        // or action was found. The prompt tells the model to say so plainly.
+        // or action was found. The prompt tells the model to say so plainly —
+        // but ONLY after the scoped retry (an unscoped result where other apps
+        // dominate must never be read as "the named app has no actions").
+        const text = params.app
+          ? `No app matching "${params.app}" was found, and nothing matched "${params.query}". This is a genuine not-found: no such app exists here. It does NOT mean an app is blocked or withheld by policy. If the user may have misspelled the app, retry once with the corrected name before telling them plainly it is not available.`
+          : `No matching app or action found for "${params.query}". If the task names an app, search again with \`app\` set to that app before concluding anything. Otherwise this is a genuine not-found: no such app or action exists here. It does NOT mean an app is blocked or withheld by policy.`;
         return {
-          content: [
-            {
-              type: "text" as const,
-              text: `No matching app or action found for "${params.query}". This is a genuine not-found: no such app or action exists here. It does NOT mean an app is blocked or withheld by policy.`,
-            },
-          ],
+          content: [{ type: "text" as const, text }],
           details: { matches: 0, actions: [] as string[] },
         };
       }

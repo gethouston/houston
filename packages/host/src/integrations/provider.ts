@@ -75,12 +75,16 @@ export interface IntegrationProvider {
    * Discover actions matching a natural-language query (slug + param schema).
    * `acting` (optional) names the user the agent is acting as this turn (C2);
    * a gateway adapter authenticates upstream as that user, direct adapters
-   * ignore it.
+   * ignore it. `app` (optional) HARD-scopes discovery to one named app — a
+   * loose name or slug ("PostHog", "google sheets") the adapter resolves; the
+   * result is then only that app's actions, never a globally ranked list
+   * (PRODUCT-1274).
    */
   search(
     userId: string,
     query: string,
     acting?: ActingContext,
+    app?: string,
   ): Promise<ToolMatch[]>;
   /**
    * Run one action by slug with its params. `acting` (optional) as in `search`.

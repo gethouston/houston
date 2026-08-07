@@ -1,4 +1,4 @@
-import type { IntegrationProvider } from "../provider";
+import type { ActingContext, IntegrationProvider } from "../provider";
 import type {
   ActionResult,
   Connection,
@@ -97,7 +97,12 @@ export class CustomIntegrationProvider implements IntegrationProvider {
     });
   }
 
-  async search(_userId: string, query: string): Promise<ToolMatch[]> {
+  async search(
+    _userId: string,
+    query: string,
+    _acting?: ActingContext,
+    app?: string,
+  ): Promise<ToolMatch[]> {
     const [defs, { executor }] = await Promise.all([
       this.store.list(),
       this.host.ensure(),
@@ -115,6 +120,7 @@ export class CustomIntegrationProvider implements IntegrationProvider {
           inputSchema: t.inputSchema,
         })),
       defs.map((d) => ({ slug: d.slug, name: d.name })),
+      app,
     );
   }
 

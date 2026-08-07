@@ -389,6 +389,45 @@ test("sandbox proxy: HMAC token → workspace owner's userId → execute/search"
   }
 });
 
+test("search's app scope reaches the provider on BOTH routes (PRODUCT-1274)", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
+  try {
+    // Sandbox proxy (the agent's integration_search).
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "send an email", app: "gmail" }),
+    });
+    expect(fake.lastApp).toBe("gmail");
+
+    // User-facing route (what the desktop gateway adapter forwards to).
+    fake.lastApp = undefined;
+    await fetch(`${base}/v1/integrations/composio/search`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ query: "send an email", app: "gmail" }),
+    });
+    expect(fake.lastApp).toBe("gmail");
+
+    // Omitted (or empty) → undefined at the port, never an empty-string scope.
+    await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "send an email", app: "" }),
+    });
+    expect(fake.lastApp).toBeUndefined();
+  } finally {
+    stop();
+  }
+});
+
 test("sandbox proxy: a write action executes directly (no host approval gate)", async () => {
   // The host executes every authenticated execute directly — integration
   // confirmations are model-driven ask_user questions, not a host-side gate. A

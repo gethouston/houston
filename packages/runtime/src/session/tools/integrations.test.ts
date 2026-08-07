@@ -193,6 +193,35 @@ test("an empty result is a genuine not-found, not a policy block", async () => {
   expect(text).not.toContain("request_connection");
 });
 
+test("search forwards the app scope to the host and omits it when unset (PRODUCT-1274)", async () => {
+  const calls = mockFetch(() => ({ body: { items: [] } }));
+  await run(search, { query: "get the top users", app: "posthog" });
+  await run(search, { query: "get the top users" });
+  expect(calls[0]?.body).toEqual({
+    query: "get the top users",
+    app: "posthog",
+  });
+  expect(calls[1]?.body).toEqual({ query: "get the top users" });
+});
+
+test("an empty APP-SCOPED result says the app was not found, with one spelling retry", async () => {
+  mockFetch(() => ({ body: { items: [] } }));
+  const out = await run(search, { query: "top users", app: "postohg" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain('No app matching "postohg"');
+  expect(text).toContain("genuine not-found");
+  expect(text).toContain("misspelled");
+  // The unscoped hint to retry with `app` set would be circular here.
+  expect(text).not.toContain("search again with `app`");
+});
+
+test("an empty UNSCOPED result tells the model to retry scoped before concluding", async () => {
+  mockFetch(() => ({ body: { items: [] } }));
+  const out = await run(search, { query: "in posthog get top users" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("search again with `app` set to that app");
+});
+
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
   mockFetch(() => ({ body: { successful: true, data: { id: "msg1" } } }));
   const out = await run(execute, {

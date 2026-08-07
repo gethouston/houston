@@ -209,10 +209,14 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     _userId: string,
     query: string,
     acting?: ActingContext,
+    app?: string,
   ): Promise<ToolMatch[]> {
+    // `app` (the hard scope) is forwarded as-is; a gateway that predates it
+    // ignores the field and serves the unscoped result — today's behavior,
+    // never an error.
     const body = await this.call<{ items: ToolMatch[] }>("/search", {
       method: "POST",
-      body: { query },
+      body: { query, ...(app ? { app } : {}) },
       acting,
     });
     return this.must(body, "POST /search").items.map(readSearchItem);

@@ -29,6 +29,8 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   throwSearchExecute?: Error;
   /** Test helper: the acting context of the most recent search/execute call. */
   lastActing: ActingContext | undefined;
+  /** Test helper: the app scope of the most recent search call. */
+  lastApp: string | undefined;
   /** Test helper: the account targeted by the most recent execute call. */
   lastAccount: string | undefined;
   private seq = 0;
@@ -121,8 +123,10 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     userId: string,
     query: string,
     acting?: ActingContext,
+    app?: string,
   ): Promise<ToolMatch[]> {
     this.lastActing = acting;
+    this.lastApp = app;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
     if (this.throwSearchExecute) throw this.throwSearchExecute;
     const q = query.toLowerCase();
@@ -132,6 +136,7 @@ export class FakeIntegrationProvider implements IntegrationProvider {
         .map((c) => c.toolkit),
     );
     return this.actions
+      .filter((a) => !app || a.toolkit.toLowerCase() === app.toLowerCase())
       .filter(
         (a) =>
           a.description.toLowerCase().includes(q) ||
