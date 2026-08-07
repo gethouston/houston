@@ -161,6 +161,7 @@ export function ChatMessages({
         {afterMessages}
       </ConversationContent>
       <ConversationMap
+        actions={conversationMap?.actions}
         conversationLength={messages.length}
         labels={conversationMap?.labels}
         moments={moments}

@@ -13,6 +13,7 @@ import type { BulkActionBarLabels, BulkMoveTarget } from "./bulk-action-bar";
 import { BulkActionBar } from "./bulk-action-bar";
 import { KanbanBoard } from "./kanban-board";
 import type { KanbanCardLabels } from "./kanban-card";
+import { showsCardAction } from "./kanban-card-actions";
 import { KanbanDetailPanel } from "./kanban-detail-panel";
 import { KanbanList } from "./kanban-list";
 import { type ResolvedSelection, resolvePanelState } from "./panel-state";
@@ -627,6 +628,30 @@ export function AIBoard({
   // Blank while a selected chat's card hasn't resolved yet — never the
   // new-conversation label on an existing chat.
   const panelTitle = panelItem?.title ?? (selectedId ? "" : "New conversation");
+  const panelConversationMap = conversationMap
+    ? {
+        ...conversationMap,
+        actions: panelItem
+          ? {
+              onMoveToDone: showsCardAction({
+                itemStatus: panelItem.status,
+                actionStatuses: approveStatuses,
+                handled: !!onApprove,
+                hasCustomActions: !!actions,
+              })
+                ? () => onApprove?.(panelItem)
+                : undefined,
+              onDelete: onDelete ? () => handleDelete(panelItem) : undefined,
+              deleteTitle:
+                cardLabels?.deleteTitle?.(panelItem.title) ??
+                `Delete "${panelItem.title}"?`,
+              deleteDescription:
+                cardLabels?.deleteDescription ??
+                "This item and its history will be permanently removed.",
+            }
+          : undefined,
+      }
+    : undefined;
 
   // Notify parent when panel opens/closes
   useEffect(() => {
@@ -781,7 +806,7 @@ export function AIBoard({
           messageMentionPeople={messageMentionPeople}
           renderMentionAvatar={renderMentionAvatar}
           mentionLabels={mentionLabels}
-          conversationMap={conversationMap}
+          conversationMap={panelConversationMap}
           dictation={dictation}
           afterMessages={renderedAfterMessages}
           onNotice={onNotice}

@@ -249,7 +249,8 @@
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
   "conversationMap": {
     "title": "Search chat",
-    "view": "Search chat",
+    "moreActions": "Chat actions",
+    "find": "Find",
     "hide": "Close chat search",
     "searchPlaceholder": "Search messages",
     "clearSearch": "Clear search",

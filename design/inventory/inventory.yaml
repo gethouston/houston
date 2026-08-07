@@ -97,17 +97,19 @@ components:
   - id: conversation-map-search
     title: Conversation map search
     purpose: Search and navigate the messages already loaded in an open conversation.
-    anatomy: [search-trigger, title, search-field, message-map, back-to-latest-action]
-    states: [closed, open-unfiltered, filtered, no-results, current-message]
+    anatomy: [actions-trigger, actions-menu, find-command, search-field, message-map, back-to-latest-action]
+    states: [closed, actions-open, open-unfiltered, filtered, no-results, current-message]
     variants: [conversation-overlay]
     behavior: >-
-      Opening shows the compact conversation map before a query is entered.
+      The chat's three-dot menu offers Find plus status-aware mission actions.
+      Choosing Find shows the compact conversation map before a query is entered.
       Filtering is case- and accent-insensitive across every loaded message;
-      selecting a result scrolls to and briefly highlights that message.
+      selecting a result scrolls to and briefly highlights that message. Delete
+      remains confirmation-gated.
     a11y: >-
-      The trigger and close action have visible labels; search is a labeled
-      searchbox; results are buttons in a navigation landmark, with aria-current
-      on the message nearest the viewport.
+      The icon trigger, menu actions, and close action have accessible labels;
+      search is a labeled searchbox; results are buttons in a navigation
+      landmark, with aria-current on the message nearest the viewport.
     since: 54
 
   - id: assistant-message

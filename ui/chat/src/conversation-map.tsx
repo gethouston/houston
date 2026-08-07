@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import {
   type ConversationMapLabels,
-  DEFAULT_CONVERSATION_MAP_LABELS,
   type ResolvedConversationMapLabels,
+  resolveConversationMapLabels,
 } from "./conversation-map-labels";
 import type { ConversationMoment } from "./conversation-map-model";
 import { searchConversationMoments } from "./conversation-map-model";
@@ -15,6 +15,7 @@ export interface ConversationMapProps {
   moments: ConversationMoment[];
   conversationLength: number;
   labels?: ConversationMapLabels;
+  actions?: ConversationMapActions;
   onOpenChange?: (open: boolean, conversationLength: number) => void;
   onMomentClick?: (
     moment: ConversationMoment,
@@ -24,11 +25,19 @@ export interface ConversationMapProps {
   onMomentHighlight?: (messageKey: string) => void;
 }
 
+export interface ConversationMapActions {
+  onMoveToDone?: () => void;
+  onDelete?: () => void;
+  deleteTitle?: string;
+  deleteDescription?: string;
+}
+
 /** A props-only, current-DOM conversation index. It intentionally keeps no history. */
 export function ConversationMap({
   moments,
   conversationLength,
   labels,
+  actions,
   onOpenChange,
   onMomentClick,
   onBackToLatest,
@@ -39,11 +48,7 @@ export function ConversationMap({
   const [query, setQuery] = useState("");
   const [activeMessageKey, setActiveMessageKey] = useState<string | null>(null);
   const resolvedLabels = useMemo<ResolvedConversationMapLabels>(
-    () => ({
-      ...DEFAULT_CONVERSATION_MAP_LABELS,
-      ...labels,
-      types: { ...DEFAULT_CONVERSATION_MAP_LABELS.types, ...labels?.types },
-    }),
+    () => resolveConversationMapLabels(labels),
     [labels],
   );
 
@@ -55,11 +60,6 @@ export function ConversationMap({
     },
     [conversationLength, onOpenChange],
   );
-
-  useEffect(() => {
-    if (moments.length >= 3 || !open) return;
-    changeOpen(false);
-  }, [changeOpen, moments.length, open]);
 
   useEffect(() => {
     const root = scrollRef.current;
@@ -127,6 +127,7 @@ export function ConversationMap({
   return (
     <ConversationMapPanel
       activeMessageKey={activeMessageKey}
+      actions={actions}
       availableMomentCount={moments.length}
       hasQuery={searchResult.hasQuery}
       labels={resolvedLabels}

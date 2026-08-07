@@ -2,7 +2,10 @@ import type { ConversationMomentType } from "./conversation-map-model";
 
 export interface ConversationMapLabels {
   title?: string;
-  view?: string;
+  moreActions?: string;
+  find?: string;
+  moveToDone?: string;
+  delete?: string;
   hide?: string;
   searchPlaceholder?: string;
   clearSearch?: string;
@@ -15,7 +18,10 @@ export interface ConversationMapLabels {
 
 export interface ResolvedConversationMapLabels {
   title: string;
-  view: string;
+  moreActions: string;
+  find: string;
+  moveToDone: string;
+  delete: string;
   hide: string;
   searchPlaceholder: string;
   clearSearch: string;
@@ -28,7 +34,10 @@ export interface ResolvedConversationMapLabels {
 
 export const DEFAULT_CONVERSATION_MAP_LABELS: ResolvedConversationMapLabels = {
   title: "Search chat",
-  view: "Search chat",
+  moreActions: "Chat actions",
+  find: "Find",
+  moveToDone: "Move to done",
+  delete: "Delete",
   hide: "Close chat search",
   searchPlaceholder: "Search messages",
   clearSearch: "Clear search",
@@ -43,3 +52,13 @@ export const DEFAULT_CONVERSATION_MAP_LABELS: ResolvedConversationMapLabels = {
     error: "Something needs attention",
   },
 };
+
+export function resolveConversationMapLabels(
+  labels?: ConversationMapLabels,
+): ResolvedConversationMapLabels {
+  return {
+    ...DEFAULT_CONVERSATION_MAP_LABELS,
+    ...labels,
+    types: { ...DEFAULT_CONVERSATION_MAP_LABELS.types, ...labels?.types },
+  };
+}

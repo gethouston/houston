@@ -249,7 +249,8 @@
   "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar",
   "conversationMap": {
     "title": "Buscar no chat",
-    "view": "Buscar no chat",
+    "moreActions": "Ações do chat",
+    "find": "Buscar",
     "hide": "Fechar busca no chat",
     "searchPlaceholder": "Buscar mensagens",
     "clearSearch": "Limpar busca",

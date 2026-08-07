@@ -340,7 +340,10 @@ export function useAgentChatPanel({
     return {
       labels: {
         title: t("chat:conversationMap.title"),
-        view: t("chat:conversationMap.view"),
+        moreActions: t("chat:conversationMap.moreActions"),
+        find: t("chat:conversationMap.find"),
+        moveToDone: t("board:cardActions.approveTooltip"),
+        delete: t("board:cardActions.deleteTooltip"),
         hide: t("chat:conversationMap.hide"),
         searchPlaceholder: t("chat:conversationMap.searchPlaceholder"),
         clearSearch: t("chat:conversationMap.clearSearch"),

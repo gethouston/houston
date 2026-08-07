@@ -4,7 +4,10 @@ import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ChatAuthorLabels } from "./author-label";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatProcessLabels } from "./chat-process-block";
-import type { ConversationMapLabels } from "./conversation-map";
+import type {
+  ConversationMapActions,
+  ConversationMapLabels,
+} from "./conversation-map";
 import type { ConversationMoment } from "./conversation-map-model";
 import type { ChatMessage } from "./feed-to-messages";
 import type { TurnEndSummary } from "./turn-tools";
@@ -105,6 +108,7 @@ export interface ChatMessagesProps {
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: {
     labels?: ConversationMapLabels;
+    actions?: ConversationMapActions;
     onOpenChange?: (open: boolean, conversationLength: number) => void;
     onMomentClick?: (
       moment: ConversationMoment,

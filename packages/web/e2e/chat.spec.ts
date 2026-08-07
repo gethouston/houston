@@ -235,8 +235,8 @@ test("searches and navigates a long conversation with the map", async ({
   await page.goto("/");
   await page.getByText("Plan a trip to Tokyo").click();
 
-  // The fake host starts every conversation empty and the map only appears at
-  // 3+ moments, so two exchanges (4 moments) are needed to unlock the trigger.
+  // Two exchanges make the map useful enough to exercise both its outline and
+  // all-message search modes.
   const composer = page.getByPlaceholder("Send a follow-up...");
   await composer.fill("show me the budget");
   await composer.press("Enter");
@@ -249,7 +249,24 @@ test("searches and navigates a long conversation with the map", async ({
     timeout: 15_000,
   });
 
-  await page.getByRole("button", { name: "Search chat" }).click();
+  await page.getByRole("button", { name: "Chat actions" }).click();
+  const actions = page.getByRole("menu");
+  await expect(actions.getByRole("menuitem", { name: "Find" })).toBeVisible();
+  await expect(
+    actions.getByRole("menuitem", { name: "Move to done" }),
+  ).toBeVisible();
+  await expect(actions.getByRole("menuitem", { name: "Delete" })).toHaveClass(
+    /text-danger/,
+  );
+  await expect(actions.locator("svg")).toHaveCount(3);
+  await actions.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(
+    page.getByRole("alertdialog").getByText('Delete "Plan a trip to Tokyo"?'),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  await page.getByRole("button", { name: "Chat actions" }).click();
+  await actions.getByRole("menuitem", { name: "Find" }).click();
   const map = page.getByRole("navigation", { name: "Search chat" });
   await expect(map).toBeVisible();
   const search = page.getByRole("combobox", { name: "Search messages" });
@@ -271,14 +288,35 @@ test("searches and navigates a long conversation with the map", async ({
   await expect(map).not.toBeVisible();
   await expect(page.getByLabel("Selected message")).toBeFocused();
 
-  await page.getByRole("button", { name: "Search chat" }).click();
+  await page.getByRole("button", { name: "Chat actions" }).click();
+  await page.getByRole("menuitem", { name: "Find" }).click();
   await map.getByRole("option", { name: "Back to latest" }).click();
   await expect(map).not.toBeVisible();
 
-  await page.getByRole("button", { name: "Search chat" }).click();
+  await page.getByRole("button", { name: "Chat actions" }).click();
+  await page.getByRole("menuitem", { name: "Find" }).click();
   await search.focus();
   await search.press("Escape");
-  await expect(page.getByRole("button", { name: "Search chat" })).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Chat actions" }),
+  ).toBeFocused();
+});
+
+test("keeps mission actions available when an empty chat has nothing to find", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByText("Draft the launch email").click();
+
+  await page.getByRole("button", { name: "Chat actions" }).click();
+  const actions = page.getByRole("menu");
+  await expect(actions.getByRole("menuitem", { name: "Find" })).toHaveAttribute(
+    "data-disabled",
+  );
+  await expect(
+    actions.getByRole("menuitem", { name: "Move to done" }),
+  ).toHaveCount(0);
+  await expect(actions.getByRole("menuitem", { name: "Delete" })).toBeVisible();
 });
 
 test("a map result scrolls its message into the conversation viewport", async ({
@@ -314,7 +352,8 @@ test("a map result scrolls its message into the conversation viewport", async ({
     .toBeLessThan(2);
   const before = await scrollPane.evaluate((element) => element.scrollTop);
 
-  await page.getByRole("button", { name: "Search chat" }).click();
+  await page.getByRole("button", { name: "Chat actions" }).click();
+  await page.getByRole("menuitem", { name: "Find" }).click();
   await page
     .getByRole("combobox", { name: "Search messages" })
     .fill("Checkpoint 0");
@@ -372,7 +411,8 @@ test("a tool-backed answer uses its rendered message anchor", async ({
 
   await page.goto("/");
   await page.getByText("Tool anchor").first().click();
-  await page.getByRole("button", { name: "Search chat" }).click();
+  await page.getByRole("button", { name: "Chat actions" }).click();
+  await page.getByRole("menuitem", { name: "Find" }).click();
   await page
     .getByRole("combobox", { name: "Search messages" })
     .fill("Tool-backed answer");
