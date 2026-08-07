@@ -230,6 +230,9 @@ export function detectCustomIntegration(url: string): Record<string, unknown> {
       suggestedSlug: "acme-mcp",
       requiresAuthentication: true,
       requiresOAuth: true,
+      // The fake host models the loopback deployment (sign-in available);
+      // "unsupported" stays reachable via a URL containing "no-signin".
+      oauthSupported: !url.includes("no-signin"),
     };
   }
   if (url.includes("mcp")) {
@@ -252,10 +255,23 @@ const TOKEN_METHOD = {
 
 /** Register a definition from the manual add form (HOU-980). Returns `null`
  *  for a duplicate slug (the route answers the real host's 409). */
+/** Mirror of the host's view-time favicon derivation (`custom/icon.ts`),
+ *  reduced to the happy path the UI tests exercise. */
+function faviconOf(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const host = new URL(url).hostname;
+    if (!host.includes(".")) return undefined;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
+  } catch {
+    return undefined;
+  }
+}
+
 export function addCustomIntegration(input: {
   kind: "openapi" | "mcp";
   name: string;
-  auth: "none" | "credential";
+  auth: "none" | "credential" | "oauth";
   url?: string;
   endpoint?: string;
   slug?: string;
@@ -269,17 +285,20 @@ export function addCustomIntegration(input: {
       .replace(/^-+|-+$/g, "");
   if (state.customIntegrations.some((i) => i.slug === slug)) return null;
   const displayUrl = input.kind === "mcp" ? input.endpoint : input.url;
+  const iconUrl = faviconOf(displayUrl);
   const seed: CustomIntegrationSeed = {
     slug,
     name: input.name,
     kind: input.kind,
+    auth: input.auth,
     ...(displayUrl ? { displayUrl } : {}),
+    ...(iconUrl ? { iconUrl } : {}),
     addedAtMs: Date.now(),
     state:
-      input.auth === "credential"
-        ? { status: "pending", authMethods: [TOKEN_METHOD] }
-        : { status: "active", toolCount: 3 },
-    ...(input.auth === "credential" ? { authMethods: [TOKEN_METHOD] } : {}),
+      input.auth === "none"
+        ? { status: "active", toolCount: 3 }
+        : { status: "pending", authMethods: [TOKEN_METHOD] },
+    ...(input.auth !== "none" ? { authMethods: [TOKEN_METHOD] } : {}),
   };
   state.customIntegrations.push(seed);
   emitDomain("CustomIntegrationsChanged");

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 53
+version: 55
 
 components:
   - id: agent-avatar
@@ -99,7 +99,7 @@ components:
     purpose: >-
       A model turn's prose -- bare markdown in single player, an incoming
       group-chat bubble in a shared conversation.
-    anatomy: [sender-face-column, bubble, sender-name-line, markdown-body, code-block, inline-links, copy-action]
+    anatomy: [sender-face-column, bubble, sender-name-line, markdown-body, code-block, inline-links, file-chip, copy-action]
     states: [streaming, complete]
     variants: [with-code, plain-prose, single-player, multiplayer-attributed, run-continuation]
     behavior: >-
@@ -120,7 +120,16 @@ components:
       print on the turn that OPENS a run of the agent's turns; a tool/process
       block between two turns is transparent to that rule (it neither starts
       nor breaks a run), while a system divider always breaks one.
-    a11y: article/group role; code blocks keyboard-selectable; copy button labeled.
+      (v54) A WORKSPACE FILE named in the prose is not a link and stops
+      dressing as one. Destination kind, not label shape, picks the affordance:
+      every file renders as one file chip -- the per-extension glyph in its
+      reserved filetype tint on the recessed chip surface, the same mark the
+      Files tab and the turn summary use -- whether the agent wrote
+      `[Perfil](perfil.md)` or `[plan.md](plan.md)`, which previously split
+      across the labeled button pill and the blue autolink chip. No
+      external-link arrow: the file opens in-app. Link blue stays reserved for
+      the web, so the chip now tells the reader whether a click leaves Houston.
+    a11y: article/group role; code blocks keyboard-selectable; copy button labeled. A file chip is a button carrying the file's full path as its title.
     since: 1
 
   - id: user-message
@@ -165,7 +174,10 @@ components:
     behavior: >-
       Shown while a turn is in flight with no visible stream (deriveStatus =
       submitted); yields to the stream once tokens appear. Reasoning content is
-      thinking / thinking_streaming feed items.
+      thinking / thinking_streaming feed items. The pre-token wait renders as
+      the turn-status line itself (one component, one size) playing the rotating
+      phrase deck; the deck plays ONLY in this connecting state -- an executing
+      agent's header names the concrete task instead (PRODUCT-1226).
     a11y: aria-live=polite status text; expand/collapse is a labeled toggle button.
     since: 1
 
@@ -291,6 +303,9 @@ components:
     behavior: >-
       Label + active flag come from deriveStatus over the feed; shimmer marks an
       ongoing/pending state. Inline-safe so it can sit inside markdown prose.
+      While the agent executes, the label holds the current task (tool verb /
+      integration brand), folding a run of consecutive identical activities
+      into one label with an "xN" repeat counter (PRODUCT-1226).
     a11y: status role; label announced politely; shimmer is presentational only.
     since: 1
 

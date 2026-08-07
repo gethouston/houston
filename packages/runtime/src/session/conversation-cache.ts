@@ -18,6 +18,7 @@ import { buildToolSelection } from "./tool-selection";
 import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeCustomIntegrationTools } from "./tools/custom-integrations";
+import { makeSkillDirectoryTools } from "./tools/find-skills";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makeMissionTools } from "./tools/missions";
@@ -138,12 +139,23 @@ const missionTools = hostReachable
     ]
   : [];
 
+// The open-skills-directory tools: proxy to /sandbox/skills/* so the agent can
+// answer "is there a skill for X?" itself and add the one the user picks. Same
+// reachability gate as above — the directory lives behind the host.
+const skillDirectoryTools = hostReachable
+  ? makeSkillDirectoryTools({
+      baseUrl: config.controlPlaneUrl,
+      sandboxToken: config.sandboxToken,
+    })
+  : [];
+
 const toolSelection = buildToolSelection({
   codeExecution: config.codeExecution,
   integrations: integrationTools.length > 0,
   saveRoutine: hostReachable,
   saveLearning: hostReachable,
   missions: hostReachable,
+  skillDirectory: hostReachable,
 });
 const runCodeTool = toolSelection.includeRunCode
   ? makeRunCodeTool({
@@ -178,6 +190,7 @@ const piBackend = createPiBackend({
     ...(saveRoutineTool ? [saveRoutineTool] : []),
     ...(saveLearningTool ? [saveLearningTool] : []),
     ...missionTools,
+    ...skillDirectoryTools,
     ...integrationTools,
     ...customIntegrationTools,
   ],

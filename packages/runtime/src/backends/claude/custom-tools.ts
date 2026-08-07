@@ -13,6 +13,7 @@ import { z } from "zod";
 import { toolNamesForMode } from "../../session/tool-selection";
 import { makeAskUserTool } from "../../session/tools/ask-user";
 import { makeCustomIntegrationTools } from "../../session/tools/custom-integrations";
+import { makeSkillDirectoryTools } from "../../session/tools/find-skills";
 import {
   type IntegrationToolOptions,
   makeIntegrationTools,
@@ -157,6 +158,9 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
     ...(input.integrations
       ? [...makeMissionTools(input.integrations), makeReadMissionTool()]
       : []),
+    // find_skills + install_skill reach the host with the SAME sandbox token,
+    // and have the same reach as save_routine: execute/auto, never plan.
+    ...(input.integrations ? makeSkillDirectoryTools(input.integrations) : []),
     ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
     ...(input.integrations
       ? makeCustomIntegrationTools(input.integrations)

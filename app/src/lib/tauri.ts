@@ -21,7 +21,6 @@ import type {
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
-  GenerateInstructionsResult,
   MessageMention,
   ProviderAuthState,
   ProviderUsage,
@@ -360,16 +359,6 @@ export const tauriAgents = {
   updateColor: (workspaceId: string, id: string, color: string) =>
     call<Agent>("update_agent_color", async () =>
       toAgent(await getEngine().updateAgent(workspaceId, id, { color })),
-    ),
-  generateInstructions: (
-    description: string,
-    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
-  ) =>
-    call<GenerateInstructionsResult>(
-      "generate_agent_instructions",
-      () => getEngine().generateAgentInstructions(description, opts),
-      undefined,
-      { toast: false },
     ),
   /** Agent configs installed on disk (bundled + user-authored), merged with the
    *  built-in templates by the agent loader to populate the create-agent gallery. */
@@ -1991,6 +1980,14 @@ export const tauriIntegrations = {
       agentId
         ? getEngine().addAgentCustomIntegration(agentId, input)
         : getEngine().addCustomIntegration(input),
+    ),
+  // OAuth sign-in start (PRODUCT-1172): mint the authorize URL for a custom
+  // MCP integration's browser sign-in. Same transport-agent rule as add.
+  customOAuthStart: (slug: string, agentId?: string) =>
+    call("custom_integration_oauth_start", () =>
+      agentId
+        ? getEngine().startAgentCustomIntegrationOAuth(agentId, slug)
+        : getEngine().startCustomIntegrationOAuth(slug),
     ),
 };
 

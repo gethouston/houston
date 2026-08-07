@@ -2,6 +2,7 @@ import type { TurnMode } from "@houston/protocol";
 import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { CUSTOM_INTEGRATION_TOOL_NAMES } from "./tools/custom-integrations";
+import { SKILL_DIRECTORY_TOOL_NAMES } from "./tools/find-skills";
 import { INTEGRATION_TOOL_NAMES } from "./tools/integrations";
 import {
   LIST_MISSIONS_TOOL_NAME,
@@ -46,6 +47,15 @@ export interface ToolSelectionInput {
    * missions without being able to list them is useless.
    */
   missions?: boolean;
+  /**
+   * Whether this runtime can reach its host with a sandbox token — the SAME
+   * reachability `saveRoutine` / `saveLearning` need. Adds `find_skills` +
+   * `install_skill`, the agent's front door to the open skills directory
+   * (PRODUCT-1238), so "is there a skill for X?" is answered in chat instead of
+   * by sending the user to browse the Skills page. Absent/false leaves both off
+   * and the agent simply has no directory to consult.
+   */
+  skillDirectory?: boolean;
 }
 
 export interface ToolSelection {
@@ -188,6 +198,12 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
             UPDATE_MISSION_STATUS_TOOL_NAME,
           ]
         : []),
+      // find_skills + install_skill reach execute AND auto, never plan. Finding
+      // is a read, but installing is a real write, and the pair is only useful
+      // together — a plan turn that can find a skill it cannot add would just
+      // dead-end. PLAN_MODE_TOOL_NAMES omits both so planToolNames filters them
+      // out; neither is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
+      ...(input.skillDirectory ? [...SKILL_DIRECTORY_TOOL_NAMES] : []),
       ...executable,
       ...(input.integrations
         ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]

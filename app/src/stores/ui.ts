@@ -1,6 +1,7 @@
 import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { setPanelOwner } from "../components/shell/detail-panel-owners.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 
 export interface ToastItem {
@@ -64,8 +65,22 @@ interface UIState {
   agentArchivedSearchQueries: Record<string, string>;
   /** Whether the per-agent archived-tab search is loading conversation text. */
   agentArchivedSearchLoading: Record<string, boolean>;
-  /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
+  /**
+   * Whether the ONE shell-level detail panel is open (hides tab bar for
+   * full-height panel). DERIVED from `missionPanelOwners` — never set directly.
+   */
   missionPanelOpen: boolean;
+  /**
+   * Ids of the surfaces currently claiming the shell detail panel. Several
+   * surfaces render the panel (the Activity board, the Routines chat, the
+   * Archived lists, the skill / integration setup chats) and all of them stay
+   * MOUNTED while hidden, so a single last-writer-wins boolean strands the
+   * panel open as an empty card: the tab that leaves keeps its `true` on the
+   * flag while it stops portaling anything into it (PRODUCT-1229). Each
+   * surface claims and releases its OWN id via `useShellDetailPanel`, so
+   * releasing can never clobber the surface the user just navigated to.
+   */
+  missionPanelOwners: string[];
   /** Whether the mobile (<768px) sidebar drawer is open. Session-only, never
    *  persisted: a drawer restored open after a reload is a trap on a phone. */
   mobileSidebarOpen: boolean;
@@ -175,7 +190,10 @@ interface UIState {
   setAgentMissionSearchLoading: (agentPath: string, loading: boolean) => void;
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
   setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
-  setMissionPanelOpen: (open: boolean) => void;
+  /** Claim (`open`) or release the shell detail panel for one surface. */
+  setMissionPanelOwner: (ownerId: string, open: boolean) => void;
+  /** Release every claim — the "get me out of this panel" escape hatch. */
+  closeMissionPanel: () => void;
   setMobileSidebarOpen: (open: boolean) => void;
   setPendingRoutineActivityId: (activityId: string | null) => void;
   setPendingSkillChatActivityId: (activityId: string | null) => void;
@@ -233,6 +251,7 @@ const initialUIState = {
   agentArchivedSearchQueries: {},
   agentArchivedSearchLoading: {},
   missionPanelOpen: false,
+  missionPanelOwners: [],
   mobileSidebarOpen: false,
   pendingRoutineActivityId: null,
   pendingSkillChatActivityId: null,
@@ -386,7 +405,21 @@ export const useUIStore = create<UIState>()(
           else delete next[agentPath];
           return { agentArchivedSearchLoading: next };
         }),
-      setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
+      setMissionPanelOwner: (ownerId, open) =>
+        set((s) => {
+          const missionPanelOwners = setPanelOwner(
+            s.missionPanelOwners,
+            ownerId,
+            open,
+          );
+          if (missionPanelOwners === s.missionPanelOwners) return s;
+          return {
+            missionPanelOwners,
+            missionPanelOpen: missionPanelOwners.length > 0,
+          };
+        }),
+      closeMissionPanel: () =>
+        set({ missionPanelOwners: [], missionPanelOpen: false }),
       setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
       setPendingRoutineActivityId: (pendingRoutineActivityId) =>
         set({ pendingRoutineActivityId }),

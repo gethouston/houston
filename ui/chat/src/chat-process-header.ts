@@ -5,7 +5,9 @@
  *
  * The header is the whole story while the log stays collapsed (HOU-448): it
  * surfaces only the one action in progress, never a count of how many tool
- * calls ran.
+ * calls ran. The only number it shows is the repeat counter — "x3" when the
+ * SAME activity just ran three times in a row (PRODUCT-1226), so a collapsed
+ * log doing 27 identical steps doesn't read as one stuck step.
  */
 
 import type { ChatProcessSegment } from "./chat-process-groups";
@@ -40,18 +42,6 @@ export interface ChatProcessLabels {
   active?: string;
   /** Settled label once the mission ends and the log collapses. e.g. "Mission log". */
   complete?: string;
-  /**
-   * The rotating astronaut one-liners (the localized HOU-910 deck) for the
-   * active header while nothing is visibly executing: before the first tool
-   * runs, and in the reasoning gaps after a tool finishes. Restores the
-   * personality the standalone pre-reply indicator carries — that indicator is
-   * suppressed the whole time an active log trails (HOU-471), so without this
-   * the header held the last tool's stale verb through every gap. While a tool
-   * IS running (no result yet) the concrete verb/brand still wins. Absent →
-   * the pre-existing behavior: hold the latest verb (HOU-448), static `active`
-   * label before the first tool.
-   */
-  phrases?: string[];
   /**
    * Resolves a Composio action slug (e.g. `GMAIL_SEND_EMAIL`) to the app's
    * presentational brand for the branded header row. App-supplied (the catalog
@@ -142,27 +132,74 @@ export function activityLabel(activity: CommandActivity): string {
 }
 
 /**
+ * Identity used to fold consecutive identical steps into one "xN" header row
+ * (PRODUCT-1226): two tools are "the same activity" when they would render the
+ * same header line — the same integration action, the same classified command
+ * activity, or the same tool verb. Coarser than input equality on purpose:
+ * creating 27 different Linear issues is one repeated activity.
+ */
+function toolRepeatKey(tool: ToolEntry): string {
+  const action = integrationActionOf(tool);
+  if (action) return `integration:${action}`;
+  const activity = commandActivityOf(tool);
+  if (activity) {
+    return activity.kind === "web" ? `web:${activity.host ?? ""}` : "python";
+  }
+  return `tool:${toolShortName(tool.name).toLowerCase()}`;
+}
+
+/**
+ * How many trailing consecutive tools (across segment boundaries) share the
+ * current tool's activity identity. 0 when no tool has run; a different
+ * activity in between resets the run — the counter narrates "the SAME step,
+ * again", never a total.
+ */
+export function countTrailingRepeats(segments: ChatProcessSegment[]): number {
+  const tools = segments.flatMap((segment) => segment.tools);
+  if (tools.length === 0) return 0;
+  const key = toolRepeatKey(tools[tools.length - 1]);
+  let count = 0;
+  for (let i = tools.length - 1; i >= 0; i--) {
+    if (toolRepeatKey(tools[i]) !== key) break;
+    count++;
+  }
+  return count;
+}
+
+/** The " x3" suffix for a repeated activity; empty until the second repeat. */
+function repeatSuffix(count: number): string {
+  return count > 1 ? ` x${count}` : "";
+}
+
+/**
  * The header content and its left-icon intent, picked purely so the component
  * only reads the `kind`:
  * - `brand` — the current tool is a resolvable `integration_execute`: the app
- *   logo replaces the helmet + `{name} · {actionLabel}`.
+ *   logo replaces the helmet + `{name} · {actionLabel}`, plus " x{count}" when
+ *   the same action just ran `count` ≥ 2 times in a row (PRODUCT-1226).
  * - `activity` — a `bash`/`run_code` call classified as web or Python
  *   (HOU-1048): globe / Python glyph + "Browsing the web · {host}" /
- *   "Python · Running code".
+ *   "Python · Running code". `label` already carries the repeat suffix.
  * - `tool` — any other running tool: `toolName` lets the component reuse the
- *   mission-log per-tool icon (helmet when the name isn't mapped) + the verb.
+ *   mission-log per-tool icon (helmet when the name isn't mapped) + the verb,
+ *   with the repeat suffix baked into `label`.
  * - `text` — helmet + label: the active "Thinking..." gap and the settled
  *   "Mission log".
  */
 export type ProcessHeader =
-  | { kind: "brand"; brand: ChatActionBrand }
+  | { kind: "brand"; brand: ChatActionBrand; count: number }
   | { kind: "activity"; activity: CommandActivity; label: string }
   | { kind: "tool"; label: string; toolName: string }
-  /** Play the rotating phrase deck; `fallback` covers the frame before the
-   *  deck's first draw (the component owns the rotation state). */
-  | { kind: "phrase"; fallback: string }
   | { kind: "text"; label: string };
 
+/**
+ * PRODUCT-1226: while the turn is active and ANY tool has run, the header
+ * always names that latest task (sticky across the reasoning gaps, HOU-448) —
+ * the playful astronaut phrases never play here. They belong to the standalone
+ * connecting indicator alone, which is suppressed the whole time an active log
+ * trails (HOU-471), so the user watching a working agent always sees the task,
+ * not a joke.
+ */
 export function buildProcessHeader(opts: {
   isActive: boolean;
   segments: ChatProcessSegment[];
@@ -172,31 +209,28 @@ export function buildProcessHeader(opts: {
   const { isActive, segments, labels } = opts;
   if (isActive) {
     const tool = getCurrentActionTool(segments);
-    const hasPhrases = (labels?.phrases?.length ?? 0) > 0;
-    // Tools run serially, so the latest tool is executing iff it has no
-    // result yet. A finished one means the model is reasoning/writing — with
-    // a phrase deck available that gap plays the deck instead of holding the
-    // stale verb (without one, the sticky-verb behavior stands, HOU-448).
-    if (tool && !(hasPhrases && tool.result)) {
+    if (tool) {
+      const count = countTrailingRepeats(segments);
       if (labels?.resolveActionBrand) {
         const action = integrationActionOf(tool);
         if (action) {
           const brand = labels.resolveActionBrand(action);
-          if (brand) return { kind: "brand", brand };
+          if (brand) return { kind: "brand", brand, count };
         }
       }
       const activity = commandActivityOf(tool);
       if (activity) {
-        return { kind: "activity", activity, label: activityLabel(activity) };
+        return {
+          kind: "activity",
+          activity,
+          label: activityLabel(activity) + repeatSuffix(count),
+        };
       }
       return {
         kind: "tool",
-        label: buildProcessHeaderLabel(opts),
+        label: buildProcessHeaderLabel(opts) + repeatSuffix(count),
         toolName: tool.name,
       };
-    }
-    if (hasPhrases) {
-      return { kind: "phrase", fallback: labels?.active ?? DEFAULTS.active };
     }
   }
   return { kind: "text", label: buildProcessHeaderLabel(opts) };

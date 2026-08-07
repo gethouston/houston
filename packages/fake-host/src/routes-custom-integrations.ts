@@ -56,7 +56,12 @@ export function handleCustom(
     const seed = state.addCustomIntegration({
       kind,
       name,
-      auth: body?.auth === "credential" ? "credential" : "none",
+      auth:
+        body?.auth === "credential"
+          ? "credential"
+          : body?.auth === "oauth" && kind === "mcp"
+            ? "oauth"
+            : "none",
       ...(url ? { url } : {}),
       ...(endpoint ? { endpoint } : {}),
       ...(slug ? { slug } : {}),
@@ -89,6 +94,21 @@ export function handleCustom(
     const view = state.setCustomCredential(tail[1] ?? "");
     return view
       ? json(view)
+      : json({ error: "not found", code: "not_found" }, 404);
+  }
+  // POST /v1/integrations/custom/definitions/:slug/oauth/start (PRODUCT-1172):
+  // hand back an authorize URL and flip the seed to active as if the user
+  // finished the browser dance immediately — enough for the UI flow to be
+  // exercised end-to-end without a real authorization server.
+  if (
+    tail.length === 4 &&
+    tail[2] === "oauth" &&
+    tail[3] === "start" &&
+    method === "POST"
+  ) {
+    const view = state.setCustomCredential(tail[1] ?? "");
+    return view
+      ? json({ authorizeUrl: "https://auth.fake.example/authorize?state=fake" })
       : json({ error: "not found", code: "not_found" }, 404);
   }
   return json({ error: "not found" }, 404);

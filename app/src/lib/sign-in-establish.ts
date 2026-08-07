@@ -62,8 +62,10 @@ function trackSignIn(
 
 // Device-local hint for the sign-in screen, stamped at BOTH terminal success
 // points (desktop + web) so every path — OAuth loopback, deep-link, email OTP —
-// records it once. Deliberately NOT cleared by `signOut()`: it must survive so
-// the next sign-in can suggest how the user signed in last time.
+// records it once. Cleared by `signOut()` along with every other account trace
+// (PRODUCT-1235), so it only survives when the session ends WITHOUT a sign-out
+// (expiry, revocation, secure-storage faults) — exactly the cases where "sign
+// back in the way you did last time" is the right suggestion.
 function rememberLastSignIn(session: Session): void {
   writeLastSignIn({ provider: session.provider, email: session.email });
 }

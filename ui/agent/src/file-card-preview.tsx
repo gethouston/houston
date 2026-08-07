@@ -5,7 +5,7 @@
  * the type glyph. The fetching itself lives in use-file-preview.ts, shared with
  * the list row's icon.
  */
-import { FileTypeGlyph } from "./file-type-icons";
+import { FileTypeGlyph } from "@houston-ai/core";
 import type { FileEntry, LoadFilePreview } from "./types";
 import { useFilePreview, useVisibleOnce } from "./use-file-preview";
 

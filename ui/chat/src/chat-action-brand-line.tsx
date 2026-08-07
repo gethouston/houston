@@ -9,6 +9,10 @@ export interface ChatActionBrandLineProps {
   brand: ChatActionBrand;
   /** Shimmer the text while the mission runs (matches the plain header line). */
   active?: boolean;
+  /** How many times this same action just ran consecutively (PRODUCT-1226).
+   *  ≥ 2 appends " x{count}" so 27 issue-creations don't read as one stuck
+   *  step; absent or 1 shows nothing. */
+  count?: number;
 }
 
 /**
@@ -27,9 +31,11 @@ export interface ChatActionBrandLineProps {
 export function ChatActionBrandLine({
   brand,
   active,
+  count,
 }: ChatActionBrandLineProps) {
   const [failed, setFailed] = useState(false);
-  const text = `${brand.name} · ${brand.actionLabel}`;
+  const repeat = count && count > 1 ? ` x${count}` : "";
+  const text = `${brand.name} · ${brand.actionLabel}${repeat}`;
   const showLogo = brand.logoUrl && !failed;
   return (
     <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs">

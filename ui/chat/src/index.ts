@@ -165,6 +165,11 @@ export {
   decodeAttachmentMessage,
   normalizeAttachmentReferences,
 } from "./attachment-message";
+export type { AutolinkProps } from "./autolink";
+// The inline link chip, shared with surfaces that render markdown as a
+// DOCUMENT rather than a chat turn (the file preview): mid-sentence, a link
+// has to read as a link, not as the chat bubble's labeled button pill.
+export { AUTOLINK_CLASS, Autolink } from "./autolink";
 export type { ChannelSource } from "./channel-avatar";
 export { ChannelAvatar } from "./channel-avatar";
 export type {
@@ -276,6 +281,10 @@ export type {
   ToolEntry,
 } from "./feed-to-messages";
 export { distinctAuthorCount } from "./feed-to-messages";
+export type { FileChipProps } from "./file-chip";
+// The inline affordance for a workspace file named in agent prose — the file
+// vocabulary (type glyph + tint), never the web link's blue chip or ↗ pill.
+export { FileChip } from "./file-chip";
 export type {
   InteractionAnswerLine,
   InteractionAnswersPayload,

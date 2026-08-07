@@ -217,7 +217,9 @@
       "unsupportedDescription": "Descárgalo para abrirlo en tu computador.",
       "download": "Descargar",
       "close": "Cerrar",
-      "errorTitle": "No se pudo cargar el archivo"
+      "errorTitle": "No se pudo cargar el archivo",
+      "expand": "Ampliar",
+      "collapse": "Reducir"
     },
     "toasts": {
       "savedTitle": "Archivo guardado",

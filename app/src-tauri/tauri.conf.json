@@ -68,7 +68,8 @@
     },
     "windows": {
       "wix": {
-        "language": ["en-US"]
+        "language": ["en-US"],
+        "template": "wix/main.wxs"
       },
       "webviewInstallMode": {
         "type": "embedBootstrapper"

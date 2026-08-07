@@ -35,8 +35,8 @@ export function makeRequestCredentialTool() {
     name: REQUEST_CREDENTIAL_TOOL_NAME,
     label: "Ask the user for an API key securely",
     description:
-      "Ask the user to enter a custom integration's API key or token. Houston shows a secure entry card in place of the chat input (the secret never enters the conversation), then automatically sends you a message once it is saved and verified so you can continue. NEVER ask the user to type a key or token into the chat.",
-    promptSnippet: "Ask the user to enter an API key in a secure card",
+      "Ask the user to authenticate a custom integration. For a key-based integration Houston shows a secure entry card in place of the chat input (the secret never enters the conversation); for a sign-in (oauth) integration the same card shows a Sign in button that opens the service's own sign-in in their browser. Either way Houston automatically sends you a message once it is done so you can continue. NEVER ask the user to type a key or token into the chat.",
+    promptSnippet: "Ask the user to enter a key or sign in via a secure card",
     parameters: CredentialParams,
     executionMode: "sequential",
     async execute(_id: string, params: CredentialParams) {

@@ -16,11 +16,7 @@ import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
 import type { UIMessage } from "ai";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ExternalLinkIcon,
-} from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type {
   AnchorHTMLAttributes,
   ComponentProps,
@@ -39,8 +35,15 @@ import {
 } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { Autolink } from "../autolink";
+import { FileChip } from "../file-chip";
+import { FILE_PATH_ATTR, fileLinkRehypePlugin } from "../file-link-rehype";
+import { fileNameOf, labelExtensionSuffix } from "../file-path";
 import { MarkdownCodeBlock } from "../markdown-code-block";
-import { autolinkDisplay, classifyMarkdownLink } from "../markdown-link";
+import {
+  autolinkDisplay,
+  classifyMarkdownLink,
+  markdownLinkText,
+} from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
 import type { MentionRehypeOptions } from "../mention-rehype.ts";
 import { mentionRehypePlugin } from "../mention-rehype.ts";
@@ -443,18 +446,33 @@ export const MessageResponse = memo(
     ...props
   }: MessageResponseProps) => {
     // Streamdown REPLACES its own plugin chain when `rehypePlugins` is set, so
-    // the mention pass is appended to the defaults — `raw` → `sanitize` →
-    // `harden` still run, and our spans are minted after them (nothing strips
-    // them). Tuple form: Streamdown keys its compiled-processor cache on the
-    // plugin name plus JSON-stringified options, so the targets must ride in
-    // the options or two messages would share one processor.
+    // we rebuild it around the defaults rather than beside them. Order is
+    // load-bearing:
+    //
+    //   raw → sanitize → FILE LINKS → harden → mentions
+    //
+    // The file-link pass sits between `sanitize` and `harden` on purpose: after
+    // sanitize, whose attribute whitelist would strip the `data-file-path` it
+    // mints, and before harden, which would otherwise BLOCK every bare relative
+    // file link outright (PRODUCT-1231). Mentions still run last, so the spans
+    // they mint are never stripped and the sanitizer stays fully in force.
+    //
+    // Tuple form for mentions: Streamdown keys its compiled-processor cache on
+    // the plugin name plus JSON-stringified options, so the targets must ride
+    // in the options or two messages would share one processor.
     const rehypePlugins = useMemo(() => {
-      if (!mentions || mentions.length === 0) return undefined;
-      const mentionPass: [typeof mentionRehypePlugin, MentionRehypeOptions] = [
-        mentionRehypePlugin,
-        { targets: mentions },
+      const { harden, ...beforeHarden } = defaultRehypePlugins;
+      const chain: unknown[] = [
+        ...Object.values(beforeHarden),
+        fileLinkRehypePlugin,
+        harden,
       ];
-      return [...Object.values(defaultRehypePlugins), mentionPass];
+      if (mentions && mentions.length > 0) {
+        const mentionPass: [typeof mentionRehypePlugin, MentionRehypeOptions] =
+          [mentionRehypePlugin, { targets: mentions }];
+        chain.push(mentionPass);
+      }
+      return chain as ComponentProps<typeof Streamdown>["rehypePlugins"];
     }, [mentions]);
 
     const components = useMemo(() => {
@@ -470,13 +488,22 @@ export const MessageResponse = memo(
           href,
           children,
           node: _node,
-        }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) => {
-          const kind = classifyMarkdownLink(href, children);
-          // No href → nothing to open.
+          ...rest
+        }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+          node?: unknown;
+          [FILE_PATH_ATTR]?: string;
+        }) => {
+          // A link to a workspace file opens its PATH, not the href: harden
+          // rewrites `./plan.md` to `/plan.md` and re-encodes it, which names
+          // no real file. `data-file-path` carries the pristine, decoded
+          // destination the file-link pass recorded (PRODUCT-1231).
+          const filePath = rest[FILE_PATH_ATTR];
+          const url = filePath ?? (href as string);
+          const kind = classifyMarkdownLink(url, children);
+          // No destination → nothing to open.
           if (kind === "plain") {
             return <span>{children}</span>;
           }
-          const url = href as string;
           const onOpen = () => fn?.(url);
           // The app's custom renderer gets first say on every link (its
           // contract). When it returns undefined/null we fall through to
@@ -488,40 +515,66 @@ export const MessageResponse = memo(
               return <>{custom}</>;
             }
           }
-          // Bare URL the agent dropped in chat → inline link chip that
-          // opens in the system browser (issue #358), not dead text. Only
-          // render it interactive when there's an open handler; otherwise it
-          // would look clickable but do nothing.
-          if (kind === "autolink") {
-            // A URL label markdown broke across lines flattens with a
-            // softbreak in it (HOU-1071) — show the reassembled URL, not
-            // the raw children with a stray space mid-URL, scheme-stripped
-            // and capped Slack-style (HOU-1152); the href keeps the full
-            // destination.
-            const label = autolinkDisplay(children) ?? children;
-            if (!fn) return <span>{label}</span>;
+          // DESTINATION KIND decides the affordance, before anything about
+          // the label does. A workspace file is not a link: it opens a preview
+          // INSIDE Houston (or hands off to the OS), so it must not wear the
+          // web's clothes. It gets the file vocabulary instead — the
+          // per-extension glyph on the recessed chip, the same mark the Files
+          // tab and the turn summary use — and it gets ONE look regardless of
+          // how the agent wrote the markdown (PRODUCT-1231).
+          //
+          // That also keeps link blue meaning something: after HOU-1152 every
+          // URL is the same Slack chip, so blue now reads as "this leaves
+          // Houston" and the neutral chip as "this is yours".
+          if (filePath !== undefined) {
+            // The agent's own label when it wrote one, the file name when it
+            // wrote the path as the label (a raw path reads as noise
+            // mid-sentence) — but ALWAYS carrying the extension, so a chip
+            // never hides whether it opens a `.pdf` or a `.md`.
+            const fileLabel =
+              kind === "autolink" ? (
+                fileNameOf(filePath)
+              ) : (
+                <>
+                  {children}
+                  {labelExtensionSuffix(
+                    filePath,
+                    markdownLinkText(children) ?? "",
+                  )}
+                </>
+              );
+            if (!fn) return <span>{fileLabel}</span>;
             return (
-              <Autolink href={url} onOpen={onOpen}>
-                {label}
-              </Autolink>
+              <FileChip path={filePath} onOpen={onOpen}>
+                {fileLabel}
+              </FileChip>
             );
           }
-          // Labeled link (text distinct from URL) → button with text + icon.
-          // max-w-full + truncate: a long label ellipsizes instead of
-          // overflowing the fixed-height pill as clipped wrapped lines.
-          // overflow-hidden: even a child that defeats truncate (a <br>, an
-          // image) stays clipped inside the pill's rounded bounds.
+          // Every remaining link — the bare URL the agent dropped in chat
+          // (issue #358) and the labeled `[Open report](…)` alike — is the
+          // same inline chip that opens in the system browser (HOU-1152).
+          // A labeled link used to render as a solid button pill, the one
+          // variant still wearing the pre-Slack styling; a descriptive label
+          // is not a call to action and reading it as a second link shape
+          // made the same message look like two different products.
+          //
+          // Only an autolink shortens: a URL label markdown broke across
+          // lines flattens with a softbreak in it (HOU-1071), so show the
+          // reassembled URL rather than raw children with a stray space
+          // mid-URL, scheme-stripped and capped (HOU-1152). A label is the
+          // author's own words and renders verbatim, wrapping inline instead
+          // of clipping the way the fixed-height pill did.
+          const label =
+            kind === "autolink"
+              ? (autolinkDisplay(children) ?? children)
+              : children;
+          // Only interactive when there's an open handler; otherwise it
+          // would look clickable but do nothing.
+          if (!fn) return <span>{label}</span>;
           return (
-            <Button
-              type="button"
-              size="sm"
-              variant="default"
-              className="max-w-full overflow-hidden"
-              onClick={onOpen}
-            >
-              <span className="min-w-0 truncate">{children}</span>
-              <ExternalLinkIcon size={11} strokeWidth={2} />
-            </Button>
+            <Autolink href={url} onOpen={onOpen}>
+              {label}
+            </Autolink>
           );
         },
       };

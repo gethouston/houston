@@ -46,7 +46,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
           ui.setViewMode("context");
         }
       }
-      ui.setMissionPanelOpen(false);
+      ui.closeMissionPanel();
     },
     [agentPath, capabilities],
   );

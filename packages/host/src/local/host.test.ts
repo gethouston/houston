@@ -197,8 +197,14 @@ test("capabilities report the local profile", async () => {
     const caps = (await r.json()) as Capabilities;
     // Composio availability is CONFIG-driven (this boot wired no gateway URL
     // and no platform key), but the key-free custom provider (HOU-550) is
-    // always on — an install with no Composio can still add its own.
-    expect(caps).toEqual({ ...LOCAL_CAPABILITIES, integrations: ["custom"] });
+    // always on — an install with no Composio can still add its own. The
+    // loopback-bound local profile also serves its own browser-reachable
+    // custom-OAuth callback (PRODUCT-1172).
+    expect(caps).toEqual({
+      ...LOCAL_CAPABILITIES,
+      integrations: ["custom"],
+      customIntegrationOAuth: true,
+    });
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
     expect(caps.providers).toContain("anthropic");
@@ -219,6 +225,9 @@ test("capabilities can report the managed cloud pod profile", async () => {
     expect(caps).toEqual({
       ...MANAGED_CLOUD_CAPABILITIES,
       integrations: ["custom"],
+      // A pod cannot receive a browser redirect — off until the gateway
+      // serves the callback (PRODUCT-1172).
+      customIntegrationOAuth: false,
     });
     // Pods run the agent's bash in the single-tenant container (HOU-669).
     expect(caps.codeExecution).toBe("local-bash");

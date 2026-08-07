@@ -2,11 +2,15 @@ import { LinkIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
- * A URL rendered inline in a chat message — the Slack-style link chip
- * (HOU-1152): `link`-token blue on a soft `link` tint with a chain glyph,
- * shared by the markdown autolink override (`MessageResponse`) and the
- * plain-text path (`plain-message-text.tsx`) so a link looks identical
- * whether its message rendered markdown or not.
+ * A link rendered inline in a chat message — the Slack-style link chip
+ * (HOU-1152): `link`-token blue on a soft `link` tint with a chain glyph.
+ * EVERY link in chat wears it: bare URLs, labeled `[Open report](…)` links
+ * (which rendered as a solid button pill until HOU-1152's follow-up), and
+ * URLs a person pasted into their own bubble. One shape, so a message with
+ * two kinds of link doesn't read as two different products. Shared by the
+ * markdown override (`MessageResponse`) and the plain-text path
+ * (`plain-message-text.tsx`) so a link looks identical whether its message
+ * rendered markdown or not.
  *
  * The chip background is the resting affordance (hover only ADDS the
  * underline, never carries it alone). `box-decoration-break: clone` keeps

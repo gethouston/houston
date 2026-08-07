@@ -27,6 +27,7 @@ const VIEW: CustomIntegrationView = {
   slug: "acme",
   name: "Acme",
   kind: "openapi",
+  auth: "none",
   addedAtMs: 1,
   state: { status: "active", toolCount: 1 },
 };
@@ -344,6 +345,41 @@ test("sandbox add: kind 'openapi' with no url is 400; unknown kind is 400; a val
       endpoint: "https://mcp.example.com",
       auth: "none",
     });
+  } finally {
+    server.close();
+  }
+});
+
+test("sandbox remove: relays manager.remove by slug; 400 on a missing slug", async () => {
+  const remove = vi.fn(async () => undefined);
+  const manager = fakeManager({ remove });
+  const { server, base } = await startServer({
+    customIntegrations: manager,
+    vault,
+  });
+  try {
+    const sb = vault.sandboxToken("W1", "W1/Assistant");
+    const res = await fetch(`${base}/sandbox/integrations/custom/remove`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slug: "acme" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(remove).toHaveBeenCalledWith("acme");
+
+    const missing = await fetch(`${base}/sandbox/integrations/custom/remove`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+    expect(missing.status).toBe(400);
   } finally {
     server.close();
   }

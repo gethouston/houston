@@ -44,6 +44,7 @@ import {
   type CustomIntegrationDeps,
   handleSandboxCustomIntegrations,
 } from "./routes/custom-integrations";
+import { handleCustomOAuthCallback } from "./routes/custom-integrations-oauth";
 import { handleCustomIntegrations } from "./routes/custom-integrations-user";
 import { handleEventStream } from "./routes/events-stream";
 import { bearer, json, readJson } from "./routes/http";
@@ -63,6 +64,7 @@ import { handleSandboxRoutines } from "./routes/routines-sandbox";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSharedSkills } from "./routes/shared-skills";
 import { handleSkillsDirectory } from "./routes/skills-directory";
+import { handleSandboxSkills } from "./routes/skills-sandbox";
 import { handleTriggerEvents } from "./routes/trigger-events";
 import type { TriggerEventLock } from "./triggers/fire";
 import type { Vfs } from "./vfs";
@@ -291,6 +293,10 @@ async function handle(
   // Runtime-facing custom-integration setup (detect/add; HMAC sandbox token).
   if (await handleSandboxCustomIntegrations(deps, method, path, url, req, res))
     return;
+  // Public custom-integration OAuth callback (PRODUCT-1172): the user's
+  // browser lands here from the service's consent screen with no Houston
+  // bearer token — the single-use `state` is its authentication.
+  if (await handleCustomOAuthCallback(deps, method, path, url, res)) return;
   // Runtime-facing scheduled-task save (merge-safe; HMAC sandbox token). The
   // agent's save_routine tool calls this instead of writing routines.json.
   if (await handleSandboxRoutines(deps, method, path, url, req, res)) return;
@@ -303,6 +309,10 @@ async function handle(
   // call these instead of touching activity.json, and the runtime reports each
   // turn end to /settle so agent-started missions leave Running unobserved.
   if (await handleSandboxMissions(deps, method, path, url, req, res)) return;
+  // Runtime-facing skills directory (HMAC sandbox token). The agent's
+  // find_skills / install_skill tools call this to answer "which skill should
+  // I use for X?" and to install the answer into its own skills tree.
+  if (await handleSandboxSkills(deps, method, path, url, req, res)) return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
