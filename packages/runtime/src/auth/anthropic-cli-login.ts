@@ -209,9 +209,16 @@ function driveLoginChild(
 
     cb.onManualCodeInput().then(
       (code) => {
-        // Answers the CLI's `Paste code here if prompted >` readline.
-        if (!settled && child.stdin.writable)
-          child.stdin.write(`${code.trim()}\n`);
+        // Answers the CLI's `Paste code here if prompted >` readline. A write
+        // racing the child's death may throw synchronously; the close handler
+        // owns that outcome, and this floating then-chain must never carry an
+        // unhandled rejection.
+        try {
+          if (!settled && child.stdin.writable)
+            child.stdin.write(`${code.trim()}\n`);
+        } catch {
+          // Stream torn down between the check and the write.
+        }
       },
       () => {
         // Cancel/expiry rejected the paste promise; the abort teardown (or the
@@ -228,6 +235,17 @@ function driveLoginChild(
       }
       if (code !== 0) {
         failClassified(`Claude sign-in failed (exit ${code})${tail()}`);
+        return;
+      }
+      if (!urlSeen) {
+        // A fresh mint dir has no cached session, so a real login ALWAYS
+        // prints the authorize URL first — a clean exit without one is a CLI
+        // that cannot run this flow here, not a mint. Resolving would store
+        // nothing while `startLogin`'s info race times out on a dialog that
+        // never opened.
+        failClassified(
+          `the pod Claude CLI exited without printing an authorize URL${tail()}`,
+        );
         return;
       }
       settle(resolve);

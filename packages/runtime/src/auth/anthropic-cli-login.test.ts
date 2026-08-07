@@ -191,6 +191,43 @@ test("an abort (cancel/expiry) is a cancellation, never a fallback — even pre-
   expect(removed).toHaveLength(1);
 });
 
+test("a clean exit that never printed a URL is fallback-eligible, not a success", async () => {
+  // A fresh mint dir has no cached session, so exit 0 without an authorize URL
+  // cannot be a mint — resolving would report success while the client's
+  // dialog never opened.
+  const child = new FakeChild();
+  const { io } = fakeIo(child);
+  const store = vi.fn();
+  const run = runAnthropicCliLogin(
+    { onAuth: vi.fn(), onManualCodeInput: () => new Promise(() => {}) },
+    { store },
+    io,
+  );
+  await tick();
+  child.emit("close", 0, null);
+  await expect(run).rejects.toBeInstanceOf(CliLoginUnavailableError);
+  expect(store).not.toHaveBeenCalled();
+});
+
+test("a synchronously-throwing stdin write neither crashes nor changes the outcome", async () => {
+  const child = new FakeChild();
+  child.stdin.write = () => {
+    throw new Error("ERR_STREAM_DESTROYED");
+  };
+  const { io } = fakeIo(child);
+  const store = vi.fn();
+  const run = runAnthropicCliLogin(
+    { onAuth: vi.fn(), onManualCodeInput: () => Promise.resolve("code#state") },
+    { store },
+    io,
+  );
+  child.stdout.write(VISIT_LINE);
+  await tick();
+  child.emit("close", 0, null);
+  await run;
+  expect(store).toHaveBeenCalledTimes(1);
+});
+
 test("exit 0 with an unreadable mint is a real error and still scrubs", async () => {
   const child = new FakeChild();
   const { io, removed } = fakeIo(child, {

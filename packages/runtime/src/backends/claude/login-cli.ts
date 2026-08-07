@@ -38,12 +38,18 @@ export function makeMintDir(): string {
   return mkdtempSync(join(tmpdir(), "claude-login-mint-"));
 }
 
-/** Best-effort scrub of a mint dir (its tmpfs dies with the pod anyway). */
+/**
+ * Best-effort scrub of a mint dir. A pod's tmpfs dies with the pod, but a
+ * self-host machine's /tmp can outlive the process — so a failure is loudly
+ * logged (path only, never contents): a lingering mint holds a refresh token.
+ */
 export function removeMintDir(dir: string): void {
   try {
     rmSync(dir, { recursive: true, force: true });
-  } catch {
-    // Unreadable/racing tmp entry — nothing durable survives outside the pod.
+  } catch (e) {
+    console.warn(
+      `[claude-login] could not remove the login mint dir ${dir} — remove it manually, it may hold credential material: ${e instanceof Error ? e.message : String(e)}`,
+    );
   }
 }
 
