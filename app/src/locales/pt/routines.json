@@ -106,6 +106,7 @@
     "promptTitle": "O que esta rotina faz",
     "scheduleTitle": "Quando ela executa",
     "modelTitle": "Modelo",
+    "openChat": "Abrir chat",
     "nextRun": "Próxima execução {{when}}",
     "runsTitle": "Execuções",
     "runsLoading": "Carregando execuções…",
@@ -230,7 +231,8 @@
     "timezoneSet": "Fuso horário definido como {{zone}}",
     "timezoneError": "Não foi possível atualizar o fuso horário",
     "discardError": "Não foi possível descartar o rascunho",
-    "modelError": "Não foi possível alterar o modelo"
+    "modelError": "Não foi possível alterar o modelo",
+    "updateError": "Não foi possível salvar a rotina"
   },
   "webhook": {
     "createAddress": "Criar endereço de webhook",

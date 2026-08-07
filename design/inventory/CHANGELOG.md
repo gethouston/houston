@@ -5,16 +5,16 @@ Every `version` bump in `inventory.yaml` needs a matching entry here (enforced b
 
 ## v56 - 2026-08-07
 
-Add `routine-details` (PRODUCT-1208): a routine's own screen, opened by its
-list row — the name, the instruction verbatim (the prompt IS what the routine
-does), when it runs, the model pin (over the existing provider/model override
-fields), and the persisted execution history rendered n8n-style, where
-clicking a run opens that run's chat (its result). The routine's chats (setup
-chat, run chats) now open FROM this screen with a Back affordance. Web ships
-the content components in `@houston-ai/routines` (`RoutineDetails`,
-`RoutineRunList`) but the screen composition and the model row ride app-locked
-pieces (`ChatModelSelector`, the shell panel), so it lands as `partial` --
-extract before mobile.
+Add `routine-details` (PRODUCT-1208): a routine's own screen, replacing the
+routines list in the MAIN content when its row is clicked — the name, an
+editable description (the prompt IS what the routine does), an editable run
+frequency (the rows' schedule builder), the model pin (over the existing
+provider/model override fields), and the persisted execution history behind a
+Runs MODAL, n8n-style, where clicking an entry opens that run's chat (its
+result) in the shell panel. Web ships the run list in `@houston-ai/routines`
+(`RoutineRunList`) but the screen composition and the model row ride
+app-locked pieces (`ChatModelSelector`), so it lands as `partial` -- extract
+before mobile.
 
 ## v55 - 2026-08-07
 

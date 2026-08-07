@@ -10,6 +10,7 @@ import type { TabProps } from "../../lib/types";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useRoutineLeadingIcon } from "./routine-leading-icon";
+import { RoutineScreen } from "./routine-screen";
 import { latestRunByRoutine, selectionRoutineId } from "./routines-tab-model";
 import { RoutinesTabPane } from "./routines-tab-pane";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
@@ -62,14 +63,16 @@ export default function RoutinesTab({
   // board's inline fallback instead, which paints nothing.
   const screenActive = useIsActiveView();
   const portalContainer = isActive && screenActive ? panelContainer : null;
-  // The claim tracks exactly what this tab renders: a selection while it is the
-  // visible tab, nothing otherwise. Releasing on the way out is safe because the
-  // claim is this tab's own — it can't clobber a mission navigation that just
-  // opened the Activity board's panel (PRODUCT-1229). `useShellDetailPanel`
-  // releases it again on unmount.
+  // The claim tracks exactly what this tab renders in the PANEL: a chat
+  // surface (intake, draft, the setup chat, a run's chat). The routine's own
+  // screen lives in the MAIN content (PRODUCT-1208) and claims no panel.
+  // Releasing on the way out is safe because the claim is this tab's own — it
+  // can't clobber a mission navigation that just opened the Activity board's
+  // panel (PRODUCT-1229). `useShellDetailPanel` releases it again on unmount.
+  const chatSelected = !!selected && selected.kind !== "routine";
   useEffect(() => {
-    setPanelOpen(isActive && !!selected);
-  }, [isActive, selected, setPanelOpen]);
+    setPanelOpen(isActive && chatSelected);
+  }, [isActive, chatSelected, setPanelOpen]);
   // Per-row identity glyph — the triggering app's logo (or a webhook mark) for
   // event routines, the grid's default clock for schedule ones.
   const leadingIcon = useRoutineLeadingIcon(triggers.triggersEnabled);
@@ -98,6 +101,51 @@ export default function RoutinesTab({
       {t("chat.newRoutineTitle")}
     </Button>
   );
+
+  // A routine-scoped selection swaps the MAIN content from the list to that
+  // routine's own screen (PRODUCT-1208) — a real page, not a side panel. The
+  // screen stays up while one of the routine's chats owns the shell panel.
+  const screenRoutineId = selectionRoutineId(selected);
+  const screenRoutine = screenRoutineId
+    ? routines?.find((r) => r.id === screenRoutineId)
+    : undefined;
+
+  if (screenRoutine) {
+    return (
+      <div className="flex h-full min-h-0">
+        <RoutineScreen
+          agent={agent}
+          routine={screenRoutine}
+          allRuns={allRuns}
+          runsLoading={runsLoading}
+          triggerSummary={triggers.triggerSummaries[screenRoutine.id]}
+          accountTimezone={h.tz.timezone ?? "UTC"}
+          escapeActive={selected?.kind === "routine"}
+          onBackToList={nav.deselect}
+          onOpenChat={() => nav.openRoutineChat(screenRoutine.id)}
+          onOpenRun={(run) => nav.openRun(screenRoutine.id, run.id)}
+        />
+        {selected && selected.kind !== "routine" && (
+          <RoutinesTabPane
+            selected={selected}
+            agent={agent}
+            agentDef={agentDef}
+            routines={routines}
+            chatSetup={chatSetup}
+            allRuns={allRuns}
+            accountTimezone={h.tz.timezone ?? "UTC"}
+            triggersAvailable={triggers.triggersEnabled}
+            panelContainer={portalContainer}
+            onIntakeComplete={nav.handleIntakeComplete}
+            onIntakeDismiss={nav.dismissIntake}
+            onIntakeSend={nav.handleIntakeComposerSend}
+            onDeselect={nav.deselect}
+            onBackToRoutine={nav.backToRoutine}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0">
@@ -200,8 +248,6 @@ export default function RoutinesTab({
           routines={routines}
           chatSetup={chatSetup}
           allRuns={allRuns}
-          runsLoading={runsLoading}
-          triggerSummaries={triggers.triggerSummaries}
           accountTimezone={h.tz.timezone ?? "UTC"}
           triggersAvailable={triggers.triggersEnabled}
           panelContainer={portalContainer}
@@ -209,8 +255,6 @@ export default function RoutinesTab({
           onIntakeDismiss={nav.dismissIntake}
           onIntakeSend={nav.handleIntakeComposerSend}
           onDeselect={nav.deselect}
-          onOpenChat={nav.openRoutineChat}
-          onOpenRun={nav.openRun}
           onBackToRoutine={nav.backToRoutine}
         />
       )}

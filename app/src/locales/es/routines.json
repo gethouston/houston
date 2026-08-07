@@ -106,6 +106,7 @@
     "promptTitle": "Qué hace esta rutina",
     "scheduleTitle": "Cuándo se ejecuta",
     "modelTitle": "Modelo",
+    "openChat": "Abrir chat",
     "nextRun": "Próxima ejecución {{when}}",
     "runsTitle": "Ejecuciones",
     "runsLoading": "Cargando ejecuciones…",
@@ -230,7 +231,8 @@
     "timezoneSet": "Zona horaria establecida en {{zone}}",
     "timezoneError": "No se pudo actualizar la zona horaria",
     "discardError": "No se pudo descartar el borrador",
-    "modelError": "No se pudo cambiar el modelo"
+    "modelError": "No se pudo cambiar el modelo",
+    "updateError": "No se pudo guardar la rutina"
   },
   "webhook": {
     "createAddress": "Crear dirección de webhook",

@@ -763,42 +763,49 @@ components:
     since: 1
 
   - id: routine-details
-    title: Routine detail screen
+    title: Routine screen
     purpose: >-
-      A routine's own screen (PRODUCT-1208), opened by its list row: the
-      routine's name, what it does (the instruction verbatim -- the prompt IS
-      what the routine does), when it runs, the model it runs on, and its
-      execution history, n8n-style.
+      A routine's own page (PRODUCT-1208), REPLACING the routines list in the
+      main content when its row is clicked -- never a side panel, never a
+      popover: the routine's name, an editable description (the prompt IS what
+      the routine does), an editable run frequency, the model it runs on, and
+      its execution history behind a Runs modal, n8n-style.
     anatomy:
       [
+        back-action,
         title,
+        runs-action,
         open-chat-action,
-        prompt-summary,
-        schedule-summary,
+        editable-prompt,
+        schedule-editor,
         model-row,
-        run-history-list,
+        runs-modal,
       ]
-    states: [loading-runs, no-runs-yet, populated]
-    variants: [pane, full-screen]
+    states: [viewing, editing-prompt, editing-schedule, loading-runs, no-runs-yet]
+    variants: [full-screen]
     behavior: >-
-      The row click lands here (never straight in a chat). The instruction
-      renders verbatim in a quiet recessed block; the wake summary shows the
-      humanized cron plus its next fire time, or the trigger's plain-language
-      event with its live activation chip. The model row shows "Agent's model"
-      (inherit) or the pinned provider + model; picking a model pins it on the
-      routine (the fire path honors the pin), and a reset row returns it to
-      inherit -- clamped to the agent's allowed-models ceiling in Teams. The
-      execution history lists every recorded run newest-first -- plain-language
-      outcome (running / done / nothing to report / failed / stopped), start
-      stamp, elapsed time, and the run's summary -- and clicking a run opens
-      that run's chat (its result) with a Back affordance to this screen.
-      "Open chat" continues to the routine's setup chat (editing stays
-      chat-first).
+      The row click lands here (never straight in a chat); Back or Escape
+      returns to the list. The description is the prompt in a plain textarea
+      -- Save/Cancel appear when edited and Save persists it. The frequency
+      shows the humanized cron with the SAME schedule-builder editor the rows
+      use (plus the next fire time), or a trigger's plain-language event with
+      its live activation chip (event bindings change via chat, not here).
+      The model row shows "Agent's model" (inherit) or the pinned provider +
+      model; picking pins it (the fire path honors the pin), a reset row
+      returns to inherit -- clamped to the agent's allowed-models ceiling in
+      Teams. "Runs" opens the execution history as a MODAL: every recorded
+      run newest-first with its plain-language outcome (running / done /
+      nothing to report / failed / stopped), date + time, elapsed time, and
+      -- when the run wasn't silent -- the result it left behind; clicking an
+      entry closes the modal and opens that run's chat in the shell panel
+      (closing the chat returns to this screen). "Open chat" reaches the
+      routine's setup chat the same way.
     a11y: >-
-      the screen title is a real heading and sections are real headings; run
-      rows are buttons whose accessible name carries the outcome, stamp, and
-      the open-chat action; outcomes are conveyed as text, never color alone;
-      the running state is announced by its label, not only the spinner.
+      the screen title and sections are real headings; the prompt textarea is
+      labeled; run rows are buttons whose accessible name carries the outcome,
+      stamp, and the open-chat action; outcomes are conveyed as text, never
+      color alone; the running state is announced by its label, not only the
+      spinner.
     since: 56
 
   - id: skill-row

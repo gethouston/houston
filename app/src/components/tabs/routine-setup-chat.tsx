@@ -1,6 +1,6 @@
 import { ChatInput } from "@houston-ai/chat";
 import type { Activity, Routine } from "@houston-ai/engine-client";
-import { ArrowLeft, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -25,14 +25,11 @@ interface Props extends TabProps {
   /** The open routine itself (absent for a draft). When it carries a trigger
    *  binding, the header shows its live activation health right here. */
   routine?: Routine;
-  /** Close the panel and clear the selection (the list stays put). Wired to the
-   *  chat chrome's close X, Escape, and the intake cards' own dismiss. */
+  /** Close the panel. Wired to the chat chrome's close X, Escape, and the
+   *  intake cards' own dismiss. For a routine's chat (setup or a run's) the
+   *  parent passes "back to the routine's screen" here (PRODUCT-1208); drafts
+   *  and intake clear the selection outright. */
   onClose: () => void;
-  /** Step back to the routine's detail screen (PRODUCT-1208). When supplied, a
-   *  Back arrow leads the header and Escape steps back instead of closing;
-   *  the close X still clears the whole selection. Omit for chats that aren't
-   *  reached from a detail screen (drafts, intake). */
-  onBack?: () => void;
   /** The shell-level panel node this chat portals into (workspace-shell's
    *  sibling panel, the SAME one the Activity board opens). Null until the
    *  panel mounts — the surface renders nothing until it exists. */
@@ -75,7 +72,6 @@ export function RoutineSetupChat({
   routineName,
   routine,
   onClose,
-  onBack,
   intakeOverlay,
   onIntakeSend,
   panelContainer,
@@ -99,24 +95,11 @@ export function RoutineSetupChat({
         (el as HTMLElement).blur();
         return;
       }
-      // From a detail-screen chat, Escape steps BACK to the detail screen;
-      // only a chat with no screen behind it closes the pane outright.
-      (onBack ?? onClose)();
+      onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose, onBack]);
-
-  const backButton = onBack ? (
-    <button
-      type="button"
-      onClick={onBack}
-      aria-label={t("chat.back")}
-      className="size-7 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-hover/50 transition-colors shrink-0"
-    >
-      <ArrowLeft className="size-4" strokeWidth={1.75} />
-    </button>
-  ) : undefined;
+  }, [onClose]);
 
   const closeButton = (
     <button
@@ -136,7 +119,6 @@ export function RoutineSetupChat({
     const slimHeader = (title?: string) => (
       <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
         <div className="max-w-3xl mx-auto w-full flex items-center gap-3">
-          {backButton}
           {title && (
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
               {title}
@@ -216,7 +198,6 @@ export function RoutineSetupChat({
         sessionKey={sessionKey}
         panelContainer={panelContainer}
         missionLabel={missionLabel}
-        panelLeading={backButton}
         onPanelClose={onClose}
         panelActions={panelActions}
       />

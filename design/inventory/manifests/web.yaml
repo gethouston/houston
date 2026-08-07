@@ -161,10 +161,10 @@ components:
 
   routine-details:
     status: partial
-    ref: "@houston-ai/routines RoutineDetails / RoutineRunList + app/src/components/tabs/routine-detail-pane.tsx + routine-model-selector.tsx"
+    ref: "app/src/components/tabs/routine-screen.tsx + routine-runs-dialog.tsx + routine-model-selector.tsx over @houston-ai/routines RoutineRunList / RoutineRowScheduleEdit"
     notes: >-
-      The prompt + schedule + run-history content is shared ui/; the screen
-      composition (shell panel, Back/Open-chat chrome) and the model row
+      The run list + schedule editor are shared ui/; the screen composition
+      (editable prompt, Runs modal, Back/Open-chat chrome) and the model row
       (ChatModelSelector over the app's provider catalog) are app/-locked.
       Extract before mobile.
 

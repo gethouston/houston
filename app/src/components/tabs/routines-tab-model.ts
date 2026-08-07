@@ -157,18 +157,29 @@ export function setupChatItem(
  * real conversation (`session_key` — the shared routine chat, or the run's own
  * in `per_run` mode) but no board activity unless they surfaced; the chat
  * surface only needs an identity + status to render, and sends target the
- * session key, so this id never reaches the server.
+ * session key, so this id never reaches the server. The session key is
+ * reconstructed from the routine's chat mode when the run record itself is
+ * gone (pruned by the 50-run cap while its chat was open) — mirrors the
+ * domain's `routineConversationId`.
  */
-export function runChatActivity(routine: Routine, run: RoutineRun): Activity {
+export function runChatActivity(
+  routine: Routine,
+  runId: string,
+  run?: RoutineRun,
+): Activity {
   return {
-    id: `routine-run-${run.id}`,
+    id: `routine-run-${runId}`,
     title: routine.name,
     description: "",
-    status: run.status === "running" ? "running" : "done",
-    session_key: run.session_key,
+    status: run?.status === "running" ? "running" : "done",
+    session_key:
+      run?.session_key ??
+      (routine.chat_mode === "per_run"
+        ? `routine-${routine.id}-${runId}`
+        : `routine-${routine.id}`),
     routine_id: routine.id,
-    routine_run_id: run.id,
-    updated_at: run.completed_at ?? run.started_at,
+    routine_run_id: runId,
+    updated_at: run?.completed_at ?? run?.started_at ?? routine.updated_at,
   };
 }
 

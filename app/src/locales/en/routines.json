@@ -106,6 +106,7 @@
     "promptTitle": "What this routine does",
     "scheduleTitle": "When it runs",
     "modelTitle": "Model",
+    "openChat": "Open chat",
     "nextRun": "Next run {{when}}",
     "runsTitle": "Runs",
     "runsLoading": "Loading runs…",
@@ -230,7 +231,8 @@
     "timezoneSet": "Timezone set to {{zone}}",
     "timezoneError": "Couldn't update the timezone",
     "discardError": "Couldn't discard the draft",
-    "modelError": "Couldn't change the model"
+    "modelError": "Couldn't change the model",
+    "updateError": "Couldn't save the routine"
   },
   "webhook": {
     "createAddress": "Create webhook address",

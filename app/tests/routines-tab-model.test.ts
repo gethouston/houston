@@ -128,7 +128,7 @@ describe("routines tab model — runChatActivity", () => {
   } as any;
 
   it("carries the run's real session key and a client-only id", () => {
-    const activity = runChatActivity(routine, {
+    const activity = runChatActivity(routine, "run9", {
       id: "run9",
       routine_id: "r1",
       status: "surfaced",
@@ -143,7 +143,7 @@ describe("routines tab model — runChatActivity", () => {
   });
 
   it("marks an in-flight run as running", () => {
-    const activity = runChatActivity(routine, {
+    const activity = runChatActivity(routine, "run9", {
       id: "run9",
       routine_id: "r1",
       status: "running",
@@ -152,6 +152,17 @@ describe("routines tab model — runChatActivity", () => {
     });
     strictEqual(activity.status, "running");
     strictEqual(activity.updated_at, "2026-01-02T00:00:00Z");
+  });
+
+  it("reconstructs the session key when the run record is gone (pruned)", () => {
+    strictEqual(
+      runChatActivity(routine, "run9").session_key,
+      "routine-r1", // shared chat mode -> the routine's one conversation
+    );
+    strictEqual(
+      runChatActivity({ ...routine, chat_mode: "per_run" }, "run9").session_key,
+      "routine-r1-run9",
+    );
   });
 });
 

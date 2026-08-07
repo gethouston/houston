@@ -19,18 +19,10 @@ export {
   DEFAULT_TRIGGER_LABELS,
   interp,
 } from "./labels";
-// Routine details (PRODUCT-1208) — the prompt + run-history surface.
-export type {
-  RoutineDetailsLabels,
-  RoutineRunListLabels,
-} from "./labels-details";
-export {
-  DEFAULT_DETAILS_LABELS,
-  DEFAULT_RUN_LIST_LABELS,
-} from "./labels-details";
+// Routine execution history (PRODUCT-1208) — the run list + its helpers.
+export type { RoutineRunListLabels } from "./labels-details";
+export { DEFAULT_RUN_LIST_LABELS } from "./labels-details";
 export { describeNextFire, nextFire } from "./next-fire";
-export type { RoutineDetailsProps } from "./routine-details";
-export { RoutineDetails } from "./routine-details";
 export type { RoutineDraftRowProps } from "./routine-draft-row";
 export { RoutineDraftRow } from "./routine-draft-row";
 export type { RoutineRowProps } from "./routine-row";
