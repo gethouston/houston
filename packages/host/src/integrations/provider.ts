@@ -78,7 +78,10 @@ export interface IntegrationProvider {
    * ignore it. `app` (optional) HARD-scopes discovery to one named app — a
    * loose name or slug ("PostHog", "google sheets") the adapter resolves; the
    * result is then only that app's actions, never a globally ranked list
-   * (PRODUCT-1274).
+   * (PRODUCT-1274). One escape hatch: a scope the adapter cannot resolve to
+   * any known app (a typo, a guess) falls back to the unscoped merged search
+   * rather than claiming "no such app" — so callers must not assume every
+   * returned action belongs to the requested app.
    */
   search(
     userId: string,
