@@ -159,6 +159,14 @@ components:
     status: implemented
     ref: "@houston-ai/routines RoutineRow / RoutinesGrid"
 
+  routine-details:
+    status: partial
+    ref: "@houston-ai/routines RoutineDetails / RoutineRunList + app/src/components/tabs/routine-details-button.tsx + routine-model-selector.tsx"
+    notes: >-
+      The prompt + run-history content is shared ui/; the popover composition
+      and the model row (ChatModelSelector over the app's provider catalog) are
+      app/-locked. Extract the model row before mobile.
+
   skill-row:
     status: partial
     ref: "ui/skills skill-marketplace-row.tsx + app/src/components/skills/skill-catalog-rows.tsx + app/src/components/tabs/installed-skills-strip.tsx"

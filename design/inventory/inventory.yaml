@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 55
+version: 56
 
 components:
   - id: agent-avatar
@@ -761,6 +761,32 @@ components:
       text; status never color-alone (icon shape + row text carry it); menu
       trigger always visible with an accessible label.
     since: 1
+
+  - id: routine-details
+    title: Routine details
+    purpose: >-
+      The "what is this routine" surface (PRODUCT-1208): the routine's
+      instruction verbatim (the prompt IS what the routine does), its pinned
+      model, and its recorded run history -- the review-what-happened view the
+      row and chat don't carry.
+    anatomy: [prompt-summary, model-row, run-history-list]
+    states: [loading-runs, no-runs-yet, populated]
+    variants: [popover, sheet]
+    behavior: >-
+      Opened from the routine chat header's info affordance. The instruction
+      renders verbatim in a quiet recessed block. The model row shows "Agent's
+      model" (inherit) or the pinned provider + model; picking a model pins it
+      on the routine (the fire path honors the pin), and a reset row returns it
+      to inherit -- clamped to the agent's allowed-models ceiling in Teams. The
+      run history lists every recorded run newest-first: a plain-language
+      outcome (running / done / nothing to report / failed / stopped), start
+      stamp, elapsed time, and the run's summary when it left one. Read-only:
+      acting on a run stays on the routine row and the board.
+    a11y: >-
+      the opening affordance carries an accessible label; run outcomes are
+      conveyed as text, never color alone; section headers are real headings;
+      the running state is announced by its label, not only the spinner.
+    since: 56
 
   - id: skill-row
     title: Skill row

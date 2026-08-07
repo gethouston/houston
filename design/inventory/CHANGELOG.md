@@ -3,6 +3,17 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v56 - 2026-08-07
+
+Add `routine-details` (PRODUCT-1208): the routine chat header's details surface
+answering "what does this routine do" (the instruction verbatim), "what model
+does it run on" (the pin selector over the existing provider/model override
+fields), and "what happened on past runs" (the persisted run history, finally
+rendered). Web ships the content components in `@houston-ai/routines`
+(`RoutineDetails`, `RoutineRunList`) but the popover composition and the model
+row ride app-locked pieces (`ChatModelSelector`), so it lands as `partial` --
+extract before mobile.
+
 ## v55 - 2026-08-07
 
 Chat status messages rework (PRODUCT-1226), no new components. The

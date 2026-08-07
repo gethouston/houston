@@ -101,6 +101,24 @@
       "active": "Evento ativo"
     }
   },
+  "details": {
+    "open": "Detalhes da rotina",
+    "promptTitle": "O que esta rotina faz",
+    "runsTitle": "Execuções recentes",
+    "runsLoading": "Carregando execuções…",
+    "runsEmpty": "Ainda não há execuções",
+    "status": {
+      "running": "Executando",
+      "silent": "Nada para reportar",
+      "surfaced": "Concluída",
+      "error": "Falhou",
+      "cancelled": "Interrompida"
+    },
+    "model": {
+      "inherit": "Modelo do agente",
+      "reset": "Usar o modelo do agente"
+    }
+  },
   "row": {
     "untitled": "Sem título",
     "pauseRoutine": "Pausar rotina",
@@ -207,7 +225,8 @@
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",
     "timezoneError": "Não foi possível atualizar o fuso horário",
-    "discardError": "Não foi possível descartar o rascunho"
+    "discardError": "Não foi possível descartar o rascunho",
+    "modelError": "Não foi possível alterar o modelo"
   },
   "webhook": {
     "createAddress": "Criar endereço de webhook",

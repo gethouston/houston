@@ -1,4 +1,5 @@
 import type { Specimen } from "../../../src/specimen";
+import { specimen as routineDetails } from "./routine-details";
 import { specimen as routineDraftRow } from "./routine-draft-row";
 import { specimen as routineRow } from "./routine-row";
 import { specimen as routineRowControls } from "./routine-row-controls";
@@ -31,6 +32,7 @@ export const specimens: readonly Specimen[] = [
   routinesGridEmpty,
   routineRow,
   routineDraftRow,
+  routineDetails,
   routineRowControls,
   scheduleBuilder,
   timezonePicker,

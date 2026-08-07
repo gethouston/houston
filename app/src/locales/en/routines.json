@@ -101,6 +101,24 @@
       "active": "Trigger active"
     }
   },
+  "details": {
+    "open": "Routine details",
+    "promptTitle": "What this routine does",
+    "runsTitle": "Recent runs",
+    "runsLoading": "Loading runs…",
+    "runsEmpty": "No runs yet",
+    "status": {
+      "running": "Running",
+      "silent": "Nothing to report",
+      "surfaced": "Done",
+      "error": "Failed",
+      "cancelled": "Stopped"
+    },
+    "model": {
+      "inherit": "Agent's model",
+      "reset": "Use the agent's model"
+    }
+  },
   "row": {
     "untitled": "Untitled",
     "pauseRoutine": "Pause routine",
@@ -207,7 +225,8 @@
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",
     "timezoneError": "Couldn't update the timezone",
-    "discardError": "Couldn't discard the draft"
+    "discardError": "Couldn't discard the draft",
+    "modelError": "Couldn't change the model"
   },
   "webhook": {
     "createAddress": "Create webhook address",

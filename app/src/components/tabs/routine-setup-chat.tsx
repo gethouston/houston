@@ -8,6 +8,8 @@ import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useBoardLabels } from "../board/use-board-labels";
 import { RoutineActivationChip } from "./routine-activation-chip";
+import { RoutineDetailsButton } from "./routine-details-button";
+import { RoutineModelSelector } from "./routine-model-selector";
 import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
 
 interface Props extends TabProps {
@@ -173,15 +175,23 @@ export function RoutineSetupChat({
       ? t("chat.newRoutineTitle")
       : t("chat.routineLabel", { name: routineName ?? "" });
 
-  // A trigger-bound routine shows its live activation right in the one header:
-  // checking -> activating -> active, or an alert with the reason + Reconnect.
-  const activationChip =
-    kind === "routine" && routine?.trigger ? (
-      <RoutineActivationChip
-        agentId={agent.id}
-        routineId={routine.id}
-        trigger={routine.trigger}
-      />
+  // The one header's routine controls (PRODUCT-1208): a trigger-bound routine
+  // shows its live activation (checking -> activating -> active, or an alert
+  // with the reason + Reconnect), then the routine's pinned model, then the
+  // details popover (what it does + run history).
+  const panelActions =
+    kind === "routine" && routine ? (
+      <>
+        {routine.trigger && (
+          <RoutineActivationChip
+            agentId={agent.id}
+            routineId={routine.id}
+            trigger={routine.trigger}
+          />
+        )}
+        <RoutineModelSelector agent={agent} routine={routine} />
+        <RoutineDetailsButton agent={agent} routine={routine} />
+      </>
     ) : undefined;
 
   // The board renders its detail panel straight into the shell panel via
@@ -197,7 +207,7 @@ export function RoutineSetupChat({
         panelContainer={panelContainer}
         missionLabel={missionLabel}
         onPanelClose={onClose}
-        panelActions={activationChip}
+        panelActions={panelActions}
       />
     </div>
   );

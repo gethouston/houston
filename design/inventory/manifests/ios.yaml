@@ -203,6 +203,9 @@ components:
   routine-row:
     status: not-started
     notes: Routines list not in mobile v1; missions only carry a "Routine" tag.
+  routine-details:
+    status: not-started
+    notes: Routines list not in mobile v1.
   skill-row:
     status: not-started
     notes: Skills catalog not in mobile v1.

@@ -101,6 +101,24 @@
       "active": "Evento activo"
     }
   },
+  "details": {
+    "open": "Detalles de la rutina",
+    "promptTitle": "Qué hace esta rutina",
+    "runsTitle": "Ejecuciones recientes",
+    "runsLoading": "Cargando ejecuciones…",
+    "runsEmpty": "Aún no hay ejecuciones",
+    "status": {
+      "running": "En ejecución",
+      "silent": "Nada que reportar",
+      "surfaced": "Completada",
+      "error": "Falló",
+      "cancelled": "Detenida"
+    },
+    "model": {
+      "inherit": "Modelo del agente",
+      "reset": "Usar el modelo del agente"
+    }
+  },
   "row": {
     "untitled": "Sin título",
     "pauseRoutine": "Pausar rutina",
@@ -207,7 +225,8 @@
   "toasts": {
     "timezoneSet": "Zona horaria establecida en {{zone}}",
     "timezoneError": "No se pudo actualizar la zona horaria",
-    "discardError": "No se pudo descartar el borrador"
+    "discardError": "No se pudo descartar el borrador",
+    "modelError": "No se pudo cambiar el modelo"
   },
   "webhook": {
     "createAddress": "Crear dirección de webhook",
