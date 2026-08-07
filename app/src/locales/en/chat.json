@@ -242,7 +242,8 @@
     "newFiles_other": "{{count}} new files",
     "instructionsUpdated": "Instructions updated",
     "skillsUpdated": "Skills updated",
-    "learningsUpdated": "Learnings updated"
+    "learningsUpdated": "Learnings updated",
+    "openLinkFailedTitle": "Couldn’t open the link"
   },
   "filesUpdated_one": "1 file updated",
   "filesUpdated_other": "{{count}} files updated",

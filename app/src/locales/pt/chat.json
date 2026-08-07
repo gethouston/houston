@@ -242,7 +242,8 @@
     "newFiles_other": "{{count}} arquivos novos",
     "instructionsUpdated": "Instruções atualizadas",
     "skillsUpdated": "Skills atualizados",
-    "learningsUpdated": "Aprendizados atualizados"
+    "learningsUpdated": "Aprendizados atualizados",
+    "openLinkFailedTitle": "Não foi possível abrir o link"
   },
   "filesUpdated_one": "1 arquivo atualizado",
   "filesUpdated_other": "{{count}} arquivos atualizados",
