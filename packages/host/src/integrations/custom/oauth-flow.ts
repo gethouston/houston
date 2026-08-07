@@ -71,17 +71,22 @@ const oauthFailed = (context: string, err: unknown): CustomIntegrationError =>
  * Discover + register + build the authorize URL for one MCP definition.
  * `existingClient` (from a previous grant's bundle) is reused when it still
  * names this redirect URI, so re-authenticating does not re-register.
+ * `statePrefix` (managed pods: `<orgSlug>.<agentSlug>`) rides INSIDE the
+ * state so the gateway's public callback can route the returning browser to
+ * the right pod statelessly — the random tail keeps the whole value
+ * single-use and unguessable.
  */
 export async function beginCustomOAuth(
   def: CustomIntegrationDef & { kind: "mcp" },
   redirectUri: string,
   existing: CustomOAuthBundle | null,
-  fetchFn?: typeof fetch,
+  opts: { fetchFn?: typeof fetch; statePrefix?: string } = {},
 ): Promise<{
   state: string;
   authorizeUrl: string;
   attempt: CustomOAuthAttempt;
 }> {
+  const { fetchFn, statePrefix } = opts;
   let info: Awaited<ReturnType<typeof discoverOAuthServerInfo>>;
   try {
     info = await discoverOAuthServerInfo(def.endpoint, {
@@ -117,7 +122,7 @@ export async function beginCustomOAuth(
     }
   }
 
-  const state = randomBytes(16).toString("hex");
+  const state = `${statePrefix ? `${statePrefix}.` : ""}${randomBytes(16).toString("hex")}`;
   try {
     const { authorizationUrl, codeVerifier } = await startAuthorization(
       info.authorizationServerUrl,

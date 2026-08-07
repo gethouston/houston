@@ -41,10 +41,11 @@ export class CustomIntegrationManager {
     private readonly host: CustomExecutorHost,
     private readonly onChanged: () => void,
     /** OAuth sign-in (PRODUCT-1172): the browser-reachable callback URL —
-     *  absent on deployments that cannot receive the redirect — and a fetch
-     *  seam for tests. */
+     *  absent on deployments that cannot receive the redirect — the state
+     *  routing prefix for gateway-fronted pods, and a fetch seam for tests. */
     private readonly oauth: {
       callbackUrl?: string;
+      statePrefix?: string;
       fetchFn?: typeof fetch;
     } = {},
   ) {}
