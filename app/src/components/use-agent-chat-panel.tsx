@@ -154,7 +154,6 @@ import { ChatSigninInteractionCard } from "./chat-signin-interaction-card";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { DictationSetupDialog } from "./dictation-setup-dialog";
-import { EditingMessageNotice } from "./editing-message-notice";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { integrationsSupported } from "./integrations/model";
@@ -267,6 +266,8 @@ interface AgentChatPanelProps {
   canEditMessage: AIBoardProps["canEditMessage"];
   /** Localized label for the edit affordance. */
   editMessageLabel: AIBoardProps["editMessageLabel"];
+  /** In-place editing state + Cancel/Send callbacks for the edited row. */
+  messageEditing: AIBoardProps["messageEditing"];
   /** Copy-message affordance on both sides of the conversation. */
   enableMessageCopy: AIBoardProps["enableMessageCopy"];
   /** Gates copy to rows whose raw content is what the bubble shows. */
@@ -1039,13 +1040,14 @@ export function useAgentChatPanel({
   }, [path, selectedSessionKey]);
 
   // ── Edit-and-resend (PRODUCT-1217) ─────────────────────────────────────
-  // The previous user turn being edited, or null. Prefilling rides the draft
-  // store (the same seam dictation appends through); submitting truncates the
-  // conversation at this turn and lets the NORMAL send path deliver the
-  // edited text — attachments, pins, and the queue all behave as any send.
+  // The previous user turn being edited IN PLACE, or null: the row's bubble
+  // swaps for an inline editor (ChatGPT's grammar) — the composer is never
+  // touched. Send truncates the conversation at this turn and delivers the
+  // edited text as a plain send.
   const [editingTurn, setEditingTurn] = useState<{
     sessionKey: string;
     turnId: string;
+    key: string;
   } | null>(null);
   useEffect(() => {
     // Switching conversations abandons an in-progress edit — the pending
@@ -1053,19 +1055,57 @@ export function useAgentChatPanel({
     if (editingTurn && editingTurn.sessionKey !== selectedSessionKey)
       setEditingTurn(null);
   }, [editingTurn, selectedSessionKey]);
-  const cancelEditMessage = useCallback(() => {
-    setEditingTurn(null);
-    useDraftStore.getState().setDraftText(draftKey, "");
-  }, [draftKey]);
+  const cancelEditMessage = useCallback(() => setEditingTurn(null), []);
   const onEditMessage = useCallback(
     (msg: ChatMessage) => {
       if (!selectedSessionKey || !msg.turnId) return;
-      // A selected Skill would wrap the resend in its marker — drop it.
-      setActiveSkill(null);
-      setEditingTurn({ sessionKey: selectedSessionKey, turnId: msg.turnId });
-      useDraftStore.getState().setDraftText(draftKey, msg.content);
+      setEditingTurn({
+        sessionKey: selectedSessionKey,
+        turnId: msg.turnId,
+        key: msg.key,
+      });
     },
-    [selectedSessionKey, draftKey],
+    [selectedSessionKey],
+  );
+  const onEditMessageSubmit = useCallback(
+    async (_msg: ChatMessage, text: string) => {
+      if (!editingTurn || !path) return;
+      // Rewind FIRST: a truncate failure (e.g. a turn raced the edit) throws
+      // before anything was cut, surfaces as a toast (tauri `call`), and the
+      // editor stays open with the user's text.
+      await tauriChat.truncate(
+        path,
+        editingTurn.sessionKey,
+        editingTurn.turnId,
+      );
+      setEditingTurn(null);
+      await tauriChat.send(path, text, editingTurn.sessionKey, {
+        providerOverride: displayModelPin.provider,
+        modelOverride: displayModelPin.model,
+        effortOverride: displayModelPin.effort,
+        modeOverride: turnMode,
+      });
+      // An ARCHIVED mission was just re-activated by the resend, exactly as
+      // any other send into it would.
+      onSendReactivatedRef.current?.();
+    },
+    [editingTurn, path, displayModelPin, turnMode],
+  );
+  const messageEditing = useMemo<AIBoardProps["messageEditing"]>(
+    () =>
+      editingTurn
+        ? {
+            editingKey: editingTurn.key,
+            onSubmit: onEditMessageSubmit,
+            onCancel: cancelEditMessage,
+            labels: {
+              send: t("chat:editMessage.send"),
+              cancel: t("chat:editMessage.cancel"),
+              editor: t("chat:editMessage.edit"),
+            },
+          }
+        : undefined,
+    [editingTurn, onEditMessageSubmit, cancelEditMessage, t],
   );
   const canEditMessage = useCallback(
     (msg: ChatMessage) => {
@@ -1955,22 +1995,9 @@ export function useAgentChatPanel({
   const onComposerSubmit = useCallback<
     NonNullable<AIBoardProps["onComposerSubmit"]>
   >(
-    async (ctx) => {
+    (ctx) => {
       if (activeInteraction && interactionKey !== abandonedInteractionKey)
         setAbandonedInteractionKey(interactionKey);
-      // Edit-and-resend (PRODUCT-1217): rewind FIRST, then fall through as an
-      // ordinary unhandled submit so the board's normal send path delivers the
-      // edited text (attachments, pins, queue — everything as usual). A
-      // truncate failure (e.g. a turn raced the edit) throws before anything
-      // was cut and surfaces on the composer's own error path.
-      if (editingTurn && ctx.sessionKey === editingTurn.sessionKey && path) {
-        await tauriChat.truncate(
-          path,
-          editingTurn.sessionKey,
-          editingTurn.turnId,
-        );
-        setEditingTurn(null);
-      }
       return handleSkillComposerSubmit(ctx);
     },
     [
@@ -1978,8 +2005,6 @@ export function useAgentChatPanel({
       activeInteraction,
       interactionKey,
       abandonedInteractionKey,
-      editingTurn,
-      path,
     ],
   );
 
@@ -2224,21 +2249,16 @@ export function useAgentChatPanel({
   // for callers who receive it (owner / agent-managers).
   const composerHeader = useMemo<AIBoardProps["composerHeader"]>(() => {
     if (!agent) return undefined;
-    if (!activeSkill && !editingTurn) return undefined;
+    if (!activeSkill) return undefined;
     return (
       <div className="flex flex-col gap-1.5">
-        {editingTurn ? (
-          <EditingMessageNotice onCancel={cancelEditMessage} />
-        ) : null}
-        {activeSkill ? (
-          <SelectedSkillChip
-            skill={activeSkill}
-            onCancel={() => setActiveSkill(null)}
-          />
-        ) : null}
+        <SelectedSkillChip
+          skill={activeSkill}
+          onCancel={() => setActiveSkill(null)}
+        />
       </div>
     );
-  }, [agent, activeSkill, editingTurn, cancelEditMessage]);
+  }, [agent, activeSkill]);
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
@@ -2419,6 +2439,7 @@ export function useAgentChatPanel({
     onEditMessage: turnRunning ? undefined : onEditMessage,
     canEditMessage,
     editMessageLabel: t("chat:editMessage.edit"),
+    messageEditing,
     enableMessageCopy: true,
     canCopyMessage,
     copyMessageLabel: t("chat:copyMessage.copy"),

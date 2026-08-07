@@ -3,6 +3,7 @@ import type { RenderLinkProps } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ChatAuthorLabels } from "./author-label";
 import type { ToolsAndCardsProps } from "./chat-helpers";
+import type { ChatMessageItemProps } from "./chat-message-item-types";
 import type { ChatProcessLabels } from "./chat-process-block";
 import type { ConversationMapLabels } from "./conversation-map";
 import type { ConversationMoment } from "./conversation-map-model";
@@ -55,6 +56,8 @@ export interface ChatMessagesProps {
   canCopyMessage?: (msg: ChatMessage) => boolean;
   /** See `ChatMessageItemProps.copyMessageLabel`. */
   copyMessageLabel?: string;
+  /** In-place editing: see `ChatMessageItemProps.messageEditing`. */
+  messageEditing?: ChatMessageItemProps["messageEditing"];
   /** Node rendered after the last message (inside the scroll container).
    *  Useful for inline end-of-feed cards like auth reconnect prompts. */
   afterMessages?: ReactNode;

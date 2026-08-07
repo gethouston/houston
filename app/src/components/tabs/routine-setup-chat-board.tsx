@@ -194,6 +194,7 @@ export function RoutineSetupChatBoard({
         enableMessageCopy={panel.enableMessageCopy}
         canCopyMessage={panel.canCopyMessage}
         copyMessageLabel={panel.copyMessageLabel}
+        messageEditing={panel.messageEditing}
         renderLink={panel.renderLink}
         currentUserId={panel.currentUserId}
         authorLabels={panel.authorLabels}

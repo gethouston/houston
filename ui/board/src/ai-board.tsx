@@ -143,6 +143,8 @@ export interface AIBoardProps {
   enableMessageCopy?: import("@houston-ai/chat").ChatPanelProps["enableMessageCopy"];
   canCopyMessage?: import("@houston-ai/chat").ChatPanelProps["canCopyMessage"];
   copyMessageLabel?: import("@houston-ai/chat").ChatPanelProps["copyMessageLabel"];
+  /** In-place editing state + callbacks. Forwarded to ChatPanel. */
+  messageEditing?: import("@houston-ai/chat").ChatPanelProps["messageEditing"];
   /** Props-only configuration for long-conversation navigation. */
   conversationMap?: ChatPanelProps["conversationMap"];
   /** Emitted by ChatPanel to surface short notices to the user
@@ -377,6 +379,7 @@ export function AIBoard({
   enableMessageCopy,
   canCopyMessage,
   copyMessageLabel,
+  messageEditing,
   conversationMap,
   onNotice,
   prepareAttachments,
@@ -791,6 +794,7 @@ export function AIBoard({
           enableMessageCopy={enableMessageCopy}
           canCopyMessage={canCopyMessage}
           copyMessageLabel={copyMessageLabel}
+          messageEditing={messageEditing}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
           showSenders={showSenders}

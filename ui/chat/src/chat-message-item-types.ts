@@ -16,6 +16,16 @@ import type { ChatDisplayItem } from "./chat-process-groups";
 import type { ChatMessage } from "./feed-to-messages";
 import type { TurnEndSummary } from "./turn-tools";
 
+/** See `ChatMessageItemProps.messageEditing`. */
+export interface MessageEditingProps {
+  /** The `ChatMessage.key` of the row being edited, or null. */
+  editingKey: string | null;
+  /** Rewind + resend with the edited text — the consumer owns the wire. */
+  onSubmit: (msg: ChatMessage, text: string) => void | Promise<void>;
+  onCancel: () => void;
+  labels?: { send?: string; cancel?: string; editor?: string };
+}
+
 export interface ChatMessageItemProps {
   item: ChatDisplayItem;
   messageCount: number;
@@ -68,6 +78,11 @@ export interface ChatMessageItemProps {
   canCopyMessage?: (msg: ChatMessage) => boolean;
   /** Localized label + tooltip for the copy affordance. English default. */
   copyMessageLabel?: string;
+  /** In-place editing (PRODUCT-1217): which user message currently renders as
+   *  an inline editor and what its Cancel/Send do — ChatGPT's edit grammar,
+   *  the bubble swaps for a full-width editor card; the composer is never
+   *  touched. */
+  messageEditing?: MessageEditingProps;
   onOpenLink?: (url: string) => void;
   renderLink?: (props: RenderLinkProps) => ReactNode;
   currentUserId?: string;

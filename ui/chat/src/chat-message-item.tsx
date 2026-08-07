@@ -7,6 +7,7 @@ import {
 } from "./author-label";
 import { ChatMessageActionsRow } from "./chat-message-actions";
 import { ChatMessageBody } from "./chat-message-body";
+import { ChatMessageEditor } from "./chat-message-editor";
 import type { ChatMessageItemProps } from "./chat-message-item-types";
 import { ChatProcessMessage } from "./chat-process-message";
 import { ChatPeerRow, ChatSenderName } from "./chat-sender-parts";
@@ -42,6 +43,7 @@ export function ChatMessageItem({
   enableMessageCopy,
   canCopyMessage,
   copyMessageLabel,
+  messageEditing,
   onOpenLink,
   renderLink,
   currentUserId,
@@ -173,6 +175,26 @@ export function ChatMessageItem({
       onEditMessage={editable ? onEditMessage : undefined}
     />
   );
+
+  // In-place edit (PRODUCT-1217): the row being edited swaps its bubble for a
+  // full-width editor card (ChatGPT's grammar). Own rows only — the pencil
+  // that opens this state never renders on a peer's message.
+  if (isUser && !peer && messageEditing?.editingKey === message.key) {
+    return (
+      <Message
+        {...sharedProps}
+        className={cn(sharedProps.className, "max-w-full")}
+        from="user"
+      >
+        <ChatMessageEditor
+          initialText={message.content}
+          labels={messageEditing.labels}
+          onCancel={messageEditing.onCancel}
+          onSubmit={(text) => messageEditing.onSubmit(message, text)}
+        />
+      </Message>
+    );
+  }
 
   if (peer || agentBubbled) {
     return (

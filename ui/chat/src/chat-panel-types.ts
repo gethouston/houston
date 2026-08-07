@@ -111,6 +111,8 @@ export interface ChatPanelProps {
   enableMessageCopy?: ChatMessagesProps["enableMessageCopy"];
   canCopyMessage?: ChatMessagesProps["canCopyMessage"];
   copyMessageLabel?: ChatMessagesProps["copyMessageLabel"];
+  /** In-place editing: see `ChatMessagesProps.messageEditing`. */
+  messageEditing?: ChatMessagesProps["messageEditing"];
   afterMessages?: ReactNode;
   /** Scroll-up lazy-load (HOU-819): see `ChatMessagesProps.onLoadOlder`. */
   onLoadOlder?: ChatMessagesProps["onLoadOlder"];

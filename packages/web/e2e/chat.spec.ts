@@ -230,12 +230,13 @@ test("sends a follow-up inside an existing mission", async ({ page }) => {
 });
 
 /**
- * Edit-and-resend (PRODUCT-1217): the pencil on a previous user message
- * prefills the composer and shows the editing banner; sending rewinds the
- * conversation to that message — earlier turns stay, the edited turn's old
- * exchange is gone, and the agent answers the edited text.
+ * Edit-and-resend (PRODUCT-1217), ChatGPT grammar: hovering a previous user
+ * message reveals its actions; Edit swaps the bubble for an IN-PLACE editor
+ * (Cancel / Send, composer untouched). Escape cancels cleanly; Send rewinds
+ * the conversation to that message — earlier turns stay, the edited turn's
+ * old exchange is gone, and the agent answers the edited text.
  */
-test("edits a previous user message and rewinds the conversation", async ({
+test("edits a previous user message in place and rewinds the conversation", async ({
   page,
 }) => {
   await page.goto("/");
@@ -254,19 +255,31 @@ test("edits a previous user message and rewinds the conversation", async ({
     timeout: 15_000,
   });
 
-  // Edit the SECOND user message: composer prefills, the banner names the state.
+  // Hover the SECOND user bubble to reveal its actions, then edit in place.
+  const secondBubble = page.getByText("second message", { exact: true });
+  await secondBubble.hover();
   await page.getByRole("button", { name: "Edit message" }).last().click();
-  await expect(composer).toHaveValue("second message");
-  await expect(page.getByText("Editing a previous message")).toBeVisible();
+  const editor = page.getByRole("textbox", { name: "Edit message" });
+  await expect(editor).toHaveValue("second message");
+  // The composer is untouched — editing happens in the bubble.
+  await expect(composer).toHaveValue("");
 
-  await composer.fill("second message, edited");
-  await composer.press("Enter");
+  // Escape abandons the edit and restores the bubble...
+  await editor.press("Escape");
+  await expect(editor).not.toBeVisible();
+  await expect(secondBubble).toBeVisible();
 
-  // The edited turn answers; the banner retired with the send.
+  // ...and a fresh edit sends the rewind.
+  await secondBubble.hover();
+  await page.getByRole("button", { name: "Edit message" }).last().click();
+  await editor.fill("second message, edited");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+
+  // The edited turn answers; the editor is gone.
   await expect(
     page.getByText(/You said: .second message, edited./),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Editing a previous message")).not.toBeVisible();
+  await expect(editor).not.toBeVisible();
   // The rewound tail is gone; the first turn survives untouched.
   await expect(
     page.getByText("second message", { exact: true }),
@@ -276,10 +289,9 @@ test("edits a previous user message and rewinds the conversation", async ({
   ).not.toBeVisible();
   await expect(page.getByText(/You said: .first message./)).toBeVisible();
 });
-
 /**
  * Copy a message (PRODUCT-1217 follow-up): both sides of the conversation
- * carry an always-visible copy action on settled rows — the user's bubble
+ * carry a hover-revealed copy action on settled rows — the user's bubble
  * copies the typed text, the agent's copies its markdown source.
  */
 test("copies a user and an agent message to the clipboard", async ({
@@ -298,11 +310,14 @@ test("copies a user and an agent message to the clipboard", async ({
 
   const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
 
-  // The user bubble's copy action → the typed text, verbatim.
+  // The actions reveal on hover (ChatGPT grammar): hover the user bubble,
+  // copy → the typed text, verbatim.
+  await page.getByText("copy me please", { exact: true }).hover();
   await page.getByRole("button", { name: "Copy message" }).first().click();
   expect(await clipboard()).toBe("copy me please");
 
-  // The agent reply's copy action → the reply's markdown source.
+  // Hover the agent reply, copy → its markdown source.
+  await page.getByText(/You said: .copy me please./).hover();
   await page.getByRole("button", { name: "Copy message" }).last().click();
   expect(await clipboard()).toContain("You said:");
 });

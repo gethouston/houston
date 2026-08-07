@@ -350,9 +350,8 @@
   ],
   "editMessage": {
     "edit": "Editar mensagem",
-    "editing": "Editando uma mensagem anterior",
-    "hint": "Ao enviar, o chat voltará a esta mensagem e continuará a partir da sua versão editada.",
-    "cancel": "Cancelar edição"
+    "send": "Enviar",
+    "cancel": "Cancelar"
   },
   "copyMessage": {
     "copy": "Copiar mensagem"

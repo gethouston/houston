@@ -350,9 +350,8 @@
   ],
   "editMessage": {
     "edit": "Edit message",
-    "editing": "Editing a previous message",
-    "hint": "Sending will rewind the chat to this message and continue from your edited version.",
-    "cancel": "Cancel editing"
+    "send": "Send",
+    "cancel": "Cancel"
   },
   "copyMessage": {
     "copy": "Copy message"

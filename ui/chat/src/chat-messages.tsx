@@ -47,6 +47,7 @@ export function ChatMessages({
   enableMessageCopy,
   canCopyMessage,
   copyMessageLabel,
+  messageEditing,
   afterMessages,
   onLoadOlder,
   hasOlderMessages,
@@ -143,6 +144,7 @@ export function ChatMessages({
             key={item.kind === "process" ? item.key : item.message.key}
             mentionPeople={mentionPeople}
             messageCount={messages.length}
+            messageEditing={messageEditing}
             onEditMessage={onEditMessage}
             onOpenLink={onOpenLink}
             processLabels={processLabels}

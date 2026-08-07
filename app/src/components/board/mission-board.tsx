@@ -236,6 +236,7 @@ export function MissionBoard({
           enableMessageCopy={panel.enableMessageCopy}
           canCopyMessage={panel.canCopyMessage}
           copyMessageLabel={panel.copyMessageLabel}
+          messageEditing={panel.messageEditing}
           renderLink={panel.renderLink}
           renderSystemMessage={panel.renderSystemMessage}
           conversationMap={panel.conversationMap}

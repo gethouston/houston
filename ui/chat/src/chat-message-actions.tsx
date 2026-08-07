@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@houston-ai/core";
 import { Check, Copy, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MessageAction, MessageActions } from "./ai-elements/message";
@@ -47,8 +48,16 @@ export function ChatMessageActionsRow({
   const copyLabel = copyMessageLabel ?? "Copy message";
   const editLabel = editMessageLabel ?? "Edit message";
   return (
+    // Revealed by pointer or keyboard: invisible at rest, shown while the
+    // row (`group` on the Message container) is hovered OR holds focus — the
+    // buttons stay in the DOM and the tab order, so keyboard users reach them
+    // without a mouse (ChatGPT's grammar, chosen over the always-visible
+    // default). Opacity-only, so the row's geometry never shifts.
     <MessageActions
-      className={align === "end" ? "mt-1 justify-end" : "mt-1 justify-start"}
+      className={cn(
+        "mt-1 opacity-0 transition-opacity duration-200 group-focus-within:opacity-100 group-hover:opacity-100",
+        align === "end" ? "justify-end" : "justify-start",
+      )}
     >
       {copyable ? (
         <MessageAction
