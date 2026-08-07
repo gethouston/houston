@@ -92,7 +92,7 @@ function isPreConnectFailure(err: unknown): boolean {
 }
 
 /** A hung token endpoint would otherwise stall every credential serve. */
-const REFRESH_TIMEOUT_MS = 10_000;
+export const REFRESH_TIMEOUT_MS = 10_000;
 
 /**
  * The error code of an OAuth failure body, in either shape we see in the wild:

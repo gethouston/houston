@@ -9,10 +9,19 @@ import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
  * unpinned send resolves inside the runtime and lands on the provider default
  * (Sonnet), not their choice. Shared by every setup-chat start so the pin is
  * applied identically.
+ *
+ * `connected` is REQUIRED (never optional): a kickoff that cannot say which
+ * providers the user is signed into is exactly the bug PRODUCT-1236 reported —
+ * the pin then lands on the agent's stored provider even when the user never
+ * connected it. Pass the confirmed set, or `null` when it could not be
+ * confirmed (see `useConnectedProviders`).
  */
-export async function readAgentRunOverrides(path: string) {
+export async function readAgentRunOverrides(
+  path: string,
+  connected: readonly string[] | null,
+) {
   return {
     modeOverride: DEFAULT_TURN_MODE,
-    ...(await readAgentModelOverrides(path, tauriConfig.read)),
+    ...(await readAgentModelOverrides(path, tauriConfig.read, connected)),
   };
 }

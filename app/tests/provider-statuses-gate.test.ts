@@ -280,16 +280,31 @@ describe("the picker hook is actually wired to the gate", () => {
     // The throw replaces a map of `unknown`s with no statuses at all. Consumers
     // that read "somebody is checking" as "do not act yet" would otherwise see
     // an empty map and act on it as a confident "nothing is connected" — the
-    // migration reconnect card firing at a user who IS connected, and the
-    // routine kickoff prompt telling the agent the user has no providers.
+    // migration reconnect card firing at a user who IS connected, and the setup
+    // chats telling the agent the user has no providers (and PRODUCT-1236,
+    // switching their kickoff off the configured provider on that same
+    // fabricated evidence).
     for (const path of [
       "../src/hooks/use-migration-reconnect.ts",
-      "../src/components/tabs/use-routine-chat-setup.ts",
+      // The ONE derivation the setup chats read through (`useConnectedProviders`).
+      "../src/lib/connected-providers.ts",
     ]) {
       strictEqual(
         /isError/.test(read(path)),
         true,
         `${path} defers on isError`,
+      );
+    }
+    // ...and the setup chats must go through it rather than re-deriving.
+    for (const path of [
+      "../src/components/tabs/use-routine-chat-setup.ts",
+      "../src/components/tabs/use-skill-chat-setup.ts",
+      "../src/components/integrations/use-integration-chat-setup.ts",
+    ]) {
+      strictEqual(
+        read(path).includes("useConnectedProviders"),
+        true,
+        `${path} reads the shared connected-provider derivation`,
       );
     }
   });

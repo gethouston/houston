@@ -27,10 +27,11 @@ function Stage({ children }: { children: ReactNode }) {
 /** The agent tabs, named exactly as `agents:tabLabels.*` names them. */
 const agentTabs: TabBarProps["tabs"] = [
   { id: "activity", label: "Activity", badge: 3 },
-  { id: "chat", label: "Chat" },
+  { id: "context", label: "Context" },
+  { id: "skills", label: "Skills" },
   { id: "routines", label: "Routines" },
   { id: "files", label: "Files" },
-  { id: "job-description", label: "Agent Settings" },
+  { id: "admin", label: "Admin" },
 ];
 
 function LiveTabs({
