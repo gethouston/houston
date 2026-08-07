@@ -48,7 +48,13 @@ export async function startOAuthOp(
       `'${def.slug}' is not an MCP server - only MCP servers offer their own sign-in`,
     );
   }
-  const raw = await deps.secrets.get(secretIdFor(def.slug, TOKEN_VARIABLE));
+  // The stored bundle is only an OPTIMIZATION here (reuse the registered
+  // client on a re-auth) — a custody hiccup must not kill the START; the
+  // flow simply registers fresh. Completion still fails loudly if the store
+  // cannot take the tokens.
+  const raw = await deps.secrets
+    .get(secretIdFor(def.slug, TOKEN_VARIABLE))
+    .catch(() => null);
   const existing = raw ? parseBundle(raw) : null;
   const { state, authorizeUrl, attempt } = await beginCustomOAuth(
     def,

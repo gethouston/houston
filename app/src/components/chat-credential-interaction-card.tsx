@@ -99,9 +99,14 @@ export function ChatCredentialInteractionCard({
   const submit = useSubmitCustomCredential(agentId);
   const signIn = useStartCustomOAuth(agentId);
   const [ready, setReady] = useState(false);
-  // The browser sign-in was opened from THIS card; the flip to "active"
-  // (delivered by CustomIntegrationsChanged) is then this step's completion.
+  // The browser sign-in was opened from THIS card (set on SUCCESS only — a
+  // failed start keeps the plain Sign in button and shows no false waiting
+  // line); the flip to "active" (delivered by CustomIntegrationsChanged) is
+  // then this step's completion.
   const [signInStarted, setSignInStarted] = useState(false);
+  // The favicon the Integrations card already wears (PRODUCT-1172); the
+  // LogIn glyph is the no-icon (or failed-image) fallback.
+  const [iconFailed, setIconFailed] = useState(false);
 
   const view = list.data?.find((v) => v.slug === toolkit);
   const name = view?.name ?? toolkit;
@@ -184,7 +189,14 @@ export function ChatCredentialInteractionCard({
         <InteractionModalTitle
           className="flex-1 truncate"
           icon={
-            oauth ? (
+            view?.iconUrl && !iconFailed ? (
+              <img
+                alt=""
+                className="size-4 shrink-0 rounded"
+                onError={() => setIconFailed(true)}
+                src={view.iconUrl}
+              />
+            ) : oauth ? (
               <LogIn className="size-4 shrink-0 text-ink-muted" />
             ) : (
               <KeyRound className="size-4 shrink-0 text-ink-muted" />
@@ -254,8 +266,9 @@ export function ChatCredentialInteractionCard({
                 className="gap-1.5"
                 disabled={signIn.isPending}
                 onClick={() => {
-                  setSignInStarted(true);
-                  signIn.mutate(toolkit);
+                  signIn.mutate(toolkit, {
+                    onSuccess: () => setSignInStarted(true),
+                  });
                 }}
                 size="sm"
                 type="button"
