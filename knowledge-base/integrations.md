@@ -124,11 +124,18 @@ ran). The lookups, merged in order and deduped by action:
 The `app` scope travels the whole path: `integration_search`'s optional `app`
 param → sandbox proxy body → `IntegrationProvider.search(userId, query, acting,
 app)` → each provider (Composio hard-scopes; the custom provider filters its
-integrations and lists a scoped app's tools on a zero score). The gateway
-adapter (`remote.ts`) forwards `app` verbatim; a cloud gateway that predates the
-field ignores it and serves the unscoped result (today's behavior, never an
-error) — the Go gateway needs the same scoping for the managed cloud to get the
-hard filter.
+integrations — exact normalized match first, else loose — and lists a scoped
+app's tools on a zero score). The port contract is STRICT: a scope a provider
+cannot resolve returns EMPTY, never an internal unscoped fallback (which would
+pollute the multi-provider merge ahead of another provider's correctly scoped
+hits). The SANDBOX PROXY alone owns the typo path: when every provider merges
+to empty on a scoped search, it retries the fan-out unscoped once and marks the
+response `unscopedFallback: true`, which the runtime tool renders as a leading
+"no app matching X — these are OTHER apps" note. The gateway adapter
+(`remote.ts`) forwards `app` verbatim; a cloud gateway that predates the field
+ignores it and serves the unscoped result (today's behavior, never an error) —
+the Go gateway needs the same scoping for the managed cloud to get the hard
+filter.
 
 **Gateway adapter** (`remote.ts`) reads each `/search` item TOLERANTLY: a valid
 `status` passes through verbatim (a future gateway sending `blocked`); an absent

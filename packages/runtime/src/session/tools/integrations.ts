@@ -361,8 +361,15 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       signal: AbortSignal | undefined,
     ) {
       let items: ToolMatch[];
+      // Host-set when the `app` scope matched NO known app and the results are
+      // an unscoped retry — they belong to OTHER apps, and the model must not
+      // attribute them to the one it named.
+      let unscopedFallback: boolean | undefined;
       try {
-        ({ items } = await post<{ items: ToolMatch[] }>(
+        ({ items, unscopedFallback } = await post<{
+          items: ToolMatch[];
+          unscopedFallback?: boolean;
+        }>(
           "search",
           { query: params.query, ...(params.app ? { app: params.app } : {}) },
           signal,
@@ -395,6 +402,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         };
       }
       const list = items.map((m) => renderMatch(m, statusOf(m))).join("\n");
+      // An unscoped retry served these results: the named app is unknown here,
+      // and every match below belongs to some OTHER app. Say so first, or the
+      // model would present another app's action as the named app's.
+      const fallbackNote =
+        unscopedFallback && params.app
+          ? `NOTE: no app matching "${params.app}" exists here — the matches below are from OTHER apps that could do the task. If the user may have misspelled the app, retry once with the corrected name; otherwise use these only if they genuinely fit, and be plain with the user about which app would be used.\n\n`
+          : "";
 
       // Teach each speech act inline, only for the statuses actually present.
       const slugsWith = (s: AppStatus) => [
@@ -438,7 +452,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           {
             type: "text" as const,
             text: boundResultText(
-              parts.join("\n\n"),
+              fallbackNote + parts.join("\n\n"),
               "Search again with a more specific query to see the actions that were cut off.",
             ),
           },

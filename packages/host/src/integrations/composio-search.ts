@@ -65,9 +65,11 @@ async function namedAppLookup(
 
 /**
  * Run the merged search. `app` (optional) is the agent's explicit scope: the
- * result is then ONLY that app's actions (plus its toolkit-level entry), or —
- * when the scope resolves to nothing in the catalog (a typo, a guess) — the
- * full merged search, never a false "no such app" the query could still answer.
+ * result is then ONLY that app's actions (plus its toolkit-level entry). A
+ * scope that resolves to nothing in the catalog returns EMPTY — falling back
+ * to an unscoped search here would pollute the multi-provider merge (another
+ * provider may resolve the same scope); the sandbox proxy owns the one
+ * unscoped retry after ALL providers came back empty.
  */
 export async function searchComposio(
   deps: SearchDeps,
@@ -113,18 +115,16 @@ export async function searchComposio(
   };
 
   // Explicit scope: a HARD filter — only the named app's actions come back,
-  // with the deterministic listing fallback. An unresolvable scope falls
-  // through to the merged search below instead of claiming "no such app".
+  // with the deterministic listing fallback. Unresolvable scope → EMPTY (the
+  // sandbox proxy retries unscoped once every provider has come back empty).
   if (app) {
     const scoped = resolveScopeToolkits(catalog, app);
-    if (scoped.length > 0) {
-      const results = await Promise.all(
-        scoped.map((tk) => namedAppLookup(deps, query, tk.slug, true)),
-      );
-      for (const matches of results) for (const m of matches) push(m);
-      pushToolkitRows(scoped);
-      return out;
-    }
+    const results = await Promise.all(
+      scoped.map((tk) => namedAppLookup(deps, query, tk.slug, true)),
+    );
+    for (const matches of results) for (const m of matches) push(m);
+    pushToolkitRows(scoped);
+    return out;
   }
 
   const named = resolveCatalogToolkits(catalog, query);

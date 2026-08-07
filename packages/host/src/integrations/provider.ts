@@ -77,11 +77,11 @@ export interface IntegrationProvider {
    * a gateway adapter authenticates upstream as that user, direct adapters
    * ignore it. `app` (optional) HARD-scopes discovery to one named app — a
    * loose name or slug ("PostHog", "google sheets") the adapter resolves; the
-   * result is then only that app's actions, never a globally ranked list
-   * (PRODUCT-1274). One escape hatch: a scope the adapter cannot resolve to
-   * any known app (a typo, a guess) falls back to the unscoped merged search
-   * rather than claiming "no such app" — so callers must not assume every
-   * returned action belongs to the requested app.
+   * result is then STRICTLY that app's actions (PRODUCT-1274). A scope the
+   * adapter cannot resolve to any app it knows returns EMPTY — never an
+   * unscoped fallback, which would pollute a multi-provider merge where
+   * another provider resolves the same scope. The sandbox proxy owns the one
+   * unscoped retry after all providers came back empty.
    */
   search(
     userId: string,

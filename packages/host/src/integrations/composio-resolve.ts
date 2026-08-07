@@ -45,7 +45,10 @@ export function resolveCatalogToolkits(
  * Resolve an EXPLICIT app scope (search's `app` argument — a loose name or slug
  * the model heard from the user) to catalog toolkits. Exact normalized matches
  * win outright; otherwise substring containment EITHER way ("google sheet" ⊂
- * "googlesheets") ranked closest-length-first, capped like the query resolver.
+ * "googlesheets") yields only the SINGLE closest-length candidate — a loose
+ * scope ("hub" ⊂ github AND hubspot) must never hard-scope to several
+ * unrelated apps, which would recreate the very ranking pollution the scope
+ * exists to eliminate.
  */
 export function resolveScopeToolkits(
   catalog: Toolkit[],
@@ -70,5 +73,5 @@ export function resolveScopeToolkits(
       Math.abs(normalizeAppName(a.name).length - scope.length) -
       Math.abs(normalizeAppName(b.name).length - scope.length),
   );
-  return near.slice(0, limit);
+  return near.slice(0, 1);
 }

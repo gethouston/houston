@@ -96,6 +96,16 @@ test("resolveScopeToolkits: near matches work both ways, closest length first", 
   expect(resolveScopeToolkits(CATALOG, "gm")).toEqual([]);
 });
 
+test("resolveScopeToolkits: a loose scope matching SEVERAL apps yields only the closest one", () => {
+  // "hub" is a substring of both — hard-scoping to two unrelated apps would
+  // recreate the ranking pollution the scope exists to eliminate.
+  const catalog: Toolkit[] = [
+    { slug: "github", name: "GitHub" },
+    { slug: "hubspot", name: "HubSpot" },
+  ];
+  expect(resolveScopeToolkits(catalog, "hub")).toHaveLength(1);
+});
+
 // ── The merged search + progressive named-app discovery ──────────────────────
 
 /** Deps double that records every /tools query and answers via `reply`. */
@@ -176,16 +186,17 @@ test("explicit app scope with no action match still returns the app row", async 
   ]);
 });
 
-test("an unresolvable explicit scope falls back to the merged search, never a false not-found", async () => {
+test("an unresolvable explicit scope returns EMPTY — the sandbox proxy owns the unscoped retry", async () => {
+  // A provider-internal fallback would pollute the multi-provider merge with
+  // unscoped noise ranked ahead of another provider's correctly scoped hits.
   const { deps, calls } = fakeDeps({
     connections: PH_CONNS,
     catalog: PH_CATALOG,
     reply: () => [GH_NOISE],
   });
   const out = await searchComposio(deps, "list my repos", "frobnicator");
-  expect(out.map((m) => m.action)).toEqual(["GITHUB_LIST_REPOS"]);
-  // The merged search ran (a global, un-scoped query is among the calls).
-  expect(calls.some((q) => !q.toolkit_slug)).toBe(true);
+  expect(out).toEqual([]);
+  expect(calls).toEqual([]);
 });
 
 test("a query NAMING an app ranks that app's matches before scoped/global noise", async () => {

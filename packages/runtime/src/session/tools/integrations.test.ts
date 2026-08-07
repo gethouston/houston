@@ -204,6 +204,30 @@ test("search forwards the app scope to the host and omits it when unset (PRODUCT
   expect(calls[1]?.body).toEqual({ query: "get the top users" });
 });
 
+test("an unscoped-fallback result leads with the named-app-not-found note", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GMAIL_SEND_EMAIL",
+          toolkit: "gmail",
+          description: "Send an email",
+          connected: true,
+          status: "connected",
+        },
+      ],
+      unscopedFallback: true,
+    },
+  }));
+  const out = await run(search, { query: "send an email", app: "gmial" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text.startsWith('NOTE: no app matching "gmial" exists here')).toBe(
+    true,
+  );
+  expect(text).toContain("OTHER apps");
+  expect(text).toContain("GMAIL_SEND_EMAIL");
+});
+
 test("an empty APP-SCOPED result says the app was not found, with one spelling retry", async () => {
   mockFetch(() => ({ body: { items: [] } }));
   const out = await run(search, { query: "top users", app: "postohg" });

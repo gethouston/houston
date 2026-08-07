@@ -108,7 +108,9 @@ export async function handleSandboxIntegrations(
       // Optional `app`: the agent's HARD scope when the task names an app —
       // each provider returns only that app's actions (PRODUCT-1274).
       const app =
-        typeof body.app === "string" && body.app ? body.app : undefined;
+        typeof body.app === "string" && body.app.trim()
+          ? body.app.trim()
+          : undefined;
       const providerIds = explicit ? [explicit] : registry.ids();
       // Fan out and merge. One provider failing must not hide another's
       // results (desktop signed out: the gateway adapter throws while the
@@ -116,24 +118,43 @@ export async function handleSandboxIntegrations(
       // a signin failure underneath must still surface THAT, or the runtime
       // would render the wrong speech act ("no such app" instead of the
       // sign-in card).
-      const settled = await Promise.allSettled(
-        providerIds.map((id) =>
-          registry.get(id).search(ws.ownerUserId, query, acting, app),
-        ),
-      );
-      const items = settled.flatMap((s) =>
-        s.status === "fulfilled" ? s.value : [],
-      );
-      const failures = settled.flatMap((s) =>
-        s.status === "rejected" ? [s.reason] : [],
-      );
+      const fanOut = async (scope: string | undefined) => {
+        const settled = await Promise.allSettled(
+          providerIds.map((id) =>
+            registry.get(id).search(ws.ownerUserId, query, acting, scope),
+          ),
+        );
+        return {
+          items: settled.flatMap((s) =>
+            s.status === "fulfilled" ? s.value : [],
+          ),
+          failures: settled.flatMap((s) =>
+            s.status === "rejected" ? [s.reason] : [],
+          ),
+        };
+      };
+      let { items, failures } = await fanOut(app);
+      // A scope NO provider resolved (a typo, a guess) merges to empty — a
+      // resolved scope always yields at least the app's toolkit row. Retry
+      // unscoped ONCE, here and only here: a provider falling back on its own
+      // would pollute the merge with unscoped noise ranked ahead of another
+      // provider's correctly scoped hits. The flag tells the runtime tool the
+      // results are NOT the named app's.
+      let unscopedFallback = false;
+      if (app && items.length === 0 && failures.length === 0) {
+        ({ items, failures } = await fanOut(undefined));
+        unscopedFallback = items.length > 0;
+      }
       if (items.length === 0 && failures.length > 0) {
         throw (
           failures.find((f) => f instanceof IntegrationSigninRequiredError) ??
           failures[0]
         );
       }
-      json(res, 200, { items });
+      json(res, 200, {
+        items,
+        ...(unscopedFallback ? { unscopedFallback: true } : {}),
+      });
       return true;
     }
 

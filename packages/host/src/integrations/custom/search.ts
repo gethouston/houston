@@ -22,17 +22,27 @@ const tokenize = (q: string): string[] =>
     .split(/[^a-z0-9]+/)
     .filter((t) => t.length > 1);
 
-/** Loose app-scope match: "PostHog" hits slug "posthog" or name "PostHog EU". */
-const scopeMatches = (scope: string, slug: string, name: string): boolean => {
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/**
+ * Resolve an app scope against the defs: an EXACT normalized slug/name match
+ * wins outright ("Acme" must never also pull in "Acme Staging"); only when no
+ * def matches exactly does loose both-way substring containment apply
+ * ("PostHog" hits name "PostHog EU").
+ */
+function scopedDefsFor(defs: CustomDefRow[], scope: string): CustomDefRow[] {
   const want = norm(scope);
-  return (
-    want.length >= 3 &&
-    [norm(slug), norm(name)].some(
-      (s) => s.length >= 3 && (s.includes(want) || want.includes(s)),
-    )
+  if (want.length < 3) return [];
+  const exact = defs.filter(
+    (d) => norm(d.slug) === want || norm(d.name) === want,
   );
-};
+  if (exact.length > 0) return exact;
+  return defs.filter((d) =>
+    [norm(d.slug), norm(d.name)].some(
+      (s) => s.length >= 3 && (s.includes(want) || want.includes(s)),
+    ),
+  );
+}
 
 /**
  * Score custom tools against a plain-language query: token hits on the tool
@@ -51,7 +61,7 @@ export function searchCustomTools(
   app?: string,
 ): ToolMatch[] {
   if (app) {
-    const scopedDefs = defs.filter((d) => scopeMatches(app, d.slug, d.name));
+    const scopedDefs = scopedDefsFor(defs, app);
     if (scopedDefs.length === 0) return [];
     const slugs = new Set(scopedDefs.map((d) => d.slug));
     const scopedTools = tools.filter((t) => slugs.has(t.integration));

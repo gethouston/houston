@@ -413,16 +413,53 @@ test("search's app scope reaches the provider on BOTH routes (PRODUCT-1274)", as
     });
     expect(fake.lastApp).toBe("gmail");
 
-    // Omitted (or empty) → undefined at the port, never an empty-string scope.
+    // Omitted, empty, or whitespace-only → undefined at the port, never an
+    // empty-string scope (which would false-not-found a valid query).
     await fetch(`${base}/sandbox/integrations/search`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${sb}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ query: "send an email", app: "" }),
+      body: JSON.stringify({ query: "send an email", app: "   " }),
     });
     expect(fake.lastApp).toBeUndefined();
+  } finally {
+    stop();
+  }
+});
+
+test("a scope NO provider resolves retries unscoped ONCE and flags the fallback", async () => {
+  const { base, ws, vault, fake, stop } = await setup();
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      // The fake scopes by exact toolkit — "acne" (a typo) matches nothing,
+      // so the route must retry unscoped and say so via the flag.
+      body: JSON.stringify({ query: "send an email", app: "acne" }),
+    });
+    const body = await res.json();
+    expect(body.unscopedFallback).toBe(true);
+    expect(body.items.map((m: { action: string }) => m.action)).toContain(
+      "GMAIL_SEND_EMAIL",
+    );
+    expect(fake.lastApp).toBeUndefined();
+
+    // A RESOLVED scope never sets the flag.
+    const scoped = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "send an email", app: "gmail" }),
+    });
+    expect((await scoped.json()).unscopedFallback).toBeUndefined();
   } finally {
     stop();
   }

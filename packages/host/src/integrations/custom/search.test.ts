@@ -81,6 +81,30 @@ test("a scope matching no custom integration yields nothing (another provider ow
   expect(searchCustomTools("ping", pingTools, defs, "posthog")).toEqual([]);
 });
 
+test("an EXACT scope match excludes loose substring siblings (Acme vs Acme Staging)", () => {
+  const twinDefs: CustomDefRow[] = [
+    { slug: "acme", name: "Acme" },
+    { slug: "acme_staging", name: "Acme Staging" },
+  ];
+  const twinTools: CustomToolRow[] = [
+    ...pingTools.filter((t) => t.integration === "acme"),
+    {
+      address: "tools.acme_staging.org.default.ping",
+      integration: "acme_staging",
+      name: "ping",
+      description: "send a ping",
+    },
+  ];
+  const results = searchCustomTools("ping", twinTools, twinDefs, "Acme");
+  expect(results.map((m) => m.toolkit)).toEqual(["acme"]);
+  // No exact match → the loose both-way substring resolution still applies.
+  expect(
+    searchCustomTools("ping", twinTools, twinDefs, "staging").map(
+      (m) => m.toolkit,
+    ),
+  ).toEqual(["acme_staging"]);
+});
+
 test("a scoped integration with no compiled tool still surfaces as an app row", () => {
   const results = searchCustomTools("anything", [], defs, "beta");
   expect(results).toEqual([

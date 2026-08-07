@@ -196,13 +196,16 @@ export async function handleIntegrations(
         return true;
       }
       // Optional `app` hard-scopes discovery to one named app (PRODUCT-1274);
-      // the desktop gateway adapter forwards it here verbatim.
+      // the desktop gateway adapter forwards it here verbatim. STRICTLY
+      // scoped — no unscoped fallback here: the sandbox proxy at the top of
+      // the chain owns that retry, so a scoped call through this route never
+      // smuggles other apps' actions into a caller's merge.
       json(res, 200, {
         items: await provider.search(
           userId,
           query,
           undefined,
-          typeof app === "string" && app ? app : undefined,
+          typeof app === "string" && app.trim() ? app.trim() : undefined,
         ),
       });
       return true;
