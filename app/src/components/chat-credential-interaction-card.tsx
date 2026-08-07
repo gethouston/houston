@@ -5,11 +5,12 @@ import {
   type StepChrome,
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
-import { Check, CornerDownLeft, KeyRound, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Check, CornerDownLeft, KeyRound, Loader2, LogIn } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useAgentCustomIntegrations,
+  useStartCustomOAuth,
   useSubmitCustomCredential,
 } from "../hooks/queries";
 import { useUIStore } from "../stores/ui";
@@ -32,15 +33,16 @@ interface ChatCredentialInteractionCardProps extends StepChrome {
   /** Why the agent needs the key, rendered as the body's foreground "why" line.
    *  When absent it falls back to "Add your {name} key". */
   reason?: string;
-  /** Fired once the secret is stored — the panel records the integration's name
+  /** Fired once the secret is stored (or, for a sign-in integration, once the
+   *  browser flow landed) — the panel records the integration's name + mode
    *  and advances; the composed reply resumes the agent at the LAST step. */
-  onSaved: (name: string) => void;
+  onSaved: (name: string, mode: "key" | "oauth") => void;
   /** Fired when the user declines this credential step: "Skip" (live frontier or
    *  a reconsidered skip) passes no `message`; typing an instruction into the
    *  free-text row and sending passes that verbatim text. The panel records the
    *  decline (with the message, if any, so the composed reply relays it) then
    *  advances. */
-  onSkip: (name: string, message?: string) => void;
+  onSkip: (name: string, mode: "key" | "oauth", message?: string) => void;
   /** True when the user walked BACK onto this already-reached step via the pager.
    *  A revisited step whose key is saved shows the calm saved state with no
    *  footer (the pager's forward chevron is the way onward); a revisited SKIPPED
@@ -95,16 +97,47 @@ export function ChatCredentialInteractionCard({
   const addToast = useUIStore((s) => s.addToast);
   const list = useAgentCustomIntegrations(agentId);
   const submit = useSubmitCustomCredential(agentId);
+  const signIn = useStartCustomOAuth(agentId);
   const [ready, setReady] = useState(false);
+  // The browser sign-in was opened from THIS card (set on SUCCESS only — a
+  // failed start keeps the plain Sign in button and shows no false waiting
+  // line); the flip to "active" (delivered by CustomIntegrationsChanged) is
+  // then this step's completion.
+  const [signInStarted, setSignInStarted] = useState(false);
+  // The favicon the Integrations card already wears (PRODUCT-1172); the
+  // LogIn glyph is the no-icon (or failed-image) fallback.
+  const [iconFailed, setIconFailed] = useState(false);
 
   const view = list.data?.find((v) => v.slug === toolkit);
   const name = view?.name ?? toolkit;
+  // A sign-in (oauth) integration renders the SAME step as a Sign in card:
+  // no key form — the button opens the service's own browser sign-in
+  // (PRODUCT-1172), and the step completes itself when the grant lands.
+  const oauth = view?.auth === "oauth";
+  const mode = oauth ? ("oauth" as const) : ("key" as const);
+  const active = view?.state.status === "active";
   const authMethod = view ? customAuthMethod(view) : null;
   // The integration flips to "active" once its key is stored; on a revisit that
   // marks the step done, so it shows the calm saved state instead of re-prompting.
-  const isSaved = revisited && view?.state.status === "active";
-  const reasonLine = reason ?? t("credential.title", { name });
+  const isSaved = revisited && active;
+  const reasonLine =
+    reason ??
+    t(oauth ? "credential.signInTitle" : "credential.title", { name });
   const formId = `credential-form-${stepId}`;
+
+  // Sign-in completion arrives OUT OF BAND (the host's callback emits the
+  // change event, the list refetches, the def reads active) — advance the
+  // step exactly once when it does.
+  const completedRef = useRef(false);
+  useEffect(() => {
+    if (!oauth || !signInStarted || !active || completedRef.current) return;
+    completedRef.current = true;
+    addToast({
+      title: t("credential.signedInToast", { name }),
+      variant: "success",
+    });
+    onSaved(name, "oauth");
+  }, [oauth, signInStarted, active, name, addToast, onSaved, t]);
 
   const onSubmit = (values: Record<string, string>) => {
     submit.mutate(
@@ -125,7 +158,7 @@ export function ChatCredentialInteractionCard({
                   variant: "success",
                 },
           );
-          onSaved(name);
+          onSaved(name, "key");
         },
       },
     );
@@ -136,8 +169,8 @@ export function ChatCredentialInteractionCard({
   // untouched and pre-empts the global Escape-closes-the-panel shortcut. Inert
   // while a save is in flight and on the calm saved state.
   useInteractionStepKeys({
-    enabled: open && !submit.isPending && !isSaved,
-    onEscape: () => onSkip(name),
+    enabled: open && !submit.isPending && !signIn.isPending && !isSaved,
+    onEscape: () => onSkip(name, mode),
   });
 
   return (
@@ -155,7 +188,20 @@ export function ChatCredentialInteractionCard({
       title={
         <InteractionModalTitle
           className="flex-1 truncate"
-          icon={<KeyRound className="size-4 shrink-0 text-ink-muted" />}
+          icon={
+            view?.iconUrl && !iconFailed ? (
+              <img
+                alt=""
+                className="size-4 shrink-0 rounded"
+                onError={() => setIconFailed(true)}
+                src={view.iconUrl}
+              />
+            ) : oauth ? (
+              <LogIn className="size-4 shrink-0 text-ink-muted" />
+            ) : (
+              <KeyRound className="size-4 shrink-0 text-ink-muted" />
+            )
+          }
         >
           {name}
         </InteractionModalTitle>
@@ -164,8 +210,26 @@ export function ChatCredentialInteractionCard({
         isSaved ? (
           <span className="inline-flex items-center gap-1 font-medium text-emerald-600 text-sm dark:text-emerald-400">
             <Check className="size-3.5" />
-            {t("credential.saved")}
+            {t(oauth ? "credential.signedIn" : "credential.saved")}
           </span>
+        ) : oauth ? (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-balance text-ink text-sm leading-snug">
+              {reasonLine}
+            </p>
+            <p className="text-ink-muted text-sm">
+              {t("credential.signInSubtitle")}
+            </p>
+            {signInStarted && !active && (
+              <p
+                className="inline-flex items-center gap-1.5 text-ink-muted text-sm"
+                role="status"
+              >
+                <Loader2 className="size-3.5 animate-spin" />
+                {t("credential.signingIn")}
+              </p>
+            )}
+          </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             <p className="text-balance text-ink text-sm leading-snug">
@@ -192,38 +256,63 @@ export function ChatCredentialInteractionCard({
         isSaved ? undefined : (
           <>
             <ChatStepDeclineButton
-              disabled={submit.isPending}
+              disabled={submit.isPending || signIn.isPending}
               escLabel={t("interaction.esc")}
               label={t("interaction.skip")}
-              onClick={() => onSkip(name)}
+              onClick={() => onSkip(name, mode)}
             />
-            <Button
-              className="gap-1.5"
-              disabled={!ready || submit.isPending}
-              form={formId}
-              size="sm"
-              type="submit"
-            >
-              {submit.isPending ? (
-                <>
+            {oauth ? (
+              <Button
+                className="gap-1.5"
+                disabled={signIn.isPending}
+                onClick={() => {
+                  signIn.mutate(toolkit, {
+                    onSuccess: () => setSignInStarted(true),
+                  });
+                }}
+                size="sm"
+                type="button"
+              >
+                {signIn.isPending ? (
                   <Loader2 className="size-3.5 animate-spin" />
-                  {t("credential.saving")}
-                </>
-              ) : (
-                <>
-                  {t("credential.save")}
-                  <CornerDownLeft className="size-3.5 opacity-70" />
-                </>
-              )}
-            </Button>
+                ) : (
+                  <LogIn className="size-3.5" />
+                )}
+                {t(
+                  signInStarted && !signIn.isPending
+                    ? "credential.signInAgain"
+                    : "credential.signIn",
+                )}
+              </Button>
+            ) : (
+              <Button
+                className="gap-1.5"
+                disabled={!ready || submit.isPending}
+                form={formId}
+                size="sm"
+                type="submit"
+              >
+                {submit.isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {t("credential.saving")}
+                  </>
+                ) : (
+                  <>
+                    {t("credential.save")}
+                    <CornerDownLeft className="size-3.5 opacity-70" />
+                  </>
+                )}
+              </Button>
+            )}
           </>
         )
       }
       trailing={
         isSaved ? undefined : (
           <InlineTextRow
-            disabled={submit.isPending}
-            onSubmit={(text) => onSkip(name, text)}
+            disabled={submit.isPending || signIn.isPending}
+            onSubmit={(text) => onSkip(name, mode, text)}
             placeholder={t("interaction.declinePlaceholder")}
             sendLabel={t("questionCard.send")}
           />

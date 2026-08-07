@@ -459,7 +459,15 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     // local boot here wires no gateway/key, so only the always-on key-free
     // custom provider (HOU-550) is served (the cloud fixture passes the
     // nominal constant straight through).
-    expect(lc).toEqual({ ...LOCAL_CAPABILITIES, integrations: ["custom"] });
+    // customIntegrationOAuth is DEPLOYMENT-derived, not part of the nominal
+    // constants: the loopback-bound local boot serves its own browser-reachable
+    // OAuth callback (PRODUCT-1172); the cloud fixture passes the constant
+    // straight through and stays off.
+    expect(lc).toEqual({
+      ...LOCAL_CAPABILITIES,
+      integrations: ["custom"],
+      customIntegrationOAuth: true,
+    });
     expect(cc).toEqual(CLOUD_CAPABILITIES);
     expect(CLOUD_CAPABILITIES.integrations).toEqual(
       LOCAL_CAPABILITIES.integrations,

@@ -23,11 +23,14 @@ export interface CustomCredentialRef {
 /**
  * How the integration authenticates: `none` connects immediately (public API /
  * open MCP server); `credential` waits for the user's secret before any tool
- * exists (state `pending` until `credential` is stored). Decided at add time
- * from the service's declared auth + the user's answer, and persisted so a
- * restart re-creates the same connection shape.
+ * exists (state `pending` until `credential` is stored); `oauth` (MCP only,
+ * PRODUCT-1172) waits for the user to sign in through the service's own
+ * browser flow — the stored `credential` then references the token bundle
+ * (`oauth-bundle.ts`) instead of a pasted key. Decided at add time from the
+ * service's declared auth + the user's answer, and persisted so a restart
+ * re-creates the same connection shape.
  */
-export type CustomAuthMode = "none" | "credential";
+export type CustomAuthMode = "none" | "credential" | "oauth";
 
 /** One user-defined integration, the unit of persistence. `slug` is the
  *  executor catalog slug AND the Houston toolkit slug (grants, UI, search). */
@@ -38,6 +41,11 @@ export type CustomIntegrationDef =
       name: string;
       spec: CustomSpecSource;
       baseUrl?: string;
+      /** The service's main website (PRODUCT-1172): the BRAND domain the icon
+       *  derives from — the technical endpoint often lives elsewhere (an MCP
+       *  host, a raw spec URL) whose domain carries no favicon. Cosmetic
+       *  only; never part of the service-origin security checks. */
+      website?: string;
       auth: CustomAuthMode;
       addedAtMs: number;
       credential?: CustomCredentialRef;
@@ -49,6 +57,8 @@ export type CustomIntegrationDef =
       endpoint: string;
       /** Static non-secret headers (e.g. a tenant id); secrets go via credential. */
       headers?: Record<string, string>;
+      /** See the openapi arm — the brand domain for the icon. */
+      website?: string;
       auth: CustomAuthMode;
       addedAtMs: number;
       credential?: CustomCredentialRef;
@@ -99,8 +109,14 @@ export interface CustomIntegrationView {
   slug: string;
   name: string;
   kind: CustomIntegrationDef["kind"];
+  /** How this integration authenticates — `oauth` turns the pending state's
+   *  affordance into Sign in (browser flow) instead of Enter key. */
+  auth: CustomAuthMode;
   /** The service URL shown to the user (spec url / MCP endpoint). */
   displayUrl?: string;
+  /** Favicon of the service the definition talks to (PRODUCT-1172); absent
+   *  when none can exist (IP/localhost endpoints, unparseable blob specs). */
+  iconUrl?: string;
   addedAtMs: number;
   state: CustomIntegrationState;
   /** Present when a credential can be (re)provided — the fields to collect. */
@@ -125,7 +141,10 @@ export class CustomIntegrationError extends Error {
       | "not_found"
       | "unsupported_source"
       | "credential_invalid"
-      | "compile_failed",
+      | "compile_failed"
+      | "oauth_unsupported"
+      | "oauth_failed"
+      | "oauth_state_invalid",
     message: string,
   ) {
     super(message);

@@ -56,10 +56,11 @@ export type CustomTarget =
   | { kind: "definitions" }
   | { kind: "definition"; slug: string }
   | { kind: "credential"; slug: string }
-  | { kind: "tools"; slug: string };
+  | { kind: "tools"; slug: string }
+  | { kind: "oauthStart"; slug: string };
 
 const TARGET =
-  /^(?:detect|definitions(?:\/([^/]+)(?:\/(credential|tools))?)?)$/;
+  /^(?:detect|definitions(?:\/([^/]+)(?:\/(credential|tools|oauth\/start))?)?)$/;
 
 export function customTargetOf(rest: string): CustomTarget | null {
   const m = rest.match(TARGET);
@@ -76,6 +77,7 @@ export function customTargetOf(rest: string): CustomTarget | null {
   }
   if (m[2] === "credential") return { kind: "credential", slug };
   if (m[2] === "tools") return { kind: "tools", slug };
+  if (m[2] === "oauth/start") return { kind: "oauthStart", slug };
   return { kind: "definition", slug };
 }
 
@@ -91,9 +93,23 @@ export function parseAddInput(
 ): AddCustomIntegrationInput | string {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return "missing 'name'";
+  if (body.auth === "oauth" && body.kind !== "mcp") {
+    return "auth 'oauth' is only supported for MCP servers";
+  }
   const auth =
-    body.auth === "credential" ? ("credential" as const) : ("none" as const);
+    body.auth === "credential"
+      ? ("credential" as const)
+      : body.auth === "oauth"
+        ? ("oauth" as const)
+        : ("none" as const);
   const slug = typeof body.slug === "string" ? body.slug : undefined;
+  // The brand website for the card's icon (cosmetic; non-http values are
+  // simply dropped — icon derivation guards again anyway).
+  const website =
+    typeof body.website === "string" &&
+    /^https?:\/\//i.test(body.website.trim())
+      ? body.website.trim()
+      : undefined;
   if (body.kind === "openapi") {
     const url = typeof body.url === "string" ? body.url.trim() : "";
     // An inline document (agent-authored from the service's API docs when no
@@ -106,6 +122,7 @@ export function parseAddInput(
       name,
       spec: inline ? { kind: "blob", value: inline } : { kind: "url", url },
       ...(typeof body.baseUrl === "string" ? { baseUrl: body.baseUrl } : {}),
+      ...(website ? { website } : {}),
       auth,
       ...(slug ? { slug } : {}),
       ...(body.replace === true ? { replace: true } : {}),
@@ -118,6 +135,7 @@ export function parseAddInput(
       kind: "mcp",
       name,
       endpoint,
+      ...(website ? { website } : {}),
       auth,
       ...(slug ? { slug } : {}),
       ...(body.replace === true ? { replace: true } : {}),
@@ -136,7 +154,9 @@ export async function handleSandboxCustomIntegrations(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
-  const m = path.match(/^\/sandbox\/integrations\/custom\/(detect|add)$/);
+  const m = path.match(
+    /^\/sandbox\/integrations\/custom\/(detect|add|remove)$/,
+  );
   if (!m || method !== "POST") return false;
 
   const sbToken = bearer(req, url);
@@ -164,6 +184,19 @@ export async function handleSandboxCustomIntegrations(
         return true;
       }
       json(res, 200, await manager.detect(body.url.trim()));
+      return true;
+    }
+    // The agent's cleanup path (PRODUCT-1172 follow-up): switching a service
+    // between connection methods can need a cross-kind re-add, which
+    // `replace` refuses by design — the abandoned definition is removed
+    // instead of lingering as a dead card.
+    if (m[1] === "remove") {
+      if (typeof body.slug !== "string" || !body.slug.trim()) {
+        json(res, 400, { error: "missing 'slug'" });
+        return true;
+      }
+      await manager.remove(body.slug.trim());
+      json(res, 200, { ok: true });
       return true;
     }
     const input = parseAddInput(body);

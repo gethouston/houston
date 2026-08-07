@@ -1003,10 +1003,60 @@ per request.
 
 **Definition shape** (discriminated union, `types.ts`): `openapi` (spec
 url|blob, baseUrl?) or `mcp` (remote endpoint, headers?), plus
-`auth: "none" | "credential"` and an optional stored `credential`
+`auth: "none" | "credential" | "oauth"` and an optional stored `credential`
 {template, secretIds}. State per def: `active` (toolCount) / `pending` (needs a
-key; authMethods carry the collectible fields — v1 is ONE `token` variable per
-method) / `error`.
+key — or, for an `oauth` def, the user's browser sign-in; authMethods carry the
+collectible fields — v1 is ONE `token` variable per method) / `error`. The view
+carries `auth` (the UI's Sign-in-vs-Enter-key branch) and a derived `iconUrl`
+(PRODUCT-1172 — see Icons below).
+
+**OAuth sign-in for MCP servers (PRODUCT-1172).** An OAuth-walled MCP server is
+no longer a dead end: Houston IS the OAuth client. `custom/oauth-flow.ts` runs
+discovery (RFC 9728 protected-resource → RFC 8414 AS metadata via
+`@modelcontextprotocol/sdk`'s client auth module, a direct exact dep of the
+host), dynamic client registration (RFC 7591, client reused across re-auths
+while the redirect URI matches), and mints a PKCE authorize URL with a random
+single-use, 10-min `state` (in-memory `CustomOAuthAttempts`, one pending
+attempt per slug). The browser lands on the PUBLIC callback
+`GET /v1/integrations/custom/oauth/callback` (`routes/custom-integrations-oauth.ts`,
+mounted BEFORE `principal(...)` — the state is its whole authentication; the
+response is a tiny self-contained close-this-tab page). Completion
+(`custom/oauth-ops.ts`, serialized like every manager mutation) exchanges the
+code, writes a **token bundle** (`custom/oauth-bundle.ts`: tokens + client +
+AS metadata + resource, versioned JSON) into the secret store under the SAME
+`ci_<slug>_token` id a pasted key would use, sets
+`credential {template, secretIds}` on the def, reconnects, and emits
+`CustomIntegrationsChanged` — the UI flips on the event, no client-side poll.
+**Refresh needs no rewire**: the executor resolves connection inputs through
+`houstonCredentialProvider` PER REQUEST, and its `get` now recognizes a bundle
+value and serves the CURRENT access token (`resolveOAuthValue` — 60s skew,
+single-flight per id, rotated bundle persisted; an expired grant with no
+refresh token throws "sign in again"). MCP servers registered with any
+non-`none` auth get the `Authorization: Bearer` header template, so the token
+rides the standard placement.
+
+**Deployment gating** — capability `customIntegrationOAuth`
+(`/v1/capabilities`): on exactly when the host can serve a browser-reachable
+callback. A loopback-bound local host derives `http://127.0.0.1:<port>` (the
+desktop sidecar; `pnpm dev`'s host pane too); self-host opts in with
+`HOUSTON_OAUTH_CALLBACK_BASE_URL`; managed pods stay OFF until the gateway
+serves a callback route (a cloud follow-up). `detect` decorates a
+`requiresOAuth` result with `oauthSupported`, so the agent tool and the manual
+add form branch on the HOST's answer, never a guess: supported → add with
+`auth:"oauth"` (the add form hides the key switch and chains straight into the
+browser; rows/detail card show **Sign in** / **Sign in again**,
+`useStartCustomOAuth`); unsupported → the honest "can't connect yet" verdict
+blocks the add exactly as before.
+
+**Icons (PRODUCT-1172).** `custom/icon.ts` derives a service favicon at
+VIEW-BUILD time (never persisted): MCP endpoint host / `baseUrl` / spec URL /
+a blob spec's first `servers[]` origin → strip one technical label
+(`www|api|mcp`) → Google S2 favicon URL (the same service `app-display.ts`'s
+`fallbackLogo` already uses; IP/localhost/single-label hosts yield none).
+`AppLogo`'s per-URL failure latch keeps the letter avatar as fallback. Carried
+as `CustomIntegrationView.iconUrl` into the custom rows, the detail dialog,
+and the chat process-header brand line (`use-action-brand-resolver.ts` — the
+wrench glyph is now the no-icon path only).
 
 **Actions are executor addresses.** A custom ToolMatch's `action` is
 `tools.<integration>.<owner>.<connection>.<tool>`; `toolkit` is the integration
@@ -1120,9 +1170,12 @@ once made the model refuse the step-by-step interview. The QUIET path is
 **"Add manually"** (`CustomAddForm` + the pure, node-tested
 `custom-add-model.ts`): kind (API / MCP server), URL with an optional "Check"
 (the detect route pre-classifies, fills the name, and flips "needs an API
-key" on a key-walled server — an OAuth-walled one instead gets an honest
-"Houston can't connect to this yet" verdict via `requiresOAuth`, and never
-auto-flips the key switch: a pasted key cannot satisfy OAuth), name, and a
+key" on a key-walled server — an OAuth-walled one never auto-flips the key
+switch: a pasted key cannot satisfy OAuth. Where the host reports
+`oauthSupported` the verdict reads as good news, the key switch hides, and
+the add rides `auth:"oauth"` straight into the browser sign-in; elsewhere the
+honest "Houston can't connect to this yet" verdict still blocks the add —
+PRODUCT-1172, see the OAuth sign-in block in §4), name, and a
 "needs an API key" switch. The verdict is keyed to the URL it judged and
 latest-check-wins (`checkSeq`), so a late probe can never claim an edited
 address. Detect + add ride the TRANSPORT agent's per-agent routes (the same

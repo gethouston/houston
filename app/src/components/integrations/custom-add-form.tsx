@@ -56,10 +56,10 @@ export function CustomAddForm({
   // the button's disabled state — a late result may never clobber a newer one.
   const checkSeq = useRef(0);
 
-  const input = addInputFrom(form);
   const canCheck = isServiceUrl(form.url) && !detect.isPending;
   const shownVerdict =
     verdict && verdict.url === form.url.trim() ? verdict.result : null;
+  const input = addInputFrom(form, shownVerdict);
   const blocked = oauthBlocked(form, shownVerdict);
 
   const check = async () => {
@@ -132,7 +132,7 @@ export function CustomAddForm({
         </div>
         {shownVerdict && (
           <p
-            className={`text-[13px] ${shownVerdict.kind === "unknown" || shownVerdict.requiresOAuth ? "text-ink-muted" : "text-success-text"}`}
+            className={`text-[13px] ${shownVerdict.kind === "unknown" || (shownVerdict.requiresOAuth && !shownVerdict.oauthSupported) ? "text-ink-muted" : "text-success-text"}`}
             role="status"
           >
             {t(detectSummaryKey(shownVerdict))}
@@ -156,24 +156,32 @@ export function CustomAddForm({
         />
       </div>
 
-      <label
-        htmlFor="custom-add-needs-key"
-        className="flex items-center justify-between gap-3"
-      >
-        <span className="min-w-0">
-          <span className="block text-[13px] font-medium text-ink">
-            {t("custom.add.needsKey")}
+      {/* A supported OAuth verdict makes the key switch moot — the add rides
+          auth "oauth" and the user signs in instead of pasting anything. */}
+      {!(
+        form.kind === "mcp" &&
+        shownVerdict?.requiresOAuth &&
+        shownVerdict.oauthSupported
+      ) && (
+        <label
+          htmlFor="custom-add-needs-key"
+          className="flex items-center justify-between gap-3"
+        >
+          <span className="min-w-0">
+            <span className="block text-[13px] font-medium text-ink">
+              {t("custom.add.needsKey")}
+            </span>
+            <span className="block text-[13px] text-ink-muted">
+              {t("custom.add.needsKeyDesc")}
+            </span>
           </span>
-          <span className="block text-[13px] text-ink-muted">
-            {t("custom.add.needsKeyDesc")}
-          </span>
-        </span>
-        <Switch
-          id="custom-add-needs-key"
-          checked={form.needsKey}
-          onCheckedChange={(needsKey) => setForm((f) => ({ ...f, needsKey }))}
-        />
-      </label>
+          <Switch
+            id="custom-add-needs-key"
+            checked={form.needsKey}
+            onCheckedChange={(needsKey) => setForm((f) => ({ ...f, needsKey }))}
+          />
+        </label>
+      )}
 
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onBack}>

@@ -112,6 +112,18 @@ export async function submitCustomIntegrationCredential(
   return (await res.json()) as CustomIntegrationView;
 }
 
+export async function startCustomIntegrationOAuth(
+  cfg: ControlPlaneConfig,
+  slug: string,
+): Promise<{ authorizeUrl: string }> {
+  const res = await cpFetch(
+    cfg,
+    `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/oauth/start`,
+    { method: "POST" },
+  );
+  return (await res.json()) as { authorizeUrl: string };
+}
+
 export async function detectCustomIntegration(
   cfg: ControlPlaneConfig,
   url: string,

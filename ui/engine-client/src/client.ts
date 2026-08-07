@@ -1419,6 +1419,30 @@ export class HoustonClient {
       { values },
     );
   }
+  /**
+   * Start the browser sign-in for an OAuth custom integration (PRODUCT-1172):
+   * the host discovers the service's authorization server, registers, and
+   * returns the authorize URL to open in the browser. Completion lands on the
+   * host's public callback; the refreshed list arrives via
+   * `CustomIntegrationsChanged`.
+   */
+  startCustomIntegrationOAuth(slug: string): Promise<{ authorizeUrl: string }> {
+    return this.request(
+      "POST",
+      `/integrations/custom/definitions/${this.seg(slug)}/oauth/start`,
+    );
+  }
+  /** `startCustomIntegrationOAuth` through the per-agent surface (the ONE
+   *  form a gateway-fronted deployment proxies to the pod — HOU-823). */
+  startAgentCustomIntegrationOAuth(
+    agentSlugOrId: string,
+    slug: string,
+  ): Promise<{ authorizeUrl: string }> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}/oauth/start`,
+    );
+  }
   /** Classify a pasted URL (OpenAPI doc / MCP endpoint / unknown) — the manual
    *  add form's pre-check (HOU-980). `unknown` is a result, never a throw. */
   detectCustomIntegration(url: string): Promise<CustomDetectResult> {

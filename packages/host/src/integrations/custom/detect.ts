@@ -8,10 +8,14 @@ export interface DetectResult {
   suggestedSlug?: string;
   /** MCP probe: does the server demand auth before listing tools? */
   requiresAuthentication?: boolean;
-  /** MCP probe: the auth it demands is ITS OWN sign-in flow (OAuth), which
-   *  the custom provider cannot drive — a pasted API key will never work.
-   *  Surfaced so the UI/agent can say so instead of collecting a dead key. */
+  /** MCP probe: the auth it demands is ITS OWN sign-in flow (OAuth) — a
+   *  pasted API key will never work. Surfaced so the UI/agent offers the
+   *  browser sign-in (when `oauthSupported`) instead of collecting a dead
+   *  key. */
   requiresOAuth?: boolean;
+  /** Present with `requiresOAuth`: whether THIS deployment can run the
+   *  browser sign-in (PRODUCT-1172) — it needs a browser-reachable callback. */
+  oauthSupported?: boolean;
   toolCount?: number;
 }
 

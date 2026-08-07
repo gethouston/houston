@@ -146,6 +146,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
       "request_connection",
       "custom_integration_detect",
       "custom_integration_add",
+      "custom_integration_remove",
       "request_credential",
     ]),
   );
@@ -161,6 +162,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
       "mcp__houston__request_connection",
       "mcp__houston__custom_integration_detect",
       "mcp__houston__custom_integration_add",
+      "mcp__houston__custom_integration_remove",
       "mcp__houston__request_credential",
     ]),
   );

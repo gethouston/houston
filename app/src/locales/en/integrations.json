@@ -153,7 +153,8 @@
         "api": "Recognized an API service.",
         "mcp": "Recognized an MCP server.",
         "unknown": "We couldn't recognize this address. Check the URL, or let your agent help you in chat.",
-        "mcpOauth": "This server signs in with its own account (OAuth), which Houston can't connect to yet. An API key won't work here."
+        "mcpOauth": "This server signs in with its own account (OAuth), which Houston can't connect to yet. An API key won't work here.",
+        "mcpOauthOk": "This MCP server uses its own sign-in. After adding it, you'll sign in in your browser."
       },
       "nameLabel": "Name",
       "namePlaceholder": "What should we call it?",
@@ -171,12 +172,14 @@
       "activeBody": "Connected and working. Your agents can use its actions in any chat.",
       "pendingBody": "Waiting for an API key. Enter the key to switch it on.",
       "errorBody": "It isn't working right now: {{message}}",
-      "updateKey": "Update key"
+      "updateKey": "Update key",
+      "pendingSignInBody": "This integration is waiting for you to sign in. Press Sign in and finish in your browser."
     },
     "status": {
       "active": "Connected",
       "pendingKey": "Needs an API key",
-      "error": "{{message}}"
+      "error": "{{message}}",
+      "pendingSignIn": "Waiting for you to sign in"
     },
     "credential": {
       "apiKeyLabel": "API key",
@@ -210,6 +213,11 @@
       "done": "Done",
       "doneToast": "Nice! Your custom integration is ready to use."
     },
-    "catalogUnavailable": "The app catalog isn't available in this setup, but you can still add custom integrations."
+    "catalogUnavailable": "The app catalog isn't available in this setup, but you can still add custom integrations.",
+    "signIn": "Sign in",
+    "signInAgain": "Sign in again",
+    "oauth": {
+      "openedToast": "Finish signing in to {{name}} in your browser"
+    }
   }
 }

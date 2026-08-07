@@ -49,7 +49,11 @@ export interface CustomIntegrationSeed {
   slug: string;
   name: string;
   kind: "openapi" | "mcp";
+  /** `oauth` renders the Sign in affordance instead of Enter key
+   *  (PRODUCT-1172). Optional like the wire field (old-host tolerance). */
+  auth?: "none" | "credential" | "oauth";
   displayUrl?: string;
+  iconUrl?: string;
   addedAtMs: number;
   state:
     | { status: "active"; toolCount: number }
@@ -245,6 +249,9 @@ export const DEFAULT_CAPABILITIES: FakeCapabilities = {
   openaiCompatible: false,
   integrations: [],
   sharedSkills: true,
+  // The fake models the loopback desktop deployment: custom-integration
+  // sign-in available (PRODUCT-1172).
+  customIntegrationOAuth: true,
 };
 
 /** Unrestricted, manager access — no policy until a spec arms one. */

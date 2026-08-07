@@ -86,6 +86,15 @@ export interface Capabilities {
    */
   triggers?: boolean;
   /**
+   * Whether a custom integration can sign in through its own OAuth flow
+   * (PRODUCT-1172): the host can serve a browser-reachable callback (the
+   * desktop sidecar's loopback, or a configured public base URL). Absent/false
+   * = the deployment cannot receive the redirect (managed cloud until its
+   * gateway callback ships) — the UI keeps the honest "can't connect yet"
+   * verdict instead of offering a sign-in that can only fail.
+   */
+  customIntegrationOAuth?: boolean;
+  /**
    * Whether this deployment runs in multiplayer (paid org) mode: members,
    * roles, per-agent assignment. Absent/false = single personal workspace.
    * Optional so every existing single-player host/profile stays valid.

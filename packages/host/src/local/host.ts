@@ -36,6 +36,7 @@ import { LocalPaths } from "../paths";
 import type { ChannelCtx } from "../ports";
 import { forward } from "../proxy/route";
 import { CredentialServeHealer } from "../routes/credential-healer";
+import { CUSTOM_OAUTH_CALLBACK_PATH } from "../routes/custom-integrations-oauth";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
@@ -119,6 +120,16 @@ export interface LocalHostOptions {
   chatHistoryDbPath?: string;
   /** Override served capabilities; managed K8s pods use the cloud profile. */
   capabilities?: ControlPlaneDeps["capabilities"];
+  /**
+   * Browser-reachable base URL for the custom-integration OAuth callback
+   * (PRODUCT-1172), e.g. a self-host's public origin
+   * (HOUSTON_OAUTH_CALLBACK_BASE_URL). Unset: a loopback-bound local host
+   * derives `http://127.0.0.1:<port>` (the desktop sidecar — the user's
+   * browser runs on the same machine); every other shape (managed pods,
+   * 0.0.0.0 binds with no configured origin) serves NO callback and the
+   * capability stays off.
+   */
+  oauthCallbackBase?: string;
   /**
    * Managed pod credential gateway. When present, provider credentials live at
    * the org level in the gateway (single refresher); the local file is only a
@@ -433,11 +444,27 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     customStore,
     customExecutor,
   );
+  // OAuth sign-in for custom MCP servers (PRODUCT-1172): only a deployment
+  // whose callback a browser can actually reach offers it. The desktop
+  // sidecar (local profile, loopback bind) derives its own base; self-host
+  // opts in with an explicit public origin; managed pods stay off until the
+  // gateway serves a callback.
+  const oauthCallbackBase =
+    opts.oauthCallbackBase ??
+    ((opts.capabilities ?? LOCAL_CAPABILITIES).profile === "local" &&
+    (opts.bind ?? "127.0.0.1") === "127.0.0.1"
+      ? `http://127.0.0.1:${opts.port}`
+      : undefined);
   const customIntegrations = new CustomIntegrationManager(
     customStore,
     customSecrets,
     customExecutor,
     () => events.emit(LOCAL_USER, { type: "CustomIntegrationsChanged" }),
+    oauthCallbackBase
+      ? {
+          callbackUrl: `${oauthCallbackBase.replace(/\/+$/, "")}${CUSTOM_OAUTH_CALLBACK_PATH}`,
+        }
+      : {},
   );
 
   const registry = new IntegrationRegistry([
@@ -498,6 +525,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // Served capabilities advertise the integrations actually wired, not the
     // profile's nominal list — an unconfigured deployment says [] honestly.
     integrations: registry.ids(),
+    // On exactly when this host serves a browser-reachable OAuth callback.
+    customIntegrationOAuth: customIntegrations.oauthSupported,
     // `triggers` is never advertised here: this host has no trigger backend. On
     // managed cloud the Go edge advertises the capability; a pod/self-host/desktop
     // stays byte-identical to the nominal profile (absent = off, protocol #core).
