@@ -7,15 +7,6 @@ export {
   useFolderDropTarget,
 } from "./drop-zone";
 export type { FileMenuLabels } from "./file-menu";
-export type { FileCategory } from "./file-type";
-// File-type classification (shared with app-side preview loaders)
-export {
-  fileCategory,
-  IMAGE_PREVIEW_MAX_BYTES,
-  previewKind,
-  TEXT_PREVIEW_MAX_BYTES,
-  TEXT_PREVIEW_SLICE_BYTES,
-} from "./file-type";
 export type { FilesBrowserProps } from "./files-browser";
 // Components
 export { FilesBrowser } from "./files-browser";

@@ -5,6 +5,7 @@ import {
   fileLinkRehypePlugin,
   markdownFilePath,
 } from "../src/file-link-rehype.ts";
+import { extensionOf, fileNameOf } from "../src/file-path.ts";
 
 describe("markdownFilePath", () => {
   it("decodes the percent-escapes micromark minted for a destination", () => {
@@ -136,5 +137,21 @@ describe("fileLinkRehypePlugin", () => {
     };
     assert.equal(a.properties[FILE_PATH_ATTR], "plan.md");
     assert.equal(a.properties.href, "./plan.md");
+  });
+});
+
+describe("fileNameOf / extensionOf", () => {
+  it("takes the last segment on both separators", () => {
+    assert.equal(fileNameOf("informes/Q3 reporte.pdf"), "Q3 reporte.pdf");
+    assert.equal(fileNameOf("C:\\Users\\jo\\perfil.md"), "perfil.md");
+    assert.equal(fileNameOf("perfil.md"), "perfil.md");
+  });
+
+  it("lowercases the extension and tolerates files without one", () => {
+    assert.equal(extensionOf("Plan 90 Dias.MD"), "md");
+    assert.equal(extensionOf("informes/costos.xlsx"), "xlsx");
+    assert.equal(extensionOf("Makefile"), "");
+    // A dotfile is not an extension.
+    assert.equal(extensionOf(".gitignore"), "");
   });
 });

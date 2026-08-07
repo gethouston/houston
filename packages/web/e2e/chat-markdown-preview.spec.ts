@@ -76,6 +76,59 @@ async function seedDeliverable(request: {
   });
 }
 
+test("every file link renders as one file chip, whatever shape the agent wrote (PRODUCT-1231)", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/agents/houston-assistant/activities`, {
+    data: { id: "act-chips", title: "Chips", status: "needs_you" },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-history`, {
+    data: {
+      conversationId: "activity-act-chips",
+      messages: [
+        { role: "user", content: "go", ts: 1 },
+        {
+          role: "assistant",
+          content: [
+            // A LABELED file link and a BARE one: one action, so one look.
+            "Listo: [Perfil](perfil.md)",
+            "Y el [reporte](informes/Q3%20reporte.pdf).",
+            "Referencia: [el informe](https://example.com/report)",
+          ].join("\n\n"),
+          ts: 2,
+        },
+      ],
+    },
+  });
+
+  await page.goto("/");
+  await page.getByText("Chips").first().click();
+  await expect(page.getByRole("button", { name: "Perfil" })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Both file chips carry the file's full path as their title — the affordance
+  // follows the DESTINATION, not the label shape.
+  await expect(page.getByRole("button", { name: "Perfil" })).toHaveAttribute(
+    "title",
+    "perfil.md",
+  );
+  await expect(page.getByRole("button", { name: "reporte" })).toHaveAttribute(
+    "title",
+    "informes/Q3 reporte.pdf",
+  );
+
+  // A file never wears the web link's clothes: no external-link arrow, and
+  // never the `text-link` blue that is reserved for destinations leaving the
+  // app. The web link beside them still does.
+  const fileChip = page.getByRole("button", { name: "Perfil" });
+  await expect(fileChip.locator("svg.lucide-external-link")).toHaveCount(0);
+  const webLink = page.getByRole("button", { name: "el informe" });
+  await expect(webLink).toBeVisible();
+  await expect(webLink.locator("svg")).not.toHaveCount(0);
+});
+
 test("a markdown file whose name has spaces previews as rendered prose (PRODUCT-1231)", async ({
   page,
   request,

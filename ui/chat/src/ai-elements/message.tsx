@@ -39,7 +39,9 @@ import {
 } from "react";
 import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { Autolink } from "../autolink";
+import { FileChip } from "../file-chip";
 import { FILE_PATH_ATTR, fileLinkRehypePlugin } from "../file-link-rehype";
+import { fileNameOf } from "../file-path";
 import { MarkdownCodeBlock } from "../markdown-code-block";
 import { autolinkDisplay, classifyMarkdownLink } from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
@@ -512,6 +514,24 @@ export const MessageResponse = memo(
             if (custom != null) {
               return <>{custom}</>;
             }
+          }
+          // DESTINATION KIND decides the affordance, BEFORE label shape does.
+          // A workspace file is one action, so it gets one look no matter how
+          // the agent wrote the markdown — `[Perfil](perfil.md)` and
+          // `[plan.md](plan.md)` used to split across the button-pill and
+          // autolink branches below and render as two different things
+          // (PRODUCT-1231). Label shape still decides among URLs, where it
+          // genuinely matters.
+          if (filePath !== undefined) {
+            // The agent's own label when it wrote one; otherwise the file
+            // name, since the raw path reads as noise mid-sentence.
+            const label = kind === "autolink" ? fileNameOf(filePath) : children;
+            if (!fn) return <span>{label}</span>;
+            return (
+              <FileChip path={filePath} onOpen={onOpen}>
+                {label}
+              </FileChip>
+            );
           }
           // Bare URL the agent dropped in chat → inline link chip that
           // opens in the system browser (issue #358), not dead text. Only

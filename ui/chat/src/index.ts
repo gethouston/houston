@@ -281,6 +281,10 @@ export type {
   ToolEntry,
 } from "./feed-to-messages";
 export { distinctAuthorCount } from "./feed-to-messages";
+export type { FileChipProps } from "./file-chip";
+// The inline affordance for a workspace file named in agent prose — the file
+// vocabulary (type glyph + tint), never the web link's blue chip or ↗ pill.
+export { FileChip } from "./file-chip";
 export type {
   InteractionAnswerLine,
   InteractionAnswersPayload,
