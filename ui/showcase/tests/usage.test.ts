@@ -194,6 +194,7 @@ describe("the surface rules", () => {
       "app/src/components/settings/general.tsx": "Settings",
       "app/src/components/shell/sidebar.tsx": "App shell",
       "app/src/components/shell/agent-sidebar-items.tsx": "Your Agents",
+      "app/src/components/team-view/team-view.tsx": "Your teams",
       "agentstore/src/app/page.tsx": "Store website",
       "packages/web/src/app-tree.tsx": "Web app",
       "ui/board/src/mission-board.tsx": "ui/board (library)",

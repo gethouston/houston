@@ -19,6 +19,16 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
     note: "{ id, name, collapsed, itemIds }. Present (even []) switches the flat list for the grouped drag-and-drop layout.",
   },
   {
+    name: "groups[].sections",
+    type: "SidebarSectionRow[]",
+    note: "{ id, label, icon?, active, onSelect }. Destination rows drawn above that group's agents. Never draggable, never a drop target.",
+  },
+  {
+    name: "defaultGroup",
+    type: "{ name, sections? }",
+    note: "Names the trailing default block (the items in no group) and gives it its own destination rows. It gets a header but no chevron and no ⋯ menu: it stands for the container itself.",
+  },
+  {
     name: "onMoveItem",
     type: "(itemId, { groupId, beforeItemId }) => void",
     note: "Drop target for an agent. groupId null = the ungrouped section.",

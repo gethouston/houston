@@ -12,12 +12,13 @@ import {
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
+import type { TeamSectionId } from "../../lib/teams-model";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { SKILLS_VIEW_ID } from "../skills-view/id";
 import { STORE_VIEW_ID } from "../store-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 
-type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
+type ShellT = TFunction<["shell", "common", "teams"]>;
 
 /**
  * The top-level navigation entries: Mission Control, Integrations, AI Models
@@ -84,7 +85,12 @@ export function buildSidebarNavItems(args: {
   ];
 }
 
-/** Localized `AppSidebar` labels (agent row actions + group actions). */
+/**
+ * Localized `AppSidebar` labels (agent row actions + team actions). The
+ * trailing block is named after the workspace and passed as `defaultGroup`, so
+ * there is no anonymous "ungrouped" header to label — the library dropped that
+ * branch and its untranslated string with it.
+ */
 export function buildSidebarLabels(t: ShellT): SidebarLabels {
   return {
     addItem: t("shell:sidebar.addAgent"),
@@ -92,14 +98,29 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
     renameItem: t("common:actions.rename"),
     deleteItem: t("common:actions.delete"),
     collapseSidebar: t("shell:sidebar.collapse"),
-    createGroup: t("shell:sidebar.groups.new"),
-    renameGroup: t("shell:sidebar.groups.rename"),
-    deleteGroup: t("shell:sidebar.groups.delete"),
-    editGroupContext: t("shell:sidebar.groups.editContext"),
-    groupMenu: t("shell:sidebar.groups.menu"),
-    newGroupPlaceholder: t("shell:sidebar.groups.namePlaceholder"),
-    emptyGroupHint: t("shell:sidebar.groups.emptyHint"),
-    ungroupedLabel: t("shell:sidebar.groups.ungrouped"),
+    createGroup: t("shell:sidebar.newTeam"),
+    renameGroup: t("shell:sidebar.teams.rename"),
+    deleteGroup: t("shell:sidebar.teams.delete"),
+    editGroupContext: t("shell:sidebar.teams.editContext"),
+    groupMenu: t("shell:sidebar.teams.menu"),
+    newGroupPlaceholder: t("shell:sidebar.teams.namePlaceholder"),
+    emptyGroupHint: t("shell:sidebar.teams.emptyHint"),
+  };
+}
+
+/**
+ * The label for every team section, including the ones no team offers yet
+ * (`visibleTeamSections` decides which get a row). Complete by construction, so
+ * a section that starts rendering never ships without its translation.
+ */
+export function buildTeamSectionLabels(
+  t: ShellT,
+): Record<TeamSectionId, string> {
+  return {
+    "mission-control": t("shell:sidebar.teamSections.missionControl"),
+    routines: t("shell:sidebar.teamSections.routines"),
+    files: t("shell:sidebar.teamSections.files"),
+    settings: t("shell:sidebar.teamSections.settings"),
   };
 }
 

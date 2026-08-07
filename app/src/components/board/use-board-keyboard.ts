@@ -8,15 +8,22 @@ import { useUIStore } from "../../stores/ui";
  *
  * Owns: the arrow-key "highlight ring" navigator (Enter promotes the ring to
  * the open selection), the global Escape-to-close wiring, the highlight↔
- * selection sync, and the empty-board auto-open. Refs hold the latest items /
- * columns / highlight so the callbacks registered in the UI store stay stable
- * while always reading current state.
+ * selection sync, the empty-board auto-open, and the release of everything
+ * this board holds of the shared shell panel when it goes off screen. Refs
+ * hold the latest items / columns / highlight so the callbacks registered in
+ * the UI store stay stable while always reading current state.
+ *
+ * Every global registration here is gated on `isActive`: several mission
+ * boards are mounted at once (the dashboard board plus every kept-alive team
+ * board), so an unconditional registration is last-writer-wins and a HIDDEN
+ * board would own the arrow navigator and the Enter opener.
  *
  * View-specific knobs (`autoOpenKey` / `autoOpenItemCount` / `autoOpenBlocked`
  * / `onAutoOpenEmpty`) come from the source so Mission Control and the board
  * tab keep their own "open when empty" semantics behind one shared guard.
  */
 export function useBoardKeyboard({
+  isActive,
   items,
   columns,
   selectedId,
@@ -24,6 +31,7 @@ export function useBoardKeyboard({
   highlightedId,
   setHighlightedId,
   missionPanelOpen,
+  setPanelOpen,
   isLoaded,
   hasSearchQuery,
   openerReady,
@@ -32,6 +40,8 @@ export function useBoardKeyboard({
   autoOpenBlocked,
   onAutoOpenEmpty,
 }: {
+  /** Whether THIS board is the one on screen (see the hook's doc comment). */
+  isActive: boolean;
   items: KanbanItem[];
   columns: KanbanColumnConfig[];
   selectedId: string | null;
@@ -39,6 +49,8 @@ export function useBoardKeyboard({
   highlightedId: string | null;
   setHighlightedId: (id: string | null) => void;
   missionPanelOpen: boolean;
+  /** This board's claim on the shared shell detail panel. */
+  setPanelOpen: (open: boolean) => void;
   isLoaded: boolean;
   hasSearchQuery: boolean;
   openerReady: boolean;
@@ -66,8 +78,14 @@ export function useBoardKeyboard({
   }, []);
 
   // Arrow navigation walks the HIGHLIGHT (no chat panel open); Enter promotes
-  // it to the open selection.
+  // it to the open selection. Only the board ON SCREEN registers them: the
+  // `if (!isActive) return` with NO cleanup on the inactive path is deliberate,
+  // because React runs every effect's destroy pass across the tree before the
+  // create pass — the outgoing board nulls the handler, then the incoming one
+  // claims it, in that order. Nulling from the inactive path instead would
+  // clobber whichever board just claimed it.
   useEffect(() => {
+    if (!isActive) return;
     setOnBoardNavigate((dir) => {
       const next = navigateBoard(
         {
@@ -87,12 +105,19 @@ export function useBoardKeyboard({
       setOnBoardNavigate(null);
       setOnBoardOpen(null);
     };
-  }, [setOnBoardNavigate, setOnBoardOpen, setSelectedId, setHighlightedId]);
+  }, [
+    isActive,
+    setOnBoardNavigate,
+    setOnBoardOpen,
+    setSelectedId,
+    setHighlightedId,
+  ]);
 
   // Escape closes the open panel — covers both a selected card and the empty
   // new-mission panel (whose state lives inside AIBoard, hence the closer the
   // board hands back via onPanelCloserReady).
   useEffect(() => {
+    if (!isActive) return;
     if (!missionPanelOpen) {
       setOnPanelClose(null);
       return;
@@ -102,7 +127,20 @@ export function useBoardKeyboard({
       setSelectedId(null);
     });
     return () => setOnPanelClose(null);
-  }, [missionPanelOpen, setOnPanelClose, setSelectedId]);
+  }, [isActive, missionPanelOpen, setOnPanelClose, setSelectedId]);
+
+  // Going off screen releases everything this board holds of the ONE shell
+  // panel: the empty new-mission composer (state lives inside AIBoard,
+  // reachable only through the closer it handed back), the open mission, and
+  // the panel claim. Skipping the composer left AIBoard's `showPanel` stuck
+  // true, so its open-change effect never fired again and the panel could not
+  // reopen.
+  useEffect(() => {
+    if (isActive) return;
+    closerRef.current?.();
+    setSelectedId(null);
+    setPanelOpen(false);
+  }, [isActive, setSelectedId, setPanelOpen]);
 
   // Mouse selection (or any external selection change) drags the highlight
   // ring along, so closing the panel leaves it where the user last was.
@@ -113,9 +151,12 @@ export function useBoardKeyboard({
   }, [selectedId, setHighlightedId]);
 
   // Open the new-mission panel when the in-scope board is empty (and the user
-  // isn't searching). Fires once per scope via the key ref.
+  // isn't searching). Fires once per scope via the key ref, and only for the
+  // board ON SCREEN — an off-screen empty team board would otherwise pop its
+  // agent picker over whatever the user is actually looking at.
   const autoOpenKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!isActive) return;
     if (!isLoaded) return;
     if (hasSearchQuery) return;
     if (autoOpenItemCount > 0) {
@@ -127,6 +168,7 @@ export function useBoardKeyboard({
     autoOpenKeyRef.current = autoOpenKey;
     onAutoOpenEmpty();
   }, [
+    isActive,
     isLoaded,
     hasSearchQuery,
     autoOpenItemCount,

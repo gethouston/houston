@@ -9,35 +9,50 @@ import { AppSidebar } from "@houston-ai/layout";
 import { Users } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
-import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
-import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
-import { showExpectedStateToast } from "../../lib/error-toast";
-import { renameAgentWithFollowUp } from "../../lib/rename-agent-follow-up";
+import { useTeams } from "../../hooks/use-teams";
 import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
+import {
+  resolveTeamHighlight,
+  sidebarSelectedAgentId,
+} from "../../lib/sidebar-teams";
+import {
+  DEFAULT_TEAM_ID,
+  teamById,
+  teamOfAgent,
+  visibleTeamSections,
+} from "../../lib/teams-model";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { buildAgentSidebarLists } from "./agent-sidebar-items";
 import { GroupContextDialog } from "./group-context-dialog";
 import { SidebarInviteInbox } from "./pending-invites";
 import {
   buildSidebarLabels,
   buildSidebarNavItems,
+  buildTeamSectionLabels,
   SidebarWorkspaceHeader,
 } from "./sidebar-chrome";
 import { MobileSidebarSheet } from "./sidebar-mobile";
+import { buildTeamSidebarLists } from "./team-sidebar-lists";
 import { UpdateChecker } from "./update-checker";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
+import { useSidebarAgentActions } from "./use-sidebar-agent-actions";
 import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
 
 export function Sidebar({ children }: { children: ReactNode }) {
-  const { t } = useTranslation(["shell", "common", "portable", "teams"]);
+  const { t } = useTranslation([
+    "shell",
+    "common",
+    "portable",
+    "teams",
+    "agents",
+  ]);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
@@ -46,9 +61,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const currentAgent = useAgentStore((s) => s.current);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const loadAgents = useAgentStore((s) => s.loadAgents);
-  const renameAgent = useAgentStore((s) => s.rename);
-  const deleteAgent = useAgentStore((s) => s.delete);
-  const updateAgentColor = useAgentStore((s) => s.updateColor);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [createWsOpen, setCreateWsOpen] = useState(false);
   // A just-created group: the sidebar opens it straight into inline-rename.
@@ -60,6 +72,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
 
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const openTeamView = useUIStore((s) => s.openTeamView);
+  const activeTeamId = useUIStore((s) => s.activeTeamId);
+  const teamSection = useUIStore((s) => s.teamSection);
+  const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
   const openSettings = useUIStore((s) => s.openSettings);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const { canCreate: canCreateAgents } = useCanCreateAgents();
@@ -100,14 +116,45 @@ export function Sidebar({ children }: { children: ReactNode }) {
   }, [setSidebarCollapsed, isMobile]);
 
   const activitySummaries = useAgentActivitySummaries(agents);
-  const { items, groups } = buildAgentSidebarLists({
+  const { capabilities } = useCapabilities();
+  const agentActions = useSidebarAgentActions({
+    t,
+    workspaceId: currentWorkspace?.id,
+    agentNamesById: agents,
+    remapAgentId: sidebar.remapAgentId,
+  });
+
+  // Every agent lives in exactly one team: a named sidebar group, or the
+  // trailing default team, which IS the workspace (virtual — nothing about the
+  // stored layout changes to make it exist). `useTeams` is the ONE resolution
+  // path, shared with the team view and the workspace shell's guard, so the
+  // rail can never disagree with the screen it navigates to.
+  const teams = useTeams();
+  // The caller-visible sections, resolved ONCE: the rows a team block offers,
+  // and the section the highlight resolves against, are the same list the team
+  // view itself renders from.
+  const sectionIds = visibleTeamSections(capabilities);
+  const highlight = resolveTeamHighlight(
+    { viewMode, activeTeamId, teamSection, teamAgentFilter },
+    sectionIds,
+  );
+  const { items, groups, defaultGroup } = buildTeamSidebarLists({
     agents,
     layout: sidebar.layout,
+    teams,
+    sectionIds,
+    sectionLabels: buildTeamSectionLabels(t),
+    highlight,
+    onOpenSection: (teamId, section) => {
+      openTeamView(teamId, section);
+      closeMobileSidebar();
+    },
     summaries: activitySummaries,
     runningLabel: (count) => t("shell:sidebar.runningCount", { count }),
     needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
     unreadLabel: (count) => t("shell:sidebar.unreadCount", { count }),
-    onChangeColor: (agentId, color) => void handleChangeColor(agentId, color),
+    onChangeColor: (agentId, color) =>
+      void agentActions.changeColor(agentId, color),
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
     shareLabel: t("portable:exportMenu"),
   });
@@ -122,62 +169,29 @@ export function Sidebar({ children }: { children: ReactNode }) {
     await loadAgents(ws.id);
   };
 
+  /**
+   * Clicking an agent opens ITS TEAM's Mission Control, pre-filtered to that
+   * agent, instead of the agent's own tab: the board is where its work lives.
+   * The agent store's `current` still moves with it so the command palette and
+   * ⌘[ / ⌘] cycling keep pointing at the agent the user just picked.
+   */
   const handleSelectAgent = (agentId: string) => {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;
     setCurrentAgent(agent);
-    setViewMode(DEFAULT_TAB_ID);
+    openTeamView(
+      teamOfAgent(teams, agentId)?.id ?? DEFAULT_TEAM_ID,
+      "mission-control",
+      {
+        agentFilter: agent.id,
+      },
+    );
     closeMobileSidebar();
   };
 
-  const handleRename = async (agentId: string, newName: string) => {
-    if (!currentWorkspace) return;
-    // Validate BEFORE the PATCH (HOU-1166): bad shapes and known duplicates
-    // get the expected-state toast without a round-trip. The 409 catch below
-    // stays for races (a sibling took the name after this list loaded).
-    const issue = agentNameIssue(
-      newName,
-      agents.filter((a) => a.id !== agentId).map((a) => a.name),
-    );
-    if (issue) {
-      showExpectedStateToast(
-        issue === "taken"
-          ? t("agents:toasts.nameConflict", { name: newName.trim() })
-          : issue === "tooLong"
-            ? t("agents:nameErrors.tooLong", { max: AGENT_NAME_MAX_LENGTH })
-            : t("agents:nameErrors.invalidChars"),
-        t("agents:toasts.nameConflictDescription"),
-      );
-      return;
-    }
-    try {
-      await renameAgentWithFollowUp({
-        workspaceId: currentWorkspace.id,
-        agentId,
-        name: newName,
-        renameAgent,
-        remapAgentId: sidebar.remapAgentId,
-      });
-    } catch (err) {
-      if (isAgentNameConflictError(err)) {
-        showExpectedStateToast(
-          t("agents:toasts.nameConflict", { name: newName }),
-          t("agents:toasts.nameConflictDescription"),
-        );
-        return;
-      }
-      throw err;
-    }
-  };
-
-  async function handleChangeColor(agentId: string, color: string) {
-    if (!currentWorkspace) return;
-    await updateAgentColor(currentWorkspace.id, agentId, color);
-  }
-
   const confirmDelete = async () => {
-    if (!currentWorkspace || !pendingDeleteId) return;
-    await deleteAgent(currentWorkspace.id, pendingDeleteId);
+    if (!pendingDeleteId) return;
+    await agentActions.remove(pendingDeleteId);
     setPendingDeleteId(null);
   };
 
@@ -282,17 +296,17 @@ export function Sidebar({ children }: { children: ReactNode }) {
           },
         })}
         activeNavId={isTopLevel ? viewMode : undefined}
-        sectionLabel={t("shell:sidebar.yourAgents")}
+        sectionLabel={t("shell:sidebar.yourTeams")}
         sectionAction={
           canCreateAgents ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  aria-label={t("shell:sidebar.groups.new")}
+                  aria-label={t("shell:sidebar.newTeam")}
                   onClick={() => {
                     const id = sidebar.createGroup(
-                      t("shell:sidebar.groups.newDefault"),
+                      t("shell:sidebar.teams.newDefault"),
                     );
                     if (id) setRenamingGroupId(id);
                   }}
@@ -302,13 +316,14 @@ export function Sidebar({ children }: { children: ReactNode }) {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {t("shell:sidebar.groups.new")}
+                {t("shell:sidebar.newTeam")}
               </TooltipContent>
             </Tooltip>
           ) : undefined
         }
         items={items}
         groups={groups}
+        defaultGroup={defaultGroup}
         renamingGroupId={renamingGroupId}
         onRenamingGroupIdHandled={() => setRenamingGroupId(null)}
         onToggleGroupCollapsed={sidebar.toggleGroupCollapsed}
@@ -317,7 +332,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
         onDeleteGroup={sidebar.deleteGroup}
         onMoveItem={sidebar.moveItem}
         onMoveGroup={sidebar.moveGroup}
-        selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
+        selectedId={sidebarSelectedAgentId({
+          viewMode,
+          highlight,
+          activeTeam: teamById(teams, highlight.teamId),
+          currentAgentId: currentAgent?.id ?? null,
+        })}
         onSelect={handleSelectAgent}
         onAdd={
           canCreateAgents
@@ -328,7 +348,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
             : undefined
         }
         addItemDataAttrs={{ "data-tour-target": "newAgent" }}
-        onRename={handleRename}
+        onRename={agentActions.rename}
         onDelete={(agentId) => setPendingDeleteId(agentId)}
         labels={buildSidebarLabels(t)}
         footer={

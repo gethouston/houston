@@ -10,8 +10,12 @@ test("boots past every gate to the app shell", async ({ page }) => {
   await page.goto("/");
 
   // Shell chrome.
-  await expect(page.getByText("Mission Control")).toBeVisible();
-  await expect(page.getByText("Your Agents")).toBeVisible();
+  // Scoped to the nav entry: "Mission Control" is now also the name of every
+  // team block's first destination row.
+  await expect(
+    page.locator("[data-tour-target='nav-dashboard']"),
+  ).toBeVisible();
+  await expect(page.getByText("Your teams")).toBeVisible();
   await expect(page.getByRole("button", { name: "New agent" })).toBeVisible();
 
   // The board rendered with its three columns + the seeded missions (proves the

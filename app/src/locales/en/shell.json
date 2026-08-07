@@ -6,7 +6,14 @@
     "skills": "Skills",
     "agentStore": "Agent Store",
     "settings": "Settings",
-    "yourAgents": "Your Agents",
+    "yourTeams": "Your teams",
+    "newTeam": "New team",
+    "teamSections": {
+      "missionControl": "Mission Control",
+      "routines": "Routines",
+      "files": "Files",
+      "settings": "Team Settings"
+    },
     "selectWorkspace": "Select workspace",
     "addAgent": "New agent",
     "agentMenu": "Agent menu",
@@ -32,19 +39,17 @@
     "openMenu": "Open menu",
     "mobileNavTitle": "Navigation",
     "createWorkspace": "Create workspace",
-    "groups": {
-      "new": "New group",
-      "newDefault": "New group",
-      "rename": "Rename group",
-      "delete": "Delete group",
-      "menu": "Group options",
-      "namePlaceholder": "Group name",
+    "teams": {
+      "newDefault": "New team",
+      "rename": "Rename team",
+      "delete": "Delete team",
+      "menu": "Team options",
+      "namePlaceholder": "Team name",
       "emptyHint": "Drag agents here",
-      "ungrouped": "Ungrouped",
       "editContext": "Edit shared context",
       "contextDialog": {
         "title": "Shared context for {{name}}",
-        "description": "This note is added to every agent in this group, so they all share the same background.",
+        "description": "This note is added to every agent in this team, so they all share the same background.",
         "placeholder": "e.g. We are a design studio. Keep replies short and never share client names.",
         "save": "Save",
         "cancel": "Cancel"

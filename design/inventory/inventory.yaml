@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 54
+version: 55
 
 components:
   - id: agent-avatar
@@ -1039,3 +1039,68 @@ components:
     behavior: Surfaces supply navigation, social actions, and pagination without owning profile composition.
     a11y: Identity uses semantic headings, links have visible focus, and failures expose a retry.
     since: 53
+
+  - id: sidebar-team-block
+    title: Sidebar team block
+    purpose: >-
+      One team in the navigation rail: its name, the destinations that team
+      offers, and the agents that belong to it.
+    anatomy: [header-name, collapse-caret, member-count, header-menu, section-rows, agent-rows, empty-hint]
+    states: [resting, collapsed, drop-target, drop-confirmed, empty, renaming]
+    variants: [named-team, default-team]
+    behavior: >-
+      Every agent belongs to exactly one team, so the rail is a list of team
+      blocks and nothing else. Named teams are the stored sidebar groups; the
+      trailing DEFAULT team is the workspace itself, wearing the workspace name
+      and holding every agent in no group. The default variant is virtual -- no
+      stored record backs it -- and therefore carries no caret and no rename /
+      delete / shared-context menu: it cannot be folded away or destroyed,
+      because it is the container. Each block draws its SECTION ROWS above its
+      agent rows: Mission Control always, plus whichever further sections the
+      caller may open (Team Settings today, gated on the capability role;
+      Routines and Files as they land). Section rows are destinations, never
+      members -- they are not draggable and are not drop targets, and a drag
+      passing over one targets the team it belongs to. Selecting a section opens
+      that team on that section; selecting an agent opens its team's Mission
+      Control pre-filtered to that agent, so the rail and the open view always
+      agree on where the user is. Agents drag within and between teams (the
+      default team included) and team headers reorder teams; that is the only
+      thing that writes to the stored layout.
+    a11y: >-
+      Section rows are buttons carrying aria-current="page" when open; the named
+      team's header exposes aria-expanded and an accessible name; the default
+      team's header is a plain label with no interactive affordance, so nothing
+      promises a click that does nothing.
+    since: 55
+
+  - id: team-screen
+    title: Team screen
+    purpose: >-
+      The full-window surface behind a team block's destination rows: one
+      team's missions, and the agents that belong to it.
+    anatomy: [board-toolbar, team-title, agent-filter, mission-board, archived-board, empty-state, settings-agent-list, agent-drill-in]
+    states: [mission-control, mission-control-filtered, archived, empty, settings, settings-agent-detail]
+    variants: [named-team, default-team]
+    behavior: >-
+      ONE screen serves every team: which team and which of its sections are
+      open is state, so a team can be renamed, reordered or deleted without
+      leaving a dead view behind, and a team that stops existing sends the user
+      back to the global board rather than a blank pane. The sections it can
+      show are exactly the destination rows the team block offers, so the rail
+      can never point at something the screen will not render; a section the
+      caller may not open resolves to Mission Control. Mission Control is the
+      SAME board the global one is, narrowed to the team's agents and titled
+      with the team's name, reading the one cross-agent sweep rather than
+      starting its own. Its agent filter is shared with the rail in both
+      directions: selecting an agent row filters the board, and picking one in
+      the board's own filter menu moves the lit row. An empty team says why it
+      is empty -- the workspace's own team offers the create-an-agent door, a
+      named team says to drag one in, because that is where a new agent would
+      land. Team Settings lists the team's agents with the same plain-language
+      access line every agent list shares, and opening one drills into the ONE
+      canonical agent settings page rather than a second copy of it.
+    a11y: >-
+      The board's team name is the screen's h1; the filter menu names the agent
+      it is pinned to; the settings drill-in is framed by a labelled back
+      control naming the team it returns to.
+    since: 55

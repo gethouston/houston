@@ -1,34 +1,40 @@
 import { AIBoard } from "@houston-ai/board";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useArchivedHandoff } from "../../hooks/use-archived-handoff";
-import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
-import { modelAcceptsImages } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
-import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { MissionControlToolbar } from "../mission-control-toolbar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
+import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { ArchivedEmptyState } from "../tabs/archived-empty-state";
-import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useMissionSearch } from "../use-mission-search";
-import { useLatchedMissionAgent } from "./use-latched-mission-agent";
+import { type MissionControlScope, useMcScope } from "./use-mc-scope.ts";
 import { useMissionControlArchived } from "./use-mission-control-archived";
-import { useMissionControlArchivedSend } from "./use-mission-control-archived-send";
+import { useMissionControlArchivedPanel } from "./use-mission-control-archived-panel";
 
 /**
  * Cross-agent Archived view for Mission Control. Same list UI as the per-agent
  * Archived tab, but spanning every agent: a column-less list of all archived
  * missions; clicking one opens its chat; sending re-activates it and hands the
  * user off to that agent's active board to keep the conversation in view.
+ *
+ * `agents` is ALWAYS the full workspace roster, whoever is rendering: the sweep
+ * behind it (`useMissionControlArchived`) keys the one shared
+ * `all-conversations` query on it. A team's archive narrows what it RENDERS
+ * through `scope` instead (the one-sweep rule, `useTeamBoardScope`).
  */
 export function MissionControlArchived({
   agents,
   onShowActive,
+  scope,
 }: {
+  /** The FULL workspace roster, always. Never a team's slice. */
   agents: Agent[];
   onShowActive: () => void;
+  /** Narrows what this board renders and names it. Omitted by the GLOBAL
+   *  archive, which shows every agent and keeps the "Archived" title. */
+  scope?: MissionControlScope;
 }) {
   const { t } = useTranslation("board");
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
@@ -37,15 +43,22 @@ export function MissionControlArchived({
 
   const data = useMissionControlArchived(agents);
 
-  const [filterPath, setFilterPath] = useState("");
+  const { scopedAgents, agentFilteredItems, filterPath, setFilterPath } =
+    useMcScope(agents, data.items, scope);
   const [search, setSearch] = useState("");
-  const agentFilteredItems = useMemo(
-    () =>
-      filterPath
-        ? data.items.filter((i) => i.metadata?.agentPath === filterPath)
-        : data.items,
-    [data.items, filterPath],
-  );
+
+  // HOU-1165: there is ONE shell detail panel, shared by every kept-alive
+  // screen. `MissionBoard` releases it when its screen hides, but the archive
+  // is not a `MissionBoard` -- without its own release, a team archive left
+  // with a mission open keeps portaling its chat into that panel after the
+  // user navigates away.
+  const isActive = useIsActiveView();
+  useEffect(() => {
+    if (isActive) return;
+    data.setSelectedId(null);
+    setPanelOpen(false);
+  }, [isActive, data.setSelectedId, setPanelOpen]);
+
   const handleSearchError = useCallback(() => {
     addToast({
       title: t("search.historyErrorTitle"),
@@ -60,49 +73,19 @@ export function MissionControlArchived({
     onHistoryLoadError: handleSearchError,
   });
 
-  const { selectedItem, activeAgent, activeAgentDef } = data;
-
-  const clearSelection = useCallback(() => data.setSelectedId(null), [data]);
-  // The mission's agent, captured while it is still LISTED: the handoff fires
-  // after a send that re-activates the mission, by which point this list has
-  // refetched without it (see `useLatchedMissionAgent`).
-  const focusMissionAgent = useLatchedMissionAgent(
-    data.selectedId,
-    activeAgent,
-  );
-  const { handoff, onSendReactivated } = useArchivedHandoff({
-    missionId: data.selectedId,
-    onReactivated: clearSelection,
-    focusBoard: focusMissionAgent,
-  });
-
-  const panel = useAgentChatPanel({
-    agent: activeAgent,
-    agentDef: activeAgentDef,
-    selectedSessionKey: data.selectedSessionKey,
-    onSelectSession: data.setSelectedId,
-    onSendReactivated,
-  });
-  const attachmentValidation = useAttachmentRejectionDialog({
-    modelAcceptsImages: modelAcceptsImages(
-      panel.effectiveProvider,
-      panel.effectiveModel,
-    ),
-  });
-  const openHref = useOpenAgentHref(activeAgent?.folderPath ?? null);
-  const handleSendMessage = useMissionControlArchivedSend({
-    activeAgent,
-    activeAgentDef,
-    selectedItem,
-    providerOverride: panel.effectiveProvider,
-    modelOverride: panel.effectiveModel,
-    onHandoff: handoff,
-  });
+  const { selectedItem, activeAgent } = data;
+  const { panel, attachmentValidation, openHref, onSendMessage } =
+    useMissionControlArchivedPanel(data);
 
   return (
     <>
       <MissionControlToolbar
-        agents={agents}
+        // Names the BOARD this archive belongs to; the toolbar composes it
+        // with the mode (`"<team> · Archived"`). Without it every team's
+        // archive reads as the same anonymous "Archived" and the user cannot
+        // tell whose they are looking at.
+        title={scope?.title}
+        agents={scopedAgents}
         filterPath={filterPath}
         search={search}
         isSearchingText={missionSearch.isSearchingText}
@@ -131,7 +114,7 @@ export function MissionControlArchived({
           feedItems={data.feedItems}
           sessionKeyFor={data.sessionKeyFor}
           onDelete={data.handleDelete}
-          onSendMessage={handleSendMessage}
+          onSendMessage={onSendMessage}
           onComposerSubmit={panel.onComposerSubmit}
           onLoadHistory={data.loadHistory}
           onLoadOlderMessages={data.onLoadOlderMessages}

@@ -1,18 +1,18 @@
 import { useCallback, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { missionMatchesPerson } from "../../lib/mission-people";
 import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useUIStore } from "../../stores/ui";
-import { MissionBoardEmptyState } from "../mission-board-empty-state";
 import { MissionControlToolbar } from "../mission-control-toolbar";
 import type { MissionsToolbarMentions } from "../mission-toolbar-actions";
 import { useMissionControl } from "../use-mission-control";
-import { useMissionSearch } from "../use-mission-search";
 import type { BoardSource } from "./board-source";
+import { missionControlDraftScope } from "./mission-control-scope.ts";
 import { useCrossAgentSelection } from "./use-cross-agent-selection";
 import { useMcActions } from "./use-mc-actions";
 import { useMcNewMission } from "./use-mc-new-mission";
+import { type MissionControlScope, useMcScope } from "./use-mc-scope.ts";
+import { useMcSearch } from "./use-mc-search.tsx";
 
 /**
  * Builds the {@link BoardSource} for cross-agent Mission Control: every
@@ -20,34 +20,38 @@ import { useMcNewMission } from "./use-mc-new-mission";
  * mission, an agent filter + search toolbar, and bulk actions routed per
  * agent. The active agent that scopes the right panel is whichever the
  * selected card belongs to, or the one just picked for a new mission.
+ *
+ * `scope` narrows all of that to one team's agents and lets the caller own the
+ * agent filter (see {@link MissionControlScope}); omitting it gives the global
+ * board exactly the behaviour it had before teams existed. The cross-agent
+ * sweep always spans the agents it is handed, so a team board passes the FULL
+ * roster and scopes what it renders — one shared query, no per-team re-sweep.
  */
 export function useMissionControlSource(
   agents: Agent[],
   onShowArchived: () => void,
   mentions?: MissionsToolbarMentions,
+  scope?: MissionControlScope,
 ): BoardSource {
-  const { t } = useTranslation(["dashboard", "board"]);
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
-  const addToast = useUIStore((s) => s.addToast);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const mc = useMissionControl(agents);
 
-  const [filterPath, setFilterPath] = useState("");
   const [filterUserId, setFilterUserId] = useState<string | null>(null);
-  const [missionSearchQuery, setMissionSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(
     mc.selectedId,
   );
 
-  const paths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
-  const agentFilteredItems = useMemo(
-    () =>
-      filterPath
-        ? mc.items.filter((i) => i.metadata?.agentPath === filterPath)
-        : mc.items,
-    [mc.items, filterPath],
-  );
+  const {
+    scopedAgents,
+    paths,
+    agentFilteredItems,
+    visibleAgents,
+    filterPath,
+    setFilterPath,
+  } = useMcScope(agents, mc.items, scope);
+
   // Person filter runs AFTER the agent filter, BEFORE text search: narrow to the
   // missions the chosen person is on. `null` (Everyone) is a no-op. The filter
   // menu's roster stays keyed off `agentFilteredItems` so every person is always
@@ -61,31 +65,17 @@ export function useMissionControlSource(
         : agentFilteredItems,
     [agentFilteredItems, filterUserId],
   );
-  const visibleAgents = useMemo(
-    () =>
-      filterPath ? agents.filter((a) => a.folderPath === filterPath) : agents,
-    [agents, filterPath],
-  );
-
-  const handleMissionSearchError = useCallback(() => {
-    addToast({
-      title: t("dashboard:search.historyErrorTitle"),
-      description: t("dashboard:search.historyErrorDescription"),
-      variant: "error",
-    });
-  }, [addToast, t]);
-  const missionSearch = useMissionSearch({
-    items: personFilteredItems,
-    query: missionSearchQuery,
-    loadHistory: mc.loadHistory,
-    onHistoryLoadError: handleMissionSearchError,
-  });
 
   const newMission = useMcNewMission({
-    agents,
+    agents: scopedAgents,
     visibleAgents,
     selectedId: mc.selectedId,
     setSelectedId: mc.setSelectedId,
+  });
+  const missionSearch = useMcSearch({
+    items: personFilteredItems,
+    loadHistory: mc.loadHistory,
+    onNewMission: newMission.openNewMission,
   });
 
   const selectedItem = mc.selectedId
@@ -122,36 +112,18 @@ export function useMissionControlSource(
     agentPathForId,
   });
 
-  const emptyState = missionSearch.hasQuery ? (
-    <MissionBoardEmptyState
-      isSearch={missionSearch.hasQuery}
-      isSearchingText={missionSearch.isSearchingText}
-      labels={{
-        emptyTitle: t("dashboard:empty.boardTitle"),
-        emptyDescription: t("dashboard:empty.boardDescription"),
-        newMission: t("dashboard:empty.newMission"),
-        searchEmptyTitle: t("dashboard:search.emptyTitle"),
-        searchEmptyDescription: t("dashboard:search.emptyDescription"),
-        searchSearchingTitle: t("dashboard:search.searchingTitle"),
-        searchSearchingDescription: t("dashboard:search.searchingDescription"),
-        clearSearch: t("dashboard:search.clearCta"),
-      }}
-      onNewMission={newMission.openNewMission}
-      onClearSearch={() => setMissionSearchQuery("")}
-    />
-  ) : undefined;
-
   const toolbar = (
     <MissionControlToolbar
-      agents={agents}
+      title={scope?.title}
+      agents={scopedAgents}
       items={agentFilteredItems}
       filterPath={filterPath}
       filterUserId={filterUserId}
-      search={missionSearchQuery}
+      search={missionSearch.query}
       isSearchingText={missionSearch.isSearchingText}
       onFilterPathChange={setFilterPath}
       onFilterUserIdChange={setFilterUserId}
-      onSearchChange={setMissionSearchQuery}
+      onSearchChange={missionSearch.setQuery}
       onShowArchived={onShowArchived}
       onToggleMentions={mentions?.onShow}
       mentionCount={mentions?.count}
@@ -173,7 +145,7 @@ export function useMissionControlSource(
     setHighlightedId,
     activeAgent,
     activeAgentDef,
-    draftScope: "mission-control",
+    draftScope: missionControlDraftScope(scope?.teamId),
     selectedSessionKey,
     selectedAgentPath,
     onSelectSession: mc.setSelectedId,
@@ -199,7 +171,7 @@ export function useMissionControlSource(
     autoOpenItemCount: personFilteredItems.length,
     autoOpenBlocked: newMission.agentPickerOpen,
     hasSearchQuery: missionSearch.hasQuery,
-    emptyState,
+    emptyState: missionSearch.emptyState,
     panelAgentName: activeAgent?.name ?? selectedItem?.subtitle,
     selectedRunning: selectedItem?.status === "running",
     toolbar,

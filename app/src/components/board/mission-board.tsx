@@ -1,5 +1,5 @@
 import { AIBoard, type MessageMention } from "@houston-ai/board";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { perfSpans } from "../../lib/perf-spans";
@@ -78,12 +78,6 @@ export function MissionBoard({
     () => source.setSelectedId(null),
     [source.setSelectedId],
   );
-  useEffect(() => {
-    if (!isActive) {
-      source.setSelectedId(null);
-      setPanelOpen(false);
-    }
-  }, [isActive, source.setSelectedId, setPanelOpen]);
   const { columns, selectionProps } = useBoardSelectionUI({
     baseColumns,
     allItems: source.allItems,
@@ -119,6 +113,7 @@ export function MissionBoard({
   });
 
   const { handleCloserReady } = useBoardKeyboard({
+    isActive,
     items: source.items,
     columns,
     selectedId: source.selectedId,
@@ -126,6 +121,7 @@ export function MissionBoard({
     highlightedId: source.highlightedId,
     setHighlightedId: source.setHighlightedId,
     missionPanelOpen,
+    setPanelOpen,
     isLoaded: source.isLoaded,
     hasSearchQuery: source.hasSearchQuery,
     openerReady: source.openerReady,

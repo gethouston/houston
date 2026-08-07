@@ -6,7 +6,14 @@
     "skills": "Skills",
     "agentStore": "Tienda de agentes",
     "settings": "Configuración",
-    "yourAgents": "Tus agentes",
+    "yourTeams": "Tus equipos",
+    "newTeam": "Nuevo equipo",
+    "teamSections": {
+      "missionControl": "Centro de misiones",
+      "routines": "Rutinas",
+      "files": "Archivos",
+      "settings": "Configuración del equipo"
+    },
     "selectWorkspace": "Elige un espacio de trabajo",
     "addAgent": "Nuevo agente",
     "agentMenu": "Menú del agente",
@@ -32,19 +39,17 @@
     "openMenu": "Abrir menú",
     "mobileNavTitle": "Navegación",
     "createWorkspace": "Crear espacio de trabajo",
-    "groups": {
-      "new": "Nuevo grupo",
-      "newDefault": "Nuevo grupo",
-      "rename": "Renombrar grupo",
-      "delete": "Eliminar grupo",
-      "menu": "Opciones de grupo",
-      "namePlaceholder": "Nombre del grupo",
+    "teams": {
+      "newDefault": "Nuevo equipo",
+      "rename": "Renombrar equipo",
+      "delete": "Eliminar equipo",
+      "menu": "Opciones de equipo",
+      "namePlaceholder": "Nombre del equipo",
       "emptyHint": "Arrastra agentes aquí",
-      "ungrouped": "Sin grupo",
       "editContext": "Editar contexto compartido",
       "contextDialog": {
         "title": "Contexto compartido de {{name}}",
-        "description": "Esta nota se agrega a cada agente de este grupo, así todos comparten el mismo trasfondo.",
+        "description": "Esta nota se agrega a cada agente de este equipo, así todos comparten el mismo trasfondo.",
         "placeholder": "ej. Somos un estudio de diseño. Mantén las respuestas cortas y nunca compartas nombres de clientes.",
         "save": "Guardar",
         "cancel": "Cancelar"

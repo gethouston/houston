@@ -13,6 +13,13 @@ import {
  * bar and simply omits the callbacks it has nothing to do with.
  */
 interface MissionControlToolbarProps extends MissionToolbarActionsProps {
+  /** Names the BOARD this bar belongs to. A team's board is titled with the
+   *  TEAM's name: without it the team board and the global one read
+   *  identically and the user cannot tell which board they are looking at.
+   *  It names the board, not the mode — the Archived line composes the two
+   *  (see `heading`), so a team's archive says which team AND that it is the
+   *  archive. */
+  title?: string;
   search?: string;
   isSearchingText?: boolean;
   /** When set, renders the text-search field. Omitted by the Mentions inbox,
@@ -28,6 +35,7 @@ interface MissionControlToolbarProps extends MissionToolbarActionsProps {
 export function MissionControlToolbar(props: MissionControlToolbarProps) {
   const { t } = useTranslation("dashboard");
   const {
+    title,
     search = "",
     isSearchingText = false,
     onSearchChange,
@@ -35,6 +43,18 @@ export function MissionControlToolbar(props: MissionControlToolbarProps) {
     archivedActive = false,
     mentionsActive = false,
   } = props;
+  // The board's name and the mode it is in are two different facts, and the
+  // archive needs BOTH: titling a team's archive with the bare team name makes
+  // it read exactly like that team's active board, which is the same "which
+  // board am I on?" confusion `title` exists to remove. So Archived composes,
+  // and only the board-less global archive falls back to the mode alone.
+  const heading = mentionsActive
+    ? t("mentions.title")
+    : archivedActive
+      ? title
+        ? t("archived.titleForBoard", { name: title })
+        : t("archived.title")
+      : (title ?? t("title"));
 
   return (
     <div className="shrink-0 px-5 pt-4">
@@ -46,11 +66,7 @@ export function MissionControlToolbar(props: MissionControlToolbarProps) {
             HOME must survive, so the title gives up space before the back
             button does. */}
         <h1 className="min-w-0 truncate text-xl font-semibold text-ink">
-          {mentionsActive
-            ? t("mentions.title")
-            : archivedActive
-              ? t("archived.title")
-              : t("title")}
+          {heading}
         </h1>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           {onSearchChange && (

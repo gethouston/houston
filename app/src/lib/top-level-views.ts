@@ -10,12 +10,18 @@
  * (HOU-788), reached from the Settings index — see `lib/settings-sections.ts`.
  * A read those sections own is therefore active while `settings` is, not while
  * some screen of its own is.
+ *
+ * The team view is ONE id (`team`) rather than one per team: which team and
+ * which of its sections are open is store state (`activeTeamId` /
+ * `teamSection`), so every team shares one kept-alive screen and a team the
+ * user deletes cannot leave a dead view id behind.
  */
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
 import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
 import { STORE_VIEW_ID } from "../components/store-view/id.ts";
+import { TEAM_VIEW_ID } from "./teams-model.ts";
 
-export { INTEGRATIONS_VIEW_ID, SKILLS_VIEW_ID, STORE_VIEW_ID };
+export { INTEGRATIONS_VIEW_ID, SKILLS_VIEW_ID, STORE_VIEW_ID, TEAM_VIEW_ID };
 
 export const DASHBOARD_VIEW_ID = "dashboard";
 export const SETTINGS_VIEW_ID = "settings";
@@ -27,7 +33,8 @@ export type TopLevelViewId =
   | typeof AI_HUB_VIEW_ID
   | typeof INTEGRATIONS_VIEW_ID
   | typeof SKILLS_VIEW_ID
-  | typeof STORE_VIEW_ID;
+  | typeof STORE_VIEW_ID
+  | typeof TEAM_VIEW_ID;
 
 export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   DASHBOARD_VIEW_ID,
@@ -36,11 +43,23 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   INTEGRATIONS_VIEW_ID,
   SKILLS_VIEW_ID,
   STORE_VIEW_ID,
+  TEAM_VIEW_ID,
 ]);
 
 /** Whether a `viewMode` is a top-level (non-agent) view. */
 export function isTopLevelView(viewMode: string): boolean {
   return TOP_LEVEL_VIEWS.has(viewMode as TopLevelViewId);
+}
+
+/**
+ * Whether a `viewMode` shows a cross-agent mission board — the global one or a
+ * team's. Both register the global "New mission" handler, so the ⌘N shortcut
+ * and the command palette fire it in place instead of routing the user to some
+ * agent's Activity tab. Missing the team board here would have made ⌘N on a
+ * team jump the user out of the team entirely.
+ */
+export function isMissionBoardView(viewMode: string): boolean {
+  return viewMode === DASHBOARD_VIEW_ID || viewMode === TEAM_VIEW_ID;
 }
 
 /** Whether a kept-alive top-level surface is the one currently on screen. */

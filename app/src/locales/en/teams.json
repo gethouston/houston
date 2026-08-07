@@ -423,5 +423,25 @@
       "goneTitle": "This invitation is no longer available",
       "goneBody": "It was withdrawn or already used. Ask your team to send a new one."
     }
+  },
+  "teamView": {
+    "missionControl": {
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create your first agent and its missions will show up here.",
+        "createAgent": "Create agent",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Drag an agent onto {{name}} in the sidebar and its missions will show up here."
+      }
+    },
+    "settings": {
+      "subtitle": "The agents in this team. Open one to manage who can use it and what it can use.",
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create one and it will show up here.",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Drag an agent onto it in the sidebar to add one."
+      }
+    }
   }
 }

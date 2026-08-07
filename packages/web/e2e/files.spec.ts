@@ -83,6 +83,28 @@ function listRow(page: import("@playwright/test").Page, name: string) {
   return page.getByRole("row").filter({ hasText: name });
 }
 
+/**
+ * Switch the CURRENT agent through the ⌘K palette, which lands on that agent's
+ * own workspace (`setCurrentAgent` + the activity tab).
+ *
+ * Deliberately NOT the sidebar: the rail is a list of TEAMS now, and clicking an
+ * agent row there opens its team's BOARD (a top-level view). That unmounts the
+ * whole agent tab tree, Files pane included, so a stale-file assertion made
+ * after a rail click passes for the wrong reason. The palette keeps the tree
+ * mounted and merely re-keys it, which is exactly the transition under test.
+ */
+async function jumpToAgent(
+  page: import("@playwright/test").Page,
+  name: string,
+) {
+  await page.keyboard.press("ControlOrMeta+KeyK");
+  const search = page.getByPlaceholder("Search agents, missions, actions...");
+  await expect(search).toBeVisible();
+  await search.fill(name);
+  await page.getByRole("option", { name, exact: true }).first().click();
+  await expect(search).toHaveCount(0);
+}
+
 /** A 1x1 PNG: the smallest real image a thumbnail can be painted from. */
 const TINY_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -115,37 +137,84 @@ test("never shows the previous agent's files while the next read is in flight", 
   page,
   request,
 }) => {
+  // Creating an agent, a reload and a deliberate multi-second cold-start hold
+  // put this one past the suite's 30s budget on a loaded runner.
+  test.slow();
   await page.goto("/");
 
-  // Create the target before arming the held reads, then return to the seeded
-  // agent and reload so the target's files query is cold when selected.
+  // HOU-816: the agent subtree is `<AgentPersonScopeProvider key={agent.id}>`,
+  // so switching agents REMOUNTS it and every pane starts from nothing. Without
+  // that key the panes are reused and the previous agent's local state rides
+  // along — for Files that is the open folder, which is why the target below is
+  // seeded with a folder of the SAME NAME: a carried-over `Docs` resolves
+  // against the new agent's tree and silently opens the wrong workspace's
+  // folder.
+  //
+  // Both agent switches go through the ⌘K palette rather than the rail — see
+  // `jumpToAgent`. A rail click opens the agent's TEAM board and unmounts the
+  // whole agent tree, which would make every assertion here vacuously true.
   await createAgent(page, "Research Bot");
-  await page
-    .getByRole("button", { name: "Houston", exact: true })
-    .last()
-    .click();
-  await page.getByRole("button", { name: "Files", exact: true }).click();
-  await expect(page.getByText("Q3 report.pdf")).toBeVisible();
+  const roster = (await (
+    await request.get(`${FAKE_HOST_URL}/agents`)
+  ).json()) as { id: string; name: string }[];
+  const target = roster.find((a) => a.name === "Research Bot");
+  if (!target) throw new Error("Research Bot was not created");
+  await request.post(`${FAKE_HOST_URL}/agents/${target.id}/files/import`, {
+    data: {
+      files: [
+        {
+          name: "readme.md",
+          contentBase64: Buffer.from("# research").toString("base64"),
+        },
+        {
+          name: "notes.md",
+          relPath: "Docs/notes.md",
+          contentBase64: Buffer.from("# notes").toString("base64"),
+        },
+      ],
+    },
+  });
+
+  // Reload with the target NOT current: it drops every cached read, and the
+  // shell comes back on the first agent (the seed), so only the SEED's files
+  // query warms. The target's stays cold, which is what lets the hold below
+  // catch it genuinely in flight.
   await page.reload();
-  await page.getByRole("button", { name: "Files", exact: true }).click();
+  // The shell has to be mounted before ⌘K has a listener to reach.
+  const filesTab = page.getByRole("button", { name: "Files", exact: true });
+  await expect(filesTab).toBeVisible();
+  await jumpToAgent(page, "Houston");
+  await filesTab.click();
+  await expect(page.getByText("Q3 report.pdf")).toBeVisible();
   await page.getByText("Docs", { exact: true }).click();
   await expect(page.getByText("sales.csv")).toBeVisible();
 
+  // Hold the target's reads open, switch to it, and land on ITS Files tab. The
+  // pane is on screen with its own read still in flight.
   await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
-    data: { ms: 8_000 },
+    data: { ms: 5_000 },
   });
-  await page
-    .getByRole("button", { name: "Research Bot", exact: true })
-    .last()
-    .click();
+  await jumpToAgent(page, "Research Bot");
+  await filesTab.click();
+  const loading = page.getByRole("status", { name: "Loading…" });
+  await expect(loading).toBeVisible();
 
+  // In flight: none of the previous agent's listing, its folder's contents, or
+  // its breadcrumb may be on screen.
   await expect(page.getByText("Q3 report.pdf")).toHaveCount(0, {
     timeout: 3_000,
   });
   await expect(page.getByText("sales.csv")).toHaveCount(0, { timeout: 3_000 });
-  await expect(
-    page.getByRole("navigation", { name: "Folder path" }).getByText("Docs"),
-  ).toHaveCount(0, { timeout: 3_000 });
+  const crumbs = page.getByRole("navigation", { name: "Folder path" });
+  await expect(crumbs.getByText("Docs")).toHaveCount(0, { timeout: 3_000 });
+
+  // And once the read lands, the pane is at the TARGET's root — not inside the
+  // folder the previous agent had open. This is the assertion the keyed remount
+  // actually carries: the target has a `Docs` of its own, so a leaked open
+  // folder survives `resolveExistingPath` and shows the wrong agent's subtree.
+  await expect(loading).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText("readme.md")).toBeVisible();
+  await expect(crumbs).toHaveCount(0);
 });
 
 test("the trail is a grid row that only appears once you are inside a folder", async ({

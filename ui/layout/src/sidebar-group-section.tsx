@@ -6,40 +6,22 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@houston-ai/core";
-import type { KeyboardEvent } from "react";
-import type { SidebarLabels } from "./sidebar";
+import { SidebarDefaultHeader } from "./sidebar-default-header";
 import { containerDndId, groupDndId } from "./sidebar-dnd";
 import { SidebarGroupHeader } from "./sidebar-group-header";
-import type { SidebarSection } from "./sidebar-groups";
+import type { SidebarDefaultGroupView, SidebarSection } from "./sidebar-groups";
+import type { SidebarRowContext } from "./sidebar-row-context";
+import { SidebarSectionRows } from "./sidebar-section-rows";
 import { SidebarSortableRow } from "./sidebar-sortable-row";
-
-/** Item-level editing state + handlers shared by every rendered section. */
-export interface SidebarRowContext {
-  selectedId?: string | null;
-  editingId: string | null;
-  editValue: string;
-  hasDefaultMenu: boolean;
-  onSelect: (id: string) => void;
-  onItemKeyDown: (e: KeyboardEvent, id: string) => void;
-  onEditChange: (value: string) => void;
-  onCommitRename: (id: string) => void;
-  onCancelEdit: () => void;
-  onStartRename?: (id: string, name: string) => void;
-  onDeleteItem?: (id: string) => void;
-  labels: Required<SidebarLabels>;
-}
-
-/** Item editing state/handlers shared by both list modes. */
-export type SidebarBaseRowContext = SidebarRowContext;
 
 export interface SidebarGroupSectionProps {
   section: SidebarSection;
   ctx: SidebarRowContext;
+  /** Renders the trailing default section as a labelled block (see the type).
+   *  Ignored for a named group's section. */
+  defaultGroup?: SidebarDefaultGroupView;
   /** An item drag is in flight (opens the default section as a drop-out zone). */
   dragging?: boolean;
-  /** There are named groups — the default section then shows its own header so
-   *  the ungrouped agents are a first-class, obvious drop target. */
-  hasGroups?: boolean;
   /** This group is the current drop target — highlight it. */
   highlight?: boolean;
   /** Play a one-shot confirmation pulse (an agent just landed in this group). */
@@ -56,15 +38,21 @@ export interface SidebarGroupSectionProps {
 /**
  * One sidebar section for the @dnd-kit grouped list: a collapsible, drag-to-
  * reorder group header (null for the trailing default section) plus a droppable
- * container whose item rows are a vertical {@link SortableContext}. An empty
- * group shows a faint drop hint and keeps a drop target. Rows animate to make
- * room via @dnd-kit; the lifted copy is the parent's DragOverlay.
+ * container holding this section's destination rows and then its item rows as a
+ * vertical {@link SortableContext}. An empty group shows a faint drop hint and
+ * keeps a drop target. Collapsing folds away the agents only — the destination
+ * rows stay. Rows animate to make room via @dnd-kit; the lifted copy is the
+ * parent's DragOverlay.
+ *
+ * Given `defaultGroup`, the trailing default section renders as a labelled,
+ * non-collapsible block instead of a bare list — same anatomy as a group, minus
+ * the affordances the container itself does not have.
  */
 export function SidebarGroupSection({
   section,
   ctx,
+  defaultGroup,
   dragging,
-  hasGroups,
   highlight,
   pulse,
   renaming,
@@ -76,10 +64,10 @@ export function SidebarGroupSection({
 }: SidebarGroupSectionProps) {
   const { group, groupId, items } = section;
   const collapsed = group?.collapsed ?? false;
-  // The default (ungrouped) section shows its "Ungrouped" header ONLY while
-  // dragging (and only when named groups exist) — a clear drop-out target that
-  // appears on drag and disappears at rest, so the resting sidebar stays clean.
-  const showDefaultHeader = !group && !!hasGroups && !!dragging;
+  // A labelled block: a named group, or the default section once the caller
+  // gives it a name. Both indent their rows and both carry section rows.
+  const block = group ?? (groupId === null ? defaultGroup : undefined);
+  const sectionRows = block?.sections ?? [];
 
   const header = useSortable({
     id: group ? groupDndId(group.id) : "grp:__default__",
@@ -102,7 +90,7 @@ export function SidebarGroupSection({
       }}
       className={cn(
         "flex flex-col",
-        group && "pt-2.5",
+        block && "pt-2.5",
         header.isDragging && "opacity-50",
       )}
     >
@@ -132,51 +120,51 @@ export function SidebarGroupSection({
             onDeleteGroup={onDeleteGroup}
           />
         )}
-
-        {!collapsed && (
-          <div
-            ref={setDropRef}
-            data-sidebar-drop-section={groupId ?? ""}
-            className={cn(
-              "flex flex-col rounded-md transition-colors duration-150",
-              // Indent grouped rows (no dividing line — spacing carries hierarchy).
-              group && "mt-0.5 pl-3",
-              // While dragging, the ungrouped section reserves a comfortable
-              // target below the groups so an agent can always be pulled back out
-              // of a group (and it clearly glows).
-              !group && dragging && "min-h-[52px]",
-            )}
-          >
-            {showDefaultHeader && (
-              <div className="flex items-center gap-1.5 px-2 pb-0.5 pt-0.5">
-                <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink-muted/70">
-                  {ctx.labels.ungroupedLabel}
-                </span>
-                <span className="shrink-0 text-[10px] font-medium tabular-nums text-ink-muted/40">
-                  {items.length}
-                </span>
-              </div>
-            )}
-            <SortableContext
-              items={items.map((it) => `item:${it.id}`)}
-              strategy={verticalListSortingStrategy}
-            >
-              {items.map((item) => (
-                <SidebarSortableRow
-                  key={item.id}
-                  item={item}
-                  containerId={groupId}
-                  ctx={ctx}
-                />
-              ))}
-            </SortableContext>
-            {group && items.length === 0 && (
-              <div className="px-3 py-1.5 text-[11px] text-ink-muted/40">
-                {ctx.labels.emptyGroupHint}
-              </div>
-            )}
-          </div>
+        {!group && defaultGroup && (
+          <SidebarDefaultHeader name={defaultGroup.name} count={items.length} />
         )}
+
+        <div
+          ref={setDropRef}
+          data-sidebar-drop-section={groupId ?? ""}
+          className={cn(
+            "flex flex-col rounded-md transition-colors duration-150",
+            // Indent a block's rows (no dividing line — spacing carries hierarchy).
+            block && "mt-0.5 pl-3",
+            // While dragging, the ungrouped section reserves a comfortable
+            // target below the groups so an agent can always be pulled back out
+            // of a group (and it clearly glows).
+            !group && dragging && "min-h-[52px]",
+          )}
+        >
+          <SidebarSectionRows rows={sectionRows} />
+          {/* Collapse folds away the MEMBERS only. The destination rows above
+              are how you get back to the team — Mission Control and Team
+              Settings. Hiding them too would erase the team the user is
+              currently looking at from the rail. */}
+          {!collapsed && (
+            <>
+              <SortableContext
+                items={items.map((it) => `item:${it.id}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {items.map((item) => (
+                  <SidebarSortableRow
+                    key={item.id}
+                    item={item}
+                    containerId={groupId}
+                    ctx={ctx}
+                  />
+                ))}
+              </SortableContext>
+              {block && items.length === 0 && (
+                <div className="px-3 py-1.5 text-[11px] text-ink-muted/40">
+                  {ctx.labels.emptyGroupHint}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

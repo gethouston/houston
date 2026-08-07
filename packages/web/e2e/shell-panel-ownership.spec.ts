@@ -54,3 +54,32 @@ test("leaving the Activity tab with a mission open closes the shared panel", asy
   await page.locator('[data-tour-target="tab-activity"]').click();
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
+
+test("leaving a board with the new-mission composer open still lets it reopen", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // Mission Control, with the EMPTY new-mission composer claiming the panel.
+  // That composer's open state lives inside AIBoard, not in the app store, so
+  // releasing the panel means calling the closer the board handed back — not
+  // just dropping the app-side selection.
+  await page.locator('[data-tour-target="nav-dashboard"]').click();
+  await page.getByRole("button", { name: "New mission" }).first().click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Houston", exact: true })
+    .click();
+  await expect(page.getByTestId("mission-panel")).toBeVisible();
+
+  // Off to another top-level view: the board goes off screen and lets go.
+  await page.locator('[data-tour-target="nav-skills"]').click();
+  await expect(page.getByTestId("mission-panel")).toBeHidden();
+
+  // Back on the board, a mission card must be able to open the panel AGAIN.
+  // Releasing only the app-side selection left AIBoard's own `showPanel` stuck
+  // true, so its open-change effect never fired and this click did nothing.
+  await page.locator('[data-tour-target="nav-dashboard"]').click();
+  await page.getByText("Plan a trip to Tokyo").first().click();
+  await expect(page.getByTestId("mission-panel")).toBeVisible();
+});

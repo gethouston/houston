@@ -9,7 +9,8 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 import { APP_SIDEBAR_PROPS } from "./app-sidebar-api";
-import { EmptyRail, LiveSidebar, SidebarStage } from "./app-sidebar-parts";
+import { LiveSidebar } from "./app-sidebar-parts";
+import { EmptyRail, SidebarStage } from "./app-sidebar-stage";
 
 function AppSidebarSpecimen() {
   return (
@@ -20,7 +21,7 @@ function AppSidebarSpecimen() {
       >
         <SpecimenSection
           title="Variants"
-          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Every example below is live; rename, delete, collapse and drag them."
+          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Add `sections` to a group and `defaultGroup` for the trailing block, and each block becomes a team: a header, its destinations, then its agents. Every example below is live; rename, delete, collapse and drag them."
         >
           <SpecimenRow label="Flat list">
             <SidebarStage>
@@ -32,9 +33,14 @@ function AppSidebarSpecimen() {
               <LiveSidebar grouped />
             </SidebarStage>
           </SpecimenRow>
+          <SpecimenRow label="Teams — destination rows above each block's agents">
+            <SidebarStage>
+              <LiveSidebar grouped teams />
+            </SidebarStage>
+          </SpecimenRow>
           <SpecimenRow label="Full shell chrome — header, nav, footer">
             <SidebarStage>
-              <LiveSidebar chrome grouped />
+              <LiveSidebar chrome grouped teams />
             </SidebarStage>
           </SpecimenRow>
         </SpecimenSection>

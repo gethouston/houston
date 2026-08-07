@@ -423,5 +423,25 @@
       "goneTitle": "Este convite não está mais disponível",
       "goneBody": "Ele foi cancelado ou já foi usado. Peça um novo convite para a sua equipe."
     }
+  },
+  "teamView": {
+    "missionControl": {
+      "empty": {
+        "workspaceTitle": "Você ainda não tem agentes",
+        "workspaceBody": "Crie seu primeiro agente e as missões dele aparecerão aqui.",
+        "createAgent": "Criar agente",
+        "teamTitle": "Esta equipe ainda não tem agentes",
+        "teamBody": "Arraste um agente para {{name}} na barra lateral e as missões dele aparecerão aqui."
+      }
+    },
+    "settings": {
+      "subtitle": "Os agentes desta equipe. Abra um para gerenciar quem pode usá-lo e o que ele pode usar.",
+      "empty": {
+        "workspaceTitle": "Ainda não há agentes",
+        "workspaceBody": "Crie um e ele aparecerá aqui.",
+        "teamTitle": "Esta equipe ainda não tem agentes",
+        "teamBody": "Arraste um agente para ela na barra lateral para adicionar um."
+      }
+    }
   }
 }

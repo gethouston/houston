@@ -423,5 +423,25 @@
       "goneTitle": "Esta invitación ya no está disponible",
       "goneBody": "Se canceló o ya se usó. Pídele a tu equipo que te envíe una nueva."
     }
+  },
+  "teamView": {
+    "missionControl": {
+      "empty": {
+        "workspaceTitle": "Aún no tienes agentes",
+        "workspaceBody": "Crea tu primer agente y sus misiones aparecerán aquí.",
+        "createAgent": "Crear agente",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Arrastra un agente sobre {{name}} en la barra lateral y sus misiones aparecerán aquí."
+      }
+    },
+    "settings": {
+      "subtitle": "Los agentes de este equipo. Abre uno para gestionar quién puede usarlo y qué puede usar.",
+      "empty": {
+        "workspaceTitle": "Aún no hay agentes",
+        "workspaceBody": "Crea uno y aparecerá aquí.",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Arrastra un agente sobre él en la barra lateral para agregar uno."
+      }
+    }
   }
 }

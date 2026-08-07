@@ -15,11 +15,12 @@ import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { useAllConversations } from "../hooks/queries";
-import { useSidebarLayout } from "../hooks/use-sidebar-layout";
+import { useSidebarLayoutValue } from "../hooks/use-sidebar-layout";
 import { flatSidebarOrder } from "../lib/agent-order";
 import { analytics } from "../lib/analytics";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
 import { shortcutLabel } from "../lib/shortcuts";
+import { isMissionBoardView } from "../lib/top-level-views";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -62,7 +63,7 @@ export function CommandPalette() {
   const agents = useAgentStore((s) => s.agents);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const workspaceId = useWorkspaceStore((s) => s.current?.id);
-  const { layout } = useSidebarLayout(workspaceId);
+  const layout = useSidebarLayoutValue(workspaceId);
   const orderedAgents = useMemo(
     () => flatSidebarOrder(agents, layout),
     [agents, layout],
@@ -127,8 +128,13 @@ export function CommandPalette() {
     // change runs, so focus lands on the right place.
     setTimeout(() => {
       const ui = useUIStore.getState();
-      if (ui.viewMode === "dashboard") {
-        ui.onStartMission?.();
+      // Mission Control and a team's board both own the handler already. The
+      // guard is two-part because the `team` view also renders Team Settings
+      // and the no-agents empty state, neither of which mounts a board — with
+      // no registered handler this has to fall through to the per-agent path
+      // instead of silently doing nothing.
+      if (isMissionBoardView(ui.viewMode) && ui.onStartMission) {
+        ui.onStartMission();
       } else if (useAgentStore.getState().current) {
         if (ui.viewMode !== "activity") {
           ui.setViewMode("activity");

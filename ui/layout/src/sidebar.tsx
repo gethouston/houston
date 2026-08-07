@@ -13,12 +13,15 @@ import {
   useState,
 } from "react";
 import { SidebarFlatList } from "./sidebar-flat-list";
-import type { SidebarBaseRowContext } from "./sidebar-group-section";
 import { SidebarGroupedList } from "./sidebar-grouped-list";
-import type { SidebarGroupView } from "./sidebar-groups";
+import type {
+  SidebarDefaultGroupView,
+  SidebarGroupView,
+} from "./sidebar-groups";
 import type { SidebarItemRowLabels } from "./sidebar-item-row";
 import { SidebarNavItem } from "./sidebar-nav";
 import { shouldExpandFromRailClick } from "./sidebar-rail-expand";
+import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
 export interface SidebarItem {
   id: string;
@@ -78,6 +81,12 @@ export interface SidebarProps {
    * Agents are always drag-reorderable in grouped mode.
    */
   groups?: SidebarGroupView[];
+  /**
+   * Names the trailing default section and gives it its own destination rows,
+   * turning it into a labelled, non-collapsible block instead of a bare list.
+   * Grouped mode only (the collapsed rail is always flat).
+   */
+  defaultGroup?: SidebarDefaultGroupView;
   onToggleGroupCollapsed?: (groupId: string) => void;
   onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
@@ -115,8 +124,6 @@ export interface SidebarLabels extends SidebarItemRowLabels {
   newGroupPlaceholder?: string;
   /** Faint hint shown inside an empty group. */
   emptyGroupHint?: string;
-  /** Label for the default section holding agents in no group. */
-  ungroupedLabel?: string;
 }
 
 const DEFAULT_LABELS: Required<SidebarLabels> = {
@@ -132,7 +139,6 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
   groupMenu: "Group options",
   newGroupPlaceholder: "Group name",
   emptyGroupHint: "Drag agents here",
-  ungroupedLabel: "Ungrouped",
 };
 
 export function AppSidebar({
@@ -151,6 +157,7 @@ export function AppSidebar({
   sectionLabel,
   sectionAction,
   groups,
+  defaultGroup,
   onToggleGroupCollapsed,
   onEditGroupContext,
   onRenameGroup,
@@ -345,6 +352,7 @@ export function AppSidebar({
               <SidebarGroupedList
                 items={items}
                 groups={groups}
+                defaultGroup={defaultGroup}
                 onToggleGroupCollapsed={onToggleGroupCollapsed}
                 onEditGroupContext={onEditGroupContext}
                 onRenameGroup={onRenameGroup}

@@ -28,12 +28,14 @@ import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
+import { useTeams } from "../../hooks/use-teams";
 import { analytics } from "../../lib/analytics";
 import { isSetupChatMode } from "../../lib/integration-chat-setup";
 import { hasSpaces } from "../../lib/org-roles";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { shortcutLabel } from "../../lib/shortcuts";
+import { blockedTeamView } from "../../lib/teams-model";
 import { blockedTopLevelView, isTopLevelView } from "../../lib/top-level-views";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
@@ -99,6 +101,8 @@ export function WorkspaceShell({
   const setAgentMissionSearchQuery = useUIStore(
     (s) => s.setAgentMissionSearchQuery,
   );
+  const activeTeamId = useUIStore((s) => s.activeTeamId);
+  const teams = useTeams();
   const uiTourActive = useUIStore((s) => s.uiTourActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
@@ -140,7 +144,13 @@ export function WorkspaceShell({
       // stale `viewMode` would fall through every render branch and strand the
       // user on the engine pane with its nav entry hidden; reset to the
       // dashboard.
-      if (blockedTopLevelView(viewMode, { showAiModels })) {
+      if (
+        blockedTopLevelView(viewMode, { showAiModels }) ||
+        // The same rule for a team that stopped existing under an open team
+        // view: its sidebar group was deleted, or the workspace it belonged to
+        // is gone (a space switch).
+        blockedTeamView(viewMode, teams, activeTeamId)
+      ) {
         setViewMode("dashboard");
       }
       return;
@@ -150,11 +160,13 @@ export function WorkspaceShell({
       : STANDARD_TAB_IDS.has(viewMode);
     if (!valid) setViewMode(DEFAULT_TAB_ID);
   }, [
+    activeTeamId,
     capabilities,
     currentAgent,
     isAgentView,
     setViewMode,
     showAiModels,
+    teams,
     viewMode,
   ]);
 

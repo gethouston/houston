@@ -1,56 +1,16 @@
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
 import { useState } from "react";
 
 import { moveGroup, moveItemInList, moveItemToGroup } from "./app-sidebar-move";
-import {
-  agentGroups,
-  agentItems,
-  navEntries,
-  Viewport,
-  workspaces,
-} from "./sample";
-
-/** The rail beside the pane it sits next to, so its 220/56px width reads true. */
-export function SidebarStage({ children }: { children: ReactNode }) {
-  return (
-    <Viewport className="h-[440px] w-full max-w-2xl">
-      {children}
-      <div className="flex flex-1 items-center justify-center p-6 text-center text-ink-muted text-xs">
-        The agent's workspace — whatever the selected rail row opens.
-      </div>
-    </Viewport>
-  );
-}
-
-/** The footer slot the desktop shell fills with its update notice. */
-function UpdateNotice() {
-  return (
-    <div className="flex items-center gap-2 px-3 py-2.5 text-ink-muted text-xs">
-      <Sparkles className="size-3.5 shrink-0" />
-      Update ready — restart to install
-    </div>
-  );
-}
-
-/** A brand-new workspace: the section label and the + button, nothing under. */
-export function EmptyRail() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  return (
-    <AppSidebar
-      sectionLabel="Your agents"
-      items={[]}
-      selectedId={selectedId}
-      onSelect={setSelectedId}
-      onAdd={() => setSelectedId(null)}
-    />
-  );
-}
+import { sectionRows } from "./app-sidebar-sections";
+import { UpdateNotice } from "./app-sidebar-stage";
+import { agentGroups, agentItems, navEntries, workspaces } from "./sample";
 
 export interface LiveSidebarProps {
   /** Pass `groups` and the drag-and-drop grouped layout replaces the flat list. */
   grouped?: boolean;
+  /** Give every block its destination rows and name the default one. */
+  teams?: boolean;
   /** Start as the 56px icon rail. The toggle stays live either way. */
   startCollapsed?: boolean;
   /** The full shell chrome: workspace switcher header, nav items, footer. */
@@ -65,6 +25,7 @@ export interface LiveSidebarProps {
  */
 export function LiveSidebar({
   grouped = false,
+  teams = false,
   startCollapsed = false,
   chrome = false,
 }: LiveSidebarProps) {
@@ -74,9 +35,19 @@ export function LiveSidebar({
   const [activeNavId, setActiveNavId] = useState("dashboard");
   const [collapsed, setCollapsed] = useState(startCollapsed);
   const [workspaceId, setWorkspaceId] = useState("personal");
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
   const current =
     workspaces.find((one) => one.id === workspaceId) ?? workspaces[0];
+
+  const selectSection = (rowId: string) => {
+    setActiveSectionId(rowId);
+    setSelectedId(null);
+  };
+  const selectItem = (id: string) => {
+    setSelectedId(id);
+    setActiveSectionId(null);
+  };
 
   return (
     <AppSidebar
@@ -106,11 +77,34 @@ export function LiveSidebar({
           : undefined
       }
       activeNavId={activeNavId}
-      sectionLabel="Your agents"
+      sectionLabel={teams ? "Your teams" : "Your agents"}
       items={items}
-      groups={grouped ? groups : undefined}
+      groups={
+        grouped
+          ? groups.map((group) =>
+              teams
+                ? {
+                    ...group,
+                    sections: sectionRows(
+                      group.id,
+                      activeSectionId,
+                      selectSection,
+                    ),
+                  }
+                : group,
+            )
+          : undefined
+      }
+      defaultGroup={
+        teams
+          ? {
+              name: current.name,
+              sections: sectionRows("default", activeSectionId, selectSection),
+            }
+          : undefined
+      }
       selectedId={selectedId}
-      onSelect={setSelectedId}
+      onSelect={selectItem}
       onAdd={() => setSelectedId(null)}
       onRename={(id, name) =>
         setItems((all) =>

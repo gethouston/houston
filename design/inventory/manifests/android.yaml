@@ -107,3 +107,7 @@ components:
     status: not-started
   agent-store-creator-profile-screen:
     status: not-started
+  sidebar-team-block:
+    status: not-started
+  team-screen:
+    status: not-started

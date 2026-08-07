@@ -20,7 +20,6 @@ export const GROUP_LABELS: Required<SidebarLabels> = {
   groupMenu: "Group options",
   newGroupPlaceholder: "Group name",
   emptyGroupHint: "Drag agents here",
-  ungroupedLabel: "Ungrouped",
 };
 
 /** `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`. */

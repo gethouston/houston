@@ -93,6 +93,9 @@ export function SidebarItemRow({
       ) : (
         <button
           type="button"
+          // "You are here", said the same way a destination row says it, so the
+          // open agent is identifiable without reading a paint class.
+          aria-current={isActive ? "page" : undefined}
           onClick={() => onSelect(item.id)}
           onKeyDown={(e) => onKeyDown(e, item.id)}
           className={cn(

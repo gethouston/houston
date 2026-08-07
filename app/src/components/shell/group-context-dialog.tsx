@@ -53,16 +53,16 @@ export function GroupContextDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {t("sidebar.groups.contextDialog.title", { name: groupName })}
+            {t("sidebar.teams.contextDialog.title", { name: groupName })}
           </DialogTitle>
           <DialogDescription>
-            {t("sidebar.groups.contextDialog.description")}
+            {t("sidebar.teams.contextDialog.description")}
           </DialogDescription>
         </DialogHeader>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={t("sidebar.groups.contextDialog.placeholder")}
+          placeholder={t("sidebar.teams.contextDialog.placeholder")}
           rows={8}
           className="w-full rounded-md border border-line bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-focus resize-none"
           autoFocus
@@ -73,10 +73,10 @@ export function GroupContextDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-            {t("sidebar.groups.contextDialog.cancel")}
+            {t("sidebar.teams.contextDialog.cancel")}
           </Button>
           <AsyncButton type="button" onClick={handleSave}>
-            {t("sidebar.groups.contextDialog.save")}
+            {t("sidebar.teams.contextDialog.save")}
           </AsyncButton>
         </DialogFooter>
       </DialogContent>

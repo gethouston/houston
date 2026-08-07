@@ -22,7 +22,9 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     // Anchor on the shell being fully painted before pinning theme + comparing.
-    await expect(page.getByText("Mission Control")).toBeVisible();
+    await expect(
+      page.locator("[data-tour-target='nav-dashboard']"),
+    ).toBeVisible();
     await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
     await expect(page.getByText("Draft the launch email")).toBeVisible();
     await pinTheme(page, theme);

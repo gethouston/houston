@@ -3,8 +3,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@houston-ai/core";
 import type { SidebarItem } from "./sidebar";
 import { itemDndId } from "./sidebar-dnd";
-import type { SidebarRowContext } from "./sidebar-group-section";
 import { SidebarItemRow } from "./sidebar-item-row";
+import type { SidebarRowContext } from "./sidebar-row-context";
 
 export interface SidebarSortableRowProps {
   item: SidebarItem;

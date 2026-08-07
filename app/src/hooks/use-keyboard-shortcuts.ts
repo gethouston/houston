@@ -6,6 +6,7 @@ import {
   isTypingTarget,
   matchShortcut,
 } from "../lib/shortcuts";
+import { isMissionBoardView } from "../lib/top-level-views";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -78,7 +79,13 @@ export function useKeyboardShortcuts() {
         const ui = useUIStore.getState();
         const agents = useAgentStore.getState().agents;
         const fire = () => useUIStore.getState().onStartMission?.();
-        if (ui.viewMode === "dashboard") {
+        // Mission Control and a team's board are already showing a cross-agent
+        // board that owns the handler: open its picker where the user is. The
+        // guard is two-part because the `team` view also renders Team Settings
+        // and the no-agents empty state, neither of which mounts a board — with
+        // no registered handler the shortcut has to fall through to the
+        // per-agent path instead of silently doing nothing.
+        if (isMissionBoardView(ui.viewMode) && ui.onStartMission) {
           fire();
           return;
         }
@@ -150,10 +157,11 @@ export function useKeyboardShortcuts() {
         }
         // Board view → arrows move the highlight. They do NOT open
         // the panel; Enter does that. Yield to any editable so
-        // search inputs etc. keep their cursor motion.
+        // search inputs etc. keep their cursor motion. "Board" is the
+        // global board, a team's board, or an agent's Activity tab.
         if (isTypingTarget(e)) return;
         const onBoard =
-          ui.viewMode === "dashboard" || ui.viewMode === "activity";
+          isMissionBoardView(ui.viewMode) || ui.viewMode === "activity";
         if (!onBoard || ui.paletteOpen || ui.cheatsheetOpen) return;
         e.preventDefault();
         ui.onBoardNavigate?.(arrowDir);
@@ -166,8 +174,9 @@ export function useKeyboardShortcuts() {
         if (isTypingTarget(e)) return;
         const ui = useUIStore.getState();
         if (ui.missionPanelOpen || ui.paletteOpen || ui.cheatsheetOpen) return;
+        // The global board, a team's board, or an agent's Activity tab.
         const onBoard =
-          ui.viewMode === "dashboard" || ui.viewMode === "activity";
+          isMissionBoardView(ui.viewMode) || ui.viewMode === "activity";
         if (!onBoard) return;
         e.preventDefault();
         ui.onBoardOpen?.();

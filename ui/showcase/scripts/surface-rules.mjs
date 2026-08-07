@@ -5,7 +5,7 @@
  * come from `app/src/locales/en/agents.json` → `tabLabels` (Activity, Chat,
  * Routines, Skills, Integrations, Files, Archived, Permissions, Agent
  * Settings), the sidebar entries from `shell.json` → `sidebar` (Mission
- * Control, AI Models, Usage, Agent Store, Settings, Your Agents), and both are
+ * Control, AI Models, Usage, Agent Store, Settings, Your teams), and both are
  * wired in `app/src/components/shell/sidebar-chrome.tsx` +
  * `app/src/agents/standard-tabs.ts`. A designer reading a "Used in" chip should
  * be able to click straight to that surface.
@@ -109,6 +109,11 @@ export const SURFACE_RULES = {
   "app/src/components/shell/language-gate": "Onboarding",
   "app/src/components/shell/naming-step": "Onboarding",
   "app/src/components/shell/workspace-setup-flow": "Onboarding",
+
+  // The `team` screen behind every rail row: the team's board, its archive and
+  // its settings. Named for the rail section that opens it
+  // (shell:sidebar.yourTeams), not for the stored group it draws.
+  "app/src/components/team-view/": "Your teams",
 
   "app/src/components/ai-hub/": "AI Models",
   "app/src/components/provider-browser/": "AI Models",

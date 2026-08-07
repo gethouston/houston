@@ -3,8 +3,8 @@ import { Plus } from "lucide-react";
 import type { SidebarItem } from "./sidebar";
 import { sidebarClasses } from "./sidebar-classes";
 import { SidebarCollapsedItem } from "./sidebar-collapsed-item";
-import type { SidebarBaseRowContext } from "./sidebar-group-section";
 import { SidebarItemRow } from "./sidebar-item-row";
+import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
 export interface SidebarFlatListProps {
   items: SidebarItem[];

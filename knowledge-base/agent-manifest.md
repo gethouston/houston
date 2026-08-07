@@ -339,33 +339,66 @@ Engine route: `POST /v1/store/workspaces/install-from-github`. Rust impl: `houst
 
 ## Sidebar structure
 
+**The rail is a list of TEAMS.** Every agent belongs to exactly one team, so
+there is no "loose agents" remainder: a named team is a stored sidebar group,
+and the trailing DEFAULT team is the workspace itself. What a team IS, the
+`team` screen behind each destination row, and the store contract between them
+live in [teams-ui.md](teams-ui.md) — this section is the RAIL's own anatomy.
+
 ```
 +-----------------------------+
 | [WorkspaceSwitcher] [Settings] |
 |-----------------------------|
-| > Dashboard                 |  all agents overview (Mission Control)
-| > AI models                 |  the AI Hub top-level view (viewMode "ai-hub")
-| > Connections               |  workspace-wide integrations
-| > Agent store               |  the public catalog (viewMode "agent-store")
+| > Mission Control           |  all agents overview (viewMode "dashboard")
+| > Integrations              |  workspace-wide integrations
+| > Skills                    |
+| > AI Models                 |  the AI Hub top-level view (viewMode "ai-hub")
+| > Agent Store               |  the public catalog (viewMode "agent-store")
+| > Settings                  |
 |-----------------------------|
-| Your AI Agents          [+] |  section label + a people (Users) icon "New group" button
-|   ▾ Work                 [2]|  a named, collapsible group (drag its title to move it)
-|     > Research Agent    [2] |
+| Your teams          [teams][+] | label + a people (Users) "New team" button + New agent
+|   ▾ Work                 [2]|  a named team = a stored group (drag its title to reorder)
+|     > Mission Control       |  section row -> openTeamView(team, "mission-control")
+|     > Team Settings         |  section row, only when canSeeTeamSettings(caps)
+|     > Research Agent    [2] |  member agent
 |     > Project Manager       |
-|   > Trip Planner            |  ungrouped agents (default section)
-|   + New Agent               |  row-style action, opens Store picker
+|   Personal               [1]|  the DEFAULT team: the WORKSPACE's name, no caret, no menu
+|     > Mission Control       |
+|     > Team Settings         |
+|     > Trip Planner          |  every agent in no group
 +-----------------------------+
 ```
 
+- **Teams, clicks, highlight → [teams-ui.md](teams-ui.md).** In one line: the
+  teams come from `useTeams()` (the single resolution path), the sections a team
+  offers come from `visibleTeamSections(caps)`, and which row is lit is pure, in
+  `app/src/lib/sidebar-teams.ts`. The default team is **virtual** — nothing is
+  written to `sidebar_layout` to make it exist, which is exactly why it has no
+  caret and no rename / delete / shared-context menu.
+- **App composition:** `components/shell/team-sidebar-lists.tsx` builds
+  `items` / `groups` / `defaultGroup` (section-row labels come from
+  `buildTeamSectionLabels` in `sidebar-chrome.tsx`; icons map ids → lucide).
+- **i18n:** `shell:sidebar.yourTeams`, `shell:sidebar.newTeam`,
+  `shell:sidebar.teamSections.*`, and the team menu family `shell:sidebar.teams.*`
+  (en/es/pt). The old `sidebar.yourAgents` / `sidebar.groups.*` keys are gone.
+
 **Reorder + grouping (per-workspace).** Ordering is **always manual** — there
 is NO sort mode. Agents are always drag-and-droppable to reorder or to drop into
-a group; a folder-plus button to the right of the "Your agents" label creates a
-group (which appears already in inline-rename, focused). Arrangement persists per
+another team; a people button to the right of the "Your teams" label creates a
+team (which appears already in inline-rename, focused). Section rows are
+destinations, never members: they are not draggable and are not drop targets, and
+a drag passing over one targets the team that owns it. **Collapsing a team folds
+away its AGENT rows only** — its destination rows stay, because they are how the
+user gets back into the team. Folding them too blanked the rail underneath a team
+board that was plainly on screen (`sidebar-group-section.tsx` keeps
+`SidebarSectionRows` outside the `collapsed` gate). Arrangement persists per
 workspace as the `sidebar_layout` **preference** (same `ws/<id>/preferences.json`
 doc as `locale`; reuses `getPreference`/`setPreference`), shape `SidebarLayout {
 groups: SidebarGroup[]; ungroupedOrder: string[] }`
 (`packages/protocol/src/domain/workspace.ts`; a brand-new agent appears at the
-end of the default section). Absent/corrupt reads as `{ [], [] }`.
+end of the default team). Absent/corrupt reads as `{ [], [] }`. **The stored
+shape did not change when the rail became teams** — a team block is a way of
+drawing the layout, not a new thing written to it.
 
 - **Host:** `GET`/`PUT /v1/workspaces/:id/sidebar-layout` in
   `routes/account.ts` (validator/reader extracted to `routes/sidebar-layout.ts`);
@@ -395,16 +428,39 @@ end of the default section). Absent/corrupt reads as `{ [], [] }`.
   rail always renders flat. Verified end-to-end by
   `packages/web/e2e/sidebar-dnd.spec.ts` (Chromium + WebKit; drags re-read the
   reflowing target's live position — fixed pre-drag coords miss).
-- **App wiring:** `hooks/use-sidebar-layout.ts` (TanStack Query + optimistic
-  mutation + non-React `getCurrentSidebarLayout` accessor; `createGroup` returns
-  the new id so the sidebar can focus its rename), pure reducers in
+  **Team props (props-only, i18n-agnostic):** `SidebarGroupView.sections?:
+  SidebarSectionRow[]` (`{ id, label, icon?, active, onSelect }`) draws that
+  group's destination rows above its item rows, and `AppSidebar.defaultGroup?:
+  { name, sections? }` turns the trailing default section into a labelled,
+  non-collapsible block (`SidebarDefaultHeader` — no caret, no menu). The app
+  always supplies it, so the library's old anonymous "Ungrouped" drag header and
+  its untranslated `ungroupedLabel` are GONE, not kept "just in case". Section
+  rows register no sortable and no droppable (`SidebarSectionRows`), so they can
+  never be dragged, can never be a drop target, and a drag over one falls through
+  to the group's container. **Both kinds of row say "you are here" with
+  `aria-current="page"`** (destination rows on the row itself, agent rows on
+  their select button) — that, not the `bg-sidebar-active` utility, is what e2e
+  asserts, so a repaint can never break a navigation test. Team STRUCTURE is
+  covered by
+  `packages/web/e2e/sidebar-teams.spec.ts`; class geometry (one glyph column
+  across section and agent rows) by `ui/layout/tests/sidebar-item-row-layout.test.ts`.
+- **App wiring:** `hooks/use-sidebar-layout.ts` — two hooks, one query.
+  `useSidebarLayoutValue(workspaceId)` is the READ (TanStack Query + the
+  memoized `normalizeSidebarLayout`), and `useSidebarLayout(workspaceId)` builds
+  on it to add the optimistic mutation + the helpers the rail drives. Only the
+  rail needs the second; `useTeams()` and the command palette take the read-only
+  one so they stop instantiating a mutation stack they never fire. Plus the
+  non-React `getCurrentSidebarLayout` accessor; `createGroup` returns
+  the new id so the sidebar can focus its rename. Pure reducers live in
   `lib/sidebar-layout-ops.ts` (+ `normalizeSidebarLayout` guarding every read),
   ordering in `lib/agent-order.ts` (`resolveSidebarSections` / `flatSidebarOrder`
-  — the SAME order feeds ⌘[ / ⌘] cycling + the command palette). Group labels
-  live under `shell:sidebar.groups.*` (en/es/pt).
-- **Group shared context.** `SidebarGroup.context?: string` — one note shared
-  by every agent in that group (a group-scoped `WORKSPACE.md`). Edited from the
-  group header's "..." menu → "Edit shared context"
+  — the SAME order feeds ⌘[ / ⌘] cycling + the command palette). Team labels
+  live under `shell:sidebar.teams.*` (en/es/pt). Agent mutations (rename with
+  its pre-PATCH validation, colour, delete) are in
+  `components/shell/use-sidebar-agent-actions.ts`, not the rail component.
+- **Team shared context.** `SidebarGroup.context?: string` — one note shared
+  by every agent in that team (a team-scoped `WORKSPACE.md`). Edited from the
+  team header's "..." menu → "Edit shared context"
   (`app/src/components/shell/group-context-dialog.tsx`), saved via
   `sidebar.setGroupContext` → `setGroupContextOp` → the same `PUT
   sidebar-layout` write. On every PUT, `routes/account.ts` diffs the previous

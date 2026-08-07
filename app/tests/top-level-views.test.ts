@@ -9,8 +9,10 @@ import {
   blockedTopLevelView,
   DASHBOARD_VIEW_ID,
   isActiveTopLevelView,
+  isMissionBoardView,
   isTopLevelView,
   SETTINGS_VIEW_ID,
+  TEAM_VIEW_ID,
   TOP_LEVEL_VIEWS,
 } from "../src/lib/top-level-views.ts";
 
@@ -23,19 +25,21 @@ describe("isTopLevelView", () => {
       INTEGRATIONS_VIEW_ID,
       SKILLS_VIEW_ID,
       STORE_VIEW_ID,
+      // One screen for every team: which team is open is store state, not an id.
+      TEAM_VIEW_ID,
     ]) {
       strictEqual(isTopLevelView(id), true, id);
     }
   });
 
-  it("is exactly those six, and no settings section doubles as one", () => {
+  it("is exactly those seven, and no settings section doubles as one", () => {
     // HOU-788 folded Time worked / Permissions / Admin into Settings sections;
     // a settings section is reached THROUGH `settings`, so none of their ids may
     // also resolve as a top-level view. Checking the live section list (rather
     // than the three retired string literals) keeps this failing if a future
     // section is wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 6);
+    strictEqual(TOP_LEVEL_VIEWS.size, 7);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
@@ -49,6 +53,28 @@ describe("isTopLevelView", () => {
     strictEqual(isTopLevelView("integrations"), false);
     // "skills" is the per-agent Agent Settings screen id, not the global page.
     strictEqual(isTopLevelView("skills"), false);
+  });
+});
+
+describe("isMissionBoardView", () => {
+  it("covers the global board and every team's board", () => {
+    // Both own the global "New mission" handler, so ⌘N and the palette must
+    // fire it in place; missing the team board sent the user to an agent tab.
+    strictEqual(isMissionBoardView(DASHBOARD_VIEW_ID), true);
+    strictEqual(isMissionBoardView(TEAM_VIEW_ID), true);
+  });
+
+  it("covers nothing else", () => {
+    for (const id of [
+      SETTINGS_VIEW_ID,
+      AI_HUB_VIEW_ID,
+      STORE_VIEW_ID,
+      SKILLS_VIEW_ID,
+      "activity",
+      "chat",
+    ]) {
+      strictEqual(isMissionBoardView(id), false, id);
+    }
   });
 });
 
@@ -102,10 +128,13 @@ describe("blockedTopLevelView", () => {
   });
 
   it("never blocks ungated top-level views or agent tabs", () => {
+    // The team view has a gate of its own (`blockedTeamView`, over the resolved
+    // teams) rather than a caps flag, so this one never blocks it.
     for (const id of [
       DASHBOARD_VIEW_ID,
       SETTINGS_VIEW_ID,
       STORE_VIEW_ID,
+      TEAM_VIEW_ID,
       "chat",
     ]) {
       strictEqual(blockedTopLevelView(id, { showAiModels: false }), false, id);

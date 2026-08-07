@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { setPanelOwner } from "../components/shell/detail-panel-owners.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
+import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
 
 export interface ToastItem {
   id: string;
@@ -43,6 +44,18 @@ interface UIState {
    * of doing nothing.
    */
   settingsSection: SettingsSectionId | null;
+  /**
+   * The open team view (`viewMode === TEAM_VIEW_ID`): which team and which of
+   * its sections (mission-control / routines / files / settings). Set together
+   * through {@link UIState.openTeamView} so the view is always coherent.
+   */
+  activeTeamId: string | null;
+  teamSection: TeamSectionId | null;
+  /**
+   * Agent pre-filter for the team Mission Control dropdown (set by clicking an
+   * agent row in the sidebar; `null` = all of the team's agents).
+   */
+  teamAgentFilter: string | null;
   assistantPanelOpen: boolean;
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
@@ -162,6 +175,12 @@ interface UIState {
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
   setViewMode: (mode: string) => void;
+  openTeamView: (
+    teamId: string,
+    section: TeamSectionId,
+    opts?: { agentFilter?: string | null },
+  ) => void;
+  setTeamAgentFilter: (agentId: string | null) => void;
   setAgentBoardMode: (mode: AgentBoardMode) => void;
   setSettingsSection: (section: SettingsSectionId | null) => void;
   /**
@@ -275,6 +294,9 @@ const initialUIState = {
   sidebarCollapsed: false,
   filesViewMode: "grid",
   filePreview: null,
+  activeTeamId: null,
+  teamSection: null,
+  teamAgentFilter: null,
 } satisfies Partial<UIState>;
 
 let toastCounter = 0;
@@ -302,6 +324,14 @@ export const useUIStore = create<UIState>()(
       ...initialUIState,
 
       setViewMode: (viewMode) => set(viewChange(viewMode)),
+      openTeamView: (activeTeamId, teamSection, opts) =>
+        set({
+          ...viewChange(TEAM_VIEW_ID),
+          activeTeamId,
+          teamSection,
+          teamAgentFilter: opts?.agentFilter ?? null,
+        }),
+      setTeamAgentFilter: (teamAgentFilter) => set({ teamAgentFilter }),
       setAgentBoardMode: (agentBoardMode) => set({ agentBoardMode }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
       openSettings: (settingsSection) =>

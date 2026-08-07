@@ -33,20 +33,21 @@ import {
   type WorkingSection,
 } from "./sidebar-dnd";
 import { SidebarGroupHeader } from "./sidebar-group-header";
-import {
-  type SidebarBaseRowContext,
-  SidebarGroupSection,
-} from "./sidebar-group-section";
+import { SidebarGroupSection } from "./sidebar-group-section";
 import {
   computeSidebarSections,
+  type SidebarDefaultGroupView,
   type SidebarGroupView,
   type SidebarSection,
 } from "./sidebar-groups";
 import { SidebarItemRow } from "./sidebar-item-row";
+import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
 export interface SidebarGroupedListProps {
   items: SidebarItem[];
   groups: SidebarGroupView[];
+  /** Renders the trailing default section as a labelled block. */
+  defaultGroup?: SidebarDefaultGroupView;
   rowCtx: SidebarBaseRowContext;
   onToggleGroupCollapsed?: (groupId: string) => void;
   onEditGroupContext?: (groupId: string) => void;
@@ -105,6 +106,7 @@ const collisionDetection: CollisionDetection = (args) => {
 export function SidebarGroupedList({
   items,
   groups,
+  defaultGroup,
   rowCtx,
   onToggleGroupCollapsed,
   onEditGroupContext,
@@ -282,8 +284,8 @@ export function SidebarGroupedList({
             key={section.groupId ?? "__default"}
             section={section}
             ctx={rowCtx}
+            defaultGroup={defaultGroup}
             dragging={activeItemId !== null}
-            hasGroups={groups.length > 0}
             highlight={
               activeItemId !== null && overContainer === section.groupId
             }

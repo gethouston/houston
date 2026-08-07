@@ -1,5 +1,6 @@
 import type { SidebarLayout } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import type { ItemDest } from "../lib/sidebar-layout-ops";
@@ -31,6 +32,35 @@ export function getCurrentSidebarLayout(
   );
 }
 
+/** The query key the layout is read from and optimistically written to. One
+ *  helper for both so a read and a write can never key differently. */
+function layoutQueryKey(workspaceId: string | undefined) {
+  return workspaceId
+    ? queryKeys.sidebarLayout(workspaceId)
+    : (["sidebar-layout", "none"] as const);
+}
+
+/**
+ * The workspace's stored sidebar layout, read-only. What every consumer that
+ * only READS it should use (the teams resolution, the command palette): none of
+ * the optimistic mutation stack is built.
+ *
+ * Memoized on the cached value, not recomputed per render: consumers derive
+ * memoized structures from it (the teams the sidebar and the team view both
+ * resolve), and a fresh object every render would invalidate all of them.
+ */
+export function useSidebarLayoutValue(
+  workspaceId: string | undefined,
+): SidebarLayout {
+  const query = useQuery({
+    queryKey: layoutQueryKey(workspaceId),
+    queryFn: () => tauriSidebar.getLayout(workspaceId as string),
+    enabled: !!workspaceId,
+    staleTime: 30_000,
+  });
+  return useMemo(() => normalizeSidebarLayout(query.data), [query.data]);
+}
+
 export interface UseSidebarLayout {
   layout: SidebarLayout;
   /** Create a group and return its new id (so the caller can focus its name). */
@@ -51,22 +81,16 @@ export interface UseSidebarLayout {
  * grouping feels instant, rolling back on error (the `tauriSidebar` wrapper
  * already surfaces the failure through `call()`, so `onError` only restores the
  * previous cache value — no double toast).
+ *
+ * Reading the layout and nothing else? Use {@link useSidebarLayoutValue}.
  */
 export function useSidebarLayout(
   workspaceId: string | undefined,
 ): UseSidebarLayout {
   const qc = useQueryClient();
 
-  const key = workspaceId
-    ? queryKeys.sidebarLayout(workspaceId)
-    : (["sidebar-layout", "none"] as const);
-
-  const query = useQuery({
-    queryKey: key,
-    queryFn: () => tauriSidebar.getLayout(workspaceId as string),
-    enabled: !!workspaceId,
-    staleTime: 30_000,
-  });
+  const key = layoutQueryKey(workspaceId);
+  const layout = useSidebarLayoutValue(workspaceId);
 
   const mutation = useMutation({
     mutationFn: (next: SidebarLayout) =>
@@ -84,8 +108,6 @@ export function useSidebarLayout(
       qc.invalidateQueries({ queryKey: key });
     },
   });
-
-  const layout = normalizeSidebarLayout(query.data);
 
   /** Apply a pure op to the FRESHEST cached layout, then mutate. Reading the
    *  cache (not the closed-over `layout`) keeps overlapping drags composing. */

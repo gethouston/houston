@@ -3,7 +3,14 @@
     "missionControl": "Central de missões",
     "aiModels": "Modelos de IA",
     "settings": "Configurações",
-    "yourAgents": "Seus agentes",
+    "yourTeams": "Suas equipes",
+    "newTeam": "Nova equipe",
+    "teamSections": {
+      "missionControl": "Central de missões",
+      "routines": "Rotinas",
+      "files": "Arquivos",
+      "settings": "Configurações da equipe"
+    },
     "selectWorkspace": "Escolha um espaço de trabalho",
     "addAgent": "Novo agente",
     "agentMenu": "Menu do agente",
@@ -12,19 +19,17 @@
     "openMenu": "Abrir menu",
     "mobileNavTitle": "Navegação",
     "createWorkspace": "Criar espaço de trabalho",
-    "groups": {
-      "new": "Novo grupo",
-      "newDefault": "Novo grupo",
-      "rename": "Renomear grupo",
-      "delete": "Excluir grupo",
-      "menu": "Opções do grupo",
-      "namePlaceholder": "Nome do grupo",
+    "teams": {
+      "newDefault": "Nova equipe",
+      "rename": "Renomear equipe",
+      "delete": "Excluir equipe",
+      "menu": "Opções da equipe",
+      "namePlaceholder": "Nome da equipe",
       "emptyHint": "Arraste agentes aqui",
-      "ungrouped": "Sem grupo",
       "editContext": "Editar contexto compartilhado",
       "contextDialog": {
         "title": "Contexto compartilhado de {{name}}",
-        "description": "Esta nota é adicionada a todos os agentes deste grupo, então todos compartilham o mesmo contexto.",
+        "description": "Esta nota é adicionada a todos os agentes desta equipe, então todos compartilham o mesmo contexto.",
         "placeholder": "ex. Somos um estúdio de design. Mantenha as respostas curtas e nunca compartilhe nomes de clientes.",
         "save": "Salvar",
         "cancel": "Cancelar"

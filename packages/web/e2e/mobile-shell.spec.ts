@@ -25,7 +25,7 @@ test("replaces the sidebar rail with a hamburger drawer", async ({ page }) => {
   await expect(drawer.locator('[data-tour-target="sidebar"]')).toBeVisible();
 
   // Navigating from the drawer closes it so the content is visible again.
-  await drawer.getByRole("button", { name: "Mission Control" }).click();
+  await drawer.locator("[data-tour-target='nav-dashboard']").click();
   await expect(drawer).toBeHidden();
 });
 

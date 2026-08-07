@@ -1,20 +1,16 @@
 import {
   Button,
-  CatalogSectionHeader,
   Empty,
   EmptyContent,
   EmptyDescription,
   EmptyTitle,
-  resolveAgentColor,
 } from "@houston-ai/core";
 import type { OrgMember } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { memberLabel } from "../organization/org-roster";
-import { PermissionsAgentRow } from "./agent-row";
-import { summarizeAgentAccess } from "./org-agents-model";
+import { PermissionsAgentGrid } from "./agent-grid";
 
 /**
  * The Permissions plane: the agents the caller can see (owner: every org
@@ -23,6 +19,9 @@ import { summarizeAgentAccess } from "./org-agents-model";
  * ONE plain-language summary line — who can use the agent, who manages it —
  * and opens that agent's permission card (People | Integrations | AI Models).
  * Fresh orgs get a "create your first agent" empty state.
+ *
+ * The populated list is {@link PermissionsAgentGrid}, shared with a team's
+ * settings; this view owns only the workspace-level empty state.
  *
  * Deliberately NOT here: last-opened (dashboard information, not permission
  * information) and the pinned model (one config fetch per row).
@@ -58,40 +57,10 @@ export function AgentsList({
   }
 
   return (
-    <section>
-      <CatalogSectionHeader
-        title={t("permissions.agentsHeading")}
-        count={agents.length}
-        className="mb-2"
-      />
-      <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-        {agents.map((agent) => {
-          const summary = summarizeAgentAccess(agent);
-          const access = summary.everyone
-            ? t("agentsTab.access.everyone")
-            : summary.peopleCount !== null
-              ? t("agentsTab.access.people", { count: summary.peopleCount })
-              : t("agentsTab.access.you");
-          const managedBy =
-            summary.managerIds.length > 0
-              ? t("agentsTab.managedBy", {
-                  names: summary.managerIds
-                    .map((id) => memberLabel(id, members))
-                    .join(", "),
-                })
-              : null;
-          return (
-            <PermissionsAgentRow
-              key={agent.id}
-              name={agent.name}
-              color={resolveAgentColor(agent.color)}
-              summary={managedBy ? `${access} · ${managedBy}` : access}
-              openLabel={t("agentsTab.open", { name: agent.name })}
-              onOpen={() => onOpenAgent(agent)}
-            />
-          );
-        })}
-      </div>
-    </section>
+    <PermissionsAgentGrid
+      agents={agents}
+      members={members}
+      onOpenAgent={onOpenAgent}
+    />
   );
 }

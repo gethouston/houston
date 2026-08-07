@@ -3,6 +3,35 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v55 - 2026-08-07
+
+The navigation rail is a list of TEAMS, not a list of agents. "Your agents"
+became "Your teams", the folder affordance became "New team", and every block in
+the rail now draws the same anatomy: a name, the destinations that team offers,
+then the agents that belong to it. The agents that were in no group are no
+longer an anonymous remainder at the bottom -- they are the DEFAULT team, the
+workspace itself, wearing the workspace's name. It is virtual: nothing new is
+written to the stored layout to make it exist, which is also why it carries no
+caret and no rename / delete menu. Each block gained SECTION ROWS above its
+agents (Mission Control always, Team Settings for a caller whose role allows it,
+Routines and Files as they land). They are destinations, not members: never
+draggable, never a drop target. Selecting an agent now opens its team's Mission
+Control filtered to that agent rather than the agent's own tab, so the rail and
+the open view can never disagree about where the user is. Dragging is unchanged
+-- agents move within and between teams, headers reorder teams.
+
+Behind those destination rows is the TEAM SCREEN. One screen serves every team,
+so a team can be renamed, reordered or deleted without leaving a dead view
+behind. Its Mission Control is the same board the global one is, narrowed to the
+team's agents and titled with the team's name, and it reads the one cross-agent
+sweep instead of starting its own. Its agent filter is the rail's: selecting an
+agent row filters the board, and picking one in the board's own filter menu
+moves the lit row back. An empty team says why it is empty rather than showing a
+board with nobody to run it. Team Settings lists the team's agents and opens the
+ONE canonical agent settings page, the same surface Settings > Permissions
+opens, so an agent is configured in one place whichever door the user came
+through.
+
 ## v54 - 2026-08-06
 
 A workspace file named in an agent's prose stops dressing as a web link. It

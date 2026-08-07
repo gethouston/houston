@@ -3,10 +3,15 @@ import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 
 /**
- * Sidebar grouping + drag (Notion/Mercury-style @dnd-kit, always-on). Drives the
- * REAL sidebar and covers the regressions: multi-character group names, dragging
- * an agent INTO and back OUT of a group, and reordering top-level agents WITH a
- * group present. Everything must persist across a reload.
+ * Sidebar TEAM drag (Notion/Mercury-style @dnd-kit, always-on). Drives the REAL
+ * sidebar and covers the regressions: multi-character team names, dragging an
+ * agent INTO and back OUT of a team, and reordering the default team's agents
+ * WITH a named team present. Everything must persist across a reload.
+ *
+ * Every block now carries destination rows (Mission Control, Team Settings)
+ * above its agents, so the drags here also guard that those rows never become
+ * drop targets and never shift the coordinates the drops rely on. The team
+ * STRUCTURE itself is asserted in `sidebar-teams.spec.ts`.
  */
 
 async function center(loc: Locator) {
@@ -36,11 +41,11 @@ async function rowY(sidebar: Locator, name: string) {
   return (await sidebar.getByText(name, { exact: true }).boundingBox())?.y ?? 0;
 }
 
-test("group create + type name + drag in/out + top-level reorder", async ({
+test("team create + type name + drag in/out + default-team reorder", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Your Agents")).toBeVisible();
+  await expect(page.getByText("Your teams")).toBeVisible();
 
   await createAgent(page, "Alpha");
   await createAgent(page, "Beta");
@@ -48,22 +53,22 @@ test("group create + type name + drag in/out + top-level reorder", async ({
   const sidebar = page.locator("[data-tour-target='agents']");
   const header = page.locator("[data-sidebar-group-header]");
 
-  // Folder button → group opens in rename. TYPE the name char-by-char: a
+  // Folder button → team opens in rename. TYPE the name char-by-char: a
   // re-focus-and-select on every render used to eat all but the last keystroke.
-  await page.getByRole("button", { name: "New group" }).click();
-  const nameInput = page.getByPlaceholder("Group name");
+  await page.getByRole("button", { name: "New team" }).click();
+  const nameInput = page.getByPlaceholder("Team name");
   await nameInput.waitFor({ state: "visible" });
   await nameInput.pressSequentially("Work");
   await nameInput.press("Enter");
   await expect(header).toHaveCount(1);
   await expect(sidebar.getByText("Work")).toBeVisible(); // full name, not "k"
 
-  // Drag "Alpha" INTO the group — a one-shot pulse confirms the drop.
+  // Drag "Alpha" INTO the team — a one-shot pulse confirms the drop.
   await dragOnto(page, sidebar.getByText("Alpha", { exact: true }), header);
   await expect(page.locator(".sidebar-group-dropped")).toHaveCount(1);
   await expect(header.getByText("1")).toBeVisible();
 
-  // Drag "Alpha" back OUT of the group, onto an ungrouped agent.
+  // Drag "Alpha" back OUT of the team, onto a default-team agent.
   await dragOnto(
     page,
     sidebar.getByText("Alpha", { exact: true }),
@@ -71,7 +76,7 @@ test("group create + type name + drag in/out + top-level reorder", async ({
   );
   await expect(header.getByText("0")).toBeVisible();
 
-  // Reorder a TOP-LEVEL (ungrouped) agent while a group exists: Beta onto
+  // Reorder a DEFAULT-TEAM agent while a named team exists: Beta onto
   // Houston so Beta ends up above Houston.
   expect(await rowY(sidebar, "Beta")).toBeGreaterThan(
     await rowY(sidebar, "Houston"),
@@ -84,9 +89,24 @@ test("group create + type name + drag in/out + top-level reorder", async ({
   expect(await rowY(sidebar, "Beta")).toBeLessThan(
     await rowY(sidebar, "Houston"),
   );
+
+  // Every gesture above (create, drag in, drag out, reorder) is written back
+  // with `PUT /v1/workspaces/:id/sidebar-layout`. A reload throws away all the
+  // client state and re-reads that layout, so what survives here is what the
+  // server was actually told — the only honest test of "it persists".
+  await page.reload();
+  await expect(page.getByText("Your teams")).toBeVisible();
+  await expect(header).toHaveCount(1);
+  await expect(sidebar.getByText("Work")).toBeVisible();
+  // Emptied by the drag OUT, not merely re-rendered as empty.
+  await expect(header.getByText("0")).toBeVisible();
+  // And the reorder held: Beta is still above Houston.
+  expect(await rowY(sidebar, "Beta")).toBeLessThan(
+    await rowY(sidebar, "Houston"),
+  );
 });
 
-test("dropping onto a COLLAPSED folder confirms with a pulse", async ({
+test("dropping onto a COLLAPSED team confirms with a pulse", async ({
   page,
 }) => {
   await page.goto("/");
@@ -95,38 +115,39 @@ test("dropping onto a COLLAPSED folder confirms with a pulse", async ({
   const sidebar = page.locator("[data-tour-target='agents']");
   const header = page.locator("[data-sidebar-group-header]");
 
-  await page.getByRole("button", { name: "New group" }).click();
-  const ni = page.getByPlaceholder("Group name");
+  await page.getByRole("button", { name: "New team" }).click();
+  const ni = page.getByPlaceholder("Team name");
   await ni.waitFor({ state: "visible" });
   await ni.fill("Team");
   await ni.press("Enter");
   await expect(header).toHaveCount(1);
 
-  // Seed the group with Nova, then collapse it.
+  // Seed the team with Nova, then collapse it.
   await dragOnto(page, sidebar.getByText("Nova", { exact: true }), header);
   await expect(header.getByText("1")).toBeVisible();
   await header.getByText("Team").click();
   await expect(sidebar.getByText("Nova", { exact: true })).toHaveCount(0);
 
-  // Drop another agent onto the COLLAPSED folder: nothing else moves visibly,
+  // Drop another agent onto the COLLAPSED team: nothing else moves visibly,
   // so the pulse is the only confirmation. Count ticks to 2.
   await dragOnto(page, sidebar.getByText("Houston", { exact: true }), header);
   await expect(page.locator(".sidebar-group-dropped")).toHaveCount(1);
   await expect(header.getByText("2")).toBeVisible();
 });
 
-test("drag an agent OUT into an empty default section (reserved slot)", async ({
+test("drag an agent OUT into an empty DEFAULT TEAM (reserved slot)", async ({
   page,
 }) => {
   await page.goto("/");
   const sidebar = page.locator("[data-tour-target='agents']");
   const header = page.locator("[data-sidebar-group-header]");
 
-  // Put the only two agents (Houston seed + Solo) both into one group so the
-  // default section is EMPTY — dragging out must use the reserved drop slot.
+  // Put the only two agents (Houston seed + Solo) both into one named team so
+  // the DEFAULT team holds nobody — dragging out must use its reserved slot,
+  // which now sits below that team's own destination rows.
   await createAgent(page, "Solo");
-  await page.getByRole("button", { name: "New group" }).click();
-  const ni = page.getByPlaceholder("Group name");
+  await page.getByRole("button", { name: "New team" }).click();
+  const ni = page.getByPlaceholder("Team name");
   await ni.waitFor({ state: "visible" });
   await ni.fill("All");
   await ni.press("Enter");
@@ -134,30 +155,30 @@ test("drag an agent OUT into an empty default section (reserved slot)", async ({
   await dragOnto(page, sidebar.getByText("Houston", { exact: true }), header);
   await expect(header.getByText("2")).toBeVisible();
 
-  // Drag Solo down into the empty default area (below the group).
-  const groupBox = await sidebar
-    .locator("[data-sidebar-drop-group]")
-    .first()
-    .boundingBox();
-  if (!groupBox) throw new Error("no group box");
+  // Drag Solo down into the empty default team. Aim at its droppable itself
+  // (measured DURING the drag, once the reserved slot has opened) rather than
+  // at an offset below the named team: the default team now has a header and
+  // destination rows above that slot, and a fixed offset would land on them.
   const solo = sidebar.getByText("Solo", { exact: true });
   const s = await center(solo);
   await page.mouse.move(s.x, s.y);
   await page.mouse.down();
   await page.mouse.move(s.x, s.y + 10, { steps: 5 });
-  // Aim below the whole group (the reserved default slot).
-  const targetY = groupBox.y + groupBox.height + 16;
+  const dropZone = sidebar.locator("[data-sidebar-drop-section='']");
+  const zone = await dropZone.boundingBox();
+  if (!zone) throw new Error("no default drop zone");
+  const targetY = zone.y + zone.height - 8;
   await page.mouse.move(s.x, targetY, { steps: 15 });
   await page.waitForTimeout(80);
   await page.mouse.move(s.x, targetY, { steps: 3 });
   await page.waitForTimeout(80);
-  // The ungrouped section glows as the active drop target.
+  // The default team glows as the active drop target.
   await expect(
     sidebar.locator("[data-sidebar-drop-group=''] [data-drop-active]"),
   ).toHaveCount(1);
   await page.mouse.up();
   await page.waitForTimeout(300);
 
-  // Solo is now ungrouped → the group holds only 1.
+  // Solo is back in the default team → the named team holds only 1.
   await expect(header.getByText("1")).toBeVisible();
 });

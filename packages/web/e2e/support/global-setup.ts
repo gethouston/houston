@@ -7,7 +7,7 @@
  * desktop graph (`../app-tree`, behind the "Loading Houston…" Suspense boundary
  * in src/new-engine) pays the entire cold-compile cost in one shot. On a cold CI
  * runner that compile blew past the 10s assertion timeout, so the run's first
- * test failed waiting for the shell ("Your Agents"). It passed on retry (vite was
+ * test failed waiting for the shell ("Your teams"). It passed on retry (vite was
  * warm by then), which Playwright scores as "flaky" — exit 0, green CI — so the
  * failure was silent.
  *
@@ -36,7 +36,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     // The sidebar header proves the app-tree chunk finished compiling. Generous
     // timeout: this is the one place that absorbs the cold compile.
     await page
-      .getByText("Your Agents")
+      .getByText("Your teams")
       .waitFor({ state: "visible", timeout: 120_000 });
 
     // Warm the identity-on server (the `auth` project) the same way. It's a

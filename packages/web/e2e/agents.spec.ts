@@ -13,7 +13,7 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
   await page.goto("/");
 
   // Sidebar starts with the one seeded agent.
-  await expect(page.getByText("Your Agents")).toBeVisible();
+  await expect(page.getByText("Your teams")).toBeVisible();
 
   await createAgent(page, "Marketing Bot");
 

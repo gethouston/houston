@@ -17,6 +17,7 @@ Load on demand.
 | [files-ui.md](files-ui.md) | Files tab — FilesBrowser component map, query/host data flow, upload caps + batching, shared byte cache, view scoping |
 | [skills.md](skills.md) | Skills on disk + UI — frontmatter schema, picker rendering, invocation marker |
 | [agent-manifest.md](agent-manifest.md) | Three tiers, manifest shape, workspace templates, sidebar |
+| [teams-ui.md](teams-ui.md) | Sidebar teams + the `team` screen — teams-model, store contract, section gating, the one-sweep scoped board, Team Settings drill-in |
 | [teams.md](teams.md) | Multiplayer orgs (client surface) — roles/access, role matrix v2, org dashboard, share dialog, templates, allowlists; gateway is sole enforcer |
 | [agent-settings.md](agent-settings.md) | The ONE per-agent configuration surface — section model + gating, shared rail, the People access choice, read-only, analytics |
 | [auth.md](auth.md) | GCIP / Firebase auth, Google/Microsoft SSO + email OTP, Keychain |

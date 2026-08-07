@@ -1,4 +1,19 @@
+import type { ReactNode } from "react";
 import type { SidebarItem } from "./sidebar";
+
+/**
+ * A destination row rendered ABOVE a group's item rows (e.g. a team's Mission
+ * Control or Settings). It is a link, not a member of the list: never a drag
+ * source, never a drop target.
+ */
+export interface SidebarSectionRow {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  /** Painted as the selected row. Controlled — the list never picks one. */
+  active: boolean;
+  onSelect: () => void;
+}
 
 /** A named, collapsible group of sidebar items in display order. */
 export interface SidebarGroupView {
@@ -6,6 +21,20 @@ export interface SidebarGroupView {
   name: string;
   collapsed: boolean;
   itemIds: string[];
+  /** Destination rows rendered above this group's item rows. */
+  sections?: SidebarSectionRow[];
+}
+
+/**
+ * Turns the trailing default section (items in no group) into a LABELLED,
+ * non-collapsible block: a plain header carrying `name`, its own section rows,
+ * then the ungrouped item rows. It has no chevron and no "..." menu — the block
+ * stands for the container itself, which cannot be renamed, folded or deleted
+ * from here. Absent → the legacy unlabelled trailing section.
+ */
+export interface SidebarDefaultGroupView {
+  name: string;
+  sections?: SidebarSectionRow[];
 }
 
 /** One rendered section: a named group, or the trailing default (ungrouped). */

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { AgentPickerDialog } from "../agent-picker-dialog";
+import { useIsActiveView } from "../shell/keep-alive-views";
 
 /**
  * Mission Control's "New mission" flow. Because the view is cross-agent, the
@@ -24,6 +25,7 @@ export function useMcNewMission({
 }) {
   const setOnStartMission = useUIStore((s) => s.setOnStartMission);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
+  const isActive = useIsActiveView();
 
   const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [pendingAgent, setPendingAgent] = useState<Agent | null>(null);
@@ -31,10 +33,16 @@ export function useMcNewMission({
   const openerRef = useRef<NewPanelOpener | null>(null);
 
   const openNewMission = useCallback(() => setAgentPickerOpen(true), []);
+  // Only the board ON SCREEN owns the global "New mission" handler. Mission
+  // Control and every team board are kept-alive screens, so several of them are
+  // mounted at once: an unconditional registration is last-writer-wins, and the
+  // shortcut would open a hidden team's agent picker while the user is looking
+  // at the global board.
   useEffect(() => {
+    if (!isActive) return;
     setOnStartMission(openNewMission);
     return () => setOnStartMission(null);
-  }, [openNewMission, setOnStartMission]);
+  }, [isActive, openNewMission, setOnStartMission]);
 
   const handlePickAgent = useCallback(
     (agent: Agent, options?: { focusComposer?: boolean }) => {

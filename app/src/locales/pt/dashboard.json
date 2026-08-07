@@ -3,7 +3,8 @@
   "archived": {
     "back": "Voltar para missões",
     "button": "Arquivadas",
-    "title": "Arquivadas"
+    "title": "Arquivadas",
+    "titleForBoard": "{{name}} · Arquivadas"
   },
   "mentions": {
     "button": "Menções",
