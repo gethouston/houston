@@ -47,6 +47,7 @@ import { MissionSearchInput } from "../mission-search-input";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
+import { STORE_VIEW_ID } from "../store-view";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
@@ -121,9 +122,9 @@ export function WorkspaceShell({
   ).length;
   const isAgentView = !isTopLevelView(viewMode);
   // Resolve against the CALLER-visible tab set, not the raw standard ids:
-  // `job-description` (Agent Settings) is a standard id but hidden from plain
+  // `context` / `skills` / `admin` are standard ids but hidden from plain
   // members, so a STANDARD_TAB_IDS check would let a member's viewMode land on
-  // it and strand them on a blank pane (AgentRenderer marks no visible tab
+  // one and strand them on a blank pane (AgentRenderer marks no visible tab
   // active). With no current agent the standard set is the only thing we can
   // check, and the empty state renders regardless.
   const tabOr = (id: string) =>
@@ -472,10 +473,16 @@ export function WorkspaceShell({
                 },
               },
               {
-                title: t("shell:uiTour.steps.tabJobDescription.title"),
-                body: t("shell:uiTour.steps.tabJobDescription.body"),
-                targetSelector: "[data-tour-target='tab-job-description']",
-                onEnter: () => setViewMode(tabOr("job-description")),
+                title: t("shell:uiTour.steps.tabContext.title"),
+                body: t("shell:uiTour.steps.tabContext.body"),
+                targetSelector: "[data-tour-target='tab-context']",
+                onEnter: () => setViewMode(tabOr("context")),
+              },
+              {
+                title: t("shell:uiTour.steps.tabSkills.title"),
+                body: t("shell:uiTour.steps.tabSkills.body"),
+                targetSelector: "[data-tour-target='tab-skills']",
+                onEnter: () => setViewMode(tabOr("skills")),
               },
               {
                 title: t("shell:uiTour.steps.tabIntegrations.title"),
@@ -530,38 +537,28 @@ export function WorkspaceShell({
                 title: t("shell:uiTour.steps.newAgent.title"),
                 body: t("shell:uiTour.steps.newAgent.body"),
                 targetSelector: "[data-tour-target='newAgent']",
-                onEnter: () => {
-                  setCreateAgentDialogOpen(false);
-                  setViewMode(DEFAULT_TAB_ID);
-                },
+                onEnter: () => setViewMode(DEFAULT_TAB_ID),
               },
               {
                 title: t("shell:uiTour.steps.agentStore.title"),
                 body: t("shell:uiTour.steps.agentStore.body"),
-                targetSelector: "[data-tour-target='agentStore']",
-                spotlightPadding: 4,
-                placement: "viewport-right",
-                onEnter: () => setCreateAgentDialogOpen(true),
+                targetSelector: "[data-tour-target='nav-agent-store']",
+                onEnter: () => setViewMode(STORE_VIEW_ID),
               },
               // The "replay the tour" step is a wrap-up pointer at the replay
-              // button, so it comes last, right before the outro. It closes the
-              // create-agent dialog opened by the agentStore step above. The
-              // replay entry point is the Settings > Help row, so the step opens
+              // button, so it comes last, right before the outro. The replay
+              // entry point is the Settings > Help row, so the step opens
               // Settings for its anchor to exist.
               {
                 title: t("shell:uiTour.steps.appTour.title"),
                 body: t("shell:uiTour.steps.appTour.body"),
                 targetSelector: "[data-tour-target='appTour']",
-                onEnter: () => {
-                  setCreateAgentDialogOpen(false);
-                  useUIStore.getState().openSettings(null);
-                },
+                onEnter: () => useUIStore.getState().openSettings(null),
               },
               {
                 title: t("shell:uiTour.steps.outro.title"),
                 body: t("shell:uiTour.steps.outro.body"),
                 confirmLabel: t("shell:uiTour.steps.outro.confirm"),
-                onEnter: () => setCreateAgentDialogOpen(false),
               },
             ] satisfies UiTourStep[]
           ).filter((step) => {
@@ -570,15 +567,19 @@ export function WorkspaceShell({
             if (step.targetSelector === "[data-tour-target='spaceSwitcher']") {
               return hasSpaces(capabilities);
             }
-            // The Agent Settings (job-description) step targets a tab plain
-            // members never see. Drop it for them so the tour never
-            // highlights a missing anchor or leaves them on a blank pane.
-            if (
-              step.targetSelector === "[data-tour-target='tab-job-description']"
-            ) {
+            // The Context and Skills steps target tabs some callers never see
+            // (Context is hidden from non-Teams members, Skills is
+            // manager-only). Drop them so the tour never highlights a missing
+            // anchor or leaves the user on a blank pane. The Admin tab gets no
+            // tour step: it is a manager surface, not part of the everyday
+            // loop the tour teaches.
+            const gatedTab = ["context", "skills"].find(
+              (id) => step.targetSelector === `[data-tour-target='tab-${id}']`,
+            );
+            if (gatedTab) {
               return (
                 !!currentAgent &&
-                isVisibleAgentTab(capabilities, currentAgent, "job-description")
+                isVisibleAgentTab(capabilities, currentAgent, gatedTab)
               );
             }
             if (
@@ -595,7 +596,6 @@ export function WorkspaceShell({
           })}
           onDismiss={() => {
             setUiTourActive(false);
-            setCreateAgentDialogOpen(false);
             // End the tour on the assistant's Routines tab so the freshly-seeded
             // Morning briefing routine is the last thing they land on — the
             // onboarding payoff. Applies whether the tour completed or was

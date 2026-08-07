@@ -48,6 +48,13 @@ export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Integrations require a connected host");
       return controlPlane.detectCustomIntegration(this.ctx.cp, url);
     }
+    async startCustomIntegrationOAuth(
+      slug: string,
+    ): Promise<{ authorizeUrl: string }> {
+      if (!this.ctx.cp)
+        throw new Error("Integrations require a connected host");
+      return controlPlane.startCustomIntegrationOAuth(this.ctx.cp, slug);
+    }
     async addCustomIntegration(
       input: controlPlane.AddCustomIntegrationInput,
     ): Promise<controlPlane.CustomIntegrationView> {
@@ -97,6 +104,19 @@ export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       });
       await this.rejectFailure(res);
       return (await res.json()) as controlPlane.CustomDetectResult;
+    }
+    async startAgentCustomIntegrationOAuth(
+      agentSlugOrId: string,
+      slug: string,
+    ): Promise<{ authorizeUrl: string }> {
+      // `{}` forces the POST branch — the start route takes no body.
+      const res = await this.agentCustomFetch(
+        agentSlugOrId,
+        `/definitions/${encodeURIComponent(slug)}/oauth/start`,
+        {},
+      );
+      await this.rejectFailure(res);
+      return (await res.json()) as { authorizeUrl: string };
     }
     async addAgentCustomIntegration(
       agentSlugOrId: string,

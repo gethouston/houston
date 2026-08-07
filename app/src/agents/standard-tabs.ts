@@ -17,10 +17,12 @@ export interface AgentTab {
 
 export const STANDARD_TABS: AgentTab[] = [
   { id: "activity", label: "Activity", builtIn: "board", badge: "activity" },
-  { id: "job-description", label: "Settings", builtIn: "job-description" },
+  { id: "context", label: "Context", builtIn: "context" },
+  { id: "skills", label: "Skills", builtIn: "skills" },
   { id: "integrations", label: "Integrations", builtIn: "integrations" },
   { id: "routines", label: "Routines", builtIn: "routines" },
   { id: "files", label: "Files", builtIn: "files" },
+  { id: "admin", label: "Admin", builtIn: "admin" },
 ];
 
 export const DEFAULT_TAB_ID = "activity";
@@ -30,9 +32,17 @@ export const STANDARD_TAB_IDS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The tabs a caller may see on an agent. Settings is visible to everyone on a
- * Teams host so members can inspect access policy read-only. Outside Teams it
- * remains limited to the agent manager, as before.
+ * The tabs a caller may see on an agent (PRODUCT-1256 split the old Settings
+ * tab into Context / Skills / Admin):
+ *
+ * - **Context** (job description + learnings) keeps the old Settings tab's
+ *   visibility rule: everyone on a Teams host (members read it read-only),
+ *   otherwise the agent manager only.
+ * - **Skills** is manager-only: the surface is an editor with no read-only
+ *   mode, and members never saw the configuration rows before the split.
+ * - **Admin** (people / apps / models) is for the workspace owner and agent
+ *   managers only, and only exists in multiplayer: single-player has no
+ *   access rows, so the tab would be empty there.
  */
 export function visibleAgentTabs(
   caps: Capabilities | null | undefined,
@@ -41,13 +51,15 @@ export function visibleAgentTabs(
   // Check manager membership against the caller-visible agent record. The
   // gateway already resolved `access` for this caller, so never infer it from
   // organization role or a broader agent list.
-  return STANDARD_TABS.filter(
-    (tab) =>
-      tab.id !== "job-description" ||
-      caps?.teams === true ||
-      !isMultiplayer(caps) ||
-      isAgentManager(caps, agent),
-  );
+  const manager = isAgentManager(caps, agent);
+  return STANDARD_TABS.filter((tab) => {
+    if (tab.id === "context") {
+      return caps?.teams === true || !isMultiplayer(caps) || manager;
+    }
+    if (tab.id === "skills") return manager;
+    if (tab.id === "admin") return manager && isMultiplayer(caps);
+    return true;
+  });
 }
 
 /** Whether `tabId` is a tab the caller may actually see on this agent. */

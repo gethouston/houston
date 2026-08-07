@@ -5,10 +5,9 @@
  * selection state anywhere on the grid, so here it says one thing only: this
  * is the chip you are typing into.
  */
-import { cn } from "@houston-ai/core";
+import { cn, FolderGlyph } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
 import { chipClass } from "./card-chrome";
-import { FolderGlyph } from "./file-type-icons";
 
 export function NewFolderChip({
   onConfirm,

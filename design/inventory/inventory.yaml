@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 54
+version: 55
 
 components:
   - id: agent-avatar
@@ -99,7 +99,7 @@ components:
     purpose: >-
       A model turn's prose -- bare markdown in single player, an incoming
       group-chat bubble in a shared conversation.
-    anatomy: [sender-face-column, bubble, sender-name-line, markdown-body, code-block, inline-links, copy-action]
+    anatomy: [sender-face-column, bubble, sender-name-line, markdown-body, code-block, inline-links, file-chip, copy-action]
     states: [streaming, complete]
     variants: [with-code, plain-prose, single-player, multiplayer-attributed, run-continuation]
     behavior: >-
@@ -120,7 +120,16 @@ components:
       print on the turn that OPENS a run of the agent's turns; a tool/process
       block between two turns is transparent to that rule (it neither starts
       nor breaks a run), while a system divider always breaks one.
-    a11y: article/group role; code blocks keyboard-selectable; copy button labeled.
+      (v54) A WORKSPACE FILE named in the prose is not a link and stops
+      dressing as one. Destination kind, not label shape, picks the affordance:
+      every file renders as one file chip -- the per-extension glyph in its
+      reserved filetype tint on the recessed chip surface, the same mark the
+      Files tab and the turn summary use -- whether the agent wrote
+      `[Perfil](perfil.md)` or `[plan.md](plan.md)`, which previously split
+      across the labeled button pill and the blue autolink chip. No
+      external-link arrow: the file opens in-app. Link blue stays reserved for
+      the web, so the chip now tells the reader whether a click leaves Houston.
+    a11y: article/group role; code blocks keyboard-selectable; copy button labeled. A file chip is a button carrying the file's full path as its title.
     since: 1
 
   - id: user-message

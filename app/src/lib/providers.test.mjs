@@ -64,7 +64,7 @@ const SAMPLE_CATALOG = [
     tm("claude-haiku-4.5", 200000),
     rm("gpt-5.5", 400000),
     rm("gpt-5-mini", 264000),
-    rm("gemini-3-flash-preview", 128000),
+    rm("gemini-3.6-flash", 128000),
   ]),
   prov("opencode", "apiKey", [
     rm("claude-sonnet-4-6", 1000000),
@@ -604,7 +604,7 @@ test("VISIBLE_MODELS curation filters the hydrated catalog per provider", () => 
   assert.equal(getProvider("github-copilot").models.length, 7);
   assert.ok(
     getProvider("github-copilot").models.some(
-      (m) => m.id === "gemini-3-flash-preview",
+      (m) => m.id === "gemini-3.6-flash",
     ),
   );
 });

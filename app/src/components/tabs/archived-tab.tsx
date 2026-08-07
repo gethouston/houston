@@ -13,7 +13,7 @@ import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildArchivedBoardItems } from "../board/agent-board-items";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
+import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { ArchivedEmptyState } from "./archived-empty-state";
 import { ArchivedHeader } from "./archived-header";
@@ -35,11 +35,10 @@ export default function ArchivedTab({
   const { t } = useTranslation("board");
   const path = agent.folderPath;
   const openHref = useOpenAgentHref(path);
-  const panelContainer = useDetailPanelContainer();
+  const { panelContainer, setPanelOpen } = useShellDetailPanel();
   const { data: rawItems } = useActivity(path);
   const deleteActivity = useDeleteActivity(path);
   const addToast = useUIStore((s) => s.addToast);
-  const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const setAgentBoardMode = useUIStore((s) => s.setAgentBoardMode);
 
   const archived = useMemo(() => selectArchived(rawItems ?? []), [rawItems]);
@@ -142,7 +141,7 @@ export default function ArchivedTab({
           onLoadOlderMessages={onLoadOlderMessages}
           hasOlderMessages={hasOlderMessages}
           emptyState={emptyState}
-          onPanelOpenChange={setMissionPanelOpen}
+          onPanelOpenChange={setPanelOpen}
           onOpenLink={openHref}
           onNotice={(message) => addToast({ title: message })}
           prepareAttachments={attachmentValidation.prepareAttachments}

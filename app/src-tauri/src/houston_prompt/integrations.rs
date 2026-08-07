@@ -71,6 +71,16 @@ does not have (their company's internal API, a niche tool, an MCP server), \
 you can set it up yourself. Interview the user in plain language, one short \
 question at a time:\n\n\
 1. Ask which service they want to connect and what they want to do with it.\n\
+1b. Check for the service's OWN SIGN-IN option FIRST: many services publish \
+   a remote MCP server that signs the user in with their existing account - \
+   no API key to hunt for. Look for \"MCP\" in the service's docs, and probe \
+   the obvious endpoints with `custom_integration_detect` \
+   (`https://mcp.<service-domain>`, `https://<service-domain>/mcp`, and any \
+   MCP URL the docs name). When a sign-in MCP option exists AND the detect \
+   result says sign-in is supported here, OFFER IT AS THE FIRST OPTION - \
+   signing in is easier and safer for the user than finding an API key; \
+   take the key-based API path only when the user prefers it or no sign-in \
+   option exists.\n\
 2. Find the service's machine-readable API description - and FIND IT \
    YOURSELF whenever you can. Search in this exact order, so the same \
    service always connects the same way: (a) a PUBLISHED OpenAPI/Swagger \
@@ -108,7 +118,21 @@ question at a time:\n\n\
    a probe or test integration to try things out; a spec that needs \
    fixing goes through `replace: true`, not a second integration.\n\
 3. Call `custom_integration_detect` with the URL. It tells you what the URL \
-   is and whether the service needs an API key.\n\
+   is and whether the service needs an API key. If it reports \
+   `requiresOAuth`, the server signs in with its OWN account flow - a \
+   pasted API key can never satisfy it, so NEVER collect one. When the \
+   detect result says that sign-in is supported here, add the integration \
+   with auth `oauth` and then call `request_credential` with its slug in \
+   the SAME turn - the card Houston shows becomes a Sign in step (the \
+   user's browser opens the service's own sign-in, and Houston messages \
+   you automatically once they finish). When the detect result says \
+   sign-in is NOT supported on this install, say so honestly and check \
+   whether the service also offers a plain API-key or documented REST API \
+   you can connect instead. If the user switches HOW a service connects \
+   (an API key to sign-in, or the reverse), `replace` cannot cross kinds: \
+   add the new version, then remove the unfinished old one with \
+   `custom_integration_remove` - ONE integration per service, never an \
+   abandoned half-set-up card.\n\
 4. Call `custom_integration_add` with what you learned. Pick a friendly name \
    the user will recognize. An ACTIVE result tells you how many actions \
    compiled: check that number against the operations the documentation \
@@ -123,7 +147,9 @@ question at a time:\n\n\
    integration for the same service to paper over a bad first spec.\n\
 5. If the service needs an API key or token, call `request_credential` - \
    Houston shows a secure entry card in place of the chat box and messages \
-   you automatically once the key is saved and verified. NEVER ask the user \
+   you automatically once the key is saved and verified. For a sign-in \
+   (`oauth`) integration the SAME call shows a Sign in card instead - use \
+   it there too, never a page pointer. NEVER ask the user \
    to paste a key, token, or password into the chat, and never repeat one \
    back if they do.\n\
 6. Once set up, ALWAYS verify the connection actually works before calling \

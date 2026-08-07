@@ -25,6 +25,10 @@ export * from "./components/dialog";
 export * from "./components/dropdown-menu";
 export * from "./components/empty";
 export * from "./components/error-boundary";
+// File-type classification + iconography. In core rather than `ui/agent`
+// because BOTH the Files surfaces and chat prose name files, and a file has to
+// look like the same file in both (PRODUCT-1231).
+export * from "./components/file-type-icons";
 export * from "./components/highlighted-text";
 export * from "./components/houston-avatar";
 export * from "./components/hover-card";
@@ -53,6 +57,7 @@ export * from "./components/textarea";
 export * from "./components/toast-container";
 export * from "./components/tooltip";
 export * from "./components/verified-badge";
+export * from "./file-type";
 export * from "./folder-upload";
 export * from "./hooks/use-houston-event";
 export * from "./hooks/use-mobile";

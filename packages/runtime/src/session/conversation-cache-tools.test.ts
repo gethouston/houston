@@ -160,6 +160,7 @@ test("pi registers every allowlisted custom tool with the host + sandbox gates o
         "request_connection",
         "custom_integration_detect",
         "custom_integration_add",
+        "custom_integration_remove",
         "request_credential",
       ]),
     );

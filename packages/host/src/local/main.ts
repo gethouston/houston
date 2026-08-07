@@ -42,6 +42,8 @@ import { runtimeCommand } from "./runtime-command";
  *                             falls back to `node --import tsx <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
+ *   HOUSTON_OAUTH_CALLBACK_BASE_URL  self-host only: the public origin for the
+ *                             custom-integration OAuth callback (PRODUCT-1172)
  *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
  *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
  */
@@ -123,6 +125,10 @@ const host = buildLocalHost({
   port: Number(process.env.HOUSTON_HOST_PORT || 4318),
   // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
   bind: process.env.HOUSTON_HOST_BIND || undefined,
+  // Self-host opt-in for custom-integration OAuth (PRODUCT-1172): the public
+  // origin the user's browser can reach (e.g. https://houston.example.com).
+  // Desktop needs nothing — a loopback-bound local host derives its own.
+  oauthCallbackBase: process.env.HOUSTON_OAUTH_CALLBACK_BASE_URL || undefined,
   token: hostToken,
   // Redact the token in the startup banner whenever it came from the
   // environment (a pod/self-host token an orchestrator already knows) or we are

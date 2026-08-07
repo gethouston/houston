@@ -2,7 +2,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity } from "../../hooks/queries";
+import { useConnectedProviders } from "../../hooks/use-connected-providers";
 import { analytics } from "../../lib/analytics";
+import { connectedProviderIds } from "../../lib/connected-providers";
 import { createMission } from "../../lib/create-mission";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import { logger } from "../../lib/logger";
@@ -43,6 +45,14 @@ export function useSkillChatSetup(
   const { data: rawItems } = useActivity(path);
   const [pending, setPending] = useState(false);
   const shareNewSkill = useOrgSkillDefault(agent);
+
+  // Which providers the user is actually signed into — the kickoff turn must
+  // run on one of them, never on an agent-configured provider they never
+  // connected (PRODUCT-1236). `null` = could not confirm, so the pin defers to
+  // the stored provider. Held in a ref so the start callbacks read the latest
+  // scan without re-creating on every status refetch.
+  const connectedProvidersRef = useRef<readonly string[] | null>(null);
+  connectedProvidersRef.current = connectedProviderIds(useConnectedProviders());
 
   const mode = SKILL_SETUP_AGENT_MODE;
   const missionTitle = t("setupChat.missionTitle");
@@ -122,8 +132,9 @@ export function useSkillChatSetup(
       const { conversationId } = await createMission(agent, "", {
         title: missionTitle,
         agentMode: mode,
-        // Pin the agent's configured brain onto the kickoff turn (see helper).
-        ...(await readAgentRunOverrides(path)),
+        // Pin the agent's configured brain onto the kickoff turn, gated on
+        // what the user has actually connected (see helper).
+        ...(await readAgentRunOverrides(path, connectedProvidersRef.current)),
         // Setup chats always run as Ask first: the interview needs ask_user
         // (auto strips it) and must never open read-only in Planner.
         modeOverride: "execute",
@@ -165,7 +176,10 @@ export function useSkillChatSetup(
             agentMode: mode,
             // Same brain pin as startDraft, and the same Ask first pin —
             // setup chats are interactive by design.
-            ...(await readAgentRunOverrides(path)),
+            ...(await readAgentRunOverrides(
+              path,
+              connectedProvidersRef.current,
+            )),
             modeOverride: "execute",
           },
         );

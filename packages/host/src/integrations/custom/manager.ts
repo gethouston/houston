@@ -2,6 +2,8 @@ import { type AddCustomIntegrationInput, defFromAddInput } from "./add-input";
 import { type DetectResult, detectSource } from "./detect";
 import type { CustomExecutorHost } from "./executor-host";
 import { TOKEN_VARIABLE } from "./executor-host";
+import { CustomOAuthAttempts } from "./oauth-flow";
+import { completeOAuthOp, startOAuthOp } from "./oauth-ops";
 import type { CustomSecretStore } from "./secrets";
 import { secretIdFor } from "./secrets";
 import { sameServiceOrigins } from "./service-origins";
@@ -31,12 +33,56 @@ export class CustomIntegrationManager {
    *  the integration the store says is active). Reads stay concurrent. */
   private mutations: Promise<unknown> = Promise.resolve();
 
+  private readonly attempts = new CustomOAuthAttempts();
+
   constructor(
     private readonly store: CustomIntegrationStore,
     private readonly secrets: CustomSecretStore,
     private readonly host: CustomExecutorHost,
     private readonly onChanged: () => void,
+    /** OAuth sign-in (PRODUCT-1172): the browser-reachable callback URL —
+     *  absent on deployments that cannot receive the redirect — and a fetch
+     *  seam for tests. */
+    private readonly oauth: {
+      callbackUrl?: string;
+      fetchFn?: typeof fetch;
+    } = {},
   ) {}
+
+  private oauthDeps() {
+    return {
+      store: this.store,
+      secrets: this.secrets,
+      host: this.host,
+      attempts: this.attempts,
+      ...this.oauth,
+      onChanged: this.onChanged,
+    };
+  }
+
+  /** Whether this deployment can run the browser sign-in at all. */
+  get oauthSupported(): boolean {
+    return this.oauth.callbackUrl !== undefined;
+  }
+
+  /** Mint the authorize URL for one MCP integration's sign-in. In-memory
+   *  attempt only — nothing durable moves until the callback lands. */
+  async startOAuth(slug: string): Promise<{ authorizeUrl: string }> {
+    return startOAuthOp(this.oauthDeps(), await this.defOr404(slug));
+  }
+
+  /** The callback's landing: exchange the code, persist the token bundle,
+   *  wire the connection. Serialized like every other mutation. */
+  completeOAuth(state: string, code: string): Promise<CustomIntegrationView> {
+    return this.serialize(() =>
+      completeOAuthOp(
+        this.oauthDeps(),
+        (slug) => this.defOr404(slug),
+        state,
+        code,
+      ),
+    );
+  }
 
   private serialize<T>(op: () => Promise<T>): Promise<T> {
     const run = this.mutations.then(op, op);
@@ -62,7 +108,12 @@ export class CustomIntegrationManager {
 
   async detect(url: string): Promise<DetectResult> {
     const { executor } = await this.host.ensure();
-    return detectSource(executor, url);
+    const result = await detectSource(executor, url);
+    // An OAuth wall is only actionable where this deployment can actually
+    // run the browser sign-in — the agent/UI branch on this, not on guesses.
+    return result.requiresOAuth
+      ? { ...result, oauthSupported: this.oauthSupported }
+      : result;
   }
 
   /** The compiled tools behind one integration (the detail card's list).
@@ -85,6 +136,16 @@ export class CustomIntegrationManager {
       throw new CustomIntegrationError(
         "invalid_slug",
         `invalid slug '${slug}'`,
+      );
+    }
+    // The capability gate is authoritative HERE, not just advisory in the
+    // UI/agent: a deployment that cannot receive the browser redirect must
+    // never accumulate pending-oauth definitions whose one affordance can
+    // only fail (managed pods until the gateway callback ships).
+    if (input.auth === "oauth" && !this.oauthSupported) {
+      throw new CustomIntegrationError(
+        "oauth_unsupported",
+        "signing in with this service is not available on this Houston deployment yet",
       );
     }
     // The executor's own internal toolbox lives under the reserved
@@ -129,7 +190,10 @@ export class CustomIntegrationManager {
         ...def,
         addedAtMs: existing.addedAtMs,
         ...(keepCredential
-          ? { auth: "credential" as const, credential: existing.credential }
+          ? // The carried auth mode is the EXISTING one (a signed-in oauth
+            // def stays oauth; a keyed one stays credential) — replace is
+            // spec-repair, never an auth downgrade.
+            { auth: existing.auth, credential: existing.credential }
           : {}),
       };
     }

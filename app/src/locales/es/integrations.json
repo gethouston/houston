@@ -153,7 +153,8 @@
         "api": "Reconocimos un servicio de API.",
         "mcp": "Reconocimos un servidor MCP.",
         "unknown": "No pudimos reconocer esta dirección. Revisa la URL o deja que tu agente te ayude en el chat.",
-        "mcpOauth": "Este servidor inicia sesión con su propia cuenta (OAuth) y Houston aún no puede conectarse a él. Una clave de API no funcionará aquí."
+        "mcpOauth": "Este servidor inicia sesión con su propia cuenta (OAuth) y Houston aún no puede conectarse a él. Una clave de API no funcionará aquí.",
+        "mcpOauthOk": "Este servidor MCP usa su propio inicio de sesión. Después de agregarlo, iniciarás sesión en tu navegador."
       },
       "nameLabel": "Nombre",
       "namePlaceholder": "¿Cómo quieres llamarla?",
@@ -171,12 +172,14 @@
       "activeBody": "Conectada y funcionando. Tus agentes pueden usar sus acciones en cualquier chat.",
       "pendingBody": "Esperando una clave de API. Ingresa la clave para activarla.",
       "errorBody": "No está funcionando en este momento: {{message}}",
-      "updateKey": "Actualizar clave"
+      "updateKey": "Actualizar clave",
+      "pendingSignInBody": "Esta integración está esperando a que inicies sesión. Presiona Iniciar sesión y termina en tu navegador."
     },
     "status": {
       "active": "Conectado",
       "pendingKey": "Necesita una clave de API",
-      "error": "{{message}}"
+      "error": "{{message}}",
+      "pendingSignIn": "Esperando a que inicies sesión"
     },
     "credential": {
       "apiKeyLabel": "Clave de API",
@@ -210,6 +213,11 @@
       "done": "Listo",
       "doneToast": "¡Perfecto! Tu integración personalizada está lista para usar."
     },
-    "catalogUnavailable": "El catálogo de aplicaciones no está disponible en esta configuración, pero aún puedes agregar integraciones personalizadas."
+    "catalogUnavailable": "El catálogo de aplicaciones no está disponible en esta configuración, pero aún puedes agregar integraciones personalizadas.",
+    "signIn": "Iniciar sesión",
+    "signInAgain": "Iniciar sesión de nuevo",
+    "oauth": {
+      "openedToast": "Termina de iniciar sesión en {{name}} en tu navegador"
+    }
   }
 }

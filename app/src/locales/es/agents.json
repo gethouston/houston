@@ -84,7 +84,7 @@
     "provenanceMission": "De {{mission}}"
   },
   "subTabs": {
-    "instructions": "Instrucciones",
+    "instructions": "Descripción del puesto",
     "skills": "Skills",
     "learnings": "Aprendizajes"
   },
@@ -92,7 +92,8 @@
     "activity": "Actividad",
     "routines": "Rutinas",
     "files": "Archivos",
-    "job-description": "Configuración",
+    "context": "Contexto",
+    "admin": "Admin",
     "integrations": "Integraciones",
     "chat": "Chat",
     "board": "Tablero",
@@ -216,7 +217,9 @@
       "unsupportedDescription": "Descárgalo para abrirlo en tu computador.",
       "download": "Descargar",
       "close": "Cerrar",
-      "errorTitle": "No se pudo cargar el archivo"
+      "errorTitle": "No se pudo cargar el archivo",
+      "expand": "Ampliar",
+      "collapse": "Reducir"
     },
     "toasts": {
       "savedTitle": "Archivo guardado",

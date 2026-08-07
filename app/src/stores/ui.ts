@@ -1,6 +1,7 @@
 import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { setPanelOwner } from "../components/shell/detail-panel-owners.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 
 export interface ToastItem {
@@ -13,7 +14,9 @@ export interface ToastItem {
   count?: number;
 }
 
-export type JobDescriptionTarget = "instructions" | "skills" | "learnings";
+/** Deep-link target inside the agent's Context tab (PRODUCT-1256). Skills has
+ * its own tab now, so navigating there is a plain viewMode change. */
+export type ContextTarget = "instructions" | "learnings";
 export type AgentBoardMode = "active" | "archived";
 
 /** A workspace file queued for the global in-app preview dialog (chat file
@@ -62,8 +65,22 @@ interface UIState {
   agentArchivedSearchQueries: Record<string, string>;
   /** Whether the per-agent archived-tab search is loading conversation text. */
   agentArchivedSearchLoading: Record<string, boolean>;
-  /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
+  /**
+   * Whether the ONE shell-level detail panel is open (hides tab bar for
+   * full-height panel). DERIVED from `missionPanelOwners` — never set directly.
+   */
   missionPanelOpen: boolean;
+  /**
+   * Ids of the surfaces currently claiming the shell detail panel. Several
+   * surfaces render the panel (the Activity board, the Routines chat, the
+   * Archived lists, the skill / integration setup chats) and all of them stay
+   * MOUNTED while hidden, so a single last-writer-wins boolean strands the
+   * panel open as an empty card: the tab that leaves keeps its `true` on the
+   * flag while it stops portaling anything into it (PRODUCT-1229). Each
+   * surface claims and releases its OWN id via `useShellDetailPanel`, so
+   * releasing can never clobber the surface the user just navigated to.
+   */
+  missionPanelOwners: string[];
   /** Whether the mobile (<768px) sidebar drawer is open. Session-only, never
    *  persisted: a drawer restored open after a reload is a trap on a phone. */
   mobileSidebarOpen: boolean;
@@ -100,7 +117,7 @@ interface UIState {
    *  a card is selected; fired by Escape when the composer is not
    *  focused (the first Escape blurs the composer, the second closes). */
   onPanelClose: (() => void) | null;
-  jobDescriptionTarget: JobDescriptionTarget | null;
+  contextTarget: ContextTarget | null;
   /** Pin the first-run tutorial UI in front of the workspace shell. Set true
    * while the orchestrator is mid-flight, cleared on graduation or skip. */
   tutorialActive: boolean;
@@ -173,7 +190,10 @@ interface UIState {
   setAgentMissionSearchLoading: (agentPath: string, loading: boolean) => void;
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
   setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
-  setMissionPanelOpen: (open: boolean) => void;
+  /** Claim (`open`) or release the shell detail panel for one surface. */
+  setMissionPanelOwner: (ownerId: string, open: boolean) => void;
+  /** Release every claim — the "get me out of this panel" escape hatch. */
+  closeMissionPanel: () => void;
   setMobileSidebarOpen: (open: boolean) => void;
   setPendingRoutineActivityId: (activityId: string | null) => void;
   setPendingSkillChatActivityId: (activityId: string | null) => void;
@@ -185,7 +205,7 @@ interface UIState {
   ) => void;
   setOnBoardOpen: (cb: (() => void) | null) => void;
   setOnPanelClose: (cb: (() => void) | null) => void;
-  setJobDescriptionTarget: (target: JobDescriptionTarget | null) => void;
+  setContextTarget: (target: ContextTarget | null) => void;
   setTutorialActive: (active: boolean) => void;
   setUiTourActive: (active: boolean) => void;
   setShareAgentId: (agentId: string | null) => void;
@@ -231,6 +251,7 @@ const initialUIState = {
   agentArchivedSearchQueries: {},
   agentArchivedSearchLoading: {},
   missionPanelOpen: false,
+  missionPanelOwners: [],
   mobileSidebarOpen: false,
   pendingRoutineActivityId: null,
   pendingSkillChatActivityId: null,
@@ -240,7 +261,7 @@ const initialUIState = {
   onBoardNavigate: null,
   onBoardOpen: null,
   onPanelClose: null,
-  jobDescriptionTarget: null,
+  contextTarget: null,
   tutorialActive: false,
   uiTourActive: false,
   shareAgentId: null,
@@ -384,7 +405,21 @@ export const useUIStore = create<UIState>()(
           else delete next[agentPath];
           return { agentArchivedSearchLoading: next };
         }),
-      setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
+      setMissionPanelOwner: (ownerId, open) =>
+        set((s) => {
+          const missionPanelOwners = setPanelOwner(
+            s.missionPanelOwners,
+            ownerId,
+            open,
+          );
+          if (missionPanelOwners === s.missionPanelOwners) return s;
+          return {
+            missionPanelOwners,
+            missionPanelOpen: missionPanelOwners.length > 0,
+          };
+        }),
+      closeMissionPanel: () =>
+        set({ missionPanelOwners: [], missionPanelOpen: false }),
       setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
       setPendingRoutineActivityId: (pendingRoutineActivityId) =>
         set({ pendingRoutineActivityId }),
@@ -397,8 +432,7 @@ export const useUIStore = create<UIState>()(
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
       setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
       setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
-      setJobDescriptionTarget: (jobDescriptionTarget) =>
-        set({ jobDescriptionTarget }),
+      setContextTarget: (contextTarget) => set({ contextTarget }),
       setTutorialActive: (tutorialActive) => set({ tutorialActive }),
       setUiTourActive: (uiTourActive) => set({ uiTourActive }),
       setShareAgentId: (shareAgentId) => set({ shareAgentId }),

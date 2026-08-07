@@ -3,13 +3,28 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v54 - 2026-08-06
+## v55 - 2026-08-07
 
 Chat status messages rework (PRODUCT-1226), no new components. The
 thinking-indicator's pre-token wait now renders as the turn-status line itself
 (one component, one size) and the rotating phrase deck plays only while
 connecting; an executing agent's header always names the concrete task,
 folding consecutive identical activities into an "xN" repeat counter.
+
+## v54 - 2026-08-06
+
+A workspace file named in an agent's prose stops dressing as a web link. It
+previously rendered two different ways depending on how the agent happened to
+write the markdown -- a filled button pill with an external-link arrow for
+`[Perfil](perfil.md)`, the blue autolink chip for `[plan.md](plan.md)` -- so one
+action had two looks, and both borrowed the vocabulary of a destination that
+leaves the app. The affordance now follows the DESTINATION KIND before the label
+shape: a file is one chip, carrying the per-extension glyph in its reserved
+filetype tint on the recessed chip surface, the same mark the Files tab and the
+turn summary already use. Link blue stays reserved for the web, which is the
+point -- the reader can finally tell from the chip whether a click leaves
+Houston. File-type classification and iconography moved from `ui/agent` to
+`@houston-ai/core` so both surfaces draw the same file.
 
 ## v53 - 2026-07-31
 

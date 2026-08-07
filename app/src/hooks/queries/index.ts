@@ -29,6 +29,7 @@ export {
   useCustomTransportAgentId,
   useDetectCustomIntegration,
   useRemoveCustomIntegration,
+  useStartCustomOAuth,
   useSubmitCustomCredential,
 } from "./use-custom-integrations";
 export {

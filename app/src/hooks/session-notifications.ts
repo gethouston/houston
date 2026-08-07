@@ -112,14 +112,13 @@ export async function consumePendingNav() {
   const prevViewMode = useUIStore.getState().viewMode;
   if (target.setupKind === "skill") {
     // A skill-setup chat has no board card: its home is the agent's Skills
-    // section, but it also lives on the global Skills page (the create flow).
+    // tab, but it also lives on the global Skills page (the create flow).
     // HOU-980's rule applies: a user already on a surface hosting the chat is
     // never yanked elsewhere — which is why this branch runs BEFORE the agent
     // switch. "stay" must leave the world untouched.
     const decision = skillChatNavDecision({
       prevViewMode,
       prevAgentId,
-      jobDescriptionTarget: useUIStore.getState().jobDescriptionTarget,
       agentId: agent.id,
       skillsHomeViewId: SKILLS_VIEW_ID,
     });
@@ -127,8 +126,7 @@ export async function consumePendingNav() {
     if (decision === "stay") return;
     useAgentStore.getState().setCurrent(agent);
     if (decision === "navigate") {
-      useUIStore.getState().setViewMode("job-description");
-      useUIStore.getState().setJobDescriptionTarget("skills");
+      useUIStore.getState().setViewMode("skills");
     }
     useUIStore.getState().setPendingSkillChatActivityId(target.activityId);
     return;

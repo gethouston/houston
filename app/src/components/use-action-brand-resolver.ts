@@ -23,8 +23,9 @@ import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
  * - A CUSTOM executor address (`tools.<slug>....<tool>`, HOU-1049) brands as
  *   the integration's own name — from the custom definitions list, else the
  *   prettified slug (a gateway-fronted web surface may null the list) — with
- *   the wrench glyph (`icon: "tool"`, these integrations have no logo) and
- *   the humanized tool name ("Listing jobs").
+ *   the service favicon when the view carries one (PRODUCT-1172), else the
+ *   wrench glyph (`icon: "tool"`), and the humanized tool name
+ *   ("Listing jobs").
  * - A Composio action slug (e.g. `GMAIL_SEND_EMAIL`) resolves its toolkit as
  *   the longest catalog slug prefixing it (`toolkitOfActionSlug`), that
  *   toolkit resolves to a name + logo through the shared brand resolver, and
@@ -55,7 +56,9 @@ export function useActionBrandResolver(): (
         const def = (customDefs ?? []).find((d) => d.slug === customRef.slug);
         return {
           name: def?.name ?? prettifyCustomSlug(customRef.slug),
-          icon: "tool",
+          // The service favicon when the view carries one (PRODUCT-1172);
+          // the wrench glyph outranks logoUrl, so it stays the no-icon path.
+          ...(def?.iconUrl ? { logoUrl: def.iconUrl } : { icon: "tool" }),
           actionLabel: humanizeActionGerund(
             camelToSnakeCase(customRef.tool),
             "",

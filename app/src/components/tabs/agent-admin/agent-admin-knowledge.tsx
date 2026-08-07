@@ -14,8 +14,11 @@ import {
 import { LearningsContent } from "../learnings-content";
 import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 
-/** Memory (learnings) section. Always editable (managers/owners only). */
-export function AgentAdminKnowledge({ agent }: AgentAdminScreenProps) {
+/** Memory (learnings) section. Read-only for non-managers. */
+export function AgentAdminKnowledge({
+  agent,
+  readOnly = false,
+}: AgentAdminScreenProps & { readOnly?: boolean }) {
   const path = agent.folderPath;
   const { data } = useLearnings(path);
   const addLearning = useAddLearning(path);
@@ -50,6 +53,7 @@ export function AgentAdminKnowledge({ agent }: AgentAdminScreenProps) {
   return (
     <LearningsContent
       entries={rows}
+      readOnly={readOnly}
       onAdd={(text) => addLearning.mutateAsync(text)}
       onRemove={(index) => removeLearning.mutateAsync(index)}
       onUpdate={(id, text) => updateLearning.mutateAsync({ id, text })}

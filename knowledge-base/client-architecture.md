@@ -333,6 +333,18 @@ to that screen. Shared hooks, including Teams roster data used by sharing/admin
 surfaces, must use their callers' precise `enabled` flags and must never be
 view-gated.
 
+**The shell detail panel is claim-counted, never a shared boolean.** Agent tabs
+are only CSS-hidden and top-level screens are kept alive, so several surfaces
+that render the ONE shell panel (Activity board, Routines chat, both Archived
+lists, skill/integration setup chats) are mounted at once. Each claims and
+releases its OWN id through `useShellDetailPanel`; `missionPanelOpen` is derived
+from the claim set (`app/src/components/shell/detail-panel-owners.ts`) and the
+hook releases on unmount. Never reintroduce a single last-writer-wins flag: the
+tab the user navigates AWAY from stops portaling but keeps its `true`, and the
+shell paints an empty card beside the board (PRODUCT-1229). The corollary is
+that a hidden surface MUST release its claim — withholding the release to avoid
+clobbering the newly-visible surface is what caused the stranded panel.
+
 ---
 
 ## Verification matrix

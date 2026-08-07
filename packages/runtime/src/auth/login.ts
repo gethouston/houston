@@ -1,4 +1,7 @@
-import type { AuthInteraction, AuthPrompt } from "@earendil-works/pi-ai";
+import type {
+  AuthPrompt,
+  ProviderAuthInteraction,
+} from "@earendil-works/pi-ai";
 import type { LoginInfo } from "@houston/runtime-client";
 import {
   type CustomEndpointInput,
@@ -229,7 +232,7 @@ const known = (id: string): id is ProviderId => isProvider(id);
  */
 async function runProviderOAuthLogin(
   provider: ProviderId,
-  interaction: AuthInteraction,
+  interaction: ProviderAuthInteraction,
 ): Promise<void> {
   const oauth = modelRuntime.getProvider(provider)?.auth.oauth;
   if (!oauth) throw new Error(`${provider} has no OAuth sign-in flow`);
@@ -321,9 +324,10 @@ export async function startLogin(
     await preflightCodexCallbackPort();
   }
 
+  const abort = new AbortController();
   const state: LoginState = {
     status: "starting",
-    abort: new AbortController(),
+    abort,
   };
   active.set(key, state);
   armLoginExpiry(provider, state);
@@ -351,8 +355,8 @@ export async function startLogin(
   // - text (Copilot's opening GitHub-Enterprise question) → auto-answered,
   //   else it would deadlock the flow before the device code appears;
   // - manual_code → the client-relayed paste promise.
-  const interaction: AuthInteraction = {
-    signal: state.abort?.signal,
+  const interaction: ProviderAuthInteraction = {
+    signal: abort.signal,
     notify: (event) => {
       switch (event.type) {
         case "auth_url":

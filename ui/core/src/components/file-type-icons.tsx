@@ -5,7 +5,7 @@
  * it is what lets a list of forty filenames read as "four PDFs and a video" at
  * a glance. Folders keep a monochrome glyph, because a folder is not a type.
  */
-import { cn } from "@houston-ai/core";
+
 import {
   File,
   FileArchive,
@@ -20,7 +20,8 @@ import {
   type LucideIcon,
   Presentation,
 } from "lucide-react";
-import { type FileCategory, fileCategory } from "./file-type";
+import { type FileCategory, fileCategory } from "../file-type";
+import { cn } from "../utils";
 
 const ICONS: Record<FileCategory, LucideIcon> = {
   pdf: FileText,
@@ -104,6 +105,25 @@ export function FileTypeGlyph({ extension }: { extension: string }) {
   const Icon = ICONS[fileCategory(extension)];
   return (
     <Icon aria-hidden strokeWidth={1.25} className="size-10 text-ink-muted" />
+  );
+}
+
+/**
+ * Text-sized glyph for a file named INLINE in prose (chat's file chip). Keeps
+ * its type TINT, unlike {@link FileTypeGlyph}: that one is monochrome because
+ * the tile above it already states the type, whereas inline there is no tile —
+ * the glyph is the only thing carrying it. At 14px the tint is a hint of hue
+ * on a hairline mark, not colour poured onto a content surface.
+ */
+export function FileTypeGlyphInline({ extension }: { extension: string }) {
+  const category = fileCategory(extension);
+  const Icon = ICONS[category];
+  return (
+    <Icon
+      aria-hidden
+      strokeWidth={2}
+      className={cn("size-3.5 shrink-0", TINTS[category])}
+    />
   );
 }
 
