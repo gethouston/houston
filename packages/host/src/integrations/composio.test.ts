@@ -181,6 +181,31 @@ test("connect reuses the project's enabled auth config and mints a link session"
   expect(calls[2]?.path).toBe("/api/v3.1/connected_accounts/link");
 });
 
+test("connect pre-answers highlevel's user_type so the hosted page never asks", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [{ id: "ac_hl", status: "ENABLED" }] } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: {
+          redirect_url: "https://connect.composio.dev/link/lk_1",
+          connected_account_id: "ca_hl",
+        },
+      };
+    }
+    return { status: 404 };
+  });
+
+  await provider.connect(USER, "highlevel");
+  expect(calls[1]?.body).toEqual({
+    auth_config_id: "ac_hl",
+    user_id: USER,
+    callback_url: "https://gethouston.ai/connected",
+    connection_data: { user_type: "Location" },
+  });
+});
+
 test("connect creates a Composio-managed auth config when the toolkit has one", async () => {
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {

@@ -64,6 +64,19 @@ const CATALOG_TTL_MS = 60 * 60 * 1000;
  */
 const TOOL_VERSION = "latest";
 
+/**
+ * Initiation fields Houston answers FOR the user at link-mint time. The hosted
+ * connect page asks the user for every required initiation field it wasn't
+ * given; for highlevel that was a free-text "Token Type" box whose value the
+ * token exchange relays verbatim as `user_type` — HighLevel 422s anything but
+ * Location/Company, and a user pasted their private-integration token into it
+ * (PRODUCT-1260). Houston's non-technical audience should never see that
+ * question; Location is the token type most HighLevel actions require.
+ */
+const PREFILLED_CONNECTION_DATA: Record<string, Record<string, string>> = {
+  highlevel: { user_type: "Location" },
+};
+
 export interface ComposioOptions {
   /** Houston's Composio PROJECT API key (dashboard → Project Settings). */
   apiKey: string;
@@ -208,6 +221,7 @@ export class ComposioProvider implements IntegrationProvider {
       this.authConfigs,
       toolkit,
     );
+    const prefill = PREFILLED_CONNECTION_DATA[toolkit.toLowerCase()];
     const body = await this.http.call<{
       redirect_url?: string;
       connected_account_id?: string;
@@ -217,6 +231,7 @@ export class ComposioProvider implements IntegrationProvider {
         auth_config_id: authConfigId,
         user_id: userId,
         ...(this.callbackUrl ? { callback_url: this.callbackUrl } : {}),
+        ...(prefill ? { connection_data: prefill } : {}),
       },
     });
     if (!body?.redirect_url || !body.connected_account_id) {
