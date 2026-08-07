@@ -142,9 +142,12 @@ export async function searchComposio(
 
   // A zero-hit scoped query still degrades to listing the connected toolkits'
   // actions (Composio's naive full-text scores everyday phrasings at zero), so
-  // the model gets a real slug rather than a dead end.
+  // the model gets a real slug rather than a dead end — but ONLY when the
+  // query named no app. A named app already got its own scoped lookup +
+  // toolkit row; dumping EVERY connected app's actions on top buries the one
+  // app the user actually said (the PRODUCT-1274 wall-of-Canva failure).
   const scopedListed =
-    slugs.length > 0 && scoped.length === 0
+    slugs.length > 0 && scoped.length === 0 && named.length === 0
       ? await deps.queryTools({ limit: "50", toolkit_slug: scopedSlug })
       : [];
 

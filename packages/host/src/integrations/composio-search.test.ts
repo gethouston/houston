@@ -235,6 +235,25 @@ test("the auto (query-resolved) path never floods via the listing fallback", asy
   );
 });
 
+test("a query naming an app suppresses the all-connected listing dump", async () => {
+  // Old failure: "en clockify, cuánto tiempo..." scored zero everywhere, and
+  // the connected-toolkits fallback dumped 50 actions across EVERY connected
+  // app (the wall of Canva). A named app must yield its row + global matches,
+  // never the dump.
+  const { deps, calls } = fakeDeps({
+    connections: PH_CONNS,
+    catalog: PH_CATALOG,
+    reply: (q) => (!q.toolkit_slug && q.query ? [GH_NOISE] : []),
+  });
+  const out = await searchComposio(deps, "in posthog, get the top users");
+  expect(out.map((m) => [m.action, m.toolkit])).toEqual([
+    ["GITHUB_LIST_REPOS", "github"],
+    ["", "posthog"],
+  ]);
+  // No query-less listing call over the connected set was made.
+  expect(calls.some((q) => !q.query)).toBe(false);
+});
+
 // ── Multi-account annotation (HOU-901) ───────────────────────────────────────
 
 const CONNS: Connection[] = [
