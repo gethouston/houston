@@ -41,6 +41,11 @@ export type CustomIntegrationDef =
       name: string;
       spec: CustomSpecSource;
       baseUrl?: string;
+      /** The service's main website (PRODUCT-1172): the BRAND domain the icon
+       *  derives from — the technical endpoint often lives elsewhere (an MCP
+       *  host, a raw spec URL) whose domain carries no favicon. Cosmetic
+       *  only; never part of the service-origin security checks. */
+      website?: string;
       auth: CustomAuthMode;
       addedAtMs: number;
       credential?: CustomCredentialRef;
@@ -52,6 +57,8 @@ export type CustomIntegrationDef =
       endpoint: string;
       /** Static non-secret headers (e.g. a tenant id); secrets go via credential. */
       headers?: Record<string, string>;
+      /** See the openapi arm — the brand domain for the icon. */
+      website?: string;
       auth: CustomAuthMode;
       addedAtMs: number;
       credential?: CustomCredentialRef;

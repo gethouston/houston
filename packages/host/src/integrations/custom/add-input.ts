@@ -14,6 +14,7 @@ export type AddCustomIntegrationInput =
       name: string;
       spec: CustomSpecSource;
       baseUrl?: string;
+      website?: string;
       auth: CustomAuthMode;
       slug?: string;
       replace?: boolean;
@@ -23,6 +24,7 @@ export type AddCustomIntegrationInput =
       name: string;
       endpoint: string;
       headers?: Record<string, string>;
+      website?: string;
       auth: CustomAuthMode;
       slug?: string;
       replace?: boolean;
@@ -40,6 +42,7 @@ export function defFromAddInput(
         name: input.name,
         spec: input.spec,
         ...(input.baseUrl ? { baseUrl: input.baseUrl } : {}),
+        ...(input.website ? { website: input.website } : {}),
         auth: input.auth,
         addedAtMs: Date.now(),
       }
@@ -49,6 +52,7 @@ export function defFromAddInput(
         name: input.name,
         endpoint: input.endpoint,
         ...(input.headers ? { headers: input.headers } : {}),
+        ...(input.website ? { website: input.website } : {}),
         auth: input.auth,
         addedAtMs: Date.now(),
       };

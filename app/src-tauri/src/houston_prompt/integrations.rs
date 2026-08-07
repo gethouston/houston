@@ -71,6 +71,16 @@ does not have (their company's internal API, a niche tool, an MCP server), \
 you can set it up yourself. Interview the user in plain language, one short \
 question at a time:\n\n\
 1. Ask which service they want to connect and what they want to do with it.\n\
+1b. Check for the service's OWN SIGN-IN option FIRST: many services publish \
+   a remote MCP server that signs the user in with their existing account - \
+   no API key to hunt for. Look for \"MCP\" in the service's docs, and probe \
+   the obvious endpoints with `custom_integration_detect` \
+   (`https://mcp.<service-domain>`, `https://<service-domain>/mcp`, and any \
+   MCP URL the docs name). When a sign-in MCP option exists AND the detect \
+   result says sign-in is supported here, OFFER IT AS THE FIRST OPTION - \
+   signing in is easier and safer for the user than finding an API key; \
+   take the key-based API path only when the user prefers it or no sign-in \
+   option exists.\n\
 2. Find the service's machine-readable API description - and FIND IT \
    YOURSELF whenever you can. Search in this exact order, so the same \
    service always connects the same way: (a) a PUBLISHED OpenAPI/Swagger \

@@ -103,6 +103,13 @@ export function parseAddInput(
         ? ("oauth" as const)
         : ("none" as const);
   const slug = typeof body.slug === "string" ? body.slug : undefined;
+  // The brand website for the card's icon (cosmetic; non-http values are
+  // simply dropped — icon derivation guards again anyway).
+  const website =
+    typeof body.website === "string" &&
+    /^https?:\/\//i.test(body.website.trim())
+      ? body.website.trim()
+      : undefined;
   if (body.kind === "openapi") {
     const url = typeof body.url === "string" ? body.url.trim() : "";
     // An inline document (agent-authored from the service's API docs when no
@@ -115,6 +122,7 @@ export function parseAddInput(
       name,
       spec: inline ? { kind: "blob", value: inline } : { kind: "url", url },
       ...(typeof body.baseUrl === "string" ? { baseUrl: body.baseUrl } : {}),
+      ...(website ? { website } : {}),
       auth,
       ...(slug ? { slug } : {}),
       ...(body.replace === true ? { replace: true } : {}),
@@ -127,6 +135,7 @@ export function parseAddInput(
       kind: "mcp",
       name,
       endpoint,
+      ...(website ? { website } : {}),
       auth,
       ...(slug ? { slug } : {}),
       ...(body.replace === true ? { replace: true } : {}),

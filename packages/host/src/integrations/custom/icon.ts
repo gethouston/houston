@@ -58,9 +58,12 @@ export function faviconDomain(host: string): string | null {
   return host;
 }
 
-/** Where the definition's service lives: the MCP endpoint, the API base URL,
- *  the spec URL, or a blob spec's first `servers[]` origin. */
+/** Where the definition's BRAND lives: the declared website first (the
+ *  technical endpoint often sits on a domain with no favicon — an MCP host,
+ *  a raw spec URL), then the MCP endpoint, the API base URL, the spec URL,
+ *  or a blob spec's first `servers[]` origin. */
 function serviceHost(def: CustomIntegrationDef): string | null {
+  if (def.website) return hostOf(def.website);
   if (def.kind === "mcp") return hostOf(def.endpoint);
   if (def.baseUrl) return hostOf(def.baseUrl);
   if (def.spec.kind === "url") return hostOf(def.spec.url);

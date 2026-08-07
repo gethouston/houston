@@ -63,6 +63,18 @@ describe("iconUrlOf", () => {
     );
   });
 
+  it("the declared brand website outranks the technical endpoint", () => {
+    // The real-world miss: the MCP server lives on a domain with no site
+    // (croma.run) while the brand is usecroma.com — the agent passes the
+    // website it already knows.
+    expect(
+      iconUrlOf({
+        ...mcpDef("https://croma.run/api/mcp"),
+        website: "https://usecroma.com",
+      }),
+    ).toContain("domain=usecroma.com");
+  });
+
   it("prefers the baseUrl over the spec URL for an API", () => {
     expect(
       iconUrlOf(

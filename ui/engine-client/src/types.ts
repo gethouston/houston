@@ -2105,6 +2105,9 @@ export type AddCustomIntegrationInput =
       url?: string;
       spec?: string;
       baseUrl?: string;
+      /** The service's main website — the brand domain the card icon
+       *  derives from (the endpoint often lives elsewhere). */
+      website?: string;
       auth: "none" | "credential";
       slug?: string;
     }
@@ -2112,6 +2115,7 @@ export type AddCustomIntegrationInput =
       kind: "mcp";
       name: string;
       endpoint: string;
+      website?: string;
       /** `oauth` (PRODUCT-1172): the server signs in with its own browser
        *  flow — the add lands `pending` until the user presses Sign in. */
       auth: "none" | "credential" | "oauth";

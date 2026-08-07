@@ -52,6 +52,12 @@ const AddParams = Type.Object({
   endpoint: Type.Optional(
     Type.String({ description: "For kind 'mcp': the MCP server URL." }),
   ),
+  website: Type.Optional(
+    Type.String({
+      description:
+        "The service's MAIN website (e.g. https://usecroma.com) - ALWAYS pass it when you know it: the integration's card icon derives from this domain, and the technical endpoint often lives on a different domain with no icon.",
+    }),
+  ),
   auth: Type.Union(
     [Type.Literal("none"), Type.Literal("credential"), Type.Literal("oauth")],
     {
@@ -190,6 +196,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
           url: params.url,
           spec: params.spec,
           endpoint: params.endpoint,
+          website: params.website,
           auth: params.auth,
           replace: params.replace,
         },
