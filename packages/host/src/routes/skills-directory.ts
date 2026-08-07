@@ -20,6 +20,15 @@ const directory = new CommunityDirectory();
 // negative cache (failures) are global — same singleton style as `directory`.
 const previews = new PreviewDirectory();
 
+/**
+ * The same two singletons, exported for the RUNTIME-facing sandbox route
+ * (skills-sandbox.ts). The agent's `find_skills` tool must share this
+ * process's skills.sh cache and request spacing with the UI's marketplace
+ * calls — two directories would double the outbound rate against a service
+ * that rate-limits, and the spacing that keeps us under it is per-instance.
+ */
+export { directory as communityDirectory, previews as previewDirectory };
+
 /** Typed errors answer `{error: {code, message, kind, details: {kind}}}` so
  *  both `HoustonEngineError` shapes — the engine-client's (`details.kind`) and
  *  the web adapter's (`error.kind`) — surface the same taxonomy the Add Skills
