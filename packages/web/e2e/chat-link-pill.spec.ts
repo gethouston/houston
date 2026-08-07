@@ -164,3 +164,60 @@ test("a labeled link is the same inline chip as a bare URL, never a button pill 
   await expect(pasted).toHaveText(SHORTENED);
   await expect(pasted).toHaveAttribute("title", REASSEMBLED);
 });
+
+test("a link opens the browser exactly ONCE (PRODUCT-1231)", async ({
+  page,
+  request,
+}) => {
+  const MISSION = "act-open-once";
+  await request.post(`${FAKE_HOST_URL}/agents/houston-assistant/activities`, {
+    data: { id: MISSION, title: "Open once", status: "needs_you" },
+  });
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-history`, {
+    data: {
+      conversationId: `activity-${MISSION}`,
+      messages: [
+        { role: "user", content: "link", ts: 1 },
+        {
+          role: "assistant",
+          content:
+            "Aquí: [el informe](https://example.com/report) y https://example.com/bare",
+          ts: 2,
+        },
+      ],
+    },
+  });
+
+  await page.goto("/");
+  // Count real opens: the web build's `open_url` shim is window.open.
+  await page.evaluate(() => {
+    (window as unknown as { __opens: string[] }).__opens = [];
+    window.open = ((url?: string | URL) => {
+      (window as unknown as { __opens: string[] }).__opens.push(String(url));
+      return null;
+    }) as typeof window.open;
+  });
+  await page.getByText("Open once").first().click();
+
+  // `Autolink` renders a real <a href> AND handles the click itself. The app's
+  // document-level safety net also catches every `a[href]` — so without the
+  // `defaultPrevented` guard this click opened two browser tabs.
+  const labeled = page.locator('a[href="https://example.com/report"]');
+  await expect(labeled).toBeVisible({ timeout: 15_000 });
+  await labeled.click();
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () => (window as unknown as { __opens: string[] }).__opens.length,
+      ),
+    )
+    .toBe(1);
+
+  // Same for a bare autolinked URL.
+  await page.locator('a[href="https://example.com/bare"]').click();
+  await expect
+    .poll(async () =>
+      page.evaluate(() => (window as unknown as { __opens: string[] }).__opens),
+    )
+    .toEqual(["https://example.com/report", "https://example.com/bare"]);
+});

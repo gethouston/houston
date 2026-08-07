@@ -4,9 +4,8 @@
  * anywhere else, so it now says exactly one thing: this row is what you are
  * typing into.
  */
-import { cn } from "@houston-ai/core";
+import { cn, FolderGlyph } from "@houston-ai/core";
 import { useEffect, useRef, useState } from "react";
-import { FolderGlyph } from "./file-type-icons";
 import {
   colGrid,
   NAME_CELL_INNER,

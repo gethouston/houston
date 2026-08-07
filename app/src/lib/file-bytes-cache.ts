@@ -20,7 +20,8 @@
  *    never share bytes with a thumbnail, so it streams straight through. Ask
  *    `sharedBytesKey` rather than reaching for `dateModified` directly.
  */
-import { type FileEntry, previewKind } from "@houston-ai/agent";
+import type { FileEntry } from "@houston-ai/agent";
+import { previewKind } from "@houston-ai/core";
 import type { QueryClient } from "@tanstack/react-query";
 import { tauriFiles } from "./tauri";
 

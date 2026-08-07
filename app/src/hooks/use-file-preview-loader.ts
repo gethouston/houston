@@ -6,13 +6,12 @@
  * again. Edited files get a fresh cache entry via the dateModified key segment;
  * stale entries age out through the default gcTime.
  */
-import {
-  type FileEntry,
-  type FilePreviewData,
-  type LoadFilePreview,
-  previewKind,
-  TEXT_PREVIEW_SLICE_BYTES,
+import type {
+  FileEntry,
+  FilePreviewData,
+  LoadFilePreview,
 } from "@houston-ai/agent";
+import { previewKind, TEXT_PREVIEW_SLICE_BYTES } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { fetchFileBytes } from "../lib/file-bytes-cache";
