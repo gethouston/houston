@@ -8,11 +8,12 @@
  * surface: a button's children are presentational, so a nested kebab would be
  * invisible to assistive tech.
  */
+
+import { FolderGlyph } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { CardActions, CardShell, chipClass, KebabButton } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
-import { FolderGlyph } from "./file-type-icons";
 import { RenameInput, useInlineRename } from "./inline-rename";
 import type { FolderNode } from "./tree";
 import type { FileEntry } from "./types";

@@ -211,8 +211,10 @@ export class CustomExecutorHost {
           // credential has no placement: the token never reached a header, the
           // server 401'd every call, and even a valid key failed validation as
           // "expired". `Authorization: Bearer <token>` is the MCP spec's
-          // scheme, so it is the default placement for credential-mode defs.
-          ...(def.auth === "credential"
+          // scheme, so it is the default placement for credential-mode defs —
+          // and for oauth-mode ones, whose access token rides the same header
+          // (the credential provider serves the CURRENT token per request).
+          ...(def.auth !== "none"
             ? {
                 auth: {
                   kind: "header" as const,
@@ -229,7 +231,9 @@ export class CustomExecutorHost {
         // must exist before connections.create renders through it.
         await this.ensureCollectibleAuth(executor, def);
       }
-      if (def.auth === "credential" && !def.credential) {
+      if (def.auth !== "none" && !def.credential) {
+        // Waiting on the user: a key for credential mode, a browser sign-in
+        // for oauth mode (the view's `auth` picks the affordance).
         return {
           status: "pending",
           authMethods: await this.authMethods(executor, def.slug),

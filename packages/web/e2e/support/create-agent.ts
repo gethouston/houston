@@ -3,14 +3,13 @@ import { expect, type Page } from "@playwright/test";
 /**
  * Create an agent through the real dialog and return to a usable shell.
  *
- * The reworked create flow (`create-workspace-dialog.tsx`) has NO full-screen
- * activation step. On create success the dialog fires the agent's self-setup
- * mission in the normal shell (`startAgentSetupMission`), switches to the board
- * view, and auto-opens the chat panel on that mission
- * (`setActivityPanelId(conversationId, { forceOpen: true })`). The dialog then
- * closes immediately — the in-dialog "connect" step only appears when the
- * template declares integrations AND the deployment serves them, and the fake
- * host advertises `integrations: []`, so a from-scratch create never reaches it.
+ * The create dialog (`create-workspace-dialog.tsx`) offers two cards — "Import
+ * from the store" (navigates to the Agent Store page) and "Create new agent"
+ * (the from-scratch naming step, PRODUCT-1171). On create success the dialog
+ * fires the agent's self-setup mission in the normal shell
+ * (`startAgentSetupMission`), switches to the board view, auto-opens the chat
+ * panel on that mission (`setActivityPanelId(conversationId, { forceOpen:
+ * true })`), and closes immediately.
  *
  * This shared helper leaves callers on the board with the auto-opened panel
  * DISMISSED, so sidebar/board interactions aren't obstructed by the ~45%-width
@@ -19,7 +18,7 @@ import { expect, type Page } from "@playwright/test";
  */
 export async function createAgent(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name: "New agent" }).click();
-  const scratch = page.getByText("From scratch");
+  const scratch = page.getByText("Create new agent");
   await scratch.waitFor({ state: "visible" });
   await scratch.click();
   const nameField = page.getByPlaceholder("e.g. Product manager, Sales, Jerry");

@@ -19,6 +19,7 @@ mod oauth_loopback;
 mod shell_env;
 mod store_deep_link;
 mod window_focus;
+mod windows_icon_repair;
 
 use engine_supervisor::{
     reserve_free_port, resolve_engine_binary, spawn_supervisor, wait_until_host_healthy,
@@ -323,6 +324,12 @@ pub fn run() {
                     );
                 }
             }
+
+            // MSI upgrades break taskbar-pin/desktop icons (PRODUCT-1233);
+            // once per installed version, repair stale shortcut icons and
+            // refresh the shell icon cache on a background thread.
+            #[cfg(target_os = "windows")]
+            windows_icon_repair::spawn_repair(app.package_info().version.to_string());
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 let handle = app.handle().clone();

@@ -6,6 +6,8 @@
  * move. The kebab sits in the shell's actions slot, outside the role="button"
  * surface (whose children are presentational).
  */
+
+import { FileTypeTile } from "@houston-ai/core";
 import { useState } from "react";
 import {
   CardActions,
@@ -18,7 +20,6 @@ import {
 import { INTERNAL_DRAG_TYPE } from "./drop-zone";
 import { CardPreview } from "./file-card-preview";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
-import { FileTypeTile } from "./file-type-icons";
 import { RenameInput, useInlineRename } from "./inline-rename";
 import type { FileEntry, LoadFilePreview } from "./types";
 

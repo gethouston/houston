@@ -14,11 +14,7 @@ test("per-agent skill dialog hides cross-agent assignment; global keeps it", asy
 
   // Install a skill on the seeded agent via the GitHub flow (the fake host
   // returns a canned dozen for any repo).
-  await page.locator('[data-tour-target="tab-job-description"]').click();
-  await page
-    .getByLabel("Agent settings")
-    .getByRole("button", { name: "Skills" })
-    .click();
+  await page.locator('[data-tour-target="tab-skills"]').click();
   await page.getByRole("tab", { name: "Custom skills" }).click();
   await page.getByRole("button", { name: "Add skill" }).click();
   const addDialog = page.getByRole("dialog");
@@ -40,11 +36,9 @@ test("per-agent skill dialog hides cross-agent assignment; global keeps it", asy
   await expect(agentDialog.getByText("Agents with this skill")).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // The global Skills page keeps the section for the same skill.
-  await page
-    .getByRole("button", { name: "Skills", exact: true })
-    .first()
-    .click();
+  // The global Skills page keeps the section for the same skill. The sidebar
+  // nav anchor disambiguates it from the agent's own Skills tab.
+  await page.locator('[data-tour-target="nav-skills"]').click();
   await page.getByRole("button", { name: /^Repo Skill 1\b/ }).click();
   const globalDialog = page.getByRole("dialog");
   await expect(globalDialog.getByText("Agents with this skill")).toBeVisible();

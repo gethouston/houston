@@ -1,7 +1,6 @@
 "use client";
 
-import { HoustonHelmet } from "@houston-ai/core";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ChatStatusLine } from "./chat-status-line";
 import { DEFAULT_THINKING_PHRASES } from "./thinking-phrases";
 import { useRotatingPhrase } from "./use-rotating-phrase";
 
@@ -12,43 +11,23 @@ export interface ChatThinkingIndicatorProps {
 }
 
 /**
- * The pre-reply loading state (HOU-910): a pulsing Houston helmet beside a
- * rotating astronaut one-liner that keeps waiting users entertained. Phrases
- * play from a shuffled deck (no repeats until it exhausts, then a reshuffle
- * that avoids an immediate repeat), advancing every ~4s for as long as the
- * indicator stays mounted. The shuffle and timer live in an effect, never in
- * render. A soft fade-through carries each change, collapsed to a plain swap
- * under `prefers-reduced-motion`.
+ * The connecting/pre-reply loading state (HOU-910, PRODUCT-1226): a rotating
+ * astronaut one-liner shown ONLY while the agent has produced no output yet —
+ * the moment an active mission log appears, the header there takes over with
+ * the concrete task and this line is suppressed (HOU-471). Phrases play from a
+ * shuffled deck (no repeats until it exhausts, then a reshuffle that avoids an
+ * immediate repeat), advancing every ~4s for as long as the indicator stays
+ * mounted. The shuffle and timer live in an effect, never in render.
+ *
+ * Visually it IS the mission-log header line — the same `ChatStatusLine`
+ * (13px helmet, text-xs, shimmer) — so the loading row and the "Mission log"
+ * row read as one component at one size (PRODUCT-1226).
  */
 export function ChatThinkingIndicator({
   phrases = DEFAULT_THINKING_PHRASES,
 }: ChatThinkingIndicatorProps) {
-  const reduceMotion = useReducedMotion();
   const phrase = useRotatingPhrase(phrases);
-
   return (
-    <div className="flex items-center gap-2 py-1 text-ink-muted">
-      <HoustonHelmet className="animate-pulse" color="currentColor" size={20} />
-      {/* Bounded, single-line so a longer phrase truncates instead of nudging
-          the helmet or reflowing the row as phrases rotate. */}
-      <div className="min-w-0 max-w-xs overflow-hidden">
-        {reduceMotion ? (
-          <span className="block truncate text-sm">{phrase}</span>
-        ) : (
-          <AnimatePresence initial={false} mode="wait">
-            <motion.span
-              animate={{ opacity: 1 }}
-              className="block truncate text-sm"
-              exit={{ opacity: 0 }}
-              initial={{ opacity: 0 }}
-              key={phrase}
-              transition={{ duration: 0.35 }}
-            >
-              {phrase}
-            </motion.span>
-          </AnimatePresence>
-        )}
-      </div>
-    </div>
+    <ChatStatusLine active className="py-1 text-ink-muted" label={phrase} />
   );
 }

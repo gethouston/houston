@@ -1643,6 +1643,11 @@ export function useAgentChatPanel({
     // the X key.", a declined one "Skipped adding the X key." (a fact the agent
     // MUST hear, or it waits on a key that never comes).
     const credentialOutcomes = new Map<string, CredentialOutcome>();
+    // How each credentialed integration authenticates (keyed by NAME, the unit
+    // the composed lines speak in): a sign-in (oauth) step reads "Signed in to
+    // X." / "Skipped signing in to X." instead of the key wording — the agent
+    // narrates whichever fact actually happened (PRODUCT-1172).
+    const credentialModes = new Map<string, "key" | "oauth">();
     return {
       mode: "replace",
       node: (
@@ -1696,19 +1701,40 @@ export function useAgentChatPanel({
                 connectRedirectLine: (name, text) =>
                   t("chat:interaction.connectRedirectLine", { name, text }),
                 credentialedLine: (name) =>
-                  t("chat:credential.savedLine", { name }),
+                  t(
+                    credentialModes.get(name) === "oauth"
+                      ? "chat:credential.signedInLine"
+                      : "chat:credential.savedLine",
+                    { name },
+                  ),
                 skippedCredentialLine: (name) =>
-                  t("chat:credential.skippedLine", { name }),
+                  t(
+                    credentialModes.get(name) === "oauth"
+                      ? "chat:credential.skippedSignInLine"
+                      : "chat:credential.skippedLine",
+                    { name },
+                  ),
                 credentialRedirectLine: (name, text) =>
-                  t("chat:credential.redirectLine", { name, text }),
+                  t(
+                    credentialModes.get(name) === "oauth"
+                      ? "chat:credential.signInRedirectLine"
+                      : "chat:credential.redirectLine",
+                    { name, text },
+                  ),
                 signedInLine: t("chat:interaction.signedInLine"),
                 skippedSigninLine: t("chat:interaction.skippedSigninLine"),
                 signinRedirectLine: (text) =>
                   t("chat:interaction.signinRedirectLine", { text }),
                 signedInFollowup: t("chat:interaction.signedInFollowup"),
-                credentialedFollowup: t("chat:credential.savedFollowup", {
-                  name: credentialedNames.join(", "),
-                }),
+                credentialedFollowup: t(
+                  credentialedNames.length > 0 &&
+                    credentialedNames.every(
+                      (n) => credentialModes.get(n) === "oauth",
+                    )
+                    ? "chat:credential.signedInFollowup"
+                    : "chat:credential.savedFollowup",
+                  { name: credentialedNames.join(", ") },
+                ),
               }),
             );
           }}
@@ -1800,18 +1826,21 @@ export function useAgentChatPanel({
               toolkit={step.toolkit}
               reason={step.reason}
               revisited={api.revisited}
-              onSaved={(name) => {
+              onSaved={(name, mode) => {
                 // Record the FINAL outcome (saved wins over any earlier skip for
                 // this step) and advance ONLY. The composed `onComplete` reply
                 // resumes the agent once EVERY step is done, mirroring connect.
+                credentialModes.set(name, mode);
                 credentialOutcomes.set(step.id, { name, saved: true });
                 api.onSaved();
               }}
-              onSkip={(name, message) => {
+              onSkip={(name, mode, message) => {
                 // Record the decline (and the typed "do this instead" text, if
                 // any) and advance ONLY (one send at completion) — the agent hears
-                // "Skipped adding the X key." (or the redirection) so it stops
-                // waiting. A message makes the sequence resume visibly.
+                // "Skipped adding the X key." (or the sign-in/redirect variant)
+                // so it stops waiting. A message makes the sequence resume
+                // visibly.
+                credentialModes.set(name, mode);
                 credentialOutcomes.set(step.id, {
                   name,
                   saved: false,

@@ -168,25 +168,21 @@ export function shouldNavigateOnAppActivation(isMacPlatform: boolean): boolean {
  * - `"stay"` — the user is on the global Skills page; an open chat is already
  *   visible there (it renders in the page's own right panel), and a closed
  *   one was closed deliberately. Touch nothing.
- * - `"reopen-in-place"` — the user is on THIS agent's Skills section; arm the
+ * - `"reopen-in-place"` — the user is on THIS agent's Skills tab; arm the
  *   one-shot activity id so a closed chat reopens on the spot, no view change.
- * - `"navigate"` — anywhere else: a genuine jump to the agent's Skills
- *   section, the chat's home.
+ * - `"navigate"` — anywhere else: a genuine jump to the agent's Skills tab,
+ *   the chat's home.
  */
 export function skillChatNavDecision(args: {
   prevViewMode: string;
   prevAgentId: string | undefined;
-  /** The Agent Settings sub-target when `prevViewMode` is "job-description". */
-  jobDescriptionTarget: string | null;
   /** The agent hosting the finished skill chat. */
   agentId: string;
   /** The global Skills page's view id (`SKILLS_VIEW_ID`). */
   skillsHomeViewId: string;
 }): "stay" | "reopen-in-place" | "navigate" {
   if (args.prevViewMode === args.skillsHomeViewId) return "stay";
-  const onOwnSkillsSection =
-    args.prevViewMode === "job-description" &&
-    args.jobDescriptionTarget === "skills" &&
-    args.prevAgentId === args.agentId;
-  return onOwnSkillsSection ? "reopen-in-place" : "navigate";
+  const onOwnSkillsTab =
+    args.prevViewMode === "skills" && args.prevAgentId === args.agentId;
+  return onOwnSkillsTab ? "reopen-in-place" : "navigate";
 }

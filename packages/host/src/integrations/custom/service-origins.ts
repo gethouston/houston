@@ -25,7 +25,7 @@ const httpOrigin = (raw: string): string | null => {
 
 /** `servers[].url` origins of an OpenAPI document, or null when any entry is
  *  relative/non-http or the document does not parse (JSON first, then YAML). */
-function specServerOrigins(value: string): Set<string> | null {
+export function specServerOrigins(value: string): Set<string> | null {
   let doc: unknown;
   try {
     doc = JSON.parse(value);

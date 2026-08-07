@@ -153,7 +153,8 @@
         "api": "Reconhecemos um serviço de API.",
         "mcp": "Reconhecemos um servidor MCP.",
         "unknown": "Não conseguimos reconhecer este endereço. Confira a URL ou deixe o seu agente te ajudar no chat.",
-        "mcpOauth": "Este servidor faz login com a própria conta (OAuth) e o Houston ainda não consegue se conectar a ele. Uma chave de API não vai funcionar aqui."
+        "mcpOauth": "Este servidor faz login com a própria conta (OAuth) e o Houston ainda não consegue se conectar a ele. Uma chave de API não vai funcionar aqui.",
+        "mcpOauthOk": "Este servidor MCP usa o próprio login. Depois de adicioná-lo, você vai fazer login no seu navegador."
       },
       "nameLabel": "Nome",
       "namePlaceholder": "Como você quer chamá-la?",
@@ -171,12 +172,14 @@
       "activeBody": "Conectada e funcionando. Seus agentes podem usar as ações dela em qualquer chat.",
       "pendingBody": "Aguardando uma chave de API. Insira a chave para ativá-la.",
       "errorBody": "Ela não está funcionando agora: {{message}}",
-      "updateKey": "Atualizar chave"
+      "updateKey": "Atualizar chave",
+      "pendingSignInBody": "Esta integração está esperando você fazer login. Pressione Fazer login e conclua no seu navegador."
     },
     "status": {
       "active": "Conectado",
       "pendingKey": "Precisa de uma chave de API",
-      "error": "{{message}}"
+      "error": "{{message}}",
+      "pendingSignIn": "Esperando você fazer login"
     },
     "credential": {
       "apiKeyLabel": "Chave de API",
@@ -210,6 +213,11 @@
       "done": "Concluir",
       "doneToast": "Perfeito! Sua integração personalizada está pronta para usar."
     },
-    "catalogUnavailable": "O catálogo de aplicativos não está disponível nesta configuração, mas você ainda pode adicionar integrações personalizadas."
+    "catalogUnavailable": "O catálogo de aplicativos não está disponível nesta configuração, mas você ainda pode adicionar integrações personalizadas.",
+    "signIn": "Fazer login",
+    "signInAgain": "Fazer login de novo",
+    "oauth": {
+      "openedToast": "Conclua o login em {{name}} no seu navegador"
+    }
   }
 }

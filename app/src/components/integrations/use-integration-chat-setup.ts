@@ -1,9 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActivity, useAllConversations } from "../../hooks/queries";
+import { useConnectedProviders } from "../../hooks/use-connected-providers";
 import { readAgentModelOverrides } from "../../lib/agent-model-overrides";
 import { analytics } from "../../lib/analytics";
+import { connectedProviderIds } from "../../lib/connected-providers";
 import { createMission } from "../../lib/create-mission";
 import { genericErrorDescription } from "../../lib/error-report";
 import {
@@ -42,6 +44,13 @@ export function useIntegrationChatSetup() {
   const agents = useAgentStore((s) => s.agents);
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const [pending, setPending] = useState(false);
+  // The kickoff runs on a provider the user is actually signed into, never on
+  // an agent-configured one they never connected (PRODUCT-1236). `null` = the
+  // scan could not confirm, so the pin defers to the stored provider. A ref, so
+  // `start` reads the latest scan without being re-created on every refetch
+  // (the derived list is a fresh array each render).
+  const connectedProvidersRef = useRef<readonly string[] | null>(null);
+  connectedProvidersRef.current = connectedProviderIds(useConnectedProviders());
 
   const paths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
 
@@ -139,10 +148,12 @@ export function useIntegrationChatSetup() {
             modeOverride: DEFAULT_TURN_MODE,
             // Pin the agent's configured brain onto the kickoff turn — an
             // unpinned send resolves inside the runtime and lands on the
-            // provider default (Sonnet), not the model the user picked.
+            // provider default (Sonnet), not the model the user picked — gated
+            // on the providers the user has actually connected.
             ...(await readAgentModelOverrides(
               agent.folderPath,
               tauriConfig.read,
+              connectedProvidersRef.current,
             )),
             buildPrompt: () => encodeIntegrationSetupMessage(),
           },

@@ -171,9 +171,18 @@ export default function App() {
     }
   }, [session]);
 
-  // Intercept all link clicks and open in system browser
+  // Safety net for any anchor nobody else handles: send it to the system
+  // browser instead of letting the webview navigate away from the app.
+  //
+  // It must SKIP an event whose default was already prevented. `preventDefault`
+  // does not stop the event bubbling up to this document-level listener, so a
+  // component that already opened the URL itself (chat's `Autolink`, which
+  // routes through the same `openUrl`) would otherwise have it opened a SECOND
+  // time — two browser tabs for one click (PRODUCT-1231). `defaultPrevented`
+  // is precisely the signal "somebody already dealt with this".
   useEffect(() => {
     const handler = (e: MouseEvent) => {
+      if (e.defaultPrevented) return;
       const anchor = (e.target as HTMLElement).closest("a[href]");
       if (!anchor) return;
       const href = anchor.getAttribute("href");

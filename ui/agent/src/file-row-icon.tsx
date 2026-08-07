@@ -7,9 +7,7 @@
  * Both wear the SAME box (`ROW_TILE`), so a listing of mixed types keeps one
  * unbroken icon column.
  */
-import { cn } from "@houston-ai/core";
-import { previewKind } from "./file-type";
-import { FileTypeTile } from "./file-type-icons";
+import { cn, FileTypeTile, previewKind } from "@houston-ai/core";
 import { ROW_TILE, ROW_TILE_GLYPH } from "./files-list-chrome";
 import type { FileEntry, LoadFilePreview } from "./types";
 import { useFilePreview, useVisibleOnce } from "./use-file-preview";

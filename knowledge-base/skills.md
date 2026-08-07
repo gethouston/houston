@@ -146,6 +146,92 @@ Loader parity rule (pi's, now both backends): a SKILL.md with **no
 never learns it exists, even though the Skills UI still lists it. Keep
 `description` mandatory in anything that writes skills.
 
+## Finding a skill from chat (`find_skills` / `install_skill`, PRODUCT-1238)
+
+"Is there a skill for X?" is answered by the agent itself, not by sending the
+user to browse the Skills page. Two tools, on by default in EVERY agent:
+
+- **`find_skills(queries)`** — runs one to three searches against skills.sh,
+  merges them, and returns candidates with their real descriptions and install
+  counts.
+- **`install_skill(source, skillId)`** — installs one into the calling agent's
+  `.agents/skills/` tree.
+
+**Why native tools and not Vercel's `find-skills` skill installed everywhere.**
+That skill (2.8M installs, the one the issue pointed at) is a procedure whose
+every step is a CLI call (`npx skills find`, `npx skills add -g -y`). Three
+things break here: pi ships **no tool CLIs**, `npx skills add` writes to
+`~/.claude` rather than the `.agents/skills/` tree pi's loader reads, and the
+product prompt forbids naming a CLI to a non-technical user. Everything that
+skill does over the CLI, the host already did in-process for the Skills UI — so
+the capability is native, needs no per-agent install, and no manifest entry.
+
+**The wiring** (mirrors `save_learning` exactly — read that first):
+
+| Layer | Where |
+|---|---|
+| Tools | `packages/runtime/src/session/tools/find-skills.ts` |
+| Name allowlist + mode reach | `packages/runtime/src/session/tool-selection.ts` (`skillDirectory` gate) |
+| pi registration | `packages/runtime/src/session/conversation-cache.ts` |
+| Claude backend mirror | `packages/runtime/src/backends/claude/custom-tools.ts` |
+| Host route + auth | `packages/host/src/routes/skills-sandbox.ts` (`POST /sandbox/skills/{search,install}`) |
+| Search (merge + enrich) | `packages/host/src/routes/skills-sandbox-search.ts` |
+| Install | `packages/host/src/routes/skills-sandbox-actions.ts` |
+| Prompt guidance (BOTH copies) | `packages/host/src/houston-prompt.ts` + `app/src-tauri/src/houston_prompt/skills_memory.rs` |
+
+Six things that are load-bearing:
+
+1. **Gate = host reachability**, the same one `save_routine` / `save_learning`
+   use — not a Composio key and not a feature flag. The directory lives behind
+   the host, so the tools exist wherever the sandbox token reaches it.
+2. **Reach is execute + auto, never plan.** Finding is a read, but installing is
+   a real write, and a plan turn that could find a skill it cannot add would
+   just dead-end.
+3. **The token names the agent, the request body cannot.** An install can only
+   ever land in the tree of the agent the sandbox token resolves to.
+4. **A mid-turn install is invisible to the model.** `<available_skills>` is
+   built at session start, so `install_skill` returns the SKILL.md **path** and
+   tells the agent to Read it if it's running the skill in this same turn.
+5. **The agent must see far past the head.** Truncating its view makes it report
+   "there's nothing for that" about a tail it was never shown: the first cut
+   capped at 5, which hid `fusion-skill-authoring` at rank 6. `ENRICH_LIMIT`
+   (10) bounds DESCRIPTION FETCHES; `RESULT_LIMIT` (60) is the only visibility
+   bound. `skills-sandbox.test.ts` pins that with a 30-hit search.
+6. **English, and more than one phrasing.** Two independent failures, both
+   observed in real chats:
+   - **Language.** skills.sh is an English catalog and its semantic search does
+     not cross languages. `"crear y mejorar skills"` returns `yc-reader`,
+     `byma`, `rubrica-builder` — noise — with zero `mattpocock/skills` in all
+     100 hits. Houston speaks Spanish and Portuguese to users, so the tool's
+     parameter description and BOTH prompt copies require translating the
+     search to English.
+   - **Phrasing.** A skill is found by the words in its OWN title, not the
+     user's words. `writing-great-skills` (mattpocock, 312k installs) is rank 1
+     for `"writing skills"` and absent from all 100 for `"create and improve
+     skills"` — the same request. One model-invented phrase is a coin flip, so
+     `find_skills` takes up to `MAX_QUERIES` (3) and `mergeSearches` folds them
+     keeping each skill's BEST rank (ties → install count), which is what stops
+     the phrasings that missed from burying the one that hit.
+
+   Together these took the screenshot case from "no Matt Pocock skill in the
+   catalog" to that skill at rank 4. The tool result also tells the agent the
+   list is only what its queries matched, and to re-search before declaring
+   anything absent.
+
+Search hits are enriched with real descriptions via the shared `PreviewDirectory`
+(the top `ENRICH_LIMIT` only — each is a cached GitHub SKILL.md lookup; the rest
+ship ranked and installable without one). Enrichment is
+best-effort **per hit**: an unreachable SKILL.md still returns as a candidate
+without a description rather than failing the whole answer — in practice only
+about half a typical head resolves cheaply, the same skills whose preview modal
+shows a load error in the UI. Both the search and
+preview caches are the SAME process-wide singletons the marketplace UI uses
+(exported from `skills-directory.ts` as `communityDirectory` / `previewDirectory`)
+— two instances would double the outbound rate against a service that
+rate-limits, and the request spacing that keeps us under it is per-instance.
+`CommunityDirectory` captures its fetch at construction, which is why the route
+takes the directory itself as the test seam rather than a `fetchImpl`.
+
 ## Render pipeline
 
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.

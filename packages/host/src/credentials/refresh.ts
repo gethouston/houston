@@ -2,6 +2,7 @@ import { githubCopilotProvider } from "@earendil-works/pi-ai/providers/github-co
 import { isApiKeyCredential, type WorkspaceCredential } from "../ports";
 import {
   exchangeRefreshToken,
+  REFRESH_TIMEOUT_MS,
   TransientRefreshError,
 } from "./oauth-token-exchange";
 
@@ -84,13 +85,18 @@ export async function refreshCredential(
     // at the company's GitHub: pi-ai hits `api.<domain>/copilot_internal/v2/token`
     // instead of github.com. Absent => individual Copilot. Preserve it on the
     // refreshed credential so the next refresh keeps targeting the same GHE.
-    const r = await copilotOAuth.refresh({
-      type: "oauth",
-      access: cred.accessToken,
-      refresh: cred.refreshToken,
-      expires: cred.expiresAt,
-      ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
-    });
+    const r = await copilotOAuth.refresh(
+      {
+        type: "oauth",
+        access: cred.accessToken,
+        refresh: cred.refreshToken,
+        expires: cred.expiresAt,
+        ...(cred.enterpriseUrl ? { enterpriseUrl: cred.enterpriseUrl } : {}),
+      },
+      // pi ≥0.84 requires a concrete abort signal; bound it like our own
+      // token exchange so a hung endpoint can't stall the credential serve.
+      AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+    );
     return {
       workspaceId: cred.workspaceId,
       provider: cred.provider,

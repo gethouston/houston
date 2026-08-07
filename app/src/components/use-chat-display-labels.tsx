@@ -13,11 +13,10 @@ export function useChatDisplayLabels(): Pick<
   // tense label the process header shows as a branded row; ui/chat calls it
   // through `processLabels.resolveActionBrand`, staying Composio-unaware.
   const resolveActionBrand = useActionBrandResolver();
-  // The same astronaut deck the pre-reply indicator plays. Passed into
-  // processLabels too so the ACTIVE mission-log header keeps the personality
-  // through mid-turn reasoning gaps — the standalone indicator below is
-  // suppressed the whole time an active log trails (HOU-471/HOU-1047), so
-  // without this the header held the last tool's stale verb.
+  // The astronaut deck plays ONLY in the standalone connecting indicator
+  // below (PRODUCT-1226): once the agent is executing, the mission-log header
+  // holds the concrete task (sticky verb/brand, with an "x3" repeat counter),
+  // never a playful phrase — so a working agent always narrates its work.
   const loadingPhrases = useMemo(
     () => t("loadingPhrases", { returnObjects: true }) as string[],
     [t],
@@ -26,10 +25,9 @@ export function useChatDisplayLabels(): Pick<
     () => ({
       active: t("process.active"),
       complete: t("process.complete"),
-      phrases: loadingPhrases,
       resolveActionBrand,
     }),
-    [t, loadingPhrases, resolveActionBrand],
+    [t, resolveActionBrand],
   );
   const getThinkingMessage = useCallback<
     NonNullable<ChatPanelProps["getThinkingMessage"]>
@@ -45,14 +43,13 @@ export function useChatDisplayLabels(): Pick<
     [t],
   );
 
-  // HOU-724 / HOU-910: two distinct in-flight signals. Before the agent
-  // produces any output (the message is still being sent / queued), the
-  // indicator is the pulsing Houston helmet beside a rotating astronaut
-  // one-liner (localized copy passed in; ui/chat handles the shuffle + timer).
-  // The moment the agent is actually working an active mission-log header is
-  // on screen — the current step's verb, or this same phrase deck during
-  // reasoning gaps — and that line is the ONLY indicator: ChatMessages
-  // suppresses this one.
+  // HOU-724 / HOU-910 / PRODUCT-1226: two distinct in-flight signals. While
+  // we're connecting the agent (the message is sent but no output exists yet),
+  // the indicator is the mission-log-sized status line playing a rotating
+  // astronaut one-liner (localized copy passed in; ui/chat handles the
+  // shuffle + timer). The moment the agent is actually working, an active
+  // mission-log header is on screen with the current task, and that line is
+  // the ONLY indicator: ChatMessages suppresses this one.
   const thinkingIndicator = useMemo(
     () => <ChatThinkingIndicator phrases={loadingPhrases} />,
     [loadingPhrases],

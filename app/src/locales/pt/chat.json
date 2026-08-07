@@ -286,7 +286,18 @@
     "skippedLine": "Pulei adicionar a chave de {{name}}.",
     "redirectLine": "Não adicionei a chave de {{name}}. Em vez disso, faça o seguinte: {{text}}",
     "savedFollowup": "Adicionei a chave de {{name}}. Continue, por favor.",
-    "savedUnverifiedToast": "Chave salva para {{name}}. O serviço ainda não a confirmou, vou avisar se as chamadas falharem."
+    "savedUnverifiedToast": "Chave salva para {{name}}. O serviço ainda não a confirmou, vou avisar se as chamadas falharem.",
+    "signInTitle": "Faça login em {{name}}",
+    "signInSubtitle": "Seu navegador abre o login do próprio serviço. Esta etapa termina sozinha quando você concluir.",
+    "signIn": "Fazer login",
+    "signInAgain": "Fazer login de novo",
+    "signingIn": "Esperando você concluir no seu navegador...",
+    "signedIn": "Login concluído",
+    "signedInToast": "{{name}} conectado",
+    "signedInLine": "Fiz login em {{name}}.",
+    "skippedSignInLine": "Pulei o login em {{name}}.",
+    "signInRedirectLine": "Não fiz login em {{name}}. Em vez disso, faça o seguinte: {{text}}",
+    "signedInFollowup": "Já fiz login em {{name}}. Continue, por favor."
   },
   "loadingPhrases": [
     "Houston, temos uma solução!",

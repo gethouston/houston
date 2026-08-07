@@ -108,6 +108,13 @@ async function serve(
       json(res, 200, { items: await manager.tools(target.slug) });
       return true;
     }
+    // OAuth sign-in start (PRODUCT-1172): mint the authorize URL the client
+    // opens in the browser; the redirect lands on the PUBLIC callback route
+    // (custom-integrations-oauth.ts), which completes the flow server-side.
+    if (target.kind === "oauthStart" && method === "POST") {
+      json(res, 200, await manager.startOAuth(target.slug));
+      return true;
+    }
     if (target.kind === "credential" && method === "POST") {
       const body = await bodyOr400(req, res);
       if (!body) return true;

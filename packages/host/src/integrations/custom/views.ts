@@ -1,3 +1,4 @@
+import { iconUrlOf } from "./icon";
 import type {
   CustomAuthMethod,
   CustomIntegrationDef,
@@ -18,11 +19,15 @@ export function viewOf(
   state: CustomIntegrationState,
   authMethods: CustomAuthMethod[],
 ): CustomIntegrationView {
+  const displayUrl = displayUrlOf(def);
+  const iconUrl = iconUrlOf(def);
   return {
     slug: def.slug,
     name: def.name,
     kind: def.kind,
-    ...(displayUrlOf(def) ? { displayUrl: displayUrlOf(def) } : {}),
+    auth: def.auth,
+    ...(displayUrl ? { displayUrl } : {}),
+    ...(iconUrl ? { iconUrl } : {}),
     addedAtMs: def.addedAtMs,
     state,
     authMethods,

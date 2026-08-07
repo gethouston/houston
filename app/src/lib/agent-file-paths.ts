@@ -28,6 +28,33 @@ export function toPosixSeparator(path: string): string {
   return path.replace(/\\/g, "/");
 }
 
+/** A percent-escape micromark could have minted (`%20`, `%C3%A9`, …). */
+const PERCENT_ESCAPE = /%[0-9a-fA-F]{2}/;
+
+/**
+ * Undo the percent-encoding markdown applies to a link destination
+ * (PRODUCT-1231).
+ *
+ * Agents routinely end a turn with `[Estrategia](<Tropical Food - 90 Dias.md>)`,
+ * and micromark normalizes every destination it parses through `normalizeUri`:
+ * the href React receives is `Tropical%20Food%20-%2090%20Dias.md`. Handed
+ * straight to the host's files routes that is a request for a file whose name
+ * literally contains `%20`, so the preview dialog failed on every file with a
+ * space or an accent in its name — and titled itself with the escaped text.
+ *
+ * Returns the input unchanged when there is nothing to decode or when the
+ * escapes are malformed (`decodeURIComponent` throws on a lone `%`), which is
+ * also the right answer for a file genuinely named `100%.md`.
+ */
+export function decodeMarkdownHref(href: string): string {
+  if (!PERCENT_ESCAPE.test(href)) return href;
+  try {
+    return decodeURIComponent(href);
+  } catch {
+    return href;
+  }
+}
+
 /** Last path segment, separator-agnostic (`a\b\c.md` and `a/b/c.md` → `c.md`). */
 export function fileNameOf(path: string): string {
   const segments = path.split(/[\\/]/);

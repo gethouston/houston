@@ -372,8 +372,8 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "GPT-5 Mini",
         description: "OpenAI's fast, lightweight model. Needs Copilot Pro.",
       },
-      "gemini-3-flash-preview": {
-        label: "Gemini 3 Flash",
+      "gemini-3.6-flash": {
+        label: "Gemini 3.6 Flash",
         description: "Google's fast model. Needs Copilot Pro.",
       },
     },

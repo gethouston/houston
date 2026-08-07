@@ -19,8 +19,8 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.83.0",
-    "@earendil-works/pi-coding-agent": "0.83.0",
+    "@earendil-works/pi-ai": "0.84.1",
+    "@earendil-works/pi-coding-agent": "0.84.1",
     "@executor-js/plugin-mcp": "1.5.37",
     "@executor-js/plugin-openapi": "1.5.37",
     "@executor-js/sdk": "1.5.37",
@@ -28,6 +28,7 @@
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@secretlint/core": "13.0.2",
     "@secretlint/secretlint-rule-preset-recommend": "13.0.2",
     "effect": "4.0.0-beta.59",
@@ -39,8 +40,8 @@
   "devDependencies": {
     "@types/js-yaml": "4.0.9",
     "@types/node": "22.20.0",
-    "undici": "8.5.0",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "undici": "8.5.0",
     "vitest": "3.2.6"
   }
 }

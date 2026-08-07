@@ -2075,6 +2075,7 @@ name = "houston-app"
 version = "0.5.41"
 dependencies = [
  "arboard",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "dirs 5.0.1",

@@ -1,8 +1,6 @@
-import type { AgentConfig } from "../../lib/types";
-import { SkillCard } from "../skill-card";
-import { skillIntegrationChips } from "../skill-integration-chips";
-import { AgentAvatar } from "./agent-avatar";
-
+// Re-export shim: the AgentCard that used to live here died with the in-dialog
+// agent library (PRODUCT-1171), but the avatar helpers are still imported
+// under this path across the shell.
 export {
   AgentAvatar,
   getAgentIcon,
@@ -11,33 +9,3 @@ export {
   HoustonLogo,
   isLightColor,
 } from "./agent-avatar";
-
-interface AgentCardProps {
-  config: AgentConfig;
-  /** Localized display name (falls back to `config.name`). */
-  title?: string;
-  /** Localized display description (falls back to `config.description`). */
-  description?: string;
-  onSelect: (id: string) => void;
-}
-
-export function AgentCard({
-  config,
-  title,
-  description,
-  onSelect,
-}: AgentCardProps) {
-  return (
-    <SkillCard
-      image={config.image}
-      media={
-        config.image ? undefined : <AgentAvatar config={config} size="md" />
-      }
-      title={title ?? config.name}
-      description={description ?? config.description}
-      footer={skillIntegrationChips(config.integrations)}
-      className="min-h-[132px]"
-      onClick={() => onSelect(config.id)}
-    />
-  );
-}

@@ -1,6 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  decodeMarkdownHref,
   fileNameOf,
   toWorkspaceRelative,
 } from "../src/lib/agent-file-paths.ts";
@@ -103,5 +104,44 @@ describe("fileNameOf", () => {
     strictEqual(fileNameOf("out/report.pdf"), "report.pdf");
     strictEqual(fileNameOf("C:\\Users\\jo\\perfil.md"), "perfil.md");
     strictEqual(fileNameOf("perfil.md"), "perfil.md");
+  });
+});
+
+// PRODUCT-1231: micromark normalizes every markdown link destination through
+// `normalizeUri`, so the href React sees is percent-encoded. Undoing that is
+// what makes a file with a space or an accent in its name previewable at all.
+describe("decodeMarkdownHref", () => {
+  it("decodes the spaces micromark escaped in a destination", () => {
+    strictEqual(
+      decodeMarkdownHref("Tropical%20Food%20-%20Estrategia%2090%20Dias.md"),
+      "Tropical Food - Estrategia 90 Dias.md",
+    );
+  });
+
+  it("decodes non-ASCII names", () => {
+    strictEqual(
+      decodeMarkdownHref("informe%20caf%C3%A9.md"),
+      "informe café.md",
+    );
+    strictEqual(
+      decodeMarkdownHref("docs/plan%20a%C3%B1o.md"),
+      "docs/plan año.md",
+    );
+  });
+
+  it("leaves a path with nothing to decode untouched", () => {
+    strictEqual(decodeMarkdownHref("perfil.md"), "perfil.md");
+    strictEqual(decodeMarkdownHref("./out/report.pdf"), "./out/report.pdf");
+  });
+
+  it("leaves malformed escapes alone rather than throwing", () => {
+    // A file genuinely named "100%.md", and a stray trailing escape.
+    strictEqual(decodeMarkdownHref("100%.md"), "100%.md");
+    strictEqual(decodeMarkdownHref("a%2.md"), "a%2.md");
+    strictEqual(decodeMarkdownHref("bad%E0%A4%A.md"), "bad%E0%A4%A.md");
+  });
+
+  it("does not treat + as a space (that is form encoding, not URI)", () => {
+    strictEqual(decodeMarkdownHref("q1+q2%20plan.md"), "q1+q2 plan.md");
   });
 });

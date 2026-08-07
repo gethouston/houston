@@ -120,6 +120,25 @@ class NoAgentAccessError extends Error {
 }
 
 /**
+ * Thrown by `post()` when Composio reports the EXECUTED action slug does not
+ * exist at the current tool version ("Tool_ToolNotFound", code 2401). The slug
+ * came from the model's context — a search result from earlier in a long chat
+ * (Composio renames and removes actions over time) or an invented name — so the
+ * recovery is mechanical: search again, run a slug from the fresh results
+ * (PRODUCT-1266: the raw failure taught users that only a NEW chat "fixes"
+ * integrations). Classified on Composio's stable error slug, which every relay
+ * path carries verbatim inside the failure body (the cloud gateway wraps the
+ * upstream 404 in a 502, the direct adapter surfaces it as a 500) — never the
+ * bare status, which any transient upstream failure shares.
+ */
+class ActionNotFoundError extends Error {
+  constructor() {
+    super("action not found");
+    this.name = "ActionNotFoundError";
+  }
+}
+
+/**
  * What the model must say when the user may not use this agent. The gateway's
  * own wording is internal jargon ("this agent isn't assigned to you") and its
  * body is JSON — both would be paraphrased straight at a non-technical user, so
@@ -292,6 +311,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
+      // Tool_ToolNotFound: Composio says the executed action slug does not
+      // exist at the current tool version — a stale or invented slug, fixed by
+      // searching again. The provider 404 reaches us wrapped in a relayed 5xx
+      // whose body keeps Composio's stable error slug verbatim, so that slug
+      // (not the outer status) is the classification key.
+      if (path === "execute" && detail.includes("Tool_ToolNotFound")) {
+        throw new ActionNotFoundError();
+      }
       // Anything else. A 4xx is a REFUSAL, and its body is gateway/provider
       // JSON written for us, not for a person — the model reads whatever we
       // throw and paraphrases it straight at the user, so the body is REDACTED
@@ -421,9 +448,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   const execute = defineTool<
     typeof ExecuteParams,
     // Pinned so the success path ({ action }) and the refused paths (walled-off
-    // app, no access to the agent) share ONE details type — each flag is
-    // present only in its state.
-    { action: string; appTurnedOff?: boolean; noAgentAccess?: boolean }
+    // app, no access to the agent, stale slug) share ONE details type — each
+    // flag is present only in its state.
+    {
+      action: string;
+      appTurnedOff?: boolean;
+      noAgentAccess?: boolean;
+      actionNotFound?: boolean;
+    }
   >({
     name: "integration_execute",
     label: "Run an app action",
@@ -476,6 +508,22 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
               { type: "text" as const, text: NO_AGENT_ACCESS_GUIDANCE },
             ],
             details: { action: params.action, noAgentAccess: true },
+          };
+        }
+        // The action slug does not exist (any more): a stale slug remembered
+        // from earlier in the conversation, or an invented one. RETURN the
+        // mechanical recovery — search again, use a fresh slug — so the model
+        // completes the task in THIS chat instead of telling the user that
+        // integrations are broken (PRODUCT-1266).
+        if (err instanceof ActionNotFoundError) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `The action slug "${params.action}" does not exist in the app catalog. App actions are renamed and removed over time, so a slug remembered from earlier in this conversation (or guessed) may not be real any more. Call integration_search now to find the current action for what you are doing, then run integration_execute with a slug taken from those fresh results. Do not retry this slug, do not invent slugs, and never mention slugs or any other technical detail to the user.`,
+              },
+            ],
+            details: { action: params.action, actionNotFound: true },
           };
         }
         throw err;

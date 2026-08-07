@@ -112,6 +112,7 @@ export type AnalyticsEventName =
   // `integration_slug` + `kind`: openapi / mcp) — distinct from
   // `custom_integration_started`, the chat-interview kickoff.
   | "custom_integration_added"
+  | "custom_integration_oauth_started"
   | "skill_used"
   // A skill landed in the agent (carries `skill_slug` + `source`:
   // community / repo / scratch / promoted / workspace-enable / org-default) —

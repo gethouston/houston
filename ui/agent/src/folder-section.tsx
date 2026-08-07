@@ -12,12 +12,11 @@
  * things inside it. That count is what makes a folder read as a container in a
  * list of files rather than as one more row.
  */
-import { cn } from "@houston-ai/core";
+import { cn, FolderGlyph } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { KebabButton } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
 import { FileMenu } from "./file-menu";
-import { FolderGlyph } from "./file-type-icons";
 import {
   ACTIONS_CELL,
   colGrid,

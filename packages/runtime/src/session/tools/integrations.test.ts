@@ -551,6 +551,71 @@ test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off
   );
 });
 
+test("a stale action slug (Tool_ToolNotFound via the gateway's 502) returns re-search guidance, not a raw failure", async () => {
+  // PRODUCT-1266: in a long chat the model reuses an action slug from its
+  // context (a search result from before Composio renamed/removed the action,
+  // or an invented name — GMAIL_SEARCH_EMAILS never existed; the real slug is
+  // GMAIL_FETCH_EMAILS). The gateway wraps Composio's 404 in a 502 whose body
+  // keeps the stable "Tool_ToolNotFound" slug verbatim; the tool classifies it
+  // and RETURNS the mechanical recovery — search again — so the task completes
+  // in THIS chat instead of teaching the user that only a new mission works.
+  mockFetch(() => ({
+    status: 502,
+    body: {
+      error:
+        'composio POST /api/v3/tools/execute/GMAIL_SEARCH_EMAILS → 404: {"error":{"message":"Tool GMAIL_SEARCH_EMAILS not found","code":2401,"slug":"Tool_ToolNotFound","status":404,"suggested_fix":"Check your input."}}',
+    },
+  }));
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEARCH_EMAILS", params: { query: "x" } }),
+  );
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain('"GMAIL_SEARCH_EMAILS" does not exist');
+  expect(text).toContain("Call integration_search now");
+  expect(text).toContain("Do not retry this slug");
+  // Never the upstream jargon for the model to paraphrase at the user.
+  expect(text).not.toContain("Tool_ToolNotFound");
+  expect(text).not.toContain("502");
+  expect(text).not.toContain("404");
+  expect(out.details).toEqual({
+    action: "GMAIL_SEARCH_EMAILS",
+    actionNotFound: true,
+  });
+  // A recoverable model-side state: nothing is queued for the user.
+  expect(holder.pending).toBeUndefined();
+});
+
+test("a stale action slug via the DIRECT adapter's 500 classifies identically", async () => {
+  // Self-host/dev: the direct adapter's ComposioApiError reaches the runtime
+  // as the host's generic 500 { error: message } — same stable slug inside.
+  mockFetch(() => ({
+    status: 500,
+    body: {
+      error:
+        'composio POST /api/v3/tools/execute/OLD_ACTION → 404: {"error":{"slug":"Tool_ToolNotFound","code":2401}}',
+    },
+  }));
+  const out = await run(execute, { action: "OLD_ACTION" });
+  expect((out.content[0] as { text: string }).text).toContain(
+    "Call integration_search now",
+  );
+  expect(out.details).toEqual({ action: "OLD_ACTION", actionNotFound: true });
+});
+
+test("a plain relayed 502 WITHOUT the Composio slug stays a generic transient error", async () => {
+  // Any other upstream 502 (gateway outage, provider down) must not be read as
+  // a stale slug — the classification keys on Composio's stable error slug,
+  // never the bare status.
+  mockFetch(() => ({
+    status: 502,
+    body: { error: "upstream connect timeout" },
+  }));
+  await expect(run(execute, { action: "X" })).rejects.toThrow(
+    /integrations execute failed \(502\)/,
+  );
+});
+
 test("live mode gates: a turn switched to Plan refuses execute and the connect hand-off", async () => {
   // The user flipped the Mode pill to Plan while the turn ran: acting on the
   // user's apps refuses BEFORE any network call, with the planning instruction.

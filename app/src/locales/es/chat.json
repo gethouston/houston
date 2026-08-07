@@ -286,7 +286,18 @@
     "skippedLine": "Omití agregar la clave de {{name}}.",
     "redirectLine": "No agregué la clave de {{name}}. En vez de eso, haz esto: {{text}}",
     "savedFollowup": "Agregué la clave de {{name}}. Por favor continúa.",
-    "savedUnverifiedToast": "Clave guardada para {{name}}. El servicio aún no la ha confirmado, te avisaré si las llamadas fallan."
+    "savedUnverifiedToast": "Clave guardada para {{name}}. El servicio aún no la ha confirmado, te avisaré si las llamadas fallan.",
+    "signInTitle": "Inicia sesión en {{name}}",
+    "signInSubtitle": "Tu navegador abre el inicio de sesión propio del servicio. Este paso termina solo cuando acabes.",
+    "signIn": "Iniciar sesión",
+    "signInAgain": "Iniciar sesión de nuevo",
+    "signingIn": "Esperando a que termines en tu navegador...",
+    "signedIn": "Sesión iniciada",
+    "signedInToast": "{{name}} conectado",
+    "signedInLine": "Inicié sesión en {{name}}.",
+    "skippedSignInLine": "Omití el inicio de sesión en {{name}}.",
+    "signInRedirectLine": "No inicié sesión en {{name}}. En su lugar, haz esto: {{text}}",
+    "signedInFollowup": "Ya inicié sesión en {{name}}. Continúa, por favor."
   },
   "loadingPhrases": [
     "Houston, ¡tenemos una solución!",

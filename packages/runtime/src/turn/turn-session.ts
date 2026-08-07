@@ -158,12 +158,13 @@ export async function runPiTurn(
     const toolSelection = buildToolSelection({
       codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
       integrations: false,
-      // The retired stateless per-turn cloud runtime has no sandbox routine or
-      // learning route wired (it syncs the whole workspace prefix), so both
-      // host-proxying save tools are off here — the standing per-agent pods run
-      // in server mode with them on.
+      // The retired stateless per-turn cloud runtime has no sandbox routine,
+      // learning, or skills route wired (it syncs the whole workspace prefix),
+      // so every host-proxying tool is off here — the standing per-agent pods
+      // run in server mode with them on.
       saveRoutine: false,
       saveLearning: false,
+      skillDirectory: false,
     });
     const sandbox = toolSelection.includeRunCode
       ? makeRunCodeTool({

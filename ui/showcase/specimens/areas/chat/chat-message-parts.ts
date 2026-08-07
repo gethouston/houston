@@ -34,7 +34,7 @@ export const messageProps: readonly SpecimenProp[] = [
   {
     name: "onOpenLink",
     type: "(url: string) => void",
-    note: "MessageResponse. Opens a link the agent wrote. Without it links render as inert text, never as a button that does nothing.",
+    note: "MessageResponse. Opens a link the agent wrote. Every link — bare URL or labeled — renders as the same inline chip; without this handler they degrade to inert text rather than a chip that does nothing.",
   },
   {
     name: "renderLink",

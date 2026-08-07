@@ -23,82 +23,99 @@ const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
 const multiplayer = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role });
 
+const teams = (role: OrgRole): Capabilities =>
+  caps({ multiplayer: true, teams: true, role });
+
 const agent = (access?: "manager" | "user") => ({ access });
 
 const ids = (caps: Capabilities | null, a: { access?: "manager" | "user" }) =>
   visibleAgentTabs(caps, a).map((tab) => tab.id);
 
 describe("STANDARD_TABS order", () => {
-  it("pins the five agent tabs in product order", () => {
+  it("pins the seven agent tabs in product order (PRODUCT-1256)", () => {
     deepStrictEqual(
       STANDARD_TABS.map((tab) => tab.id),
-      ["activity", "job-description", "integrations", "routines", "files"],
+      [
+        "activity",
+        "context",
+        "skills",
+        "integrations",
+        "routines",
+        "files",
+        "admin",
+      ],
     );
   });
 });
 
-describe("visibleAgentTabs", () => {
-  it("shows Agent Settings in single-player (the sole user owns everything)", () => {
+describe("visibleAgentTabs — single-player", () => {
+  it("shows Context and Skills; the sole user owns everything", () => {
     for (const access of ["manager", "user", undefined] as const) {
-      strictEqual(ids(caps(), agent(access)).includes("job-description"), true);
-      strictEqual(ids(null, agent(access)).includes("job-description"), true);
-    }
-  });
-
-  it("shows Agent Settings to the org owner and per-agent managers", () => {
-    strictEqual(
-      ids(multiplayer("owner"), agent("user")).includes("job-description"),
-      true,
-    );
-    for (const role of ["admin", "user"] as const) {
-      strictEqual(
-        ids(multiplayer(role), agent("manager")).includes("job-description"),
-        true,
-      );
-    }
-  });
-
-  it("hides Settings from a plain non-Teams org member", () => {
-    for (const role of ["admin", "user"] as const) {
-      strictEqual(
-        ids(multiplayer(role), agent("user")).includes("job-description"),
-        false,
-      );
-      strictEqual(
-        ids(multiplayer(role), agent(undefined)).includes("job-description"),
-        false,
-      );
-    }
-  });
-
-  it("always shows the four use-tabs regardless of role", () => {
-    const use = ["activity", "integrations", "routines", "files"];
-    deepStrictEqual(ids(multiplayer("user"), agent("user")), use);
-  });
-});
-
-describe("visibleAgentTabs — Settings on Teams", () => {
-  const teams = (role: OrgRole): Capabilities =>
-    caps({ multiplayer: true, teams: true, role });
-
-  it("shows Settings to every role on a Teams host, regardless of agent access", () => {
-    for (const role of ["owner", "admin", "user"] as const) {
-      for (const access of ["manager", "user", undefined] as const) {
-        strictEqual(
-          ids(teams(role), agent(access)).includes("job-description"),
-          true,
-        );
+      for (const c of [caps(), null]) {
+        strictEqual(ids(c, agent(access)).includes("context"), true);
+        strictEqual(ids(c, agent(access)).includes("skills"), true);
       }
     }
   });
 
-  it("keeps existing Settings behavior outside Teams", () => {
-    strictEqual(ids(caps(), agent()).includes("job-description"), true);
-    strictEqual(ids(null, agent()).includes("job-description"), true);
-    strictEqual(
-      ids(multiplayer("user"), agent("user")).includes("job-description"),
-      false,
-    );
+  it("hides Admin: there are no access rows to administer", () => {
+    for (const c of [caps(), null]) {
+      strictEqual(ids(c, agent()).includes("admin"), false);
+    }
+  });
+});
+
+describe("visibleAgentTabs — multiplayer without Teams", () => {
+  it("shows Context, Skills, and Admin to the org owner and agent managers", () => {
+    for (const [c, a] of [
+      [multiplayer("owner"), agent("user")],
+      [multiplayer("admin"), agent("manager")],
+      [multiplayer("user"), agent("manager")],
+    ] as const) {
+      strictEqual(ids(c, a).includes("context"), true);
+      strictEqual(ids(c, a).includes("skills"), true);
+      strictEqual(ids(c, a).includes("admin"), true);
+    }
+  });
+
+  it("hides all three from a plain member", () => {
+    for (const role of ["admin", "user"] as const) {
+      for (const a of [agent("user"), agent(undefined)]) {
+        strictEqual(ids(multiplayer(role), a).includes("context"), false);
+        strictEqual(ids(multiplayer(role), a).includes("skills"), false);
+        strictEqual(ids(multiplayer(role), a).includes("admin"), false);
+      }
+    }
+  });
+
+  it("always shows the four use-tabs regardless of role", () => {
+    deepStrictEqual(ids(multiplayer("user"), agent("user")), [
+      "activity",
+      "integrations",
+      "routines",
+      "files",
+    ]);
+  });
+});
+
+describe("visibleAgentTabs — Teams", () => {
+  it("shows Context to every role (members read it read-only)", () => {
+    for (const role of ["owner", "admin", "user"] as const) {
+      for (const access of ["manager", "user", undefined] as const) {
+        strictEqual(ids(teams(role), agent(access)).includes("context"), true);
+      }
+    }
+  });
+
+  it("keeps Skills and Admin manager-only, per PRODUCT-1256", () => {
+    for (const role of ["admin", "user"] as const) {
+      strictEqual(ids(teams(role), agent("user")).includes("skills"), false);
+      strictEqual(ids(teams(role), agent("user")).includes("admin"), false);
+    }
+    strictEqual(ids(teams("owner"), agent("user")).includes("skills"), true);
+    strictEqual(ids(teams("owner"), agent("user")).includes("admin"), true);
+    strictEqual(ids(teams("user"), agent("manager")).includes("skills"), true);
+    strictEqual(ids(teams("user"), agent("manager")).includes("admin"), true);
   });
 });
 
@@ -136,42 +153,45 @@ describe("agentTabFallback / isVisibleAgentTab", () => {
     );
   });
 
-  it("redirects a non-Teams member off the hidden Settings tab", () => {
-    // job-description is in STANDARD_TAB_IDS but hidden from a plain member;
-    // it must resolve to the default tab, not strand them on a blank pane.
+  it("redirects a member off the hidden manager tabs", () => {
+    // context/skills/admin are in STANDARD_TAB_IDS but hidden from a plain
+    // member; they must resolve to the default tab, not strand them on a
+    // blank pane.
+    for (const id of ["context", "skills", "admin"]) {
+      strictEqual(
+        isVisibleAgentTab(multiplayer("user"), agent("user"), id),
+        false,
+      );
+      strictEqual(
+        agentTabFallback(multiplayer("user"), agent("user"), id),
+        "activity",
+      );
+    }
+  });
+
+  it("redirects the retired job-description id to the default tab", () => {
     strictEqual(
-      isVisibleAgentTab(multiplayer("user"), agent("user"), "job-description"),
-      false,
-    );
-    strictEqual(
-      agentTabFallback(multiplayer("user"), agent("user"), "job-description"),
+      agentTabFallback(caps(), agent(undefined), "job-description"),
       "activity",
     );
   });
 
-  it("keeps a Teams member on Settings for read-only access", () => {
+  it("keeps a Teams member on Context for read-only access", () => {
     strictEqual(
-      agentTabFallback(
-        caps({ multiplayer: true, teams: true, role: "user" }),
-        agent("user"),
-        "job-description",
-      ),
-      "job-description",
+      agentTabFallback(teams("user"), agent("user"), "context"),
+      "context",
     );
   });
 
-  it("keeps managers and single-player on Agent Settings", () => {
-    strictEqual(
-      agentTabFallback(
-        multiplayer("user"),
-        agent("manager"),
-        "job-description",
-      ),
-      "job-description",
-    );
-    strictEqual(
-      agentTabFallback(caps(), agent(undefined), "job-description"),
-      "job-description",
-    );
+  it("keeps managers and single-player on the manager tabs", () => {
+    for (const id of ["context", "skills", "admin"]) {
+      strictEqual(
+        agentTabFallback(multiplayer("user"), agent("manager"), id),
+        id,
+      );
+    }
+    for (const id of ["context", "skills"]) {
+      strictEqual(agentTabFallback(caps(), agent(undefined), id), id);
+    }
   });
 });

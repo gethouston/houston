@@ -48,42 +48,64 @@ export function applyDetect(
   };
 }
 
-/** The i18n key for the one-line detect verdict under the URL field. */
+/** The i18n key for the one-line detect verdict under the URL field. An
+ *  OAuth-walled MCP server splits on the host-reported `oauthSupported`
+ *  (PRODUCT-1172): supported reads as good news (you'll sign in after
+ *  adding), unsupported keeps the honest refusal. */
 export function detectSummaryKey(
   result: CustomDetectResult,
 ):
   | "custom.add.detected.api"
   | "custom.add.detected.mcp"
   | "custom.add.detected.mcpOauth"
+  | "custom.add.detected.mcpOauthOk"
   | "custom.add.detected.unknown" {
   if (result.kind === "openapi") return "custom.add.detected.api";
   if (result.kind === "mcp")
     return result.requiresOAuth
-      ? "custom.add.detected.mcpOauth"
+      ? result.oauthSupported
+        ? "custom.add.detected.mcpOauthOk"
+        : "custom.add.detected.mcpOauth"
       : "custom.add.detected.mcp";
   return "custom.add.detected.unknown";
 }
 
 /** An MCP verdict that says the server only signs in with its own account
- *  flow BLOCKS submission: a pasted key can never satisfy OAuth, and adding
- *  anyway would land a permanently broken "0 actions" integration. The
- *  verdict line above the button explains why (always visible, never
- *  hover-gated); the host refuses the same case authoritatively. */
+ *  flow BLOCKS submission ONLY where this deployment cannot run that sign-in
+ *  (the host says so via `oauthSupported`, PRODUCT-1172): there a pasted key
+ *  can never satisfy OAuth and adding would land a permanently broken
+ *  "0 actions" integration. Where sign-in IS supported the add proceeds with
+ *  auth `oauth` and chains into the browser. The verdict line above the
+ *  button explains either way (always visible, never hover-gated). */
 export function oauthBlocked(
   form: CustomAddForm,
   result: CustomDetectResult | null,
 ): boolean {
-  return form.kind === "mcp" && result?.requiresOAuth === true;
+  return (
+    form.kind === "mcp" &&
+    result?.requiresOAuth === true &&
+    result.oauthSupported !== true
+  );
 }
 
 /** The wire input for a complete form, or `null` while a required field is
- *  missing/invalid (the Add button stays disabled — nothing to submit yet). */
+ *  missing/invalid (the Add button stays disabled — nothing to submit yet).
+ *  `detect` (the shown verdict) upgrades a supported OAuth-walled MCP add to
+ *  auth `oauth`. */
 export function addInputFrom(
   form: CustomAddForm,
+  detect?: CustomDetectResult | null,
 ): AddCustomIntegrationInput | null {
   const name = form.name.trim();
   const url = form.url.trim();
   if (!name || !isServiceUrl(url)) return null;
+  if (
+    form.kind === "mcp" &&
+    detect?.requiresOAuth === true &&
+    detect.oauthSupported === true
+  ) {
+    return { kind: "mcp", name, endpoint: url, auth: "oauth" };
+  }
   const auth = form.needsKey ? ("credential" as const) : ("none" as const);
   return form.kind === "openapi"
     ? { kind: "openapi", name, url, auth }
