@@ -1,5 +1,6 @@
 import { createServer, type Server } from "node:net";
 import { expect, test, vi } from "vitest";
+import { POD_LOGIN_ENV } from "./anthropic-cli-login";
 import {
   CODEX_OAUTH_CALLBACK_PORT,
   CodexCallbackPortInUseError,
@@ -20,6 +21,12 @@ import {
   startLogin,
 } from "./login";
 import { modelRuntime } from "./storage";
+
+// Pin the anthropic tests to the setup-token paste flow: without the kill
+// switch, `startLogin("anthropic")` would try to spawn a real `claude` binary
+// on any machine that has one. The relay has its own subprocess-free tests
+// (anthropic-cli-login.test.ts).
+process.env[POD_LOGIN_ENV] = "0";
 
 /** Occupy the fixed Codex callback port, like a running Codex CLI would. */
 function occupyCodexCallbackPort(): Promise<Server> {

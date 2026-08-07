@@ -28,8 +28,8 @@
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
     "description": "Open the sign-in page in your browser, complete sign-in, then paste the verification code back here.",
-    "authCodeDescription": "Paste a setup token to finish connecting {{name}}.",
-    "reference": "Reference",
+    "authCodeDescription": "Follow the steps to finish connecting {{name}}.",
+    "openLink": "Open {{host}}",
     "openUrl": "Open URL",
     "copyUrl": "Copy URL",
     "urlCopied": "URL copied to clipboard",
@@ -124,7 +124,7 @@
     "timeout": "Claude sign-in timed out. Please try connecting again.",
     "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again.",
     "autoFailedTitle": "Couldn't finish connecting automatically",
-    "autoFailedBody": "Paste a Claude setup token to finish connecting.",
+    "autoFailedBody": "Finish connecting Claude in the dialog that opens.",
     "helperUnsupported": "This computer's processor is too old to run the Claude sign-in helper, so a Claude subscription can't be connected on this machine."
   },
   "localModel": {

@@ -26,9 +26,11 @@ export type ProbeAnswer =
 /**
  * Resolve the spawnable `claude` binary: the bundled sibling inside the compiled
  * desktop sidecar, else `claude` on PATH (dev / self-host). A missing sibling in
- * a packaged build surfaces as an `execFile` ENOENT below, never a silent success.
+ * a packaged build surfaces as an `execFile` ENOENT below, never a silent
+ * success. Shared with the pod-side login relay (`./login-cli`), which spawns
+ * the same binary the SDK's turns resolve.
  */
-function claudeBinary(): string {
+export function claudeBinary(): string {
   try {
     return resolveClaudeExecutable() ?? "claude";
   } catch {

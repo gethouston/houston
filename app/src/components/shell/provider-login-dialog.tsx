@@ -99,10 +99,12 @@ export function ProviderLoginDialog({
   // isn't parseable; we then just omit the hint.
   const host = providerLoginUrlHost(url);
 
-  // Setup-token paste flow (Claude/Anthropic): `url` is a docs reference, not a
-  // sign-in page. We surface the runtime's step-by-step `instructions` above the
-  // paste field and demote the url to a small "Reference" link, rather than the
-  // Open/Copy/reveal button row meant for a real OAuth URL.
+  // Runtime paste flows (Claude/Anthropic): the runtime's step-by-step
+  // `instructions` sit above the paste field and say what the link is for —
+  // the pod-side CLI relay sends the real authorize URL (opening it IS step
+  // one), the setup-token fallback a docs reference. Either way the link is
+  // labeled by destination host and only ever opened on click, rather than
+  // the Open/Copy/reveal button row meant for a bare OAuth URL.
   const isAuthCode = !!instructions;
 
   const handleCopyUrl = async () => {
@@ -162,9 +164,9 @@ export function ProviderLoginDialog({
         <div className="space-y-4">
           {isAuthCode ? (
             <>
-              {/* Setup-token steps from the runtime, shown prominently above
-                  the paste field. The docs `url` is only a small reference
-                  link (opened on click) — never auto-opened. */}
+              {/* The runtime's steps, shown prominently above the paste
+                  field; the link below is the one they refer to — never
+                  auto-opened. */}
               <p className="rounded-md border bg-chip-subtle/40 p-3 text-[13px] whitespace-pre-line">
                 {instructions}
               </p>
@@ -177,7 +179,7 @@ export function ProviderLoginDialog({
                   onClick={() => void tauriSystem.openUrl(url)}
                 >
                   <ExternalLink className="size-3.5" />
-                  {t("providerLogin.reference")}
+                  {t("providerLogin.openLink", { host })}
                 </Button>
               )}
             </>

@@ -36,7 +36,7 @@ export const ANTHROPIC_TOKEN_PREFIXES = [
 export const ANTHROPIC_TOKEN_HELP_URL =
   "https://docs.claude.com/en/docs/claude-code/cli-reference";
 
-const PASTE_INSTRUCTIONS =
+export const PASTE_INSTRUCTIONS =
   "Run `claude setup-token` in your terminal, then paste the token it prints (starts with sk-ant-oat01). A console API key (sk-ant-api03) also works.";
 
 export type SetupTokenCallbacks = {
