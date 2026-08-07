@@ -83,8 +83,16 @@ describe("turn send → stream → settle", () => {
       // No pending interaction — the canned turn ended asking nothing.
       pendingInteraction: null,
       feed: [
-        // The optimistic push — the ONE user bubble (its echo never renders).
-        { id: "f0", feed_type: "user_message", data: "Ping" },
+        // The optimistic push — the ONE user bubble (its echo never renders,
+        // but it DOES stamp the turn's wire id onto this bubble so
+        // turn-anchored affordances like edit-and-resend work live,
+        // PRODUCT-1217).
+        {
+          id: "f0",
+          feed_type: "user_message",
+          data: "Ping",
+          turnId: expect.any(String) as unknown as string,
+        },
         {
           id: "f1",
           feed_type: "assistant_text",

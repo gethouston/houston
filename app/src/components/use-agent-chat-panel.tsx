@@ -154,6 +154,7 @@ import { ChatSigninInteractionCard } from "./chat-signin-interaction-card";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { DictationSetupDialog } from "./dictation-setup-dialog";
+import { EditingMessageNotice } from "./editing-message-notice";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { integrationsSupported } from "./integrations/model";
@@ -257,6 +258,15 @@ interface AgentChatPanelProps {
   attachMenu: AIBoardProps["attachMenu"];
   /** Decodes skill-invocation user messages into a card. */
   renderUserMessage: AIBoardProps["renderUserMessage"];
+  /** Edit-and-resend (PRODUCT-1217): begins editing a previous user message.
+   *  Undefined while a turn runs, so the affordance vanishes instead of
+   *  inviting the runtime's 409. */
+  onEditMessage: AIBoardProps["onEditMessage"];
+  /** Gates the affordance to messages the user actually typed (no markers,
+   *  no channel relays, own messages only in a shared thread). */
+  canEditMessage: AIBoardProps["canEditMessage"];
+  /** Localized label for the edit affordance. */
+  editMessageLabel: AIBoardProps["editMessageLabel"];
   /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
   renderLink: AIBoardProps["renderLink"];
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
@@ -1021,6 +1031,51 @@ export function useAgentChatPanel({
   useEffect(() => {
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
+
+  // ── Edit-and-resend (PRODUCT-1217) ─────────────────────────────────────
+  // The previous user turn being edited, or null. Prefilling rides the draft
+  // store (the same seam dictation appends through); submitting truncates the
+  // conversation at this turn and lets the NORMAL send path deliver the
+  // edited text — attachments, pins, and the queue all behave as any send.
+  const [editingTurn, setEditingTurn] = useState<{
+    sessionKey: string;
+    turnId: string;
+  } | null>(null);
+  useEffect(() => {
+    // Switching conversations abandons an in-progress edit — the pending
+    // rewind is meaningless against another transcript.
+    if (editingTurn && editingTurn.sessionKey !== selectedSessionKey)
+      setEditingTurn(null);
+  }, [editingTurn, selectedSessionKey]);
+  const cancelEditMessage = useCallback(() => {
+    setEditingTurn(null);
+    useDraftStore.getState().setDraftText(draftKey, "");
+  }, [draftKey]);
+  const onEditMessage = useCallback(
+    (msg: ChatMessage) => {
+      if (!selectedSessionKey || !msg.turnId) return;
+      // A selected Skill would wrap the resend in its marker — drop it.
+      setActiveSkill(null);
+      setEditingTurn({ sessionKey: selectedSessionKey, turnId: msg.turnId });
+      useDraftStore.getState().setDraftText(draftKey, msg.content);
+    },
+    [selectedSessionKey, draftKey],
+  );
+  const canEditMessage = useCallback(
+    (msg: ChatMessage) => {
+      // Only what the user actually TYPED here is editable: channel-relayed
+      // rows and marker-encoded sends (skill / attachment / interaction
+      // answers) are not, and in a shared thread only your own messages are
+      // yours to rewrite.
+      if (msg.source) return false;
+      if (decodeSkillMessage(msg.content)) return false;
+      if (decodeAttachmentMessage(msg.content)) return false;
+      if (decodeInteractionAnswersMessage(msg.content)) return false;
+      if (msg.author && msg.author.userId !== currentUserId) return false;
+      return true;
+    },
+    [currentUserId],
+  );
 
   // Both consumer callbacks live in refs so the send callbacks that fire them
   // don't re-create (and re-render the override cards) every time the consumer
@@ -1885,9 +1940,22 @@ export function useAgentChatPanel({
   const onComposerSubmit = useCallback<
     NonNullable<AIBoardProps["onComposerSubmit"]>
   >(
-    (ctx) => {
+    async (ctx) => {
       if (activeInteraction && interactionKey !== abandonedInteractionKey)
         setAbandonedInteractionKey(interactionKey);
+      // Edit-and-resend (PRODUCT-1217): rewind FIRST, then fall through as an
+      // ordinary unhandled submit so the board's normal send path delivers the
+      // edited text (attachments, pins, queue — everything as usual). A
+      // truncate failure (e.g. a turn raced the edit) throws before anything
+      // was cut and surfaces on the composer's own error path.
+      if (editingTurn && ctx.sessionKey === editingTurn.sessionKey && path) {
+        await tauriChat.truncate(
+          path,
+          editingTurn.sessionKey,
+          editingTurn.turnId,
+        );
+        setEditingTurn(null);
+      }
       return handleSkillComposerSubmit(ctx);
     },
     [
@@ -1895,6 +1963,8 @@ export function useAgentChatPanel({
       activeInteraction,
       interactionKey,
       abandonedInteractionKey,
+      editingTurn,
+      path,
     ],
   );
 
@@ -2139,16 +2209,21 @@ export function useAgentChatPanel({
   // for callers who receive it (owner / agent-managers).
   const composerHeader = useMemo<AIBoardProps["composerHeader"]>(() => {
     if (!agent) return undefined;
-    if (!activeSkill) return undefined;
+    if (!activeSkill && !editingTurn) return undefined;
     return (
       <div className="flex flex-col gap-1.5">
-        <SelectedSkillChip
-          skill={activeSkill}
-          onCancel={() => setActiveSkill(null)}
-        />
+        {editingTurn ? (
+          <EditingMessageNotice onCancel={cancelEditMessage} />
+        ) : null}
+        {activeSkill ? (
+          <SelectedSkillChip
+            skill={activeSkill}
+            onCancel={() => setActiveSkill(null)}
+          />
+        ) : null}
       </div>
     );
-  }, [agent, activeSkill]);
+  }, [agent, activeSkill, editingTurn, cancelEditMessage]);
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
@@ -2323,6 +2398,12 @@ export function useAgentChatPanel({
     footer,
     attachMenu,
     renderUserMessage,
+    // Rows carry the affordance only while the conversation is idle: a rewind
+    // behind an executing/queued turn is refused by the runtime (409) anyway,
+    // so the buttons vanish rather than invite the race.
+    onEditMessage: turnRunning ? undefined : onEditMessage,
+    canEditMessage,
+    editMessageLabel: t("chat:editMessage.edit"),
     renderLink,
     isSpecialTool,
     renderToolResult,

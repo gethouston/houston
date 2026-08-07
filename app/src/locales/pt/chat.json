@@ -347,5 +347,11 @@
     "Mapeando a via láctea...",
     "Quase lá, cadete...",
     "Faltam poucos segundos..."
-  ]
+  ],
+  "editMessage": {
+    "edit": "Editar mensagem",
+    "editing": "Editando uma mensagem anterior",
+    "hint": "Ao enviar, o chat voltará a esta mensagem e continuará a partir da sua versão editada.",
+    "cancel": "Cancelar edição"
+  }
 }

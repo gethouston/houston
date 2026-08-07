@@ -45,6 +45,9 @@ export function ChatPanel({
   renderSystemMessage,
   contextCompactedLabel,
   renderUserMessage,
+  onEditMessage,
+  canEditMessage,
+  editMessageLabel,
   afterMessages,
   onLoadOlder,
   hasOlderMessages,
@@ -193,6 +196,9 @@ export function ChatPanel({
           renderSystemMessage={renderSystemMessage}
           contextCompactedLabel={contextCompactedLabel}
           renderUserMessage={renderUserMessage}
+          onEditMessage={onEditMessage}
+          canEditMessage={canEditMessage}
+          editMessageLabel={editMessageLabel}
           afterMessages={afterMessages}
           onLoadOlder={onLoadOlder}
           hasOlderMessages={hasOlderMessages}

@@ -43,6 +43,12 @@ export interface ChatMessagesProps {
    * speaker attribution stays consistent.
    */
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
+  /** Edit-and-resend (PRODUCT-1217): see `ChatMessageItemProps.onEditMessage`. */
+  onEditMessage?: (msg: ChatMessage) => void;
+  /** See `ChatMessageItemProps.canEditMessage`. */
+  canEditMessage?: (msg: ChatMessage) => boolean;
+  /** See `ChatMessageItemProps.editMessageLabel`. */
+  editMessageLabel?: string;
   /** Node rendered after the last message (inside the scroll container).
    *  Useful for inline end-of-feed cards like auth reconnect prompts. */
   afterMessages?: ReactNode;

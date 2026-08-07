@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 55
+version: 56
 
 components:
   - id: agent-avatar
@@ -137,8 +137,9 @@ components:
     purpose: >-
       A message a person sent -- the viewer's own right-aligned, a teammate's
       mirrored to the left with their face beside it.
-    anatomy: [sender-face-column, bubble, sender-name-line, attachment-chips]
-    states: [default, with-attachments]
+    anatomy:
+      [sender-face-column, bubble, sender-name-line, attachment-chips, edit-action]
+    states: [default, with-attachments, editable]
     variants: [single-player, own-message, teammate-message, run-continuation]
     behavior: >-
       The message's stored author drives attribution, and in a SHARED
@@ -158,7 +159,15 @@ components:
       renders bare with the avatar column still reserved, so consecutive bubbles
       stay lined up under the face. A change of sender starts a run and a system
       divider breaks one. Single-player carries no face, no name and no reserved
-      column. Attachment/skill markers are decoded to a clean preview.
+      column. Attachment/skill markers are decoded to a clean preview. (v56)
+      The viewer's OWN settled plain-text messages carry an always-visible
+      edit action under the bubble (never hover-gated) while the conversation
+      is idle: choosing it prefills the composer with the message's text and
+      raises an editing notice above the input; sending REWINDS the
+      conversation to that message and continues from the edited version
+      (earlier turns untouched), while cancel retires the notice. Marker
+      messages (skill/attachment/interaction answers), channel relays,
+      teammates' rows, and pre-turn-id transcripts are not editable.
     a11y: >-
       group role; a teammate's name is visible text inside the bubble, while the
       viewer's own rows carry the consumer's "you" label as screen-reader-only

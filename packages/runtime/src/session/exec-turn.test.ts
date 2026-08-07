@@ -80,14 +80,15 @@ vi.mock("../store/conversations", () => ({
   appendUserMessage: vi.fn(),
   appendAssistantMessage: vi.fn(),
   getHistory: vi.fn(() => ({ messages: [] })),
+  consumeSessionReplay: vi.fn(() => false),
 }));
 
 const { execTurn, recordUserTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
 const { recordQuestions, recordConnection } = await import("./interaction");
-const { appendAssistantMessage, appendUserMessage } = await import(
-  "../store/conversations"
-);
+const { appendAssistantMessage, appendUserMessage, consumeSessionReplay } =
+  await import("../store/conversations");
+const { getHistory } = await import("../store/conversations");
 const { switchModeIfNeeded } = await import("./conversation-cache");
 const { noteAuthFailure } = await import("../auth/credential-health");
 const { reportRevokedServedToken } = await import("../auth/report-revoked");
@@ -119,7 +120,11 @@ type Conv = Parameters<typeof execTurn>[0];
  */
 function fakeConv(
   script: (emit: (e: WireEvent) => void) => Promise<void> | void,
-  opts: { provider?: string; setModel?: () => never } = {},
+  opts: {
+    provider?: string;
+    setModel?: () => never;
+    onPrompt?: (text: string) => void;
+  } = {},
 ): Conv {
   const listeners = new Set<(e: WireEvent) => void>();
   const session: HarnessSession = {
@@ -127,7 +132,8 @@ function fakeConv(
       listeners.add(l);
       return () => listeners.delete(l);
     },
-    async prompt() {
+    async prompt(text) {
+      opts.onPrompt?.(text);
       await script((e) => {
         for (const l of [...listeners]) l(e);
       });
@@ -849,4 +855,70 @@ test("recordUserTurn leaves mentions absent on a turn that named nobody", () => 
     (e): e is Extract<WireEvent, { type: "user" }> => e.type === "user",
   );
   expect(frame?.data.mentions).toBeUndefined();
+});
+
+test("a truncation's replay marker prepends the kept transcript to the prompt (PRODUCT-1217)", async () => {
+  const id = "exec-truncate-replay";
+  const { events, unsub } = collect(id);
+  vi.mocked(consumeSessionReplay).mockReturnValueOnce(true);
+  vi.mocked(getHistory).mockReturnValue({
+    id,
+    title: "t",
+    messages: [
+      { role: "user", content: "Hi", ts: 1, turnId: "t1" },
+      {
+        role: "assistant",
+        content: "Hi, how can I help?",
+        ts: 2,
+        turnId: "t1",
+      },
+      // The current turn's own (edited) user message is already recorded when
+      // execTurn runs — the replay must NOT double it into the preamble.
+      {
+        role: "user",
+        content: "tell me about trains",
+        ts: 3,
+        turnId: "turn-1",
+      },
+    ],
+  });
+  const prompts: string[] = [];
+  const conv = fakeConv((emit) => emit({ type: "text", data: "trains!" }), {
+    onPrompt: (text) => prompts.push(text),
+  });
+
+  await execTurn(conv, id, "turn-1", "tell me about trains", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+  vi.mocked(getHistory).mockReturnValue({ id, title: "", messages: [] });
+
+  expect(prompts).toHaveLength(1);
+  const prompt = prompts[0] ?? "";
+  // The kept turns ride the prompt as the replay preamble...
+  expect(prompt).toContain("User: Hi");
+  expect(prompt).toContain("Assistant: Hi, how can I help?");
+  // ...with the RESET header, never the provider-switch framing...
+  expect(prompt).not.toContain("different AI model");
+  // ...the edited message itself appears exactly once (it IS the prompt)...
+  expect(prompt.match(/tell me about trains/g)).toHaveLength(1);
+  expect(prompt.endsWith("tell me about trains")).toBe(true);
+  // ...and no provider_switched divider is drawn for a same-backend rewind.
+  expect(events.find((e) => e.type === "provider_switched")).toBeUndefined();
+});
+
+test("without the replay marker the prompt is the bare text (no preamble on normal turns)", async () => {
+  const id = "exec-no-replay";
+  const prompts: string[] = [];
+  const conv = fakeConv((emit) => emit({ type: "text", data: "ok" }), {
+    onPrompt: (text) => prompts.push(text),
+  });
+
+  await execTurn(conv, id, "turn-1", "hello there", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  expect(prompts).toEqual(["hello there"]);
 });

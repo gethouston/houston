@@ -41,6 +41,9 @@ export function ChatMessages({
   renderSystemMessage,
   contextCompactedLabel,
   renderUserMessage,
+  onEditMessage,
+  canEditMessage,
+  editMessageLabel,
   afterMessages,
   onLoadOlder,
   hasOlderMessages,
@@ -119,8 +122,10 @@ export function ChatMessages({
           <ChatMessageItem
             agentLabel={agentLabel}
             authorLabels={authorLabels}
+            canEditMessage={canEditMessage}
             contextCompactedLabel={contextCompactedLabel}
             currentUserId={currentUserId}
+            editMessageLabel={editMessageLabel}
             forcedSenders={showSenders === true}
             getThinkingMessage={getThinkingMessage}
             highlightedMessageKey={highlightedMessageKey}
@@ -132,6 +137,7 @@ export function ChatMessages({
             key={item.kind === "process" ? item.key : item.message.key}
             mentionPeople={mentionPeople}
             messageCount={messages.length}
+            onEditMessage={onEditMessage}
             onOpenLink={onOpenLink}
             processLabels={processLabels}
             renderLink={renderLink}

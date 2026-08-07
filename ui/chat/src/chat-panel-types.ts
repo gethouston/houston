@@ -103,6 +103,10 @@ export interface ChatPanelProps {
    *  the component; the app passes a `t()` string. */
   contextCompactedLabel?: string;
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
+  /** Edit-and-resend (PRODUCT-1217): see `ChatMessagesProps.onEditMessage`. */
+  onEditMessage?: ChatMessagesProps["onEditMessage"];
+  canEditMessage?: ChatMessagesProps["canEditMessage"];
+  editMessageLabel?: ChatMessagesProps["editMessageLabel"];
   afterMessages?: ReactNode;
   /** Scroll-up lazy-load (HOU-819): see `ChatMessagesProps.onLoadOlder`. */
   onLoadOlder?: ChatMessagesProps["onLoadOlder"];

@@ -230,6 +230,9 @@ export function MissionBoard({
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
+          onEditMessage={panel.onEditMessage}
+          canEditMessage={panel.canEditMessage}
+          editMessageLabel={panel.editMessageLabel}
           renderLink={panel.renderLink}
           renderSystemMessage={panel.renderSystemMessage}
           conversationMap={panel.conversationMap}

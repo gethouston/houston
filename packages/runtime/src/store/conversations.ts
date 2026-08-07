@@ -16,6 +16,10 @@ import {
   renameConversationAt,
   type UserMessageMeta,
 } from "./conversation-file";
+import {
+  consumeSessionReplayAt,
+  truncateConversationAt,
+} from "./conversation-truncate";
 
 /**
  * Config-bound conversation store for the long-lived server: one JSON file per
@@ -72,4 +76,21 @@ export function renameConversation(id: string, title: string): boolean {
 
 export function deleteConversation(id: string): boolean {
   return deleteConversationAt(dir, id);
+}
+
+/**
+ * Cut the transcript at a user turn (edit-and-resend, PRODUCT-1217). File
+ * write only — callers go through session/truncate-turn.ts, which pairs it
+ * with the session/bus invalidation.
+ */
+export function truncateConversation(
+  id: string,
+  turnId: string,
+): { removed: number } | null {
+  return truncateConversationAt(dir, id, turnId);
+}
+
+/** One-shot replay marker read (see conversation-truncate.ts). */
+export function consumeSessionReplay(id: string): boolean {
+  return consumeSessionReplayAt(dir, id);
 }

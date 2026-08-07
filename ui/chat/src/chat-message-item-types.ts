@@ -50,6 +50,15 @@ export interface ChatMessageItemProps {
   renderSystemMessage?: (msg: ChatMessage) => ReactNode | undefined;
   contextCompactedLabel?: string;
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
+  /** Edit-and-resend (PRODUCT-1217): the user asked to edit this previous user
+   *  message. Present = the affordance renders on the viewer's own settled
+   *  user rows that carry a `turnId`; the consumer rewinds + resends. */
+  onEditMessage?: (msg: ChatMessage) => void;
+  /** Consumer gate on top of the built-in ones (e.g. skill/attachment marker
+   *  messages are not editable). Absent = every eligible row is editable. */
+  canEditMessage?: (msg: ChatMessage) => boolean;
+  /** Localized label + tooltip for the edit affordance. English default. */
+  editMessageLabel?: string;
   onOpenLink?: (url: string) => void;
   renderLink?: (props: RenderLinkProps) => ReactNode;
   currentUserId?: string;

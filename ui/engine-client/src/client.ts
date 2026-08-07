@@ -2024,6 +2024,24 @@ export class HoustonClient {
     );
   }
   /**
+   * Edit-and-resend rewind (PRODUCT-1217): drop the conversation's transcript
+   * tail from the named user turn onward, so the caller can resend an edited
+   * version of that message with a normal send. A runtime passthrough via the
+   * host's channel dispatch, like `dismissInteraction`. Answers 409 while a
+   * turn is queued or running, 404 when the turn id is unknown.
+   */
+  async truncateConversation(
+    agentSlugOrId: string,
+    conversationId: string,
+    turnId: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/agents/${this.seg(agentSlugOrId)}/conversations/${this.seg(conversationId)}/truncate`,
+      { turnId },
+    );
+  }
+  /**
    * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude Code's
    * shift+tab semantics): the running turn adopts the new mode at its next tool
    * decision. `applied: false` is benign — no turn was running, and the next

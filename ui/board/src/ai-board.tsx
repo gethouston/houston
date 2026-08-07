@@ -135,6 +135,10 @@ export interface AIBoardProps {
     | ((ctx: { sessionKey: string; feedItems: FeedItem[] }) => ReactNode);
   /** Custom renderer for user messages. Forwarded to ChatPanel. */
   renderUserMessage?: import("@houston-ai/chat").ChatPanelProps["renderUserMessage"];
+  /** Edit-and-resend (PRODUCT-1217). Forwarded to ChatPanel. */
+  onEditMessage?: import("@houston-ai/chat").ChatPanelProps["onEditMessage"];
+  canEditMessage?: import("@houston-ai/chat").ChatPanelProps["canEditMessage"];
+  editMessageLabel?: import("@houston-ai/chat").ChatPanelProps["editMessageLabel"];
   /** Props-only configuration for long-conversation navigation. */
   conversationMap?: ChatPanelProps["conversationMap"];
   /** Emitted by ChatPanel to surface short notices to the user
@@ -363,6 +367,9 @@ export function AIBoard({
   mapFeedItems,
   afterMessages,
   renderUserMessage,
+  onEditMessage,
+  canEditMessage,
+  editMessageLabel,
   conversationMap,
   onNotice,
   prepareAttachments,
@@ -771,6 +778,9 @@ export function AIBoard({
           renderTurnSummary={renderTurnSummary}
           renderSystemMessage={renderSystemMessage}
           renderUserMessage={renderUserMessage}
+          onEditMessage={onEditMessage}
+          canEditMessage={canEditMessage}
+          editMessageLabel={editMessageLabel}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
           showSenders={showSenders}

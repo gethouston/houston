@@ -169,6 +169,9 @@ export default function ArchivedTab({
           footer={panel.footer}
           attachMenu={panel.attachMenu}
           renderUserMessage={panel.renderUserMessage}
+          onEditMessage={panel.onEditMessage}
+          canEditMessage={panel.canEditMessage}
+          editMessageLabel={panel.editMessageLabel}
           renderLink={panel.renderLink}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}

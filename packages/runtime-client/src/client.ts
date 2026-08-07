@@ -303,6 +303,22 @@ export class HoustonEngineClient {
       { method: "POST" },
     );
   }
+  /**
+   * Edit-and-resend rewind (PRODUCT-1217): drop the transcript tail from the
+   * named user turn onward. The caller follows up with a normal send carrying
+   * the edited text. Answers 409 while a turn is queued or running, 404 when
+   * the turn id is unknown (e.g. a pre-turn-id transcript row).
+   */
+  truncateConversation(id: string, turnId: string) {
+    return this.json<{ ok: boolean; removed: number }>(
+      `/conversations/${encodeURIComponent(id)}/truncate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turnId }),
+      },
+    );
+  }
   renameConversation(id: string, title: string) {
     return this.json<{ ok: boolean }>(
       `/conversations/${encodeURIComponent(id)}`,

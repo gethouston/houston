@@ -229,6 +229,54 @@ test("sends a follow-up inside an existing mission", async ({ page }) => {
   });
 });
 
+/**
+ * Edit-and-resend (PRODUCT-1217): the pencil on a previous user message
+ * prefills the composer and shows the editing banner; sending rewinds the
+ * conversation to that message — earlier turns stay, the edited turn's old
+ * exchange is gone, and the agent answers the edited text.
+ */
+test("edits a previous user message and rewinds the conversation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByText("Plan a trip to Tokyo").click();
+  const composer = page.getByPlaceholder("Send a follow-up...");
+
+  // Two settled turns.
+  await composer.fill("first message");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .first message./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await composer.fill("second message");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .second message[”"]/)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Edit the SECOND user message: composer prefills, the banner names the state.
+  await page.getByRole("button", { name: "Edit message" }).last().click();
+  await expect(composer).toHaveValue("second message");
+  await expect(page.getByText("Editing a previous message")).toBeVisible();
+
+  await composer.fill("second message, edited");
+  await composer.press("Enter");
+
+  // The edited turn answers; the banner retired with the send.
+  await expect(
+    page.getByText(/You said: .second message, edited./),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Editing a previous message")).not.toBeVisible();
+  // The rewound tail is gone; the first turn survives untouched.
+  await expect(
+    page.getByText("second message", { exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByText(/You said: .second message[”"]/),
+  ).not.toBeVisible();
+  await expect(page.getByText(/You said: .first message./)).toBeVisible();
+});
+
 // Skipped while the conversation map is deliberately hidden (see
 // ui/chat/src/conversation-map-panel.tsx CONVERSATION_MAP_VISIBLE) — the
 // feature stays wired; un-skip when the panel is re-shown.
