@@ -95,6 +95,10 @@ test("every file link renders as one file chip, whatever shape the agent wrote (
             "Listo: [Perfil](perfil.md)",
             "Y el [reporte](informes/Q3%20reporte.pdf).",
             "Referencia: [el informe](https://example.com/report)",
+            // Unescaped spaces: not a link per CommonMark, repaired from text.
+            "Trimestre: [informe trimestral](informes/Q3 reporte.pdf)",
+            // Prose that merely LOOKS like a link must stay prose.
+            "Prosa: [ver la nota](un aparte mas largo) intacta.",
           ].join("\n\n"),
           ts: 2,
         },
@@ -104,26 +108,35 @@ test("every file link renders as one file chip, whatever shape the agent wrote (
 
   await page.goto("/");
   await page.getByText("Chips").first().click();
-  await expect(page.getByRole("button", { name: "Perfil" })).toBeVisible({
-    timeout: 15_000,
-  });
+  const perfil = page.getByRole("button", { name: "Perfil.md" });
+  await expect(perfil).toBeVisible({ timeout: 15_000 });
 
-  // Both file chips carry the file's full path as their title — the affordance
-  // follows the DESTINATION, not the label shape.
-  await expect(page.getByRole("button", { name: "Perfil" })).toHaveAttribute(
-    "title",
-    "perfil.md",
-  );
-  await expect(page.getByRole("button", { name: "reporte" })).toHaveAttribute(
-    "title",
-    "informes/Q3 reporte.pdf",
-  );
+  // Every chip carries the file's full path as its title — the affordance
+  // follows the DESTINATION, not the label shape. And every chip shows an
+  // EXTENSION, so a reader can never mistake a .pdf for a .md: the agent's
+  // label gains the real one rather than hiding it.
+  await expect(perfil).toHaveAttribute("title", "perfil.md");
+  await expect(
+    page.getByRole("button", { name: "reporte.pdf", exact: true }),
+  ).toHaveAttribute("title", "informes/Q3 reporte.pdf");
+
+  // Repaired from plain text: CommonMark refuses a destination with unescaped
+  // spaces, so this used to reach the reader as literal `[…](…)` noise.
+  await expect(
+    page.getByRole("button", { name: "informe trimestral.pdf" }),
+  ).toHaveAttribute("title", "informes/Q3 reporte.pdf");
+
+  // ...but the repair must never eat ordinary prose. No extension in the
+  // destination means it was never a file reference.
+  await expect(
+    page.getByText("[ver la nota](un aparte mas largo)"),
+  ).toBeVisible();
 
   // A file never wears the web link's clothes. Since HOU-1152 every URL is the
   // same `Autolink` anchor on the reserved link tint, so the file chip must be
   // neither an anchor nor blue — that contrast is what tells the reader whether
   // a click leaves Houston.
-  const fileChip = page.getByRole("button", { name: "Perfil" });
+  const fileChip = page.getByRole("button", { name: "Perfil.md" });
   await expect(fileChip).toHaveJSProperty("tagName", "BUTTON");
   const chipBackground = await fileChip.evaluate(
     (el) => getComputedStyle(el).backgroundColor,
@@ -207,4 +220,41 @@ test("previewed markdown never overflows the dialog (PRODUCT-1231)", async ({
   expect(overflow.escapees).toEqual([]);
   expect(overflow.scrollsSideways).toBe(false);
   expect(overflow.width).toBeLessThanOrEqual(overflow.viewport);
+});
+
+test("the preview grows to full screen and shrinks back (PRODUCT-1231)", async ({
+  page,
+  request,
+}) => {
+  await seedDeliverable(request);
+  await page.goto("/");
+  await page.getByText("Estrategia").first().click();
+  await page.getByRole("button", { name: LABEL }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.locator("table")).toBeVisible();
+  const compact = (await dialog.boundingBox())?.width ?? 0;
+
+  // A long document is unreadable through a 60vh porthole, so the reader can
+  // claim the viewport — and get the small window back.
+  await dialog.getByRole("button", { name: "Expand" }).click();
+  await expect(dialog.getByRole("button", { name: "Shrink" })).toBeVisible();
+  const expandedBox = await dialog.boundingBox();
+  expect(expandedBox?.width ?? 0).toBeGreaterThan(compact);
+
+  // Expanding must not clip what it was expanded to show: the frame still
+  // scrolls, it is only taller.
+  const scrollable = await dialog
+    .locator("div.overflow-y-auto")
+    .first()
+    .evaluate((el) => getComputedStyle(el).overflowY);
+  expect(scrollable).toBe("auto");
+
+  // Poll rather than sample once: the surface animates back over the dialog's
+  // 200ms transition, so the toggle flips before the box has settled.
+  await dialog.getByRole("button", { name: "Shrink" }).click();
+  await expect(dialog.getByRole("button", { name: "Expand" })).toBeVisible();
+  await expect
+    .poll(async () => Math.round((await dialog.boundingBox())?.width ?? 0))
+    .toBe(Math.round(compact));
 });

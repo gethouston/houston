@@ -12,9 +12,8 @@
  * URLs wrap at character boundaries, code blocks and tables scroll inside
  * their own frames (Streamdown wraps both), and the whole frame clips.
  */
-import { Autolink, MessageResponse } from "@houston-ai/chat";
+import { MessageResponse } from "@houston-ai/chat";
 import { cn } from "@houston-ai/core";
-import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 /** The bytes-loading state machine `FilePreviewDialog` drives. */
@@ -45,8 +44,8 @@ const PREVIEW_MARKDOWN = [
 interface Props {
   loaded: Loaded;
   fileName: string;
-  /** Full-viewport layout (HTML decks): the frame fills its row instead of
-   *  capping at a fraction of the viewport. */
+  /** Full-viewport layout — an HTML deck, or any file the reader expanded:
+   *  media fills its row instead of capping at a fraction of the viewport. */
   fullPage: boolean;
   /** Opens a link the previewed markdown contains — a URL in the system
    *  browser, a sibling file in this same dialog. Without it Streamdown's
@@ -61,26 +60,6 @@ export function FilePreviewBody({
   onOpenLink,
 }: Props) {
   const { t } = useTranslation("agents");
-
-  // A document's links flow INLINE. Chat's default renders a labeled link as a
-  // filled button pill, which is right for the end of an agent's turn and
-  // wrong mid-paragraph — a black slab dropped into a sentence.
-  const renderLink = useCallback(
-    ({
-      href,
-      children,
-      onOpen,
-    }: {
-      href: string;
-      children: React.ReactNode;
-      onOpen: () => void;
-    }) => (
-      <Autolink href={href} onOpen={onOpen}>
-        {children}
-      </Autolink>
-    ),
-    [],
-  );
 
   switch (loaded.state) {
     case "loading":
@@ -101,7 +80,10 @@ export function FilePreviewBody({
         <img
           src={loaded.url}
           alt={fileName}
-          className="mx-auto max-h-[58vh] max-w-full object-contain"
+          className={cn(
+            "mx-auto max-w-full object-contain",
+            fullPage ? "max-h-full" : "max-h-[58vh]",
+          )}
         />
       );
     case "pdf":
@@ -109,7 +91,7 @@ export function FilePreviewBody({
         <iframe
           src={loaded.url}
           title={fileName}
-          className="h-[58vh] w-full border-0"
+          className={cn("w-full border-0", fullPage ? "h-full" : "h-[58vh]")}
         />
       );
     case "html":
@@ -132,11 +114,12 @@ export function FilePreviewBody({
       );
     case "text":
       return isMarkdownFile(fileName) ? (
-        <MessageResponse
-          className={PREVIEW_MARKDOWN}
-          onOpenLink={onOpenLink}
-          renderLink={renderLink}
-        >
+        // No `renderLink` override: the shared defaults are already right
+        // here. A URL is the inline Autolink chip (HOU-1152 retired the button
+        // pill that once made a labeled link a black slab mid-paragraph), and
+        // a workspace file is the file chip — so a document names its files
+        // exactly the way chat does.
+        <MessageResponse className={PREVIEW_MARKDOWN} onOpenLink={onOpenLink}>
           {loaded.text}
         </MessageResponse>
       ) : (

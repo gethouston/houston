@@ -24,3 +24,19 @@ export function extensionOf(path: string): string {
   const dot = name.lastIndexOf(".");
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
 }
+
+/**
+ * The extension to append to an agent-written chip label so the chip always
+ * reads as a file: `[Perfil](perfil.md)` shows "Perfil.md", not "Perfil".
+ * Without it the same chip carried an extension or not depending purely on
+ * whether the agent happened to write prose or the path as its label — the
+ * reader could not tell a `.pdf` from a `.md` from the text.
+ *
+ * Empty when there is nothing to add: an extensionless file, or a label that
+ * already ends in that extension (so a path-shaped label never doubles up).
+ */
+export function labelExtensionSuffix(path: string, label: string): string {
+  const ext = extensionOf(path);
+  if (!ext) return "";
+  return label.toLowerCase().endsWith(`.${ext}`) ? "" : `.${ext}`;
+}

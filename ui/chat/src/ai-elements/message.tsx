@@ -37,9 +37,13 @@ import { defaultRehypePlugins, Streamdown } from "streamdown";
 import { Autolink } from "../autolink";
 import { FileChip } from "../file-chip";
 import { FILE_PATH_ATTR, fileLinkRehypePlugin } from "../file-link-rehype";
-import { fileNameOf } from "../file-path";
+import { fileNameOf, labelExtensionSuffix } from "../file-path";
 import { MarkdownCodeBlock } from "../markdown-code-block";
-import { autolinkDisplay, classifyMarkdownLink } from "../markdown-link";
+import {
+  autolinkDisplay,
+  classifyMarkdownLink,
+  markdownLinkText,
+} from "../markdown-link";
 import { MentionMarkdownSpan } from "../mention-chip.tsx";
 import type { MentionRehypeOptions } from "../mention-rehype.ts";
 import { mentionRehypePlugin } from "../mention-rehype.ts";
@@ -523,10 +527,22 @@ export const MessageResponse = memo(
           // URL is the same Slack chip, so blue now reads as "this leaves
           // Houston" and the neutral chip as "this is yours".
           if (filePath !== undefined) {
-            // The agent's own label when it wrote one; otherwise the file
-            // name, since a raw path reads as noise mid-sentence.
+            // The agent's own label when it wrote one, the file name when it
+            // wrote the path as the label (a raw path reads as noise
+            // mid-sentence) — but ALWAYS carrying the extension, so a chip
+            // never hides whether it opens a `.pdf` or a `.md`.
             const fileLabel =
-              kind === "autolink" ? fileNameOf(filePath) : children;
+              kind === "autolink" ? (
+                fileNameOf(filePath)
+              ) : (
+                <>
+                  {children}
+                  {labelExtensionSuffix(
+                    filePath,
+                    markdownLinkText(children) ?? "",
+                  )}
+                </>
+              );
             if (!fn) return <span>{fileLabel}</span>;
             return (
               <FileChip path={filePath} onOpen={onOpen}>

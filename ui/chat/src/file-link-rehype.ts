@@ -28,6 +28,8 @@
  * mangled href as a file path and reads `data-file-path` instead.
  */
 
+import { splitFileLinks } from "./file-link-text.ts";
+
 /** Attribute the `a` override reads the true workspace path from. */
 export const FILE_PATH_ATTR = "data-file-path";
 
@@ -36,6 +38,7 @@ export const FILE_PATH_ATTR = "data-file-path";
 interface HastNode {
   type: string;
   tagName?: string;
+  value?: string;
   properties?: Record<string, unknown>;
   children?: HastNode[];
 }
@@ -79,32 +82,71 @@ function decodePath(path: string): string {
 }
 
 /**
+ * The `<a>` properties a workspace-file destination should carry, or null when
+ * it does not name one. Shared by the two ways a file link reaches this pass:
+ * an anchor markdown already parsed, and one {@link splitFileLinks} recovers
+ * from text that CommonMark refused to parse.
+ */
+export function fileLinkProperties(
+  destination: string,
+): Record<string, unknown> | null {
+  const path = markdownFilePath(destination);
+  if (path === null) return null;
+  // Harden only recognizes `/`, `./` and `../` as relative; a bare `perfil.md`
+  // would be blocked outright. `./` is semantically identical and makes the
+  // destination legible to harden.
+  const href =
+    destination.startsWith("/") || destination.startsWith(".")
+      ? destination
+      : `./${destination}`;
+  return { href, [FILE_PATH_ATTR]: path };
+}
+
+/** Tags whose subtree is verbatim content, never prose. A `[x](y z.md)` typed
+ *  inside a code span or already inside a link must stay untouched. */
+const SKIP_TAGS = new Set(["code", "pre", "a"]);
+
+/**
  * The rehype plugin. Takes no options, so Streamdown's processor cache (keyed
  * on plugin name + `JSON.stringify(options)`) stays a single stable entry.
  */
 export function fileLinkRehypePlugin() {
   return (tree: unknown) => {
-    walk(tree as HastNode);
+    walk(tree as HastNode, false);
   };
 }
 
-function walk(node: HastNode): void {
+function walk(node: HastNode, skip: boolean): void {
   if (node.tagName === "a" && node.properties) {
     const href = node.properties.href;
     if (typeof href === "string") {
-      const path = markdownFilePath(href);
-      if (path !== null) {
-        node.properties[FILE_PATH_ATTR] = path;
-        // Harden only recognizes `/`, `./` and `../` as relative; a bare
-        // `perfil.md` would be blocked. `./` is semantically identical and
-        // makes it legible to harden.
-        if (!href.startsWith("/") && !href.startsWith(".")) {
-          node.properties.href = `./${href}`;
-        }
-      }
+      const properties = fileLinkProperties(href);
+      if (properties) Object.assign(node.properties, properties);
     }
   }
-  for (const child of node.children ?? []) {
-    if (child.type === "element" || child.type === "root") walk(child);
+
+  const children = node.children;
+  if (!children || children.length === 0) return;
+
+  const next: HastNode[] = [];
+  let changed = false;
+  for (const child of children) {
+    if (child.type === "element") {
+      walk(child, skip || SKIP_TAGS.has(child.tagName ?? ""));
+      next.push(child);
+      continue;
+    }
+    if (skip || child.type !== "text" || typeof child.value !== "string") {
+      next.push(child);
+      continue;
+    }
+    const split = splitFileLinks(child.value, fileLinkProperties);
+    if (!split) {
+      next.push(child);
+      continue;
+    }
+    changed = true;
+    next.push(...split);
   }
+  if (changed) node.children = next;
 }

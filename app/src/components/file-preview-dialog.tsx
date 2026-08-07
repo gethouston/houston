@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../hooks/use-open-agent-file";
@@ -57,12 +58,16 @@ export function FilePreviewDialog({
   const queryClient = useQueryClient();
   const openHref = useOpenAgentHref(agentPath || null);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
+  /** Reader-chosen full-viewport mode. A long document is unreadable in a
+   *  60vh window, so the modal can grow and shrink back (PRODUCT-1231). */
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!filePath) return;
     let cancelled = false;
     let objectUrl: string | null = null;
     setLoaded({ state: "loading" });
+    setExpanded(false);
     // Failure renders inline below (the fetch is toast-free by design).
     fetchFileBytes(queryClient, agentPath, filePath, bytesCacheKey)
       .then(async ({ blob, contentType }) => {
@@ -106,7 +111,11 @@ export function FilePreviewDialog({
   // viewport so a 16:9 deck lays out horizontally. Sized from the NAME, not
   // the loaded state, so the dialog opens at full size instead of jumping
   // when the bytes land.
-  const fullPage = /\.html?$/i.test(fileName);
+  const isDeck = /\.html?$/i.test(fileName);
+  // A deck is born full-page; anything else starts compact and the reader can
+  // ask for the room. Reset per file so a document never inherits the last
+  // one's size.
+  const fullPage = isDeck || expanded;
 
   return (
     <Dialog open={!!filePath} onOpenChange={(open) => !open && onClose()}>
@@ -118,16 +127,41 @@ export function FilePreviewDialog({
         }
       >
         <DialogHeader className="min-w-0">
-          {/* `pr-8` clears the dialog's absolutely-positioned close button, so
-              a long name ellipsizes before it runs under the X rather than
-              after. `title` keeps the full name reachable on hover. */}
-          <DialogTitle className="truncate pr-8" title={fileName}>
+          {/* `pr-16` clears BOTH the dialog's close button and the expand
+              toggle beside it, so a long name ellipsizes before it runs under
+              them. `title` keeps the full name reachable on hover. */}
+          <DialogTitle className="truncate pr-16" title={fileName}>
             {fileName}
           </DialogTitle>
           {loaded.state === "binary" && (
             <DialogDescription>
               {t("files.preview.unsupportedDescription")}
             </DialogDescription>
+          )}
+          {/* A deck already fills the viewport, so it has nothing to toggle.
+              Sits beside the close button (which the dialog positions
+              absolutely) rather than in the footer: resizing is chrome, and
+              the footer is for what you DO with the file. */}
+          {!isDeck && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              title={t(
+                expanded ? "files.preview.collapse" : "files.preview.expand",
+              )}
+              className="absolute top-4 right-12 rounded-lg p-1.5 text-ink-muted transition-colors duration-200 hover:bg-hover hover:text-ink"
+            >
+              {expanded ? (
+                <Minimize2 className="size-4" />
+              ) : (
+                <Maximize2 className="size-4" />
+              )}
+              <span className="sr-only">
+                {t(
+                  expanded ? "files.preview.collapse" : "files.preview.expand",
+                )}
+              </span>
+            </button>
           )}
         </DialogHeader>
         {/* `min-w-0` + `overflow-x-hidden`: the frame is the hard boundary the
@@ -136,9 +170,13 @@ export function FilePreviewDialog({
         <div
           className={cn(
             "min-w-0 rounded-md border border-line bg-chip-subtle/20",
-            fullPage
-              ? "min-h-0 overflow-hidden"
-              : "min-h-[200px] max-h-[60vh] overflow-y-auto overflow-x-hidden",
+            // A DECK fills the frame with its own iframe and must not scroll
+            // the frame itself. A document always scrolls — expanding only
+            // buys it a taller window, so `overflow-hidden` here would clip
+            // the very content the reader expanded to see.
+            isDeck && "min-h-0 overflow-hidden",
+            !isDeck && "overflow-y-auto overflow-x-hidden",
+            !isDeck && (expanded ? "min-h-0" : "min-h-[200px] max-h-[60vh]"),
           )}
         >
           <FilePreviewBody
