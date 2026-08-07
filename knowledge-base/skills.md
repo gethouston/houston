@@ -151,8 +151,9 @@ never learns it exists, even though the Skills UI still lists it. Keep
 "Is there a skill for X?" is answered by the agent itself, not by sending the
 user to browse the Skills page. Two tools, on by default in EVERY agent:
 
-- **`find_skills(query)`** — searches skills.sh and returns candidates with
-  their real descriptions and install counts.
+- **`find_skills(queries)`** — runs one to three searches against skills.sh,
+  merges them, and returns candidates with their real descriptions and install
+  counts.
 - **`install_skill(source, skillId)`** — installs one into the calling agent's
   `.agents/skills/` tree.
 
@@ -173,10 +174,12 @@ the capability is native, needs no per-agent install, and no manifest entry.
 | Name allowlist + mode reach | `packages/runtime/src/session/tool-selection.ts` (`skillDirectory` gate) |
 | pi registration | `packages/runtime/src/session/conversation-cache.ts` |
 | Claude backend mirror | `packages/runtime/src/backends/claude/custom-tools.ts` |
-| Host routes | `packages/host/src/routes/skills-sandbox.ts` (`POST /sandbox/skills/{search,install}`) |
+| Host route + auth | `packages/host/src/routes/skills-sandbox.ts` (`POST /sandbox/skills/{search,install}`) |
+| Search (merge + enrich) | `packages/host/src/routes/skills-sandbox-search.ts` |
+| Install | `packages/host/src/routes/skills-sandbox-actions.ts` |
 | Prompt guidance (BOTH copies) | `packages/host/src/houston-prompt.ts` + `app/src-tauri/src/houston_prompt/skills_memory.rs` |
 
-Five things that are load-bearing:
+Six things that are load-bearing:
 
 1. **Gate = host reachability**, the same one `save_routine` / `save_learning`
    use — not a Composio key and not a feature flag. The directory lives behind
@@ -189,14 +192,31 @@ Five things that are load-bearing:
 4. **A mid-turn install is invisible to the model.** `<available_skills>` is
    built at session start, so `install_skill` returns the SKILL.md **path** and
    tells the agent to Read it if it's running the skill in this same turn.
-5. **The agent sees the SAME option space as the Skills page — every ranked
-   hit, not a head slice.** skills.sh answers with up to 100 ranked hits and the
-   marketplace UI shows them all. Truncating the agent's copy makes it report
-   "there's nothing for that" about a tail it was never shown: the first cut of
-   this shipped capped at 5, which hid `fusion-skill-authoring` at rank 6 and
-   every `mattpocock/skills` entry (300k+ installs each) on the queries where
-   they rank 6+. `ENRICH_LIMIT` bounds DESCRIPTION FETCHES, never visibility —
-   `skills-sandbox.test.ts` pins that with a 30-hit search.
+5. **The agent must see far past the head.** Truncating its view makes it report
+   "there's nothing for that" about a tail it was never shown: the first cut
+   capped at 5, which hid `fusion-skill-authoring` at rank 6. `ENRICH_LIMIT`
+   (10) bounds DESCRIPTION FETCHES; `RESULT_LIMIT` (60) is the only visibility
+   bound. `skills-sandbox.test.ts` pins that with a 30-hit search.
+6. **English, and more than one phrasing.** Two independent failures, both
+   observed in real chats:
+   - **Language.** skills.sh is an English catalog and its semantic search does
+     not cross languages. `"crear y mejorar skills"` returns `yc-reader`,
+     `byma`, `rubrica-builder` — noise — with zero `mattpocock/skills` in all
+     100 hits. Houston speaks Spanish and Portuguese to users, so the tool's
+     parameter description and BOTH prompt copies require translating the
+     search to English.
+   - **Phrasing.** A skill is found by the words in its OWN title, not the
+     user's words. `writing-great-skills` (mattpocock, 312k installs) is rank 1
+     for `"writing skills"` and absent from all 100 for `"create and improve
+     skills"` — the same request. One model-invented phrase is a coin flip, so
+     `find_skills` takes up to `MAX_QUERIES` (3) and `mergeSearches` folds them
+     keeping each skill's BEST rank (ties → install count), which is what stops
+     the phrasings that missed from burying the one that hit.
+
+   Together these took the screenshot case from "no Matt Pocock skill in the
+   catalog" to that skill at rank 4. The tool result also tells the agent the
+   list is only what its queries matched, and to re-search before declaring
+   anything absent.
 
 Search hits are enriched with real descriptions via the shared `PreviewDirectory`
 (the top `ENRICH_LIMIT` only — each is a cached GitHub SKILL.md lookup; the rest

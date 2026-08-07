@@ -30,9 +30,11 @@ export const SKILL_DIRECTORY_TOOL_NAMES: readonly string[] = [
 ];
 
 const FindSkillsParams = Type.Object({
-  query: Type.String({
+  queries: Type.Array(Type.String(), {
+    minItems: 1,
+    maxItems: 3,
     description:
-      "What the user is trying to do, in a few plain keywords (e.g. 'review a contract', 'competitor research', 'linkedin outreach'). Not a full sentence.",
+      "One to three short keyword searches, ALWAYS IN ENGLISH - the catalog is English-only, so a Spanish or Portuguese query returns unrelated results even when a perfect skill exists. Translate what the user asked for. Vary the phrasing across the queries, because skills are found by the words in their own titles, not by the words the user happened to use: search both what the skill DOES and what it would be CALLED. For 'una skill para crear y mejorar skills' send ['writing skills', 'skill authoring', 'improve skill']. Keywords, never full sentences.",
   }),
 });
 type FindSkillsParams = Static<typeof FindSkillsParams>;
@@ -115,7 +117,7 @@ export function makeFindSkillsTool(opts: SkillDirectoryToolOptions) {
       const { skills } = await post<{ skills: FoundSkill[] }>(
         opts,
         "search",
-        { query: params.query },
+        { queries: params.queries },
         signal,
         FIND_SKILLS_TOOL_NAME,
       );
@@ -124,8 +126,8 @@ export function makeFindSkillsTool(opts: SkillDirectoryToolOptions) {
           {
             type: "text" as const,
             text: skills.length
-              ? `${JSON.stringify(skills)}\n\nThese are ALL the matches, ranked by relevance - the same list the user would see browsing the skills page. Only the first few carry a fetched description; the rest are real, installable candidates too, so read the whole list before judging what is available. Never tell the user something isn't there without checking every entry. Pick the best fit on relevance, description, and install count, describe it in plain words, and ask whether to add it - then call install_skill with that skill's exact source and skillId.`
-              : "No published skill matches that. Tell the user plainly, and offer to do the task directly or save your own steps as a Skill afterwards.",
+              ? `${JSON.stringify(skills)}\n\nMerged across your queries and ranked by relevance. Only the first few carry a fetched description; the rest are real, installable candidates too, so read the whole list before judging what is available. Pick the best fit on relevance, description, and install count, describe it in plain words, and ask whether to add it - then call install_skill with that skill's exact source and skillId.\n\nThis is what YOUR queries matched, not the whole catalog. Before telling the user that something or someone is not there, search again with different English words - especially the words that skill's own title would use. A miss usually means the query was phrased wrong, not that the skill does not exist.`
+              : "None of those queries matched anything. Try once more with different English keywords before concluding it does not exist. If it still finds nothing, tell the user plainly and offer to do the task directly or save your own steps as a Skill afterwards.",
           },
         ],
         details: { count: skills.length },

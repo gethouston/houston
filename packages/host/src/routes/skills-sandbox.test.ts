@@ -150,7 +150,7 @@ test("a bad sandbox token is rejected before anything is searched", async () => 
   let searched = false;
   const r = await call(
     "search",
-    { query: "design" },
+    { queries: ["design"] },
     {
       token: "sb-bad",
       deps: {
@@ -181,13 +181,14 @@ test("an unrelated path is not handled", async () => {
   expect(handled).toBe(false);
 });
 
-test("an empty query is rejected", async () => {
-  const r = await call("search", { query: "   " });
-  expect(r.status).toBe(400);
+test("an empty or absent query list is rejected", async () => {
+  expect((await call("search", { queries: ["   "] })).status).toBe(400);
+  expect((await call("search", { queries: [] })).status).toBe(400);
+  expect((await call("search", { query: "design" })).status).toBe(400);
 });
 
 test("search returns hits enriched with their real descriptions", async () => {
-  const r = await call("search", { query: "design review" });
+  const r = await call("search", { queries: ["design review"] });
   expect(r.status).toBe(200);
   expect(r.body).toEqual({
     skills: [
@@ -215,7 +216,7 @@ test("EVERY ranked hit comes back, not just the enriched ones", async () => {
   }));
   const r = await call(
     "search",
-    { query: "design" },
+    { queries: ["design"] },
     { deps: { directory: { search: async () => many } } },
   );
   expect(r.status).toBe(200);
@@ -232,10 +233,66 @@ test("EVERY ranked hit comes back, not just the enriched ones", async () => {
   });
 });
 
+test("a skill only ONE phrasing finds still surfaces near the top", async () => {
+  // The real failure this fixes: `writing-great-skills` (mattpocock, 312k
+  // installs) is rank 1 for "writing skills" and absent from all 100 hits for
+  // "create and improve skills" — the same user request, phrased differently.
+  // A skill must keep its BEST rank across the queries, or the phrasings that
+  // missed it would bury the one that found it.
+  const filler = (tag: string, n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      ...HIT,
+      skillId: `${tag}-${i}`,
+      name: `${tag}-${i}`,
+      installs: 10,
+    }));
+  const gem: CommunitySkill = {
+    id: "mattpocock/skills/writing-great-skills",
+    skillId: "writing-great-skills",
+    name: "writing-great-skills",
+    installs: 312547,
+    source: "mattpocock/skills",
+  };
+  const byQuery: Record<string, CommunitySkill[]> = {
+    // The phrasing the user would use: misses the gem entirely.
+    "create and improve skills": filler("miss", 20),
+    // The phrasing that matches the skill's own title: gem at rank 1.
+    "writing skills": [gem, ...filler("hit", 20)],
+  };
+  const r = await call(
+    "search",
+    { queries: ["create and improve skills", "writing skills"] },
+    { deps: { directory: { search: async (q: string) => byQuery[q] ?? [] } } },
+  );
+  const { skills } = r.body as { skills: Array<{ skillId: string }> };
+  expect(skills.map((s) => s.skillId)[0]).toBe("writing-great-skills");
+});
+
+test("queries past the cap are dropped rather than fanned out", async () => {
+  const seen: string[] = [];
+  await call(
+    "search",
+    { queries: ["a", "b", "c", "d", "e"] },
+    {
+      deps: {
+        directory: {
+          search: async (q: string) => {
+            seen.push(q);
+            return [HIT];
+          },
+        },
+      },
+    },
+  );
+  // Each query is one rate-spaced skills.sh request; the tool asks for at most
+  // three and the route must not be talked into more.
+  expect(seen).toEqual(["a", "b", "c"]);
+});
+
 test("a hit whose preview fails still comes back, just without a description", async () => {
   const r = await call(
     "search",
-    { query: "design" },
+    { queries: ["design"] },
     {
       deps: {
         previews: {
@@ -262,7 +319,7 @@ test("a hit whose preview fails still comes back, just without a description", a
 test("a rate-limited directory surfaces the typed reason, not an empty list", async () => {
   const r = await call(
     "search",
-    { query: "design" },
+    { queries: ["design"] },
     {
       deps: {
         directory: {

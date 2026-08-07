@@ -77,7 +77,7 @@ test("find_skills posts the query to the sandbox route under the sandbox token",
   const calls = mockFetch(() => ({ body: { skills: [HIT] } }));
   const result = await find.execute(
     "call-1",
-    { query: "design review" },
+    { queries: ["design review", "ui review"] },
     undefined,
     undefined,
     CTX,
@@ -86,31 +86,34 @@ test("find_skills posts the query to the sandbox route under the sandbox token",
   // No double slash: the trailing slash on baseUrl is trimmed.
   expect(calls[0].url).toBe("http://host/sandbox/skills/search");
   expect(calls[0].auth).toBe("Bearer sb-token");
-  expect(calls[0].body).toEqual({ query: "design review" });
+  expect(calls[0].body).toEqual({ queries: ["design review", "ui review"] });
   // The candidates reach the model verbatim so it can judge on description
   // and install count, and it is told to ask before installing.
   expect(text(result)).toContain("web-design-guidelines");
   expect(text(result)).toContain("521246");
   expect(text(result)).toContain("ask whether to add it");
+  // The agent must not read a miss as proof of absence — that is how it told a
+  // user "no Matt Pocock skill exists" off one badly-phrased query.
+  expect(text(result)).toContain("search again with different English words");
 });
 
 test("an empty directory answer steers the agent to an alternative, not a dead end", async () => {
   mockFetch(() => ({ body: { skills: [] } }));
   const result = await find.execute(
     "call-1",
-    { query: "nothing like this exists" },
+    { queries: ["nothing like this exists"] },
     undefined,
     undefined,
     CTX,
   );
-  expect(text(result)).toContain("No published skill matches");
+  expect(text(result)).toContain("None of those queries matched");
   expect(text(result)).toContain("do the task directly");
 });
 
 test("a rate-limited directory surfaces the host's reason as a tool error", async () => {
   mockFetch(() => ({ status: 429, body: { error: "skills.sh is busy" } }));
   await expect(
-    find.execute("call-1", { query: "design" }, undefined, undefined, CTX),
+    find.execute("call-1", { queries: ["design"] }, undefined, undefined, CTX),
   ).rejects.toThrow(/find_skills failed \(429\).*skills\.sh is busy/s);
 });
 

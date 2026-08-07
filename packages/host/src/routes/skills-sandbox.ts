@@ -6,7 +6,8 @@ import type { CommunityDirectory } from "../skills/community";
 import type { PreviewDirectory } from "../skills/preview";
 import type { Vfs } from "../vfs";
 import { bearer, json } from "./http";
-import { installAction, searchAction } from "./skills-sandbox-actions";
+import { installAction } from "./skills-sandbox-actions";
+import { searchAction } from "./skills-sandbox-search";
 
 /**
  * The RUNTIME-facing skills-directory routes (`/sandbox/skills/*`, authed by the
