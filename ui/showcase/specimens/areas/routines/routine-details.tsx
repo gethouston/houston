@@ -31,30 +31,54 @@ const history: RoutineRun[] = [
   },
 ];
 
+const noop = () => {};
+
+/** Stand-in for the app-injected model row (the pin selector is app/-side). */
+const modelSlot = <span className="text-sm text-ink-muted">Agent's model</span>;
+
+function Frame({ children }: { children: React.ReactNode }) {
+  return <div className="w-[28rem] max-w-full">{children}</div>;
+}
+
 function RoutineDetailsSpecimen() {
   return (
     <SpecimenPage
       title="RoutineDetails"
-      intro="The routine chat header's details popover body (PRODUCT-1208): the instruction verbatim — the prompt IS what the routine does — over the recorded run history. Read-only by design; acting on a run stays on the row and the board."
+      intro="The body of a routine's own screen (PRODUCT-1208): the instruction verbatim — the prompt IS what the routine does — its wake summary, the model it runs on, and its execution history. Clicking a run opens that run's chat (its result); the app wires the handler."
     >
       <SpecimenSection
         title="States"
-        note="Every outcome the run list can show: running (spinner), done (surfaced), nothing to report (silent), failed, stopped. Failed and done rows carry the summary the run left behind."
+        note="Every outcome the run list can show: running (spinner), done (surfaced), nothing to report (silent), failed, stopped. Failed and done rows carry the summary the run left behind; rows are buttons when a run-open handler is wired."
       >
-        <SpecimenRow label="full history">
-          <div className="w-96 rounded-xl bg-popover p-4 ht-hairline">
-            <RoutineDetails prompt={inboxZero.prompt} runs={history} />
-          </div>
+        <SpecimenRow label="full history (clickable runs)">
+          <Frame>
+            <RoutineDetails
+              prompt={inboxZero.prompt}
+              scheduleSummary="Runs every weekday at 8:00 AM"
+              nextRunText="Next run in 2h · Tue at 8:00 AM"
+              modelSlot={modelSlot}
+              runs={history}
+              onOpenRun={noop}
+            />
+          </Frame>
         </SpecimenRow>
         <SpecimenRow label="no runs yet">
-          <div className="w-96 rounded-xl bg-popover p-4 ht-hairline">
-            <RoutineDetails prompt={inboxZero.prompt} runs={[]} />
-          </div>
+          <Frame>
+            <RoutineDetails
+              prompt={inboxZero.prompt}
+              scheduleSummary="Runs every weekday at 8:00 AM"
+              runs={[]}
+            />
+          </Frame>
         </SpecimenRow>
         <SpecimenRow label="loading">
-          <div className="w-96 rounded-xl bg-popover p-4 ht-hairline">
-            <RoutineDetails prompt={inboxZero.prompt} runsLoading />
-          </div>
+          <Frame>
+            <RoutineDetails
+              prompt={inboxZero.prompt}
+              scheduleSummary="Runs every weekday at 8:00 AM"
+              runsLoading
+            />
+          </Frame>
         </SpecimenRow>
       </SpecimenSection>
     </SpecimenPage>

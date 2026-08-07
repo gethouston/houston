@@ -5,6 +5,8 @@ import {
   adoptDraft,
   deselectIfOn,
   latestRunByRoutine,
+  runChatActivity,
+  selectionRoutineId,
   toggleRoutine,
 } from "../src/components/tabs/routines-tab-model.ts";
 
@@ -36,12 +38,17 @@ describe("routines tab model — adoptDraft", () => {
 });
 
 describe("routines tab model — deselectIfOn", () => {
-  it("clears only when still on that routine's chat", () => {
-    strictEqual(deselectIfOn({ kind: "routine", routineId: "r1" }, "r1"), null);
+  it("falls back to the detail screen only when still on that routine's chat", () => {
+    deepStrictEqual(
+      deselectIfOn({ kind: "routineChat", routineId: "r1" }, "r1"),
+      { kind: "routine", routineId: "r1" },
+    );
   });
 
-  it("leaves a different routine's chat untouched", () => {
-    const other = { kind: "routine", routineId: "r2" } as const;
+  it("leaves the detail screen, other routines, and null untouched", () => {
+    const detail = { kind: "routine", routineId: "r1" } as const;
+    deepStrictEqual(deselectIfOn(detail, "r1"), detail);
+    const other = { kind: "routineChat", routineId: "r2" } as const;
     deepStrictEqual(deselectIfOn(other, "r1"), other);
     strictEqual(deselectIfOn(null, "r1"), null);
   });
@@ -52,17 +59,42 @@ describe("routines tab model — deselectIfOn", () => {
   });
 });
 
+describe("routines tab model — selectionRoutineId", () => {
+  it("resolves every routine-scoped kind, and nothing else", () => {
+    strictEqual(selectionRoutineId({ kind: "routine", routineId: "r1" }), "r1");
+    strictEqual(
+      selectionRoutineId({ kind: "routineChat", routineId: "r1" }),
+      "r1",
+    );
+    strictEqual(
+      selectionRoutineId({ kind: "runChat", routineId: "r1", runId: "x" }),
+      "r1",
+    );
+    strictEqual(selectionRoutineId({ kind: "intake" }), null);
+    strictEqual(selectionRoutineId({ kind: "draft", activityId: "a" }), null);
+    strictEqual(selectionRoutineId(null), null);
+  });
+});
+
 describe("routines tab model — toggleRoutine", () => {
-  it("selects a routine from nothing selected", () => {
+  it("selects a routine's detail screen from nothing selected", () => {
     deepStrictEqual(toggleRoutine(null, "r1"), {
       kind: "routine",
       routineId: "r1",
     });
   });
 
-  it("deselects on a re-click of the same routine", () => {
+  it("deselects on a re-click of the same routine — from its screen or chats", () => {
     strictEqual(
       toggleRoutine({ kind: "routine", routineId: "r1" }, "r1"),
+      null,
+    );
+    strictEqual(
+      toggleRoutine({ kind: "routineChat", routineId: "r1" }, "r1"),
+      null,
+    );
+    strictEqual(
+      toggleRoutine({ kind: "runChat", routineId: "r1", runId: "x" }, "r1"),
       null,
     );
   });
@@ -78,6 +110,48 @@ describe("routines tab model — toggleRoutine", () => {
       target,
     );
     deepStrictEqual(toggleRoutine({ kind: "intake" }, "r1"), target);
+  });
+});
+
+describe("routines tab model — runChatActivity", () => {
+  const routine = {
+    id: "r1",
+    name: "Inbox Zero",
+    prompt: "p",
+    enabled: true,
+    suppress_when_silent: false,
+    chat_mode: "shared",
+    integrations: [],
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    // biome-ignore lint/suspicious/noExplicitAny: minimal fixture
+  } as any;
+
+  it("carries the run's real session key and a client-only id", () => {
+    const activity = runChatActivity(routine, {
+      id: "run9",
+      routine_id: "r1",
+      status: "surfaced",
+      session_key: "routine-r1",
+      started_at: "2026-01-02T00:00:00Z",
+      completed_at: "2026-01-02T00:01:00Z",
+    });
+    strictEqual(activity.id, "routine-run-run9");
+    strictEqual(activity.session_key, "routine-r1");
+    strictEqual(activity.status, "done");
+    strictEqual(activity.updated_at, "2026-01-02T00:01:00Z");
+  });
+
+  it("marks an in-flight run as running", () => {
+    const activity = runChatActivity(routine, {
+      id: "run9",
+      routine_id: "r1",
+      status: "running",
+      session_key: "routine-r1-run9",
+      started_at: "2026-01-02T00:00:00Z",
+    });
+    strictEqual(activity.status, "running");
+    strictEqual(activity.updated_at, "2026-01-02T00:00:00Z");
   });
 });
 

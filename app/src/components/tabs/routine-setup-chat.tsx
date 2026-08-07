@@ -1,6 +1,6 @@
 import { ChatInput } from "@houston-ai/chat";
 import type { Activity, Routine } from "@houston-ai/engine-client";
-import { Loader2, X } from "lucide-react";
+import { ArrowLeft, Loader2, X } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -8,8 +8,6 @@ import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useBoardLabels } from "../board/use-board-labels";
 import { RoutineActivationChip } from "./routine-activation-chip";
-import { RoutineDetailsButton } from "./routine-details-button";
-import { RoutineModelSelector } from "./routine-model-selector";
 import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
 
 interface Props extends TabProps {
@@ -30,6 +28,11 @@ interface Props extends TabProps {
   /** Close the panel and clear the selection (the list stays put). Wired to the
    *  chat chrome's close X, Escape, and the intake cards' own dismiss. */
   onClose: () => void;
+  /** Step back to the routine's detail screen (PRODUCT-1208). When supplied, a
+   *  Back arrow leads the header and Escape steps back instead of closing;
+   *  the close X still clears the whole selection. Omit for chats that aren't
+   *  reached from a detail screen (drafts, intake). */
+  onBack?: () => void;
   /** The shell-level panel node this chat portals into (workspace-shell's
    *  sibling panel, the SAME one the Activity board opens). Null until the
    *  panel mounts — the surface renders nothing until it exists. */
@@ -72,6 +75,7 @@ export function RoutineSetupChat({
   routineName,
   routine,
   onClose,
+  onBack,
   intakeOverlay,
   onIntakeSend,
   panelContainer,
@@ -95,11 +99,24 @@ export function RoutineSetupChat({
         (el as HTMLElement).blur();
         return;
       }
-      onClose();
+      // From a detail-screen chat, Escape steps BACK to the detail screen;
+      // only a chat with no screen behind it closes the pane outright.
+      (onBack ?? onClose)();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [onClose, onBack]);
+
+  const backButton = onBack ? (
+    <button
+      type="button"
+      onClick={onBack}
+      aria-label={t("chat.back")}
+      className="size-7 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-hover/50 transition-colors shrink-0"
+    >
+      <ArrowLeft className="size-4" strokeWidth={1.75} />
+    </button>
+  ) : undefined;
 
   const closeButton = (
     <button
@@ -119,6 +136,7 @@ export function RoutineSetupChat({
     const slimHeader = (title?: string) => (
       <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
         <div className="max-w-3xl mx-auto w-full flex items-center gap-3">
+          {backButton}
           {title && (
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
               {title}
@@ -175,23 +193,15 @@ export function RoutineSetupChat({
       ? t("chat.newRoutineTitle")
       : t("chat.routineLabel", { name: routineName ?? "" });
 
-  // The one header's routine controls (PRODUCT-1208): a trigger-bound routine
-  // shows its live activation (checking -> activating -> active, or an alert
-  // with the reason + Reconnect), then the routine's pinned model, then the
-  // details popover (what it does + run history).
+  // A trigger-bound routine shows its live activation right in the one header:
+  // checking -> activating -> active, or an alert with the reason + Reconnect.
   const panelActions =
-    kind === "routine" && routine ? (
-      <>
-        {routine.trigger && (
-          <RoutineActivationChip
-            agentId={agent.id}
-            routineId={routine.id}
-            trigger={routine.trigger}
-          />
-        )}
-        <RoutineModelSelector agent={agent} routine={routine} />
-        <RoutineDetailsButton agent={agent} routine={routine} />
-      </>
+    kind === "routine" && routine?.trigger ? (
+      <RoutineActivationChip
+        agentId={agent.id}
+        routineId={routine.id}
+        trigger={routine.trigger}
+      />
     ) : undefined;
 
   // The board renders its detail panel straight into the shell panel via
@@ -206,6 +216,7 @@ export function RoutineSetupChat({
         sessionKey={sessionKey}
         panelContainer={panelContainer}
         missionLabel={missionLabel}
+        panelLeading={backButton}
         onPanelClose={onClose}
         panelActions={panelActions}
       />

@@ -763,28 +763,41 @@ components:
     since: 1
 
   - id: routine-details
-    title: Routine details
+    title: Routine detail screen
     purpose: >-
-      The "what is this routine" surface (PRODUCT-1208): the routine's
-      instruction verbatim (the prompt IS what the routine does), its pinned
-      model, and its recorded run history -- the review-what-happened view the
-      row and chat don't carry.
-    anatomy: [prompt-summary, model-row, run-history-list]
+      A routine's own screen (PRODUCT-1208), opened by its list row: the
+      routine's name, what it does (the instruction verbatim -- the prompt IS
+      what the routine does), when it runs, the model it runs on, and its
+      execution history, n8n-style.
+    anatomy:
+      [
+        title,
+        open-chat-action,
+        prompt-summary,
+        schedule-summary,
+        model-row,
+        run-history-list,
+      ]
     states: [loading-runs, no-runs-yet, populated]
-    variants: [popover, sheet]
+    variants: [pane, full-screen]
     behavior: >-
-      Opened from the routine chat header's info affordance. The instruction
-      renders verbatim in a quiet recessed block. The model row shows "Agent's
-      model" (inherit) or the pinned provider + model; picking a model pins it
-      on the routine (the fire path honors the pin), and a reset row returns it
-      to inherit -- clamped to the agent's allowed-models ceiling in Teams. The
-      run history lists every recorded run newest-first: a plain-language
+      The row click lands here (never straight in a chat). The instruction
+      renders verbatim in a quiet recessed block; the wake summary shows the
+      humanized cron plus its next fire time, or the trigger's plain-language
+      event with its live activation chip. The model row shows "Agent's model"
+      (inherit) or the pinned provider + model; picking a model pins it on the
+      routine (the fire path honors the pin), and a reset row returns it to
+      inherit -- clamped to the agent's allowed-models ceiling in Teams. The
+      execution history lists every recorded run newest-first -- plain-language
       outcome (running / done / nothing to report / failed / stopped), start
-      stamp, elapsed time, and the run's summary when it left one. Read-only:
-      acting on a run stays on the routine row and the board.
+      stamp, elapsed time, and the run's summary -- and clicking a run opens
+      that run's chat (its result) with a Back affordance to this screen.
+      "Open chat" continues to the routine's setup chat (editing stays
+      chat-first).
     a11y: >-
-      the opening affordance carries an accessible label; run outcomes are
-      conveyed as text, never color alone; section headers are real headings;
+      the screen title is a real heading and sections are real headings; run
+      rows are buttons whose accessible name carries the outcome, stamp, and
+      the open-chat action; outcomes are conveyed as text, never color alone;
       the running state is announced by its label, not only the spinner.
     since: 56
 

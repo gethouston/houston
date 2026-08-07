@@ -10,7 +10,7 @@ import type { TabProps } from "../../lib/types";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useRoutineLeadingIcon } from "./routine-leading-icon";
-import { latestRunByRoutine } from "./routines-tab-model";
+import { latestRunByRoutine, selectionRoutineId } from "./routines-tab-model";
 import { RoutinesTabPane } from "./routines-tab-pane";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
 import { useRoutineTabHandlers } from "./use-routine-tab-handlers";
@@ -40,7 +40,7 @@ export default function RoutinesTab({
   const path = agent.folderPath;
 
   const { data: routines, isLoading } = useRoutines(path);
-  const { data: allRuns } = useRoutineRuns(path);
+  const { data: allRuns, isLoading: runsLoading } = useRoutineRuns(path);
   const lastRuns = latestRunByRoutine(allRuns);
 
   const chatSetup = useRoutineChatSetup(agent, routines);
@@ -130,13 +130,11 @@ export default function RoutinesTab({
             draftActivities={chatSetup.draftActivities}
             accountTimezone={h.tz.timezone ?? "UTC"}
             loading={isLoading}
-            selectedRoutineId={
-              selected?.kind === "routine" ? selected.routineId : null
-            }
+            selectedRoutineId={selectionRoutineId(selected)}
             selectedDraftId={
               selected?.kind === "draft" ? selected.activityId : null
             }
-            onOpenChat={nav.handleOpenChat}
+            onOpenChat={nav.handleOpenRoutine}
             // Plain .mutate: a rejected toggle/delete/stop would be an unhandled
             // rejection, and call() already toasts each failure.
             onToggle={(id, enabled) =>
@@ -201,6 +199,9 @@ export default function RoutinesTab({
           agentDef={agentDef}
           routines={routines}
           chatSetup={chatSetup}
+          allRuns={allRuns}
+          runsLoading={runsLoading}
+          triggerSummaries={triggers.triggerSummaries}
           accountTimezone={h.tz.timezone ?? "UTC"}
           triggersAvailable={triggers.triggersEnabled}
           panelContainer={portalContainer}
@@ -208,6 +209,9 @@ export default function RoutinesTab({
           onIntakeDismiss={nav.dismissIntake}
           onIntakeSend={nav.handleIntakeComposerSend}
           onDeselect={nav.deselect}
+          onOpenChat={nav.openRoutineChat}
+          onOpenRun={nav.openRun}
+          onBackToRoutine={nav.backToRoutine}
         />
       )}
     </div>

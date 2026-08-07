@@ -1,8 +1,10 @@
 import type { Routine } from "@houston-ai/engine-client";
+import type { RoutineRun } from "@houston-ai/routines";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import { AutomationIntake, type IntakeResult } from "./automation-intake";
+import { RoutineDetailPane } from "./routine-detail-pane";
 import { RoutineSetupChat } from "./routine-setup-chat";
-import type { Selection } from "./routines-tab-model";
+import { runChatActivity, type Selection } from "./routines-tab-model";
 import type { useRoutineChatSetup } from "./use-routine-chat-setup";
 
 interface Props {
@@ -12,25 +14,38 @@ interface Props {
   agentDef: AgentDefinition;
   routines: Routine[] | undefined;
   chatSetup: ReturnType<typeof useRoutineChatSetup>;
-  /** The account-wide zone the intake cards schedule against. */
+  /** ALL of the agent's runs (the tab's cached query); the detail screen and
+   *  the run-chat lookup both narrow by routine here. */
+  allRuns: RoutineRun[] | undefined;
+  runsLoading: boolean;
+  /** Humanized event summaries per trigger routine (useRoutineTriggers). */
+  triggerSummaries: Record<string, string>;
+  /** The account-wide zone the intake cards + schedules run against. */
   accountTimezone: string;
   /** Whether this deployment can offer NEW event triggers (intake gate). */
   triggersAvailable: boolean;
-  /** The shell-level panel node this chat portals into (workspace-shell's
+  /** The shell-level panel node this pane portals into (workspace-shell's
    *  sibling panel). Null until the panel mounts. */
   panelContainer: HTMLElement | null;
   onIntakeComplete: (result: IntakeResult) => void;
   onIntakeDismiss: () => void;
   onIntakeSend: (text: string) => void;
   onDeselect: () => void;
+  /** Detail screen -> the routine's setup chat. */
+  onOpenChat: (routineId: string) => void;
+  /** Detail screen -> one execution's chat (its result). */
+  onOpenRun: (routineId: string, runId: string) => void;
+  /** A chat's Back affordance -> the routine's detail screen. */
+  onBackToRoutine: (routineId: string) => void;
 }
 
 /**
- * The Routines tab's chat surface: the selected routine's chat, rendered into
- * the shell-level panel (`panelContainer`). Intake runs the create cards over an
- * empty chat surface; a routine/draft continues its real conversation.
- * Extracted from `routines-tab.tsx` so both stay under the size cap — this owns
- * only the selection → surface mapping.
+ * The Routines tab's right-hand pane (PRODUCT-1208): the selection → surface
+ * mapping, rendered into the shell-level panel. A selected routine opens its
+ * own SCREEN (name, what it does, when it runs, model, execution history);
+ * its chats — the setup chat and each execution's result chat — open from
+ * that screen with a Back affordance. Intake and drafts are chat surfaces of
+ * their own, unchanged.
  */
 export function RoutinesTabPane({
   selected,
@@ -38,6 +53,9 @@ export function RoutinesTabPane({
   agentDef,
   routines,
   chatSetup,
+  allRuns,
+  runsLoading,
+  triggerSummaries,
   accountTimezone,
   triggersAvailable,
   panelContainer,
@@ -45,6 +63,9 @@ export function RoutinesTabPane({
   onIntakeDismiss,
   onIntakeSend,
   onDeselect,
+  onOpenChat,
+  onOpenRun,
+  onBackToRoutine,
 }: Props) {
   if (selected.kind === "intake") {
     return (
@@ -69,30 +90,75 @@ export function RoutinesTabPane({
     );
   }
 
-  const routine =
-    selected.kind === "routine"
-      ? routines?.find((r) => r.id === selected.routineId)
+  if (selected.kind === "draft") {
+    const activity = selected.activityId
+      ? (chatSetup.draftActivities.find((a) => a.id === selected.activityId) ??
+        null)
+      : null;
+    return (
+      <RoutineSetupChat
+        agent={agent}
+        agentDef={agentDef}
+        activity={activity}
+        kind="draft"
+        panelContainer={panelContainer}
+        onClose={onDeselect}
+      />
+    );
+  }
+
+  const routine = routines?.find((r) => r.id === selected.routineId);
+  if (!routine) return null; // deleted under the selection; the pane just closes
+
+  // One execution's chat: a synthetic activity over the run's real session key.
+  // A pruned run (the 50-cap) falls through to the detail screen instead.
+  const run =
+    selected.kind === "runChat"
+      ? allRuns?.find((r) => r.id === selected.runId)
       : undefined;
-  const activity =
-    selected.kind === "routine"
-      ? routine
-        ? chatSetup.activityFor(routine)
-        : null
-      : selected.activityId
-        ? (chatSetup.draftActivities.find(
-            (a) => a.id === selected.activityId,
-          ) ?? null)
-        : null;
+  if (selected.kind === "runChat" && run) {
+    return (
+      <RoutineSetupChat
+        agent={agent}
+        agentDef={agentDef}
+        activity={runChatActivity(routine, run)}
+        kind="routine"
+        routineName={routine.name}
+        routine={routine}
+        panelContainer={panelContainer}
+        onClose={onDeselect}
+        onBack={() => onBackToRoutine(routine.id)}
+      />
+    );
+  }
+
+  if (selected.kind === "routineChat") {
+    return (
+      <RoutineSetupChat
+        agent={agent}
+        agentDef={agentDef}
+        activity={chatSetup.activityFor(routine)}
+        kind="routine"
+        routineName={routine.name}
+        routine={routine}
+        panelContainer={panelContainer}
+        onClose={onDeselect}
+        onBack={() => onBackToRoutine(routine.id)}
+      />
+    );
+  }
 
   return (
-    <RoutineSetupChat
+    <RoutineDetailPane
       agent={agent}
-      agentDef={agentDef}
-      activity={activity}
-      kind={selected.kind === "routine" ? "routine" : "draft"}
-      routineName={routine?.name}
       routine={routine}
+      allRuns={allRuns}
+      runsLoading={runsLoading}
+      triggerSummary={triggerSummaries[routine.id]}
+      accountTimezone={accountTimezone}
       panelContainer={panelContainer}
+      onOpenChat={() => onOpenChat(routine.id)}
+      onOpenRun={(r) => onOpenRun(routine.id, r.id)}
       onClose={onDeselect}
     />
   );

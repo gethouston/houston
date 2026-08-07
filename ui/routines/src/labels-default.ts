@@ -111,7 +111,7 @@ export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
   untitled: "Untitled",
   pauseRoutine: "Pause routine",
   resumeRoutine: "Resume routine",
-  openChat: "Open chat",
+  openChat: "Open routine",
   editSchedule: "Edit schedule",
   save: "Save",
   cancel: "Cancel",

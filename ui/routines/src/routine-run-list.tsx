@@ -1,13 +1,13 @@
 /**
- * RoutineRunList — one routine's recorded execution history (PRODUCT-1208):
- * each run as a quiet row with a status glyph + plain-language outcome, its
- * start stamp and elapsed time, and the summary the run left behind. Read-only
- * by design: reviewing what happened is this list's whole job — acting on a
- * run (stop, open the chat) stays on the routine row and the board.
+ * RoutineRunList — one routine's execution history (PRODUCT-1208), n8n-style:
+ * every recorded run as a row with a status glyph + plain-language outcome,
+ * its start stamp and elapsed time, and the summary the run left behind. With
+ * `onOpenRun` each row is a button that opens that run's chat (the result);
+ * without it the list is read-only (showcase, compact embeds).
  */
 
 import { cn } from "@houston-ai/core";
-import { Ban, Check, CircleAlert, Loader2 } from "lucide-react";
+import { Ban, Check, ChevronRight, CircleAlert, Loader2 } from "lucide-react";
 import {
   DEFAULT_RUN_LIST_LABELS,
   type RoutineRunListLabels,
@@ -18,6 +18,8 @@ import type { RoutineRun, RunStatus } from "./types";
 export interface RoutineRunListProps {
   /** Newest-first run records (the store's native order). */
   runs: RoutineRun[];
+  /** Opens the run's chat (its result). Omit for a read-only list. */
+  onOpenRun?: (run: RoutineRun) => void;
   /** BCP-47 locale for the start-time stamps. */
   locale?: string;
   labels?: Partial<RoutineRunListLabels>;
@@ -35,7 +37,12 @@ const STATUS_GLYPH: Record<
   cancelled: { Icon: Ban, className: "text-ink-muted" },
 };
 
-export function RoutineRunList({ runs, locale, labels }: RoutineRunListProps) {
+export function RoutineRunList({
+  runs,
+  onOpenRun,
+  locale,
+  labels,
+}: RoutineRunListProps) {
   const l = { ...DEFAULT_RUN_LIST_LABELS, ...labels };
   const statusLabels = { ...DEFAULT_RUN_LIST_LABELS.status, ...labels?.status };
 
@@ -48,32 +55,51 @@ export function RoutineRunList({ runs, locale, labels }: RoutineRunListProps) {
       {runs.map((run) => {
         const { Icon, className } = STATUS_GLYPH[run.status];
         const duration = formatRunDuration(run);
-        return (
-          <li
-            key={run.id}
-            className="flex gap-2.5 border-t border-line/50 py-2 first:border-t-0"
-          >
+        const started = formatRunStart(run.started_at, locale);
+        const body = (
+          <>
             <Icon
               aria-hidden
               className={cn("mt-0.5 size-4 shrink-0", className)}
               strokeWidth={1.75}
             />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm text-ink">
+            <span className="min-w-0 flex-1">
+              <span className="flex items-baseline gap-2">
+                <span className="min-w-0 flex-1 truncate text-left text-sm text-ink">
                   {statusLabels[run.status]}
                 </span>
                 <span className="shrink-0 text-xs text-ink-muted tabular-nums">
-                  {formatRunStart(run.started_at, locale)}
+                  {started}
                   {duration && <> · {duration}</>}
                 </span>
-              </div>
+              </span>
               {run.summary && (
-                <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted">
+                <span className="mt-0.5 line-clamp-2 text-left text-xs text-ink-muted">
                   {run.summary}
-                </p>
+                </span>
               )}
-            </div>
+            </span>
+          </>
+        );
+        return (
+          <li key={run.id} className="border-t border-line/50 first:border-t-0">
+            {onOpenRun ? (
+              <button
+                type="button"
+                onClick={() => onOpenRun(run)}
+                aria-label={`${statusLabels[run.status]} · ${started} · ${l.openRun}`}
+                className="flex w-full gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-hover outline-none focus-visible:ring-1 focus-visible:ring-focus"
+              >
+                {body}
+                <ChevronRight
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 text-ink-muted opacity-60"
+                  strokeWidth={1.75}
+                />
+              </button>
+            ) : (
+              <div className="flex gap-2.5 px-2 py-2">{body}</div>
+            )}
           </li>
         );
       })}

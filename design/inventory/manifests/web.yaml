@@ -161,11 +161,12 @@ components:
 
   routine-details:
     status: partial
-    ref: "@houston-ai/routines RoutineDetails / RoutineRunList + app/src/components/tabs/routine-details-button.tsx + routine-model-selector.tsx"
+    ref: "@houston-ai/routines RoutineDetails / RoutineRunList + app/src/components/tabs/routine-detail-pane.tsx + routine-model-selector.tsx"
     notes: >-
-      The prompt + run-history content is shared ui/; the popover composition
-      and the model row (ChatModelSelector over the app's provider catalog) are
-      app/-locked. Extract the model row before mobile.
+      The prompt + schedule + run-history content is shared ui/; the screen
+      composition (shell panel, Back/Open-chat chrome) and the model row
+      (ChatModelSelector over the app's provider catalog) are app/-locked.
+      Extract before mobile.
 
   skill-row:
     status: partial

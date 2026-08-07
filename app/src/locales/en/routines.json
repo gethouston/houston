@@ -99,14 +99,18 @@
       "checking": "Checking your trigger…",
       "activating": "Activating…",
       "active": "Trigger active"
-    }
+    },
+    "back": "Back"
   },
   "details": {
-    "open": "Routine details",
     "promptTitle": "What this routine does",
-    "runsTitle": "Recent runs",
+    "scheduleTitle": "When it runs",
+    "modelTitle": "Model",
+    "nextRun": "Next run {{when}}",
+    "runsTitle": "Runs",
     "runsLoading": "Loading runs…",
     "runsEmpty": "No runs yet",
+    "openRun": "Open this run's chat",
     "status": {
       "running": "Running",
       "silent": "Nothing to report",
@@ -123,7 +127,7 @@
     "untitled": "Untitled",
     "pauseRoutine": "Pause routine",
     "resumeRoutine": "Resume routine",
-    "openChat": "Open chat",
+    "openChat": "Open routine",
     "editSchedule": "Edit schedule",
     "save": "Save",
     "cancel": "Cancel",

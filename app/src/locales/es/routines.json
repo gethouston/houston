@@ -99,14 +99,18 @@
       "checking": "Verificando tu evento…",
       "activating": "Activando…",
       "active": "Evento activo"
-    }
+    },
+    "back": "Atrás"
   },
   "details": {
-    "open": "Detalles de la rutina",
     "promptTitle": "Qué hace esta rutina",
-    "runsTitle": "Ejecuciones recientes",
+    "scheduleTitle": "Cuándo se ejecuta",
+    "modelTitle": "Modelo",
+    "nextRun": "Próxima ejecución {{when}}",
+    "runsTitle": "Ejecuciones",
     "runsLoading": "Cargando ejecuciones…",
     "runsEmpty": "Aún no hay ejecuciones",
+    "openRun": "Abrir el chat de esta ejecución",
     "status": {
       "running": "En ejecución",
       "silent": "Nada que reportar",
@@ -123,7 +127,7 @@
     "untitled": "Sin título",
     "pauseRoutine": "Pausar rutina",
     "resumeRoutine": "Reanudar rutina",
-    "openChat": "Abrir chat",
+    "openChat": "Abrir rutina",
     "editSchedule": "Editar horario",
     "save": "Guardar",
     "cancel": "Cancelar",
