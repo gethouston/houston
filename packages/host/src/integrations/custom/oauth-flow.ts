@@ -9,6 +9,7 @@ import type {
   AuthorizationServerMetadata,
   OAuthClientInformationFull,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
+import { guardedFetch } from "./fetch-guard";
 import { bundleOf, type CustomOAuthBundle } from "./oauth-bundle";
 import type { CustomIntegrationDef } from "./types";
 import { CustomIntegrationError } from "./types";
@@ -86,12 +87,18 @@ export async function beginCustomOAuth(
   authorizeUrl: string;
   attempt: CustomOAuthAttempt;
 }> {
-  const { fetchFn, statePrefix } = opts;
+  // The OAuth flow owns its HTTP seam like the executor does (HOU-1083):
+  // this host process runs with pi's patched global fetch/dispatcher, whose
+  // altered message framing crashed third-party endpoints that answer plain
+  // curl fine (staging: Croma's Vercel functions 405/FUNCTION_INVOCATION_FAILED
+  // on the pod's registration while the same request succeeded everywhere
+  // else). guardedFetch strips the framing headers and lets the current fetch
+  // compute them itself, deterministically.
+  const fetchFn = opts.fetchFn ?? guardedFetch;
+  const { statePrefix } = opts;
   let info: Awaited<ReturnType<typeof discoverOAuthServerInfo>>;
   try {
-    info = await discoverOAuthServerInfo(def.endpoint, {
-      ...(fetchFn ? { fetchFn } : {}),
-    });
+    info = await discoverOAuthServerInfo(def.endpoint, { fetchFn });
   } catch (err) {
     throw oauthFailed(`could not discover how ${def.name} signs in`, err);
   }
@@ -112,11 +119,11 @@ export async function beginCustomOAuth(
           token_endpoint_auth_method: "none",
         },
         ...(scope ? { scope } : {}),
-        ...(fetchFn ? { fetchFn } : {}),
+        fetchFn,
       });
     } catch (err) {
       throw oauthFailed(
-        `${def.name} did not accept Houston as a sign-in app`,
+        `${def.name} did not accept Houston as a sign-in app (registration at ${metadata?.registration_endpoint ?? info.authorizationServerUrl})`,
         err,
       );
     }
@@ -176,8 +183,10 @@ const isBrowserSafe = (url: URL): boolean =>
 export async function settleCustomOAuth(
   attempt: CustomOAuthAttempt,
   code: string,
-  fetchFn?: typeof fetch,
+  fetchOverride?: typeof fetch,
 ): Promise<CustomOAuthBundle> {
+  // Same guarded HTTP seam as the start half (see beginCustomOAuth).
+  const fetchFn = fetchOverride ?? guardedFetch;
   try {
     const tokens = await exchangeAuthorization(attempt.authorizationServerUrl, {
       ...(attempt.metadata ? { metadata: attempt.metadata } : {}),
@@ -186,7 +195,7 @@ export async function settleCustomOAuth(
       codeVerifier: attempt.codeVerifier,
       redirectUri: attempt.redirectUri,
       ...(attempt.resource ? { resource: new URL(attempt.resource) } : {}),
-      ...(fetchFn ? { fetchFn } : {}),
+      fetchFn,
     });
     return bundleOf({
       ...(attempt.resource ? { resource: attempt.resource } : {}),
