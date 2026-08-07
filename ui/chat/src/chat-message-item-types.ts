@@ -59,6 +59,15 @@ export interface ChatMessageItemProps {
   canEditMessage?: (msg: ChatMessage) => boolean;
   /** Localized label + tooltip for the edit affordance. English default. */
   editMessageLabel?: string;
+  /** Copy-message affordance on settled user AND agent rows (PRODUCT-1217
+   *  follow-up). Off by default so existing consumers are unchanged. */
+  enableMessageCopy?: boolean;
+  /** Consumer gate on top of the built-in ones (e.g. marker-encoded rows whose
+   *  raw content is not what the bubble shows). Absent = every settled,
+   *  non-empty row is copyable. */
+  canCopyMessage?: (msg: ChatMessage) => boolean;
+  /** Localized label + tooltip for the copy affordance. English default. */
+  copyMessageLabel?: string;
   onOpenLink?: (url: string) => void;
   renderLink?: (props: RenderLinkProps) => ReactNode;
   currentUserId?: string;

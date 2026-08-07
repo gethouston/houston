@@ -1,11 +1,11 @@
 import { cn } from "@houston-ai/core";
-import { Pencil } from "lucide-react";
-import { Message, MessageAction, MessageActions } from "./ai-elements/message";
+import { Message } from "./ai-elements/message";
 import {
   announcesSelfAuthorship,
   isPeerRow,
   senderNameFor,
 } from "./author-label";
+import { ChatMessageActionsRow } from "./chat-message-actions";
 import { ChatMessageBody } from "./chat-message-body";
 import type { ChatMessageItemProps } from "./chat-message-item-types";
 import { ChatProcessMessage } from "./chat-process-message";
@@ -39,6 +39,9 @@ export function ChatMessageItem({
   onEditMessage,
   canEditMessage,
   editMessageLabel,
+  enableMessageCopy,
+  canCopyMessage,
+  copyMessageLabel,
   onOpenLink,
   renderLink,
   currentUserId,
@@ -143,6 +146,34 @@ export function ChatMessageItem({
   );
   const trailer = summary ? renderTurnSummary?.(summary) : null;
 
+  // Per-message actions (PRODUCT-1217): Copy on any settled row with text,
+  // Edit only on the viewer's OWN user rows that can anchor a rewind — a
+  // still-optimistic send and a pre-turn-id transcript carry no `turnId`.
+  // Always visible (never hover-gated); the consumer's gates exclude rows
+  // whose raw content is not what the bubble shows (skill/attachment markers).
+  const copyable =
+    enableMessageCopy === true &&
+    !streaming &&
+    message.content.length > 0 &&
+    (canCopyMessage?.(message) ?? true);
+  const editable =
+    isUser &&
+    !peer &&
+    !streaming &&
+    onEditMessage !== undefined &&
+    message.turnId !== undefined &&
+    (canEditMessage?.(message) ?? true);
+  const actionsRow = (
+    <ChatMessageActionsRow
+      align={isUser && !peer ? "end" : "start"}
+      copyMessageLabel={copyMessageLabel}
+      copyable={copyable}
+      editMessageLabel={editMessageLabel}
+      message={message}
+      onEditMessage={editable ? onEditMessage : undefined}
+    />
+  );
+
   if (peer || agentBubbled) {
     return (
       <Message
@@ -153,6 +184,7 @@ export function ChatMessageItem({
       >
         <ChatPeerRow face={face}>
           {body}
+          {actionsRow}
           {trailer}
         </ChatPeerRow>
       </Message>
@@ -171,18 +203,6 @@ export function ChatMessageItem({
     ? authorLabels?.you
     : undefined;
 
-  // Edit-and-resend (PRODUCT-1217): the viewer's OWN settled user rows only
-  // (peer rows returned above), and only when the row can anchor a rewind —
-  // a still-optimistic send and a pre-turn-id transcript carry no `turnId`.
-  // Always visible (never hover-gated); the consumer's gate excludes rows
-  // whose content is not the user's typed text (skill/attachment markers).
-  const editable =
-    isUser &&
-    !streaming &&
-    onEditMessage !== undefined &&
-    message.turnId !== undefined &&
-    (canEditMessage?.(message) ?? true);
-
   return (
     <Message
       {...sharedProps}
@@ -194,18 +214,7 @@ export function ChatMessageItem({
           <span className="sr-only">{ownAnnouncement}</span>
         ) : null}
         {body}
-        {editable ? (
-          <MessageActions className="mt-1 justify-end">
-            <MessageAction
-              className="text-ink-muted hover:text-ink"
-              label={editMessageLabel ?? "Edit message"}
-              onClick={() => onEditMessage(message)}
-              tooltip={editMessageLabel ?? "Edit message"}
-            >
-              <Pencil className="h-4 w-4" />
-            </MessageAction>
-          </MessageActions>
-        ) : null}
+        {actionsRow}
         {trailer}
       </div>
     </Message>

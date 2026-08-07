@@ -5,14 +5,19 @@ Every `version` bump in `inventory.yaml` needs a matching entry here (enforced b
 
 ## v56 - 2026-08-07
 
-Edit a previous message (PRODUCT-1217), no new components. The viewer's own
-settled plain-text `user-message` rows gain an always-visible edit action
-under the bubble while the conversation is idle. Choosing it prefills the
-composer with that message's text and raises an editing notice above the
-input; sending rewinds the conversation to that message and continues from
-the edited version, leaving every earlier turn untouched. Marker-encoded
-sends (skills, attachments, interaction answers), channel relays, teammates'
-messages, and pre-turn-id transcripts are not editable.
+Edit a previous message + copy any message (PRODUCT-1217), no new
+components. The viewer's own settled plain-text `user-message` rows gain an
+always-visible edit action under the bubble while the conversation is idle.
+Choosing it prefills the composer with that message's text and raises an
+editing notice above the input; sending rewinds the conversation to that
+message and continues from the edited version, leaving every earlier turn
+untouched. Marker-encoded sends (skills, attachments, interaction answers),
+channel relays, teammates' messages, and pre-turn-id transcripts are not
+editable. Settled rows on BOTH sides also gain a copy action in the same
+row -- `assistant-message` always specced `copy-action`; the web surface now
+ships it -- copying the row's verbatim text (an agent turn's markdown
+source) with a brief check-mark confirm. Marker-encoded rows are not
+copyable.
 
 ## v55 - 2026-08-07
 

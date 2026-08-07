@@ -267,6 +267,12 @@ interface AgentChatPanelProps {
   canEditMessage: AIBoardProps["canEditMessage"];
   /** Localized label for the edit affordance. */
   editMessageLabel: AIBoardProps["editMessageLabel"];
+  /** Copy-message affordance on both sides of the conversation. */
+  enableMessageCopy: AIBoardProps["enableMessageCopy"];
+  /** Gates copy to rows whose raw content is what the bubble shows. */
+  canCopyMessage: AIBoardProps["canCopyMessage"];
+  /** Localized label for the copy affordance. */
+  copyMessageLabel: AIBoardProps["copyMessageLabel"];
   /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
   renderLink: AIBoardProps["renderLink"];
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
@@ -1076,6 +1082,15 @@ export function useAgentChatPanel({
     },
     [currentUserId],
   );
+  // Copy is broader than Edit: anyone's message on either side, as long as
+  // the raw content IS what the bubble shows — marker-encoded sends render a
+  // card, and copying their wire encoding would paste gibberish.
+  const canCopyMessage = useCallback((msg: ChatMessage) => {
+    if (decodeSkillMessage(msg.content)) return false;
+    if (decodeAttachmentMessage(msg.content)) return false;
+    if (decodeInteractionAnswersMessage(msg.content)) return false;
+    return true;
+  }, []);
 
   // Both consumer callbacks live in refs so the send callbacks that fire them
   // don't re-create (and re-render the override cards) every time the consumer
@@ -2404,6 +2419,9 @@ export function useAgentChatPanel({
     onEditMessage: turnRunning ? undefined : onEditMessage,
     canEditMessage,
     editMessageLabel: t("chat:editMessage.edit"),
+    enableMessageCopy: true,
+    canCopyMessage,
+    copyMessageLabel: t("chat:copyMessage.copy"),
     renderLink,
     isSpecialTool,
     renderToolResult,

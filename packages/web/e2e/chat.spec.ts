@@ -277,6 +277,36 @@ test("edits a previous user message and rewinds the conversation", async ({
   await expect(page.getByText(/You said: .first message./)).toBeVisible();
 });
 
+/**
+ * Copy a message (PRODUCT-1217 follow-up): both sides of the conversation
+ * carry an always-visible copy action on settled rows — the user's bubble
+ * copies the typed text, the agent's copies its markdown source.
+ */
+test("copies a user and an agent message to the clipboard", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByText("Plan a trip to Tokyo").click();
+  const composer = page.getByPlaceholder("Send a follow-up...");
+  await composer.fill("copy me please");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .copy me please./)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+
+  // The user bubble's copy action → the typed text, verbatim.
+  await page.getByRole("button", { name: "Copy message" }).first().click();
+  expect(await clipboard()).toBe("copy me please");
+
+  // The agent reply's copy action → the reply's markdown source.
+  await page.getByRole("button", { name: "Copy message" }).last().click();
+  expect(await clipboard()).toContain("You said:");
+});
+
 // Skipped while the conversation map is deliberately hidden (see
 // ui/chat/src/conversation-map-panel.tsx CONVERSATION_MAP_VISIBLE) — the
 // feature stays wired; un-skip when the panel is re-shown.

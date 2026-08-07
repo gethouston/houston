@@ -49,6 +49,12 @@ export interface ChatMessagesProps {
   canEditMessage?: (msg: ChatMessage) => boolean;
   /** See `ChatMessageItemProps.editMessageLabel`. */
   editMessageLabel?: string;
+  /** Copy-message affordance: see `ChatMessageItemProps.enableMessageCopy`. */
+  enableMessageCopy?: boolean;
+  /** See `ChatMessageItemProps.canCopyMessage`. */
+  canCopyMessage?: (msg: ChatMessage) => boolean;
+  /** See `ChatMessageItemProps.copyMessageLabel`. */
+  copyMessageLabel?: string;
   /** Node rendered after the last message (inside the scroll container).
    *  Useful for inline end-of-feed cards like auth reconnect prompts. */
   afterMessages?: ReactNode;

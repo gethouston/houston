@@ -139,6 +139,10 @@ export interface AIBoardProps {
   onEditMessage?: import("@houston-ai/chat").ChatPanelProps["onEditMessage"];
   canEditMessage?: import("@houston-ai/chat").ChatPanelProps["canEditMessage"];
   editMessageLabel?: import("@houston-ai/chat").ChatPanelProps["editMessageLabel"];
+  /** Copy-message affordance (both sides). Forwarded to ChatPanel. */
+  enableMessageCopy?: import("@houston-ai/chat").ChatPanelProps["enableMessageCopy"];
+  canCopyMessage?: import("@houston-ai/chat").ChatPanelProps["canCopyMessage"];
+  copyMessageLabel?: import("@houston-ai/chat").ChatPanelProps["copyMessageLabel"];
   /** Props-only configuration for long-conversation navigation. */
   conversationMap?: ChatPanelProps["conversationMap"];
   /** Emitted by ChatPanel to surface short notices to the user
@@ -370,6 +374,9 @@ export function AIBoard({
   onEditMessage,
   canEditMessage,
   editMessageLabel,
+  enableMessageCopy,
+  canCopyMessage,
+  copyMessageLabel,
   conversationMap,
   onNotice,
   prepareAttachments,
@@ -781,6 +788,9 @@ export function AIBoard({
           onEditMessage={onEditMessage}
           canEditMessage={canEditMessage}
           editMessageLabel={editMessageLabel}
+          enableMessageCopy={enableMessageCopy}
+          canCopyMessage={canCopyMessage}
+          copyMessageLabel={copyMessageLabel}
           currentUserId={currentUserId}
           authorLabels={authorLabels}
           showSenders={showSenders}

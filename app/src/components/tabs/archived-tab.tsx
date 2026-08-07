@@ -172,6 +172,9 @@ export default function ArchivedTab({
           onEditMessage={panel.onEditMessage}
           canEditMessage={panel.canEditMessage}
           editMessageLabel={panel.editMessageLabel}
+          enableMessageCopy={panel.enableMessageCopy}
+          canCopyMessage={panel.canCopyMessage}
+          copyMessageLabel={panel.copyMessageLabel}
           renderLink={panel.renderLink}
           currentUserId={panel.currentUserId}
           authorLabels={panel.authorLabels}

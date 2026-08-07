@@ -44,6 +44,9 @@ export function ChatMessages({
   onEditMessage,
   canEditMessage,
   editMessageLabel,
+  enableMessageCopy,
+  canCopyMessage,
+  copyMessageLabel,
   afterMessages,
   onLoadOlder,
   hasOlderMessages,
@@ -122,10 +125,13 @@ export function ChatMessages({
           <ChatMessageItem
             agentLabel={agentLabel}
             authorLabels={authorLabels}
+            canCopyMessage={canCopyMessage}
             canEditMessage={canEditMessage}
             contextCompactedLabel={contextCompactedLabel}
+            copyMessageLabel={copyMessageLabel}
             currentUserId={currentUserId}
             editMessageLabel={editMessageLabel}
+            enableMessageCopy={enableMessageCopy}
             forcedSenders={showSenders === true}
             getThinkingMessage={getThinkingMessage}
             highlightedMessageKey={highlightedMessageKey}

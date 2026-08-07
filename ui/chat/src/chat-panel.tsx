@@ -48,6 +48,9 @@ export function ChatPanel({
   onEditMessage,
   canEditMessage,
   editMessageLabel,
+  enableMessageCopy,
+  canCopyMessage,
+  copyMessageLabel,
   afterMessages,
   onLoadOlder,
   hasOlderMessages,
@@ -199,6 +202,9 @@ export function ChatPanel({
           onEditMessage={onEditMessage}
           canEditMessage={canEditMessage}
           editMessageLabel={editMessageLabel}
+          enableMessageCopy={enableMessageCopy}
+          canCopyMessage={canCopyMessage}
+          copyMessageLabel={copyMessageLabel}
           afterMessages={afterMessages}
           onLoadOlder={onLoadOlder}
           hasOlderMessages={hasOlderMessages}

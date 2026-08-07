@@ -129,6 +129,9 @@ components:
       across the labeled button pill and the blue autolink chip. No
       external-link arrow: the file opens in-app. Link blue stays reserved for
       the web, so the chip now tells the reader whether a click leaves Houston.
+      (v56) The copy action ships as an always-visible action row under the
+      settled bubble (never hover-gated, brief check-mark confirm); streaming
+      turns carry no actions.
     a11y: article/group role; code blocks keyboard-selectable; copy button labeled. A file chip is a button carrying the file's full path as its title.
     since: 1
 
@@ -138,7 +141,14 @@ components:
       A message a person sent -- the viewer's own right-aligned, a teammate's
       mirrored to the left with their face beside it.
     anatomy:
-      [sender-face-column, bubble, sender-name-line, attachment-chips, edit-action]
+      [
+        sender-face-column,
+        bubble,
+        sender-name-line,
+        attachment-chips,
+        copy-action,
+        edit-action,
+      ]
     states: [default, with-attachments, editable]
     variants: [single-player, own-message, teammate-message, run-continuation]
     behavior: >-
@@ -167,7 +177,10 @@ components:
       conversation to that message and continues from the edited version
       (earlier turns untouched), while cancel retires the notice. Marker
       messages (skill/attachment/interaction answers), channel relays,
-      teammates' rows, and pre-turn-id transcripts are not editable.
+      teammates' rows, and pre-turn-id transcripts are not editable. Settled
+      rows on either side also carry a copy action in the same always-visible
+      row (verbatim text, brief check-mark confirm); marker-encoded rows are
+      not copyable -- their wire encoding is not what the bubble shows.
     a11y: >-
       group role; a teammate's name is visible text inside the bubble, while the
       viewer's own rows carry the consumer's "you" label as screen-reader-only
