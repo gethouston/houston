@@ -11,14 +11,14 @@ import {
   collectTaughtByIds,
   resolveLearningProvenance,
 } from "../../../lib/learning-provenance";
+import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
 import { LearningsContent } from "../learnings-content";
-import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 
 /** Memory (learnings) section. Read-only for non-managers. */
 export function AgentAdminKnowledge({
   agent,
   readOnly = false,
-}: AgentAdminScreenProps & { readOnly?: boolean }) {
+}: AgentSectionProps) {
   const path = agent.folderPath;
   const { data } = useLearnings(path);
   const addLearning = useAddLearning(path);

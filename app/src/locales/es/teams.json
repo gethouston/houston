@@ -47,6 +47,35 @@
       "unavailable": "Los límites de integraciones no están disponibles aquí."
     }
   },
+  "agentSettings": {
+    "railLabel": "Secciones de la configuración del agente",
+    "groups": {
+      "context": "Contexto",
+      "permissions": "Permisos"
+    },
+    "people": {
+      "question": "¿Quién puede usar este agente?",
+      "helper": "Elige si todo tu equipo puede usar este agente o solo las personas que tú elijas.",
+      "anyLabel": "Todo tu equipo",
+      "anyDesc": "Cualquier persona del equipo puede usar este agente, incluidas las que se sumen después.",
+      "pickedLabel": "Solo personas específicas",
+      "pickedDesc": "Solo las personas que elijas abajo pueden usar este agente.",
+      "everyoneNote": "Todo tu equipo puede usar este agente, así que no hay nada que definir persona por persona. Cambia a Solo personas específicas para gestionar el acceso individualmente.",
+      "confirmEveryone": {
+        "title": "¿Dar acceso a todo el equipo?",
+        "description": "Esto reemplaza la lista actual. Todo tu equipo podrá usar este agente y se quitará el acceso de Manager que hayas dado aquí.",
+        "confirm": "Sí, dar acceso a todos",
+        "cancel": "Cancelar"
+      },
+      "confirmSpecific": {
+        "title": "¿Cambiar a personas específicas?",
+        "description_one": "La {{count}} persona que puede usar este agente hoy conserva el acceso. Las personas que se sumen después no se agregarán automáticamente.",
+        "description_other": "Las {{count}} personas que pueden usar este agente hoy conservan el acceso. Las personas que se sumen después no se agregarán automáticamente.",
+        "confirm": "Sí, elegir personas",
+        "cancel": "Cancelar"
+      }
+    }
+  },
   "integrations": {
     "allowlist": {
       "question": "¿Qué apps puede usar este agente?",
@@ -80,9 +109,8 @@
       "billing": "Facturación"
     },
     "agentDetail": {
-      "subtitle": "Qué tiene permitido utilizar este agente.",
-      "openAgent": "Abrir agente",
-      "managerOnly": "Solo los Managers de este agente pueden cambiar su acceso."
+      "subtitle": "Todo lo que configuras en este agente y quién puede usarlo.",
+      "openAgent": "Abrir agente"
     },
     "index": {
       "groups": {
@@ -105,11 +133,6 @@
   "permissions": {
     "title": "Permisos",
     "subtitle": "Elige un agente para gestionar quién puede usarlo y qué puede usar.",
-    "agentTabs": {
-      "people": "Personas",
-      "integrations": "Integraciones",
-      "models": "Modelos de IA"
-    },
     "agentPeople": {
       "none": "Sin acceso",
       "noneHint": "No puede usar este agente.",

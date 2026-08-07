@@ -209,7 +209,8 @@ test("Permissions: a per-agent model ceiling offers the full catalog (no org nar
   // Policy is per agent only: a manager narrowing the agent's model ceiling picks
   // from the WHOLE catalog — there is no workspace-wide ceiling to narrow it, so
   // every model (Opus AND Sonnet) is offerable. The per-agent ceilings live in the
-  // Permissions view's per-agent drill-in (its AI Models tab).
+  // Permissions view's per-agent drill-in (the agent settings page's AI models
+  // section).
   await armCapabilities(request, OWNER_CAPS);
   await request.post(`${FAKE_HOST_URL}/__test__/org`, {
     data: {
@@ -225,7 +226,10 @@ test("Permissions: a per-agent model ceiling offers the full catalog (no org nar
   });
   await openPermissions(page);
   await page.getByRole("button", { name: "Open Finance Bot" }).click();
-  await page.getByRole("tab", { name: "AI Models" }).click();
+  await page
+    .getByRole("navigation", { name: "Agent settings sections" })
+    .getByRole("button", { name: "AI models" })
+    .click();
 
   // The per-agent card shows the model ceiling question, starting unrestricted.
   await expect(

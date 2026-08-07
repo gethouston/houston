@@ -1,5 +1,4 @@
 import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
-import type { OrgMember } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCapabilities } from "../../hooks/use-capabilities";
@@ -7,35 +6,37 @@ import { isAgentManager } from "../../lib/agent-access";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
+import { AgentSettingsPage } from "../agent-settings/agent-settings-page";
 import { PageContainer, PageHeader } from "../shell/page-shell";
-import { AgentPermissionsPanel } from "./agent-permissions-panel";
-import type { PermissionsAgentTab } from "./permissions-nav-store";
 
 /**
- * Permissions agent detail: an org owner/admin manages ONE agent across three
- * tabs — **People** (who can use it, at what level), **Integrations** (its app
- * ceiling), and **AI Models** (its model ceiling). The whole product is agent-
- * centric: pick an agent, then manage who reaches it and what it may reach.
+ * Permissions agent detail: an org owner/admin opens ONE agent on the canonical
+ * {@link AgentSettingsPage} — its Context (job description, learnings) and its
+ * Permissions (people, apps, AI models, skills) in one master-detail surface.
+ * The whole product is agent-centric: pick an agent, then manage who reaches it
+ * and what it may reach.
  *
- * The manager-authority gate lives HERE, in the parent: the top-level drill-in is
- * owner/admin-only, and a visible-but-not-manager admin gets a manager-only note
- * instead of the editable panel. {@link isAgentManager}: owner → any org agent;
- * admin → only agents where their effective `access === "manager"`. (The agent's
- * Settings access rows reuse the same section components and show read-only to
- * non-managers rather than hiding policy state.)
+ * Manager authority decides the FACE, not access: an admin who can see this
+ * agent but doesn't manage it gets the page `readOnly` — the same read-only
+ * sections they already have on the agent's own Admin tab — rather than a
+ * dead-end note. {@link isAgentManager}: owner → any org agent; admin → only
+ * agents where their effective `access === "manager"`. The gateway is the real
+ * enforcer either way.
  *
  * The `agent` is resolved live from the store by the shell (by id, not a
  * snapshot), so a share mutation that reloads the store shows fresh data here.
  */
 export function AgentDetail({
   agent,
-  members,
-  initialTab = "people",
+  initialSection = "people",
+  onSectionShown,
 }: {
   agent: Agent;
-  members: OrgMember[];
-  /** Tab to open on first mount (a deep link may land on Integrations). */
-  initialTab?: PermissionsAgentTab;
+  /** Section to open on first mount (a deep link may land on Apps). */
+  initialSection?: AgentSettingsSection;
+  /** The section actually on screen, for the caller's analytics. */
+  onSectionShown?: (section: AgentSettingsSection) => void;
 }) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
@@ -69,17 +70,12 @@ export function AgentDetail({
         />
       </div>
 
-      {canManage ? (
-        <AgentPermissionsPanel
-          agent={agent}
-          members={members}
-          initialTab={initialTab}
-        />
-      ) : (
-        <p className="text-sm text-ink-muted">
-          {t("org.agentDetail.managerOnly")}
-        </p>
-      )}
+      <AgentSettingsPage
+        agent={agent}
+        initialSection={initialSection}
+        readOnly={!canManage}
+        onSectionShown={onSectionShown}
+      />
     </PageContainer>
   );
 }

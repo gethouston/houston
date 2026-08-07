@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { mergeSharedIntoAgentSkills } from "../../../lib/agent-shared-skills";
+import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
 import { SkillsContent } from "../skills-content";
 import { useAgentSharedSkills } from "../use-agent-shared-skills";
 import { useSkillSurface } from "../use-skill-surface";
 import { useSkillSurfaceLabels } from "../use-skill-surface-labels";
-import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 
 /**
  * Skills section: the catalog-grammar Skills surface (installed-tile strip +
@@ -16,9 +16,17 @@ import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
  * the slug itself: a local copy is edited/deleted in place, a store skill's
  * save writes the ONE workspace copy and its danger action is "Disable for
  * this agent" (a reversible manifest write). A row's setup chat (HOU-791)
- * stays reachable via the dialog's Edit in chat. Always editable.
+ * stays reachable via the dialog's Edit in chat.
+ *
+ * `readOnly` (a non-manager reading the agent settings page) drops the
+ * discovery tabs and the write affordances via {@link SkillsContent}'s own
+ * mode, leaving the installed strip. The Skills TAB never passes it: that tab
+ * is manager-only, so it stays editable.
  */
-export function AgentAdminSkills({ agent }: AgentAdminScreenProps) {
+export function AgentAdminSkills({
+  agent,
+  readOnly = false,
+}: AgentSectionProps) {
   const surface = useSkillSurface(agent.folderPath);
   const shared = useAgentSharedSkills(agent.folderPath);
   const { editModalLabels, deleteConfirm } = useSkillSurfaceLabels();
@@ -43,6 +51,7 @@ export function AgentAdminSkills({ agent }: AgentAdminScreenProps) {
         agent={agent}
         skills={merged.skills}
         loading={surface.skillsLoading}
+        readOnly={readOnly}
         editingSkillName={surface.editingSkillName}
         editorState={surface.editorState}
         onEditSkill={surface.openEditSkill}

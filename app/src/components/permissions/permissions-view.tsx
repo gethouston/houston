@@ -1,32 +1,30 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { analytics } from "../../lib/analytics";
 import { useAgentStore } from "../../stores/agents";
+import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
 import { BackBarScreen } from "../shell/back-bar-screen";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AgentDetail } from "./agent-detail";
 import { AgentsList } from "./agents-list";
-import {
-  type PermissionsAgentTab,
-  usePermissionsNav,
-} from "./permissions-nav-store";
+import { usePermissionsNav } from "./permissions-nav-store";
 
 /**
  * The Permissions screen (Settings > Permissions, owner/admin only): the ONE
  * place that manages who can do what, and it is FULLY AGENT-CENTRIC. It shows
- * the agent list; open an agent to manage, across three tabs, WHO can use it
- * (People), its app ceiling (Integrations), and its model ceiling (AI Models).
- * There is no per-person lens.
+ * the agent list; open an agent to reach the canonical agent settings page,
+ * where WHO can use it, its app + model ceilings, its skills and its context
+ * all live in one rail. There is no per-person lens.
  *
- * A shell only: it loads the org once (roster), owns the drill-in state, and
- * consumes a one-shot deep link from {@link usePermissionsNav} (the blocked-app
- * CTA in the agent workspace routes straight into that agent's detail). Rendered
- * ONLY when `canSeeOrganization` (multiplayer owner/admin, and on a Spaces host
- * a TEAM active space, never the personal one) — the Settings index hides the
- * row and `SettingsView` falls a stale section back to the index for everyone
- * else, so it never mounts in single-player, for a plain member, or in a
- * personal space.
+ * A shell only: it loads the org once (roster for the list), owns the drill-in
+ * state, and consumes a one-shot deep link from {@link usePermissionsNav} (the
+ * blocked-app CTA in the agent workspace routes straight into that agent's
+ * settings). Rendered ONLY when `canSeeOrganization` (multiplayer owner/admin,
+ * and on a Spaces host a TEAM active space, never the personal one) — the
+ * Settings index hides the row and `SettingsView` falls a stale section back to
+ * the index for everyone else, so it never mounts in single-player, for a plain
+ * member, or in a personal space.
  *
  * A settings section since HOU-788 (it had its own sidebar entry before), so the
  * caller owns the way back out: `onBack`/`backLabel` name the level above, and
@@ -44,26 +42,31 @@ export function PermissionsView({
   const agents = useAgentStore((s) => s.agents);
 
   const requestedAgentId = usePermissionsNav((s) => s.requestedAgentId);
-  const requestedAgentTab = usePermissionsNav((s) => s.requestedAgentTab);
+  const requestedSection = usePermissionsNav((s) => s.requestedSection);
   const clearRequested = usePermissionsNav((s) => s.clearRequested);
 
   // Drill-in held as an id (not a snapshot) so a store reload keeps the detail
   // pointed at the live row; if the id drops out, it falls back to the list. The
-  // opening tab is captured alongside so a deep link can land on Integrations.
+  // opening section is captured alongside so a deep link lands on Apps.
   const [detail, setDetail] = useState<{
     agentId: string;
-    tab: PermissionsAgentTab;
+    section: AgentSettingsSection;
   } | null>(null);
 
-  // One event per agent drill-in, keyed like the global view switches (the
-  // opening tab rides along: permissions:people / integrations / models).
-  useEffect(() => {
-    if (detail !== null)
+  // Keyed like the global view switches, and reporting the section the page
+  // ACTUALLY shows — a request the host hides resolves to a sibling section,
+  // and analytics must record where the user landed, not what was asked for.
+  const detailAgentId = detail?.agentId;
+  const trackSection = useCallback(
+    (section: AgentSettingsSection) => {
+      if (detailAgentId === undefined) return;
       analytics.track("tab_opened", {
-        tab_name: `permissions:${detail.tab}`,
-        agent_id: detail.agentId,
+        tab_name: `permissions:${section}`,
+        agent_id: detailAgentId,
       });
-  }, [detail]);
+    },
+    [detailAgentId],
+  );
 
   // Honor a one-shot deep link (the blocked-app "Enable it in Permissions" CTA),
   // then clear it so a later plain nav lands back on the agent list.
@@ -71,10 +74,10 @@ export function PermissionsView({
     if (requestedAgentId === null) return;
     setDetail({
       agentId: requestedAgentId,
-      tab: requestedAgentTab ?? "people",
+      section: requestedSection ?? "people",
     });
     clearRequested();
-  }, [requestedAgentId, requestedAgentTab, clearRequested]);
+  }, [requestedAgentId, requestedSection, clearRequested]);
 
   const members = org?.members ?? [];
   const detailAgent =
@@ -82,8 +85,7 @@ export function PermissionsView({
       ? (agents.find((a) => a.id === detail.agentId) ?? null)
       : null;
 
-  // Agent drill-in: one agent's People + Integrations + AI Models. Back returns
-  // to the agent list.
+  // Agent drill-in: the whole agent settings page. Back returns to the list.
   if (detail && detailAgent) {
     return (
       <BackBarScreen
@@ -92,8 +94,8 @@ export function PermissionsView({
       >
         <AgentDetail
           agent={detailAgent}
-          members={members}
-          initialTab={detail.tab}
+          initialSection={detail.section}
+          onSectionShown={trackSection}
         />
       </BackBarScreen>
     );
@@ -109,7 +111,7 @@ export function PermissionsView({
         />
         <AgentsList
           members={members}
-          onOpenAgent={(a) => setDetail({ agentId: a.id, tab: "people" })}
+          onOpenAgent={(a) => setDetail({ agentId: a.id, section: "people" })}
         />
       </PageContainer>
     </BackBarScreen>

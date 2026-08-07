@@ -9,8 +9,8 @@ export interface AccessChoiceOption {
 }
 
 interface AccessChoiceProps {
-  /** The accessible name for the radio group (applied as its `aria-label`). */
-  question: string;
+  /** Id of the VISIBLE heading that asks the question; names the radio group. */
+  labelledBy: string;
   /** Exactly two options: the "any" (allow-all) and "picked" (restricted) modes. */
   options: readonly [AccessChoiceOption, AccessChoiceOption];
   /** The currently selected mode. */
@@ -28,14 +28,15 @@ interface AccessChoiceProps {
  * the selected option's description cross-fading below. Keeps full radio
  * semantics: a labelled `role="radiogroup"` of `role="radio"` segments with
  * `aria-checked`, a roving tabindex + arrow-key navigation, and a focus-visible
- * ring. The question is not rendered as visible text (the section title already
- * shows it); it names the radio group via `aria-label`. i18n-agnostic: the
- * caller passes the question, labels, and descriptions in. Selecting the
+ * ring. The group is named by the section's VISIBLE question heading
+ * (`aria-labelledby`), never by a duplicate `aria-label`, so a screen reader
+ * announces the question once. i18n-agnostic: the caller passes the labels and
+ * descriptions in. Selecting the
  * already-selected option is a no-op, so re-picking "Only ... you pick" never
  * re-seeds the allowed set.
  */
 export function AccessChoice({
-  question,
+  labelledBy,
   options,
   value,
   disabled,
@@ -78,7 +79,7 @@ export function AccessChoice({
     <div className={disabled ? "opacity-50" : undefined}>
       <div
         role="radiogroup"
-        aria-label={question}
+        aria-labelledby={labelledBy}
         className="flex w-full max-w-md rounded-full bg-chip p-1"
         onKeyDown={onKeyDown}
       >

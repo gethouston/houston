@@ -9,9 +9,9 @@ import {
   useSetAgentSettings,
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
+import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
 import { INTEGRATION_PROVIDER } from "../../integrations";
 import { AgentAllowlistSection } from "../agent-integrations/agent-allowlist-section";
-import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 
 /**
  * "Allowed integrations" section (Access group): the relocated agent-manager
@@ -27,7 +27,7 @@ import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
 export function AgentAdminIntegrations({
   agent,
   readOnly = false,
-}: AgentAdminScreenProps & { readOnly?: boolean }) {
+}: AgentSectionProps) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;

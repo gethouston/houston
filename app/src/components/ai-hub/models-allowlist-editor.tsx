@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../../lib/ai-hub/search.ts";
 import { AccessChoice } from "../tabs/agent-admin/access-choice.tsx";
@@ -70,6 +70,7 @@ export function ModelsAllowlistEditor({
   onSave,
   copy,
 }: ModelsAllowlistEditorProps) {
+  const headingId = useId();
   const [search, setSearch] = useState("");
   // View-only lab filter (never touches saved data); composes with the search.
   const [lab, setLab] = useState<ProviderValue>("all");
@@ -120,7 +121,9 @@ export function ModelsAllowlistEditor({
 
   return (
     <div>
-      <h2 className="mb-1 text-lg font-medium text-ink">{copy.question}</h2>
+      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
+        {copy.question}
+      </h2>
       <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
 
       {readOnly && copy.readOnlyNote && (
@@ -128,7 +131,7 @@ export function ModelsAllowlistEditor({
       )}
 
       <AccessChoice
-        question={copy.question}
+        labelledBy={headingId}
         value={ceilingMode(allowedModels)}
         disabled={saving || readOnly}
         onChange={onChoice}

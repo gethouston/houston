@@ -51,7 +51,7 @@ export function AgentShareDialog({
   const { capabilities } = useCapabilities();
   const { data: session } = useSession();
   const org = useOrg(isMultiplayer(capabilities) && open);
-  const share = useShareAgent();
+  const share = useShareAgent("share_dialog");
   // A self-lockout action (remove/demote yourself) held for confirmation.
   const [pending, setPending] = useState<{
     person: SharePerson;
@@ -65,7 +65,7 @@ export function AgentShareDialog({
   const { profiles } = useUserProfiles(people.map((p) => p.userId));
 
   const write = (assignments: AgentAssignment[]) =>
-    share.mutate({ agentId: agent.id, assignments });
+    share.mutate({ agentId: agent.id, assignments, members });
 
   const handleAction = (person: SharePerson, action: ShareAction) => {
     if (needsSelfLockoutConfirm(person, action)) {

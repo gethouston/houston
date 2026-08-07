@@ -5,7 +5,7 @@ import {
 } from "../../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import { useHubCatalog } from "../../../lib/ai-hub/use-hub-catalog";
-import type { AgentAdminScreenProps } from "./agent-admin-nav.ts";
+import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
 import { AgentModelsSection } from "./agent-models-section.tsx";
 
 /**
@@ -34,7 +34,7 @@ import { AgentModelsSection } from "./agent-models-section.tsx";
 export function AgentAdminModel({
   agent,
   readOnly = false,
-}: AgentAdminScreenProps & { readOnly?: boolean }) {
+}: AgentSectionProps) {
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;
   const settingsQuery = useAgentSettings(agent.id, teams);

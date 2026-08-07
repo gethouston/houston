@@ -24,10 +24,10 @@ describe("Agent Settings a11y", () => {
   });
 
   it("the tab renders no <h1>; sections use <h2>", () => {
-    const sidebar = read(
-      "../src/components/tabs/agent-admin/agent-admin-sidebar.tsx",
+    const rail = read(
+      "../src/components/agent-settings/agent-settings-rail.tsx",
     );
-    ok(!sidebar.includes("<h1"), "sidebar rail renders no page-level h1");
+    ok(!rail.includes("<h1"), "the settings rail renders no page-level h1");
 
     // The models editor body (question heading included) lives in the shared
     // ModelsAllowlistEditor; the agent section is a thin wrapper around it.

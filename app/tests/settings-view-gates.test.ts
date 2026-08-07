@@ -26,7 +26,7 @@ describe("clearSettingsSectionPin", () => {
     clearSettingsSectionPin("permissions");
 
     strictEqual(usePermissionsNav.getState().requestedAgentId, null);
-    strictEqual(usePermissionsNav.getState().requestedAgentTab, null);
+    strictEqual(usePermissionsNav.getState().requestedSection, null);
   });
 
   it("drops the Admin tab pin when Admin is the dropped section", () => {

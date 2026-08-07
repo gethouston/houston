@@ -47,6 +47,35 @@
       "unavailable": "Integration limits are not available here."
     }
   },
+  "agentSettings": {
+    "railLabel": "Agent settings sections",
+    "groups": {
+      "context": "Context",
+      "permissions": "Permissions"
+    },
+    "people": {
+      "question": "Who can use this agent?",
+      "helper": "Pick whether everyone on your team can use this agent, or only the people you choose.",
+      "anyLabel": "Everyone on your team",
+      "anyDesc": "Every teammate can use this agent, including people who join later.",
+      "pickedLabel": "Only specific people",
+      "pickedDesc": "Only the people you pick below can use this agent.",
+      "everyoneNote": "Everyone on your team can use this agent, so there is nothing to set person by person. Switch to Only specific people to manage access individually.",
+      "confirmEveryone": {
+        "title": "Give everyone access?",
+        "description": "This replaces the current list. Everyone on your team will be able to use this agent, and any Manager access granted here will be removed.",
+        "confirm": "Yes, give everyone access",
+        "cancel": "Cancel"
+      },
+      "confirmSpecific": {
+        "title": "Switch to specific people?",
+        "description_one": "The {{count}} person who can use this agent today keeps access. New teammates will not be added automatically.",
+        "description_other": "The {{count}} people who can use this agent today keep access. New teammates will not be added automatically.",
+        "confirm": "Yes, pick people",
+        "cancel": "Cancel"
+      }
+    }
+  },
   "integrations": {
     "allowlist": {
       "question": "Which apps can this agent use?",
@@ -80,9 +109,8 @@
       "billing": "Billing"
     },
     "agentDetail": {
-      "subtitle": "What this agent is allowed to use.",
-      "openAgent": "Open agent",
-      "managerOnly": "Only this agent's Managers can change its access."
+      "subtitle": "Everything you configure on this agent, and who can use it.",
+      "openAgent": "Open agent"
     },
     "index": {
       "groups": {
@@ -105,11 +133,6 @@
   "permissions": {
     "title": "Permissions",
     "subtitle": "Pick an agent to manage who can use it and what it can use.",
-    "agentTabs": {
-      "people": "People",
-      "integrations": "Integrations",
-      "models": "AI Models"
-    },
     "agentPeople": {
       "none": "No access",
       "noneHint": "Cannot use this agent.",
