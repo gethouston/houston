@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 59
+version: 60
 
 components:
   - id: agent-avatar
@@ -610,7 +610,7 @@ components:
       board, and the open list is bounded so a wide fan-out scrolls instead of
       pushing the composer away.
     a11y: the title toggle carries aria-expanded/aria-controls; every row is a button with a visible label and status at rest, keyboard reachable with a visible focus ring; the status dot is decorative and its meaning is duplicated in text.
-    since: 58
+    since: 59
 
   - id: interaction-answers-message
     title: Interaction answers message
@@ -828,6 +828,52 @@ components:
       text; status never color-alone (icon shape + row text carry it); menu
       trigger always visible with an accessible label.
     since: 1
+
+  - id: routine-details
+    title: Routine screen
+    purpose: >-
+      A routine's own page (PRODUCT-1208), REPLACING the routines list in the
+      main content when its row is clicked -- never a side panel, never a
+      popover: the routine's name, an editable description (the prompt IS what
+      the routine does), an editable run frequency, the model it runs on, and
+      its execution history behind a Runs modal, n8n-style.
+    anatomy:
+      [
+        back-action,
+        title,
+        runs-action,
+        open-chat-action,
+        editable-prompt,
+        schedule-editor,
+        model-row,
+        runs-modal,
+      ]
+    states: [viewing, editing-prompt, editing-schedule, loading-runs, no-runs-yet]
+    variants: [full-screen]
+    behavior: >-
+      The row click lands here (never straight in a chat); Back or Escape
+      returns to the list. The description is the prompt in a plain textarea
+      -- Save/Cancel appear when edited and Save persists it. The frequency
+      shows the humanized cron with the SAME schedule-builder editor the rows
+      use (plus the next fire time), or a trigger's plain-language event with
+      its live activation chip (event bindings change via chat, not here).
+      The model row shows "Agent's model" (inherit) or the pinned provider +
+      model; picking pins it (the fire path honors the pin), a reset row
+      returns to inherit -- clamped to the agent's allowed-models ceiling in
+      Teams. "Runs" opens the execution history as a MODAL: every recorded
+      run newest-first with its plain-language outcome (running / done /
+      nothing to report / failed / stopped), date + time, elapsed time, and
+      -- when the run wasn't silent -- the result it left behind; clicking an
+      entry closes the modal and opens that run's chat in the shell panel
+      (closing the chat returns to this screen). "Open chat" reaches the
+      routine's setup chat the same way.
+    a11y: >-
+      the screen title and sections are real headings; the prompt textarea is
+      labeled; run rows are buttons whose accessible name carries the outcome,
+      stamp, and the open-chat action; outcomes are conveyed as text, never
+      color alone; the running state is announced by its label, not only the
+      spinner.
+    since: 58
 
   - id: skill-row
     title: Skill row

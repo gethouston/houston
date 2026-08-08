@@ -1,7 +1,12 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
 import { runWithActingContext } from "../acting-context";
-import { makeSaveRoutineTool, SAVE_ROUTINE_TOOL_NAME } from "./save-routine";
+import { runWithConversationId } from "../conversation-context";
+import {
+  makeSaveRoutineTool,
+  ROUTINE_RUN_SAVE_REFUSAL,
+  SAVE_ROUTINE_TOOL_NAME,
+} from "./save-routine";
 
 /**
  * save_routine is a thin proxy to the host's merge-safe /sandbox/routines/save
@@ -99,4 +104,33 @@ test("surfaces a host rejection as a tool error (never a silent success)", async
       trigger: { toolkit: "gmail", trigger_slug: "X", trigger_config: {} },
     }),
   ).rejects.toThrow(/Event triggers are not available here/);
+});
+
+/**
+ * A firing routine must never author routines (PRODUCT-1208): a prompt phrased
+ * as a scheduling request ("Every hour, post two quotes…") pushed the agent
+ * into creating a COPY of the routine that was running, and the run's actual
+ * work never happened. Run conversations are `routine-<id>`; setup chats are
+ * `activity-<id>` and keep full authoring rights.
+ */
+test("refuses inside a firing routine's own run, without reaching the host", async () => {
+  const calls = mockFetch(() => ({ body: { id: "r2", name: "Copy" } }));
+  await expect(
+    runWithConversationId("routine-68f130a9", () =>
+      run({
+        name: "Hourly Inspiration",
+        prompt: "Every hour, post two quotes.",
+        schedule: "0 * * * *",
+      }),
+    ),
+  ).rejects.toThrow(ROUTINE_RUN_SAVE_REFUSAL);
+  expect(calls).toHaveLength(0);
+});
+
+test("still saves from a routine's setup chat (authoring is untouched)", async () => {
+  const calls = mockFetch(() => ({ body: { id: "r1", name: "Daily" } }));
+  await runWithConversationId("activity-64277b28", () =>
+    run({ name: "Daily", prompt: "p", schedule: "0 9 * * *" }),
+  );
+  expect(calls).toHaveLength(1);
 });

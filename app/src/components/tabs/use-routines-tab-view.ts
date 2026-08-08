@@ -7,6 +7,7 @@ import type { IntakeResult } from "./automation-intake";
 import {
   adoptDraft,
   claimedRoutineId,
+  clearMissingRoutine,
   deselectIfOn,
   resolvePendingActivity,
   type Selection,
@@ -43,6 +44,13 @@ export function useRoutinesTabView(
     if (res.action === "open") setSelected(res.selection);
   }, [pendingActivityId, routines, chatSetup, setPendingRoutineActivityId]);
 
+  // The selected routine vanished (deleted from its row menu, or removed by
+  // the agent): drop the cursor so the tab returns to the plain centered list
+  // instead of holding a screen/panel shape for a routine that is gone.
+  useEffect(() => {
+    setSelected((s) => clearMissingRoutine(s, routines));
+  }, [routines]);
+
   // Draft → claimed: when the agent creates the routine (stamping the draft's
   // routine_id), swap the selection to the routine's chat so the SAME
   // conversation continues seamlessly in the same pane.
@@ -53,7 +61,7 @@ export function useRoutinesTabView(
       routines,
       chatSetup,
     );
-    if (routineId) setSelected({ kind: "routine", routineId });
+    if (routineId) setSelected({ kind: "routineChat", routineId });
   }, [selected, routines, chatSetup]);
 
   // "New routine": select the intake instantly — the chat surface with
@@ -120,14 +128,19 @@ export function useRoutinesTabView(
     [completeIntake],
   );
 
-  // Row click ("open chat"): select the routine's chat (starting one first if
-  // it lacks one), or deselect it when it is already the open one (re-click).
-  // A failed start clears the selection so it never strands the user.
-  const handleOpenChat = useCallback(
+  // Row click: open the routine's own screen (PRODUCT-1208) — title,
+  // description, schedule, model, run history — or close it on a re-click.
+  const handleOpenRoutine = useCallback(
+    (routineId: string) => setSelected(toggleRoutine(selected, routineId)),
+    [selected],
+  );
+
+  // Detail screen "Open chat": select the routine's setup chat (starting one
+  // first if it lacks one). A failed start falls back to the detail screen so
+  // it never strands the user on a dead chat surface.
+  const openRoutineChat = useCallback(
     (routineId: string) => {
-      const next = toggleRoutine(selected, routineId);
-      setSelected(next);
-      if (next?.kind !== "routine") return; // re-click deselected it
+      setSelected({ kind: "routineChat", routineId });
       const routine = routines?.find((r) => r.id === routineId);
       if (routine && !chatSetup.activityFor(routine)) {
         void chatSetup.startForRoutine(routine).then((ok) => {
@@ -135,7 +148,20 @@ export function useRoutinesTabView(
         });
       }
     },
-    [selected, routines, chatSetup],
+    [routines, chatSetup],
+  );
+
+  // Detail screen run click: open that execution's chat (its result).
+  const openRun = useCallback(
+    (routineId: string, runId: string) =>
+      setSelected({ kind: "runChat", routineId, runId }),
+    [],
+  );
+
+  // Back from a routine's chat (setup or run) to its detail screen.
+  const backToRoutine = useCallback(
+    (routineId: string) => setSelected({ kind: "routine", routineId }),
+    [],
   );
 
   const handleResumeDraft = useCallback(
@@ -153,7 +179,10 @@ export function useRoutinesTabView(
     dismissIntake,
     handleIntakeComplete,
     handleIntakeComposerSend,
-    handleOpenChat,
+    handleOpenRoutine,
+    openRoutineChat,
+    openRun,
+    backToRoutine,
     handleResumeDraft,
     deselect,
   };

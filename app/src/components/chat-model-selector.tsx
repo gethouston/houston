@@ -6,7 +6,7 @@ import {
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import { ChevronDown, Lock } from "lucide-react";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useChatModelPicker } from "../hooks/use-chat-model-picker";
@@ -16,7 +16,7 @@ import {
   isModelAllowed,
   modelSelectorDecision,
 } from "../lib/model-selector-lock";
-import { ProviderGlyph } from "./shell/provider-logos";
+import { ModelTriggerGlyph } from "./chat-model-selector-trigger";
 
 interface ChatModelSelectorProps {
   /** Current provider id (from agent config / per-mission override). */
@@ -53,6 +53,18 @@ interface ChatModelSelectorProps {
    * exactly one model the picker renders that model read-only (still visible).
    */
   allowedModels?: string[] | null;
+  /**
+   * Overrides the trigger's model label — the routines header shows "Agent's
+   * model" while the routine carries no pin (PRODUCT-1208). Omit for the
+   * picker's own display label. An empty `provider` also drops the glyph.
+   */
+  triggerLabel?: string;
+  /** Extra footer row inside the picker popover (the routine pin's "Use the
+   *  agent's model" reset). Omit for none. */
+  pickerFooter?: ReactNode;
+  /** Render the trigger's provider glyph in full brand color (the routine
+   *  screen's Model field). Omit for the composer's monochrome glyph. */
+  coloredGlyph?: boolean;
 }
 
 export function ChatModelSelector({
@@ -63,6 +75,9 @@ export function ChatModelSelector({
   onOpenChange,
   agent,
   allowedModels,
+  triggerLabel,
+  pickerFooter,
+  coloredGlyph,
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
@@ -111,6 +126,11 @@ export function ChatModelSelector({
   // visible) rather than a one-row popover (contract Change 3).
   const readOnly = allowedModels != null && allowedModels.length === 1;
 
+  const label = triggerLabel ?? picker.displayLabel;
+  const glyph = (
+    <ModelTriggerGlyph provider={provider} colored={coloredGlyph} />
+  );
+
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
     // from interpreting trigger clicks as "click outside → close panel".
@@ -124,10 +144,8 @@ export function ChatModelSelector({
         // The one allowed model, read-only: no dropdown affordance signals it is
         // fixed, and the visible label is its own accessible name.
         <div className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-ink-muted whitespace-nowrap">
-          <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
-            <ProviderGlyph providerId={provider} />
-          </span>
-          <span>{picker.displayLabel}</span>
+          {glyph}
+          <span>{label}</span>
         </div>
       ) : (
         <Popover open={picker.isOpen} onOpenChange={picker.setOpen}>
@@ -136,10 +154,8 @@ export function ChatModelSelector({
               type="button"
               className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus"
             >
-              <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
-                <ProviderGlyph providerId={provider} />
-              </span>
-              <span>{picker.displayLabel}</span>
+              {glyph}
+              <span>{label}</span>
               <ChevronDown className="size-3 opacity-60" />
             </button>
           </PopoverTrigger>
@@ -163,13 +179,18 @@ export function ChatModelSelector({
               renderProviderIcon={picker.renderProviderIcon}
               labels={picker.labels}
               footer={
-                hidden > 0 ? (
-                  <span className="flex items-center gap-1.5 text-xs text-ink-muted">
-                    <Lock className="size-3 opacity-60" />
-                    {t("modelSelector.picker.hiddenByWorkspace", {
-                      count: hidden,
-                    })}
-                  </span>
+                pickerFooter || hidden > 0 ? (
+                  <>
+                    {pickerFooter}
+                    {hidden > 0 && (
+                      <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+                        <Lock className="size-3 opacity-60" />
+                        {t("modelSelector.picker.hiddenByWorkspace", {
+                          count: hidden,
+                        })}
+                      </span>
+                    )}
+                  </>
                 ) : undefined
               }
             />

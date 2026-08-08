@@ -121,11 +121,26 @@ export const ROUTINE_OK_TOKEN = "ROUTINE_OK";
  */
 export const SUPPRESSION_INSTRUCTION = `\n\n---\nIMPORTANT: If nothing requires the user's attention or action, end your response with exactly "ROUTINE_OK" (on its own line). If something needs the user's attention, respond with your findings — do NOT include "ROUTINE_OK".`;
 
-/** The prompt actually sent when firing a routine (suppression instruction appended if opted in). */
+/**
+ * Framing that makes a fired run unmistakably an EXECUTION, not a setup
+ * request. Without it a routine whose prompt reads like a scheduling ask
+ * ("Every hour, post two quotes…") hits the product prompt's routine-creation
+ * guidance — "if the user asks for recurring work, create a Routine" — and the
+ * agent calls `save_routine`, duplicating the very routine that fired instead
+ * of doing its work (PRODUCT-1208). The cadence words in the prompt describe a
+ * schedule that ALREADY exists.
+ */
+export function routineRunPreamble(name: string): string {
+  return `This is the automation "${name}" running right now — it already exists and is already scheduled. Do the work described below for THIS run and reply with the result.\n\nNever create, change, or delete a routine during this run (never call save_routine): wording like "every hour" or "each day" describes the schedule this automation already has, not a request to set one up. Nobody is watching this run, so do not ask questions — do the work with what you have.\n\n---\n`;
+}
+
+/** The prompt actually sent when firing a routine: the run framing, the
+ *  routine's own prompt, and (when opted in) the suppression instruction. */
 export function routinePrompt(routine: Routine): string {
+  const body = `${routineRunPreamble(routine.name)}${routine.prompt}`;
   return routine.suppress_when_silent
-    ? `${routine.prompt}${SUPPRESSION_INSTRUCTION}`
-    : routine.prompt;
+    ? `${body}${SUPPRESSION_INSTRUCTION}`
+    : body;
 }
 
 /**

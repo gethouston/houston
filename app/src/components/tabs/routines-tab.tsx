@@ -10,7 +10,8 @@ import type { TabProps } from "../../lib/types";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useRoutineLeadingIcon } from "./routine-leading-icon";
-import { latestRunByRoutine } from "./routines-tab-model";
+import { RoutineScreen } from "./routine-screen";
+import { latestRunByRoutine, selectionRoutineId } from "./routines-tab-model";
 import { RoutinesTabPane } from "./routines-tab-pane";
 import { useRoutineChatSetup } from "./use-routine-chat-setup";
 import { useRoutineTabHandlers } from "./use-routine-tab-handlers";
@@ -40,7 +41,7 @@ export default function RoutinesTab({
   const path = agent.folderPath;
 
   const { data: routines, isLoading } = useRoutines(path);
-  const { data: allRuns } = useRoutineRuns(path);
+  const { data: allRuns, isLoading: runsLoading } = useRoutineRuns(path);
   const lastRuns = latestRunByRoutine(allRuns);
 
   const chatSetup = useRoutineChatSetup(agent, routines);
@@ -62,14 +63,16 @@ export default function RoutinesTab({
   // board's inline fallback instead, which paints nothing.
   const screenActive = useIsActiveView();
   const portalContainer = isActive && screenActive ? panelContainer : null;
-  // The claim tracks exactly what this tab renders: a selection while it is the
-  // visible tab, nothing otherwise. Releasing on the way out is safe because the
-  // claim is this tab's own — it can't clobber a mission navigation that just
-  // opened the Activity board's panel (PRODUCT-1229). `useShellDetailPanel`
-  // releases it again on unmount.
+  // The claim tracks exactly what this tab renders in the PANEL: a chat
+  // surface (intake, draft, the setup chat, a run's chat). The routine's own
+  // screen lives in the MAIN content (PRODUCT-1208) and claims no panel.
+  // Releasing on the way out is safe because the claim is this tab's own — it
+  // can't clobber a mission navigation that just opened the Activity board's
+  // panel (PRODUCT-1229). `useShellDetailPanel` releases it again on unmount.
+  const chatSelected = !!selected && selected.kind !== "routine";
   useEffect(() => {
-    setPanelOpen(isActive && !!selected);
-  }, [isActive, selected, setPanelOpen]);
+    setPanelOpen(isActive && chatSelected);
+  }, [isActive, chatSelected, setPanelOpen]);
   // Per-row identity glyph — the triggering app's logo (or a webhook mark) for
   // event routines, the grid's default clock for schedule ones.
   const leadingIcon = useRoutineLeadingIcon(triggers.triggersEnabled);
@@ -99,16 +102,64 @@ export default function RoutinesTab({
     </Button>
   );
 
+  // A routine-scoped selection swaps the MAIN content from the list to that
+  // routine's own screen (PRODUCT-1208) — a real page, not a side panel. The
+  // screen stays up while one of the routine's chats owns the shell panel.
+  const screenRoutineId = selectionRoutineId(selected);
+  const screenRoutine = screenRoutineId
+    ? routines?.find((r) => r.id === screenRoutineId)
+    : undefined;
+
+  if (screenRoutine) {
+    return (
+      <div className="flex h-full min-h-0">
+        <RoutineScreen
+          agent={agent}
+          routine={screenRoutine}
+          allRuns={allRuns}
+          runsLoading={runsLoading}
+          triggerSummary={triggers.triggerSummaries[screenRoutine.id]}
+          accountTimezone={h.tz.timezone ?? "UTC"}
+          escapeActive={selected?.kind === "routine"}
+          onBackToList={nav.deselect}
+          onOpenChat={() => nav.openRoutineChat(screenRoutine.id)}
+          onOpenRun={(run) => nav.openRun(screenRoutine.id, run.id)}
+        />
+        {selected && selected.kind !== "routine" && (
+          <RoutinesTabPane
+            selected={selected}
+            agent={agent}
+            agentDef={agentDef}
+            routines={routines}
+            chatSetup={chatSetup}
+            allRuns={allRuns}
+            accountTimezone={h.tz.timezone ?? "UTC"}
+            triggersAvailable={triggers.triggersEnabled}
+            panelContainer={portalContainer}
+            onIntakeComplete={nav.handleIntakeComplete}
+            onIntakeDismiss={nav.dismissIntake}
+            onIntakeSend={nav.handleIntakeComposerSend}
+            onDeselect={nav.deselect}
+            onBackToRoutine={nav.backToRoutine}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0">
       {/* LEFT: the persistent list — compact header (title, count, create),
-          rows, and a quiet timezone footer. With the chat panel closed the
-          whole list centers in a readable max-width column; with it open the
-          list fills its (now narrower) share of the main card naturally. */}
+          rows, and a quiet timezone footer. With no chat panel open the whole
+          list centers in a readable max-width column; with one open the list
+          fills its (now narrower) share of the main card naturally. Keyed on
+          the CHAT claim, not on any selection: a routine-scoped selection
+          renders the routine's screen instead of this list, and a cursor left
+          on a just-deleted routine must not strand the list full-width. */}
       <div
         className={cn(
           "flex min-w-0 flex-col",
-          selected ? "flex-1" : "mx-auto w-full max-w-3xl",
+          chatSelected ? "flex-1" : "mx-auto w-full max-w-3xl",
         )}
       >
         {!listEmpty && (
@@ -130,13 +181,11 @@ export default function RoutinesTab({
             draftActivities={chatSetup.draftActivities}
             accountTimezone={h.tz.timezone ?? "UTC"}
             loading={isLoading}
-            selectedRoutineId={
-              selected?.kind === "routine" ? selected.routineId : null
-            }
+            selectedRoutineId={selectionRoutineId(selected)}
             selectedDraftId={
               selected?.kind === "draft" ? selected.activityId : null
             }
-            onOpenChat={nav.handleOpenChat}
+            onOpenChat={nav.handleOpenRoutine}
             // Plain .mutate: a rejected toggle/delete/stop would be an unhandled
             // rejection, and call() already toasts each failure.
             onToggle={(id, enabled) =>
@@ -201,6 +250,7 @@ export default function RoutinesTab({
           agentDef={agentDef}
           routines={routines}
           chatSetup={chatSetup}
+          allRuns={allRuns}
           accountTimezone={h.tz.timezone ?? "UTC"}
           triggersAvailable={triggers.triggersEnabled}
           panelContainer={portalContainer}
@@ -208,6 +258,7 @@ export default function RoutinesTab({
           onIntakeDismiss={nav.dismissIntake}
           onIntakeSend={nav.handleIntakeComposerSend}
           onDeselect={nav.deselect}
+          onBackToRoutine={nav.backToRoutine}
         />
       )}
     </div>

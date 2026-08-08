@@ -57,6 +57,8 @@ components:
     status: not-started
   routine-row:
     status: not-started
+  routine-details:
+    status: not-started
   skill-row:
     status: not-started
   empty-state:
