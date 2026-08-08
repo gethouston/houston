@@ -49,7 +49,10 @@ export function ChatMessageEditor({
   };
 
   return (
-    <div className="w-full rounded-[28px] bg-input px-4 py-3">
+    // Bordered + filled so the editing state is unmistakable against the
+    // panel in both themes: the field border tells you it is an input, the
+    // input fill steps it off the canvas (in dark, #1e1e1e over the glass).
+    <div className="w-full rounded-[28px] border border-line-input bg-input px-4 py-3">
       <textarea
         aria-label={labels?.editor ?? "Edit message"}
         className="max-h-64 w-full resize-none bg-transparent text-base leading-6 text-ink outline-none placeholder:text-ink-muted"

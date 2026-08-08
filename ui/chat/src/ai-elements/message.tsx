@@ -121,7 +121,12 @@ export const MessageContent = ({
       <div
         className={cn(
           "flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-base leading-6",
-          "group-[.is-user]:ml-auto group-[.is-user]:rounded-[22px] group-[.is-user]:bg-ink group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:text-input dark:group-[.is-user]:bg-chip-subtle dark:group-[.is-user]:text-ink",
+          // The user's own bubble: pure-white medium-weight text over the
+          // fill in BOTH themes (PRODUCT-1217) — the near-white grays the
+          // surfaces use (input / ink) read dull at bubble size, and 500
+          // matches the perceived weight of ChatGPT's bubble type on the
+          // system stack.
+          "group-[.is-user]:ml-auto group-[.is-user]:rounded-[22px] group-[.is-user]:bg-ink group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:font-medium group-[.is-user]:text-bubble-text dark:group-[.is-user]:bg-chip-subtle",
           // An incoming bubble (teammate or bubbled agent turn): the recessed
           // chip fill instead of near-ink, plus a hairline — over the
           // near-white canvas (light) and the glass canvas (dark) the fill

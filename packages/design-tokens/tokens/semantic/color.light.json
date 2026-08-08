@@ -23,6 +23,7 @@
     "chip-solid-hover": { "$value": "{color.neutral.150}" },
     "chip-text": { "$value": "{color.neutral.950}" },
     "chip-subtle": { "$value": "{color.alpha.ink-a035}" },
+    "bubble-text": { "$value": "{color.base.white}" },
     "line": { "$value": "{color.brand.border-wash}" },
     "line-input": { "$value": "{color.neutral.200}" },
     "focus": { "$value": "{color.neutral.950}" },
