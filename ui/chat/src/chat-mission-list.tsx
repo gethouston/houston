@@ -63,13 +63,13 @@ export function ChatMissionList({
   if (missions.length === 0) return null;
   const Chevron = open ? ChevronDown : ChevronRight;
   return (
-    <div className="flex flex-col gap-1.5">
-      {/* px-2 matches the rows' own padding, so the title and the status dots
-          share one left edge. */}
+    // The same bordered-card clothes the sibling composer offers wear
+    // (chat-suggest-reusable-card), so the drawer reads as one surface.
+    <div className="flex flex-col rounded-xl border border-line/60 bg-input p-1.5">
       <button
         aria-controls={listId}
         aria-expanded={open}
-        className="flex items-center gap-1.5 self-start rounded-full px-2 py-1 text-ink-muted text-xs outline-none transition-colors hover:bg-hover hover:text-ink focus-visible:ring-[3px] focus-visible:ring-focus/50"
+        className="flex items-center justify-center gap-1.5 self-center rounded-full px-2 py-1 text-ink-muted text-xs outline-none transition-colors hover:bg-hover hover:text-ink focus-visible:ring-[3px] focus-visible:ring-focus/50"
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
@@ -80,7 +80,7 @@ export function ChatMissionList({
       {open ? (
         <ul
           aria-labelledby={headingId}
-          className="flex max-h-40 flex-col gap-0.5 overflow-y-auto"
+          className="mt-1 flex max-h-40 flex-col gap-0.5 overflow-y-auto"
           id={listId}
         >
           {missions.map((mission) => (
