@@ -161,8 +161,9 @@ export function ChatMessages({
         {afterMessages}
       </ConversationContent>
       <ConversationMap
-        actions={conversationMap?.actions}
         conversationLength={messages.length}
+        findToken={conversationMap?.findToken}
+        returnFocusRef={conversationMap?.returnFocusRef}
         labels={conversationMap?.labels}
         moments={moments}
         onBackToLatest={conversationMap?.onBackToLatest}

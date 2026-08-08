@@ -1,5 +1,4 @@
 import {
-  Button,
   ConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
@@ -22,9 +21,14 @@ interface ConversationActionsMenuProps {
   canFind: boolean;
   labels: ResolvedConversationMapLabels;
   onFind: () => void;
-  triggerRef: RefObject<HTMLButtonElement | null>;
+  triggerRef?: RefObject<HTMLButtonElement | null>;
 }
 
+/**
+ * The chat header's overflow menu: find-in-chat plus the mission actions.
+ * Lives in the detail-panel header row (left of the people stack), so the
+ * trigger mirrors the plain close button beside it rather than a pill Button.
+ */
 export function ConversationActionsMenu({
   actions,
   canFind,
@@ -39,27 +43,28 @@ export function ConversationActionsMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
+          <button
             aria-label={labels.moreActions}
-            className="absolute right-4 top-3 z-20 rounded-full text-ink-muted hover:text-ink"
+            className="size-7 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-hover/50 data-[state=open]:bg-hover/50 data-[state=open]:text-ink transition-colors shrink-0"
             ref={triggerRef}
-            size="icon-sm"
             type="button"
-            variant="ghost"
           >
             <MoreHorizontalIcon aria-hidden className="size-4" />
-          </Button>
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="ht-hairline w-48 border-line shadow-none"
+          className="w-52"
           onCloseAutoFocus={(event) => {
+            // The menu's Radix close cycle must finish before the search
+            // popover opens, or the popover's focus trap and the menu's exit
+            // focus fight; onCloseAutoFocus is the first safe moment.
             if (!openFindAfterMenuCloses.current) return;
             event.preventDefault();
             openFindAfterMenuCloses.current = false;
             onFind();
           }}
-          sideOffset={8}
+          sideOffset={6}
         >
           <DropdownMenuItem
             disabled={!canFind}
@@ -67,12 +72,12 @@ export function ConversationActionsMenu({
               openFindAfterMenuCloses.current = true;
             }}
           >
-            <SearchIcon aria-hidden className="size-4" />
+            <SearchIcon aria-hidden />
             {labels.find}
           </DropdownMenuItem>
           {actions?.onMoveToDone ? (
             <DropdownMenuItem onSelect={actions.onMoveToDone}>
-              <CheckCircle2Icon aria-hidden className="size-4" />
+              <CheckCircle2Icon aria-hidden />
               {labels.moveToDone}
             </DropdownMenuItem>
           ) : null}
@@ -83,7 +88,7 @@ export function ConversationActionsMenu({
                 onSelect={() => setConfirmingDelete(true)}
                 variant="destructive"
               >
-                <Trash2Icon aria-hidden className="size-4" />
+                <Trash2Icon aria-hidden />
                 {labels.delete}
               </DropdownMenuItem>
             </>

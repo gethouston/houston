@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import {
   type ConversationMapLabels,
@@ -15,7 +22,10 @@ export interface ConversationMapProps {
   moments: ConversationMoment[];
   conversationLength: number;
   labels?: ConversationMapLabels;
-  actions?: ConversationMapActions;
+  /** Increment to open the search popover from outside (the header menu's "Find"). */
+  findToken?: number;
+  /** The header trigger; the search returns focus there when it closes. */
+  returnFocusRef?: RefObject<HTMLButtonElement | null>;
   onOpenChange?: (open: boolean, conversationLength: number) => void;
   onMomentClick?: (
     moment: ConversationMoment,
@@ -37,7 +47,8 @@ export function ConversationMap({
   moments,
   conversationLength,
   labels,
-  actions,
+  findToken,
+  returnFocusRef,
   onOpenChange,
   onMomentClick,
   onBackToLatest,
@@ -60,6 +71,17 @@ export function ConversationMap({
     },
     [conversationLength, onOpenChange],
   );
+
+  // The header "Find" action lives outside this subtree; it requests the
+  // search by bumping the token. Seeding the ref with the mount-time value
+  // keeps a conversation switch (this component remounts per session) from
+  // replaying the previous request.
+  const seenFindToken = useRef(findToken);
+  useEffect(() => {
+    if (findToken === undefined || findToken === seenFindToken.current) return;
+    seenFindToken.current = findToken;
+    changeOpen(true);
+  }, [findToken, changeOpen]);
 
   useEffect(() => {
     const root = scrollRef.current;
@@ -127,7 +149,6 @@ export function ConversationMap({
   return (
     <ConversationMapPanel
       activeMessageKey={activeMessageKey}
-      actions={actions}
       availableMomentCount={moments.length}
       hasQuery={searchResult.hasQuery}
       labels={resolvedLabels}
@@ -139,6 +160,7 @@ export function ConversationMap({
       open={open}
       query={query}
       rangesById={searchResult.rangesById}
+      returnFocusRef={returnFocusRef}
     />
   );
 }

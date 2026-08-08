@@ -59,6 +59,23 @@ export function deriveConversationMoments(
   return moments;
 }
 
+/**
+ * True when at least one message can anchor the chat search. Lets the header
+ * menu (rendered outside ChatMessages) decide whether "Find" is actionable
+ * without waiting on the map's own derivation.
+ */
+export function hasConversationMoments(messages: ChatMessage[]): boolean {
+  return (
+    deriveConversationMoments(
+      messages.map((message, sourceIndex) => ({
+        kind: "message" as const,
+        message,
+        sourceIndex,
+      })),
+    ).length > 0
+  );
+}
+
 /** Filter every loaded message before compacting the visible map. */
 export function searchConversationMoments(
   moments: ConversationMoment[],

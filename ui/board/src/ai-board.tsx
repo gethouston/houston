@@ -1,13 +1,20 @@
 import type {
   ChatPanelProps,
+  ConversationMapActions,
   FeedItem,
   MessageMention,
   ToolsAndCardsProps,
 } from "@houston-ai/chat";
-import { ChatPanel } from "@houston-ai/chat";
+import {
+  ChatPanel,
+  ConversationActionsMenu,
+  feedItemsToMessages,
+  hasConversationMoments,
+  resolveConversationMapLabels,
+} from "@houston-ai/chat";
 import { SplitView } from "@houston-ai/layout";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { BulkActionBarLabels, BulkMoveTarget } from "./bulk-action-bar";
 import { BulkActionBar } from "./bulk-action-bar";
@@ -628,28 +635,58 @@ export function AIBoard({
   // Blank while a selected chat's card hasn't resolved yet — never the
   // new-conversation label on an existing chat.
   const panelTitle = panelItem?.title ?? (selectedId ? "" : "New conversation");
+  // The chat's overflow menu lives in the detail-panel HEADER (left of the
+  // people stack), not inside the chat body: the trigger is board-rendered
+  // chrome while the search popover it opens stays inside ChatMessages. The
+  // two halves talk through `findToken` (menu → open search) and
+  // `conversationTriggerRef` (search close → focus returns to the trigger).
+  const conversationTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [findToken, setFindToken] = useState(0);
+  const conversationActions: ConversationMapActions | undefined = panelItem
+    ? {
+        onMoveToDone: showsCardAction({
+          itemStatus: panelItem.status,
+          actionStatuses: approveStatuses,
+          handled: !!onApprove,
+          hasCustomActions: !!actions,
+        })
+          ? () => onApprove?.(panelItem)
+          : undefined,
+        onDelete: onDelete ? () => handleDelete(panelItem) : undefined,
+        deleteTitle:
+          cardLabels?.deleteTitle?.(panelItem.title) ??
+          `Delete "${panelItem.title}"?`,
+        deleteDescription:
+          cardLabels?.deleteDescription ??
+          "This item and its history will be permanently removed.",
+      }
+    : undefined;
+  const canFindInConversation = useMemo(
+    () => hasConversationMoments(feedItemsToMessages(activeFeed)),
+    [activeFeed],
+  );
+  const conversationMapLabels = useMemo(
+    () => resolveConversationMapLabels(conversationMap?.labels),
+    [conversationMap?.labels],
+  );
+  const conversationMenu =
+    conversationMap &&
+    (canFindInConversation ||
+      conversationActions?.onDelete ||
+      conversationActions?.onMoveToDone) ? (
+      <ConversationActionsMenu
+        actions={conversationActions}
+        canFind={canFindInConversation}
+        labels={conversationMapLabels}
+        onFind={() => setFindToken((token) => token + 1)}
+        triggerRef={conversationTriggerRef}
+      />
+    ) : null;
   const panelConversationMap = conversationMap
     ? {
         ...conversationMap,
-        actions: panelItem
-          ? {
-              onMoveToDone: showsCardAction({
-                itemStatus: panelItem.status,
-                actionStatuses: approveStatuses,
-                handled: !!onApprove,
-                hasCustomActions: !!actions,
-              })
-                ? () => onApprove?.(panelItem)
-                : undefined,
-              onDelete: onDelete ? () => handleDelete(panelItem) : undefined,
-              deleteTitle:
-                cardLabels?.deleteTitle?.(panelItem.title) ??
-                `Delete "${panelItem.title}"?`,
-              deleteDescription:
-                cardLabels?.deleteDescription ??
-                "This item and its history will be permanently removed.",
-            }
-          : undefined,
+        findToken,
+        returnFocusRef: conversationTriggerRef,
       }
     : undefined;
 
@@ -750,7 +787,14 @@ export function AIBoard({
       peopleLabel={cardLabels?.people}
       peopleExpandLabel={cardLabels?.peopleExpand}
       closeLabel={cardLabels?.closePanel}
-      actions={panelItem ? panelActions?.(panelItem) : undefined}
+      actions={
+        conversationMenu || panelItem ? (
+          <>
+            {panelItem ? panelActions?.(panelItem) : null}
+            {conversationMenu}
+          </>
+        ) : undefined
+      }
     >
       <div className="flex-1 min-h-0 flex flex-col">
         <ChatPanel

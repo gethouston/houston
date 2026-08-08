@@ -1,13 +1,10 @@
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { RenderLinkProps } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ChatAuthorLabels } from "./author-label";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatProcessLabels } from "./chat-process-block";
-import type {
-  ConversationMapActions,
-  ConversationMapLabels,
-} from "./conversation-map";
+import type { ConversationMapLabels } from "./conversation-map";
 import type { ConversationMoment } from "./conversation-map-model";
 import type { ChatMessage } from "./feed-to-messages";
 import type { TurnEndSummary } from "./turn-tools";
@@ -108,7 +105,10 @@ export interface ChatMessagesProps {
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: {
     labels?: ConversationMapLabels;
-    actions?: ConversationMapActions;
+    /** Increment to open the chat search (the header menu's "Find"). */
+    findToken?: number;
+    /** The header trigger; the search returns focus there when it closes. */
+    returnFocusRef?: RefObject<HTMLButtonElement | null>;
     onOpenChange?: (open: boolean, conversationLength: number) => void;
     onMomentClick?: (
       moment: ConversationMoment,

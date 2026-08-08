@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { getChatDisplayItems } from "../src/chat-process-groups.ts";
 import {
   deriveConversationMoments,
+  hasConversationMoments,
   searchConversationMoments,
 } from "../src/conversation-map-model.ts";
 import type { ChatMessage } from "../src/feed-to-messages.ts";
@@ -122,6 +123,31 @@ describe("deriveConversationMoments", () => {
     equal(moments.length, 40);
     equal(moments[0].messageKey, "assistant-0");
     equal(moments.at(-1)?.messageKey, "assistant-39");
+  });
+});
+
+describe("hasConversationMoments", () => {
+  it("is true once any message can anchor the chat search", () => {
+    equal(
+      hasConversationMoments([
+        message({ key: "user-0", from: "user", content: "Find competitors" }),
+      ]),
+      true,
+    );
+  });
+
+  it("is false for an empty conversation", () => {
+    equal(hasConversationMoments([]), false);
+  });
+
+  it("is false when no message yields a moment", () => {
+    equal(
+      hasConversationMoments([
+        message({ key: "assistant-0", content: "" }),
+        message({ key: "system-1", from: "system", content: "housekeeping" }),
+      ]),
+      false,
+    );
   });
 });
 

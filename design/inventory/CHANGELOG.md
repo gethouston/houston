@@ -7,7 +7,8 @@ Every `version` bump in `inventory.yaml` needs a matching entry here (enforced b
 
 Added the conversation map search inside the chat's compact three-dot actions
 menu, alongside status-aware Move to done and confirmation-gated Delete
-actions. Find opens an unfiltered map of prior messages by default, then narrows
+actions. The trigger lives in the chat panel header, left of the people stack
+and close control. Find opens an unfiltered map of prior messages by default, then narrows
 it with a case- and accent-insensitive text filter. Results jump to and
 highlight the selected message, while the footer returns to the latest reply.
 

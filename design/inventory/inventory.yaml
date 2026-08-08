@@ -101,8 +101,9 @@ components:
     states: [closed, actions-open, open-unfiltered, filtered, no-results, current-message]
     variants: [conversation-overlay]
     behavior: >-
-      The chat's three-dot menu offers Find plus status-aware mission actions.
-      Choosing Find shows the compact conversation map before a query is entered.
+      The chat header's three-dot menu (left of the people stack and close
+      control) offers Find plus status-aware mission actions. Choosing Find
+      shows the compact conversation map before a query is entered.
       Filtering is case- and accent-insensitive across every loaded message;
       selecting a result scrolls to and briefly highlights that message. Delete
       remains confirmation-gated.

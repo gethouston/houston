@@ -13,8 +13,6 @@ import { ChatMessages } from "./chat-messages";
 import type { ChatPanelProps } from "./chat-panel-types";
 import { deriveStatus } from "./chat-status";
 import { ChatThinkingIndicator } from "./chat-thinking-indicator";
-import { ConversationActionsMenu } from "./conversation-actions-menu";
-import { resolveConversationMapLabels } from "./conversation-map-labels";
 import type { MessageMention } from "./types";
 import {
   DEFAULT_TOO_MANY_FILES_NOTICE,
@@ -86,18 +84,9 @@ export function ChatPanel({
   conversationMap,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const emptyActionsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const status = statusProp ?? deriveStatus(feedItems, isLoading);
   const messages = useMemo(() => feedItemsToMessages(feedItems), [feedItems]);
   const hasMessages = messages.length > 0;
-  const emptyConversationLabels = useMemo(
-    () => resolveConversationMapLabels(conversationMap?.labels),
-    [conversationMap?.labels],
-  );
-  const emptyConversationActions =
-    !hasMessages && status === "ready" && conversationMap?.actions
-      ? conversationMap.actions
-      : undefined;
 
   // Attachments state lives at ChatPanel level so the ENTIRE panel can act as
   // a drop target (not just the composer). When the parent passes controlled
@@ -166,16 +155,6 @@ export function ChatPanel({
         title={composerLabels?.dropTitle}
         description={composerLabels?.dropDescription}
       />
-      {emptyConversationActions?.onDelete ||
-      emptyConversationActions?.onMoveToDone ? (
-        <ConversationActionsMenu
-          actions={emptyConversationActions}
-          canFind={false}
-          labels={emptyConversationLabels}
-          onFind={() => undefined}
-          triggerRef={emptyActionsTriggerRef}
-        />
-      ) : null}
       {onBack && (
         <div className="max-w-3xl mx-auto w-full px-4 pt-3">
           <button

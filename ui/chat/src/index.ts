@@ -244,16 +244,23 @@ export {
   ChatThinkingIndicator,
   type ChatThinkingIndicatorProps,
 } from "./chat-thinking-indicator";
+export { ConversationActionsMenu } from "./conversation-actions-menu";
 export type {
+  ConversationMapActions,
   ConversationMapLabels,
   ConversationMapProps,
 } from "./conversation-map";
 export { ConversationMap } from "./conversation-map";
+export type { ResolvedConversationMapLabels } from "./conversation-map-labels";
+export { resolveConversationMapLabels } from "./conversation-map-labels";
 export type {
   ConversationMoment,
   ConversationMomentType,
 } from "./conversation-map-model";
-export { deriveConversationMoments } from "./conversation-map-model";
+export {
+  deriveConversationMoments,
+  hasConversationMoments,
+} from "./conversation-map-model";
 // === Dictation ===
 export type {
   DictationControl,
