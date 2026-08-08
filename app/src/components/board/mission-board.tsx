@@ -2,6 +2,7 @@ import { AIBoard, type MessageMention } from "@houston-ai/board";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
+import { childMissionsOf, parentMissionOf } from "../../lib/child-missions";
 import { perfSpans } from "../../lib/perf-spans";
 import { modelAcceptsImages } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
@@ -95,12 +96,34 @@ export function MissionBoard({
   // Per-agent chat panel features (skills, model selector, tool/link
   // renderers) scoped to the active agent — already the shared source of
   // truth for both views.
+  // The missions the OPEN chat started (PRODUCT-1244): read off the board's own
+  // items, so they stay live through the same invalidation the cards use.
+  const childMissions = useMemo(
+    () =>
+      childMissionsOf(source.allItems, source.selectedSessionKey, {
+        running: t("dashboard:columns.running"),
+        needsYou: t("dashboard:columns.needsYou"),
+        done: t("dashboard:columns.done"),
+      }),
+    [source.allItems, source.selectedSessionKey, t],
+  );
+  // The inverse: when the OPEN chat is itself agent-started, the mission it
+  // was started from — the "Go to main mission" bar's target.
+  const parentMission = useMemo(
+    () => parentMissionOf(source.allItems, source.selectedSessionKey),
+    [source.allItems, source.selectedSessionKey],
+  );
   const panel = useAgentChatPanel({
     agent: source.activeAgent,
     agentDef: source.activeAgentDef,
     selectedSessionKey: source.selectedSessionKey,
     onSelectSession: source.onSelectSession,
     draftScope: source.draftScope,
+    childMissions,
+    parentMission,
+    // Opening a child (or the parent) is the board's ordinary selection: the
+    // panel swaps to that mission's chat, exactly as clicking its card would.
+    onOpenChildMission: source.setSelectedId,
   });
   const overrides = useMemo(
     () => ({

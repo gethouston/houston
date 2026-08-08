@@ -239,8 +239,12 @@ test("the preview grows to full screen and shrinks back (PRODUCT-1231)", async (
   // claim the viewport — and get the small window back.
   await dialog.getByRole("button", { name: "Expand" }).click();
   await expect(dialog.getByRole("button", { name: "Shrink" })).toBeVisible();
-  const expandedBox = await dialog.boundingBox();
-  expect(expandedBox?.width ?? 0).toBeGreaterThan(compact);
+  // Poll rather than sample once, same as the shrink leg below: the toggle
+  // flips before the 200ms width transition has settled, so a single sample
+  // can still read the compact width.
+  await expect
+    .poll(async () => (await dialog.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(compact);
 
   // Expanding must not clip what it was expanded to show: the frame still
   // scrolls, it is only taller.

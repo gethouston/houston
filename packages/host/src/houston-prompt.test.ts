@@ -34,6 +34,21 @@ test("routine guidance maps recurring requests to routines + names the file", ()
   expect(p).toContain(".houston/routines/routines.json");
 });
 
+test("missions guidance teaches the start/review/move loop (PRODUCT-1244)", () => {
+  const p = houstonSystemPrompt();
+  expect(p).toContain("## How-To Guidance: Missions");
+  // The four tools, and the standalone-prompt rule (the child cannot see the
+  // parent conversation).
+  expect(p).toContain("start_mission");
+  expect(p).toContain("list_missions");
+  expect(p).toContain("read_mission");
+  expect(p).toContain("update_mission_status");
+  expect(p).toContain("cannot see this conversation");
+  // The guardrails: depth 1 and never moving the current mission.
+  expect(p).toContain("cannot start further missions");
+  expect(p).toContain("the mission this chat belongs to");
+});
+
 test("skill guidance uses the current SKILL.md layout and omits legacy fields", () => {
   const p = houstonSystemPrompt();
   expect(p).toContain(".agents/skills/<skill-name>/SKILL.md");

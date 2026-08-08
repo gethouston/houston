@@ -13,7 +13,8 @@
     "description": "This item and its history will be permanently removed."
   },
   "tags": {
-    "routine": "Routine"
+    "routine": "Routine",
+    "agentStarted": "Started by agent"
   },
   "people": {
     "label": "People on this mission",

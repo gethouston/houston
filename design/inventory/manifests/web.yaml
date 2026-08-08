@@ -126,6 +126,14 @@ components:
     status: implemented
     ref: "@houston-ai/chat ChatSuggestActions (ai-elements/suggestion)"
 
+  chat-mission-list:
+    status: implemented
+    ref: "@houston-ai/chat ChatMissionList; children resolved in app/src/lib/child-missions.ts"
+
+  chat-parent-mission-link:
+    status: implemented
+    ref: "@houston-ai/chat ChatParentMissionLink; parent resolved in app/src/lib/child-missions.ts"
+
   interaction-answers-message:
     status: partial
     ref: "@houston-ai/chat interaction-answers-message (decode) + UserInteractionAnswersMessage; encode in app/"

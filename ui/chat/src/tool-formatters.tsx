@@ -13,7 +13,9 @@ import {
   FolderIcon,
   FolderSearchIcon,
   GlobeIcon,
+  KanbanSquareIcon,
   PencilIcon,
+  RocketIcon,
   SearchIcon,
   TerminalIcon,
   WrenchIcon,
@@ -50,6 +52,12 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   find: FolderSearchIcon,
   ls: FolderIcon,
   run_code: TerminalIcon,
+  // Mission-board tools (PRODUCT-1244): the rocket marks a mission launch,
+  // the board glyph the check/review/move actions.
+  start_mission: RocketIcon,
+  list_missions: KanbanSquareIcon,
+  read_mission: KanbanSquareIcon,
+  update_mission_status: KanbanSquareIcon,
 };
 
 /**

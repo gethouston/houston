@@ -41,6 +41,17 @@ test("createActivity with author stamps created_by + single-entry contributors",
   expect(a.contributors?.[0]).not.toBe(ALICE);
 });
 
+test("createActivity carries the agent-started origin when given, omits it otherwise", () => {
+  const started = createActivity(
+    { title: "Deck", origin_session_key: "conv-parent" },
+    "act-1",
+    NOW,
+  );
+  expect(started.origin_session_key).toBe("conv-parent");
+  const plain = createActivity({ title: "Deck" }, "act-2", NOW);
+  expect("origin_session_key" in plain).toBe(false);
+});
+
 test("createActivity author without name omits the name key", () => {
   const a = createActivity({ title: "Deck" }, "act-1", NOW, {
     user_id: "u-bob",

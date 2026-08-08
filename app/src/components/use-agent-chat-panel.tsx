@@ -26,6 +26,11 @@ import {
   type ChatInteractionAnswer,
   ChatInteractionCard,
   type ChatInteractionStep,
+  ChatMissionList,
+  type ChatMissionListItem,
+  type ChatMissionListLabels,
+  ChatParentMissionLink,
+  type ChatParentMissionLinkLabels,
   ChatPlanReadyCard,
   type ChatPlanReadyLabels,
   ChatSuggestActions,
@@ -215,7 +220,23 @@ interface UseAgentChatPanelArgs {
    *  board) wires its handoff here. Never called when the send fails — the
    *  failure surfaces on its own and the user stays where they are. */
   onSendReactivated?: () => void;
+  /** The missions this chat started (PRODUCT-1244), already resolved + ordered
+   *  by the surface that owns the board data. Listed above the composer in
+   *  place of the generic follow-up bubbles. Omit on surfaces with no board
+   *  behind them (the setup chats) and nothing renders. */
+  childMissions?: ChatMissionListItem[];
+  /** The way back UP (PRODUCT-1244): when THIS chat is a mission the agent
+   *  started, the mission it was started from. Renders the "Go to main
+   *  mission" bar above the composer. A chat never has both: spawned missions
+   *  can't spawn, so this and {@link childMissions} are mutually exclusive. */
+  parentMission?: { id: string; title: string } | null;
+  /** Opens a mission by id — the board's own selection. Serves both the
+   *  child-mission rows and the parent link. */
+  onOpenChildMission?: (id: string) => void;
 }
+
+/** Stable empty default, so the no-children case never re-runs the memo. */
+const EMPTY_CHILD_MISSIONS: ChatMissionListItem[] = [];
 
 function resolveCatalogProvider(model: string): string | null {
   return (
@@ -329,8 +350,11 @@ export function useAgentChatPanel({
   draftScope,
   initialTurnMode,
   onSendReactivated,
+  childMissions = EMPTY_CHILD_MISSIONS,
+  parentMission,
+  onOpenChildMission,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
-  const { t, i18n } = useTranslation(["board", "chat", "teams"]);
+  const { t, i18n } = useTranslation(["board", "chat", "dashboard", "teams"]);
   const { processLabels, getThinkingMessage, thinkingIndicator } =
     useChatDisplayLabels();
   const queryClient = useQueryClient();
@@ -1569,6 +1593,16 @@ export function useAgentChatPanel({
     [t],
   );
 
+  const missionListLabels = useMemo<ChatMissionListLabels>(
+    () => ({ heading: t("chat:childMissions.heading") }),
+    [t],
+  );
+
+  const parentMissionLabels = useMemo<ChatParentMissionLinkLabels>(
+    () => ({ label: t("chat:childMissions.goToMain") }),
+    [t],
+  );
+
   const saveReusable = useCallback(
     (step: SuggestReusableStep) => {
       // No path / session guard here: `sendInteractionMessage` owns that check.
@@ -1621,7 +1655,28 @@ export function useAgentChatPanel({
     // thing the composer slot can honestly offer.
     if (connectAiComposer.node)
       return { mode: "replace" as const, node: connectAiComposer.node };
-    if (!agent || !activeInteraction) return none;
+    // Mission navigation (PRODUCT-1244): a coordinating chat lists the
+    // missions it started; a mission the agent started links back to the chat
+    // that started it (the two are mutually exclusive — spawned missions
+    // can't spawn). Either REPLACES the generic follow-up bubbles — but never
+    // a BLOCKING step: an unanswered question still owns the composer below.
+    const missionsNode = childMissions.length ? (
+      <ChatMissionList
+        labels={missionListLabels}
+        missions={childMissions}
+        onOpen={(id) => onOpenChildMission?.(id)}
+      />
+    ) : parentMission ? (
+      <ChatParentMissionLink
+        labels={parentMissionLabels}
+        onOpen={() => onOpenChildMission?.(parentMission.id)}
+        title={parentMission.title}
+      />
+    ) : null;
+    if (!agent || !activeInteraction)
+      return missionsNode
+        ? { mode: "above" as const, node: missionsNode }
+        : none;
     // Abandoned interactions stay suppressed while this conversation is open,
     // whatever their kind, and the composer stands alone.
     if (interactionKey === abandonedInteractionKey) return none;
@@ -1637,12 +1692,20 @@ export function useAgentChatPanel({
         activeInteraction.steps,
         dismissedSuggestReusable,
       );
-      if (actions.kind === "none" && reusable.kind === "none") return none;
+      if (actions.kind === "none" && reusable.kind === "none")
+        return missionsNode
+          ? { mode: "above" as const, node: missionsNode }
+          : none;
       return {
         mode: "above",
         node: (
           <div className="flex flex-col gap-3">
-            {actions.kind === "bubbles" ? (
+            {/* The children list stands in for the follow-up bubbles: on a
+                coordinating chat the concrete next step is reviewing what it
+                started, not a generic prompt. The save-as-reusable offer is a
+                different kind of offer and still rides below. */}
+            {missionsNode}
+            {actions.kind === "bubbles" && !missionsNode ? (
               <ChatSuggestActions
                 actions={actions.step.actions}
                 labels={suggestActionsLabels}
@@ -1975,6 +2038,11 @@ export function useAgentChatPanel({
     planReadyLabels,
     suggestReusableLabels,
     suggestActionsLabels,
+    missionListLabels,
+    parentMissionLabels,
+    childMissions,
+    parentMission,
+    onOpenChildMission,
     startPlan,
     saveReusable,
     interactionLabels,

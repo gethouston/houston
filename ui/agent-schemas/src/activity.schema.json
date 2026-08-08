@@ -27,6 +27,10 @@
       "updated_at": { "type": "string", "format": "date-time" },
       "provider": { "type": "string" },
       "model": { "type": "string" },
+      "origin_session_key": {
+        "type": "string",
+        "description": "The conversation this mission was started from, present only when the agent created the mission itself. Set by Houston, not by the agent."
+      },
       "created_by": {
         "type": "string",
         "description": "The human who created this mission. Set by Houston, not by the agent."
