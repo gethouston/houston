@@ -170,10 +170,10 @@ Two tiers:
 
 | Tier | What you write | What you get |
 |------|---------------|-------------|
-| **JSON-only** | `houston.json` + `CLAUDE.md` | A new agent. Renders the standard shell (Activity, Routines, Files, Job Description, Integrations). |
+| **JSON-only** | `houston.json` + `CLAUDE.md` | A new agent in a team, listed in the sidebar. Its missions land on the team's Mission Control board; its routines, files and configuration live in that team's sections. |
 | **Workspace template** | `workspace.json` + agents folder | Multiple agents, one import. |
 
-Every agent shows the same five tabs. The list lives in `app/src/agents/standard-tabs.ts` if you want to read it in code.
+An agent has no screen of its own. Everything about it is a slice of its **team**: work on the team's Mission Control board, schedules under Routines, its documents under Files, and everything configurable (job description, memory, skills, who may use it, which apps and models it may reach) on one per-agent settings page reached from Team Settings.
 
 ---
 

@@ -90,13 +90,6 @@
       "allowedEmptyCategory": "Ainda não há apps permitidos nesta categoria.",
       "addHeading": "Adicionar apps",
       "readOnlyNote": "Alguém que gerencia este agente pode alterar quais apps ele pode usar."
-    },
-    "notAllowed": {
-      "title": "Não permitido para este agente",
-      "body": "Estes aplicativos estão conectados à sua conta, mas este agente não tem permissão para usá-los. Peça ao seu administrador para habilitá-los para este agente.",
-      "bodyManager": "Estes aplicativos estão conectados à sua conta, mas este agente não tem permissão para usá-los. Ative-os em Permissões.",
-      "enableInPermissions": "Ative em Permissões",
-      "badge": "Não permitido"
     }
   },
   "org": {
@@ -473,7 +466,9 @@
         "workspaceBody": "Crie um e ele aparecerá aqui.",
         "teamTitle": "Esta equipe ainda não tem agentes",
         "teamBody": "Arraste um agente para ela na barra lateral para adicionar um."
-      }
+      },
+      "navUnavailable": "Ainda não conseguimos abrir as configurações deste agente",
+      "navUnavailableBody": "A equipe deste agente ainda está carregando. Espere um momento e tente de novo. Se continuar acontecendo, reporte como um erro."
     }
   }
 }

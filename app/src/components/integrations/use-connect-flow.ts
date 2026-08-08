@@ -35,7 +35,7 @@ export type { ConnectNotice, ConnectStep } from "./connect-flow-run";
  * The connect / reconnect hand-off. It binds this surface to the ONE shared
  * flow state (`stores/connect-flow.ts`) rather than owning a private copy, so:
  *
- *  - a connect started in chat is the SAME flow the Integrations tab renders,
+ *  - a connect started in chat is the SAME flow the Integrations page renders,
  *    and per-toolkit single-flight holds across every surface (a second caller
  *    for the same app JOINS the running flow and observes its outcome);
  *  - flows are PER TOOLKIT and genuinely concurrent — connecting Slack never

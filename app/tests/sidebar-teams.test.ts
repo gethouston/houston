@@ -143,13 +143,12 @@ describe("sidebarSelectedAgentId", () => {
     OWNER_SECTIONS,
   );
 
-  it("selects the team view's agent filter, not the store's current agent", () => {
+  it("selects the team view's agent filter", () => {
     assert.equal(
       sidebarSelectedAgentId({
         viewMode: TEAM_VIEW_ID,
         highlight,
         activeTeam: team("g1", ["a1", "a2"]),
-        currentAgentId: "a9",
       }),
       "a1",
     );
@@ -169,7 +168,6 @@ describe("sidebarSelectedAgentId", () => {
             OWNER_SECTIONS,
           ),
           activeTeam: team("g1", ["a1", "a2"]),
-          currentAgentId: "a9",
         }),
         "a1",
         teamSection,
@@ -186,7 +184,6 @@ describe("sidebarSelectedAgentId", () => {
         viewMode: TEAM_VIEW_ID,
         highlight: resolveTeamHighlight(openTeam, OWNER_SECTIONS),
         activeTeam: team("g1", ["a1", "a2"]),
-        currentAgentId: "a9",
       }),
       null,
     );
@@ -200,7 +197,6 @@ describe("sidebarSelectedAgentId", () => {
           OWNER_SECTIONS,
         ),
         activeTeam: team("g1", ["a1", "a2"]),
-        currentAgentId: "a9",
       }),
       "a1",
     );
@@ -215,7 +211,6 @@ describe("sidebarSelectedAgentId", () => {
         viewMode: TEAM_VIEW_ID,
         highlight: resolveTeamHighlight(openTeam, MEMBER_SECTIONS),
         activeTeam: team("g1", ["a1", "a2"]),
-        currentAgentId: "a9",
       }),
       "a1",
     );
@@ -227,7 +222,6 @@ describe("sidebarSelectedAgentId", () => {
         viewMode: TEAM_VIEW_ID,
         highlight: { teamId: "g1", section: "mission-control", agentId: null },
         activeTeam: team("g1", ["a1"]),
-        currentAgentId: "a9",
       }),
       null,
     );
@@ -241,7 +235,6 @@ describe("sidebarSelectedAgentId", () => {
         viewMode: TEAM_VIEW_ID,
         highlight,
         activeTeam: team("g1", ["a2"]),
-        currentAgentId: "a9",
       }),
       null,
     );
@@ -251,21 +244,8 @@ describe("sidebarSelectedAgentId", () => {
         viewMode: TEAM_VIEW_ID,
         highlight,
         activeTeam: null,
-        currentAgentId: "a9",
       }),
       null,
-    );
-  });
-
-  it("selects the open agent on an agent tab", () => {
-    assert.equal(
-      sidebarSelectedAgentId({
-        viewMode: "chat",
-        highlight: { teamId: null, section: null, agentId: null },
-        activeTeam: null,
-        currentAgentId: "a9",
-      }),
-      "a9",
     );
   });
 
@@ -275,7 +255,6 @@ describe("sidebarSelectedAgentId", () => {
         viewMode: "dashboard",
         highlight: { teamId: null, section: null, agentId: null },
         activeTeam: null,
-        currentAgentId: "a9",
       }),
       null,
     );

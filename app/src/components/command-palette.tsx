@@ -13,12 +13,13 @@ import {
 import { Keyboard, LayoutDashboard, Plus, Settings, Store } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { useAllConversations } from "../hooks/queries";
 import { useSidebarLayoutValue } from "../hooks/use-sidebar-layout";
 import { flatSidebarOrder } from "../lib/agent-order";
 import { analytics } from "../lib/analytics";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
+import { ARCHIVED_STATUS } from "../lib/mission-selection";
+import { openAgentBoard } from "../lib/open-agent";
 import { shortcutLabel } from "../lib/shortcuts";
 import { isMissionBoardView } from "../lib/top-level-views";
 import { useAgentStore } from "../stores/agents";
@@ -75,12 +76,13 @@ export function CommandPalette() {
     if (!convos) return [];
     return (
       convos
-        // Archived missions live in the per-agent Archived tab, not the
+        // Archived missions live in Mission Control's archived view, and
+        // guided-setup chats are never missions — neither belongs in the
         // quick-switcher's recent list.
         .filter(
           (c) =>
             c.type === "activity" &&
-            c.status !== "archived" &&
+            c.status !== ARCHIVED_STATUS &&
             !isSetupChatMode(c.agent),
         )
         .slice()
@@ -101,7 +103,9 @@ export function CommandPalette() {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;
     setCurrentAgent(agent);
-    setViewMode(DEFAULT_TAB_ID);
+    // An agent has no screen of its own any more: "jump to Kai" means Kai's
+    // team board, filtered to Kai.
+    openAgentBoard(agent.id);
     close();
   }
 
@@ -112,12 +116,12 @@ export function CommandPalette() {
       close();
       return;
     }
-    // Same handoff `session-notifications.ts` uses: switch to the
-    // agent's activity tab, then publish the mission id via
-    // `activityPanelId`. BoardTab consumes it and selects the card,
-    // which opens the right panel.
+    // Same handoff `session-notifications.ts` uses: open the board the
+    // mission's card lives on (its agent's team, filtered to that agent), then
+    // publish the mission id via `activityPanelId`. The board on the glass
+    // consumes it and selects the card, which opens the right panel.
     setCurrentAgent(agent);
-    setViewMode("activity");
+    openAgentBoard(agent.id);
     setActivityPanelId(missionId);
     close();
   }
@@ -129,23 +133,21 @@ export function CommandPalette() {
     setTimeout(() => {
       const ui = useUIStore.getState();
       // Mission Control and a team's board both own the handler already. The
-      // guard is two-part because the `team` view also renders Team Settings
-      // and the no-agents empty state, neither of which mounts a board — with
-      // no registered handler this has to fall through to the per-agent path
-      // instead of silently doing nothing.
+      // guard is two-part because the `team` view also renders Team Settings,
+      // Routines, Files and the no-agents empty state, none of which mounts a
+      // board — with no registered handler this has to fall through to the
+      // navigate-then-fire path instead of silently doing nothing.
       if (isMissionBoardView(ui.viewMode) && ui.onStartMission) {
         ui.onStartMission();
-      } else if (useAgentStore.getState().current) {
-        if (ui.viewMode !== "activity") {
-          ui.setViewMode("activity");
-          setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
-        } else {
-          ui.onStartMission?.();
-        }
-      } else {
-        ui.setViewMode("dashboard");
-        setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
+        return;
       }
+      // Anywhere else (Settings, Files, the Store): go to the board that owns
+      // the handler. The agent the user last worked with names the team board
+      // to land on; with none, the cross-agent one.
+      const current = useAgentStore.getState().current;
+      if (current) openAgentBoard(current.id);
+      else ui.setViewMode("dashboard");
+      setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
     }, 30);
   }
 

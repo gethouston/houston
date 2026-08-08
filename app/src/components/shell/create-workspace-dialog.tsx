@@ -6,13 +6,13 @@ import {
 } from "@houston-ai/core";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { pickDefaultProviderModel } from "../../lib/default-provider-model";
+import { openAgentBoard } from "../../lib/open-agent";
 import { providerIsConnected } from "../../lib/provider-connection";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -28,7 +28,6 @@ export function CreateAgentDialog() {
   const { t } = useTranslation(["shell", "agents"]);
   const open = useUIStore((s) => s.createAgentDialogOpen);
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
-  const uiTourActive = useUIStore((s) => s.uiTourActive);
   const agentDefs = useAgentCatalogStore((s) => s.agents);
   const existingAgents = useAgentStore((s) => s.agents);
   const createAgent = useAgentStore((s) => s.create);
@@ -152,7 +151,7 @@ export function CreateAgentDialog() {
     // cold-starting — awaiting them here would re-block the dialog for the whole
     // pod warm-up (HOU-649). The agent already exists and is current; finish its
     // setup in the background. Each surfaces its own error toast on failure.
-    useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
+    openAgentBoard(created.id);
     void finishAgentSetup(agentPath, { ...kickoffPin, routine: null });
     // Auto-start the agent's self-setup mission in the normal shell: it
     // introduces itself and interviews the user, persisting what they say into
@@ -182,11 +181,6 @@ export function CreateAgentDialog() {
       onOpenChange={(o) => {
         if (!o) handleClose();
       }}
-      // Modal mode applies pointer-events:none to everything outside the
-      // dialog. While the tour is on, that would block the tour's own
-      // Next/Back buttons (rendered outside DialogContent). Drop modality
-      // for the tour and let the tour's overlay own the focus instead.
-      modal={!uiTourActive}
     >
       <DialogContent
         className={
@@ -194,16 +188,6 @@ export function CreateAgentDialog() {
             ? "sm:max-w-[560px] p-0 gap-0 overflow-hidden"
             : "sm:max-w-[900px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
         }
-        // Even with modal=false, Radix still calls outside-dismiss on
-        // pointer-down outside the content. Suppress while the tour is
-        // active so clicking the tour's Next button doesn't kill the
-        // dialog mid-step; the tour closes it explicitly on the outro.
-        onPointerDownOutside={(e) => {
-          if (uiTourActive) e.preventDefault();
-        }}
-        onEscapeKeyDown={(e) => {
-          if (uiTourActive) e.preventDefault();
-        }}
       >
         {step === 1 ? (
           <>

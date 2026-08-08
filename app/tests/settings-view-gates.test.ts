@@ -2,33 +2,22 @@ import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, it } from "node:test";
 import { useOrgNav } from "../src/components/organization/org-nav-store.ts";
-import { usePermissionsNav } from "../src/components/permissions/permissions-nav-store.ts";
 import { clearSettingsSectionPin } from "../src/components/settings/settings-nav-pins.ts";
 
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
 afterEach(() => {
-  usePermissionsNav.getState().clearRequested();
   useOrgNav.getState().clearRequestedTab();
 });
 
 /**
- * The one-shot deep-link pins are set by the CALLER, right before it opens the
+ * The one-shot deep-link pin is set by the CALLER, right before it opens the
  * section, and consumed by the section on render. A section that never renders
  * (the blocked fallback drops it) leaves its pin behind for the whole session,
- * so the next legitimate open drills into a stale agent / tab.
+ * so the next legitimate open lands on a stale tab.
  */
 describe("clearSettingsSectionPin", () => {
-  it("drops the Permissions agent pin when Permissions is the dropped section", () => {
-    usePermissionsNav.getState().requestAgentDetail("agent-1", "integrations");
-
-    clearSettingsSectionPin("permissions");
-
-    strictEqual(usePermissionsNav.getState().requestedAgentId, null);
-    strictEqual(usePermissionsNav.getState().requestedSection, null);
-  });
-
   it("drops the Admin tab pin when Admin is the dropped section", () => {
     useOrgNav.getState().requestTab("billing");
 
@@ -38,13 +27,12 @@ describe("clearSettingsSectionPin", () => {
   });
 
   it("touches no pin for a section that owns none", () => {
-    usePermissionsNav.getState().requestAgentDetail("agent-1");
     useOrgNav.getState().requestTab("billing");
 
     clearSettingsSectionPin("timeWorked");
+    clearSettingsSectionPin("permissions");
     clearSettingsSectionPin("profile");
 
-    strictEqual(usePermissionsNav.getState().requestedAgentId, "agent-1");
     strictEqual(useOrgNav.getState().requestedTab, "billing");
   });
 });
@@ -127,7 +115,7 @@ describe("settings-view source", () => {
 });
 
 describe("workspace-shell analytics", () => {
-  const src = read("../src/components/shell/workspace-shell.tsx");
+  const src = read("../src/components/shell/use-workspace-view-guards.ts");
 
   it("leaves the settings tab_opened event to SettingsView", () => {
     ok(
@@ -137,10 +125,11 @@ describe("workspace-shell analytics", () => {
   });
 
   it("picks the Settings tour copy from the org gate", () => {
-    ok(src.includes("showOrganization"), "reads the org gate in the shell");
+    const tour = read("../src/components/shell/workspace-tour.ts");
+    ok(tour.includes("showOrganization"), "reads the org gate in the tour");
     ok(
-      src.includes('t("shell:uiTour.steps.settings.bodyTeam")') &&
-        src.includes('t("shell:uiTour.steps.settings.body")'),
+      tour.includes('t("shell:uiTour.steps.settings.bodyTeam")') &&
+        tour.includes('t("shell:uiTour.steps.settings.body")'),
       "two bodies, chosen by the gate",
     );
   });

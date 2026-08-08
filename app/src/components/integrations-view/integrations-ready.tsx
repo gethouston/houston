@@ -51,8 +51,8 @@ interface IntegrationsReadyProps {
  *
  * The catalog shows the FULL Houston catalog. Policy is per agent only (the
  * org-wide app ceiling was removed), so the global page has no ceiling to
- * apply and never locks a row — locked browse rows live only on the per-agent
- * Integrations tab, keyed to that agent's ceiling.
+ * apply and never locks a row; the per-agent ceiling is applied where it is
+ * edited, in the agent settings page's Apps section.
  */
 export function IntegrationsReady({
   reconnectNotice,
@@ -62,9 +62,9 @@ export function IntegrationsReady({
   const apps = useConnectedApps();
   const connectFlow = useConnectFlow({});
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
-  // Same transport (and query key) as the CustomIntegrationsSection inside the
-  // tab, so the chip and the tab body can never disagree — and the tab shows
-  // behind the hosted gateway, which proxies only the per-agent custom routes.
+  // Same transport (and query key) as the CustomIntegrationsSection in the
+  // Custom tab, so the chip and that tab's body can never disagree — and it
+  // works behind the hosted gateway, which proxies only per-agent custom routes.
   const customTransportAgentId = useCustomTransportAgentId();
   const custom = useCustomIntegrationsFor(customTransportAgentId);
   const selection = useConnectionSelection(apps);

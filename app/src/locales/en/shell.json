@@ -56,9 +56,6 @@
       }
     }
   },
-  "tabActions": {
-    "newMission": "New mission"
-  },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Native Sentry smoke triggered",
     "nativeTriggeredDescription": "Check Sentry for sentry-native-stack-smoke-test."
@@ -89,53 +86,41 @@
         "title": "Spaces",
         "body": "Your personal agents, and teams you share with others. Switch spaces anytime from here."
       },
-      "assistant": {
-        "title": "Your agents",
-        "body": "Every agent in this workspace lives here. Switch between them with one click."
-      },
-      "board": {
-        "title": "The agent's workspace",
-        "body": "This is where the selected agent works. Everything you see on the right is scoped to that agent."
-      },
-      "newMission": {
-        "title": "Start a new chat",
-        "body": "Click here to open a fresh conversation. Each one becomes a mission card."
-      },
-      "tabActivity": {
-        "title": "Activity",
-        "body": "The board of every conversation with this agent. Running, needs you, done."
-      },
-      "tabRoutines": {
-        "title": "Routines",
-        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Set up anything else to happen on its own here."
-      },
-      "tabIntegrations": {
-        "title": "Integrations",
-        "body": "Tools your agents can use, like Gmail and Calendar. Connections live here, shared across all your agents."
-      },
-      "tabFiles": {
-        "title": "Files",
-        "body": "Docs your assistant can read or share with you. Drop anything here for context."
-      },
-      "tabArchived": {
-        "title": "Archived",
-        "body": "Use this button to revisit missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
-      },
-      "tabContext": {
-        "title": "Context",
-        "body": "Your assistant's job description and everything it has learned. Update them any time."
-      },
-      "tabSkills": {
-        "title": "Skills",
-        "body": "Teach your assistant reusable skills it can apply across its missions."
+      "teams": {
+        "title": "Your teams",
+        "body": "Every agent lives in a team. Open a team to see everything its agents are up to."
       },
       "missionControl": {
         "title": "Mission Control",
         "body": "When you add more agents, this becomes the single board across all of them. One place to see everything."
       },
+      "teamBoard": {
+        "title": "The team's board",
+        "body": "Every mission this team's agents are on, in one place. Click a card to open its chat."
+      },
+      "newMission": {
+        "title": "Start a new chat",
+        "body": "Click here to open a fresh conversation. Each one becomes a mission card."
+      },
+      "archivedMissions": {
+        "title": "Archived",
+        "body": "Missions the team has wrapped up live in here. Send a message to reopen one and it comes right back to the board."
+      },
+      "teamRoutines": {
+        "title": "Routines",
+        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Everything this team runs on its own lives here."
+      },
+      "teamFiles": {
+        "title": "Files",
+        "body": "Docs the team's agents can read or share with you. Drop anything here for context."
+      },
       "navIntegrations": {
         "title": "Connect your apps",
         "body": "Link Gmail, Calendar, and hundreds more here. Every agent can use what you connect."
+      },
+      "navSkills": {
+        "title": "Skills",
+        "body": "Things you teach your agents to do the same way every time. Add a skill here and pick who learns it."
       },
       "aiHub": {
         "title": "AI Models",
@@ -146,10 +131,6 @@
         "body": "Your account, your workspace, and your app preferences all live here.",
         "bodyTeam": "Your account, your workspace, your app preferences, and your team's admin, permissions and time worked all live here."
       },
-      "appTour": {
-        "title": "Replay the tour",
-        "body": "Forget how something works? Click this any time to run the tour again."
-      },
       "newAgent": {
         "title": "Add another agent",
         "body": "You can spin up another agent here any time, or keep working with the one you have."
@@ -157,6 +138,10 @@
       "agentStore": {
         "title": "The Agent Store",
         "body": "Browse ready-made agents here, free to install, and bring one into your workspace with a click."
+      },
+      "appTour": {
+        "title": "Replay the tour",
+        "body": "Forget how something works? Click this any time to run the tour again."
       },
       "outro": {
         "title": "Now go build something amazing",

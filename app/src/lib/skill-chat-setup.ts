@@ -1,6 +1,6 @@
 /**
  * The setup chat behind a custom skill — its persistent conversation
- * (HOU-791, the Automations-tab experience applied to Skills). Each custom
+ * (HOU-791, a routine's setup-chat experience applied to Skills). Each custom
  * skill gets exactly one: building it with the agent starts the chat, and
  * reopening the skill resumes the very same conversation instead of a manual
  * editor.

@@ -10,17 +10,17 @@ import {
 const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
-const headerSource = read("../src/components/tabs/archived-header.tsx");
-const tabSource = read("../src/components/tabs/archived-tab.tsx");
-const boardTabSource = read("../src/components/tabs/board-tab.tsx");
 const toolbarSource = read("../src/components/mission-control-toolbar.tsx");
-const mcArchivedSource = read(
+const actionsSource = read("../src/components/mission-toolbar-actions.tsx");
+const archivedSource = read(
   "../src/components/board/mission-control-archived.tsx",
 );
 const backButtonSource = read("../src/components/board/board-back-button.tsx");
-const entryButtonSource = read(
-  "../src/components/shell/archived-board-button.tsx",
-);
+const handoffSource = read("../src/hooks/use-archived-handoff.ts");
+
+// There is ONE archive now — the cross-agent one, rendered by the global board
+// and by every team's. The per-agent Archived tab went away with the agent tab
+// shell, so these pin the shape on the surface that survived.
 
 describe("archived mission layout", () => {
   it("keeps a centered column and a full-width left rail variant", () => {
@@ -30,46 +30,45 @@ describe("archived mission layout", () => {
     strictEqual(KANBAN_LIST_RAIL_LEFT_CLASS_NAME, "w-full");
   });
 
-  it("left-aligns the archived list and its header on the shared rail", () => {
-    ok(
-      headerSource.includes(
-        'import { KanbanListRail } from "@houston-ai/board";',
-      ),
-    );
-    ok(headerSource.includes('<KanbanListRail align="left">'));
-    ok(tabSource.includes('listAlign="left"'));
+  it("left-aligns the archived list", () => {
+    ok(archivedSource.includes('listAlign="left"'));
   });
 });
 
 /**
  * HOU-1043: the way into the archive and the way back out both have to be
- * readable at a glance, and identical across the per-agent tab and Mission
- * Control. These assertions pin the shape that guarantees it.
+ * readable at a glance. These assertions pin the shape that guarantees it.
  */
 describe("archived return path", () => {
-  it("shares one labelled back control across both archived surfaces", () => {
+  it("uses one labelled back control, never an icon-only mystery", () => {
     // Text label, not an icon-only button whose name hides on a tooltip.
     ok(backButtonSource.includes("{label}"));
     ok(!backButtonSource.includes("Tooltip"));
-    ok(headerSource.includes("<BoardBackButton"));
     ok(toolbarSource.includes("<BoardBackButton"));
-    ok(mcArchivedSource.includes("onBack={onShowActive}"));
+    ok(archivedSource.includes("onBack={onShowActive}"));
   });
 
-  it("renders the archived header, and its exit, unconditionally", () => {
-    // No early return and no visibility gate: an EMPTY archive must still
-    // show the way home. Only the search field is conditional.
-    ok(!headerSource.includes("return null"));
-    ok(headerSource.includes("{searchable && ("));
+  it("keeps the archived ENTRY out of the archive itself", () => {
+    // The entry pill is opt-in by callback, and the archive's own toolbar
+    // never passes it — so it can never double as a mystery exit.
+    ok(actionsSource.includes("{onShowArchived && ("));
+    ok(!archivedSource.includes("onShowArchived="));
   });
 
-  it("keeps the archived entry pill labelled and out of the archive", () => {
-    ok(entryButtonSource.includes("{label}"));
-    ok(!entryButtonSource.includes("Tooltip"));
-    // Entry lives on the ACTIVE branch only, so it can never double as a
-    // mystery exit the way the old ring-highlighted toggle did.
-    const activeBranch = boardTabSource.slice(boardTabSource.indexOf(") : ("));
-    ok(activeBranch.includes("<ArchivedBoardButton"));
-    ok(boardTabSource.includes("onBack={showActive}"));
+  it("hands a re-activated mission back to THIS screen's board", () => {
+    // A send inside an archived chat re-activates the mission, so the user has
+    // to move with it — to the board they came from, never to some other
+    // screen: `focusBoard` is the caller's own "show the active board".
+    ok(handoffSource.includes("focusBoard();"));
+    ok(handoffSource.includes("setActivityPanelId(id, { forceOpen: true })"));
+    ok(
+      !handoffSource.includes("setViewMode"),
+      "the handoff never picks a screen of its own",
+    );
+    ok(
+      archivedSource.includes(
+        "useMissionControlArchivedPanel(data, onShowActive)",
+      ),
+    );
   });
 });

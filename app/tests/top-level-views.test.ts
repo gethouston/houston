@@ -4,11 +4,18 @@ import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts"
 import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
 import { STORE_VIEW_ID } from "../src/components/store-view/id.ts";
 import { SETTINGS_SECTION_IDS } from "../src/lib/settings-sections.ts";
+import type { TeamSectionId, TeamView } from "../src/lib/teams-model.ts";
+import {
+  DEFAULT_TEAM_ID,
+  resolveTeamSection,
+  visibleTeamSectionsForTeam,
+} from "../src/lib/teams-model.ts";
 import {
   AI_HUB_VIEW_ID,
   blockedTopLevelView,
   DASHBOARD_VIEW_ID,
   isActiveTopLevelView,
+  isMissionBoardSurface,
   isMissionBoardView,
   isTopLevelView,
   SETTINGS_VIEW_ID,
@@ -74,6 +81,104 @@ describe("isMissionBoardView", () => {
       "chat",
     ]) {
       strictEqual(isMissionBoardView(id), false, id);
+    }
+  });
+});
+
+describe("isMissionBoardSurface", () => {
+  // The keyboard bug this predicate exists for: the arrow keys and bare Enter
+  // used to gate on `isMissionBoardView`, which is true for the WHOLE team view.
+  // On Routines / Files / Team Settings the handler still called
+  // `preventDefault()` and then fired nothing — no list scrolling, no Enter on
+  // the focused control, no feedback at all.
+
+  it("is a board on the global Mission Control, whatever the stale team section says", () => {
+    // `teamSection` is sticky store state: it keeps the last team's section
+    // while the user is on the dashboard, and must not speak for it.
+    for (const teamSection of [
+      null,
+      "mission-control",
+      "routines",
+      "files",
+      "settings",
+    ] as const) {
+      strictEqual(
+        isMissionBoardSurface({ viewMode: DASHBOARD_VIEW_ID, teamSection }),
+        true,
+        `${teamSection}`,
+      );
+    }
+  });
+
+  it("is a board on a team whose open section is Mission Control", () => {
+    strictEqual(
+      isMissionBoardSurface({
+        viewMode: TEAM_VIEW_ID,
+        teamSection: "mission-control",
+      }),
+      true,
+    );
+  });
+
+  it("is a board on a team with no section chosen yet", () => {
+    // `null` is what the store holds before any section row is clicked, and
+    // `resolveTeamSection` renders the team's FIRST section for it.
+    strictEqual(
+      isMissionBoardSurface({ viewMode: TEAM_VIEW_ID, teamSection: null }),
+      true,
+    );
+  });
+
+  it("agrees with resolveTeamSection on what a null section renders", () => {
+    // The two rules are duplicated across modules on purpose (this one has no
+    // capabilities and no team to consult), so pin them together: if the team
+    // view ever opens on something other than Mission Control, this fails
+    // instead of the predicate silently claiming the arrow keys on a non-board
+    // section.
+    const team: TeamView = {
+      id: DEFAULT_TEAM_ID,
+      name: "Acme",
+      agents: [],
+      isDefault: true,
+    };
+    strictEqual(
+      resolveTeamSection(visibleTeamSectionsForTeam(null, team), null),
+      "mission-control",
+    );
+  });
+
+  it("is NOT a board on a team's Routines, Files or Team Settings", () => {
+    // The regression. Each of these renders a list or a form, never a board, so
+    // the arrows and Enter must be left to the surface underneath.
+    for (const teamSection of [
+      "routines",
+      "files",
+      "settings",
+    ] satisfies TeamSectionId[]) {
+      strictEqual(
+        isMissionBoardSurface({ viewMode: TEAM_VIEW_ID, teamSection }),
+        false,
+        teamSection,
+      );
+    }
+  });
+
+  it("is NOT a board on any other view", () => {
+    for (const viewMode of [
+      SETTINGS_VIEW_ID,
+      AI_HUB_VIEW_ID,
+      STORE_VIEW_ID,
+      SKILLS_VIEW_ID,
+      INTEGRATIONS_VIEW_ID,
+      "activity",
+      "chat",
+    ]) {
+      // Even carrying a Mission Control section from the last team visited.
+      strictEqual(
+        isMissionBoardSurface({ viewMode, teamSection: "mission-control" }),
+        false,
+        viewMode,
+      );
     }
   });
 });

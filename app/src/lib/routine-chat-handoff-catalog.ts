@@ -6,7 +6,7 @@
  * handoff assembly so each file stays focused and under the size cap.
  */
 
-import type { TriggerEventOption } from "../components/tabs/automation-intake/types.ts";
+import type { TriggerEventOption } from "../components/agent/automation-intake/types.ts";
 
 /** Rough character budget for the serialized event catalog embedded in the
  *  prompt: enough to guide the agent, small enough to leave room for the chat. */

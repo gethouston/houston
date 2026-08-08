@@ -7,7 +7,7 @@ import {
   toTriggerSummaries,
   triggerBoundRoutineIds,
   withTriggerTimeouts,
-} from "../src/components/tabs/routine-trigger-maps.ts";
+} from "../src/components/agent/routine-trigger-maps.ts";
 
 const routine = (over) => ({
   id: "r1",

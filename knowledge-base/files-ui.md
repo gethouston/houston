@@ -5,30 +5,33 @@ breadcrumb trail) and a Finder-style list (the whole workspace, browsed by expan
 the host's `files*` routes. Library code lives in `@houston-ai/agent` (props-only,
 i18n-agnostic); everything app-specific (queries, toasts, pickers, translations) lives in `app/`.
 
-## Two surfaces, one wiring
+## One surface, one wiring
 
-**TWO surfaces show an agent's files** — the per-agent **Files tab**
-(`app/src/components/tabs/files-tab.tsx`) and the team view's **Files section**
+**ONE surface shows an agent's files**: the team view's **Files section**
 (`app/src/components/team-view/team-files/`, one agent at a time behind an agent dropdown;
-`knowledge-base/teams-ui.md`). There can only ever be one answer to "what happens when I rename
-this file", so neither owns any wiring of its own. Both mount
-**`AgentFilesSurface`** (`app/src/components/tabs/agent-files/agent-files-surface.tsx`) and add
-nothing but their frame: the tab a pane, the team section its dropdown band.
+`knowledge-base/teams-ui.md`). The per-agent **Files tab** (`components/agent/files-tab.tsx`)
+was deleted with the rest of the agent tab shell, so the section is the SOLE mount of
+**`AgentFilesSurface`** (`app/src/components/agent/agent-files/agent-files-surface.tsx`) and
+adds nothing but its frame: the dropdown band above the browser. The surface stays a
+self-contained mount rather than being folded into the section, because there can only ever
+be one answer to "what happens when I rename this file" and a second home for files (an
+agent settings section, a share view) must reuse it rather than fork it.
 
-`app/src/components/tabs/agent-files/`:
+`app/src/components/agent/agent-files/`:
 
 | File | Role |
 |------|------|
-| `agent-files-surface.tsx` | What both surfaces mount: `FilesBrowser` + the overlays + the read-failed strip. Mount it KEYED on the agent id — an open preview, a pending move conflict and a half-answered delete confirm all belong to the agent that owns them (the view mode is the exception: it lives in the UI store, so it is shared) |
+| `agent-files-surface.tsx` | What the section mounts: `FilesBrowser` + the overlays + the read-failed strip. Mount it KEYED on the agent id — an open preview, a pending move conflict and a half-answered delete confirm all belong to the agent that owns them (the view mode is the exception: it lives in the UI store, so it is shared) |
 | `use-agent-files.tsx` | The whole wiring: the read, every mutation, the label bundles, the four overlays, and `error` / `refetch` / `isFetching` for the strip. Returns props rather than rendering |
 | `agent-files-capabilities.ts` | `useLocalFilesAccess` — the ONE answer to "can this deployment hand a file to the OS, and which directory", so a web build and a cloud pod can't offer Reveal on one screen and Download on the other |
 | `agent-files-downloads.ts` | The three save-to-my-machine paths (one file, a folder as a zip, the workspace as a zip), split out only for the size cap |
 
-It is also what keeps the read **cache-shared**: the tree comes from `useFiles(agent.folderPath)`
-— key `queryKeys.files(agentPath)` — so both surfaces read the SAME cache entry, every mutation's
-invalidation lands in one place, and `use-agent-invalidation.ts`'s `FilesChanged` refreshes
-whichever of them is on screen. There is no second key and no cross-agent fan-out anywhere in the
-Files story (a team's files are never merged into one tree — see `teams-ui.md`).
+It is also what keeps the read **cache-shared** with every other files reader: the tree comes
+from `useFiles(agent.folderPath)` — key `queryKeys.files(agentPath)`, the same entry chat
+attachments and the preview dialog resolve against — so every mutation's invalidation lands
+in one place and `use-agent-invalidation.ts`'s `FilesChanged` refreshes the section for free.
+There is no second key and no cross-agent fan-out anywhere in the Files story (a team's files
+are never merged into one tree — see `teams-ui.md`).
 
 **A failed read is stated, never swallowed.** An empty tree and a broken tree look identical, so
 `AgentFilesSurface` renders `AgentReadsFailed` (`app/src/components/agent-reads-failed.tsx`, the
@@ -85,7 +88,7 @@ zero states all use the pane's FULL width with one shared gutter. There is no re
 
 **The page is borderless — completely.** There is no rule under the header band, none under the
 list's column headers, none between list rows, and no ring around the view tabs; vertical rhythm is
-spacing alone. The ONLY hairlines left anywhere in the tab are the deliberate outlines that carry
+spacing alone. The ONLY hairlines left anywhere in the surface are the deliberate outlines that carry
 meaning: the search field, the `FileTypeTile`, popovers/menus, and every focus ring. Nothing
 structural is drawn, which is exactly what lets the list's ONE painted surface — the hover fill
 under the row you are pointing at — be the thing the eye follows.
@@ -123,7 +126,7 @@ either: the root has no path to state.
 
 A **single click opens** a file, in both views (`onOpen` → OS-open on a co-located desktop, else
 `FilePreviewDialog`). Enter on a focused row/card does the same. There is no click-to-select and no
-selected ring anywhere in the tab: a click that only highlighted was a dead click, and it collided
+selected ring anywhere in the surface: a click that only highlighted was a dead click, and it collided
 with the gesture people actually wanted. Rename moved entirely to the kebab / right-click menu
 (it used to be Enter-on-selected). Folders are unchanged: click navigates in the grid, toggles
 expansion in the list.
@@ -253,7 +256,7 @@ The web adapter implements them in `packages/web/src/engine-adapter/client/proje
 
 Capability gating: `onReveal` / `onOpen`-in-OS and `onRevealAgent` exist only on a co-located
 desktop (`isTauri()` + `isCoLocatedEngine()` + `capabilities.revealInOs` + a real `localDir`);
-otherwise the tab offers in-app preview, per-file Download and Download all. Drag-move and
+otherwise the surface offers in-app preview, per-file Download and Download all. Drag-move and
 folder upload require the TS host (`newEngineActive()`).
 
 ## Upload path
@@ -312,7 +315,7 @@ the workspace, so an empty root is the empty-workspace state and an empty folder
 on its own row); the search miss and the loading skeleton are shared.
 
 `ui/agent` imports no i18n: every string is a `labels`/`menuLabels` prop with an English default,
-and `app/src/components/tabs/files-tab-labels.ts` fills them from `t()` over the `agents`
+and `app/src/components/agent/files-tab-labels.ts` fills them from `t()` over the `agents`
 namespace (the failure strip is app chrome and speaks `shell:agentReads.*`) (`app/src/locales/<lang>/agents.json`, `files.*`). Adding a string = add the key in
 en/es/pt + the label field.
 
@@ -339,7 +342,12 @@ as the New menu's items.
 - `packages/web/e2e/team-routines-files.spec.ts` — the team Files section over the same wiring:
   ONE agent's real tree, the dropdown switching which, arriving on the rail's pinned agent, a write
   landing on that agent, and a failed read naming it instead of showing an empty tree.
-- `packages/web/e2e/files.spec.ts` — 35 tests over the whole tab against `@houston/fake-host`:
+- `packages/web/e2e/files.spec.ts` — 35 tests over the whole surface against
+  `@houston/fake-host`. It navigates the way a user does now: `openTeamSection(page, "Files")`
+  (`e2e/support/team-nav.ts`) instead of clicking an agent tab, and switches whose files are
+  shown through the section's own "Whose files" dropdown (a `getByRole("group")` lookup — the
+  dropdown re-keys `AgentFilesSurface` without unmounting the section, which is itself under
+  test). Coverage:
   grid/list navigation, click-opens-preview, the HTML preview (uploaded `.html` opens as a
   RENDERED sandboxed iframe — script ran, `sandbox="allow-scripts"` asserted, no source dump),
   the checkbox gutter (partial/indeterminate/select-all,

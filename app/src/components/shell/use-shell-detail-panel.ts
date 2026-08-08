@@ -4,8 +4,9 @@ import { useDetailPanelContainer } from "./detail-panel-context";
 
 /**
  * The one shell-level detail-panel wiring, shared by every surface that opens
- * the big right-hand panel: the Activity mission board (`mission-board.tsx`),
- * the Routines tab's chat (`routines-tab.tsx`), the Archived lists, and the
+ * the big right-hand panel: the mission board (`mission-board.tsx`), the
+ * Routines section's chat (`team-view/team-routines/team-routine-panel.tsx`),
+ * the Archived lists, and the
  * skill / integration setup chats. It hands back the shell's portal container
  * (`workspace-shell` renders it as a sibling of `<main>` while
  * `missionPanelOpen` is true) plus the setter that opens and closes it.
@@ -15,8 +16,9 @@ import { useDetailPanelContainer } from "./detail-panel-context";
  *
  * `setPanelOpen` is scoped to THIS caller's claim (see `detail-panel-owners`):
  * the panel is open while at least one surface claims it, so a hidden-but-
- * mounted tab releasing its claim can't clobber the tab the user just opened,
- * and a tab that stops rendering the panel can't strand it open and empty.
+ * mounted screen releasing its claim can't clobber the screen the user just
+ * opened, and a screen that stops rendering the panel can't strand it open and
+ * empty.
  * Unmounting releases the claim automatically.
  */
 export function useShellDetailPanel() {

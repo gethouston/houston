@@ -36,7 +36,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { finishAgentSetup } from "../../lib/agent-setup";
@@ -45,6 +44,7 @@ import { analytics } from "../../lib/analytics";
 import { pickDefaultProviderModel } from "../../lib/default-provider-model";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-report";
+import { openAgentBoard } from "../../lib/open-agent";
 import { providerIsConnected } from "../../lib/provider-connection";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider, toAgent } from "../../lib/tauri";
@@ -301,7 +301,7 @@ export function ImportAgentWizard() {
           name: installed.agentName,
         }),
       });
-      useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
+      openAgentBoard(installed.agent.id);
       setOpen(false);
       reset();
       void finishAgentSetup(installed.agentPath, {

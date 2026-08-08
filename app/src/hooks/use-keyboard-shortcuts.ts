@@ -1,12 +1,15 @@
 import { useEffect } from "react";
-import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { flatSidebarOrder } from "../lib/agent-order";
+import { openAgentBoard } from "../lib/open-agent";
 import {
   isEmptyEditable,
   isTypingTarget,
   matchShortcut,
 } from "../lib/shortcuts";
-import { isMissionBoardView } from "../lib/top-level-views";
+import {
+  isMissionBoardSurface,
+  isMissionBoardView,
+} from "../lib/top-level-views";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -81,24 +84,29 @@ export function useKeyboardShortcuts() {
         const fire = () => useUIStore.getState().onStartMission?.();
         // Mission Control and a team's board are already showing a cross-agent
         // board that owns the handler: open its picker where the user is. The
-        // guard is two-part because the `team` view also renders Team Settings
-        // and the no-agents empty state, neither of which mounts a board — with
-        // no registered handler the shortcut has to fall through to the
-        // per-agent path instead of silently doing nothing.
+        // guard is two-part because the `team` view also renders Team Settings,
+        // Routines, Files and the no-agents empty state, none of which mounts a
+        // board — with no registered handler the shortcut has to fall through
+        // to the navigate-then-fire path instead of silently doing nothing.
+        //
+        // Deliberately the VIEW-level predicate, not `isMissionBoardSurface`
+        // like the arrow and Enter branches below. This shortcut has somewhere
+        // honest to go when no board is on the glass (navigate to the board that
+        // owns the handler, then fire), so a team's Routines section should fall
+        // through to that path rather than be excluded from the shortcut. The
+        // arrows and Enter have no such fallback, which is why they must not
+        // claim the key on a non-board section. The asymmetry is the point.
         if (isMissionBoardView(ui.viewMode) && ui.onStartMission) {
           fire();
           return;
         }
-        // Per-agent path: ensure the activity tab is mounted (that's what
-        // registers onStartMission), then fire after a tick.
+        // Anywhere else: go to the board that owns the handler — the team board
+        // of the agent the user last worked with — and fire once it has
+        // registered.
         const current = useAgentStore.getState().current;
         if (current && agents.length > 0) {
-          if (ui.viewMode !== "activity") {
-            ui.setViewMode("activity");
-            setTimeout(fire, 50);
-          } else {
-            fire();
-          }
+          openAgentBoard(current.id);
+          setTimeout(fire, 50);
         }
         return;
       }
@@ -124,7 +132,9 @@ export function useKeyboardShortcuts() {
             : (idx + dir + ordered.length) % ordered.length;
         const next = ordered[nextIdx];
         setCurrent(next);
-        useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
+        // ⌘[ / ⌘] walk the rail's agents; each one's home is its team board,
+        // filtered to it.
+        openAgentBoard(next.id);
         return;
       }
 
@@ -144,8 +154,8 @@ export function useKeyboardShortcuts() {
         const ui = useUIStore.getState();
         // Chat panel is open → arrows are a chat-reading affordance,
         // BUT only when focus is in the composer or outside any
-        // editable. A different editable (e.g. the search input in
-        // the tab bar) keeps its own cursor motion.
+        // editable. A different editable (e.g. the board toolbar's
+        // search input) keeps its own cursor motion.
         if (ui.missionPanelOpen) {
           if (isTypingTarget(e)) {
             if (!isComposerFocused()) return;
@@ -158,10 +168,12 @@ export function useKeyboardShortcuts() {
         // Board view → arrows move the highlight. They do NOT open
         // the panel; Enter does that. Yield to any editable so
         // search inputs etc. keep their cursor motion. "Board" is the
-        // global board, a team's board, or an agent's Activity tab.
+        // global board or a team's Mission Control — the SURFACE, not
+        // the view: a team's Routines, Files or Settings section has no
+        // highlight to move, so it must leave the arrow key alone
+        // instead of preventing the page's own scrolling.
         if (isTypingTarget(e)) return;
-        const onBoard =
-          isMissionBoardView(ui.viewMode) || ui.viewMode === "activity";
+        const onBoard = isMissionBoardSurface(ui);
         if (!onBoard || ui.paletteOpen || ui.cheatsheetOpen) return;
         e.preventDefault();
         ui.onBoardNavigate?.(arrowDir);
@@ -174,10 +186,10 @@ export function useKeyboardShortcuts() {
         if (isTypingTarget(e)) return;
         const ui = useUIStore.getState();
         if (ui.missionPanelOpen || ui.paletteOpen || ui.cheatsheetOpen) return;
-        // The global board, a team's board, or an agent's Activity tab.
-        const onBoard =
-          isMissionBoardView(ui.viewMode) || ui.viewMode === "activity";
-        if (!onBoard) return;
+        // The global board or a team's Mission Control. Off a board there is no
+        // card to open, and swallowing Enter would keep it from reaching the
+        // control the user has focused on Routines, Files or Team Settings.
+        if (!isMissionBoardSurface(ui)) return;
         e.preventDefault();
         ui.onBoardOpen?.();
         return;

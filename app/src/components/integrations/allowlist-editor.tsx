@@ -1,11 +1,11 @@
 import { Switch } from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { useId, useMemo, useState } from "react";
-import { AccessChoice } from "../tabs/agent-admin/access-choice.tsx";
+import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import {
   type AccessMode,
   ceilingMode,
-} from "../tabs/agent-admin/agent-admin-row-values.ts";
+} from "../agent/agent-admin/agent-admin-row-values.ts";
 import { AppCatalogGrid } from "./app-catalog-grid";
 import { appDisplay } from "./app-display";
 import { AppRow } from "./app-row";

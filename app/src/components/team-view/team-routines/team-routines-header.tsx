@@ -11,9 +11,9 @@ import { teamFilterAgentId, teamFilterPath } from "../team-agent-filter-model";
  *
  * Two decisions live here.
  *
- * The band stays even when the list is EMPTY, unlike the per-agent tab's, which
- * drops it: the agent dropdown is the only way back out of a filter that
- * emptied the section, so hiding it would be a dead end.
+ * The band stays even when the list is EMPTY: the agent dropdown is the only
+ * way back out of a filter that emptied the section, so hiding it would be a
+ * dead end.
  *
  * Its CREATE button does step aside when the grid is showing its EMPTY state,
  * which carries the same button: two identical filled pills on one screen is not

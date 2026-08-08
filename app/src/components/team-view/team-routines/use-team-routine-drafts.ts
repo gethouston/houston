@@ -27,15 +27,14 @@ export interface TeamRoutineDrafts {
 
 /**
  * The team Routines section's DRAFT read: a fan-out over the SAME per-agent
- * activity key the board and the per-agent Routines tab use
- * (`queryKeys.activity(path)`, from the shared `activityQueryOptions`).
+ * activity key the board uses (`queryKeys.activity(path)`, from the shared
+ * `activityQueryOptions`).
  *
  * It exists because a routine being built in chat is not a routine yet — it is
- * an unclaimed setup ACTIVITY, invisible to every routines read. The per-agent
- * tab lists those as their own resumable rows; a team's list has to as well, or
- * a routine started from the team surface vanishes from the list the moment the
- * person looks away from its chat, under a grid still saying nothing runs on
- * its own yet.
+ * an unclaimed setup ACTIVITY, invisible to every routines read. The list has to
+ * carry those as their own resumable rows, or a routine started from this
+ * surface vanishes from the list the moment the person looks away from its
+ * chat, under a grid still saying nothing runs on its own yet.
  *
  * Same three rules as the section's other fan-outs: no aggregate key (so the
  * tab and this list share one cache entry and one invalidation),

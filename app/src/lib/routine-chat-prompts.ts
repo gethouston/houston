@@ -1,6 +1,6 @@
 /**
- * The Claude-facing kickoffs for an automation's setup chat (the Automations
- * tab). English on purpose (all prompts are); the agent mirrors the user's
+ * The Claude-facing kickoffs for a routine's setup chat (the Routines
+ * section). English on purpose (all prompts are); the agent mirrors the user's
  * language when it answers. They ride the auto-continue marker
  * (`lib/auto-continue-message.ts`): the user never typed anything, so the
  * transcript hides the bubble and the conversation opens with the agent's

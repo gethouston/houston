@@ -85,7 +85,6 @@ permalink: "learn/03-build-your-first-agent.html"
             <tr><td><code>integrations</code></td><td>No</td><td>Composio toolkit slugs your agent uses (e.g. <code>["gmail", "googlecalendar"]</code>)</td></tr>
             <tr><td><code>claudeMd</code></td><td>No</td><td>Inline CLAUDE.md content (alternative to a separate file)</td></tr>
             <tr><td><code>agentSeeds</code></td><td>No</td><td>Files to create in every new agent instance</td></tr>
-            <tr><td><code>agents</code></td><td>No</td><td>Multiple prompt profiles for multi-agent setups</td></tr>
           </tbody>
         </table>
 
@@ -165,29 +164,9 @@ and preparing reports.
           instance with default files:
         </p>
         <pre><code>"agentSeeds": {
-  ".houston/prompts/execution.md": "You are a coding agent...",
-  ".houston/config.json": "{\"mode\": \"default\"}"
+  "reference/tone-of-voice.md": "Write plainly. Never use jargon.",
+  "reference/categories.md": "Travel, Software, Meals, Office"
 }</code></pre>
-
-        <h3>Multi-agent setups</h3>
-        <p>
-          One agent definition can have multiple prompt profiles. Each
-          profile gets its own prompt file and create button:
-        </p>
-        <pre><code>"agents": [
-  {
-    "id": "execution",
-    "name": "Coder",
-    "promptFile": "execution.md",
-    "createLabel": "New Mission"
-  },
-  {
-    "id": "planning",
-    "name": "Planner",
-    "promptFile": "planning.md",
-    "createLabel": "New Planning Session"
-  }
-]</code></pre>
 
         <div class="pager">
           <a href="02-symmetric-participation.html">

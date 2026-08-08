@@ -1,4 +1,4 @@
-import type { KanbanItem, KanbanPerson } from "@houston-ai/board";
+import type { KanbanPerson } from "@houston-ai/board";
 import type { UserProfile } from "../hooks/queries/use-user-profiles";
 
 /**
@@ -75,7 +75,12 @@ export function collectContributorIds(convs: MissionAttribution[]): string[] {
   return Array.from(ids);
 }
 
-/** True when the given person is on this mission's face stack. */
+/**
+ * True when the given person is on this mission's face stack. Strict
+ * membership: a mission nobody is stamped on matches NOBODY. This is what the
+ * board's filter-by-person control asks — picking a teammate's name must show
+ * that teammate's work and nothing else.
+ */
 export function missionMatchesPerson(
   people: KanbanPerson[] | undefined,
   userId: string,
@@ -84,40 +89,26 @@ export function missionMatchesPerson(
 }
 
 /**
- * Build the per-mission face stacks for a single agent's board, keyed by the
- * mission id (the conversation / activity id — the board item's `id`). The
- * cross-agent board maps attribution inline while it builds its cards; the
- * per-agent board maps its cards from the activity list (which carries no
- * attribution) and joins these stacks on afterward, so this keeps that join
- * pure and unit-testable. Missions with no contributors get no entry.
+ * Is this mission MINE? My id is on the face stack, OR the mission carries no
+ * attribution at all. The surviving consumer is `missionIsMine`
+ * (`lib/mission-relevance.ts`) — the ONE rule the completion notification, the
+ * unread badges and the Mentions inbox all ask, so they can never drift apart.
+ *
+ * The unattributed clause is load-bearing and must never be dropped. Missions
+ * created before the gateway stamped `created_by` + `contributors` (legacy /
+ * pre-Teams / any unstamped mission) carry no people, and off multiplayer NO
+ * mission carries any. Without it, a long-tenured user would stop being
+ * notified about their entire history, and single player would go silent
+ * altogether. Treating "nobody is stamped" as "mine by default" keeps that work
+ * visible — which is exactly why this is a separate rule from
+ * {@link missionMatchesPerson}, whose strict membership must NOT gain the
+ * clause.
  */
-export function buildBoardPeopleById(
-  convs: (MissionAttribution & { id: string })[],
-  profiles: ReadonlyMap<string, UserProfile>,
-): Map<string, KanbanPerson[]> {
-  const byId = new Map<string, KanbanPerson[]>();
-  for (const conv of convs) {
-    const people = buildMissionPeople(conv, profiles);
-    if (people.length > 0) byId.set(conv.id, people);
-  }
-  return byId;
-}
-
-/**
- * Attach the server-stamped face stacks (from {@link buildBoardPeopleById}) to
- * board items by id. Identity pass-through when the map is empty — single
- * player / desktop never resolves attribution, so the items array (and its
- * reference) stays byte-identical and memoized children never re-render.
- */
-export function attachBoardPeople(
-  items: KanbanItem[],
-  peopleById: ReadonlyMap<string, KanbanPerson[]>,
-): KanbanItem[] {
-  if (peopleById.size === 0) return items;
-  return items.map((item) => {
-    const people = peopleById.get(item.id);
-    return people ? { ...item, people } : item;
-  });
+export function missionMatchesMe(
+  people: KanbanPerson[] | undefined,
+  selfId: string,
+): boolean {
+  return (people ?? []).length === 0 || missionMatchesPerson(people, selfId);
 }
 
 /**

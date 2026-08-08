@@ -1,7 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { searchMissions } from "../src/components/mission-search.ts";
-import { selectArchived } from "../src/lib/mission-selection.ts";
+import { ARCHIVED_STATUS } from "../src/lib/mission-selection.ts";
 
 const missions = [
   {
@@ -26,6 +26,12 @@ const missions = [
     updatedAt: "2026-01-03T00:00:00Z",
   },
 ];
+
+/** The archived view's own filter (`components/board/use-mission-control-archived.ts`
+ *  narrows the cross-agent sweep to `status === ARCHIVED_STATUS` before the
+ *  toolbar's search ever runs). */
+const selectArchived = <T extends { status: string }>(items: T[]): T[] =>
+  items.filter((m) => m.status === ARCHIVED_STATUS);
 
 describe("archived search wiring", () => {
   it("filters the archived subset before applying search", () => {

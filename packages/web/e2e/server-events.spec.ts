@@ -1,5 +1,6 @@
 import { SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * The host's global reactivity stream (`/v1/events`) must actually reach the
@@ -21,7 +22,7 @@ test("a server-emitted domain event triggers a client refetch", async ({
   });
 
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-routines"]').click();
+  await openTeamSection(page, "Routines");
   await expect(
     page.getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();

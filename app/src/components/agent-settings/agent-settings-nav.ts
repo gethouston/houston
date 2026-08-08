@@ -3,11 +3,17 @@ import { isMultiplayer } from "../../lib/org-roles.ts";
 import type { Agent } from "../../lib/types";
 
 /**
- * The ONE nav model for configuring a single agent. Every surface that shows
- * agent settings — the canonical settings page and the per-agent Context /
- * Admin tabs — names its rail from here, so a section can never mean two
- * different things or be gated two different ways. Pure and DOM-free, so the
- * visibility rules are unit-tested (`app/tests/agent-settings-nav.test.ts`).
+ * The ONE nav model for configuring a single agent.
+ *
+ * There is one surface now — the canonical settings page — reached through two
+ * doors (Team Settings, and Settings > Permissions in multiplayer). It names
+ * its rail from here, so a section can never mean two different things or be
+ * gated two different ways. The per-agent Context / Admin tabs that used to
+ * render their own one-group rails from `contextTabGroups` / `adminTabGroups`
+ * went away with the agent tab shell, and so did those builders.
+ *
+ * Pure and DOM-free, so the visibility rules are unit-tested
+ * (`app/tests/agent-settings-nav.test.ts`).
  */
 export type AgentSettingsSection =
   | "job-description"
@@ -60,7 +66,7 @@ export function contextSections(): AgentSettingsSection[] {
  * The ACCESS sections: who may use the agent, plus the app + model ceilings.
  * People needs multiplayer (single player has no roster to manage); the two
  * ceilings additionally need a Teams-capable host. Empty outside multiplayer,
- * which is why single player hides the Admin tab entirely.
+ * which is why a single-player rail is Context plus Skills and nothing else.
  * The public-API "Connect" card (C10, `capabilities.apiKeys`) was removed from
  * this surface (HOU-806): connecting external apps is a Routines concern now.
  */
@@ -85,23 +91,6 @@ export function agentSettingsGroups(
     { id: "context", sections: contextSections() },
     { id: "permissions", sections: [...agentAccessSections(caps), "skills"] },
   ];
-}
-
-/** The Context tab's rail: the Context sections as ONE unlabelled group. */
-export function contextTabGroups(): AgentSettingsGroup[] {
-  return [{ id: "context", sections: contextSections() }];
-}
-
-/**
- * The Admin tab's rail: the access sections as ONE unlabelled group (no
- * Skills — that tab owns Skills). Empty outside multiplayer, where the tab
- * renders nothing at all.
- */
-export function adminTabGroups(
-  caps: Capabilities | null | undefined,
-): AgentSettingsGroup[] {
-  const sections = agentAccessSections(caps);
-  return sections.length === 0 ? [] : [{ id: "permissions", sections }];
 }
 
 /** Every visible section of a rail, flattened in rail order. */

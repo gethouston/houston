@@ -14,6 +14,8 @@ import { AgentFilterMenu } from "./agent-filter-menu";
 import { mentionCountLabel } from "./board/mentions-inbox-view-model";
 import { MissionPersonFilter } from "./mission-person-filter";
 import { HoustonLogo } from "./shell/experience-card";
+import { NotificationsBell } from "./shell/notifications-bell";
+import { tourAnchor } from "./shell/workspace-tour-steps.ts";
 
 /**
  * The right-hand control cluster of the Mission Control bar: filter by agent,
@@ -24,6 +26,14 @@ import { HoustonLogo } from "./shell/experience-card";
  * the Archived view drops the person filter, and the Mentions inbox drops
  * everything but its own pill. That also keeps the single-player desktop
  * byte-identical to before — no `onToggleMentions`, no Mentions chrome.
+ *
+ * ONE door to mentions per surface. A bar that can switch to the full Mentions
+ * inbox (the global board) shows that pill; a bar that cannot (a team's board,
+ * either archive) shows the {@link NotificationsBell} popover instead, which
+ * lists the same rows and lands on the same missions. Two doors to one inbox
+ * side by side would be chrome pretending to be two features — and dropping the
+ * bell outright would have left a team board with no way to see a mention at
+ * all, now that the per-agent header it used to live in is gone.
  */
 /** The Mentions-inbox entry point the toolbar renders (multiplayer only). */
 export interface MissionsToolbarMentions {
@@ -102,6 +112,7 @@ export function MissionToolbarActions({
           collapsed={collapsed}
         />
       )}
+      {!onToggleMentions && <NotificationsBell />}
       {onToggleMentions && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -133,6 +144,7 @@ export function MissionToolbarActions({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              {...tourAnchor("archivedMissions")}
               // Outline, not ghost: the archive is a place users go looking for,
               // so its door reads as a real control -- one rank below the single
               // filled "New mission" CTA beside it (HOU-1043).
@@ -157,6 +169,7 @@ export function MissionToolbarActions({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              {...tourAnchor("newMission")}
               size={collapsed ? "icon" : "default"}
               className={cn(collapsed && "rounded-full")}
               onClick={onNewMission}

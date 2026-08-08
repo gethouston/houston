@@ -7,7 +7,6 @@ import {
   useCustomTransportAgentId,
   useStartCustomOAuth,
 } from "../../hooks/queries";
-import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { AgentPickerDialog } from "../agent-picker-dialog";
@@ -28,7 +27,7 @@ import { useIntegrationChatSetup } from "./use-integration-chat-setup";
  * Custom integrations (API / MCP servers the app catalog doesn't offer). Two
  * variants, one body: `"section"` (default) is the standalone block with its
  * own heading, embedded by the page's non-ready states; `"tab"` is the body of
- * the Custom integrations tab on the global page AND the per-agent tab. Hidden
+ * the Custom integrations tab on the global Integrations page. Hidden
  * ENTIRELY when the host does not support the feature (list → `null`) or
  * before the list resolves; otherwise always visible so the empty state can
  * invite creation.
@@ -38,9 +37,8 @@ import { useIntegrationChatSetup } from "./use-integration-chat-setup";
  * board use, so this page stays visible). The manual add form and its fork
  * dialog (custom-add-*.tsx) stay in the tree, deliberately UNWIRED: discovery
  * isn't deterministic enough yet to hand users a raw form, so the chat is the
- * one entry point until it is. With an `agent` (the per-agent tab) the chat
- * starts with THAT agent; without one it starts with the workspace's only
- * agent, and only a multi-agent workspace asks which agent runs the interview
+ * one entry point until it is. The chat starts on the workspace's only agent;
+ * a multi-agent workspace asks which agent runs the interview
  * ({@link AgentPickerDialog}). Reads/writes ride the per-agent routes
  * (HOU-823) whenever a transport agent exists, so the surface keeps working
  * behind the hosted gateway (which proxies no top-level custom route). A
@@ -51,25 +49,17 @@ import { useIntegrationChatSetup } from "./use-integration-chat-setup";
  */
 export function CustomIntegrationsSection({
   variant = "section",
-  agent,
-  tabActive,
 }: {
   variant?: "section" | "tab";
-  agent?: Agent;
-  /** Per-agent surface only: whether that tab owns the visible agent screen
-   *  (TabProps.isActive). The global page derives visibility from `viewMode`
-   *  itself. Needed because kept-alive views leave every section MOUNTED, and
-   *  only the visible one may drive the shared shell chat panel. */
-  tabActive?: boolean;
 }) {
   const { t } = useTranslation("integrations");
-  const transportAgentId = useCustomTransportAgentId(agent?.id);
+  const transportAgentId = useCustomTransportAgentId();
   const list = useCustomIntegrationsFor(transportAgentId);
   const agents = useAgentStore((s) => s.agents);
   const viewMode = useUIStore((s) => s.viewMode);
-  const surfaceActive = agent
-    ? (tabActive ?? false)
-    : viewMode === INTEGRATIONS_VIEW_ID;
+  // Kept-alive views leave every page MOUNTED, so only the page the user is
+  // actually looking at may drive the shared shell chat panel.
+  const surfaceActive = viewMode === INTEGRATIONS_VIEW_ID;
   const chatSetup = useIntegrationChatSetup();
   const selection = useCustomSelection();
   const signIn = useStartCustomOAuth(transportAgentId);
@@ -77,11 +67,11 @@ export function CustomIntegrationsSection({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  // Straight to the setup chat — no fork dialog. The ambient agent (per-agent
-  // tab) or a single-agent workspace resolves the target immediately; only a
-  // multi-agent workspace on the global page needs the picker.
+  // Straight to the setup chat — no fork dialog. A single-agent workspace
+  // resolves the target immediately; only a multi-agent workspace needs the
+  // picker to ask who runs the interview.
   const startAdd = () => {
-    const target = agent ?? (agents.length === 1 ? agents[0] : undefined);
+    const target = agents.length === 1 ? agents[0] : undefined;
     if (target) void chatSetup.start(target);
     else setPickerOpen(true);
   };
@@ -163,7 +153,6 @@ export function CustomIntegrationsSection({
       {chatSetup.open && activeAgent && (
         <IntegrationSetupChat
           agent={activeAgent}
-          agentDef={chatSetup.activeAgentDef}
           activity={chatSetup.draftActivity}
           active={surfaceActive}
           onClose={chatSetup.closePanel}

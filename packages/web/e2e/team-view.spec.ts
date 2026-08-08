@@ -57,7 +57,9 @@ function rail(page: Page): Locator {
 /** The content column. Scopes lookups away from the rail, which carries
  *  same-named controls (the workspace switcher, an agent's own row). */
 function screen(page: Page): Locator {
-  return page.locator("[data-tour-target='main']");
+  // The screen ON THE GLASS: several kept-alive screens sit in the DOM at
+  // once, so a page-level lookup would match the hidden ones too.
+  return page.locator("[data-screen-active='true']");
 }
 
 function sectionRows(page: Page, label: string): Locator {
@@ -116,15 +118,17 @@ test("a team's Mission Control row opens that team's board, titled and scoped", 
   await expect(
     screen(page).getByRole("heading", { level: 1, name: workspace }),
   ).toBeVisible();
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByText("Ship the payroll run")).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
 
   // A named team starts empty, and its board says so instead of showing the
   // workspace's missions — the scope is the team, not the sweep behind it.
   await createTeam(page, "Work");
   await sectionRows(page, "Mission Control").first().click();
-  await expect(page.getByText("No agents in this team yet")).toBeVisible();
-  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(0);
+  await expect(
+    screen(page).getByText("No agents in this team yet"),
+  ).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 });
 
 test("an agent row filters its team's board, and the board's own menu moves it back", async ({
@@ -137,8 +141,8 @@ test("an agent row filters its team's board, and the board's own menu moves it b
   // Clicking an agent opens ITS team's board pre-filtered to it. The store
   // pins the agent's ID; the board filters on its folder path.
   await rail(page).getByText("Kai", { exact: true }).click();
-  await expect(page.getByText("Ship the payroll run")).toBeVisible();
-  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(0);
+  await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
   // The board's own filter menu shows the same choice the rail made.
   const filter = screen(page).getByRole("button", { name: "Kai", exact: true });
   await expect(filter).toBeVisible();
@@ -149,8 +153,8 @@ test("an agent row filters its team's board, and the board's own menu moves it b
   // the rail and the board read the same pin.
   await filter.click();
   await page.getByRole("menuitem", { name: "Houston" }).click();
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByText("Ship the payroll run")).toHaveCount(0);
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(screen(page).getByText("Ship the payroll run")).toHaveCount(0);
   await expect(litAgentRow(page, "Houston")).toHaveCount(1);
   await expect(litAgentRow(page, "Kai")).toHaveCount(0);
 
@@ -159,7 +163,7 @@ test("an agent row filters its team's board, and the board's own menu moves it b
     .getByRole("button", { name: "Houston", exact: true })
     .click();
   await page.getByRole("menuitem", { name: "All agents" }).click();
-  await expect(page.getByText("Ship the payroll run")).toBeVisible();
+  await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
   await expect(litAgentRow(page, "Houston")).toHaveCount(0);
 });
 
@@ -265,7 +269,7 @@ test("a plain member gets Routines and Files, and only loses Team Settings", asy
   await expect(sectionRows(page, "Team Settings")).toHaveCount(0);
 
   // And the rows go somewhere: the rail can never promise a section the screen
-  // will not render (`visibleTeamSections` is the one list both read).
+  // will not render (`visibleTeamSectionsForTeam` is the one list both read).
   const routines = sectionRows(page, "Routines").first();
   await routines.click();
   await expect(routines).toHaveAttribute("aria-current", "page");

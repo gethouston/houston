@@ -1,9 +1,11 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection, rail } from "./support/team-nav";
 
 /**
- * The Files tab on the host adapter: the default Drive-style card grid with
+ * The team's Files section on the host adapter: the default Drive-style card
+ * grid with
  * per-folder navigation and its own breadcrumb row, the Finder-style list view
  * behind the toggle (rooted at the workspace and browsed by expanding folder
  * rows, so it needs no trail), and the two gestures the redesign separated —
@@ -18,15 +20,19 @@ import { expect, test } from "./support/fixtures";
  * real host's `files*` routes (see `@houston/fake-host` routes-files.ts).
  */
 
-/** The AGENT's Files tab, by its tour anchor: the rail also carries a "Files"
- *  row now (a team's Files section), so a bare name lookup is ambiguous. */
-function filesTab(page: import("@playwright/test").Page) {
-  return page.locator('[data-tour-target="tab-files"]');
+/** The rail's Files row for the (default) team. The surface behind it is the
+ *  SAME `AgentFilesSurface` the per-agent Files tab used to mount, keyed on
+ *  whichever agent the section has open. */
+function filesRow(page: import("@playwright/test").Page) {
+  return rail(page)
+    .locator("[data-sidebar-section-row]")
+    .filter({ hasText: "Files" })
+    .first();
 }
 
 async function openFilesTab(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await filesTab(page).click();
+  await openTeamSection(page, "Files");
   // Seeded workspace: Q3 report.pdf + Docs/sales.csv.
   await expect(page.getByText("Q3 report.pdf")).toBeVisible();
 }
@@ -90,25 +96,24 @@ function listRow(page: import("@playwright/test").Page, name: string) {
 }
 
 /**
- * Switch the CURRENT agent through the ⌘K palette, which lands on that agent's
- * own workspace (`setCurrentAgent` + the activity tab).
+ * Switch WHOSE files are on screen, from inside the section — its own "Whose
+ * files" dropdown, the same `teamAgentFilter` pin the rail and the board write.
  *
- * Deliberately NOT the sidebar: the rail is a list of TEAMS now, and clicking an
- * agent row there opens its team's BOARD (a top-level view). That unmounts the
- * whole agent tab tree, Files pane included, so a stale-file assertion made
- * after a rail click passes for the wrong reason. The palette keeps the tree
- * mounted and merely re-keys it, which is exactly the transition under test.
+ * Deliberately NOT the rail or the ⌘K palette: both of those open the agent's
+ * team BOARD, which unmounts this section entirely, so a stale-file assertion
+ * made after one would pass for the wrong reason (a fresh mount has nothing to
+ * be stale WITH). The dropdown keeps the section mounted and merely re-keys
+ * `AgentFilesSurface`, which is exactly the transition under test.
  */
-async function jumpToAgent(
+async function showFilesOf(
   page: import("@playwright/test").Page,
   name: string,
 ) {
-  await page.keyboard.press("ControlOrMeta+KeyK");
-  const search = page.getByPlaceholder("Search agents, missions, actions...");
-  await expect(search).toBeVisible();
-  await search.fill(name);
-  await page.getByRole("option", { name, exact: true }).first().click();
-  await expect(search).toHaveCount(0);
+  await page
+    .getByRole("group", { name: "Whose files" })
+    .getByRole("button")
+    .click();
+  await page.getByRole("menuitem", { name, exact: true }).click();
 }
 
 /** A 1x1 PNG: the smallest real image a thumbnail can be painted from. */
@@ -148,17 +153,16 @@ test("never shows the previous agent's files while the next read is in flight", 
   test.slow();
   await page.goto("/");
 
-  // HOU-816: the agent subtree is `<AgentPersonScopeProvider key={agent.id}>`,
-  // so switching agents REMOUNTS it and every pane starts from nothing. Without
-  // that key the panes are reused and the previous agent's local state rides
-  // along — for Files that is the open folder, which is why the target below is
-  // seeded with a folder of the SAME NAME: a carried-over `Docs` resolves
-  // against the new agent's tree and silently opens the wrong workspace's
-  // folder.
+  // HOU-816: the files surface is `<AgentFilesSurface key={agent.id}>`, so
+  // switching agents REMOUNTS it and the pane starts from nothing. Without that
+  // key the pane is reused and the previous agent's local state rides along —
+  // for Files that is the open folder, which is why the target below is seeded
+  // with a folder of the SAME NAME: a carried-over `Docs` resolves against the
+  // new agent's tree and silently opens the wrong workspace's folder.
   //
-  // Both agent switches go through the ⌘K palette rather than the rail — see
-  // `jumpToAgent`. A rail click opens the agent's TEAM board and unmounts the
-  // whole agent tree, which would make every assertion here vacuously true.
+  // Both switches go through the section's own dropdown rather than the rail —
+  // see `showFilesOf`. A rail click opens the agent's TEAM board and unmounts
+  // this section, which would make every assertion here vacuously true.
   await createAgent(page, "Research Bot");
   const roster = (await (
     await request.get(`${FAKE_HOST_URL}/agents`)
@@ -181,27 +185,24 @@ test("never shows the previous agent's files while the next read is in flight", 
     },
   });
 
-  // Reload with the target NOT current: it drops every cached read, and the
-  // shell comes back on the first agent (the seed), so only the SEED's files
-  // query warms. The target's stays cold, which is what lets the hold below
-  // catch it genuinely in flight.
+  // Reload with the target NOT pinned: it drops every cached read, and the
+  // section comes back on the team's first agent (the seed), so only the SEED's
+  // files query warms. The target's stays cold, which is what lets the hold
+  // below catch it genuinely in flight.
   await page.reload();
-  // The shell has to be mounted before ⌘K has a listener to reach.
-  const tab = filesTab(page);
-  await expect(tab).toBeVisible();
-  await jumpToAgent(page, "Houston");
-  await tab.click();
+  await expect(filesRow(page)).toBeVisible();
+  await openTeamSection(page, "Files");
+  await showFilesOf(page, "Houston");
   await expect(page.getByText("Q3 report.pdf")).toBeVisible();
   await page.getByText("Docs", { exact: true }).click();
   await expect(page.getByText("sales.csv")).toBeVisible();
 
-  // Hold the target's reads open, switch to it, and land on ITS Files tab. The
-  // pane is on screen with its own read still in flight.
+  // Hold the target's reads open and switch to it IN PLACE. The pane is on
+  // screen with its own read still in flight.
   await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
     data: { ms: 5_000 },
   });
-  await jumpToAgent(page, "Research Bot");
-  await tab.click();
+  await showFilesOf(page, "Research Bot");
   const loading = page.getByRole("status", { name: "Loading…" });
   await expect(loading).toBeVisible();
 

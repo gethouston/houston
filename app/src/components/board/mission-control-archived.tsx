@@ -1,23 +1,25 @@
 import { AIBoard } from "@houston-ai/board";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { pendingMissionSurface } from "../../lib/board-surface-nav";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
+import { ArchivedEmptyState } from "../agent/archived-empty-state";
 import { MissionControlToolbar } from "../mission-control-toolbar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
-import { ArchivedEmptyState } from "../tabs/archived-empty-state";
 import { useMissionSearch } from "../use-mission-search";
 import { type MissionControlScope, useMcScope } from "./use-mc-scope.ts";
 import { useMissionControlArchived } from "./use-mission-control-archived";
 import { useMissionControlArchivedPanel } from "./use-mission-control-archived-panel";
+import { usePendingMissionTarget } from "./use-pending-mission-target";
 
 /**
- * Cross-agent Archived view for Mission Control. Same list UI as the per-agent
- * Archived tab, but spanning every agent: a column-less list of all archived
- * missions; clicking one opens its chat; sending re-activates it and hands the
- * user off to that agent's active board to keep the conversation in view.
+ * Cross-agent Archived view for Mission Control: a column-less list of every
+ * archived mission; clicking one opens its chat; sending re-activates it and
+ * hands the user back to this screen's active board, with the mission's chat
+ * open, to keep the conversation in view.
  *
  * `agents` is ALWAYS the full workspace roster, whoever is rendering: the sweep
  * behind it (`useMissionControlArchived`) keys the one shared
@@ -42,6 +44,23 @@ export function MissionControlArchived({
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const data = useMissionControlArchived(agents);
+
+  // An @mention (or a notification) can name a mission that was archived long
+  // ago, and the archive is the only surface that can open it. It claims those
+  // targets and only those: an ACTIVE mission's id stays published for the
+  // board this archive belongs to, which the owner's router swaps back in.
+  const pendingId = useUIStore((s) => s.activityPanelId);
+  const pendingSurface = pendingMissionSurface(
+    data.rawConversations,
+    pendingId,
+  );
+  usePendingMissionTarget({
+    surface: "archived",
+    pendingSurface,
+    selectedId: data.selectedId,
+    setSelectedId: data.setSelectedId,
+    missionPanelOpen,
+  });
 
   const { scopedAgents, agentFilteredItems, filterPath, setFilterPath } =
     useMcScope(agents, data.items, scope);
@@ -75,7 +94,7 @@ export function MissionControlArchived({
 
   const { selectedItem, activeAgent } = data;
   const { panel, attachmentValidation, openHref, onSendMessage } =
-    useMissionControlArchivedPanel(data);
+    useMissionControlArchivedPanel(data, onShowActive);
 
   return (
     <>
@@ -94,9 +113,9 @@ export function MissionControlArchived({
         archivedActive
         onBack={onShowActive}
         onNewMission={() => {
-          // Mirror the per-agent Archived tab: New mission lives in the bar
-          // here too. Return to the active board, then open its agent picker
-          // (the active source registers onStartMission once it mounts).
+          // New mission lives in this bar too. Return to the active board,
+          // then open its agent picker (the active source registers
+          // onStartMission once it mounts).
           onShowActive();
           setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
         }}

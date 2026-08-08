@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useSession } from "../../hooks/use-session";
 import type { Agent } from "../../lib/types";
-import { AccessChoice } from "../tabs/agent-admin/access-choice.tsx";
-import type { AccessMode } from "../tabs/agent-admin/agent-admin-row-values.ts";
-import { useShareAgent } from "../tabs/use-share-agent";
+import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
+import type { AccessMode } from "../agent/agent-admin/agent-admin-row-values.ts";
+import { useShareAgent } from "../agent/use-share-agent";
 import {
   agentAccessMode,
   agentPeopleCount,

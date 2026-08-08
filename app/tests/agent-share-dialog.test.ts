@@ -12,7 +12,7 @@ import {
   needsSelfLockoutConfirm,
   type SharePerson,
   withViewer,
-} from "../src/components/tabs/agent-access-model.ts";
+} from "../src/components/agent/agent-access-model.ts";
 
 const OWNER: OrgMember = { userId: "own", email: "owner@x.co", role: "owner" };
 const ADMIN: OrgMember = { userId: "adm", email: "admin@x.co", role: "admin" };

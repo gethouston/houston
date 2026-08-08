@@ -126,13 +126,13 @@ classifier) in a `lib/*-model.ts` unit-tested under bare Node, and route an
 EXPECTED business 400 (e.g. `key_limit`, read off the gateway's flat top-level
 `body.code`) through `call()`'s `silence` predicate so it renders inline instead
 of the red bug toast. Files: `app/src/{lib/api-keys-model,hooks/queries/use-api-keys}.ts`
-+ `components/settings/sections/api-keys*.tsx`. The same flag also gates the
-Agent Settings **Connect** section ("Use from other apps",
-`components/tabs/agent-admin/agent-admin-connect.tsx`), which needs NO new wire
-method: it builds the public MCP / A2A / missions addresses client-side
-(`lib/agent-connect-model.ts`) from the gateway origin
-(`window.__HOUSTON_ENGINE__.baseUrl`), the hosted agent id (= public slug), and
-the org slug (team workspace id, else the personal membership from `GET /v1/orgs`).
++ `components/settings/sections/api-keys*.tsx`. Settings > API keys is the flag's only
+surface: the per-agent **Connect** section it also used to gate was removed (HOU-806,
+`knowledge-base/teams.md`). Its pure model `lib/agent-connect-model.ts` is the standing
+example of the shape — public MCP / A2A / missions addresses built CLIENT-SIDE from the
+gateway origin (`window.__HOUSTON_ENGINE__.baseUrl`), the hosted agent id (= public slug)
+and the org slug, needing no new wire method — but only its `DEVELOPER_DOCS` links have a
+caller today.
 
 **Gateway 5xx are not one thing — read the body before you toast (HOU-1170).**
 The managed cloud sleeps one engine pod per agent, so a normal chat open fires a
@@ -333,14 +333,15 @@ to that screen. Shared hooks, including Teams roster data used by sharing/admin
 surfaces, must use their callers' precise `enabled` flags and must never be
 view-gated.
 
-**The shell detail panel is claim-counted, never a shared boolean.** Agent tabs
-are only CSS-hidden and top-level screens are kept alive, so several surfaces
-that render the ONE shell panel (Activity board, Routines chat, both Archived
-lists, skill/integration setup chats) are mounted at once. Each claims and
-releases its OWN id through `useShellDetailPanel`; `missionPanelOpen` is derived
-from the claim set (`app/src/components/shell/detail-panel-owners.ts`) and the
-hook releases on unmount. Never reintroduce a single last-writer-wins flag: the
-tab the user navigates AWAY from stops portaling but keeps its `true`, and the
+**The shell detail panel is claim-counted, never a shared boolean.** Top-level
+screens are kept alive (CSS-hidden, still mounted), so several surfaces that
+render the ONE shell panel (the cross-agent mission board, a team's Routines
+chat, both Archived lists, skill/integration setup chats) are mounted at once.
+Each claims and releases its OWN id through `useShellDetailPanel`;
+`missionPanelOpen` is derived from the claim set
+(`app/src/components/shell/detail-panel-owners.ts`) and the hook releases on
+unmount. Never reintroduce a single last-writer-wins flag: the screen the user
+navigates AWAY from stops portaling but keeps its `true`, and the
 shell paints an empty card beside the board (PRODUCT-1229). The corollary is
 that a hidden surface MUST release its claim — withholding the release to avoid
 clobbering the newly-visible surface is what caused the stranded panel.

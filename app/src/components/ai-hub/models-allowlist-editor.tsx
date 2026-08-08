@@ -2,18 +2,18 @@ import { Search } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../../lib/ai-hub/search.ts";
-import { AccessChoice } from "../tabs/agent-admin/access-choice.tsx";
+import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import {
   type AccessMode,
   ceilingMode,
-} from "../tabs/agent-admin/agent-admin-row-values.ts";
-import { LabFilter } from "../tabs/agent-admin/lab-filter.tsx";
-import { ModelAllowRow } from "../tabs/agent-admin/model-allow-row.tsx";
+} from "../agent/agent-admin/agent-admin-row-values.ts";
+import { LabFilter } from "../agent/agent-admin/lab-filter.tsx";
+import { ModelAllowRow } from "../agent/agent-admin/model-allow-row.tsx";
 import {
   allowedListView,
   modelChecked,
   toggleModel,
-} from "../tabs/agent-admin/model-allowlist.ts";
+} from "../agent/agent-admin/model-allowlist.ts";
 import type { ProviderValue } from "./facets.ts";
 
 /** i18n copy for {@link ModelsAllowlistEditor}; the consumer passes translated strings. */

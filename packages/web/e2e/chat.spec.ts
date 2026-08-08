@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { openNewMission } from "./support/mission";
 
 /**
  * The core loop: open a new conversation, send a message, and watch the streamed
@@ -12,7 +13,7 @@ test("sends a message and renders the streamed reply", async ({ page }) => {
 
   // The header "New mission" button (a tour anchor, so a stable selector). There
   // is a second "New mission" affordance — the "+" card in the Running column.
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
 
   const composer = page.getByPlaceholder("What should the agent work on?");
   await expect(composer).toBeVisible();
@@ -33,7 +34,7 @@ test("sends a message and renders the streamed reply", async ({ page }) => {
 /** Sending with the composer's Submit button, not the Enter key. */
 test("sends a message with the Submit button", async ({ page }) => {
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
 
   await page
     .getByPlaceholder("What should the agent work on?")
@@ -58,7 +59,7 @@ test("first message keeps the chat panel mounted while the board refetches", asy
   page,
 }) => {
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
 
   const composer = page.getByPlaceholder("What should the agent work on?");
   await expect(composer).toBeVisible();
@@ -112,7 +113,7 @@ test("recovers a dropped stream mid-turn and renders the full reply", async ({
     data: { replyDelayMs: 800 },
   });
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
 
   const composer = page.getByPlaceholder("What should the agent work on?");
   await composer.fill("test reconnect");
@@ -153,7 +154,7 @@ test("settles the interrupted turn from history by turnId across a turn boundary
     data: { replyDelayMs: 800 },
   });
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
 
   const composer = page.getByPlaceholder("What should the agent work on?");
   await composer.fill("test boundary");
@@ -194,7 +195,7 @@ test("a dead turn settles as an error with the reaper's message", async ({
     data: { replyDelayMs: 800 },
   });
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
 
   const composer = page.getByPlaceholder("What should the agent work on?");
   await composer.fill("test dead turn");

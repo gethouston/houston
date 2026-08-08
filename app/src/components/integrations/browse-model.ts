@@ -1,8 +1,8 @@
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
 
 /**
- * The catalog-BROWSE pure layer: query filtering, A-Z ordering, Teams-allowlist
- * partitioning, category metadata and the first-paint caps. Split from `model.ts`
+ * The catalog-BROWSE pure layer: query filtering, A-Z ordering, category
+ * metadata and the first-paint caps. Split from `model.ts`
  * (provider/support/poll) so every surface applies the same rules; the section
  * grouping + curated Featured spotlight live beside it in `browse-sections.ts`.
  * All pure.
@@ -62,45 +62,6 @@ export function browseCatalog(opts: {
   const q = opts.query.trim().toLowerCase();
   if (q) filtered = filtered.filter((t) => matchesQuery(t, q));
   return filtered.sort(byNameAsc);
-}
-
-/**
- * Max policy-blocked (locked) apps shown inline before the rest collapse into a
- * "+N more" line, so a tiny Teams allowlist can't bury the connectable apps.
- */
-export const LOCKED_PREVIEW_CAP = 8;
-
-/** Split by the Teams allowlist ceiling: `connectable` = may connect now,
- * `locked` = ceiling BLOCKS (shown as locked rows, never connectable). Both A-Z. */
-export interface BrowseCatalogView {
-  connectable: IntegrationToolkit[];
-  locked: IntegrationToolkit[];
-}
-
-/**
- * Partition the browse catalog into the apps a member may connect and the apps a
- * Teams allowlist ceiling BLOCKS, after {@link browseCatalog}'s category + search
- * + connected-exclusion filter. `allowlist === null` means unrestricted (single-
- * player, or a Teams host with no ceiling), so nothing is ever locked. Both lists
- * keep the A-Z order.
- */
-export function browseCatalogView(opts: {
-  catalog: IntegrationToolkit[];
-  query: string;
-  category: string;
-  connected: ReadonlySet<string>;
-  allowlist: string[] | null;
-}): BrowseCatalogView {
-  const { allowlist, ...browse } = opts;
-  const results = browseCatalog(browse);
-  if (allowlist === null) return { connectable: results, locked: [] };
-  const allowed = new Set(allowlist);
-  const connectable: IntegrationToolkit[] = [];
-  const locked: IntegrationToolkit[] = [];
-  for (const t of results) {
-    (allowed.has(t.slug) ? connectable : locked).push(t);
-  }
-  return { connectable, locked };
 }
 
 /** Every category present in the catalog, sorted by display label. */

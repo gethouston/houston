@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { AgentAdminInstructions } from "../tabs/agent-admin/agent-admin-instructions";
-import { AgentAdminIntegrations } from "../tabs/agent-admin/agent-admin-integrations";
-import { AgentAdminKnowledge } from "../tabs/agent-admin/agent-admin-knowledge";
-import { AgentAdminModel } from "../tabs/agent-admin/agent-admin-model";
-import { AgentAdminSkills } from "../tabs/agent-admin/agent-admin-skills";
+import { AgentAdminInstructions } from "../agent/agent-admin/agent-admin-instructions";
+import { AgentAdminIntegrations } from "../agent/agent-admin/agent-admin-integrations";
+import { AgentAdminKnowledge } from "../agent/agent-admin/agent-admin-knowledge";
+import { AgentAdminModel } from "../agent/agent-admin/agent-admin-model";
+import { AgentAdminSkills } from "../agent/agent-admin/agent-admin-skills";
 import type {
   AgentSectionProps,
   AgentSettingsSection,
@@ -24,8 +24,7 @@ function AccessColumn({ children }: { children: ReactNode }) {
 
 /**
  * The ONE section switch: renders the section the rail selected into the right
- * pane, for the settings page and the per-agent Context / Admin tabs alike.
- * Every branch COMPOSES the existing section component rather than
+ * pane. Every branch COMPOSES the existing section component rather than
  * re-implementing it, so no two surfaces can drift.
  */
 export function AgentSettingsSectionView({

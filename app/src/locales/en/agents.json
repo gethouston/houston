@@ -53,10 +53,6 @@
     "invalidChars": "Agent names can't contain slashes or special characters",
     "tooLong": "Agent names can be at most {{max}} characters"
   },
-  "empty": {
-    "title": "No agents yet",
-    "description": "Build your AI team and start a mission."
-  },
   "instructions": {
     "emptyTitle": "No instructions yet",
     "emptyDescription": "Tell your agent how it should think and act.",
@@ -87,22 +83,6 @@
     "instructions": "Job description",
     "skills": "Skills",
     "learnings": "Learnings"
-  },
-  "tabLabels": {
-    "activity": "Activity",
-    "routines": "Routines",
-    "files": "Files",
-    "context": "Context",
-    "admin": "Admin",
-    "integrations": "Integrations",
-    "chat": "Chat",
-    "board": "Board",
-    "skills": "Skills",
-    "prompts": "Prompts",
-    "events": "Events",
-    "learnings": "Learnings",
-    "configure": "Configure",
-    "settings": "Settings"
   },
   "configure": {
     "projectContext": {

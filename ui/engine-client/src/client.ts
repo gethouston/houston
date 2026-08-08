@@ -752,10 +752,11 @@ export class HoustonClient {
       data_base64: dataBase64,
     });
   }
-  /** Upload browser Files into the agent's workspace (Files tab drag-drop /
+  /** Upload browser Files into the agent's workspace (file-browser drag-drop /
    * Browse). This engine's import route takes one file per request and has no
    * target-folder or relPath parameter, so uploads land flat at the workspace
-   * root (the Files tab hides the folder-upload affordance on this engine). */
+   * root (the file browser hides the folder-upload affordance on this
+   * engine). */
   async uploadProjectFiles(
     agentPath: string,
     files: File[],
@@ -766,8 +767,8 @@ export class HoustonClient {
       await this.importFileBytes(agentPath, f.name, bytesToBase64(bytes));
     }
   }
-  /** This engine has no move route; the Files tab only offers drag-move on the
-   * TS host. Refuse loudly rather than pretend the file moved. */
+  /** This engine has no move route; the file browser only offers drag-move on
+   * the TS host. Refuse loudly rather than pretend the file moved. */
   async moveProjectFile(
     _agentPath: string,
     _relPath: string,

@@ -5,8 +5,9 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
-import { isAgentManager } from "../lib/agent-access";
 import { fileNameOf } from "../lib/agent-file-paths";
+import { canOpenAgentSettings } from "../lib/agent-nav";
+import { openAgentSettings } from "../lib/open-agent";
 import {
   groupTurnSummaryItems,
   type SemanticUpdateKind,
@@ -14,6 +15,7 @@ import {
 } from "../lib/turn-summary-items";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
+import { targetToSection } from "./agent-settings/agent-settings-nav.ts";
 import { getFileIcon } from "./file-card";
 
 interface TurnFileSummaryProps {
@@ -29,26 +31,35 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
 
   const { openFile: handleOpen } = useOpenAgentFile(agentPath);
 
+  // Whether a semantic update ("the agent updated its job description") is a
+  // LINK at all. Its destination is the canonical agent settings page, whose
+  // ONE door is Team Settings — so the gate is simply "can this caller reach
+  // that page for THIS agent". Reaching it without managing the agent is
+  // honest, not a dead link: the page renders its read-only face there
+  // (`AgentDetail`'s documented rule), which is exactly what someone reading
+  // "the agent updated its job description" wants to see. A row that only
+  // closed the panel would be the dead affordance, and that is what this
+  // prevents.
+  const agent = useAgentStore((s) =>
+    s.agents.find((a) => a.folderPath === agentPath),
+  );
+  const semanticIsLink = !!agent && canOpenAgentSettings(capabilities, agent);
+
+  const agentId = agent?.id;
+  const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const handleOpenSemantic = useCallback(
     (kind: SemanticUpdateKind) => {
-      const agents = useAgentStore.getState().agents;
-      const agent = agents.find((a) => a.folderPath === agentPath);
-      const ui = useUIStore.getState();
-      // Semantic updates land on manager-editable surfaces: skills on the
-      // Skills tab, instructions and learnings on the Context tab's matching
-      // section. Non-managers keep their read-only Context view untouched.
-      if (agent && isAgentManager(capabilities, agent)) {
-        useAgentStore.getState().setCurrent(agent);
-        if (kind === "skills") {
-          ui.setViewMode("skills");
-        } else {
-          ui.setContextTarget(kind);
-          ui.setViewMode("context");
-        }
-      }
-      ui.closeMissionPanel();
+      if (!agent || !agentId) return;
+      // Semantic updates land on the agent settings page: Skills on its Skills
+      // section, instructions and learnings on the matching Context one.
+      setCurrentAgent(agent);
+      openAgentSettings(
+        agentId,
+        kind === "skills" ? "skills" : targetToSection(kind),
+      );
+      useUIStore.getState().closeMissionPanel();
     },
-    [agentPath, capabilities],
+    [agent, agentId, setCurrentAgent],
   );
 
   if (items.length === 0) return null;
@@ -63,7 +74,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
           open={openUpdates}
           onOpenChange={setOpenUpdates}
           onOpenFile={handleOpen}
-          onOpenSemantic={handleOpenSemantic}
+          onOpenSemantic={semanticIsLink ? handleOpenSemantic : undefined}
           t={t}
         />
       )}
@@ -74,7 +85,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
           open={openFiles}
           onOpenChange={setOpenFiles}
           onOpenFile={handleOpen}
-          onOpenSemantic={handleOpenSemantic}
+          onOpenSemantic={semanticIsLink ? handleOpenSemantic : undefined}
           t={t}
         />
       )}
@@ -96,7 +107,9 @@ function SummarySection({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenFile: (path: string) => void;
-  onOpenSemantic: (kind: SemanticUpdateKind) => void;
+  /** Omitted when the agent's settings page is out of this caller's reach:
+   *  semantic rows then render as plain lines instead of dead buttons. */
+  onOpenSemantic?: (kind: SemanticUpdateKind) => void;
   t: TFunction<"chat">;
 }) {
   return (
@@ -119,20 +132,34 @@ function SummarySection({
           {items.map((item) => {
             const key = item.kind === "file" ? item.path : item.update;
             const Icon = itemIcon(item);
-            return (
+            const open =
+              item.kind === "file"
+                ? () => onOpenFile(item.path)
+                : onOpenSemantic
+                  ? () => onOpenSemantic(item.update)
+                  : null;
+            const body = (
+              <>
+                <Icon className="h-4 w-4 text-ink-muted shrink-0" />
+                <span className="truncate">{itemLabel(item, t)}</span>
+              </>
+            );
+            return open ? (
               <button
                 key={key}
                 type="button"
-                onClick={() =>
-                  item.kind === "file"
-                    ? onOpenFile(item.path)
-                    : onOpenSemantic(item.update)
-                }
+                onClick={open}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-hover transition-colors"
               >
-                <Icon className="h-4 w-4 text-ink-muted shrink-0" />
-                <span className="truncate">{itemLabel(item, t)}</span>
+                {body}
               </button>
+            ) : (
+              <div
+                key={key}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left"
+              >
+                {body}
+              </div>
             );
           })}
         </div>

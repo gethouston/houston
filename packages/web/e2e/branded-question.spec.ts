@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openNewMission } from "./support/mission";
 
 /**
  * A BRANDED question step (HOU-885): the model confirms app actions through the
@@ -22,7 +23,7 @@ import { expect, test } from "./support/fixtures";
 /** Kick off a fresh mission whose next turn ends on the armed interaction. */
 async function startMission(page: Page, text: string) {
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
   const composer = page.getByPlaceholder("What should the agent work on?");
   await expect(composer).toBeVisible();
   await composer.fill(text);

@@ -28,7 +28,9 @@ function rail(page: Page): Locator {
 
 /** The content column, so lookups never catch the rail's same-named rows. */
 function screen(page: Page): Locator {
-  return page.locator("[data-tour-target='main']");
+  // The screen ON THE GLASS: several kept-alive screens sit in the DOM at
+  // once, so a page-level lookup would match the hidden ones too.
+  return page.locator("[data-screen-active='true']");
 }
 
 function sectionRows(page: Page, label: string): Locator {

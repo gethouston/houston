@@ -17,7 +17,6 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity, tauriConfig } from "../../lib/tauri";
 import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 
@@ -42,7 +41,6 @@ export function useIntegrationChatSetup() {
   const openAgentId = useUIStore((s) => s.integrationSetupChatAgentId);
   const setOpenAgentId = useUIStore((s) => s.setIntegrationSetupChatAgentId);
   const agents = useAgentStore((s) => s.agents);
-  const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const [pending, setPending] = useState(false);
   // The kickoff runs on a provider the user is actually signed into, never on
   // an agent-configured one they never connected (PRODUCT-1236). `null` = the
@@ -78,9 +76,6 @@ export function useIntegrationChatSetup() {
     [openAgentId, agents],
   );
   const activeAgent = openAgent ?? draftAgent;
-  const activeAgentDef = activeAgent
-    ? (getAgentDef(activeAgent.configId) ?? null)
-    : null;
 
   // The full Activity (session_key, pending_interaction) for the active agent's
   // draft — the cross-agent conversation row is too thin to render the chat.
@@ -223,7 +218,6 @@ export function useIntegrationChatSetup() {
 
   return {
     activeAgent,
-    activeAgentDef,
     draftActivity,
     /** A live draft exists somewhere (drives the Continue-setup banner). */
     hasDraft: draftConvo != null,

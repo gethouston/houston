@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openAgentSettings } from "./support/team-nav";
 
 /**
  * Memory (learnings) provenance — HOU-946.
@@ -14,11 +15,10 @@ import { expect, test } from "./support/fixtures";
  * must render no line at all rather than a hollow "From unknown".
  */
 
-/** Context tab → the Memory section. */
+/** The agent settings page → its Memory section. */
 async function openMemory(page: Page) {
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-context"]').click();
-  await page.getByText("Memory", { exact: true }).click();
+  await openAgentSettings(page, "Houston", "Memory");
 }
 
 // NOTE: no test title here may END in the word "from" — `check:boundaries`

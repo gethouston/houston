@@ -1,11 +1,16 @@
 import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { UserPlus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { isAgentManager } from "../../lib/agent-access";
+import { openAgentBoard } from "../../lib/open-agent";
+import { isTeamWorkspace } from "../../lib/space-id";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { agentShareSurface } from "../agent/agent-access-model";
+import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
 import { AgentSettingsPage } from "../agent-settings/agent-settings-page";
 import { PageContainer, PageHeader } from "../shell/page-shell";
@@ -18,14 +23,21 @@ import { PageContainer, PageHeader } from "../shell/page-shell";
  * and what it may reach.
  *
  * Manager authority decides the FACE, not access: an admin who can see this
- * agent but doesn't manage it gets the page `readOnly` — the same read-only
- * sections they already have on the agent's own Admin tab — rather than a
- * dead-end note. {@link isAgentManager}: owner → any org agent; admin → only
+ * agent but doesn't manage it gets the page `readOnly` — every section renders
+ * its non-manager face — rather than a dead-end note. {@link isAgentManager}: owner → any org agent; admin → only
  * agents where their effective `access === "manager"`. The gateway is the real
  * enforcer either way.
  *
  * The `agent` is resolved live from the store by the shell (by id, not a
  * snapshot), so a share mutation that reloads the store shows fresh data here.
+ *
+ * It also carries the agent's ONE Share affordance. That used to hang off the
+ * per-agent header, which no longer exists; this page is where an agent is
+ * addressed now, so the same {@link AgentShareSurfaces} wiring lives here —
+ * the manage dialog in a team space, the read-only "who has access" list for a
+ * member, and, in a PERSONAL space on a spaces host, the share-via-team flow
+ * that moves the agent into a team (personal spaces cannot be invited into, so
+ * that pipeline has no other door).
  */
 export function AgentDetail({
   agent,
@@ -41,13 +53,20 @@ export function AgentDetail({
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
-  const setViewMode = useUIStore((s) => s.setViewMode);
+  const currentWorkspace = useWorkspaceStore((s) => s.current);
   const canManage = isAgentManager(capabilities, agent);
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareSurface = agentShareSurface(
+    capabilities,
+    agent,
+    !isTeamWorkspace(currentWorkspace?.id ?? ""),
+  );
 
-  // The old card behavior: leave Permissions and open the agent's chat.
+  // Leave the settings page and go where the agent WORKS: its team's Mission
+  // Control, filtered to this agent.
   const openAgent = () => {
     setCurrentAgent(agent);
-    setViewMode(DEFAULT_TAB_ID);
+    openAgentBoard(agent.id);
   };
 
   return (
@@ -59,13 +78,27 @@ export function AgentDetail({
           title={agent.name}
           subtitle={t("org.agentDetail.subtitle")}
           trailing={
-            <Button
-              variant="secondary"
-              className="rounded-full"
-              onClick={openAgent}
-            >
-              {t("org.agentDetail.openAgent")}
-            </Button>
+            <div className="flex items-center gap-2">
+              {shareSurface !== "none" && (
+                <Button
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => setShareOpen(true)}
+                >
+                  <UserPlus className="size-4" />
+                  {shareSurface === "view"
+                    ? t("share.viewButton")
+                    : t("share.button")}
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                className="rounded-full"
+                onClick={openAgent}
+              >
+                {t("org.agentDetail.openAgent")}
+              </Button>
+            </div>
           }
         />
       </div>
@@ -75,6 +108,12 @@ export function AgentDetail({
         initialSection={initialSection}
         readOnly={!canManage}
         onSectionShown={onSectionShown}
+      />
+      <AgentShareSurfaces
+        agent={agent}
+        surface={shareSurface}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
       />
     </PageContainer>
   );

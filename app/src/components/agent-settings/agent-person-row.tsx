@@ -11,8 +11,8 @@ import {
 } from "@houston-ai/core";
 import { Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { ShareAction } from "../agent/agent-access-model.ts";
 import { initialsFor, memberLabel } from "../organization/people-tab-model.ts";
-import type { ShareAction } from "../tabs/agent-access-model.ts";
 import type { AgentPersonRow as PersonRow } from "./agent-people-model.ts";
 
 /** The translated label for a member's current level on this agent. */

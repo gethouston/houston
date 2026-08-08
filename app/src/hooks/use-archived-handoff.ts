@@ -1,4 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { RUNNING_STATUS } from "../lib/mission-selection";
+import type { RawConversation } from "../lib/tauri";
 import { useUIStore } from "../stores/ui";
 
 interface ArchivedHandoffOptions {
@@ -7,9 +10,9 @@ interface ArchivedHandoffOptions {
   /** Drops the archived surface's own selection (the mission is leaving it). */
   onReactivated: () => void;
   /**
-   * Points the shell at the board the mission is landing on, before the panel
-   * opens. The per-agent Archived tab flips its board back to `active`; the
-   * cross-agent Mission Control view makes the mission's agent current.
+   * Puts the ACTIVE board of this surface back on screen, before the panel
+   * opens: the archive and its board are two surfaces of the same screen, and
+   * only the active one consumes the published mission.
    */
   focusBoard: () => void;
 }
@@ -42,17 +45,34 @@ export function useArchivedHandoff({
   onReactivated,
   focusBoard,
 }: ArchivedHandoffOptions): ArchivedHandoff {
-  const setViewMode = useUIStore((s) => s.setViewMode);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
+  const queryClient = useQueryClient();
 
   const handoff = useCallback(
     (id: string) => {
+      // Say out loud that the mission left the archive, in the shared sweep
+      // rows, BEFORE anything is published. This is not an optimistic guess:
+      // the send already landed and the engine flips `archived → running` at
+      // turn start — the rows are simply the last to hear, since they only
+      // refresh on the turn's event. And they are exactly what decides which
+      // SURFACE a published target belongs to (`lib/board-surface-nav.ts`), so
+      // handing off with a stale `archived` row bounces the user straight back
+      // into the archive the mission just fell out of, onto an empty list with
+      // a dead panel over it.
+      queryClient.setQueriesData<RawConversation[]>(
+        { queryKey: ["all-conversations"] },
+        (rows) =>
+          rows?.map((c) =>
+            c.id === id ? { ...c, status: RUNNING_STATUS } : c,
+          ),
+      );
       onReactivated();
+      // Back to the board this archive belongs to — the global one, or the
+      // team's — never a jump to some other screen: the user came from here.
       focusBoard();
-      setViewMode("activity");
       setActivityPanelId(id, { forceOpen: true });
     },
-    [onReactivated, focusBoard, setViewMode, setActivityPanelId],
+    [onReactivated, focusBoard, setActivityPanelId, queryClient],
   );
 
   const onSendReactivated = useCallback(() => {

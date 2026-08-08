@@ -19,11 +19,6 @@
     "label": "Personas en esta misión",
     "expand": "Todas las personas"
   },
-  "empty": {
-    "title": "Aún no hay conversaciones",
-    "description": "Inicia una conversación nueva para delegarle trabajo a un agente.",
-    "newMission": "Nueva misión"
-  },
   "search": {
     "placeholder": "Buscar misiones",
     "placeholderShort": "Buscar...",
@@ -94,8 +89,7 @@
   },
   "archived": {
     "emptyTitle": "No hay misiones archivadas",
-    "emptyDescription": "Las misiones archivadas aparecen aquí. Responde a una para reactivarla.",
-    "searchPlaceholder": "Buscar misiones archivadas"
+    "emptyDescription": "Las misiones archivadas aparecen aquí. Responde a una para reactivarla."
   },
   "dnd": {
     "moveError": "No se pudo mover la misión: {{error}}"

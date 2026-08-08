@@ -1,6 +1,6 @@
 # Skills
 
-A Skill is a reusable procedure stored as a markdown file with YAML frontmatter. Houston shows them in the picker, the chat empty state, and the per-agent Skills tab.
+A Skill is a reusable procedure stored as a markdown file with YAML frontmatter. Houston shows them in the picker, the chat empty state, the global **Skills** page, and the agent settings page's **Skills** section (the per-agent Skills TAB is gone with the rest of the agent tab shell; the same `AgentAdminSkills` surface is now that section).
 
 > **Updated: Houston runs on the TypeScript host now — the Rust `engine/` was removed.** SKILL.md format, discovery, and UI behavior below are current, but `engine/houston-skills` / `houston-engine-core` crate names and `.rs` paths are historical: skills are now parsed in the **host** and loaded by the **pi runtime** (`packages/runtime/src/session/resource-loader.ts`).
 
@@ -104,9 +104,9 @@ from one normalizer and two shared app components (HOU-794):
 | Surface | Component | Where |
 |---|---|---|
 | Skill cards (chat empty state) | pips in `SkillCard`'s `footer` slot | `use-agent-chat-panel.tsx` |
-| Installed-skill rows (Skills tab, chat picker) | pips in `SkillCatalogRow`'s trailing slot, before the chevron (cap 3) | `skills/skill-catalog-rows.tsx` |
-| Skill edit modal | named badges under the description | `tabs/skill-editor-dialogs.tsx` → `SkillEditModal`'s `integrationsSlot` |
-| Marketplace preview modal (skills.sh) | named badges under the description, from the preview's `integrations` | `tabs/skill-discovery-tabs.tsx` → `SkillMarketplaceSection`'s `renderIntegrations` → `SkillPreviewModal` |
+| Installed-skill rows (the Skills section, the global page, the chat picker) | pips in `SkillCatalogRow`'s trailing slot, before the chevron (cap 3) | `skills/skill-catalog-rows.tsx` |
+| Skill edit modal | named badges under the description | `agent/skill-editor-dialogs.tsx` → `SkillEditModal`'s `integrationsSlot` |
+| Marketplace preview modal (skills.sh) | named badges under the description, from the preview's `integrations` | `agent/skill-discovery-tabs.tsx` → `SkillMarketplaceSection`'s `renderIntegrations` → `SkillPreviewModal` |
 | Chat skill invocation card | pips under the description | `user-skill-message.tsx` (from the marker's `integrations`) |
 
 `SkillEditModal` (`ui/skills/`) stays props-only: it takes `integrationsSlot?:
@@ -237,7 +237,7 @@ takes the directory itself as the test seam rather than a `fetchImpl`.
 1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
 2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
 3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
-4. **Skill cards** use `app/src/components/skill-card.tsx` only for the chat empty-state showcase. The Skills tab and New Mission picker share `skills/skill-catalog-rows.tsx`: `SkillCatalogRow` renders the installed catalog row, while `SkillCatalogGrid` supplies its list. Both surfaces filter with `filterInstalledSkills` and sort with `sortSkillsByTitle`, so display titles, including accented frontmatter titles, determine A-Z order. **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
+4. **Skill cards** use `app/src/components/skill-card.tsx` only for the chat empty-state showcase. The Skills surfaces and the New Mission picker share `skills/skill-catalog-rows.tsx`: `SkillCatalogRow` renders the installed catalog row, while `SkillCatalogGrid` supplies its list. Both surfaces filter with `filterInstalledSkills` and sort with `sortSkillsByTitle`, so display titles, including accented frontmatter titles, determine A-Z order. **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
    - selected Skill chip above the composer
@@ -246,7 +246,7 @@ takes the directory itself as the test seam rather than a `fetchImpl`.
    - legacy Composio connect-link card renderer (old transcripts only; new connects go through the `request_connection` tool → a composer connect card — see `integrations.md`)
    - file-tool result renderer
    - `renderUserMessage` — decodes skill + attachment markers into cards
-6. Both **BoardTab** (per-agent kanban) and **Dashboard** (Mission Control / cross-agent kanban) consume this hook so the right panel is identical in both views.
+6. Every board consumes this hook, so the right panel is identical wherever a mission opens: `MissionBoard` (Mission Control and each team's board), the archive panel (`use-mission-control-archived-panel.ts`), and the routine setup-chat board. The per-agent BoardTab that used to be the second consumer is gone.
 
 ## Org skill by default (HOU-1192)
 
@@ -265,7 +265,7 @@ mid-flight edit survives as that agent's override). Other agents are deliberatel
 NOT installed to: the skill sits in the workspace store, and the user enables it
 per agent from the Skills page / the per-agent "From your workspace" section. Flow + ordering live in
 `app/src/lib/org-skill-share.ts` (node-tested); the binding hook is
-`app/src/components/tabs/use-org-skill-default.ts`, invoked from
+`app/src/components/agent/use-org-skill-default.ts`, invoked from
 `use-skill-chat-setup.ts` (heal `reason: "forward_link"` ONLY — orphan adoption and
 the list-delta fallback claim never share: the catalog stays interactive beside a
 draft chat, so a store install could satisfy the delta heuristic). The share runs
@@ -291,8 +291,8 @@ the caller owns (`canUseAgent` is workspace ownership), so no backend changed:
 - **Your skills** — one row per slug across the workspace's agents
   (`aggregateWorkspaceSkills` in `app/src/lib/workspace-skills.ts`,
   node:test-covered), each with the holder agents' avatar stack. Fetching uses
-  one query per agent on the SAME `queryKeys.skills(path)` keys the per-agent
-  tab uses (`use-workspace-skills.ts`), so `SkillsChanged` invalidation
+  one query per agent on the SAME `queryKeys.skills(path)` keys the agent's own
+  Skills section uses (`use-workspace-skills.ts`), so `SkillsChanged` invalidation
   refreshes the page for free; fetched once per mount, never on focus (hosted:
   a sweep wakes every pod — the `useAllConversations` discipline).
 - **Row click → manage dialog** (`manage-skill-dialog.tsx`): edit the full
@@ -323,30 +323,44 @@ the caller owns (`canUseAgent` is workspace ownership), so no backend changed:
 **Setup chats are side-by-side everywhere (the Routines split).**
 `skill-setup-chat.tsx` portals into the shell detail panel
 (`useShellDetailPanel`) and owns the panel-open flag on mount/unmount, so on
-BOTH the per-agent Skills tab and the global page the catalog stays visible
-on the left while the conversation runs on the right (Escape closes, same as
-routines). The old swap-the-catalog-for-the-chat behavior is gone.
+BOTH the agent settings page's Skills section and the global page the catalog
+stays visible on the left while the conversation runs on the right (Escape
+closes, same as routines). The old swap-the-catalog-for-the-chat behavior is gone.
+
+**The global Skills page is a setup chat's ONE home.** A skill chat used to live
+on two surfaces — the owning agent's Skills TAB and the global page — so a
+consumed skill-setup-chat notification had to pick between them. With the tab
+gone the choice collapses to one comparison, made inline in the skill branch of
+`hooks/session-notifications.ts`: already on `SKILLS_VIEW_ID` → return without
+touching anything (an open chat is visible there, and a closed one was closed
+deliberately); anywhere else → a real jump to the Skills page with the chat
+armed to reopen. Written exactly like the sibling integration branch beside it.
+The HOU-980 rule it encodes still binds: never yank a user who is already on the
+surface hosting the chat, which matters most on macOS, where a bare refocus
+consumes the nav (`shouldNavigateOnAppActivation`,
+`app/tests/notification-nav.test.ts`).
 
 **The manage dialog is the skill's one detail surface on BOTH pages.** A row
-click on the per-agent Skills tab opens the SAME manage dialog the global
+click in the agent's Skills section opens the SAME manage dialog the global
 page uses (`agent-skill-manage-dialog.tsx` wraps it: lazy cross-agent
 aggregation while open, current agent pinned first so its copy is canonical);
 the guided chat sits behind the dialog's **Edit in chat** button
 (`onEditInChat`), which opens the side-panel chat on the skill's holder. The
 raw `SkillEditModal` remains only as the read-only fallback.
 
-**Per-agent Custom tab also shows "From your other agents"**
-(`other-agent-skills.tsx`): the user's own skills living on OTHER agents,
+**The agent's Custom tab also shows "From your other agents"**
+(`other-agent-skills.tsx`) — the discovery tab INSIDE the Skills section, not an
+agent tab: the user's own skills living on OTHER agents,
 one-click copyable onto this agent (load the holder's SKILL.md verbatim →
 `writeFile` here — the Houston-library copy primitive). Mounted only inside
-the tab content so the cross-agent fan-out runs only when the tab opens.
+that tab's content so the cross-agent fan-out runs only when it opens.
 
 The sidebar nav item made the bare "Skills" text ambiguous in e2e — scope
 selectors (see `skills-add-dialog.spec.ts`).
 
 ## Add Skills UI — the catalog-grammar Skills surface
 
-The agent's Skills section (`app/src/components/tabs/skills-content.tsx`) is
+The agent's Skills section (`app/src/components/agent/skills-content.tsx`) is
 the shared **catalog layout** (the ui/core `CatalogShell`, same two-section grammar
 as the Integrations surfaces and the AI hub, no page header — the nav label carries
 it): ONE top `CatalogSearchField` (`grid.searchSkills`) — the page's single query,
@@ -408,11 +422,14 @@ hand-authored frontmatter and decides which sections exist — node:test-covered
 
 ### Installed skills — strip rows with an edit modal (no separate detail screen)
 
-The per-agent Skills section (`app/src/components/tabs/agent-admin/agent-admin-skills.tsx`
-→ `SkillsContent`) renders the installed list through the shared responsive
+The per-agent Skills section — `AgentAdminSkills`
+(`app/src/components/agent/agent-admin/agent-admin-skills.tsx` → `SkillsContent`), which the
+agent settings page mounts as its **Skills** rail section
+(`agent-settings/agent-settings-section.tsx`; reached through Team Settings, see
+`knowledge-base/agent-settings.md`) — renders the installed list through the shared responsive
 `SkillCatalogGrid` / `SkillCatalogRow` pair in
 `app/src/components/skills/skill-catalog-rows.tsx`; the consolidated strip
-(`app/src/components/tabs/installed-skills-strip.tsx`, the
+(`app/src/components/agent/installed-skills-strip.tsx`, the
 `useInstalledSkillsStrip` hook) owns sorting, filtering, and preview expansion.
 The row grammar matches the Store/browse list: the skill's own `SkillIcon` (image resolved via `resolveSkillImageUrl` in
 `app/src/lib/skill-image.ts`, or a `skillMonogram` letter box when it has none),
@@ -431,7 +448,7 @@ The old
 `installed-skill-tile.tsx` icon-tile composition and the earlier
 `InstalledSkillRow` (pen/trash row) were both DELETED with this convergence. To
 hold the 200-line file law `SkillsContent`
-stays a thin orchestrator delegating to three siblings in `tabs/`:
+stays a thin orchestrator delegating to three siblings in `agent/`:
 `installed-skills-strip.tsx` (the `useInstalledSkillsStrip` hook: sort + search
 + the strip node), `skills/skill-catalog-rows.tsx` (the shared installed-skill
 row grammar), `skill-discovery-tabs.tsx` (`useSkillDiscoveryTabs`: the
@@ -527,7 +544,7 @@ its search contract unchanged.
 The i18n copy for the section lives under the **top-level `store.*`** key group
 in `app/src/locales/{en,es,pt}/skills.json` (promoted out of `addDialog.store`
 when the store left the dialog); `useSkillMarketplaceSectionLabels`
-(`app/src/components/tabs/use-skill-surface-labels.ts`) maps it to the section's
+(`app/src/components/agent/use-skill-surface-labels.ts`) maps it to the section's
 `labels` prop, and `useSkillDialogLabels` in the same file now carries only the
 GitHub/From-scratch dialog copy.
 
@@ -708,7 +725,7 @@ The Rust engine applied the same directory-slug identity rule through different 
 | Marketplace remote logic (TS, current) | [`packages/host/src/skills/`](../packages/host/src/skills/) — community cache, GitHub discovery, install composition |
 | Install composition (TS, current) | [`packages/domain/src/skill-install.ts`](../packages/domain/src/skill-install.ts) — `composeInstalledSkillMd`, frontmatter-preserving |
 | Missing-skill classifier (TS, current) | [`app/src/lib/missing-skill.ts`](../app/src/lib/missing-skill.ts) — `isMissingSkillError` (404) keeps it off the bug-toast/Sentry path |
-| Skills surface hook (TS, current) | [`app/src/components/tabs/use-skill-surface.ts`](../app/src/components/tabs/use-skill-surface.ts) — inline "Skill unavailable" handling |
+| Skills surface hook (TS, current) | [`app/src/components/agent/use-skill-surface.ts`](../app/src/components/agent/use-skill-surface.ts) — inline "Skill unavailable" handling |
 | Schema (Rust) | [`engine/houston-skills/src/lib.rs`](../engine/houston-skills/src/lib.rs) |
 | Parser / serializer | [`engine/houston-skills/src/format.rs`](../engine/houston-skills/src/format.rs) |
 | Engine DTO | [`engine/houston-engine-core/src/skills.rs`](../engine/houston-engine-core/src/skills.rs) |

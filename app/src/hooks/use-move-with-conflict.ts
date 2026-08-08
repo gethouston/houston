@@ -1,5 +1,5 @@
 /**
- * Move-with-conflict flow for the Files tab: a drop that would collide with
+ * Move-with-conflict flow for the Files section: a drop that would collide with
  * an existing entry opens a Replace / Keep both dialog instead of hitting
  * the host's 409. Replace deletes the occupant then moves; Keep both renames
  * the moved item to a free "name (n)" first. Step failures surface through

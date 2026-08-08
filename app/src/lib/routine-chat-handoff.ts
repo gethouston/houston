@@ -1,6 +1,6 @@
 /**
  * The Claude-facing kickoff for an automation's setup chat AFTER the visual
- * intake (`components/tabs/automation-intake`) collected what the user gave up
+ * intake (`components/agent/automation-intake`) collected what the user gave up
  * front: at most an INTENT (what they want it to do, in their own words) and a
  * WAKE (a cron schedule, an incoming webhook, or an app the trigger watches).
  * Either can be absent — the user may have skipped straight to the AI, or picked
@@ -17,7 +17,7 @@
  * kickoff it rides the auto-continue marker so the user never sees a fake bubble.
  */
 
-import type { WakePick } from "../components/tabs/automation-intake/types.ts";
+import type { WakePick } from "../components/agent/automation-intake/types.ts";
 import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
 import { aiWakeSaveRule, interviewPlan } from "./routine-chat-handoff-plan.ts";
 import {

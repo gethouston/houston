@@ -11,8 +11,8 @@ import { useUserProfiles } from "../../hooks/queries/use-user-profiles";
 import { avatarUrlFromProfiles } from "../../hooks/queries/user-profiles-map";
 import { useSession } from "../../hooks/use-session";
 import type { Agent } from "../../lib/types";
-import type { ShareAction } from "../tabs/agent-access-model.ts";
-import type { ShareAgentMutation } from "../tabs/use-share-agent";
+import type { ShareAction } from "../agent/agent-access-model.ts";
+import type { ShareAgentMutation } from "../agent/use-share-agent";
 import {
   agentPeopleView,
   agentPersonNeedsConfirm,

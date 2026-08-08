@@ -7,10 +7,9 @@ import type { Agent } from "./types.ts";
  * Routines) has a failure mode a per-agent one does not: a short list that
  * looks complete. Dropping the agents that failed (the `.catch(() => [])`
  * reflex) would present four agents' routines as the team's routines, and
- * nobody would know a fifth is missing. A SINGLE-agent tree (the Files
- * surface, on the tab and inside a team alike) has the twin of it: an empty
- * tree and a broken tree look identical. Both keep rendering what they have
- * AND name what they could not reach.
+ * nobody would know a fifth is missing. A SINGLE-agent tree (the Files section)
+ * has the twin of it: an empty tree and a broken tree look identical. Both keep
+ * rendering what they have AND name what they could not reach.
  *
  * Pure, so the counting and the ordering are unit tested
  * (`app/tests/agent-read-failures.test.ts`).

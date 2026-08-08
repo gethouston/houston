@@ -29,12 +29,6 @@
     ],
     "fileCount": 1
   },
-  "agents-tab-bar": {
-    "surfaces": [
-      "App shell"
-    ],
-    "fileCount": 1
-  },
   "agents-workspace-switcher": {
     "surfaces": [
       "App shell"
@@ -67,10 +61,9 @@
   },
   "board-kanban-list": {
     "surfaces": [
-      "Archived",
       "ui/board (internal)"
     ],
-    "fileCount": 3
+    "fileCount": 2
   },
   "board-kanban-people": {
     "surfaces": [
@@ -238,7 +231,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 161
+    "fileCount": 160
   },
   "core-button-group": {
     "surfaces": [
@@ -256,13 +249,13 @@
   "core-catalog": {
     "surfaces": [
       "AI Models",
-      "Agent tabs",
+      "Agent surfaces",
       "Integrations",
       "Permissions",
       "Skills",
       "app/src/components"
     ],
-    "fileCount": 15
+    "fileCount": 14
   },
   "core-catalog-detail-dialog": {
     "surfaces": [
@@ -273,7 +266,7 @@
   "core-catalog-row": {
     "surfaces": [
       "AI Models",
-      "Agent tabs",
+      "Agent surfaces",
       "Integrations",
       "Permissions",
       "Skills",
@@ -299,7 +292,7 @@
       "Skills",
       "app/src/components"
     ],
-    "fileCount": 6
+    "fileCount": 5
   },
   "core-collapsible": {
     "surfaces": [
@@ -377,7 +370,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 21
+    "fileCount": 20
   },
   "core-empty": {
     "surfaces": [
@@ -400,7 +393,7 @@
       "ui/routines (library)",
       "ui/skills (library)"
     ],
-    "fileCount": 28
+    "fileCount": 27
   },
   "core-highlighted-text": {
     "surfaces": [
@@ -557,13 +550,12 @@
       "Skills",
       "Store website",
       "Store website (admin)",
-      "Your Agents",
       "app/src/components",
       "ui/agent (library)",
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 47
+    "fileCount": 46
   },
   "core-status-badge": {
     "surfaces": [
@@ -620,7 +612,7 @@
       "ui/layout (library)",
       "ui/routines (library)"
     ],
-    "fileCount": 17
+    "fileCount": 16
   },
   "core-verified-badge": {
     "surfaces": [
@@ -722,7 +714,7 @@
   },
   "skills-preview-modal": {
     "surfaces": [
-      "Agent tabs"
+      "Agent surfaces"
     ],
     "fileCount": 2
   },

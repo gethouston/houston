@@ -15,11 +15,6 @@ export interface ToastItem {
   count?: number;
 }
 
-/** Deep-link target inside the agent's Context tab (PRODUCT-1256). Skills has
- * its own tab now, so navigating there is a plain viewMode change. */
-export type ContextTarget = "instructions" | "learnings";
-export type AgentBoardMode = "active" | "archived";
-
 /** A workspace file queued for the global in-app preview dialog (chat file
  * cards, turn summaries, prose file pills — HOU: preview files from chat). */
 export interface FilePreviewTarget {
@@ -32,8 +27,6 @@ export interface FilePreviewTarget {
 
 interface UIState {
   viewMode: string;
-  /** Ephemeral Activity sub-mode. It resets on navigation and agent changes. */
-  agentBoardMode: AgentBoardMode;
   /**
    * Which Settings section is open (`null` = the Settings index). The single
    * source of truth, not a one-shot pin: `SettingsView` renders from it and
@@ -56,7 +49,6 @@ interface UIState {
    * agent row in the sidebar; `null` = all of the team's agents).
    */
   teamAgentFilter: string | null;
-  assistantPanelOpen: boolean;
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
   claudeAvailable: boolean | null;
@@ -66,29 +58,21 @@ interface UIState {
   createAgentDialogOpen: boolean;
   /** "Your agent is still being created" write-blocked notice (HOU-693). */
   agentWarmingNoticeOpen: boolean;
-  /** Callback registered by the board tab to open the new-mission panel */
+  /** Callback registered by whichever mission board is on the glass (the
+   *  global one or a team's) to open its new-mission flow. */
   onStartMission: (() => void) | null;
-  /** Extra create actions registered by the board tab (e.g. "New Planning Session"). */
-  boardActions: Array<{ id: string; label: string; onClick: () => void }>;
-  /** Per-agent mission search query shown in the agent header. */
-  agentMissionSearchQueries: Record<string, string>;
-  /** Whether a per-agent mission search is loading conversation text. */
-  agentMissionSearchLoading: Record<string, boolean>;
-  /** Per-agent archived-tab search query (separate from the active board search). */
-  agentArchivedSearchQueries: Record<string, string>;
-  /** Whether the per-agent archived-tab search is loading conversation text. */
-  agentArchivedSearchLoading: Record<string, boolean>;
   /**
-   * Whether the ONE shell-level detail panel is open (hides tab bar for
-   * full-height panel). DERIVED from `missionPanelOwners` — never set directly.
+   * Whether the ONE shell-level detail panel is open (the shell renders it
+   * full-height beside `<main>`). DERIVED from `missionPanelOwners` — never
+   * set directly.
    */
   missionPanelOpen: boolean;
   /**
    * Ids of the surfaces currently claiming the shell detail panel. Several
-   * surfaces render the panel (the Activity board, the Routines chat, the
+   * surfaces render the panel (the mission boards, the Routines chat, the
    * Archived lists, the skill / integration setup chats) and all of them stay
    * MOUNTED while hidden, so a single last-writer-wins boolean strands the
-   * panel open as an empty card: the tab that leaves keeps its `true` on the
+   * panel open as an empty card: the screen that leaves keeps its `true` on the
    * flag while it stops portaling anything into it (PRODUCT-1229). Each
    * surface claims and releases its OWN id via `useShellDetailPanel`, so
    * releasing can never clobber the surface the user just navigated to.
@@ -99,11 +83,14 @@ interface UIState {
   mobileSidebarOpen: boolean;
   /**
    * One-shot nav target for a routine chat with no board card (session-
-   * finished notification click, #401): the activity id to open in the
-   * Routines tab. The tab consumes it (resolves which routine it belongs to,
-   * navigates, clears it) the moment it sees a match.
+   * finished notification click, #401): the OWNING agent plus the activity id
+   * to open in that team's Routines section. The owner travels with it because
+   * that section is cross-agent: without it the surface would have to guess
+   * whose chat the id belongs to, and guess wrong the moment two agents are in
+   * view. The section mounts the owner's chat host, which resolves the id to a
+   * routine or a draft and clears the request.
    */
-  pendingRoutineActivityId: string | null;
+  pendingRoutineChat: { agentId: string; activityId: string } | null;
   /**
    * One-shot nav target for a skill-setup chat with no board card (session-
    * finished notification click, HOU-791): the activity id to open in the
@@ -120,7 +107,7 @@ interface UIState {
   /** Whether the keyboard shortcut cheatsheet (?) is open. */
   cheatsheetOpen: boolean;
   /** Arrow-key kanban navigator registered by whichever board is on
-   *  screen (Mission Control or an agent's Activity tab). Moves the
+   *  screen (the global Mission Control or a team's). Moves the
    *  keyboard highlight; does NOT open the chat panel. */
   onBoardNavigate: ((dir: "up" | "down" | "left" | "right") => void) | null;
   /** Open the currently-highlighted card's chat panel. Registered by
@@ -130,7 +117,6 @@ interface UIState {
    *  a card is selected; fired by Escape when the composer is not
    *  focused (the first Escape blurs the composer, the second closes). */
   onPanelClose: (() => void) | null;
-  contextTarget: ContextTarget | null;
   /** Pin the first-run tutorial UI in front of the workspace shell. Set true
    * while the orchestrator is mid-flight, cleared on graduation or skip. */
   tutorialActive: boolean;
@@ -170,7 +156,7 @@ interface UIState {
   creatorEditorOpen: boolean;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
-  /** Files tab layout: Drive-style card grid or Finder-style list. Persisted. */
+  /** Files section layout: Drive-style card grid or Finder-style list. Persisted. */
   filesViewMode: "grid" | "list";
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
@@ -181,7 +167,6 @@ interface UIState {
     opts?: { agentFilter?: string | null },
   ) => void;
   setTeamAgentFilter: (agentId: string | null) => void;
-  setAgentBoardMode: (mode: AgentBoardMode) => void;
   setSettingsSection: (section: SettingsSectionId | null) => void;
   /**
    * Navigate to Settings, on `section` (or its index when `null`). ONE call so a
@@ -190,7 +175,6 @@ interface UIState {
    * section, whether or not Settings was already open.
    */
   openSettings: (section: SettingsSectionId | null) => void;
-  setAssistantPanelOpen: (open: boolean) => void;
   setActivityPanelId: (
     id: string | null,
     options?: { forceOpen?: boolean },
@@ -202,19 +186,14 @@ interface UIState {
   setCreateAgentDialogOpen: (open: boolean) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
-  setBoardActions: (
-    actions: Array<{ id: string; label: string; onClick: () => void }>,
-  ) => void;
-  setAgentMissionSearchQuery: (agentPath: string, query: string) => void;
-  setAgentMissionSearchLoading: (agentPath: string, loading: boolean) => void;
-  setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
-  setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
   /** Claim (`open`) or release the shell detail panel for one surface. */
   setMissionPanelOwner: (ownerId: string, open: boolean) => void;
   /** Release every claim — the "get me out of this panel" escape hatch. */
   closeMissionPanel: () => void;
   setMobileSidebarOpen: (open: boolean) => void;
-  setPendingRoutineActivityId: (activityId: string | null) => void;
+  setPendingRoutineChat: (
+    target: { agentId: string; activityId: string } | null,
+  ) => void;
   setPendingSkillChatActivityId: (activityId: string | null) => void;
   setIntegrationSetupChatAgentId: (agentId: string | null) => void;
   setPaletteOpen: (open: boolean) => void;
@@ -224,7 +203,6 @@ interface UIState {
   ) => void;
   setOnBoardOpen: (cb: (() => void) | null) => void;
   setOnPanelClose: (cb: (() => void) | null) => void;
-  setContextTarget: (target: ContextTarget | null) => void;
   setTutorialActive: (active: boolean) => void;
   setUiTourActive: (active: boolean) => void;
   setShareAgentId: (agentId: string | null) => void;
@@ -252,10 +230,8 @@ interface UIState {
 /** The initial data state, shared by the store's creator and `reset()` so the
  *  two can never drift. Excludes the action functions. */
 const initialUIState = {
-  viewMode: "chat",
-  agentBoardMode: "active",
+  viewMode: "dashboard",
   settingsSection: null,
-  assistantPanelOpen: false,
   activityPanelId: null,
   activityPanelForceOpen: false,
   claudeAvailable: null,
@@ -264,15 +240,10 @@ const initialUIState = {
   createAgentDialogOpen: false,
   agentWarmingNoticeOpen: false,
   onStartMission: null,
-  boardActions: [],
-  agentMissionSearchQueries: {},
-  agentMissionSearchLoading: {},
-  agentArchivedSearchQueries: {},
-  agentArchivedSearchLoading: {},
   missionPanelOpen: false,
   missionPanelOwners: [],
   mobileSidebarOpen: false,
-  pendingRoutineActivityId: null,
+  pendingRoutineChat: null,
   pendingSkillChatActivityId: null,
   integrationSetupChatAgentId: null,
   paletteOpen: false,
@@ -280,7 +251,6 @@ const initialUIState = {
   onBoardNavigate: null,
   onBoardOpen: null,
   onPanelClose: null,
-  contextTarget: null,
   tutorialActive: false,
   uiTourActive: false,
   shareAgentId: null,
@@ -304,40 +274,23 @@ let toastCounter = 0;
 // toast's countdown (see addToast) and a manual dismiss cancels it.
 const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-/**
- * The state a view change implies. `agentBoardMode` is an ephemeral Activity
- * sub-mode, so ANY navigation off Activity drops it back to the active board.
- * Every navigation setter goes through this, so the rule cannot be honored by
- * `setViewMode` and forgotten by `openSettings`.
- */
-function viewChange(
-  viewMode: string,
-): Pick<UIState, "viewMode"> | Pick<UIState, "viewMode" | "agentBoardMode"> {
-  return viewMode === "activity"
-    ? { viewMode }
-    : { viewMode, agentBoardMode: "active" };
-}
-
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       ...initialUIState,
 
-      setViewMode: (viewMode) => set(viewChange(viewMode)),
+      setViewMode: (viewMode) => set({ viewMode }),
       openTeamView: (activeTeamId, teamSection, opts) =>
         set({
-          ...viewChange(TEAM_VIEW_ID),
+          viewMode: TEAM_VIEW_ID,
           activeTeamId,
           teamSection,
           teamAgentFilter: opts?.agentFilter ?? null,
         }),
       setTeamAgentFilter: (teamAgentFilter) => set({ teamAgentFilter }),
-      setAgentBoardMode: (agentBoardMode) => set({ agentBoardMode }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
       openSettings: (settingsSection) =>
-        set({ ...viewChange("settings"), settingsSection }),
-      setAssistantPanelOpen: (assistantPanelOpen) =>
-        set({ assistantPanelOpen }),
+        set({ viewMode: "settings", settingsSection }),
       setActivityPanelId: (activityPanelId, options) =>
         set({
           activityPanelId,
@@ -406,35 +359,6 @@ export const useUIStore = create<UIState>()(
         set({ agentWarmingNoticeOpen }),
 
       setOnStartMission: (onStartMission) => set({ onStartMission }),
-      setBoardActions: (boardActions) => set({ boardActions }),
-      setAgentMissionSearchQuery: (agentPath, query) =>
-        set((s) => {
-          const next = { ...s.agentMissionSearchQueries };
-          if (query) next[agentPath] = query;
-          else delete next[agentPath];
-          return { agentMissionSearchQueries: next };
-        }),
-      setAgentMissionSearchLoading: (agentPath, loading) =>
-        set((s) => {
-          const next = { ...s.agentMissionSearchLoading };
-          if (loading) next[agentPath] = true;
-          else delete next[agentPath];
-          return { agentMissionSearchLoading: next };
-        }),
-      setAgentArchivedSearchQuery: (agentPath, query) =>
-        set((s) => {
-          const next = { ...s.agentArchivedSearchQueries };
-          if (query) next[agentPath] = query;
-          else delete next[agentPath];
-          return { agentArchivedSearchQueries: next };
-        }),
-      setAgentArchivedSearchLoading: (agentPath, loading) =>
-        set((s) => {
-          const next = { ...s.agentArchivedSearchLoading };
-          if (loading) next[agentPath] = true;
-          else delete next[agentPath];
-          return { agentArchivedSearchLoading: next };
-        }),
       setMissionPanelOwner: (ownerId, open) =>
         set((s) => {
           const missionPanelOwners = setPanelOwner(
@@ -451,8 +375,8 @@ export const useUIStore = create<UIState>()(
       closeMissionPanel: () =>
         set({ missionPanelOwners: [], missionPanelOpen: false }),
       setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
-      setPendingRoutineActivityId: (pendingRoutineActivityId) =>
-        set({ pendingRoutineActivityId }),
+      setPendingRoutineChat: (pendingRoutineChat) =>
+        set({ pendingRoutineChat }),
       setPendingSkillChatActivityId: (pendingSkillChatActivityId) =>
         set({ pendingSkillChatActivityId }),
       setIntegrationSetupChatAgentId: (integrationSetupChatAgentId) =>
@@ -462,7 +386,6 @@ export const useUIStore = create<UIState>()(
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
       setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
       setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
-      setContextTarget: (contextTarget) => set({ contextTarget }),
       setTutorialActive: (tutorialActive) => set({ tutorialActive }),
       setUiTourActive: (uiTourActive) => set({ uiTourActive }),
       setShareAgentId: (shareAgentId) => set({ shareAgentId }),

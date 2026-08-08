@@ -9,7 +9,6 @@ import {
 describe("query persist policy", () => {
   it("persists exactly the pod-held list surfaces", () => {
     equal(isPersistedQueryKey(["activity", "Ws/Agent"]), true);
-    equal(isPersistedQueryKey(["conversations", "Ws/Agent"]), true);
     equal(isPersistedQueryKey(["all-conversations", "Ws/A", "Ws/B"]), true);
   });
 
@@ -31,6 +30,6 @@ describe("query persist policy", () => {
     // next persist sweep drops it from disk. queryPersistenceOptions uses this
     // ONE constant for both, the invariant this test pins.
     ok(PERSIST_MAX_AGE_MS >= 24 * 60 * 60 * 1_000);
-    equal(PERSISTED_QUERY_PREFIXES.length, 3);
+    equal(PERSISTED_QUERY_PREFIXES.length, 2);
   });
 });

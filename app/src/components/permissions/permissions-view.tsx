@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { analytics } from "../../lib/analytics";
@@ -8,7 +8,6 @@ import { BackBarScreen } from "../shell/back-bar-screen";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { AgentDetail } from "./agent-detail";
 import { AgentsList } from "./agents-list";
-import { usePermissionsNav } from "./permissions-nav-store";
 
 /**
  * The Permissions screen (Settings > Permissions, owner/admin only): the ONE
@@ -17,10 +16,8 @@ import { usePermissionsNav } from "./permissions-nav-store";
  * where WHO can use it, its app + model ceilings, its skills and its context
  * all live in one rail. There is no per-person lens.
  *
- * A shell only: it loads the org once (roster for the list), owns the drill-in
- * state, and consumes a one-shot deep link from {@link usePermissionsNav} (the
- * blocked-app CTA in the agent workspace routes straight into that agent's
- * settings). Rendered ONLY when `canSeeOrganization` (multiplayer owner/admin,
+ * A shell only: it loads the org once (roster for the list) and owns the
+ * drill-in state. Rendered ONLY when `canSeeOrganization` (multiplayer owner/admin,
  * and on a Spaces host a TEAM active space, never the personal one) — the
  * Settings index hides the row and `SettingsView` falls a stale section back to
  * the index for everyone else, so it never mounts in single-player, for a plain
@@ -41,13 +38,9 @@ export function PermissionsView({
   const { data: org } = useOrg(true);
   const agents = useAgentStore((s) => s.agents);
 
-  const requestedAgentId = usePermissionsNav((s) => s.requestedAgentId);
-  const requestedSection = usePermissionsNav((s) => s.requestedSection);
-  const clearRequested = usePermissionsNav((s) => s.clearRequested);
-
   // Drill-in held as an id (not a snapshot) so a store reload keeps the detail
-  // pointed at the live row; if the id drops out, it falls back to the list. The
-  // opening section is captured alongside so a deep link lands on Apps.
+  // pointed at the live row; if the id drops out, it falls back to the list.
+  // The opening section is captured alongside it.
   const [detail, setDetail] = useState<{
     agentId: string;
     section: AgentSettingsSection;
@@ -67,17 +60,6 @@ export function PermissionsView({
     },
     [detailAgentId],
   );
-
-  // Honor a one-shot deep link (the blocked-app "Enable it in Permissions" CTA),
-  // then clear it so a later plain nav lands back on the agent list.
-  useEffect(() => {
-    if (requestedAgentId === null) return;
-    setDetail({
-      agentId: requestedAgentId,
-      section: requestedSection ?? "people",
-    });
-    clearRequested();
-  }, [requestedAgentId, requestedSection, clearRequested]);
 
   const members = org?.members ?? [];
   const detailAgent =

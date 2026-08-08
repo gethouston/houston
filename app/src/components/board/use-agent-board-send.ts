@@ -12,7 +12,7 @@ import { perfSpans } from "../../lib/perf-spans";
 import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import type { Agent } from "../../lib/types";
 import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
 import { useUIStore } from "../../stores/ui";
 import type { SendOverrides } from "./board-source";
@@ -29,17 +29,11 @@ import type { SendOverrides } from "./board-source";
  */
 export function useAgentBoardSend({
   agent,
-  agentDef,
   rawItems,
-  pendingAgentMode,
-  setPendingAgentMode,
   promptContext,
 }: {
   agent: Agent;
-  agentDef: AgentDefinition;
   rawItems: Activity[] | undefined;
-  pendingAgentMode: string | null;
-  setPendingAgentMode: (mode: string | null) => void;
   /**
    * Model-facing context prepended to EVERY outgoing prompt, hidden from the
    * chat (the bubble keeps the user's words via `displayText` / the
@@ -50,7 +44,6 @@ export function useAgentBoardSend({
 }) {
   const { t } = useTranslation(["board", "chat", "common"]);
   const path = agent.folderPath;
-  const agentModes = agentDef.config.agents;
   const addToast = useUIStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const [loadingState, setLoading] = useState<Record<string, boolean>>({});
@@ -97,8 +90,6 @@ export function useAgentBoardSend({
       modeOverride,
       mentions,
     }: { text: string; files: File[] } & SendOverrides) => {
-      const agentMode = pendingAgentMode ?? agentModes?.[0]?.id;
-      const mode = agentModes?.find((m) => m.id === agentMode);
       const visible = formatVisibleMessageText(text, files, (names) =>
         t("chat:queue.attached", { names }),
       );
@@ -111,8 +102,6 @@ export function useAgentBoardSend({
         },
         text,
         {
-          agentMode,
-          promptFile: mode?.promptFile,
           providerOverride,
           modelOverride,
           modeOverride,
@@ -131,7 +120,6 @@ export function useAgentBoardSend({
       // itself — no app-side optimistic push. Warming agents included: the
       // parked message shows the standard in-flight indicator (HOU-713).
       setLoading((prev) => ({ ...prev, [sessionKey]: true }));
-      setPendingAgentMode(null);
       // First-mission pre-prompt: a contextual, one-time nudge to turn on
       // completion notifications, shown here — the moment a user kicks off a
       // mission — only when delivery isn't already granted and we've never
@@ -140,7 +128,6 @@ export function useAgentBoardSend({
       // createMission bypassed useCreateActivity so invalidate manually.
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
       analytics.track("mission_created", {
-        agent_mode: agentMode ?? "default",
         provider: providerOverride,
         model: modelOverride,
       });
@@ -153,18 +140,7 @@ export function useAgentBoardSend({
         analytics.track("file_attached", { file_kind: classifyFileKind(f) });
       return conversationId;
     },
-    [
-      path,
-      agent.id,
-      agent.name,
-      agent.color,
-      pendingAgentMode,
-      agentModes,
-      queryClient,
-      addToast,
-      t,
-      setPendingAgentMode,
-    ],
+    [path, agent.id, agent.name, agent.color, queryClient, addToast, t],
   );
 
   const sendMessageNow = useCallback(
@@ -183,7 +159,6 @@ export function useAgentBoardSend({
       // A follow-up into a still-warming agent parks with the same queue the
       // first message used (HOU-693): rendered now, delivered on ready. A
       // held wire send would die with infrastructure timeouts or a reload.
-      const warmingMode = agentModes?.find((m) => m.id === activity?.agent);
       const queuedWarm = useAgentProvisioningStore
         .getState()
         .queueWarmingSend(agent.id, {
@@ -208,7 +183,6 @@ export function useAgentBoardSend({
                   );
                 }
               : undefined,
-          promptFile: warmingMode?.promptFile,
           provider: overrides.providerOverride,
           model: overrides.modelOverride,
           mode: overrides.modeOverride,
@@ -237,9 +211,7 @@ export function useAgentBoardSend({
       try {
         const paths = await tauriAttachments.save(scopeId, files);
         const prompt = buildAttachmentPrompt(text, files, paths, promptContext);
-        const mode = agentModes?.find((m) => m.id === activity?.agent);
         await tauriChat.send(path, prompt, sessionKey, {
-          mode: mode?.promptFile,
           providerOverride: overrides.providerOverride,
           modelOverride: overrides.modelOverride,
           modeOverride: overrides.modeOverride,
@@ -274,7 +246,7 @@ export function useAgentBoardSend({
         throw err;
       }
     },
-    [path, agent.id, addToast, rawItems, agentModes, t, promptContext],
+    [path, agent.id, addToast, rawItems, t, promptContext],
   );
 
   const stopSession = useCallback(

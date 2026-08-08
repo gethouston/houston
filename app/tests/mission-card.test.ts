@@ -2,40 +2,24 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { missionCardTags } from "../src/lib/mission-card.ts";
 
-const modes = [
-  { id: "default", name: "Default" },
-  { id: "research", name: "Research" },
-];
-
 describe("missionCardTags", () => {
-  it("uses the agent mode label when the mission has a mode", () => {
-    deepStrictEqual(
-      missionCardTags({
-        agent: "research",
-        agentModes: modes,
-        routineLabel: "Routine",
-      }),
-      ["Research"],
-    );
-  });
-
-  it("uses the routine label when the mission is a routine chat with no mode", () => {
+  it("tags a routine-born mission with the routine label", () => {
     deepStrictEqual(
       missionCardTags({
         routineId: "routine-id",
-        agentModes: modes,
         routineLabel: "Routine",
       }),
       ["Routine"],
     );
   });
 
-  it("keeps normal blank missions untagged", () => {
+  it("keeps normal missions untagged", () => {
+    strictEqual(missionCardTags({ routineLabel: "Routine" }), undefined);
+  });
+
+  it("treats a null routine id as no routine", () => {
     strictEqual(
-      missionCardTags({
-        agentModes: modes,
-        routineLabel: "Routine",
-      }),
+      missionCardTags({ routineId: null, routineLabel: "Routine" }),
       undefined,
     );
   });

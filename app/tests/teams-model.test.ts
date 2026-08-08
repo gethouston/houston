@@ -9,13 +9,24 @@ import {
   resolveTeams,
   sectionHonorsAgentPin,
   TEAM_VIEW_ID,
+  type TeamView,
   teamById,
   teamOfAgent,
-  visibleTeamSections,
+  visibleTeamSectionsForTeam,
 } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 
-const agent = (id: string): Agent => ({ id, name: id }) as Agent;
+const agent = (id: string, access?: Agent["access"]): Agent =>
+  ({ id, name: id, ...(access === undefined ? {} : { access }) }) as Agent;
+
+/** A team holding exactly these agents (a named group unless told otherwise). */
+const team = (agents: Agent[], over: Partial<TeamView> = {}): TeamView => ({
+  id: "g1",
+  name: "Sales",
+  agents,
+  isDefault: false,
+  ...over,
+});
 
 const layout = (
   groups: SidebarLayout["groups"],
@@ -119,37 +130,93 @@ describe("canSeeTeamSettings", () => {
   });
 });
 
-describe("visibleTeamSections", () => {
-  it("offers the team's work to everyone and Team Settings only to admins", () => {
-    assert.deepEqual(visibleTeamSections(null), [
-      "mission-control",
-      "routines",
-      "files",
-      "settings",
-    ]);
+describe("visibleTeamSectionsForTeam", () => {
+  const WORK = ["mission-control", "routines", "files"] as const;
+  const ALL = [...WORK, "settings"] as const;
+  const MEMBER = caps({ multiplayer: true, role: "user" });
+
+  it("gives the team's WORK to everyone, in a stable order, Settings last", () => {
     assert.deepEqual(
-      visibleTeamSections(caps({ multiplayer: true, role: "admin" })),
-      ["mission-control", "routines", "files", "settings"],
+      visibleTeamSectionsForTeam(MEMBER, team([agent("a", "user")])),
+      [...WORK],
     );
     assert.deepEqual(
-      visibleTeamSections(caps({ multiplayer: true, role: "user" })),
-      ["mission-control", "routines", "files"],
+      visibleTeamSectionsForTeam(MEMBER, team([agent("a", "manager")])),
+      [...ALL],
     );
   });
 
-  it("gives a plain member Routines and Files, and only withholds Team Settings", () => {
-    const member = visibleTeamSections(
-      caps({ multiplayer: true, role: "user" }),
+  it("single-player always gets Team Settings, on any team", () => {
+    assert.deepEqual(visibleTeamSectionsForTeam(null, team([agent("a")])), [
+      ...ALL,
+    ]);
+    assert.deepEqual(visibleTeamSectionsForTeam(caps({}), team([])), [...ALL]);
+  });
+
+  it("the org owner/admin gets Team Settings on every team, even an empty one", () => {
+    for (const role of ["owner", "admin"] as const) {
+      const c = caps({ multiplayer: true, role });
+      assert.deepEqual(
+        visibleTeamSectionsForTeam(c, team([agent("a", "user")])),
+        [...ALL],
+        role,
+      );
+      assert.deepEqual(visibleTeamSectionsForTeam(c, team([])), [...ALL], role);
+    }
+  });
+
+  it("a member who MANAGES one of this team's agents gets Team Settings", () => {
+    // The bug this rule fixes: a `role:"user"` holding `access:"manager"` on an
+    // agent lost every configure surface, because Team Settings is the ONE door
+    // to the agent settings page and it was gated org-wide.
+    const sections = visibleTeamSectionsForTeam(
+      MEMBER,
+      team([agent("a", "user"), agent("b", "manager")]),
     );
-    assert.equal(member.includes("routines"), true);
-    assert.equal(member.includes("files"), true);
-    assert.equal(member.includes("settings"), false);
+    assert.equal(sections.includes("settings"), true);
+  });
+
+  it("the same member gets NO Team Settings on a team they only use", () => {
+    for (const agents of [
+      [] as Agent[],
+      [agent("a", "user")],
+      [agent("a", "user"), agent("b", "user")],
+      // No `access` at all: a stale/partial wire row must never widen power.
+      [agent("a")],
+    ]) {
+      const sections = visibleTeamSectionsForTeam(MEMBER, team(agents));
+      assert.deepEqual(sections, [...WORK], JSON.stringify(agents));
+    }
+  });
+
+  it("is decided PER TEAM: the same caller differs team to team", () => {
+    const managed = team([agent("a", "manager")], { id: "g1" });
+    const used = team([agent("b", "user")], { id: "g2" });
+    assert.equal(
+      visibleTeamSectionsForTeam(MEMBER, managed).includes("settings"),
+      true,
+    );
+    assert.equal(
+      visibleTeamSectionsForTeam(MEMBER, used).includes("settings"),
+      false,
+    );
+  });
+
+  it("holds for the default team too (the workspace's own)", () => {
+    const def = team([agent("a", "manager")], {
+      id: DEFAULT_TEAM_ID,
+      isDefault: true,
+    });
+    assert.deepEqual(visibleTeamSectionsForTeam(MEMBER, def), [...ALL]);
   });
 });
 
 describe("resolveTeamSection", () => {
-  const admin = visibleTeamSections(null);
-  const member = visibleTeamSections(caps({ multiplayer: true, role: "user" }));
+  const admin = visibleTeamSectionsForTeam(null, team([agent("a")]));
+  const member = visibleTeamSectionsForTeam(
+    caps({ multiplayer: true, role: "user" }),
+    team([agent("a", "user")]),
+  );
 
   it("keeps a section the caller can see", () => {
     assert.equal(resolveTeamSection(admin, "settings"), "settings");

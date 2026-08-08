@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { closeActivityPanel } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
+import { screen } from "./support/team-nav";
 
 /**
  * The reworked agent self-setup flow. Creating an agent through the dialog no
@@ -42,6 +43,37 @@ test("creating an agent auto-starts its setup mission and opens the chat", async
   await expect(page.getByText("Mission: Getting set up")).toBeVisible();
 });
 
+test("the welcome chat is live before the board sweep returns its row", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+
+  // Hold every activities READ, so the cross-agent sweep cannot return the new
+  // mission's row for the whole assertion budget below. That is the co-located
+  // reality this guards: no warming entry carries the identity, and the sweep
+  // is a beat behind — so the panel opens on a card nobody can name unless the
+  // create published it (`lib/created-mission-handoff.ts`). Without the
+  // publish the chat sits blank here until the hold lifts.
+  const SWEEP_HOLD_MS = 8_000;
+  await page.route(/\/activities(\?|$)/, async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.fallback();
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, SWEEP_HOLD_MS));
+    await route.fallback();
+  });
+
+  await createFromScratch(page, "Solstice");
+
+  // A live conversation, not an empty shell: the panel's transcript carries the
+  // user bubble the create just sent (its session key + agent path resolved).
+  await expect(page.locator(".is-user").first()).toBeVisible({
+    timeout: 4_000,
+  });
+});
+
 test("the setup mission's visible user bubble shows the kickoff copy", async ({
   page,
 }) => {
@@ -78,11 +110,13 @@ test("the setup mission shows as a card on the new agent's board", async ({
   });
   await closeActivityPanel(page);
 
-  const card = page
+  // Scoped to the screen ON THE GLASS: every top-level view is kept alive, so
+  // the (hidden) global board holds the same card.
+  const card = screen(page)
     .locator("[data-kanban-card]")
     .filter({ hasText: "Getting set up" });
   await expect(card).toHaveCount(1);
-  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(0);
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 });
 
 test("closing the setup panel leaves the shell usable with the agent in the sidebar", async ({

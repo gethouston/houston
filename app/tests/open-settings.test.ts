@@ -12,7 +12,7 @@ afterEach(() => useUIStore.getState().reset());
 describe("useUIStore.openSettings", () => {
   it("lands on the index from anywhere, even with a section already open", () => {
     const s = useUIStore.getState();
-    s.setViewMode("chat");
+    s.setViewMode("team");
     s.setSettingsSection("permissions");
 
     useUIStore.getState().openSettings(null);
@@ -29,20 +29,6 @@ describe("useUIStore.openSettings", () => {
 
     strictEqual(useUIStore.getState().viewMode, "settings");
     strictEqual(useUIStore.getState().settingsSection, "organization");
-  });
-
-  // HOU-814 made the archived board an ephemeral Activity sub-mode that any
-  // navigation drops. Opening Settings IS navigation, so it must drop it too:
-  // otherwise a user who opens Settings from the archived board and comes back
-  // lands on the archive with the toolbar toggle still lit.
-  it("leaves the archived board behind, like every other navigation", () => {
-    const s = useUIStore.getState();
-    s.setViewMode("activity");
-    s.setAgentBoardMode("archived");
-
-    useUIStore.getState().openSettings("permissions");
-
-    strictEqual(useUIStore.getState().agentBoardMode, "active");
   });
 
   it("resets the open section on an identity change", () => {

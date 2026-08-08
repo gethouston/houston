@@ -444,8 +444,6 @@ export const tauriChat = {
     prompt: string,
     sessionKey: string,
     opts?: {
-      mode?: string;
-      promptFile?: string;
       workingDirOverride?: string;
       providerOverride?: string;
       modelOverride?: string;
@@ -453,9 +451,7 @@ export const tauriChat = {
       /**
        * Per-turn mode pin (composer "Mode" selector). `"plan"` pins a read-only
        * planning turn; `"auto"` (Autopilot) drops the blocking tools so the turn
-       * runs fire-and-forget; `"execute"` (or omitted) is a normal turn. Distinct
-       * from the legacy `mode`/`promptFile` opts above (Rust-era prompt profiles,
-       * dropped at this boundary) — never collides with them.
+       * runs fire-and-forget; `"execute"` (or omitted) is a normal turn.
        */
       modeOverride?: "execute" | "plan" | "auto";
       /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
@@ -1885,9 +1881,8 @@ export const tauriTunnel = {
 /**
  * Integrations (Composio, platform mode). The user never creates a provider
  * account — they only OAuth apps (Gmail, Slack…); Houston's platform key lives
- * server-side. Host-only — these reach the v3 host's /v1/integrations routes;
- * the tab is gated to the control-plane build so they never run on the legacy
- * Rust wire. Types flow by inference.
+ * server-side. Host-only — these reach the v3 host's /v1/integrations routes.
+ * Types flow by inference.
  */
 export const tauriIntegrations = {
   status: () =>

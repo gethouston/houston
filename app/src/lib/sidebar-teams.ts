@@ -12,7 +12,6 @@ import {
   type TeamSectionId,
   type TeamView,
 } from "./teams-model.ts";
-import { isTopLevelView } from "./top-level-views.ts";
 
 /** The team / section / agent the open view corresponds to (all null off it). */
 export interface TeamHighlight {
@@ -29,15 +28,25 @@ const NO_HIGHLIGHT: TeamHighlight = {
 
 /**
  * Read the highlight off the UI store. Only a team view highlights a team: with
- * an agent tab or a top-level view open, the team pointers are stale leftovers
- * and lighting a row would claim the user is somewhere they are not.
+ * any other top-level view open, the team pointers are stale leftovers and
+ * lighting a row would claim the user is somewhere they are not.
  *
- * The section runs through `resolveTeamSection` against the caller's own
- * `visibleTeamSections` — the SAME call the team view makes to decide what to
- * render. Reading the raw store value instead would light nothing whenever the
- * view fell back (a section with no surface yet, or Team Settings pinned before
- * a space switch demoted the user), leaving the rail blank under a board that
- * is plainly on screen.
+ * `sections` must be the ACTIVE team's own list — `visibleTeamSectionsForTeam`
+ * of the team `activeTeamId` names, the SAME call the team view makes for the
+ * same team. That is the whole invariant: the rail and the view read one list
+ * per team, so a row can never be lit for a section the screen refuses, and the
+ * screen can never render a section with no row. Another team's list would
+ * answer about the wrong door (Team Settings is per team).
+ *
+ * The section runs through `resolveTeamSection` rather than the raw store value,
+ * so the rail follows the view's own fallback (a section with no surface yet, or
+ * Team Settings pinned before a space switch demoted the caller) instead of
+ * going blank under a board that is plainly on screen.
+ *
+ * An EMPTY `sections` means the active team no longer resolves; nothing is lit,
+ * which is honest for the single frame before `blockedTeamView` sends the user
+ * to the dashboard, and it keeps `resolveTeamSection` from being asked to pick
+ * from nothing.
  */
 export function resolveTeamHighlight(
   ui: {
@@ -49,6 +58,7 @@ export function resolveTeamHighlight(
   sections: readonly TeamSectionId[],
 ): TeamHighlight {
   if (ui.viewMode !== TEAM_VIEW_ID) return NO_HIGHLIGHT;
+  if (sections.length === 0) return NO_HIGHLIGHT;
   return {
     teamId: ui.activeTeamId,
     section: resolveTeamSection(sections, ui.teamSection),
@@ -65,8 +75,9 @@ export interface TeamSectionRowModel {
 
 /**
  * The destination rows a team block renders, in `sections` order. The caller
- * passes the caller-visible list (`visibleTeamSections`), so a section the user
- * may not open never gets a row.
+ * passes THIS team's list (`visibleTeamSectionsForTeam(caps, team)`), so a
+ * section the user may not open on this team never gets a row here — even when
+ * the team next to it offers one.
  */
 export function teamSectionRowModels(
   team: TeamView,
@@ -94,22 +105,18 @@ export function teamSectionRowModels(
  *   (`teamPinnedAgent` / `teamFilterPath` / `resolveFilterPath`); a row left lit
  *   in its new block would point at a filter nothing is applying.
  *
- * On an agent tab it is the open agent; on any other top-level view, nothing.
+ * Off a team view, nothing: an agent has no screen of its own since the per-agent
+ * tab shell was deleted, so every other `viewMode` is a top-level view no agent
+ * row belongs to.
  */
 export function sidebarSelectedAgentId(args: {
   viewMode: string;
   highlight: TeamHighlight;
   /** The team the highlight points at, `null` off a team view. */
   activeTeam: TeamView | null;
-  currentAgentId: string | null;
 }): string | null {
-  if (args.viewMode === TEAM_VIEW_ID) {
-    const { agentId, section } = args.highlight;
-    if (agentId === null || !sectionHonorsAgentPin(section)) return null;
-    return args.activeTeam?.agents.some((a) => a.id === agentId)
-      ? agentId
-      : null;
-  }
-  if (isTopLevelView(args.viewMode)) return null;
-  return args.currentAgentId;
+  if (args.viewMode !== TEAM_VIEW_ID) return null;
+  const { agentId, section } = args.highlight;
+  if (agentId === null || !sectionHonorsAgentPin(section)) return null;
+  return args.activeTeam?.agents.some((a) => a.id === agentId) ? agentId : null;
 }

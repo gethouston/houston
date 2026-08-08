@@ -56,9 +56,6 @@
       }
     }
   },
-  "tabActions": {
-    "newMission": "Nueva misión"
-  },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Prueba nativa de Sentry activada",
     "nativeTriggeredDescription": "Revisa Sentry para sentry-native-stack-smoke-test."
@@ -89,53 +86,41 @@
         "title": "Espacios",
         "body": "Tus agentes personales, y los equipos que compartes con otros. Cambia de espacio cuando quieras desde aquí."
       },
-      "assistant": {
-        "title": "Tus agentes",
-        "body": "Todos los agentes de este espacio viven aquí. Cambia entre ellos con un clic."
-      },
-      "board": {
-        "title": "El espacio del agente",
-        "body": "Aquí es donde trabaja el agente seleccionado. Todo lo que ves a la derecha pertenece a ese agente."
-      },
-      "newMission": {
-        "title": "Inicia un nuevo chat",
-        "body": "Haz clic aquí para abrir una conversación nueva. Cada una se vuelve una tarjeta de misión."
-      },
-      "tabActivity": {
-        "title": "Actividad",
-        "body": "El tablero de cada conversación con este agente. En marcha, esperando, listas."
-      },
-      "tabRoutines": {
-        "title": "Rutinas",
-        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Configura aquí cualquier otra cosa para que ocurra por su cuenta."
-      },
-      "tabIntegrations": {
-        "title": "Integraciones",
-        "body": "Herramientas que tus agentes pueden usar, como Gmail y Calendar. Las conexiones viven aquí, compartidas entre todos tus agentes."
-      },
-      "tabFiles": {
-        "title": "Archivos",
-        "body": "Documentos que tu asistente puede leer o compartir contigo. Arrastra lo que quieras para dar contexto."
-      },
-      "tabArchived": {
-        "title": "Archivadas",
-        "body": "Usa este botón para revisar las misiones que este agente ya terminó. Envía un mensaje para reabrir una y vuelve directo al tablero activo."
-      },
-      "tabContext": {
-        "title": "Contexto",
-        "body": "La descripción de trabajo de tu asistente y todo lo que ha aprendido. Actualízalo cuando quieras."
-      },
-      "tabSkills": {
-        "title": "Skills",
-        "body": "Enséñale a tu asistente skills reutilizables que puede aplicar en sus misiones."
+      "teams": {
+        "title": "Tus equipos",
+        "body": "Cada agente vive en un equipo. Abre un equipo para ver todo lo que hacen sus agentes."
       },
       "missionControl": {
         "title": "Centro de Misión",
         "body": "Cuando agregues más agentes, esto se vuelve el tablero único de todos. Un solo lugar para verlo todo."
       },
+      "teamBoard": {
+        "title": "El tablero del equipo",
+        "body": "Todas las misiones de los agentes de este equipo, en un solo lugar. Haz clic en una tarjeta para abrir su chat."
+      },
+      "newMission": {
+        "title": "Inicia un nuevo chat",
+        "body": "Haz clic aquí para abrir una conversación nueva. Cada una se vuelve una tarjeta de misión."
+      },
+      "archivedMissions": {
+        "title": "Archivadas",
+        "body": "Las misiones que el equipo ya terminó viven aquí. Envía un mensaje para reabrir una y vuelve al tablero."
+      },
+      "teamRoutines": {
+        "title": "Rutinas",
+        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Todo lo que este equipo hace por su cuenta vive aquí."
+      },
+      "teamFiles": {
+        "title": "Archivos",
+        "body": "Documentos que los agentes del equipo pueden leer o compartir contigo. Suelta aquí lo que quieras darles de contexto."
+      },
       "navIntegrations": {
         "title": "Conecta tus apps",
         "body": "Vincula Gmail, Calendar y cientos más aquí. Cada agente puede usar lo que conectes."
+      },
+      "navSkills": {
+        "title": "Habilidades",
+        "body": "Cosas que le enseñas a tus agentes para que las hagan igual cada vez. Agrega una habilidad aquí y elige quién la aprende."
       },
       "aiHub": {
         "title": "Modelos de IA",
@@ -146,10 +131,6 @@
         "body": "Tu cuenta, tu espacio de trabajo y tus preferencias de la app viven aquí.",
         "bodyTeam": "Tu cuenta, tu espacio de trabajo, tus preferencias de la app y la administración, los permisos y el tiempo trabajado de tu equipo viven aquí."
       },
-      "appTour": {
-        "title": "Repite el tour",
-        "body": "¿Olvidaste cómo funciona algo? Haz clic aquí cuando quieras para correr el tour de nuevo."
-      },
       "newAgent": {
         "title": "Agrega otro agente",
         "body": "Puedes crear otro agente aquí cuando quieras, o seguir trabajando con el que ya tienes."
@@ -157,6 +138,10 @@
       "agentStore": {
         "title": "La Tienda de agentes",
         "body": "Explora aquí agentes listos para usar, gratis, y agrega uno a tu espacio con un clic."
+      },
+      "appTour": {
+        "title": "Repite el tour",
+        "body": "¿Olvidaste cómo funciona algo? Haz clic aquí cuando quieras para correr el tour de nuevo."
       },
       "outro": {
         "title": "Ahora ve a construir algo increíble",

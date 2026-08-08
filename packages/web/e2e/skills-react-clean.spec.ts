@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures";
+import { openAgentSettings } from "./support/team-nav";
 
 /**
  * The skills surfaces must render without React integrity errors. Guards two
@@ -29,7 +30,7 @@ test("skills surfaces render without React integrity errors", async ({
   });
 
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-skills"]').click();
+  await openAgentSettings(page, "Houston", "Skills");
   await page.getByRole("tab", { name: "Custom skills" }).click();
   await expect(page.getByText("From your workspace")).toBeVisible();
 

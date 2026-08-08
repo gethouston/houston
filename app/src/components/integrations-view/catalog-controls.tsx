@@ -18,8 +18,8 @@ import { FilterCombobox } from "../shell/filter-combobox";
  * "Other"). It sits ABOVE both sections of the {@link CatalogShell}; the surface
  * owns the `query` + `category` state and threads it through here, into the
  * installed-section filter, and into the discovery {@link CatalogPane}, so ONE
- * query narrows everything. Shared verbatim by the global Integrations page and
- * the per-agent Integrations tab so the controls never drift.
+ * query narrows everything. Owned by the global Integrations page; the controls
+ * live here so both of its catalog sections read from one row.
  */
 export function CatalogControls({
   catalog,

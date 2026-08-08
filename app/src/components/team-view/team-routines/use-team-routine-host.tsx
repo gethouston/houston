@@ -1,14 +1,15 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../../lib/types";
+import type { Selection } from "../../agent/routines-tab-model";
 import { AgentPickerDialog } from "../../agent-picker-dialog";
-import type { Selection } from "../../tabs/routines-tab-model";
 import type { TeamRoutineDraftsList } from "../team-routine-drafts-model";
 import { type TeamRoutinesList, teamRoutineKey } from "../team-routines-model";
 import {
   TeamRoutinePanel,
   type TeamRoutineRequest,
 } from "./team-routine-panel";
+import { usePendingTeamRoutineChat } from "./use-pending-team-routine-chat";
 
 /** Which owner's chat is open, and what it was asked to show. */
 interface OpenChat {
@@ -52,12 +53,17 @@ export interface TeamRoutineHost {
  */
 export function useTeamRoutineHost({
   scoped,
+  teamAgents,
   list,
   drafts,
   accountTimezone,
 }: {
   /** The agents this section is looking at (the whole team, or the pinned one). */
   scoped: Agent[];
+  /** Every agent in the team, pin or no pin — what a one-shot notification
+   *  target is resolved against, since it names an owner the dropdown may
+   *  currently be hiding. */
+  teamAgents: Agent[];
   list: TeamRoutinesList;
   drafts: TeamRoutineDraftsList;
   accountTimezone: string;
@@ -80,6 +86,16 @@ export function useTeamRoutineHost({
       setSelection(null);
     }
   }, [open, scoped]);
+
+  // A session-finished notification for a routine chat lands here, naming its
+  // owner (see `usePendingTeamRoutineChat`). The request is `pending`, not a
+  // selection: only the per-agent machinery inside the chat knows whether the
+  // id is a routine's chat or an unclaimed draft.
+  const openPendingFor = useCallback((agentId: string) => {
+    setSelection(null);
+    setOpen({ agentId, request: { kind: "pending" } });
+  }, []);
+  usePendingTeamRoutineChat({ teamAgents, scoped, onOpen: openPendingFor });
 
   const openIntakeFor = useCallback((agent: Agent) => {
     setSelection(null);

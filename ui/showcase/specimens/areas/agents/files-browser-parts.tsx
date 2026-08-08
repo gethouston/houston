@@ -55,7 +55,7 @@ export interface LiveFilesProps {
 }
 
 /**
- * `FilesBrowser` wired the way the Files tab wires it: selection, the view
+ * `FilesBrowser` wired the way the Files section wires it: selection, the view
  * toggle, inline rename, delete, new folder and internal drag-and-drop all move
  * real state, so every gesture here behaves as it does in the product. The
  * host-only actions (reveal in the OS, download) are deliberately absent —

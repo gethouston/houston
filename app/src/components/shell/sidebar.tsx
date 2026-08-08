@@ -7,7 +7,13 @@ import {
 } from "@houston-ai/core";
 import { AppSidebar } from "@houston-ai/layout";
 import { Users } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
@@ -21,9 +27,10 @@ import {
 } from "../../lib/sidebar-teams";
 import {
   DEFAULT_TEAM_ID,
+  type TeamView,
   teamById,
   teamOfAgent,
-  visibleTeamSections,
+  visibleTeamSectionsForTeam,
 } from "../../lib/teams-model";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
@@ -44,6 +51,7 @@ import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { useSidebarAgentActions } from "./use-sidebar-agent-actions";
 import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
+import { tourAnchor } from "./workspace-tour-steps.ts";
 
 export function Sidebar({ children }: { children: ReactNode }) {
   const { t } = useTranslation([
@@ -58,7 +66,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
 
   const agents = useAgentStore((s) => s.agents);
-  const currentAgent = useAgentStore((s) => s.current);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const loadAgents = useAgentStore((s) => s.loadAgents);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -130,19 +137,25 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // path, shared with the team view and the workspace shell's guard, so the
   // rail can never disagree with the screen it navigates to.
   const teams = useTeams();
-  // The caller-visible sections, resolved ONCE: the rows a team block offers,
-  // and the section the highlight resolves against, are the same list the team
-  // view itself renders from.
-  const sectionIds = visibleTeamSections(capabilities);
+  // The invariant: the rail and the view read the SAME section list for the
+  // SAME team. Team Settings is a per-team door (a member may manage an agent
+  // in one team and only use the agents of the next), so the list is resolved
+  // per team here, and the highlight resolves against the ACTIVE team's own —
+  // never another team's, which would light the wrong row or none at all.
+  const sectionsForTeam = useCallback(
+    (team: TeamView) => visibleTeamSectionsForTeam(capabilities, team),
+    [capabilities],
+  );
+  const activeTeam = teamById(teams, activeTeamId);
   const highlight = resolveTeamHighlight(
     { viewMode, activeTeamId, teamSection, teamAgentFilter },
-    sectionIds,
+    activeTeam ? sectionsForTeam(activeTeam) : [],
   );
   const { items, groups, defaultGroup } = buildTeamSidebarLists({
     agents,
     layout: sidebar.layout,
     teams,
-    sectionIds,
+    sectionsForTeam,
     sectionLabels: buildTeamSectionLabels(t),
     highlight,
     // Moving between a team's destinations KEEPS the agent pin. Someone who
@@ -343,7 +356,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
           viewMode,
           highlight,
           activeTeam: teamById(teams, highlight.teamId),
-          currentAgentId: currentAgent?.id ?? null,
         })}
         onSelect={handleSelectAgent}
         onAdd={
@@ -354,7 +366,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
               }
             : undefined
         }
-        addItemDataAttrs={{ "data-tour-target": "newAgent" }}
+        addItemDataAttrs={tourAnchor("newAgent")}
         onRename={agentActions.rename}
         onDelete={(agentId) => setPendingDeleteId(agentId)}
         labels={buildSidebarLabels(t)}

@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures";
+import { openAgentSettings } from "./support/team-nav";
 
 /**
  * "From your workspace" (ADR 0003): once a skill is shared it stops living ON
@@ -17,7 +18,7 @@ const SKILL = {
 
 async function openAgentCustomTab(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-skills"]').click();
+  await openAgentSettings(page, "Houston", "Skills");
   await page.getByRole("tab", { name: "Custom skills" }).click();
 }
 

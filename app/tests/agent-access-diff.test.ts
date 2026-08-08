@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Agent, OrgMember } from "@houston-ai/engine-client";
-import { accessWidened } from "../src/components/tabs/agent-access-diff.ts";
+import { accessWidened } from "../src/components/agent/agent-access-diff.ts";
 
 const member = (userId: string, role: OrgMember["role"]): OrgMember => ({
   userId,

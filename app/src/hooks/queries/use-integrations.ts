@@ -12,7 +12,8 @@ import { useCapabilities } from "../use-capabilities";
  * integration provider wired answers `/v1/integrations` with 503, so fetching
  * there would surface a red bug toast for a configuration that's perfectly
  * legitimate (dev host, self-host without a Composio key). The disabled query
- * stays idle with no data and the tab renders its unavailable state.
+ * stays idle with no data and the Integrations page renders its unavailable
+ * state.
  */
 export function useIntegrationStatus() {
   const { capabilities } = useCapabilities();
@@ -50,8 +51,8 @@ export function useIntegrationConnections(provider: string, enabled: boolean) {
 
 /**
  * The provider's app catalog (name, logo, description per toolkit). Big and
- * near-static, so cache it for the session — the tab uses it to render real
- * app cards instead of machine slugs.
+ * near-static, so cache it for the session — the app surfaces use it to render
+ * real app cards instead of machine slugs.
  */
 export function useIntegrationToolkits(provider: string, enabled: boolean) {
   const registered = useProviderRegistered(provider);

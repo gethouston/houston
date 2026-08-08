@@ -6,7 +6,7 @@ import { armMissionDoneCelebration } from "../../lib/mission-done-celebration";
 import { canDropMission } from "../../lib/mission-selection";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity, tauriChat } from "../../lib/tauri";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { missionColumnIdForStatus } from "../mission-board-columns";
 import { planNewMission } from "../mission-control-create";
@@ -19,20 +19,18 @@ import type { SendOverrides } from "./board-source";
 
 /**
  * Mission Control's card/composer actions, routed to the right agent. Create
- * resolves the active agent's default mode via {@link planNewMission}; send
- * delegates to `mc.handleSendMessage` (which re-resolves provider/model from
- * the target activity, so composer overrides are intentionally ignored); stop
- * resolves its agent from the session metadata.
+ * resolves the target agent via {@link planNewMission}; send delegates to
+ * `mc.handleSendMessage` (which re-resolves provider/model from the target
+ * activity, so composer overrides are intentionally ignored); stop resolves
+ * its agent from the session metadata.
  */
 export function useMcActions({
   mc,
   activeAgent,
-  activeAgentDef,
   paths,
 }: {
   mc: ReturnType<typeof useMissionControl>;
   activeAgent: Agent | null;
-  activeAgentDef: AgentDefinition | null;
   /** Every agent path on the view, for query invalidation after a drag-move. */
   paths: string[];
 }) {
@@ -50,7 +48,6 @@ export function useMcActions({
     }: { text: string; files: File[] } & SendOverrides) => {
       const plan = planNewMission({
         activeAgent,
-        activeAgentDef,
         providerOverride,
         modelOverride,
       });
@@ -62,14 +59,12 @@ export function useMcActions({
         throw new Error("New mission submitted with no active agent");
       }
       return mc.handleCreateConversation(plan.agent, text, files, {
-        agentMode: plan.agentMode,
-        promptFile: plan.promptFile,
         providerOverride: plan.providerOverride,
         modelOverride: plan.modelOverride,
         mentions,
       });
     },
-    [activeAgent, activeAgentDef, mc.handleCreateConversation, addToast, t],
+    [activeAgent, mc.handleCreateConversation, addToast, t],
   );
 
   // Cross-agent: ignore the composer's provider/model overrides, re-resolve

@@ -34,8 +34,10 @@ export interface BuildTeamSidebarListsArgs extends AgentItemArgs {
   layout: SidebarLayout;
   /** `useTeams()` — named teams in display order, the default team last. */
   teams: TeamView[];
-  /** `visibleTeamSections(capabilities)` — the sections this caller may open. */
-  sectionIds: readonly TeamSectionId[];
+  /** `visibleTeamSectionsForTeam(capabilities, team)` — the sections THIS team
+   *  offers this caller. Asked per team, because Team Settings is a per-team
+   *  door: a member who manages an agent here may not manage one next door. */
+  sectionsForTeam: (team: TeamView) => readonly TeamSectionId[];
   /** Localized section labels, one per id (all four, gating is `sectionIds`). */
   sectionLabels: Record<TeamSectionId, string>;
   highlight: TeamHighlight;
@@ -57,7 +59,7 @@ export function buildTeamSidebarLists({
   agents,
   layout,
   teams,
-  sectionIds,
+  sectionsForTeam,
   sectionLabels,
   highlight,
   onOpenSection,
@@ -68,7 +70,7 @@ export function buildTeamSidebarLists({
   defaultGroup: SidebarDefaultGroupView | undefined;
 } {
   const sectionsFor = (team: TeamView): SidebarSectionRow[] =>
-    teamSectionRowModels(team, sectionIds, highlight).map((row) => ({
+    teamSectionRowModels(team, sectionsForTeam(team), highlight).map((row) => ({
       id: `${row.teamId}:${row.section}`,
       label: sectionLabels[row.section],
       icon: SECTION_ICONS[row.section],

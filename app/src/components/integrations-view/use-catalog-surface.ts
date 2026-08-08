@@ -8,7 +8,7 @@ import {
   filterInstalledBy,
   type InstalledRow,
 } from "../../lib/installed-preview";
-import { browseCatalogView, catalogHiddenToolkits } from "../integrations";
+import { browseCatalog, catalogHiddenToolkits } from "../integrations";
 
 /** The consolidated catalog surface's shared view state, ready for
  *  {@link CatalogShell}. */
@@ -27,26 +27,22 @@ export interface CatalogSurface {
   /** How many installed rows the strip currently shows (the total at rest). */
   installedCount: number;
   /** How many connectable apps match the shared filter (the Available header's
-   *  count; the total at rest). Respects a Teams allowlist. */
+   *  count; the total at rest). */
   availableCount: number;
 }
 
 /**
- * Own the catalog surface's ONE controls row once: the tab + shared query +
+ * Own the catalog surface's ONE controls row once: the mode + shared query +
  * category state, the {@link filterInstalledBy} result feeding the Installed
- * strip, and the connectable-match count feeding the Available header. Shared by
- * the global Integrations page and the per-agent Integrations tab so the
- * two-section wiring lives in one place; a parent that remounts per agent
- * (`key={agent.id}`) gets naturally per-agent state. `allowlist` (`null` =
- * unrestricted) only narrows the available count — locked apps never count.
+ * strip, and the connectable-match count feeding the Available header, so the
+ * two-section wiring lives in one place.
  */
 export function useCatalogSurface(opts: {
   active: readonly InstalledRow[];
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
-  allowlist?: string[] | null;
 }): CatalogSurface {
-  const { active, catalog, connections, allowlist = null } = opts;
+  const { active, catalog, connections } = opts;
   const [tab, setTab] = useState("catalog");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -60,10 +56,9 @@ export function useCatalogSurface(opts: {
     [active, catalog, query, category],
   );
   const availableCount = useMemo(() => {
-    const connected = catalogHiddenToolkits(connections, allowlist);
-    return browseCatalogView({ catalog, query, category, connected, allowlist })
-      .connectable.length;
-  }, [catalog, connections, query, category, allowlist]);
+    const connected = catalogHiddenToolkits(connections);
+    return browseCatalog({ catalog, query, category, connected }).length;
+  }, [catalog, connections, query, category]);
 
   return {
     tab,

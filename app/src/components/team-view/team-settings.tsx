@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { isMultiplayer } from "../../lib/org-roles";
 import type { TeamView } from "../../lib/teams-model";
 import { useAgentStore } from "../../stores/agents";
+import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
 import { AgentDetail } from "../permissions/agent-detail";
 import { BackBarScreen } from "../shell/back-bar-screen";
 import { PageContainer, PageHeader } from "../shell/page-shell";
 import { TeamAgentsList } from "./team-agents-list";
+import { useTeamSettingsNav } from "./team-settings-nav-store";
 
 /**
  * A team's settings: the team, and the agents in it. Opening one drills into
@@ -21,25 +23,48 @@ import { TeamAgentsList } from "./team-agents-list";
  * disappears, the list comes back. Read-only for anyone who does not manage the
  * agent is `AgentDetail`'s own rule — the gateway is the real enforcer.
  *
- * Only mounted for callers who pass `canSeeTeamSettings`; the team view resolves
- * a stale request back to Mission Control before this ever renders.
+ * It also honors a ONE-SHOT deep link from {@link useTeamSettingsNav} — a turn
+ * summary's "the agent updated its job description" link opens straight into
+ * that agent, on that section — and clears it, so a later plain click on the
+ * team's Settings row lands back on the agent list.
+ *
+ * Mounted for callers who pass `visibleTeamSectionsForTeam` on THIS team: the
+ * org owner/admin, or a member who manages at least one of its agents. That
+ * member sees EVERY agent of the team in the list and may drill into any of
+ * them — they edit the ones they manage and get the read-only face on the rest,
+ * which is the same asymmetry an admin already sees. The team view resolves a
+ * request this caller fails back to Mission Control before this ever renders.
  */
 export function TeamSettings({ team }: { team: TeamView }) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const { data: org } = useOrg(isMultiplayer(capabilities));
   const agents = useAgentStore((s) => s.agents);
-  const [openAgentId, setOpenAgentId] = useState<string | null>(null);
+  const [open, setOpen] = useState<{
+    agentId: string;
+    section: AgentSettingsSection | undefined;
+  } | null>(null);
+
+  const requestedAgentId = useTeamSettingsNav((s) => s.requestedAgentId);
+  const requestedSection = useTeamSettingsNav((s) => s.requestedSection);
+  const clearRequested = useTeamSettingsNav((s) => s.clearRequested);
+
+  useEffect(() => {
+    if (requestedAgentId === null) return;
+    setOpen({
+      agentId: requestedAgentId,
+      section: requestedSection ?? undefined,
+    });
+    clearRequested();
+  }, [requestedAgentId, requestedSection, clearRequested]);
 
   const detailAgent =
-    openAgentId === null
-      ? null
-      : (agents.find((a) => a.id === openAgentId) ?? null);
+    open === null ? null : (agents.find((a) => a.id === open.agentId) ?? null);
 
-  if (detailAgent) {
+  if (open && detailAgent) {
     return (
-      <BackBarScreen backLabel={team.name} onBack={() => setOpenAgentId(null)}>
-        <AgentDetail agent={detailAgent} />
+      <BackBarScreen backLabel={team.name} onBack={() => setOpen(null)}>
+        <AgentDetail agent={detailAgent} initialSection={open.section} />
       </BackBarScreen>
     );
   }
@@ -62,7 +87,9 @@ export function TeamSettings({ team }: { team: TeamView }) {
           agents={team.agents}
           isDefaultTeam={team.isDefault}
           members={org?.members ?? []}
-          onOpenAgent={(agent) => setOpenAgentId(agent.id)}
+          onOpenAgent={(agent) =>
+            setOpen({ agentId: agent.id, section: undefined })
+          }
         />
       </PageContainer>
     </div>

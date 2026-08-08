@@ -1,6 +1,6 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
 import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
+import { rail, screen } from "./support/team-nav";
 
 /**
  * Agent lifecycle through the UI. Creating an agent goes New agent → From
@@ -23,95 +23,71 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
 });
 
 /**
- * Switching agents swaps the board. Each agent has its own missions, so the
+ * Clicking an agent in the rail opens ITS team's board, narrowed to it — so the
  * seeded agent's "Plan a trip to Tokyo" must vanish on a fresh agent and return
- * when we switch back. (The agent "Houston" button is `.last()` — kept in case
- * another "Houston" control appears above it in the sidebar.)
+ * when we switch back. Lookups are scoped to the screen ON THE GLASS: every
+ * top-level view is kept alive, so the (hidden) global board holds the same
+ * cards.
  */
 test("switches between two agents", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
 
   // Create a second agent; it becomes selected, with an empty board of its own.
   await createAgent(page, "Research Bot");
-  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(0);
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 
   // Switch back to the seeded agent → its mission returns.
-  await page
+  await rail(page)
     .getByRole("button", { name: "Houston", exact: true })
-    .last()
     .click();
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
 });
+
+/*
+ * REMOVED with the per-agent board (the teams cutover): "never shows the
+ * previous agent's missions while the next board read is in flight".
+ *
+ * That guarded `useActivity`'s `placeholderData(previousData)` leaking one
+ * agent's cards into the next agent's board while its own read was held. There
+ * is no per-agent board and no per-agent board read any more: switching agents
+ * moves a FILTER over the one warm cross-agent sweep, so there is no in-flight
+ * window for a stale card to survive in. The behaviour the test protected is
+ * gone with the code that could break it.
+ */
 
 /**
- * HOU-858: switching agents must NEVER paint the previous agent's mission
- * cards while the next agent's board read is still in flight. The switch test
- * above can't catch a transient leak — its assertions auto-retry until the
- * (instant) live read lands — so this one makes the in-flight window
- * effectively permanent: the target agent's reads are held for 8s, and the
- * old agent's card must be gone (and the new agent's cached setup mission
- * painted from the sidebar aggregate) well inside that hold. Stale cards
- * previously leaked through `useActivity`'s `placeholderData(previousData)`.
+ * HOU-708's rename contract: picking Rename swaps the rail row for an inline
+ * field that arrives FOCUSED with the current name PRESELECTED, so the user
+ * types the new name straight away. Both halves are asserted, the selection
+ * included — "typing replaced it" would also pass on an empty field, which is
+ * a different (lossy) product.
  */
-test("never shows the previous agent's missions while the next board read is in flight", async ({
-  page,
-  request,
-}) => {
-  await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-
-  // A second agent whose board must be COLD when we later switch to it:
-  // create it (which selects it and warms its board query), switch back to
-  // the seeded agent, then reload. The default e2e token keeps query
-  // persistence off, so the fresh page only loads the seeded agent's board
-  // plus the all-conversations aggregate — "Research Bot"'s per-agent
-  // activity key has no cache entry, exactly like an agent first visited
-  // mid-session in production.
-  await createAgent(page, "Research Bot");
-  await page
-    .getByRole("button", { name: "Houston", exact: true })
-    .last()
-    .click();
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-  await page.reload();
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-
-  // Stall every per-agent read the way an asleep cloud pod does, then switch.
-  await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
-    data: { ms: 8_000 },
-  });
-  await page
-    .getByRole("button", { name: "Research Bot", exact: true })
-    .last()
-    .click();
-
-  // Research Bot's setup mission paints immediately from the cached sidebar
-  // aggregate — and the seeded agent's card is gone — while the live read is
-  // still held (3s of grace, far under the 8s hold).
-  await expect(page.getByText("Getting set up")).toBeVisible({
-    timeout: 3_000,
-  });
-  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(0, {
-    timeout: 3_000,
-  });
-});
-
-/** Renaming via the visible agent kebab → Rename focuses an inline field. */
 test("renames an agent", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Agent menu" }).click();
+  const row = rail(page);
+  await row.getByRole("button", { name: "Agent menu" }).first().click();
   await page.getByRole("menuitem", { name: "Rename" }).click();
 
-  // Rename swaps the sidebar row for an inline text field (the search box is a
-  // searchbox role, so this textbox is unambiguous). It must arrive focused
-  // with the current name selected, so typing replaces it without another
-  // click (HOU-708 follow-up).
-  const input = page.getByRole("textbox");
+  // The rail's only textbox is the rename field (the agent search box is a
+  // searchbox role), so this is unambiguous inside the rail.
+  const input = row.getByRole("textbox");
   await expect(input).toBeFocused();
+  await expect(input).toHaveValue("Houston");
+  // The whole existing name is selected, so the first keystroke replaces it.
+  await expect
+    .poll(() =>
+      input.evaluate((el: HTMLInputElement) =>
+        el.selectionStart === 0 && el.selectionEnd === el.value.length
+          ? el.value
+          : null,
+      ),
+    )
+    .toBe("Houston");
+
   await page.keyboard.type("Mission Control Bot");
   await page.keyboard.press("Enter");
 
-  await expect(page.getByText("Mission Control Bot").first()).toBeVisible();
+  await expect(row.getByText("Mission Control Bot").first()).toBeVisible();
 });

@@ -80,10 +80,8 @@ the agent which of four speech acts to perform:
   list. **`blocked` is produced solely by the closed cloud gateway** (Teams v2,
   C7), which annotates its `/search` items with `status: "blocked"` for allowlist-
   excluded toolkits and strips their `inputParams`; nothing in THIS repo emits it
-  (the direct adapter only knows `connected`/`connectable`). (Distinct from the
-  browse-catalog **locked rows** in §3: those are a CLIENT-SIDE intersection of the
-  effective allowlist against the ~1000-app catalog, a visible-UI affordance, not
-  this agent-facing search-status enum. The locked rows never set or read `blocked`.)
+  (the direct adapter only knows `connected`/`connectable`). It is an AGENT-facing
+  enum, read by the model in a tool result — no client surface renders it.
 - `unknown` — not a recognized toolkit (reserved; today an unrecognized query is
   simply the EMPTY result).
 
@@ -198,40 +196,40 @@ effective `access`; manager-only write). The ceiling renders through the SHARED
 `AllowlistEditor` (`components/integrations/allowlist-editor.tsx`, i18n-agnostic
 `copy` prop):
 - the **per-agent** editor is `AgentAllowlistSection`
-  (`tabs/agent-integrations/agent-allowlist-section.tsx` — a thin wrapper feeding
+  (`agent/agent-integrations/agent-allowlist-section.tsx` — a thin wrapper feeding
   `AllowlistEditor` the `teams:integrations.allowlist.*` copy, the WHOLE catalog as the
-  selectable universe, and a connected-apps seed). It is NO LONGER mounted in Agent
-  Settings; Settings > Permissions mounts it (via `AgentAdminIntegrations`,
-  `AgentAdminModel`) inside a per-agent drill-in. Agent Settings > **Access** now carries
-  only "people with access" (`agentAdminCards`' access card is `["people"]`); the apps +
-  models ceiling rows and their `agent-admin-{integrations,model}` mounts left that tab.
+  selectable universe, and a connected-apps seed). It is the **sole survivor** of the
+  deleted per-agent Integrations tab's directory, and it has exactly one mount: the
+  canonical agent settings page's **Apps** section (`AgentAdminIntegrations` →
+  `AgentAllowlistSection`; the AI-models sibling is `AgentAdminModel`). That page is
+  reached through Team Settings or through Settings > Permissions
+  (`knowledge-base/agent-settings.md`).
 
 The editor's surface is an always-visible two-option choice (`anyLabel` saves
 `null`, `pickedLabel` saves an explicit set; choice keys `question` /
 `policyHelper` / `anyLabel` / `anyDesc` / `pickedLabel` / `pickedDesc` —
 `policyHelper` is the admin-policy helper line noting members still connect their
 own accounts) with a per-app allow toggle, not a dense checklist; `readOnly` mode
-hides "Add apps" and shows a note. The agent tab surfaces ceiling-blocked apps in
-TWO places so policy is never silently invisible: connected-but-blocked apps under
-`teams:integrations.notAllowed` (the disallowed section, "Not allowed" badge + an
-ask-your-admin line), and NOT-connected blocked apps as **locked rows** in the
-browse catalog (see §3, `integrations:locked.*`). Per-agent GRANT toggles are GONE
-from the client: the old by-app lens (the global page detail modal) and by-agent
-lens (the agent tab's "Connected, but off for this agent" section) were both removed
+hides "Add apps" and shows a note. Per-agent GRANT toggles are GONE from the
+client: the old by-app lens (the global page detail modal) and by-agent lens (the
+per-agent tab's "Connected, but off for this agent" section) were both removed
 along with the whole app-side grants layer. Full client surface:
 `knowledge-base/teams.md`.
 
-### Effective access — the one resolver
+### Where a member sees the ceiling
 
-`effectiveAccess({toolkit, connections, allowlist})`
-(`app/src/components/integrations/effective-access.ts`, pure, node-tested) is
-THE single answer to "can this agent use this app right now, and if not why":
-`usable | notConnected | blockedByAdmin`, precedence admin-block > not-connected.
-**Usability is connection ∩ effective allowlist — the per-agent GRANTS layer is
-gone** (removed from the app AND the host; the cloud gateway retires its own
-enforcement separately). `allowlist === null` (unrestricted) reads as pass. The
-agent-tab view model classifies every connection through it — no surface
-re-derives the rule.
+**Nowhere.** The by-agent LENS is gone with the per-agent Integrations tab: no screen lists
+"the apps this agent may use" from a member's side. What remains is the ceiling EDITOR (the
+settings page's Apps section, manager-facing) and the gateway, which is the enforcer.
+`effectiveAccess` (`integrations/effective-access.ts`, the pure `usable | notConnected |
+blockedByAdmin` resolver) was DELETED with the tab that was its only consumer — the rule it
+encoded, **usable = connection ∩ effective allowlist**, still holds server-side, it simply
+has no client surface left to classify.
+
+The **locked-row transparency surface** ("Turned off in your workspace", the ask-your-admin
+line, and the role-aware "Enable it in Permissions" fix) was removed together with the
+per-agent tab that was its only caller; git history is its archive, and the concept may
+return once it has a member-facing home.
 
 **Permissions live in exactly ONE place: Settings > Permissions**
 (`app/src/components/permissions/`, settings section id `"permissions"` — it was a
@@ -239,9 +237,8 @@ top-level view until HOU-788). People →
 which agents each member may use; Agents → what each agent may use (the app + model
 allowlist ceilings, mounting the SAME editors — `AgentAdminIntegrations` /
 `AgentAllowlistSection` and `AgentAdminModel` / `AgentModelsSection`). Everywhere else
-in the app shows ZERO permission management and ZERO "which agents use this app"
-displays; a blocked thing keeps transparency + a single role-aware pointer into
-Permissions (see §3, `blocked-ceiling.ts`).
+in the app shows ZERO permission management, ZERO "which agents use this app"
+displays, and ZERO blocked/locked rows.
 
 ### The grants system — REMOVED (client AND host)
 The entire per-`(user, agent)` grants plumbing beneath the app was deleted, not
@@ -337,15 +334,22 @@ to "Using an app"/"Finding app actions" so raw underscores never leak.
 
 ## 3. UI map
 
-Gated on `HOST_BUILD` (`app/src/agents/standard-tabs.ts`) — a deterministic build
-constant, not the runtime handshake. Absent in the legacy Rust engine build.
+**There is ONE connect surface: the global Integrations page.** The per-agent
+Integrations tab was deleted with the rest of the agent tab shell, and nothing
+replaced it — Composio runs in platform mode, so a connection belongs to the USER,
+not to an agent, and a per-agent connect screen was always a lens over a
+user-level fact. What is per-agent is the CEILING, and that is the agent settings
+page's Apps section (§2). The deleted `HOST_BUILD` build constant no longer gates
+anything; the runtime gate is `integrationsSupported(caps)` below.
 
 **Shared module** — `app/src/components/integrations/` (`index.ts` is the surface;
-pure model in `model.ts`/`app-display.ts`, DOM-free and node-tested). Both surfaces
-consume it verbatim — no forked copies. Notable exports: `AppDetailDialog`,
-`AppRow`, `CatalogLockedSection`, `AgentChips`,
+pure model in `model.ts`/`app-display.ts`, DOM-free and node-tested). "Shared" now
+means shared between the page, the chat cards and the allowlist editor rather than
+between two catalog surfaces. Notable exports: `AppDetailDialog`, `AppRow`,
 `IntegrationDisconnectDialog`, the gate/flow hooks below, and pure helpers
-`browseCatalog`/`splitByGrant`/`pollConnectionUntilActive`. `browseCatalog` sorts
+`browseCatalog` / `pollConnectionUntilActive` (`AgentChips` went with the grants
+layer; `CatalogLockedSection`, `splitByGrant` and `browseCatalogView`'s
+`connectable`/`locked` partition went with the locked rows). `browseCatalog` sorts
 results ALPHABETICALLY by app name (case-insensitive) after filtering.
 `integrationsSupported(caps)` (`model.ts`, `caps.integrations.length > 0`) is the
 capability gate the Settings section and the page share.
@@ -365,9 +369,10 @@ presentational allowlist editor behind BOTH ceilings (§2).
 
 **Always-visible catalog** — the browse catalog is a permanent section, never a
 dialog: a brand-new user with zero connections immediately sees the full
-~1000-app catalog (`AppCatalogPicker` was deleted long ago). BOTH the global page
-and the agent tab now render it through the shared `CatalogPane` +
-`CategoryCatalog` (see Personal mode below); an in-progress OAuth renders on ITS
+~1000-app catalog (`AppCatalogPicker` was deleted long ago). The global page
+renders it through `CatalogPane` + `CategoryCatalog` (see Personal mode below) —
+still built as shared, controlled components, but the per-agent tab that was the
+second consumer is gone; an in-progress OAuth renders on ITS
 OWN row via `ConnectFlowInline` (never a page-level banner), which cards that row
 around it. The old `ConnectMoreAppsSection` / `CatalogBrowser`
 pair was DELETED with the agent-tab convergence — `AppCatalogGrid` (search +
@@ -389,13 +394,14 @@ though the page's sections order mainstream-first, then by size). Pure helpers i
 `toolkitsInCategory(catalog, category)` (slug set, `null` for "all"), and
 `categoryListView` (mirrors the models editor's `allowedListView` — picks a
 category-aware empty string, e.g. `integrations:home.connectedNoneInCategory` /
-`agentTab.empty.category*` / `teams:integrations.allowlist.allowedEmptyCategory`,
-so an empty filtered list never falsely claims the surface has no apps).
+`teams:integrations.allowlist.allowedEmptyCategory`, so an empty filtered list
+never falsely claims the surface has no apps. The `integrations:agentTab.*` block
+is dead copy — the surface it wrote for is gone).
 
 **Global page (personal catalog, all modes)** — `app/src/components/integrations-view/`,
-top-level view `INTEGRATIONS_VIEW_ID = "integrations-home"` (NOT `"integrations"`, which is
-the per-agent tab id — a shared slug would shadow the tab; like `dashboard`/`settings`
-a top-level view lives OUTSIDE `STANDARD_TAB_IDS`). The page is ALWAYS the personal
+top-level view `INTEGRATIONS_VIEW_ID = "integrations-home"` (the `"integrations"` slug it
+was named around belonged to the per-agent tab id, which no longer exists — the
+doc comment on `integrations-view/id.ts` still tells that story). The page is ALWAYS the personal
 catalog (`IntegrationsReady`), in every mode. The old Teams "policy" identity
 (`integrationsPageMode` / `integrations-view-model.ts` / `integrations-policy.tsx`)
 was DELETED and the org app-allowlist ceiling moved to the Admin page's **Allowed
@@ -403,9 +409,9 @@ integrations** tab (§2, `teams.md`).
 
 - **Nav gating: none.** The sidebar nav item, the `workspace-shell.tsx` render branch,
   and the tour step are UNCONDITIONAL: the page is visible to EVERY member (the old
-  `canSeeIntegrationsPage` gate in `org-roles.ts` was removed). A member's org-blocked
-  apps still render as **locked rows** on the catalog surfaces (see "Locked browse
-  rows" below), never as an allowlist editor.
+  `canSeeIntegrationsPage` gate in `org-roles.ts` was removed). It renders no allowlist
+  editor and no locked/blocked row: it is a personal connections lens, and a ceiling is
+  per agent.
 - **The page** — the flat "plane"
   (`integrations-ready.tsx`, reference: the ChatGPT Plugins page), laid out by the
   generic **`CatalogShell`** (`ui/core/src/components/catalog-shell.tsx`, part of the
@@ -421,11 +427,10 @@ integrations** tab (§2, `teams.md`).
   still matches it, so a later OAuth completion cannot erase a newer search. It
   sits ABOVE both sections and its query + category narrow the Installed strip AND
   the Integrations tab together. The surface owns that state in
-  the shared `use-catalog-surface.ts` hook (`useCatalogSurface` → `tab`, `query`,
-  `category`, `filtering`, `shown`, `installedCount`, `availableCount`), used verbatim
-  by the global page and the per-agent tab so the two-section wiring lives in ONE
-  place; a parent that remounts per agent (`key={agent.id}`) gets per-agent state for
-  free.
+  the shared `use-catalog-surface.ts` hook (`useCatalogSurface({active, catalog,
+  connections})` → `tab`, `query`, `category`, `filtering`, `shown`, `installedCount`,
+  `availableCount`). It was built to be shared with the per-agent tab; that consumer is
+  gone, so the page is its only caller and the hook takes no ceiling at all.
   (1) the CONSOLIDATED **Installed** strip, OUTSIDE the tabs (identity, not
   discovery — it never changes with the tab): active catalog connections AND custom
   integrations as a two-column `CatalogGrid` of `CatalogRow`s (`InstalledStrip`) —
@@ -462,7 +467,7 @@ integrations** tab (§2, `teams.md`).
   so the strip only ever renders with rows.
   (2) the **Available** section (`home.availableTitle`) under its own `lg`
   `CatalogSectionHeader`, whose `availableCount` chip = the connectable apps matching
-  the shared filter (via `browseCatalogView`, respecting a Teams allowlist), over two
+  the shared filter (via `browseCatalog`, minus `catalogHiddenToolkits`), over two
   discovery tabs (`home.tabs.*`, each trigger with a `CatalogCount` badge):
   **Integrations** (the CONTROLLED `catalog-pane.tsx`: it takes `query` + `category`
   props from the page — its own controls row moved UP into `CatalogControls` — and
@@ -559,98 +564,32 @@ The `settings:connectedAccounts.*` copy block, the `nav.connectedAccounts` /
 `AppDetailDialog` no longer carries any per-agent grant surface — which agents may
 use an app is managed in Settings > Permissions (§2) — see the global page block above.
 
-**Agent tab (the by-agent lens)** — `app/src/components/tabs/agent-integrations/`
-(`integrations-tab.tsx` re-exports the orchestrator). The tab body is the SAME
-catalog layout as the global Integrations page, minus the page header (the tab
-label already says Integrations): `agent-integrations-body.tsx` renders the shared
-`CatalogShell` — the ONE top `CatalogControls` row over the Installed section (the
-agent's usable ACTIVE apps + the user's custom integrations; a row opens
-`AppDetailDialog`, whose Disconnect confirms via `IntegrationDisconnectDialog` scope
-`everywhere`; a custom row jumps to the Custom tab) and the Available section's
-Integrations / Custom integrations tabs. It carries the SAME two-section grammar as
-the global page and shares the ONE `useCatalogSurface(...)` hook
-(`integrations-view/use-catalog-surface.ts` — owns `tab` / `query` / `category` /
-`filtering` / `shown` / `installedCount` / `availableCount`, the shared query +
-category filtering the Installed strip via `filterInstalledBy` and the Available
-count via `browseCatalogView`); passing `allowlist` narrows only the available count
-(locked apps never count). The strip has no search of its own, its `lg` header count
-follows the shared filter, and it is OMITTED when the filter leaves nothing
-installed. State lives in the hook, so this tab's `key={agent.id}` remount keeps it
-naturally per-agent. The catalog
-tab is the SHARED CONTROLLED `CatalogPane` (`integrations-view/catalog-pane.tsx`:
-takes `query` + `category` props from the page and renders the grouped
-`CategoryCatalog`),
-generalized to plain props (`catalog`/`connections`/`query`/`category`/`onRemove`/
-`allowlist`/`children`) so both surfaces consume it verbatim — the agent tab passes
-`AgentCatalogSections` as its `children`. The view is a flat
-`{activeRows, disallowedRows}` (`agentIntegrationsView`, no more grants/degraded
-mode split), every connection classified through the ONE `effectiveAccess`
-resolver (§2): **usable = connection ∩ effective allowlist**. The strip keeps the
-WORKING rows; a pending/errored connection stays in the catalog on the app's own
-row; connected apps outside the allowlist go to `disallowedRows`. The old **"Connected, but off for this agent"**
-grant section (`agent-ungranted-apps-section.tsx`, `useAgentGrantMutation`,
-`integrations:agentTab.offForAgent.*`) and the `availableRows` bucket are GONE —
-connecting an app makes it usable (∩ allowlist), no per-agent toggle. The
-`disallowedRows` render the transparency section (`agent-disallowed-apps-section.tsx`,
-"Not allowed" + role-aware Permissions CTA). The old **"Runs without asking"**
-review that reviewed/revoked the per-agent action-approval always-list was REMOVED
-with the whole approval system (§2b — confirmation is now a model-driven `ask_user`
-question, no host-side always-list to manage). The broken-connection
-**Remove** (in the app's modal) DISCONNECTS the user's connection. Connect forwards the agent slug so the
-gateway enforces the agent's allowlist (`useConnectFlow`, `autoGrant` removed). The tab
-count chip excludes locked apps. All lifted view state (tab/search/category/modals)
-lives in the body, remounted per agent via `key={agent.id}`. The bottom link
-`integrations:agentTab.manageAll` ("Manage all integrations") ALWAYS routes to the global
-Integrations page (visible to every member now, so the old `canSeeIntegrationsPage`
-branch to Settings > Connected accounts is gone).
-The old `ConnectMoreAppsSection` / `CatalogBrowser` / per-agent apps grid
-(`agent-apps-body` / `agent-apps-section` / `agent-app-row`) were DELETED with this
-convergence; `AppCatalogGrid` survives solely for the allowlist editor.
+**Agent tab (the by-agent lens) — DELETED.** `app/src/components/agent/
+agent-integrations/` is down to ONE file, `agent-allowlist-section.tsx` (§2). Gone
+with the tab shell: `agent-integrations-tab.tsx` (+ its `integrations-tab.tsx`
+wrapper), `agent-integrations-body.tsx`, `agent-integrations-chrome.tsx`,
+`agent-catalog-sections.tsx`, `agent-disallowed-apps-section.tsx` and the
+directory's `model.ts` (`agentIntegrationsView`, the `{activeRows,
+disallowedRows}` split), plus `integrations/effective-access.ts`, which had no
+other caller.
 
-**Locked browse rows (Teams only).** On a Teams host with a real effective
-allowlist, the browse catalog no longer FILTERS blocked apps out (which read as
-"Houston doesn't support X"); instead the surface passes the effective
-`allowlist` down through `CatalogPane` → `CategoryCatalog`, which calls the pure
-`browseCatalogView` (`integrations/browse-model.ts`) to split the browse set into
-`connectable` (inside the ceiling, grouped into the category sections) and
-`locked` (outside it). ONLY the per-agent tab feeds it a ceiling — it passes the
-agent's effective `allowlist`. The **global Integrations page** has no ceiling to apply
-(policy is per agent only; the org-wide ceiling was removed 2026-07-16), so it always
-passes `allowlist === null` and never locks a row. Locked apps render via
-`CatalogLockedSection`: read-only
-`AppRow`s with a `Lock` trailing icon and the `integrations:locked.askAdmin`
-subtitle ("Ask your admin to enable {app}", visible at rest — no hover gating),
-under a muted `locked.heading` ("Turned off in your workspace") with a `CatalogCount`
-count badge and a `locked.subtitle` line ("Your admin picked which apps can be used
-here..."), capped at `LOCKED_PREVIEW_CAP` (8) with a reworded `locked.more_*` "+N more"
-count line so a tiny allowlist over the ~1000-app catalog can't bury the connectable
-apps. A member SEARCHING for a blocked app finds its locked row (search + category filter
-before the partition), never emptiness. `allowlist === null` (single-player, or Teams
-with no ceiling) → `locked` always empty → no locks ever; the manager's allowlist editor
-(`AppCatalogGrid`) is unchanged.
+Nothing replaced it, deliberately: a Composio connection is the USER's, so the
+only honest per-agent statement is the ceiling, which the settings page's Apps
+section already makes. Concretely, three affordances went away rather than moving:
+the tab's own catalog (the global page IS the catalog now), the "Not allowed"
+disallowed-apps section, and the bottom `integrations:agentTab.manageAll`
+("Manage all integrations") link, whose destination is the page the user is
+already on. The `integrations:agentTab.*` copy block is dead.
 
-**Role-aware signposting (Part B).** A locked row is not just informational for a viewer
-who can LIFT the ceiling: `CatalogLockedSection` (and the connected-app `AgentDisallowedAppsSection`)
-take an optional `onEnable?: PermissionsFix` resolver (`integrations/blocked-ceiling.ts`).
-When it returns a thunk for a slug, the ask-your-admin line is REPLACED by an
-`EnableInPermissionsButton` ("Enable it in Permissions", `integrations:locked.enableInPermissions`
-/ `teams:integrations.notAllowed.enableInPermissions`) that deep-links into
-**Settings > Permissions** (the store's single `openSettings("permissions")` action, never
-a bare `setViewMode("settings")` — see `agent-manifest.md` — plus a `usePermissionsNav`
-request from `../permissions/permissions-nav-store`; `SettingsView` honors the pin on
-mount AND while already open). A blocked app is
-always outside the AGENT ceiling (policy is per agent only), so the fix always deep-links to
-this agent's per-agent Permissions detail via `requestAgentDetail(agentId)`. The resolver
-(`resolvePermissionsFix`) returns `undefined` — member copy, unchanged — whenever the viewer
-lacks the authority (`isAgentManager && showOrganization`, the latter read from
-`useSurfaceGates` so the CTA rides the DESTINATION's own gate: a non-admin manager, or an
-admin whose active Spaces space is personal, would otherwise follow a dead link and bounce
-off the Settings index). The
-leaf sections stay presentational (props only, no store imports); the resolver is BUILT at
-the per-agent tab (`agent-integrations-tab.tsx`) and threaded down through
-`CatalogPane`/`CategoryCatalog` (`lockedFix`) and `AgentCatalogSections` (`permissionsFix`).
-The global Integrations page never builds a resolver (it has no ceiling and never locks a
-row). Pure logic is node-tested in `app/tests/blocked-ceiling.test.ts`.
+**Locked browse rows — DELETED.** The locked-row transparency surface went with the
+per-agent tab that was its only caller: `CatalogLockedSection`, `EnableInPermissionsButton`,
+`LOCKED_PREVIEW_CAP`, the `resolvePermissionsFix` ceiling resolver
+(`integrations/blocked-ceiling.ts` + its test), `splitByGrant`, `browseCatalogView`'s
+`connectable`/`locked` partition, the `allowlist` / `lockedFix` prop threads through
+`CatalogPane` → `CategoryCatalog`, and the `integrations:locked.*` /
+`teams:integrations.notAllowed.*` copy. Nothing in `integrations-view/` takes a ceiling any
+more, so no lock can render (§2, *Where a member sees the ceiling*). The manager's allowlist
+editor (`AppCatalogGrid`) never used any of it and is unaffected.
 
 **Connect flow (HOU-847)** — the hand-off is ONE app-wide flow
 in three files:
@@ -662,7 +601,7 @@ in three files:
   settled outcome, self-expiring after `CONNECT_NOTICE_MS`) and `origins` (slug
   -> the ORIGIN KEY of the row the flow was started from). Every consumer
   observes the same flow: a connect started in chat is visible on the Integrations
-  tab, and per-toolkit single flight holds GLOBALLY (a second caller for the same
+  page, and per-toolkit single flight holds GLOBALLY (a second caller for the same
   slug JOINS the running flow via `flowPromise` and observes its outcome —
   `connect()` resolves `{ outcome, initiated }`, and only the caller that
   `initiated` the flow owns the starter-side side effects, so the chat card's
@@ -791,13 +730,12 @@ unrelated spot at the top of the pane. Both files are DELETED, on both surfaces.
 The rules now:
 
 - **One home per app.** `partitionConnections` sends only `active` connections to
-  the Installed strip; everything else stays connectable. `catalogHiddenToolkits`
-  is the ONE rule for what the browse catalog omits — a WORKING connection (it is
-  an Installed row) and, on a Teams host, a connection outside the agent's ceiling
-  (it is a "Not allowed" row). A pending/errored connection inside the ceiling is
-  omitted from neither: it keeps its normal category rows, spotlight duplicates
-  included, and counts as available. A toolkit holding an active connection AND a
-  leftover broken one is installed only.
+  the Installed strip; everything else stays connectable. `catalogHiddenToolkits(connections)`
+  is the ONE rule for what the browse catalog omits, and it now has exactly one clause: a
+  WORKING connection, because that is an Installed row. (It took a ceiling too, while locked
+  rows existed; it does not any more.) A pending/errored connection is omitted from neither:
+  it keeps its normal category rows, spotlight duplicates included, and counts as available.
+  A toolkit holding an active connection AND a leftover broken one is installed only.
 - **At rest the row says it.** `PlaneAppRow` takes `status?: BrokenStatus` and
   swaps its blurb for the shared `ConnectionStatusBadge` (dot + label,
   `status.pending` "Finishing up" in warning, `status.error` "Needs reconnecting"
@@ -819,20 +757,22 @@ The rules now:
   app's modal, opened from the Installed strip.
 
 Covered end to end by `packages/web/e2e/integrations-recovery.spec.ts` (status on
-the row on both surfaces, no recovery pile above the catalog, the `+` reconnect as
-one card, the dialog's Reconnect + Remove), seeded via the fake host's
-`/__test__/integrations-connection` `{toolkit, status}` hook. In agent context the
-connect forwards the agent slug so the gateway checks its allowlist on OAuth.
+the row, no recovery pile above the catalog, the `+` reconnect as one card, the
+dialog's Reconnect + Remove), seeded via the fake host's
+`/__test__/integrations-connection` `{toolkit, status}` hook. Its per-agent-tab
+half went with the tab, so the spec now runs on the global page alone — as does
+`integrations-ia.spec.ts` (Teams-member nav + the no-agent-list detail modal), and
+`integrations-locked.spec.ts` was DELETED outright, since the surface that locked a
+row no longer exists.
 
 **Loading language** — three inconsistent treatments collapsed to two.
 `integrations-view/catalog-skeletons.tsx` owns them all: `InstalledSkeleton`,
-`CatalogSkeleton` (category sections mirroring `CategoryCatalog`'s `space-y-8` /
-`mb-3` / `mt-1` rhythm and the real `CatalogRow` shape — the `+` AND the
-`CatalogShowMore` line every capped section resolves with), and
-`CatalogSurfaceSkeleton` (the whole `CatalogShell` order), so resolving costs no
-layout shift. `LoadingState` (`integrations/states.tsx`) is now the BOOT GATE only
-— the per-agent tab shows `CatalogSurfaceSkeleton` for a data load instead of a
-second full-page loader — and its fake 5s `transition: width` progress bar (which
+and `CatalogSkeleton` (category sections mirroring `CategoryCatalog`'s
+`space-y-8` / `mb-3` / `mt-1` rhythm and the real `CatalogRow` shape — the `+`
+AND the `CatalogShowMore` line every capped section resolves with), so resolving
+costs no layout shift. Each section shows its own skeleton in place;
+`LoadingState` (`integrations/states.tsx`) is the BOOT GATE only, and its fake 5s
+`transition: width` progress bar (which
 animated layout and lied about progress) is replaced by opacity-only pulsing dots.
 
 **Names are never machine slugs** — `appDisplay`'s name fallback is
@@ -1129,8 +1069,9 @@ use-scope carve-out is a gateway follow-up. Errors carry stable `code`s
 (`not_found`, `duplicate_slug`, `credential_invalid`, `compile_failed`…).
 Mutations emit `CustomIntegrationsChanged` (protocol events.ts) → query
 invalidation. EVERY client surface now rides the per-agent form whenever an
-agent exists: `CustomIntegrationsSection` takes an optional `agent` (the
-per-agent tab, HOU-980), and agent-less surfaces (the global page + its tab
+agent exists: `CustomIntegrationsSection` still takes an optional `agent`
+(HOU-980; the per-agent tab that passed one is gone, so today every caller is
+agent-less), and agent-less surfaces (the global page + its tab
 chip in `IntegrationsReady`, screen prefetch, chat brand resolution) resolve a
 transport agent via `useCustomTransportAgentId`
 (`use-custom-integrations.ts`) — the FIRST agent's `/agents/:id/...` routes,
@@ -1155,15 +1096,16 @@ Composio strip — the old layout showed them twice. "Add custom integration"
 opens `CustomAddDialog` (chained by `CustomAddFlow`), a two-way fork whose
 LEAD path — a filled `bg-chip` card, first in the DOM, `emphasis="lead"` —
 is **"Set up with your agent"**: the guided chat. It resolves its agent
-without asking wherever it can (the tab's agent, else the workspace's only
+without asking wherever it can (an agent passed in, else the workspace's only
 agent) and interposes `AgentPickerDialog` only for a genuinely multi-agent
 workspace (HOU-1083 restored the fork on top of that #1171 resolution; the
 fork itself is #1151's). The chat opens in the shell-level RIGHT panel, the
 same one the routine chat and the mission board use, so the Integrations
 surface stays visible on the left. Only the VISIBLE section instance drives
 that shared panel — kept-alive views leave every instance mounted, so
-`integration-setup-chat.tsx` gates on `active`: TabProps.isActive on the
-per-agent tab, `viewMode === INTEGRATIONS_VIEW_ID` on the global page. The
+`integration-setup-chat.tsx` gates on `active`, which the global page feeds
+from `viewMode === INTEGRATIONS_VIEW_ID` (the per-agent tab used to feed it
+its own `isActive`; there is one caller now). The
 kickoff prompt, `lib/integration-chat-setup.ts`, explicitly states the user
 is present and `ask_user` works — a "Houston sent this automatically" framing
 once made the model refuse the step-by-step interview. The QUIET path is
@@ -1316,15 +1258,21 @@ the UI can show a key exists; absent `key_prefix` = not minted yet. The gateway 
 the sole owner of ingress, verification, and mint — this TS host carries no
 webhook code. Full cross-repo contract: `cloud/docs/contracts/C9-triggers.md`.
 
-### UI surfaces — the Routines tab (chat-first, one merged list)
+### UI surfaces — the team Routines section (chat-first, one merged list)
 
-Schedule-driven and event-driven routines live in the ONE **Routines** tab (tab
-id stays `routines` — a persisted viewMode value; label en "Routines", es
-"Rutinas", pt "Rotinas").
-The schedule/event split is an engineering distinction, not a user one, so the tab
-set never varies by deployment and the wake mechanism is a choice made **while
-creating** a routine, not a form field on the row. The domain model stays ONE
-`routines.json` list; the tab (`app/src/components/tabs/routines-tab.tsx`) renders
+Schedule-driven and event-driven routines live in ONE surface: a **team's
+Routines section** (`teams-model.ts` section id `routines`, rail label en
+"Routines", es "Rutinas", pt "Rotinas"). The per-agent Routines TAB is gone with
+the agent tab shell; the section lists every team agent's routines in one grid,
+each row naming its owner (`knowledge-base/teams-ui.md`), and `openAgentSection(
+agentId, "routines")` is how a caller asks for one agent's.
+The schedule/event split is an engineering distinction, not a user one, so the
+surface never varies by deployment and the wake mechanism is a choice made
+**while creating** a routine, not a form field on the row. The domain model stays
+ONE `routines.json` list; the section
+(`app/src/components/team-view/team-routines/`, over the per-agent machinery that
+survives in `components/agent/routines-tab-pane.tsx` +
+`use-routines-tab-view.ts`) renders
 it via `@houston-ai/routines` `RoutinesGrid`, with per-row sentence summaries and
 Active / Paused sections. Each row is **chat-first**: clicking it opens the
 routine's setup chat in the shell-level mission panel (split view, via
@@ -1335,7 +1283,7 @@ editor and no Dialog wizard**; the deleted `RoutineRowEdit` / `RoutineTriggerEdi
 / `TriggerPicker` / `TriggerConfigForm` are gone.
 
 Creation runs through the scripted **in-chat intake**
-(`app/src/components/tabs/automation-intake/`) — cards that look exactly like the
+(`app/src/components/agent/automation-intake/`) — cards that look exactly like the
 agent's real `ask_user` cards but run locally with zero model calls: a fork
 ("from scratch" / "from a template"), then (only where `capabilities.triggers` is
 on) a wake question (schedule / app event / webhook). The app-event card

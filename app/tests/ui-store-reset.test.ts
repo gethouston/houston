@@ -15,16 +15,22 @@ describe("useUIStore.reset", () => {
     s.setActivityPanelId("activity-42", { forceOpen: true });
     s.setShareAgentId("agent-a");
     s.setPaletteOpen(true);
-    s.setAgentMissionSearchQuery("agent-a", "invoices");
+    s.openTeamView("team:default", "routines", { agentFilter: "agent-a" });
+    s.setPendingRoutineChat({ agentId: "agent-a", activityId: "act-1" });
 
     useUIStore.getState().reset();
 
     const next = useUIStore.getState();
-    strictEqual(next.viewMode, "chat");
+    // The honest initial view: Mission Control, the app's home. There is no
+    // per-agent screen to fall back to any more.
+    strictEqual(next.viewMode, "dashboard");
     strictEqual(next.activityPanelId, null);
     strictEqual(next.shareAgentId, null);
     strictEqual(next.paletteOpen, false);
-    strictEqual(next.agentMissionSearchQueries["agent-a"], undefined);
+    strictEqual(next.activeTeamId, null);
+    strictEqual(next.teamSection, null);
+    strictEqual(next.teamAgentFilter, null);
+    strictEqual(next.pendingRoutineChat, null);
   });
 
   it("keeps the per-machine layout preferences", () => {
@@ -38,23 +44,13 @@ describe("useUIStore.reset", () => {
     strictEqual(next.filesViewMode, "list");
   });
 
-  it("resets archived mode when navigation leaves Activity", () => {
-    const s = useUIStore.getState();
-    s.setAgentBoardMode("archived");
-    s.setViewMode("files");
+  it("drops a one-shot routine-chat target on an identity change", () => {
+    useUIStore
+      .getState()
+      .setPendingRoutineChat({ agentId: "agent-a", activityId: "act-1" });
 
-    strictEqual(useUIStore.getState().agentBoardMode, "active");
-  });
+    useUIStore.getState().reset();
 
-  it("resets archived mode for an agent switch and reset", () => {
-    const s = useUIStore.getState();
-    s.setAgentBoardMode("archived");
-    // WorkspaceShell performs this on a current-agent change.
-    s.setAgentBoardMode("active");
-    strictEqual(useUIStore.getState().agentBoardMode, "active");
-
-    s.setAgentBoardMode("archived");
-    s.reset();
-    strictEqual(useUIStore.getState().agentBoardMode, "active");
+    strictEqual(useUIStore.getState().pendingRoutineChat, null);
   });
 });

@@ -12,7 +12,7 @@ import type { Agent } from "../../../lib/types";
 import {
   type TriggerSurface,
   useTriggerStatusViewModel,
-} from "../../tabs/trigger-status-view-model";
+} from "../../agent/trigger-status-view-model";
 import { teamFanOut } from "../team-fan-out";
 import {
   type TeamRoutinesList,
@@ -29,9 +29,9 @@ export interface TeamTriggerStatuses extends TriggerSurface {
 }
 
 /**
- * The team Routines section's trigger read: a fan-out over the SAME per-agent
- * key the Automations tab uses (`["agent-trigger-status", <agentId>]`, built
- * from `agentTriggerStatusQueryOptions`), then the SAME view model the tab runs
+ * The team Routines section's trigger read: a fan-out over the per-agent key
+ * every trigger-health read uses (`["agent-trigger-status", <agentId>]`, built
+ * from `agentTriggerStatusQueryOptions`), then the shared view model
  * (`useTriggerStatusViewModel`).
  *
  * This exists because the merged grid renders `RoutineTriggerStatus` for every
@@ -42,12 +42,12 @@ export interface TeamTriggerStatuses extends TriggerSurface {
  *
  * Three rules the fan-out keeps:
  *
- * - **No aggregate key.** One agent's trigger status has ONE cache entry, so the
- *   tab and this list can never serve different truths and opening a team costs
- *   nothing for agents already warm.
- * - **Enabled per agent only when that agent HAS an event routine** — the exact
- *   rule the tab applies. A workspace with no event routines makes zero extra
- *   requests. The bounded poll (`triggerStatusPollInterval`, inside the shared
+ * - **No aggregate key.** One agent's trigger status has ONE cache entry, so no
+ *   two readers can serve different truths and opening a team costs nothing for
+ *   agents already warm.
+ * - **Enabled per agent only when that agent HAS an event routine** — the ONE
+ *   rule, `triggerBoundRoutineIds`. A workspace with no event routines makes
+ *   zero extra requests. The bounded poll (`triggerStatusPollInterval`, inside the shared
  *   options) rides along: it is what makes a settling trigger settle, and it
  *   stops once every trigger has, so it is not a storm.
  * - **No toast, ever.** `useAgentTriggerStatus` toasts through

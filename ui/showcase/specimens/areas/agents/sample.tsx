@@ -121,9 +121,9 @@ export const workspaces: readonly { id: string; name: string }[] = [
 ];
 
 /**
- * A bounded stage for a full-height app-frame component. The rail, the tab bar
- * and the split view all size themselves from their parent, so a specimen has
- * to give them a window with a real height or they collapse to nothing.
+ * A bounded stage for a full-height app-frame component. The rail and the split
+ * view both size themselves from their parent, so a specimen has to give them a
+ * window with a real height or they collapse to nothing.
  */
 export function Viewport({
   children,

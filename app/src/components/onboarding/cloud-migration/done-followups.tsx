@@ -112,7 +112,7 @@ export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
  * Step 2: the apps the legacy account had connected before, one row per
  * toolkit via the shared `<AppRow>` (real logo, real name, from the Composio
  * toolkit catalog). Connect is the REAL account-level OAuth hand-off — the
- * same `useConnectFlow` the Integrations tab runs (mint link, open browser,
+ * same `useConnectFlow` the Integrations page runs (mint link, open browser,
  * poll until active, invalidate, toast failures) with no agent context.
  *
  * Connects run TRULY in parallel: each row's Connect is gated only on ITS OWN

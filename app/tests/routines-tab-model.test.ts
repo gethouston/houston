@@ -6,7 +6,7 @@ import {
   deselectIfOn,
   latestRunByRoutine,
   toggleRoutine,
-} from "../src/components/tabs/routines-tab-model.ts";
+} from "../src/components/agent/routines-tab-model.ts";
 
 describe("routines tab model — adoptDraft", () => {
   it("adopts the fresh id only while still waiting on the null draft", () => {

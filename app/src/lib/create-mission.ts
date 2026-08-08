@@ -64,8 +64,6 @@ export interface CreateMissionOptions {
    * user-visible description stored on the activity row.
    */
   buildPrompt?: (activityId: string) => Promise<string> | string;
-  /** Prompt-file override forwarded to tauriChat.send (agent mode). */
-  promptFile?: string;
   /** Provider override forwarded to tauriChat.send. */
   providerOverride?: string;
   /** Model override forwarded to tauriChat.send. */
@@ -133,7 +131,6 @@ export async function createMission(
       : text;
 
     await tauriChat.send(agent.folderPath, prompt, sessionKey, {
-      mode: opts.promptFile,
       providerOverride: opts.providerOverride,
       modelOverride: opts.modelOverride,
       effortOverride: opts.effortOverride,

@@ -18,8 +18,8 @@ import type { OrgTabId } from "./org-view-model.ts";
  * so `SettingsView` clears it (`settings-nav-pins.ts`) whenever a blocked
  * section falls back to the index.
  *
- * (Per-agent / permission deep links target Settings > Permissions via
- * `usePermissionsNav`, not this store.)
+ * (Per-agent settings are opened directly by `lib/open-agent.ts`, which routes
+ * through Team Settings rather than pinning anything here.)
  */
 interface OrgNavState {
   /** The tab to open on the next Organization render, or null for the default. */

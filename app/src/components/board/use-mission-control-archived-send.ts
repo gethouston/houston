@@ -8,7 +8,7 @@ import { classifyFileKind } from "../../lib/file-kind";
 import { perfSpans } from "../../lib/perf-spans";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -20,14 +20,12 @@ import { useUIStore } from "../../stores/ui";
  */
 export function useMissionControlArchivedSend({
   activeAgent,
-  activeAgentDef,
   selectedItem,
   providerOverride,
   modelOverride,
   onHandoff,
 }: {
   activeAgent: Agent | null;
-  activeAgentDef: AgentDefinition | null;
   selectedItem: KanbanItem | null;
   providerOverride: string;
   modelOverride: string;
@@ -48,9 +46,6 @@ export function useMissionControlArchivedSend({
       if (!activeAgent || !selectedItem) return;
       const agentPath = activeAgent.folderPath;
       const missionId = selectedItem.id;
-      const mode = activeAgentDef?.config.agents?.find(
-        (m) => m.id === (selectedItem.metadata?.agent as string | undefined),
-      );
       try {
         const paths = await tauriAttachments.save(
           `activity-${missionId}`,
@@ -60,7 +55,6 @@ export function useMissionControlArchivedSend({
         // The turn stream pushes the user bubble into the conversation VM
         // itself — no app-side optimistic push.
         await tauriChat.send(agentPath, prompt, sessionKey, {
-          mode: mode?.promptFile,
           providerOverride,
           modelOverride,
           modeOverride: DEFAULT_TURN_MODE,
@@ -87,7 +81,6 @@ export function useMissionControlArchivedSend({
     },
     [
       activeAgent,
-      activeAgentDef,
       selectedItem,
       providerOverride,
       modelOverride,

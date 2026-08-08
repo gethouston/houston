@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { analytics } from "../lib/analytics";
 import { providerNotConfirmedDisconnected } from "../lib/provider-connection";
 import { tauriPreferences, tauriProvider, tauriRoutines } from "../lib/tauri";
@@ -19,7 +18,6 @@ export function useHoustonInit() {
   const settleAgentsEmpty = useAgentStore((s) => s.settleEmpty);
   const setCurrent = useAgentStore((s) => s.setCurrent);
   const setClaudeAvailable = useUIStore((s) => s.setClaudeAvailable);
-  const setViewMode = useUIStore((s) => s.setViewMode);
 
   useEffect(() => {
     if (initRef.current) return;
@@ -86,10 +84,10 @@ export function useHoustonInit() {
       if (lastAgentId) {
         const agents = useAgentStore.getState().agents;
         const saved = agents.find((a) => a.id === lastAgentId);
-        if (saved) {
-          setCurrent(saved);
-          setViewMode(DEFAULT_TAB_ID);
-        }
+        // Restoring the last agent makes it CURRENT (provider routing, model
+        // prefs, the palette's default) — it does not pick a screen: an agent
+        // has no screen of its own, and boot lands on Mission Control.
+        if (saved) setCurrent(saved);
       }
 
       // Check if the default provider's CLI is available
@@ -120,6 +118,5 @@ export function useHoustonInit() {
     settleAgentsEmpty,
     setCurrent,
     setClaudeAvailable,
-    setViewMode,
   ]);
 }

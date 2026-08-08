@@ -6,7 +6,7 @@ Agent definitions = what AI agent looks like. What prompt. What files seeded. Pr
 
 ## Two tiers
 
-1. **JSON-only** — `houston.json` + `CLAUDE.md`. Defines prompt, colors, icon, integrations. All agents share the same shell tabs (see "Tabs" below).
+1. **JSON-only** — `houston.json` + `CLAUDE.md`. Defines prompt, colors, icon, integrations. Every agent is reached through the same team surfaces (see "Where an agent's surfaces live" below).
 2. **Workspace template** — `workspace.json` + `agents/` folder. Bundles multiple agents from one GitHub repo.
 
 ## Manifest shape
@@ -29,13 +29,33 @@ interface AgentManifest {
 }
 ```
 
-## Tabs
+## Where an agent's surfaces live (there are no agent tabs)
 
-Every agent renders the same standard tabs in the shell:
-`Activity` (board) / `Settings` (tab id `job-description`) / `Integrations` /
-`Routines` (tab id `routines`; schedule-driven AND event-driven in one list —
-the wake mechanism is a choice made while creating a routine, never a separate
-tab) / `Files`.
+**An agent has no screen of its own.** The seven-tab agent shell (Activity /
+Context / Skills / Integrations / Routines / Files / Admin) was deleted in the
+teams cutover, together with `app/src/agents/standard-tabs.ts`,
+`tab-resolver.ts`, `components/shell/experience-renderer.tsx` and the seven
+wrapper components under `components/agent/`. Every screen in the app is now a
+top-level view (`lib/top-level-views.ts`), and an agent is reached THROUGH one:
+
+| What the user wants | Where it is now |
+| --- | --- |
+| this agent's missions | its TEAM's **Mission Control**, filtered to it (`teamAgentFilter`) |
+| what it runs on its own | its team's **Routines** section, filtered to it |
+| the files it keeps | its team's **Files** section, with it selected |
+| its job description / memory / people / apps / models / skills | the canonical **agent settings page** (`components/agent-settings/agent-settings-page.tsx`), reached through **Team Settings → the agent's row** |
+| connecting apps | the global **Integrations** page (connections are the caller's, not an agent's) |
+
+`lib/agent-nav.ts` is the ONE translation from "take me to agent X's <thing>"
+into the team view the store opens (`agentDestination`, pure + unit-tested in
+`app/tests/agent-nav.test.ts`), and `lib/open-agent.ts` is its imperative half
+(`openAgentBoard` / `openAgentSection` / `openAgentSettings`), used by the
+@mention rows, session notifications, the command palette, ⌘[ / ⌘], the tour,
+agent creation and import. Nothing composes `openTeamView` for an agent by hand.
+
+`currentAgent` (the agents store) SURVIVES — provider routing, model prefs and
+the palette read it — but nothing navigates by it any more: it is an INPUT to
+the destination map, never a screen selector.
 
 **Routines are created chat-first (no manual editor, no Dialog wizard).**
 Starting a new routine opens a scripted **in-chat intake** (`app/src/components/
@@ -50,24 +70,32 @@ row carries an enable/disable toggle, a three-dot menu (Run now / Stop run,
 Delete), and — for a schedule routine — an inline, always-visible schedule-edit
 popover; everything else about a routine is changed by asking the agent in its
 setup chat. The setup chat opens in the **shell-level mission panel** on the
-right (a resizable split view, the SAME panel the Activity board uses, wired
-through `useShellDetailPanel`); nothing selected centers the list as a single
-column. Library surface: `@houston-ai/routines` (`ui/routines/README.md`).
+right (a resizable split view, the SAME panel the boards use, wired through
+`useShellDetailPanel`); nothing selected centers the list as a single column.
+That machinery (`use-routine-chat-setup.ts`, `use-routines-tab-view.ts`,
+`routines-tab-pane.tsx`) still lives under `components/agent/` and is mounted by
+the TEAM Routines section, one child per owning agent. Library surface:
+`@houston-ai/routines` (`ui/routines/README.md`).
 
-This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
+Tabs were configurable per agent long ago (a `tabs: AgentTab[]` field in
+`houston.json` plus an optional `customComponent`); that was hardcoded away into
+`STANDARD_TABS`, and now the concept is gone entirely. Old `tabs` / `defaultTab`
+fields on installed manifests are ignored by the loader, and the
+`agents:tabLabels.*` i18n block was deleted with the strip.
 
-The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
-
-**Configure gating (Teams v2).** Settings (`job-description-tab.tsx`) is visible
-to every shared-agent member on a Teams host. Managers get configuration plus
-editable access controls; members get the People, Apps, and AI models access rows
-read-only. Outside Teams, Settings remains limited to `isAgentManager` callers.
-The Integrations tab gates its edits on `isAgentManager` /
-`canEditAgentGrants`. The gateway 403s any configure-scope write regardless —
-these gates only avoid showing a dead control. The **Share**
-dialog (`agent-share-dialog.tsx`) — a Drive-style people-with-access sheet
-backed by `setAgentAssignments` v2 — is gated on `canManageAssignments`. See
-`knowledge-base/teams.md`.
+**Configure gating.** The agent settings page's ONE door is Team Settings, so
+its gate is per AGENT, not org-wide: `canOpenAgentSettings(caps, agent)` in
+`lib/agent-nav.ts` = `canSeeTeamSettings(caps)` (single player: always;
+multiplayer: org owner/admin) `|| isAgentManager(caps, agent)` (a member who
+manages THIS agent, who would otherwise lose every configure surface). It is
+the check every "configure this agent" affordance must make before rendering,
+so a caller who cannot reach the page is never shown a link to it. Inside the page,
+`isAgentManager` decides the FACE (editable vs `readOnly`), never access; the
+gateway 403s any configure-scope write regardless. The agent's **Share**
+affordance (`AgentShareSurfaces` — the people sheet, the read-only "who has
+access" list, or the C8 share-via-team flow in a personal space) lives in that
+page's header, which is the only place an agent is addressed now. See
+`knowledge-base/agent-settings.md` and `knowledge-base/teams.md`.
 
 ## Locations
 - **Built-in:** `app/src/agents/builtin/` — `personalAssistantAgent`
@@ -160,7 +188,10 @@ Meet → Connect → Conversation → Ready flow, which replaced the hardcoded
   `buildSetupMissionPrompt(agentName)`. The `buildPrompt` string reaches the
   engine as system context, never rendering as a user chat line — so there is
   **no CLAUDE.md mutation and none of the old strip/sweep/pending machinery**.
-  Effort is pinned `medium`; it opens the chat via
+  Effort is pinned `medium`; it publishes the new mission's identity for the
+  board (`publishCreatedMission`, see *Rows the sweep cannot see yet* below —
+  without it the panel opens on a card nobody can name and the welcome chat is
+  blank) and then opens the chat via
   `useUIStore.setActivityPanelId(conversationId, { forceOpen: true })` (same move
   the old welcome used). On a warming (hosted) agent `createMission` queues the
   send and returns without throwing (surfacing its own toast on real failure);
@@ -371,7 +402,9 @@ live in [teams-ui.md](teams-ui.md) — this section is the RAIL's own anatomy.
 
 - **Teams, clicks, highlight → [teams-ui.md](teams-ui.md).** In one line: the
   teams come from `useTeams()` (the single resolution path), the sections a team
-  offers come from `visibleTeamSections(caps)`, and which row is lit is pure, in
+  offers come from `visibleTeamSectionsForTeam(caps, team)` (asked again per
+  team, because the same person may configure one and only use the next), and
+  which row is lit is pure, in
   `app/src/lib/sidebar-teams.ts`. The default team is **virtual** — nothing is
   written to `sidebar_layout` to make it exist, which is exactly why it has no
   caret and no rename / delete / shared-context menu.
@@ -1118,15 +1151,14 @@ account switch) used to send first-run onboarding logins to
   sets both: a plain open always lands on the index (a bare `setViewMode` was a
   dead click while a section was open, since the view was already `settings`),
   and a deep link lands on its section even when Settings is already open (the
-  team-status banner's Billing link, the blocked-app "Enable it in Permissions"
-  CTA). `SettingsView` renders from the store and writes it on drill-in/back, and
+  team-status banner's Billing link). `SettingsView` renders from the store and
+  writes it on drill-in/back, and
   it OWNS the settings analytics: one `tab_opened` per surface actually reached
   (`settings` for the index, `settings:<id>` for a section), emitted after the
   gates resolve, with the shell's generic viewMode effect skipping `settings` so
-  a deep link can't double-count. The one-shot deep-link pins
-  (`usePermissionsNav`, `useOrgNav`) are cleared by `settings-nav-pins.ts` when a
-  blocked section falls back to the index, so a pin never outlives its
-  navigation.
+  a deep link can't double-count. The one-shot deep-link pin (`useOrgNav`, for
+  Admin) is cleared by `settings-nav-pins.ts` when a blocked section falls back
+  to the index, so a pin never outlives its navigation.
 - i18n: namespace `aiHub` (`app/src/locales/{en,es,pt}/ai-hub.json`, registered in
   `app/src/lib/i18n.ts`).
 - `design/inventory` bumped to **v2**: three new cross-surface content components
@@ -1148,31 +1180,34 @@ Lives in `app/src-tauri/src/houston_prompt/` for the Houston desktop app. Covers
 **Agent-context layer (engine-owned).**
 Built in `engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`:
 1. **Working directory block** — hard rules scoping file I/O to `<agent-root>`.
-2. Mode file `.houston/prompts/modes/<mode>.md` (optional, user-editable).
-3. Learnings snapshot — `.houston/learnings/learnings.json`, text fields only, rendered as bounded background context. IDs/timestamps stay storage/UI-only.
-4. **Workspace context block** — assembled from `<workspace>/WORKSPACE.md` + `<workspace>/USER.md` (the agent's parent dir) by `workspace_context::build_prompt_section`. Always included for any agent whose parent dir has a `.houston/`. Files are NOT seeded — they only exist once the user or an agent writes them; until then the section renders an "(empty so far, ask the user when relevant)" marker so the agent knows the slot exists. Section explicitly authorizes the agent to read/write these two files (carve-out from the working-directory rule) and tells it that edits take effect on the **next** chat.
-4a. **Group context block** (current TS host only, no Rust-era equivalent) — `<agent-root>/GROUP.md`, present only when the agent belongs to a sidebar group with shared context set; see "Group shared context" under the sidebar section above. Unlike the workspace block there is no empty-marker stub: an ungrouped agent gets nothing appended.
-5. Skills index — `.agents/skills/` via `houston_skills::build_skills_index`.
-6. Integrations block — based on `.houston/integrations.json` if present.
+2. Learnings snapshot — `.houston/learnings/learnings.json`, text fields only, rendered as bounded background context. IDs/timestamps stay storage/UI-only.
+3. **Workspace context block** — assembled from `<workspace>/WORKSPACE.md` + `<workspace>/USER.md` (the agent's parent dir) by `workspace_context::build_prompt_section`. Always included for any agent whose parent dir has a `.houston/`. Files are NOT seeded — they only exist once the user or an agent writes them; until then the section renders an "(empty so far, ask the user when relevant)" marker so the agent knows the slot exists. Section explicitly authorizes the agent to read/write these two files (carve-out from the working-directory rule) and tells it that edits take effect on the **next** chat.
+3a. **Group context block** (current TS host only, no Rust-era equivalent) — `<agent-root>/GROUP.md`, present only when the agent belongs to a sidebar group with shared context set; see "Group shared context" under the sidebar section above. Unlike the workspace block there is no empty-marker stub: an ungrouped agent gets nothing appended.
+4. Skills index — `.agents/skills/` via `houston_skills::build_skills_index`.
+5. Integrations block — based on `.houston/integrations.json` if present.
 
 `CLAUDE.md` is read by the CLI (claude/codex) itself at startup, not injected by the engine.
 
-Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info. Per-group surfaces (shared by every agent in one sidebar group only): `GROUP.md`, edited from the group's "..." menu → Edit shared context, mirrored to member agents by the host on every sidebar-layout write.
+Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info. Per-group surfaces (shared by every agent in one sidebar group only): `GROUP.md`, edited from the group's "..." menu → Edit shared context, mirrored to member agents by the host on every sidebar-layout write.
 
-## Board / Activity tab
+## Board
 `@houston-ai/board::AIBoard` = `KanbanBoard` + `KanbanDetailPanel` + `ChatPanel`. Generic, props-only. Each card = activity from `.houston/activity/activity.json`. Click → opens chat w/ conversation history.
 
 `AIBoard` props: `items, feedItems (keyed by sessionKey), isLoading, onCreateConversation, onSendMessage, onLoadHistory, onDelete, onApprove, onSelect, selectedId`, plus the multi-select (`selectable, selectedIds, onToggleSelect, selectionLockColumnId, bulkActions`) and drag-and-drop (`onItemMove, canDropItem`) surface.
 
 ### Shared board (`app/src/components/board/`)
-The per-agent board tab AND cross-agent Mission Control render **one** component, `<MissionBoard source={…}>`, which owns every shared concern: columns, multi-select UI, `useAgentChatPanel`, the message queue, draft persistence, keyboard nav, run-in-terminal actions, and the full AIBoard prop spread. The divergent bits live behind a `BoardSource` (headless-logic pattern):
+The global Mission Control AND every team's board render **one** component, `<MissionBoard source={…}>`, which owns every shared concern: columns, multi-select UI, `useAgentChatPanel`, the message queue, draft persistence, keyboard nav, run-in-terminal actions, and the full AIBoard prop spread. The divergent bits live behind a `BoardSource` (headless-logic pattern).
 
-- `useAgentBoardSource(agent, agentDef)` → single-agent data + per-agent bulk + default-mode "New mission" + DnD. Consumed by the thin `tabs/board-tab.tsx`.
-- `useMissionControlSource(agents, onShowArchived)` → cross-agent data (`useMissionControl`) + cross-agent bulk (`useCrossAgentSelection`, groups bulk ops by owning agent) + cross-agent drag-and-drop (a dragged card moves within its own agent; `useMcActions.handleItemMove` routes the status change to that card's agent path) + an agent-picker "New mission" + the filter/search/Archived toolbar. Consumed by `MissionControlActive`.
+There is now exactly ONE source: `useMissionControlSource(agents, onShowArchived, mentions?, scope?)` → cross-agent data (`useMissionControl`) + cross-agent bulk (`useCrossAgentSelection`, groups bulk ops by owning agent) + cross-agent drag-and-drop (a dragged card moves within its own agent; `useMcActions.handleItemMove` routes the status change to that card's agent path) + an agent-picker "New mission" + the filter/search/Archived toolbar. `MissionControlActive` mounts it unscoped; `TeamMissionBoard` mounts it with a `MissionControlScope` (`knowledge-base/teams-ui.md` → *The one-sweep rule*). The per-agent `useAgentBoardSource` and its `useActivity`-keyed data hook are GONE with the agent tab shell.
 
-`dashboard.tsx` toggles (swaps, not hides — so only the mounted view's hooks run) between `MissionControlActive` and the cross-agent **Archived** view (`MissionControlArchived` + `useMissionControlArchived`) via the toolbar's Archived button (an outline pill, one rank below the filled "New mission" CTA) and back via the toolbar's labelled `BoardBackButton` — the Archived toolbar drops the Archived pill entirely, so the back button is its single, unambiguous exit (HOU-1043). The Archived view is the per-agent Activity area's archived-list UI spanning every agent; sending in an archived chat re-activates the mission (`archived → running`) and hands off to that agent's board (`setCurrent` + `setViewMode("activity")` + `setActivityPanelId`).
+Two contracts moved into that one source when the per-agent board was deleted, because it is the only board left to carry them:
 
-Adding a board capability = add it to `<MissionBoard>` (both board views get it) or to one `BoardSource` (just that view). `archived-tab.tsx` (per-agent) still renders `AIBoard` directly (list layout) and shares the same primitives.
+- **The nav handoff.** A notification click, a @mention row, the command palette and the archived → active handoff publish their target as `activityPanelId`; the source consumes it (through `resolvePendingActivitySelection`) **gated on `useIsActiveView()`**, so a hidden team board can never eat the target. Which SURFACE the target belongs to — the active board or the archive — is decided once from the raw sweep rows (`lib/board-surface-nav.ts`) by the owner of the two (`Dashboard` / `TeamMissionControl`) through `useBoardSurfaceOnNav`, which swaps that surface in; each surface then consumes only its own targets. See `teams-ui.md` → *The two surfaces, and where a published nav lands*.
+- **Rows the sweep cannot see yet.** A mission created here exists before the cross-agent sweep returns it, so `useMissionControl` holds its `{activityId, agentPath, sessionKey}` until the row lands (`board/use-just-created-mission.ts`) — without it the panel loses its session key and the user's first message vanishes. A mission created **outside** any board (the agent's self-setup mission, fired by the create dialog) reaches the same fallback through `lib/created-mission-handoff.ts`: `startAgentSetupMission` calls `publishCreatedMission(...)` BEFORE it opens the panel, and every mounted board adopts the offer — deliberately not one-shot, since several boards are kept alive at once and the first to look is often a hidden one; the leak rule is a 30s TTL plus each board dropping it when the real row lands. Missions queued against a still-warming engine (HOU-713) are overlaid the same way, as `warmingConversations` rows (`lib/warming-board-rows.ts` + `hooks/use-warming-conversations.ts`); when the readiness probe clears, the store flushes the queued sends and then **awaits `warmingFlushRefetchKeys(agentPath)`** (`lib/agent-provisioning.ts` — the `all-conversations` PREFIX the boards actually read, plus the per-agent `activity` key) before `clearProvisioning` drops the optimistic rows, so the handoff to the real rows is gapless.
+
+`dashboard.tsx` toggles (swaps, not hides — so only the mounted view's hooks run) between `MissionControlActive`, the cross-agent **Archived** view (`MissionControlArchived` + `useMissionControlArchived`) and the Mentions inbox; `TeamMissionControl` does the same for a team, minus Mentions. The archive is entered from the toolbar's Archived button (an outline pill, one rank below the filled "New mission" CTA) and left via the toolbar's labelled `BoardBackButton` — the Archived toolbar drops the Archived pill entirely, so the back button is its single, unambiguous exit (HOU-1043). Sending in an archived chat re-activates the mission (`archived → running`) and hands the user back to THIS screen's active board with that mission open (`useArchivedHandoff`: the caller's own `focusBoard` + `setActivityPanelId`) — never a jump to some other screen.
+
+Adding a board capability = add it to `<MissionBoard>` (every board gets it) or to the `BoardSource` (every board again — there is one). There is no per-agent Archived tab any more; the cross-agent archive is the archive.
 
 Status transitions: when a turn settles, the SDK persists the board status through the `persistBoardStatus` seam (the web adapter PATCHes `{ status, pending_interaction }`) — **the engine never writes `done`**: every clean finish → `needs_you` (carrying whatever pending interaction the turn ended on, blocking steps or bare offers alike); a handled Stop / logged-out provider → `needs_you`; a real failure → `error`. Both `needs_you` and `error` sit in the **Needs you** column, and both offer the card checkmark (`MISSION_APPROVE_STATUSES`). `done` is written ONLY by the user — checkmark, drag into Done, or bulk move — each firing the mission-done confetti. The resulting `ActivityChanged` event auto-invalidates TanStack Query → board refreshes. (The `sessionStatus`/`boardStatus` pair: `knowledge-base/client-architecture.md`; full interaction lifecycle: `knowledge-base/architecture.md`.)
 

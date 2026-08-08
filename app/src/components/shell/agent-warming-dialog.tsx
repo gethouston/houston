@@ -1,7 +1,7 @@
 /**
  * "Your agent is still being created" notice (HOU-693). Opens when the user
  * triggers a write (save, create, update…) on an agent whose engine is still
- * warming up — the tabs stay explorable, this dialog is the only blocker.
+ * warming up — every screen stays explorable, this dialog is the only blocker.
  * Mirrors the boot splash's helmet-in-motion so the wait reads as the same
  * continuous "getting ready" state. Closes itself if the agent turns ready
  * while it is open.

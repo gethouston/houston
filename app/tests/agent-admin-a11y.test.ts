@@ -18,7 +18,7 @@ const read = (rel: string) =>
 
 describe("Agent Settings a11y", () => {
   it("AccessChoice focuses the newly-selected radio on arrow keys", () => {
-    const src = read("../src/components/tabs/agent-admin/access-choice.tsx");
+    const src = read("../src/components/agent/agent-admin/access-choice.tsx");
     ok(src.includes(".focus()"), "arrow-key handler moves DOM focus");
     ok(src.includes("useRef"), "keeps element refs to focus the checked radio");
   });
@@ -32,7 +32,7 @@ describe("Agent Settings a11y", () => {
     // The models editor body (question heading included) lives in the shared
     // ModelsAllowlistEditor; the agent section is a thin wrapper around it.
     const models = read(
-      "../src/components/tabs/agent-admin/agent-models-section.tsx",
+      "../src/components/agent/agent-admin/agent-models-section.tsx",
     );
     ok(!models.includes("<h1"), "models section renders no page-level h1");
     const modelsEditor = read(

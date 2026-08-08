@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Capabilities } from "@houston-ai/engine-client";
-import { canShowAgentShareBlock } from "../src/components/tabs/agent-access-model.ts";
+import { canShowAgentShareBlock } from "../src/components/agent/agent-access-model.ts";
 
 describe("canShowAgentShareBlock", () => {
   const SINGLE_PLAYER: Capabilities = {};

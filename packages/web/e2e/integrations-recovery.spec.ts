@@ -171,30 +171,3 @@ test("the dialog's Reconnect hands the flow to the row that opened it", async ({
     page.getByRole("status").filter({ hasText: "Finish connecting Slack" }),
   ).toHaveCount(1);
 });
-
-test("the agent tab behaves identically: status on the row, no recovery pile", async ({
-  page,
-  request,
-}) => {
-  await armCapabilities(request, { integrations: ["composio"] });
-  await seedConnection(request, "slack", "error");
-  await page.goto("/");
-  await page.locator('[data-tour-target="tab-integrations"]').click();
-
-  await expect(page.getByText("Needs reconnecting")).toHaveCount(2);
-  const spotlight = await page
-    .getByRole("heading", { name: "Most used" })
-    .boundingBox();
-  const firstStatus = await page
-    .getByText("Needs reconnecting")
-    .first()
-    .boundingBox();
-  expect(firstStatus?.y ?? 0).toBeGreaterThan(spotlight?.y ?? 0);
-
-  // The retry is the row's own `+` here too.
-  await page.getByRole("button", { name: "Connect Slack" }).last().click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Finish connecting Slack" }),
-  ).toHaveCount(1);
-  await expect(page.getByText("Needs reconnecting")).toHaveCount(0);
-});

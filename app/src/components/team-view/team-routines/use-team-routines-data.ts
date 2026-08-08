@@ -11,7 +11,7 @@ import {
 } from "../../../lib/agent-read-failures";
 import { queryKeys } from "../../../lib/query-keys";
 import type { Agent } from "../../../lib/types";
-import type { TriggerSurface } from "../../tabs/trigger-status-view-model";
+import type { TriggerSurface } from "../../agent/trigger-status-view-model";
 import { teamFanOut } from "../team-fan-out";
 import type { TeamRoutineDraftsList } from "../team-routine-drafts-model";
 import {
@@ -40,18 +40,18 @@ export interface TeamRoutinesData {
 
 /**
  * The team Routines section's read: a fan-out over the SAME per-agent query keys
- * the per-agent Routines tab uses (`queryKeys.routines(path)` /
+ * every other routines read uses (`queryKeys.routines(path)` /
  * `queryKeys.routineRuns(path)`, built from the shared option factories). There
  * is deliberately NO aggregate key: an agent's routines have one cache entry, so
- * the tab and this list can never serve different truths, the existing routines
- * event invalidation refreshes both, and opening a team costs nothing for agents
+ * no two readers can serve different truths, the existing routines event
+ * invalidation refreshes them all, and opening a team costs nothing for agents
  * whose lists are already warm.
  *
  * `refetchOnWindowFocus: false` is set per OBSERVER, here only. Alt-tabbing back
  * must not re-fan-out to every agent's pod (a pod-wake storm) nor fire one error
- * toast per unreachable agent. The per-agent tab's own observer keeps the
- * default, so the surface a person is actually working in still refreshes on
- * focus.
+ * toast per unreachable agent. The open chat's own `useRoutines` observer
+ * (`team-routine-panel.tsx`) keeps the default, so the surface a person is
+ * actually working in still refreshes on focus.
  *
  * Every read is reduced through `teamFanOut` as `useQueries`' `combine`, so the
  * merge below is memoizable: React Query structurally shares the combined value

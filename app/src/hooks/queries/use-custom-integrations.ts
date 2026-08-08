@@ -25,9 +25,9 @@ import { useCapabilities } from "../use-capabilities";
  * would double-toast.
  *
  * `agentId` on the mutations/reads switches to the per-agent surface
- * (HOU-823) — REQUIRED wherever a gateway may front the host (the per-agent
- * Integrations tab, the in-chat credential card): the gateway proxies ONLY
- * per-agent routes to the pod, so the top-level form 404s there.
+ * (HOU-823) — REQUIRED wherever a gateway may front the host (the in-chat
+ * credential card, the automation intake's inline connect): the gateway proxies
+ * ONLY per-agent routes to the pod, so the top-level form 404s there.
  */
 
 /**
@@ -39,9 +39,8 @@ import { useCapabilities } from "../use-capabilities";
  * list: ride the first agent's. The top-level fallback covers a direct host
  * with no agents yet.
  */
-export function useCustomTransportAgentId(agentId?: string) {
-  const firstAgentId = useAgentStore((s) => s.agents[0]?.id);
-  return agentId ?? firstAgentId;
+export function useCustomTransportAgentId() {
+  return useAgentStore((s) => s.agents[0]?.id);
 }
 
 /** The SAME list through the per-agent surface (HOU-823). Same `staleTime`

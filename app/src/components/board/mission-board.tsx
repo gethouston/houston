@@ -24,34 +24,23 @@ import { useBoardSelectionUI } from "./use-board-selection-ui";
 import { useBoardSendQueue } from "./use-board-send-queue";
 
 /**
- * The one board both views render. It owns every shared concern — columns,
+ * The one board every mission surface renders (Mission Control and each team
+ * board, which is the same source narrowed by a scope). It owns every shared
+ * concern — columns,
  * the multi-select UI, the `useAgentChatPanel` integration, the message
  * queue, draft persistence, keyboard navigation, run-in-terminal actions, and
  * the full AIBoard prop spread — and pulls the divergent pieces (data, active
  * agent, new-mission flow, bulk routing, toolbar, dialogs) from `source`.
  */
-export function MissionBoard({
-  source,
-  isActive: tabActive,
-}: {
-  source: BoardSource;
-  /** When this board is one agent-detail TAB (the Activity tab), the tab's own
-   *  active flag. Every agent tab stays mounted (only CSS-hidden), so without
-   *  it the board keeps its selected mission and keeps portaling a detail panel
-   *  into the shared shell panel while another tab (Routines) portals its own —
-   *  two stacked panels, the chat "split in half" (HOU-1165). Composed with the
-   *  screen-level active-view signal below. Omit for the top-level Mission
-   *  Control board, which the screen signal governs alone. */
-  isActive?: boolean;
-}) {
+export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
-  // "Active" here means BOTH the enclosing screen is visible AND (when this is a
-  // tab) the tab is the selected one. `useIsActiveView` is only tab-accurate for
-  // top-level kept-alive screens, not agent tabs, so tab callers pass their own
-  // flag; the top-level board passes none and rides the screen signal alone.
-  const screenActive = useIsActiveView();
-  const isActive = screenActive && (tabActive ?? true);
+  // Every board is the whole of a kept-alive top-level screen, so the
+  // screen-level signal alone says whether this one is on the glass. It gates
+  // the keyboard nav and the shell detail panel: a hidden-but-mounted screen
+  // must stop portaling its panel, or two screens stack their panels into the
+  // one shared slot and the chat renders "split in half" (HOU-1165).
+  const isActive = useIsActiveView();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const addToast = useUIStore((s) => s.addToast);
   const queuedLabels = useQueuedMessageLabels();
@@ -91,7 +80,6 @@ export function MissionBoard({
   // truth for both views.
   const panel = useAgentChatPanel({
     agent: source.activeAgent,
-    agentDef: source.activeAgentDef,
     selectedSessionKey: source.selectedSessionKey,
     onSelectSession: source.onSelectSession,
     draftScope: source.draftScope,
@@ -204,7 +192,6 @@ export function MissionBoard({
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}
-          cardAvatar={source.cardAvatar}
           thinkingIndicator={panel.thinkingIndicator}
           panelAgentName={source.panelAgentName}
           panelAvatar={

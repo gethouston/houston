@@ -80,6 +80,12 @@ export function KeepAliveViews({
       visible.has(view.id) && (
         <div
           key={view.id}
+          // The screen's identity and whether it is the one ON THE GLASS.
+          // Kept-alive screens stay in the DOM while hidden, so anything
+          // reading the app from outside (the e2e suite) needs a way to ask
+          // for the visible one rather than the first one that matches.
+          data-screen={view.id}
+          data-screen-active={view.id === activeId ? "true" : undefined}
           className={
             view.id === activeId ? "flex min-h-0 flex-1 flex-col" : "hidden"
           }

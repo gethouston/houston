@@ -71,16 +71,11 @@ describe("catalogHiddenToolkits", () => {
     deepStrictEqual([...hidden], ["gmail"]);
   });
 
-  it("also hides a connection the agent's ceiling forbids (it has a section of its own)", () => {
-    const hidden = catalogHiddenToolkits(
-      [conn("gmail", "active"), conn("slack", "error"), conn("jira", "error")],
-      ["slack"],
-    );
-    deepStrictEqual([...hidden].sort(), ["gmail", "jira"]);
-  });
-
-  it("hides nothing extra without a ceiling", () => {
-    const hidden = catalogHiddenToolkits([conn("slack", "pending")], null);
+  it("hides nothing when no connection ever landed", () => {
+    const hidden = catalogHiddenToolkits([
+      conn("slack", "pending"),
+      conn("jira", "error"),
+    ]);
     strictEqual(hidden.size, 0);
   });
 });

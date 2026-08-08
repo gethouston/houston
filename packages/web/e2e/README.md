@@ -117,13 +117,14 @@ controls arm it (documented in the `@houston/fake-host` README):
 
 - `POST /__test__/capabilities` (`Partial<Capabilities>`) — merge a partial into
   `/v1/capabilities`. `{ integrations:["composio"], multiplayer:true,
-  teams:true, role:"owner" }` puts the agent Integrations tab into Teams mode;
+  teams:true, role:"owner" }` puts the app into Teams mode;
   `{ integrations:["composio"] }` alone is single-player-with-apps.
 - `POST /__test__/agent-settings` (`{ allowedToolkits?, orgAllowedToolkits?,
   allowedModels?, access? }`) — the Teams v2 ceilings the fake host serves at
-  `/v1/agents/:slug/settings` + `/v1/org/settings`. The effective allowlist
-  (agent ∩ org) splits the browse catalog into connectable vs locked rows
-  (`integrations-locked.spec.ts`). `null` = unrestricted, `[]` = none.
+  `/v1/agents/:slug/settings` + `/v1/org/settings`. `null` = unrestricted,
+  `[]` = none. (The per-agent Integrations tab that turned the effective
+  allowlist into locked browse rows went away with the agent tab shell; the
+  ceilings are now edited on the agent settings page's Apps section.)
 
 **C8 Spaces arming.** The fake host serves the whole cross-org surface
 (`@houston/fake-host` `routes-spaces.ts`): `GET /v1/orgs` → `{orgs, invites}`,

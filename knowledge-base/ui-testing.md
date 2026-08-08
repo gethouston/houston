@@ -87,21 +87,22 @@ e2e in an `_agent-tasks/<id>/` worktree, pick distinct ports:
   real store, unified with `/activities` (same data, as in the real host),
   so a turn's status flip shows on the board. Both seeded missions also carry
   Teams attribution (`created_by` + `contributors`; 2 people and 7 people), so
-  the card face stacks + "+N" chip are testable — but only in multiplayer, on
-  **Mission Control**: the per-agent board opens on the `me` person scope and
-  identity is off in this project, so an attributed mission is filtered out
-  there. Single-player runs (and every visual baseline) see the board unchanged.
+  the card face stacks + "+N" chip are testable — in multiplayer only, since the
+  toolbar's person filter (`MissionPersonFilter`, active board only) is the surface
+  that reads them. Single-player runs (and every visual baseline) see the board
+  unchanged.
 - **Teams mode is armable.** Single-player alone can't reach the Teams-shaped
-  state (multiplayer + an integration allowlist ceiling) that the agent
-  Integrations tab's locked browse rows need. Two fake-host controls arm it:
+  state (multiplayer + an integration allowlist ceiling) the agent's app-ceiling
+  surfaces need. Two fake-host controls arm it:
   `POST /__test__/capabilities` (merge a `Partial<Capabilities>` into
   `/v1/capabilities` — e.g. `{ integrations:["composio"], multiplayer:true,
   teams:true, role:"owner" }`) and `POST /__test__/agent-settings`
   (`{ allowedToolkits?, orgAllowedToolkits? }`, the ceilings served at
   `/v1/agents/:slug/settings` + `/v1/org/settings`). The effective allowlist
-  (agent ∩ org) splits the browse catalog into connectable vs locked rows
-  (`integrations-locked.spec.ts`). `SEED_TOOLKIT_SLUGS` (15 A-Z apps) is exported
-  for specs arming allowlists over the catalog.
+  (agent ∩ org) is what the agent settings page's Apps section edits;
+  `SEED_TOOLKIT_SLUGS` (15 A-Z apps) is exported for specs arming allowlists
+  over the catalog. (The locked-browse-rows spec these controls were built for
+  went with the per-agent Integrations tab.)
 - **C8 Spaces is armable end to end.** The fake host serves the cross-org
   surface (`fake-host/routes-spaces.ts`): `GET /v1/orgs` → `{orgs, invites}`,
   `POST /v1/orgs`, and the INVITEE's `POST /v1/org-invites/:id/accept` (201
@@ -126,10 +127,25 @@ HTML report as an artifact.
 ## Add a spec
 
 `import { test, expect } from "./support/fixtures"` → `await page.goto("/")` →
-boots to shell, one agent selected. Prefer role/label/text selectors (en is
-forced). Reuse a stable anchor (e.g. `data-tour-target`) before adding a
-`data-testid`. Need more host behavior? Extend `fake-host/state.ts` + `routes.ts`
-(`FAKE_HOST_LOG=1` logs every request).
+boots to **Mission Control** (there is no per-agent screen), one agent current.
+Prefer role/label/text selectors (en is forced). Reuse a stable anchor (e.g.
+`data-tour-target`) before adding a `data-testid`. Need more host behavior?
+Extend `fake-host/state.ts` + `routes.ts` (`FAKE_HOST_LOG=1` logs every request).
+
+**Two rules the teams shell adds.**
+
+- **Scope to the screen on the glass.** Every top-level view is kept alive, so
+  several screens sit in the DOM at once and only one is displayed — a mission
+  card exists on Mission Control AND on its team's board. A bare page-level
+  `getByText` therefore matches hidden copies (strict-mode violation at best, a
+  click on an invisible element at worst). Use `screen(page)` from
+  `support/team-nav.ts`, which reads the `data-screen-active` marker
+  `KeepAliveViews` stamps on the visible screen.
+- **Navigate with `support/team-nav.ts`.** `openTeamSection(page, "Routines" |
+  "Files" | "Mission Control" | "Team Settings")` and `openAgentSettings(page,
+  agentName, section?)` are the one spelling of the two paths that replaced the
+  agent tab strip. `support/mission.ts` `openNewMission(page)` covers the other
+  shift: every board is cross-agent, so "New mission" asks WHICH agent first.
 
 ## Visual regression (`e2e/visual/`)
 
@@ -158,6 +174,21 @@ pnpm --filter houston-web test:visual:update  # re-record (intentional change on
 - **Bless log.** A re-record that absorbs drift from EARLIER commits (not just
   the one in hand) gets a line here, so the bless is on the record instead of
   hiding inside a binary diff:
+  - *2026-08-07, teams E5 (the tab-shell cutover)* — ALL seven affected
+    screens re-recorded on both platforms (14 PNGs): `board` light / dark /
+    narrow, `chat` light / dark, `chat-markdown` light / dark. The agent tab
+    shell is gone, so every one of them booted onto the agent's Activity tab
+    before and boots onto **Mission Control** now: the title reads "Mission
+    Control" instead of the agent's name, the Activity / Context / Skills /
+    Integrations / Routines / Files strip is gone, the toolbar gained the agent
+    filter + the Archived pill (the floating in-board pill went with the tab),
+    and the columns move up by the strip's height. Verified by eye against
+    current truth before committing. Note for the next bless: the board light /
+    dark pair sat just UNDER `maxDiffPixelRatio: 0.01` against the old
+    baselines and would have gone on passing — the strip is thin text on a light
+    surface, and most of the shift is sub-threshold grey. Narrow caught it. Do
+    not read a green `test:visual` as proof that a shell-level change left the
+    board alone; eyeball the screen the change touches.
   - *2026-08-07, teams E4* — the four `chat` / `chat-markdown` baselines
     (light + dark, both platforms) were re-synced. They had last been recorded
     at `77a74bdf` and had drifted through four intervening commits: `419ee3f3`

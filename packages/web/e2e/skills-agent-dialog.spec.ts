@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures";
+import { openAgentSettings } from "./support/team-nav";
 
 /**
  * The per-agent skill dialog is scoped to THAT agent: no "Agents with this
@@ -14,7 +15,7 @@ test("per-agent skill dialog hides cross-agent assignment; global keeps it", asy
 
   // Install a skill on the seeded agent via the GitHub flow (the fake host
   // returns a canned dozen for any repo).
-  await page.locator('[data-tour-target="tab-skills"]').click();
+  await openAgentSettings(page, "Houston", "Skills");
   await page.getByRole("tab", { name: "Custom skills" }).click();
   await page.getByRole("button", { name: "Add skill" }).click();
   const addDialog = page.getByRole("dialog");

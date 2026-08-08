@@ -10,7 +10,7 @@ import {
   needsSelfLockoutConfirm,
   type ShareAction,
   type SharePerson,
-} from "../tabs/agent-access-model.ts";
+} from "../agent/agent-access-model.ts";
 
 /**
  * Pure, DOM-free logic behind the Permissions agent People tab: ONE agent, every

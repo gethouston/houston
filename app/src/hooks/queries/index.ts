@@ -2,10 +2,7 @@ export {
   activityQueryOptions,
   useActivity,
   useBulkDeleteActivity,
-  useBulkUpdateActivity,
   useCreateActivity,
-  useDeleteActivity,
-  useUpdateActivity,
   useUpdateActivityForAnyAgent,
 } from "./use-activity";
 export { useAgentConfig } from "./use-agent-config";
@@ -19,11 +16,7 @@ export {
   useSetAgentSettings,
 } from "./use-agent-settings";
 export { COMPUTE_USAGE_DAYS, useComputeUsage } from "./use-compute-usage";
-export {
-  useAllConversations,
-  useChatHistory,
-  useConversations,
-} from "./use-conversations";
+export { useAllConversations, useChatHistory } from "./use-conversations";
 export {
   useAddCustomIntegration,
   useAgentCustomIntegrations,
@@ -76,14 +69,9 @@ export {
   type RoutineWriteFor,
   routineRunsQueryOptions,
   routinesQueryOptions,
-  useCancelRoutineRun,
   useCreateRoutine,
-  useDeleteRoutine,
-  useRoutineRuns,
   useRoutines,
   useRoutineWritesForAnyAgent,
-  useRunRoutineNow,
-  useUpdateRoutine,
 } from "./use-routines";
 export {
   useCreateSkill,

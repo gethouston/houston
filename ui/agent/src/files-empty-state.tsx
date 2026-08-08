@@ -1,5 +1,5 @@
 /**
- * Zero-files state for the Files tab: headline, hint, and a dashed drop panel
+ * Zero-files state for the file browser: headline, hint, and a dashed drop panel
  * holding the filled Browse CTA, the quiet whole-folder upload beside it
  * (HOU-889) and the drag-and-drop hint. The panel is only the affordance —
  * the drop itself is handled by the container in FilesBrowser, which wraps

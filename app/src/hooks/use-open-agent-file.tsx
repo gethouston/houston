@@ -17,7 +17,7 @@ import { useCapabilities } from "./use-capabilities";
 
 /**
  * Open a workspace file the agent mentioned in chat (file cards, turn
- * summaries, prose file pills). Same gating as the Files tab (HOU-677):
+ * summaries, prose file pills). Same gating as the Files section (HOU-677):
  *
  *   - Co-located desktop engine → hand the file to the OS's default app,
  *     rooted at the host-reported REAL directory (on the TS engine

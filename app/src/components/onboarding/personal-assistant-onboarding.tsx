@@ -138,9 +138,10 @@ export function PersonalAssistantOnboarding({
   // workspace shell mounts with the tour overlay already up — no flicker.
   // The tour itself owns the final landing: its Routines step demos the
   // freshly-seeded Morning briefing, and its completion/skip callback lands on
-  // the Routines tab (see workspace-shell). We do NOT set `viewMode` here — the
-  // tour's first step immediately switches it, so a set here would only flash
-  // and be overwritten. Also clear the resume flag: this is a terminal path.
+  // the agent's Routines section (see workspace-tour-overlay). We do NOT set
+  // `viewMode` here — the tour's first step immediately switches it, so a set
+  // here would only flash and be overwritten. Also clear the resume flag: this
+  // is a terminal path.
   const finishOnboarding = () => {
     analytics.track("onboarding_completed", {
       mission: TUTORIAL_MISSION.id,

@@ -297,8 +297,8 @@ describe("the picker hook is actually wired to the gate", () => {
     }
     // ...and the setup chats must go through it rather than re-deriving.
     for (const path of [
-      "../src/components/tabs/use-routine-chat-setup.ts",
-      "../src/components/tabs/use-skill-chat-setup.ts",
+      "../src/components/agent/use-routine-chat-setup.ts",
+      "../src/components/agent/use-skill-chat-setup.ts",
       "../src/components/integrations/use-integration-chat-setup.ts",
     ]) {
       strictEqual(

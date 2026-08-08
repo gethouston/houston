@@ -9,7 +9,7 @@
  * handoff assembly so each file stays under the size cap.
  */
 
-import type { WakePick } from "../components/tabs/automation-intake/types.ts";
+import type { WakePick } from "../components/agent/automation-intake/types.ts";
 import { triggerCatalogBlock } from "./routine-chat-handoff-catalog.ts";
 
 /** The "already chosen" line the agent must never re-ask, from the picked wake. */

@@ -53,7 +53,6 @@ export function TabBar({
             <button
               type="button"
               key={tab.id}
-              data-tour-target={`tab-${tab.id}`}
               onClick={() => !isDisabled && onTabChange(tab.id)}
               disabled={isDisabled}
               className={cn(

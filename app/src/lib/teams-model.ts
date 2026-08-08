@@ -1,4 +1,5 @@
 import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
+import { isAgentManager } from "./agent-access.ts";
 import { resolveSidebarSections } from "./agent-order.ts";
 import { canSeeMembers, isMultiplayer } from "./org-roles.ts";
 import type { Agent } from "./types.ts";
@@ -77,33 +78,46 @@ export function teamOfAgent(
 }
 
 /**
- * Whether the caller may open Team Settings. Single-player: always (the solo
- * user is the team's owner). Multiplayer v1: org owner/admin — they are
- * implicit owners of every team (C13); per-team explicit owners arrive with
- * the server-backed teams surface.
+ * Whether the caller may open Team Settings ANYWHERE — the ORG-WIDE half of the
+ * gate. Single-player: always (the solo user is the team's owner). Multiplayer:
+ * org owner/admin, who are implicit owners of every team (C13); per-team
+ * explicit owners arrive with the server-backed teams surface.
+ *
+ * This alone is not the section's gate — see {@link visibleTeamSectionsForTeam},
+ * which also lets in a member who manages an agent of the team in hand.
  */
 export function canSeeTeamSettings(caps: Capabilities | null): boolean {
   return !isMultiplayer(caps) || canSeeMembers(caps);
 }
 
 /**
- * The sections a team offers this caller, in render order. The ONE list the
+ * The sections THIS team offers this caller, in render order. The ONE list the
  * sidebar's section rows and the team view itself read, so a section can never
- * exist in the rail and be unreachable in the view (or the reverse).
+ * exist in the rail and be unreachable in the view (or the reverse). It is per
+ * TEAM, not per caller: the same person may configure one team and only use the
+ * next, so the rail asks it again for every block it draws.
  *
  * Mission Control, Routines and Files are every member's: they are the team's
- * WORK, and a member who may use the team's agents may see what those agents
- * do on their own and what they keep. Only Team Settings is gated, because it
- * is the only section that CONFIGURES rather than shows.
+ * WORK, and a member who may use the team's agents may see what those agents do
+ * on their own and what they keep. Team Settings is the only section that
+ * CONFIGURES rather than shows, so it goes to anyone who may configure
+ * SOMETHING in this team: the org owner/admin (implicit owner of every team) or
+ * a member who manages at least one of THIS team's agents. It is also the only
+ * door to the agent settings page, so gating it org-wide would have taken every
+ * configure surface away from an agent's own manager.
  */
-export function visibleTeamSections(
+export function visibleTeamSectionsForTeam(
   caps: Capabilities | null,
+  team: TeamView,
 ): TeamSectionId[] {
+  const configures =
+    canSeeTeamSettings(caps) ||
+    team.agents.some((agent) => isAgentManager(caps, agent));
   return [
     "mission-control",
     "routines",
     "files",
-    ...(canSeeTeamSettings(caps) ? (["settings"] as const) : []),
+    ...(configures ? (["settings"] as const) : []),
   ];
 }
 

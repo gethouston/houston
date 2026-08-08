@@ -1,5 +1,6 @@
 import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
+import { rail } from "./support/team-nav";
 
 /**
  * HOU-708 repro: changing an agent's color from the sidebar kebab menu.
@@ -9,9 +10,12 @@ import { expect, test } from "./support/fixtures";
 test("changes agent color from the sidebar menu", async ({ page }) => {
   await page.goto("/");
 
-  const agent = page
-    .getByRole("button", { name: "Houston", exact: true })
-    .last();
+  // Scoped to the rail: a board's agent-filter trigger is a button by the same
+  // name, so a page-wide lookup can land on the toolbar instead of the row.
+  const agent = rail(page).getByRole("button", {
+    name: "Houston",
+    exact: true,
+  });
   await agent.hover();
   await page.getByRole("button", { name: "Agent menu" }).click();
 
@@ -37,9 +41,12 @@ test("changes agent color from the sidebar menu", async ({ page }) => {
 test("opens the share wizard from the sidebar menu", async ({ page }) => {
   await page.goto("/");
 
-  const agent = page
-    .getByRole("button", { name: "Houston", exact: true })
-    .last();
+  // Scoped to the rail: a board's agent-filter trigger is a button by the same
+  // name, so a page-wide lookup can land on the toolbar instead of the row.
+  const agent = rail(page).getByRole("button", {
+    name: "Houston",
+    exact: true,
+  });
   await agent.hover();
   await page.getByRole("button", { name: "Agent menu" }).click();
   await page.getByRole("menuitem", { name: "Export a copy" }).click();
@@ -54,9 +61,10 @@ test("deletes an agent from the sidebar menu", async ({ page }) => {
   // Create a second agent to delete (never delete the only one).
   await createAgent(page, "Doomed Bot");
 
-  const doomed = page
-    .getByRole("button", { name: "Doomed Bot", exact: true })
-    .last();
+  const doomed = rail(page).getByRole("button", {
+    name: "Doomed Bot",
+    exact: true,
+  });
   await doomed.hover();
   // Scope to Doomed Bot's own row — every agent row has an "Agent menu" button.
   await doomed

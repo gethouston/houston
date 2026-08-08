@@ -145,7 +145,7 @@ describe("intra-package composition", () => {
   // The bug this closed: `KanbanBoard` is rendered by `AIBoard`, its own
   // package's assembled screen, through a relative import — so a scanner that
   // only reads `@houston-ai/*` imports concluded that nothing uses the mission
-  // board. It is used on every agent's Activity tab.
+  // board. It is what Mission Control renders.
   it("credits a component composed inside its own package", () => {
     assert.deepEqual(usage["board-kanban-board"]?.surfaces, [
       "ui/board (internal)",
@@ -187,9 +187,9 @@ describe("the surface rules", () => {
     const cases: Record<string, string> = {
       "app/src/components/board/mission-board.tsx": "Activity",
       "app/src/components/chat-mode-selector.tsx": "Chat",
-      "app/src/components/tabs/routines-tab.tsx": "Routines",
-      "app/src/components/tabs/skill-card.tsx": "Skills",
-      "app/src/components/tabs/files-tab.tsx": "Files",
+      "app/src/components/agent/routines-tab.tsx": "Routines",
+      "app/src/components/agent/skill-card.tsx": "Skills",
+      "app/src/components/agent/files-tab.tsx": "Files",
       "app/src/components/store-view/store-page.tsx": "Agent Store (in app)",
       "app/src/components/settings/general.tsx": "Settings",
       "app/src/components/shell/sidebar.tsx": "App shell",

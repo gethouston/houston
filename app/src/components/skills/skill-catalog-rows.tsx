@@ -12,7 +12,8 @@ interface SkillCatalogRowProps {
   trailing?: ReactNode;
 }
 
-/** The installed-skill catalog grammar shared by the Skills tab and chat picker. */
+/** The installed-skill catalog grammar shared by the Skills surfaces and the
+ *  mission-picker dialog. */
 export function SkillCatalogRow({
   skill,
   onOpen,
@@ -50,7 +51,7 @@ interface SkillCatalogGridProps {
   columns?: 1 | "responsive";
 }
 
-/** A skill-row list shared by the Skills tab and chat picker. */
+/** A skill-row list shared by the Skills surfaces and the mission-picker dialog. */
 export function SkillCatalogGrid({
   skills,
   onOpen,

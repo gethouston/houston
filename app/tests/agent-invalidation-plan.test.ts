@@ -12,33 +12,31 @@ function invalidates(plan: { invalidate: unknown[] }, key: unknown): boolean {
   return plan.invalidate.some((k) => JSON.stringify(k) === target);
 }
 
-describe("planInvalidation — ActivityChanged reaches the board face stack", () => {
+describe("planInvalidation — ActivityChanged reaches the board", () => {
   const ev: HoustonEvent = {
     type: "ActivityChanged",
     data: { agent_path: PATH },
   };
 
-  // The break: the per-agent board's face stacks are built from
-  // `useConversations(path)` → ["conversations", path], but hosted
-  // conversations are DERIVED from activities. A turn-driven contributor stamp
-  // emits `ActivityChanged`; if that only invalidates ["activity", path] the
-  // freshly-stamped contributors sit in the ["conversations", path] cache
-  // untouched and faces refresh only on remount (navigate away + back).
-  it("invalidates the per-agent conversations query (not just activity)", () => {
+  it("invalidates the agent's activity query", () => {
     const plan = planInvalidation(ev, {});
     ok(
       invalidates(plan, queryKeys.activity(PATH)),
-      "status/cards ride activity — must still invalidate",
-    );
-    ok(
-      invalidates(plan, queryKeys.conversations(PATH)),
-      "face stack rides conversations — contributor stamp must reach it live",
+      "status/cards ride activity — must invalidate",
     );
   });
 
-  it("still patches the all-conversations slice for this agent", () => {
+  it("patches the all-conversations slice for this agent", () => {
     const plan = planInvalidation(ev, {});
     deepStrictEqual(plan.patchAllConversations, [PATH]);
+  });
+
+  // The cross-agent aggregate is PATCHED, never invalidated: invalidating it
+  // re-fans-out a read to every agent's pod and wakes the whole fleet.
+  it("never invalidates the cross-agent aggregate", () => {
+    const plan = planInvalidation(ev, {});
+    strictEqual(invalidates(plan, queryKeys.allConversations([])), false);
+    strictEqual(plan.invalidate.length, 1);
   });
 });
 
@@ -71,7 +69,7 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
     ok(invalidates(plan, queryKeys.skillsManifest(PATH)));
   });
 
-  it("ConversationsChanged invalidates conversations + chat-history prefix", () => {
+  it("ConversationsChanged patches the aggregate + invalidates chat history", () => {
     const plan = planInvalidation(
       {
         type: "ConversationsChanged",
@@ -79,8 +77,9 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
       },
       {},
     );
-    ok(invalidates(plan, queryKeys.conversations(PATH)));
-    ok(invalidates(plan, queryKeys.chatHistoryForAgent(PATH)));
+    // The event carries no session key, so the agent's whole chat-history
+    // prefix is invalidated — a teammate's turn must reach an open chat live.
+    deepStrictEqual(plan.invalidate, [queryKeys.chatHistoryForAgent(PATH)]);
     deepStrictEqual(plan.patchAllConversations, [PATH]);
   });
 

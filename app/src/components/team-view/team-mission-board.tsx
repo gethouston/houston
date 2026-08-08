@@ -13,11 +13,11 @@ import { useMissionControlSource } from "../board/use-mission-control-source";
  * The source is handed the FULL agent roster and told which slice to show, so
  * every team reads the one cross-agent sweep rather than starting its own.
  *
- * No `isActive` prop: this board is the whole of a kept-alive top-level screen
- * (not one tab among several), so it rides `MissionBoard`'s own
- * `useIsActiveView` screen signal to release the shell detail panel when the
- * team view hides (HOU-1165). That covers the ACTIVE board only; the team's
- * archive carries its own release, in `MissionControlArchived`.
+ * This board is the whole of a kept-alive top-level screen, so it rides
+ * `MissionBoard`'s own `useIsActiveView` signal to release the shell detail
+ * panel when the team view hides (HOU-1165). That covers the ACTIVE board
+ * only; the team's archive carries its own release, in
+ * `MissionControlArchived`.
  */
 export function TeamMissionBoard({
   agents,

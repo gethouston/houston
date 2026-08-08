@@ -38,7 +38,7 @@ async function refreshAfterCreate(
   }
 
   // Persist the account timezone so the seeded morning-briefing routine fires at
-  // the user's local 7am, not the cloud pod's UTC 7am. The Routines-tab hook
+  // the user's local 7am, not the cloud pod's UTC 7am. The Routines hook
   // auto-seeds this too, but it never mounts during onboarding — so a user who
   // never opens Routines would otherwise have their first routine fire in UTC.
   // Shared helper with the hook; if-absent guarded, never overwrites an existing

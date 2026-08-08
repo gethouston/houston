@@ -19,7 +19,7 @@ import {
  * The fallback stays INSIDE the requested section's own group: an Apps request
  * is a Permissions intent, and dropping the user on the job description would
  * answer a question nobody asked. Only when that group is absent from this rail
- * (the Admin tab has no Context group) does it fall back to the first item.
+ * does it fall back to the first item.
  */
 export function resolveAgentSettingsSection(
   groups: readonly AgentSettingsGroup[],

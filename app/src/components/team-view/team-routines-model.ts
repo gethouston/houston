@@ -4,7 +4,7 @@ import type {
   TriggerStatusItem,
 } from "@houston-ai/engine-client";
 import type { Agent } from "../../lib/types.ts";
-import { latestRunByRoutine } from "../tabs/routines-tab-model.ts";
+import { latestRunByRoutine } from "../agent/routines-tab-model.ts";
 
 /**
  * Turning several agents' routine lists into ONE list, and finding the way

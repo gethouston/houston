@@ -105,7 +105,7 @@ export interface CatalogSection {
  *  - **Narrowed to one category (`category` set)** — ANY-match: every app whose
  *    `categories` CONTAINS that slug lands in that single section, so a
  *    secondary-category app is findable under the filter and the rendered rows equal
- *    {@link browseCatalogView}'s `connectable` (the "Available" chip count). This
+ *    {@link browseCatalog}'s result (the "Available" chip count). This
  *    mirrors the installed side ({@link toolkitsInCategory}, also any-match).
  *
  * Apps sort A-Z within a section. Sections order MAINSTREAM-FIRST for our
@@ -142,7 +142,7 @@ export function groupCatalogByCategory(opts: {
     let category: string;
     if (only) {
       // Narrowed: any-match into the single selected section, so rendered rows
-      // equal browseCatalogView/availableCount and secondary-category apps show.
+      // equal browseCatalog/availableCount and secondary-category apps show.
       if (!(t.categories ?? []).includes(only)) continue;
       category = only;
     } else {

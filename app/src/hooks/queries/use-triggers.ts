@@ -1,6 +1,6 @@
 import type { TriggerStatusItem, TriggerType } from "@houston-ai/engine-client";
 import { type Query, useQuery } from "@tanstack/react-query";
-import { triggerStatusPollInterval } from "../../components/tabs/routine-trigger-maps";
+import { triggerStatusPollInterval } from "../../components/agent/routine-trigger-maps";
 import { getEngine } from "../../lib/engine";
 import i18n from "../../lib/i18n";
 import { useQueryErrorToast } from "../use-query-error-toast.ts";
@@ -44,7 +44,7 @@ export function agentTriggerStatusQueryKey(agentId: string): [string, string] {
 }
 
 /**
- * ONE agent's trigger status, as options. The per-agent Automations tab
+ * ONE agent's trigger status, as options. The setup chat's activation chip
  * (`useAgentTriggerStatus`) and the team's cross-agent list (a `useQueries`
  * fan-out over the team's agents) both build from this, so they share the key,
  * the cache entry, the queryFn and the poll cadence — the same reasoning as

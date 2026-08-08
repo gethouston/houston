@@ -30,7 +30,7 @@ export interface TeamRoutineActions {
  *
  * Plain `.mutate` throughout: `call()` already toasts every failure, and a
  * `.mutateAsync` without a catch would be an unhandled rejection. Discarding a
- * draft is the one exception, exactly as on the per-agent tab: the activity
+ * draft is the one exception: the activity
  * update throws its own "Activity not found" without going through `call()`,
  * so that one is awaited and toasted here.
  */
@@ -58,8 +58,8 @@ export function useTeamRoutineActions(
       const to = target(key);
       if (to) update.mutate({ ...to, updates: { enabled } });
     },
-    // Inline cron edit from the row: the same update route the tab uses
-    // (`schedule` clears any trigger binding server-side).
+    // Inline cron edit from the row: the same update route every other routine
+    // write uses (`schedule` clears any trigger binding server-side).
     onScheduleChange: (key, cron) => {
       const to = target(key);
       if (to) update.mutate({ ...to, updates: { schedule: cron } });

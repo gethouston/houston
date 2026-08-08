@@ -8,13 +8,13 @@ import {
   type NotificationNav,
   shouldArmNotificationNav,
   shouldNavigateOnAppActivation,
-  skillChatNavDecision,
 } from "../lib/notification-nav";
 import {
   isSessionNotificationEnabled,
   readOsPermissionGranted,
   recordMissedPing,
 } from "../lib/notification-settings";
+import { openAgentBoard, openAgentSection } from "../lib/open-agent";
 import { osIsTauri, osShowSessionNotification } from "../lib/os-bridge";
 import { isMac } from "../lib/platform";
 import { queryClient } from "../lib/query-client";
@@ -105,51 +105,45 @@ export async function consumePendingNav() {
   logger.debug(
     `[notification] navigating to agent=${agent.name} activity=${target.activityId} (sessionKey=${sessionKey})`,
   );
-  // Captured BEFORE setCurrent: the setup-chat branches below need to know
+  // Captured BEFORE the navigation: the setup-chat branches below need to know
   // where the user actually was, and on macOS a bare cmd-tab refocus lands
   // here too (focus is the click proxy — there is no desktop click event).
-  const prevAgentId = useAgentStore.getState().current?.id;
   const prevViewMode = useUIStore.getState().viewMode;
   if (target.setupKind === "skill") {
-    // A skill-setup chat has no board card: its home is the agent's Skills
-    // tab, but it also lives on the global Skills page (the create flow).
-    // HOU-980's rule applies: a user already on a surface hosting the chat is
-    // never yanked elsewhere — which is why this branch runs BEFORE the agent
-    // switch. "stay" must leave the world untouched.
-    const decision = skillChatNavDecision({
-      prevViewMode,
-      prevAgentId,
-      agentId: agent.id,
-      skillsHomeViewId: SKILLS_VIEW_ID,
-    });
-    logger.debug(`[notification] skill-chat nav decision: ${decision}`);
-    if (decision === "stay") return;
-    useAgentStore.getState().setCurrent(agent);
-    if (decision === "navigate") {
-      useUIStore.getState().setViewMode("skills");
+    // A skill-setup chat has no board card: its home is the global Skills page.
+    // HOU-980's rule applies: a user already on the surface hosting the chat is
+    // never yanked elsewhere (an open chat is visible there already, a closed
+    // one was closed deliberately) — which is why this branch runs BEFORE the
+    // agent switch, so staying leaves the world untouched.
+    if (prevViewMode === SKILLS_VIEW_ID) {
+      logger.debug("[notification] already on the Skills page, staying put");
+      return;
     }
+    useAgentStore.getState().setCurrent(agent);
+    useUIStore.getState().setViewMode(SKILLS_VIEW_ID);
     useUIStore.getState().setPendingSkillChatActivityId(target.activityId);
     return;
   }
   useAgentStore.getState().setCurrent(agent);
   if (target.setupKind === "routine") {
-    // A routine-setup chat has no board card: its home is the Routines tab,
-    // where the panel reopens on the spot.
-    useUIStore.getState().setViewMode("routines");
-    useUIStore.getState().setPendingRoutineActivityId(target.activityId);
+    // A routine-setup chat has no board card: its home is the Routines section
+    // of the agent's TEAM, filtered to that agent, where the chat reopens on
+    // the spot. The owner rides along with the activity id because that list is
+    // cross-agent and the id alone would not say whose chat it is.
+    openAgentSection(agent.id, "routines");
+    useUIStore.getState().setPendingRoutineChat({
+      agentId: agent.id,
+      activityId: target.activityId,
+    });
     return;
   }
   if (target.setupKind === "integration") {
-    // A custom-integration setup chat has no board card. Since HOU-980 it
-    // lives on TWO surfaces — the owning agent's Integrations tab and the
-    // global page. When the user is ALREADY on one of them, never yank them
-    // to the global section (a bare macOS refocus lands here): leave an open
-    // chat alone, or open it in place when it was closed.
+    // A custom-integration setup chat has no board card; the global
+    // Integrations page is its one home. HOU-980's rule: never yank a user who
+    // is already there (a bare macOS refocus lands here) — leave an open chat
+    // alone, or open it in place when it was closed.
     const ui = useUIStore.getState();
-    const onOwnSurface =
-      prevViewMode === INTEGRATIONS_VIEW_ID ||
-      (prevViewMode === "integrations" && prevAgentId === agent.id);
-    if (onOwnSurface) {
+    if (prevViewMode === INTEGRATIONS_VIEW_ID) {
       if (ui.integrationSetupChatAgentId !== agent.id) {
         ui.onPanelClose?.();
         ui.setIntegrationSetupChatAgentId(agent.id);
@@ -161,7 +155,10 @@ export async function consumePendingNav() {
     ui.setIntegrationSetupChatAgentId(agent.id);
     return;
   }
-  useUIStore.getState().setViewMode("activity");
+  // A standard mission: the board its card lives on — the agent's TEAM Mission
+  // Control, filtered to that agent — then the mission published for that board
+  // to open.
+  openAgentBoard(agent.id);
   useUIStore.getState().setActivityPanelId(target.activityId, {
     forceOpen: true,
   });

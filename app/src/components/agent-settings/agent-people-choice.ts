@@ -7,8 +7,8 @@ import {
   buildSharePeople,
   isSharedWithEveryone,
   needsSelfLockoutConfirm,
-} from "../tabs/agent-access-model.ts";
-import type { AccessMode } from "../tabs/agent-admin/agent-admin-row-values.ts";
+} from "../agent/agent-access-model.ts";
+import type { AccessMode } from "../agent/agent-admin/agent-admin-row-values.ts";
 
 /**
  * Pure, DOM-free logic behind the top-level access choice above the People

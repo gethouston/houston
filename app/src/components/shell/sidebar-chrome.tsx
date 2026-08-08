@@ -17,6 +17,7 @@ import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { SKILLS_VIEW_ID } from "../skills-view/id";
 import { STORE_VIEW_ID } from "../store-view";
 import { CreateTeamDialog } from "./create-team-dialog";
+import { tourAnchor } from "./workspace-tour-steps.ts";
 
 type ShellT = TFunction<["shell", "common", "teams"]>;
 
@@ -41,21 +42,21 @@ export function buildSidebarNavItems(args: {
       label: t("shell:sidebar.missionControl"),
       icon: <LayoutDashboard className="h-4 w-4" />,
       onClick: () => setViewMode("dashboard"),
-      dataAttrs: { "data-tour-target": "nav-dashboard" },
+      dataAttrs: tourAnchor("nav-dashboard"),
     },
     {
       id: INTEGRATIONS_VIEW_ID,
       label: t("shell:sidebar.integrations"),
       icon: <Blocks className="h-4 w-4" />,
       onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
-      dataAttrs: { "data-tour-target": "nav-integrations" },
+      dataAttrs: tourAnchor("nav-integrations"),
     },
     {
       id: SKILLS_VIEW_ID,
       label: t("shell:sidebar.skills"),
       icon: <LibraryBig className="h-4 w-4" />,
       onClick: () => setViewMode(SKILLS_VIEW_ID),
-      dataAttrs: { "data-tour-target": "nav-skills" },
+      dataAttrs: tourAnchor("nav-skills"),
     },
     ...(showAiModels
       ? [
@@ -64,7 +65,7 @@ export function buildSidebarNavItems(args: {
             label: t("shell:sidebar.aiModels"),
             icon: <Boxes className="h-4 w-4" />,
             onClick: () => setViewMode("ai-hub"),
-            dataAttrs: { "data-tour-target": "nav-ai-hub" },
+            dataAttrs: tourAnchor("nav-ai-hub"),
           },
         ]
       : []),
@@ -73,14 +74,14 @@ export function buildSidebarNavItems(args: {
       label: t("shell:sidebar.agentStore"),
       icon: <Store className="h-4 w-4" />,
       onClick: () => setViewMode(STORE_VIEW_ID),
-      dataAttrs: { "data-tour-target": "nav-agent-store" },
+      dataAttrs: tourAnchor("nav-agent-store"),
     },
     {
       id: "settings",
       label: t("shell:sidebar.settings"),
       icon: <Settings className="h-4 w-4" />,
       onClick: openSettingsIndex,
-      dataAttrs: { "data-tour-target": "nav-settings" },
+      dataAttrs: tourAnchor("nav-settings"),
     },
   ];
 }
@@ -109,9 +110,10 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
 }
 
 /**
- * The label for every team section, including the ones no team offers yet
- * (`visibleTeamSections` decides which get a row). Complete by construction, so
- * a section that starts rendering never ships without its translation.
+ * The label for every team section, including the ones a given team does not
+ * offer this caller (`visibleTeamSectionsForTeam` decides which get a row, per
+ * team). Complete by construction, so a section that starts rendering never
+ * ships without its translation.
  */
 export function buildTeamSectionLabels(
   t: ShellT,
@@ -154,7 +156,7 @@ export function SidebarWorkspaceHeader(props: {
   const spacesEnabled = hasSpaces(capabilities);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   return (
-    <div data-tour-target="spaceSwitcher">
+    <div {...tourAnchor("spaceSwitcher")}>
       <WorkspaceSwitcher
         workspaces={props.workspaces}
         currentId={props.currentId}

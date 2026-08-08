@@ -69,7 +69,22 @@ Event names + props are allowlisted in `AnalyticsEventName` / `AnalyticsProperty
 
 Filter `is_debug != true` is applied at the project level via the `Internal / Test users` cohort (exclude this cohort from every insight as a project-wide convention).
 
-**`tab_opened` series rename (HOU-788).** Usage, Permissions and Admin stopped being top-level views and became Settings sections, so their `tab_name` values changed: `usage` → `settings:usage`, `permissions` → `settings:permissions`, `organization` → `settings:organization`. (HOU-790 renamed that first section again: the Usage screen became **Time worked** and its series is `settings:timeWorked`; the pane-level `usage:compute` / `usage:models` events died with the panes, and per-AI-account usage moved onto the AI Models hub's rows.) The Settings index itself keeps emitting plain `settings`, and `SettingsView` is now the ONLY emitter for any settings surface (the shell's generic view-switch effect skips it), so a deep link counts once, on the render that actually shows the surface. Feature Adoption tiles that break `tab_opened` down by `tab_name` will show the old three series flat-lining at the release boundary and the `settings:*` series starting there. Add the new names to any saved breakdown filter rather than reading the drop as lost usage.
+**`tab_opened` — the live `tab_name` vocabulary.** The event name survived every shell change; the values did not. `tab_name` no longer carries per-agent tab names. It carries view-mode, settings-section and org-section ids, from exactly four emitters:
+
+| Emitter | `tab_name` | Values |
+| --- | --- | --- |
+| `shell/use-workspace-view-guards.ts` (every top-level view switch) | the raw `viewMode` | `dashboard`, `team`, `ai-hub`, `integrations-home`, `skills-home`, `agent-store` (`settings` is deliberately skipped) |
+| `settings/settings-view.tsx` | `settings` (index) or `settings:<section>` | sections from `SETTINGS_SECTION_IDS`: `profile`, `apiKeys`, `workspaceContext`, `userContext`, `shortcuts`, `reportBug`, `migration`, `timeWorked`, `permissions`, `organization` |
+| `permissions/permissions-view.tsx` | `permissions:<section>` (+ an `agent_id` prop) | the agent settings rail sections: `job-description`, `learnings`, `people`, `integrations`, `models`, `skills` — the one ACTUALLY shown, never the one requested |
+| `organization/organization-view.tsx` | `org:<section>` | the Admin page's `OrgTabId`s |
+
+Settings owns its own surfaces outright (the shell's generic view-switch effect skips `settings`), so a deep link counts once, on the render that really shows the surface.
+
+**Two dead series live in the historical data — do not read either cliff as a regression.**
+1. HOU-788 moved Usage, Permissions and Admin out of top-level views into Settings sections: `usage` → `settings:usage`, `permissions` → `settings:permissions`, `organization` → `settings:organization`. HOU-790 renamed the first again (Usage became **Time worked**, `settings:timeWorked`) and killed the pane-level `usage:compute` / `usage:models` events with their panes; per-AI-account usage moved onto the AI Models hub's rows.
+2. The **per-agent tab shell** was deleted. A tab used to BE the `viewMode`, so the strip's ids went straight onto `tab_name`: `activity`, `context`, `skills`, `integrations`, `routines`, `files`, `admin` (and the older `chat` / `job-description`). Nothing emits any of them now. An agent's work is a slice of its team, so the traffic did not vanish — it moved to `team` and to `permissions:<section>`.
+
+Feature Adoption tiles that break `tab_opened` down by `tab_name` show both sets of old series flat-lining at their release boundaries. Add the current names above to any saved breakdown filter rather than reading the drop as lost usage.
 
 Old dashboards (`Houston Growth + Reliability` 1517531, `Houston Acquisition Funnel` 1522835, `My App Dashboard` 1507849) are tagged `legacy-pre-2026-05` and unpinned. Their insights live on, mostly cross-attached to the new dashboards. Delete the old shells whenever comfortable — no insights will be lost.
 

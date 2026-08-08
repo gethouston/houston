@@ -56,7 +56,7 @@ function ChoiceCard({
 /**
  * The "Add custom integration" dialog (HOU-980): a two-way fork, then the
  * chosen path. "Set up with your agent" hands off to the guided setup chat
- * (the parent resolves the agent — the tab's agent, the workspace's only
+ * (the parent resolves the agent — the ambient agent, the workspace's only
  * agent, or the picker — and starts it); "Add manually" swaps the body for
  * the typed form ({@link CustomAddForm}: kind, URL + detect, name,
  * needs-a-key). The chat path LEADS visually because the product's audience

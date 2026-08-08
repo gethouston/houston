@@ -2,6 +2,7 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { openSettingsSection } from "./support/settings-nav";
+import { openAgentSettings, rail } from "./support/team-nav";
 
 /**
  * Permissions is FULLY AGENT-CENTRIC: the top level is the agent list, and
@@ -84,12 +85,14 @@ function railItem(page: Page, name: string) {
 }
 
 /**
- * Open the agent workspace Admin tab (PRODUCT-1256 split the old Settings tab),
- * where the access controls live in their own rail.
+ * Open the armed agent's canonical settings page through the OTHER door: its
+ * team's Settings section. Same page, same rail, same authority rules as the
+ * Permissions drill-in above — that is the point of the assertions below.
+ * `armOrg` replaces the roster, so the team holds Finance Bot, not the seed.
  */
-async function openAgentAdmin(page: Page): Promise<void> {
+async function openAgentSettingsPage(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator('[data-tour-target="tab-admin"]').click();
+  await openAgentSettings(page, "Finance Bot");
 }
 
 test("the agent list is the top level, and opening an agent shows the settings rail", async ({
@@ -375,20 +378,21 @@ test("Context group: the agent's job description and Memory live on the same pag
 });
 
 /**
- * The same access sections also mount on the agent's Admin tab (PRODUCT-1256),
- * which only the workspace owner and agent managers see. A plain member gets
- * no Admin (and no Skills) tab at all; they keep a read-only Context tab.
+ * The same access sections mount when the agent is opened through TEAM
+ * SETTINGS, which only the workspace owner and org admins see. A plain member
+ * gets no Team Settings row at all, so the whole configure surface is out of
+ * reach for them rather than half-shown.
  */
 
-test("agent Admin tab: a manager gets editable access controls, and a People change round-trips", async ({
+test("agent settings via Team Settings: a manager gets editable access controls, and a People change round-trips", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
-  await openAgentAdmin(page);
+  await openAgentSettingsPage(page);
 
-  await page.getByRole("button", { name: "People" }).click();
+  await railItem(page, "People with access").click();
 
   // People is default; the manager edits Bob's access right on the agent.
   const bob = page.getByRole("button", {
@@ -400,14 +404,14 @@ test("agent Admin tab: a manager gets editable access controls, and a People cha
   await expect(bob).toContainText("No access");
 
   // GET round-trip: a full reload re-reads /agents; the write reached the gateway.
-  await openAgentAdmin(page);
-  await page.getByRole("button", { name: "People" }).click();
+  await openAgentSettingsPage(page);
+  await railItem(page, "People with access").click();
   await expect(
     page.getByRole("button", { name: "Change access for bob@acme.test" }),
   ).toContainText("No access");
 });
 
-test("agent tabs: a plain member gets no Admin or Skills tab, and Context is read-only", async ({
+test("a plain member cannot reach the agent settings page at all", async ({
   page,
   request,
 }) => {
@@ -427,19 +431,16 @@ test("agent tabs: a plain member gets no Admin or Skills tab, and Context is rea
     },
   });
   await page.goto("/");
+  await expect(page.getByText("Your teams")).toBeVisible();
 
-  // Context renders for the member; Skills and Admin never do.
-  await expect(page.locator('[data-tour-target="tab-context"]')).toBeVisible();
-  await expect(page.locator('[data-tour-target="tab-skills"]')).toHaveCount(0);
-  await expect(page.locator('[data-tour-target="tab-admin"]')).toHaveCount(0);
-
-  // Context opens read-only: the Memory section renders its entries with no
-  // add-learning affordance for a non-manager.
-  await page.locator('[data-tour-target="tab-context"]').click();
-  await page.getByText("Memory", { exact: true }).click();
-  await expect(page.getByRole("button", { name: "Add learning" })).toHaveCount(
-    0,
-  );
+  // The team's WORK is theirs — Mission Control, Routines, Files — but the one
+  // section that CONFIGURES is not, and the agent settings page has no other
+  // door. A row they cannot use would be a dead link, so there is no row.
+  const rows = rail(page).locator("[data-sidebar-section-row]");
+  await expect(
+    rows.filter({ hasText: "Mission Control" }).first(),
+  ).toBeVisible();
+  await expect(rows.filter({ hasText: "Team Settings" })).toHaveCount(0);
 });
 
 test("Admin People roster shows a member's gateway display name, email as a secondary line", async ({

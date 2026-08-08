@@ -244,11 +244,15 @@ Interaction cards use a visible-at-rest header chevron and a 40vh scrolling body
 
 ```
 +----------+---------------+-------------+
-| Sidebar  | Tab Bar       | Right Panel |
+| Sidebar  | Screen header | Right Panel |
 | 200px    |---------------| (optional)  |
 |          | Main Content  |             |
 +----------+---------------+-------------+
 ```
+
+(The middle column's top band used to be the per-agent `TabBar`. Screens are all
+top-level now, so it is each screen's own `PageHeader` / section chrome — the
+library `TabBar` survives in `@houston-ai/layout` but the app mounts none.)
 
 Sidebar 200px, **transparent** — its token is transparent, so it melts into the
 window gutter (`bg-gutter`, the Arc/Zen canvas layout). Right panel 45% width,
@@ -376,7 +380,9 @@ semantic `--ht-*` tokens with live theme-resolved values, plus the aurora/glass
 Effects). Nav tiers: Foundations · Primitives (all ui/core components:
 Variants/States/Sizes/Props/allowed Tokens, derived from source) · Product
 areas (Activity, Chat, Routines, Skills, Your Agents, Agent Store — the
-feature-package components under the app's real tab names). Every page shows
+feature-package components under the names those surfaces carried as agent tabs;
+they are team sections and agent-settings sections now, and the showcase's
+`SURFACE_RULES` map keeps the historical names). Every page shows
 "Used in" chips generated from real import sites (`pnpm --filter
 @houston-ai/showcase gen:usage`; staleness is test-enforced). New/changed ui
 components get a specimen in the same PR; a broken specimen fails the SSR test
@@ -517,7 +523,8 @@ the row edge; the page hero is the shared `PageHeader` with a rounded
 `bg-input` search field (`border-line-input`, magnifier glyph) in its
 `trailing` slot. Two-column row grids collapse to one under `lg`. Shipped
 surfaces: the Integrations personal page (`integrations-view/`, see
-`knowledge-base/integrations.md` §3) and the agent **Files tab** — the old
+`knowledge-base/integrations.md` §3) and the **Files** surface (`AgentFilesSurface`,
+mounted by a team's Files section) — the old
 nested `rounded-xl border` "file manager window" frame (bordered toolbar,
 zebra list with decorative filler stripes, bottom status bar whose 11px
 footer links held Upload / Open in File Manager) was flattened onto the

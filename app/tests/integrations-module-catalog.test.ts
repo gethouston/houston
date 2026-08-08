@@ -1,18 +1,13 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type {
-  IntegrationConnection,
-  IntegrationToolkit,
-} from "@houston-ai/engine-client";
+import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import {
   browseCatalog,
-  browseCatalogView,
   categoriesOf,
   categoryLabel,
   categoryListView,
   toolkitsInCategory,
 } from "../src/components/integrations/browse-model.ts";
-import { splitByGrant } from "../src/components/integrations/model.ts";
 
 const tk = (
   slug: string,
@@ -147,123 +142,6 @@ describe("browseCatalog hides no-auth apps", () => {
     strictEqual(all.includes("weathermap"), false);
     strictEqual(all.includes("test_app"), false);
   });
-
-  it("hidden means hidden — a Teams allowlist never shows one as locked", () => {
-    const { connectable, locked } = browseCatalogView({
-      catalog: NOAUTH_CATALOG,
-      query: "",
-      category: "all",
-      connected: new Set(),
-      allowlist: ["gmail"],
-    });
-    strictEqual(connectable.map((t) => t.slug).includes("weathermap"), false);
-    strictEqual(locked.map((t) => t.slug).includes("weathermap"), false);
-  });
-});
-
-describe("browseCatalogView (allowlist partition)", () => {
-  it("single-player (allowlist null) → everything connectable, nothing locked", () => {
-    const view = browseCatalogView({
-      catalog: CATALOG,
-      query: "",
-      category: "all",
-      connected: new Set(),
-      allowlist: null,
-    });
-    deepStrictEqual(
-      view.connectable.map((t) => t.slug),
-      ["gmail", "googlecalendar", "notion", "serpapi", "slack"],
-    );
-    deepStrictEqual(view.locked, []);
-  });
-
-  it("splits blocked apps into `locked`, both lists A-Z", () => {
-    const view = browseCatalogView({
-      catalog: CATALOG,
-      query: "",
-      category: "all",
-      connected: new Set(),
-      allowlist: ["slack", "gmail"],
-    });
-    deepStrictEqual(
-      view.connectable.map((t) => t.slug),
-      ["gmail", "slack"],
-    );
-    // googlecalendar, notion, serpapi are outside the ceiling → locked, A-Z.
-    deepStrictEqual(
-      view.locked.map((t) => t.slug),
-      ["googlecalendar", "notion", "serpapi"],
-    );
-  });
-
-  it("an empty allowlist locks every app (nothing connectable)", () => {
-    const view = browseCatalogView({
-      catalog: CATALOG,
-      query: "",
-      category: "all",
-      connected: new Set(),
-      allowlist: [],
-    });
-    deepStrictEqual(view.connectable, []);
-    deepStrictEqual(
-      view.locked.map((t) => t.slug),
-      ["gmail", "googlecalendar", "notion", "serpapi", "slack"],
-    );
-  });
-
-  it("search still finds a blocked app as a locked row (not emptiness)", () => {
-    // A member searching for an app the admin hasn't enabled must SEE it locked.
-    const view = browseCatalogView({
-      catalog: CATALOG,
-      query: "serp",
-      category: "all",
-      connected: new Set(),
-      allowlist: ["gmail"],
-    });
-    deepStrictEqual(view.connectable, []);
-    deepStrictEqual(
-      view.locked.map((t) => t.slug),
-      ["serpapi"],
-    );
-  });
-
-  it("excludes connected apps from both buckets before partitioning", () => {
-    const view = browseCatalogView({
-      catalog: CATALOG,
-      query: "",
-      category: "all",
-      connected: new Set(["gmail", "notion"]),
-      allowlist: ["gmail", "slack"],
-    });
-    // gmail + notion connected → gone from browse; slack allowed; the rest locked.
-    deepStrictEqual(
-      view.connectable.map((t) => t.slug),
-      ["slack"],
-    );
-    deepStrictEqual(
-      view.locked.map((t) => t.slug),
-      ["googlecalendar", "serpapi"],
-    );
-  });
-
-  it("category filter narrows before the allowlist partition", () => {
-    const view = browseCatalogView({
-      catalog: CATALOG,
-      query: "",
-      category: "collaboration",
-      connected: new Set(),
-      allowlist: ["notion"],
-    });
-    // collaboration = notion + slack; notion allowed, slack locked.
-    deepStrictEqual(
-      view.connectable.map((t) => t.slug),
-      ["notion"],
-    );
-    deepStrictEqual(
-      view.locked.map((t) => t.slug),
-      ["slack"],
-    );
-  });
 });
 
 describe("categoriesOf / categoryLabel (new module)", () => {
@@ -344,59 +222,6 @@ describe("categoryListView (new module)", () => {
         categoryFiltered: true,
       }),
       "empty",
-    );
-  });
-});
-
-const conn = (
-  toolkit: string,
-  status: IntegrationConnection["status"] = "active",
-): IntegrationConnection => ({
-  toolkit,
-  connectionId: `ca_${toolkit}`,
-  status,
-});
-
-describe("splitByGrant (new module)", () => {
-  it("puts granted connections under granted, the rest under available", () => {
-    const { granted, available } = splitByGrant({
-      connections: [conn("gmail"), conn("slack", "pending"), conn("notion")],
-      grants: new Set(["gmail", "notion"]),
-    });
-    deepStrictEqual(
-      granted.map((c) => c.toolkit),
-      ["gmail", "notion"],
-    );
-    deepStrictEqual(
-      available.map((c) => c.toolkit),
-      ["slack"],
-    );
-  });
-
-  it("empty grant set → everything available, nothing granted", () => {
-    const { granted, available } = splitByGrant({
-      connections: [conn("gmail"), conn("slack")],
-      grants: new Set(),
-    });
-    deepStrictEqual(granted, []);
-    deepStrictEqual(
-      available.map((c) => c.toolkit),
-      ["gmail", "slack"],
-    );
-  });
-
-  it("preserves connection order within each bucket", () => {
-    const { granted, available } = splitByGrant({
-      connections: [conn("z"), conn("a"), conn("m"), conn("b")],
-      grants: new Set(["z", "m"]),
-    });
-    deepStrictEqual(
-      granted.map((c) => c.toolkit),
-      ["z", "m"],
-    );
-    deepStrictEqual(
-      available.map((c) => c.toolkit),
-      ["a", "b"],
     );
   });
 });

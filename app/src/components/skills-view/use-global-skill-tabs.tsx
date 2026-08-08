@@ -5,13 +5,13 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { skillIntegrationSlugs } from "../../lib/skill-integrations";
 import { tauriSkills } from "../../lib/tauri";
+import { useSkillMarketplaceSectionLabels } from "../agent/use-skill-surface-labels";
 import { IntegrationBadges } from "../integrations";
-import { useSkillMarketplaceSectionLabels } from "../tabs/use-skill-surface-labels";
 import { GlobalCustomTab } from "./global-custom-tab";
 
 /**
  * The global page's discovery tabs (HOU-792): **Store** — the same
- * {@link SkillMarketplaceSection} the per-agent tab mounts, its search/preview
+ * {@link SkillMarketplaceSection} an agent's Skills section mounts, its search/preview
  * riding ANY owned agent (read-only marketplace proxies; the hosted gateway
  * only proxies agent-scoped routes) — and **Custom skills** — build with an
  * agent or add manually. Every install routes through the caller's

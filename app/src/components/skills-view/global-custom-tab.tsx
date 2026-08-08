@@ -3,8 +3,8 @@ import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 /**
- * The global page's Custom skills tab (HOU-792): the same sources the
- * per-agent tab offers — build one with an agent (primary) or add one
+ * The global page's Custom skills tab (HOU-792): the same sources an agent's
+ * own Custom tab offers — build one with an agent (primary) or add one
  * manually (the multi-agent from-scratch dialog).
  */
 export function GlobalCustomTab({

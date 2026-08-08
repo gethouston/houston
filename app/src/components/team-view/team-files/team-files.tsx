@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import type { TeamView } from "../../../lib/teams-model";
 import { useUIStore } from "../../../stores/ui";
+import { AgentFilesSurface } from "../../agent/agent-files";
 import { AgentFilterMenu } from "../../agent-filter-menu";
-import { AgentFilesSurface } from "../../tabs/agent-files";
 import { teamSelectedAgent } from "../team-agent-choice";
 import { teamFilterAgentId } from "../team-agent-filter-model";
 import { TeamFilesEmpty } from "../team-empty";

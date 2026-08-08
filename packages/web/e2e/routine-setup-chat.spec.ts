@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * The Routines redesign: creation is chat-first, driven by locally-rendered
@@ -70,7 +71,7 @@ async function armTriggers(): Promise<void> {
 }
 
 async function openRoutinesTab(page: Page): Promise<void> {
-  await page.locator('[data-tour-target="tab-routines"]').click();
+  await openTeamSection(page, "Routines");
   await expect(
     page.getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();

@@ -6,8 +6,9 @@
 
 import { Compass } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { DASHBOARD_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
+import { tourAnchor } from "../shell/workspace-tour-steps.ts";
 import { SettingsCard, SettingsRow } from "./settings-row";
 
 export function HelpGroup() {
@@ -20,9 +21,10 @@ export function HelpGroup() {
    * the workspace shell, and the overlay measures its first target the moment
    * it mounts. Both writes are synchronous Zustand sets in one handler, so the
    * tour mounts against the already-restored shell, never against Settings.
+   * Mission Control is where the tour starts, so that is where we land.
    */
   function startTour() {
-    setViewMode(DEFAULT_TAB_ID);
+    setViewMode(DASHBOARD_VIEW_ID);
     setUiTourActive(true);
   }
 
@@ -30,7 +32,7 @@ export function HelpGroup() {
     <SettingsCard title={t("settings:index.groups.help")}>
       {/* The wrapper carries the `appTour` anchor the tour's own "replay the
           tour" step spotlights — that step opens Settings to find it. */}
-      <div data-tour-target="appTour">
+      <div {...tourAnchor("appTour")}>
         <SettingsRow
           chevron={false}
           icon={Compass}

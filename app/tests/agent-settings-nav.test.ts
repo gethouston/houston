@@ -2,11 +2,9 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Capabilities } from "@houston-ai/engine-client";
 import {
-  adminTabGroups,
   agentAccessSections,
   agentSettingsGroups,
   agentSettingsSections,
-  contextTabGroups,
   targetToSection,
 } from "../src/components/agent-settings/agent-settings-nav.ts";
 import {
@@ -109,28 +107,6 @@ describe("agentAccessSections — the access sections the Admin tab shows", () =
   });
 });
 
-describe("the agent tabs' rails — one unlabelled group each", () => {
-  it("Context tab: job description and Memory, in order", () => {
-    deepStrictEqual(contextTabGroups(), [
-      { id: "context", sections: ["job-description", "learnings"] },
-    ]);
-  });
-
-  it("Admin tab: exactly the access sections, and NO skills", () => {
-    deepStrictEqual(adminTabGroups(TEAMS), [
-      { id: "permissions", sections: ["people", "integrations", "models"] },
-    ]);
-    deepStrictEqual(adminTabGroups(LEGACY_MULTIPLAYER), [
-      { id: "permissions", sections: ["people"] },
-    ]);
-  });
-
-  it("Admin tab: no group at all in single player (the tab renders nothing)", () => {
-    deepStrictEqual(adminTabGroups(caps()), []);
-    deepStrictEqual(adminTabGroups(null), []);
-  });
-});
-
 describe("agentSettingsSections — flattened rail order", () => {
   it("is Context first, then Permissions", () => {
     deepStrictEqual(agentSettingsSections(agentSettingsGroups(TEAMS)), [
@@ -187,10 +163,13 @@ describe("resolveAgentSettingsSection — deep-link fallback", () => {
   });
 
   it("falls back to the first rail item when the requested group is empty", () => {
-    // The Admin tab's rail has no Context group, so a Context request there has
-    // no group of its own to land in.
+    // A rail with no Context group at all: a Context request has no group of
+    // its own to land in, so it takes the rail's first item.
     strictEqual(
-      resolveAgentSettingsSection(adminTabGroups(TEAMS), "learnings"),
+      resolveAgentSettingsSection(
+        [{ id: "permissions", sections: agentAccessSections(TEAMS) }],
+        "learnings",
+      ),
       "people",
     );
   });

@@ -1,6 +1,6 @@
 /**
  * The AI Models hub's colorful brand mark — its "candy store" counterpart to the
- * Integrations tab's `AppLogo`. It renders the shared monochrome `ProviderGlyph`
+ * Integrations page's `AppLogo`. It renders the shared monochrome `ProviderGlyph`
  * boxless (no tile, no backing wash) and, when the brand has a curated accent,
  * tints the glyph via inherited `currentColor`. Chat surfaces (RowCard etc.)
  * intentionally stay monochrome by using `ProviderGlyph` directly; only the hub
@@ -11,7 +11,7 @@ import { cn } from "@houston-ai/core";
 import { providerBrandColor } from "../shell/provider-brand-colors.ts";
 import { ProviderGlyph } from "../shell/provider-logos.tsx";
 
-// Full-bleed like the Integrations tab's `AppLogo` images — the glyph fills the
+// Full-bleed like the Integrations page's `AppLogo` images — the glyph fills the
 // footprint so the brand mark reads big and bold, not shrunken inside a box.
 const MARK_SIZE = {
   sm: "size-6",

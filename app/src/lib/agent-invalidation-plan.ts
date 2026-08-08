@@ -9,8 +9,8 @@ import { queryKeys } from "./query-keys.ts";
  * EXECUTES this plan against the real `QueryClient` + stores.
  *
  * Splitting the decision (pure) from the execution (imperative) is what lets us
- * assert, e.g., that an `ActivityChanged` event invalidates the per-agent
- * `conversations` query the board's face stack is derived from.
+ * assert, e.g., that an `ActivityChanged` event invalidates the agent's
+ * `activity` query and patches that agent's slice of the cross-agent aggregate.
  */
 export interface InvalidationPlan {
   /** Query keys to `invalidateQueries`, in order. */
@@ -36,12 +36,14 @@ const empty = (): InvalidationPlan => ({
 /**
  * Map a backend `HoustonEvent` to its cache-invalidation plan.
  *
- * Hosted conversations are DERIVED from activities (the host re-projects the
- * activity list into the conversation VM), so an `ActivityChanged` is also a
- * conversations mutation for the per-agent board's face source — which is why
- * that case invalidates `queryKeys.conversations(path)` alongside the activity
- * query. Status/cards ride `activity`; the per-agent face stack rides
- * `conversations`; only invalidating both keeps them coherent live.
+ * An agent's missions are read from exactly two places, and an agent-scoped
+ * mutation event names both. The per-agent board rides `queryKeys.activity`,
+ * which is invalidated outright. Every cross-agent surface (sidebar badges,
+ * Mission Control, the command palette, the mentions inbox) rides the
+ * `all-conversations` aggregate, which those events PATCH slice-by-slice
+ * instead: invalidating it re-fans-out a read to every agent's pod and wakes
+ * the whole fleet, so only a transport-level gap (`EventStreamReconnected`,
+ * below) is allowed to pay that cost.
  */
 export function planInvalidation(
   ev: HoustonEvent,
@@ -52,13 +54,6 @@ export function planInvalidation(
   switch (ev.type) {
     case "ActivityChanged":
       plan.invalidate.push(queryKeys.activity(ev.data.agent_path));
-      // Hosted conversations are DERIVED from activities (the host re-projects
-      // the activity list into the conversation VM), so a contributor stamp
-      // that emits `ActivityChanged` IS a conversations mutation for the
-      // per-agent board's face stack, which reads `queryKeys.conversations`.
-      // Without this the stamped contributors sit in that cache untouched and
-      // faces refresh only on remount (navigate away + back).
-      plan.invalidate.push(queryKeys.conversations(ev.data.agent_path));
       plan.patchAllConversations.push(ev.data.agent_path);
       break;
     case "SkillsChanged":
@@ -87,7 +82,6 @@ export function planInvalidation(
       plan.invalidate.push(queryKeys.workspaceContext(ev.data.agent_path));
       break;
     case "ConversationsChanged":
-      plan.invalidate.push(queryKeys.conversations(ev.data.agent_path));
       plan.patchAllConversations.push(ev.data.agent_path);
       // A message landing in ANY of this agent's conversations (e.g. a
       // teammate's turn) must reach an open chat live. The event carries no
@@ -128,7 +122,7 @@ export function planInvalidation(
         // mid-turn never fires a *Changed event. A finished turn is the one
         // reliable signal that the agent may have edited these surfaces, so
         // refetch them for this agent — cheap, and it saves the user from
-        // remounting the tab to see self-authored changes (HOU-644). On
+        // remounting the screen to see self-authored changes (HOU-644). On
         // desktop this is harmless redundancy with the FS watcher.
         plan.invalidate.push(queryKeys.instructions(agentPath));
         plan.invalidate.push(queryKeys.workspaceContext(agentPath));

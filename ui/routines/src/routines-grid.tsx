@@ -3,7 +3,7 @@
  * and the top-level gating (loading spinner, empty state) and delegates the
  * populated view to RoutinesGridList, keeping each file under the size cap.
  *
- * The tab is chat-first: routines are created and changed by asking the agent,
+ * The surface is chat-first: routines are created and changed by asking the agent,
  * so the grid itself never edits a routine. This is the LEFT pane of the
  * Scheduled split — a persistent, selectable list beside the selected task's
  * chat. A row click opens (selects) that routine's chat; the grid otherwise

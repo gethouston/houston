@@ -1,5 +1,5 @@
 /**
- * The Files-tab upload size cap, mirrored client side.
+ * The Files-section upload size cap, mirrored client side.
  *
  * The host refuses an import whose decoded payload exceeds `MAX_UPLOAD_BYTES`
  * (`packages/host/src/turn/files-import.ts`) with a 413. The constant is

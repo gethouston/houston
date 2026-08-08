@@ -2,6 +2,7 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
+import { rail } from "./support/team-nav";
 
 /**
  * HOU-945 — relevance-scoped notifications, the surface half: Mission Control's
@@ -275,10 +276,18 @@ test("opening a mention row navigates to that mission's chat", async ({
 
   await inboxRows(page).first().click();
 
-  // The same handoff a completion notification performs: the mission's agent
-  // becomes current, its board is showing, and the mission's chat is open. The
-  // composer of an already-open conversation is the proof (the inbox itself has
-  // none), and Mission Control is gone from under us.
+  // The same handoff a completion notification performs, and since the agent
+  // tab shell went away its destination is the agent's TEAM board, filtered to
+  // that agent: the rail lights the team's Mission Control row, the mission's
+  // chat is open (the composer of an already-open conversation is the proof —
+  // the inbox itself has none), and the global board is gone from under us
+  // (a team board mounts no Mentions mode).
+  await expect(
+    rail(page)
+      .locator("[data-sidebar-section-row]")
+      .filter({ hasText: "Mission Control" })
+      .first(),
+  ).toHaveAttribute("aria-current", "page");
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
   await expect(mentionsControl(page)).toHaveCount(0);
 });

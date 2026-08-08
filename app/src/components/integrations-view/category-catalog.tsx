@@ -4,11 +4,7 @@ import type {
 } from "@houston-ai/engine-client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  CatalogLockedSection,
-  type ConnectFlow,
-  type PermissionsFix,
-} from "../integrations";
+import type { ConnectFlow } from "../integrations";
 import { AppInfoDialog } from "./app-info-dialog";
 import { CatalogCategorySection } from "./catalog-category-section";
 import { useCatalogSections } from "./use-catalog-sections";
@@ -38,10 +34,7 @@ import { useCatalogSections } from "./use-catalog-sections";
  * the page never kills a poll. The spotlight REPEATS rows that also sit in a
  * category section, so each row carries an origin key and `useCatalogSections`
  * hands the expansion to the single copy the user pressed — the duplicate keeps
- * only its `+` spinner. On a
- * Teams host with an `allowlist` ceiling, apps outside it drop from the sections
- * and surface as read-only LOCKED rows below (same query + category filter, so
- * searching a blocked app finds its locked row, never a false empty state).
+ * only its `+` spinner.
  */
 export function CategoryCatalog({
   catalog,
@@ -52,34 +45,26 @@ export function CategoryCatalog({
   query,
   category,
   onRemove,
-  allowlist = null,
-  lockedFix,
 }: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
   connectFlow: ConnectFlow;
   onConnected?: (toolkit: string) => void;
   /** This catalog's half of every row's origin key — which surface the row
-   *  belongs to (the global page vs. one agent's tab). */
+   *  belongs to. */
   surface: string;
   query: string;
   /** The filter dropdown's pick: a primary-category slug or "all". */
   category: string;
   /** Disconnect a broken connection (the modal's Remove). */
   onRemove: (toolkit: string) => void;
-  /** The Teams effective allowlist (`null` = unrestricted, no locks ever). */
-  allowlist?: string[] | null;
-  /** Role-aware "Enable it in Permissions" resolver for locked rows; absent =
-   *  the read-only member view (ask-your-admin copy). */
-  lockedFix?: PermissionsFix;
 }) {
   const { t } = useTranslation("integrations");
-  const { visible, locked, owners, broken, expand } = useCatalogSections({
+  const { visible, owners, broken, expand } = useCatalogSections({
     catalog,
     connections,
     query,
     category,
-    allowlist,
     surface,
     origins: connectFlow.origins,
   });
@@ -94,7 +79,7 @@ export function CategoryCatalog({
 
   return (
     <div>
-      {visible.length === 0 && locked.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="py-8 text-center text-sm text-ink-muted">
           {t("picker.noResults")}
         </p>
@@ -116,10 +101,6 @@ export function CategoryCatalog({
             />
           ))}
         </div>
-      )}
-
-      {locked.length > 0 && (
-        <CatalogLockedSection locked={locked} onEnable={lockedFix} />
       )}
 
       <AppInfoDialog

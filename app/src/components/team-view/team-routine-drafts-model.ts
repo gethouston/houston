@@ -8,10 +8,9 @@ import { teamRoutineKey } from "./team-routines-model.ts";
  *
  * A routine that is still being set up in chat exists only as an unclaimed
  * setup ACTIVITY — it is not a routine yet, so no routines read can see it.
- * The per-agent tab lists those drafts as their own resumable rows; a team's
- * list has to as well, or a routine started from the team surface disappears
- * the moment the person looks away from its chat, under a grid still claiming
- * "nothing runs on its own yet".
+ * The list has to carry those drafts as their own resumable rows, or a routine
+ * started from this surface disappears the moment the person looks away from
+ * its chat, under a grid still claiming "nothing runs on its own yet".
  *
  * The rule that finds a draft is the SHARED one
  * (`findDraftSetupActivities` — current and legacy sentinels, unclaimed,
@@ -43,9 +42,9 @@ export interface TeamRoutineDraftsList {
 /**
  * Merge the entries into the draft rows the grid renders above the routines.
  *
- * Order is the team's own agent order, then each agent's activity order — the
- * order the per-agent tab shows the same drafts in. There is nothing to sort
- * by: a draft has no name and no schedule, only the chat behind it.
+ * Order is the team's own agent order, then each agent's activity order. There
+ * is nothing to sort by: a draft has no name and no schedule, only the chat
+ * behind it.
  */
 export function aggregateTeamRoutineDrafts(
   entries: TeamRoutineDraftsEntry[],

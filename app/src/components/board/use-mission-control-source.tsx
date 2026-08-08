@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
+import { pendingMissionSurface } from "../../lib/board-surface-nav";
 import { missionMatchesPerson } from "../../lib/mission-people";
 import type { Agent } from "../../lib/types";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useUIStore } from "../../stores/ui";
 import { MissionControlToolbar } from "../mission-control-toolbar";
 import type { MissionsToolbarMentions } from "../mission-toolbar-actions";
@@ -13,6 +13,7 @@ import { useMcActions } from "./use-mc-actions";
 import { useMcNewMission } from "./use-mc-new-mission";
 import { type MissionControlScope, useMcScope } from "./use-mc-scope.ts";
 import { useMcSearch } from "./use-mc-search.tsx";
+import { usePendingMissionTarget } from "./use-pending-mission-target";
 
 /**
  * Builds the {@link BoardSource} for cross-agent Mission Control: every
@@ -33,10 +34,24 @@ export function useMissionControlSource(
   mentions?: MissionsToolbarMentions,
   scope?: MissionControlScope,
 ): BoardSource {
-  const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const mc = useMissionControl(agents);
+
+  // Every "open this mission" navigation lands on ONE of the board's two
+  // surfaces (notification, @mention row, palette, archived handoff). This is
+  // the ACTIVE one, so it claims only the targets the raw sweep rows say are
+  // active — an archived mission's id is left published for the archive, which
+  // the owner's surface router is about to swap in.
+  const pendingId = useUIStore((s) => s.activityPanelId);
+  const pendingSurface = pendingMissionSurface(mc.rawConversations, pendingId);
+  usePendingMissionTarget({
+    surface: "active",
+    pendingSurface,
+    selectedId: mc.selectedId,
+    setSelectedId: mc.setSelectedId,
+    missionPanelOpen,
+  });
 
   const [filterUserId, setFilterUserId] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(
@@ -88,17 +103,13 @@ export function useMissionControlSource(
     }
     return newMission.pendingAgent;
   }, [selectedItem, newMission.pendingAgent, agents]);
-  const activeAgentDef = activeAgent
-    ? (getAgentDef(activeAgent.configId) ?? null)
-    : null;
-  const selectedSessionKey = selectedItem
-    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
-      `activity-${selectedItem.id}`)
-    : null;
-  const selectedAgentPath =
-    (selectedItem?.metadata?.agentPath as string | undefined) ?? null;
+  // Straight from the data hook, so the chat panel and the feed always name
+  // the same conversation — including the beat after a create, before the
+  // cross-agent sweep has returned the new mission's row.
+  const selectedSessionKey = mc.activeSessionKey;
+  const selectedAgentPath = mc.activeAgentPath;
 
-  const actions = useMcActions({ mc, activeAgent, activeAgentDef, paths });
+  const actions = useMcActions({ mc, activeAgent, paths });
 
   const agentPathForId = useCallback(
     (id: string) =>
@@ -133,7 +144,6 @@ export function useMissionControlSource(
   );
 
   return {
-    variant: "mission-control",
     items: missionSearch.items,
     allItems: personFilteredItems,
     feedItems: mc.feedItems,
@@ -144,7 +154,6 @@ export function useMissionControlSource(
     highlightedId,
     setHighlightedId,
     activeAgent,
-    activeAgentDef,
     draftScope: missionControlDraftScope(scope?.teamId),
     selectedSessionKey,
     selectedAgentPath,

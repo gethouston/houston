@@ -14,12 +14,12 @@ Load on demand.
 | [website-certificates.md](website-certificates.md) | Bootcamp certificates — gateway contract, build-time render pipeline (satori/resvg), `/c/<CODE>` pages, share + LinkedIn URLs, operator ritual for a new event |
 | [client-architecture.md](client-architecture.md) | Three-surface client contract — SDK / tokens / inventory / parity, change-flow procedures |
 | [files-first.md](files-first.md) | `.houston/` layout, atomic writes, schemas, AI-native reactivity |
-| [files-ui.md](files-ui.md) | Files tab — FilesBrowser component map, query/host data flow, upload caps + batching, shared byte cache, view scoping |
+| [files-ui.md](files-ui.md) | Files UI (the team Files section) — FilesBrowser component map, query/host data flow, upload caps + batching, shared byte cache, view scoping |
 | [skills.md](skills.md) | Skills on disk + UI — frontmatter schema, picker rendering, invocation marker |
 | [agent-manifest.md](agent-manifest.md) | Three tiers, manifest shape, workspace templates, sidebar |
 | [teams-ui.md](teams-ui.md) | Sidebar teams + the `team` screen — teams-model, store contract, section gating, the one-sweep scoped board, Team Settings drill-in |
 | [teams.md](teams.md) | Multiplayer orgs (client surface) — roles/access, role matrix v2, org dashboard, share dialog, templates, allowlists; gateway is sole enforcer |
-| [agent-settings.md](agent-settings.md) | The ONE per-agent configuration surface — section model + gating, shared rail, the People access choice, read-only, analytics |
+| [agent-settings.md](agent-settings.md) | The ONE per-agent configuration surface — two doors onto it (Team Settings → the agent's row in every deployment; Settings > Permissions → the agent's row in multiplayer only), section model + gating, the rail, the People access choice, read-only, analytics |
 | [auth.md](auth.md) | GCIP / Firebase auth, Google/Microsoft SSO + email OTP, Keychain |
 | [i18n.md](i18n.md) | Translating UI strings — namespaces, `labels` prop pattern, `t()` rules |
 | [ui-testing.md](ui-testing.md) | Automated UI / e2e tests — Playwright, web build, fake host, TS engine |

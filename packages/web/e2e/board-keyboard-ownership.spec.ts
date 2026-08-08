@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * WHO owns the board keyboard when several boards are alive at once.
@@ -18,6 +19,37 @@ import { expect, test } from "./support/fixtures";
 /** The kanban card wearing the arrow-key highlight ring, on screen. */
 function visibleHighlight(page: import("@playwright/test").Page) {
   return page.locator("[data-highlighted]:visible");
+}
+
+/**
+ * Press keys and report, per key, whether ANY handler called
+ * `preventDefault()`.
+ *
+ * The shell's shortcut router listens on `window`, registered at mount; a
+ * listener added now runs after it, so it observes the router's verdict. That
+ * verdict is the whole question for a non-board surface: a prevented key is a
+ * key the user does not get back.
+ */
+async function pressAndRecordPrevention(
+  page: import("@playwright/test").Page,
+  keys: string[],
+): Promise<Record<string, boolean>> {
+  await page.evaluate(() => {
+    const seen: Record<string, boolean> = {};
+    (window as unknown as { __keyPrevented: typeof seen }).__keyPrevented =
+      seen;
+    window.addEventListener("keydown", (e) => {
+      seen[e.key] = e.defaultPrevented;
+    });
+    // Keys must reach the shell, not a focused control that would answer them.
+    (document.activeElement as HTMLElement | null)?.blur();
+  });
+  for (const key of keys) await page.keyboard.press(key);
+  return page.evaluate(
+    () =>
+      (window as unknown as { __keyPrevented: Record<string, boolean> })
+        .__keyPrevented,
+  );
 }
 
 test("the visible board owns the arrow keys, not a kept-alive team board", async ({
@@ -66,4 +98,49 @@ test("the visible board owns the arrow keys, not a kept-alive team board", async
   const panel = page.getByTestId("mission-panel");
   await expect(panel).toBeVisible();
   await expect(panel).toContainText(title.trim());
+});
+
+test("a team's Routines section does not swallow the arrow keys or Enter", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByText("Your teams")).toBeVisible();
+
+  // Visit the team's Mission Control first, exactly as a user would: its board
+  // mounts, claims the arrow/Enter handlers, and then stays mounted behind the
+  // section the user moves on to.
+  await openTeamSection(page, "Mission Control");
+  await expect(
+    page.getByText("Plan a trip to Tokyo").filter({ visible: true }),
+  ).toHaveCount(1);
+
+  // Routines is the same `team` viewMode, so a VIEW-level board check still
+  // reads "board here" and preventDefault()s every arrow and Enter. Nothing on
+  // this screen has a highlight to move or a card to open, so the keys used to
+  // vanish: no list scrolling, no Enter on whatever the user had focused.
+  await openTeamSection(page, "Routines");
+  await expect(
+    page.getByRole("button", { name: "New routine" }).first(),
+  ).toBeVisible();
+
+  const prevented = await pressAndRecordPrevention(page, [
+    "ArrowDown",
+    "ArrowUp",
+    "ArrowLeft",
+    "ArrowRight",
+    "Enter",
+  ]);
+  expect(prevented).toEqual({
+    ArrowDown: false,
+    ArrowUp: false,
+    ArrowLeft: false,
+    ArrowRight: false,
+    Enter: false,
+  });
+
+  // And the board still owns them where a board really is on the glass, so the
+  // narrowing did not just disable the feature.
+  await openTeamSection(page, "Mission Control");
+  await page.keyboard.press("ArrowRight");
+  await expect(visibleHighlight(page)).toHaveCount(1);
 });

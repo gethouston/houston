@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * The routine row's inline schedule editor. The redesigned row has no
@@ -32,7 +33,7 @@ async function routineSchedules(agentId: string): Promise<string[]> {
 }
 
 async function openRoutinesTab(page: import("@playwright/test").Page) {
-  await page.locator('[data-tour-target="tab-routines"]').click();
+  await openTeamSection(page, "Routines");
   await expect(
     page.getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();

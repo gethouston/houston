@@ -53,10 +53,6 @@
     "invalidChars": "O nome do agente não pode conter barras nem caracteres especiais",
     "tooLong": "O nome do agente pode ter no máximo {{max}} caracteres"
   },
-  "empty": {
-    "title": "Ainda não há agentes",
-    "description": "Crie sua equipe de IA e inicie uma missão."
-  },
   "instructions": {
     "emptyTitle": "Ainda sem instruções",
     "emptyDescription": "Diga ao seu agente como ele deve pensar e agir.",
@@ -87,22 +83,6 @@
     "instructions": "Descrição do cargo",
     "skills": "Skills",
     "learnings": "Aprendizados"
-  },
-  "tabLabels": {
-    "activity": "Atividade",
-    "routines": "Rotinas",
-    "files": "Arquivos",
-    "context": "Contexto",
-    "admin": "Admin",
-    "integrations": "Integrações",
-    "chat": "Chat",
-    "board": "Quadro",
-    "skills": "Skills",
-    "prompts": "Instruções",
-    "events": "Eventos",
-    "learnings": "Aprendizados",
-    "configure": "Configurar",
-    "settings": "Configurações"
   },
   "configure": {
     "projectContext": {

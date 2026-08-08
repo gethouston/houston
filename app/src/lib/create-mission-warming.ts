@@ -67,7 +67,6 @@ export function createMissionWhileWarming(
         provider: opts.providerOverride,
         model: opts.modelOverride,
       },
-      promptFile: opts.promptFile,
       provider: opts.providerOverride,
       model: opts.modelOverride,
       effort: opts.effortOverride,
@@ -107,7 +106,6 @@ export function createMissionWhileWarming(
         ? await opts.buildPrompt(conversationId)
         : text;
       await tauriChat.send(agent.folderPath, prompt, sessionKey, {
-        mode: opts.promptFile,
         providerOverride: opts.providerOverride,
         modelOverride: opts.modelOverride,
         effortOverride: opts.effortOverride,

@@ -12,7 +12,7 @@ import { IntegrationsReady } from "./integrations-ready";
 /**
  * The top-level Integrations page (sidebar destination): the caller's PERSONAL
  * connected-apps catalog in every mode (org integration policy lives on the
- * Admin page). Shares the exact gate UX of the per-agent tab (loading /
+ * Admin page). Runs the shared gate UX (loading /
  * unavailable / signin / ready) via `useIntegrationsGate`.
  *
  * The gate's non-ready kinds describe the COMPOSIO catalog only: the key-free

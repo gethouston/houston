@@ -10,11 +10,12 @@
  * shape; the Zustand store (`stores/agent-provisioning.ts`) wires it to the
  * real engine client, toast, and localStorage.
  *
- * Kept dependency-free so `node --test` can exercise it directly (the one
- * import below is a type, erased at runtime).
+ * Kept dependency-free so `node --test` can exercise it directly: the imports
+ * below are a type (erased at runtime) and the pure key factory.
  */
 
 import type { MessageMention } from "@houston-ai/engine-client";
+import { queryKeys } from "./query-keys.ts";
 
 /**
  * Small, always-present, side-effect-free per-agent read. This is the typed
@@ -112,7 +113,6 @@ export interface PendingWarmingSend {
    * client-rendered.
    */
   rowOnly?: boolean;
-  promptFile?: string;
   provider?: string;
   model?: string;
   effort?: string;
@@ -231,6 +231,28 @@ export function parsePersistedProvisioning(
           }
         : e,
     );
+}
+
+/**
+ * The query keys a completed warm-up must refetch BEFORE its optimistic rows
+ * are dropped (HOU-713), so the board hands off to the real rows the flush
+ * wrote without a one-frame gap.
+ *
+ * The FIRST is the whole point and the one that regressed: the boards read the
+ * cross-agent sweep, whose key embeds every agent's path
+ * (`["all-conversations", ...paths]`), so only the PREFIX matches the roster
+ * variant the open board is mounted on. Invalidating the per-agent
+ * `["activity", path]` alone refetched nothing any board shows, and the
+ * optimistic rows vanished until the sweep independently returned.
+ *
+ * `["activity", path]` still belongs here: the per-agent surfaces that read it
+ * live (the agent chat panel, the skill / routine / integration setup chats,
+ * agent-admin knowledge) must see the flushed rows too.
+ */
+export function warmingFlushRefetchKeys(
+  agentPath: string,
+): readonly (readonly unknown[])[] {
+  return [queryKeys.allConversations([]), queryKeys.activity(agentPath)];
 }
 
 export interface ProbeDeps {

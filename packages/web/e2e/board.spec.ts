@@ -112,6 +112,13 @@ function newestMirrorUpdatedAt(page: Page): Promise<number> {
   );
 }
 
+/**
+ * How long the persisted cache's IndexedDB read is held open in the restore
+ * race below. Long enough that the shell boots, mounts the board, and would
+ * have issued its sweep several times over inside the window.
+ */
+const RESTORE_HOLD_MS = 4_000;
+
 /** Give the page a JWT-shaped per-user token: the fake host accepts any
  *  bearer, while the query/transcript caches scope themselves to `e2e-user`
  *  (the standard non-JWT token deliberately turns persistence off). */
@@ -151,15 +158,22 @@ test("restores cached missions before starting fresh board reads", async ({
 
   // Let the async persister commit this populated board (the write throttle
   // lags the fetch by a second or more — wait for the CONTENT, not just the
-  // store), then make its next IndexedDB read visibly slow. This pins the
-  // startup race: no activity read may start while the older, populated cache
-  // is still being restored.
+  // store), then hold its next IndexedDB read open for `RESTORE_HOLD_MS`. That
+  // hold IS the window this test lives in: it pins the startup race, where no
+  // board read may start while the older, populated cache is still being
+  // restored. The board's read is the CROSS-AGENT sweep now (there is no
+  // per-agent board left to read `["activity", path]`), and that sweep fans out
+  // to ONE `GET /agents/:id/activities` per agent — that per-agent GET is the
+  // wire signal to count. The hold has to outlast the app's own boot by a wide
+  // margin: unpaused, the shell reaches its first sweep read ~150ms after the
+  // restore begins, so a window of a few hundred ms would go green whether the
+  // pause worked or not.
   await expect
     .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
       timeout: 15_000,
     })
-    .toContain("activity");
-  await page.addInitScript(() => {
+    .toContain("all-conversations");
+  await page.addInitScript((holdMs: number) => {
     const nativeGet = IDBObjectStore.prototype.get;
     IDBObjectStore.prototype.get = function delayedGet(query) {
       const nativeRequest = nativeGet.call(this, query);
@@ -175,18 +189,18 @@ test("restores cached missions before starting fresh board reads", async ({
         window as typeof window & { __queryRestoreStarted?: boolean }
       ).__queryRestoreStarted = true;
       nativeRequest.addEventListener("success", (event) => {
-        setTimeout(() => delayedRequest.onsuccess?.(event), 500);
+        setTimeout(() => delayedRequest.onsuccess?.(event), holdMs);
       });
       nativeRequest.addEventListener("error", (event) => {
-        setTimeout(() => delayedRequest.onerror?.(event), 500);
+        setTimeout(() => delayedRequest.onerror?.(event), holdMs);
       });
       return delayedRequest;
     };
-  });
+  }, RESTORE_HOLD_MS);
 
-  let activityReads = 0;
+  let boardReads = 0;
   await page.route("**/agents/*/activities", async (route) => {
-    if (route.request().method() === "GET") activityReads += 1;
+    if (route.request().method() === "GET") boardReads += 1;
     await route.continue();
   });
   await page.reload();
@@ -195,25 +209,26 @@ test("restores cached missions before starting fresh board reads", async ({
       (window as typeof window & { __queryRestoreStarted?: boolean })
         .__queryRestoreStarted === true,
   );
-  await page.waitForTimeout(100);
+  // The shell is fully up while the restore is still held, so the board and its
+  // query observer are mounted: an unpaused read would already be on the wire.
+  await expect(page.locator("[data-tour-target='agents']")).toBeVisible();
+  await page.waitForTimeout(500);
 
-  expect(activityReads).toBe(0);
+  expect(boardReads).toBe(0);
+  // The restore then lands, and yesterday's cards paint off it.
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 });
 
 /**
- * The cold-open reality check: on a real cloud boot every per-agent read
- * hangs behind the gateway for the whole pod wake (~seconds), so the ONLY
- * thing that can paint the board immediately is what's cached locally. The
- * restore test above can't prove that — its live read answers instantly and
- * would paint the card even if the restored data never reached the board.
+ * The cold-open reality check: on a real cloud boot every per-agent read hangs
+ * behind the gateway for the whole pod wake (~seconds), so the ONLY thing that
+ * can paint the board immediately is what is cached locally. The restore test
+ * above cannot prove that — its live read answers instantly and would paint the
+ * card even if the restored data never reached the board.
  *
- * This models the exact production failure: the per-agent `["activity", X]`
- * mirror entry is MISSING (it only lands when a session with X's board open
- * outlives the pod wake plus the persist throttle), while the aggregate the
- * sidebar badges paint from is present (it's swept every session). The board
- * must seed its cards from that aggregate instead of showing empty columns
- * for the whole wake — the badge says 2 missions, the columns must agree.
+ * This models the exact production failure: the cross-agent sweep the board
+ * reads is held for the entire wake, and the cards have to come off the
+ * persisted mirror of that same sweep rather than leaving empty columns up.
  */
 test("paints cached missions immediately while cold-start reads are held", async ({
   page,
@@ -223,53 +238,12 @@ test("paints cached missions immediately while cold-start reads are held", async
   await page.goto("/");
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 
-  // Let the async persister commit both list surfaces to IndexedDB.
+  // Let the async persister commit the board's list surface to IndexedDB.
   await expect
-    .poll(
-      async () => {
-        const heads = (await persistedMirrorHeads(page)) ?? [];
-        return (
-          heads.includes("activity") && heads.includes("all-conversations")
-        );
-      },
-      { timeout: 15_000 },
-    )
-    .toBe(true);
-
-  // Drop the per-agent board entries, keeping the aggregate — the mirror a
-  // real cold open typically finds. The app is idle here (no cache events →
-  // no persister rewrites), so the strip sticks until the reload.
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open("houston-query-cache", 1);
-        open.onsuccess = () => {
-          const store = open.result
-            .transaction("kv", "readwrite")
-            .objectStore("kv");
-          const get = store.get("houston.list-queries");
-          get.onsuccess = () => {
-            const parsed = JSON.parse(get.result as string) as {
-              clientState: { queries: { queryKey: unknown[] }[] };
-            };
-            parsed.clientState.queries = parsed.clientState.queries.filter(
-              (q) => q.queryKey[0] !== "activity",
-            );
-            const put = store.put(
-              JSON.stringify(parsed),
-              "houston.list-queries",
-            );
-            put.onsuccess = () => resolve();
-            put.onerror = () => reject(put.error);
-          };
-          get.onerror = () => reject(get.error);
-        };
-        open.onerror = () => reject(open.error);
-      }),
-  );
-  const stripped = (await persistedMirrorHeads(page)) ?? [];
-  expect(stripped).toContain("all-conversations");
-  expect(stripped).not.toContain("activity");
+    .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
+      timeout: 15_000,
+    })
+    .toContain("all-conversations");
 
   // Cold open: every per-agent read now stalls the way an asleep pod's do.
   await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
@@ -277,13 +251,10 @@ test("paints cached missions immediately while cold-start reads are held", async
   });
   await page.reload();
 
-  // The cards must come from the locally cached aggregate — well before any
-  // held read can answer. The grace only has to stay far under the hold to
-  // keep the proof sharp; it must ALSO absorb a full dev-server reload on a
-  // contended CI runner, which alone can blow a too-tight budget (a 4s grace
-  // under an 8s hold flaked there). 12s of grace, 20s hold: same invariant,
-  // CI-realistic slack. On success the assertion resolves at paint time, so
-  // the bigger numbers cost nothing.
+  // The cards must come from the locally cached sweep — well before any held
+  // read can answer. The grace only has to stay far under the hold to keep the
+  // proof sharp; it must ALSO absorb a full dev-server reload on a contended CI
+  // runner, which alone can blow a too-tight budget. 12s of grace, 20s hold.
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible({
     timeout: 12_000,
   });

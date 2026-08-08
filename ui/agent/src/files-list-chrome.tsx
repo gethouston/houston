@@ -8,7 +8,7 @@
  * The doctrine: the list draws NO rules. Rows are transparent objects separated
  * by their own height, and the only thing that ever paints is the row under the
  * pointer — a soft `rounded-xl` fill the width of the listing. That is what
- * lets the tab stay borderless while a 14px medium name still reads a clear
+ * lets the list stay borderless while a 14px medium name still reads a clear
  * step above its 12px muted metadata.
  */
 import { cn } from "@houston-ai/core";

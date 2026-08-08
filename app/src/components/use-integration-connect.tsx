@@ -32,7 +32,7 @@ import {
  * catalog name, or a prettified slug on a catalog miss — never the raw
  * "googlesheets" string), and its `logoUrl` stays EMPTY until the toolkits
  * catalog has settled. Both surfaces render it through the shared `AppLogo`
- * (the Integrations tab's component), whose letter fallback covers the interim.
+ * (the Integrations page's component), whose letter fallback covers the interim.
  * Racing an `<img>` against the still-loading catalog is exactly what ate the
  * production logos: the favicon-guess fallback 404'd first and its error state
  * shadowed the real Composio logo that resolved moments later.
@@ -98,13 +98,13 @@ export function useIntegrationConnect({
   // this card.
   const connecting = slug in states;
   // The nudge fires at most once per surface, and only for a connection the
-  // user drove from HERE — a connection landing via the Integrations tab or
+  // user drove from HERE — a connection landing via the Integrations page or
   // another card must not make this one speak.
   const followupFired = useRef(false);
 
   // The success toast is NOT fired here: the shared connect flow announces
   // every outcome once, for every surface, so a connect started in chat and a
-  // connect started on the Integrations tab read identically (and a card that
+  // connect started on the Integrations page read identically (and a card that
   // JOINS a running flow never double-toasts it).
   //
   // `initiated` guards the rest the same way. Two cards for the same app (the

@@ -34,9 +34,9 @@ export function activityQueryOptions(qc: QueryClient, agentPath: string) {
     // pod wake, and the disk-restored `["activity", X]` entry only exists
     // for agents whose board was open in a session that outlived the wake
     // plus the persist throttle — often not the very agent being looked
-    // at. Conversations are derived 1:1 from activities, so the freshest
-    // cached conversation rows (per-agent list or the always-swept
-    // aggregate the sidebar badges paint from) ARE this board's missions.
+    // at. Conversations are derived 1:1 from activities, so this agent's
+    // rows in the always-swept cross-agent aggregate (the same rows the
+    // sidebar badges paint from) ARE this board's missions.
     // Placeholder semantics keep the contract above: never persisted,
     // replaced by the held read when the pod answers, and `undefined`
     // (still loading) when nothing is cached — never a fabricated `[]`.
@@ -81,32 +81,12 @@ export function useCreateActivity(agentPath: string | undefined) {
   });
 }
 
-export function useUpdateActivity(agentPath: string | undefined) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      activityId,
-      update,
-    }: {
-      activityId: string;
-      update: { status?: string; title?: string; description?: string };
-    }) => {
-      if (!agentPath) throw new Error("agentPath required");
-      return tauriActivity.update(agentPath, activityId, update);
-    },
-    onSuccess: () => {
-      if (agentPath)
-        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
-    },
-  });
-}
-
 /**
- * The same activity patch, with the AGENT in the variables instead of in the
- * hook argument — the sibling of `useRoutineWritesForAnyAgent`, for the same
- * reason: a cross-agent list (a team's Routines and its DRAFT rows) knows which
- * agent a row belongs to only when the row is acted on, and hooks may not be
- * called in a loop over a roster that changes.
+ * An activity patch with the AGENT in the variables instead of in the hook
+ * argument — the sibling of `useRoutineWritesForAnyAgent`, for the same reason:
+ * a cross-agent list (a team's Routines and its DRAFT rows) knows which agent a
+ * row belongs to only when the row is acted on, and hooks may not be called in
+ * a loop over a roster that changes.
  */
 export function useUpdateActivityForAnyAgent() {
   const qc = useQueryClient();
@@ -122,45 +102,6 @@ export function useUpdateActivityForAnyAgent() {
     }) => tauriActivity.update(agentPath, activityId, update),
     onSuccess: (_r, { agentPath }) =>
       qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) }),
-  });
-}
-
-export function useDeleteActivity(agentPath: string | undefined) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (activityId: string) => {
-      if (!agentPath) throw new Error("agentPath required");
-      await tauriActivity.delete(agentPath, activityId);
-      // Files attached in this conversation stay in the workspace's uploads/
-      // folder — they are agent context, not conversation scratch (HOU-706).
-      // Clear any unsent draft for this conversation.
-      useDraftStore.getState().clearDraft(`activity-${activityId}`);
-    },
-    onSuccess: () => {
-      if (agentPath)
-        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
-    },
-  });
-}
-
-/** Patch many activities at once (bulk archive, bulk move-to). */
-export function useBulkUpdateActivity(agentPath: string | undefined) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      ids,
-      update,
-    }: {
-      ids: string[];
-      update: { status?: string };
-    }) => {
-      if (!agentPath) throw new Error("agentPath required");
-      return tauriActivity.bulkUpdate(agentPath, ids, update);
-    },
-    onSuccess: () => {
-      if (agentPath)
-        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
-    },
   });
 }
 

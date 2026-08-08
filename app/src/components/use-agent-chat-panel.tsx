@@ -140,10 +140,15 @@ import {
   withAttachmentPaths,
 } from "../lib/tauri";
 import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
-import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
+import type { Agent, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
 import { useUIStore } from "../stores/ui";
+import {
+  filterProviderAuthFeedItems,
+  isProviderAuthMessage,
+  providerAuthSignalKey,
+} from "./agent/provider-auth-feed";
 import { ChatConnectInteractionCard } from "./chat-connect-interaction-card";
 import { ChatCredentialInteractionCard } from "./chat-credential-interaction-card";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
@@ -174,11 +179,6 @@ import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
 import { skillIntegrationChips } from "./skill-integration-chips";
-import {
-  filterProviderAuthFeedItems,
-  isProviderAuthMessage,
-  providerAuthSignalKey,
-} from "./tabs/provider-auth-feed";
 import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
@@ -190,8 +190,6 @@ import { UserSkillMessage } from "./user-skill-message";
 interface UseAgentChatPanelArgs {
   /** The agent the panel is currently scoped to. Null disables features. */
   agent: Agent | null;
-  /** That agent's catalog definition (for agentModes etc.). */
-  agentDef: AgentDefinition | null;
   /** Currently-open session key, if any. Drives Skill routing. */
   selectedSessionKey: string | null;
   /** Called with the new conversation id after a Skill's "Start". */
@@ -306,7 +304,6 @@ interface AgentChatPanelProps {
 
 export function useAgentChatPanel({
   agent,
-  agentDef,
   selectedSessionKey,
   onSelectSession,
   draftScope,
@@ -425,7 +422,6 @@ export function useAgentChatPanel({
     : null;
 
   const path = agent?.folderPath ?? null;
-  const agentModes = agentDef?.config.agents;
 
   // Opening an agent whose hosted pod is scaled to zero (HOU-730): the open
   // itself starts the wake, but every request is held for the whole cold
@@ -1068,11 +1064,9 @@ export function useAgentChatPanel({
           prompt,
           attachmentReferences(files, attachmentPaths),
         );
-        const mode = agentModes?.find((m) => m.id === undefined); // default mode
         // The send's turn stream pushes the user bubble into the
         // conversation VM itself — no app-side optimistic push.
         await tauriChat.send(path, encodedWithAttachments, sessionKey, {
-          mode: mode?.promptFile,
           // The wire pin must match the picker. In Teams this may be the open
           // mission's pin rather than the agent's effective default.
           providerOverride: displayModelPin.provider,
@@ -1092,9 +1086,6 @@ export function useAgentChatPanel({
       } else {
         // New conversation: createMission with `title` override so the
         // kanban card reads "Research a company" instead of the marker.
-        const agentMode = agentModes?.[0]?.id;
-        const mode = agentModes?.find((m) => m.id === agentMode);
-
         const { conversationId } = await createMission(
           {
             id: agent.id,
@@ -1104,8 +1095,6 @@ export function useAgentChatPanel({
           },
           encoded,
           {
-            agentMode,
-            promptFile: mode?.promptFile,
             providerOverride: displayModelPin.provider,
             modelOverride: displayModelPin.model,
             effortOverride: displayModelPin.effort,
@@ -1128,24 +1117,14 @@ export function useAgentChatPanel({
           },
         );
         queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
-        analytics.track("mission_created", {
-          agent_mode: agentMode ?? "default",
-        });
+        analytics.track("mission_created");
         onSelectSessionRef.current?.(conversationId);
       }
       analytics.track("skill_used", { skill_slug: skill.name });
       setActiveSkill(null);
       return true;
     },
-    [
-      activeSkill,
-      agent,
-      path,
-      agentModes,
-      displayModelPin,
-      turnMode,
-      queryClient,
-    ],
+    [activeSkill, agent, path, displayModelPin, turnMode, queryClient],
   );
 
   // Picking a skill from a card or the picker pins it above the regular

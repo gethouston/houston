@@ -12,9 +12,9 @@ import type {
  * The ONE connect-flow state for the whole app.
  *
  * Every surface that can start an OAuth hand-off (the Integrations page, the
- * per-agent tab, the in-chat connect cards, onboarding, the automation intake)
- * used to own a private registry, so a connect started in chat was invisible on
- * the Integrations tab and the same app could be handed off twice at once.
+ * in-chat connect cards, onboarding, the automation intake) used to own a
+ * private registry, so a connect started in chat was invisible on the
+ * Integrations page and the same app could be handed off twice at once.
  * Lifting both halves here fixes that:
  *
  *  - {@link connectFlowRegistry} — the render-independent half (waker, cancel

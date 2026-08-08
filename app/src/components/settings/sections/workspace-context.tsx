@@ -7,7 +7,7 @@ import { useAgentStore } from "../../../stores/agents";
 import {
   InstructionsContent,
   type InstructionsContentLabels,
-} from "../../tabs/job-description-parts";
+} from "../../agent/job-description-parts";
 
 type Slot = "workspace" | "user";
 

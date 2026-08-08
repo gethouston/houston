@@ -28,7 +28,7 @@ import { useWorkspaceSkills } from "./use-workspace-skills";
 import { useWorkspaceSkillRows } from "./workspace-skill-rows";
 
 /** Approximate skills.sh size, shown on the Available chip (async store, no
- *  cheap total — same label the per-agent tab shows). */
+ *  cheap total — same label the agent's Skills section shows). */
 const SKILL_STORE_SIZE_LABEL = "9000+";
 
 /**

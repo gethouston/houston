@@ -194,8 +194,8 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `app/src/components/mission-board-columns.ts`), a drag into Done, or a bulk
   move. Each fires `fireMissionDoneConfetti` (`app/src/lib/confetti.ts`). So
   `needs_you` means "finished (or blocked, or errored) and awaiting your review",
-  and nothing is ever auto-closed out from under the user. The sidebar / tab
-  badges count EVERY `needs_you` card by design — that is the review inbox, not
+  and nothing is ever auto-closed out from under the user. The sidebar badges
+  count EVERY `needs_you` card by design — that is the review inbox, not
   a bug to fix. A user move to `done` strips the blocking steps but KEEPS the
   offers, so suggestion bubbles still render on a Done card
   (`retainSuggestionSteps`; see `knowledge-base/files-first.md`).
@@ -295,8 +295,9 @@ steps but keeps the offers (`retainSuggestionSteps`,
 sends an `execute` turn (it asks the agent to DO the thing, whatever the
 composer's pinned Mode says), matching the reusable card's Save. Dismissing
 drops only this step from the persisted interaction, never the sibling offer.
-Both offers also render on archived missions (Archived tab + Mission Control
-Archived pass the panel's `composerOverride`). Acting on one there sends a real
+Both offers also render on archived missions (Mission Control Archived and a
+team's archived board both pass the panel's `composerOverride`; the per-agent
+Archived tab that was the third caller is gone). Acting on one there sends a real
 turn, which re-activates the mission (`archived → running`) — as does a Skill
 submitted into that same archived chat. Both of those send from INSIDE
 `useAgentChatPanel`, bypassing each surface's `onSendMessage`, so the panel
@@ -434,7 +435,7 @@ fact the model must not author. The runtime tool
 (`packages/host/src/routes/learnings-sandbox.ts`), which read-modify-writes
 (`loadLearnings → append → saveLearnings`) under the per-doc lock
 (`withDocLock(\`${root}#learnings\`)`, routes/doc-lock.ts — the SAME key the
-Memory tab's whole-file PUT in `agent-data.ts` takes, so concurrent saves and UI
+Memory section's whole-file PUT in `agent-data.ts` takes, so concurrent saves and UI
 edits serialize instead of dropping each other) and stamps the learning's
 **provenance**:
 
@@ -457,7 +458,7 @@ edits serialize instead of dropping each other) and stamps the learning's
   deleted mission still reads; renderers prefer the live title by `mission_id`.
 
 Everything is best-effort metadata: a failed mission lookup logs and saves the
-learning without it. The app's own Memory-tab add path stamps `taught_by` from
+learning without it. The app's own Memory-section add path stamps `taught_by` from
 the signed-in session, multiplayer only (`use-learnings.ts`). Provenance is
 ORG-LOCAL and never travels: `packages/domain/src/portable.ts` strips it on both
 pack and unpack (one `stripLearningProvenance` helper, both legs), like a
@@ -470,7 +471,7 @@ by the boot re-seed (`packages/host/src/migrate/agent-schemas.ts`, wired in
 `local/host.ts` `start()` beside the other migrations; content-compared, so a
 steady-state boot writes nothing). The Memory row renders the pair as a muted
 "From {name} · {mission}" line with the shared `PersonFace`
-(`app/src/components/tabs/learning-provenance.tsx`; fallback ladders in
+(`app/src/components/agent/learning-provenance.tsx`; fallback ladders in
 `app/src/lib/learning-provenance.ts`), and nothing at all when a learning has no
 provenance.
 

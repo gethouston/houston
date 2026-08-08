@@ -1,6 +1,6 @@
 /**
  * The Claude-facing kickoffs for a custom skill's setup chat (HOU-791 — the
- * Skills surface gets the Automations-tab experience: build and change a
+ * Skills surface gets a routine's setup-chat experience: build and change a
  * skill by talking to the agent, never by hand-editing markdown). English on
  * purpose (all prompts are); the agent mirrors the user's language when it
  * answers. They ride the auto-continue marker (`lib/auto-continue-message.ts`):

@@ -1,7 +1,7 @@
 /**
  * RoutinesGridEmpty — the list's first-run empty state: a short headline, a
  * one-line hint, and the app-supplied primary action (the "New routine" button
- * lives HERE when the list is empty, not in the tab header). Renders only when
+ * lives HERE when the list is empty, not in the list header). Renders only when
  * there are no routines and no draft chats.
  */
 
