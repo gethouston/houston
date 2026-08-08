@@ -58,6 +58,9 @@ export function ChatMessageActionsRow({
         "mt-1 opacity-0 transition-opacity duration-200 group-focus-within:opacity-100 group-hover:opacity-100",
         align === "end" ? "justify-end" : "justify-start",
       )}
+      // The row's stable hook: these buttons carry ICONS, so anything asking
+      // "does this message show a sender mark?" must exclude them.
+      data-chat-message-actions=""
     >
       {copyable ? (
         <MessageAction
