@@ -17,6 +17,8 @@ components:
     status: not-started
   conversation-feed:
     status: not-started
+  conversation-map-search:
+    status: not-started
   assistant-message:
     status: not-started
   user-message:

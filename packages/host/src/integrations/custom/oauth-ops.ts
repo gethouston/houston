@@ -28,6 +28,9 @@ export interface CustomOAuthDeps {
   /** The browser-reachable callback URL; absent = this deployment cannot
    *  receive the redirect (managed cloud until its gateway route ships). */
   callbackUrl?: string;
+  /** Gateway-fronted pods: `<orgSlug>.<agentSlug>` — minted INTO the state so
+   *  the gateway's public callback can route the browser to this pod. */
+  statePrefix?: string;
   fetchFn?: typeof fetch;
   onChanged: () => void;
 }
@@ -60,7 +63,10 @@ export async function startOAuthOp(
     def,
     deps.callbackUrl,
     existing,
-    deps.fetchFn,
+    {
+      ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {}),
+      ...(deps.statePrefix ? { statePrefix: deps.statePrefix } : {}),
+    },
   );
   deps.attempts.put(state, attempt);
   return { authorizeUrl };
