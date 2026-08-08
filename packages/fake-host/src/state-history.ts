@@ -82,6 +82,26 @@ export function appendStoppedMessage(
 }
 
 /**
+ * Cut the transcript at a user turn — the edit-and-resend rewind
+ * (PRODUCT-1217), mirroring the runtime's truncate route: everything from the
+ * turn's first message onward is dropped. Returns false (404 at the route)
+ * when the turn id is not in the transcript.
+ */
+export function truncateHistory(
+  agentId: string,
+  conversationId: string,
+  turnId: string,
+): boolean {
+  const key = `${agentId}:${conversationId}`;
+  const list = state.histories.get(key) ?? [];
+  const at = list.findIndex((m) => m.turnId === turnId);
+  if (at === -1) return false;
+  state.histories.set(key, list.slice(0, at));
+  emitDomain("ConversationsChanged", agentId);
+  return true;
+}
+
+/**
  * Persist the assistant reply at turn END, stamped with the same turn id.
  * A turn that ended on an interaction persists it ON the reply, matching the
  * real runtime (`exec-turn.ts` clean path) — so a client that settles from

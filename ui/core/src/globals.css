@@ -74,6 +74,14 @@
   --color-chip-solid-hover: var(--ht-chip-solid-hover);
   --color-chip-text: var(--ht-chip-text);
   --color-chip-subtle: var(--ht-chip-subtle);
+  /* The user chat bubble's text: pure white in BOTH themes (PRODUCT-1217) —
+     the near-white grays (input / ink) read dull over the bubble fill. */
+  --color-bubble-text: var(--ht-bubble-text);
+  /* The AGENT's long-form chat prose (PRODUCT-1217). Identical to `ink` in
+     light; in dark it steps up to pure white, where `ink`'s #e5e5e5 reads
+     dim beside the user bubble. Scoped to chat so the app's primary text
+     (sidebar, board, settings) keeps the softer reading gray. */
+  --color-prose-text: var(--ht-prose-text);
   --color-ink-muted: var(--ht-ink-muted);
   --color-hover: var(--ht-hover);
   --color-hover-text: var(--ht-hover-text);
