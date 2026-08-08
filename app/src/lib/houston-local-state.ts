@@ -52,7 +52,10 @@ const DEVICE_LOCAL_KEY_PREFIXES = [
  *  layouts, read cursors, agent colors, onboarding mirrors, provider-status
  *  caches, the last-sign-in hint — while keeping the device-level keys above.
  *  Runs on every sign-out (PRODUCT-1235): no trace of the outgoing account may
- *  survive into the next sign-in. */
+ *  survive into the next sign-in. Durable per-account state must therefore
+ *  live server-side: `onboarding_completed` is an ACCOUNT preference behind
+ *  `/v1/preferences/:key` (PRODUCT-1282) — wiping its device mirror here must
+ *  never re-onboard a returning user. */
 export function purgeAccountLocalState(storage: KeyedStorage): void {
   const doomed: string[] = [];
   for (let i = 0; i < storage.length; i++) {

@@ -130,6 +130,40 @@ test("device keys never touch the network", async () => {
   expect(calls).toEqual([]);
 });
 
+// PRODUCT-1282: sign-out purges every account-scoped localStorage key, so a
+// device-local `onboarding_completed` died with the session and the next
+// sign-in re-onboarded a returning user. As an account key it lives behind
+// `/v1/preferences/:key`, survives sign-out, and follows the account across
+// devices; the mixin's legacy lift migrates a pre-fix device copy up once.
+test("onboarding_completed is an account key — sign-out must not erase it", async () => {
+  stubFetch(json(200, { value: "1" }));
+
+  await expect(
+    client(true).getPreference("onboarding_completed"),
+  ).resolves.toBe("1");
+  expect(calls).toEqual([
+    {
+      url: "http://host/v1/preferences/onboarding_completed",
+      method: "GET",
+      body: null,
+    },
+  ]);
+});
+
+test("a pre-fix device-local onboarding_completed is lifted to the account", async () => {
+  store.set("houston.pref.onboarding_completed", "1");
+  stubFetch(json(200, { value: null }), json(200, { value: "1" }));
+
+  await expect(
+    client(true).getPreference("onboarding_completed"),
+  ).resolves.toBe("1");
+  expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
+    "GET http://host/v1/preferences/onboarding_completed",
+    "PUT http://host/v1/preferences/onboarding_completed",
+  ]);
+  expect(store.has("houston.pref.onboarding_completed")).toBe(false);
+});
+
 test("locale, legal_acceptance and the migration flag are account keys", async () => {
   stubFetch(
     json(200, { value: "es" }),

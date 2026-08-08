@@ -1,14 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import {
+  type AccountFlagRead,
+  resolveOnboardingCompleted,
+} from "../lib/onboarding-completed-policy";
 import { queryKeys } from "../lib/query-keys";
 import { tauriPreferences } from "../lib/tauri";
 import { useSession } from "./use-session";
 
 /**
- * Engine-preference key for the durable "this install has finished first-run
- * onboarding" flag. Stored as an opaque string in `~/.houston` prefs (same
- * mechanism as `onboarding_pending` / `legal_acceptance`), so it survives an
- * app restart.
+ * Preference key for the durable "this user has finished first-run onboarding"
+ * flag. An ACCOUNT preference (PRODUCT-1282): it rides `/v1/preferences/:key`
+ * on the host/gateway like `legal_acceptance`, so it survives sign-out — which
+ * purges every account-scoped localStorage key — and follows the account to
+ * new devices. A device-local copy died with the session, and the next
+ * sign-in re-onboarded a returning user whose agent list read empty for a
+ * moment (warming pod).
  */
 export const ONBOARDING_COMPLETED_KEY = "onboarding_completed";
 
@@ -18,12 +25,13 @@ function onboardingCompletedLocalKey(uid: string | null): string {
   return `houston.onboarding-completed.${uid ?? "local"}`;
 }
 
-// Device-local mirror of the completed flag (per signed-in uid). The engine
-// preference lives on the user's pod in hosted mode, so a pod blip or a failed
+// Device-local mirror of the completed flag (per signed-in uid). The account
+// preference lives behind the host/gateway, so an unreachable host or a failed
 // write would resolve `isCompleted=false` and re-onboard a real user (zero
 // cloud agents after a migration / delete-all). The mirror keeps the flag
-// reading completed per user per device even when the engine pref is
-// unreachable. localStorage failures are non-fatal (behaves as before).
+// reading completed per user per device even when the account pref is
+// unreachable. Sign-out purges it — the account pref is the durable copy.
+// localStorage failures are non-fatal (behaves as before).
 function readLocalMirror(uid: string | null): boolean {
   try {
     return localStorage.getItem(onboardingCompletedLocalKey(uid)) === "1";
@@ -58,7 +66,7 @@ export interface OnboardingCompletedState {
 }
 
 /**
- * Durable record that first-run onboarding is behind this install.
+ * Durable record that first-run onboarding is behind this account.
  *
  * `isFirstRun` (App.tsx) reports first-run from a ZERO-AGENT workspace on the v3
  * control plane. That signal cannot tell "never onboarded" apart from "onboarded
@@ -71,7 +79,8 @@ export interface OnboardingCompletedState {
  *
  * Hardened like `useOnboardingSegment`: keyed by uid (no stale value across a
  * user switch) with a uid-keyed localStorage mirror, so a failed or unreachable
- * engine pref read never DOWNGRADES a completed user back into onboarding.
+ * account pref read never DOWNGRADES a completed user back into onboarding.
+ * The merge itself is `resolveOnboardingCompleted` (pure, unit-tested).
  */
 export function useOnboardingCompleted(): OnboardingCompletedState {
   const qc = useQueryClient();
@@ -81,22 +90,28 @@ export function useOnboardingCompleted(): OnboardingCompletedState {
   const query = useQuery({
     queryKey: queryKeys.onboardingCompleted(uid),
     queryFn: async (): Promise<boolean> => {
-      let fromEngine = false;
+      let account: AccountFlagRead = "unreachable";
       try {
         const raw = await tauriPreferences.get(ONBOARDING_COMPLETED_KEY);
-        fromEngine = raw?.trim() === "1";
+        account = raw?.trim() === "1" ? "completed" : "unset";
       } catch {
-        // Engine unreachable (hosted pod waking / provisioning) — fall through
-        // to the local mirror rather than re-onboarding a completed user.
+        // Host unreachable (waking / offline) — fall through to the local
+        // mirror rather than re-onboarding a completed user.
       }
-      if (fromEngine) {
-        writeLocalMirror(uid); // refresh the mirror
-        return true;
+      const resolved = resolveOnboardingCompleted(
+        account,
+        readLocalMirror(uid),
+      );
+      if (resolved.refreshMirror) writeLocalMirror(uid);
+      if (resolved.healAccount) {
+        // The mirror says completed but the account pref is missing (pre-fix
+        // device-local completion, or a lost write): stamp it back up so the
+        // flag survives the NEXT sign-out too. Best-effort, off the boot path.
+        tauriPreferences.set(ONBOARDING_COMPLETED_KEY, "1").catch((e) => {
+          console.error("[onboarding-completed] account pref heal failed", e);
+        });
       }
-      // Upgrade-only: an unset engine pref with a set mirror still reads
-      // completed (the engine write was lost / the pod was reset), never the
-      // reverse.
-      return readLocalMirror(uid);
+      return resolved.completed;
     },
     staleTime: 30_000,
   });
@@ -104,14 +119,14 @@ export function useOnboardingCompleted(): OnboardingCompletedState {
   const { mutateAsync } = useMutation({
     mutationFn: async () => {
       // The local mirror is written FIRST: once completed, this device must
-      // never re-onboard the user even if the engine write fails.
+      // never re-onboard the user even if the account write fails.
       writeLocalMirror(uid);
       try {
         await tauriPreferences.set(ONBOARDING_COMPLETED_KEY, "1");
       } catch (e) {
-        // Best-effort: the flag is kept locally; the engine pref catches up on
-        // a later mark or stays device-local. Logged, never blocks the flow.
-        console.error("[onboarding-completed] engine pref write failed", e);
+        // Best-effort: the flag is kept locally; the next boot's queryFn heals
+        // the account pref from the mirror. Logged, never blocks the flow.
+        console.error("[onboarding-completed] account pref write failed", e);
       }
     },
     onSuccess: () => {
