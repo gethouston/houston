@@ -278,8 +278,16 @@ test("edits a previous user message in place and rewinds the conversation", asyn
   // turn whenever this one's button has not mounted yet.
   const secondRow = userRow(page, "second message");
   const secondBubble = page.getByText("second message", { exact: true });
-  await secondRow.hover();
-  await secondRow.getByRole("button", { name: "Edit message" }).click();
+  // Hover + click under toPass, re-hovering each retry: the action row only
+  // renders once the turn has SETTLED (the reply's text paints before the VM
+  // flips idle), and a feed re-render between hover and click loses the
+  // reveal — a single hover-then-click races both.
+  await expect(async () => {
+    await secondRow.hover();
+    await secondRow
+      .getByRole("button", { name: "Edit message" })
+      .click({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   const editor = page.getByRole("textbox", { name: "Edit message" });
   await expect(editor).toHaveValue("second message");
   // The composer is untouched — editing happens in the bubble.
@@ -290,9 +298,13 @@ test("edits a previous user message in place and rewinds the conversation", asyn
   await expect(editor).not.toBeVisible();
   await expect(secondBubble).toBeVisible();
 
-  // ...and a fresh edit sends the rewind.
-  await secondRow.hover();
-  await secondRow.getByRole("button", { name: "Edit message" }).click();
+  // ...and a fresh edit sends the rewind. Same re-hovering retry as above.
+  await expect(async () => {
+    await secondRow.hover();
+    await secondRow
+      .getByRole("button", { name: "Edit message" })
+      .click({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await editor.fill("second message, edited");
   await page.getByRole("button", { name: "Send", exact: true }).click();
 
