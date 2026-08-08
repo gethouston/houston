@@ -40,6 +40,25 @@ const pi = (await import(
 // on the `minimax` provider (same endpoint/auth, 1M-context tier — HOU-1160).
 const HOUSTON_INJECTED_MODELS = new Set(["minimax/MiniMax-M3[1m]"]);
 
+// Houston's own `qwen` extension provider is appended to /v1/catalog by the
+// host (packages/host/src/providers/qwen-dashscope.ts) — the guard validates
+// against the catalog Houston actually serves, which is pi PLUS the extension.
+const qwenExtension = (await import(
+  new URL(
+    "../../packages/host/src/providers/qwen-dashscope.ts",
+    import.meta.url,
+  ).href
+)) as {
+  QWEN_PROVIDER_ID: string;
+  qwenModels(): { id: string }[];
+};
+
+function shippedModel(provider: string, id: string): unknown {
+  if (provider === qwenExtension.QWEN_PROVIDER_ID)
+    return qwenExtension.qwenModels().find((m) => m.id === id);
+  return pi.getModel(provider, id);
+}
+
 // Houston provider id → pi provider id (reverse of PROVIDER_ID_RENAME, which is
 // pi → Houston, e.g. `openai-codex` → `openai`). Identity for every other id.
 const houstonToPi: Record<string, string> = {};
@@ -47,7 +66,10 @@ for (const [piId, houstonId] of Object.entries(PROVIDER_ID_RENAME))
   houstonToPi[houstonId] = piId;
 
 describe("PROVIDER_OVERRIDES stay in sync with the shipped pi-ai catalog", () => {
-  const piProviders = new Set(pi.getProviders());
+  const piProviders = new Set([
+    ...pi.getProviders(),
+    qwenExtension.QWEN_PROVIDER_ID,
+  ]);
 
   for (const [houstonId, override] of Object.entries(PROVIDER_OVERRIDES)) {
     const piId = houstonToPi[houstonId] ?? houstonId;
@@ -73,10 +95,10 @@ describe("PROVIDER_OVERRIDES stay in sync with the shipped pi-ai catalog", () =>
         });
         continue;
       }
-      it(`${houstonId}/${modelId} exists in pi-ai`, () => {
+      it(`${houstonId}/${modelId} exists in the shipped catalog`, () => {
         ok(
-          pi.getModel(piId, modelId) != null,
-          `PROVIDER_OVERRIDES["${houstonId}"].models["${modelId}"] is an orphan: pi-ai (provider "${piId}") ships no such model. Remove it or fix the id.`,
+          shippedModel(piId, modelId) != null,
+          `PROVIDER_OVERRIDES["${houstonId}"].models["${modelId}"] is an orphan: the shipped catalog (provider "${piId}") has no such model. Remove it or fix the id.`,
         );
       });
     }
@@ -91,10 +113,10 @@ describe("VISIBLE_MODELS stay in sync with the shipped pi-ai catalog", () => {
     const piId = houstonToPi[houstonId] ?? houstonId;
 
     for (const modelId of visible) {
-      it(`${houstonId}/${modelId} exists in pi-ai`, () => {
+      it(`${houstonId}/${modelId} exists in the shipped catalog`, () => {
         ok(
-          pi.getModel(piId, modelId) != null,
-          `VISIBLE_MODELS["${houstonId}"] lists "${modelId}", which pi-ai (provider "${piId}") does not ship. Remove it or fix the id.`,
+          shippedModel(piId, modelId) != null,
+          `VISIBLE_MODELS["${houstonId}"] lists "${modelId}", which the shipped catalog (provider "${piId}") does not offer. Remove it or fix the id.`,
         );
       });
     }

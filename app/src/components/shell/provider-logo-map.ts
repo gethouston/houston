@@ -110,6 +110,9 @@ export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   "xiaomi-token-plan-ams": "xiaomi",
   "xiaomi-token-plan-cn": "xiaomi",
   "xiaomi-token-plan-sgp": "xiaomi",
+  "qwen-token-plan": "qwen",
+  "qwen-token-plan-cn": "qwen",
+  "qwen-token-plan-individual": "qwen",
   // AI-hub lab ids (see `catalog-lab.ts`) that differ from the provider id.
   // Most lab ids ARE provider ids (anthropic, openai, mistral, deepseek, xai,
   // minimax, zai, nvidia, meta, qwen, cohere, ...) so `providerBrandKey`

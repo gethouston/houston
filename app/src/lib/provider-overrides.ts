@@ -652,6 +652,20 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     // (`provider-api-key-guide.tsx`).
     apiKeyUrl: "https://org.ngc.nvidia.com/setup/api-keys",
   },
+  // Houston's qwen extension provider (not a pi builtin — the host appends it
+  // to /v1/catalog, see packages/host/src/providers/qwen-dashscope.ts): Qwen
+  // on Alibaba Model Studio's INTERNATIONAL pay-as-you-go endpoint, the home
+  // for regular (free-quota) Model Studio keys the Token Plan card rejects.
+  qwen: {
+    name: "Qwen",
+    subtitle: "Alibaba Model Studio",
+    description: "Qwen models from Alibaba, pay as you go.",
+    cost: "Free quota, then pay as you go",
+    installUrl: "https://modelstudio.console.alibabacloud.com",
+    apiKeyUrl:
+      "https://modelstudio.console.alibabacloud.com/?tab=playground#/api-key",
+    defaultModel: "qwen3.7-max",
+  },
   // Alibaba's prepaid token bundles for Qwen (+ hosted open models). The
   // endpoint only accepts the DEDICATED Token Plan API key minted after
   // purchasing a plan and assigning its seat — a regular Model Studio key gets
@@ -669,6 +683,20 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-team-quickstart",
     // pi lists this multi-vendor catalog alphabetically, which would make
     // MiniMax the default on a card named Qwen.
+    defaultModel: "qwen3.7-max",
+  },
+  // pi 0.84's individual (personal) tier of the same product — same endpoint,
+  // its own dedicated-key + seat purchase flow, so the same guidance applies.
+  "qwen-token-plan-individual": {
+    name: "Qwen Token Plan Individual",
+    subtitle: "Alibaba Cloud personal token plan",
+    description: "Qwen and hosted open models on a personal token plan.",
+    cost: "Requires a purchased token plan",
+    billing: "subscription",
+    installUrl:
+      "https://www.alibabacloud.com/help/en/model-studio/token-plan-individual-quickstart",
+    apiKeyUrl:
+      "https://www.alibabacloud.com/help/en/model-studio/token-plan-individual-quickstart",
     defaultModel: "qwen3.7-max",
   },
   "google-vertex": {
