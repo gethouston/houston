@@ -1,1304 +1,671 @@
-# Integrations (Composio platform mode + custom integrations)
+# Integrations (Composio platform mode)
 
-How Houston connects third-party apps (Gmail, Slack, …) so agents can act on
-them. TWO providers live behind the port today: **Composio** (the hosted
-catalog) and **`custom`** (user-added OpenAPI/MCP sources, HOU-550 — §4). This
-doc covers the host architecture, the app-usage policy (allowlist ceilings; the
-per-agent grants layer was removed), the UI map, and the custom-integrations
-engine.
+How Houston connects third-party apps (Gmail, Slack, …) so agents can act on them.
+Two providers live behind the port: **Composio** (the hosted catalog, this doc) and
+**`custom`** (user-added OpenAPI/MCP sources →
+[custom-integrations.md](custom-integrations.md)). Event-driven routine wakes →
+[routine-triggers.md](routine-triggers.md).
 
-> Not an AI provider. Integrations are tool connections, NOT LLM providers — they
+> Not an AI provider. Integrations are tool connections, never LLM providers — they
 > go through `IntegrationProvider`, never the pi provider registry.
 
 ---
 
 ## 1. Platform-mode architecture (host)
 
-**Platform model.** Houston holds ONE Composio project API key. Every Houston
-user is a plain Composio `user_id` under that project; users never create a
-Composio account, they only OAuth the app itself (Composio hosts the dance). The
-key is cloud/self-host only — it must never ship in a client binary.
+- **Platform model.** Houston holds ONE Composio project API key. Every Houston user
+  is a plain Composio `user_id` under that project; users never create a Composio
+  account, they only OAuth the app itself (Composio hosts the dance). The key is
+  cloud/self-host only — it must never ship in a client binary.
+- **The port** — `packages/host/src/integrations/provider.ts` `IntegrationProvider`:
+  `readiness`, `listToolkits`, `listConnections(userId)`, `connect(userId, toolkit)`,
+  `connection`, `disconnect`, plus the two the agent's generic tools call:
+  `search(userId, query, acting?)` and `execute(userId, action, params, acting?)`.
+  Host routes + tools depend ONLY on this interface; no provider SDK or wire type
+  leaks past its adapter. Availability is a capability flag
+  (`/v1/capabilities` `integrations`), not a forked build.
+- **Registry** (`registry.ts`) — `IntegrationRegistry` keyed by provider id. An empty
+  registry is valid (integrations off → capability false, routes 404/503). A
+  duplicate id throws (wiring bug); an unknown id throws (never silently undefined).
 
-**The port** — `packages/host/src/integrations/provider.ts`
-`IntegrationProvider`: `readiness`, `listToolkits`, `listConnections(userId)`,
-`connect(userId, toolkit)`, `connection`, `disconnect`, plus the two the agent's
-generic tools call: `search(userId, query, acting?)` and
-`execute(userId, action, params, acting?)`. Host routes + tools depend ONLY on
-this interface; no provider SDK/wire type leaks past its adapter. Availability is
-a capability flag (`/v1/capabilities` `integrations`), not a forked build — same
-code everywhere, no drift.
+### Two adapters, one interface
 
-**Two adapters, one interface:**
-- `ComposioProvider` (`composio.ts`) — the **direct** adapter. Speaks Composio v3
-  REST directly (`x-api-key`), no CLI/SDK. Used by cloud + self-host, which hold
-  the key. `userId` scopes each user's connections. Connect uses
-  `POST /api/v3.1/connected_accounts/link`. Every `/tools` read and execute pins
-  Composio's TOOL VERSION to `latest` (`TOOL_VERSION`): the v3 endpoints default
-  to the frozen base snapshot `00000000_00`, whose connector code ages until the
-  third-party API retires what it depends on (prod: LinkedIn create-post 426
-  NONEXISTENT_VERSION from a retired `Linkedin-Version` header) and which hides
-  every tool added since the snapshot. Search and execute pin TOGETHER so the
-  schema the model read and the connector that runs are the same version.
-- `RemoteIntegrationProvider` (`remote.ts`) — the **gateway** adapter, the
-  desktop's provider. The desktop holds NO key: every port call is forwarded to
-  Houston's cloud host `/v1/integrations/*` with the user's Firebase (GCIP) session
-  (ID token). The upstream verifies the JWT and re-derives the Composio `user_id` from
-  its `sub`, so a client can never act as another user and connections follow the
-  user across desktop and cloud. The port's `userId` args are ignored here.
+- **`ComposioProvider` (`composio.ts`) — the DIRECT adapter.** Speaks Composio v3
+  REST directly (`x-api-key`), no CLI/SDK. Used by cloud + self-host, which hold the
+  key. `userId` scopes each user's connections. Connect uses
+  `POST /api/v3.1/connected_accounts/link`.
+  - Every `/tools` read and execute pins Composio's TOOL VERSION to `latest`
+    (`TOOL_VERSION`). The v3 endpoints otherwise default to the frozen base snapshot
+    `00000000_00`, whose connector code ages until the third-party API retires what
+    it depends on (prod symptom: LinkedIn create-post `426 NONEXISTENT_VERSION` from a
+    retired `Linkedin-Version` header) and which hides every tool added since.
+    **Search and execute pin TOGETHER** so the schema the model read and the connector
+    that runs are the same version.
+- **`RemoteIntegrationProvider` (`remote.ts`) — the GATEWAY adapter**, the desktop's
+  provider. The desktop holds NO key: every port call forwards to Houston's cloud host
+  `/v1/integrations/*` with the user's Firebase (GCIP) ID token. The upstream verifies
+  the JWT and re-derives the Composio `user_id` from its `sub`, so a client can never
+  act as another user and connections follow the user across desktop and cloud. The
+  port's `userId` args are ignored here.
+- **Session sync (desktop).** The frontend owns the GCIP session (refresh via
+  `app/src/lib/identity/refresh.ts`); `setIntegrationSession(token | null)` pushes the
+  current token (null on sign-out). With no session the adapter reports not-ready and
+  throws `IntegrationSigninRequiredError`, surfaced as an actionable 409 / sign-in
+  state.
+- **Sandbox path.** The agent runtime never talks to a provider directly. Its generic
+  tools call the host over the per-sandbox proxy
+  (`routes/integrations-sandbox.ts`); the sandbox HMAC token binds
+  `{workspaceId, agentId}` (`EnvCredentialVault`), so the route knows which agent is
+  acting without extra plumbing. `search`/`execute` receive the `ActingContext` (C2):
+  `actingAs` (per-turn token) or `actingUser` (routine creator's `sub`); the direct
+  adapter ignores both — identity is the verified `userId`.
 
-**Registry** (`registry.ts`) — `IntegrationRegistry` keyed by provider id. Empty
-registry is valid (integrations off → capability false, routes 404/503). Duplicate
-id is a wiring bug (throws), unknown id throws (never silently undefined).
+### App-status taxonomy (HOU-681)
 
-**Session sync (desktop).** The frontend owns the Firebase (GCIP) session (refresh
-via `app/src/lib/identity/refresh.ts`); the gateway
-adapter needs it fresh. `setIntegrationSession(token | null)` pushes the current
-token (null on sign-out). With no session the adapter reports not-ready and throws
-`IntegrationSigninRequiredError`, surfaced as an actionable 409/sign-in state.
+Every search result carries an `IntegrationAppStatus`
+(`packages/host/src/integrations/types.ts`) — the load-bearing enum telling the agent
+which of four speech acts to perform:
 
-**Sandbox path.** The agent runtime never talks to a provider directly. Its
-generic tools call the host over the per-sandbox proxy
-(`routes/integrations-sandbox.ts`); the sandbox HMAC token binds
-`{workspaceId, agentId}` (`EnvCredentialVault`), so the route knows which agent is
-acting without extra plumbing. `search`/`execute` receive the `ActingContext`
-(C2): `actingAs` (per-turn token) or `actingUser` (routine creator's `sub`); the
-direct adapter ignores both (identity is the verified `userId`).
+| Status | Meaning | The agent's move |
+| --- | --- | --- |
+| `connected` | acting user has an active connection | use it |
+| `connectable` | a real toolkit, not connected yet | briefly offer + `request_connection` |
+| `blocked` | a real toolkit outside this agent's allowlist | say it can be switched on in the agent's Settings, under Apps; never imply Houston lacks it, never `request_connection` |
+| `unknown` | not a recognized toolkit (reserved; today an unrecognized query is simply an EMPTY result) | say plainly no such app is available |
 
-### Search flow + app-status taxonomy (HOU-681)
+- **`blocked` is produced solely by the closed cloud gateway** (Teams v2, C7), which
+  annotates its `/search` items and strips their `inputParams`. Nothing in THIS repo
+  emits it — the direct adapter only knows `connected`/`connectable`. It is an
+  AGENT-facing enum read in a tool result; **no client surface renders it**.
+- `connected` is kept alongside the legacy `connected` boolean (HOU-670 keeps
+  `connected === false` matches discoverable for the in-chat connect card); `status`
+  is the additive superset.
+- The gateway adapter reads each `/search` item TOLERANTLY: a valid `status` passes
+  through verbatim; an absent or unrecognized one derives from the `connected`
+  boolean (`statusFromConnected`). The field is never required.
 
-**The status contract.** Every search result carries an `IntegrationAppStatus`
-(`packages/host/src/integrations/types.ts`) — the load-bearing enum that tells
-the agent which of four speech acts to perform:
+### Search flow (direct adapter)
 
-- `connected` — the acting user has an active connection: use it.
-- `connectable` — a real toolkit, not connected yet: OFFER to connect
-  (`request_connection`).
-- `blocked` — a real toolkit outside this agent's allowlist (turned OFF in the
-  agent's Settings, under Apps): tell the user it can be switched on there — whoever
-  manages the agent can do it, otherwise they ask whoever does — never imply
-  Houston lacks it, never `request_connection`. Rendered `, TURNED OFF` in the tool
-  list. **`blocked` is produced solely by the closed cloud gateway** (Teams v2,
-  C7), which annotates its `/search` items with `status: "blocked"` for allowlist-
-  excluded toolkits and strips their `inputParams`; nothing in THIS repo emits it
-  (the direct adapter only knows `connected`/`connectable`). It is an AGENT-facing
-  enum, read by the model in a tool result — no client surface renders it.
-- `unknown` — not a recognized toolkit (reserved; today an unrecognized query is
-  simply the EMPTY result).
+`composio.ts` → `composio-search.ts` runs THREE lookups and merges them (scoped
+first, deduped by action, then catalog entries):
 
-`connected` is kept alongside the legacy `connected` boolean (HOU-670 keeps
-`connected === false` matches discoverable for the in-chat connect card);
-`status` is the additive superset.
-
-**Direct-adapter search** (`composio.ts` → `composio-search.ts`): the old
-connected-scoped short-circuit is GONE (its bug: a connected-Gmail user could not
-discover Google Sheets, because a scoped hit `return`ed before global ran). Search
-now runs THREE lookups and merges them (scoped first, deduped by action, then
-catalog entries):
 1. **scoped** query over the user's CONNECTED toolkits (precision; degrades to
    LISTING their actions on a zero-hit everyday phrasing), then
 2. **global** query — ALWAYS runs, never short-circuited, so new apps are
-   discoverable, then
-3. **catalog resolution** — Composio's action full-text scores ~zero for a plain
-   app NAME, so the query is resolved against the toolkits catalog
-   (`GET /api/v3/toolkits`, cached in-process, 1h TTL, shared in-flight promise)
-   to a real slug and surfaced as a **toolkit-level entry** (`action: ""`) even
-   when no action scored — so the model always learns the slug to pass
-   `request_connection`. Status is derived from the acting user's active
-   connections (`connected`/`connectable`; the direct adapter cannot emit
-   `blocked`/`unknown`).
+   discoverable. (The old connected-scoped short-circuit meant a connected-Gmail user
+   could not discover Google Sheets.) Then
+3. **catalog resolution** — Composio's action full-text scores ~zero for a plain app
+   NAME, so the query is resolved against the toolkits catalog
+   (`GET /api/v3/toolkits`, cached in-process, 1h TTL, shared in-flight promise) to a
+   real slug and surfaced as a **toolkit-level entry** (`action: ""`) even when no
+   action scored — so the model always learns the slug to pass `request_connection`.
 
-**Gateway adapter** (`remote.ts`) reads each `/search` item TOLERANTLY: a valid
-`status` passes through verbatim (a future gateway sending `blocked`); an absent
-or unrecognized `status` (today's gateway) derives from the `connected` boolean
-(`statusFromConnected`). The new field is never required.
+Status is derived from the acting user's active connections.
 
-**Runtime tool text** (`packages/runtime/src/session/tools/integrations.ts`) is
-status-aware: connected actions as before; `connectable` entries name the exact
-slug and teach `request_connection`; `blocked` (rendered `, TURNED OFF`) tells the
-user to switch the app on in the agent's Settings, under Apps, and forbids
-`request_connection`; a genuinely EMPTY result says no such app/action exists (a
-real not-found, NOT a policy block).
+### Runtime tool text + refusals
 
-**Execute-time allowlist refusal.** The gateway 403s an out-of-allowlist
-`execute` with `{code:"toolkit_not_allowed"}` (the sole execute gate, C7). The
-sandbox proxy relays that body verbatim (`integrationUpstreamErrorFromResponse` →
-`IntegrationUpstreamError` → `relayIntegrationUpstreamError`, preserving the JSON
-`code`), so `integration_execute` classifies it by its stable `code`, never the
-bare 403, and RETURNS
-guidance (the app is turned off for this agent; tell the user to enable it in the
-Settings, under Apps; do not retry until they confirm), never a thrown/raw error.
-Marked `details.appTurnedOff`.
-
-**No access to the agent (HOU-967).** The gateway 403s with `{code:"not_assigned"}`
-when the acting user is not one of the people with access to the agent. BOTH
-`integration_search` and `integration_execute` classify that code and RETURN
-guidance (the user has no access; someone who manages the agent gives it to them in
-Permissions > this agent > People; do not retry, do not `request_connection`),
-marked `details.noAgentAccess`. The gateway's own phrasing ("isn't assigned to you")
-and its JSON body never reach the model — it paraphrases whatever we hand it.
-Same rule for any OTHER unrecognized 4xx: the body is REDACTED from the thrown
-message, leaving `integrations <path> failed (<status>[, code <code>])` plus a plain
-instruction not to quote technical detail. Uncoded 5xx keeps its body (transient,
-diagnostic).
-
-**Prompt contract — the four speech acts.** `packages/host/src/houston-prompt.ts`
-INTEGRATIONS section and its verbatim Rust mirror
-`app/src-tauri/src/houston_prompt/integrations.rs` (`PI_INTEGRATIONS_GUIDANCE`,
-kept in sync) instruct: connected → use it; connectable → briefly offer +
-`request_connection`; blocked → tell the user it can be switched on in this
-agent's Settings, under Apps, someone who manages the agent can do it (never imply
-Houston lacks it, never `request_connection`); unknown/empty → say plainly no such
-app is available. An empty result never means an app is unsupported — trust the
-reported status.
+- `packages/runtime/src/session/tools/integrations.ts` is status-aware: connected
+  actions as before; `connectable` entries name the exact slug and teach
+  `request_connection`; `blocked` renders `, TURNED OFF` and forbids
+  `request_connection`; a genuinely EMPTY result says no such app/action exists (a
+  real not-found, NOT a policy block).
+- **Execute-time allowlist refusal.** The gateway 403s an out-of-allowlist `execute`
+  with `{code:"toolkit_not_allowed"}` (the sole execute gate, C7). The sandbox proxy
+  relays that body verbatim (`integrationUpstreamErrorFromResponse` →
+  `IntegrationUpstreamError` → `relayIntegrationUpstreamError`, preserving the JSON
+  `code`), so `integration_execute` classifies by the stable `code`, never the bare
+  403, and RETURNS guidance (the app is turned off for this agent; tell the user to
+  enable it in Settings, under Apps; do not retry until they confirm) — never a
+  thrown/raw error. Marked `details.appTurnedOff`.
+- **No access to the agent (HOU-967).** The gateway 403s `{code:"not_assigned"}` when
+  the acting user is not one of the people with access. BOTH `integration_search` and
+  `integration_execute` classify it and RETURN guidance (someone who manages the agent
+  grants access in Permissions > this agent > People; do not retry, do not
+  `request_connection`), marked `details.noAgentAccess`. The gateway's own phrasing
+  and JSON body never reach the model.
+- **Any OTHER unrecognized 4xx**: the body is REDACTED from the thrown message,
+  leaving `integrations <path> failed (<status>[, code <code>])` plus a plain
+  instruction not to quote technical detail. Uncoded 5xx keeps its body (transient,
+  diagnostic).
+- **Prompt contract** — the four speech acts live in
+  `packages/host/src/houston-prompt.ts` INTEGRATIONS section and its verbatim Rust
+  mirror `app/src-tauri/src/houston_prompt/integrations.rs`
+  (`PI_INTEGRATIONS_GUIDANCE`, kept in sync). An empty result never means an app is
+  unsupported — trust the reported status.
 
 ---
 
 ## 2. App-usage policy — which agents may use which app
 
 **Usable = connection ∩ effective allowlist.** An agent may use an app when the
-acting user has an ACTIVE connection to it AND the toolkit sits inside the agent's
-effective allowlist ceiling. There is NO separate per-`(user, agent)` GRANTS
-layer any more — the entire grants system (app UI, engine-client + adapters, host
-routes + file/memory stores, and the sandbox search-filter / execute 403) was
-removed. This open host neither reads nor enforces grants: the sandbox proxy runs
-`search`/`execute` UNFILTERED. Ceilings are the only policy.
-
-### Enforcement lives in the cloud gateway (pending its own change)
-Policy enforcement is the CLOSED cloud gateway's job, not this repo. The gateway
-narrows `search` and refuses `execute` outside the effective allowlist; its own
-legacy grant-enforcement code is being retired in a SEPARATE cloud change
-(cross-ref `cloud/docs/contracts/C4-grants.md` + `C1-integrations-api.md`).
-Desktop/self-host run this open host with NO server-side policy layer — an
-install with a connection can use the app.
-
-### The per-agent allowlist ceiling is the only policy (Teams v2, C7)
-> **Org-wide ceiling REMOVED (2026-07-16, Felipe: overengineering).** The
-> `org_settings` ceiling, the `OrgSettings` wire type + `getOrgSettings`/
-> `setOrgSettings`/`useOrgSettings` chain, and `AgentSettings.orgAllowedToolkits`
-> are gone. Policy is managed ONLY per agent; a new agent defaults to every app.
-> The gateway-side retirement rides a sibling `cloud` PR.
-
-One ceiling decides usability: the per-**agent** ceiling (`agent_settings`):
+acting user has an ACTIVE connection AND the toolkit sits inside the agent's
+effective allowlist ceiling.
 
 ```
 effectiveAllowlist = agentCeiling ?? ALL
 ```
 
-`null` = unrestricted (ALL), `[]` = none. When the ceiling **shrinks**, the gateway
-prunes now-disallowed toolkits from live connections so revocation takes effect
-immediately. A per-agent **connect carries the agent slug**: the gateway checks
-the toolkit against the allowlist on a successful OAuth (see
-`connectIntegration(provider, toolkit, agent?)`).
+- `null` = unrestricted (ALL), `[]` = none. A new agent defaults to every app.
+- **There is no org-wide ceiling.** Removed 2026-07-16 as overengineering: the
+  `org_settings` ceiling, the `OrgSettings` wire type,
+  `getOrgSettings`/`setOrgSettings`/`useOrgSettings`, and
+  `AgentSettings.orgAllowedToolkits` are all gone. **There is no "Allowed
+  integrations" tab on the Admin page** — `OrgTabId` is
+  `people | activity | usage | billing` (`components/organization/org-view-model.ts`).
+- **There is no per-`(user, agent)` GRANTS layer.** The entire grants system (app UI,
+  engine-client + adapters, host routes + file/memory stores, and the sandbox
+  search-filter / execute 403) was removed. This open host neither reads nor enforces
+  grants: the sandbox proxy runs `search`/`execute` UNFILTERED.
+- **Enforcement lives in the closed cloud gateway.** It narrows `search` and refuses
+  `execute` outside the effective allowlist; when the ceiling **shrinks** it prunes
+  now-disallowed toolkits from live connections so revocation takes effect
+  immediately, and a per-agent connect carries the agent slug so the toolkit is
+  checked on a successful OAuth (`connectIntegration(provider, toolkit, agent?)`).
+  Cross-ref `cloud/docs/contracts/C4-grants.md` (itself RETIRED) +
+  `C1-integrations-api.md`. Desktop/self-host run this open host with NO server-side
+  policy layer — an install with a connection can use the app.
 
-**Client + UI.** `getAgentSettings` / `setAgentSettings` read/replace the agent
-ceiling (`allowedToolkits` — the whole effective allowlist — plus the caller's
-effective `access`; manager-only write). The ceiling renders through the SHARED
-`AllowlistEditor` (`components/integrations/allowlist-editor.tsx`, i18n-agnostic
-`copy` prop):
-- the **per-agent** editor is `AgentAllowlistSection`
-  (`agent/agent-integrations/agent-allowlist-section.tsx` — a thin wrapper feeding
-  `AllowlistEditor` the `teams:integrations.allowlist.*` copy, the WHOLE catalog as the
-  selectable universe, and a connected-apps seed). It is the **sole survivor** of the
-  deleted per-agent Integrations tab's directory, and it has exactly one mount: the
-  canonical agent settings page's **Apps** section (`AgentAdminIntegrations` →
-  `AgentAllowlistSection`; the AI-models sibling is `AgentAdminModel`). That page is
-  reached through Team Settings or through Settings > Permissions
-  (`knowledge-base/agent-settings.md`).
+### The ceiling editor
 
-The editor's surface is an always-visible two-option choice (`anyLabel` saves
-`null`, `pickedLabel` saves an explicit set; choice keys `question` /
-`policyHelper` / `anyLabel` / `anyDesc` / `pickedLabel` / `pickedDesc` —
-`policyHelper` is the admin-policy helper line noting members still connect their
-own accounts) with a per-app allow toggle, not a dense checklist; `readOnly` mode
-hides "Add apps" and shows a note. Per-agent GRANT toggles are GONE from the
-client: the old by-app lens (the global page detail modal) and by-agent lens (the
-per-agent tab's "Connected, but off for this agent" section) were both removed
-along with the whole app-side grants layer. Full client surface:
-`knowledge-base/teams.md`.
+- `getAgentSettings` / `setAgentSettings` read/replace the agent ceiling
+  (`allowedToolkits` — the whole effective allowlist — plus the caller's effective
+  `access`; manager-only write).
+- Rendered through the SHARED `AllowlistEditor`
+  (`components/integrations/allowlist-editor.tsx`, i18n-agnostic `copy` prop). The
+  per-agent wrapper is `AgentAllowlistSection`
+  (`components/agent/agent-integrations/agent-allowlist-section.tsx`), feeding it the
+  `teams:integrations.allowlist.*` copy, the WHOLE catalog as the selectable
+  universe, and a connected-apps seed. It is the **sole survivor** of the deleted
+  per-agent Integrations tab's directory.
+- **Exactly one mount**: the canonical agent settings page's **Apps** section
+  (`AgentAdminIntegrations` → `AgentAllowlistSection`; the AI-models sibling is
+  `AgentAdminModel`). Reached through Team Settings or Settings > Permissions
+  ([agent-settings.md](agent-settings.md)).
+- The editor's surface is an always-visible two-option choice (`anyLabel` saves
+  `null`, `pickedLabel` saves an explicit set; keys `question` / `policyHelper` /
+  `anyLabel` / `anyDesc` / `pickedLabel` / `pickedDesc` — `policyHelper` notes that
+  members still connect their own accounts) with a per-app allow toggle, not a dense
+  checklist. `readOnly` hides "Add apps" and shows a note.
 
-### Where a member sees the ceiling
+### Where a member sees the ceiling: nowhere
 
-**Nowhere.** The by-agent LENS is gone with the per-agent Integrations tab: no screen lists
-"the apps this agent may use" from a member's side. What remains is the ceiling EDITOR (the
-settings page's Apps section, manager-facing) and the gateway, which is the enforcer.
-`effectiveAccess` (`integrations/effective-access.ts`, the pure `usable | notConnected |
-blockedByAdmin` resolver) was DELETED with the tab that was its only consumer — the rule it
-encoded, **usable = connection ∩ effective allowlist**, still holds server-side, it simply
-has no client surface left to classify.
-
-The **locked-row transparency surface** ("Turned off in your workspace", the ask-your-admin
-line, and the role-aware "Enable it in Permissions" fix) was removed together with the
-per-agent tab that was its only caller; git history is its archive, and the concept may
-return once it has a member-facing home.
+The by-agent LENS went with the per-agent Integrations tab — no screen lists "the
+apps this agent may use" from a member's side. What remains is the ceiling EDITOR
+(manager-facing) and the gateway (the enforcer). `effectiveAccess`
+(`integrations/effective-access.ts`, the pure
+`usable | notConnected | blockedByAdmin` resolver) was DELETED with the tab that was
+its only consumer; the rule it encoded still holds server-side. The locked-row
+transparency surface ("Turned off in your workspace", the ask-your-admin line, the
+role-aware "Enable it in Permissions" fix) was removed for the same reason; git
+history is its archive, and the concept may return once it has a member-facing home.
 
 **Permissions live in exactly ONE place: Settings > Permissions**
-(`app/src/components/permissions/`, settings section id `"permissions"` — it was a
-top-level view until HOU-788). People →
-which agents each member may use; Agents → what each agent may use (the app + model
-allowlist ceilings, mounting the SAME editors — `AgentAdminIntegrations` /
-`AgentAllowlistSection` and `AgentAdminModel` / `AgentModelsSection`). Everywhere else
-in the app shows ZERO permission management, ZERO "which agents use this app"
-displays, and ZERO blocked/locked rows.
+(`app/src/components/permissions/`, settings section id `"permissions"` — a top-level
+view until HOU-788). People → which agents each member may use; Agents → what each
+agent may use (the app + model allowlist ceilings, mounting the SAME editors).
+Everywhere else in the app shows ZERO permission management, ZERO "which agents use
+this app" displays, and ZERO blocked/locked rows.
 
-### The grants system — REMOVED (client AND host)
-The entire per-`(user, agent)` grants plumbing beneath the app was deleted, not
-just the UI:
-- **App**: `useAgentGrants` / `useAgentGrantMutation` / `useAgentGrantToggle` /
-  `useAllAgentGrants` / the `grant-set.ts` helpers, `connected-apps-model`'s
-  `toolkitAgentIds`/`agentChipsFor`, the `agent-chip(s)` "which agents" display,
-  `useConnectFlow`'s `autoGrant` path, `tauriIntegrations.grants/setGrants`, and
-  the `queryKeys.agentGrants` / `["agent-grants"]` invalidation key.
-- **Client chain**: `engine-client` `agentIntegrationGrants()` /
-  `setAgentIntegrationGrants()`, the web engine-adapter mixin + `cp/agent-teams`
-  counterparts, `runtime-client` `getIntegrationGrants` / `putIntegrationGrants`,
-  and the SDK `integrations.grants/setGrants` + `IntegrationsCommand.Grants/SetGrants`.
-- **Host**: `integrations/grants.ts` (`LocalIntegrationGrants`,
-  `filterMatchesToGranted`, `isActionGranted`, `normalizeToolkits`),
-  `grant-store.ts` (the `IntegrationGrantStore` + File/Memory impls), the
-  `GET`/`PUT /v1/agents/:agentId/integration-grants` route, its wiring in
-  `local/host.ts` + `ControlPlaneDeps`, the sandbox search-filter + execute 403,
-  and the store-ir publish-time union with grants. `search`/`execute` now run
-  unfiltered on this host.
-- **fake-host**: the `integration-grants` route + `grants` state map are gone;
-  connections / settings are intact.
-
-**Stale files are inert.** `<agent>/.houston/integration-grants.json` files
-written by earlier builds are IGNORED harmlessly — nothing reads them, no boot
-migration is needed, and no generic globber touches them. They are removed for
-free whenever the agent dir is deleted.
+**Stale files are inert.** `<agent>/.houston/integration-grants.json` written by
+earlier builds is IGNORED — nothing reads it, no boot migration is needed, and it is
+removed for free when the agent dir is deleted.
 
 ---
 
 ## 2b. Confirming an action — model-driven, no host gate (HOU-885)
 
-Confirmation before a write is now a **model-driven `ask_user` question**, not a
-host-side gate. When an agent is about to run a consequential
-`integration_execute` in **Ask first** mode, it asks the user first through the
-normal `ask_user` tool (rendered as a branded confirmation question in chat); the
-model decides when to ask, guided by the prompt. There is NO host approval card,
-no per-action grant, no TTL.
-
-**The host executes every authenticated execute directly.** `/sandbox/integrations/execute`
-(`packages/host/src/routes/integrations-sandbox.ts`) runs the call as soon as the
-sandbox HMAC authenticates it — read or write, every mode. The old execute-time
-gate (the read-only classifier, the Autopilot `x-houston-turn-mode: auto` bypass,
-the fresh-grant check, the 409 `approval_required` response, the display/hash
-helpers, `resolveToolkit`) and its whole store/route/UI stack are DELETED. The
-policy that remains lives ELSEWHERE, untouched: the Planner cannot act at all
-(it blocks writes upstream), and the closed cloud gateway's toolkit allowlist
-still 403s an out-of-allowlist execute (§1, §2).
-
-**Mode semantics.** In **Ask first** the model asks before a consequential write
-via `ask_user`; in **Autopilot** the agent cannot pause on the user, so it does
-not ask — fire-and-forget executes directly. The distinction is purely a prompt/
-model concern now; the host does not read the turn mode for integrations.
-
-**Stale files are inert.** `<agent>/.houston/action-approvals.json` records
-written by earlier builds are ignored — nothing reads them, no migration is
-needed, and they are removed for free whenever the agent dir is deleted.
-
-**Gone entirely:** `packages/host/src/integrations/{action-approvals.ts,
-action-approval-store.ts, action-classification.ts, approvals.ts, agent-file.ts}`,
-`packages/host/src/routes/action-approvals.ts`, the `actionApprovals` dep on
-`ControlPlaneDeps`/`AgentAuthzDeps`, its wiring in `local/host.ts` and the
-`/agents/:id/action-approvals/*` dispatch, and the fake-host `state-action-approvals.ts`
-+ `routes-action-approvals.ts`. The old Always-allow / one-shot-ticket / 15-minute-
-grant systems are all gone with it.
+- Confirmation before a consequential write is a **model-driven `ask_user`
+  question**, rendered by the ordinary question step of the interaction stepper — not
+  a host-side gate and not a Composio-aware approval card.
+- **The host executes every authenticated execute directly.**
+  `/sandbox/integrations/execute` (`routes/integrations-sandbox.ts`) runs the call as
+  soon as the sandbox HMAC authenticates it — read or write, every mode.
+- **Mode semantics** are purely a prompt/model concern now: in **Ask first** the model
+  asks before a consequential write; in **Autopilot** the agent cannot pause on the
+  user, so it fires directly. The host does not read the turn mode for integrations.
+- Policy that remains, untouched: the Planner cannot act at all (it blocks writes
+  upstream), and the gateway's toolkit allowlist still 403s an out-of-allowlist
+  execute (§1, §2).
+- Deleted: `packages/host/src/integrations/{action-approvals.ts,
+  action-approval-store.ts, action-classification.ts, approvals.ts, agent-file.ts}`,
+  `routes/action-approvals.ts`, the `actionApprovals` dep on
+  `ControlPlaneDeps`/`AgentAuthzDeps`, the `/agents/:id/action-approvals/*` dispatch,
+  the fake-host `state-action-approvals.ts` + `routes-action-approvals.ts`, plus
+  `ChatApprovalInteractionCard` / the `renderApproval` prop / the three-way
+  Always-allow / Deny / Allow-once footer and the `approvedLine` / `deniedLine` reply
+  plumbing. The old Always-allow / one-shot-ticket / 15-minute-grant systems went with
+  them.
+- **Stale files are inert.** `<agent>/.houston/action-approvals.json` records are
+  ignored; no migration needed.
 
 ### Branded process-block header while an execute runs (HOU-888)
 
 While an `integration_execute` is the current tool, the chat process-block header
 reads **"Mission in progress: [logo] Gmail · Sending email"** instead of the raw
-`getToolActionLabel` fallback. `ui/chat` stays Composio-unaware: the header gains
-a structured path. `chat-process-header.ts` exposes `getCurrentActionTool`,
-`integrationActionOf(tool)` (short-name `integration_execute` **and** a non-empty
-`input.action` → the action slug; tolerates malformed input), and `buildProcessHeader`
-(a `{kind:"brand"|"text"}` union — brand only when the current tool is a
-resolvable execute). The brand is supplied by the app through the existing
-`processLabels` channel: `ChatProcessLabels.resolveActionBrand?(action)` +
-`activeActionPrefix` (the localized "Mission in progress:" split from the
-`{{action}}` template because the row interleaves an inline logo). The branded
-row renders in `chat-action-brand-line.tsx` (helmet + prefix + logo `size-3.5` +
-`name · actionLabel`, REGULAR weight, shimmer while active, logo drops on error).
+`getToolActionLabel` fallback.
 
-App side (`use-action-brand-resolver.ts`, wired in `use-chat-display-labels.tsx`):
-action → toolkit via `toolkitOfActionSlug(action, catalogSlugs)` (LONGEST catalog
-slug prefixing the action, first-segment fallback — in `integrations/app-display.ts`)
-→ name/logo via the shared `useToolkitBrandResolver` (catalog MISS = prettified
-name, no logo) → present-tense label via `humanizeActionGerund(action, toolkit)`
-(gerund verb map, English by the same rule as `tool-labels.ts`). The mission-log
-ROW is text-only: `tool-labels.ts` now maps `integration_execute`/`integration_search`
-to "Using an app"/"Finding app actions" so raw underscores never leak.
+- `ui/chat` stays Composio-unaware. `chat-process-header.ts` exposes
+  `getCurrentActionTool`, `integrationActionOf(tool)` (short-name
+  `integration_execute` AND a non-empty `input.action` → the action slug; tolerates
+  malformed input), and `buildProcessHeader` (a `{kind:"brand"|"text"}` union — brand
+  only when the current tool is a resolvable execute).
+- The brand is supplied by the app through the existing `processLabels` channel:
+  `ChatProcessLabels.resolveActionBrand?(action)` + `activeActionPrefix` (the
+  localized "Mission in progress:" split from the `{{action}}` template because the
+  row interleaves an inline logo). Rendered by `chat-action-brand-line.tsx` (helmet +
+  prefix + logo `size-3.5` + `name · actionLabel`, REGULAR weight, shimmer while
+  active, logo drops on error).
+- App side (`use-action-brand-resolver.ts`, wired in `use-chat-display-labels.tsx`):
+  action → toolkit via `toolkitOfActionSlug(action, catalogSlugs)` (LONGEST catalog
+  slug prefixing the action, first-segment fallback — `integrations/app-display.ts`)
+  → name/logo via the shared `useToolkitBrandResolver` (catalog MISS = prettified
+  name, no logo) → present-tense label via `humanizeActionGerund(action, toolkit)`.
+- The mission-log ROW stays text-only: `tool-labels.ts` maps
+  `integration_execute`/`integration_search` to "Using an app" / "Finding app
+  actions" so raw underscores never leak.
 
 ---
 
 ## 3. UI map
 
 **There is ONE connect surface: the global Integrations page.** The per-agent
-Integrations tab was deleted with the rest of the agent tab shell, and nothing
+Integrations tab was deleted with the rest of the agent tab shell and nothing
 replaced it — Composio runs in platform mode, so a connection belongs to the USER,
-not to an agent, and a per-agent connect screen was always a lens over a
-user-level fact. What is per-agent is the CEILING, and that is the agent settings
-page's Apps section (§2). The deleted `HOST_BUILD` build constant no longer gates
-anything; the runtime gate is `integrationsSupported(caps)` below.
+and a per-agent connect screen was always a lens over a user-level fact. What IS
+per-agent is the CEILING (§2). The old `HOST_BUILD` build constant gates nothing; the
+runtime gate is `integrationsSupported(caps)`.
 
-**Shared module** — `app/src/components/integrations/` (`index.ts` is the surface;
-pure model in `model.ts`/`app-display.ts`, DOM-free and node-tested). "Shared" now
-means shared between the page, the chat cards and the allowlist editor rather than
-between two catalog surfaces. Notable exports: `AppDetailDialog`, `AppRow`,
-`IntegrationDisconnectDialog`, the gate/flow hooks below, and pure helpers
-`browseCatalog` / `pollConnectionUntilActive` (`AgentChips` went with the grants
-layer; `CatalogLockedSection`, `splitByGrant` and `browseCatalogView`'s
-`connectable`/`locked` partition went with the locked rows). `browseCatalog` sorts
-results ALPHABETICALLY by app name (case-insensitive) after filtering.
-`integrationsSupported(caps)` (`model.ts`, `caps.integrations.length > 0`) is the
-capability gate the Settings section and the page share.
+### Modules
 
-**Shared connected-apps read-model** — `useConnectedApps`
-(`integrations/use-connected-apps.ts`) yields the sorted `ActiveAppRow`s (WORKING
-connections only) over the pure, node-tested `partitionConnections`
-(`integrations/connected-apps-model.ts`, which also answers `broken`: toolkit →
-its pending/errored connection, and `catalogHiddenToolkits`, the one rule for
-which apps the browse catalog leaves out — see "A broken connection lives where
-the app lives" below). It carries NO grant plumbing — the old
-`grantMap` / `editableAgentIds` / `agentChips` fields and the `toolkitAgentIds` /
-`agentChipsFor` helpers were removed with the app-side grants layer. The global
-page's detail modal reads it verbatim (info + reconnect + disconnect only). The
-shared `AllowlistEditor` (`integrations/allowlist-editor.tsx`) is the one
-presentational allowlist editor behind BOTH ceilings (§2).
+- **`app/src/components/integrations/`** — the shared module (`index.ts` is the
+  surface). Notable exports: `AppDetailDialog`, `AppRow`,
+  `IntegrationDisconnectDialog`, the gate/flow hooks, and pure helpers
+  `browseCatalog` / `pollConnectionUntilActive`.
+  - `model.ts` (DOM-free, node-tested) holds `INTEGRATION_PROVIDER`,
+    `integrationsSupported(caps)` (`caps.integrations.length > 0` — the capability
+    gate the page and the Settings section share), the poll constants, and
+    `createWaker`.
+  - **`browse-model.ts`** holds the catalog helpers: `browseCatalog` (filters, then
+    sorts ALPHABETICALLY by app name, case-insensitive), `matchesQuery`, `byNameAsc`,
+    `categoriesOf` (dropdown options), `categoryLabel` (slug → "Developer tools"),
+    `toolkitsInCategory(catalog, category)` (slug set, `null` for "all"),
+    `categoryListView` (mirrors the models editor's `allowedListView` — picks a
+    category-aware empty string so an empty filtered list never falsely claims the
+    surface has no apps), and `UNCATEGORIZED`.
+  - `browse-sections.ts` holds `groupCatalogByCategory` + Featured +
+    `catalogCategorySlugs`, split off `browse-model.ts` for the file-size line;
+    `category-priority.ts` is a further split for the curated ordering list. All
+    re-export through the barrel.
+  - `AgentChips` went with the grants layer; `CatalogLockedSection`, `splitByGrant`
+    and `browseCatalogView`'s `connectable`/`locked` partition went with the locked
+    rows.
+- **Shared connected-apps read-model** — `useConnectedApps`
+  (`integrations/use-connected-apps.ts`) yields sorted `ActiveAppRow`s (WORKING
+  connections only) over the pure, node-tested `partitionConnections`
+  (`integrations/connected-apps-model.ts`), which also answers `broken` (toolkit → its
+  pending/errored connection) and `catalogHiddenToolkits` (the one rule for what the
+  browse catalog omits). It carries NO grant plumbing.
 
-**Always-visible catalog** — the browse catalog is a permanent section, never a
-dialog: a brand-new user with zero connections immediately sees the full
-~1000-app catalog (`AppCatalogPicker` was deleted long ago). The global page
-renders it through `CatalogPane` + `CategoryCatalog` (see Personal mode below) —
-still built as shared, controlled components, but the per-agent tab that was the
-second consumer is gone; an in-progress OAuth renders on ITS
-OWN row via `ConnectFlowInline` (never a page-level banner), which cards that row
-around it. The old `ConnectMoreAppsSection` / `CatalogBrowser`
-pair was DELETED with the agent-tab convergence — `AppCatalogGrid` (search +
-category + load-more grid) survives solely inside the allowlist editor.
+### The global page
 
-**Category filter** — `AppCatalogGrid`'s control row is `search flex-1` + a
-category combobox (the shared `FilterCombobox`, moved to
-`components/shell/filter-combobox.tsx` now three domains use it: ai-hub,
-agent-admin models, integrations; category options carry no `mark`). In the
-allowlist editor the category is CONTROLLED by the surface so ONE selection also
-narrows its Allowed list (pure VIEW filter composing with the text search; "All
-categories" resets). The personal global page
-uses the SAME `FilterCombobox` (forced `searchable`, so the long category list gets
-the in-dropdown search) inside its Integrations tab, with options from
-`catalogCategorySlugs` (`browse-sections.ts`) — A-Z by label, `UNCATEGORIZED` pinned
-last (the dropdown is a lookup-by-name surface, so it orders alphabetically even
-though the page's sections order mainstream-first, then by size). Pure helpers in `integrations/model.ts` (node-tested):
-`categoriesOf` (options), `categoryLabel` (slug → "Developer tools"),
-`toolkitsInCategory(catalog, category)` (slug set, `null` for "all"), and
-`categoryListView` (mirrors the models editor's `allowedListView` — picks a
-category-aware empty string, e.g. `integrations:home.connectedNoneInCategory` /
-`teams:integrations.allowlist.allowedEmptyCategory`, so an empty filtered list
-never falsely claims the surface has no apps. The `integrations:agentTab.*` block
-is dead copy — the surface it wrote for is gone).
+`app/src/components/integrations-view/`, top-level view
+`INTEGRATIONS_VIEW_ID = "integrations-home"` (the `"integrations"` slug belonged to
+the per-agent tab id). It is ALWAYS the personal catalog, in every mode — the old
+Teams "policy" identity (`integrationsPageMode` / `integrations-view-model.ts` /
+`integrations-policy.tsx`) was deleted.
 
-**Global page (personal catalog, all modes)** — `app/src/components/integrations-view/`,
-top-level view `INTEGRATIONS_VIEW_ID = "integrations-home"` (the `"integrations"` slug it
-was named around belonged to the per-agent tab id, which no longer exists — the
-doc comment on `integrations-view/id.ts` still tells that story). The page is ALWAYS the personal
-catalog (`IntegrationsReady`), in every mode. The old Teams "policy" identity
-(`integrationsPageMode` / `integrations-view-model.ts` / `integrations-policy.tsx`)
-was DELETED and the org app-allowlist ceiling moved to the Admin page's **Allowed
-integrations** tab (§2, `teams.md`).
+- **Nav gating: none.** The sidebar item, the `workspace-shell.tsx` render branch and
+  the tour step are UNCONDITIONAL — visible to EVERY member (the old
+  `canSeeIntegrationsPage` gate in `org-roles.ts` was removed). It renders no
+  allowlist editor and no locked/blocked row: it is a personal connections lens, and a
+  ceiling is per agent.
+- **Structure** — a `PageHeader` hero (title + `home.description` subtitle, whose
+  count reads the FULL catalog size via `home.descriptionCount`), then the
+  **page-level `CatalogModeTabs`** (Composio vs Custom — see
+  [custom-integrations.md](custom-integrations.md)) wrapping the generic
+  **`CatalogShell`** (`ui/core/src/components/catalog-shell.tsx`: ONE `controls` row
+  over an Installed section and an Available section, each under an `lg`
+  `CatalogSectionHeader` with a live `CatalogCount` chip).
+- **(0) The ONE controls row** (`catalog-controls.tsx` → `CatalogControls`): a
+  `CatalogSearchField` (`home.searchPlaceholder`, always-available clear X whenever it
+  holds text) + the searchable A-Z category `FilterCombobox`. It sits ABOVE both
+  sections and narrows the Installed strip AND the Available tab together. State lives
+  in `use-catalog-surface.ts` (`useCatalogSurface({active, catalog, connections})` →
+  `tab`, `query`, `category`, `filtering`, `shown`, `installedCount`,
+  `availableCount`). A successful connect clears the query only when the landed app
+  still matches it, so a later OAuth completion cannot erase a newer search.
+  - The category combobox is the shared `components/shell/filter-combobox.tsx` (forced
+    `searchable`), options from `catalogCategorySlugs` — A-Z by label with
+    `UNCATEGORIZED` pinned last (a lookup-by-name surface orders alphabetically even
+    though the page's sections order mainstream-first). Three domains share the
+    component now: ai-hub, agent-admin models, integrations.
+- **(1) The consolidated Installed strip**, OUTSIDE the tabs (identity, not discovery
+  — it never changes with the tab): active catalog connections AND custom
+  integrations as a two-column `CatalogGrid` of `CatalogRow`s (`InstalledStrip`), the
+  SAME row grammar as the browse catalog — `AppLogo` art (custom rows get letter
+  avatars), always-visible name, a one-line description, and an always-visible
+  presence-style `StatusDot` LEFT of the name ("● Asana", sr-only status label, via the
+  `CatalogRow` `statusDot` slot) so connected state reads on the ROW, not just from
+  section placement. A quiet trailing `ChevronRight` marks each row as an
+  open-affordance. A catalog row opens `AppDetailDialog`; a custom row jumps to the
+  Custom mode.
+  - Catalog rows pass `status="active"` literally: both callers keep pending/errored
+    connections in the CATALOG (on the app's own row, wearing its status), so the
+    amber/red branches were unreachable. Custom rows keep their real status.
+  - At rest the grid caps to the shared `CATALOG_INSTALLED_PREVIEW_CAP` (6) behind a
+    quiet `CatalogShowMore` "Show all N" expander (`home.showAllApps`); while the
+    shared filter is active every match renders uncapped. That split is the ONE shared
+    pure helper `installedPreview<T>(items, { searching, expanded, cap })`
+    (`app/src/lib/installed-preview.ts`) all three installed strips call
+    (integrations, skills, connected providers); the cap is INJECTED, not imported, so
+    the module stays free of the `@houston-ai/core` JSX barrel and testable under
+    `node --test`.
+  - The shared query + category narrow the rows via the pure
+    `filterInstalledBy(active, custom, catalog, { query, category })` — category
+    narrows first via `toolkitsInCategory`, then `filterInstalled` does the substring
+    query; custom integrations carry no category, so any active category excludes them.
+  - When the filter leaves NOTHING installed the whole Installed section is OMITTED
+    (no heading over an empty list).
+- **(2) The Available section** (`home.availableTitle`) whose `availableCount` chip =
+  connectable apps matching the shared filter (via `browseCatalog`, minus
+  `catalogHiddenToolkits`). **It has exactly ONE tab**, `catalog`
+  (`home.tabs.catalog`) → `CatalogBrowsePane` with `surface="integrations"`, so
+  `CatalogShell` drops the tab chrome. (The Custom source is the page-level
+  `CatalogModeTabs`, not a tab here.)
+  - `CatalogPane` is CONTROLLED: it takes `query` + `category` props from the page (its
+    own controls row moved UP into `CatalogControls`) and renders the grouped
+    `CategoryCatalog`.
+  - The connect flow is app-wide shared state (`stores/connect-flow.ts`), so switching
+    modes, closing a dialog, or leaving the page never kills an in-flight OAuth poll.
 
-- **Nav gating: none.** The sidebar nav item, the `workspace-shell.tsx` render branch,
-  and the tour step are UNCONDITIONAL: the page is visible to EVERY member (the old
-  `canSeeIntegrationsPage` gate in `org-roles.ts` was removed). It renders no allowlist
-  editor and no locked/blocked row: it is a personal connections lens, and a ceiling is
-  per agent.
-- **The page** — the flat "plane"
-  (`integrations-ready.tsx`, reference: the ChatGPT Plugins page), laid out by the
-  generic **`CatalogShell`** (`ui/core/src/components/catalog-shell.tsx`, part of the
-  catalog family — reuse it wherever a surface wants "ONE top `controls` row over an
-  Installed section and an Available section", each rendered under an `lg`
-  `CatalogSectionHeader` (`size="lg"`) with a live `CatalogCount` chip). A
-  `PageHeader` hero (title + `home.description` subtitle, whose count reads the FULL
-  catalog size via `home.descriptionCount`), then the shell:
-  (0) the ONE **controls** row (`catalog-controls.tsx` → `CatalogControls`): a
-  `CatalogSearchField` (`home.searchPlaceholder`) + the searchable A-Z category
-  `FilterCombobox`. The search field has an always-available clear X whenever it
-  contains text. A successful connect clears the query only when the landed app
-  still matches it, so a later OAuth completion cannot erase a newer search. It
-  sits ABOVE both sections and its query + category narrow the Installed strip AND
-  the Integrations tab together. The surface owns that state in
-  the shared `use-catalog-surface.ts` hook (`useCatalogSurface({active, catalog,
-  connections})` → `tab`, `query`, `category`, `filtering`, `shown`, `installedCount`,
-  `availableCount`). It was built to be shared with the per-agent tab; that consumer is
-  gone, so the page is its only caller and the hook takes no ceiling at all.
-  (1) the CONSOLIDATED **Installed** strip, OUTSIDE the tabs (identity, not
-  discovery — it never changes with the tab): active catalog connections AND custom
-  integrations as a two-column `CatalogGrid` of `CatalogRow`s (`InstalledStrip`) —
-  the SAME row grammar as the browse catalog: brand art via `AppLogo` (custom rows
-  get letter avatars), the always-visible name, a one-line description (the app
-  description or a localized custom-kind badge), an always-visible
-  presence-style `StatusDot` LEFT of the name ("● Asana", sr-only status label,
-  via the ui/core `CatalogRow` `statusDot` slot — connected state reads on the ROW,
-  not just from section placement; same treatment as the connected-providers strip
-  and the skills marketplace's installed rows). Catalog rows pass `status="active"`
-  literally: both callers keep pending/errored connections in the CATALOG (on the
-  app's own row, wearing its status), so the amber/red branches were unreachable code
-  (custom-integration rows keep their real status, which does vary), and a quiet trailing `ChevronRight`
-  marking each row as an open-affordance (the shared convention with the connected
-  providers + installed skills strips). A catalog row opens `AppDetailDialog`; a
-  custom row jumps to the Custom tab. At rest the grid caps to the shared
-  `CATALOG_INSTALLED_PREVIEW_CAP` (6) rows behind a quiet `CatalogShowMore`
-  "Show all N" expander (`home.showAllApps`) so a well-stocked strip never buries
-  the discovery tabs; while the shared filter is active (`filtering`) every match
-  renders uncapped — filtering IS looking past the preview. That preview /
-  expander split is the ONE shared pure helper `installedPreview<T>(items, {
-  searching, expanded, cap })` (`app/src/lib/installed-preview.ts`) all three
-  installed strips call (integrations, skills, connected providers); the cap is
-  injected (not imported) so the module stays free of the `@houston-ai/core` JSX
-  barrel and testable under `node --test`. The strip has NO search of its own: the
-  ONE top controls row filters it. The `lg` section header carries a `CatalogCount`
-  chip (`installedCount` — the SHOWN count while filtering, the total at rest). The
-  shared query + category narrow the rows via the pure `filterInstalledBy(active,
-  custom, catalog, { query, category })` (node-safe `lib/installed-preview.ts` —
-  category narrows first via `toolkitsInCategory`, then delegates to `filterInstalled`
-  for the substring query; custom integrations carry no category so any active
-  category excludes them). When that filter leaves NOTHING installed the whole
-  Installed section is OMITTED (the shell drops it — no heading over an empty list),
-  so the strip only ever renders with rows.
-  (2) the **Available** section (`home.availableTitle`) under its own `lg`
-  `CatalogSectionHeader`, whose `availableCount` chip = the connectable apps matching
-  the shared filter (via `browseCatalog`, minus `catalogHiddenToolkits`), over two
-  discovery tabs (`home.tabs.*`, each trigger with a `CatalogCount` badge):
-  **Integrations** (the CONTROLLED `catalog-pane.tsx`: it takes `query` + `category`
-  props from the page — its own controls row moved UP into `CatalogControls` — and
-  renders the grouped `CategoryCatalog`; the tab's own count chip
-  stays the UNFILTERED connectable total) and **Custom integrations**
-  (`CustomIntegrationsSection variant="tab"`; count = the custom list, and it KEEPS
-  its own internal search). The connect flow is app-wide shared state
-  (`stores/connect-flow.ts`), so switching tabs, closing a dialog, or leaving the
-  page never kills an in-flight OAuth poll. When the host doesn't serve
-  custom integrations (`useCustomIntegrations` → `null`) the shell has ONE tab and
-  drops the tab chrome entirely.
-  `CategoryCatalog` groups the connectable catalog (only WORKING connections are
-  excluded — a pending/errored one keeps its rows, wearing its status) by
-  primary category into flat two-column `PlaneAppRow`s, sections ordered MAINSTREAM-FIRST
-  then by size via the pure `groupCatalogByCategory` (`browse-sections.ts`, split from
-  `browse-model.ts` to hold the file-size line — the filter/allowlist half stays in
-  `browse-model.ts`, the section-grouping + Featured half moved out; the curated ordering
-  list is a further split into `category-priority.ts`; all re-export through the barrel so
-  consumers import unchanged). Section order for our NON-technical audience: the curated
-  `CATEGORY_PRIORITY` categories (`category-priority.ts` — Felipe's hand-picked order:
-  social-media-accounts, file-management-and-storage, spreadsheets, team-chat,
-  team-collaboration, productivity, ai-meeting-assistants, ads-and-conversion, notes,
-  signatures; matched via `categoryRank`'s spelling-insensitive normalization, `&`→"and",
-  non-alphanumerics dropped; `developer-tools`/AI deliberately ABSENT) come first in that
-  order (only those present), then every remaining category by app-count DESC (label
-  tiebreak), `UNCATEGORIZED` pinned last — so a small curated section leads a huge
-  "Developer tools" instead of the raw size ranking floating dev/AI apps up. Each section header carries its count chip
-  (`CatalogSectionHeader` `count` — the chevron accent is GONE from the section-header
-  idiom). At REST ONLY (no search query AND no single-category narrowing) a curated
-  **Most used** spotlight (`MOST_USED = "__mostUsed"`, an ordered `MOST_USED_SLUGS`
-  list of everyday apps — gmail, calendar, notion, sheets, slack, twitter, linkedin,
-  whatsapp, instagram…) is pinned FIRST above the category sections, so a first-time
-  user meets familiar apps instead of "Developer tools"; it renders under
-  `t("home.mostUsed")` ("Most used" / "Más usadas" / "Mais usadas"). Membership is
-  COMMITTED data, deliberately not Composio's live usage sort: the API does expose
-  `GET /api/v3/toolkits?sort_by=usage` (verified 2026-07-22; it is also the default
-  order), but it ranks global Composio (developer) usage — github/supabase/
-  perplexityai in the top ten — so the list stays hand-picked, ordered by those same
-  apps' relative ranks from that verified data (rank comments in
+### The browse catalog
+
+`CategoryCatalog` groups the connectable catalog (only WORKING connections are
+excluded — a pending/errored one keeps its rows, wearing its status) by primary
+category into flat two-column `PlaneAppRow`s.
+
+- **Section order is MAINSTREAM-FIRST**, via the pure `groupCatalogByCategory`
+  (`browse-sections.ts`): the curated `CATEGORY_PRIORITY` categories
+  (`category-priority.ts` — social-media-accounts, file-management-and-storage,
+  spreadsheets, team-chat, team-collaboration, productivity, ai-meeting-assistants,
+  ads-and-conversion, notes, signatures; matched via `categoryRank`'s
+  spelling-insensitive normalization, `&`→"and", non-alphanumerics dropped;
+  `developer-tools`/AI deliberately ABSENT) come first in that order, then every
+  remaining category by app-count DESC (label tiebreak), `UNCATEGORIZED` last. Raw
+  size ranking would float dev/AI apps above a small curated section, which is wrong
+  for a non-technical audience. Each section header carries its count chip.
+- **Most used spotlight.** At REST ONLY (no query AND no single-category narrowing) a
+  curated `MOST_USED = "__mostUsed"` section (`MOST_USED_SLUGS`: gmail, calendar,
+  notion, sheets, slack, twitter, linkedin, whatsapp, instagram…) is pinned FIRST,
+  under `t("home.mostUsed")`. Membership is COMMITTED data, deliberately not
+  Composio's live usage sort: `GET /api/v3/toolkits?sort_by=usage` exists (verified
+  2026-07-22, it is also the default order) but ranks global Composio *developer*
+  usage — github/supabase/perplexityai in the top ten. The list stays hand-picked,
+  ordered by those apps' relative ranks from that verified data (rank comments in
   `browse-sections.ts`). Most-used apps still appear in their own category sections
-  too (a spotlight, not a move), already-connected apps drop out, and `MOST_USED`
-  never leaks into `catalogCategorySlugs` (the dropdown options). A search or a
-  category pick suppresses it (the curated list would fight a deliberate narrowing). Each row is the split `CatalogRow`
-  (`ui/core/src/components/catalog-row.tsx`): the row BODY opens the app's
-  "more info" modal (`app-info-dialog.tsx` over the generic `CatalogDetailDialog` —
-  art, name, category `Badge` chips, the FULL description, a Connect CTA), while
-  the GHOST round `+` at the right edge (`CatalogAddButton`: full-ink icon,
-  transparent at rest, hover fills the circle with the elevated `input` surface —
-  white in light mode — against the row's `hover` wash; spins while THIS app
-  connects and NEVER disables because another app is connecting) is
-  the ONLY row-level connect; while the row owns that app's live connect state the
-  whole row becomes ONE card around it (`ConnectFlowInline variant="bare"` — see
-  "The owning catalog row IS the card" below). Copy: `home.connect` /
-  `home.connectApp`. Disconnect is scope `everywhere` (a user-level connection
-  disappears for ALL agents); the confirm names no agents (chip plumbing removed).
-  This page is a PERSONAL-CONNECTIONS surface only: a connected app's
-  `AppDetailDialog` (opened from the Installed strip row) shows info + reconnect +
-  disconnect, with NO per-agent grant toggles — which agents may use an app is
-  managed in Settings > Permissions. The detail modal + disconnect dialog are
-  extracted into `connected-app-dialogs.tsx` (`ConnectedAppDialogs`) so
-  `integrations-ready.tsx` stays within the file-size limit; the page owns the
-  selection + connect flow and hands them in. The presentational pieces
-  live in `components/integrations-view/` (`catalog-controls`, `catalog-pane`,
-  `installed-strip`, `plane-app-row`, `category-catalog`,
-  `catalog-category-section`, `app-info-dialog`, `connected-app-dialogs`,
-  `catalog-skeletons`, `use-catalog-surface`, `use-catalog-sections` — the browse
-  plane's derivation: hidden toolkits, capped sections, inline-state owners, the
-  broken-connection map); `recovery-row.tsx` was DELETED with the recovery
-  section; the old per-strip
-  `catalog-search-field.tsx` + `use-installed-search.ts` were DELETED when the search
-  moved to the ONE top controls row. The old two-column `ConnectedAppsList` card grid was
-  DELETED with the Settings fold and the dropdown-filtered `ConnectMoreAppsSection`
-  (agent tab) is gone too.
-  The **Custom integrations** tab shares the flat row language
-  (`CustomIntegrationRow`: leading letter avatar, transparent-at-rest
-  `hover:bg-hover`). Its controls row is its own search (`custom.searchPlaceholder`,
-  filtering via the pure `filterCustomIntegrations`, node-tested) + the Add button;
-  with zero items and no draft chat in flight it collapses to a pure EMPTY STATE
-  (`custom-empty-state.tsx`: `custom.emptyTitle` + `custom.description` + a filled
-  Add CTA — the one accent of an empty surface). The standalone `variant="section"`
-  (embedded by the page's non-ready states) keeps its own heading + count chip and
-  the `custom.empty` paragraph.
+  (a spotlight, not a move), already-connected apps drop out, and `MOST_USED` never
+  leaks into `catalogCategorySlugs`. A search or category pick suppresses it.
+- **Rows** are the split `CatalogRow`: the row BODY opens the app's "more info" modal
+  (`app-info-dialog.tsx` over the generic `CatalogDetailDialog` — art, name, category
+  `Badge` chips, the FULL description, a Connect CTA), while the GHOST round `+` at
+  the right edge (`CatalogAddButton`: full-ink icon, transparent at rest, hover fills
+  the circle with the elevated `input` surface) is the ONLY row-level connect. It
+  spins while THIS app connects and NEVER disables because another app is connecting.
+- **Disconnect is scope `everywhere`** (a user-level connection disappears for ALL
+  agents); the confirm names no agents. A connected app's `AppDetailDialog` (from the
+  Installed strip) shows info + reconnect + disconnect only.
+- Presentational pieces live in `components/integrations-view/`:
+  `catalog-controls`, `catalog-pane`, `installed-strip`, `plane-app-row`,
+  `category-catalog`, `catalog-category-section`, `app-info-dialog`,
+  `connected-app-dialogs` (extracted so `integrations-ready.tsx` stays inside the
+  file-size limit), `catalog-skeletons`, `use-catalog-surface`, `use-catalog-sections`
+  (the browse plane's derivation: hidden toolkits, capped sections, inline-state
+  owners, the broken-connection map).
+- **Loading language** is two treatments, all owned by `catalog-skeletons.tsx`:
+  `InstalledSkeleton` and `CatalogSkeleton` (category sections mirroring
+  `CategoryCatalog`'s `space-y-8` / `mb-3` / `mt-1` rhythm and the real `CatalogRow`
+  shape — the `+` AND the `CatalogShowMore` line every capped section resolves with),
+  so resolving costs no layout shift. `LoadingState` (`integrations/states.tsx`) is the
+  BOOT GATE only, with opacity-only pulsing dots (the old fake 5s `transition: width`
+  bar animated layout and lied about progress).
+- **Names are never machine slugs** — `appDisplay`'s fallback is
+  `prettifyToolkit(slug)` ("googlesheets" → "Googlesheets", "google-sheets" → "Google
+  Sheets"). `prettifyToolkit` lives in `integrations/app-display.ts`, not `ui/chat`
+  (living in the `@houston-ai/chat` barrel put JSX in the import path of node-tested
+  pure code). `appDisplay` is the ONE owner of that fallback, and it is handed the
+  toolkit exactly as the agent wrote it — lowercasing first is what turned an authored
+  "GoogleSheets" into "Googlesheets".
 
-**Settings > Connected accounts — REMOVED entirely.** The standalone settings
-section is GONE (`connected-accounts*.tsx` deleted, the id `"connectedAccounts"`
-removed from `SETTINGS_SECTION_IDS`, so `parseSettingsSection` now REJECTS it and
-a stale deep-link can never land), and Settings carries NO integrations row at
-all — a shortcut row duplicating the sidebar's Integrations nav was pure chrome
-(Felipe's call). The global Integrations page is the personal connections lens
-(connection status + reconnect + disconnect), reached only via its sidebar nav.
-The `settings:connectedAccounts.*` copy block, the `nav.connectedAccounts` /
-`index.rows.connectedAccounts` / `index.values.appsCount` row keys, and the
-`home.usedByNone`/`home.usedByAll` chip keys were all deleted. The page's
-`AppDetailDialog` no longer carries any per-agent grant surface — which agents may
-use an app is managed in Settings > Permissions (§2) — see the global page block above.
+### Deleted surfaces
 
-**Agent tab (the by-agent lens) — DELETED.** `app/src/components/agent/
-agent-integrations/` is down to ONE file, `agent-allowlist-section.tsx` (§2). Gone
-with the tab shell: `agent-integrations-tab.tsx` (+ its `integrations-tab.tsx`
-wrapper), `agent-integrations-body.tsx`, `agent-integrations-chrome.tsx`,
-`agent-catalog-sections.tsx`, `agent-disallowed-apps-section.tsx` and the
-directory's `model.ts` (`agentIntegrationsView`, the `{activeRows,
-disallowedRows}` split), plus `integrations/effective-access.ts`, which had no
-other caller.
+- **Settings > Connected accounts — REMOVED entirely.** `connected-accounts*.tsx`
+  deleted, the id `"connectedAccounts"` removed from `SETTINGS_SECTION_IDS` (so
+  `parseSettingsSection` REJECTS it and a stale deep link can never land), and
+  Settings carries NO integrations row at all — a shortcut duplicating the sidebar nav
+  was pure chrome. The `settings:connectedAccounts.*` copy block, the
+  `nav.connectedAccounts` / `index.rows.connectedAccounts` / `index.values.appsCount`
+  keys, and the `home.usedByNone`/`home.usedByAll` chip keys were deleted with it.
+- **The per-agent Integrations tab.** `components/agent/agent-integrations/` is down
+  to ONE file, `agent-allowlist-section.tsx`. Gone: `agent-integrations-tab.tsx` (+
+  its `integrations-tab.tsx` wrapper), `agent-integrations-body.tsx`,
+  `agent-integrations-chrome.tsx`, `agent-catalog-sections.tsx`,
+  `agent-disallowed-apps-section.tsx`, the directory's `model.ts`
+  (`agentIntegrationsView` and the `{activeRows, disallowedRows}` split), and
+  `integrations/effective-access.ts`. Three affordances went away rather than moving:
+  the tab's own catalog (the global page IS the catalog), the "Not allowed" section,
+  and the "Manage all integrations" link whose destination is the page the user is
+  already on. **The `integrations:agentTab.*` i18n block is DELETED** — zero keys
+  remain.
+- **Locked browse rows.** `CatalogLockedSection`, `EnableInPermissionsButton`,
+  `LOCKED_PREVIEW_CAP`, the `resolvePermissionsFix` ceiling resolver
+  (`integrations/blocked-ceiling.ts` + its test), `splitByGrant`,
+  `browseCatalogView`'s partition, the `allowlist` / `lockedFix` prop threads through
+  `CatalogPane` → `CategoryCatalog`, and the `integrations:locked.*` /
+  `teams:integrations.notAllowed.*` copy. Nothing in `integrations-view/` takes a
+  ceiling, so no lock can render. The manager's allowlist editor (`AppCatalogGrid`)
+  never used any of it.
+- `ConnectMoreAppsSection` / `CatalogBrowser` / `AppCatalogPicker` /
+  `ConnectedAppsList` / `recovery-row.tsx` / the per-strip `catalog-search-field.tsx`
+  + `use-installed-search.ts`. `AppCatalogGrid` (search + category + load-more grid)
+  survives solely inside the allowlist editor, where the category is CONTROLLED by the
+  surface so ONE selection also narrows the Allowed list.
 
-Nothing replaced it, deliberately: a Composio connection is the USER's, so the
-only honest per-agent statement is the ceiling, which the settings page's Apps
-section already makes. Concretely, three affordances went away rather than moving:
-the tab's own catalog (the global page IS the catalog now), the "Not allowed"
-disallowed-apps section, and the bottom `integrations:agentTab.manageAll`
-("Manage all integrations") link, whose destination is the page the user is
-already on. The `integrations:agentTab.*` copy block is dead.
+---
 
-**Locked browse rows — DELETED.** The locked-row transparency surface went with the
-per-agent tab that was its only caller: `CatalogLockedSection`, `EnableInPermissionsButton`,
-`LOCKED_PREVIEW_CAP`, the `resolvePermissionsFix` ceiling resolver
-(`integrations/blocked-ceiling.ts` + its test), `splitByGrant`, `browseCatalogView`'s
-`connectable`/`locked` partition, the `allowlist` / `lockedFix` prop threads through
-`CatalogPane` → `CategoryCatalog`, and the `integrations:locked.*` /
-`teams:integrations.notAllowed.*` copy. Nothing in `integrations-view/` takes a ceiling any
-more, so no lock can render (§2, *Where a member sees the ceiling*). The manager's allowlist
-editor (`AppCatalogGrid`) never used any of it and is unaffected.
+## 4. The connect flow (HOU-847)
 
-**Connect flow (HOU-847)** — the hand-off is ONE app-wide flow
-in three files:
+One app-wide flow in three files:
 
-- `stores/connect-flow.ts` — the shared state. A module-level `connectFlowRegistry`
-  (the render-independent half: waker, cancel flag, redirect URL, the run's
-  promise) plus a Zustand store holding `states` (slug → `"starting" | "waiting"`,
-  the LIVE phase) and `notices` (slug → `"connected" | "failed" | "stopped"`, the
-  settled outcome, self-expiring after `CONNECT_NOTICE_MS`) and `origins` (slug
-  -> the ORIGIN KEY of the row the flow was started from). Every consumer
-  observes the same flow: a connect started in chat is visible on the Integrations
-  page, and per-toolkit single flight holds GLOBALLY (a second caller for the same
-  slug JOINS the running flow via `flowPromise` and observes its outcome —
-  `connect()` resolves `{ outcome, initiated }`, and only the caller that
-  `initiated` the flow owns the starter-side side effects, so the chat card's
-  `integration_connected` analytics and its agent nudge fire once per landed
-  connection rather than once per card rendered for that app).
-  `cancelAllConnectFlows()` stops every live flow silently and drops the settled
-  residue. It is wired to the two IDENTITY changes — `resetCacheForSpaceChange`
-  (`lib/space-cache.ts`) and `signOut()` (`lib/auth.ts`) — because a poll that
-  outlives an active-space switch keeps polling with the NEW `x-houston-org` and
-  answers for the wrong tenant (a red toast about an app the new space never
-  connected, a cross-space success toast, an invalidation into a cache that was
-  just wiped). Navigation still cancels nothing; only these two do.
-- `integrations/connect-flow-run.ts` — the pure, dependency-injected phase machine
-  (`runConnectFlow`), node-tested in `app/tests/connect-flow-run.test.ts`. Phase
-  order is load-bearing: `starting` covers ONLY the link mint, `waiting` is
-  published after `openUrl` resolves (no surface may claim "we opened {app} in your
-  browser" before it did). On `active` it publishes the `connected` notice + toast,
-  DWELLS `CONNECT_SUCCESS_DWELL_MS` (900ms) so the row confirms in place, then
-  invalidates connections; other outcomes invalidate at once. The settled notice
-  is published BEFORE the live phase is cleared (the store reads "a flow ended
-  carrying no outcome" as a cancel and retires that slug's origin). The `try`
-  covers the ENGINE half only — mint / open / poll — and `settle` sits OUTSIDE
-  it: a rejected `invalidate()`/`announce()` used to be swallowed into a `null`
-  return, reporting a landed connection as a failed connect. It is reported
-  instead, via an injected `report` dep (`logAndReportError`) that keeps this
-  module out of the Sentry/i18n import graph. An engine failure publishes the
-  same `failed` notice a provider rejection does, so the row explains the death
-  instead of going blank.
-- `integrations/use-connect-flow.ts` — the thin React binding: real engine calls,
-  the store's setters, `announce`. `cancelAllFlows` is GONE and the hook has no
-  unmount teardown: leaving a surface must not kill a poll the user is still
-  finishing in their browser. Only an explicit Cancel stops one, and the ~5 min
-  `POLL_MAX_ATTEMPTS` budget caps an abandoned one.
+- **`stores/connect-flow.ts`** — the shared state. A module-level
+  `connectFlowRegistry` (the render-independent half: waker, cancel flag, redirect
+  URL, the run's promise) plus a Zustand store holding `states` (slug → `"starting" |
+  "waiting"`, the LIVE phase), `notices` (slug → `"connected" | "failed" |
+  "stopped"`, the settled outcome, self-expiring after `CONNECT_NOTICE_MS`), and
+  `origins` (slug → the ORIGIN KEY of the row the flow started from).
+  - Every consumer observes the same flow: a connect started in chat is visible on the
+    Integrations page, and per-toolkit single flight holds GLOBALLY — a second caller
+    for the same slug JOINS the running flow via `flowPromise`. `connect()` resolves
+    `{ outcome, initiated }`, and only the caller that `initiated` owns the
+    starter-side side effects, so the chat card's `integration_connected` analytics and
+    its agent nudge fire once per landed connection, not once per card rendered.
+  - `cancelAllConnectFlows()` stops every live flow silently and drops the settled
+    residue. It is wired to the two IDENTITY changes only — `resetCacheForSpaceChange`
+    (`lib/space-cache.ts`) and `signOut()` (`lib/auth.ts`) — because a poll that
+    outlives an active-space switch keeps polling with the NEW `x-houston-org` and
+    answers for the wrong tenant. **Navigation cancels nothing.**
+- **`integrations/connect-flow-run.ts`** — the pure, dependency-injected phase machine
+  (`runConnectFlow`), node-tested in `app/tests/connect-flow-run.test.ts`.
+  - **Phase order is load-bearing**: `starting` covers ONLY the link mint; `waiting` is
+    published after `openUrl` resolves (no surface may claim "we opened {app} in your
+    browser" before it did).
+  - On `active` it publishes the `connected` notice + toast, DWELLS
+    `CONNECT_SUCCESS_DWELL_MS` (900ms) so the row confirms in place, then invalidates
+    connections; other outcomes invalidate at once. The settled notice is published
+    BEFORE the live phase is cleared (the store reads "a flow ended carrying no
+    outcome" as a cancel and retires that slug's origin).
+  - The `try` covers the ENGINE half only — mint / open / poll — and `settle` sits
+    OUTSIDE it: a rejected `invalidate()`/`announce()` used to be swallowed into a
+    `null` return, reporting a landed connection as a failed connect. It is reported
+    instead, via an injected `report` dep (`logAndReportError`) that keeps this module
+    out of the Sentry/i18n import graph. An engine failure publishes the same `failed`
+    notice a provider rejection does, so the row explains the death instead of going
+    blank.
+- **`integrations/use-connect-flow.ts`** — the thin React binding: real engine calls,
+  the store's setters, `announce`. **No unmount teardown**: leaving a surface must not
+  kill a poll the user is still finishing in their browser. Only an explicit Cancel
+  stops one, and the ~5 min `POLL_MAX_ATTEMPTS` budget caps an abandoned one.
 
-**Parallel by default.** There is no whole-surface lockout. Every row/tile is gated
-on ITS OWN slug (`slug in states`); connecting Slack leaves Notion, the detail
-modal's CTA, the onboarding tiles, and the email-provider rows
-fully enabled at full strength. `busy`/`disabled` cross-row props were removed from
-`PlaneAppRow`, `ConnectStepTile`, and `EmailProviderRow`.
+**Parallel by default.** No whole-surface lockout: every row/tile is gated on ITS OWN
+slug (`slug in states`), so connecting Slack leaves Notion, the detail modal's CTA,
+the onboarding tiles and the email-provider rows fully enabled. `busy`/`disabled`
+cross-row props were removed from `PlaneAppRow`, `ConnectStepTile`, and
+`EmailProviderRow`.
 
-**Feedback lands where the user clicked.** `ConnectFlowInline`
-(`integrations/connect-flow-inline.tsx`, replacing the deleted
-`ConnectWaitingPanel`) renders one app's state INLINE — inside the catalog card the
-pressed row became, under the intake's connect prompt. It is a
-`role="status" aria-live="polite"` region announcing starting → waiting → settled:
-`waiting.opening` ("Opening {{app}} in your browser") while the link mints, the
-waiting copy + Reopen / I have finished / Cancel (core `Button`/`AsyncButton`, no
-hand-rolled utility buttons) once the browser is open, then the outcome line. The
-old top-of-catalog banner is gone: it shoved the sections ~90px down, far from the
-row that caused it.
+### Feedback lands where the user clicked
 
-**The owning catalog row IS the card — one box, one spinner.** A bordered panel
-floating under a flat row read as a detached box about nothing in particular, and
-it put TWO spinners on one hand-off (the row's `+` and the panel's). So while a
-row owns a live or just-settled flow, `PlaneAppRow` turns the WHOLE row into one
-container: `rounded-xl border-line bg-input` enclosing the app header — logo, name, description, the `+` slot — and,
-directly below it, the flow copy and its pills. Nothing is nested inside it: the
-block renders `variant="bare"` (no frame of its own, and no spinner — the header's
-`CatalogAddButton busy` is the ONE spinner, sitting where the user just clicked).
-`variant="panel"` is the default and is what the standalone host still gets
-(the routine intake), where nothing around the block reports the hand-off. `hasConnectState(flow, slug)`
-is the shared predicate deciding whether there is anything to dress, so the chrome
-and the content appear and leave as one. Body padding continues the row's own
-rhythm (`px-3` gutters, the 10px the row already leaves under itself).
+- `ConnectFlowInline` (`integrations/connect-flow-inline.tsx`) renders one app's state
+  INLINE — inside the catalog card the pressed row became, or under the intake's
+  connect prompt. It is a `role="status" aria-live="polite"` region announcing
+  starting → waiting → settled: `waiting.opening` while the link mints, then the
+  waiting copy + Reopen / I have finished / Cancel (core `Button`/`AsyncButton`), then
+  the outcome line. The old top-of-catalog banner shoved sections ~90px down, far from
+  the row that caused it.
+- **The owning catalog row IS the card — one box, one spinner.** While a row owns a
+  live or just-settled flow, `PlaneAppRow` turns the WHOLE row into one container
+  (`rounded-xl border-line bg-input`) enclosing the app header — logo, name,
+  description, the `+` slot — and directly below it the flow copy and its pills.
+  Nothing is nested: the block renders `variant="bare"` (no frame, no spinner — the
+  header's `CatalogAddButton busy` is the ONE spinner, sitting where the user
+  clicked). `variant="panel"` is the default and is what the standalone host still
+  gets (the routine intake). `hasConnectState(flow, slug)` is the shared predicate
+  deciding whether there is anything to dress, so chrome and content appear and leave
+  as one.
+- **Rows at rest are untouched; the treatment animates on opacity alone.** The card's
+  border + fill live on an always-mounted layer behind the row
+  (`span.connect-card-frame[data-live]`, `absolute inset-0`), transparent at rest — so
+  the catalog keeps its flat transparent-row language and carding cross-fades without
+  animating a colour or shadow per frame (`app/src/styles/globals.css`: 200ms
+  `entrance` in, 150ms out, per DESIGN.md's motion budget). The content rises in with
+  `connect-card-body` (opacity + `translateY`, 200ms; `animation: none` under
+  `prefers-reduced-motion`). Only what sits BELOW moves, never the row beside it in
+  the 2-col grid. While carded the header's hover fill squares its bottom
+  (`rounded-b-none`) and the `+` swaps to `hover:bg-chip`. Covered by
+  `integrations-browse.spec.ts` → "the owning row becomes ONE card carrying ONE
+  spinner".
+- **One panel per hand-off — the ORIGIN KEY** (`integrations/connect-origin.ts`,
+  node-tested in `app/tests/connect-origin.test.ts`). The browse catalog renders some
+  apps TWICE on purpose (the Most-used spotlight is a spotlight, not a move), so
+  "expand the row for this slug" expanded BOTH — two live regions, two rival Cancels.
+  Every catalog row now carries `connectOriginKey(surface, section, slug)`,
+  `connect(slug, origin)` records it, and `inlineOwners()` hands the expansion to ONE
+  row: the row the flow started from, or — when that row is no longer rendered (the
+  user searched mid-hand-off) — the first rendered copy, so a live OAuth and its
+  Cancel can never vanish. Duplicate rows stay FLAT and keep their compact per-slug `+`
+  spinner. Ownership is the HOST surface's call: `PlaneAppRow` gates on `owns &&
+  hasConnectState(...)`. `surface` is threaded from `IntegrationsReady`
+  (`"integrations"`) — the only remaining caller — through `CatalogPane` into
+  `CategoryCatalog`, with per-row ownership resolved in `use-catalog-sections.ts`.
+- **The settled line is SHORT; the toast carries the sentence.** Inline reads
+  `waiting.connected` ("Connected") / `waiting.failed` ("Could not connect");
+  `waiting.stopped` keeps its full sentence because it is the actionable one. The
+  settled line itself lives in `integrations/connect-notice-line.tsx` so a surface can
+  render an outcome without pulling in the live-phase block.
+- **Outcomes are announced once, from the flow, for every surface** (`announce`):
+  `active` → success toast `connectResult.connected`; `timeout` → a NEUTRAL `info`
+  toast (walking away from an OAuth is normal behavior, not a crash — it no longer
+  routes through `showErrorToast`, which would add a Sentry report and a green "report
+  sent" follow-up); `error` → an `error`-variant `addToast`, again no auto bug report;
+  `cancelled` → silent.
 
-**Rows at rest are untouched, and the treatment animates on opacity alone.** The
-card's border + fill live on their own always-mounted layer behind the row
-(`span.connect-card-frame[data-live]`, `absolute inset-0`), transparent at rest —
-so the catalog keeps its flat transparent-row language, and carding cross-fades
-without animating a colour or a shadow per frame (`app/src/styles/globals.css`:
-200ms `entrance` in, 150ms out, per DESIGN.md's motion budget). The flow content
-rises in with `connect-card-body` (opacity + `translateY`, 200ms, `animation:
-none` under `prefers-reduced-motion`); the card growing taller is the accepted
-expansion — only what sits BELOW moves, never the row beside it in the 2-col grid.
-While carded the header's hover fill squares its bottom (`rounded-b-none`) so it
-reads as the card's divider, and the `+` swaps to `hover:bg-chip` because its
-default hover fill IS the card's own surface. Covered by
-`integrations-browse.spec.ts` → "the owning row becomes ONE card carrying ONE
-spinner" (one container, one `role="status"` spinner in the `+` slot, zero
-bordered non-button elements inside the live region).
+### A broken connection lives where the app lives
 
-**One panel per hand-off — the ORIGIN KEY** (`integrations/connect-origin.ts`,
-node-tested in `app/tests/connect-origin.test.ts`). The browse catalog renders some
-apps TWICE on purpose: the curated "Most used" spotlight is a spotlight, not a
-move, so its rows also live in their category sections. "Expand the row for this
-slug" therefore expanded BOTH — two live regions announcing one hand-off, two rival
-Cancel buttons. Now every catalog row carries
-`connectOriginKey(surface, section, slug)`, `connect(slug, origin)` records it in
-the store, and `inlineOwners()` hands the expansion to ONE row: the row the flow
-was started from, or — when that row is no longer rendered (the user searched
-mid-hand-off and the at-rest spotlight dropped out) — the first rendered copy, so a
-live OAuth and its Cancel can never vanish from the page. Duplicate rows stay FLAT
-(never carded) and keep their compact per-slug `+` spinner (`CatalogAddButton
-busy`), gated on `slug in states` and knowing nothing about origins. The settled
-line itself lives in `integrations/connect-notice-line.tsx` (`ConnectNoticeLine`),
-so a surface can render an outcome without pulling in the live-phase
-block. Ownership is the HOST surface's call, not the block's: `PlaneAppRow` gates
-on `owns && hasConnectState(...)` and simply does not render `ConnectFlowInline`
-on the copies that did not start the flow (the old `owns` prop is gone — only the
-catalog ever repeats a row, and the intake never passed it). `surface` is threaded
-from `IntegrationsReady` (`"integrations"`) and `AgentIntegrationsBody`
-(`` `agent:${id}` ``) through `CatalogPane` into `CategoryCatalog`, and the
-per-row ownership resolution now lives in `use-catalog-sections.ts`.
+A connect that never landed used to REMOVE its app from the catalog and
+re-materialize it as a `RecoveryRow` + `PendingConnectionCallout` pinned above the
+sections — press Slack in Team chat, OAuth fails, Slack teleports to an unrelated
+spot. Both files are DELETED. The rules now:
 
-**The settled line is SHORT; the toast carries the sentence.** The inline outcome
-reads `waiting.connected` ("Connected") / `waiting.failed` ("Could not connect");
-`waiting.stopped` keeps its full sentence because it is the actionable one (it
-says the app can be connected again, right where it sits). The toast stays the full announcement — it is the only
-one that still works when the user has navigated away — so a single outcome is no
-longer spelled out three times over.
-
-**Outcomes are announced once, from the flow, for every surface** (`announce` in
-the hook): `active` → success toast `connectResult.connected`; `timeout` → a
-NEUTRAL `info` toast (`connectResult.timeoutTitle` + body saying to connect the
-app again) because walking away from an OAuth is normal behavior, NOT a
-crash — it no longer routes through `showErrorToast` (red branded toast + Sentry
-report + green "report sent" follow-up); `error` → an `error`-variant `addToast`,
-again no auto bug report; `cancelled` → silent. The in-chat card's duplicate
-success toast (`chat:composio.verifiedToast`) was deleted with the key.
-
-**A broken connection lives where the app lives (the recovery model).** A connect
-that never landed used to REMOVE its app from the catalog and re-materialize it as
-a `RecoveryRow` + `PendingConnectionCallout` pinned above the category sections:
-the user pressed Slack in Team chat, the OAuth failed, and Slack teleported to an
-unrelated spot at the top of the pane. Both files are DELETED, on both surfaces.
-The rules now:
-
-- **One home per app.** `partitionConnections` sends only `active` connections to
-  the Installed strip; everything else stays connectable. `catalogHiddenToolkits(connections)`
-  is the ONE rule for what the browse catalog omits, and it now has exactly one clause: a
-  WORKING connection, because that is an Installed row. (It took a ceiling too, while locked
-  rows existed; it does not any more.) A pending/errored connection is omitted from neither:
-  it keeps its normal category rows, spotlight duplicates included, and counts as available.
-  A toolkit holding an active connection AND a leftover broken one is installed only.
-- **At rest the row says it.** `PlaneAppRow` takes `status?: BrokenStatus` and
-  swaps its blurb for the shared `ConnectionStatusBadge` (dot + label,
-  `status.pending` "Finishing up" in warning, `status.error` "Needs reconnecting"
-  in danger) on the ONE secondary line — which is why `CatalogRow.description`
-  takes a node now (inventory v35). No expanded panel, no extra chrome.
-- **The `+` IS the retry.** It starts the normal connect from THAT row (origin =
-  the clicked row), so the hand-off gets the exact one-card treatment every live
-  flow gets. A live flow OUTRANKS the at-rest status everywhere
-  (`hasConnectState`, states OR notices): while a flow or its settled notice is on
-  screen the row reports that, never both at once, and the status line returns
-  when the notice expires.
+- **One home per app.** `partitionConnections` sends only `active` connections to the
+  Installed strip; everything else stays connectable. `catalogHiddenToolkits(connections)`
+  is the ONE rule for what the browse catalog omits and has exactly one clause: a
+  WORKING connection. A pending/errored connection keeps its normal category rows,
+  spotlight duplicates included, and counts as available. A toolkit holding an active
+  connection AND a leftover broken one is installed only.
+- **At rest the row says it.** `PlaneAppRow` takes `status?: BrokenStatus` and swaps
+  its blurb for the shared `ConnectionStatusBadge` (dot + label, `status.pending`
+  "Finishing up" in warning, `status.error` "Needs reconnecting" in danger) on the ONE
+  secondary line — which is why `CatalogRow.description` takes a node (inventory v35).
+  No expanded panel, no extra chrome.
+- **The `+` IS the retry.** It starts the normal connect from THAT row (origin = the
+  clicked row). A live flow OUTRANKS the at-rest status everywhere (`hasConnectState`,
+  states OR notices): while a flow or its settled notice is on screen the row reports
+  that, never both, and the status line returns when the notice expires.
 - **Remove lives in the dialog.** The row body opens the SAME `AppInfoDialog` a
-  connectable app opens (one dialog per app, never a third surface); for a broken
-  app it wears the status chip, leads with `pendingRecovery.body` /
-  `errorRecovery.body`, and its footer is Finish connecting / Reconnect (the same
-  hand-off, on the opening row's origin) beside Remove, which disconnects the
-  half-made connection with no confirm (there is nothing working to lose — the
-  same wiring the callout's Remove had). `AppDetailDialog` stays the CONNECTED
-  app's modal, opened from the Installed strip.
+  connectable app opens (one dialog per app, never a third surface); for a broken app
+  it wears the status chip, leads with `pendingRecovery.body` / `errorRecovery.body`,
+  and its footer is Finish connecting / Reconnect beside Remove, which disconnects the
+  half-made connection with no confirm (there is nothing working to lose).
+  `AppDetailDialog` stays the CONNECTED app's modal.
+- e2e: `packages/web/e2e/integrations-recovery.spec.ts` (status on the row, no
+  recovery pile above the catalog, the `+` reconnect as one card, the dialog's
+  Reconnect + Remove), seeded via the fake host's
+  `/__test__/integrations-connection` `{toolkit, status}` hook. It runs on the global
+  page alone now, as does `integrations-ia.spec.ts`;
+  `integrations-locked.spec.ts` was deleted outright.
 
-Covered end to end by `packages/web/e2e/integrations-recovery.spec.ts` (status on
-the row, no recovery pile above the catalog, the `+` reconnect as one card, the
-dialog's Reconnect + Remove), seeded via the fake host's
-`/__test__/integrations-connection` `{toolkit, status}` hook. Its per-agent-tab
-half went with the tab, so the spec now runs on the global page alone — as does
-`integrations-ia.spec.ts` (Teams-member nav + the no-agent-list detail modal), and
-`integrations-locked.spec.ts` was DELETED outright, since the surface that locked a
-row no longer exists.
+---
 
-**Loading language** — three inconsistent treatments collapsed to two.
-`integrations-view/catalog-skeletons.tsx` owns them all: `InstalledSkeleton`,
-and `CatalogSkeleton` (category sections mirroring `CategoryCatalog`'s
-`space-y-8` / `mb-3` / `mt-1` rhythm and the real `CatalogRow` shape — the `+`
-AND the `CatalogShowMore` line every capped section resolves with), so resolving
-costs no layout shift. Each section shows its own skeleton in place;
-`LoadingState` (`integrations/states.tsx`) is the BOOT GATE only, and its fake 5s
-`transition: width` progress bar (which
-animated layout and lied about progress) is replaced by opacity-only pulsing dots.
+## 5. Agent-initiated connect (in-chat)
 
-**Names are never machine slugs** — `appDisplay`'s name fallback is
-`prettifyToolkit(slug)` ("googlesheets" → "Googlesheets", "google-sheets" →
-"Google Sheets"). `prettifyToolkit` MOVED from `ui/chat` to
-`integrations/app-display.ts`: it is app-side display logic, and living in the
-`@houston-ai/chat` barrel put JSX in the import path of node-tested pure code.
-`appDisplay` is the ONE owner of that fallback: `useToolkitBrandResolver` no longer
-keeps a second copy of the rule, and hands it the toolkit exactly as the agent
-wrote it (the catalog lookup is already casing-insensitive, and lowercasing first
-is what turned an authored "GoogleSheets" into "Googlesheets").
+When an agent needs an unconnected app it calls the integration-gated
+`request_connection` tool — it never writes a link.
 
-**Agent-initiated connect (in-chat).** When an agent needs an unconnected app it
-calls the integration-gated `request_connection` tool (never writes a link). That
-records a `{kind:"connect", toolkit, reason?}` pending interaction which rides the
-turn's clean `done` frame and settles the board card to `needs_you`; the pending
-interaction renders a `ChatInteractionCard` stepper that REPLACES the composer
-while pending (HOU-870, `composerOverrideMode: "replace"` — one text input on
-screen; dismissing restores the composer), whose
-connect step is `ChatConnectInteractionCard`. Every step (question, sign-in,
-connect, credential) composes ONE shared modal shell — `InteractionModal` + `InteractionModalTitle`
-in `ui/chat` (reference "Coworker card" look, inventory v19) — that owns the
-surface, the HEADER row (title left; `‹ N of M ›` pager + dismiss X top-right),
-the body, a right-aligned FOOTER row, and an optional trailing region. Connect,
-sign-in, and credential steps carry a free-text row (`InlineTextRow`, ui/chat)
-in that trailing region, below their action buttons: submitted text records a
-decline-with-instruction the agent hears in the composed reply. (Question steps
-have their own in-body escape field, `FreeTextRow`, which the stepper can
-suppress via `hideFreeText`.) The connect step's `(icon) ACTION`
-title (AppLogo `sm` beside "Connect {app}" at REGULAR weight — the sign-in step
-seats the Houston helmet + "Houston" in the same slot) is in the header beside
-the pager/X; its body is the agent's reason in foreground tone (the connected
-state swaps it for a calm check + "Connected"). The signin/
-connect body renders its OWN `InteractionModal`, wired with the `StepChrome`
-(`{ pager, onDismiss, dismissLabel, disabled }`) the stepper hands it, so ui/chat
-stays auth/Composio-unaware while the whole family shares one shell (there is no
-more headerless-body + `InteractionFooter` split). Weight is restrained: color
-tone carries the hierarchy, so titles and labels are REGULAR, never bold. The
-footer is the unified "Not now" + Esc hint beside the single filled "Connect"
-pill (with a return-key glyph); Enter fires Connect, Esc declines (a capture-phase
-handler pre-empting the global Escape-closes-panel shortcut). Navigation is the
-header pager for every kind (NO card-inside-a-card, NO body nav button). Every
-step kind is SKIPPABLE, and a SKIPPED signin/connect step is RECONSIDERABLE:
-walking Back onto it (the pager) reoffers its filled CTA, so the user can connect
-/ sign in after all (a COMPLETED step, which can't re-fire completion, shows the
-calm connected state with no footer — the pager's forward chevron is onward). A
-skip is a recorded fact the completed reply states ("Skipped connecting {app}." /
-"Skipped signing in.", `chat:interaction.skipped*` keys) so the agent hears the
-decline instead of re-requesting — UNLESS the step was reconsidered, in which
-case the reply derives each step's FINAL outcome and reports "Connected {app}."
-instead (the panel keys a per-step outcome map read at completion via
-`finalConnectNames`; ui/chat's `StepFooterApi` is `{ revisited, onSkip }` — the
-body reads `revisited` to suppress its frontier-only "Not now" and, once
-completed, its CTA). It shares the connect flow above with the inline link card
-through one hook (`app/src/components/use-integration-connect.tsx`); only the
-presentation forks — the inline `#houston_toolkit` renderer stays a `RowCard`
-badge, the stepper draws the shared `InteractionModal` (identity in the header,
-CTA in the footer). Both render the logo
-through the shared `AppLogo` (the hook holds the favicon-guess fallback until
-the toolkits catalog settles, and `AppLogo`'s failure latch is keyed to the
-failing URL — a pre-catalog 404 once permanently shadowed the real Composio
-logo in production). Both auto-continue the conversation once OAuth lands (or
-the app is already connected). The old `#houston_toolkit=` markdown-link
-connect hack is GONE from the prompt and tool guidance — the app's legacy
-link-card renderer survives only to render old transcripts. Full lifecycle →
-`knowledge-base/architecture.md`.
-
-**Confirming an action (in-chat) — REMOVED as a dedicated card (HOU-885).** The
-host no longer gates `integration_execute`, so there is no `approval` step and no
-dedicated action-approval card. Confirmation before a consequential write is now a
-model-driven branded `ask_user` question (Ask first mode), rendered by the same
-question step of the interaction stepper as any other `ask_user` — not a special
-Composio-aware approval card. The old `ChatApprovalInteractionCard` /
-`renderApproval` prop / three-way Always-allow / Deny / Allow-once footer and the
-`approvedLine` / `deniedLine` reply plumbing are gone.
+- That records a `{kind:"connect", toolkit, reason?}` pending interaction which rides
+  the turn's clean `done` frame and settles the board card to `needs_you`. The pending
+  interaction renders a `ChatInteractionCard` stepper that REPLACES the composer while
+  pending (HOU-870, `composerOverrideMode: "replace"` — one text input on screen;
+  dismissing restores the composer). Its connect step is
+  `ChatConnectInteractionCard`.
+- **Every step kind composes ONE shared modal shell** — `InteractionModal` +
+  `InteractionModalTitle` in `ui/chat` (reference "Coworker card", inventory v19) —
+  which owns the surface, the HEADER row (title left; `‹ N of M ›` pager + dismiss X
+  top-right), the body, a right-aligned FOOTER row, and an optional trailing region.
+  There is no more headerless-body + `InteractionFooter` split.
+- Connect, sign-in and credential steps carry a free-text row (`InlineTextRow`,
+  ui/chat) in that trailing region below their action buttons: submitted text records
+  a decline-with-instruction the agent hears in the composed reply. Question steps have
+  their own in-body escape field (`FreeTextRow`), suppressible via `hideFreeText`.
+- The connect step's `(icon) ACTION` title (AppLogo `sm` beside "Connect {app}" at
+  REGULAR weight — the sign-in step seats the Houston helmet + "Houston" in the same
+  slot) sits in the header beside the pager/X; its body is the agent's reason in
+  foreground tone (the connected state swaps it for a calm check + "Connected"). The
+  signin/connect body renders its OWN `InteractionModal`, wired with the `StepChrome`
+  (`{ pager, onDismiss, dismissLabel, disabled }`) the stepper hands it, so ui/chat
+  stays auth/Composio-unaware.
+- **Weight is restrained**: colour tone carries the hierarchy, so titles and labels are
+  REGULAR, never bold.
+- Footer is the unified "Not now" + Esc hint beside the single filled "Connect" pill
+  (with a return-key glyph). Enter fires Connect, Esc declines (a capture-phase handler
+  pre-empting the global Escape-closes-panel shortcut). Navigation is the header pager
+  for every kind — no card-inside-a-card, no body nav button.
+- **Every step is SKIPPABLE, and a skipped signin/connect step is RECONSIDERABLE**:
+  walking Back onto it reoffers its filled CTA, so the user can connect after all (a
+  COMPLETED step shows the calm connected state with no footer). A skip is a recorded
+  fact the completed reply states ("Skipped connecting {app}." / "Skipped signing
+  in.", `chat:interaction.skipped*`) so the agent hears the decline instead of
+  re-requesting — UNLESS the step was reconsidered, in which case the reply derives
+  each step's FINAL outcome and reports "Connected {app}." instead (the panel keys a
+  per-step outcome map read at completion via `finalConnectNames`; ui/chat's
+  `StepFooterApi` is `{ revisited, onSkip }`).
+- It shares the connect flow with the inline link card through one hook
+  (`app/src/components/use-integration-connect.tsx`); only presentation forks. Both
+  render the logo through the shared `AppLogo` (the hook holds the favicon-guess
+  fallback until the toolkits catalog settles, and `AppLogo`'s failure latch is keyed
+  to the failing URL — a pre-catalog 404 once permanently shadowed the real Composio
+  logo in production). Both auto-continue the conversation once OAuth lands.
+- The old `#houston_toolkit=` markdown-link connect hack is GONE from the prompt and
+  tool guidance; the app's legacy link-card renderer survives only to render old
+  transcripts. Full lifecycle → [architecture.md](architecture.md).
 
 **No silent failures.** All engine mutations route through `call()`
-(`app/src/lib/tauri.ts`), which toasts + reports once, so the integration hooks
-carry NO `onError` (a second toast would double up).
-
----
-
-## 4. Custom integrations (HOU-550) — user-added APIs & MCP servers
-
-Users connect services the Composio catalog does not offer. The engine is the
-embedded **executor SDK** (`@executor-js/sdk` + `plugin-openapi` + `plugin-mcp`,
-MIT, pinned EXACT — pre-1.0), wrapped entirely behind the same
-`IntegrationProvider` port as provider id **`custom`**
-(`packages/host/src/integrations/custom/`). Nothing executor-shaped leaks past
-the adapter, and the packages' broken root type entries mean imports go through
-the `/core` subpaths (see executor-host.ts's comment).
-
-**Key-free and always on.** `buildLocalHost` registers the custom provider
-unconditionally (beside Remote/Composio when configured) — definitions and
-secrets live on THIS host's disk, so an install with no Composio key, or a
-signed-out desktop, still serves it. `capabilities.integrations` therefore
-always contains `"custom"`.
-
-**Houston owns persistence; the executor is a compiled view.**
-`custom-integrations.json` holds definitions next to credentials.json. On
-local/self-host, `custom-integration-secrets.json` is the 0600 secret store; on
-managed cloud, `RemoteCustomSecretStore` sends values over the agent's
-host-token-authenticated gateway route into GCP Secret Manager, and no value is
-written to the agent-data store. At the first managed boot after upgrade, the
-host hydrates the legacy file, uploads every entry, and removes it only after
-all writes succeed; the following sync deletes the old GCS object. A partial
-migration leaves the whole file intact for safe retry.
-
-`CustomExecutorHost` lazily builds one in-memory executor and rehydrates every
-definition into it (addSpec/addServer + an org/`default` connection per def); a
-definition that fails to compile degrades to state `error` for itself only.
-Secrets reach requests via a Houston `CredentialProvider` (`secrets.ts`)
-resolved lazily — the executor never copies values.
-
-**Transport guard (HOU-1083).** The executor gets its OWN HTTP seam
-(`fetch-guard.ts`: `httpClientLayer` + `fetch` in `buildExecutor`) instead of
-inheriting process-global fetch state. Effect's HttpClient sets an explicit
-`content-length` header on every sized body; in a host process where pi has
-installed npm undici's fetch/global dispatcher over Node's bundled copy, that
-header ended up on the wire twice and undici v8 rejected the merged value —
-EVERY custom POST/PUT failed client-side with `UND_ERR_INVALID_ARG: invalid
-content-length header` while GETs worked (root-caused live on a pod with a
-breakpoint inside undici). The guard strips message-framing/hop-by-hop headers
-(content-length, transfer-encoding, connection, host, ...) before delegating
-to the CURRENT `globalThis.fetch`, so every fetch implementation computes the
-one correct value itself, deterministically, on any Node/Bun/undici mix. Note:
-the promise-surface `createExecutor` in `@executor-js/sdk` 1.5.37 silently
-dropped `httpClientLayer`/`fetch` from its config allowlist —
-`patches/@executor-js__sdk@1.5.37.patch` forwards them (worth an upstream PR;
-re-check on every executor bump — `fetch-guard.test.ts` fails loudly if the
-guard stops reaching the wire).
-
-**Replace = the agent's self-repair path (HOU-1083).** `add` with
-`replace: true` (same slug, same kind) swaps the spec in place through the
-proven uncompile → recompile sequence, keeping `addedAtMs` — and the stored
-credential ONLY when `service-origins.ts` proves the replacement talks to the
-same service (equal server/endpoint origins; url-kind specs need the identical
-document URL; anything indeterminate counts as changed). A changed origin
-drops the carry, deletes the now-unreferenced secret, and lands the def
-`pending` (secure-card re-entry) — otherwise a prompt-injected spec pointing
-at an attacker host would receive the user's key on the next action. Within the same
-service the carry ignores the input's `auth` (replace is spec-repair; a model
-re-deriving `auth` must not discard a working key with a sloppy `"none"`
-replay). A replacement that fails to compile is uncompiled again and the
-previous view restored, so a working integration is never traded for a broken
-spec. All manager mutations
-(add/replace/setCredential/remove) are serialized through one queue so the
-def store, secret store, compiled executor, and state map can never interleave
-into disagreement.
-The product prompt (host `houston-prompt.ts` + the Rust twin
-`app/src-tauri/src/houston_prompt/integrations.rs`) makes discovery
-deterministic: search published spec → llms-full.txt/llms.txt → docs pages in
-that order, author COMPLETE specs (every documented operation), then compare
-the compiled action count against the docs and `replace: true` until they
-match — never a second integration for the same service.
-
-**Spec freshness (HOU-1052 follow-up).** The compiled view is process-long
-(hours on a pod, weeks on a desktop), so url-sourced OpenAPI specs get a
-stale-while-revalidate verify: any `ensure()` past a 6h TTL arms ONE
-background `refreshSpecs()` sweep — re-fetch each url spec, sha256-compare,
-and recompile ONLY a def whose content actually changed (removeSpec +
-compileDef, the same sequence remove + re-add runs, connection included). An
-unreachable spec host keeps the working view; a first sweep records baselines
-without recompiling; blob specs are frozen by design and MCP tool lists are
-discovered live per listing (no cache in the executor SDK), so neither is
-swept. Nothing ever blocks a chat turn on a spec fetch, and nothing refetches
-per request.
-
-**Definition shape** (discriminated union, `types.ts`): `openapi` (spec
-url|blob, baseUrl?) or `mcp` (remote endpoint, headers?), plus
-`auth: "none" | "credential" | "oauth"` and an optional stored `credential`
-{template, secretIds}. State per def: `active` (toolCount) / `pending` (needs a
-key — or, for an `oauth` def, the user's browser sign-in; authMethods carry the
-collectible fields — v1 is ONE `token` variable per method) / `error`. The view
-carries `auth` (the UI's Sign-in-vs-Enter-key branch) and a derived `iconUrl`
-(PRODUCT-1172 — see Icons below).
-
-**OAuth sign-in for MCP servers (PRODUCT-1172).** An OAuth-walled MCP server is
-no longer a dead end: Houston IS the OAuth client. `custom/oauth-flow.ts` runs
-discovery (RFC 9728 protected-resource → RFC 8414 AS metadata via
-`@modelcontextprotocol/sdk`'s client auth module, a direct exact dep of the
-host), dynamic client registration (RFC 7591, client reused across re-auths
-while the redirect URI matches), and mints a PKCE authorize URL with a random
-single-use, 10-min `state` (in-memory `CustomOAuthAttempts`, one pending
-attempt per slug). The browser lands on the PUBLIC callback
-`GET /v1/integrations/custom/oauth/callback` (`routes/custom-integrations-oauth.ts`,
-mounted BEFORE `principal(...)` — the state is its whole authentication; the
-response is a tiny self-contained close-this-tab page). Completion
-(`custom/oauth-ops.ts`, serialized like every manager mutation) exchanges the
-code, writes a **token bundle** (`custom/oauth-bundle.ts`: tokens + client +
-AS metadata + resource, versioned JSON) into the secret store under the SAME
-`ci_<slug>_token` id a pasted key would use, sets
-`credential {template, secretIds}` on the def, reconnects, and emits
-`CustomIntegrationsChanged` — the UI flips on the event, no client-side poll.
-**Refresh needs no rewire**: the executor resolves connection inputs through
-`houstonCredentialProvider` PER REQUEST, and its `get` now recognizes a bundle
-value and serves the CURRENT access token (`resolveOAuthValue` — 60s skew,
-single-flight per id, rotated bundle persisted; an expired grant with no
-refresh token throws "sign in again"). MCP servers registered with any
-non-`none` auth get the `Authorization: Bearer` header template, so the token
-rides the standard placement.
-
-**Deployment gating** — capability `customIntegrationOAuth`
-(`/v1/capabilities`): on exactly when the host can serve a browser-reachable
-callback. A loopback-bound local host derives `http://127.0.0.1:<port>` (the
-desktop sidecar; `pnpm dev`'s host pane too); self-host opts in with
-`HOUSTON_OAUTH_CALLBACK_BASE_URL`; managed pods stay OFF until the gateway
-serves a callback route (a cloud follow-up). `detect` decorates a
-`requiresOAuth` result with `oauthSupported`, so the agent tool and the manual
-add form branch on the HOST's answer, never a guess: supported → add with
-`auth:"oauth"` (the add form hides the key switch and chains straight into the
-browser; rows/detail card show **Sign in** / **Sign in again**,
-`useStartCustomOAuth`); unsupported → the honest "can't connect yet" verdict
-blocks the add exactly as before.
-
-**Icons (PRODUCT-1172).** `custom/icon.ts` derives a service favicon at
-VIEW-BUILD time (never persisted): MCP endpoint host / `baseUrl` / spec URL /
-a blob spec's first `servers[]` origin → strip one technical label
-(`www|api|mcp`) → Google S2 favicon URL (the same service `app-display.ts`'s
-`fallbackLogo` already uses; IP/localhost/single-label hosts yield none).
-`AppLogo`'s per-URL failure latch keeps the letter avatar as fallback. Carried
-as `CustomIntegrationView.iconUrl` into the custom rows, the detail dialog,
-and the chat process-header brand line (`use-action-brand-resolver.ts` — the
-wrench glyph is now the no-icon path only).
-
-**Actions are executor addresses.** A custom ToolMatch's `action` is
-`tools.<integration>.<owner>.<connection>.<tool>`; `toolkit` is the integration
-slug. The sandbox routes a `tools.`-prefixed action to the `custom` provider
-(`providerForAction`, `CUSTOM_ACTION_PREFIX`).
-
-**Sandbox proxy fans out.** `/sandbox/integrations/search` with no explicit
-provider queries ALL registered providers and merges (a failing provider never
-hides another's results; an all-empty merge rethrows a SigninRequired if one
-occurred). Execute routes by action shape (`providerForAction`: `tools.` →
-custom). Execute is capped at 120s so a hung upstream can never wedge the turn.
-
-**Setup is agent-driven (chat), never a form.** The runtime ships three gated
-tools (`packages/runtime/src/session/tools/custom-integrations.ts` +
-`request-credential.ts`): `custom_integration_detect` (classify a pasted URL —
-`integrations.detect` + MCP probe), `custom_integration_add` (register + compile;
-management routes: `/sandbox/integrations/custom/{detect,add}`, HMAC-authed),
-and `request_credential` — records a `{kind:"credential", toolkit, reason?}`
-interaction step (protocol `interaction.ts`, ids `k1..kN`, auto-excluded from
-Autopilot) that replaces the composer with a SECURE key-entry card. The secret
-travels UI → `POST .../integrations/custom/definitions/:slug/credential` on the
-**per-agent surface** (`/agents/:id/...` — HOU-823, see User routes below) →
-validate (`connections.validate`, fail-open on `unknown`) → secret store →
-connection rewire. It NEVER enters the transcript; the prompt (houston-prompt.ts
-+ the Rust mirror) forbids asking for keys in chat.
-
-**A spec with no security scheme still takes a key (the PriceLabs fix).** Many
-real specs (and agent-authored ones) declare NO `securitySchemes` — the key is
-just a documented header. That used to dead-end the secure save with
-`credential_invalid` on every attempt while pasting the key in chat worked (the
-worst possible incentive). Compile now injects a synthesized `houston_fallback`
-method for credential-mode OpenAPI defs with no collectible method
-(`custom/fallback-auth.ts` → `executor.openapi.configure`): the placement is
-derived from the spec's own api-key-shaped header/query parameter
-(`X-API-Key`-like names; an `Authorization` param gets `Bearer `), else the
-`Authorization: Bearer` default the MCP path already uses. The executor is
-in-memory, so every rebuild re-injects the SAME slug before the stored
-credential's connection re-renders through it. `setCredential` also heals defs
-added as `auth:"none"` (a later `request_credential` upgrades them), and its
-residual failures (uncompiled def; MCP def with no declared method) carry
-actionable messages. The secret FILE write is platform-correct: 0600 asserted
-on POSIX; on Windows (no POSIX modes — NTFS ACLs under the user profile are the
-protection) the write skips chmod and clears a stray read-only attribute before
-its rename-replace.
-
-**User routes** (`routes/custom-integrations-user.ts`; the sandbox detect/add
-routes stay in `routes/custom-integrations.ts`): GET/DELETE
-`definitions[/:slug]`, the credential POST, and — since HOU-980 — **POST
-`definitions`** (add; body = the SAME grammar as the agent's sandbox add
-tool, `parseAddInput` is the one validator; called by BOTH the agent's
-sandbox tool and the client's manual add form), **POST `detect`**
-(classify a pasted URL), and **GET `definitions/:slug/tools`** (the compiled
-tool list behind one definition — `manager.tools(slug)` over
-`custom/tools.ts` `toolsOf`, backing the detail card's actions list; the
-count always agrees with the row's `toolCount`). The whole family is parsed
-by ONE grammar (`customTargetOf` in `custom-integrations.ts`) and served on
-THREE surfaces: top-level `/v1/integrations/custom/*` (mounted BEFORE the
-generic `/v1/integrations/:provider/*` catch-all; unknown subpaths like
-`custom/connections` fall through to it), the `/v1/agents/
-:id/integrations/custom/*` wrapper, and the per-agent dispatch `/agents/:id/
-integrations/custom/*`. **The dispatch form is the one the shipped clients
-call** (HOU-823): the hosted gateway proxies ONLY per-agent routes to a pod and
-its own `/v1/integrations` subtree is Composio-only, so the top-level POST 404ed
-at the gateway — every managed-cloud secure-card save failed
-(`custom_integration_credential: not found (engine error 404)` in Sentry). The
-data stays user-global; the agent id authorizes and routes. Note the gateway's
-dispatch-scope classifier treats this family as configure-scope (fail-closed),
-so in a Teams org only agent managers can save/remove — a member-facing
-use-scope carve-out is a gateway follow-up. Errors carry stable `code`s
-(`not_found`, `duplicate_slug`, `credential_invalid`, `compile_failed`…).
-Mutations emit `CustomIntegrationsChanged` (protocol events.ts) → query
-invalidation. EVERY client surface now rides the per-agent form whenever an
-agent exists: `CustomIntegrationsSection` still takes an optional `agent`
-(HOU-980; the per-agent tab that passed one is gone, so today every caller is
-agent-less), and agent-less surfaces (the global page + its tab
-chip in `IntegrationsReady`, screen prefetch, chat brand resolution) resolve a
-transport agent via `useCustomTransportAgentId`
-(`use-custom-integrations.ts`) — the FIRST agent's `/agents/:id/...` routes,
-valid because the data is user-global — falling back to the top-level form
-only when no agent exists yet. That transport fallback is what makes the
-global page's Custom integrations tab (and its key/remove dialogs) work
-behind the hosted gateway instead of hiding behind the 404→null degrade. The
-`agentId?`-aware hooks are `useCustomIntegrationsFor`,
-`useAgentCustomIntegrations`, `useDetectCustomIntegration`,
-`useAddCustomIntegration`, `useRemoveCustomIntegration`,
-`useSubmitCustomCredential`; engine-client + adapter carry the matching
-`...AgentCustomIntegration...` methods in `custom-integrations-mixin.ts`.
-
-**UI (HOU-980)**: a PAGE-LEVEL source toggle (`integrations-view/
-catalog-mode-tabs.tsx` — `CatalogModeTabs` + the shared `CatalogBrowsePane`,
-one builder for both surfaces) shows ONE source at a time: **Integrations**
-(Composio — search + categories, its Installed strip of active catalog
-connections ONLY, the browse catalog) or **Custom integrations** (the same
-`CatalogShell` grammar via `CustomModeShell`: the mode's search + Add button
-over an Installed card of the custom rows). Custom rows never appear in the
-Composio strip — the old layout showed them twice. "Add custom integration"
-opens `CustomAddDialog` (chained by `CustomAddFlow`), a two-way fork whose
-LEAD path — a filled `bg-chip` card, first in the DOM, `emphasis="lead"` —
-is **"Set up with your agent"**: the guided chat. It resolves its agent
-without asking wherever it can (an agent passed in, else the workspace's only
-agent) and interposes `AgentPickerDialog` only for a genuinely multi-agent
-workspace (HOU-1083 restored the fork on top of that #1171 resolution; the
-fork itself is #1151's). The chat opens in the shell-level RIGHT panel, the
-same one the routine chat and the mission board use, so the Integrations
-surface stays visible on the left. Only the VISIBLE section instance drives
-that shared panel — kept-alive views leave every instance mounted, so
-`integration-setup-chat.tsx` gates on `active`, which the global page feeds
-from `viewMode === INTEGRATIONS_VIEW_ID` (the per-agent tab used to feed it
-its own `isActive`; there is one caller now). The
-kickoff prompt, `lib/integration-chat-setup.ts`, explicitly states the user
-is present and `ask_user` works — a "Houston sent this automatically" framing
-once made the model refuse the step-by-step interview. The QUIET path is
-**"Add manually"** (`CustomAddForm` + the pure, node-tested
-`custom-add-model.ts`): kind (API / MCP server), URL with an optional "Check"
-(the detect route pre-classifies, fills the name, and flips "needs an API
-key" on a key-walled server — an OAuth-walled one never auto-flips the key
-switch: a pasted key cannot satisfy OAuth. Where the host reports
-`oauthSupported` the verdict reads as good news, the key switch hides, and
-the add rides `auth:"oauth"` straight into the browser sign-in; elsewhere the
-honest "Houston can't connect to this yet" verdict still blocks the add —
-PRODUCT-1172, see the OAuth sign-in block in §4), name, and a
-"needs an API key" switch. The verdict is keyed to the URL it judged and
-latest-check-wins (`checkSeq`), so a late probe can never claim an edited
-address. Detect + add ride the TRANSPORT agent's per-agent routes (the same
-`useCustomTransportAgentId` the reads use), so the form works behind the
-hosted gateway. A successful add SEEDS both list caches before invalidating
-(the row appears without waiting on the refetch); an add that needs a key
-lands `pending` and chains straight into the secure key dialog. Every custom
-row's BODY opens `CustomDetailDialog` (letter avatar,
-kind + live-status chips, URL + added date + the action COUNT — the
-per-action list was cut on review as noise; footer: Enter/Update key beside
-Remove; the `tools` host route stays as API). The dialog trio (detail / key
-/ delete) hangs off ONE slug-keyed selection
-(`custom-integration-dialogs.tsx` — `useCustomSelection` +
-`CustomIntegrationDialogs`), re-deriving the fresh view from the live list so
-a key save flips the open card to active and a removal closes it. The
-in-chat credential card
-(`app/src/components/chat-credential-interaction-card.tsx`) is a first-class
-citizen of the `InteractionModal` shell, mirroring the connect card: a key-glyph
-+ integration-name header, the reason line over the shared `CustomCredentialForm`
-(externalized submit via `formId`/`hideSubmit`/`onReadyChange`), and a footer
-with a "Save key" CTA beside the unified "Skip" (Esc). A saved key auto-continues;
-a SKIPPED key is a recorded fact the reply states ("Skipped adding the {name}
-key.", `chat:credential.skippedLine`; `finalCredentialNames` mirrors
-`finalConnectNames`) so the agent stops waiting. Hidden when the host 404s the
-definitions route (engine-client returns `null`, a 404→null degrade).
-
-**Cloud custody**: definitions remain agent data, while values are agent-scoped
-Secret Manager secrets. Engine pods have no GCP IAM; only the gateway can
-resolve the deterministic non-PII resource id. The cloud web client's global
-custom-management route still depends on gateway proxy support; custody is safe
-regardless of whether that UI surface is enabled. Rollout and rollback are
-COUPLED: a gateway without Secret Manager custody (old image, or
-`GW_SECRET_MANAGER_PROJECT` unset outside dev) answers the pod custody routes
-401, so a new-image managed pod fails every custom-secret read. Rolling the
-gateway's custody flag back requires pinning the engine image back in the same
-step. The Anthropic credential is NOT part of this custody: the gateway's
-central store is its single custodian and rotator (see
-anthropic-credentials.md) — pods never hold or restore its refresh token.
-
----
-
-## 5. Triggers — event-driven routines (C9)
-
-A routine gets exactly one wake mechanism: a cron `schedule` OR a `trigger`
-binding (a Composio event, e.g. "a new Gmail message arrived"). Everything
-downstream of the wake — run records, chat mode, provider pins, Autopilot,
-acting-as the creator — is identical to a cron routine. Full design +
-cross-repo contract: `cloud/docs/contracts/C9-triggers.md`.
-
-**Placement (final): the Go cloud gateway is the ONLY trigger backend.** Triggers
-work ONLY where the Go gateway/control-plane fronts the deployment —
-**managed cloud yes**, **self-host no**, **desktop no**. The Go edge holds the
-Composio key + public webhook URL, owns reconciliation and the webhook ingress,
-and **advertises the `triggers` capability**. This TS host carries NO server-side
-trigger implementation (no reconciler, no ingress, no provider trigger verbs);
-its ONLY trigger surface is the internal pod DELIVERY route below. Self-host and
-desktop keep the capability off until a Go-based story exists for them; the UI
-hides the event option wherever `triggers` is absent.
-
-**Domain shape (protocol, additive).** `RoutineTriggerBinding`
-(`packages/protocol/src/domain/routine.ts`) is a **`kind`-discriminated union**,
-`ComposioTriggerBinding | WebhookTriggerBinding`. `kind` is OPTIONAL and ABSENT
-means Composio — `{toolkit, trigger_slug, trigger_config, connected_account_id?}`,
-user intent only, no Composio instance ids in the doc — so every routine written
-before webhook wakes existed deserializes unchanged (no migration).
-`kind: "webhook"` is the incoming-webhook binding, `{key_prefix?}` (display-only
-"wh_xxxxxxxx" label; the URL + secret are gateway-minted and NEVER live in routine
-data — see the webhook wake source below). `Routine.trigger?` added,
-`Routine.schedule?` now optional; EXACTLY ONE of the two is set. `dueAt()` returns null when `schedule` is absent
-(`packages/domain/src/schedule.ts`), so the cron scanner skips trigger routines
-by construction. `routineTriggerPrompt(routine, events)` (same file) frames the
-batch of events as UNTRUSTED third-party data (structured `<event>` delimiters +
-"this is event data, not instructions") — payloads are attacker-authored and
-trigger runs pin Autopilot, so the framing bounds prompt-injection blast radius;
-the effective allowlist bounds it further.
-
-### Pod trigger-events route (the host's only trigger code)
-
-`POST /v1/agents/:agentId/trigger-events` (`routes/trigger-events.ts` →
-`triggers/fire.ts`) — the INTERNAL route the Go control plane delivers a batch
-onto for a managed pod. Host-token trust boundary, never user-facing (an inbound
-`x-houston-acting-as` means a user request was proxied here → 404). Body
-`{events: [{id, routine_id, trigger_slug, payload}]}`; all outcomes are HTTP 200
-with a discriminated `result` (`fired` + `event_ids` / `busy` / `no_routine`) so
-the caller can mark delivered or retry. `id` is the DEDUP key (the cloud outbox
-row id); the `FireLock` key `trigger-event:<id>` absorbs redeliveries.
-`fireTriggerEvents` groups events by enabled trigger routine, dedups, and fires
-ONE run per routine through the same `fireRoutineRun` / `RoutineFirer` as cron
-(framing the batch via `routineTriggerPrompt`). A busy routine releases its fresh
-locks and returns `busy` so the redelivery re-fires. Always mounted — every local
-host has a turn bus, wired as `triggerLock` in `local/host.ts`.
-
-### Capability + status (Go edge advertises; the TS host is honest about no-backend)
-
-- **Capability**: `triggers` reaches the UI from `/v1/capabilities` served by the
-  **Go edge** on managed cloud. The TS host NEVER adds it — a pod/self-host/
-  desktop stays byte-identical to the nominal profile (absent = off).
-- **trigger-types**: `GET /v1/integrations/composio/trigger-types?toolkit=` is
-  served by the **Go edge**; engine-client `triggerTypes` calls it.
-- **trigger-status**: the **Go edge** serves the live Composio provisioning health
-  on managed cloud. Separately, THIS TS host serves `GET
-  /v1/agents/:agentId/trigger-status` as an HONEST no-backend answer
-  (`routes/trigger-status.ts`, wired in `routes/agents.ts` dispatch): on a
-  deployment that cannot fire triggers (`triggersEnabled === false` — desktop/
-  self-host) it returns `{items}` with one `{routine_id, status:"error", detail}`
-  per trigger-bound routine (detail: "Event triggers are not available on this
-  device…"), and `[]` when none. When triggers CAN fire it returns `false` (falls
-  through) so it never fabricates a status the real backend owns. This closed the
-  bug where a desktop trigger routine 404'd → null → the UI showed nothing.
-- **`triggersEnabled` (host deployment fact, NOT `capabilities.triggers`)**: a
-  boolean threaded `local/main.ts` (`HOUSTON_MANAGED_CLOUD==="1"`) →
-  `LocalHostOptions` → `ControlPlaneDeps`/`AgentRouteDeps`. Drives THREE things:
-  the trigger-status route above, the **routine write gate**, and the **product
-  prompt**. It is separate from the client-facing `capabilities.triggers` (which
-  the TS host never sets on itself) precisely so the write gate does NOT wrongly
-  reject trigger writes on managed-cloud pods, where triggers DO fire.
-- **Write gate** (`routes/agent-data.ts`): a routine POST/PATCH whose result
-  carries a `trigger` binding is rejected `400 {error:"Event triggers are not
-  available here. Give this automation a schedule instead."}` when
-  `triggersEnabled` is false. Schedules pass untouched; existing on-disk trigger
-  routines still LOAD and LIST (reads are ungated) — they just get the error
-  status above and can be PATCHed to a schedule to escape.
-- **Product prompt** (`houston-prompt.ts` + `houston-prompt-routines.ts`):
-  `houstonSystemPrompt({triggers})` advertises event wakes ONLY when triggers can
-  fire; the schedule-only variant tells the agent an event wake needs Houston
-  Cloud and to offer a schedule instead.
-
-### Webhook wake source (gateway ingress + one-time mint)
-
-A `kind: "webhook"` binding wakes a routine whenever any external system POSTs to
-the routine's own minted URL. This is a **hosted-cloud-only backend**: the Go
-gateway owns the public ingress and the mint. `POST /v1/agents/:slug/routines/:id/
-webhook-key` returns a `WebhookKeyReveal` `{url, secret, key_prefix}` shown to the
-user EXACTLY once (revealed in `webhook-key-dialog.tsx`, held only in the chip's
-local state, never the query cache or routine data). Only `key_prefix` (the
-display-only "wh_xxxxxxxx" label) is stamped back onto the routine's binding so
-the UI can show a key exists; absent `key_prefix` = not minted yet. The gateway is
-the sole owner of ingress, verification, and mint — this TS host carries no
-webhook code. Full cross-repo contract: `cloud/docs/contracts/C9-triggers.md`.
-
-### UI surfaces — the team Routines section (chat-first, one merged list)
-
-Schedule-driven and event-driven routines live in ONE surface: a **team's
-Routines section** (`teams-model.ts` section id `routines`, rail label en
-"Routines", es "Rutinas", pt "Rotinas"). The per-agent Routines TAB is gone with
-the agent tab shell; the section lists every team agent's routines in one grid,
-each row naming its owner (`knowledge-base/teams-ui.md`), and `openAgentSection(
-agentId, "routines")` is how a caller asks for one agent's.
-The schedule/event split is an engineering distinction, not a user one, so the
-surface never varies by deployment and the wake mechanism is a choice made
-**while creating** a routine, not a form field on the row. The domain model stays
-ONE `routines.json` list; the section
-(`app/src/components/team-view/team-routines/`, over the per-agent machinery that
-survives in `components/agent/routines-tab-pane.tsx` +
-`use-routines-tab-view.ts`) renders
-it via `@houston-ai/routines` `RoutinesGrid`, with per-row sentence summaries and
-Active / Paused sections. Each row is **chat-first**: clicking it opens the
-routine's setup chat in the shell-level mission panel (split view, via
-`useShellDetailPanel`); the row itself carries only an enable/disable toggle, a
-three-dot menu (Run now / Stop run, Delete), and — for a schedule routine — an
-inline schedule-edit popover (`ScheduleBuilder`). There is **no manual form
-editor and no Dialog wizard**; the deleted `RoutineRowEdit` / `RoutineTriggerEditor`
-/ `TriggerPicker` / `TriggerConfigForm` are gone.
-
-Creation runs through the scripted **in-chat intake**
-(`app/src/components/agent/automation-intake/`) — cards that look exactly like the
-agent's real `ask_user` cards but run locally with zero model calls: a fork
-("from scratch" / "from a template"), then (only where `capabilities.triggers` is
-on) a wake question (schedule / app event / webhook). The app-event card
-(`intake-trigger-card.tsx`) has the user pick **only the APP** — usable apps are
-the agent's connections ∩ effective allowlist (`use-usable-toolkits`), and an
-unconnected app connects **inline** in the card (`connect-inline.tsx`). WHAT event
-in that app should wake it is decided later, in plain words, in the AI setup chat;
-the chosen app's event catalog is embedded into that chat's kickoff prompt
-(`routine-chat-handoff-wake.ts` `wakeSaveRule`, an internal `<event_catalog>` the
-agent copies a `slug` from verbatim). Skipping any intake question hands off to a
-full AI interview from scratch. The setup-chat kickoff is
-`routine-chat-prompts.ts` (offering the event wake only when triggers are on);
-setup chats carry `ROUTINE_SETUP_AGENT_MODE` and run as Coworker (`execute`). The
-live per-routine health block (`RoutineTriggerStatus` / `TriggerStatusBadge`)
-renders for every trigger-bound routine, offering one-click reconnect on a
-disconnected state. Read queries: `useTriggerTypes` / trigger-status in
-`app/src/hooks/queries/use-triggers.ts`, gated on the `triggers` capability so a
-desktop build never fetches the catalog.
+(`app/src/lib/tauri.ts`), which toasts + reports once, so the integration hooks carry
+NO `onError` (a second toast would double up).

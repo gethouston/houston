@@ -1,21 +1,28 @@
 # Architecture
 
-> **Source of truth for the engine direction: `convergence/README.md`.** This doc is the repo-shape overview. Houston runs ONE TypeScript engine for desktop AND cloud — the **pi runtime** behind the **host**. The legacy Rust `engine/` (17 crates) and its Tauri adapter (`app/houston-tauri/`) have been **deleted**; the only Rust left is the thin desktop shell (`app/src-tauri`) that spawns the host as a sidecar.
+> This doc is the repo-shape overview. Houston runs ONE TypeScript engine for desktop AND cloud — the **pi runtime** behind the **host**. The only Rust is the thin desktop shell (`app/src-tauri`) that spawns the host as a sidecar. Engine direction: `convergence/README.md`.
 
-## The engine (the convergence target)
+## The engine
 
 ONE deployment-agnostic server — the **host** (`packages/host`, `@houston/host`) — with ONE router, ONE `authorize()` seam, ONE domain layer, and **two adapter profiles** (local desktop vs cloud multi-tenant) wired in `main()`. The only agent loop is the **pi runtime** (`packages/runtime`, TS/Node in dev + Docker; Bun only for the compiled desktop sidecar) — single-workspace, single-credential, tenancy-free. Domain logic lives once in `packages/domain`; wire types + zod in `packages/protocol` (**protocol v3**). The frontend (`app/src`, also `packages/web`) talks ONLY to the host via `@houston-ai/engine-client`, every deployment.
 
 - **Desktop** = the host booted with local adapters (FS store/vfs, subprocess pi launcher, single-user identity, FS watcher → events), spawned by the Tauri shell (`app/src-tauri`) as a Bun-compiled sidecar; normal dev/test/Docker runs use pnpm + Node. The Tauri shell is the only Rust left — OS-native glue that spawns the host sidecar and talks HTTP + SSE to it.
-- **Cloud** = the same open host/runtime image running as one engine pod per agent behind the private gateway. The multi-tenant CLOSED control plane (`@houston/host-cloud`: Pg/GCS/GKE/Redis adapters + operator-admin + cloud `main.ts`) was RETIRED and deleted — an architecture the shipped cloud moved past; it survives only in git history.
-- **Open/closed seam** = everything in this repo is OPEN and may never import a cloud library or closed adapter; closed policy lives out-of-repo (the private gateway) and binds behind ports. Documented in `BOUNDARY.md` (repo root), machine-enforced by `scripts/check-boundaries.mjs` (`pnpm check:boundaries`, wired into the PR CI gate).
+- **Cloud** = the same open host/runtime image running as one engine pod per agent behind the private gateway.
+- **Open/closed seam** = everything in this repo is OPEN and may never import a cloud library or closed adapter (`packages/host-cloud` may never reappear); closed policy lives out-of-repo (the private gateway) and binds behind ports. Documented in `BOUNDARY.md` (repo root), machine-enforced by `scripts/check-boundaries.mjs` (`pnpm check:boundaries`, wired into the PR CI gate).
 - **Self-host** = the local host in Docker behind Caddy TLS (`selfhost/`).
 - **Managed hosted cloud** (the committed hosted architecture) = the same open self-host/local-profile container as a K8s engine pod, one pod per agent inside a per-org namespace, fronted by a private gateway. **Storage is the gateway object store, not the pod disk** — with `HOUSTON_STORE_URL` set, the pod's `/data` is a **disposable cache**: the host hydrates it from the store on boot (hydration is readiness-critical) and a debounced `syncBack` mirrors every write back through the control plane's pod store API (`PUT /v1/pod/store/{org}/{agent}/objects/...`, `packages/host/src/store-sync/`). The store is authoritative; a fresh pod boots empty and rehydrates. (An empty `HOUSTON_STORE_URL` falls back to a per-agent PVC — the older on-disk mode.) The public repo provides `VITE_HOSTED_ENGINE_URL`, the `selfhost/Dockerfile` `engine-pod` target, `HOUSTON_MANAGED_CLOUD=1` capabilities, and `HOUSTON_CODE_EXECUTION=local` (in-container bash, HOU-669); the private repo owns gateway auth, K8s resources, and network policy.
-- **Providers** are in-process in pi: Anthropic + OpenAI/Codex + GitHub Copilot OAuth, plus API-key providers OpenCode Zen/Go, OpenRouter, DeepSeek, Google Gemini, Amazon Bedrock, and MiniMax global (`minimax`, not `minimax-cn`). **No provider CLIs** — the bundled codex/claude/gemini CLIs went away with the Rust engine. Bedrock uses pi-ai's native `amazon-bedrock` provider; Houston maps the stored key to Bedrock's `bearerToken` request option in `packages/runtime/src/ai/bedrock.ts`. The runnable provider/model catalog is served by `GET /v1/catalog` (pi's baked registry) and hydrated frontend-side by the single-owner `use-provider-catalog.ts` hook, which throws (never silently degrades a 404 to `[]`) and toasts on any load or empty-payload failure while a static seed keeps the UI rendering — full flow in `knowledge-base/agent-manifest.md`. `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` are versioned in lockstep (bump both together in `packages/host/package.json` + `packages/runtime/package.json`, never one alone) — pi-ai 0.80 restructured its core API (the free functions `getModel`/`getModels`/`getProviders`/`registerApiProvider`/`registerFauxProvider` and Bedrock's `streamBedrock`/`streamSimpleBedrock` were replaced by an instantiated `Models`/`Provider` collection), but pi-ai ships a `@earendil-works/pi-ai/compat` entrypoint that re-exports the old free-function surface verbatim (a superset of the default entrypoint's exports), so every call site Houston still writes the old way just repoints its import specifier there — no behavior rewrite needed. `pi-coding-agent`'s own `createAgentSession`/`SessionManager`/`ModelRegistry`/`AuthStorage` surface stayed stable across 0.79→0.80.
+- **Providers** are in-process in pi (`packages/runtime/src/ai/providers.ts`; the host's mirror catalog is `packages/host/src/providers.ts`). Three auth methods (`ProviderAuthMethod = "oauth" | "apiKey" | "openaiCompatible"`):
+  - `oauth` — `anthropic`, `openai-codex`, `github-copilot`.
+  - `apiKey` — `opencode`, `opencode-go`, `openrouter`, `deepseek`, `google`, `amazon-bedrock`, `minimax` (global; not `minimax-cn`).
+  - `openaiCompatible` — `openai-compatible` (user-supplied base URL + key; local/self-served models, `knowledge-base/local-models.md`).
+  Bedrock is a plain catalog entry on pi-ai's native `amazon-bedrock` provider — no Houston-side adapter module. **No provider CLIs.**
+- **Provider catalog** is served by `GET /v1/catalog` (pi's baked registry) and hydrated frontend-side by the single-owner `use-provider-catalog.ts` hook, which throws (never silently degrades a 404 to `[]`) and toasts on any load or empty-payload failure while a static seed keeps the UI rendering — full flow in `knowledge-base/agent-manifest.md`.
+- **pi pin.** `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` are pinned at **0.84.0** in lockstep (bump both together in `packages/host/package.json` + `packages/runtime/package.json`, never one alone). Houston imports the free-function surface (`getModel`/`getModels`/`getProviders`/`registerApiProvider`/`registerFauxProvider`) from the `@earendil-works/pi-ai/compat` entrypoint, which re-exports it verbatim as a superset of the default entrypoint.
 - **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/host/src/integrations/`), platform mode: Houston's one project key server-side (`COMPOSIO_API_KEY` on the cloud host / self-host; the desktop forwards through the cloud gateway with the user's Firebase (GCIP) session, `HOUSTON_INTEGRATIONS_URL`), users only OAuth the apps themselves — no per-user Composio account, no CLI.
 - **Multiplayer / Teams (paid cloud only) — SHIPPED** = orgs with owner/admin/user roles (UI Owner/Manager/Member), a per-agent access level `manager|user` on `gateway.agent_assignments`, per-(user, agent) integration grants bounded by an org∩agent allowlist ceiling, a per-agent allowed-models ceiling with per-user model choice, invites/audit/usage, and acting-as identity (the driving user's credentials per turn; routines act as their creator; the host also stamps it onto each mission as `created_by` + `contributors` for board face stacks — server-only, byte-identical off the gateway; see `knowledge-base/teams.md`). The **gateway is the sole enforcer** — it classifies every request use vs configure (dispatch-scope) and 403s configure-scope writes from non-managers; the admin "see/manage all agents" rule is GONE (an admin only sees assigned agents). The open repo carries a FULL capability-gated client surface (role matrix v2, org dashboard, Share dialog, allowlists) whose gates are cosmetic. Live server contracts: `cloud/docs/contracts/C3` (v2 matrix), `C4` (grants + effective allowlist), `C7-teams.md` (the older `convergence/contracts/C1..C5` are historical). Client surface: `knowledge-base/teams.md` (feature-detect on `capabilities.multiplayer` + `teams`). **C8 Spaces (SHIPPED)** layers multi-membership on top: a free personal space plus any number of paid per-seat team spaces, one active space per request (pinned via the `x-houston-org` header / `?org=` SSE param through the workspace switcher), with self-serve team creation, agent moves, and Stripe seat billing/trial; `capabilities.role` is now the ACTIVE space's role and refetches on every switch. See `knowledge-base/teams.md` (Spaces) and `cloud/docs/contracts/C8-spaces-billing.md`.
+- **App shell navigation** = the sidebar TEAMS list + the `team` top-level view — client-side agent grouping, NOT the multiplayer orgs above. Full contract (`openTeamView`, `visibleTeamSections`, the team-scoped board, Team Settings drill-in): `knowledge-base/teams-ui.md`.
 - **Drift prevention** = port contract suites + the dual-profile parity test (`packages/host/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`. PR CI gate: `.github/workflows/ci.yml`.
-- **Removed (deleted, not just planned):** the legacy Rust `engine/` + `app/houston-tauri/` (the Tauri adapter crate) + the CLI-bundling pipeline (`cli-deps.json`, `scripts/fetch-cli-deps.sh`); `mobile/` + `houston-relay/` (mobile PWA + tunnel); `examples/smartbooks/` (custom-frontend reference); `always-on/` (the legacy Rust-engine VPS image — superseded by `selfhost/`); worktrees, store/marketplace, claude-CLI install. Single personal workspace on desktop/self-host; multiplayer Teams (orgs/roles/sharing) SHIPPED in the paid hosted cloud (`knowledge-base/teams.md`).
+- **Removed (deleted, not just planned):** the legacy Rust `engine/` + `app/houston-tauri/` (the Tauri adapter crate) + the CLI-bundling pipeline (`cli-deps.json`, `scripts/fetch-cli-deps.sh`); the mobile **PWA** + `houston-relay/` (the Cloudflare Worker reverse tunnel); `examples/smartbooks/` (custom-frontend reference); `always-on/` (the legacy Rust-engine VPS image — superseded by `selfhost/`); worktrees, the in-app store/marketplace UI, claude-CLI install. Single personal workspace on desktop/self-host; multiplayer Teams (orgs/roles/sharing) SHIPPED in the paid hosted cloud (`knowledge-base/teams.md`). **`mobile/` itself is LIVE** — it now holds the native iOS app, not the deleted PWA.
 
 ---
 
@@ -27,15 +34,17 @@ Houston = open platform. Organized as **products + code libraries**.
 |---------|-----|------|
 | Houston App | `app/` | Desktop app (Tauri 2). Non-technical users create agents, run parallel agent sessions. `app/src` is the React frontend; `app/src-tauri` is the Rust shell that spawns the host sidecar. |
 | Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims. Talks to `packages/host` over protocol v3 (`VITE_CONTROL_PLANE_URL`, legacy env name; external host via `VITE_NEW_ENGINE_URL`). See `packages/web/README.md`. |
-| Houston Mobile | ~~`mobile/`~~ **REMOVED** | Was a React PWA served over the relay. Cut in the convergence; `mobile/` + `houston-relay/` are deleted. (A native SwiftUI iOS surface over `@houston/sdk` is a separate, in-progress track — see `knowledge-base/client-architecture.md`.) |
+| Houston iOS | `mobile/ios/` | **Native SwiftUI** iPhone app (~307 Swift files) over `@houston/sdk` through a JavaScriptCore bridge with native fetch/storage ports. GCIP (Firebase) auth — `Houston/Core/Auth/GcipAuth.swift`, the iOS mirror of the desktop flows; DesignSystem over `@houston/design-tokens`. Surfaces built: Agents, Mission Control, New Mission, Chat, Settings, AI Models, Integrations. Run it: `pnpm ios` (`mobile/ios/scripts/dev-sim.sh`). XcodeGen project (`mobile/ios/project.yml`); unit suite in `mobile/ios/HoustonTests`. Parity manifest: `design/inventory/manifests/ios.yaml` — an **unenforced** surface, so `pnpm check:parity` reports its lag without failing CI. Parity notes: `mobile/PARITY*.md`. See `knowledge-base/client-architecture.md`. |
 | Houston Agent Store | `agentstore/` + `packages/agentstore-contract` | **SHIPPED** public catalog at `agents.gethouston.ai`: a Next.js 15 SSR frontend on GKE with NO DB and NO credentials, over the **Go gateway's** `/v1/agentstore` API (data plane + Cloud SQL in `cloud/`; contract `C9`). Publish an agent from the app, browse `/a/<slug>`, one-click install back into Houston; ownership is account-based (GCIP UID, no manage tokens). The old in-app `store/` marketplace UI was cut; `store/` remains as legacy bundled catalog data only. See `knowledge-base/agent-store.md`. |
 | Houston Website | `website/` | gethouston.ai landing. |
-| Houston Always On | ~~`always-on/`~~ **REMOVED** | Was a one-click VPS deploy of the Rust engine. Superseded by `selfhost/` (the TS host in Docker behind Caddy); `always-on/` is deleted. |
+| Houston Self-host | `selfhost/` | One-box deploy of the TS host in Docker behind Caddy TLS. Also builds the `engine-pod` image the managed cloud runs. See `selfhost/README.md`. |
 | Houston Teams | (no dir) | Hosted multiplayer orgs — roles, per-agent access, sharing, templates. **LIVE (beta).** No dedicated app dir: the gateway (private `cloud/` repo) enforces it and the open repo carries a capability-gated client surface across `app/` + `ui/engine-client`. See `knowledge-base/teams.md`. |
 
-### Common misconception: "the desktop app = a local product"
+### The desktop app being local does NOT mean the engine is local
 
-The **app being local does not mean the engine is local**. The desktop app is a shell (window, tray, OS glue); the engine it talks to is chosen at build time (`app/src/lib/engine-mode.ts`) and for the managed product it is the **hosted cloud engine** (`VITE_HOSTED_ENGINE_URL` → gateway). **Product direction (decided 2026-07): the local sidecar engine is being discontinued as a consumer path** — the shipped app always connects to the cloud engine; the local host remains for development and self-host. Code has not fully caught up with this yet (the sidecar spawn path still exists); don't design new features around the local-engine case without checking this note.
+- The desktop app is a shell (window, tray, OS glue). Which engine it talks to is a build-time choice: `app/src/lib/engine-mode.ts`.
+- The shipped consumer app connects to the **hosted cloud engine** (`VITE_HOSTED_ENGINE_URL` → gateway).
+- The local sidecar engine is a development / self-host path, not a consumer path. The spawn code still exists — don't design consumer features around it.
 
 ## Code libraries
 
@@ -43,7 +52,8 @@ The **app being local does not mean the engine is local**. The desktop app is a 
 |---------|-----|------|-----------|
 | Houston UI | `ui/` | `@houston-ai/*` React components (props-only, no store/Tauri imports). | App, Web, future hosted frontends |
 | Houston Engine | `packages/{runtime,host,domain,protocol}` | **The single TypeScript engine.** pi runtime (the only agent loop) behind the host, protocol v3. Frontend-agnostic. Open source. | App (via the Tauri-shell sidecar), Web, self-host, Cloud |
-| Houston Cloud | `cloud/` + `packages/{host,runtime,code-sandbox,web}` + the private gateway repo | **LIVE (beta) — the committed hosted architecture.** Managed K8s engine pod per agent (per-org namespaces), pod `/data` a disposable cache of the gateway object store (`HOUSTON_STORE_URL`; PVC-backed disk is the older fallback), public open host/runtime image, private gateway. The multi-tenant `@houston/host-cloud` control plane was retired and deleted (git history). Start at `cloud/README.md`, `cloud/code-execution.md`, `selfhost/README.md`. | Houston Web / hosted desktop users |
+| Houston SDK | `packages/sdk` | Cross-surface behavior: turn lifecycle, view-model snapshots, reconnection. Behavior changes land HERE first, then surfaces bind. | Web/desktop, iOS |
+| Houston Cloud | `cloud/` + `packages/{host,runtime,code-sandbox,web}` + the private gateway repo | **LIVE (beta) — the committed hosted architecture.** Managed K8s engine pod per agent (per-org namespaces), pod `/data` a disposable cache of the gateway object store (`HOUSTON_STORE_URL`; PVC-backed disk is the older fallback), public open host/runtime image, private gateway. Start at `cloud/README.md`, `cloud/code-execution.md`, `selfhost/README.md`. | Houston Web / hosted desktop users |
 
 ## The engine is frontend-agnostic
 
@@ -57,13 +67,12 @@ The **app being local does not mean the engine is local**. The desktop app is a 
 
 | Dir | What |
 |-----|------|
-| `packages/` | The converged TypeScript engine — `runtime`, `host`, `domain`, `protocol`, `web`, `code-sandbox`, `sdk`, `runtime-client`, `design-tokens`, `fake-host`. See `convergence/README.md`. |
-| `convergence/` | The single-engine convergence plan + status. Source of truth for the architecture direction. |
+| `packages/` | The converged TypeScript engine + shared libs — `runtime`, `host`, `domain`, `protocol`, `web`, `code-sandbox`, `sdk`, `runtime-client`, `design-tokens`, `fake-host`, `agentstore-client`, `agentstore-contract`. |
+| `convergence/` | Record of the Rust→TS-engine cutover. Architecture direction: `convergence/README.md`. |
 | `selfhost/` | Self-host the TS engine on a VPS (Docker + Caddy TLS). |
+| `design/` | Cross-surface component inventory (`inventory.yaml`) + per-surface parity manifests (`manifests/{web,ios,android}.yaml`), enforced by `pnpm check:parity`. |
 | `knowledge-base/` | Repo knowledge docs. Loaded on demand. |
-| `scripts/` | Version bump, release helpers, and the host-sidecar compile (`build-host-sidecar.sh`). |
-| ~~`houston-relay/`~~ **REMOVED** | Was the Cloudflare Worker + Durable Object reverse-tunnel for the mobile PWA. Deleted with the mobile/tunnel cut. |
-| ~~`examples/smartbooks/`~~ **REMOVED** | Was the reference custom-frontend consumer of the engine. Deleted in the convergence sweep; the canonical non-Tauri consumer is now `packages/web`. |
+| `scripts/` | Version bump, release helpers, the parity check, and the host-sidecar compile (`build-host-sidecar.sh`). |
 
 ## App-side Rust (`app/src-tauri`)
 
@@ -72,7 +81,7 @@ The **app being local does not mean the engine is local**. The desktop app is a 
 - Spawns the **host sidecar** in `setup()` (Tauri `externalBin`, staged at `binaries/houston-engine-<triple>` — the name is kept on purpose), parses the stdout `HOUSTON_HOST_LISTENING` banner for `{port, token}`, injects `window.__HOUSTON_ENGINE__` before the React tree mounts (see `EngineGate` in `app/src/main.tsx`), and talks HTTP/WS+SSE.
 - The supervisor binds the sidecar's lifetime to the app's: on Unix via piped stdin (the host exits on EOF when the parent dies), on Windows via a kill-on-close Job Object. No orphan hosts holding ports.
 - OS-native glue only: Keychain auth (`auth.rs`), deep links, the auto-updater, file open/reveal, crash reporting. The `~/Documents/Houston → ~/.houston/workspaces` filesystem migration also lives in the shell.
-- `app/houston-tauri/` (the old engine-adapter crate that bound the Rust engine's crates to Tauri) was **DELETED** with the Rust engine — there is no in-process engine to adapt anymore.
+- **Windows**: the cross-platform rules for this crate (use `dirs::home_dir()`, never `HOME`; the symlink Developer-Mode / error-1314 caveat; MSVC + `xwin` cross-compile; the UTM VM test loop) live in `knowledge-base/windows-vm.md`.
 
 ## App boot — WebView compatibility gate
 
@@ -124,8 +133,8 @@ slow filesystem work, so a cold disk read can't stall the first paint.
 
 ## UI packages (`ui/`)
 
-`@houston-ai/*` React packages: `core, chat, board, layout, events, routines,
-skills, review, agent, agent-schemas, engine-client`.
+**13** `@houston-ai/*` React packages: `agent, agent-schemas, board, chat, core,
+engine-client, events, layout, review, routines, showcase, skills, store`.
 
 Mostly internal. `@houston-ai/engine-client` is the one package we expect
 third-party devs to install — the TypeScript front door to the host's protocol v3
@@ -133,33 +142,27 @@ third-party devs to install — the TypeScript front door to the host's protocol
 `.houston/<type>/<type>.json` layout; `packages/domain` seeds them into each
 agent on create.
 
-## User interaction lifecycle (ask_user / request_connection)
+## User interaction lifecycle (ask_user / request_connection / request_credential)
 
-When an agent must block on the user — a question, a choice, an approval, or a
-missing integration — it never leaves the ask sitting in plain text. Two runtime
-tools drive ONE lifecycle across runtime → protocol → SDK → UI:
+When an agent must block on the user — a question, a choice, a missing
+integration, a missing key — it never leaves the ask sitting in plain text.
+Runtime tools drive ONE lifecycle across runtime → protocol → SDK → UI:
 
-- **Tool → holder.** `ask_user` (all modes) and `request_connection`
-  (integration-gated) record into a per-turn holder — an `AsyncLocalStorage`
-  established for the duration of `session.prompt()`
+- **Tool → holder.** `ask_user` (all modes), `request_connection`
+  (integration-gated) and `request_credential` record into a per-turn holder — an
+  `AsyncLocalStorage` established for the duration of `session.prompt()`
   (`packages/runtime/src/session/interaction.ts`, mirrors acting-context). The
-  holder MERGES the two tools into ONE step sequence: `ask_user` supplies the
+  holder MERGES them into ONE step sequence: `ask_user` supplies the
   question steps (1–3 per call, a second call replaces them), each
-  `request_connection` appends a connect step (deduped by toolkit), a 409
+  `request_connection` appends a connect step (deduped by toolkit), each
+  `request_credential` appends a credential step, and a 409
   `signin_required` from the integrations proxy queues AT MOST ONE `signin`
-  step (`recordSignin`, id `s1`), and a 409 `approval_required` from a
-  host-gated `integration_execute` records an `approval` step
-  (`recordApproval`, deduped by `paramsHash`, ids `a1..aN`) — NOT a new tool,
-  the existing `integration_execute` classifies the 409 and returns non-error
-  queued-pending text so the turn ends clean. Order is questions → signin →
-  connects → approvals (approvals LAST — approving an action follows connecting
-  its toolkit). The
+  step (`recordSignin`, id `s1`). Order is questions → signin →
+  connects → credentials (entering a key is a form of connecting). The
   runtime classifies integration failures by the host error body code, not
   bare HTTP status: signed-out queues the signin step, not-configured gets
-  honest "not set up in this install" guidance, transient upstream errors
-  stay transient, and `approval_required` queues the approval step. An
-  Autopilot (`auto`) turn AUTO-APPROVES the gate host-side (the runtime forwards
-  `x-houston-turn-mode: auto`), so a fire-and-forget turn never waits on it. The prompt tells the model to batch everything
+  honest "not set up in this install" guidance, and transient upstream errors
+  stay transient. The prompt tells the model to batch everything
   blocking into one turn — e.g. "send an email to john" becomes two question
   steps (recipient, content) plus a connect step (email app). A fresh holder per
   turn IS the reset; recording outside a turn is a no-op. The Claude-SDK
@@ -170,11 +173,15 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
 - **Holder → done frame.** After `prompt()` resolves, exec-turn (and the cloud
   per-turn path) reads the holder and attaches its value to the clean terminal
   `done` frame's optional `pendingInteraction` (`PendingInteraction` =
-  `{ steps: InteractionStep[] }`, each step
-  `{kind:"question", id, question, options?}` | `{kind:"connect", id, toolkit,
-  reason?}` | `{kind:"approval", id, toolkit, action, params?, paramsHash}` (+
-  `signin` / `plan_ready` / `suggest_reusable` / `suggest_actions`),
-  `packages/protocol`, wire v3).
+  `{ steps: InteractionStep[] }`; the step union is
+  `question` | `signin` | `connect` | `credential` | `plan_ready` |
+  `suggest_reusable` | `suggest_actions`, in
+  `packages/protocol/src/domain/interaction-types.ts`, wire v3; the tolerant
+  guards + the move-to-Done strip + the PATCH merge rule live next door in
+  `interaction.ts`). Step ids are tool-assigned and kind-prefixed: `q1..qN`,
+  `s1`, `c1..cN`, `k1..kN`. Reads go through `parsePendingInteraction`, which
+  DROPS unrecognized step kinds rather than failing — so a mixed-version peer's
+  step (or a legacy `approval` step) never blanks the card.
   Only the clean path carries it; an error frame never does.
 - **Done frame → settle. THE ENGINE NEVER WRITES `done`.** The SDK folds the
   frame (`packages/sdk/src/modules/turns/turn-settle.ts`) and there is no split:
@@ -200,7 +207,7 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   offers, so suggestion bubbles still render on a Done card
   (`retainSuggestionSteps`; see `knowledge-base/files-first.md`).
 - **Settle → composer card → answer-as-new-turn.** A pending interaction REPLACES
-  the composer with `ChatInteractionCard` (`@houston-ai/chat`, inventory v19):
+  the composer with `ChatInteractionCard` (`@houston-ai/chat`):
   a one-step-at-a-time stepper composed in the shared `InteractionModal` shell.
   Only its body is bounded to 40vh with scrolling; the footer and free-text row
   remain fixed. A visible header chevron can collapse the card without hiding
@@ -218,21 +225,31 @@ tools drive ONE lifecycle across runtime → protocol → SDK → UI:
   `IntegrationConnectCard`; already-connected toolkits auto-advance); signin
   steps through `renderSignin` (the app injects a card on the
   `use-integrations-gate` Google-SSO machinery; already-signed-in auto-advances).
-  Approval steps render through `renderApproval` (the app injects
-  `ChatApprovalInteractionCard`): just "Allow {app} to {action}?" (no param
-  rows — non-technical audience),
-  with THREE footer decisions — Always allow / Deny (Esc) / Allow once (Enter).
-  Unlike a connect/signin "Not now" (which merely defers), Deny is a real decision
-  the model HEARS: the resolution writes the host store (allow-once → a one-shot
-  ticket, always-allow → the always list) and the composed reply names the RAW
-  action slug ("Approved: go ahead with {ACTION}." / "I chose not to allow
-  {ACTION}. ..."), so the model can re-issue the EXACT call. Autopilot never shows
-  it (the gate auto-approves).
+  Credential steps render through `renderCredential` (the app injects
+  `ChatCredentialInteractionCard`, `app/src/components/`).
   Answers are held until the sequence completes, then sent as ONE composed user
-  message (`question: answer` lines, plus `Signed in to Houston.`,
-  `Connected <app>.`, and the approval go-ahead/refusal lines); connect-ONLY,
-  signin-ONLY, and approval-ONLY sequences keep the hidden auto-continue, fired
+  message (`question: answer` lines, plus `Signed in to Houston.` /
+  `Connected <app>.` lines); connect-ONLY, signin-ONLY, and credential-ONLY
+  sequences keep the hidden auto-continue, fired
   once on sequence completion — nothing special on the wire.
+
+**Credential step (`request_credential`).** The secure key hand-off for CUSTOM
+integrations (`knowledge-base/integrations.md`).
+
+- Wire: `{kind:"credential", id, toolkit, reason?}` — `toolkit` is the custom
+  integration's slug, `reason` a plain-language line naming which key to paste.
+  Ids `k1..kN`.
+- Emitted by the runtime tool `request_credential`
+  (`packages/runtime/src/session/tools/request-credential.ts` →
+  `recordCredentialRequest`). Available in EVERY mode, Autopilot included: a key
+  is the one thing autonomy cannot produce, and the step ends the turn rather
+  than holding it open.
+- Answered by `ChatCredentialInteractionCard`
+  (`app/src/components/chat-credential-interaction-card.tsx`), injected into the
+  stepper via `renderCredential`. The secret posts straight to the host's
+  per-agent custom-integration route (`packages/host/src/routes/custom-integrations.ts`)
+  — it never enters the transcript or the runtime. An oauth-mode integration
+  shows a Sign in button instead. Saving auto-continues the run; "Skip" declines.
 
 **Dismissal & stops.** Dismissing an interaction card (its X) is a user
 INTERRUPTION, not an answer. The stepper's X calls the runtime
@@ -276,10 +293,9 @@ agent to actually write the Skill/Routine/Learning, "Not now" is a PER-STEP
 dismissal (above) that leaves sibling offers alive. Because the card settles on
 `needs_you` and offers survive the user's move to `done`, it still renders on a
 Done card — and on the Archived surfaces. Inferred learnings route ONLY through this
-card — the old mid-task `ask_user` "Want me to remember that?" flow is gone;
-a direct user "remember this" still saves immediately. Concept name lives in
-prompts/docs only; the wire kind stays `suggest_reusable` (persisted in user
-data). Inventory: `suggest-reusable-card` v22.
+card; a direct user "remember this" still saves immediately. The REFLECTION STEP
+name lives in prompts/docs only — the wire kind stays `suggest_reusable`
+(persisted in user data). Inventory entry: `suggest-reusable-card`.
 
 **Follow-up step (suggest_actions).** The product prompt makes this MANDATORY on
 every turn the agent ends WITHOUT a blocking ask (no `ask_user`, no connection /
@@ -377,12 +393,11 @@ trigger union: `packages/protocol/src/domain/routine.ts`; on-disk shape +
 `.houston/routines/routines.json` discipline: `knowledge-base/files-first.md`;
 the trigger backend + UI intake: `knowledge-base/integrations.md`.
 
-**`save_routine` is the ONLY write path the agent has.** The product prompt USED
-to tell the agent to write `.houston/routines/routines.json` wholesale with file
-tools. Each setup chat is isolated and only knows its own routine, so creating
-task #2 overwrote the file with a one-element array — deleting task #1. The
-runtime tool `save_routine` (`packages/runtime/src/session/tools/save-routine.ts`,
-`SAVE_ROUTINE_TOOL_NAME`) replaces that: it POSTs to the host's merge-safe sandbox
+**`save_routine` is the ONLY write path the agent has.** A direct file write is
+unsafe because each setup chat is isolated and knows only its own routine, so a
+wholesale rewrite of `.houston/routines/routines.json` drops every other routine.
+The runtime tool `save_routine` (`packages/runtime/src/session/tools/save-routine.ts`,
+`SAVE_ROUTINE_TOOL_NAME`) is the merge-safe path: it POSTs to the host's sandbox
 route (`/sandbox/routines/save`) carrying only the per-sandbox HMAC token, and the
 host does a read-modify-write (`loadRoutines → create/apply → upsertById →
 saveRoutines`, `packages/host/src/routes/routine-write.ts` — the ONE blessed write
@@ -475,21 +490,20 @@ steady-state boot writes nothing). The Memory row renders the pair as a muted
 `app/src/lib/learning-provenance.ts`), and nothing at all when a learning has no
 provenance.
 
-## Current gap to vision
+## Status
 
 | Goal | Status |
 |------|--------|
-| Clear product dirs | ✅ done |
-| One engine, no drift | ✅ pi runtime behind the host, dual-profile parity test + port contract suites; the Rust engine is deleted |
-| UI standalone | ✅ |
+| One engine, no drift | ✅ pi runtime behind the host; dual-profile parity test + port contract suites |
+| UI standalone | ✅ `ui/` is props-only, no store/Tauri imports |
 | Full desktop UI in the browser | ✅ `packages/web` composes `app/src` with `@tauri-apps/*` shimmed; typecheck + build + Playwright e2e green in CI (`packages/web/README.md`) |
 | Engine reusable by non-Tauri frontends | ✅ the host ships as a Tauri sidecar + a standalone binary + a Docker image; every frontend consumes it over protocol v3, no in-process coupling |
-| Reference custom-frontend integration | ➖ `examples/smartbooks/` was shipped, then REMOVED; the canonical non-Tauri consumer is `packages/web` |
-| Always On | ➖ `always-on/` was REMOVED; the TS-host self-host path is `selfhost/` |
-| Teams / Cloud | 🟢 Cloud is LIVE (beta): per-agent engine pods running the open host/runtime behind the private gateway, locked-down code sandbox, connect-once subscriptions (the closed `@houston/host-cloud` control plane was retired and deleted). **Teams v2 SHIPPED**: orgs, owner/admin/user roles, per-agent access `manager|user`, sharing, templates, invites/audit/usage — the gateway is the sole enforcer (dispatch-scope use vs configure), the open repo carries the capability-gated client surface (`knowledge-base/teams.md`). |
-| Store populated | 🟢 Agent Store SHIPPED: a public catalog at `agents.gethouston.ai` (`agentstore/` Next.js SSR frontend on GKE + `packages/agentstore-contract`) over the Go gateway `/v1/agentstore` API, publish-from-app + one-click install, account-based ownership. Legacy `store/catalog.json` is release-bundled data only. See `knowledge-base/agent-store.md`. |
-| Binary file read route (xlsx, pdf download over HTTP) | ✅ host file routes serve preview/download for web; desktop keeps OS open/reveal affordances. |
-| Windows support | ✅ the host sidecar bun-compiles for windows-x64 + arm64; the Tauri shell links MSVC per arch (`.github/workflows/release.yml`). |
+| Self-host | ✅ `selfhost/` — the TS host in Docker behind Caddy TLS |
+| Native mobile | 🟡 iOS v1 built (`mobile/ios/`, native SwiftUI over `@houston/sdk`); an unenforced parity surface. Android is a manifest stub only. |
+| Teams / Cloud | 🟢 Cloud LIVE (beta): per-agent engine pods running the open host/runtime behind the private gateway, locked-down code sandbox, connect-once subscriptions. **Teams v2 SHIPPED**: orgs, owner/admin/user roles, per-agent access `manager|user`, sharing, templates, invites/audit/usage — the gateway is the sole enforcer (dispatch-scope use vs configure), the open repo carries the capability-gated client surface (`knowledge-base/teams.md`). |
+| Agent Store | 🟢 SHIPPED: a public catalog at `agents.gethouston.ai` (`agentstore/` Next.js SSR frontend on GKE + `packages/agentstore-contract`) over the Go gateway `/v1/agentstore` API, publish-from-app + one-click install, account-based ownership. Legacy `store/catalog.json` is release-bundled data only. See `knowledge-base/agent-store.md`. |
+| Binary file read route (xlsx, pdf download over HTTP) | ✅ host file routes serve preview/download for web; desktop keeps OS open/reveal affordances |
+| Windows support | ✅ the host sidecar bun-compiles for windows-x64 + arm64; the Tauri shell links MSVC per arch (`.github/workflows/release.yml`). Test loop + code rules: `knowledge-base/windows-vm.md` |
 
 ## Direction of work
 - **library-first** — new reusable capability → `ui/` or `packages/` (engine), then consumed by `app/`

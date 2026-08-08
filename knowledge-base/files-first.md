@@ -1,6 +1,6 @@
 # Files-First (`.houston/`)
 
-Houston uses files, not DB, for agent-visible data. SQLite only for chat replay + app prefs.
+Houston uses files, not a DB, for everything. The only SQLite left is a read-only migration source (see below).
 
 > **Authority differs by deployment (read this first).** On **desktop and
 > self-host** the `.houston/` files ARE the authority — the local disk is ground
@@ -23,58 +23,69 @@ Houston uses files, not DB, for agent-visible data. SQLite only for chat replay 
 > as `ConversationsChanged`, which the gateway fans to every client so an open
 > chat on another device reloads the same transcript.
 
-> **Updated: the backend is the TypeScript host now, not the Rust engine.** The
-> `.houston/` layout, atomic-write discipline, JSON schemas, and AI-native
-> reactivity model below all carry over unchanged — but the implementation moved
-> from the deleted Rust crates (`houston-agent-files`, `houston-engine-core`, the
-> `notify` file watcher, `migrate_agent_data`) to the **host** + `packages/domain`
-> + the **pi runtime**. Treat `houston-*` crate names and `.rs` paths below as
-> historical pointers; the concepts are current.
-
 ## Rule
 If @houston-ai component renders it → `.houston/` folder.
 If app-specific → `.houston/`.
 
 ## Layout
 
+Generated from the layout constants: `packages/domain/src/layout.ts`
+(`docKey`/`schemaKey`/`skillsDirKey`/`sharedSkillsDirKey`/`storePublicationKey`),
+`packages/domain/src/skills-manifest.ts`, and `packages/host/src/paths.ts`
+(`LocalPaths`, which puts `dataRoot` at `<Agent>/.houston/runtime`).
+
 ```
-~/.houston/workspaces/workspaces.json   Workspace[] index: id, name, isDefault, createdAt, locale?
-                                          (locale = optional per-workspace UI-locale override; absent = inherit global `locale` pref)
-~/.houston/workspaces/{Workspace}/{Agent}/
-  .houston/
-    agent.json                  AgentMeta (id, manifest_id, created_at, last_opened_at)
-    activity/
-      activity.json             Activity[]
-      activity.schema.json      JSON Schema
-    routines/
-      routines.json + .schema.json
-    routine_runs/
-      routine_runs.json + .schema.json
-    config/
-      config.json + .schema.json
-    learnings/
-      learnings.json + .schema.json   ({id, text, created_at}
-                                       + optional provenance: taught_by
-                                       {user_id,name?}, mission_id, mission_title)
-      # Legacy `.houston/memory/learnings.md` auto-migrated on startup
-      # (bullet list → JSON). See `houston_agent_files::migrate_agent_data`.
-    prompts/
-      modes/<mode>.md           editable per-mode prompt overlay (user-owned)
-    sessions/
-      anthropic/{session_key}.sid       current Claude resume id
-      anthropic/{session_key}.history   all Claude resume ids used by this conversation
-      anthropic/{session_key}.invalid   Claude resume ids rejected by the CLI
-      openai/{session_key}.sid          current Codex resume id
-      openai/{session_key}.history      all Codex resume ids used by this conversation
-      openai/{session_key}.invalid      Codex resume ids rejected by the CLI
-      {session_key}.sid                 legacy flat resume id, read as fallback only
-  .agents/
-    skills/<name>/SKILL.md      Claude Code skill convention
-  .claude/
-    skills/<name>               symlink → ../../.agents/skills/<name>
-  CLAUDE.md                     agent instructions
-  AGENTS.md                     symlink → CLAUDE.md (for Codex)
+~/.houston/workspaces/                  FsVfs root. A workspace IS a directory here —
+                                        no index file (LocalWorkspaceStore lists dirs,
+                                        skipping dot-names).
+  {Workspace}/
+    .shared/
+      skills/<slug>/SKILL.md            workspace-shared skills, ONE copy (ADR 0003)
+    {Agent}/
+      .houston/
+        activity/
+          activity.json                 Activity[]
+          activity.schema.json          JSON Schema (re-seeded every host boot)
+        routines/
+          routines.json + .schema.json
+        routine_runs/
+          routine_runs.json + .schema.json
+        config/
+          config.json + .schema.json
+        learnings/
+          learnings.json + .schema.json   ({id, text, created_at}
+                                           + optional provenance: taught_by
+                                           {user_id,name?}, mission_id, mission_title)
+        skills-manifest/
+          skills-manifest.json          {version, enabled[]} — which .shared skills
+                                        THIS agent loads. Absent = nothing enabled.
+        store-publication/
+          store-publication.json        Agent Store listing pointer (storeAgentId,
+                                        share slug/url). Deliberately NOT a typed
+                                        family: no seeded schema, machine-local,
+                                        never exported in a `.houstonagent`.
+        runtime/                        HOUSTON_DATA_DIR — the runtime's own state
+          conversations/<cid>.json      v3 transcripts (canonical chat storage)
+          sessions/<conversationId>/    pi session JSONL
+          settings.json
+          auth.json                     provider credentials, atomic 0600 writes
+      .agents/
+        skills/<slug>/SKILL.md          agent-owned skills (Agent Skills standard)
+      CLAUDE.md                         agent instructions
 ```
+
+Legacy files that may still sit in an upgraded tree, read but never written:
+`.houston/agent.json` (Rust-era `AgentMeta`; only its `color` is still read, by
+`packages/host/src/routes/agent-legacy-color.ts`), `.houston/sessions/**`,
+`.claude/skills/<slug>`, and `AGENTS.md` / `GEMINI.md` symlink mirrors of
+CLAUDE.md.
+
+**There is no on-disk prompt overlay.** Mode overlays are hardcoded TS constants
+(`PLAN_MODE_OVERLAY` / `AUTO_MODE_OVERLAY` in
+`packages/runtime/src/session/mode-overlays.ts`), the product prompt lives in
+`packages/host/src/houston-prompt.ts`, and the boot migration
+(`packages/host/src/migrate/agent-layout.ts`) DELETES the legacy
+`.houston/prompts/{system,self-improvement}.md` seeds.
 
 ## File I/O path
 Frontend never touches the filesystem directly. All `.houston/` reads
@@ -84,27 +95,23 @@ atomic (unique temp + rename) and emit a matching `HoustonEvent` on the
 `/v1/events` SSE channel. No typed CRUD — per-type folder + schema + a
 generic read/write pair covers everything.
 
-Typed JSON readers never let a corrupt data file brick the surface that
-reads it (HOU-436: a malformed `routines.json` used to make every
-`list_routines` call 500 with `json error: expected value at line 1 column
-1`). Recovery is least-lossy first: a leading UTF-8 BOM is stripped before
-parsing (serde rejects one); a whitespace-only file reads as the type
-default; **unescaped control characters inside a string** (a raw newline/tab
-an external editor, sync client, or agent spliced into a multi-line value)
-are escaped in place and the document re-parsed — lossless, so every record
-survives; a file with one valid value plus trailing junk keeps the first
-value; any other unparseable file resets to the type default (`[]`, `{}`,
-…). Every recovery that rewrites the file first copies the original bytes to
-`.houston/<type>/<type>.json.corrupt-<timestamp>-<uuid>.bak` and logs a
-warning, so nothing is lost silently.
+**A mangled data file surfaces; it is never silently reset.** `loadJson`
+(`packages/domain/src/store.ts`) reads a missing file as the caller's fallback,
+strips a leading UTF-8 BOM (an encoding artifact `JSON.parse` rejects outright —
+HOU-953, and the vfs's `decodeText` drops it too so every `TextStore` impl
+agrees), and **throws with the key named** on anything else that will not parse.
+Resetting to `[]` would destroy the user's records on the next write, which is
+the worse failure.
 
-The control-char step is load-bearing (HOU-494): these files are explicitly
-multi-writer, so a non-Houston process (a `routines.json.tmp.<pid>.<hex>`
-temp file unlike Houston's own `.<name>.<uuid>.tmp`) can leave a literal
-newline inside a `prompt`. Without the lossless escape, that hit the reset
-path and the recovery itself *wiped* every routine — exactly the data loss it
-was meant to prevent. Reset is the last resort, for genuinely unrecoverable
-bytes only.
+Per-FIELD garbage IS tolerated, once the document parses: `normalizeRoutines`,
+`normalizeActivities`, `normalizeSkillsManifest` and friends drop the bad entry
+or key rather than rejecting the file. These files are explicitly multi-writer,
+so tolerating a stray field is correct — tolerating unparseable bytes is not.
+
+Concurrent readers never see a torn file: `writeBytes` renames a scratch file
+into place, named with `ATOMIC_TMP_SUFFIX` (`.houston.tmp`) so the Files tab and
+the store sync can filter Houston's own in-flight temps out of a listing
+(HOU-1176).
 
 **`routines.json` has ONE blessed write path — never a wholesale agent write.**
 Each routine's setup chat is isolated and only knows its own routine. The prompt
@@ -151,7 +158,7 @@ optional, additive provenance keys (no migration; older entries read unchanged):
 ```json
 {
   "id": "…", "text": "…", "created_at": "…",
-  "taught_by": { "user_id": "…", "name": "Felipe" },
+  "taught_by": { "user_id": "…", "name": "Julian" },
   "mission_id": "act-1",
   "mission_title": "Q3 pipeline"
 }
@@ -161,27 +168,41 @@ All three are **server-stamped, never agent-written**. The mechanism (write
 route, stamping rules, portability, UI) is documented once in
 `knowledge-base/architecture.md` → "Learnings (memory) + their provenance".
 
-## Learnings prompt injection
-`engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`
-injects `.houston/learnings/learnings.json` into each session as a
-bounded, frozen-at-session-start background block. Only each entry's
-`text` field is rendered; `id`, `created_at`, and any future metadata
-stay storage/UI-only. Writes during a session persist immediately but are
-not visible in the already-started prompt until the next session.
+## Learnings reach the model as a file, not a prompt block
+
+Nothing injects `learnings.json` into the system prompt. The product prompt
+(`packages/host/src/houston-prompt.ts`) tells the agent it may READ
+`.houston/learnings/learnings.json` to see what is already remembered, and that
+writing it with file tools is forbidden — `save_learning`
+(`packages/runtime/src/session/tools/save-learning.ts` →
+`POST /sandbox/learnings/save`, `packages/host/src/routes/learnings-sandbox.ts`)
+is the only save path, because it merges instead of overwriting and stamps the
+provenance keys above.
 
 ## Migration
-The Rust intra-agent migration (`houston_agent_files::migrate_agent_data`) was **dropped** with the Rust engine. Chat-history migration — Rust-era transcripts → v3 conversations + a synthesized pi session — is now owned by the **TS host** and runs on boot (`packages/host` `src/migrate/*`; see `convergence/migration-gate.md`). It is copy-never-move, so it stays downgrade-safe. The product prompt is no longer a `.houston/prompts/*` seed; it lives in the host (`packages/host/src/houston-prompt.ts`), not on disk.
 
-Session resume IDs are provider-scoped for new writes so Claude and Codex
-never overwrite each other's current resume ID. Existing
-`.houston/sessions/{session_key}.sid` files stay in place and are read as
-a fallback until a provider writes its own scoped `.sid`. Chat history
-loads the legacy ID plus every provider current/history ID for the same
-session key. Provider-scoped `.invalid` files stop a rejected legacy ID
-from being retried by the provider that rejected it.
+Boot migrations live in `packages/host/src/migrate/` and are called from
+`packages/host/src/local/host.ts` `start()`. All are idempotent and
+copy-never-move, so a downgrade still finds its data.
+
+- `agent-layout.ts` — flat `.houston/<f>.json` → `.houston/<f>/<f>.json`;
+  `.houston/memory/learnings.md` bullets → `learnings.json`; deletes the legacy
+  `.houston/prompts/{system,self-improvement}.md` seeds.
+- `agent-schemas.ts` — re-seeds every family's `.schema.json`, content-compared.
+- `chat-history.ts` — Rust-era transcripts → v3 conversations + a synthesized pi
+  session under `.houston/runtime/`. See `convergence/migration-gate.md`.
+- `linkage.ts` — the ONLY reader of the Rust-era
+  `.houston/sessions/<provider>/<session_key>.{sid,history}` tracker tree. It
+  gathers every provider resume id for a session key so the migration can link
+  old transcripts to the right conversation. Nothing writes that tree anymore.
 
 ## Atomic writes
-All writes: unique temp file + rename. Path-traversal safe via `houston-agent-files::safe_relative`.
+
+- Every vfs write is unique-temp-file + rename (`packages/host/src/vfs/fs.ts`
+  `writeBytes`) — a concurrent reader never catches a half-written file.
+- Path traversal is rejected at the port, before any impl maps a key:
+  `assertSafeKey` (`packages/host/src/vfs/vfs.ts`) refuses absolute keys and any
+  `.` / `..` / empty segment.
 
 ## Activity statuses
 `running` · `needs_you` · `done` · `error` · `archived`
@@ -192,41 +213,70 @@ Each activity also persists an optional `pending_interaction` (a `{ steps: [...]
 
 **Moving a mission to Done strips the blocking steps, keeps the offers.** Closing a mission is the user's own move and answers whatever it was waiting on, so a patch that sets `status: "done"` without carrying its own `pending_interaction` filters the stored steps down to the non-blocking clean-finish offers (`suggest_actions` / `suggest_reusable`) and deletes the key when none survive — a Done card can never show a question stepper, while "what to do next" and "save this as a Skill" keep rendering on it. One rule, three write paths: `retainSuggestionSteps` (`packages/protocol/src/domain/interaction.ts`) is applied by `applyActivityUpdate` (host PATCH, `packages/domain/src/activities.ts`), by `applyActivityPatch` (the app's local single + bulk writes, `app/src/data/activity-bulk.ts`), and by the fake host's `updateActivity`. Dismissing ONE offer in the chat panel is a per-step write, not a clear: `removeInteractionStep` (`app/src/lib/interaction-dismiss.ts`) persists the interaction minus that step through `usePersistedInteraction`, so skipping the action bubbles leaves the save-as-reusable card alive after a reload.
 
-Two optional **per-mission attribution** fields (hosted Teams only): `created_by` (the id of the human who created the mission) and `contributors` (`{user_id, name?}[]`, everyone who started or collaborated). Both are **server-stamped, never agent-written** — the host derives them from the gateway's `x-houston-acting-as` header (`packages/host/src/auth/acting.ts`) on mission create, PATCH edit, and each user turn, and only when `deps.gatewayFronted`. Desktop / self-host / single-player stamps nothing, so an `activity.json` there stays **byte-identical** (no attribution keys). `normalizeActivities` drops a non-string `created_by` and sanitizes `contributors`; the writes live in `createActivity` / `applyActivityUpdate` (`packages/domain/src/activities.ts`) and `stampTurnContributor` (`packages/host/src/routes/activity-attribution.ts`, matched by `session_key` or `activity-<id>`, best-effort, never blocks a turn). Client surface (face stacks + filter) → `knowledge-base/teams.md`.
+Two optional **per-mission attribution** fields (hosted Teams only): `created_by` (the id of the human who created the mission) and `contributors` (`{user_id, name?}[]`, everyone who started or collaborated). Both are **server-stamped, never agent-written** — the host derives them from the gateway's `x-houston-acting-as` header (`packages/host/src/auth/acting.ts`) on mission create, PATCH edit, and each user turn, and only when `deps.gatewayFronted`. Desktop / self-host / single-player stamps nothing, so an `activity.json` there stays **byte-identical** (no attribution keys). `normalizeActivities` drops a non-string `created_by` and sanitizes `contributors`; the writes live in `createActivity` / `applyActivityUpdate` (`packages/domain/src/activities.ts`) and `stampTurnAttribution` (`packages/host/src/routes/activity-attribution.ts`, matched by `session_key` or `activity-<id>`, best-effort, never blocks a turn). Client surface (face stacks + filter) → `knowledge-base/teams.md`.
 
-Source of truth: `ui/agent-schemas/src/activity.schema.json` (the embedded copy in `houston-agent-files::schemas` is `include_str!`'d from that one file; `seed_schemas` re-writes the on-disk per-agent copy on every open, so adding an enum value reaches existing users with no migration). The board renders `error` inside the **needs you** column with a red border so failed sessions don't vanish. `archived` is the only status with no board column: archived missions drop off the active board (and out of its search, its arrow-nav and the needs-you badge) and surface through **Mission Control's Archived view** (`app/src/components/board/mission-control-archived.tsx`), a column-less list of every archived mission across the scope. The two surfaces SWAP rather than stack, and the owner of the swap is the section that survives it (`Dashboard` for the global board, `team-mission-control.tsx` for a team's) — see `knowledge-base/teams-ui.md`. The way in is a LABELLED outline "Archived" pill in the board toolbar (`app/src/components/mission-toolbar-actions.tsx`, `onShowArchived`), an entry point only: the archive's own toolbar omits it and carries the way home instead, a labelled "Back to missions" control (`BoardBackButton`, `app/src/components/board/board-back-button.tsx`) rendered by the shared `MissionControlToolbar` (`app/src/components/mission-control-toolbar.tsx`, also the Mentions inbox's) beside the composed "{{name}} · Archived" title. One labelled door each way; the old icon-only toggle that doubled as its own exit was HOU-1043. The Archived view carries its own search (`useMissionSearch`, state separate from the active board's, which is not on screen beside it) so archived missions stay findable by title + chat history (issue #382). Replying to an archived mission re-activates it — `sessions::start` flips it back to `running` via `set_status_by_session_key`, so it returns to the active board (issue #360). Each card also carries the ONE status action its own column is waiting for, at full resting weight and never hover-gated: a Needs you card gets the checkmark that moves it to `done` (with confetti), a Done card gets the box that archives it (no confetti, and deselecting the mission if its chat panel is open, exactly as delete / bulk archive do). The status sets are `MISSION_APPROVE_STATUSES` / `MISSION_ARCHIVE_STATUSES` (`app/src/components/mission-board-columns.ts`), disjoint by construction and derived from the same `COLUMN_STATUSES` map as the columns; `@houston-ai/board` stays generic via the `approveStatuses`/`onApprove` + `archiveStatuses`/`onArchive` prop pairs, whose one shared render rule lives in `ui/board/src/kanban-card-actions.ts`. Bulk archive/move/delete run entirely in the TS data layer (`app/src/data/activity.ts` — one read-mutate-write per action, NOT per-id engine calls). Each board column header carries a kebab menu with "Select all in column" (Done + Needs you) that seeds a section-locked multi-selection; the floating bulk bar then drives archive/move/delete. Single activity delete is idempotent too: deleting a row that is already gone is a no-op, so double-clicks and stale selected panels do not surface false errors. The board also supports **drag & drop** (issue #399): dragging a card onto another column patches its status through `handleItemMove` (`app/src/components/board/use-mc-actions.ts` → `tauriActivity.update`, then invalidating the cross-agent sweep and that agent's activity key). The drop rule reuses the bulk-move rule exactly — only `needs_you` ⇄ `done`, never into `running` (a session does that), never its own section — and lives in `canDropMission` (`app/src/lib/mission-selection.ts`). The mechanics (draggable cards, droppable columns, highlight) are generic and live in `@houston-ai/board` (`onItemMove` + `canDropItem` props, native HTML5 DnD); the cross-agent board is the one consumer, wiring both from `useMissionControlSource` through `MissionBoard`. Any code path that flips a row to `running` MUST guarantee a terminal status (`needs_you` / `error`) on exit — the SDK turn stream writes `running` at turn start and always persists a terminal on settle (`packages/sdk/src/modules/turns/turn-stream.ts`). Skipping the terminal flip leaves missions visibly stuck on "running" forever.
+- Source of truth for the enum: `ui/agent-schemas/src/activity.schema.json`. The
+  per-agent on-disk copy is re-seeded every host boot, so adding a value reaches
+  existing users with no migration.
+- **Every path that writes `running` MUST write a terminal status
+  (`needs_you` / `error`) on exit.** The SDK turn stream writes `running` at turn
+  start and always persists a terminal on settle
+  (`packages/sdk/src/modules/turns/turn-stream.ts`). Skipping the terminal flip
+  leaves missions stuck on "running" forever.
+- Bulk archive/move/delete are one read-mutate-write in the TS data layer
+  (`app/src/data/activity.ts`), never per-id engine calls. Single delete is
+  idempotent — deleting an already-gone row is a no-op.
+
+How the board renders and mutates these statuses (columns, the Archived view,
+card actions, drag & drop) → `knowledge-base/board-shell.md`.
 
 ## Skills discovery
-Skills live at `.agents/skills/<name>/SKILL.md`. Houston mirrors to `.claude/skills/<name>` via symlink (Claude Code reads). Flat `.md` under `.agents/skills/` auto-migrated to `<name>/SKILL.md` on next `list_skills`.
+Skills live at `.agents/skills/<slug>/SKILL.md` — one tree, no `.claude/skills` mirror. `loadSkillsFromDir` (`packages/domain/src/skills.ts`) lists only keys ending in `/SKILL.md`, so a flat `.md` dropped under `.agents/skills/` is simply not a skill. Workspace-shared skills live once under `<Workspace>/.shared/skills/` and are opted into per agent by `.houston/skills-manifest/skills-manifest.json` (ADR 0003).
 
 Same files surface in the UI as **Skills**. Frontmatter drives card image, category tabs, featured-state showcase, and integration logos. Selecting a Skill pins it above the regular composer; free-form text remains in chat. Full schema + render pipeline → [`skills.md`](skills.md).
 
-## SQLite (minimal)
-Only two tables:
-- `chat_feed` - keyed by provider CLI session id (`claude_session_id` column name is legacy). UI conversation replay on restart.
-- `preferences` — app-level (last_workspace_id etc). Not scoped.
+## SQLite is a MIGRATION READER only
 
-Everything else lives in files.
+Houston writes no database. The only SQLite left is the Rust-era
+`~/.houston/db/houston.db`, opened **read-only** by
+`packages/host/src/migrate/sqlite.ts` so `chat-history.ts` can copy the old
+`chat_feed` rows into `.houston/runtime/conversations/` on boot. The source db
+is never modified, locked, or deleted.
 
-User-message rows may include leading `<!--houston:skill ...-->` or
-`<!--houston:attachments ...-->` markers (the legacy `<!--houston:action ...-->`
+Everything live is a file: transcripts under `.houston/runtime/conversations/`,
+per-workspace preferences as one JSON doc via the vfs (`prefDocKey`,
+`packages/domain/src/preferences.ts`), everything else under `.houston/`.
+
+## Message markers
+
+A persisted user-message body may start with a `<!--houston:skill ...-->` or
+`<!--houston:attachments ...-->` marker (the legacy `<!--houston:action ...-->`
 prefix is still decoded for chat history written before the rename). These are display metadata only;
-the same row still contains the Claude-facing prompt body after the marker.
+the same body still contains the model-facing prompt after the marker.
 Renderers decode the marker so non-technical users see cards/badges instead
 of file paths or internal prompt instructions.
 
 ## Session file-change attribution
-Chat sessions snapshot user-visible project files before and after the
-CLI run. The engine diffs those snapshots and persists a `file_changes`
-feed item with `created` and `modified` absolute paths. The visible-file
-filter is shared with the project file browser, so helper files such as
-Python scripts, JSON, the agent role files (`CLAUDE.md` / `AGENTS.md` /
-`GEMINI.md`), `.houston/`, `.agents/`, and dotdirs stay out of
-non-technical chat summaries. Markdown deliverables the agent writes
-(reports, plans, notes) DO surface — they are documents, not config
-(issue #294). The allowlist + role-file denylist live in
-`USER_EXTENSIONS` / `HIDDEN_ROLE_FILES` in
-`engine/houston-engine-core/src/agents/files.rs`.
+
+Each turn snapshots the workspace's user-visible files before and after, diffs
+them, and emits a `file_changes` frame with workspace-RELATIVE `created` /
+`modified` paths (`packages/runtime/src/session/file-changes.ts`).
+
+**Visibility is a DENYLIST, not an allowlist.** There is no `USER_EXTENSIONS`
+set — an extension-based allowlist was the Rust port's rule and it hid real
+deliverables (an agent creating a file named `ping` showed in the Files tab but
+produced no chat card). Only three things are hidden now:
+
+- anything whose name starts with `.` (dot-files and dot-dirs, so `.houston/`
+  and `.agents/` never surface),
+- the seeded role files — `HIDDEN_ROLE_FILES` = `claude.md` / `agents.md` /
+  `gemini.md`, case-insensitive — otherwise every agent's first session would
+  claim it wrote its own instructions (issue #294),
+- scaffolding dirs in `SKIP_DIRS` (`node_modules`, `__pycache__`, `venv`,
+  `target`, `dist`, `build`, `skills`, `scripts`).
+
+Everything else surfaces, which matches the Files tab's listing exactly — the
+two surfaces must never disagree about whether the agent "made a file".
 
 > This denylist is cosmetic chat-surface filtering, unrelated to Teams
 > configure-scope enforcement. In multiplayer the cloud gateway separately
@@ -235,22 +285,22 @@ non-technical chat summaries. Markdown deliverables the agent writes
 > `cloud/docs/contracts/C7-teams.md`.
 
 Attribution is strict only when one session owns a working directory. The
-engine enforces that by holding a per-`working_dir` guard for chat and
-routine sessions. Different worktrees/folders can run in parallel. A
-second session in the same folder gets a conflict instead of producing a
-false file summary.
+runtime enforces that with a per-workdir guard
+(`packages/runtime/src/session/workdir-lock.ts`, canonicalized so `dir` and a
+symlinked alias share one lock). Different folders run in parallel; a second
+session in the SAME folder gets a conflict instead of a false file summary.
 
 ## AI-native reactivity (MANDATORY)
 
 Users + LLMs equal participants. Both read/write all workspace data. All changes visible to both immediately.
 
 ### Two writers
-1. **Frontend via the engine** — user clicks "Create Activity" → React hook → `engine-client` → `houston-engine` REST route → `houston-agent-files` writes the file.
-2. **CLI agent direct writes** — the claude/codex subprocess writes `.agents/skills/<name>/SKILL.md` or updates `.houston/<type>/<type>.json` directly without talking to the engine.
+1. **Frontend via the host** — user clicks "Create Activity" → React hook → `@houston-ai/engine-client` → a host route (`packages/host/src/routes/`) → the vfs writes the file.
+2. **Agent direct writes** — the pi runtime's file tools write `.agents/skills/<slug>/SKILL.md` or `.houston/<type>/<type>.json` straight to disk, never through a host route.
 
 ### Three-layer reactivity stack
 1. **TanStack Query (frontend)** — all `.houston/` fetches via `useQuery`. Query keys: `["activity", agentPath]` etc. Dedup, background refresh, stale-while-revalidate.
-2. **Event emission on engine writes** — the engine's write helpers emit `HoustonEvent` variants (`SkillsChanged`, `ActivityChanged`, `LearningsChanged`, …) onto its broadcast bus. The desktop WS client (`ui/engine-client`) fans them out; global listeners in `app/src/hooks/use-agent-invalidation.ts` invalidate the matching query key.
+2. **Event emission on host writes** — the host's write routes emit `HoustonEvent` variants (`SkillsChanged`, `ActivityChanged`, `LearningsChanged`, …) onto the `/v1/events` SSE channel. `@houston-ai/engine-client` fans them out; global listeners in `app/src/hooks/use-agent-invalidation.ts` invalidate the matching query key.
 3. **Host file watcher (`packages/host/src/watch/`)** — catches direct runtime and agent writes that bypass host routes. It classifies canonical `.houston/runtime/{conversations,sessions}/**` writes as `ConversationsChanged`, emits onto the host `/v1/events` channel, and debounces bursts. In managed cloud, the gateway's pod-event fan-in republishes that event to every connected client for the user.
 
 ### The cross-agent aggregate (`["all-conversations", ...paths]`) — HOU-981
@@ -284,4 +334,4 @@ every one of those reads can wake a pod, so this query has its own rules
 Never build feature where agent changes data but UI won't reflect until refresh. If in `.houston/`, must be reactive.
 
 ## User data = upgrade-safe
-Files under `~/.houston/**` (including legacy `~/Documents/Houston/**` from earlier versions) exist on user machines. Changing shape/layout requires **idempotent migration** on upgrade. See `houston_agent_files::migrate_agent_data`. Never leave existing users broken.
+Files under `~/.houston/**` (including legacy `~/Documents/Houston/**` from earlier versions) exist on user machines. Changing shape/layout requires an **idempotent migration** on the host's boot path — add it beside the others in `packages/host/src/migrate/` and call it from `packages/host/src/local/host.ts` `start()`. Never leave existing users broken.

@@ -1,100 +1,73 @@
 # Provider Errors — typed taxonomy + card surface
 
-> **Updated: the Rust engine is removed.** The `ProviderError` **taxonomy** below
-> (`RateLimited`, `QuotaExhausted`, `Unauthenticated`, `UsageLimitPaused`, …) still
-> holds — it is the shared contract the frontend cards render — but it now lives in
-> **TypeScript**: the wire type in `packages/protocol/src/provider-error.ts`, and
-> pi/host classification in `packages/runtime/src/ai/provider-error.ts`. The old
-> Rust `ProviderAdapter::classify_stderr` / `classify_result_error` contract and the
-> `engine/houston-terminal-manager/**` file map at the bottom are **historical** —
-> that engine is deleted. Providers run **in-process** in pi now (no CLI stderr to
-> parse), so a provider maps its failures to these variants in TS. Read the
-> variant / UI columns and the wire-flow intent as current; treat every `.rs` path
-> and `classify_*` Rust signature below as a description of the former engine. New
-> architecture: **`convergence/README.md`**.
+**Every model-request failure collapses into one of EIGHT typed `ProviderError`
+wire kinds, and each kind renders as its own inline chat card with a concrete
+CTA.** Providers run in-process in pi — there is no CLI stderr to parse; the
+runtime classifies pi's errored `AssistantMessage` (provider + model +
+errorMessage) into the wire shape.
 
-Skim the table of contents and load the section that
-touches what you are doing.
+- Wire type — `packages/protocol/src/provider-error.ts`
+- Classifier — `packages/runtime/src/ai/provider-error.ts` (pure,
+  `provider-error.test.ts` covers every branch with verbatim provider strings)
+- Card dispatcher — `app/src/components/shell/provider-error-card.tsx`
+- Frontend union — `ui/chat/src/types.ts` (a superset; see *Dormant kinds*)
 
-## Current map (TS engine) — where every error card comes from
+## The eight live kinds
 
-The full audit behind this section is HOU-1156 (2026-08). Eight wire kinds
-(`packages/protocol/src/provider-error.ts`): `unauthenticated`, `rate_limited`,
-`quota_exhausted`, `model_unavailable`, `context_overflow`, `provider_internal`,
-`network_unreachable`, `unknown`. The frontend union (`ui/chat/src/types.ts`)
-additionally still declares the Rust-era kinds `usage_limit_paused`,
-`session_resume_missing`, `malformed_response`, `spawn_failed`, `cancelled` —
-no TS backend emits them; their cards are dormant.
+| Kind | Extra payload | Fires when | Card + CTAs |
+|------|---------------|-----------|-------------|
+| `unauthenticated` | `cause` (`no_credentials` \| `token_expired` \| `token_revoked` \| `invalid_api_key` \| `unknown`), `undelivered_prompt?` | Credential missing, expired, revoked server-side, or rejected. | `UnauthenticatedCard` (`provider-error-cards/auth.tsx`). Reconnect through whatever surface `reconnect-surface.ts` picks (OAuth browser login / api-key paste dialog / local-endpoint dialog), then waits on `ProviderLoginComplete`, flips to a green "Reconnected" state and runs a one-shot auto-resume. **Names no provider → the generic variant**: plug icon, no brand, CTA opens the AI Hub (see *Attribution*). |
+| `rate_limited` | `model`, `retry_after_seconds` | Short-window throttle. Waiting helps. | `RateLimitedCard` (`limits.tsx`). Retry + Switch model; body interpolates the countdown when present. |
+| `quota_exhausted` | `model`, `scope` (`free_tier` \| `paid_plan` \| `organization` \| `unknown`), `resets_at` | Account out of credit or blocked on billing — the "pay or switch" state. HTTP 402 alone decides it; text patterns catch gateways that ship it under another status (opencode's `401 CreditsError`). | `QuotaExhaustedCard` (`quota.tsx`). Switch provider; body names `resets_at` when the provider gave one. |
+| `model_unavailable` | `model`, `reason` (`preview_gated` \| `deprecated` \| `region_restricted` \| `unknown`), `suggested_fallback` | The credential is fine but THIS model isn't served to it — Copilot Free answering a premium model with `400 model_not_supported`, NVIDIA's per-account function gate. | `ModelUnavailableCard` (`quota.tsx`). One-click "Switch to `suggested_fallback`" + Pick another model. The one card that reads `credential`: personal scope swaps the body to `shell:providerError.credential.modelUnavailableBody`. |
+| `context_overflow` | `model`, `context_window_tokens`, `prompt_tokens` | The conversation no longer fits the window (`exceed_context_size_error`, `context_length_exceeded`, "prompt is too long"). The token fields also feed `learnCustomContextWindow`, which corrects an over-assumed custom-endpoint window. | `ContextOverflowCard` (`quota.tsx`). Switch model. |
+| `provider_internal` | `http_status` | 5xx / transient upstream infra failure. | `ProviderInternalCard` (`transient.tsx`). Retry + Check status page (`statusPageUrl` in `shared.tsx`). |
+| `network_unreachable` | — | Cannot reach the provider's API (DNS, connect refused, ECONNRESET). | `NetworkUnreachableCard` (`transient.tsx`). Retry + Check status page; a local endpoint gets its own copy keyset. |
+| `unknown` | `raw_excerpt` (≤ **300** chars, `EXCERPT_MAX`) — replaces `message` | No classifier branch matched. | `UnknownErrorCard` (`terminal.tsx`). Renders the excerpt verbatim so the card is never content-free, plus Report bug. |
 
-**Entry points → classifier:**
+Every kind except `unknown` carries `message`; every kind may carry `credential`
+(see below). `unauthenticated` and `network_unreachable` are in
+`STATUS_CHANGING_KINDS`, so landing one invalidates the cached provider statuses
+— the picker and AI Hub stop offering a provider whose card says it is broken.
+
+### Dormant kinds
+
+`ui/chat/src/types.ts` additionally declares `usage_limit_paused`,
+`session_resume_missing`, `malformed_response`, `spawn_failed` and `cancelled`,
+and the dispatcher still has cases for them. **No TS backend emits any of them**
+(zero hits across `packages/`) — their renderers (`UsageLimitPausedCard`,
+`SessionResumeMissingCard`, `MalformedResponseCard`, `SpawnFailedCard`) are
+unreachable, and `cancelled` renders `null` by design.
+
+## Where a card comes from
 
 | Path | Where | Notes |
 |------|-------|-------|
-| pi backend (all non-Anthropic-SDK providers) | `packages/runtime/src/backends/pi/wire.ts` (`turn_end`, `stopReason:"error"`) | status read from pi diagnostics, else parsed from the message. Held until `agent_settled`; discarded if pi recovers (HOU-1057). |
-| Claude Agent SDK backend | `packages/runtime/src/backends/claude/translate.ts` → `errors.ts` (`mapSdkError`: SDK enum table, falls through to `classifyText`) | one card per turn (`emittedError` latch); dangling resume auto-retries fresh (HOU-892). |
-| Thrown turn failures | `packages/runtime/src/session/exec-turn.ts` catch, `packages/runtime/src/turn/turn-session.ts` catch | pi raises missing credentials at prompt time — this catch is where they become the reconnect card (HOU-718). |
-| Pre-session guards | `packages/runtime/src/session/chat.ts` (`getConversation` catch + serve-mode pin guard) | synthesized, not classified; typed card persisted, but the LIVE frame is still a generic `error` frame. |
+| pi backend (all non-Anthropic-SDK providers) | `packages/runtime/src/backends/pi/wire.ts` (`turn_end`, `stopReason:"error"`) | Status read from pi diagnostics, else parsed from the message. Held until `agent_settled`; discarded if pi recovers. |
+| Claude Agent SDK backend | `packages/runtime/src/backends/claude/translate.ts` → `errors.ts` | `mapSdkError` maps the SDK's own error enum directly (stamping `credential` itself, since it bypasses `classifyProviderError`) and falls through to `classifyText`. One card per turn via the `emittedError` latch. |
+| Thrown turn failures | `packages/runtime/src/session/exec-turn.ts` catch · `packages/runtime/src/turn/turn-session.ts` | pi raises missing credentials at prompt time — this catch turns them into the reconnect card, carrying `undelivered_prompt` so the retry re-sends the text pi never recorded. |
+| Pre-session guards | `packages/runtime/src/session/chat.ts` (`getConversation` catch + serve-mode pin guard) | Synthesized, not classified — `stampCredentialScope` only. The typed card persists; the LIVE frame is still a generic `error` frame. |
 
-**Classifier:** `packages/runtime/src/ai/provider-error.ts` — pure, every branch
-unit-tested against verbatim provider strings (`provider-error.test.ts`).
-Precedence: auth → quota/billing (before rate-limit: both ride 429, HOU-1154) →
-rate-limit → context overflow → 5xx → network → model-unavailable → `unknown`
-(which keeps a **300-char** `raw_excerpt` — the UnknownErrorCard renders it, so
-an unclassified card is never content-free).
+**Precedence** in `classify()` is deliberate and order-sensitive: NVIDIA's
+per-account model gate → auth → quota/billing (before rate-limit: both ride 429)
+→ rate-limit → context overflow → 5xx → network → model-unavailable → `unknown`.
 
-**The triage loop (how WE find out):** every classified failure logs exactly
-once through `packages/runtime/src/ai/provider-error-log.ts` — expected kinds
-(rate limit, quota, 5xx, network, overflow, model-unavailable, and
-`unauthenticated`/`no_credentials`) at WARN (Sentry breadcrumb), everything
-else — `unknown` and real auth failures — at ERROR (Sentry event). The Sentry
+## The triage loop (how WE find out)
+
+Every classified failure logs exactly once through
+`packages/runtime/src/ai/provider-error-log.ts`. `EXPECTED_KINDS`
+(`rate_limited`, `quota_exhausted`, `model_unavailable`, `context_overflow`,
+`provider_internal`, `network_unreachable`) plus
+`unauthenticated`/`no_credentials` go to WARN (Sentry breadcrumb); everything
+else — `unknown` and real auth failures — to ERROR (Sentry event). The Sentry
 client fingerprints `[provider_error]` lines by `(provider, kind)`
 (`packages/runtime-client/src/sentry/client.ts`), so each family is its own
 countable issue. The ritual: search Sentry for `kind=unknown`, and promote any
-family that repeats into a classifier pattern (verbatim fixture first — see the
-HOU-1156 batch: Codex `WebSocket closed 1006` → provider_internal (HOU-848:
-the socket drops pod-side, so the check-your-connection card was wrong), OpenRouter
-`Stream ended without finish_reason` → provider_internal, Gemini gRPC
-`UNAVAILABLE`/embedded `"code": 5xx` → provider_internal, Google billing
-`dunning` → quota, opencode `RegionError` → model_unavailable).
+repeating family into a classifier branch — verbatim fixture first.
 
-## TL;DR
+## `credential` — WHOSE account failed
 
-Every AI provider's CLI failure collapses into one variant of the
-`ProviderError` enum. The engine emits it as a typed
-`FeedItem::ProviderError` over the wire. The frontend renders one
-variant-specific card per kind with variant-appropriate CTAs. Adding a
-new provider = implement two `classify_*` methods on the provider's
-adapter; no new variants needed (they share the taxonomy).
-
-`Unknown` is the catch-all — and it always shows a "Report bug" button
-so we hear about it. Promote anything that fires `Unknown` repeatedly
-into a real variant.
-
-## The taxonomy
-
-The variants are defined in `packages/protocol/src/provider-error.ts` (the wire
-type) and rendered from `ui/chat/src/types.ts` on the frontend. (Historically the
-Rust source of truth was `engine/houston-terminal-manager/src/provider_error_kind.rs`,
-now removed.)
-
-| Variant                    | When it fires                                                                          | UI CTAs                                              |
-|----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------|
-| `RateLimited`              | Per-minute / short-window throttle. Wait helps.                                         | Retry, Switch model, optional `retry_after_seconds`.  |
-| `QuotaExhausted`           | Long-window / billing-period limit. Wait won't help.                                    | Upgrade plan (`upgrade_url`), Switch provider.        |
-| `UsageLimitPaused`         | Plan-window limit hit (today: Anthropic claude-code's 5-hour subscription session limit). Fires from `rate_limit_event` `status:"rejected"` (structured `resetsAt` epoch), a `429` result whose body names a session/usage limit + reset, or the stderr "usage limit ... reset at" banner. Retrying now fails — wait for the reset. | Chat: `UsageLimitPausedCard` (title + "resets at {time}" from `resets_at`, plus Switch model — a different provider has its own limit). Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
-| `ModelUnavailable`         | The requested model isn't available to this account (preview, deprecated, regioned).    | Switch to `suggested_fallback`, Pick another model. Names the PERSONAL account in the body when `credential.scope === "personal"` (see below). |
-| `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect, through the surface `reconnectSurface` picks (OAuth browser login / api-key dialog / local-endpoint dialog). The card then WAITS on the `ProviderLoginComplete` event (launchLogin resolves at spawn, not completion) and flips to a green "Reconnected" card with a disabled "Signed in" badge while the one-shot auto-resume runs, or shows the failure and re-arms with "Reconnect". **Names no provider → the generic variant** (plug icon, "Connect an AI provider", CTA opens the AI Hub) — see Attribution below. |
-| `NetworkUnreachable`       | Cannot reach the provider's API (DNS, connect refused, ECONNRESET).                     | Retry, Check status page.                            |
-| `ProviderInternal`         | 5xx from upstream, transient infra failure.                                             | Retry, Check status page.                            |
-| `SessionResumeMissing`     | Resume target is gone or unrecoverable. Codex: `no rollout found`. Anthropic: claude exits with `result/error_during_execution/duration_ms:0` on the very first stdout line — the `~/.claude/projects/<encoded-cwd>/<id>.jsonl` transcript is corrupt. Both runners auto-restart fresh; the card is informational. | Try again (re-sends after the auto-restart in case the fresh attempt also failed). |
-| `MalformedResponse`        | CLI emitted unparseable JSON mid-stream.                                                 | Retry.                                               |
-| `SpawnFailed`              | CLI couldn't even spawn (binary missing, killed by OS).                                  | Report bug.                                          |
-| `Cancelled`                | User pressed Stop. Distinct so the UI shows nothing (no toast, no retry).                | none (rendered as `null`).                           |
-| `Unknown`                  | No classifier matched. Carries `raw_excerpt` (≤300 chars), rendered on the card (HOU-1156). | Report bug.                                      |
-
-### `credential` — WHOSE account failed (HOU-976)
-
-Every variant except `Cancelled` may carry one extra field:
+Every kind may carry one extra field:
 
 ```ts
 credential?: { scope: "personal" | "team" }
@@ -102,56 +75,44 @@ credential?: { scope: "personal" | "team" }
 
 It is **omitted entirely** unless the turn carried an acting identity, so it is
 absent on desktop, self-host, a personal space and every routine run — there is
-one credential there and nothing to disambiguate. Treat absence as "render exactly
-as before"; never default it.
+one credential there and nothing to disambiguate. Treat absence as "render
+exactly as before"; never default it.
 
-Populated in `packages/runtime/src/ai/provider-error.ts` from the per-identity
-serve record (`packages/runtime/src/auth/served-scope.ts`), which remembers what
-the gateway resolved for each `(acting identity, provider)` pair.
+Populated by `stampCredentialScope` (`packages/runtime/src/ai/provider-error.ts`)
+from the per-identity serve record (`packages/runtime/src/auth/served-scope.ts`),
+which remembers what the gateway resolved for each `(acting identity, provider)`
+pair. Exported separately for the paths that SYNTHESIZE an error instead of
+classifying one.
 
 **It NAMES the account; it unlocks nothing.** In a team space every turn runs on
 the AI account of the person who sent it and there is no other account to reach
-for, so this field buys exactly one thing: a card that tells the truth. "Your
-Anthropic account is rate limited" is a true sentence where a generic one is not,
-and a member whose model is refused learns it is THEIR plan that lacks it, not
-somebody else's. No card gains an ACTION from `credential` — a CTA offering
-another account could only ever fail, because the space holds none.
-
-Today one card reads it: `ModelUnavailableCard` switches its body to
-`shell:providerError.credential.modelUnavailableBody` when
-`credentialScopeOf(error.credential) === "personal"`
-(`app/src/lib/credential-scope.ts`, the one home for these reads). Reconnect is
-deliberately UNSCOPED on both the unauthenticated card and the in-chat
-`ProviderReconnectCard` (`tauriProvider.launchLogin(provider)`): the account that
-failed is the caller's own by construction, so there is nothing to target and a
-scope argument could only contradict the gateway.
+for, so this field buys exactly one thing: a card that tells the truth. No card
+gains an ACTION from `credential` — a CTA offering another account could only
+ever fail, because the space holds none. Today one card reads it:
+`ModelUnavailableCard`, via `credentialScopeOf` (`app/src/lib/credential-scope.ts`,
+the one home for these reads). Reconnect is deliberately UNSCOPED on both the
+unauthenticated card and the store `ProviderReconnectCard` — the account that
+failed is the caller's own by construction.
 
 Full picture: `knowledge-base/teams.md` → "Per-user AI accounts".
 
 ## Attribution — `provider` is EVIDENCE, never a guess
 
-A card naming the WRONG provider is worse than one naming none: it sends the user
-to a sign-in that fixes nothing. Both halves shipped that bug — a GPT-5.6 user got
-a "Connect Gemini" card (the engine labelled the throw with the conversation's
-cached provider), and an OpenAI user was told to "Connect Anthropic" (the client
-filled an empty label from the composer's default). So every layer now either
-proves the provider or leaves the field empty, and the empty case has its own
-rendering.
+A card naming the WRONG provider is worse than one naming none: it sends the
+user to a sign-in that fixes nothing. Every layer either proves the provider or
+leaves the field empty, and the empty case has its own rendering.
 
 **Engine** (`packages/runtime/src/session/exec-turn.ts`). The catch attributes a
-thrown turn to `turnProvider` — the provider `resolveModel` actually resolved this
-turn onto, stamped the instant it returns. Then, in order: the turn's own PIN
-(canonicalized exactly as `resolveModel` would have, `canonicalPinProvider`, so a
-routine pinned to `openai` still names `openai-codex`), then `""` for a typed card
-/ `"unknown"` for the unknown-kind card (whose copy and bug-report id interpolate
-the word, so an empty string leaves a dangling `provider_error:unknown:`).
-`conv.provider` is NEVER read for attribution: it is the CACHED session's LAST
-provider, written only at conversation build, a backend switch, or after a
-successful `setModel`, so a turn that threw before that write inherited whatever
-provider the conversation happened to be created on. The label is only half of it
-— `noteAuthFailure` and `reportRevokedServedToken` are gated on a NON-EMPTY
-provider, so a `resolveModel` throw can no longer mark an innocent provider
-unusable or POST a revocation for the id `""`.
+thrown turn to `turnProvider` — the provider `resolveModel` actually resolved
+this turn onto, stamped the instant it returns. Then, in order: the turn's own
+PIN (canonicalized exactly as `resolveModel` would have, `canonicalPinProvider`,
+so a routine pinned to `openai` still names `openai-codex`), then `""` for a
+typed card / `"unknown"` for the unknown-kind card (whose copy and bug-report id
+interpolate the word). `conv.provider` is NEVER read for attribution: it is the
+CACHED session's LAST provider. The label is only half of it — `noteAuthFailure`
+and `reportRevokedServedToken` are gated on a NON-EMPTY provider, so a
+`resolveModel` throw cannot mark an innocent provider unusable or POST a
+revocation for the id `""`.
 
 **Client.** `resolveProviderErrorForChat`
 (`app/src/components/shell/provider-error-cards/not-connected.ts`) still fills an
@@ -166,41 +127,40 @@ the card keeps `provider: ""`.
 
 **The generic card.** `UnauthenticatedCard` with no provider drops every
 brand-specific element (glyph → plug icon, no provider name, no sign-in launch)
-and renders the `providerError.unauthenticated` generic keyset — `titleGeneric` /
-`bodyGeneric` / `connectProvider`, plus `reconnectedTitleGeneric` for the done
-phase (en/es/pt). Its CTA opens the AI Hub: with no provider there is no
-`surface`, and `launchLogin` on an unknown id 400s and dead-ends the card. ANY
-provider's successful `ProviderLoginComplete` then satisfies it — a SUCCESS is
-deliberately not filtered by provider on this path (a FAILURE always is: this card
-launched nothing, so an unrelated abandoned login says nothing about it) — and
-fires the same one-shot auto-resume.
+and renders the `providerError.unauthenticated` generic keyset —
+`titleGeneric` / `bodyGeneric` / `connectProvider`, plus
+`reconnectedTitleGeneric` for the done phase (en/es/pt). Its CTA opens the AI
+Hub: with no provider there is no `surface`, and a login launch on an unknown id
+400s and dead-ends the card. ANY provider's successful `ProviderLoginComplete`
+then satisfies it — a SUCCESS is deliberately not filtered by provider on this
+path (a FAILURE always is: this card launched nothing) — and fires the same
+one-shot auto-resume.
 
 **The composer itself is gated on zero connected providers.** Before any error
 can happen, `useAgentChatPanel` replaces the ENTIRE chat input (textarea + the
-footer with the model picker, which otherwise shows a phantom model from the
-effective-provider default) with `ChatConnectAiEmptyState` — reusing the
+footer with the model picker) with `ChatConnectAiEmptyState` — reusing the
 picker's `chat:modelSelector.picker.noProviders.*` copy and a "Connect an AI
-model" CTA into the AI Hub. Decision helper: `shouldReplaceComposerWithConnectAi`
-(`app/src/lib/composer-connect-ai.ts`) — CONFIRMED-zero only: statuses loaded
-without error, catalog ready, capabilities loaded, zero connected AND zero
-still-checking providers; any uncertainty falls back to the normal composer
-(no startup flash). Wiring: `app/src/hooks/use-connect-ai-composer.tsx` →
-first branch of `composerOverrideState` (`mode: "replace"`). While active it
-also suppresses the store `ProviderReconnectCard` (one CTA, not two).
-`ProviderLoginComplete` invalidation restores the composer with no extra
-wiring. E2E: `packages/web/e2e/connect-ai-empty-state.spec.ts`.
+model" CTA into the AI Hub. Decision helper:
+`shouldReplaceComposerWithConnectAi` (`app/src/lib/composer-connect-ai.ts`) —
+CONFIRMED-zero only: statuses loaded without error, catalog ready, capabilities
+loaded, zero connected AND zero still-checking providers; any uncertainty falls
+back to the normal composer (no startup flash). Wiring:
+`app/src/hooks/use-connect-ai-composer.tsx` → first branch of
+`composerOverrideState` (`mode: "replace"`). While active it also suppresses the
+store `ProviderReconnectCard` (one CTA, not two). E2E:
+`packages/web/e2e/connect-ai-empty-state.spec.ts`.
 
 **Feed dedup upgrades the label in place** (`ui/chat/src/feed-to-messages.ts`).
-Provider-error cards dedupe per turn on KIND ALONE; `provider` is deliberately out
-of the key, because the same failure routinely arrives unlabeled on one channel
-and labeled on the other, and keying on it rendered BOTH. When the card already
-shown is the unlabeled one and a duplicate names the provider, the merge copies
-the LABEL ONLY onto the existing payload (same message key, so no React remount):
-the first card is the one carrying the retry state (`undelivered_prompt` /
-`failed_prompt` / `credential` / `retry_after_seconds` / `raw_excerpt`, often a
-more specific `cause`), and replacing it wholesale left auto-resume with nothing
-to re-send (HOU-718). Accepted edge: a mid-turn backend switch where BOTH
-providers fail unauthenticated collapses to one card.
+Provider-error cards dedupe per turn on KIND ALONE; `provider` is deliberately
+out of the key, because the same failure routinely arrives unlabeled on one
+channel and labeled on the other, and keying on it rendered BOTH. When the card
+already shown is the unlabeled one and a duplicate names the provider, the merge
+copies the LABEL ONLY onto the existing payload (same message key, so no React
+remount): the first card is the one carrying the retry state
+(`undelivered_prompt` / `failed_prompt` / `credential` / `retry_after_seconds` /
+`raw_excerpt`, often a more specific `cause`), and replacing it wholesale left
+auto-resume with nothing to re-send. Accepted edge: a mid-turn backend switch
+where BOTH providers fail unauthenticated collapses to one card.
 
 ## `token_revoked`: loose for COPY, strict for DESTRUCTION
 
@@ -213,270 +173,68 @@ prompt. It is NOT the right thing to DO. The revoked-token report
 (`packages/runtime/src/auth/report-revoked.ts` → `POST
 /sandbox/credential/revoked`) deletes the credential for every runtime in the
 workspace, so it gates on its OWN strict list of machine-emitted markers:
-`token_revoked`, `has been revoked`, `access revoked`, `app_session_terminated`,
-`refresh_token_invalidated`. Anchored phrases, never the bare word "revoked" —
-that also matches a negation ("was not revoked") and unrelated fields
-(`"revoked_scopes": []`), each of which would sign a whole workspace out of a live
-credential. Add loose phrasings to the classifier freely; add to the report's list
-almost never (a missed report costs a manual reconnect; a false one destroys a
-working credential workspace-wide). Same asymmetry drives the host's terminal
-refresh codes — `knowledge-base/anthropic-credentials.md` → "What may sign a user
-out".
+`token_revoked`, `has been revoked`, `access revoked`,
+`app_session_terminated`, `refresh_token_invalidated`. Anchored phrases, never
+the bare word "revoked" — that also matches a negation ("was not revoked") and
+unrelated fields (`"revoked_scopes": []`), each of which would sign a whole
+workspace out of a live credential. Add loose phrasings to the classifier
+freely; add to the report's list almost never. Same asymmetry drives the host's
+terminal refresh codes — `knowledge-base/anthropic-credentials.md` → "What may
+sign a user out".
 
-## The classifier trait
+## Two auth cards, two copy sets, kept deliberately distinct
 
-`ProviderAdapter` (in `engine/houston-terminal-manager/src/provider/mod.rs`)
-exposes three methods every adapter can override. All have default
-impls so existing adapters keep compiling.
-
-```rust
-fn classify_stderr(&self, line: &str) -> Option<ProviderError>;
-fn classify_result_error(&self, error_type: &str, error_message: &str) -> Option<ProviderError>;
-fn classify_spawn_failure(&self, exit_code: Option<i32>, stderr_excerpt: &str) -> ProviderError;
-```
-
-- `classify_stderr` runs on every stderr line (hot path; keep it cheap).
-- `classify_result_error` runs on structured `result {status:"error"}`
-  events from the NDJSON parser. The `error_type` is the upstream
-  class name (Gemini's `RetryableQuotaError`, etc.); the parser maps
-  unrecognised types to `ProviderError::Unknown`.
-- `classify_spawn_failure` is invoked when the process exits non-zero
-  with no recognised stderr pattern. Default returns `SpawnFailed`.
-
-## Wire flow
-
-```
-provider CLI
-  ├── stderr line ── classify_stderr ── Some(ProviderError) ── FeedItem::ProviderError ── WS frame
-  └── stdout NDJSON ── parser ── result.error ── classify_result_error ── FeedItem::ProviderError ── WS frame
-```
-
-Live in `engine/houston-terminal-manager/src/session_io.rs`
-(`read_stderr_lines`) and `engine/houston-terminal-manager/src/gemini_parser_state.rs`
-(`handle_result` → `classify_result_error`). Each session emits at most
-one card per `kind` (deduped) so a 10-attempt backoff loop produces
-ONE `RateLimited` card, not ten.
-
-**Anthropic result events classify by HTTP code first.** claude-code sets
-`is_error:true` with a numeric `api_error_status` (e.g. `429`) but the
-`subtype` is often `"success"` and the human `result` string omits the
-status word — so `parser.rs` tries `anthropic_classify::classify_api_error_status`
-(401/403→`Unauthenticated`, 5xx→`ProviderInternal`) BEFORE the text-based
-`classify_result_error`, then falls back to `Unknown`. Text matching alone
-misfiled rate-limits as `Unknown` ("Report bug") — see Luis / 2026-06-09.
-
-**429 splits two ways.** claude-code returns `429` for BOTH a genuine
-short-window throttle AND the 5-hour subscription *session* limit. So
-`classify_api_error_status(429, msg)` inspects the body: a session/usage limit
-naming a reset ("You've hit your session limit · resets 3:30pm") →
-`UsageLimitPaused` (wait, no "Retry now"); otherwise → `RateLimited` with the
-`retry after Ns` countdown. The same limit also arrives mid-stream as
-`rate_limit_event` events — `parse_rate_limit_event` keeps `allowed`/
-`allowed_warning` SILENT (a warning is still allowed), maps `rejected` →
-`UsageLimitPaused` reading the structured `resetsAt` epoch
-(`anthropic_classify::format_reset_time`), and leaves genuine throttles as
-`RateLimited`. Feed dedup (per turn, by KIND) collapses the mid-stream + the
-terminal card to one. Before this, every `allowed_warning` raised a spurious
-RateLimited card and the session limit showed a per-minute "Retry" card with
-claude's raw English body — see Esteban / 2026-06-11.
-
-**No double cards.** claude reports these failures on stdout with empty
-stderr, then exits non-zero. `cli_process::handle_failed_exit` would
-otherwise add its generic `SpawnFailed` fallback on top of the parser's
-typed card, so the stdout reader sets `StdoutReadReport::saw_provider_error`
-(via `mark_provider_error`) and the fallback is skipped when it is set
-(alongside the existing `saw_auth_error` / `saw_model_unsupported_error`
-guards).
-
-**Codex terminal auth surfaces from stdout, like claude.** When ChatGPT
-kills the login session server-side it returns `app_session_terminated` /
-"Your session has ended. Please log in again." and codex loops
-`Reconnecting... N/5` forever. The parser used to treat ALL of that as
-deferred retry noise (`AUTH_RETRY_MARKER`), and the only `Unauthenticated`
-card came from a stderr line emitted BEFORE `thread.started` — so it was
-never persisted and vanished on reload, leaving the chat with just a red
-border. Now `codex_parser` distinguishes a TERMINAL auth failure
-(`auth_error::is_terminal_auth_error`) from a transient reconnect: terminal
-emits `ProviderError::Unauthenticated` once (deduped via
-`CodexAccumulator::auth_card_emitted`), fires after `thread.started` so it
-persists, and renders the same login-button `UnauthenticatedCard` Claude
-gets. Transient reconnects keep the deferred marker. The frontend
-(`feed-to-messages`) also dedupes provider-error cards per turn by KIND alone,
-so the transient stderr card and the persisted stdout card collapse to one (a
-labeled duplicate upgrades the unlabeled card in place — see Attribution).
-
-Codex prints the kill in more than one phrasing — `is_auth_error` /
-`is_terminal_auth_error` cover both "Your session has ended. Please log in
-again." AND "Your access token could not be refreshed. Please log out and
-sign in again." (the latter is NOT wrapped in `Reconnecting`, so it arrives
-as a plain `error` event). EVERY codex auth failure — retry-wrapped or
-plain — now funnels to a single `auth_card_emitted`-deduped
-`Unauthenticated` card; before, the plain refresh-failure fell through to a
-raw `Error: …` SystemMessage shown twice.
-
-Codex also emits non-auth retry progress as `type:"error"` while it is still
-recovering, e.g. `Reconnecting... 2/5 (stream disconnected before completion:
-websocket closed by server before response.completed)`. Those lines are NOT
-terminal: production runs returned an assistant answer and exited `0` after
-printing them. `codex_parser` suppresses these reconnect-progress lines so
-they do not persist as mission-log errors. If the retry loop actually fails,
-Codex emits a final non-`Reconnecting...` `turn.failed` / `error` event, and
-that still surfaces to the user.
-
-**Codex usage limit → `QuotaExhausted` (HOU-495).** A spent ChatGPT-account
-Codex allowance fails every turn with `You've hit your usage limit. Upgrade to
-Plus to continue using Codex (<url>), or try again at <date>.`, emitted on
-stdout as BOTH an `error` and a `turn.failed` event. It is not a 429 throttle
-and not the API-key `quota exceeded` billing error, so it matched no
-`openai_classify::classify_stderr` branch and fell through to a raw `Error: …`
-SystemMessage (shown twice) + a generic `codex hit a runtime error` status +
-a `SpawnFailed` fallback card — the user saw no actionable next step, just
-noise (the symptom behind "unable to use codex"). `classify_stderr` now maps
-any `usage limit` line to `QuotaExhausted` (scope inferred from
-`upgrade to plus` → `FreeTier` / `upgrade to pro` → `PaidPlan`; `upgrade_url`
-lifted from the banner via `extract_first_url`, falling back to the ChatGPT
-plan page). `CodexAccumulator::terminal_error_emitted` dedupes the
-`error`+`turn.failed` pair to one card (the auth path keeps its separate
-`auth_card_emitted` guard). The card is `QuotaExhaustedCard` — same "Upgrade
-plan" CTA Anthropic/Gemini quota errors get.
-
-**Auth cards: prefer the persisted inline card over the store card.** The
-store-driven `ProviderReconnectCard` (anchored to the `authRequired` flag,
-rendered in `ChatPanel.afterMessages`) AUTO-DISMISSES for codex: its 3s
-`checkStatus` poll sees `~/.codex/auth.json` still present and clears
-`authRequired`, so the login button flashes then vanishes. So
-`use-agent-chat-panel.afterMessages` suppresses the store card whenever the
-feed already carries an inline `provider_error` `unauthenticated` card
-(`isInlineAuthCard`), REGARDLESS of which provider that card names — it carries
-the provider the turn actually failed on, which outranks the chat-provider
-resolution chain, and a stale activity record once rendered a second, wrong-
-provider store card beside the correct inline one. The persisted inline card is
-the stable surface.
-(The underlying probe false-positive is still unfixed; it needs a
-server-validating auth check.)
-
-**Two cards, two copy sets, kept deliberately distinct.** The inline
-`UnauthenticatedCard` (above) and the store `ProviderReconnectCard` used to
-share ambiguous "Try again" / "Reconnect" wording across two different
-actions (resend a message vs. relaunch sign-in). Their phase-to-copy mappings
-are now pure, unit-tested lookups: `resolveAuthCardPresentation`
+The inline `UnauthenticatedCard` and the store-driven `ProviderReconnectCard`
+(anchored to the `authRequired` flag, rendered in `ChatPanel.afterMessages`)
+answer two different actions — resend a message vs. relaunch sign-in. Their
+phase-to-copy mappings are pure, unit-tested lookups:
+`resolveAuthCardPresentation`
 (`app/src/components/shell/provider-error-cards/auth-presentation.ts`) for the
 inline card's 4-phase machine (`idle | waiting | done | failed`), and
 `resolveReconnectCardPresentation`
 (`app/src/components/shell/provider-reconnect-presentation.ts`) for the store
-card's 2-state machine (`loginLaunched`). The store card's launched-state
-button now names its real action, `providerReconnect.signInAgain` ("Sign in
-again"), instead of borrowing the shared `common:actions.tryAgain`; the
-now-unused `providerReconnect.reconnect` / `providerReconnect.tryAgain` i18n
-keys were deleted.
+card's 2-state machine (`loginLaunched`).
 
-The inline card is split by CONCERN, not by variant, and the split is the reason
-each half is testable: `auth.tsx` renders only what the other three decide,
-`auth-presentation.ts` maps phase → copy, `use-provider-login.ts` owns every side
-effect (cancelLogin → launchLogin relaunch, the `ProviderLoginComplete`
-subscription, the one-shot auto-resume, the AI-Hub fallback when no provider is
-named), and `reconnect-surface.ts` routes a provider id to its connect surface.
-That last one exists because sending an api-key provider through `launchLogin` is
-a guaranteed 400 ("nvidia does not use OAuth sign-in") that flips the card to its
-failed phase and dead-ends the user (HOU-1077): api-key providers reconnect
-through the same paste dialog Settings uses, `openai-compatible` through the
-guided endpoint dialog, and both fire the same `ProviderLoginComplete` so the
-auto-resume runs on every surface.
+**Prefer the persisted inline card.** The store card AUTO-DISMISSES for codex:
+its 3s `checkStatus` poll sees `~/.codex/auth.json` still present and clears
+`authRequired`, so the login button flashes then vanishes. So
+`use-agent-chat-panel.afterMessages` suppresses the store card whenever the feed
+already carries an inline `provider_error` `unauthenticated` card
+(`isInlineAuthCard`), REGARDLESS of which provider that card names — it carries
+the provider the turn actually failed on, which outranks the chat-provider
+resolution chain. `afterMessages` receives the RAW (unfiltered) feed
+(`@houston-ai/board` `ai-board.tsx`), so that check can see the item.
 
-**Where the card actually mounts (don't let this regress).** A
-`FeedItem::ProviderError` becomes a `ChatMessage` with `providerError` set
-and `content: ""` (`ui/chat/feed-to-messages.ts`). The ONLY thing that
-renders it is the app's `renderSystemMessage`
-(`app/src/components/use-agent-chat-panel.tsx`), which must return
-`<ProviderErrorCard error={msg.providerError} … />`. `chat-messages.tsx`
-calls `renderSystemMessage(msg)` and, if it returns `undefined`, falls back
-to rendering `msg.content` — which is `""`, i.e. NOTHING. For a long time
-`renderSystemMessage` had no `providerError` branch, so EVERY typed card
-(rate-limit, quota, the OpenAI/Claude reconnect button, …) silently
-rendered as an empty span; the only auth UI that worked was the separate
-store-driven `ProviderReconnectCard` in `afterMessages`. If you add a
-variant, the dispatcher in `provider-error-card.tsx` is necessary but NOT
-sufficient — the card only appears because `renderSystemMessage` mounts it.
-`afterMessages` receives the RAW (unfiltered) feed (`@houston-ai/board`
-`ai-board.tsx`), so its "suppress the store card when an inline auth card
-exists" check can see the `provider_error` item.
+The inline card is split by CONCERN, not by variant, and the split is why each
+half is testable: `auth.tsx` renders only what the other three decide,
+`auth-presentation.ts` maps phase → copy, `use-provider-login.ts` owns every
+side effect (cancel → relaunch, the `ProviderLoginComplete` subscription, the
+one-shot auto-resume, the AI-Hub fallback when no provider is named), and
+`reconnect-surface.ts` routes a provider id to its connect surface. That last
+one exists because sending an api-key provider through an OAuth login launch is
+a guaranteed 400 ("nvidia does not use OAuth sign-in") that flips the card to
+its failed phase and dead-ends the user: api-key providers reconnect through the
+same paste dialog Settings uses (`reconnect-dialog.tsx`), `openai-compatible`
+through the guided endpoint dialog, and both fire the same
+`ProviderLoginComplete` so the auto-resume runs on every surface.
 
-## Adding a new provider
+**Where the card actually mounts (don't let this regress).** A `provider_error`
+feed item becomes a `ChatMessage` with `providerError` set and `content: ""`
+(`ui/chat/src/feed-to-messages.ts`). The ONLY thing that renders it is the app's
+`renderSystemMessage` (`app/src/components/use-agent-chat-panel.tsx`), which
+must return `<ProviderErrorCard error={msg.providerError} … />`.
+`ui/chat/src/chat-messages.tsx` calls `renderSystemMessage(msg)` and, if it returns
+`undefined`, falls back to rendering `msg.content` — which is `""`, i.e.
+NOTHING. Adding a variant to the dispatcher in `provider-error-card.tsx` is
+necessary but NOT sufficient; the card only appears because
+`renderSystemMessage` mounts it.
 
-1. Implement `classify_stderr` + `classify_result_error` on the new
-   adapter. Real fixtures > guessed regex.
-2. Add unit tests to the classifier module with verbatim CLI output.
-3. The frontend already knows every variant — no UI work needed unless
-   the provider needs a custom status-page URL (see `statusPageUrl` in
-   `app/src/components/shell/provider-error-cards/shared.tsx`) or a new
-   provider-aware reconnect flow.
-4. i18n keys are SHARED across providers (`shell:providerError.<variant>`),
-   templated by `{{provider}}` — no new keys per provider unless the
-   variant truly needs different wording.
+## Codex sign-in port (1455) already in use — preflight
 
-## Adding a new variant
-
-Resist if `Unknown` covers it. If you must:
-
-1. Add the variant to `ProviderError` (Rust) + `ui/chat/src/types.ts`
-   (TypeScript). Same `kind` discriminant.
-2. Add an i18n keyset under `shell:providerError.<variant>` for en, es,
-   pt. Run `pnpm check-locales` to verify parity.
-3. Add a renderer file under
-   `app/src/components/shell/provider-error-cards/<group>.tsx`. Pick
-   the group by recovery shape (transient, auth, quota, terminal).
-   Single-action / provider-branded variants (e.g. `UnauthenticatedCard`,
-   `RateLimitedCard`) render via the shared `RowCard` (logo-left; see
-   design-system.md); multi-button variants stay on `ErrorCard`
-   (icon-bubble) in `shared.tsx`.
-4. Add a `case` in `provider-error-card.tsx`'s dispatcher.
-5. Update this doc's table.
-6. Add the classifier(s) that produce the new variant.
-7. `cargo test --workspace`, `pnpm tsgo --noEmit`, `pnpm check-locales`,
-   `pnpm vite build` — every gate green before committing.
-
-## Login-flow failures (separate from session classification)
-
-Everything above is about a **running session** — stderr / result events from a
-spawned chat run, classified into the `ProviderError` card taxonomy. The
-**login** flow (`provider::launch_login` in `houston-engine-core`) is a
-different surface, and its failures are plain strings, not cards:
-
-- sub-3s probe exit → `CoreError` → REST → toast description.
-- >3s relay exit → `ProviderLoginComplete.error` (string) → toast description.
-
-The login probe used to surface the CLI's first non-empty output stream
-verbatim as the error. For codex that leaked its benign startup banner
-`Starting local login server on http://localhost:1455.` as
-`internal: codex login: <banner>` — no cause, no recovery (HOU-446). Plain
-`codex login` runs a **fixed-port (1455)** loopback callback server; when it
-can't start (port held by an orphaned prior login, or blocked by a firewall /
-VPN / security tool) codex dies right after printing that banner.
-
-The adapter now owns login diagnosis:
-`ProviderAdapter::diagnose_login_failure(stdout, stderr) -> Option<LoginFailureHint>`
-(default `None`). OpenAI overrides it (`provider/openai_login.rs`) to recognize
-the login-server / port-1455 / address-in-use signature and return a clean,
-recoverable message plus a stable `kind`. Both failure paths
-(`login_early_exit_error` in `provider/mod.rs`, `make_login_error` in
-`provider/login_relay.rs`) prefer the diagnosis; with none they fall back to the
-raw stderr — still the actionable detail for a genuine login error. The
-diagnosed error surfaces as
-`CoreError::Labeled { code: Unavailable, kind, message }`: clean (no `internal:`
-prefix), with `kind` reaching `error.details.kind` for future localized copy.
-
-This is NOT a new `ProviderError` variant — login failures never render as
-session cards, so they stay out of the taxonomy table above.
-
-(Same fix biased the relay's stdout/exit `select!` so a fast-exiting CLI's
-login URL is always drained before its exit is observed — see `login_relay.rs`.)
-
-### Codex sign-in port (1455) already in use — preflight (TS host)
-
-**Symptom (desktop, real users):** a user with the real Codex CLI running — or a
-stray prior login — clicks *Connect OpenAI*, the browser opens, they approve at
-OpenAI, then Houston shows a spinner for ~5 minutes and finally a generic
-timeout toast. No log, no error, no remedy.
+**Symptom (desktop, real users):** with the real Codex CLI running — or a stray
+prior login holding the port — *Connect OpenAI* opens the browser, the user
+approves at OpenAI, and Houston spins for ~5 minutes into a generic timeout
+toast. No log, no error, no remedy.
 
 **Cause:** the OpenAI/Codex **browser (loopback)** login binds a FIXED loopback
 callback port, `1455`, in pi's host process (pi-ai
@@ -484,49 +242,45 @@ callback port, `1455`, in pi's host process (pi-ai
 hardcoded `REDIRECT_URI = "http://localhost:1455/auth/callback"`). pi attaches
 `.on("error", …)` to that server WITHOUT rethrowing: on `EADDRINUSE` it resolves
 a **stub** whose `waitForCode()` returns null. The browser still opens, the
-redirect lands on whoever holds `1455` (the real Codex CLI), and the flow waits
-for a manual code that never comes — until the 10-min abandonment expiry
-(`LOGIN_TIMEOUT_MS`). pi is an external dependency; its dist can't be patched.
+redirect lands on whoever holds `1455`, and the flow waits for a manual code
+that never comes — until the 10-min abandonment expiry. pi is an external
+dependency; its dist can't be patched.
 
-**Fix (`packages/runtime/src/auth/codex-port-preflight.ts`):** BEFORE handing off
-to pi, `startLogin` probes the exact `host:port` pi will bind (`1455`, host
+**Fix (`packages/runtime/src/auth/codex-port-preflight.ts`):** BEFORE handing
+off to pi, `startLogin` probes the exact `host:port` pi will bind (`1455`, host
 mirrors pi's `PI_OAUTH_CALLBACK_HOST || 127.0.0.1`) by binding + immediately
 closing a throwaway listener. A bind error throws the typed
 `CodexCallbackPortInUseError` (`kind: "codex_callback_port_busy"`) with a
 non-technical message — *"Another app on this computer is using the sign-in port
 (1455). Close other AI coding tools and try again."* — so the failure is instant
-and actionable, **before any browser opens**. The preflight runs ONLY for the
-`openai-codex` **browser** method (`deviceAuth:false`); the device-code path and
-every other provider bind nothing and are untouched. It runs before any state is
-added to `active`, so a preflight failure never wedges the login slot — an
-immediate retry (once the port is freed) starts clean.
+and actionable, **before any browser opens**. It runs ONLY for the
+`openai-codex` **browser** method (`deviceAuth:false`), and before any state is
+added to `active`, so a preflight failure never wedges the login slot.
 
 **Surfacing:** the runtime returns the typed error over REST with its `kind`
-(`provider-routes.ts`). The frontend engine adapter
+(`packages/runtime/src/transport/provider-routes.ts`). The frontend engine adapter
 (`packages/web/src/engine-adapter/client/provider-login-mixin.ts`,
-`surfaceTypedLoginFailure`) routes any `kind`-tagged login-launch failure through
-the normal `ProviderLoginComplete{success:false, error}` channel, so the
-actionable message reaches the existing sign-in toast / reconnect card instead of
-being flattened to a generic "sign-in failed". Untyped failures rethrow
-unchanged.
+`surfaceTypedLoginFailure`) routes any `kind`-tagged login-launch failure
+through the normal `ProviderLoginComplete{success:false, error}` channel, so the
+actionable message reaches the existing sign-in toast / reconnect card instead
+of being flattened to a generic "sign-in failed". Untyped failures rethrow
+unchanged. Login failures are NOT `ProviderError` variants — they never render
+as session cards.
 
 ## File map
 
-| Layer        | Path                                                                              |
-|--------------|-----------------------------------------------------------------------------------|
-| Rust enum    | `engine/houston-terminal-manager/src/provider_error_kind.rs`                      |
-| Trait        | `engine/houston-terminal-manager/src/provider/mod.rs`                             |
-| Anthropic    | `engine/houston-terminal-manager/src/provider/anthropic_classify.rs`              |
-| OpenAI       | `engine/houston-terminal-manager/src/provider/openai_classify.rs`                 |
-| Codex login  | `engine/houston-terminal-manager/src/provider/openai_login.rs` (login-flow diag)  |
-| Gemini       | `engine/houston-terminal-manager/src/provider/gemini/classify.rs` (gemini dropped — classifier unreachable) |
-| Stderr wire  | `engine/houston-terminal-manager/src/session_io.rs::read_stderr_lines`            |
-| Result wire  | `engine/houston-terminal-manager/src/gemini_parser_state.rs::handle_result`       |
-| Result wire  | `engine/houston-terminal-manager/src/codex_parser.rs::classify_codex_error_message` |
-| Protocol     | `engine/houston-engine-protocol/src/lib.rs` (re-exports `ProviderError`)          |
-| TS type      | `ui/chat/src/types.ts`                                                            |
-| Card router  | `app/src/components/shell/provider-error-card.tsx`                                |
-| Card pieces  | `app/src/components/shell/provider-error-cards/` — `limits.tsx` (rate-limited + usage-limit-paused), `quota.tsx` (quota-exhausted + model-unavailable, the one that names the account), `transient.tsx` (retry-now infra: network / internal / malformed), `terminal.tsx`, `shared.tsx` (`AsyncActionButton` / `RetryButton` / `StatusPageButton`) |
-| Auth card    | same dir, four files: `auth.tsx` (render only) · `auth-presentation.ts` (phase → copy) · `use-provider-login.ts` (launch / cancel / auto-resume lifecycle) · `reconnect-surface.ts` (which connect surface an id opens), with `reconnect-dialog.tsx` for the two non-OAuth ones |
-| Attribution  | engine `packages/runtime/src/session/exec-turn.ts` (`turnProvider` → pin → `""`) · client `provider-error-cards/not-connected.ts` (`errorCardProvider`) over `app/src/components/chat-effective-provider.ts` (`preferredProvider`) · dedup/label merge `ui/chat/src/feed-to-messages.ts` |
-| i18n         | `app/src/locales/{en,es,pt}/shell.json` → `providerError.*`                       |
+| Layer | Path |
+|-------|------|
+| Wire type | `packages/protocol/src/provider-error.ts` |
+| Classifier | `packages/runtime/src/ai/provider-error.ts` (+ `provider-error.test.ts`) |
+| Logging / Sentry | `packages/runtime/src/ai/provider-error-log.ts` · `packages/runtime-client/src/sentry/client.ts` |
+| Credential scope | `packages/runtime/src/auth/served-scope.ts` · `app/src/lib/credential-scope.ts` |
+| Revoked report | `packages/runtime/src/auth/report-revoked.ts` |
+| Codex port preflight | `packages/runtime/src/auth/codex-port-preflight.ts` |
+| Entry points | `packages/runtime/src/backends/pi/wire.ts` · `backends/claude/translate.ts` + `errors.ts` · `session/exec-turn.ts` · `turn/turn-session.ts` · `session/chat.ts` |
+| Frontend union | `ui/chat/src/types.ts` |
+| Card router | `app/src/components/shell/provider-error-card.tsx` |
+| Card pieces | `app/src/components/shell/provider-error-cards/` — `limits.tsx`, `quota.tsx` (the one that names the account), `transient.tsx`, `terminal.tsx`, `shared.tsx` (`ErrorCard` / `RetryButton` / `StatusPageButton` / `statusPageUrl` / `providerLabel`, re-exports `ReportBugButton`) |
+| Auth card | same dir: `auth.tsx` (render only) · `auth-presentation.ts` (phase → copy) · `use-provider-login.ts` (launch / cancel / auto-resume) · `reconnect-surface.ts` (which surface an id opens) · `reconnect-dialog.tsx` (the two non-OAuth ones) · `not-connected.ts` (`errorCardProvider`) |
+| Attribution | `packages/runtime/src/session/exec-turn.ts` · `app/src/components/chat-effective-provider.ts` · `ui/chat/src/feed-to-messages.ts` |
+| i18n | `app/src/locales/{en,es,pt}/shell.json` → `providerError.*` |

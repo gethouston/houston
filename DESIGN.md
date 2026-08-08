@@ -30,15 +30,16 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
 ## 4. Tokens quick reference
 Every value below is a `--ht-*` token, re-exported to Tailwind `--color-*` (use the utility, e.g. `bg-card`, `text-ink`). Never the raw value.
 
-**Type scale** (`scale/typography.json`) — system font stack `ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif`; **no webfonts**. Weights 400 / 500 / 600.
+**Type scale** (`scale/typography.json`) — system font stack `ui-sans-serif, -apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif`; **no webfonts**. Weights 400 / 500 / 600, plus **510** for the sidebar rail (`font-weight-510`, defined in `ui/core/src/globals.css`): Linear's interface weight, delivered via `font-variation-settings` where the platform font is variable (SF Pro on macOS) and anchored at `font-weight: 500` so a static family (Segoe UI) matches downward instead of overshooting to semibold.
 
 | role | size | weight | Tailwind |
 |---|---|---|---|
-| h1 / page title | 28px | 400 | `text-[28px] font-normal` |
+| h1 / page title | 24px | 400 | `text-2xl font-normal` (what `PageHeader` renders) |
 | model selector | 18px | 400 | `text-lg` |
 | body / input | 16px | 400 | `text-base` |
 | buttons | 14px | 500 | `text-sm font-medium` |
-| sidebar / small labels | 14 / 12px | 400 | `text-sm` / `text-xs` |
+| sidebar rows / band | 13 / 12px | 510 | `text-[13px] font-weight-510` / `text-xs font-weight-510` (`sidebarRowType`) |
+| small labels | 12px | 400 | `text-xs` |
 
 Section headers: sentence case, `text-sm font-medium`. Never uppercase / `tracking-wider`.
 
@@ -120,7 +121,7 @@ Merge the tokenized scale (§4) with these craft rules:
 ## 8. Process (mandatory for UI tasks)
 1. Load THIS file first, plus `knowledge-base/design-system.md` for the surface it touches.
 2. **New surface/screen** → generate **3–5 genuinely distinct** design directions, judge them, pin the winner before building → `skills/frontend-design/SKILL.md`.
-3. Before declaring done → run the screenshot self-critique loop → `skills/design-review/SKILL.md`.
+3. **Never self-review the look.** Design judgment is Julian's alone — show him. No `/design-review` screenshot loops.
 4. Scoped checks only (biome + your vitest); run **`pnpm check:parity`** whenever a shared/`ui/` component changed.
 
 ## Component inventory (`@houston-ai/core` — the primitive lock)

@@ -39,9 +39,13 @@ round-trip, no mic access on web (the mic control is absent entirely there).
 ## Model-download UX
 
 First use probes `dictation_model_status`. Not ready → a consent dialog opens
-showing the size (`DictationModelSetup` / `use-dictation-model-setup.ts`),
-progress streams via a Tauri event (`dictation-model-progress`), and the model
-state stays outside the capture/transcribe phase machine —
+showing the size. The component is `DictationSetupDialog`
+(`app/src/components/dictation-setup-dialog.tsx`); `DictationModelSetup` is the
+state object it takes as its `modelSetup` prop, built by `useDictationModelSetup`
+(`app/src/lib/dictation/use-dictation-model-setup.ts`, re-exported through
+`use-dictation.ts`). Progress streams via a Tauri event
+(`dictation-model-progress`), and the model state stays outside the
+capture/transcribe phase machine —
 `DictationControl.state` stays `"idle"` while the dialog is open, since
 nothing is being captured yet. A "model-not-ready" failure from a downstream
 `transcribe_audio` call re-probes and reopens the dialog.

@@ -2,24 +2,20 @@
 
 A Skill is a reusable procedure stored as a markdown file with YAML frontmatter. Houston shows them in the picker, the chat empty state, the global **Skills** page, and the agent settings page's **Skills** section (the per-agent Skills TAB is gone with the rest of the agent tab shell; the same `AgentAdminSkills` surface is now that section).
 
-> **Updated: Houston runs on the TypeScript host now — the Rust `engine/` was removed.** SKILL.md format, discovery, and UI behavior below are current, but `engine/houston-skills` / `houston-engine-core` crate names and `.rs` paths are historical: skills are now parsed in the **host** and loaded by the **pi runtime** (`packages/runtime/src/session/resource-loader.ts`).
-
 ## File layout
 
 ```
 .agents/skills/<slug>/SKILL.md       # source of truth, YAML frontmatter + body
-.claude/skills/<slug>                # live link → ../../.agents/skills/<slug>
-                                     # auto-created by engine on `list_skills`
 ```
 
-The `.claude/skills/<slug>` discovery node is what makes a skill visible to
-Claude Code natively. On Unix it is a relative symlink. On Windows a real
-symlink needs Developer Mode or admin (os error 1314), so the engine falls back
-to a **directory junction** — privilege-free and, crucially, *live*: it always
-reflects the source `SKILL.md`, so a skill the agent later rewrites never goes
-stale behind the mirror. A plain copy is the last resort for the rare non-NTFS
-volume that rejects junctions. See `ensure_claude_mirror` in
-`engine/houston-engine-core/src/skills.rs`.
+- One tree, no mirror. Nothing writes `.claude/skills/` — skills are parsed in
+  the **host** (`packages/domain/src/skills.ts`) and loaded by the **pi
+  runtime** (`packages/runtime/src/session/resource-loader.ts`), which reads
+  `.agents/skills` directly.
+- Rust-era installs may still carry a `.claude/skills/` mirror on disk. The
+  host's watcher and `packages/domain/src/reactivity.ts` classify writes under
+  it as `SkillsChanged` so those trees stay reactive; nothing creates or
+  refreshes them.
 
 Houston Store agent packages may also include `.agents/skills/*`.
 Install copies the package to `~/.houston/agents/<id>/`; creating a
@@ -33,7 +29,7 @@ The body is a regular markdown file Claude Code uses as the procedure when the S
 
 ## Frontmatter schema
 
-Source of truth: `engine/houston-skills/src/lib.rs` (`SkillSummary`). Parsed by `serde_yml`, so anything valid YAML works.
+Source of truth: `packages/domain/src/skills.ts` (`parseSkillMd` → `SkillSummary`, typed in `packages/protocol`). Parsed by the `yaml` package, so anything valid YAML works. Unknown fields are ignored.
 
 ```yaml
 ---
@@ -74,7 +70,7 @@ Step-by-step instructions Claude follows when the Skill runs.
 | `created` / `last_used` | string | unset | YYYY-MM-DD. Engine maintains. |
 | `category` | string | unset | Preview-modal category chip. |
 | `featured` | bool | `false` | Accepts `yes` / `true` / `1` / `on`. Surfaces on the empty-chat showcase. |
-| `image` | string | unset | Either an `https://...` URL OR a Fluent Emoji slug (rendered as the flat 2D variant) (lowercased folder name from [microsoft/fluentui-emoji/assets](https://github.com/microsoft/fluentui-emoji/tree/main/assets), spaces → dashes). Resolved frontend-side via `resolveSkillImage`. |
+| `image` | string | unset | Either an `https://...` URL OR a Fluent Emoji slug (rendered as the flat 2D variant) (lowercased folder name from [microsoft/fluentui-emoji/assets](https://github.com/microsoft/fluentui-emoji/tree/main/assets), spaces → dashes). Resolved frontend-side via `resolveSkillImageUrl` (`app/src/lib/skill-image.ts`). |
 | `integrations` | string[] | `[]` | Composio toolkit slugs. Drives the logo row on every skill surface (see "Connected apps on skill surfaces"). |
 
 ## Connected apps on skill surfaces (`integrations:`)
@@ -135,11 +131,8 @@ prompt:
   `buildSystemPrompt` (`packages/runtime/src/backends/claude/system-prompt.ts`)
   appends the IDENTICAL `<available_skills>` section itself, reusing pi's
   exported `loadSkillsFromDir` + `formatSkillsForPrompt` on the same directory.
-  Before HOU-894 this section was missing entirely: an Anthropic session had no
-  idea what skills existed, so "Use the <skill> skill." turns ran blind —
-  agents improvised the procedure, spun for minutes, and never completed
-  (the legacy Rust engine never had this gap; its claude CLI discovered the
-  `.claude/skills` mirror natively).
+  Without it an Anthropic session has no idea what skills exist, so
+  "Use the <skill> skill." turns run blind (HOU-894).
 
 Loader parity rule (pi's, now both backends): a SKILL.md with **no
 `description:` frontmatter is silently dropped from the index** — the model
@@ -234,9 +227,9 @@ takes the directory itself as the test seam rather than a `fetchImpl`.
 
 ## Render pipeline
 
-1. **Engine** parses SKILL.md frontmatter via `serde_yml` (`engine/houston-skills/src/format.rs`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
-2. Engine returns the full `SkillSummaryResponse` on `GET /v1/skills`.
-3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the snake/camel-case wire shape back to app's `SkillSummary`.
+1. **Host** parses SKILL.md frontmatter in `parseSkillMd` (`packages/domain/src/skills.ts`). Unknown fields are silently ignored — old skills with `icon:` / `starter_prompt:` still parse.
+2. The host returns the summaries on `GET /v1/skills` (and the agent-scoped route).
+3. **App** (`useSkills` query → `tauri.ts` → `engine-client`) maps the wire shape back to app's `SkillSummary`.
 4. **Skill cards** use `app/src/components/skill-card.tsx` only for the chat empty-state showcase. The Skills surfaces and the New Mission picker share `skills/skill-catalog-rows.tsx`: `SkillCatalogRow` renders the installed catalog row, while `SkillCatalogGrid` supplies its list. Both surfaces filter with `filterInstalledSkills` and sort with `sortSkillsByTitle`, so display titles, including accented frontmatter titles, determine A-Z order. **First-party store skills ship fully translated** (en/es/pt SKILL.md trees; a Spanish workspace seeds Spanish skills, the agent runs the Spanish procedure, editing is in Spanish). Display names come from the frontmatter `title:` field via `skillDisplayTitle` (accents the ASCII slug can't carry), falling back to `humanize(slug)`. See `knowledge-base/i18n.md` § "Store skills are translated at the CONTENT level".
 5. **`useAgentChatPanel`** (`app/src/components/use-agent-chat-panel.tsx`) — single source of truth for the per-agent panel UX. Owns:
    - skill discovery (featured cards on empty state)
@@ -348,12 +341,26 @@ the guided chat sits behind the dialog's **Edit in chat** button
 (`onEditInChat`), which opens the side-panel chat on the skill's holder. The
 raw `SkillEditModal` remains only as the read-only fallback.
 
-**The agent's Custom tab also shows "From your other agents"**
-(`other-agent-skills.tsx`) — the discovery tab INSIDE the Skills section, not an
-agent tab: the user's own skills living on OTHER agents,
-one-click copyable onto this agent (load the holder's SKILL.md verbatim →
-`writeFile` here — the Houston-library copy primitive). Mounted only inside
-that tab's content so the cross-agent fan-out runs only when it opens.
+**The agent's Custom tab = the user's SOURCES of skills** (`SkillCustomTab`,
+`app/src/components/agent/skill-custom-tab.tsx`), top to bottom:
+
+- **Unclaimed create-chat drafts**, one `CatalogRow` each — click resumes the
+  interview, the trailing X discards. Rendered only when drafts exist. The X is
+  the row's `action` slot, never `trailing` (trailing nests inside the row's
+  `<button>`).
+- **Create skill** (`onCreateWithAi`, the agent-guided chat — the primary path)
+  + **Add skill** (outline, opens the GitHub / From-scratch `AddSkillDialog`),
+  under the `tabs.customEmptyDescription` line.
+- **From your other agents** (`other-agent-skills.tsx`) — the user's own skills
+  living on OTHER agents, one-click copyable onto this one (load the holder's
+  SKILL.md verbatim → `writeFile` here, the Houston-library copy primitive).
+- **From your workspace** (`workspace-shared-skills-section.tsx`) — the
+  workspace store's shared skills (ADR 0003), enabled here by a reversible
+  manifest write; an ACTIVE one's row opens the same manage dialog a
+  "Your skills" row opens.
+
+Both cross-agent sections mount only inside the tab's content, so their fan-out
+runs only when it opens.
 
 The sidebar nav item made the bare "Skills" text ambiguous in e2e — scope
 selectors (see `skills-add-dialog.spec.ts`).
@@ -370,9 +377,7 @@ present, and a successful install clearing the query — over the consolidated
 (`grid.yourSkillsHeading`, an `lg` `CatalogSectionHeader` + count chip; installed-skill
 ROWS, not tiles) and the **Available** section (`grid.availableHeading`) holding two
 discovery tabs — **Store** (`skills:tabs.store`, the skills.sh marketplace) and
-**Custom skills** (`skills:tabs.custom`, currently a pure EMPTY STATE:
-`tabs.customEmptyTitle` + `tabs.customEmptyDescription` + the filled **Add skill** CTA
-that opens the GitHub / From-scratch `AddSkillDialog`; its real behavior is TBD).
+**Custom skills** (`skills:tabs.custom`).
 The one page query filters the strip AND the store: `useInstalledSkillsStrip(skills,
 onEditSkill, query)` narrows the rows via `filterInstalledSkills` (a case-insensitive
 substring over display title + slug) and OMITS the whole Your-skills section when it
@@ -420,7 +425,7 @@ labels type + English defaults, reused as the section's `preview` defaults),
 `skill-preview-sections-model.ts` (`skillPreviewSections` trims/dedupes the
 hand-authored frontmatter and decides which sections exist — node:test-covered).
 
-### Installed skills — strip rows with an edit modal (no separate detail screen)
+### Installed skills — strip rows opening the manage dialog (no separate detail screen)
 
 The per-agent Skills section — `AgentAdminSkills`
 (`app/src/components/agent/agent-admin/agent-admin-skills.tsx` → `SkillsContent`), which the
@@ -436,7 +441,10 @@ The row grammar matches the Store/browse list: the skill's own `SkillIcon` (imag
 the always-visible display title, a one-line description, and a quiet trailing
 `ChevronRight` marking each row as an open-affordance (the shared convention with
 the installed integrations + connected providers strips). A row click opens the
-edit modal — the skill's ONE detail surface. At rest the grid caps to the shared
+**manage dialog** — the skill's ONE detail surface (`skills-content.tsx` passes
+`setManagingSlug` as the strip's `onEditSkill`). Read-only mode (managed agent,
+non-manager) passes `onEditSkill` straight through instead, so the row opens the
+raw `SkillEditModal` fallback. At rest the grid caps to the shared
 `CATALOG_INSTALLED_PREVIEW_CAP` (6) rows behind a `CatalogShowMore` "Show all N"
 expander (`grid.showAllSkills`) so a well-stocked strip never buries the discovery
 tabs; an active search drops the cap and shows every match uncapped. That
@@ -551,14 +559,13 @@ GitHub/From-scratch dialog copy.
 ## Community search behavior
 
 `POST /v1/skills/community/search` calls `skills.sh`, which can rate-limit.
-The engine owns the resilience: successful searches are cached in-memory,
+The host owns the resilience: successful searches are cached in-memory,
 outbound requests are globally spaced, and stale cached results are returned
 during a temporary 429/network failure. App search callers handle remaining
 failures inline in the Add Skills UI; they should not show global "Houston
 problem" bug toasts for marketplace search misses.
 
-Both engines implement the same routes and resilience. TS host (current):
-the read-only marketplace surface (search/popular/repo-list — no workspace
+The read-only marketplace surface (search/popular/repo-list — no workspace
 touched) is served agent-scoped at `POST /agents/:id/skills/...` — the path
 every shipped client uses, because the hosted gateway proxies ONLY
 `/agents/:slug/*` (a top-level read 404'd there and broke the whole Add
@@ -573,15 +580,15 @@ reason; installs are agent-scoped only.
 (`community.ts` = skills.sh cache/spacing/stale-fallback, `github.ts` +
 `github-parse.ts` = repo discovery, `install.ts` = install composition on the
 workspace Vfs). Typed failures answer `{error: {code, message, details:
-{kind}}}` so `HoustonEngineError.kind` carries the same
-`ui/skills/src/skill-error-kinds.ts` taxonomy the Rust engine emits. Legacy
-Rust oracle: `engine/houston-skills/src/remote.rs`.
+{kind}}}` (`SkillRemoteError`, `packages/host/src/skills/remote-error.ts`) so
+`HoustonEngineError.kind` carries the `ui/skills/src/skill-error-kinds.ts`
+taxonomy.
 
 ## Installing a community / repo skill
 
 `install_skill` (skills.sh) and `install_from_repo` (GitHub) both route the
-fetched `SKILL.md` through `houston_skills::install_skill_md` (Rust) /
-`composeInstalledSkillMd` in `packages/domain/src/skill-install.ts` (TS host),
+fetched `SKILL.md` through `composeInstalledSkillMd`
+(`packages/domain/src/skill-install.ts`),
 which **preserves the author's frontmatter** (description, category,
 integrations, image) instead of rebuilding a bare one. Two invariants matter:
 
@@ -596,8 +603,7 @@ integrations, image) instead of rebuilding a bare one. Two invariants matter:
 
 ### Repo input parsing (the "Install from another repo" field)
 
-`normalize_source` in `engine/houston-skills/src/remote.rs` (Rust) and
-`normalizeSource` in `packages/host/src/skills/github-parse.ts` (TS host) are
+`normalizeSource` (`packages/host/src/skills/github-parse.ts`) is
 the single front door for whatever the user types into the repo field. It anchors on the
 `github.com` host wherever it appears, so it recovers `owner/repo` from the
 short form, a full URL (`.git`, `/tree/main`, `?query`, `#frag` all tolerated),
@@ -605,12 +611,12 @@ the SSH form (`git@github.com:owner/repo`), and even a whole pasted shell
 command (`npx skills add https://github.com/owner/repo --skill x`). The
 extracted pair is then validated against GitHub's owner/repo charset before any
 network call. Unparseable input (a bare word like `reconciliation`, free text,
-a command with no GitHub link) returns the typed `SkillError::InvalidRepoSource`
-→ `kind: "invalid_repo_source"` → a "type owner/repo" hint, instead of firing a
-doomed GitHub lookup that 404s and echoes the garbage back. This was HOU-440:
-users pasted commands and got `Couldn't find a repo named 'npx skills add ...'`.
-When you add a `SkillError` variant, mirror its `kind` in
-`ui/skills/src/skill-error-kinds.ts` (that union is the TS source of truth).
+a command with no GitHub link) throws
+`SkillRemoteError("invalid_repo_source")` → a "type owner/repo" hint, instead of
+firing a doomed GitHub lookup that 404s and echoes the garbage back (HOU-440).
+When you add a `SkillRemoteError` kind
+(`packages/host/src/skills/remote-error.ts`), mirror it in
+`ui/skills/src/skill-error-kinds.ts` (that union is the client source of truth).
 
 ## Skill invocation marker (chat persistence)
 
@@ -627,27 +633,10 @@ Focus on pricing.
 - The HTML-comment marker is inert text to Claude (it ignores it) but carries everything the chat renderer needs to draw the card. Single source of truth = single persisted body.
 - The marker `message` is the user's optional composer text. The body is the Claude-facing prompt and always starts with `Use the <skill> skill.`.
 - If files were uploaded with the Skill, `attachments` carries `{name,path}` entries. The renderer shows only the count badge; the Claude-facing body still contains the `[User attached these files...]` path block.
-- Decoder lives in `@houston-ai/chat`'s `skill-message.ts` so desktop AND mobile render the same card from the same payload. The decoder also accepts a legacy `<!--houston:action ...-->` prefix so chat history persisted before the rename keeps rendering as a card.
+- Decoder lives in `@houston-ai/chat`'s `skill-message.ts`, so desktop and web render the same card from the same payload. The decoder also accepts a legacy `<!--houston:action ...-->` prefix so chat history persisted before the rename keeps rendering as a card.
 - Encoder (`encodeSkillMessage`) + Claude-prompt assembler (`buildSkillClaudePrompt`) live in `app/src/lib/skill-message.ts` — only the desktop sends Skills today.
 - The persisted body is also the activity's `description`, which surfaces as the **mission-card / archived-list subtitle**. Those mapping sites run it through `@houston-ai/chat`'s `messagePreviewText` so the card shows the user's words (or the Skill's one-line description when sent on its own), never the raw `<!--houston:skill ...-->` marker. This was HOU-425: a Skill sent as the first message rendered the marker JSON as the card subtitle.
-
-## Attachment message marker (chat persistence)
-
-Regular messages with uploaded files follow the same "single persisted body"
-pattern as Skills:
-
-```
-<!--houston:attachments {"message":"Summarize this","files":[{"name":"brief.pdf","path":"/Users/.../brief.pdf"}]}-->
-
-Summarize this
-
-[User attached these files. Read them with the Read tool if needed:
-- /Users/.../brief.pdf]
-```
-
-- The model receives the same path block as before, so file access behavior does not change.
-- The UI decodes the marker and renders the user text plus a compact paperclip badge ("1 file attached" / "N files attached"). Absolute paths are never displayed.
-- Decoder + shared badge renderer live in `@houston-ai/chat` (`attachment-message.ts`, `user-attachment-message.tsx`). Desktop encoder lives in `app/src/lib/attachment-message.ts`.
+- The **native SwiftUI iOS app** (`mobile/ios/`) has no Skill catalog surface, but it must not leak the marker either: `MissionPreviewText` (`mobile/ios/Houston/Features/MissionControl/MissionPreviewText.swift`) strips the leading `houston:skill` / `houston:attachments` comment on mission cards. Documented deviation — with no catalog it cannot fall back to the Skill's description, so a text-less Skill send yields an empty subtitle line.
 
 ## Authoring a Skill via Claude
 
@@ -703,36 +692,31 @@ The engine applies the rename per workspace on the next sync. If only the old sl
 
 ## Skill identity = directory slug (drift-resilient)
 
-> Current-direction (TS engine) behavior. The Rust paths below are the legacy oracle.
-
 The **directory slug is the one canonical identity** for a skill. `loadSkillDetail`, the create/save/delete routes, and the host's `GET /v1/skills/<slug>` all resolve by the on-disk directory (`packages/domain/src/skills.ts` `skillKey`), never by the frontmatter. So the name a caller hands `load_skill` MUST be a directory slug.
 
-Therefore `loadSkills` (via `parseSkillMd`) reports each skill's **directory slug** as `name`, overriding whatever the frontmatter `name:` says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:` (e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`). Before HOU-515/HOU-441 the list handed the UI the phrase, the user clicked it, and `loadSkill("Redactar Outreach ESG")` 404'd → a hard "skill not found" (red bug toast + Sentry). Reporting the directory slug makes the list → click → load round-trip consistent. The Skills card still shows a friendly title via `humanizeSkillName(slug)`, so the kebab slug is never shown raw. No frontmatter healing is needed: pi loads skills through `DefaultResourceLoader` (`packages/runtime/src/session/resource-loader.ts`), so there is no `.claude` mirror or native tool name to keep in step (the legacy Rust engine healed `name:` on open for exactly that reason).
+Therefore `loadSkills` (via `parseSkillMd`) reports each skill's **directory slug** as `name`, overriding whatever the frontmatter `name:` says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:` (e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`). Before HOU-515/HOU-441 the list handed the UI the phrase, the user clicked it, and `loadSkill("Redactar Outreach ESG")` 404'd → a hard "skill not found" (red bug toast + Sentry). Reporting the directory slug makes the list → click → load round-trip consistent. The Skills card still shows a friendly title via `humanizeSkillName(slug)`, so the kebab slug is never shown raw. No frontmatter healing is needed: pi loads skills through `DefaultResourceLoader` (`packages/runtime/src/session/resource-loader.ts`), so there is no `.claude` mirror or native tool name to keep in step.
 
-Genuinely missing skills still happen (deleted, never installed, a stale selection). The host answers `404 { error: "skill not found" }`, surfaced by `@houston-ai/engine-client` as a `HoustonEngineError` with `status: 404` (the TS host emits bare-string bodies, so there is **no** typed `.kind` here — unlike the Rust engine). That 404 is an expected, explainable state, **not** a Houston bug: `tauriSkills.load` passes `{ silence: isMissingSkillError }` (`app/src/lib/missing-skill.ts`) so the error skips the red bug toast + Sentry report, and `useSkillSurface` surfaces it inline (a friendly info toast, collapses the open row, refetches the list so the dead row vanishes).
-
-### Legacy Rust engine (oracle)
-
-The Rust engine applied the same directory-slug identity rule through different paths. `load_skill`, `save`, `delete`, and the `.claude/skills/<slug>` mirror all resolve by `skills_dir.join(<name>)` — the directory, never the frontmatter. `list_skills` (and the system-prompt `index::build`) report each skill's **directory name** as `name`, overriding the frontmatter `name:`. Before HOU-441 the list handed the UI the phrase, the user clicked it, and `load_skill("Redactar Outreach ESG")` found no such directory → a hard `skill_not_found` (red bug toast + Sentry). Reporting the directory slug makes the list → click → load round-trip consistent and gives the `.claude` mirror a real target. `load_skill` also **heals** the frontmatter `name:` to the slug on open (it already rewrites the file for `last_used`), so Claude Code's native tool name stops drifting too. No bulk migration — identity is fixed at read time and self-heals on access. In the Rust engine a genuinely missing skill surfaces as a typed `skill_not_found`, silenced via `tauriSkills.load`'s `silenceKinds: ["skill_not_found"]`.
+Genuinely missing skills still happen (deleted, never installed, a stale selection). The host answers `404 { error: "skill not found" }`, surfaced by `@houston-ai/engine-client` as a `HoustonEngineError` with `status: 404` (the host emits a bare-string body here, so there is **no** typed `.kind`). That 404 is an expected, explainable state, **not** a Houston bug: `tauriSkills.load` passes `{ silence: isMissingSkillError }` (`app/src/lib/missing-skill.ts`) so the error skips the red bug toast + Sentry report, and `useSkillSurface` surfaces it inline (a friendly info toast, collapses the open row, refetches the list so the dead row vanishes).
 
 ## Files of interest
 
 | What | Where |
 |------|-------|
-| Skills domain (TS, current) | [`packages/domain/src/skills.ts`](../packages/domain/src/skills.ts) — parse + `loadSkills`/`loadSkillDetail`, identity = directory slug |
-| Skills host routes (TS, current) | [`packages/host/src/routes/skills.ts`](../packages/host/src/routes/skills.ts) — GET/POST/PUT/DELETE; missing skill → 404 |
-| Marketplace host routes (TS, current) | [`packages/host/src/routes/skills-remote.ts`](../packages/host/src/routes/skills-remote.ts) — skills.sh search/popular/install + GitHub repo list/install |
-| Marketplace remote logic (TS, current) | [`packages/host/src/skills/`](../packages/host/src/skills/) — community cache, GitHub discovery, install composition |
-| Install composition (TS, current) | [`packages/domain/src/skill-install.ts`](../packages/domain/src/skill-install.ts) — `composeInstalledSkillMd`, frontmatter-preserving |
-| Missing-skill classifier (TS, current) | [`app/src/lib/missing-skill.ts`](../app/src/lib/missing-skill.ts) — `isMissingSkillError` (404) keeps it off the bug-toast/Sentry path |
-| Skills surface hook (TS, current) | [`app/src/components/agent/use-skill-surface.ts`](../app/src/components/agent/use-skill-surface.ts) — inline "Skill unavailable" handling |
-| Schema (Rust) | [`engine/houston-skills/src/lib.rs`](../engine/houston-skills/src/lib.rs) |
-| Parser / serializer | [`engine/houston-skills/src/format.rs`](../engine/houston-skills/src/format.rs) |
-| Engine DTO | [`engine/houston-engine-core/src/skills.rs`](../engine/houston-engine-core/src/skills.rs) |
+| Skills domain (parse + identity) | [`packages/domain/src/skills.ts`](../packages/domain/src/skills.ts) — `parseSkillMd` + `loadSkills`/`loadSkillDetail`, identity = directory slug |
+| Skills host routes | [`packages/host/src/routes/skills.ts`](../packages/host/src/routes/skills.ts) — GET/POST/PUT/DELETE; missing skill → 404 |
+| Marketplace host routes | [`packages/host/src/routes/skills-remote.ts`](../packages/host/src/routes/skills-remote.ts) — skills.sh search/popular/install + GitHub repo list/install |
+| Marketplace remote logic | [`packages/host/src/skills/`](../packages/host/src/skills/) — community cache, GitHub discovery, install composition, `remote-error.ts` kinds |
+| Skill-directory tools (agent-facing) | [`packages/runtime/src/session/tools/find-skills.ts`](../packages/runtime/src/session/tools/find-skills.ts) + [`packages/host/src/routes/skills-sandbox.ts`](../packages/host/src/routes/skills-sandbox.ts) |
+| pi skill loading into the prompt | [`packages/runtime/src/session/resource-loader.ts`](../packages/runtime/src/session/resource-loader.ts); Claude backend copy: [`packages/runtime/src/backends/claude/system-prompt.ts`](../packages/runtime/src/backends/claude/system-prompt.ts) |
+| Install composition | [`packages/domain/src/skill-install.ts`](../packages/domain/src/skill-install.ts) — `composeInstalledSkillMd`, frontmatter-preserving |
+| Shared-skills manifest (ADR 0003) | [`packages/domain/src/skills-manifest.ts`](../packages/domain/src/skills-manifest.ts) — `.houston/skills-manifest/skills-manifest.json` |
+| Missing-skill classifier | [`app/src/lib/missing-skill.ts`](../app/src/lib/missing-skill.ts) — `isMissingSkillError` (404) keeps it off the bug-toast/Sentry path |
+| Skills surface hook | [`app/src/components/agent/use-skill-surface.ts`](../app/src/components/agent/use-skill-surface.ts) — inline "Skill unavailable" handling |
+| Error-kind union (client) | [`ui/skills/src/skill-error-kinds.ts`](../ui/skills/src/skill-error-kinds.ts) |
 | TS wire types | [`ui/engine-client/src/types.ts`](../ui/engine-client/src/types.ts) |
 | App shared hook | [`app/src/components/use-agent-chat-panel.tsx`](../app/src/components/use-agent-chat-panel.tsx) |
 | Selected Skill chip | [`app/src/components/selected-skill-chip.tsx`](../app/src/components/selected-skill-chip.tsx) |
-| Card on user message | [`app/src/components/user-skill-message.tsx`](../app/src/components/user-skill-message.tsx) (the mobile PWA copy was removed with `mobile/`) |
+| Card on user message | [`app/src/components/user-skill-message.tsx`](../app/src/components/user-skill-message.tsx) |
 | Marker codec | [`ui/chat/src/skill-message.ts`](../ui/chat/src/skill-message.ts) (decode) and [`app/src/lib/skill-message.ts`](../app/src/lib/skill-message.ts) (encode) |
 | Card/list preview text | [`ui/chat/src/message-preview.ts`](../ui/chat/src/message-preview.ts) — `messagePreviewText` decodes a marker → mission-card subtitle (HOU-508) |
 | System prompt template | [`app/src-tauri/src/houston_prompt/skills_memory.rs`](../app/src-tauri/src/houston_prompt/skills_memory.rs) (`SELF_IMPROVEMENT_GUIDANCE`) |

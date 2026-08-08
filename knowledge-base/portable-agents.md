@@ -1,177 +1,196 @@
-# Portable Agents (Share with a friend)
+# Portable Agents (Export a copy / import a shared agent)
 
-How a Houston user packages an agent into a single file and a recipient
-imports it into their workspace. Engine-side feature; the wizards live in
-`app/`.
+How a Houston user packages an agent into a single `.houstonagent` file and a
+recipient imports it into their workspace. Pure format work lives in
+`packages/domain`; the host exposes the routes; the wizards live in `app/`.
 
 ## Format
 
-`.houstonagent` = zip with this layout:
+`.houstonagent` = zip written by `packAgent` (`packages/domain/src/portable.ts`,
+fflate):
 
 ```text
-manifest.json                      # version, agent meta, counts, anonymized flag
-CLAUDE.md                          # optional — always rides along when present
-.agents/skills/<slug>/SKILL.md     # zero or more
-routines.json                      # always present; may be []
-learnings.json                     # always present; may be []
+manifest.json                  # always
+CLAUDE.md                      # optional — present whenever the agent has one
+skills/<slug>/SKILL.md         # one per included skill
+routines.json                  # only when at least one routine is included
+learnings.json                 # only when at least one learning is included
 ```
 
-Sessions, chat DB, mode overlays, watcher state, OS keychain, provider
-tokens — never in the zip by construction. The writer only knows the four
-shareable surfaces. New surfaces must be added to
-`houston_engine_core::portable::export::gather_inventory` explicitly.
-
-Format versioning lives in `manifest.format_version` (currently `1`).
-Older Houston builds reject anything they don't recognise; newer builds
-treat unknown entries as forward-compat (logged, ignored).
-
-## Crate boundaries
-
-| Crate | Role |
-|-------|------|
-| `houston-agent-portable` | Pure format. Zip writer + reader + selection + manifest schema. No engine deps. |
-| `houston-engine-core::portable::export` | Reads CLAUDE.md / skills / routines / learnings off disk into the portable inventory, builds the zip. |
-| `houston-engine-core::portable::import` | Parses uploaded zip, caches it by `package_id` (in-memory, 15-min TTL), materialises a real workspace agent on install. |
-| `houston-engine-core::portable::anonymize` | Regex-based redaction pass (emails, paths with username, phones, URLs, Slack handles). Trait-based — Haiku impl is the v2 upgrade. |
-| `houston-engine-core::portable::scan` | Heuristic threat scan (exfiltration, prompt injection, tool abuse, suspicious shell, external callback). Trait-based — Haiku impl is v2. |
-| `houston-engine-server::routes::portable` | HTTP surface. |
+- **Four surfaces by construction.** Sessions, chat DB, mode overlays, watcher
+  state, OS keychain, provider tokens can't get in: `packAgent` takes a
+  `PortableContent` (`claudeMd`, `skills`, `routines`, `learnings`) and nothing
+  else, and the only thing that fills it is `gatherPortableContent`
+  (`packages/host/src/routes/portable-content.ts`), which reads exactly
+  `CLAUDE.md`, the named skills, routines, and learnings off the vfs. A new
+  shareable surface must be added there explicitly.
+- **Provenance is stripped on BOTH legs.** Learnings lose `taught_by` /
+  `mission_id` / `mission_title`; routines lose `setup_activity_id` /
+  `created_by`. Those name people and conversations in the *exporter's*
+  workspace — meaningless and not ours to publish on the other side. Applied on
+  pack AND unpack, so a hand-built archive can't smuggle them in either.
+- **Versioning** is `manifest.formatVersion` (`PORTABLE_FORMAT_VERSION = 1`,
+  `packages/protocol/src/domain/portable.ts`). `unpackAgent` throws with an
+  upgrade hint on a higher version and on a missing/unparseable manifest;
+  malformed routine/learning entries are dropped rather than installed-then-vanished.
+- Manifest fields: `agentName`, `description?`, `exporter?`, `houstonVersion`,
+  `createdAt`, `anonymized`, `formatVersion`.
 
 ## Wire protocol
 
-All routes accept `?agentPath=` (camelCase) for per-agent endpoints.
+Agent-scoped routes take the agent id **in the path** and dispatch through
+`packages/host/src/routes/agents.ts`. There is no `?agentPath=` query param.
 
-### Export (per-agent)
-
-```http
-GET  /v1/agents/portable/preview?agentPath=...
-POST /v1/agents/portable/package?agentPath=...
-POST /v1/agents/portable/anonymize?agentPath=...
-```
-
-Preview returns an `InventoryPreview` (summary-shape — skill frontmatter
-parsed, routine prompts truncated, CLAUDE.md down to a 280-byte excerpt +
-byte count). Package returns `application/zip` bytes ready to land on
-disk. Anonymize returns per-item before/after diffs the wizard renders
-side-by-side.
-
-### Import (workspace-scoped)
+### Export (agent-scoped)
 
 ```http
-POST /v1/store/imports/preview   # body: raw zip bytes
-POST /v1/store/imports/scan      # body: { packageId }
-POST /v1/store/imports/install   # body: InstallRequest
+GET  /agents/{agentId}/portable/preview      # routes/portable-preview.ts
+POST /agents/{agentId}/portable/export       # routes/portable.ts → application/zip
+POST /agents/{agentId}/portable/anonymize    # routes/portable-anonymize.ts
 ```
 
-Preview registers the upload in the in-memory cache and returns
-`{ packageId, manifest, preview }`. Scan and install operate against the
-cached `packageId` so the file isn't re-uploaded between wizard screens.
+Preview returns a summary-shape `PortableInventoryPreview` (skill frontmatter
+parsed, routine prompts truncated, CLAUDE.md excerpted). Export's body is
+`{ selection, overrides?, meta? }` — `overrides` carries the anonymize diffs the
+user accepted, `meta.anonymized` stamps the manifest — and the response is the
+zip bytes. Anonymize returns per-item before/after diffs the wizard renders
+side-by-side; it is read-only (nothing on the agent changes).
+
+### Import (account-level)
+
+```http
+POST /v1/portable/preview          # raw zip bytes → { manifest, inventory }
+POST /v1/portable/install          # { archive: base64, agentName } → new agent
+POST /v1/portable/fetch-from-store # { url|slug } → { manifest, content }
+```
+
+`/v1/store/imports/*` does not exist.
+
+### No server-side cache — unpacking is IN-BROWSER
+
+The shipped client never uploads the zip. `packages/web/src/engine-adapter/portable.ts`:
+
+- `previewUpload` runs `unpackAgent` **in the browser** and parks the package in
+  an in-memory `uploads` Map under a `crypto.randomUUID()` `packageId`.
+- `scanUpload` runs the same pure `scanContent` from `@houston/domain` over the
+  parked package — no round-trip.
+- `install` filters the parked package by the wizard's selection and creates an
+  ordinary agent with the content as its seed payload (`POST /agents` via
+  `createAgent`), then drops the entry.
+
+So there is no TTL, no staged upload, and no pod-volume storage on cloud — the
+same pipeline works on desktop and hosted. The host's own `/v1/portable/*`
+routes run the identical `@houston/domain` code for any client that does want a
+server-side path.
 
 ## UI wiring
 
-### Export wizard
+### Export wizard — 5 steps
 
-- Entry: agent row `...` menu in the sidebar → "Share with a friend".
-- Component: `app/src/components/portable/export-wizard.tsx`.
-- Store flag: `useUIStore.shareAgentId` (the agent id queued for the
-  wizard, or null).
-- 3 screens:
-  1. Pick items (CLAUDE.md is implicit; skills, routines, learnings
-     per-item checkboxes).
-  2. Optional anonymize, side-by-side diffs, accept / skip per item.
-  3. Save → Tauri `save_portable_agent` writes bytes to user-picked path.
+- Entry: sidebar agent row `...` menu → **"Export a copy"** (`portable:exportMenu`),
+  wired as `onShareAgent` in `use-sidebar-teams-model.ts`.
+- Component: `app/src/components/portable/export-wizard.tsx` (orchestrator +
+  footer; step bodies are sibling files).
+- Store flag: `useUIStore.shareAgentId` (the agent id queued for the wizard, or null).
+- Steps (`type Step`), dots follow the active path:
+  `pick → anonymize → review → { Save file | listing → share }`.
+  An already-published agent opens straight into `ManagePublication`
+  (update / remove) instead of `pick`.
+- Save goes through the Tauri `save_portable_agent` command.
 
-### Import wizard
+### Import wizard — 5 steps
 
-- Entry: New Agent modal → "From a friend" card at the top of the Store
-  grid (also routable via `useUIStore.setImportFromFriendOpen`).
 - Component: `app/src/components/portable/import-wizard.tsx`.
-- Store flag: `useUIStore.importFromFriendOpen`.
-- 6 screens:
-  1. Upload + optional threat scan.
-  2. Name + color.
-  3. Skills picker.
-  4. Routines picker.
-  5. Learnings picker.
-  6. Required integrations (mirrors the Connections page, filtered to
-     toolkits the selected items reference).
+- Store flag: `useUIStore.importFromFriendOpen`. Opened by the Agent Store's
+  one-click install (`store-view/use-store-install.ts`) and the
+  `houston://store/install` deep link (`app/src/lib/store-install-deeplink.ts`),
+  which seed it via the one-shot `importSeedPreview`. There is no longer a
+  "from a friend" card in the New Agent dialog (PRODUCT-1171).
+- Steps (`type StepId`): `upload | name | skills | routines | learnings`.
+  1. Upload a `.houstonagent` (or paste a store link) + optional threat scan.
+  2. Name + color + provider/model (helmet preview).
+  3. Skills picker    — skipped when the package has none.
+  4. Routines picker  — skipped when the package has none.
+  5. Learnings picker — skipped when the package has none.
+- There is **no integrations screen**.
 
-The recipient gets their OWN per-item checkboxes regardless of what the
-sender included — defence in depth.
+The recipient gets their OWN per-item checkboxes regardless of what the sender
+included — defence in depth. CLAUDE.md always rides along; the wizard exposes no
+toggle for it.
 
 ## Tauri side
 
-Two OS-native commands. They shell out to `osascript` (macOS) /
-PowerShell (Windows) so we don't take a `tauri-plugin-dialog` dep.
+Two OS-native commands in `app/src-tauri/src/commands/portable.rs`:
 
 | Command | Purpose |
 |---------|---------|
-| `save_portable_agent` | Show save dialog, write bytes to chosen path, return path. |
-| `open_portable_agent` | Show open dialog, read bytes, return them. |
+| `save_portable_agent` | Save dialog, write bytes to the chosen path, return path. |
+| `open_portable_agent` | Open dialog, read bytes, return them. |
 
-Both live in `app/src-tauri/src/commands/portable.rs`.
+The dialogs themselves are `super::dialogs::{save_dialog, open_dialog}`
+(`commands/dialogs.rs`), shared with the Files-tab download command: they shell
+out to `osascript` on macOS and PowerShell/WinForms on Windows so we don't take
+a `tauri-plugin-dialog` dep. Other platforms return a clear "not implemented"
+error.
 
 ## Publish to the Agent Store (the hosted path)
 
-Beside "email a file" and "import from a friend" there is a THIRD path for the
-same gathered content: publish it to the public Agent Store at
-`agents.gethouston.ai`. Instead of writing a `.houstonagent` zip, the host turns
-the portable content into an AgentIR and POSTs it to the store, then hands back a
-share URL anyone can install from. The recipient side of that flow reuses this
-doc's import wizard verbatim (a store link resolves to the same portable content
-shape via `POST /v1/portable/fetch-from-store`). Full architecture, the AgentIR
-2.0.0 shape, the store API + host publish routes, and the token/visibility model
-live in `knowledge-base/agent-store.md`.
+Beside "email a file" there is a second destination for the same gathered
+content: publish it to the public Agent Store at `agents.gethouston.ai`. Instead
+of writing a `.houstonagent` zip, the host turns the portable content into an
+AgentIR and the app POSTs it to the gateway, which hands back a share URL anyone
+can install from. The recipient side reuses this doc's import wizard verbatim (a
+store link resolves to the same portable content shape via
+`POST /v1/portable/fetch-from-store`). Full architecture, the AgentIR 2.0.0
+shape, the store API + host publish routes, and the visibility model live in
+`knowledge-base/agent-store.md`.
 
 The one piece of store state that stays on the machine is the **publication
 record** at `<agentRoot>/.houston/store-publication/store-publication.json`. It
-carries NO secret (ownership is account-based via the user's GCIP bearer, no manage
-token) and is machine-local by construction: it is NOT one of the four shareable
-surfaces `gather_inventory` reads, so it can never ride out in an export.
+carries NO secret (ownership is account-based via the user's GCIP bearer, no
+manage token) and is machine-local by construction: it is not one of the four
+surfaces `gatherPortableContent` reads, so it can never ride out in an export.
 
 ## Trust contract — what NEVER leaks
 
-`gather_inventory` reads four specific paths. Anything else under the
+`gatherPortableContent` reads four specific things. Anything else under the
 agent root is invisible to it:
 
-- `.houston/sessions/**` — provider session IDs, including legacy flat
-  `<session_key>.sid`.
+- `.houston/sessions/**` and `.houston/runtime/sessions/**` — provider session
+  IDs, including legacy flat `<session_key>.sid`.
 - Chat DB (lives under `~/.houston/db/houston.db`, not the agent).
-- `.houston/prompts/modes/**` — user's mode overlays.
+- `.houston/prompts/modes/**` — the user's mode overlays.
 - `.houston/connections.json` — Composio connection state.
 - `.source.json`, `.migrations.json` — bundled-package metadata.
-- `.houston/store-publication/store-publication.json`, the Agent Store
-  publication record (a token-free `{ storeAgentId, slug, shareUrl, publishedAt }`
-  pointer; ownership is account-based, so it holds no secret).
-- Any other dot-file or future surface that doesn't match the four
-  shareable paths.
+- `.houston/store-publication/store-publication.json` — the Agent Store
+  publication pointer.
+- Any other dot-file or future surface that isn't one of the four shareable ones.
 
-The integration test
-`engine/houston-engine-server/tests/portable.rs::package_returns_zip_bytes_excluding_sessions`
-plants a `secret-session-id` in `.houston/sessions/` and asserts it is
-absent from the response body, making this property part of the test
-suite rather than a comment.
+The property is enforced by construction (the gatherer names its four reads) and
+pinned by tests: `packages/domain/src/portable.test.ts` —
+`"an empty selection packs just the manifest"`,
+`"machine/account-local routine keys never cross the share boundary"`,
+`"a shared learning carries its text, never its provenance"` — plus the host's
+round-trip and selection tests in `packages/host/src/routes/portable.test.ts`.
 
-## Anonymize + scan: v1 is regex, v2 is LLM
+## Anonymize (AI, shipped) + scan (regex v1)
 
-Both passes use heuristic regex matching today. The traits accept a
-provider object so a Haiku-driven implementation can swap in without
-changing the wire contract or the wizard. When that lands:
+**Anonymize runs a real model pass** (PRODUCT-727). `POST .../portable/anonymize`
+gathers the selected content, regex-pre-redacts it (`packages/domain/src/anonymize.ts`
+plus the secret redactor, so the model never sees raw emails, paths, or
+credentials), then runs the AI redactor inside the agent's own runtime
+(`packages/runtime/src/session/anonymize.ts`) where the provider credential
+lives; `packages/domain/src/anonymize-ai.ts` flattens items out and merges the
+model's redactions back into the wizard's side-by-side diffs. When the AI pass
+can't run — no channel support, no provider connected, unparseable reply — the
+regex-only result ships **with the reason** (`mode: "patterns"`, `aiError`) so
+the wizard can say so. No silent downgrade.
 
-- `AnonymizeProvider::anonymize_text(text) -> redacted`
-- `ScanProvider::scan_body(body) -> [findings]`
+**The threat scan is still v1 heuristics** (`packages/domain/src/scan.ts`):
+exfiltration, prompt injection, tool abuse, suspicious shell, external callback.
+Calibration leans noisy — false positives are dismissible, false negatives are
+not.
 
-The wizard does not surface a "Houston says it's safe" affirmative — the
-scan banner only ever shows "found nothing obvious" or "flagged N
-items", with the disclaimer that the review may have missed concerns.
-False negatives are not recoverable; we frame accordingly.
-
-## Open follow-ups
-
-- Routines need an integrations picker UI so user-authored routines (not
-  just packaged ones from the Store) can declare their toolkits. The
-  data field exists everywhere; the UI just defaults to `[]`. Tracked
-  as a separate task.
-- Anonymize / scan are regex-based; Haiku integration is the v2 upgrade.
-- Short-link sharing through `tunnel.gethouston.ai` is a v2 option
-  (skip the "email a file" step entirely).
-- Section-level CLAUDE.md picking — today the whole file is in-or-out.
+The wizard never surfaces a "Houston says it's safe" affirmative. The scan
+banner only ever shows "found nothing obvious" or "flagged N items", carrying
+the disclaimer that the review may have missed concerns.

@@ -7,6 +7,14 @@ Kubernetes**. The old entry points (`pnpm start`, `pnpm dev:cloud*`,
 `scripts/dev-cloud.sh`) are gone; `dev:host` / `dev:app` survive only as
 internal pane targets.
 
+**Named exceptions — separate tools, not the loop:**
+- **`pnpm ios`** — the native iOS app (`mobile/ios/scripts/dev-sim.sh`). A
+  different surface, not a pane: xcodegen regenerates the Xcode project,
+  xcodebuild builds Debug for the simulator (pre-build phases bundle the SDK
+  and sync design tokens), then it boots/installs/launches in the Simulator.
+  Needs Xcode + `xcodegen`; fails loudly by name if either is missing.
+- **`pnpm dev:staging`** — the desktop app against REMOTE staging (below).
+
 Prereqs: node ≥22 + pnpm, Go toolchain, Docker (ONLY for the dev Postgres),
 and the sibling `cloud/` checkout next to this repo (`CLOUD_DIR=` overrides).
 
@@ -55,10 +63,24 @@ multiplayer orgs. Analytics/Sentry are no-ops in dev by design.
   (`VITE_AGENTSTORE_GATEWAY_URL` → the dev gateway, never prod). The doctor's
   feature matrix is the contract: every gate is a line, ON or OFF-with-remedy —
   a feature must never silently disappear.
-- **`.env.local`** (gitignored) — secrets ONLY (`.env.example` is the
-  template): `FIREBASE_API_KEY` (required), `ANTHROPIC_API_KEY` (optional —
-  seeded into every fresh engine's `credentials.json` so turns work without
-  per-agent connects), `COMPOSIO_API_KEY` (optional — integrations).
+- **`.env.local`** (gitignored) — secrets ONLY (`.env.example` is the template,
+  `cp .env.example .env.local`):
+  - `FIREBASE_API_KEY` — **required**. GCIP Web API key for the `gethouston`
+    project; powers Google sign-in for the web app's cloud profile.
+  - `ANTHROPIC_API_KEY` — seeded into every fresh engine's `credentials.json`
+    so turns work without per-agent connects.
+  - `COMPOSIO_API_KEY` — integrations (Composio platform mode). Absent =
+    integrations OFF, and the doctor says so.
+  - `COMPOSIO_WEBHOOK_SECRET` — additionally required for event triggers
+    (routines waking on Gmail/Calendar events).
+  - `LINEAR_API_KEY` + `LINEAR_TEAM_ID` — the desktop "Report bug" button files
+    to Linear. Without BOTH it errors with "Bug reporting not configured".
+  - `GOOGLE_DESKTOP_CLIENT_ID` + `GOOGLE_DESKTOP_CLIENT_SECRET` — desktop-app
+    login/logout in dev (Google loopback + PKCE), the same OAuth client release
+    CI bakes. Without BOTH the dev desktop runs account-less.
+  - `MICROSOFT_DESKTOP_CLIENT_ID` — the Microsoft desktop OAuth client.
+  - `DEV_DESKTOP_PROFILE` — `local` (default) or `cloud`; picks which engine the
+    desktop pane runs against (see the pane table).
 
 The doctor **fails the boot** if `.env.local` re-defines a key
 `.env.development` owns, or still carries legacy keys (`VITE_HOSTED_ENGINE_*`,
@@ -88,6 +110,17 @@ gateway → mapped to `VITE_HOSTED_ENGINE_URL`), `FIREBASE_API_KEY`, and
 `GOOGLE_DESKTOP_CLIENT_ID`(+`_SECRET`) — the script fails fast, by name, if any
 is missing. Provider sign-in uses the device-code flow (the runtime's loopback
 callback lives on the remote pod, see `engine-mode.ts`).
+
+**Version-floor pre-flight (a warning, never a hard stop).** The hosted gateway
+enforces a per-channel minimum app version and answers EVERY request with
+`426 app update required` below it (`app/src/lib/update-floor.ts`) — the app
+then dies at boot with "Something unexpected went wrong" and a console of 426s.
+A hosted build identifies as `<app/package.json version>+cloud`, and `main`
+lags the released line (the release cut commits the bump under the tag only).
+The floor is unreadable without a bearer, so the script compares `REPO_VERSION`
+against the newest `cloud-v*` tag as a proxy: lower → it warns with the exact
+remedy (`./scripts/version.sh <latest>`, then rebuild). A one-patch lag right
+after a cut is normal and harmless.
 
 ## Engines as processes (the dev-launcher substrate)
 

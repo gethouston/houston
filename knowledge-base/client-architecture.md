@@ -49,8 +49,8 @@ to each platform. Never flatten a surface into a web port to save effort.
 
 | Piece | Path | README | What lives there |
 | --- | --- | --- | --- |
-| **SDK** | `packages/sdk` | `packages/sdk/README.md` | Headless client. **kernel** (`store.ts` scopes/snapshots, `commands.ts` registry, `ports.ts` injected capabilities, `sdk.ts` composition); **modules** (`session`, `agents`, `activities`, `providers`, `integrations`, `preferences`, `conversations`, `turns`); **`react/`** subpath (`@houston/sdk/react` — `useSdkSnapshot`); **`bridge/`** the shipped native-bridge dispatcher (`createBridge`) + embeddable IIFE bundle (`build:bridge` → `dist/houston-sdk.bridge.js`, gitignored) that backs `fetch`/`storage` natively over the pipe and self-shims JSC globals; **`BRIDGE.md`** its wire spec (§2.1 configure, §9 native ports, §10 host polyfills). |
-| **Design tokens** | `packages/design-tokens` | `packages/design-tokens/README.md` | Two-tier DTCG JSON (`tokens/primitive` + `tokens/semantic` + `tokens/scale`) → Style Dictionary → committed `dist/` (`css/tokens.css`, `ts/tokens.ts`, `swift/HoustonTokens.swift`, `kotlin/HoustonTokens.kt`). |
+| **SDK** | `packages/sdk` | `packages/sdk/README.md` | Headless client. **kernel** (`store.ts` scopes/snapshots, `commands.ts` registry, `ports.ts` injected capabilities, `sdk.ts` composition); **modules** (`session`, `agents`, `activities`, `providers`, `integrations`, `preferences`, `conversations`, `turns`, `missions-search`); **`react/`** subpath (`@houston/sdk/react` — `useSdkSnapshot`); **`bridge/`** the shipped native-bridge dispatcher (`createBridge`) + embeddable IIFE bundle (`build:bridge` → `dist/houston-sdk.bridge.js`, gitignored) that backs `fetch`/`storage` natively over the pipe and self-shims JSC globals; **`BRIDGE.md`** its wire spec (§2.1 configure, §9 native ports, §10 host polyfills). |
+| **Design tokens** | `packages/design-tokens` | `packages/design-tokens/README.md` | Two-tier DTCG JSON (`tokens/primitive` + `tokens/semantic` + `tokens/scale`) → Style Dictionary → **gitignored** `dist/` (`css/tokens.css`, `ts/tokens.ts`, `swift/HoustonTokens.swift`, `kotlin/HoustonTokens.kt`). `dist/` is a build artifact, never committed: the package's `prepare` script regenerates it on `pnpm install`, and `pnpm --filter @houston/design-tokens build` on demand. |
 | **Component inventory** | `design/inventory` | `design/inventory/README.md` | `inventory.yaml` (versioned cross-surface component spec) + `manifests/{web,ios,android}.yaml` (per-surface status) + `CHANGELOG.md`. Enforced by `scripts/check-parity.mjs` (`pnpm check:parity`). |
 | **Fake host** | `packages/fake-host` | `packages/fake-host/README.md` | In-memory protocol-v3 host for UI/e2e tests. Built from the SAME `@houston/runtime-client` stream pieces as the real host, so it can't drift from the wire. Consumed by `packages/web` Playwright e2e. |
 | **Runtime client** | `packages/runtime-client` | (source) | The **wire layer**: `HoustonEngineClient`, resumable streams (`resume.ts`, `replay.ts` `ReplayLog` ring buffer, `stream-channel.ts`, `stitch.ts`), snapshot reduction (`snapshot.ts`), and the workspace-global reactivity loop (`global-events.ts`). Shared by the SDK, the web adapter, the host, and the fake host. |
@@ -106,8 +106,9 @@ end-state is that it dissolves into direct SDK consumption
   of truth for `engine`/`sdk`/`authFetch`/`activeLogins`/routing helpers).
   `control-plane.ts` is a barrel re-exporting `cp/*` modules (`fetch.ts` is the
   shared transport: `cpFetch`, `gatewayAuthFetch`; `transient-retry.ts` is the
-  read-retry layer) — the ONE import site callers and `vi.mock` use. Every file
-  is ≤200 lines. Unsupported
+  read-retry layer) — the ONE import site callers and `vi.mock` use. The
+  repo-wide 200-line limit applies here; two files are the known exceptions —
+  `client/context.ts` (336) and `portable-store.ts` (258). Unsupported
   legacy desktop/Rust methods throw explicitly (`client/legacy-unsupported-mixin.ts`);
   there is no catch-all Proxy returning silent `[]`.
 
@@ -127,14 +128,14 @@ EXPECTED business 400 (e.g. `key_limit`, read off the gateway's flat top-level
 `body.code`) through `call()`'s `silence` predicate so it renders inline instead
 of the red bug toast. Files: `app/src/{lib/api-keys-model,hooks/queries/use-api-keys}.ts`
 + `components/settings/sections/api-keys*.tsx`. Settings > API keys is the flag's only
-surface: the per-agent **Connect** section it also used to gate was removed (HOU-806,
+surface: the per-agent **Connect** section it also used to gate was removed (PRODUCT-806,
 `knowledge-base/teams.md`). Its pure model `lib/agent-connect-model.ts` is the standing
 example of the shape — public MCP / A2A / missions addresses built CLIENT-SIDE from the
 gateway origin (`window.__HOUSTON_ENGINE__.baseUrl`), the hosted agent id (= public slug)
 and the org slug, needing no new wire method — but only its `DEVELOPER_DOCS` links have a
 caller today.
 
-**Gateway 5xx are not one thing — read the body before you toast (HOU-1170).**
+**Gateway 5xx are not one thing — read the body before you toast (PRODUCT-1170).**
 The managed cloud sleeps one engine pod per agent, so a normal chat open fires a
 burst of reads at a pod that may still be booting. `cp/transient-retry.ts` is the
 ONE place the gateway's 5xx bodies are parsed, turning prose into the typed
@@ -144,7 +145,7 @@ ONE place the gateway's 5xx bodies are parsed, turning prose into the typed
 | --- | --- | --- |
 | `503 {"error":"engine unavailable","detail":"agent is waking"}` (+`Retry-After`) | `engine-waking` | 4 extra attempts, `WAKE_RETRY_DELAYS_MS` = 15s of client patience on top of the gateway's own 8s `ensure-awake` leg per attempt. No toast unless the budget is spent. |
 | `503 {"error":"shared skills not configured"}` | `feature-absent` | Answered on the first attempt — retrying a deployment shape is pure waste. |
-| any other 502/503/504, or a transport drop | `handoff` | The original 2 blind retries (~2s, HOU-731). |
+| any other 502/503/504, or a transport drop | `handoff` | The original 2 blind retries (~2s, PRODUCT-731). |
 
 Two rules that fall out of this and are easy to get wrong:
 - **`Retry-After` is unreadable.** The gateway sends no
@@ -182,7 +183,9 @@ Behavior is **never** written in surface code. Change it in the SDK, then bind.
 1. **Locate the module** in `packages/sdk/src/modules/`: `session` (connection /
    token), `agents`, `activities`, `providers`, `integrations`, `preferences`,
    `conversations` (per-agent conversation LIST, scope `conversations/<agentId>`),
-   `turns` (the live feed VM, scope `conversation/<id>`). Wire-level
+   `turns` (the live feed VM, scope `conversation/<id>`), `missions-search` (a
+   pure `missions/search` command — ranked title → description → lazily-fetched
+   chat-history search over all statuses; publishes no scope). Wire-level
    stream/reconnect changes may instead belong in `packages/runtime-client` (see
    the decision table, procedure f).
 2. **Make the change once**, in the module or `runtime-client`. Keep the kernel
@@ -245,8 +248,10 @@ A visual change is a **token edit**, never a literal. (Full detail:
    CSS — reference a `--ht-*` var or a Tailwind `--color-*` utility.
 2. `pnpm --filter @houston/design-tokens build` — regenerates all four `dist/`
    surfaces (CSS/TS/Swift/Kotlin) at once.
-3. **Commit source + regenerated `dist/` together.** `test/sync.test.ts` rebuilds
-   on every `pnpm test` and fails if the committed `dist/` is stale.
+3. **Commit the token source only.** `dist/` is gitignored (root `.gitignore`),
+   so there is nothing generated to commit; `pnpm install` regenerates it via the
+   package's `prepare` script. `test/sync.test.ts` rebuilds to a temp dir on every
+   `pnpm test` and fails if the `dist/` on disk is stale against source.
 4. If the change is intentionally *visual* (a real colour move), update
    `test/legacy-resolved.json` to the new baseline in the same commit — otherwise
    `test/zero-diff.test.ts` (correctly) fails.
@@ -315,10 +320,14 @@ A component added, removed, or restructured is a structural change. (Full detail
 The desktop/web shell keeps visited top-level screens mounted in a workspace-keyed
 visited set. An inactive screen is `display: none`, not destroyed: local view
 state survives navigation, while view-owned polling and event ownership MUST gate
-on its active top-level view id. There are five: `dashboard`, `ai-hub`,
-`settings`, `integrations-home` and `agent-store`. A drill-in Settings section
-(Time worked, Permissions, Admin) is not one of them, so a read it owns gates on
-`settings` and relies on its own `enabled` for the section being open. Switching
+on its active top-level view id. There are seven (`TOP_LEVEL_VIEWS`,
+`app/src/lib/top-level-views.ts`): `dashboard`, `settings`, `ai-hub`,
+`integrations-home`, `skills-home`, `agent-store` and `team`. `team` is ONE id
+for every team — which team and which section is store state (`activeTeamId` /
+`teamSection`), so a deleted team cannot strand a dead view id. A drill-in
+Settings section (Time worked, Permissions, Admin) is not one of them, so a read
+it owns gates on `settings` and relies on its own `enabled` for the section being
+open. Switching
 workspace resets the keep-alive layer. The layer closes an open Radix dialog
 before hiding its source screen because dialogs portal outside that hidden
 subtree.
@@ -382,10 +391,23 @@ Run what you touched; run `pnpm check` always.
   `@houston/sdk` in JavaScriptCore, parity governed by `mobile/PARITY.md`).
   Manifest is `enforced: false`, `inventoryVersion: 0` (built, not yet shipped).
   Android is all `not-started`. `check:parity` reports lag, never fails on them.
-- **Four web inventory `partial`s** (extract-before-mobile): `provider-error-card`
-  (cards app/-locked), `mission-status-chip` (status render triplicated, divergent
-  `RunStatus` enums), `agent-list-item` (composed in `app/`, no shared component),
-  `skill-invocation-message` (decode shared, card composed in `app/`).
+- **Thirteen web inventory `partial`s** (`design/inventory/manifests/web.yaml`,
+  extract-before-mobile — each ships and works; the reusable piece is still
+  `app/`-locked): `agent-list-item` (row composed from generic nav + avatar, no
+  shared component), `provider-error-card` (feed types + taxonomy shared, cards
+  `app/`-locked), `agent-provisioning-card` (card + blocked-write dialog read the
+  Zustand provisioning store directly), `skill-invocation-message` (marker decode
+  shared, card composed in `app/`), `interaction-approval-card` (shared
+  `InteractionModal` shell, composed card Composio-coupled), `interaction-answers-message`
+  (decode + render shared, encoder in `app/`), `mentions-inbox` (row + list in
+  `app/src`; ordering/naming already DOM-free models), `mission-status-chip`
+  (status render triplicated across kanban-card / conversation-list / review-item,
+  divergent `RunStatus` enums — no shared chip), `skill-row`, `ai-provider-card`,
+  `ai-model-row` (rows ride the shared ui/ catalog family — `CatalogRow` /
+  `CatalogGrid` / `CatalogShell` — but the surrounding composition and facet
+  controls stay `app/`-side), `connected-provider-usage` (pairing model + meters
+  in `app/`), `ai-model-offer-row` (shared `RowCard`, composed app-side with the
+  connections layer).
 
 ---
 

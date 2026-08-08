@@ -105,41 +105,47 @@ no client writes them.
 
 The store is browsable INSIDE the app (`app/src/components/store-view/`,
 view id `agent-store` in `TOP_LEVEL_VIEWS`): a sidebar + command-palette
-destination rendering the public catalog in the shared catalog family
-(`CatalogRow`/`CatalogGrid`/`CatalogDetailDialog`/`CatalogSearchField`): search
-has an always-available clear X when text is present, and a successful install
-clears the catalog search.
+destination that renders the **same shared screens as the website** —
+`StoreHomeScreen` / `AgentDetailScreen` / `CreatorProfileScreen` / `StoreNav`
+from `@houston-ai/store`. It does NOT use ui/core's `Catalog*` family
+(`CatalogRow`/`CatalogGrid`/`CatalogSearchField` belong to the skills and
+integrations catalogs); search, category chips, agents-vs-creators view, sort,
+and the loading/empty/error states all live inside `StoreHomeScreen` and its
+`store-home-model.ts` (client-side filtering over the fetched rows).
 Reads go straight to the gateway's anonymous CORS-open endpoints via
 `ui/engine-client/src/store-catalog.ts` — no account, no engine round-trip;
 base resolution mirrors the publish adapter (`__HOUSTON_STORE__` →
 `VITE_AGENTSTORE_GATEWAY_URL` → prod).
 
-The view is a two-tab shell (`store-view.tsx`): **Browse** stays mounted
-(`forceMount` + hidden) so search/filter/scroll state survives tab switches and
-`storeFocusSlug` deep links open the detail dialog from either tab; **My agents**
-mounts lazily so its authed `GET /me/agents` query never fires until selected.
-Two one-shot UI-store flags drive cross-navigation: `storeFocusSlug` (detail
-dialog in Browse) and `storeOwnerTab` (deep-link into My agents, set by
-`manage-publication`'s "manage all my agents").
+`store-view.tsx` is a **single-pane switch, not a tab shell**: a
+`useState<"browse" | "my-agents">` plus `detailAgent` and `storeCreatorHandle`
+pick exactly ONE of Browse, agent detail, creator profile, or My agents, and
+everything else is **unmounted**. Leaving Browse therefore drops its search /
+category / scroll state — coming back remounts the screen on whatever the
+TanStack cache holds. `StoreNav` is the constant chrome (brand link → Browse,
+account avatar → My agents). Three one-shot UI-store flags drive
+cross-navigation: `storeFocusSlug` (fetch the agent, open its detail pane),
+`storeOwnerTab` (jump to My agents, set by `manage-publication`'s "manage all
+my agents"), and `storeCreatorHandle` (creator profile).
 
-Browse-side parity features: category-chip vocabulary comes from the gateway
-(`fetchStoreCategories`, 24h staleTime; known slugs keep localized
-`portable:publish.categories.*` labels, unknown slugs fall back to the gateway
-name, fetch errors degrade to the static `STORE_CATEGORIES` seed);
-an **integration filter** (`store-integration-filter.tsx`, ui/core `Select`)
-whose vocabulary derives from unfiltered catalog pages, resolving names/logos
-through the shared Composio toolkit catalog (`use-toolkit-catalog.ts` — never a
-second brand map), passing the UPPERCASE slug as `?integration=`; and an abuse
-**report dialog** (`store-report-dialog.tsx`, anonymous `reportStoreAgent`,
-reason enum + details ≤2000 + optional contact ≤320, gateway rate-limited
-5/min/IP). The **My agents** tab (`my-agents-panel` + `use-my-store-agents`)
-manages ALL the account's store agents independent of any local pointer:
-Edit listing… (shared `EditListingDialog` → `updateStoreAgentIdentity`,
-`PATCH {identity}` — name/tagline/description/category/tags; content stays
-"edit in Houston, republish"), Drive-style Share (public/hidden/private),
-delete (`ConfirmDialog`-gated); every mutation invalidates
-`["store-my-agents"]` and surfaces failure as a toast (the edit dialog shows
-its rejection inline instead).
+- **Browse** (`store-browse.tsx`) makes three reads — catalog (`sort:"installs"`,
+  60s), categories (24h), creators (60s) — exported as `storeBrowseQueryOptions()`
+  so the shell's boot prefetch (`use-screen-prefetch.ts`) warms the EXACT keys
+  the screen mounts with. Known category slugs render localized
+  `portable:publish.categories.*` labels; unknown slugs fall back to the
+  gateway's name. There is no in-app integration filter.
+- **Report** — the shared `report-dialog.tsx` bound to anonymous
+  `reportStoreAgent` (`store-report-dialog.tsx`, from the detail pane) and
+  `reportStoreCreator` (from the creator pane): reason enum + details ≤2000 +
+  optional contact ≤320, gateway rate-limited 5/min/IP.
+- **My agents** (`my-agents-panel` + `use-my-store-agents`) manages ALL the
+  account's store agents independent of any local pointer, rendered as the SAME
+  `CreatorProfileScreen` in owner mode: Edit listing… (shared
+  `EditListingDialog` → `updateStoreAgentIdentity`, `PATCH {identity}` —
+  name/tagline/description/category/tags; content stays "edit in Houston,
+  republish"), Drive-style Share (public/hidden/private), delete
+  (`ConfirmDialog`-gated). Every mutation invalidates `["store-my-agents"]` and
+  surfaces failure as a toast (the edit dialog shows its rejection inline).
 
 **One profile page per creator (ownership upgrade).** Viewing a creator you
 ARE resolves to the owner view in place, same route: the app's store-view swaps
@@ -163,7 +169,7 @@ own strings live in the `store` namespace (en/es/pt).
 Cross-links: the import wizard's upload step offers "browse the Agent Store"
 (closes itself into the view), and `manage-publication` offers "See it in the
 store" (sets the one-shot `storeFocusSlug`, which the view consumes into the
-detail dialog — unlisted listings resolve by direct slug, so owners see their
+detail pane — unlisted listings resolve by direct slug, so owners see their
 own).
 
 ## Host routes + app plumbing
@@ -293,25 +299,22 @@ Houston surfaces (SDK: profile/creator/analytics methods on
 `packages/web/src/engine-adapter/portable-profile.ts`; anonymous
 `fetchStoreCreator` / `reportStoreCreator` in `store-catalog.ts`):
 
-- **In-app editor** `app/src/components/store-view/profile/` — dialog mounted
-  app-wide from the user menu, opened via the `creatorEditorOpen` ui-store flag
-  (user menu, My agents header, publish wizard). Handle picker with debounced
-  availability, avatar pick → `app/src/lib/image-crop.ts` (pure canvas
-  center-crop to 512px, no deps) → upload, socials, bio. Failure surfacing
-  (HOU-864/865): every known gateway token maps to specific copy via the pure
-  maps in `store-view/profile/save-error-map.ts` (handle tokens → field-level
-  message; other save tokens + avatar tokens → specific toasts; unknowns fall
-  back to a save-scoped or photo-scoped generic — never cross-labeled).
-  `save-error.ts` holds only the engine-client token reader.
+- **In-app editor** `app/src/components/store-view/profile/` —
+  `creator-profile-editor.tsx` is only the dialog frame around the SHARED
+  `ProfileEditorScreen` from `@houston-ai/store` (handle picker with debounced
+  availability, avatar pick → `app/src/lib/image-crop.ts` pure canvas
+  center-crop to 512px, socials, bio). Mounted app-wide, opened via the
+  `creatorEditorOpen` ui-store flag (user menu, My agents header, publish
+  wizard). Failure surfacing: `save-error.ts`'s `gatewayErrorCode` reads the
+  gateway's machine token off the rejection and `withCode` re-attaches it to
+  the rethrown error (never swallowed); the token → copy map lives with the
+  shared screen in `ui/store/src/screens/profile-editor-model.ts`, so app and
+  website show identical wording.
 - **In-app creator pane** `store-view/creator/` — full-pane profile (agents
   grid, socials, `VerifiedBadge` from `@houston-ai/core` — inventory-tracked)
   opened via the `storeCreatorHandle` one-shot: from creator chips on rows and
-  the detail dialog, from a leading-`@` search in the store search field, or
-  from the `houston://store/creator?handle=<h>` deep link / web `?creator=`
-  param (same `store://deep-link` rail as install).
-- **Analytics** `store-view/analytics/` — owner-only installs-over-time (7/30/90d,
-  gateway `GET /me/analytics` daily buckets, ComputeBarChart grammar) mounted in
-  My agents.
+  the detail pane, or from the `houston://store/creator?handle=<h>` deep link /
+  web `?creator=` param (same `store://deep-link` rail as install).
 - **Publish wizard** — with a claimed handle the creator step becomes a
   read-only "Publishing as @handle" row; free-text creator remains only as the
   profileless fallback.
@@ -379,8 +382,11 @@ catalog reads error (expected, not a bug).
 ## Starter agents (seeding the catalog under @houston)
 
 Houston's own first-party listings come from the release-bundled starter agents in
-`store/agents/` (the same packages the New Agent dialog installs from — see
-`store/README.md`). `scripts/publish-starter-agents.mjs` is the official pipeline:
+`store/agents/` (see `store/README.md`). **The store IS how users get them** — the
+New Agent dialog no longer lists starters (PRODUCT-1171): it offers exactly two
+cards, "import from the store" (which navigates to the Agent Store view) and
+"create new agent" (the blank from-scratch path).
+`scripts/publish-starter-agents.mjs` is the official pipeline:
 it reads each `store/agents/<id>/` package, builds its AgentIR, and publishes it to
 the gateway under the **@houston** creator account. It is **idempotent by slug** —
 a re-run PATCHes the existing listing instead of creating a duplicate, so it is

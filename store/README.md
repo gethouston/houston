@@ -14,8 +14,10 @@ icon.png
 ```
 
 `store/catalog.json` is the curated index returned by the engine's
-`/v1/store/catalog` route. The desktop app shows those listings in
-the New Agent dialog as one searchable grid. Catalog entries include
+`/v1/store/catalog` route. Users get these agents from the hosted
+Agent Store, not the New Agent dialog: that dialog offers only
+"import from the store" (which navigates to the Agent Store view) and
+"create new agent" (PRODUCT-1171). Catalog entries include
 agent image slugs and integration slugs so cards match Skill cards.
 Installing a listing copies the package into `~/.houston/agents/<agent-id>/`;
 creating an agent from that listing then copies packaged skills into the
@@ -153,6 +155,7 @@ the handle or the verified badge.
 
 ## Relation to other products
 
-- **Houston App** consumes Store in the New Agent dialog.
+- **Houston App** surfaces these agents through the Agent Store view, not
+  the New Agent dialog.
 - **Engine** owns install/update mechanics through `/v1/store/*`.
 - **Store** is static content in this repo today, not a hosted service.

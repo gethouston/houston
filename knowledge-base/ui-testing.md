@@ -44,29 +44,47 @@ e2e in an `_agent-tasks/<id>/` worktree, pick distinct ports:
 
 ## Architecture
 
-- **Fake host** (`e2e/fake-host/`) — Node HTTP server. Models the host
-  (`/agents/*`, `/v1/events`) + per-agent runtime proxy (`/agents/:id/
-  conversations/:cid/*`, auth, providers). In-memory, seeded, resettable.
+- **Fake host** — the shared **`@houston/fake-host`** package
+  (`packages/fake-host`), NOT a folder under `e2e/`. Node HTTP server modelling
+  the host (`/agents/*`, `/v1/events`) + per-agent runtime proxy
+  (`/agents/:id/conversations/:cid/*`, auth, providers). In-memory, seeded,
+  resettable. Its routes, `/__test__/*` controls and `startFakeHost` API are
+  documented in that package's README; `packages/web/e2e/` keeps only the glue.
 - **Boot seed** (`e2e/support/seed.ts`) — `addInitScript` primes `localStorage`
   (engine config + `houston.pref.*`) + `window.__HOUSTON_CP__` before any app
   script. Skips Connect screen, language picker, disclaimer. Forces `en`.
-- **Fixtures** (`e2e/support/fixtures.ts`) — `test`/`expect`. Resets host
-  (`POST /__test__/reset`) before each test. Suite serial (`workers: 1`, one
-  shared host).
+- **Fixtures** (`e2e/support/fixtures.ts`) — `test`/`expect`. Resets the host
+  (`POST /__test__/reset`) before each test.
+- **Parallelism: `fullyParallel: true`, one fake host PER WORKER.** Every
+  Playwright worker starts its OWN in-process fake host on a worker-slot port —
+  `resolveFakeHostPort` (`packages/fake-host/src/config.ts`) reads Playwright's
+  `TEST_PARALLEL_INDEX` and returns `base + 1 + slot` (base `4399`, overridable
+  via `HOUSTON_E2E_FAKE_HOST_PORT`). A worker's specs, seed and fixtures all
+  resolve `FAKE_HOST_URL` in-worker, so they land on that worker's host with no
+  plumbing, and workers are separate OS processes so their in-memory state never
+  crosses. The `webServer` fake host on the BASE port serves only the main
+  process (global-setup's warm-up); vite is shared by all workers.
+- **Worker count is not the same as isolation.** `workers: process.env.CI ? 1 :
+  undefined` — locally Playwright picks from the machine's cores; **CI runs ONE
+  worker per runner** and gets throughput from sharding instead (one
+  single-threaded vite serves every worker's page boots, and on a 4-vCPU runner
+  concurrent workers starve renders past the 10s expect budget). Space
+  per-worktree `HOUSTON_E2E_FAKE_HOST_PORT` bases ≥ 32 apart so worker slots
+  can't overlap.
 
-## Two wire facts the mock mirrors exactly
+## Wire facts the mock mirrors exactly
 
 - **Chat = SSE, no WebSocket — resumable, sequenced, turn-stamped.** Subscribe
   `GET …/conversations/:id/events` FIRST, then `POST …/messages` (202, with a
-  `nonce` echoed on the `user` frame). The fake host (`fake-host/chat.ts`) is
-  built from the SAME shared pieces as the real servers: `StreamChannel`
+  `nonce` echoed on the `user` frame). The fake host (`@houston/fake-host`
+  `chat.ts`) is built from the SAME shared pieces as the real servers: `StreamChannel`
   (publish ordering + seq authority + replay buffer), `serveResumableStream`
   (the connect stitch: fresh → `sync`, `?after=<seq>` → gap/dupe-free replay,
   unserviceable cursor → `sync` + `resync: true`), and `formatSseFrame` (the
   `id:`/`data:` encoding). Every turn-scoped frame carries `turnId`, and
   history persists the user message at turn start + the reply at turn end
   (both turn-stamped) — the identity contract `engine-adapter/turn-sink.ts`
-  matches against. Test controls (`fake-host/chat-controls.ts`):
+  matches against. Test controls (`@houston/fake-host` `chat-controls.ts`):
   `POST /__test__/drop-chat-streams` (sever streams mid-turn, reconnect spec),
   `POST /__test__/chat-config` (`{ replyDelayMs }`),
   `POST /__test__/kill-turn` (synthesize the dead-pump reaper's terminal
@@ -104,7 +122,7 @@ e2e in an `_agent-tasks/<id>/` worktree, pick distinct ports:
   over the catalog. (The locked-browse-rows spec these controls were built for
   went with the per-agent Integrations tab.)
 - **C8 Spaces is armable end to end.** The fake host serves the cross-org
-  surface (`fake-host/routes-spaces.ts`): `GET /v1/orgs` → `{orgs, invites}`,
+  surface (`@houston/fake-host` `routes-spaces.ts`): `GET /v1/orgs` → `{orgs, invites}`,
   `POST /v1/orgs`, and the INVITEE's `POST /v1/org-invites/:id/accept` (201
   `{org}`) / `DELETE /v1/org-invites/:id` (204). Memberships have ONE source of
   truth — the team-space rows `/v1/workspaces` bridges — so an accepted invite
@@ -115,14 +133,39 @@ e2e in an `_agent-tasks/<id>/` worktree, pick distinct ports:
   `{error, code}` — the shape the client's invite taxonomy reads. The sidebar
   cards are capability-gated on the CLIENT, so pair with
   `/__test__/capabilities` `{spaces:true}` (`team-invites.spec.ts`).
+- **C13 server-owned agent teams are armable.** `POST /__test__/agent-teams`
+  (`{ teams: [{ id, name, isDefault?, sortOrder?, agentIds?, members? }],
+  personalSpace? }`) replaces the team world served at `GET /v1/org/teams`
+  wholesale — who is in each team, which agents it holds, who owns it; an
+  omitted or `null` `teams` clears it back to lazy so the next read mints the
+  default team again. The rest of the surface
+  (`@houston/fake-host` `routes-agent-teams.ts`) covers create / rename /
+  reorder / delete, `…/:id/members`, self-service `…/:id/join`, and
+  `PUT /v1/agents/:slug/team`. Pair with `/__test__/capabilities`
+  `{ agentTeams:true }` — the client feature-detects on the **capability**,
+  never on the data — and with `/__test__/org` `{ agents, members }`, since a
+  team is only as real as the fleet and roster behind it
+  (`agent-teams.spec.ts`). With the capability OFF the client runs the pre-C13
+  local `sidebar_layout` backend, which `sidebar-teams.spec.ts` /
+  `sidebar-dnd.spec.ts` / `team-settings-manager.spec.ts` guard.
 
 ## CI
 
-`.github/workflows/ci.yml` (the repo's only PR gate — others fire on tags). The
-`web` job runs: web typecheck + `typecheck:e2e` + unit (`vitest run ./tests`) +
-`test:e2e`. A separate **`visual`** job runs `test:visual` inside the pinned
-Playwright container (see Visual regression below). Both upload their Playwright
-HTML report as an artifact.
+`.github/workflows/ci.yml` (the repo's only PR gate — others fire on tags).
+
+- The **`web`** job is a **6-way shard matrix** (`shard: [1..6]`), each runner
+  executing `test:e2e --shard=<n>/6` with ONE worker. Throughput comes from the
+  shards, not from workers per runner.
+- Typecheck (`typecheck` + `typecheck:e2e`) and the unit suite ride **shard 1
+  only**. The unit script is `pnpm --filter houston-web test` =
+  `vitest run ./tests ./src --testTimeout=30000` — `./src` is covered too.
+- Each shard uploads its own Playwright HTML report:
+  **six** `playwright-report-shard-<n>` artifacts.
+- A separate **`visual`** job runs `test:visual` inside the pinned Playwright
+  container (see Visual regression below) and uploads
+  `playwright-visual-report`.
+- `test:e2e` runs with `--fail-on-flaky-tests`, so a test that only passes on
+  retry fails the run instead of going green.
 
 ## Add a spec
 
@@ -130,7 +173,8 @@ HTML report as an artifact.
 boots to **Mission Control** (there is no per-agent screen), one agent current.
 Prefer role/label/text selectors (en is forced). Reuse a stable anchor (e.g.
 `data-tour-target`) before adding a `data-testid`. Need more host behavior?
-Extend `fake-host/state.ts` + `routes.ts` (`FAKE_HOST_LOG=1` logs every request).
+Extend `@houston/fake-host` (`packages/fake-host/src/state.ts` + `routes.ts`;
+`FAKE_HOST_LOG=1` logs every request it serves).
 
 **Two rules the teams shell adds.**
 
@@ -158,9 +202,21 @@ pnpm --filter houston-web test:visual         # compare against committed baseli
 pnpm --filter houston-web test:visual:update  # re-record (intentional change only)
 ```
 
-- **Covered** (full-page, fixed 1280×800 viewport, animations + caret frozen via
-  `playwright.config.ts` `toHaveScreenshot`): mission board (light + dark + one
-  640px narrow run), chat settled reply (light + dark), first-run language gate.
+- **Covered** — four specs, 8 shots per platform (full-page, animations + caret
+  frozen via `playwright.config.ts` `toHaveScreenshot`; the `visual` project
+  pins a 1280×800 viewport):
+  - `shell.visual.spec.ts` — mission board, light + dark + one 640px narrow run.
+  - `chat.visual.spec.ts` — chat settled reply, light + dark.
+  - `chat-markdown.visual.spec.ts` — markdown inside chat bubbles, light + dark.
+    The agent bubble renders the fake host's fixed `MARKDOWN_SHOWCASE`; the user
+    bubble pins that typed markdown stays VERBATIM. Overrides the viewport to
+    **1280×1550** (`test.use`), because at 800px the scroller crops the user
+    bubble and top headings out of the frame.
+  - `onboarding.visual.spec.ts` — first-run language gate (the flow pins
+    `data-theme="light"` itself, so one shot).
+- **The visual scripts cap parallelism at `--workers=2`.** Full-page screenshots
+  are CPU-heavy and the pinned CI container starves renders past the expect
+  budget above that.
 - **Platform-suffixed baselines.** Both `darwin` (local / agent gate) and `linux`
   (CI) PNGs are committed under `e2e/visual/__screenshots__/` — a darwin render
   won't match a Linux one pixel-for-pixel, so BOTH sets ship. Regenerate the
@@ -171,9 +227,31 @@ pnpm --filter houston-web test:visual:update  # re-record (intentional change on
 - **Update discipline.** Re-record ONLY when a UI change is deliberate, eyeball
   the new PNGs, and commit them in the same PR as the change so the diff
   documents the visual delta — never blindly re-record to green a red run.
+- **`test:visual:update` only rewrites baselines that FAILED.** Playwright's bare
+  `--update-snapshots` means `changed`, so a baseline that drifted but stayed
+  under `maxDiffPixelRatio` is left exactly as it was — the update script reports
+  a clean run and writes nothing, and the stale PNG goes on standing in for the
+  screen. When you KNOW a screen moved, force it:
+  `playwright test --project=visual --update-snapshots=all <spec files>`, scoped
+  to the specs that actually changed so unrelated baselines are not churned.
+  This is not hypothetical: the row-primitive entry below found all six board /
+  chat baselines passing while depicting a rail that no longer existed.
 - **Bless log.** A re-record that absorbs drift from EARLIER commits (not just
   the one in hand) gets a line here, so the bless is on the record instead of
   hiding inside a binary diff:
+  - *2026-08-08, the sidebar row-primitive unification* — **DEFERRED, not yet
+    blessed.** Every interactive line in the rail now renders through one
+    `SidebarRowButton` (`ui/layout`), so the board and chat baselines no longer
+    depict the rail they show. The re-record is deliberately held until the
+    change is signed off in the running app, so the screens are blessed once
+    instead of per iteration. **They are currently PASSING while stale**: a trial
+    re-record measured the drift at 1.36% of the frame under a strict
+    per-channel threshold, which sits under Playwright's own YIQ threshold, so
+    `test:visual` is green and bare `test:visual:update` rewrites nothing. When
+    the bless happens it needs `--update-snapshots=all` (see *Update
+    discipline*), on darwin AND in the linux container, for `shell` + `chat` +
+    `chat-markdown`; `board-narrow` does NOT move (at 640px the rail is a
+    drawer) and `onboarding` never shows the rail.
   - *2026-08-07, teams E5 (the tab-shell cutover)* — ALL seven affected
     screens re-recorded on both platforms (14 PNGs): `board` light / dark /
     narrow, `chat` light / dark, `chat-markdown` light / dark. The agent tab
