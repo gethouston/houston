@@ -125,7 +125,7 @@ export function RoutineScreen({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 px-4 py-3">
+      <div className="shrink-0 px-8 pt-6 pb-5">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
           <button
             type="button"
@@ -160,9 +160,9 @@ export function RoutineScreen({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          <section className="flex flex-col gap-1.5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+          <section className="flex flex-col gap-2">
             <h3 className="text-sm font-medium text-ink">
               {t("details.promptTitle")}
             </h3>
@@ -193,7 +193,7 @@ export function RoutineScreen({
             )}
           </section>
 
-          <section className="flex flex-col gap-1.5">
+          <section className="flex flex-col gap-2">
             <h3 className="text-sm font-medium text-ink">
               {t("details.scheduleTitle")}
             </h3>
@@ -224,12 +224,12 @@ export function RoutineScreen({
             )}
           </section>
 
-          <section className="flex flex-col gap-1.5">
+          <section className="flex flex-col gap-2">
             <h3 className="text-sm font-medium text-ink">
               {t("details.modelTitle")}
             </h3>
             <div className="self-start">
-              <RoutineModelSelector agent={agent} routine={routine} />
+              <RoutineModelSelector agent={agent} routine={routine} bordered />
             </div>
           </section>
         </div>

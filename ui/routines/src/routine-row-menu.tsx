@@ -56,15 +56,29 @@ export function RoutineRowMenu({
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
+        {/* The content is DOM-portaled but still a React-tree child of the
+            row, so item clicks BUBBLE (synthetically) to the row's own click
+            — which opens the routine. Every item stops propagation so acting
+            on a run never navigates. */}
         <DropdownMenuContent align="end" className="w-48">
           {onRunNow && (
-            <DropdownMenuItem onClick={onRunNow}>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onRunNow();
+              }}
+            >
               <Play className="size-3.5" />
               {labels.runNow}
             </DropdownMenuItem>
           )}
           {onStopRun && (
-            <DropdownMenuItem onClick={onStopRun}>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onStopRun();
+              }}
+            >
               <Square className="size-3.5" />
               {labels.stopRun}
             </DropdownMenuItem>
@@ -74,7 +88,10 @@ export function RoutineRowMenu({
               {hasPrior && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => setConfirming(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirming(true);
+                }}
               >
                 <Trash2 className="size-3.5" />
                 {labels.delete}

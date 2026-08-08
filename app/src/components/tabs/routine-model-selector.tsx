@@ -22,9 +22,12 @@ import { ChatModelSelector } from "../chat-model-selector";
 interface Props {
   agent: Agent;
   routine: Routine;
+  /** Wrap the trigger in a field-style border (the routine screen's Model
+   *  row) so it reads as a control, not floating text. Omit for bare. */
+  bordered?: boolean;
 }
 
-export function RoutineModelSelector({ agent, routine }: Props) {
+export function RoutineModelSelector({ agent, routine, bordered }: Props) {
   const { t } = useTranslation("routines");
   const addToast = useUIStore((s) => s.addToast);
   const [open, setOpen] = useState(false);
@@ -53,30 +56,40 @@ export function RoutineModelSelector({ agent, routine }: Props) {
     );
 
   return (
-    <ChatModelSelector
-      provider={routine.provider ?? ""}
-      model={routine.model ?? ""}
-      onSelect={(provider, model) => save({ provider, model })}
-      open={open}
-      onOpenChange={setOpen}
-      agent={agent}
-      allowedModels={allowedModels}
-      triggerLabel={pinned ? undefined : t("details.model.inherit")}
-      pickerFooter={
-        pinned ? (
-          <button
-            type="button"
-            className="w-full rounded-md px-1 py-1 text-left text-xs text-ink-muted hover:bg-hover hover:text-ink transition-colors"
-            onClick={() => {
-              // `null` clears the pin back to inherit (RoutineUpdate contract).
-              save({ provider: null, model: null, effort: null });
-              setOpen(false);
-            }}
-          >
-            {t("details.model.reset")}
-          </button>
-        ) : undefined
+    // The popover content is portaled, so the field-style border (`bordered`)
+    // wraps only the trigger.
+    <span
+      className={
+        bordered
+          ? "inline-flex rounded-lg border border-line-input bg-input"
+          : "contents"
       }
-    />
+    >
+      <ChatModelSelector
+        provider={routine.provider ?? ""}
+        model={routine.model ?? ""}
+        onSelect={(provider, model) => save({ provider, model })}
+        open={open}
+        onOpenChange={setOpen}
+        agent={agent}
+        allowedModels={allowedModels}
+        triggerLabel={pinned ? undefined : t("details.model.inherit")}
+        pickerFooter={
+          pinned ? (
+            <button
+              type="button"
+              className="w-full rounded-md px-1 py-1 text-left text-xs text-ink-muted hover:bg-hover hover:text-ink transition-colors"
+              onClick={() => {
+                // `null` clears the pin back to inherit (RoutineUpdate contract).
+                save({ provider: null, model: null, effort: null });
+                setOpen(false);
+              }}
+            >
+              {t("details.model.reset")}
+            </button>
+          ) : undefined
+        }
+      />
+    </span>
   );
 }
