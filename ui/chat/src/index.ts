@@ -6,6 +6,7 @@ export {
   MAX_ATTACHMENT_FILES,
   TooManyAttachmentFilesError,
 } from "@houston-ai/core";
+export { humanizeActionDone, humanizeActionGerund } from "./action-labels";
 export type {
   ConversationContentProps,
   ConversationDownloadProps,
@@ -308,10 +309,7 @@ export type {
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
-export {
-  humanizeActionGerund,
-  prettifyToolkit,
-} from "./interaction-card-model";
+export { prettifyToolkit } from "./interaction-card-model";
 // The always-visible single-line free-text row every non-question step carries
 // (connect / sign-in / credential decline-with-instruction).
 export { InlineTextRow } from "./interaction-decline-row";
