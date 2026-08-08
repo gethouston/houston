@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 55
+version: 56
 
 components:
   - id: agent-avatar
@@ -93,6 +93,25 @@ components:
       when the window reaches the transcript start.
     a11y: log role with aria-live=polite for appended items; preserves scroll on prepend.
     since: 1
+
+  - id: conversation-map-search
+    title: Conversation map search
+    purpose: Search and navigate the messages already loaded in an open conversation.
+    anatomy: [actions-trigger, actions-menu, find-command, search-field, message-map, back-to-latest-action]
+    states: [closed, actions-open, open-unfiltered, filtered, no-results, current-message]
+    variants: [conversation-overlay]
+    behavior: >-
+      The chat header's three-dot menu (left of the people stack and close
+      control) offers Find plus status-aware mission actions. Choosing Find
+      shows the compact conversation map before a query is entered.
+      Filtering is case- and accent-insensitive across every loaded message;
+      selecting a result scrolls to and briefly highlights that message. Delete
+      remains confirmation-gated.
+    a11y: >-
+      The icon trigger, menu actions, and close action have accessible labels;
+      search is a labeled searchbox; results are buttons in a navigation
+      landmark, with aria-current on the message nearest the viewport.
+    since: 56
 
   - id: assistant-message
     title: Assistant message

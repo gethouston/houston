@@ -70,6 +70,7 @@ export function ChatMessageItem({
         "rounded-xl bg-accent/70 px-2 py-1 outline outline-2 outline-ring",
     ),
     "data-conversation-message-key": message.key,
+    tabIndex: -1,
   };
 
   if (message.from === "system") {

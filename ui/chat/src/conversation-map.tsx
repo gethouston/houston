@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import {
   type ConversationMapLabels,
-  DEFAULT_CONVERSATION_MAP_LABELS,
   type ResolvedConversationMapLabels,
+  resolveConversationMapLabels,
 } from "./conversation-map-labels";
 import type { ConversationMoment } from "./conversation-map-model";
+import { searchConversationMoments } from "./conversation-map-model";
 import { ConversationMapPanel } from "./conversation-map-panel";
 
 export type { ConversationMapLabels } from "./conversation-map-labels";
@@ -14,6 +22,10 @@ export interface ConversationMapProps {
   moments: ConversationMoment[];
   conversationLength: number;
   labels?: ConversationMapLabels;
+  /** Increment to open the search popover from outside (the header menu's "Find"). */
+  findToken?: number;
+  /** The header trigger; the search returns focus there when it closes. */
+  returnFocusRef?: RefObject<HTMLButtonElement | null>;
   onOpenChange?: (open: boolean, conversationLength: number) => void;
   onMomentClick?: (
     moment: ConversationMoment,
@@ -23,40 +35,53 @@ export interface ConversationMapProps {
   onMomentHighlight?: (messageKey: string) => void;
 }
 
+export interface ConversationMapActions {
+  onMoveToDone?: () => void;
+  onDelete?: () => void;
+  deleteTitle?: string;
+  deleteDescription?: string;
+}
+
 /** A props-only, current-DOM conversation index. It intentionally keeps no history. */
 export function ConversationMap({
   moments,
   conversationLength,
   labels,
+  findToken,
+  returnFocusRef,
   onOpenChange,
   onMomentClick,
   onBackToLatest,
   onMomentHighlight,
 }: ConversationMapProps) {
-  const { scrollRef, scrollToBottom } = useStickToBottomContext();
+  const { scrollRef, scrollToBottom, stopScroll } = useStickToBottomContext();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [activeMessageKey, setActiveMessageKey] = useState<string | null>(null);
   const resolvedLabels = useMemo<ResolvedConversationMapLabels>(
-    () => ({
-      ...DEFAULT_CONVERSATION_MAP_LABELS,
-      ...labels,
-      types: { ...DEFAULT_CONVERSATION_MAP_LABELS.types, ...labels?.types },
-    }),
+    () => resolveConversationMapLabels(labels),
     [labels],
   );
 
   const changeOpen = useCallback(
     (next: boolean) => {
       setOpen(next);
+      if (!next) setQuery("");
       onOpenChange?.(next, conversationLength);
     },
     [conversationLength, onOpenChange],
   );
 
+  // The header "Find" action lives outside this subtree; it requests the
+  // search by bumping the token. Seeding the ref with the mount-time value
+  // keeps a conversation switch (this component remounts per session) from
+  // replaying the previous request.
+  const seenFindToken = useRef(findToken);
   useEffect(() => {
-    if (moments.length >= 3 || !open) return;
-    changeOpen(false);
-  }, [changeOpen, moments.length, open]);
+    if (findToken === undefined || findToken === seenFindToken.current) return;
+    seenFindToken.current = findToken;
+    changeOpen(true);
+  }, [findToken, changeOpen]);
 
   useEffect(() => {
     const root = scrollRef.current;
@@ -79,9 +104,7 @@ export function ConversationMap({
       { root, threshold: 0.45 },
     );
     for (const moment of moments) {
-      const target = root.querySelector<HTMLElement>(
-        `[data-conversation-message-key="${moment.messageKey}"]`,
-      );
+      const target = findMessageElement(root, moment.messageKey);
       if (target) observer.observe(target);
     }
     return () => observer.disconnect();
@@ -89,16 +112,27 @@ export function ConversationMap({
 
   const selectMoment = useCallback(
     (moment: ConversationMoment) => {
-      const target = scrollRef.current?.querySelector<HTMLElement>(
-        `[data-conversation-message-key="${moment.messageKey}"]`,
-      );
+      const root = scrollRef.current;
+      const target = root
+        ? findMessageElement(root, moment.messageKey)
+        : undefined;
       if (!target) return;
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      stopScroll();
+      target.scrollIntoView({ behavior: "auto", block: "center" });
+      target.focus({ preventScroll: true });
       setActiveMessageKey(moment.messageKey);
       onMomentHighlight?.(moment.messageKey);
       onMomentClick?.(moment, conversationLength);
+      changeOpen(false);
     },
-    [conversationLength, onMomentClick, onMomentHighlight, scrollRef],
+    [
+      changeOpen,
+      conversationLength,
+      onMomentClick,
+      onMomentHighlight,
+      scrollRef,
+      stopScroll,
+    ],
   );
 
   const backToLatest = useCallback(() => {
@@ -107,15 +141,35 @@ export function ConversationMap({
     onBackToLatest?.(conversationLength);
   }, [conversationLength, moments, onBackToLatest, scrollToBottom]);
 
+  const searchResult = useMemo(
+    () => searchConversationMoments(moments, query),
+    [moments, query],
+  );
+
   return (
     <ConversationMapPanel
       activeMessageKey={activeMessageKey}
+      availableMomentCount={moments.length}
+      hasQuery={searchResult.hasQuery}
       labels={resolvedLabels}
-      moments={moments}
+      moments={searchResult.moments}
       onBackToLatest={backToLatest}
       onOpenChange={changeOpen}
+      onQueryChange={setQuery}
       onSelectMoment={selectMoment}
       open={open}
+      query={query}
+      rangesById={searchResult.rangesById}
+      returnFocusRef={returnFocusRef}
     />
   );
+}
+
+function findMessageElement(
+  root: HTMLElement,
+  messageKey: string,
+): HTMLElement | undefined {
+  return [
+    ...root.querySelectorAll<HTMLElement>("[data-conversation-message-key]"),
+  ].find((element) => element.dataset.conversationMessageKey === messageKey);
 }
