@@ -463,6 +463,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     oauthCallbackBase
       ? {
           callbackUrl: `${oauthCallbackBase.replace(/\/+$/, "")}${CUSTOM_OAUTH_CALLBACK_PATH}`,
+          // A gateway-fronted pod's callback is the GATEWAY's public route:
+          // the browser lands there, and the gateway routes it to this pod by
+          // the `<org>.<agent>.` prefix minted into the state. Loopback bases
+          // (desktop, dev engines) land on this host directly and need none —
+          // but carrying it is harmless, so it rides whenever the pod knows
+          // its coordinates.
+          ...(opts.credentials
+            ? {
+                statePrefix: `${opts.credentials.orgSlug}.${opts.credentials.agentSlug}`,
+              }
+            : {}),
         }
       : {},
   );

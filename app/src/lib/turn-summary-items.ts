@@ -1,12 +1,17 @@
 import type { FileChangeEntry, ToolEntry } from "@houston-ai/chat";
-import { fileNameOf, toWorkspaceRelative } from "./agent-file-paths";
+import { fileNameOf, toWorkspaceRelative } from "./agent-file-paths.ts";
+import {
+  integrationUpdatesOf,
+  type TurnIntegrationUpdate,
+} from "./turn-integration-updates.ts";
 
 export type SemanticUpdateKind = "instructions" | "skills" | "learnings";
 export type FileUpdateKind = "created" | "modified";
 
 export type TurnSummaryItem =
   | { kind: "file"; path: string; change: FileUpdateKind }
-  | { kind: "semantic"; update: SemanticUpdateKind };
+  | { kind: "semantic"; update: SemanticUpdateKind }
+  | TurnIntegrationUpdate;
 
 export interface TurnSummaryGroups {
   updates: TurnSummaryItem[];
@@ -167,6 +172,9 @@ export function buildTurnSummaryItems(
   }
 
   return [
+    // External-artifact actions lead: they are the updates the user most wants
+    // to review (and click through to) at a glance (PRODUCT-1196).
+    ...integrationUpdatesOf(tools),
     ...Array.from(semantic).map((update) => ({
       kind: "semantic" as const,
       update,
@@ -180,7 +188,7 @@ export function groupTurnSummaryItems(
 ): TurnSummaryGroups {
   return {
     updates: items.filter(
-      (item) => item.kind === "semantic" || item.change === "modified",
+      (item) => item.kind !== "file" || item.change === "modified",
     ),
     files: items.filter(isCreatedFile),
   };

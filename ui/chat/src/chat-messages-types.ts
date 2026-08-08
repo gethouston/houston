@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { RenderLinkProps } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ChatAuthorLabels } from "./author-label";
@@ -120,6 +120,10 @@ export interface ChatMessagesProps {
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: {
     labels?: ConversationMapLabels;
+    /** Increment to open the chat search (the header menu's "Find"). */
+    findToken?: number;
+    /** The header trigger; the search returns focus there when it closes. */
+    returnFocusRef?: RefObject<HTMLButtonElement | null>;
     onOpenChange?: (open: boolean, conversationLength: number) => void;
     onMomentClick?: (
       moment: ConversationMoment,

@@ -3,7 +3,7 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v56 - 2026-08-07
+## v57 - 2026-08-08
 
 Edit a previous message + copy any message (PRODUCT-1217), no new
 components. Settled rows gain a per-message action row under the bubble,
@@ -21,6 +21,15 @@ also carry a Copy action in the same row -- `assistant-message` always
 specced `copy-action`; the web surface now ships it -- copying the row's
 verbatim text (an agent turn's markdown source) with a brief check-mark
 confirm. Marker-encoded rows are not copyable.
+
+## v56 - 2026-08-07
+
+Added the conversation map search inside the chat's compact three-dot actions
+menu, alongside status-aware Move to done and confirmation-gated Delete
+actions. The trigger lives in the chat panel header, left of the people stack
+and close control. Find opens an unfiltered map of prior messages by default, then narrows
+it with a case- and accent-insensitive text filter. Results jump to and
+highlight the selected message, while the footer returns to the latest reply.
 
 ## v55 - 2026-08-07
 

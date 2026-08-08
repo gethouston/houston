@@ -9,6 +9,7 @@ import type {
   AuthorizationServerMetadata,
   OAuthClientInformationFull,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
+import { guardedFetch } from "./fetch-guard";
 import { bundleOf, type CustomOAuthBundle } from "./oauth-bundle";
 import type { CustomIntegrationDef } from "./types";
 import { CustomIntegrationError } from "./types";
@@ -71,22 +72,32 @@ const oauthFailed = (context: string, err: unknown): CustomIntegrationError =>
  * Discover + register + build the authorize URL for one MCP definition.
  * `existingClient` (from a previous grant's bundle) is reused when it still
  * names this redirect URI, so re-authenticating does not re-register.
+ * `statePrefix` (managed pods: `<orgSlug>.<agentSlug>`) rides INSIDE the
+ * state so the gateway's public callback can route the returning browser to
+ * the right pod statelessly — the random tail keeps the whole value
+ * single-use and unguessable.
  */
 export async function beginCustomOAuth(
   def: CustomIntegrationDef & { kind: "mcp" },
   redirectUri: string,
   existing: CustomOAuthBundle | null,
-  fetchFn?: typeof fetch,
+  opts: { fetchFn?: typeof fetch; statePrefix?: string } = {},
 ): Promise<{
   state: string;
   authorizeUrl: string;
   attempt: CustomOAuthAttempt;
 }> {
+  // The OAuth flow owns its HTTP seam like the executor does (HOU-1083):
+  // this host process runs with pi's patched global fetch/dispatcher, which
+  // once broke every executor POST through altered message framing.
+  // guardedFetch strips the framing headers and lets the current fetch
+  // compute them itself, deterministically — hardening against that class
+  // for discovery/registration/exchange/refresh alike.
+  const fetchFn = opts.fetchFn ?? guardedFetch;
+  const { statePrefix } = opts;
   let info: Awaited<ReturnType<typeof discoverOAuthServerInfo>>;
   try {
-    info = await discoverOAuthServerInfo(def.endpoint, {
-      ...(fetchFn ? { fetchFn } : {}),
-    });
+    info = await discoverOAuthServerInfo(def.endpoint, { fetchFn });
   } catch (err) {
     throw oauthFailed(`could not discover how ${def.name} signs in`, err);
   }
@@ -107,17 +118,17 @@ export async function beginCustomOAuth(
           token_endpoint_auth_method: "none",
         },
         ...(scope ? { scope } : {}),
-        ...(fetchFn ? { fetchFn } : {}),
+        fetchFn,
       });
     } catch (err) {
       throw oauthFailed(
-        `${def.name} did not accept Houston as a sign-in app`,
+        `${def.name} did not accept Houston as a sign-in app (registration at ${metadata?.registration_endpoint ?? info.authorizationServerUrl})`,
         err,
       );
     }
   }
 
-  const state = randomBytes(16).toString("hex");
+  const state = `${statePrefix ? `${statePrefix}.` : ""}${randomBytes(16).toString("hex")}`;
   try {
     const { authorizationUrl, codeVerifier } = await startAuthorization(
       info.authorizationServerUrl,
@@ -171,8 +182,10 @@ const isBrowserSafe = (url: URL): boolean =>
 export async function settleCustomOAuth(
   attempt: CustomOAuthAttempt,
   code: string,
-  fetchFn?: typeof fetch,
+  fetchOverride?: typeof fetch,
 ): Promise<CustomOAuthBundle> {
+  // Same guarded HTTP seam as the start half (see beginCustomOAuth).
+  const fetchFn = fetchOverride ?? guardedFetch;
   try {
     const tokens = await exchangeAuthorization(attempt.authorizationServerUrl, {
       ...(attempt.metadata ? { metadata: attempt.metadata } : {}),
@@ -181,7 +194,7 @@ export async function settleCustomOAuth(
       codeVerifier: attempt.codeVerifier,
       redirectUri: attempt.redirectUri,
       ...(attempt.resource ? { resource: new URL(attempt.resource) } : {}),
-      ...(fetchFn ? { fetchFn } : {}),
+      fetchFn,
     });
     return bundleOf({
       ...(attempt.resource ? { resource: attempt.resource } : {}),
