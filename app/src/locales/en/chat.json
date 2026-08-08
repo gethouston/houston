@@ -107,7 +107,8 @@
     "dismiss": "Dismiss suggested actions"
   },
   "childMissions": {
-    "heading": "Missions started here"
+    "heading": "Missions started here",
+    "goToMain": "Go to main mission"
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",

@@ -29,6 +29,8 @@ import {
   ChatMissionList,
   type ChatMissionListItem,
   type ChatMissionListLabels,
+  ChatParentMissionLink,
+  type ChatParentMissionLinkLabels,
   ChatPlanReadyCard,
   type ChatPlanReadyLabels,
   ChatSuggestActions,
@@ -223,7 +225,13 @@ interface UseAgentChatPanelArgs {
    *  place of the generic follow-up bubbles. Omit on surfaces with no board
    *  behind them (the setup chats) and nothing renders. */
   childMissions?: ChatMissionListItem[];
-  /** Opens one of {@link childMissions} — the board's own selection. */
+  /** The way back UP (PRODUCT-1244): when THIS chat is a mission the agent
+   *  started, the mission it was started from. Renders the "Go to main
+   *  mission" bar above the composer. A chat never has both: spawned missions
+   *  can't spawn, so this and {@link childMissions} are mutually exclusive. */
+  parentMission?: { id: string; title: string } | null;
+  /** Opens a mission by id — the board's own selection. Serves both the
+   *  child-mission rows and the parent link. */
   onOpenChildMission?: (id: string) => void;
 }
 
@@ -343,6 +351,7 @@ export function useAgentChatPanel({
   initialTurnMode,
   onSendReactivated,
   childMissions = EMPTY_CHILD_MISSIONS,
+  parentMission,
   onOpenChildMission,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "dashboard", "teams"]);
@@ -1589,6 +1598,11 @@ export function useAgentChatPanel({
     [t],
   );
 
+  const parentMissionLabels = useMemo<ChatParentMissionLinkLabels>(
+    () => ({ label: t("chat:childMissions.goToMain") }),
+    [t],
+  );
+
   const saveReusable = useCallback(
     (step: SuggestReusableStep) => {
       // No path / session guard here: `sendInteractionMessage` owns that check.
@@ -1641,15 +1655,22 @@ export function useAgentChatPanel({
     // thing the composer slot can honestly offer.
     if (connectAiComposer.node)
       return { mode: "replace" as const, node: connectAiComposer.node };
-    // The missions THIS chat started (PRODUCT-1244). A coordinating chat's most
-    // useful "what next" is its own children, so the list REPLACES the generic
-    // follow-up bubbles — but never a BLOCKING step: an unanswered question
-    // still owns the composer below.
+    // Mission navigation (PRODUCT-1244): a coordinating chat lists the
+    // missions it started; a mission the agent started links back to the chat
+    // that started it (the two are mutually exclusive — spawned missions
+    // can't spawn). Either REPLACES the generic follow-up bubbles — but never
+    // a BLOCKING step: an unanswered question still owns the composer below.
     const missionsNode = childMissions.length ? (
       <ChatMissionList
         labels={missionListLabels}
         missions={childMissions}
         onOpen={(id) => onOpenChildMission?.(id)}
+      />
+    ) : parentMission ? (
+      <ChatParentMissionLink
+        labels={parentMissionLabels}
+        onOpen={() => onOpenChildMission?.(parentMission.id)}
+        title={parentMission.title}
       />
     ) : null;
     if (!agent || !activeInteraction)
@@ -2018,7 +2039,9 @@ export function useAgentChatPanel({
     suggestReusableLabels,
     suggestActionsLabels,
     missionListLabels,
+    parentMissionLabels,
     childMissions,
+    parentMission,
     onOpenChildMission,
     startPlan,
     saveReusable,

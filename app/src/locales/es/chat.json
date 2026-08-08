@@ -107,7 +107,8 @@
     "dismiss": "Descartar acciones sugeridas"
   },
   "childMissions": {
-    "heading": "Misiones iniciadas aquí"
+    "heading": "Misiones iniciadas aquí",
+    "goToMain": "Ir a la misión principal"
   },
   "errors": {
     "sessionStart": "No se pudo iniciar la sesión: {{error}}",

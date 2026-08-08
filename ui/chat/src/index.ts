@@ -211,6 +211,14 @@ export type {
   PrepareAttachments,
   PreparedAttachments,
 } from "./chat-panel-types";
+export type {
+  ChatParentMissionLinkLabels,
+  ChatParentMissionLinkProps,
+} from "./chat-parent-mission-link";
+export {
+  ChatParentMissionLink,
+  DEFAULT_CHAT_PARENT_MISSION_LINK_LABELS,
+} from "./chat-parent-mission-link";
 // === Plan-ready card ===
 // The composer-replacing surface shown when the agent finishes planning
 // (plan_ready): a compact plan lede + Start working / Run on Autopilot / Keep

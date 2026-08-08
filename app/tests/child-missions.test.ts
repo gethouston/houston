@@ -1,6 +1,6 @@
-import { deepStrictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { childMissionsOf } from "../src/lib/child-missions.ts";
+import { childMissionsOf, parentMissionOf } from "../src/lib/child-missions.ts";
 
 const LABELS = { running: "Running", needsYou: "Needs You", done: "Done" };
 
@@ -92,5 +92,39 @@ describe("childMissionsOf", () => {
       childMissionsOf([item("a", "running", "p")], null, LABELS),
       [],
     );
+  });
+});
+
+describe("parentMissionOf", () => {
+  const parent = { id: "p1", title: "p1", status: "needs_you", updatedAt: "" };
+  const child = item("c1", "running", "activity-p1");
+
+  it("resolves the parent of an agent-started chat", () => {
+    deepStrictEqual(parentMissionOf([parent, child], "activity-c1"), {
+      id: "p1",
+      title: "p1",
+    });
+  });
+
+  it("matches a parent by its explicit session key too", () => {
+    const keyedParent = {
+      ...parent,
+      metadata: { sessionKey: "conv-custom" },
+    };
+    const keyedChild = item("c2", "running", "conv-custom");
+    deepStrictEqual(parentMissionOf([keyedParent, keyedChild], "activity-c2"), {
+      id: "p1",
+      title: "p1",
+    });
+  });
+
+  it("is null for a user-created chat, an unknown chat, and no chat", () => {
+    strictEqual(parentMissionOf([parent, child], "activity-p1"), null);
+    strictEqual(parentMissionOf([parent, child], "activity-nope"), null);
+    strictEqual(parentMissionOf([parent, child], null), null);
+  });
+
+  it("is null when the parent left the active board — never a dead link", () => {
+    strictEqual(parentMissionOf([child], "activity-c1"), null);
   });
 });

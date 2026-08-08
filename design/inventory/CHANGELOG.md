@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v61 - 2026-08-08
+
+New `chat-parent-mission-link` (PRODUCT-1244): on a mission the agent started,
+one bar above the composer ("Go to main mission" + the parent's title) linking
+back to the chat that started it — the child-side twin of the child-mission
+drawer, mutually exclusive with it.
+
 ## v60 - 2026-08-07
 
 `chat-mission-list` becomes a drawer: open by default, the title row (with a

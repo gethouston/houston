@@ -2,7 +2,7 @@ import { AIBoard, type MessageMention } from "@houston-ai/board";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
-import { childMissionsOf } from "../../lib/child-missions";
+import { childMissionsOf, parentMissionOf } from "../../lib/child-missions";
 import { perfSpans } from "../../lib/perf-spans";
 import { modelAcceptsImages } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
@@ -107,6 +107,12 @@ export function MissionBoard({
       }),
     [source.allItems, source.selectedSessionKey, t],
   );
+  // The inverse: when the OPEN chat is itself agent-started, the mission it
+  // was started from — the "Go to main mission" bar's target.
+  const parentMission = useMemo(
+    () => parentMissionOf(source.allItems, source.selectedSessionKey),
+    [source.allItems, source.selectedSessionKey],
+  );
   const panel = useAgentChatPanel({
     agent: source.activeAgent,
     agentDef: source.activeAgentDef,
@@ -114,8 +120,9 @@ export function MissionBoard({
     onSelectSession: source.onSelectSession,
     draftScope: source.draftScope,
     childMissions,
-    // Opening a child is the board's ordinary selection: the panel swaps to
-    // that mission's chat, exactly as clicking its card would.
+    parentMission,
+    // Opening a child (or the parent) is the board's ordinary selection: the
+    // panel swaps to that mission's chat, exactly as clicking its card would.
     onOpenChildMission: source.setSelectedId,
   });
   const overrides = useMemo(

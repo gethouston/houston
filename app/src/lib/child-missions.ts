@@ -71,3 +71,30 @@ export function childMissionsOf(
     )
     .map(({ updatedAt: _updatedAt, ...mission }) => mission);
 }
+
+/** A board item's chat address: its explicit session key, else the
+ *  `activity-<id>` convention — the same fallback everything else uses. */
+const sessionKeyOfItem = (item: KanbanItem): string =>
+  typeof item.metadata?.sessionKey === "string"
+    ? item.metadata.sessionKey
+    : `activity-${item.id}`;
+
+/**
+ * The way back UP: when the OPEN chat is a mission the agent started, the
+ * mission it was started from — the "Go to main mission" link's target.
+ * Null when the open chat is not agent-started, or the parent is no longer on
+ * the active board (archived/deleted — never render a dead link).
+ */
+export function parentMissionOf(
+  items: readonly KanbanItem[],
+  selectedSessionKey: string | null,
+): { id: string; title: string } | null {
+  if (!selectedSessionKey) return null;
+  const self = items.find(
+    (item) => sessionKeyOfItem(item) === selectedSessionKey,
+  );
+  const origin = self?.metadata?.originSessionKey;
+  if (typeof origin !== "string" || !origin) return null;
+  const parent = items.find((item) => sessionKeyOfItem(item) === origin);
+  return parent ? { id: parent.id, title: parent.title } : null;
+}

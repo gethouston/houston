@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 60
+version: 61
 
 components:
   - id: agent-avatar
@@ -611,6 +611,23 @@ components:
       pushing the composer away.
     a11y: the title toggle carries aria-expanded/aria-controls; every row is a button with a visible label and status at rest, keyboard reachable with a visible focus ring; the status dot is decorative and its meaning is duplicated in text.
     since: 59
+
+  - id: chat-parent-mission-link
+    title: Parent mission link
+    purpose: On a mission the agent started, one bar above the composer linking back to the chat that started it.
+    anatomy: [back-glyph, label, parent-title]
+    states: [default]
+    variants: [with-title, label-only]
+    behavior: >-
+      The child-side twin of the child-mission drawer, and mutually exclusive
+      with it (spawned missions cannot spawn). Rendered only when the open
+      chat carries the agent-started origin marker AND the parent mission is
+      still on the active board — an archived or deleted parent renders
+      nothing, never a dead link. Opening it selects the parent mission's own
+      chat, exactly as clicking its board card would. A blocking interaction
+      still wins the composer slot.
+    a11y: a single button with a visible text label at rest, keyboard reachable with a visible focus ring; the glyph is decorative.
+    since: 61
 
   - id: interaction-answers-message
     title: Interaction answers message
