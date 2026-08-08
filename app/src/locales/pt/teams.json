@@ -76,6 +76,59 @@
       }
     }
   },
+  "agentTeams": {
+    "otherTeams": "Outras equipes",
+    "otherTeamsHint": "Equipes deste espaço que ainda não estão na sua barra lateral. Entrar em uma apenas a adiciona à sua barra lateral, não dá acesso a nada novo.",
+    "join": "Entrar na equipe",
+    "joining": "Entrando…",
+    "leave": "Sair da equipe",
+    "memberCount_one": "{{count}} membro",
+    "memberCount_other": "{{count}} membros",
+    "settings": {
+      "nameLabel": "Nome da equipe",
+      "nameSave": "Salvar",
+      "nameSaving": "Salvando…",
+      "members": {
+        "title": "Membros",
+        "subtitle": "As pessoas que entraram nesta equipe.",
+        "empty": "Ninguém entrou nesta equipe ainda.",
+        "error": "Não conseguimos carregar esta lista. Tente de novo.",
+        "defaultNote": "Todas as pessoas deste espaço já estão nesta equipe, então não há uma lista separada para gerenciar.",
+        "adminNote": "Os proprietários e managers deste espaço podem gerenciar todas as equipes, por isso não aparecem aqui.",
+        "ownerLabel": "Proprietário",
+        "memberLabel": "Membro",
+        "you": "(você)",
+        "changeRole": "Alterar a função de {{name}}",
+        "remove": "Remover"
+      }
+    },
+    "errors": {
+      "default_team": {
+        "title": "Esta é a equipe principal do espaço",
+        "body": "Todas as pessoas do espaço já estão nela, então ela não pode ser excluída e não tem uma lista de membros separada."
+      },
+      "personal_space": {
+        "title": "Este é o seu espaço privado",
+        "body": "As equipes ficam em um espaço que você compartilha com outras pessoas. Crie um ou entre em um para começar."
+      },
+      "not_team_owner": {
+        "title": "Só os proprietários desta equipe podem alterá-la",
+        "body": "Peça para uma dessas pessoas fazer esta alteração."
+      },
+      "invalid_team_id": {
+        "title": "Não conseguimos identificar para qual equipe mover",
+        "body": "Nada mudou. Tente novamente."
+      },
+      "invalid_name": {
+        "title": "Esse nome de equipe não serve",
+        "body": "O nome de uma equipe precisa ser curto, até 60 caracteres. Tente um mais curto."
+      },
+      "not_a_member": {
+        "title": "Essa pessoa ainda não está neste espaço",
+        "body": "Convide-a para o espaço primeiro e depois adicione-a a esta equipe."
+      }
+    }
+  },
   "integrations": {
     "allowlist": {
       "question": "Quais apps este agente pode usar?",

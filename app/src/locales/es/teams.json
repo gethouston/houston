@@ -76,6 +76,59 @@
       }
     }
   },
+  "agentTeams": {
+    "otherTeams": "Otros equipos",
+    "otherTeamsHint": "Equipos de este espacio que todavía no están en tu barra lateral. Unirte a uno solo lo agrega a tu barra lateral, no te da acceso a nada nuevo.",
+    "join": "Unirme al equipo",
+    "joining": "Uniéndome…",
+    "leave": "Salir del equipo",
+    "memberCount_one": "{{count}} miembro",
+    "memberCount_other": "{{count}} miembros",
+    "settings": {
+      "nameLabel": "Nombre del equipo",
+      "nameSave": "Guardar",
+      "nameSaving": "Guardando…",
+      "members": {
+        "title": "Miembros",
+        "subtitle": "Las personas que se unieron a este equipo.",
+        "empty": "Todavía nadie se unió a este equipo.",
+        "error": "No pudimos cargar esta lista. Vuelve a intentarlo.",
+        "defaultNote": "Todas las personas de este espacio ya están en este equipo, así que no hay una lista aparte que gestionar.",
+        "adminNote": "Los propietarios y managers de este espacio pueden gestionar todos los equipos, por eso no aparecen aquí.",
+        "ownerLabel": "Propietario",
+        "memberLabel": "Miembro",
+        "you": "(tú)",
+        "changeRole": "Cambiar el rol de {{name}}",
+        "remove": "Quitar"
+      }
+    },
+    "errors": {
+      "default_team": {
+        "title": "Este es el equipo principal del espacio",
+        "body": "Todas las personas del espacio ya están en él, así que no se puede eliminar y no tiene una lista de miembros aparte."
+      },
+      "personal_space": {
+        "title": "Este es tu espacio privado",
+        "body": "Los equipos viven en un espacio que compartes con otras personas. Crea uno o únete a uno para empezar."
+      },
+      "not_team_owner": {
+        "title": "Solo los propietarios de este equipo pueden cambiarlo",
+        "body": "Pídele a una de esas personas que haga este cambio."
+      },
+      "invalid_team_id": {
+        "title": "No pudimos saber a qué equipo moverlo",
+        "body": "No cambió nada. Inténtalo de nuevo."
+      },
+      "invalid_name": {
+        "title": "Ese nombre de equipo no sirve",
+        "body": "El nombre de un equipo tiene que ser corto, hasta 60 caracteres. Prueba con uno más corto."
+      },
+      "not_a_member": {
+        "title": "Esa persona todavía no está en este espacio",
+        "body": "Invítala al espacio primero y después agrégala a este equipo."
+      }
+    }
+  },
   "integrations": {
     "allowlist": {
       "question": "¿Qué apps puede usar este agente?",

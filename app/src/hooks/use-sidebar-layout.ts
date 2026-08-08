@@ -72,6 +72,22 @@ export interface UseSidebarLayout {
   toggleGroupCollapsed: (id: string) => void;
   moveItem: (agentId: string, dest: ItemDest) => void;
   moveGroup: (groupId: string, beforeGroupId: string | null) => void;
+  /**
+   * The seam every helper above is built on, exposed for the ONE caller that
+   * needs more than they offer: apply a pure op to the FRESHEST cached layout,
+   * persist the result, and hand back the layout it REPLACED (`undefined` when
+   * there is no workspace and nothing was written).
+   *
+   * `normalizeWith` overrides the ambient normalizer for this one write, and
+   * `null` writes the op's output verbatim. Both halves exist for a CROSS-TEAM
+   * drop (`use-server-team-actions.ts`): it must be pruned against the roster
+   * the move ASSERTS rather than the one still cached, and it must be
+   * restorable byte-for-byte when the gateway refuses that move.
+   */
+  applyOp: (
+    op: (current: SidebarLayout) => SidebarLayout,
+    normalizeWith?: ((next: SidebarLayout) => SidebarLayout) | null,
+  ) => SidebarLayout | undefined;
 }
 
 /**
@@ -86,6 +102,19 @@ export interface UseSidebarLayout {
  */
 export function useSidebarLayout(
   workspaceId: string | undefined,
+  /**
+   * Last pass over the layout an op produced, applied right before it is
+   * PERSISTED. Absent — the LOCAL backend — the op's output is written verbatim,
+   * which is what keeps that path byte-identical.
+   *
+   * A server-teams host (C13) passes `normalizeTeamOverlay`: there the layout is
+   * a per-user ordering OVERLAY keyed by server team id, so entries naming a
+   * team that no longer exists, or an agent it no longer holds, decay on the
+   * next write instead of accumulating forever. It belongs at THIS seam and not
+   * at a call site because every overlay write goes through here, including the
+   * collapse toggle the sidebar wires straight to `toggleGroupCollapsed`.
+   */
+  normalize?: (next: SidebarLayout) => SidebarLayout,
 ): UseSidebarLayout {
   const qc = useQueryClient();
 
@@ -109,12 +138,22 @@ export function useSidebarLayout(
     },
   });
 
-  /** Apply a pure op to the FRESHEST cached layout, then mutate. Reading the
-   *  cache (not the closed-over `layout`) keeps overlapping drags composing. */
-  const apply = (op: (current: SidebarLayout) => SidebarLayout) => {
-    if (!workspaceId) return;
+  /** Apply a pure op to the FRESHEST cached layout, then mutate; return the
+   *  layout it replaced. Reading the cache (not the closed-over `layout`) keeps
+   *  overlapping drags composing. `normalizeWith` defaults to the ambient
+   *  normalizer and `null` opts out of it entirely. */
+  const apply = (
+    op: (current: SidebarLayout) => SidebarLayout,
+    normalizeWith:
+      | ((next: SidebarLayout) => SidebarLayout)
+      | null
+      | undefined = normalize,
+  ): SidebarLayout | undefined => {
+    if (!workspaceId) return undefined;
     const current = normalizeSidebarLayout(qc.getQueryData(key));
-    mutation.mutate(op(current));
+    const next = op(current);
+    mutation.mutate(normalizeWith ? normalizeWith(next) : next);
+    return current;
   };
 
   return {
@@ -132,6 +171,7 @@ export function useSidebarLayout(
       apply((c) => setGroupContextOp(c, id, context)),
     deleteGroup: (id) => apply((c) => deleteGroupOp(c, id)),
     toggleGroupCollapsed: (id) => apply((c) => toggleGroupCollapsedOp(c, id)),
+    applyOp: apply,
     moveItem: (agentId, dest) => apply((c) => moveItemOp(c, agentId, dest)),
     moveGroup: (groupId, beforeGroupId) =>
       apply((c) => moveGroupOp(c, groupId, beforeGroupId)),

@@ -21,6 +21,7 @@ import {
   type TeamSectionId,
   type TeamView,
   teamOfAgent,
+  visibleTeamSectionsForTeam,
 } from "./teams-model.ts";
 
 /** The things a caller can ask for on one agent. */
@@ -91,6 +92,13 @@ export function agentDestination(
 export function canOpenAgentSettings(
   caps: Capabilities | null | undefined,
   agent: Pick<Agent, "access">,
+  /** The agent's team, when the caller has it. On a server-teams host an
+   *  explicit team owner may configure a team's agents without being an org
+   *  admin, which only `visibleTeamSectionsForTeam` knows. Omitted -> the
+   *  org-wide answer, which is never WIDER than the per-team one. */
+  team?: TeamView | null,
 ): boolean {
+  if (team)
+    return visibleTeamSectionsForTeam(caps ?? null, team).includes("settings");
   return canSeeTeamSettings(caps ?? null) || isAgentManager(caps, agent);
 }

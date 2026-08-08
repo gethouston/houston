@@ -1,8 +1,19 @@
 import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
 import { isAgentManager } from "./agent-access.ts";
 import { resolveSidebarSections } from "./agent-order.ts";
-import { canSeeMembers, isMultiplayer } from "./org-roles.ts";
+import { canSeeTeamSettings } from "./team-permissions.ts";
 import type { Agent } from "./types.ts";
+
+// The "may I do this to a team?" gates live in their own module (the 200-line
+// rule), re-exported here so `teams-model` stays the ONE door onto a team's
+// rules for every caller.
+export {
+  canDeleteTeam,
+  canJoinTeam,
+  canLeaveTeam,
+  canRenameTeam,
+  canSeeTeamSettings,
+} from "./team-permissions.ts";
 
 /** The `viewMode` value the team view renders under (see `stores/ui.ts`). */
 export const TEAM_VIEW_ID = "team";
@@ -20,6 +31,18 @@ export type TeamSectionId =
   | "files"
   | "settings";
 
+/**
+ * What the SERVER says about the caller's standing in one team (C13). Present
+ * ONLY on an `agentTeams` host: its absence is exactly what keeps every rule
+ * below byte-identical on the local `sidebar_layout` backend.
+ */
+export interface ServerTeamFacts {
+  joined: boolean;
+  owner: boolean;
+  memberCount: number;
+  sortOrder: number;
+}
+
 /** One sidebar team: a named home for agents and the people who use them. */
 export interface TeamView {
   /** `DEFAULT_TEAM_ID` for the virtual default team, else the group id. */
@@ -28,6 +51,9 @@ export interface TeamView {
   /** Members in drag order (the same order the sections derive from). */
   agents: Agent[];
   isDefault: boolean;
+  /** Server truth for this team, on an `agentTeams` host only. Absent on the
+   *  local backend, which is what leaves every rule here untouched. */
+  server?: ServerTeamFacts;
 }
 
 /**
@@ -78,19 +104,6 @@ export function teamOfAgent(
 }
 
 /**
- * Whether the caller may open Team Settings ANYWHERE — the ORG-WIDE half of the
- * gate. Single-player: always (the solo user is the team's owner). Multiplayer:
- * org owner/admin, who are implicit owners of every team (C13); per-team
- * explicit owners arrive with the server-backed teams surface.
- *
- * This alone is not the section's gate — see {@link visibleTeamSectionsForTeam},
- * which also lets in a member who manages an agent of the team in hand.
- */
-export function canSeeTeamSettings(caps: Capabilities | null): boolean {
-  return !isMultiplayer(caps) || canSeeMembers(caps);
-}
-
-/**
  * The sections THIS team offers this caller, in render order. The ONE list the
  * sidebar's section rows and the team view itself read, so a section can never
  * exist in the rail and be unreachable in the view (or the reverse). It is per
@@ -105,13 +118,19 @@ export function canSeeTeamSettings(caps: Capabilities | null): boolean {
  * a member who manages at least one of THIS team's agents. It is also the only
  * door to the agent settings page, so gating it org-wide would have taken every
  * configure surface away from an agent's own manager.
+ *
+ * On a SERVER-teams host the client-derived org-role half is REPLACED by the
+ * server's own `owner` for this team: it already folds in the org owner/admin
+ * (implicit owner of every team) and adds the explicit team owner, who
+ * configures their team without being an org admin. The agent-manager clause is
+ * untouched, so a member who manages one of the team's agents still gets in.
  */
 export function visibleTeamSectionsForTeam(
   caps: Capabilities | null,
   team: TeamView,
 ): TeamSectionId[] {
   const configures =
-    canSeeTeamSettings(caps) ||
+    (team.server ? team.server.owner : canSeeTeamSettings(caps)) ||
     team.agents.some((agent) => isAgentManager(caps, agent));
   return [
     "mission-control",
@@ -155,6 +174,16 @@ export function resolveTeamSection(
  * `viewMode` would otherwise fall through every render branch and strand the
  * user on an empty pane, so the workspace shell resets it to the dashboard.
  * Pure, mirroring `blockedTopLevelView`, so the fallback rule is unit-tested.
+ *
+ * "No longer resolves" is the WHOLE rule, on both backends. Not being a member
+ * of a server team is deliberately NOT blocking: joining is sidebar PINNING and
+ * it grants nothing (C13's first non-negotiable), so every team the gateway
+ * lists is one this caller may ALREADY see, and the gateway is the only thing
+ * that decides that. Blocking on `joined` made every jump to an agent that
+ * lives in an unjoined team dead-end on the dashboard — `agentDestination`
+ * resolved the right team and this guard threw the user straight off it. The
+ * rail still lists unjoined teams under "Other teams" rather than in "Your
+ * teams", which is what joining changes and all it changes.
  */
 export function blockedTeamView(
   viewMode: string,

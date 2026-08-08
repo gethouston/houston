@@ -103,4 +103,61 @@ describe("canOpenAgentSettings", () => {
     strictEqual(canOpenAgentSettings(caps("user"), used), false);
     strictEqual(canOpenAgentSettings(caps("user"), bare), false);
   });
+
+  /** A server team holding exactly one agent this caller only USES. */
+  const serverTeam = (owner: boolean): TeamView => ({
+    id: "s1",
+    name: "Sales",
+    agents: [{ ...agent("a1"), access: "user" }],
+    isDefault: false,
+    server: { joined: true, owner, memberCount: 3, sortOrder: 0 },
+  });
+
+  it("with a team in hand it asks THAT team's question, so a server team owner gets in", () => {
+    // On a server-teams host an explicit team owner configures the team's
+    // agents without being an org admin, even though they manage NOTHING and
+    // their org role is a plain `user`. Only the per-team gate knows that, so
+    // a caller that drops the team argument hides the affordance from them.
+    strictEqual(
+      canOpenAgentSettings(caps("user"), used, serverTeam(true)),
+      true,
+    );
+    strictEqual(canOpenAgentSettings(caps("user"), used), false);
+  });
+
+  it("closes for a plain member of a team they do not own and manage nothing in", () => {
+    // The mirror of the case above: same caller, same agent, `owner: false`
+    // and no managed agent anywhere in the team -> no Settings section, so no
+    // configure affordance.
+    strictEqual(
+      canOpenAgentSettings(caps("user"), used, serverTeam(false)),
+      false,
+    );
+  });
+
+  it("a passed team can also CLOSE the door the org-wide answer left open", () => {
+    strictEqual(
+      canOpenAgentSettings(caps("admin"), used, serverTeam(false)),
+      false,
+    );
+  });
+
+  it("null/undefined for the team falls back to the org-wide answer", () => {
+    strictEqual(canOpenAgentSettings(caps("user"), managed, null), true);
+    strictEqual(canOpenAgentSettings(caps("user"), used, undefined), false);
+    strictEqual(canOpenAgentSettings(caps("owner"), used, null), true);
+  });
+
+  it("a LOCAL team (no server facts) answers exactly as the org-wide gate", () => {
+    // The capability-off path must stay byte-identical.
+    const local: TeamView = {
+      id: "grp-ops",
+      name: "Ops",
+      agents: [],
+      isDefault: false,
+    };
+    strictEqual(canOpenAgentSettings(caps("user"), used, local), false);
+    strictEqual(canOpenAgentSettings(caps("owner"), used, local), true);
+    strictEqual(canOpenAgentSettings(caps("admin"), used, local), true);
+  });
 });

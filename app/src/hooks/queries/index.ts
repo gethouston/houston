@@ -15,6 +15,20 @@ export {
   useSetAgentAllowedModels,
   useSetAgentSettings,
 } from "./use-agent-settings";
+export {
+  agentTeamsQueryOptions,
+  getCurrentAgentTeams,
+  useAgentTeamMembers,
+  useAgentTeams,
+  useCreateAgentTeam,
+  useDeleteAgentTeam,
+  useJoinAgentTeam,
+  useLeaveAgentTeam,
+  useMoveAgentToTeam,
+  useRemoveAgentTeamMember,
+  useSetAgentTeamMemberOwner,
+  useUpdateAgentTeam,
+} from "./use-agent-teams";
 export { COMPUTE_USAGE_DAYS, useComputeUsage } from "./use-compute-usage";
 export { useAllConversations, useChatHistory } from "./use-conversations";
 export {

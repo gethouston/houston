@@ -132,6 +132,28 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
     strictEqual(other.reloadAgentsWorkspace, undefined);
   });
 
+  // C13: every server-team mutation fans out AgentsChanged, so the rail's
+  // teams have to refresh with the roster or it keeps the previous grouping.
+  it("AgentsChanged refreshes the C13 teams and their member rows", () => {
+    const plan = planInvalidation(
+      { type: "AgentsChanged", data: { workspace_id: "w1" } },
+      { workspaceId: "w1" },
+    );
+    ok(invalidates(plan, queryKeys.agentTeams()), "teams must refresh");
+    ok(
+      invalidates(plan, ["agent-team-members"]),
+      "the event names no team, so member rows go by prefix",
+    );
+  });
+
+  it("another workspace's AgentsChanged leaves the teams alone", () => {
+    const plan = planInvalidation(
+      { type: "AgentsChanged", data: { workspace_id: "w2" } },
+      { workspaceId: "w1" },
+    );
+    deepStrictEqual(plan.invalidate, []);
+  });
+
   it("ProviderLoginComplete refreshes statuses and focuses the window", () => {
     const plan = planInvalidation(
       {

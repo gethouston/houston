@@ -1,6 +1,9 @@
 import type { SidebarGroup, SidebarLayout } from "@houston-ai/engine-client";
 
+import { blankOverlayGroup } from "./sidebar-layout-group-ops.ts";
+
 export {
+  blankOverlayGroup,
   createGroupOp,
   deleteGroupOp,
   renameGroupOp,
@@ -113,8 +116,20 @@ export function remapAgentIdOp(
   };
 }
 
-/** Move an agent to `dest`, removing it from wherever it currently lives (any
- *  group's `agentIds` and `ungroupedOrder`) before inserting it once. */
+/**
+ * Move an agent to `dest`, removing it from wherever it currently lives (any
+ * group's `agentIds` and `ungroupedOrder`) before inserting it once.
+ *
+ * A `dest.groupId` the layout does not hold UPSERTS: the group is appended
+ * blank and the agent lands inside it. The old fallback (drop it in
+ * `ungroupedOrder`) was written for a layout that IS the model, where an
+ * unknown id can only mean corruption. On a server-teams host the layout is an
+ * ordering overlay keyed by server team id and starts empty, so an unknown id
+ * is the NORMAL first drop into a team, and sending it to `ungroupedOrder`
+ * there means recording nothing at all: nothing reads that list on that
+ * backend, so the drop position is lost. Locally every rail team is a stored
+ * group, so this branch never fires and the section maths is untouched.
+ */
 export function moveItemOp(
   layout: SidebarLayout,
   agentId: string,
@@ -129,18 +144,12 @@ export function moveItemOp(
   if (dest.groupId === null) {
     ungroupedOrder = insertBefore(ungroupedOrder, agentId, dest.beforeItemId);
   } else {
-    const target = groups.find((g) => g.id === dest.groupId);
-    // Unknown target group: fall back to the default section rather than
-    // dropping the agent from every section.
+    let target = groups.find((g) => g.id === dest.groupId);
     if (!target) {
-      ungroupedOrder = insertBefore(ungroupedOrder, agentId, dest.beforeItemId);
-    } else {
-      target.agentIds = insertBefore(
-        target.agentIds,
-        agentId,
-        dest.beforeItemId,
-      );
+      target = blankOverlayGroup(dest.groupId);
+      groups.push(target);
     }
+    target.agentIds = insertBefore(target.agentIds, agentId, dest.beforeItemId);
   }
 
   return { ...layout, groups, ungroupedOrder };

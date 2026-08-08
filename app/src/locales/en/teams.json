@@ -76,6 +76,59 @@
       }
     }
   },
+  "agentTeams": {
+    "otherTeams": "Other teams",
+    "otherTeamsHint": "Teams in this space that are not in your sidebar yet. Joining one only adds it to your sidebar, it does not give you access to anything new.",
+    "join": "Join team",
+    "joining": "Joining…",
+    "leave": "Leave team",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "settings": {
+      "nameLabel": "Team name",
+      "nameSave": "Save",
+      "nameSaving": "Saving…",
+      "members": {
+        "title": "Members",
+        "subtitle": "The people who joined this team.",
+        "empty": "No one has joined this team yet.",
+        "error": "We could not load this list. Please try again.",
+        "defaultNote": "Everyone in this space is already in this team, so there is no separate list to manage.",
+        "adminNote": "Owners and managers of this space can manage every team, so they do not show up here.",
+        "ownerLabel": "Owner",
+        "memberLabel": "Member",
+        "you": "(you)",
+        "changeRole": "Change role for {{name}}",
+        "remove": "Remove"
+      }
+    },
+    "errors": {
+      "default_team": {
+        "title": "This is the space's main team",
+        "body": "Everyone in the space is already in it, so it cannot be removed and it has no separate member list."
+      },
+      "personal_space": {
+        "title": "This is your private space",
+        "body": "Teams live in a space you share with other people. Create one or join one to get started."
+      },
+      "not_team_owner": {
+        "title": "Only this team's owners can change it",
+        "body": "Ask one of them to make this change for you."
+      },
+      "invalid_team_id": {
+        "title": "We could not tell which team to move this to",
+        "body": "Nothing changed. Please try again."
+      },
+      "invalid_name": {
+        "title": "That team name will not work",
+        "body": "A team name has to be short, up to 60 characters. Try a shorter one."
+      },
+      "not_a_member": {
+        "title": "That person is not in this space yet",
+        "body": "Invite them to the space first, then add them to this team."
+      }
+    }
+  },
   "integrations": {
     "allowlist": {
       "question": "Which apps can this agent use?",

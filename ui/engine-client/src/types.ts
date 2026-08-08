@@ -146,6 +146,15 @@ export interface Capabilities {
    * predate it. Feature-detect flag only — the gateway is the sole enforcer.
    */
   computeUsage?: boolean;
+  /**
+   * Whether this deployment serves C13 agent teams: named groups of agents +
+   * people INSIDE one space, server-owned. A feature-detect flag the frontend
+   * reads to swap `useTeams()` from the local `sidebar_layout` backend to the
+   * server one; absent/false on desktop/self-host and on gateways that predate
+   * it, where teams stay the user's local sidebar grouping. DISTINCT from
+   * `teams` (which flags multiplayer itself). The gateway is the sole enforcer.
+   */
+  agentTeams?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------
@@ -244,6 +253,43 @@ export interface OrgPerson {
   userId: string;
   displayName?: string;
   photoUrl?: string;
+}
+
+/**
+ * One team inside the active space (C13): a named group of agents and the
+ * people who subscribed to it. `joined`, `owner` and `memberCount` are the
+ * CALLER's EFFECTIVE values, resolved server-side — never raw membership rows,
+ * so an org owner/admin reads `owner: true` on every team and everyone reads
+ * `joined: true` on the default one.
+ */
+export interface AgentTeam {
+  id: string;
+  name: string;
+  /** The space's catch-all team: undeletable, and everyone belongs to it. */
+  isDefault: boolean;
+  sortOrder: number;
+  /**
+   * The agents of this team the CALLER may see. Role-filtered server-side (the
+   * same C7 v2 matrix `GET /agents` obeys), so it is the caller's VIEW of the
+   * team's roster, never the whole of it.
+   */
+  agentSlugs: string[];
+  /** Explicit membership rows, except on the default team, where it is the
+   *  space's member count (everyone is in it and it holds no rows). */
+  memberCount: number;
+  joined: boolean;
+  owner: boolean;
+}
+
+/**
+ * One EXPLICIT membership row of a team. Implicit owners (an org owner/admin,
+ * who owns every team) are a permission rule, not a roster entry, and are
+ * deliberately absent here — never derive `joined`/`owner` for the caller from
+ * this list; read them off {@link AgentTeam}.
+ */
+export interface AgentTeamMember {
+  userId: string;
+  owner: boolean;
 }
 
 /**

@@ -53,6 +53,12 @@ export interface SidebarGroupedListProps {
   onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  /** Leave the group (the caller's membership, not the group). */
+  onLeaveGroup?: (groupId: string) => void;
+  /** A group's inline rename ended without committing. */
+  onCancelRenameGroup?: (groupId: string) => void;
+  /** Rune ceiling for every group header's inline rename; absent means no cap. */
+  groupNameMaxRunes?: number;
   renamingGroupId?: string | null;
   onRenamingGroupIdHandled?: () => void;
   onMoveItem?: (
@@ -112,6 +118,9 @@ export function SidebarGroupedList({
   onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
+  onLeaveGroup,
+  onCancelRenameGroup,
+  groupNameMaxRunes,
   renamingGroupId,
   onRenamingGroupIdHandled,
   onMoveItem,
@@ -290,12 +299,15 @@ export function SidebarGroupedList({
               activeItemId !== null && overContainer === section.groupId
             }
             pulse={section.group != null && section.groupId === pulseGroupId}
+            maxNameRunes={groupNameMaxRunes}
             renaming={!!section.groupId && section.groupId === renamingGroupId}
             onRenameHandled={onRenamingGroupIdHandled}
             onToggleCollapsed={onToggleGroupCollapsed}
             onEditGroupContext={onEditGroupContext}
             onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
+            onLeaveGroup={onLeaveGroup}
+            onCancelRenameGroup={onCancelRenameGroup}
           />
         ))}
       </div>

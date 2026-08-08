@@ -24,6 +24,8 @@ import type {
   AgentMoveStart,
   AgentMoveStatus,
   AgentSettings,
+  AgentTeam,
+  AgentTeamMember,
   AllConversationsResult,
   ApiKey,
   ApiKeyCreated,
@@ -1701,6 +1703,132 @@ export class HoustonClient {
   /** Change a member's role. */
   async setOrgMemberRole(userId: string, role: OrgRole): Promise<void> {
     await this.request("PATCH", `/org/members/${this.seg(userId)}`, { role });
+  }
+
+  // ---------- Agent teams (C13) — v3 host only ----------
+  //
+  // Named groups of agents + people INSIDE one space, server-owned. A team is a
+  // grouping, never a grant: joining one is a sidebar subscription and changes
+  // no access. Every mutation fans out the `AgentsChanged` the client already
+  // reacts to, so none of these methods needs its own refresh signal.
+  //
+  // NONE of them degrades a 404, deliberately — unlike `getOrgPeople` /
+  // `listOrgs`, which swallow it to stay silent on a host that predates their
+  // route. Here the caller feature-detects on `capabilities.agentTeams` FIRST,
+  // so a 404 can only mean the host advertised the surface and then denied it.
+  // Degrading would blank the whole rail and present "you have no teams" as the
+  // truth — the exact silent failure this codebase forbids. It throws instead.
+
+  /**
+   * Every team of the active space, as the CALLER sees it: ordered by the
+   * gateway (`sortOrder`, then creation), with `agentSlugs` role-filtered and
+   * `joined`/`owner`/`memberCount` already resolved. A personal space answers
+   * exactly the default team, so the client renders it with no branch. A GET,
+   * so it replays safely on a transient transport blip.
+   */
+  async listAgentTeams(): Promise<AgentTeam[]> {
+    const body = await this.request<{ teams?: AgentTeam[] }>(
+      "GET",
+      "/org/teams",
+    );
+    return body.teams ?? [];
+  }
+  /**
+   * Create a team in the active space. Any member may (gating creation on an
+   * org role would buy no safety when a team grants nothing); the creator gets
+   * an explicit owner row and the team sorts last. `name` is trimmed server-side
+   * and must be 1..60 runes (`400 invalid_name`). A POST, so `send` never
+   * auto-replays it — the gateway has no dedup, so a LOST response must be
+   * reconciled with {@link listAgentTeams}, never blind-retried.
+   */
+  createAgentTeam(name: string): Promise<AgentTeam> {
+    return this.request("POST", "/org/teams", { name });
+  }
+  /**
+   * Rename or reorder one team (effective team owner only). Partial: an omitted
+   * key is untouched, so a rename must not also send `sortOrder`. Allowed on the
+   * default team — that is the only way its name changes, since its rail block
+   * deliberately offers no menu. Answers the full team so the caller repaints
+   * from the host's truth rather than its own optimistic guess.
+   */
+  updateAgentTeam(
+    teamId: string,
+    patch: { name?: string; sortOrder?: number },
+  ): Promise<AgentTeam> {
+    return this.request("PATCH", `/org/teams/${this.seg(teamId)}`, patch);
+  }
+  /**
+   * Delete one team (effective team owner only). Its agents fall back to the
+   * default team and its memberships cascade — both are database effects, so
+   * there is nothing for the client to clean up beyond refetching. Refused with
+   * `400 default_team` on the catch-all, which everything else depends on.
+   */
+  async deleteAgentTeam(teamId: string): Promise<void> {
+    await this.request("DELETE", `/org/teams/${this.seg(teamId)}`);
+  }
+  /**
+   * One team's EXPLICIT membership rows (any member of the space may read
+   * them). Implicit owners — an org owner/admin owns every team — are a
+   * permission rule and never appear, so a roster that looks short next to
+   * `memberCount` is correct: never derive the caller's own `joined`/`owner`
+   * from this list, read them off the {@link AgentTeam}.
+   */
+  async listAgentTeamMembers(teamId: string): Promise<AgentTeamMember[]> {
+    const body = await this.request<{ members?: AgentTeamMember[] }>(
+      "GET",
+      `/org/teams/${this.seg(teamId)}/members`,
+    );
+    return body.members ?? [];
+  }
+  /**
+   * Subscribe the caller to a team (v1 teams are all public). Idempotent, and it
+   * never demotes an existing owner row, so a double-click is harmless. A no-op
+   * on the default team, which everyone is already in.
+   */
+  async joinAgentTeam(teamId: string): Promise<void> {
+    await this.request("POST", `/org/teams/${this.seg(teamId)}/join`);
+  }
+  /**
+   * Drop one membership row: the caller's own (leave) or someone else's (remove,
+   * effective team owner only). Idempotent — removing a non-member still answers
+   * `204`, so a double-click cannot 404. `400 default_team`: nobody leaves the
+   * catch-all.
+   */
+  async removeAgentTeamMember(teamId: string, userId: string): Promise<void> {
+    await this.request(
+      "DELETE",
+      `/org/teams/${this.seg(teamId)}/members/${this.seg(userId)}`,
+    );
+  }
+  /**
+   * Set (or clear) one member's explicit ownership of a team — effective team
+   * owner only. An UPSERT: it also adds a member who never joined, and the
+   * target must already be in the space (`400 not_a_member`). Demoting the last
+   * explicit owner is allowed, because implicit owners always exist. Refused
+   * with `400 default_team`, which carries no explicit rows at all.
+   */
+  async setAgentTeamMemberOwner(
+    teamId: string,
+    userId: string,
+    owner: boolean,
+  ): Promise<void> {
+    await this.request(
+      "PUT",
+      `/org/teams/${this.seg(teamId)}/members/${this.seg(userId)}`,
+      { owner },
+    );
+  }
+  /**
+   * Move one agent to another team in the same space. The caller must own BOTH
+   * the source and the target team, so no team owner can raid another's. This
+   * changes GROUPING only — assignments, and therefore who may drive the agent,
+   * are untouched. Re-issuing the agent's current team is a no-op `204`;
+   * `400 invalid_team_id` when `teamId` is absent, blank, or not a string.
+   */
+  async setAgentTeam(agentSlugOrId: string, teamId: string): Promise<void> {
+    await this.request("PUT", `/agents/${this.seg(agentSlugOrId)}/team`, {
+      teamId,
+    });
   }
 
   // ---------- spaces / teams (C8) — hosted gateway only ----------

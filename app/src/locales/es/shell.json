@@ -43,6 +43,7 @@
       "newDefault": "Nuevo equipo",
       "rename": "Renombrar equipo",
       "delete": "Eliminar equipo",
+      "leave": "Salir del equipo",
       "menu": "Opciones de equipo",
       "namePlaceholder": "Nombre del equipo",
       "emptyHint": "Arrastra agentes aquí",

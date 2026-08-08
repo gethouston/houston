@@ -28,6 +28,19 @@ export function hasSpaces(caps: Capabilities | null | undefined): boolean {
 }
 
 /**
+ * Does this deployment serve C13 agent teams? A FEATURE-DETECT — the gateway
+ * describing whether IT owns the teams and their rosters (`GET /v1/org/teams`),
+ * not a feature flag we may flip. Absent/false on desktop, self-host and every
+ * gateway that predates C13, where a team is the local backend's named sidebar
+ * group plus the virtual default team; the off-capability path stays
+ * byte-identical. The gateway is the sole enforcer — this only picks which
+ * backend resolves the rail (`lib/teams-backend.ts`).
+ */
+export function hasAgentTeams(caps: Capabilities | null | undefined): boolean {
+  return caps?.agentTeams === true;
+}
+
+/**
  * The caller's org role, or null in single-player mode. A multiplayer host
  * always advertises a role; treat a missing one as the least-privileged `user`
  * so a stale/absent field never widens power.

@@ -10,6 +10,7 @@ import {
   canSeeBillingTab,
   canSeeMembers,
   GRANTABLE_ROLES,
+  hasAgentTeams,
   isMultiplayer,
   orgRole,
 } from "../src/lib/org-roles.ts";
@@ -157,6 +158,25 @@ describe("canDeleteWorkspace (PRODUCT-1247)", () => {
 
   it("multiplayer without an explicit role denies (least privilege)", () => {
     strictEqual(canDeleteWorkspace(caps({ multiplayer: true })), false);
+  });
+});
+
+describe("hasAgentTeams (C13 feature-detect)", () => {
+  it("true only when the host advertises the surface", () => {
+    strictEqual(hasAgentTeams(caps({ agentTeams: true })), true);
+  });
+
+  it("false when the host advertises it as off", () => {
+    strictEqual(hasAgentTeams(caps({ agentTeams: false })), false);
+  });
+
+  it("absent means the LOCAL backend — desktop, self-host, pre-C13 gateways", () => {
+    strictEqual(hasAgentTeams(caps()), false);
+  });
+
+  it("no capabilities at all is the local backend too", () => {
+    strictEqual(hasAgentTeams(null), false);
+    strictEqual(hasAgentTeams(undefined), false);
   });
 });
 

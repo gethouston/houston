@@ -16,6 +16,7 @@ export const GROUP_LABELS: Required<SidebarLabels> = {
   createGroup: "New group",
   renameGroup: "Rename group",
   deleteGroup: "Delete group",
+  leaveGroup: "Leave group",
   editGroupContext: "Edit shared context",
   groupMenu: "Group options",
   newGroupPlaceholder: "Group name",
@@ -28,6 +29,11 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
     name: "group",
     type: "SidebarGroupView",
     note: "{ id, name, collapsed, itemIds } — the group as the shell stores it.",
+  },
+  {
+    name: "group.affordances",
+    type: "{ rename?, delete?, context?, leave? }",
+    note: "Per-group menu mask. Absent, or a field left out, means the callback alone decides; only false takes an entry away. `leave` is the exception: it must be an explicit true.",
   },
   {
     name: "count",
@@ -48,6 +54,21 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
     name: "onEditContext / onRenameGroup / onDeleteGroup",
     type: "(groupId: string, …) => void",
     note: "Each one supplied adds its ⋯ entry; delete paints danger.",
+  },
+  {
+    name: "onLeave",
+    type: "(groupId: string) => void",
+    note: "Gives up the caller's membership, so it sits last, behind a separator. Needs affordances.leave === true as well.",
+  },
+  {
+    name: "onCancelRename",
+    type: "(groupId: string) => void",
+    note: "The inline rename ended without committing (Escape, or leaving the field empty or unchanged). Fires exactly once, so a host that only creates the group on commit can drop its draft row.",
+  },
+  {
+    name: "maxNameRunes",
+    type: "number",
+    note: "Ceiling on the inline-rename field, counted in RUNES (code points), because a maxLength attribute counts UTF-16 units and would halve a name of emoji. Absent means no cap; the field clamps rather than refusing, so pasting is never blocked.",
   },
   {
     name: "startRenaming / onRenameStarted",

@@ -13,7 +13,7 @@
 import { json } from "./http";
 import * as state from "./state";
 import type { FakeAssignment, FakeMember } from "./state-store";
-import { SELF_USER_ID } from "./state-store";
+import { FAKE_ORG_NAME, SELF_USER_ID } from "./state-store";
 
 /** Read a `string[] | null` field from a JSON body, preserving an explicit null. */
 function toolkitList(value: unknown): string[] | null {
@@ -71,7 +71,7 @@ export function handleTeamsRoutes(
     // plain member (`user`) gets just the identity + role. Mirror that so the
     // read-only Permissions People tab exercises its honest empty-roster degrade.
     if (role === "user") {
-      return json({ id: "org-e2e", slug: "acme", name: "Acme", role });
+      return json({ id: "org-e2e", slug: "acme", name: FAKE_ORG_NAME, role });
     }
     // An armed roster (the per-member access lens) is served verbatim; unarmed
     // it stays the single-self roster synthesized from the advertised role.
@@ -81,7 +81,7 @@ export function handleTeamsRoutes(
     return json({
       id: "org-e2e",
       slug: "acme",
-      name: "Acme",
+      name: FAKE_ORG_NAME,
       role,
       members,
       invites: state.getOrgInvites(),

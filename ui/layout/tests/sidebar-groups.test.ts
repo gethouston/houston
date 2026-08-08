@@ -2,6 +2,8 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
   computeSidebarSections,
+  groupAllows,
+  type SidebarGroupAffordances,
   type SidebarGroupView,
 } from "../src/sidebar-groups.ts";
 
@@ -74,5 +76,48 @@ describe("computeSidebarSections", () => {
     assert.deepEqual(ids(sections[1].items), ["b"]);
     // "a" is grouped, so it must not fall back into the default section.
     assert.deepEqual(ids(sections[2].items), []);
+  });
+});
+
+describe("groupAllows", () => {
+  const masked = (affordances?: SidebarGroupAffordances): SidebarGroupView => ({
+    ...group("g1", []),
+    affordances,
+  });
+
+  it("allows every group affordance when there is no mask at all", () => {
+    const g = masked(undefined);
+    assert.equal(groupAllows(g, "rename"), true);
+    assert.equal(groupAllows(g, "delete"), true);
+    assert.equal(groupAllows(g, "context"), true);
+  });
+
+  it("hides leave unless the mask asks for it explicitly", () => {
+    assert.equal(groupAllows(masked(undefined), "leave"), false);
+    assert.equal(groupAllows(masked({}), "leave"), false);
+    assert.equal(groupAllows(masked({ leave: false }), "leave"), false);
+    assert.equal(groupAllows(masked({ leave: true }), "leave"), true);
+  });
+
+  it("treats only false as a veto, so a partial mask retracts nothing else", () => {
+    const g = masked({ delete: false });
+    assert.equal(groupAllows(g, "delete"), false);
+    assert.equal(groupAllows(g, "rename"), true);
+    assert.equal(groupAllows(g, "context"), true);
+  });
+
+  it("answers each affordance independently", () => {
+    const g = masked({
+      rename: true,
+      delete: false,
+      context: false,
+      leave: true,
+    });
+    assert.deepEqual(
+      (["rename", "delete", "context", "leave"] as const).map((a) =>
+        groupAllows(g, a),
+      ),
+      [true, false, false, true],
+    );
   });
 });

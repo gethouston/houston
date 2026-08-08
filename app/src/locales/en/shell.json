@@ -43,6 +43,7 @@
       "newDefault": "New team",
       "rename": "Rename team",
       "delete": "Delete team",
+      "leave": "Leave team",
       "menu": "Team options",
       "namePlaceholder": "Team name",
       "emptyHint": "Drag agents here",

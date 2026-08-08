@@ -3,6 +3,49 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v57 - 2026-08-08
+
+Teams stopped being a private filing habit and became something a space SHARES.
+Where the deployment owns them, a team is a named group of agents AND of people,
+the same team for everyone in the space, which forces the rail to answer a
+question it never had before: what about the teams that exist but are not yours?
+
+The answer is a split. YOUR TEAMS are the blocks, in full, exactly as they were.
+Every other team in the space collapses into one quiet disclosure at the foot of
+the rail, closed by default, naming each team and how many people are in it,
+with a Join beside it. The rail is a working surface, not a directory, and
+putting nine teams you never look at above the four you live in would have made
+it neither.
+
+Joining is sidebar PINNING, not a grant. It moves a team into the rail and
+changes nothing else. Who may see a team's agents was already settled by the
+space's roles, long before this rail existed, and a Join button that implied
+otherwise would be selling permission it does not hold. That is the whole reason
+Leaving is safe to offer as casually as it is: nothing is lost, the team simply
+stops taking up room. It sits at the BOTTOM of the block's menu behind a
+separator, because everything above it edits the TEAM and this one edits the
+caller's relationship to it, and those are not the same kind of act.
+
+Which entries a block offers is now decided PER TEAM rather than once for the
+whole rail. The caller may own one team and merely belong to the next, and the
+old model -- one set of callbacks, every block wearing the same menu -- could
+only lie about that in one direction or the other. A block that ends up offering
+nothing shows no menu at all, rather than a trigger that opens onto emptiness.
+
+Creating a team now asks for the name FIRST. The new block is a local draft, not
+a team, until a name is committed; abandoning the field takes the row away
+again. Naming after the fact was fine when the group was yours alone, but a
+team called "New team" appearing in four other people's rails while its author
+thinks about it is not a state worth being able to reach.
+
+And Team Settings gained the other half of what a shared team is: its PEOPLE. A
+members card under the agents, listing explicit memberships only, which is a
+narrower thing than it looks and the card says so -- owners and admins of the
+space manage every team without appearing in it, and the space's catch-all team
+holds no rows at all because everybody is already in it. Only a team's owner
+sees the controls that write. It is also the one door to renaming the catch-all
+team, whose rail block deliberately has no menu to rename it from.
+
 ## v56 - 2026-08-07
 
 The team screen gained the two sections its rail already promised: ROUTINES and

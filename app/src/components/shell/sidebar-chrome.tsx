@@ -19,7 +19,8 @@ import { STORE_VIEW_ID } from "../store-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
-type ShellT = TFunction<["shell", "common", "teams"]>;
+/** The namespaces every builder and component in this file reads from. */
+export type SidebarChromeT = TFunction<["shell", "common", "teams"]>;
 
 /**
  * The top-level navigation entries: Mission Control, Integrations, AI Models
@@ -27,7 +28,7 @@ type ShellT = TFunction<["shell", "common", "teams"]>;
  * here since HOU-788 — they are sections inside Settings.
  */
 export function buildSidebarNavItems(args: {
-  t: ShellT;
+  t: SidebarChromeT;
   showAiModels: boolean;
   setViewMode: (view: string) => void;
   /** Opens Settings on its INDEX — see `UIState.openSettings`. Never plain
@@ -92,7 +93,7 @@ export function buildSidebarNavItems(args: {
  * there is no anonymous "ungrouped" header to label — the library dropped that
  * branch and its untranslated string with it.
  */
-export function buildSidebarLabels(t: ShellT): SidebarLabels {
+export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
   return {
     addItem: t("shell:sidebar.addAgent"),
     moreOptions: t("shell:sidebar.agentMenu"),
@@ -102,6 +103,9 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
     createGroup: t("shell:sidebar.newTeam"),
     renameGroup: t("shell:sidebar.teams.rename"),
     deleteGroup: t("shell:sidebar.teams.delete"),
+    // Only ever rendered for a team whose `affordances.leave` is explicitly
+    // true, which is a server-teams host talking about a team you joined.
+    leaveGroup: t("shell:sidebar.teams.leave"),
     editGroupContext: t("shell:sidebar.teams.editContext"),
     groupMenu: t("shell:sidebar.teams.menu"),
     newGroupPlaceholder: t("shell:sidebar.teams.namePlaceholder"),
@@ -116,7 +120,7 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
  * ships without its translation.
  */
 export function buildTeamSectionLabels(
-  t: ShellT,
+  t: SidebarChromeT,
 ): Record<TeamSectionId, string> {
   return {
     "mission-control": t("shell:sidebar.teamSections.missionControl"),
@@ -142,7 +146,7 @@ export function buildTeamSectionLabels(
  * squeeze the cards and drag the toggle down to the middle of them.
  */
 export function SidebarWorkspaceHeader(props: {
-  t: ShellT;
+  t: SidebarChromeT;
   workspaces: { id: string; name: string }[];
   currentId: string | null;
   currentName: string | undefined;

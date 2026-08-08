@@ -161,4 +161,11 @@ export const queryKeys = {
    */
   agentModelChoice: (agentId: string) =>
     ["agent-model-choice", agentId] as const,
+
+  /** C13 agent teams: the active space's teams, as the CALLER sees them
+   *  (`GET /v1/org/teams`). App-scoped — one active space at a time, and a
+   *  space switch drops the whole cache (`resetCacheForSpaceChange`). */
+  agentTeams: () => ["agent-teams"] as const,
+  /** C13: one team's EXPLICIT membership rows. Keyed by team id. */
+  agentTeamMembers: (teamId: string) => ["agent-team-members", teamId] as const,
 };

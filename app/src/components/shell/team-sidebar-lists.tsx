@@ -1,6 +1,7 @@
 import type { SidebarLayout } from "@houston-ai/engine-client";
 import type {
   SidebarDefaultGroupView,
+  SidebarGroupAffordances,
   SidebarGroupView,
   SidebarItem,
   SidebarSectionRow,
@@ -42,6 +43,12 @@ export interface BuildTeamSidebarListsArgs extends AgentItemArgs {
   sectionLabels: Record<TeamSectionId, string>;
   highlight: TeamHighlight;
   onOpenSection: (teamId: string, section: TeamSectionId) => void;
+  /** Which header-menu affordances THIS team offers (rename / delete / shared
+   *  context / leave). Asked per team, because a server-owned team may be the
+   *  caller's to rename while the next one is not. Returning `undefined` — as
+   *  the local backend does — passes NO mask, which is the pre-C13 rendering:
+   *  every affordance the sidebar wired a callback for. */
+  affordancesFor?: (team: TeamView) => SidebarGroupAffordances | undefined;
 }
 
 /**
@@ -63,6 +70,7 @@ export function buildTeamSidebarLists({
   sectionLabels,
   highlight,
   onOpenSection,
+  affordancesFor,
   ...itemArgs
 }: BuildTeamSidebarListsArgs): {
   items: SidebarItem[];
@@ -88,13 +96,20 @@ export function buildTeamSidebarLists({
 
   const groups: SidebarGroupView[] = teams
     .filter((team) => !team.isDefault)
-    .map((team) => ({
-      id: team.id,
-      name: team.name,
-      collapsed: collapsedById.get(team.id) ?? false,
-      itemIds: team.agents.map((a) => a.id),
-      sections: sectionsFor(team),
-    }));
+    .map((team) => {
+      // Spread rather than assign: an absent mask and a mask of `undefined`
+      // read the same to the library, but only the omission leaves the view
+      // model literally as it was before masks existed.
+      const affordances = affordancesFor?.(team);
+      return {
+        id: team.id,
+        name: team.name,
+        collapsed: collapsedById.get(team.id) ?? false,
+        itemIds: team.agents.map((a) => a.id),
+        sections: sectionsFor(team),
+        ...(affordances ? { affordances } : {}),
+      };
+    });
 
   const defaultTeam = teams.find((team) => team.isDefault);
   const defaultGroup = defaultTeam

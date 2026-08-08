@@ -26,6 +26,8 @@ export interface SidebarGroupSectionProps {
   highlight?: boolean;
   /** Play a one-shot confirmation pulse (an agent just landed in this group). */
   pulse?: boolean;
+  /** Rune ceiling for the header's inline rename; absent means no cap. */
+  maxNameRunes?: number;
   /** This group should open directly in inline-rename (just created). */
   renaming?: boolean;
   onRenameHandled?: () => void;
@@ -33,6 +35,10 @@ export interface SidebarGroupSectionProps {
   onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  /** Leave the group (the caller's membership, not the group). */
+  onLeaveGroup?: (groupId: string) => void;
+  /** The group's inline rename ended without committing. */
+  onCancelRenameGroup?: (groupId: string) => void;
 }
 
 /**
@@ -55,12 +61,15 @@ export function SidebarGroupSection({
   dragging,
   highlight,
   pulse,
+  maxNameRunes,
   renaming,
   onRenameHandled,
   onToggleCollapsed,
   onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
+  onLeaveGroup,
+  onCancelRenameGroup,
 }: SidebarGroupSectionProps) {
   const { group, groupId, items } = section;
   const collapsed = group?.collapsed ?? false;
@@ -112,12 +121,15 @@ export function SidebarGroupSection({
             labels={ctx.labels}
             dragAttributes={header.attributes}
             dragListeners={header.listeners}
+            maxNameRunes={maxNameRunes}
             startRenaming={renaming}
             onRenameStarted={onRenameHandled}
             onToggleCollapsed={onToggleCollapsed}
             onEditContext={onEditGroupContext}
             onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
+            onLeave={onLeaveGroup}
+            onCancelRename={onCancelRenameGroup}
           />
         )}
         {!group && defaultGroup && (

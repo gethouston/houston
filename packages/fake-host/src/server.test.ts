@@ -670,3 +670,660 @@ describe("startFakeHost", () => {
     await expect(fetch(url)).rejects.toThrow();
   });
 });
+
+/** One team on the wire (`AgentTeam` in `@houston-ai/engine-client`). */
+interface TeamWire {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  sortOrder: number;
+  agentSlugs: string[];
+  memberCount: number;
+  joined: boolean;
+  owner: boolean;
+}
+
+/**
+ * C13 agent teams. These are the ONLY place the client's assumptions about the
+ * teams wire get tested against a server, so each test pins a rule of
+ * `cloud/docs/contracts/C13-agent-teams.md` rather than an implementation
+ * detail: the EFFECTIVE fields, the role filter on `agentSlugs`, every refusal
+ * code, and the reactivity fan-out.
+ */
+describe("agent teams (C13)", () => {
+  let host: FakeHost;
+
+  beforeEach(async () => {
+    host = await startFakeHost(0);
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+  });
+
+  afterEach(async () => {
+    await host.stop();
+  });
+
+  const send = (method: string, path: string, body?: unknown) =>
+    fetch(`${host.url}${path}`, {
+      method,
+      headers: JSON_HEADERS,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  const arm = (seed: unknown) => send("POST", "/__test__/agent-teams", seed);
+  const armCaps = (patch: unknown) =>
+    send("POST", "/__test__/capabilities", patch);
+  const armOrg = (seed: unknown) => send("POST", "/__test__/org", seed);
+  const listTeams = async (): Promise<TeamWire[]> => {
+    const res = await fetch(`${host.url}/v1/org/teams`);
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { teams: TeamWire[] }).teams;
+  };
+  const teamNamed = async (name: string): Promise<TeamWire> => {
+    const team = (await listTeams()).find((t) => t.name === name);
+    if (!team) throw new Error(`no team named ${name}`);
+    return team;
+  };
+  const members = async (teamId: string) => {
+    const res = await fetch(`${host.url}/v1/org/teams/${teamId}/members`);
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { members: unknown[] }).members;
+  };
+  /** A refusal, flattened to what the client's taxonomy actually reads. */
+  const refusal = async (res: Response) => ({
+    status: res.status,
+    code: ((await res.json()) as { code?: string }).code,
+  });
+  /**
+   * Watch the reactivity feed while `body` runs, handing it a `nextEvent(act)`
+   * that performs one mutation and answers the domain event it fanned out.
+   * `sseResponse` registers the listener while the stream is constructed, so
+   * once the response resolves no emit can slip past us — but ARM before
+   * calling this, since arming fans out too.
+   */
+  const withEvents = async (
+    body: (
+      nextEvent: (act: () => Promise<Response>) => Promise<{ type: string }>,
+    ) => Promise<void>,
+  ) => {
+    const abort = new AbortController();
+    try {
+      const stream = await fetch(`${host.url}/v1/events`, {
+        signal: abort.signal,
+      });
+      const reader = (stream.body as ReadableStream<Uint8Array>).getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      await body(async (act) => {
+        expect((await act()).status).toBeLessThan(400);
+        for (;;) {
+          const line = buffer.split("\n").find((l) => l.startsWith("data: "));
+          if (line) {
+            buffer = buffer.slice(buffer.indexOf(line) + line.length);
+            return JSON.parse(line.slice(6)) as { type: string };
+          }
+          const { value, done } = await reader.read();
+          if (done) throw new Error("events stream ended");
+          buffer += decoder.decode(value, { stream: true });
+        }
+      });
+    } finally {
+      abort.abort();
+    }
+  };
+
+  it("mints the default team lazily, named after the org, joined by everyone", async () => {
+    const teams = await listTeams();
+    expect(teams).toHaveLength(1);
+    expect(teams[0]).toMatchObject({
+      name: "Acme",
+      isDefault: true,
+      sortOrder: 0,
+      // Everyone is in the catch-all, and it holds no rows at all — so the
+      // count is the SPACE's, never `len(rows)` beside a `joined: true`.
+      joined: true,
+      memberCount: 1,
+      owner: true,
+      // A NULL team resolves to the default one: the seeded agent is in it
+      // without anybody ever having written a row.
+      agentSlugs: [SEED_AGENT_ID],
+    });
+    // Idempotent: the second read mints nothing new.
+    expect((await listTeams())[0]?.id).toBe(teams[0]?.id);
+    expect(await members(String(teams[0]?.id))).toEqual([]);
+  });
+
+  it("resolves joined, owner and memberCount from the caller's standing", async () => {
+    await armOrg({
+      members: [
+        { userId: "u-self", role: "user" },
+        { userId: "u-bob", role: "user" },
+        { userId: "u-cleo", role: "user" },
+      ],
+    });
+    await armCaps({
+      multiplayer: true,
+      teams: true,
+      agentTeams: true,
+      role: "user",
+    });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        { id: "t-design", name: "Design", members: [{ userId: "u-bob" }] },
+        {
+          id: "t-ops",
+          name: "Ops",
+          members: [{ userId: "u-self", owner: true }, { userId: "u-bob" }],
+        },
+      ],
+    });
+
+    const asMember = await listTeams();
+    // The default: everyone is joined to it and its count is the space's.
+    expect(asMember[0]).toMatchObject({
+      isDefault: true,
+      joined: true,
+      owner: false,
+      memberCount: 3,
+    });
+    // A team the caller holds no row on: not joined, not owned, and its count
+    // is the EXPLICIT rows.
+    expect(asMember[1]).toMatchObject({
+      name: "Design",
+      joined: false,
+      owner: false,
+      memberCount: 1,
+    });
+    // An explicit owner grant is independent of org role: a plain member owns
+    // exactly the team they were granted.
+    expect(asMember[2]).toMatchObject({
+      name: "Ops",
+      joined: true,
+      owner: true,
+      memberCount: 2,
+    });
+
+    // An org admin owns EVERY team implicitly, without a row existing for it.
+    await armCaps({ role: "admin" });
+    const asAdmin = await listTeams();
+    expect(asAdmin.map((t) => t.owner)).toEqual([true, true, true]);
+    expect(asAdmin[1]?.joined).toBe(false);
+    // The rows themselves stay EXPLICIT — implicit ownership is never listed.
+    expect(await members("t-design")).toEqual([
+      { userId: "u-bob", owner: false },
+    ]);
+  });
+
+  it("filters agentSlugs by the caller's org role", async () => {
+    await armOrg({
+      members: [
+        { userId: "u-self", role: "owner" },
+        { userId: "u-bob", role: "user" },
+      ],
+      agents: [
+        {
+          id: "a-mine",
+          name: "Mine",
+          assignments: [{ userId: "u-self", access: "user" }],
+        },
+        {
+          id: "a-theirs",
+          name: "Theirs",
+          assignments: [{ userId: "u-bob", access: "user" }],
+        },
+        { id: "a-everyone", name: "Everyone", everyone: true },
+      ],
+    });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        {
+          id: "t-design",
+          name: "Design",
+          agentIds: ["a-mine", "a-theirs", "a-everyone"],
+        },
+      ],
+    });
+
+    await armCaps({ multiplayer: true, teams: true, role: "owner" });
+    expect((await teamNamed("Design")).agentSlugs).toEqual([
+      "a-mine",
+      "a-theirs",
+      "a-everyone",
+    ]);
+
+    // An admin is filtered exactly like a plain member: implicit TEAM ownership
+    // must not widen AGENT visibility, or a team becomes a side channel onto
+    // the space's whole roster.
+    for (const role of ["admin", "user"]) {
+      await armCaps({ role });
+      expect((await teamNamed("Design")).agentSlugs).toEqual([
+        "a-mine",
+        "a-everyone",
+      ]);
+    }
+  });
+
+  it("creates a team owned by its creator, sorted after the current last", async () => {
+    // A plain member may create — a team is a grouping, not a grant.
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    const res = await send("POST", "/v1/org/teams", { name: "  Design  " });
+    expect(res.status).toBe(201);
+    const created = (await res.json()) as TeamWire;
+    expect(created).toMatchObject({
+      name: "Design",
+      isDefault: false,
+      joined: true,
+      owner: true,
+      memberCount: 1,
+      agentSlugs: [],
+    });
+    // After the current last, so it lands at the bottom of the rail.
+    const teams = await listTeams();
+    expect(teams.map((t) => t.name)).toEqual(["Acme", "Design"]);
+    expect(created.sortOrder).toBeGreaterThan(Number(teams[0]?.sortOrder));
+    // The creator's ownership is an EXPLICIT row (they are no org admin).
+    expect(await members(created.id)).toEqual([
+      { userId: "u-self", owner: true },
+    ]);
+  });
+
+  it("refuses a nameless or over-long team with invalid_name", async () => {
+    for (const name of ["", "   ", 42, undefined, "🙂".repeat(61)]) {
+      expect(
+        await refusal(await send("POST", "/v1/org/teams", { name })),
+      ).toEqual({ status: 400, code: "invalid_name" });
+    }
+    // 60 RUNES, not 60 UTF-16 units: the cap counts what the user typed.
+    const ok = await send("POST", "/v1/org/teams", { name: "🙂".repeat(60) });
+    expect(ok.status).toBe(201);
+    // The patch path follows the same rule, and `sortOrder` must be a number.
+    const team = (await ok.json()) as TeamWire;
+    expect(
+      await refusal(
+        await send("PATCH", `/v1/org/teams/${team.id}`, { name: " " }),
+      ),
+    ).toEqual({ status: 400, code: "invalid_name" });
+    expect(
+      await refusal(
+        await send("PATCH", `/v1/org/teams/${team.id}`, { sortOrder: "3" }),
+      ),
+    ).toEqual({ status: 400, code: "invalid_sort_order" });
+    // A partial patch leaves the untouched field alone.
+    const patched = await send("PATCH", `/v1/org/teams/${team.id}`, {
+      name: "Renamed",
+    });
+    expect(await patched.json()).toMatchObject({
+      name: "Renamed",
+      sortOrder: team.sortOrder,
+    });
+  });
+
+  it("joins idempotently, never demotes an owner, and no-ops on the default team", async () => {
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        { id: "t-design", name: "Design" },
+        {
+          id: "t-ops",
+          name: "Ops",
+          members: [{ userId: "u-self", owner: true }],
+        },
+      ],
+    });
+
+    expect((await send("POST", "/v1/org/teams/t-design/join")).status).toBe(
+      204,
+    );
+    expect((await send("POST", "/v1/org/teams/t-design/join")).status).toBe(
+      204,
+    );
+    expect(await members("t-design")).toEqual([
+      { userId: "u-self", owner: false },
+    ]);
+    // Re-joining a team you already own must not demote you to a plain member.
+    expect((await send("POST", "/v1/org/teams/t-ops/join")).status).toBe(204);
+    expect(await members("t-ops")).toEqual([{ userId: "u-self", owner: true }]);
+    // The default team is a no-op: everyone is already in it, and a row there
+    // is one the remove path could never delete.
+    expect((await send("POST", "/v1/org/teams/t-default/join")).status).toBe(
+      204,
+    );
+    expect(await members("t-default")).toEqual([]);
+  });
+
+  it("refuses a default-team MEMBER write with default_team, ahead of the ownership gate", async () => {
+    // A plain member with no rows: were the gates ordered the other way round,
+    // each of these would answer `not_team_owner` instead. The default team
+    // holds no explicit rows AT ALL, so there is nothing an owner could act on
+    // either — the team's own nature is the whole answer, whoever is asking,
+    // and answering `not_team_owner` would promise a permission that leads
+    // nowhere.
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    const id = (await listTeams())[0]?.id;
+    expect(
+      await refusal(await send("DELETE", `/v1/org/teams/${id}/members/u-self`)),
+    ).toEqual({ status: 400, code: "default_team" });
+    expect(
+      await refusal(
+        await send("PUT", `/v1/org/teams/${id}/members/u-self`, {
+          owner: true,
+        }),
+      ),
+    ).toEqual({ status: 400, code: "default_team" });
+    // And an org owner meets the same wall: the refusal is about the TEAM.
+    await armCaps({ role: "owner" });
+    expect(
+      await refusal(
+        await send("PUT", `/v1/org/teams/${id}/members/u-self`, {
+          owner: true,
+        }),
+      ),
+    ).toEqual({ status: 400, code: "default_team" });
+  });
+
+  it("answers a non-owner DELETEing the default team not_team_owner, not default_team", async () => {
+    // DELETE is the asymmetry: the caller's STANDING is settled before the
+    // team's own nature, so a stranger learns "not yours" and never a detail
+    // about the shape of a space they hold no authority in.
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    const id = (await listTeams())[0]?.id;
+    expect(await refusal(await send("DELETE", `/v1/org/teams/${id}`))).toEqual({
+      status: 403,
+      code: "not_team_owner",
+    });
+    // Somebody who COULD delete a team gets past that gate, and only then meets
+    // the one thing about this team that makes it undeletable.
+    await armCaps({ role: "owner" });
+    expect(await refusal(await send("DELETE", `/v1/org/teams/${id}`))).toEqual({
+      status: 400,
+      code: "default_team",
+    });
+  });
+
+  it("refuses a non-owner's team mutations with not_team_owner", async () => {
+    await armOrg({
+      members: [
+        { userId: "u-self", role: "user" },
+        { userId: "u-bob", role: "user" },
+      ],
+    });
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        {
+          id: "t-design",
+          name: "Design",
+          members: [{ userId: "u-self" }, { userId: "u-bob", owner: true }],
+        },
+      ],
+    });
+    const gated: Array<[string, string, unknown?]> = [
+      ["PATCH", "/v1/org/teams/t-design", { name: "Nope" }],
+      ["DELETE", "/v1/org/teams/t-design"],
+      ["PUT", "/v1/org/teams/t-design/members/u-bob", { owner: false }],
+      ["DELETE", "/v1/org/teams/t-design/members/u-bob"],
+    ];
+    for (const [method, path, body] of gated) {
+      expect(await refusal(await send(method, path, body))).toEqual({
+        status: 403,
+        code: "not_team_owner",
+      });
+    }
+    // Leaving is always yours to do: self-remove is not a team mutation.
+    expect(
+      (await send("DELETE", "/v1/org/teams/t-design/members/u-self")).status,
+    ).toBe(204);
+    // Idempotent: leaving twice still succeeds, so a double-click cannot 404.
+    expect(
+      (await send("DELETE", "/v1/org/teams/t-design/members/u-self")).status,
+    ).toBe(204);
+    expect(await members("t-design")).toEqual([
+      { userId: "u-bob", owner: true },
+    ]);
+  });
+
+  it("upserts a member who never joined, and refuses one outside the org", async () => {
+    await armOrg({
+      members: [
+        { userId: "u-self", role: "owner" },
+        { userId: "u-bob", role: "user" },
+      ],
+    });
+    await arm({ teams: [{ id: "t-design", name: "Design" }] });
+
+    // The upsert ADDS somebody who never joined the team.
+    expect(
+      (
+        await send("PUT", "/v1/org/teams/t-design/members/u-bob", {
+          owner: true,
+        })
+      ).status,
+    ).toBe(204);
+    expect(await members("t-design")).toEqual([
+      { userId: "u-bob", owner: true },
+    ]);
+    // Demoting the LAST explicit owner is allowed: implicit owners always exist.
+    expect(
+      (
+        await send("PUT", "/v1/org/teams/t-design/members/u-bob", {
+          owner: false,
+        })
+      ).status,
+    ).toBe(204);
+    expect(await members("t-design")).toEqual([
+      { userId: "u-bob", owner: false },
+    ]);
+    // The org is the outer boundary, and `owner` must be a boolean.
+    expect(
+      await refusal(
+        await send("PUT", "/v1/org/teams/t-design/members/u-ghost", {
+          owner: true,
+        }),
+      ),
+    ).toEqual({ status: 400, code: "not_a_member" });
+    expect(
+      await refusal(
+        await send("PUT", "/v1/org/teams/t-design/members/u-bob", {
+          owner: "yes",
+        }),
+      ),
+    ).toEqual({ status: 400, code: "invalid_owner" });
+  });
+
+  it("hands a deleted team's agents back to the default team", async () => {
+    await armOrg({
+      agents: [
+        { id: "a-one", name: "One", everyone: true },
+        { id: "a-two", name: "Two", everyone: true },
+      ],
+    });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        { id: "t-design", name: "Design", agentIds: ["a-two"] },
+      ],
+    });
+    expect((await teamNamed("Acme")).agentSlugs).toEqual(["a-one"]);
+
+    expect((await send("DELETE", "/v1/org/teams/t-design")).status).toBe(204);
+    // No agent is ever teamless: the orphan resolves to the default team again.
+    const teams = await listTeams();
+    expect(teams.map((t) => t.id)).toEqual(["t-default"]);
+    expect(teams[0]?.agentSlugs).toEqual(["a-one", "a-two"]);
+    // Its memberships went with it — the team is gone, not emptied.
+    expect(
+      await refusal(await fetch(`${host.url}/v1/org/teams/t-design/members`)),
+    ).toEqual({ status: 404, code: "team_not_found" });
+  });
+
+  it("moves an agent between teams and validates the target", async () => {
+    await armOrg({ agents: [{ id: "a-one", name: "One", everyone: true }] });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        { id: "t-design", name: "Design" },
+      ],
+    });
+
+    expect(
+      (await send("PUT", "/v1/agents/a-one/team", { teamId: "t-design" }))
+        .status,
+    ).toBe(204);
+    expect((await teamNamed("Design")).agentSlugs).toEqual(["a-one"]);
+    expect((await teamNamed("Acme")).agentSlugs).toEqual([]);
+    // Re-issuing the current team is a no-op success, not a conflict.
+    expect(
+      (await send("PUT", "/v1/agents/a-one/team", { teamId: "t-design" }))
+        .status,
+    ).toBe(204);
+
+    // An absent/blank/non-string teamId is a MALFORMED request: a 404 would
+    // claim the gateway looked something up.
+    for (const body of [{}, { teamId: "   " }, { teamId: 7 }]) {
+      expect(
+        await refusal(await send("PUT", "/v1/agents/a-one/team", body)),
+      ).toEqual({ status: 400, code: "invalid_team_id" });
+    }
+    expect(
+      await refusal(
+        await send("PUT", "/v1/agents/a-one/team", { teamId: "t-ghost" }),
+      ),
+    ).toEqual({ status: 404, code: "team_not_found" });
+    const unknownAgent = await send("PUT", "/v1/agents/a-ghost/team", {
+      teamId: "t-design",
+    });
+    expect(unknownAgent.status).toBe(404);
+    expect(await unknownAgent.json()).toEqual({ error: "agent not found" });
+    // The SLUG is resolved before the body is read: an unknown agent 404s even
+    // with no `teamId` at all. "Which agent?" is the question this route is
+    // addressed to, so a client chasing a stale slug must not be told its body
+    // was malformed and retry with a teamId that can never help.
+    const ghostNoTeam = await send("PUT", "/v1/agents/a-ghost/team", {});
+    expect(ghostNoTeam.status).toBe(404);
+    expect(await ghostNoTeam.json()).toEqual({ error: "agent not found" });
+
+    // Ownership of BOTH sides: a plain member owning only the TARGET may not
+    // pull an agent out of a team they do not own.
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true, agentIds: [] },
+        {
+          id: "t-mine",
+          name: "Mine",
+          members: [{ userId: "u-self", owner: true }],
+        },
+      ],
+    });
+    expect(
+      await refusal(
+        await send("PUT", "/v1/agents/a-one/team", { teamId: "t-mine" }),
+      ),
+    ).toEqual({ status: 403, code: "not_team_owner" });
+  });
+
+  it("answers a same-team move 204 before it asks about ownership, and still fans out", async () => {
+    // The caller owns NEITHER side: a plain member with no rows on the team the
+    // agent already sits in. A move that changes nothing is not a mutation to
+    // authorize — refusing it would teach the client that the state it is
+    // already in is forbidden, and a re-drop onto the block an agent never left
+    // would spring a "not a team owner" toast out of nowhere.
+    await armOrg({ agents: [{ id: "a-one", name: "One", everyone: true }] });
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        { id: "t-design", name: "Design", agentIds: ["a-one"] },
+      ],
+    });
+    // Proof the ownership gate is armed and would refuse a REAL move.
+    expect(
+      await refusal(
+        await send("PUT", "/v1/agents/a-one/team", { teamId: "t-default" }),
+      ),
+    ).toEqual({ status: 403, code: "not_team_owner" });
+
+    await withEvents(async (nextEvent) => {
+      // The no-op still fans out, exactly like the no-op join: a client that
+      // wrote optimistically is reconciled against the server's truth either
+      // way, so nothing depends on the write having been consequential.
+      const event = await nextEvent(() =>
+        send("PUT", "/v1/agents/a-one/team", { teamId: "t-design" }),
+      );
+      expect(event.type).toBe("AgentsChanged");
+    });
+    expect((await teamNamed("Design")).agentSlugs).toEqual(["a-one"]);
+  });
+
+  it("404s an unknown or malformed team id", async () => {
+    for (const path of ["/v1/org/teams/t-ghost", "/v1/org/teams/%zz"]) {
+      expect(await refusal(await send("PATCH", path, { name: "X" }))).toEqual({
+        status: 404,
+        code: "team_not_found",
+      });
+      expect(await refusal(await send("DELETE", path))).toEqual({
+        status: 404,
+        code: "team_not_found",
+      });
+    }
+    expect(
+      await refusal(await fetch(`${host.url}/v1/org/teams/t-ghost/members`)),
+    ).toEqual({ status: 404, code: "team_not_found" });
+  });
+
+  it("serves the default team alone in a personal space and 403s every mutation", async () => {
+    await arm({
+      // Even with a second team armed, a personal space serves exactly one, so
+      // the client renders one team named after the workspace with no branch.
+      teams: [{ id: "t-design", name: "Design" }],
+      personalSpace: true,
+    });
+    const teams = await listTeams();
+    expect(teams).toHaveLength(1);
+    expect(teams[0]).toMatchObject({
+      isDefault: true,
+      name: "Acme",
+      joined: true,
+      owner: true,
+      memberCount: 1,
+    });
+
+    const mutations: Array<[string, string, unknown?]> = [
+      ["POST", "/v1/org/teams", { name: "Design" }],
+      ["PATCH", "/v1/org/teams/t-design", { name: "X" }],
+      ["DELETE", "/v1/org/teams/t-design"],
+      ["POST", "/v1/org/teams/t-design/join"],
+      ["DELETE", "/v1/org/teams/t-design/members/u-self"],
+      ["PUT", "/v1/org/teams/t-design/members/u-self", { owner: true }],
+      ["PUT", `/v1/agents/${SEED_AGENT_ID}/team`, { teamId: "t-design" }],
+    ];
+    for (const [method, path, body] of mutations) {
+      expect(await refusal(await send(method, path, body))).toEqual({
+        status: 403,
+        code: "personal_space",
+      });
+    }
+  });
+
+  it("fans out AgentsChanged on every mutation", async () => {
+    await withEvents(async (nextEvent) => {
+      const created = await nextEvent(() =>
+        send("POST", "/v1/org/teams", { name: "Design" }),
+      );
+      expect(created.type).toBe("AgentsChanged");
+      const id = (await teamNamed("Design")).id;
+      // Even a no-op join fans out, so a client that wrote optimistically is
+      // always reconciled against the server's truth.
+      for (const act of [
+        () => send("POST", `/v1/org/teams/${id}/join`),
+        () => send("PATCH", `/v1/org/teams/${id}`, { sortOrder: 9 }),
+        () => send("PUT", `/v1/agents/${SEED_AGENT_ID}/team`, { teamId: id }),
+        () => send("DELETE", `/v1/org/teams/${id}`),
+      ]) {
+        expect((await nextEvent(act)).type).toBe("AgentsChanged");
+      }
+    });
+  });
+});

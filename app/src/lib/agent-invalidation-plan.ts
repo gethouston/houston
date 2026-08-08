@@ -101,6 +101,16 @@ export function planInvalidation(
     case "AgentsChanged":
       if (ctx.workspaceId && ev.data.workspace_id === ctx.workspaceId) {
         plan.reloadAgentsWorkspace = ctx.workspaceId;
+        // C13: EVERY server-team mutation fans out this same event — a team
+        // created, renamed or deleted, someone joining or leaving, an agent
+        // moved between teams. So the roster reload alone would leave the rail
+        // showing the previous grouping until the next mount. The event names
+        // no team, so the member rows go by PREFIX, refreshing whichever team's
+        // list is open. Inside the workspace guard with the roster reload: on
+        // an `agentTeams` host the teams ARE this workspace's grouping, and
+        // another workspace's event must not disturb it.
+        plan.invalidate.push(queryKeys.agentTeams());
+        plan.invalidate.push(["agent-team-members"]);
       }
       break;
     case "SidebarLayoutChanged":

@@ -135,6 +135,20 @@ inbox and can force a per-invite `needs_upgrade` / `already_member` /
 `{ spaces:true }`, because the sidebar cards are capability-gated on the client
 (`team-invites.spec.ts`).
 
+**C13 agent-teams arming.** `POST /__test__/agent-teams`
+(`{ teams: [{ id, name, isDefault?, sortOrder?, agentIds?, members? }],
+personalSpace? }`) arms the server-owned team world `GET /v1/org/teams` serves —
+who is in each team, which agents it holds, and who owns it. Pair it with
+`/__test__/capabilities` `{ agentTeams:true }` (the client feature-detects on the
+capability, never on the data) and with `/__test__/org` `{ agents, members }`,
+because a team is only as real as the fleet and roster behind it. That is the
+whole setup for `agent-teams.spec.ts`: the joined / "Other teams" split, creating
+a team with the TYPED name, a drag that writes `PUT /v1/agents/:slug/team` and
+rolls back on a refusal, and Team Settings' Members card. With the capability off
+the client runs the pre-C13 local `sidebar_layout` backend unchanged, which is
+what `sidebar-teams.spec.ts` / `sidebar-dnd.spec.ts` /
+`team-settings-manager.spec.ts` already guard.
+
 The seeded catalog (`SEED_TOOLKIT_SLUGS`, exported for specs) holds 15 A-Z apps,
 enough that a tight allowlist blocks past the locked preview cap (8) so the
 "+N more" overflow is exercisable.

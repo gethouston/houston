@@ -22,6 +22,7 @@ export type { SidebarGroupedListProps } from "./sidebar-grouped-list";
 export { SidebarGroupedList } from "./sidebar-grouped-list";
 export type {
   SidebarDefaultGroupView,
+  SidebarGroupAffordances,
   SidebarGroupView,
   SidebarSection,
   SidebarSectionRow,

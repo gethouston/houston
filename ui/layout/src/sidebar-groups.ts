@@ -15,6 +15,32 @@ export interface SidebarSectionRow {
   onSelect: () => void;
 }
 
+/**
+ * Which header-menu affordances THIS group offers, independently of its
+ * siblings. Per GROUP rather than per list because a server-owned team may be
+ * renamable while the next one is not, and one set of list-level callbacks
+ * cannot say that.
+ *
+ * An absent mask means every affordance the host wired a callback for, which is
+ * exactly the behavior before masks existed. A field left `undefined` inside a
+ * present mask means the same: no opinion, the callback alone decides. Only
+ * `false` takes something away, so describing one affordance can never silently
+ * retract the ones you did not mention.
+ */
+export interface SidebarGroupAffordances {
+  rename?: boolean;
+  delete?: boolean;
+  /** The group's shared-context editor. */
+  context?: boolean;
+  /**
+   * Leaving is the one OPT-IN flag: only an explicit `true` shows it, and an
+   * absent mask hides it. It acts on the CALLER's membership rather than on the
+   * group, so a host must never acquire it by staying silent — and a host that
+   * has no notion of joining a group must never be handed a way out of one.
+   */
+  leave?: boolean;
+}
+
 /** A named, collapsible group of sidebar items in display order. */
 export interface SidebarGroupView {
   id: string;
@@ -23,6 +49,23 @@ export interface SidebarGroupView {
   itemIds: string[];
   /** Destination rows rendered above this group's item rows. */
   sections?: SidebarSectionRow[];
+  /** Which header-menu affordances this group offers. Absent ⇒ all of the ones
+   *  the host wired up; see {@link SidebarGroupAffordances}. */
+  affordances?: SidebarGroupAffordances;
+}
+
+/**
+ * Whether `group` offers `affordance`. The mask is a VETO, not a grant — the
+ * host's callback is the grant — except for `leave`, which is opt-in (see
+ * {@link SidebarGroupAffordances}). With no mask every answer is the callback's
+ * own, which is what keeps a host that passes none rendering exactly as before.
+ */
+export function groupAllows(
+  group: SidebarGroupView,
+  affordance: keyof SidebarGroupAffordances,
+): boolean {
+  if (affordance === "leave") return group.affordances?.leave === true;
+  return group.affordances?.[affordance] !== false;
 }
 
 /**

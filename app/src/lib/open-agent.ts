@@ -9,30 +9,42 @@
  * `lib/agent-nav.ts`; this file only binds them to the stores.
  */
 
+import type { Capabilities } from "@houston-ai/engine-client";
 import type { AgentSettingsSection } from "../components/agent-settings/agent-settings-nav.ts";
 import { useTeamSettingsNav } from "../components/team-view/team-settings-nav-store.ts";
+import { getCurrentAgentTeams } from "../hooks/queries/use-agent-teams.ts";
 import { getCurrentSidebarLayout } from "../hooks/use-sidebar-layout.ts";
 import { useAgentStore } from "../stores/agents.ts";
 import { useUIStore } from "../stores/ui.ts";
 import { useWorkspaceStore } from "../stores/workspaces.ts";
 import { agentDestination } from "./agent-nav.ts";
 import i18n from "./i18n.ts";
-import { resolveTeams, type TeamView } from "./teams-model.ts";
+import { hasAgentTeams } from "./org-roles.ts";
+import { queryClient } from "./query-client.ts";
+import { queryKeys } from "./query-keys.ts";
+import { resolveTeamsForBackend } from "./teams-backend.ts";
+import type { TeamView } from "./teams-model.ts";
 
 /**
- * The teams as they are RIGHT NOW, outside React. Same three inputs
- * `useTeams()` composes (agents, the cached sidebar layout, the workspace
- * name), read from the stores and the query cache so a keyboard shortcut or a
- * notification handler resolves the same teams the rail is showing.
+ * The teams as they are RIGHT NOW, outside React. Same inputs `useTeams()`
+ * composes (the capability, the server's teams, the agents, the cached sidebar
+ * layout, the workspace name), read from the stores and the query cache, and
+ * branched by the very same `resolveTeamsForBackend` — so a keyboard shortcut
+ * or a notification handler can never resolve different teams than the rail.
  */
 function currentTeams(): TeamView[] {
   const workspace = useWorkspaceStore.getState().current;
   if (!workspace) return [];
-  return resolveTeams(
-    useAgentStore.getState().agents,
-    getCurrentSidebarLayout(workspace.id),
-    workspace.name,
+  const capabilities = queryClient.getQueryData<Capabilities>(
+    queryKeys.capabilities(),
   );
+  return resolveTeamsForBackend({
+    agents: useAgentStore.getState().agents,
+    layout: getCurrentSidebarLayout(workspace.id),
+    serverBacked: hasAgentTeams(capabilities),
+    serverTeams: getCurrentAgentTeams(),
+    workspaceName: workspace.name,
+  });
 }
 
 /** Open the board the agent's missions live on, filtered to that agent. */

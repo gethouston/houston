@@ -43,6 +43,11 @@ function ToastItem({
 
   return (
     <motion.div
+      // The variant is the toast's MEANING, so it must reach assistive tech and
+      // not only the eye: `alert` is the "something went wrong" channel
+      // (assertive), `status` the calm one (polite). Without a role the whole
+      // stack is announced to nobody.
+      role={toast.variant === "error" ? "alert" : "status"}
       layout
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}

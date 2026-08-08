@@ -25,6 +25,8 @@ export type {
   AgentMoveStart,
   AgentMoveStatus,
   AgentSettings,
+  AgentTeam,
+  AgentTeamMember,
   ApiKey,
   ApiKeyCreated,
   AuditEntry,
@@ -69,6 +71,7 @@ export * from "./cp/files-context";
 export * from "./cp/integrations";
 export * from "./cp/marketplace";
 export * from "./cp/me-profile";
+export * from "./cp/org-teams";
 export * from "./cp/orgs";
 export * from "./cp/retry";
 export * from "./cp/runtime-clients";

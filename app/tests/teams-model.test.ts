@@ -3,10 +3,15 @@ import { describe, it } from "node:test";
 import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
 import {
   blockedTeamView,
+  canDeleteTeam,
+  canJoinTeam,
+  canLeaveTeam,
+  canRenameTeam,
   canSeeTeamSettings,
   DEFAULT_TEAM_ID,
   resolveTeamSection,
   resolveTeams,
+  type ServerTeamFacts,
   sectionHonorsAgentPin,
   TEAM_VIEW_ID,
   type TeamView,
@@ -25,6 +30,16 @@ const team = (agents: Agent[], over: Partial<TeamView> = {}): TeamView => ({
   name: "Sales",
   agents,
   isDefault: false,
+  ...over,
+});
+
+/** C13 server facts. Their PRESENCE is what switches every rule to the server
+ *  backend; a team without them is a local sidebar group, as before. */
+const facts = (over: Partial<ServerTeamFacts> = {}): ServerTeamFacts => ({
+  joined: true,
+  owner: false,
+  memberCount: 1,
+  sortOrder: 0,
   ...over,
 });
 
@@ -209,6 +224,37 @@ describe("visibleTeamSectionsForTeam", () => {
     });
     assert.deepEqual(visibleTeamSectionsForTeam(MEMBER, def), [...ALL]);
   });
+
+  it("on a SERVER team the org-role half is replaced by the server's owner flag", () => {
+    // An explicit team owner configures their team without being an org admin.
+    assert.deepEqual(
+      visibleTeamSectionsForTeam(
+        MEMBER,
+        team([agent("a", "user")], { server: facts({ owner: true }) }),
+      ),
+      [...ALL],
+    );
+    // And the reverse: the server's `owner: false` wins over the client's
+    // org-role guess. A real admin never gets that row (the gateway marks them
+    // owner of every team) -- which is exactly why the client must not re-derive.
+    assert.deepEqual(
+      visibleTeamSectionsForTeam(
+        caps({ multiplayer: true, role: "admin" }),
+        team([agent("a", "user")], { server: facts({ owner: false }) }),
+      ),
+      [...WORK],
+    );
+  });
+
+  it("the agent-manager clause survives the server switch", () => {
+    const sections = visibleTeamSectionsForTeam(
+      MEMBER,
+      team([agent("a", "user"), agent("b", "manager")], {
+        server: facts({ owner: false }),
+      }),
+    );
+    assert.equal(sections.includes("settings"), true);
+  });
 });
 
 describe("resolveTeamSection", () => {
@@ -273,5 +319,81 @@ describe("blockedTeamView", () => {
     assert.equal(blockedTeamView(TEAM_VIEW_ID, teams, "gone"), true);
     assert.equal(blockedTeamView(TEAM_VIEW_ID, teams, null), true);
     assert.equal(blockedTeamView(TEAM_VIEW_ID, [], "g1"), true);
+  });
+
+  it("passes a SERVER team the caller has NOT joined", () => {
+    // Joining is sidebar PINNING and it grants nothing (C13's first
+    // non-negotiable): every team the gateway lists is one this caller may
+    // already see. Blocking on `joined` dead-ended every jump to an agent that
+    // lives in an unjoined team -- the destination map resolved the right team
+    // and this guard threw the user back onto the dashboard.
+    const unjoined = [
+      team([agent("a")], { id: "s1", server: facts({ joined: false }) }),
+    ];
+    const joined = [
+      team([agent("a")], { id: "s1", server: facts({ joined: true }) }),
+    ];
+    assert.equal(blockedTeamView(TEAM_VIEW_ID, unjoined, "s1"), false);
+    assert.equal(blockedTeamView(TEAM_VIEW_ID, joined, "s1"), false);
+  });
+
+  it("still blocks a SERVER team id that resolves to nothing", () => {
+    // The ONE thing left to block: a team that is gone. Deleted by its owner,
+    // or a stale id from a space the caller switched away from.
+    const unjoined = [team([], { id: "s1", server: facts({ joined: false }) })];
+    assert.equal(blockedTeamView(TEAM_VIEW_ID, unjoined, "gone"), true);
+    assert.equal(blockedTeamView(TEAM_VIEW_ID, [], "s1"), true);
+  });
+
+  it("never blocks a non-team viewMode, whatever the teams say", () => {
+    const unjoined = [team([], { id: "s1", server: facts({ joined: false }) })];
+    for (const view of ["dashboard", "settings", "store"]) {
+      assert.equal(blockedTeamView(view, unjoined, "s1"), false, view);
+      assert.equal(blockedTeamView(view, [], "gone"), false, view);
+    }
+  });
+});
+
+describe("canRenameTeam / canDeleteTeam / canLeaveTeam / canJoinTeam", () => {
+  const local = team([]);
+  const localDefault = team([], { id: DEFAULT_TEAM_ID, isDefault: true });
+  const srv = (over: Partial<ServerTeamFacts>, isDefault = false) =>
+    team([], { id: "s1", isDefault, server: facts(over) });
+
+  it("off the server backend the rules are exactly today's: any group but the default", () => {
+    assert.equal(canRenameTeam(local), true);
+    assert.equal(canDeleteTeam(local), true);
+    assert.equal(canRenameTeam(localDefault), false);
+    assert.equal(canDeleteTeam(localDefault), false);
+    // There is no membership to join or leave without a server.
+    assert.equal(canLeaveTeam(local), false);
+    assert.equal(canJoinTeam(local), false);
+    assert.equal(canLeaveTeam(localDefault), false);
+    assert.equal(canJoinTeam(localDefault), false);
+  });
+
+  it("canRenameTeam is the server owner, INCLUDING on the default team", () => {
+    // The default team's rail block carries no menu, so Team Settings is the
+    // only place its name (the space's own) can be edited.
+    assert.equal(canRenameTeam(srv({ owner: true })), true);
+    assert.equal(canRenameTeam(srv({ owner: false })), false);
+    assert.equal(canRenameTeam(srv({ owner: true }, true)), true);
+  });
+
+  it("canDeleteTeam needs the server owner AND a non-default team", () => {
+    assert.equal(canDeleteTeam(srv({ owner: true })), true);
+    assert.equal(canDeleteTeam(srv({ owner: false })), false);
+    assert.equal(canDeleteTeam(srv({ owner: true }, true)), false);
+  });
+
+  it("canLeaveTeam needs a joined, non-default server team", () => {
+    assert.equal(canLeaveTeam(srv({ joined: true })), true);
+    assert.equal(canLeaveTeam(srv({ joined: false })), false);
+    assert.equal(canLeaveTeam(srv({ joined: true }, true)), false);
+  });
+
+  it("canJoinTeam is offered exactly on the server teams you are not in", () => {
+    assert.equal(canJoinTeam(srv({ joined: false })), true);
+    assert.equal(canJoinTeam(srv({ joined: true })), false);
   });
 });

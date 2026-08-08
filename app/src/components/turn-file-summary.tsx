@@ -5,9 +5,11 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
+import { useTeams } from "../hooks/use-teams";
 import { fileNameOf } from "../lib/agent-file-paths";
 import { canOpenAgentSettings } from "../lib/agent-nav";
 import { openAgentSettings } from "../lib/open-agent";
+import { teamOfAgent } from "../lib/teams-model";
 import {
   groupTurnSummaryItems,
   type SemanticUpdateKind,
@@ -33,17 +35,21 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
 
   // Whether a semantic update ("the agent updated its job description") is a
   // LINK at all. Its destination is the canonical agent settings page, whose
-  // ONE door is Team Settings — so the gate is simply "can this caller reach
-  // that page for THIS agent". Reaching it without managing the agent is
-  // honest, not a dead link: the page renders its read-only face there
-  // (`AgentDetail`'s documented rule), which is exactly what someone reading
-  // "the agent updated its job description" wants to see. A row that only
-  // closed the panel would be the dead affordance, and that is what this
-  // prevents.
+  // ONE door is Team Settings, so the gate is "can this caller reach that page
+  // for THIS agent". Reaching it without managing the agent is honest, not a
+  // dead link: the page renders its read-only face there (`AgentDetail`'s
+  // documented rule). A row that only closed the panel is the dead affordance
+  // this prevents. The agent's TEAM is passed because that door is PER TEAM:
+  // on a server-teams host an explicit team owner configures their team's
+  // agents without being an org admin, and only the per-team gate knows it —
+  // asking the org-wide question alone would strip the link from those owners.
   const agent = useAgentStore((s) =>
     s.agents.find((a) => a.folderPath === agentPath),
   );
-  const semanticIsLink = !!agent && canOpenAgentSettings(capabilities, agent);
+  const teams = useTeams();
+  const semanticIsLink =
+    !!agent &&
+    canOpenAgentSettings(capabilities, agent, teamOfAgent(teams, agent.id));
 
   const agentId = agent?.id;
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);

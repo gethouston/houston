@@ -1,7 +1,5 @@
 import type { SidebarGroupView } from "@houston-ai/layout";
 import { SidebarGroupHeader } from "@houston-ai/layout";
-import type { ReactNode } from "react";
-import { useState } from "react";
 
 import type { Specimen } from "../../../src/specimen";
 import {
@@ -15,39 +13,7 @@ import {
   GROUP_LABELS,
   SIDEBAR_GROUP_HEADER_PROPS,
 } from "./sidebar-group-header-api";
-
-/** Group headers live on the rail, at the rail's width. */
-function Rail({ children }: { children: ReactNode }) {
-  return (
-    <div className="w-[220px] space-y-1 rounded-xl bg-sidebar px-2 py-2">
-      {children}
-    </div>
-  );
-}
-
-/** Collapse and rename both move real state, as they do in the shell. */
-function LiveGroup({
-  initial,
-  startRenaming,
-}: {
-  initial: SidebarGroupView;
-  startRenaming?: boolean;
-}) {
-  const [group, setGroup] = useState(initial);
-  return (
-    <SidebarGroupHeader
-      group={group}
-      count={group.itemIds.length}
-      labels={GROUP_LABELS}
-      startRenaming={startRenaming}
-      onToggleCollapsed={() =>
-        setGroup((one) => ({ ...one, collapsed: !one.collapsed }))
-      }
-      onRenameGroup={(_id, name) => setGroup((one) => ({ ...one, name }))}
-      onEditContext={() => setGroup((one) => ({ ...one, collapsed: false }))}
-    />
-  );
-}
+import { LiveDraft, LiveGroup, Rail } from "./sidebar-group-header-parts";
 
 const mornings: SidebarGroupView = {
   id: "mornings",
@@ -71,11 +37,26 @@ function SidebarGroupHeaderSpecimen() {
     >
       <SpecimenSection
         title="Variants"
-        note="No `variant` prop. What changes is which callbacks you pass: each of `onEditContext`, `onRenameGroup` and `onDeleteGroup` adds its own entry, and with none of them the ⋯ trigger is not rendered at all."
+        note="No `variant` prop. What changes is which callbacks you pass: each of `onEditContext`, `onRenameGroup` and `onDeleteGroup` adds its own entry, and with none of them the ⋯ trigger is not rendered at all. A group may also narrow that per group, through its own `affordances` mask — how a server-owned team says the caller may rename it but not delete it. `onLeave` is the one entry that acts on the caller rather than the group, so it sits last, behind a separator, and needs `affordances.leave` set to true on top of the callback."
       >
         <SpecimenRow label="Full menu — hover for ⋯">
           <Rail>
             <LiveGroup initial={mornings} />
+          </Rail>
+        </SpecimenRow>
+        <SpecimenRow label="Masked — rename allowed, delete withheld, Leave offered">
+          <Rail>
+            <SidebarGroupHeader
+              group={{
+                ...mornings,
+                affordances: { rename: true, delete: false, leave: true },
+              }}
+              count={mornings.itemIds.length}
+              labels={GROUP_LABELS}
+              onRenameGroup={() => {}}
+              onDeleteGroup={() => {}}
+              onLeave={() => {}}
+            />
           </Rail>
         </SpecimenRow>
         <SpecimenRow label="No menu — read-only group">
@@ -91,7 +72,7 @@ function SidebarGroupHeaderSpecimen() {
 
       <SpecimenSection
         title="States"
-        note="Collapse is the group's own `collapsed` flag — the chevron rotates 90°, it never disappears. Rename swaps the label for an input that focuses and selects once, commits on Enter or blur, and abandons on Escape."
+        note="Collapse is the group's own `collapsed` flag — the chevron rotates 90°, it never disappears. Rename swaps the label for an input that focuses and selects once, commits on Enter or blur, and abandons on Escape. Every abandonment reports itself once through `onCancelRename` — Escape, or leaving the field with nothing typed or nothing changed — which is how a group that does not exist yet knows to disappear."
       >
         <SpecimenRow label="Expanded / collapsed — click a chevron">
           <Rail>
@@ -110,6 +91,11 @@ function SidebarGroupHeaderSpecimen() {
               }}
               startRenaming
             />
+          </Rail>
+        </SpecimenRow>
+        <SpecimenRow label="Draft — name it to keep it, Escape to drop it">
+          <Rail>
+            <LiveDraft />
           </Rail>
         </SpecimenRow>
         <SpecimenRow label="Count fades under the hover menu">

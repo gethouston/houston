@@ -91,6 +91,27 @@ export interface SidebarProps {
   onEditGroupContext?: (groupId: string) => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  /**
+   * Leave a group: the caller's own membership, not the group. Its menu entry
+   * sits last, behind a separator, and needs the group's `affordances.leave` to
+   * be explicitly `true` on top of this callback.
+   */
+  onLeaveGroup?: (groupId: string) => void;
+  /**
+   * A group's inline rename ended WITHOUT committing (Escape, or leaving the
+   * field with nothing typed or nothing changed). A host that creates the group
+   * only once a name is typed keeps the not-yet-real group as a local draft
+   * row; this is the only signal that tells it an abandoned name from a pending
+   * one, so without it the draft never goes away.
+   */
+  onCancelRenameGroup?: (groupId: string) => void;
+  /**
+   * Ceiling on a group's inline-rename field, in RUNES (see `rune-clamp.ts` for
+   * why runes and not `maxLength`). ABSENT means no cap, so a host that passes
+   * nothing renders exactly as it did before; the field clamps rather than
+   * refusing, so pasting is never blocked.
+   */
+  groupNameMaxRunes?: number;
   /** A group id to open directly in inline-rename (e.g. a just-created group). */
   renamingGroupId?: string | null;
   onRenamingGroupIdHandled?: () => void;
@@ -117,6 +138,8 @@ export interface SidebarLabels extends SidebarItemRowLabels {
   createGroup?: string;
   renameGroup?: string;
   deleteGroup?: string;
+  /** Menu entry that gives up the caller's membership of the group. */
+  leaveGroup?: string;
   /** Menu item that opens the group's shared-context editor. */
   editGroupContext?: string;
   /** aria label for the group "..." menu trigger. */
@@ -135,6 +158,7 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
   createGroup: "New group",
   renameGroup: "Rename group",
   deleteGroup: "Delete group",
+  leaveGroup: "Leave group",
   editGroupContext: "Edit shared context",
   groupMenu: "Group options",
   newGroupPlaceholder: "Group name",
@@ -162,6 +186,9 @@ export function AppSidebar({
   onEditGroupContext,
   onRenameGroup,
   onDeleteGroup,
+  onLeaveGroup,
+  onCancelRenameGroup,
+  groupNameMaxRunes,
   renamingGroupId,
   onRenamingGroupIdHandled,
   onMoveItem,
@@ -357,6 +384,9 @@ export function AppSidebar({
                 onEditGroupContext={onEditGroupContext}
                 onRenameGroup={onRenameGroup}
                 onDeleteGroup={onDeleteGroup}
+                onLeaveGroup={onLeaveGroup}
+                onCancelRenameGroup={onCancelRenameGroup}
+                groupNameMaxRunes={groupNameMaxRunes}
                 renamingGroupId={renamingGroupId}
                 onRenamingGroupIdHandled={onRenamingGroupIdHandled}
                 onMoveItem={onMoveItem}

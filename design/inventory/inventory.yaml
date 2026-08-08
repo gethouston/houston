@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 56
+version: 57
 
 components:
   - id: agent-avatar
@@ -1053,9 +1053,9 @@ components:
     purpose: >-
       One team in the navigation rail: its name, the destinations that team
       offers, and the agents that belong to it.
-    anatomy: [header-name, collapse-caret, member-count, header-menu, section-rows, agent-rows, empty-hint]
-    states: [resting, collapsed, drop-target, drop-confirmed, empty, renaming]
-    variants: [named-team, default-team]
+    anatomy: [header-name, collapse-caret, member-count, header-menu, section-rows, agent-rows, empty-hint, join-action]
+    states: [resting, collapsed, drop-target, drop-confirmed, empty, renaming, unjoined]
+    variants: [named-team, default-team, other-team]
     behavior: >-
       Every agent belongs to exactly one team, so the rail is a list of team
       blocks and nothing else. Named teams are the stored sidebar groups; the
@@ -1074,11 +1074,29 @@ components:
       agree on where the user is. Agents drag within and between teams (the
       default team included) and team headers reorder teams; that is the only
       thing that writes to the stored layout.
+      Where teams are SERVER-OWNED and shared with other people, the rail splits
+      in two: the teams the caller JOINED are the blocks, in full, and every
+      other team in the space collapses into one quiet disclosure at the foot of
+      the rail -- the UNJOINED state, a name, how many people are in it, and a
+      JOIN ACTION. Joining is sidebar PINNING, not a grant: it moves the team
+      into the rail and nothing else, because who may see a team's agents was
+      already settled by the space's roles, and a rail that implied otherwise
+      would be selling permission it does not hold. Leaving is the same move
+      backwards, which is why it lives at the BOTTOM of the header menu behind a
+      separator: everything above it edits the team, and this one edits the
+      caller's relationship to it. Which menu entries a block offers is decided
+      PER TEAM, not once for the rail -- the caller may own one team and merely
+      belong to the next -- and a block that offers none shows no menu at all
+      rather than an empty one. Creating a team asks for the name FIRST: the new
+      block is a local draft until a name is committed, and abandoning the field
+      removes it, so no placeholder-named team is ever broadcast to the people
+      sharing the space.
     a11y: >-
       Section rows are buttons carrying aria-current="page" when open; the named
       team's header exposes aria-expanded and an accessible name; the default
       team's header is a plain label with no interactive affordance, so nothing
-      promises a click that does nothing.
+      promises a click that does nothing. The other-teams disclosure names its
+      count, and each join control names the team it joins.
     since: 55
 
   - id: team-screen
@@ -1087,8 +1105,8 @@ components:
       The full-window surface behind a team block's destination rows: one
       team's missions, what its agents do on their own, what they keep, and the
       agents that belong to it.
-    anatomy: [board-toolbar, team-title, agent-filter, mission-board, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in]
-    states: [mission-control, mission-control-filtered, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail]
+    anatomy: [board-toolbar, team-title, agent-filter, mission-board, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
+    states: [mission-control, mission-control-filtered, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail, settings-members]
     variants: [named-team, default-team]
     behavior: >-
       ONE screen serves every team: which team and which of its sections are
@@ -1124,8 +1142,20 @@ components:
       Settings lists the team's agents with the same plain-language access line
       every agent list shares, and opening one drills into the ONE canonical
       agent settings page rather than a second copy of it.
+      Where teams are server-owned, Team Settings is also where a team is NAMED
+      and where its PEOPLE are, in a members card under the agents: the rows are
+      EXPLICIT memberships only, so a card that lists nobody is not a claim that
+      nobody can reach the team, and it says as much -- owners and admins of the
+      space manage every team without ever appearing in it, and the space's
+      catch-all team holds no rows at all because everybody is in it. Only a
+      team's owner sees the controls that write (making someone an owner,
+      removing them); everyone else reads the same list. This is also the only
+      door to renaming the catch-all team, whose rail block deliberately offers
+      no menu. The caller's own Join and Leave sit here too, next to the list
+      that explains what they mean.
     a11y: >-
       The board's team name is the screen's h1; the filter menu names the agent
       it is pinned to; the settings drill-in is framed by a labelled back
-      control naming the team it returns to.
+      control naming the team it returns to; every members-card control names
+      the person it acts on.
     since: 55

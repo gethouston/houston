@@ -23,6 +23,7 @@
       "newDefault": "Nova equipe",
       "rename": "Renomear equipe",
       "delete": "Excluir equipe",
+      "leave": "Sair da equipe",
       "menu": "Opções da equipe",
       "namePlaceholder": "Nome da equipe",
       "emptyHint": "Arraste agentes aqui",
