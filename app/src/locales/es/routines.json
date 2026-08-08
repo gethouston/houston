@@ -106,7 +106,7 @@
     "promptTitle": "Qué hace esta rutina",
     "scheduleTitle": "Cuándo se ejecuta",
     "modelTitle": "Modelo",
-    "openChat": "Abrir chat",
+    "openChat": "Editar en el chat",
     "editName": "Editar nombre",
     "nextRun": "Próxima ejecución {{when}}",
     "runsTitle": "Ejecuciones",

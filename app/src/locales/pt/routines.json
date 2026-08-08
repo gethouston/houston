@@ -106,7 +106,7 @@
     "promptTitle": "O que esta rotina faz",
     "scheduleTitle": "Quando ela executa",
     "modelTitle": "Modelo",
-    "openChat": "Abrir chat",
+    "openChat": "Editar no chat",
     "editName": "Editar nome",
     "nextRun": "Próxima execução {{when}}",
     "runsTitle": "Execuções",
