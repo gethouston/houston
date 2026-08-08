@@ -24,6 +24,7 @@
     "chip-text": { "$value": "{color.neutral.950}" },
     "chip-subtle": { "$value": "{color.alpha.ink-a035}" },
     "bubble-text": { "$value": "{color.base.white}" },
+    "prose-text": { "$value": "{color.cool.ink}" },
     "line": { "$value": "{color.brand.border-wash}" },
     "line-input": { "$value": "{color.neutral.200}" },
     "focus": { "$value": "{color.neutral.950}" },

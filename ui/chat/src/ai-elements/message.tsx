@@ -136,7 +136,13 @@ export const MessageContent = ({
           // squared toward the sender's face (the landing's own bubble tail),
           // compact 12/8 padding.
           "group-[.is-peer]:mr-auto group-[.is-peer]:rounded-xl group-[.is-peer]:rounded-tl-sm group-[.is-peer]:border group-[.is-peer]:border-line group-[.is-peer]:bg-chip group-[.is-peer]:px-3 group-[.is-peer]:py-2 group-[.is-peer]:text-ink",
-          "group-[.is-assistant]:text-ink",
+          // The agent's plain prose (single-player): `prose-text`, not `ink`
+          // — same colour in light, pure white in dark, where ink's #e5e5e5
+          // reads dim beside the user bubble. Weight stays regular: this is
+          // long-form reading text, and ChatGPT keeps its assistant prose at
+          // 400 too. A GROUP-chat agent turn wears the peer bubble instead
+          // (short-form, on a chip fill) and keeps `ink`.
+          "group-[.is-assistant]:text-prose-text",
           className,
         )}
         {...props}
