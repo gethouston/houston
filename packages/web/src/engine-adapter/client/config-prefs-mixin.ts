@@ -16,7 +16,11 @@ import type { BaseCtor } from "./mixin";
  * (HOU-732). Everything else (theme, last_agent_id, recent models, …) is
  * per-device UI state and stays local. `houston_onboarding_segment` is here
  * too: the segmentation question must survive across the user's devices, not
- * re-ask on every fresh install.
+ * re-ask on every fresh install. Same for `onboarding_completed`
+ * (PRODUCT-1282): sign-out purges every account-scoped localStorage key, so a
+ * device-local copy dies with the session and the next sign-in re-onboarded a
+ * returning user whose agent list read empty for a moment (warming pod). As an
+ * account key it survives sign-out and follows the account to new devices.
  */
 const ACCOUNT_PREF_KEYS = new Set([
   "timezone",
@@ -24,6 +28,7 @@ const ACCOUNT_PREF_KEYS = new Set([
   "legal_acceptance",
   "migration_reconnect_dismissed",
   "houston_onboarding_segment",
+  "onboarding_completed",
 ]);
 
 function readLocalPref(key: string): string | null {
