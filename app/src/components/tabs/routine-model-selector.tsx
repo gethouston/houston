@@ -73,6 +73,7 @@ export function RoutineModelSelector({ agent, routine, bordered }: Props) {
         onOpenChange={setOpen}
         agent={agent}
         allowedModels={allowedModels}
+        coloredGlyph
         triggerLabel={pinned ? undefined : t("details.model.inherit")}
         pickerFooter={
           pinned ? (

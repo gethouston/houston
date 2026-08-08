@@ -107,6 +107,7 @@
     "scheduleTitle": "Cuándo se ejecuta",
     "modelTitle": "Modelo",
     "openChat": "Abrir chat",
+    "editName": "Editar nombre",
     "nextRun": "Próxima ejecución {{when}}",
     "runsTitle": "Ejecuciones",
     "runsLoading": "Cargando ejecuciones…",

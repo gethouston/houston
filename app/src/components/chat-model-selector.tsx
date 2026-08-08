@@ -16,7 +16,7 @@ import {
   isModelAllowed,
   modelSelectorDecision,
 } from "../lib/model-selector-lock";
-import { ProviderGlyph } from "./shell/provider-logos";
+import { ModelTriggerGlyph } from "./chat-model-selector-trigger";
 
 interface ChatModelSelectorProps {
   /** Current provider id (from agent config / per-mission override). */
@@ -62,6 +62,9 @@ interface ChatModelSelectorProps {
   /** Extra footer row inside the picker popover (the routine pin's "Use the
    *  agent's model" reset). Omit for none. */
   pickerFooter?: ReactNode;
+  /** Render the trigger's provider glyph in full brand color (the routine
+   *  screen's Model field). Omit for the composer's monochrome glyph. */
+  coloredGlyph?: boolean;
 }
 
 export function ChatModelSelector({
@@ -74,6 +77,7 @@ export function ChatModelSelector({
   allowedModels,
   triggerLabel,
   pickerFooter,
+  coloredGlyph,
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
@@ -123,11 +127,9 @@ export function ChatModelSelector({
   const readOnly = allowedModels != null && allowedModels.length === 1;
 
   const label = triggerLabel ?? picker.displayLabel;
-  const glyph = provider ? (
-    <span className="inline-flex size-3.5 items-center justify-center [&_svg]:size-full">
-      <ProviderGlyph providerId={provider} />
-    </span>
-  ) : null;
+  const glyph = (
+    <ModelTriggerGlyph provider={provider} colored={coloredGlyph} />
+  );
 
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
