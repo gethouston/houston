@@ -1,4 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -7,6 +8,22 @@ import { expect, test } from "./support/fixtures";
  * usage → done), exactly like the real runtime, so this exercises the whole
  * chat pipeline: composer → createMission → startSession → SSE → feed render.
  */
+/**
+ * One rendered row, addressed by SIDE and by the words it carries. The
+ * per-message key is `<kind>-<feedId>`, so the prefix separates a user bubble
+ * from the agent reply that quotes the same words back — without it, a text
+ * filter matches both.
+ */
+const userRow = (page: Page, text: string): Locator =>
+  page
+    .locator('[data-conversation-message-key^="user-"]')
+    .filter({ hasText: text });
+
+const agentRow = (page: Page, text: string): Locator =>
+  page
+    .locator('[data-conversation-message-key^="assistant-"]')
+    .filter({ hasText: text });
+
 test("sends a message and renders the streamed reply", async ({ page }) => {
   await page.goto("/");
 
@@ -256,9 +273,13 @@ test("edits a previous user message in place and rewinds the conversation", asyn
   });
 
   // Hover the SECOND user bubble to reveal its actions, then edit in place.
+  // Scoped to that ROW, never `.last()` over the whole page: an action row
+  // renders per message, so a page-wide pick silently lands on a different
+  // turn whenever this one's button has not mounted yet.
+  const secondRow = userRow(page, "second message");
   const secondBubble = page.getByText("second message", { exact: true });
-  await secondBubble.hover();
-  await page.getByRole("button", { name: "Edit message" }).last().click();
+  await secondRow.hover();
+  await secondRow.getByRole("button", { name: "Edit message" }).click();
   const editor = page.getByRole("textbox", { name: "Edit message" });
   await expect(editor).toHaveValue("second message");
   // The composer is untouched — editing happens in the bubble.
@@ -270,8 +291,8 @@ test("edits a previous user message in place and rewinds the conversation", asyn
   await expect(secondBubble).toBeVisible();
 
   // ...and a fresh edit sends the rewind.
-  await secondBubble.hover();
-  await page.getByRole("button", { name: "Edit message" }).last().click();
+  await secondRow.hover();
+  await secondRow.getByRole("button", { name: "Edit message" }).click();
   await editor.fill("second message, edited");
   await page.getByRole("button", { name: "Send", exact: true }).click();
 
@@ -310,15 +331,17 @@ test("copies a user and an agent message to the clipboard", async ({
 
   const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
 
-  // The actions reveal on hover (ChatGPT grammar): hover the user bubble,
-  // copy → the typed text, verbatim.
-  await page.getByText("copy me please", { exact: true }).hover();
-  await page.getByRole("button", { name: "Copy message" }).first().click();
+  // The actions reveal on hover (ChatGPT grammar). Row-scoped for the same
+  // reason as the edit test: `.first()`/`.last()` over the page would drift
+  // onto another turn's button.
+  const mine = userRow(page, "copy me please");
+  await mine.hover();
+  await mine.getByRole("button", { name: "Copy message" }).click();
   expect(await clipboard()).toBe("copy me please");
 
-  // Hover the agent reply, copy → its markdown source.
-  await page.getByText(/You said: .copy me please./).hover();
-  await page.getByRole("button", { name: "Copy message" }).last().click();
+  const reply = agentRow(page, "You said:");
+  await reply.hover();
+  await reply.getByRole("button", { name: "Copy message" }).click();
   expect(await clipboard()).toContain("You said:");
 });
 
