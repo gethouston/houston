@@ -695,6 +695,53 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * The engine echoed our send: give the optimistic user bubble its turn's
+   * wire id. The LAST id-less user_message is the one this turn's send pushed
+   * (sends are serialized per conversation), so turn-anchored affordances —
+   * the edit-and-resend rewind (PRODUCT-1217) — work on a live conversation
+   * without waiting for a history reload to re-fold the transcript.
+   */
+  stampUserTurn(agentPath: string, sessionKey: string, turnId: string): void {
+    const s = this.state(agentPath, sessionKey);
+    const bubble = findLast(
+      s.feed,
+      (f) => f.feed_type === "user_message" && f.turnId === undefined,
+    );
+    if (!bubble) return;
+    bubble.turnId = turnId;
+    this.publish(agentPath, sessionKey, s);
+  }
+
+  /**
+   * Drop the feed tail from the FIRST entry of `turnId` onward — the
+   * edit-and-resend rewind (PRODUCT-1217), folded optimistically after the
+   * server accepted the truncation. Explicit (never left to the next history
+   * reseed) because the seed decision deliberately SKIPS a shorter incoming
+   * fold — the guard that protects loaded pages would otherwise swallow the
+   * rewind and leave the dropped turns on screen. The window stamp is cleared:
+   * the feed no longer maps to the last-read server window, so load-older must
+   * re-arm from the next authoritative read. Returns false (no publish) when
+   * the turn is not in the folded feed.
+   */
+  truncateFromTurn(
+    agentPath: string,
+    sessionKey: string,
+    turnId: string,
+  ): boolean {
+    const s = this.state(agentPath, sessionKey);
+    const at = s.feed.findIndex((f) => f.turnId === turnId);
+    if (at === -1) return false;
+    s.feed = s.feed.slice(0, at);
+    s.streaming.clear();
+    // Anything the dropped turns settled on (a pending question / connect
+    // card) went with them — the composer must come back.
+    s.pendingInteraction = null;
+    s.historyWindow = undefined;
+    this.publish(agentPath, sessionKey, s);
+    return true;
+  }
+
   /** Replace the conversation's queued-message list (the send queue's seam). */
   setQueued(
     agentPath: string,

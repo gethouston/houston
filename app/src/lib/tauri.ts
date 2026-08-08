@@ -534,6 +534,13 @@ export const tauriChat = {
     call<void>("dismiss_interaction", () =>
       getEngine().dismissInteraction(agentPath, conversationId),
     ),
+  /** Edit-and-resend rewind (PRODUCT-1217): drop the transcript tail from the
+   *  edited user turn onward; the caller follows with a normal send carrying
+   *  the edited text. Throws on 409 (a turn raced the edit) — nothing was cut. */
+  truncate: (agentPath: string, conversationId: string, turnId: string) =>
+    call<void>("truncate_conversation", () =>
+      getEngine().truncateConversation(agentPath, conversationId, turnId),
+    ),
   loadHistory: (
     agentPath: string,
     sessionKey: string,

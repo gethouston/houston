@@ -77,6 +77,13 @@ export interface FeedOutput {
    * Optional and additive: outputs with no such state simply omit it.
    */
   confirmIdle?(agentPath: string, sessionKey: string): void;
+  /**
+   * The engine echoed our send: the optimistic user bubble's turn now has a
+   * wire id. Lets an output stamp `turnId` onto that bubble so turn-anchored
+   * affordances (the edit-and-resend rewind, PRODUCT-1217) work on a live
+   * conversation without waiting for a history reload. Optional and additive.
+   */
+  stampUserTurn?(agentPath: string, sessionKey: string, turnId: string): void;
 }
 
 /**
@@ -117,5 +124,10 @@ export class MultiplexFeedOutput implements FeedOutput {
 
   confirmIdle(agentPath: string, sessionKey: string): void {
     for (const o of this.outputs) o.confirmIdle?.(agentPath, sessionKey);
+  }
+
+  stampUserTurn(agentPath: string, sessionKey: string, turnId: string): void {
+    for (const o of this.outputs)
+      o.stampUserTurn?.(agentPath, sessionKey, turnId);
   }
 }

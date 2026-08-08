@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 57
+version: 58
 
 components:
   - id: agent-avatar
@@ -148,6 +148,11 @@ components:
       across the labeled button pill and the blue autolink chip. No
       external-link arrow: the file opens in-app. Link blue stays reserved for
       the web, so the chip now tells the reader whether a click leaves Houston.
+      (v56) The copy action ships as an action row under the settled bubble,
+      revealed while the row is hovered OR holds keyboard focus (ChatGPT's
+      grammar -- the buttons stay in the DOM and the tab order; a sanctioned
+      exception to the no-hover-gating default, owner decision) with a brief
+      check-mark confirm; streaming turns carry no actions.
     a11y: article/group role; code blocks keyboard-selectable; copy button labeled. A file chip is a button carrying the file's full path as its title.
     since: 1
 
@@ -156,8 +161,17 @@ components:
     purpose: >-
       A message a person sent -- the viewer's own right-aligned, a teammate's
       mirrored to the left with their face beside it.
-    anatomy: [sender-face-column, bubble, sender-name-line, attachment-chips]
-    states: [default, with-attachments]
+    anatomy:
+      [
+        sender-face-column,
+        bubble,
+        sender-name-line,
+        attachment-chips,
+        copy-action,
+        edit-action,
+        inline-editor,
+      ]
+    states: [default, with-attachments, editable, editing]
     variants: [single-player, own-message, teammate-message, run-continuation]
     behavior: >-
       The message's stored author drives attribution, and in a SHARED
@@ -177,7 +191,20 @@ components:
       renders bare with the avatar column still reserved, so consecutive bubbles
       stay lined up under the face. A change of sender starts a run and a system
       divider breaks one. Single-player carries no face, no name and no reserved
-      column. Attachment/skill markers are decoded to a clean preview.
+      column. Attachment/skill markers are decoded to a clean preview. (v56)
+      The viewer's OWN settled plain-text messages carry an edit action under
+      the bubble while the conversation is idle, in an action row revealed on
+      row hover OR keyboard focus (ChatGPT's grammar; a sanctioned exception
+      to the no-hover-gating default, owner decision). Choosing it swaps the
+      bubble for an IN-PLACE full-width editor card (the message's text,
+      Cancel / Send; Enter sends, Escape cancels; the composer is never
+      touched); Send REWINDS the conversation to that message and continues
+      from the edited version, earlier turns untouched. Marker messages
+      (skill/attachment/interaction answers), channel relays, teammates'
+      rows, and pre-turn-id transcripts are not editable. Settled rows on
+      either side carry a copy action in the same revealed row (verbatim
+      text, brief check-mark confirm); marker-encoded rows are not copyable
+      -- their wire encoding is not what the bubble shows.
     a11y: >-
       group role; a teammate's name is visible text inside the bubble, while the
       viewer's own rows carry the consumer's "you" label as screen-reader-only
@@ -825,7 +852,7 @@ components:
       stamp, and the open-chat action; outcomes are conveyed as text, never
       color alone; the running state is announced by its label, not only the
       spinner.
-    since: 57
+    since: 58
 
   - id: skill-row
     title: Skill row

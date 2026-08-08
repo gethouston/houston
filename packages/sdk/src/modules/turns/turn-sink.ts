@@ -157,6 +157,14 @@ export class TurnSink {
       this.sawRunning = true;
       this.s.delivered = true; // the engine echoed our send — it landed
       this.cancelPresettlePoll(); // the turn is demonstrably live on the stream
+      // Stamp the id onto the optimistic bubble too, so turn-anchored
+      // affordances (edit-and-resend, PRODUCT-1217) work without a reload.
+      if (ev.turnId)
+        this.o.output.stampUserTurn?.(
+          this.o.agentPath,
+          this.o.sessionKey,
+          ev.turnId,
+        );
       return;
     }
     if (classifyFrame(this.s.turnId, ev.turnId) === "boundary") {

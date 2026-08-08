@@ -112,6 +112,23 @@ const nameLine = (within: Locator): Locator =>
 const face = (within: Locator): Locator =>
   within.locator('[data-slot="avatar"]');
 
+/**
+ * The AGENT's inline sender mark — an svg glyph rather than an avatar slot.
+ * The per-message copy/edit buttons (PRODUCT-1217) are icons too, so they are
+ * excluded by their row hook: "is a sender marked?" must never be answered by
+ * an action button that every settled row carries.
+ */
+const mark = (within: Locator): Locator =>
+  within.locator("svg:not([data-chat-message-actions] svg)");
+
+/**
+ * A row's screen-reader-only text, excluding the action buttons' own labels
+ * (PRODUCT-1217): "Copy message" names an affordance, not a speaker, so it
+ * must not stand in for the attribution a sighted reader gets from the side.
+ */
+const srOnly = (within: Locator): Locator =>
+  within.locator(".sr-only:not([data-chat-message-actions] .sr-only)");
+
 /** Open the spec's mission on the signed-in shell. */
 async function openMission(page: Page): Promise<void> {
   await page.getByText(MISSION_TITLE).click();
@@ -161,14 +178,14 @@ test("a shared chat gives every speaker a side, a face and a name", async ({
   const replied = row(page, REPLIED);
   await expect(nameLine(replied)).toHaveText("Houston");
   await expect(nameLine(replied)).toHaveClass(/text-agent-|text-ink/);
-  await expect(replied.locator("svg")).toBeVisible();
+  await expect(mark(replied)).toBeVisible();
 
   // The agent's SECOND consecutive turn is the same run: no repeated name, no
   // repeated mark.
   const repliedAgain = row(page, REPLIED_AGAIN);
   await expect(repliedAgain).toBeVisible();
   await expect(nameLine(repliedAgain)).toHaveCount(0);
-  await expect(repliedAgain.locator("svg")).toHaveCount(0);
+  await expect(mark(repliedAgain)).toHaveCount(0);
 
   // A SECOND human, so the run broke and attribution is not a one-author
   // illusion.
@@ -184,7 +201,7 @@ test("a shared chat gives every speaker a side, a face and a name", async ({
   await expect(nameLine(mine)).toHaveCount(0);
   await expect(face(mine)).toHaveCount(0);
   // The side is a visual cue only, so a screen reader is told whose turn it is.
-  await expect(mine.locator(".sr-only")).toHaveText("You");
+  await expect(srOnly(mine)).toHaveText("You");
 });
 
 test("a solo chat in multiplayer shows no sender on any turn", async ({
@@ -209,7 +226,7 @@ test("a solo chat in multiplayer shows no sender on any turn", async ({
   const replied = row(page, REPLIED);
   await expect(replied).toBeVisible();
   await expect(replied).not.toContainText("Houston");
-  await expect(replied.locator("svg")).toHaveCount(0);
+  await expect(mark(replied)).toHaveCount(0);
 });
 
 test("a teammate's wordless turn still says who it came from", async ({

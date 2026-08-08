@@ -1,4 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -7,6 +8,22 @@ import { expect, test } from "./support/fixtures";
  * usage → done), exactly like the real runtime, so this exercises the whole
  * chat pipeline: composer → createMission → startSession → SSE → feed render.
  */
+/**
+ * One rendered row, addressed by SIDE and by the words it carries. The
+ * per-message key is `<kind>-<feedId>`, so the prefix separates a user bubble
+ * from the agent reply that quotes the same words back — without it, a text
+ * filter matches both.
+ */
+const userRow = (page: Page, text: string): Locator =>
+  page
+    .locator('[data-conversation-message-key^="user-"]')
+    .filter({ hasText: text });
+
+const agentRow = (page: Page, text: string): Locator =>
+  page
+    .locator('[data-conversation-message-key^="assistant-"]')
+    .filter({ hasText: text });
+
 test("sends a message and renders the streamed reply", async ({ page }) => {
   await page.goto("/");
 
@@ -227,6 +244,105 @@ test("sends a follow-up inside an existing mission", async ({ page }) => {
   await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
     timeout: 15_000,
   });
+});
+
+/**
+ * Edit-and-resend (PRODUCT-1217), ChatGPT grammar: hovering a previous user
+ * message reveals its actions; Edit swaps the bubble for an IN-PLACE editor
+ * (Cancel / Send, composer untouched). Escape cancels cleanly; Send rewinds
+ * the conversation to that message — earlier turns stay, the edited turn's
+ * old exchange is gone, and the agent answers the edited text.
+ */
+test("edits a previous user message in place and rewinds the conversation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByText("Plan a trip to Tokyo").click();
+  const composer = page.getByPlaceholder("Send a follow-up...");
+
+  // Two settled turns.
+  await composer.fill("first message");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .first message./)).toBeVisible({
+    timeout: 15_000,
+  });
+  await composer.fill("second message");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .second message[”"]/)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Hover the SECOND user bubble to reveal its actions, then edit in place.
+  // Scoped to that ROW, never `.last()` over the whole page: an action row
+  // renders per message, so a page-wide pick silently lands on a different
+  // turn whenever this one's button has not mounted yet.
+  const secondRow = userRow(page, "second message");
+  const secondBubble = page.getByText("second message", { exact: true });
+  await secondRow.hover();
+  await secondRow.getByRole("button", { name: "Edit message" }).click();
+  const editor = page.getByRole("textbox", { name: "Edit message" });
+  await expect(editor).toHaveValue("second message");
+  // The composer is untouched — editing happens in the bubble.
+  await expect(composer).toHaveValue("");
+
+  // Escape abandons the edit and restores the bubble...
+  await editor.press("Escape");
+  await expect(editor).not.toBeVisible();
+  await expect(secondBubble).toBeVisible();
+
+  // ...and a fresh edit sends the rewind.
+  await secondRow.hover();
+  await secondRow.getByRole("button", { name: "Edit message" }).click();
+  await editor.fill("second message, edited");
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+
+  // The edited turn answers; the editor is gone.
+  await expect(
+    page.getByText(/You said: .second message, edited./),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(editor).not.toBeVisible();
+  // The rewound tail is gone; the first turn survives untouched.
+  await expect(
+    page.getByText("second message", { exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByText(/You said: .second message[”"]/),
+  ).not.toBeVisible();
+  await expect(page.getByText(/You said: .first message./)).toBeVisible();
+});
+/**
+ * Copy a message (PRODUCT-1217 follow-up): both sides of the conversation
+ * carry a hover-revealed copy action on settled rows — the user's bubble
+ * copies the typed text, the agent's copies its markdown source.
+ */
+test("copies a user and an agent message to the clipboard", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByText("Plan a trip to Tokyo").click();
+  const composer = page.getByPlaceholder("Send a follow-up...");
+  await composer.fill("copy me please");
+  await composer.press("Enter");
+  await expect(page.getByText(/You said: .copy me please./)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+
+  // The actions reveal on hover (ChatGPT grammar). Row-scoped for the same
+  // reason as the edit test: `.first()`/`.last()` over the page would drift
+  // onto another turn's button.
+  const mine = userRow(page, "copy me please");
+  await mine.hover();
+  await mine.getByRole("button", { name: "Copy message" }).click();
+  expect(await clipboard()).toBe("copy me please");
+
+  const reply = agentRow(page, "You said:");
+  await reply.hover();
+  await reply.getByRole("button", { name: "Copy message" }).click();
+  expect(await clipboard()).toContain("You said:");
 });
 
 test("searches and navigates a long conversation with the map", async ({

@@ -351,5 +351,13 @@
     "Cartografiando la vía láctea...",
     "Ya casi, cadete...",
     "Faltan pocos segundos..."
-  ]
+  ],
+  "editMessage": {
+    "edit": "Editar mensaje",
+    "send": "Enviar",
+    "cancel": "Cancelar"
+  },
+  "copyMessage": {
+    "copy": "Copiar mensaje"
+  }
 }

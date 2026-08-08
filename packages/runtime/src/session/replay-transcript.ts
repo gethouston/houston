@@ -48,6 +48,17 @@ const HEADER =
   "switching to you. Continue seamlessly: keep all established context, do " +
   "not reintroduce yourself, and do not treat this as a new conversation.]";
 
+/**
+ * The session-reset variant (edit-and-resend, PRODUCT-1217): same carry, but
+ * no provider switch happened, so the "different AI model" framing would be a
+ * lie the model might echo back to the user.
+ */
+const RESET_HEADER =
+  "[Continuing an existing conversation. The transcript below is what has " +
+  "already been said in this chat. Continue seamlessly: keep all established " +
+  "context, do not reintroduce yourself, and do not treat this as a new " +
+  "conversation.]";
+
 const TRUNCATION_NOTE =
   "(Earlier messages were omitted to fit your context window; the transcript below is the most recent part of the conversation.)";
 
@@ -81,6 +92,7 @@ export function renderReplayPreamble(
   messages: ReadonlyArray<ChatMessage>,
   currentTurnId: string,
   charBudget: number,
+  reason: "switch" | "reset" = "switch",
 ): ReplayPreamble | null {
   if (charBudget <= 0) return null;
   const lines: string[] = [];
@@ -112,7 +124,7 @@ export function renderReplayPreamble(
   const truncated = clipped || kept.length < lines.length;
   return {
     text: [
-      HEADER,
+      reason === "reset" ? RESET_HEADER : HEADER,
       ...(truncated ? [TRUNCATION_NOTE] : []),
       "",
       kept.join("\n\n"),
