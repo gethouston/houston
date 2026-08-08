@@ -42,13 +42,14 @@ export function settleFromHistory(
   messages: ChatMessage[] | null,
   turnId: string | undefined,
   guard: (messages: ChatMessage[]) => boolean,
+  onAdoptTurnId?: (turnId: string) => void,
 ): void {
   if (messages && turnId) {
     const reply = messages.find(
       (m) => m.role === "assistant" && m.turnId === turnId,
     );
     if (reply) {
-      adoptReply(s, reply);
+      adoptReply(s, reply, onAdoptTurnId);
       return;
     }
     finishErr(s, TURN_DIED_MESSAGE);
@@ -58,7 +59,7 @@ export function settleFromHistory(
     // Legacy fallback: no turn ids anywhere — trailing reply + guard.
     const last = messages[messages.length - 1];
     if (last?.role === "assistant" && guard(messages)) {
-      adoptReply(s, last);
+      adoptReply(s, last, onAdoptTurnId);
       return;
     }
   }
@@ -68,7 +69,20 @@ export function settleFromHistory(
   else finishErr(s, TURN_DIED_MESSAGE);
 }
 
-function adoptReply(s: TurnState, reply: ChatMessage): void {
+function adoptReply(
+  s: TurnState,
+  reply: ChatMessage,
+  onAdoptTurnId?: (turnId: string) => void,
+): void {
+  // The persisted reply names the turn this settle recovers. Adopt its id
+  // FIRST: the settle's own pushes then carry the identity a later replay
+  // dedupes against (HOU-1214), and the sink's callback stamps the optimistic
+  // user bubble the lost echo left id-less — the anchor edit-and-resend
+  // (PRODUCT-1217) rewinds on.
+  if (reply.turnId !== undefined) {
+    s.turnId ??= reply.turnId;
+    onAdoptTurnId?.(reply.turnId);
+  }
   if (reply.providerError) {
     settleProviderErrorCard(s, reply.providerError);
     return;
@@ -123,6 +137,7 @@ export async function presettleFromHistory(
   turnId: string | undefined,
   guard: (messages: ChatMessage[]) => boolean,
   hasEvidence: () => boolean,
+  onAdoptTurnId?: (turnId: string) => void,
 ): Promise<boolean> {
   let messages: ChatMessage[];
   try {
@@ -138,7 +153,7 @@ export async function presettleFromHistory(
   if (s.settled || hasEvidence()) return false;
   const reply = conclusiveReply(messages, turnId, guard);
   if (!reply) return false;
-  adoptReply(s, reply);
+  adoptReply(s, reply, onAdoptTurnId);
   return true;
 }
 
@@ -175,6 +190,7 @@ export async function reloadAndSettle(
   turnId: string | undefined,
   guard: (messages: ChatMessage[]) => boolean,
   stop: () => void,
+  onAdoptTurnId?: (turnId: string) => void,
 ): Promise<void> {
   let messages: ChatMessage[] | null = null;
   try {
@@ -185,6 +201,6 @@ export async function reloadAndSettle(
       data: `Couldn't reload the conversation: ${e instanceof Error ? e.message : String(e)}`,
     });
   }
-  if (!s.settled) settleFromHistory(s, messages, turnId, guard);
+  if (!s.settled) settleFromHistory(s, messages, turnId, guard, onAdoptTurnId);
   stop();
 }

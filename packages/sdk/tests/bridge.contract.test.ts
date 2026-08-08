@@ -166,9 +166,16 @@ describe("send -> stream -> settle (bridge-fetch streaming path)", () => {
     // Every feed entry now carries a stamped epoch-ms `ts`; assert it is present
     // and numeric, then compare the rest of the VM structurally (ts stripped).
     for (const f of settled?.feed ?? []) expect(typeof f.ts).toBe("number");
+    // Every entry — the optimistic user bubble included — carries the ONE
+    // turn's server-minted id (the settle adopts it from the persisted reply
+    // and stamps the bubble; PRODUCT-1217 anchors edit-and-resend on it). The
+    // id itself is random, so assert identity and strip it from the compare.
+    const turnIds = new Set((settled?.feed ?? []).map((f) => f.turnId));
+    expect(turnIds.size).toBe(1);
+    expect([...turnIds][0]).toBeTruthy();
     expect({
       ...settled,
-      feed: (settled?.feed ?? []).map(({ ts, ...rest }) => rest),
+      feed: (settled?.feed ?? []).map(({ ts, turnId, ...rest }) => rest),
     }).toEqual({
       running: false,
       sessionStatus: "completed",

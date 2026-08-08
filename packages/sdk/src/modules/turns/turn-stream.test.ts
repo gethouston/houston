@@ -2188,3 +2188,86 @@ test("HOU-1214: repeated seed+observe cycles stay duplicate-free (the ×4 accumu
     feed.filter((f) => f.feed_type === "assistant_text").map((f) => f.data),
   ).toEqual([reply]);
 });
+
+// ── Edit-and-resend anchor: the missed-echo turnId stamp (PRODUCT-1217) ──────
+// The optimistic user bubble gets its turnId from the nonce-matched `user`
+// echo. A subscription that attaches a beat late misses that echo (a fresh
+// connect only gets the current sync — no replay without a cursor), and every
+// other adoption path used to leave the bubble id-less forever: the reply
+// rendered fine, but Edit (which anchors a rewind on `turnId`) never mounted
+// until a full reload. Both recovery paths must stamp the bubble.
+
+test("attach mid-turn with the echo missed: the sync adopt stamps the optimistic bubble's turnId", async () => {
+  const { engine } = fakeEngine([
+    (o) => {
+      // The attach sync names the running turn; the echo is gone for good.
+      o.onEvent(sync(true, "Roger", 1, { turnId: "turn-2" }));
+      o.onEvent({ type: "text", data: " that", seq: 2, turnId: "turn-2" });
+      o.onEvent({ type: "done", data: null, seq: 3, turnId: "turn-2" });
+    },
+  ]);
+  const store = new ScopeStore();
+  const vm = new ConversationVmOutput(store);
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-missed-echo",
+    "second message",
+    vm,
+    registry,
+    { tuning: fast },
+  );
+
+  const snap = store.getSnapshot(
+    conversationScope("Houston/Bo", "activity-missed-echo"),
+  ) as ConversationVM;
+  const bubble = snap.feed.find((f) => f.feed_type === "user_message");
+  expect(bubble?.data).toBe("second message");
+  expect(bubble?.turnId).toBe("turn-2");
+  expect(snap.sessionStatus).toBe("completed");
+});
+
+test("attach after the turn finished: the poll's history settle stamps the bubble from the persisted reply", async () => {
+  const history: ChatMessage[] = [
+    { role: "user", content: "second message", ts: 1, turnId: "turn-3" },
+    {
+      role: "assistant",
+      content: 'You said: "second message"',
+      ts: 2,
+      turnId: "turn-3",
+    },
+  ];
+  const { engine } = fakeEngine(
+    [
+      (o) => {
+        // Idle sync, no frames ever: the turn completed before we attached.
+        o.onEvent(sync(false, "", 0));
+        return hang(o);
+      },
+    ],
+    history,
+  );
+  const store = new ScopeStore();
+  const vm = new ConversationVmOutput(store);
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-presettle-stamp",
+    "second message",
+    vm,
+    registry,
+    { tuning: { ...fast, presettledPollMs: 20 } },
+  );
+
+  const snap = store.getSnapshot(
+    conversationScope("Houston/Bo", "activity-presettle-stamp"),
+  ) as ConversationVM;
+  const bubble = snap.feed.find((f) => f.feed_type === "user_message");
+  expect(bubble?.turnId).toBe("turn-3");
+  // The settle's own pushes carry the same identity (HOU-1214 dedup).
+  const reply = snap.feed.find((f) => f.feed_type === "assistant_text");
+  expect(reply?.turnId).toBe("turn-3");
+  expect(snap.sessionStatus).toBe("completed");
+});
