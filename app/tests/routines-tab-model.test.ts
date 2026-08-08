@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { RoutineRun } from "@houston-ai/routines";
 import {
   adoptDraft,
+  clearMissingRoutine,
   deselectIfOn,
   latestRunByRoutine,
   runChatActivity,
@@ -215,5 +216,42 @@ describe("routines tab model — latestRunByRoutine", () => {
 
     strictEqual(latestRunByRoutine([newer, older]).r1.id, "b");
     strictEqual(latestRunByRoutine([older, newer]).r1.id, "b");
+  });
+});
+
+describe("routines tab model — clearMissingRoutine", () => {
+  const routines = [{ id: "r1" }, { id: "r2" }] as never;
+
+  it("drops a cursor whose routine was deleted, from the screen or its chats", () => {
+    strictEqual(
+      clearMissingRoutine({ kind: "routine", routineId: "gone" }, routines),
+      null,
+    );
+    strictEqual(
+      clearMissingRoutine({ kind: "routineChat", routineId: "gone" }, routines),
+      null,
+    );
+    strictEqual(
+      clearMissingRoutine(
+        { kind: "runChat", routineId: "gone", runId: "x" },
+        routines,
+      ),
+      null,
+    );
+  });
+
+  it("keeps a cursor on a routine that still exists", () => {
+    const alive = { kind: "routine", routineId: "r2" } as const;
+    deepStrictEqual(clearMissingRoutine(alive, routines), alive);
+  });
+
+  it("never clears while the list is still loading, or for non-routine cursors", () => {
+    const pending = { kind: "routine", routineId: "r1" } as const;
+    deepStrictEqual(clearMissingRoutine(pending, undefined), pending);
+    const intake = { kind: "intake" } as const;
+    deepStrictEqual(clearMissingRoutine(intake, []), intake);
+    const draft = { kind: "draft", activityId: "a" } as const;
+    deepStrictEqual(clearMissingRoutine(draft, []), draft);
+    strictEqual(clearMissingRoutine(null, []), null);
   });
 });

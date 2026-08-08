@@ -150,13 +150,16 @@ export default function RoutinesTab({
   return (
     <div className="flex h-full min-h-0">
       {/* LEFT: the persistent list — compact header (title, count, create),
-          rows, and a quiet timezone footer. With the chat panel closed the
-          whole list centers in a readable max-width column; with it open the
-          list fills its (now narrower) share of the main card naturally. */}
+          rows, and a quiet timezone footer. With no chat panel open the whole
+          list centers in a readable max-width column; with one open the list
+          fills its (now narrower) share of the main card naturally. Keyed on
+          the CHAT claim, not on any selection: a routine-scoped selection
+          renders the routine's screen instead of this list, and a cursor left
+          on a just-deleted routine must not strand the list full-width. */}
       <div
         className={cn(
           "flex min-w-0 flex-col",
-          selected ? "flex-1" : "mx-auto w-full max-w-3xl",
+          chatSelected ? "flex-1" : "mx-auto w-full max-w-3xl",
         )}
       >
         {!listEmpty && (

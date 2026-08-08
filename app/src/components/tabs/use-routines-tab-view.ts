@@ -7,6 +7,7 @@ import type { IntakeResult } from "./automation-intake";
 import {
   adoptDraft,
   claimedRoutineId,
+  clearMissingRoutine,
   deselectIfOn,
   resolvePendingActivity,
   type Selection,
@@ -42,6 +43,13 @@ export function useRoutinesTabView(
     setPendingRoutineActivityId(null);
     if (res.action === "open") setSelected(res.selection);
   }, [pendingActivityId, routines, chatSetup, setPendingRoutineActivityId]);
+
+  // The selected routine vanished (deleted from its row menu, or removed by
+  // the agent): drop the cursor so the tab returns to the plain centered list
+  // instead of holding a screen/panel shape for a routine that is gone.
+  useEffect(() => {
+    setSelected((s) => clearMissingRoutine(s, routines));
+  }, [routines]);
 
   // Draft → claimed: when the agent creates the routine (stamping the draft's
   // routine_id), swap the selection to the routine's chat so the SAME

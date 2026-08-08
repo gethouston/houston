@@ -38,6 +38,22 @@ export function selectionRoutineId(selection: Selection | null): string | null {
 }
 
 /**
+ * Drop a cursor pointing at a routine that no longer exists — deleted from its
+ * row menu, or removed by the agent (PRODUCT-1208). A stale cursor kept the
+ * layout in its "something is open" shape (a full-width list with no panel)
+ * after the routine vanished. Callers must pass a LOADED list: `undefined`
+ * (still fetching) leaves the selection alone.
+ */
+export function clearMissingRoutine(
+  current: Selection | null,
+  routines: Routine[] | undefined,
+): Selection | null {
+  const id = selectionRoutineId(current);
+  if (!id || !routines) return current;
+  return routines.some((r) => r.id === id) ? current : null;
+}
+
+/**
  * Adopt the freshly-created draft id, but only if the user is still waiting on
  * the pending null-draft (a functional setState guard): a failed start (no id)
  * clears the selection, and a user who already moved on is left alone.
