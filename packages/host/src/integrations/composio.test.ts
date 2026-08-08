@@ -630,7 +630,7 @@ test("search runs BOTH the scoped and global query, merges (scoped first, dedupe
   // Scoped connected match first, then the global new app; the duplicate is
   // dropped, and every entry carries its status.
   expect(
-    found.map((t) => [t.action, t.toolkit, t.connected, t.status]),
+    found.items.map((t) => [t.action, t.toolkit, t.connected, t.status]),
   ).toEqual([
     ["GMAIL_SEND_EMAIL", "gmail", true, "connected"],
     ["GOOGLESHEETS_CREATE", "googlesheets", false, "connectable"],
@@ -674,7 +674,7 @@ test("a connected toolkit no longer short-circuits global discovery (the bug)", 
     };
   });
   const found = await provider.search(USER, "google sheets");
-  expect(found.find((t) => t.toolkit === "googlesheets")).toMatchObject({
+  expect(found.items.find((t) => t.toolkit === "googlesheets")).toMatchObject({
     action: "GOOGLESHEETS_CREATE_SPREADSHEET",
     connected: false,
     status: "connectable",
@@ -704,7 +704,7 @@ test("catalog resolution surfaces a connectable toolkit entry when no action sco
     return { body: { items: [] } }; // no action scored
   });
   const found = await provider.search(USER, "connect to google sheets");
-  expect(found).toEqual([
+  expect(found.items).toEqual([
     {
       action: "",
       toolkit: "googlesheets",
@@ -732,7 +732,7 @@ test("a resolved app the user already connected is a connected toolkit entry", a
     return { body: { items: [] } }; // no action scored, only the catalog entry
   });
   const found = await provider.search(USER, "google sheets");
-  expect(found).toEqual([
+  expect(found.items).toEqual([
     {
       action: "",
       toolkit: "googlesheets",
@@ -766,7 +766,7 @@ test("a query naming no app and matching no action returns empty (genuinely unkn
       return { body: { items: [{ slug: "gmail", name: "Gmail" }] } };
     return { body: { items: [] } };
   });
-  expect(await provider.search(USER, "zzznope")).toEqual([]);
+  expect((await provider.search(USER, "zzznope")).items).toEqual([]);
 });
 
 test("a zero-hit scoped query degrades to listing the connected toolkits' actions", async () => {
@@ -793,8 +793,11 @@ test("a zero-hit scoped query degrades to listing the connected toolkits' action
     };
   });
   const found = await provider.search(USER, "read my latest 5 emails");
-  expect(found.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
-  expect(found[0]).toMatchObject({ connected: true, status: "connected" });
+  expect(found.items.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
+  expect(found.items[0]).toMatchObject({
+    connected: true,
+    status: "connected",
+  });
 });
 
 test("with nothing connected, global discovery marks matches connectable (HOU-670)", async () => {
@@ -816,7 +819,7 @@ test("with nothing connected, global discovery marks matches connectable (HOU-67
   });
   const found = await provider.search(USER, "send an email");
   // Discoverable but connectable → the agent offers the card.
-  expect(found.map((t) => [t.action, t.connected, t.status])).toEqual([
+  expect(found.items.map((t) => [t.action, t.connected, t.status])).toEqual([
     ["GMAIL_SEND_EMAIL", false, "connectable"],
   ]);
   // No scoped query when nothing is connected — just the global one.
@@ -855,7 +858,7 @@ test("search stamps no-auth toolkit matches connected — usable now, never a co
   });
   // An action match on a no-auth toolkit → connected.
   expect(
-    (await provider.search(USER, "weathermap forecast")).map((t) => [
+    (await provider.search(USER, "weathermap forecast")).items.map((t) => [
       t.action,
       t.connected,
       t.status,
@@ -864,7 +867,7 @@ test("search stamps no-auth toolkit matches connected — usable now, never a co
   // A catalog-resolved toolkit entry (no action scored) → also connected,
   // while a normal unconnected app stays connectable.
   expect(
-    (await provider.search(USER, "use weathermap and gmail")).map((t) => [
+    (await provider.search(USER, "use weathermap and gmail")).items.map((t) => [
       t.toolkit,
       t.connected,
       t.status,

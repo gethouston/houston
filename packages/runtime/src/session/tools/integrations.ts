@@ -3,6 +3,7 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
+import { searchEmptyText, searchLeadNote } from "./integrations-search-notes";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -351,7 +352,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_search",
     label: "Find an app action",
     description:
-      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute. When the user names an app, pass it as `app` so results are scoped to it. Never conclude an app has no actions from an unscoped result where other apps dominate: if the app appears only as an app row (no actions), search again with `app` set to it before reporting any capability gap.",
+      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute. When the user names an app, pass it as `app` to scope results to it — the result says so with a leading NOTE when this deployment could not apply the scope, and then the matches may belong to other apps. Never conclude an app has no actions from a result where other apps dominate: if the app appears only as an app row (no actions), search again with `app` set to it before reporting any capability gap.",
     promptSnippet: "Search the user's connected apps for an action to run",
     parameters: SearchParams,
     executionMode: "sequential",
@@ -365,10 +366,15 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       // an unscoped retry — they belong to OTHER apps, and the model must not
       // attribute them to the one it named.
       let unscopedFallback: boolean | undefined;
+      // Host-set when a provider IGNORED the scope (a gateway predating the
+      // contract): the results are not certainly the named app's, and an
+      // empty result proves nothing about the app existing.
+      let scopeIgnored: boolean | undefined;
       try {
-        ({ items, unscopedFallback } = await post<{
+        ({ items, unscopedFallback, scopeIgnored } = await post<{
           items: ToolMatch[];
           unscopedFallback?: boolean;
+          scopeIgnored?: boolean;
         }>(
           "search",
           { query: params.query, ...(params.app ? { app: params.app } : {}) },
@@ -389,26 +395,32 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         throw err;
       }
       if (items.length === 0) {
-        // Genuinely empty: not a policy block, not "unavailable" - no such app
-        // or action was found. The prompt tells the model to say so plainly —
-        // but ONLY after the scoped retry (an unscoped result where other apps
-        // dominate must never be read as "the named app has no actions").
-        const text = params.app
-          ? `No app matching "${params.app}" was found, and nothing matched "${params.query}". This is a genuine not-found: no such app exists here. It does NOT mean an app is blocked or withheld by policy. If the user may have misspelled the app, retry once with the corrected name before telling them plainly it is not available.`
-          : `No matching app or action found for "${params.query}". If the task names an app, search again with \`app\` set to that app before concluding anything. Otherwise this is a genuine not-found: no such app or action exists here. It does NOT mean an app is blocked or withheld by policy.`;
+        // What may be CLAIMED from an empty result depends on why it is empty
+        // (a verified not-found vs a scope the deployment could not honor) —
+        // integrations-search-notes.ts owns that speech act.
         return {
-          content: [{ type: "text" as const, text }],
+          content: [
+            {
+              type: "text" as const,
+              text: searchEmptyText(
+                params.query,
+                params.app,
+                scopeIgnored === true,
+              ),
+            },
+          ],
           details: { matches: 0, actions: [] as string[] },
         };
       }
       const list = items.map((m) => renderMatch(m, statusOf(m))).join("\n");
-      // An unscoped retry served these results: the named app is unknown here,
-      // and every match below belongs to some OTHER app. Say so first, or the
-      // model would present another app's action as the named app's.
-      const fallbackNote =
-        unscopedFallback && params.app
-          ? `NOTE: no app matching "${params.app}" exists here — the matches below are from OTHER apps that could do the task. If the user may have misspelled the app, retry once with the corrected name; otherwise use these only if they genuinely fit, and be plain with the user about which app would be used.\n\n`
-          : "";
+      // Results that are NOT certainly the named app's (an unscoped retry, or
+      // a provider that ignored the scope) lead with a note saying so — or
+      // the model would present another app's action as the named app's.
+      const fallbackNote = searchLeadNote(
+        params.app,
+        unscopedFallback,
+        scopeIgnored,
+      );
 
       // Teach each speech act inline, only for the statuses actually present.
       const slugsWith = (s: AppStatus) => [

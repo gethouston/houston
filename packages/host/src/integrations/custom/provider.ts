@@ -1,11 +1,14 @@
-import type { ActingContext, IntegrationProvider } from "../provider";
+import type {
+  ActingContext,
+  IntegrationProvider,
+  ProviderSearchResult,
+} from "../provider";
 import type {
   ActionResult,
   Connection,
   ConnectStart,
   ProviderReadiness,
   Toolkit,
-  ToolMatch,
 } from "../types";
 import { IntegrationUpstreamError } from "../types";
 import type { CustomExecutorHost } from "./executor-host";
@@ -102,7 +105,7 @@ export class CustomIntegrationProvider implements IntegrationProvider {
     query: string,
     _acting?: ActingContext,
     app?: string,
-  ): Promise<ToolMatch[]> {
+  ): Promise<ProviderSearchResult> {
     const [defs, { executor }] = await Promise.all([
       this.store.list(),
       this.host.ensure(),

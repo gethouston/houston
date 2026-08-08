@@ -198,7 +198,10 @@ test("search passes a valid upstream status through verbatim (incl. the future b
     "jwt-1",
   );
   expect(
-    (await provider.search("u", "email")).map((m) => [m.toolkit, m.status]),
+    (await provider.search("u", "email")).items.map((m) => [
+      m.toolkit,
+      m.status,
+    ]),
   ).toEqual([
     ["gmail", "connected"],
     ["salesforce", "blocked"],
@@ -227,7 +230,7 @@ test("search derives status from `connected` when absent, and repairs an invalid
     "jwt-1",
   );
   expect(
-    (await provider.search("u", "x")).map((m) => [m.toolkit, m.status]),
+    (await provider.search("u", "x")).items.map((m) => [m.toolkit, m.status]),
   ).toEqual([
     ["gmail", "connected"],
     ["slack", "connectable"],
@@ -267,6 +270,32 @@ test("search forwards the app scope; omits it when absent (PRODUCT-1274)", async
   expect(calls[0]?.body).toEqual({ query: "get top users" });
   await provider.search("u", "get top users", undefined, "posthog");
   expect(calls[1]?.body).toEqual({ query: "get top users", app: "posthog" });
+});
+
+test("search maps the gateway's `scoped` echo onto the scope outcome", async () => {
+  // scoped:true → the items ARE hard-scoped to the named app.
+  const yes = harness(() => ({ body: { items: [], scoped: true } }), "tok");
+  expect(
+    (await yes.provider.search("u", "q", undefined, "posthog")).scope,
+  ).toBe("resolved");
+  // scoped:false → the gateway resolved nothing for the scope (strict-empty).
+  const no = harness(() => ({ body: { items: [], scoped: false } }), "tok");
+  expect((await no.provider.search("u", "q", undefined, "posthog")).scope).toBe(
+    "unresolved",
+  );
+});
+
+test("an upstream that predates the scope contract reports scope IGNORED", async () => {
+  // Today's gateway drops `app` and serves the unscoped result with no echo:
+  // presenting that as scoped is the original PRODUCT-1274 misattribution, and
+  // reading its emptiness as "no such app" is a false not-found — "ignored"
+  // lets the sandbox proxy and the runtime tool say what is actually known.
+  const { provider } = harness(() => ({ body: { items: [] } }), "tok");
+  expect((await provider.search("u", "q", undefined, "posthog")).scope).toBe(
+    "ignored",
+  );
+  // No scope requested → no scope outcome, echo or not.
+  expect((await provider.search("u", "q")).scope).toBeUndefined();
 });
 
 test("execute forwards the target account; omits it when absent", async () => {
@@ -311,7 +340,7 @@ test("search passes account lists through untouched", async () => {
     }),
     "tok",
   );
-  const items = await provider.search("u", "send email");
+  const { items } = await provider.search("u", "send email");
   expect(items[0]?.accounts).toEqual([
     { id: "ca_1", label: "dan@gmail.com" },
     { id: "ca_2" },

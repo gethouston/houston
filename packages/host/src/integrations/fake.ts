@@ -1,4 +1,9 @@
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  IntegrationProvider,
+  ProviderSearchResult,
+} from "./provider";
+import { resolveScopeRows } from "./scope-resolve";
 import {
   type ActionResult,
   type Connection,
@@ -124,7 +129,7 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     query: string,
     acting?: ActingContext,
     app?: string,
-  ): Promise<ToolMatch[]> {
+  ): Promise<ProviderSearchResult> {
     this.lastActing = acting;
     this.lastApp = app;
     if (this.throwSigninRequired) throw new IntegrationSigninRequiredError();
@@ -135,21 +140,35 @@ export class FakeIntegrationProvider implements IntegrationProvider {
         .filter((c) => c.status === "active")
         .map((c) => c.toolkit),
     );
-    return this.actions
-      .filter((a) => !app || a.toolkit.toLowerCase() === app.toLowerCase())
-      .filter(
-        (a) =>
-          a.description.toLowerCase().includes(q) ||
-          a.action.toLowerCase().includes(q),
-      )
-      .map((a) => {
-        const connected = activeToolkits.has(a.toolkit);
-        return {
-          ...a,
-          connected,
-          status: connected ? ("connected" as const) : ("connectable" as const),
-        };
-      });
+    const stamp = (a: ToolMatch): ToolMatch => {
+      const connected = activeToolkits.has(a.toolkit);
+      return {
+        ...a,
+        connected,
+        status: connected ? ("connected" as const) : ("connectable" as const),
+      };
+    };
+    const textMatches = (a: ToolMatch) =>
+      a.description.toLowerCase().includes(q) ||
+      a.action.toLowerCase().includes(q);
+    // Same contract as the real adapters: resolve the scope via the shared
+    // rules, and a resolved scope yields at least the app's actions (listing
+    // fallback when the phrasing scores zero) — never a bare empty result.
+    if (app) {
+      const rows = [...new Set(this.actions.map((a) => a.toolkit))].map(
+        (slug) => ({ slug, name: slug }),
+      );
+      const scoped = resolveScopeRows(rows, app);
+      if (scoped.length === 0) return { items: [], scope: "unresolved" };
+      const slugs = new Set(scoped.map((r) => r.slug));
+      const within = this.actions.filter((a) => slugs.has(a.toolkit));
+      const hits = within.filter(textMatches);
+      return {
+        items: (hits.length > 0 ? hits : within).map(stamp),
+        scope: "resolved",
+      };
+    }
+    return { items: this.actions.filter(textMatches).map(stamp) };
   }
 
   async execute(

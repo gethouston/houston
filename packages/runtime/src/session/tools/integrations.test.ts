@@ -246,6 +246,43 @@ test("an empty UNSCOPED result tells the model to retry scoped before concluding
   expect(text).toContain("search again with `app` set to that app");
 });
 
+test("a scope-ignored result leads with the could-not-scope note, never the not-found claim", async () => {
+  // A gateway predating the scope contract served unscoped items: the model
+  // must not attribute them to the named app, and must not read the response
+  // as proof the app exists or lacks actions.
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GITHUB_LIST_REPOS",
+          toolkit: "github",
+          description: "List repositories",
+          connected: true,
+          status: "connected",
+        },
+      ],
+      scopeIgnored: true,
+    },
+  }));
+  const out = await run(search, { query: "get top users", app: "posthog" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text.startsWith("NOTE: this Houston deployment could not scope")).toBe(
+    true,
+  );
+  expect(text).toContain("OTHER apps");
+  expect(text).not.toContain("no app matching");
+});
+
+test("an EMPTY scope-ignored result never claims the app does not exist", async () => {
+  mockFetch(() => ({ body: { items: [], scopeIgnored: true } }));
+  const out = await run(search, { query: "churn deltas", app: "posthog" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("could not verify the app scope");
+  expect(text).toContain("proves NOTHING");
+  expect(text).not.toContain("genuine not-found");
+  expect(text).not.toContain("no such app exists");
+});
+
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
   mockFetch(() => ({ body: { successful: true, data: { id: "msg1" } } }));
   const out = await run(execute, {

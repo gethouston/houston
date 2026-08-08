@@ -12,14 +12,17 @@ import {
   type RawTool,
   type RawToolkit,
 } from "./composio-wire";
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  IntegrationProvider,
+  ProviderSearchResult,
+} from "./provider";
 import type {
   ActionResult,
   Connection,
   ConnectStart,
   ProviderReadiness,
   Toolkit,
-  ToolMatch,
 } from "./types";
 
 /**
@@ -305,7 +308,7 @@ export class ComposioProvider implements IntegrationProvider {
     query: string,
     _acting?: ActingContext,
     app?: string,
-  ): Promise<ToolMatch[]> {
+  ): Promise<ProviderSearchResult> {
     // The direct adapter owns the platform key and derives identity from the
     // verified `userId`; there is no upstream to re-authenticate as, so the
     // acting context is intentionally ignored (self-host / dev only). The merge

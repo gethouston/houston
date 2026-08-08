@@ -99,15 +99,24 @@ connected-scoped short-circuit is also GONE (its bug: a connected-Gmail user
 could not discover Google Sheets, because a scoped hit `return`ed before global
 ran). The lookups, merged in order and deduped by action:
 1. **named-app** lookups — the tool's explicit `app` scope (a loose name or
-   slug, resolved by `resolveScopeToolkits`: exact normalized match wins, else
-   both-way substring), or apps resolved from the query text. Each runs the
-   query hard-scoped via `toolkit_slug`; with an EXPLICIT scope a zero score
-   degrades to LISTING the toolkit's actions (Composio's deterministic direct
-   retrieval — full-text scores everyday phrasings at zero), and the named
-   app's results are the WHOLE response (a hard filter, per Composio's own
-   discovery guidance). Query-resolved apps skip the listing fallback so a
-   loose text match ("linear" inside "linear regression") cannot flood the
-   result — the toolkit row + an `app`-scoped re-search cover that.
+   slug, resolved by `resolveScopeToolkits` over the SHARED provider-neutral
+   resolver `scope-resolve.ts`: exact normalized slug/name match wins outright
+   with NO length guard — "HR" resolves when passed exactly — else both-way
+   substring yields the single closest candidate judged on name AND slug), or
+   apps resolved from the query TEXT by whole-token-run matching
+   (`resolveCatalogToolkits`: the normalized name/slug must equal a contiguous
+   run of query tokens — "inbox" no longer resolves the app "box"). Each runs
+   the query hard-scoped via `toolkit_slug`; a zero score degrades to LISTING
+   the toolkit's actions (Composio's deterministic direct retrieval —
+   full-text scores everyday phrasings at zero) when the scope is EXPLICIT or
+   the query-resolved app is CONNECTED ("En Clockify, dime cuánto tiempo…"
+   surfaces Clockify's real slugs in ONE search, no model-driven re-search).
+   With an explicit scope the named app's results are the WHOLE response (a
+   hard filter, per Composio's own discovery guidance). UNCONNECTED
+   query-resolved apps skip the listing fallback and rank AFTER the connected
+   results, so a loose text match ("linear" inside "linear regression") can
+   neither flood the result nor outrank the app the user actually uses — the
+   toolkit row + an `app`-scoped re-search cover them.
 2. **scoped** query over the user's CONNECTED toolkits (precision; degrades to
    LISTING their actions on a zero-hit everyday phrasing), then
 3. **global** query — ALWAYS runs, never short-circuited, so new apps are
@@ -123,19 +132,27 @@ ran). The lookups, merged in order and deduped by action:
 
 The `app` scope travels the whole path: `integration_search`'s optional `app`
 param → sandbox proxy body → `IntegrationProvider.search(userId, query, acting,
-app)` → each provider (Composio hard-scopes; the custom provider filters its
-integrations — exact normalized match first, else loose — and lists a scoped
-app's tools on a zero score). The port contract is STRICT: a scope a provider
-cannot resolve returns EMPTY, never an internal unscoped fallback (which would
-pollute the multi-provider merge ahead of another provider's correctly scoped
-hits). The SANDBOX PROXY alone owns the typo path: when every provider merges
-to empty on a scoped search, it retries the fan-out unscoped once and marks the
-response `unscopedFallback: true`, which the runtime tool renders as a leading
-"no app matching X — these are OTHER apps" note. The gateway adapter
-(`remote.ts`) forwards `app` verbatim; a cloud gateway that predates the field
-ignores it and serves the unscoped result (today's behavior, never an error) —
-the Go gateway needs the same scoping for the managed cloud to get the hard
-filter.
+app)` → each provider, and every provider resolves it with the SAME rules
+(`scope-resolve.ts` — Composio, custom, and the fake all call it, so one scope
+means one thing across the merge). `search` returns `ProviderSearchResult`
+`{ items, scope? }`; `scope` (present iff an `app` was requested) is the
+SCOPE-STATUS HANDSHAKE: `"resolved"` (items hard-scoped, at least the app row),
+`"unresolved"` (scope matched nothing — items EMPTY, never an internal
+unscoped fallback, which would pollute the multi-provider merge), or
+`"ignored"` (REMOTE ADAPTER ONLY: the upstream predates the contract). The
+user route `/v1/integrations/:provider/search` echoes it on the wire as
+`scoped: true|false` (absent = ignored), which is also the contract the Go
+gateway implements. The SANDBOX PROXY aggregates: when every provider
+reported `unresolved` (a typo, a guess) it retries the fan-out unscoped once
+and marks the response `unscopedFallback: true` (runtime tool: a leading "no
+app matching X — these are OTHER apps" note); when any provider IGNORED the
+scope it skips the retry (it would repeat the same unscoped search) and marks
+`scopeIgnored: true` instead — the runtime tool then leads with a
+"could not scope, matches may belong to OTHER apps" note, and an EMPTY
+scope-ignored result is rendered as "proves nothing", NEVER the confident
+"no such app exists here" claim (`integrations-search-notes.ts` owns these
+speech acts). This is what keeps a pre-contract gateway from silently
+re-creating the PRODUCT-1274 misattribution behind a scoping promise.
 
 **Gateway adapter** (`remote.ts`) reads each `/search` item TOLERANTLY: a valid
 `status` passes through verbatim (a future gateway sending `blocked`); an absent

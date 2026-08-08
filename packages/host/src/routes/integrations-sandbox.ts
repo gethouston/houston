@@ -3,7 +3,7 @@ import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
-import { bearer, header, json, readJson } from "./http";
+import { bearer, header, json, optionalTrimmed, readJson } from "./http";
 import {
   type IntegrationDeps,
   relayIntegrationUpstreamError,
@@ -107,10 +107,7 @@ export async function handleSandboxIntegrations(
       }
       // Optional `app`: the agent's HARD scope when the task names an app —
       // each provider returns only that app's actions (PRODUCT-1274).
-      const app =
-        typeof body.app === "string" && body.app.trim()
-          ? body.app.trim()
-          : undefined;
+      const app = optionalTrimmed(body.app);
       const providerIds = explicit ? [explicit] : registry.ids();
       // Fan out and merge. One provider failing must not hide another's
       // results (desktop signed out: the gateway adapter throws while the
@@ -124,16 +121,24 @@ export async function handleSandboxIntegrations(
             registry.get(id).search(ws.ownerUserId, query, acting, scope),
           ),
         );
+        const fulfilled = settled.flatMap((s) =>
+          s.status === "fulfilled" ? [s.value] : [],
+        );
         return {
-          items: settled.flatMap((s) =>
-            s.status === "fulfilled" ? s.value : [],
-          ),
+          items: fulfilled.flatMap((r) => r.items),
+          scopes: fulfilled.flatMap((r) => (r.scope ? [r.scope] : [])),
           failures: settled.flatMap((s) =>
             s.status === "rejected" ? [s.reason] : [],
           ),
         };
       };
-      let { items, failures } = await fanOut(app);
+      let { items, scopes, failures } = await fanOut(app);
+      // A provider that IGNORED the scope (a remote upstream predating the
+      // contract) may have merged in UNSCOPED items: no retry (it would serve
+      // the same unscoped result again), but the flag tells the runtime tool
+      // the results are not certainly the named app's — and that an empty
+      // result proves nothing about the app existing.
+      const scopeIgnored = app !== undefined && scopes.includes("ignored");
       // A scope NO provider resolved (a typo, a guess) merges to empty — a
       // resolved scope always yields at least the app's toolkit row. Retry
       // unscoped ONCE, here and only here: a provider falling back on its own
@@ -141,7 +146,7 @@ export async function handleSandboxIntegrations(
       // provider's correctly scoped hits. The flag tells the runtime tool the
       // results are NOT the named app's.
       let unscopedFallback = false;
-      if (app && items.length === 0 && failures.length === 0) {
+      if (app && !scopeIgnored && items.length === 0 && failures.length === 0) {
         ({ items, failures } = await fanOut(undefined));
         unscopedFallback = items.length > 0;
       }
@@ -154,6 +159,7 @@ export async function handleSandboxIntegrations(
       json(res, 200, {
         items,
         ...(unscopedFallback ? { unscopedFallback: true } : {}),
+        ...(scopeIgnored ? { scopeIgnored: true } : {}),
       });
       return true;
     }

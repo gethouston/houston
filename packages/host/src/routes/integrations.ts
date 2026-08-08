@@ -6,7 +6,7 @@ import {
   IntegrationSigninRequiredError,
   IntegrationUpstreamError,
 } from "../integrations/types";
-import { json, readJson } from "./http";
+import { json, optionalTrimmed, readJson } from "./http";
 
 /**
  * Third-party integrations (Composio platform mode first) — the USER routes
@@ -199,14 +199,19 @@ export async function handleIntegrations(
       // the desktop gateway adapter forwards it here verbatim. STRICTLY
       // scoped — no unscoped fallback here: the sandbox proxy at the top of
       // the chain owns that retry, so a scoped call through this route never
-      // smuggles other apps' actions into a caller's merge.
+      // smuggles other apps' actions into a caller's merge. The `scoped` echo
+      // tells a downstream remote adapter what became of the scope (absent =
+      // the provider ignored it, which the adapter must surface, not trust).
+      const result = await provider.search(
+        userId,
+        query,
+        undefined,
+        optionalTrimmed(app),
+      );
       json(res, 200, {
-        items: await provider.search(
-          userId,
-          query,
-          undefined,
-          typeof app === "string" && app.trim() ? app.trim() : undefined,
-        ),
+        items: result.items,
+        ...(result.scope === "resolved" ? { scoped: true } : {}),
+        ...(result.scope === "unresolved" ? { scoped: false } : {}),
       });
       return true;
     }

@@ -465,6 +465,108 @@ test("a scope NO provider resolves retries unscoped ONCE and flags the fallback"
   }
 });
 
+test("the user route echoes what became of the scope (the gateway handshake)", async () => {
+  const { base, stop } = await setup();
+  try {
+    const post = async (body: Record<string, string>) =>
+      (
+        await fetch(`${base}/v1/integrations/composio/search`, {
+          method: "POST",
+          headers: auth,
+          body: JSON.stringify(body),
+        })
+      ).json();
+    // Resolved scope → scoped:true (items are hard-scoped).
+    expect((await post({ query: "send an email", app: "gmail" })).scoped).toBe(
+      true,
+    );
+    // Unresolvable scope → scoped:false with strict-empty items.
+    const missed = await post({ query: "send an email", app: "acne" });
+    expect(missed.scoped).toBe(false);
+    expect(missed.items).toEqual([]);
+    // No scope requested → no echo at all.
+    expect((await post({ query: "send an email" })).scoped).toBeUndefined();
+  } finally {
+    stop();
+  }
+});
+
+test("a provider that IGNORED the scope suppresses the retry and flags scopeIgnored", async () => {
+  // The remote adapter against a gateway predating the scope contract: it
+  // serves UNSCOPED items. The proxy must not present them as scoped (flag),
+  // and must not read the merge as a resolved scope (no unscopedFallback).
+  const ignoring = new FakeIntegrationProvider({ id: "composio" });
+  ignoring.search = async (_u, _q, _a, app) => ({
+    items: [
+      {
+        action: "GMAIL_SEND_EMAIL",
+        toolkit: "gmail",
+        description: "unscoped noise",
+        connected: true,
+        status: "connected" as const,
+      },
+    ],
+    ...(app ? { scope: "ignored" as const } : {}),
+  });
+  const custom = new FakeIntegrationProvider({
+    id: "custom",
+    actions: [
+      {
+        action: "tools.acme.org.default.doThing",
+        toolkit: "acme",
+        description: "do the acme thing",
+      },
+    ],
+  });
+  const { base, ws, vault, stop } = await setupMulti([ignoring, custom]);
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "send an email", app: "posthog" }),
+    });
+    const body = await res.json();
+    expect(body.scopeIgnored).toBe(true);
+    expect(body.unscopedFallback).toBeUndefined();
+    expect(body.items.map((m: { action: string }) => m.action)).toEqual([
+      "GMAIL_SEND_EMAIL",
+    ]);
+  } finally {
+    stop();
+  }
+});
+
+test("an EMPTY merge under an ignored scope still flags it — never a confident not-found", async () => {
+  const ignoring = new FakeIntegrationProvider({ id: "composio" });
+  ignoring.search = async (_u, _q, _a, app) => ({
+    items: [],
+    ...(app ? { scope: "ignored" as const } : {}),
+  });
+  const { base, ws, vault, stop } = await setupMulti([ignoring]);
+  try {
+    const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
+    const res = await fetch(`${base}/sandbox/integrations/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sb}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: "churn cohort deltas", app: "posthog" }),
+    });
+    const body = await res.json();
+    expect(body.items).toEqual([]);
+    expect(body.scopeIgnored).toBe(true);
+    // No unscoped retry ran: it would just repeat the same unscoped search.
+    expect(body.unscopedFallback).toBeUndefined();
+  } finally {
+    stop();
+  }
+});
+
 test("sandbox proxy: a write action executes directly (no host approval gate)", async () => {
   // The host executes every authenticated execute directly — integration
   // confirmations are model-driven ask_user questions, not a host-side gate. A
