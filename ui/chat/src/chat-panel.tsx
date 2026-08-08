@@ -45,6 +45,13 @@ export function ChatPanel({
   renderSystemMessage,
   contextCompactedLabel,
   renderUserMessage,
+  onEditMessage,
+  canEditMessage,
+  editMessageLabel,
+  enableMessageCopy,
+  canCopyMessage,
+  copyMessageLabel,
+  messageEditing,
   afterMessages,
   onLoadOlder,
   hasOlderMessages,
@@ -193,6 +200,13 @@ export function ChatPanel({
           renderSystemMessage={renderSystemMessage}
           contextCompactedLabel={contextCompactedLabel}
           renderUserMessage={renderUserMessage}
+          onEditMessage={onEditMessage}
+          canEditMessage={canEditMessage}
+          editMessageLabel={editMessageLabel}
+          enableMessageCopy={enableMessageCopy}
+          canCopyMessage={canCopyMessage}
+          copyMessageLabel={copyMessageLabel}
+          messageEditing={messageEditing}
           afterMessages={afterMessages}
           onLoadOlder={onLoadOlder}
           hasOlderMessages={hasOlderMessages}

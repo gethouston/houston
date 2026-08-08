@@ -242,17 +242,21 @@
     "newFiles_other": "{{count}} new files",
     "instructionsUpdated": "Instructions updated",
     "skillsUpdated": "Skills updated",
-    "learningsUpdated": "Learnings updated"
+    "learningsUpdated": "Learnings updated",
+    "openLinkFailedTitle": "Couldn’t open the link"
   },
   "filesUpdated_one": "1 file updated",
   "filesUpdated_other": "{{count}} files updated",
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
   "conversationMap": {
-    "title": "Conversation map",
-    "view": "View map",
-    "hide": "Hide map",
+    "title": "Search chat",
+    "moreActions": "Chat actions",
+    "find": "Find",
+    "hide": "Close chat search",
+    "searchPlaceholder": "Search messages",
+    "clearSearch": "Clear search",
+    "noResults": "No messages match your search.",
     "backToLatest": "Back to latest",
-    "empty": "This conversation does not have enough moments to navigate yet.",
     "selected": "Selected message",
     "messagePosition": "Message {{position}}",
     "types": {
@@ -347,5 +351,13 @@
     "Mapping the milky way...",
     "Almost there, cadet...",
     "T-minus a few seconds..."
-  ]
+  ],
+  "editMessage": {
+    "edit": "Edit message",
+    "send": "Send",
+    "cancel": "Cancel"
+  },
+  "copyMessage": {
+    "copy": "Copy message"
+  }
 }

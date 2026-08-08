@@ -1,6 +1,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
+import { currentConversationId } from "../conversation-context";
 import { currentTurnMode } from "../turn-mode-context";
 
 /**
@@ -112,6 +113,25 @@ export interface SaveRoutineToolOptions {
   sandboxToken: string;
 }
 
+/**
+ * Refusal for a save attempted from INSIDE a firing routine's own run.
+ *
+ * A routine's prompt often reads like a scheduling request ("Every hour, post
+ * two quotes…"); fired verbatim it used to push the agent into creating a COPY
+ * of the routine that was running, and the run's real work never happened
+ * (PRODUCT-1208). The run prompt now says so explicitly, and this is the hard
+ * backstop: a run conversation (`routine-<id>`, from routineConversationId)
+ * may never write routines. Setup chats are `activity-<id>`, so authoring is
+ * untouched.
+ */
+export const ROUTINE_RUN_SAVE_REFUSAL =
+  "save_routine is not available inside a running routine. This turn IS the automation firing — do the work it describes and reply with the result. The user can change the routine from its own screen or its setup chat.";
+
+/** True while the turn is a routine RUN (never its setup chat). */
+function inRoutineRun(): boolean {
+  return currentConversationId()?.startsWith("routine-") ?? false;
+}
+
 /** The routine the host echoes back on a successful save. */
 interface SavedRoutine {
   id: string;
@@ -134,6 +154,8 @@ export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
       params: SaveRoutineParams,
       signal: AbortSignal | undefined,
     ) {
+      // A firing routine may not author routines — see ROUTINE_RUN_SAVE_REFUSAL.
+      if (inRoutineRun()) throw new Error(ROUTINE_RUN_SAVE_REFUSAL);
       // WHO this turn acts as (C2): forward the header the host reads so a saved
       // routine records the acting user as its creator — same as the integration
       // tools. Turn-scoped; absent outside a turn.

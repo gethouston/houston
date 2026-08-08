@@ -12,7 +12,11 @@ import {
 } from "../send-queue";
 import { DEFAULT_AGENT_PATH } from "../synthetic";
 import { wireTurnPin } from "../turn-pin";
-import { observeConversation, streamTurn } from "../turn-stream";
+import {
+  observeConversation,
+  streamTurn,
+  truncateConversationVm,
+} from "../turn-stream";
 import { setActivityStatus } from "./activity-status";
 import type { BaseCtor } from "./mixin";
 
@@ -166,6 +170,27 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
       // retiring the pending interaction. This matches a real Stop — the model
       // learns nothing from it.
       await engine.dismissInteraction(conversationId);
+    }
+
+    /**
+     * Edit-and-resend rewind (PRODUCT-1217): the runtime cuts the transcript
+     * at the edited user turn (and resets the model's session so the next
+     * turn replays the kept context), then the VM fold drops the same tail so
+     * the feed rewinds immediately. The caller follows up with a normal send
+     * carrying the edited text. Throws on 409 (a turn raced the edit) — the
+     * caller surfaces it; nothing was cut.
+     */
+    async truncateConversation(
+      agentPath: string,
+      sessionKey: string,
+      turnId: string,
+    ): Promise<void> {
+      const path = agentPath || DEFAULT_AGENT_PATH;
+      const engine = this.ctx.cp
+        ? controlPlane.runtimeClientFor(this.ctx.cp, path)
+        : this.ctx.engine;
+      await engine.truncateConversation(sessionKey, turnId);
+      truncateConversationVm(path, sessionKey, turnId);
     }
 
     async startOnboarding(

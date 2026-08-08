@@ -3,6 +3,47 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v58 - 2026-08-08
+
+Add `routine-details` (PRODUCT-1208): a routine's own screen, replacing the
+routines list in the MAIN content when its row is clicked — the name, an
+editable description (the prompt IS what the routine does), an editable run
+frequency (the rows' schedule builder), the model pin (over the existing
+provider/model override fields), and the persisted execution history behind a
+Runs MODAL, n8n-style, where clicking an entry opens that run's chat (its
+result) in the shell panel. Web ships the run list in `@houston-ai/routines`
+(`RoutineRunList`) but the screen composition and the model row ride
+app-locked pieces (`ChatModelSelector`), so it lands as `partial` -- extract
+before mobile.
+
+## v57 - 2026-08-08
+
+Edit a previous message + copy any message (PRODUCT-1217), no new
+components. Settled rows gain a per-message action row under the bubble,
+revealed while the row is hovered or holds keyboard focus (ChatGPT's
+grammar; a sanctioned owner-decided exception to the no-hover-gating
+default). The viewer's own plain-text `user-message` rows carry an Edit
+action there while the conversation is idle: choosing it swaps the bubble
+for an in-place full-width editor card holding the message's text with
+Cancel / Send (Enter sends, Escape cancels; the composer is never touched).
+Send rewinds the conversation to that message and continues from the edited
+version, leaving every earlier turn untouched. Marker-encoded sends
+(skills, attachments, interaction answers), channel relays, teammates'
+messages, and pre-turn-id transcripts are not editable. Rows on BOTH sides
+also carry a Copy action in the same row -- `assistant-message` always
+specced `copy-action`; the web surface now ships it -- copying the row's
+verbatim text (an agent turn's markdown source) with a brief check-mark
+confirm. Marker-encoded rows are not copyable.
+
+## v56 - 2026-08-07
+
+Added the conversation map search inside the chat's compact three-dot actions
+menu, alongside status-aware Move to done and confirmation-gated Delete
+actions. The trigger lives in the chat panel header, left of the people stack
+and close control. Find opens an unfiltered map of prior messages by default, then narrows
+it with a case- and accent-insensitive text filter. Results jump to and
+highlight the selected message, while the footer returns to the latest reply.
+
 ## v55 - 2026-08-07
 
 Chat status messages rework (PRODUCT-1226), no new components. The

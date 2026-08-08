@@ -37,6 +37,12 @@ export interface RoutineRowScheduleEditProps {
   /** Schedule-builder labels; English defaults keep standalone callers working. */
   scheduleLabels?: ScheduleLabels;
   locale?: string;
+  /**
+   * Trigger presentation: `row` (default) is the list row's quiet inline
+   * summary; `field` is the routine screen's obviously-editable control — a
+   * bordered field with the summary and a visible pencil (PRODUCT-1208).
+   */
+  variant?: "row" | "field";
 }
 
 export function RoutineRowScheduleEdit({
@@ -47,6 +53,7 @@ export function RoutineRowScheduleEdit({
   labels,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
   locale = "en-US",
+  variant = "row",
 }: RoutineRowScheduleEditProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(cron);
@@ -71,14 +78,32 @@ export function RoutineRowScheduleEdit({
           aria-label={labels.editSchedule}
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "relative z-10 mt-0.5 -ml-1 inline-flex max-w-full items-center gap-1",
-            "rounded-md px-1 py-0.5 text-xs text-ink-muted transition-colors",
-            "hover:bg-hover hover:text-ink",
-            "outline-none focus-visible:ring-2 focus-visible:ring-focus",
+            "outline-none",
+            variant === "row"
+              ? cn(
+                  "relative z-10 mt-0.5 -ml-1 inline-flex max-w-full items-center gap-1",
+                  "rounded-md px-1 py-0.5 text-xs text-ink-muted transition-colors",
+                  "hover:bg-hover hover:text-ink",
+                  "focus-visible:ring-2 focus-visible:ring-focus",
+                )
+              : cn(
+                  "inline-flex h-8 max-w-full items-center gap-2 rounded-lg",
+                  "border border-line-input bg-input px-2.5 text-sm text-ink",
+                  "transition-colors hover:bg-hover",
+                  "focus-visible:ring-1 focus-visible:ring-focus",
+                ),
           )}
         >
           <span className="truncate">{summary}</span>
-          <Pencil className="size-3 shrink-0 opacity-70" aria-hidden />
+          <Pencil
+            aria-hidden
+            className={cn(
+              "shrink-0",
+              variant === "row"
+                ? "size-3 opacity-70"
+                : "size-3.5 text-ink-muted",
+            )}
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent

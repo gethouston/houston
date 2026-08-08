@@ -5,7 +5,9 @@ import {
   isPeerRow,
   senderNameFor,
 } from "./author-label";
+import { ChatMessageActionsRow } from "./chat-message-actions";
 import { ChatMessageBody } from "./chat-message-body";
+import { ChatMessageEditor } from "./chat-message-editor";
 import type { ChatMessageItemProps } from "./chat-message-item-types";
 import { ChatProcessMessage } from "./chat-process-message";
 import { ChatPeerRow, ChatSenderName } from "./chat-sender-parts";
@@ -35,6 +37,13 @@ export function ChatMessageItem({
   renderSystemMessage,
   contextCompactedLabel,
   renderUserMessage,
+  onEditMessage,
+  canEditMessage,
+  editMessageLabel,
+  enableMessageCopy,
+  canCopyMessage,
+  copyMessageLabel,
+  messageEditing,
   onOpenLink,
   renderLink,
   currentUserId,
@@ -70,6 +79,7 @@ export function ChatMessageItem({
         "rounded-xl bg-accent/70 px-2 py-1 outline outline-2 outline-ring",
     ),
     "data-conversation-message-key": message.key,
+    tabIndex: -1,
   };
 
   if (message.from === "system") {
@@ -139,6 +149,54 @@ export function ChatMessageItem({
   );
   const trailer = summary ? renderTurnSummary?.(summary) : null;
 
+  // Per-message actions (PRODUCT-1217): Copy on any settled row with text,
+  // Edit only on the viewer's OWN user rows that can anchor a rewind — a
+  // still-optimistic send and a pre-turn-id transcript carry no `turnId`.
+  // Always visible (never hover-gated); the consumer's gates exclude rows
+  // whose raw content is not what the bubble shows (skill/attachment markers).
+  const copyable =
+    enableMessageCopy === true &&
+    !streaming &&
+    message.content.length > 0 &&
+    (canCopyMessage?.(message) ?? true);
+  const editable =
+    isUser &&
+    !peer &&
+    !streaming &&
+    onEditMessage !== undefined &&
+    message.turnId !== undefined &&
+    (canEditMessage?.(message) ?? true);
+  const actionsRow = (
+    <ChatMessageActionsRow
+      align={isUser && !peer ? "end" : "start"}
+      copyMessageLabel={copyMessageLabel}
+      copyable={copyable}
+      editMessageLabel={editMessageLabel}
+      message={message}
+      onEditMessage={editable ? onEditMessage : undefined}
+    />
+  );
+
+  // In-place edit (PRODUCT-1217): the row being edited swaps its bubble for a
+  // full-width editor card (ChatGPT's grammar). Own rows only — the pencil
+  // that opens this state never renders on a peer's message.
+  if (isUser && !peer && messageEditing?.editingKey === message.key) {
+    return (
+      <Message
+        {...sharedProps}
+        className={cn(sharedProps.className, "max-w-full")}
+        from="user"
+      >
+        <ChatMessageEditor
+          initialText={message.content}
+          labels={messageEditing.labels}
+          onCancel={messageEditing.onCancel}
+          onSubmit={(text) => messageEditing.onSubmit(message, text)}
+        />
+      </Message>
+    );
+  }
+
   if (peer || agentBubbled) {
     return (
       <Message
@@ -149,6 +207,7 @@ export function ChatMessageItem({
       >
         <ChatPeerRow face={face}>
           {body}
+          {actionsRow}
           {trailer}
         </ChatPeerRow>
       </Message>
@@ -178,6 +237,7 @@ export function ChatMessageItem({
           <span className="sr-only">{ownAnnouncement}</span>
         ) : null}
         {body}
+        {actionsRow}
         {trailer}
       </div>
     </Message>

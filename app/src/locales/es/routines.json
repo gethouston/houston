@@ -99,13 +99,37 @@
       "checking": "Verificando tu evento…",
       "activating": "Activando…",
       "active": "Evento activo"
+    },
+    "back": "Atrás"
+  },
+  "details": {
+    "promptTitle": "Qué hace esta rutina",
+    "scheduleTitle": "Cuándo se ejecuta",
+    "modelTitle": "Modelo",
+    "openChat": "Editar en el chat",
+    "editName": "Editar nombre",
+    "nextRun": "Próxima ejecución {{when}}",
+    "runsTitle": "Ejecuciones",
+    "runsLoading": "Cargando ejecuciones…",
+    "runsEmpty": "Aún no hay ejecuciones",
+    "openRun": "Abrir el chat de esta ejecución",
+    "status": {
+      "running": "En ejecución",
+      "silent": "Nada que reportar",
+      "surfaced": "Completada",
+      "error": "Falló",
+      "cancelled": "Detenida"
+    },
+    "model": {
+      "inherit": "Modelo del agente",
+      "reset": "Usar el modelo del agente"
     }
   },
   "row": {
     "untitled": "Sin título",
     "pauseRoutine": "Pausar rutina",
     "resumeRoutine": "Reanudar rutina",
-    "openChat": "Abrir chat",
+    "openChat": "Abrir rutina",
     "editSchedule": "Editar horario",
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -207,7 +231,9 @@
   "toasts": {
     "timezoneSet": "Zona horaria establecida en {{zone}}",
     "timezoneError": "No se pudo actualizar la zona horaria",
-    "discardError": "No se pudo descartar el borrador"
+    "discardError": "No se pudo descartar el borrador",
+    "modelError": "No se pudo cambiar el modelo",
+    "updateError": "No se pudo guardar la rutina"
   },
   "webhook": {
     "createAddress": "Crear dirección de webhook",

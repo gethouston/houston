@@ -124,7 +124,7 @@ describe("beginCustomOAuth", () => {
       DEF,
       redirect,
       null,
-      fetchFn,
+      { fetchFn },
     );
     const url = new URL(authorizeUrl);
     expect(`${url.origin}${url.pathname}`).toBe(`${AS}/authorize`);
@@ -136,6 +136,18 @@ describe("beginCustomOAuth", () => {
     expect(attempt.endpoint).toBe(ENDPOINT);
     expect(attempt.codeVerifier).toBeTruthy();
     expect(attempt.resource).toBe("https://mcp.example.com");
+  });
+
+  it("a state prefix rides inside the state (gateway pod routing)", async () => {
+    const { fetchFn } = fakeAuthServer();
+    const { state, authorizeUrl } = await beginCustomOAuth(
+      DEF,
+      "https://gateway.example.com/v1/integrations/custom/oauth/callback",
+      null,
+      { fetchFn, statePrefix: "30c8c1f5631f1312.36d2bd7e4d89085e" },
+    );
+    expect(state).toMatch(/^30c8c1f5631f1312\.36d2bd7e4d89085e\.[0-9a-f]{32}$/);
+    expect(new URL(authorizeUrl).searchParams.get("state")).toBe(state);
   });
 
   it("refuses a non-https authorization endpoint (OS-opener safety)", async () => {
@@ -162,7 +174,7 @@ describe("beginCustomOAuth", () => {
       return jsonRes({ error: "no" }, 404);
     }) as typeof fetch;
     await expect(
-      beginCustomOAuth(DEF, "http://127.0.0.1:1/cb", null, fetchFn),
+      beginCustomOAuth(DEF, "http://127.0.0.1:1/cb", null, { fetchFn }),
     ).rejects.toMatchObject({ code: "oauth_failed" });
   });
 
@@ -178,12 +190,9 @@ describe("beginCustomOAuth", () => {
       tokens: { access_token: "old", token_type: "Bearer" },
       expiresAt: null,
     };
-    const { authorizeUrl } = await beginCustomOAuth(
-      DEF,
-      redirect,
-      existing,
+    const { authorizeUrl } = await beginCustomOAuth(DEF, redirect, existing, {
       fetchFn,
-    );
+    });
     expect(new URL(authorizeUrl).searchParams.get("client_id")).toBe(
       "kept-client",
     );
@@ -208,7 +217,7 @@ describe("beginCustomOAuth", () => {
       return jsonRes({ error: "no" }, 404);
     }) as typeof fetch;
     await expect(
-      beginCustomOAuth(DEF, "http://127.0.0.1:1/cb", null, fetchFn),
+      beginCustomOAuth(DEF, "http://127.0.0.1:1/cb", null, { fetchFn }),
     ).rejects.toMatchObject({ code: "oauth_failed" });
   });
 });
@@ -218,7 +227,9 @@ describe("settleCustomOAuth", () => {
     const { fetchFn } = fakeAuthServer();
     const redirect =
       "http://127.0.0.1:4318/v1/integrations/custom/oauth/callback";
-    const { attempt } = await beginCustomOAuth(DEF, redirect, null, fetchFn);
+    const { attempt } = await beginCustomOAuth(DEF, redirect, null, {
+      fetchFn,
+    });
     const bundle = await settleCustomOAuth(attempt, "the-code", fetchFn);
     expect(bundle.kind).toBe("houston-custom-oauth");
     expect(bundle.tokens.access_token).toBe("at-1");
@@ -233,7 +244,7 @@ describe("settleCustomOAuth", () => {
       DEF,
       "http://127.0.0.1:1/cb",
       null,
-      fetchFn,
+      { fetchFn },
     );
     const rejecting = (async () =>
       jsonRes({ error: "invalid_grant" }, 400)) as typeof fetch;

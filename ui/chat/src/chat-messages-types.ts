@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { RenderLinkProps } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ChatAuthorLabels } from "./author-label";
 import type { ToolsAndCardsProps } from "./chat-helpers";
+import type { ChatMessageItemProps } from "./chat-message-item-types";
 import type { ChatProcessLabels } from "./chat-process-block";
 import type { ConversationMapLabels } from "./conversation-map";
 import type { ConversationMoment } from "./conversation-map-model";
@@ -43,6 +44,20 @@ export interface ChatMessagesProps {
    * speaker attribution stays consistent.
    */
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
+  /** Edit-and-resend (PRODUCT-1217): see `ChatMessageItemProps.onEditMessage`. */
+  onEditMessage?: (msg: ChatMessage) => void;
+  /** See `ChatMessageItemProps.canEditMessage`. */
+  canEditMessage?: (msg: ChatMessage) => boolean;
+  /** See `ChatMessageItemProps.editMessageLabel`. */
+  editMessageLabel?: string;
+  /** Copy-message affordance: see `ChatMessageItemProps.enableMessageCopy`. */
+  enableMessageCopy?: boolean;
+  /** See `ChatMessageItemProps.canCopyMessage`. */
+  canCopyMessage?: (msg: ChatMessage) => boolean;
+  /** See `ChatMessageItemProps.copyMessageLabel`. */
+  copyMessageLabel?: string;
+  /** In-place editing: see `ChatMessageItemProps.messageEditing`. */
+  messageEditing?: ChatMessageItemProps["messageEditing"];
   /** Node rendered after the last message (inside the scroll container).
    *  Useful for inline end-of-feed cards like auth reconnect prompts. */
   afterMessages?: ReactNode;
@@ -105,6 +120,10 @@ export interface ChatMessagesProps {
   /** Props-only configuration for the optional Conversation Map. */
   conversationMap?: {
     labels?: ConversationMapLabels;
+    /** Increment to open the chat search (the header menu's "Find"). */
+    findToken?: number;
+    /** The header trigger; the search returns focus there when it closes. */
+    returnFocusRef?: RefObject<HTMLButtonElement | null>;
     onOpenChange?: (open: boolean, conversationLength: number) => void;
     onMomentClick?: (
       moment: ConversationMoment,

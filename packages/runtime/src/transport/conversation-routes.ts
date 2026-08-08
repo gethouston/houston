@@ -9,6 +9,7 @@ import {
   setLiveTurnMode,
 } from "../session/chat";
 import { summarizeTitle, titleFromText } from "../session/summarize";
+import { truncateConversationTurn } from "../session/truncate-turn";
 import {
   deleteConversation,
   getHistory,
@@ -40,7 +41,7 @@ export async function handleConversationRoute(
   }
 
   const convMatch = path.match(
-    /^\/conversations\/([^/]+)\/(messages|events|cancel|dismiss-interaction|title|mode)$/,
+    /^\/conversations\/([^/]+)\/(messages|events|cancel|dismiss-interaction|title|mode|truncate)$/,
   );
   if (!convMatch) return false;
 
@@ -99,6 +100,22 @@ export async function handleConversationRoute(
   }
   if (method === "POST" && action === "title") {
     await handleConversationTitle(ctx, id);
+    return true;
+  }
+  if (method === "POST" && action === "truncate") {
+    // Edit-and-resend (PRODUCT-1217): cut the transcript at the named user
+    // turn. The client follows up with a normal POST …/messages carrying the
+    // edited text, so this route only rewinds — it never starts a turn.
+    const { turnId } = await readJson(ctx.req);
+    if (!turnId || typeof turnId !== "string") {
+      json(res, 400, { error: "missing 'turnId'" });
+      return true;
+    }
+    const result = await truncateConversationTurn(id, turnId);
+    if (result === "busy") json(res, 409, { error: "turn running" });
+    else if (result === "not_found")
+      json(res, 404, { error: "turn not found" });
+    else json(res, 200, { ok: true, removed: result.removed });
     return true;
   }
   if (method === "POST" && action === "messages") {

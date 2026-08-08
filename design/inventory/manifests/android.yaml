@@ -17,6 +17,8 @@ components:
     status: not-started
   conversation-feed:
     status: not-started
+  conversation-map-search:
+    status: not-started
   assistant-message:
     status: not-started
   user-message:
@@ -54,6 +56,8 @@ components:
   mission-status-chip:
     status: not-started
   routine-row:
+    status: not-started
+  routine-details:
     status: not-started
   skill-row:
     status: not-started

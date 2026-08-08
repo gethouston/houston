@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 42
+inventoryVersion: 56
 
 components:
   agent-avatar:
@@ -30,6 +30,10 @@ components:
   conversation-feed:
     status: implemented
     ref: "@houston-ai/chat ChatPanel / ChatMessages / Conversation"
+
+  conversation-map-search:
+    status: implemented
+    ref: "@houston-ai/chat ConversationActionsMenu / ConversationMap / ConversationMapPanel"
 
   assistant-message:
     status: implemented
@@ -158,6 +162,15 @@ components:
   routine-row:
     status: implemented
     ref: "@houston-ai/routines RoutineRow / RoutinesGrid"
+
+  routine-details:
+    status: partial
+    ref: "app/src/components/tabs/routine-screen.tsx + routine-runs-dialog.tsx + routine-model-selector.tsx over @houston-ai/routines RoutineRunList / RoutineRowScheduleEdit"
+    notes: >-
+      The run list + schedule editor are shared ui/; the screen composition
+      (editable prompt, Runs modal, Back/Open-chat chrome) and the model row
+      (ChatModelSelector over the app's provider catalog) are app/-locked.
+      Extract before mobile.
 
   skill-row:
     status: partial

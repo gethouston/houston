@@ -76,6 +76,8 @@ components:
       wallpaper (ChatWallpaperLayout.swift / ChatWallpaperView.swift, static Canvas,
       theme.ink @ 0.035, OFF under Reduce Transparency) sits behind the feed
       via ChatView.swift.
+  conversation-map-search:
+    status: not-started
   assistant-message:
     status: partial
     ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift
@@ -203,6 +205,9 @@ components:
   routine-row:
     status: not-started
     notes: Routines list not in mobile v1; missions only carry a "Routine" tag.
+  routine-details:
+    status: not-started
+    notes: Routines list not in mobile v1.
   skill-row:
     status: not-started
     notes: Skills catalog not in mobile v1.

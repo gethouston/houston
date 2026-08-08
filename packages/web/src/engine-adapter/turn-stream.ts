@@ -106,6 +106,21 @@ export function seedConversationVm(
 }
 
 /**
+ * Fold the edit-and-resend rewind (PRODUCT-1217) into the conversation VM:
+ * drop the feed tail from the edited user turn onward. Called AFTER the
+ * runtime accepted the truncation. Explicit because {@link seedConversationVm}
+ * deliberately skips a shorter server fold — the loaded-pages guard would
+ * swallow the rewind and leave the dropped turns on screen.
+ */
+export function truncateConversationVm(
+  agentPath: string,
+  sessionKey: string,
+  turnId: string,
+): boolean {
+  return conversationVm.truncateFromTurn(agentPath, sessionKey, turnId);
+}
+
+/**
  * Show a user's message in the conversation VM BEFORE any turn exists — the
  * warming-engine send queue (HOU-693): the message is held client-side until
  * the just-created agent's engine answers, but the user must see it as sent

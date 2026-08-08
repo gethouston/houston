@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 55
+version: 58
 
 components:
   - id: agent-avatar
@@ -94,6 +94,25 @@ components:
     a11y: log role with aria-live=polite for appended items; preserves scroll on prepend.
     since: 1
 
+  - id: conversation-map-search
+    title: Conversation map search
+    purpose: Search and navigate the messages already loaded in an open conversation.
+    anatomy: [actions-trigger, actions-menu, find-command, search-field, message-map, back-to-latest-action]
+    states: [closed, actions-open, open-unfiltered, filtered, no-results, current-message]
+    variants: [conversation-overlay]
+    behavior: >-
+      The chat header's three-dot menu (left of the people stack and close
+      control) offers Find plus status-aware mission actions. Choosing Find
+      shows the compact conversation map before a query is entered.
+      Filtering is case- and accent-insensitive across every loaded message;
+      selecting a result scrolls to and briefly highlights that message. Delete
+      remains confirmation-gated.
+    a11y: >-
+      The icon trigger, menu actions, and close action have accessible labels;
+      search is a labeled searchbox; results are buttons in a navigation
+      landmark, with aria-current on the message nearest the viewport.
+    since: 56
+
   - id: assistant-message
     title: Assistant message
     purpose: >-
@@ -129,6 +148,11 @@ components:
       across the labeled button pill and the blue autolink chip. No
       external-link arrow: the file opens in-app. Link blue stays reserved for
       the web, so the chip now tells the reader whether a click leaves Houston.
+      (v56) The copy action ships as an action row under the settled bubble,
+      revealed while the row is hovered OR holds keyboard focus (ChatGPT's
+      grammar -- the buttons stay in the DOM and the tab order; a sanctioned
+      exception to the no-hover-gating default, owner decision) with a brief
+      check-mark confirm; streaming turns carry no actions.
     a11y: article/group role; code blocks keyboard-selectable; copy button labeled. A file chip is a button carrying the file's full path as its title.
     since: 1
 
@@ -137,8 +161,17 @@ components:
     purpose: >-
       A message a person sent -- the viewer's own right-aligned, a teammate's
       mirrored to the left with their face beside it.
-    anatomy: [sender-face-column, bubble, sender-name-line, attachment-chips]
-    states: [default, with-attachments]
+    anatomy:
+      [
+        sender-face-column,
+        bubble,
+        sender-name-line,
+        attachment-chips,
+        copy-action,
+        edit-action,
+        inline-editor,
+      ]
+    states: [default, with-attachments, editable, editing]
     variants: [single-player, own-message, teammate-message, run-continuation]
     behavior: >-
       The message's stored author drives attribution, and in a SHARED
@@ -158,7 +191,20 @@ components:
       renders bare with the avatar column still reserved, so consecutive bubbles
       stay lined up under the face. A change of sender starts a run and a system
       divider breaks one. Single-player carries no face, no name and no reserved
-      column. Attachment/skill markers are decoded to a clean preview.
+      column. Attachment/skill markers are decoded to a clean preview. (v56)
+      The viewer's OWN settled plain-text messages carry an edit action under
+      the bubble while the conversation is idle, in an action row revealed on
+      row hover OR keyboard focus (ChatGPT's grammar; a sanctioned exception
+      to the no-hover-gating default, owner decision). Choosing it swaps the
+      bubble for an IN-PLACE full-width editor card (the message's text,
+      Cancel / Send; Enter sends, Escape cancels; the composer is never
+      touched); Send REWINDS the conversation to that message and continues
+      from the edited version, earlier turns untouched. Marker messages
+      (skill/attachment/interaction answers), channel relays, teammates'
+      rows, and pre-turn-id transcripts are not editable. Settled rows on
+      either side carry a copy action in the same revealed row (verbatim
+      text, brief check-mark confirm); marker-encoded rows are not copyable
+      -- their wire encoding is not what the bubble shows.
     a11y: >-
       group role; a teammate's name is visible text inside the bubble, while the
       viewer's own rows carry the consumer's "you" label as screen-reader-only
@@ -761,6 +807,52 @@ components:
       text; status never color-alone (icon shape + row text carry it); menu
       trigger always visible with an accessible label.
     since: 1
+
+  - id: routine-details
+    title: Routine screen
+    purpose: >-
+      A routine's own page (PRODUCT-1208), REPLACING the routines list in the
+      main content when its row is clicked -- never a side panel, never a
+      popover: the routine's name, an editable description (the prompt IS what
+      the routine does), an editable run frequency, the model it runs on, and
+      its execution history behind a Runs modal, n8n-style.
+    anatomy:
+      [
+        back-action,
+        title,
+        runs-action,
+        open-chat-action,
+        editable-prompt,
+        schedule-editor,
+        model-row,
+        runs-modal,
+      ]
+    states: [viewing, editing-prompt, editing-schedule, loading-runs, no-runs-yet]
+    variants: [full-screen]
+    behavior: >-
+      The row click lands here (never straight in a chat); Back or Escape
+      returns to the list. The description is the prompt in a plain textarea
+      -- Save/Cancel appear when edited and Save persists it. The frequency
+      shows the humanized cron with the SAME schedule-builder editor the rows
+      use (plus the next fire time), or a trigger's plain-language event with
+      its live activation chip (event bindings change via chat, not here).
+      The model row shows "Agent's model" (inherit) or the pinned provider +
+      model; picking pins it (the fire path honors the pin), a reset row
+      returns to inherit -- clamped to the agent's allowed-models ceiling in
+      Teams. "Runs" opens the execution history as a MODAL: every recorded
+      run newest-first with its plain-language outcome (running / done /
+      nothing to report / failed / stopped), date + time, elapsed time, and
+      -- when the run wasn't silent -- the result it left behind; clicking an
+      entry closes the modal and opens that run's chat in the shell panel
+      (closing the chat returns to this screen). "Open chat" reaches the
+      routine's setup chat the same way.
+    a11y: >-
+      the screen title and sections are real headings; the prompt textarea is
+      labeled; run rows are buttons whose accessible name carries the outcome,
+      stamp, and the open-chat action; outcomes are conveyed as text, never
+      color alone; the running state is announced by its label, not only the
+      spinner.
+    since: 58
 
   - id: skill-row
     title: Skill row

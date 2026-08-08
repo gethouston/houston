@@ -102,11 +102,15 @@ test("ChannelRoutineFirer routes the prompt to the workspace's channel", async (
     // routine → no acting user threaded (acts as owner).
     {
       cid: "routine-r1",
-      text: "Write the daily report",
+      // The routine's instruction rides inside the run framing (PRODUCT-1208).
+      text: expect.stringContaining("Write the daily report"),
       pin: { provider: null, model: null, effort: undefined, mode: "auto" },
       actingUser: undefined,
     },
   ]);
+  // The framing is what stops a "every hour, …" prompt from reading as a
+  // request to CREATE a routine (which duplicated it and skipped the work).
+  expect(cloudrun.calls[0]?.text).toContain("never call save_routine");
 });
 
 test("ChannelRoutineFirer threads the routine creator as the turn's acting user (C2)", async () => {

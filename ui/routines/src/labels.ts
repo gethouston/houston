@@ -125,7 +125,7 @@ export interface RoutinesGridLabels {
 
 /**
  * RoutineRow labels + its controls. Rows are a compact, selectable list:
- * clicking a row opens the routine's chat; the switch, the three-dot menu
+ * clicking a row opens the routine's own screen (PRODUCT-1208); the switch, the three-dot menu
  * (run/stop, delete), and the inline schedule editor are the only other
  * actions. The next-run time now shows as the pure relative string (from
  * `NextFireLabels`), so the row carries no "Next …"/last-run copy of its own.
@@ -135,7 +135,7 @@ export interface RoutineRowLabels {
   untitled: string;
   pauseRoutine: string;
   resumeRoutine: string;
-  /** Accessible name for the row's own click target — opening the routine's chat. */
+  /** Accessible name for the row's own click target — opening the routine's screen (PRODUCT-1208). */
   openChat: string;
   /** Accessible name for the inline schedule-summary edit affordance. */
   editSchedule: string;
