@@ -4,6 +4,7 @@ import type {
   OAuthClientInformationFull,
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
+import { guardedFetch } from "./fetch-guard";
 import type { CustomSecretStore } from "./secrets";
 
 /**
@@ -111,12 +112,13 @@ async function refreshBundle(
     );
   }
   // The SDK preserves the original refresh_token when the server rotates none.
+  // Same guarded HTTP seam as the flow half (see beginCustomOAuth).
   const tokens = await refreshAuthorization(bundle.authorizationServerUrl, {
     ...(bundle.metadata ? { metadata: bundle.metadata } : {}),
     clientInformation: bundle.client,
     refreshToken,
     ...(bundle.resource ? { resource: new URL(bundle.resource) } : {}),
-    ...(fetchFn ? { fetchFn } : {}),
+    fetchFn: fetchFn ?? guardedFetch,
   });
   const rotated = bundleOf({ ...bundle, tokens });
   // Compare-and-swap: a completeOAuth (new grant) or a remove/replace can

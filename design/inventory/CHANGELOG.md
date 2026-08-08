@@ -3,19 +3,28 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v57 - 2026-08-07
+## v58 - 2026-08-07
 
 `chat-mission-list` becomes a drawer: open by default, the title row (with a
 count and chevron) collapses it to just the title and expands it again. Anatomy
 and states updated accordingly.
 
-## v56 - 2026-08-07
+## v57 - 2026-08-07
 
 Agent-started missions (PRODUCT-1244). New `chat-mission-list`: the missions a
 chat started, listed above its composer with each one's live board status and
 opening to that mission's own chat. It stands in for the suggested-action
 bubbles on a coordinating chat, where reviewing what was handed out is the real
 next step.
+
+## v56 - 2026-08-07
+
+Added the conversation map search inside the chat's compact three-dot actions
+menu, alongside status-aware Move to done and confirmation-gated Delete
+actions. The trigger lives in the chat panel header, left of the people stack
+and close control. Find opens an unfiltered map of prior messages by default, then narrows
+it with a case- and accent-insensitive text filter. Results jump to and
+highlight the selected message, while the footer returns to the latest reply.
 
 ## v55 - 2026-08-07
 

@@ -1,3 +1,11 @@
+import type { HighlightRange } from "@houston-ai/core";
+import type { ChatDisplayItem } from "./chat-process-groups";
+import {
+  conversationSearchRanges,
+  conversationSearchSnippet,
+  matchesConversationSearch,
+  normalizeConversationSearchQuery,
+} from "./conversation-map-search.ts";
 import type { ChatMessage } from "./feed-to-messages";
 import { messagePreviewText } from "./message-preview.ts";
 
@@ -12,31 +20,91 @@ export interface ConversationMoment {
   messageKey: string;
   type: ConversationMomentType;
   preview: string;
+  searchText: string;
   position: number;
 }
 
 const MAX_MOMENTS = 24;
 const PREVIEW_LENGTH = 96;
 
-/** Derives a compact navigation index from the messages currently rendered. */
+/** Search-filtered map entries and their display highlight ranges. */
+export interface ConversationMomentSearchResult {
+  moments: ConversationMoment[];
+  hasQuery: boolean;
+  rangesById: Record<string, HighlightRange[]>;
+}
+
+/** Derives searchable navigation moments from every message currently rendered. */
 export function deriveConversationMoments(
-  messages: ChatMessage[],
+  displayItems: ChatDisplayItem[],
 ): ConversationMoment[] {
-  const moments = messages.flatMap((message, index) => {
+  const moments = displayItems.flatMap((item) => {
+    if (item.kind === "process") return [];
+    const { message, sourceIndex } = item;
     const type = momentTypeFor(message);
     if (!type) return [];
+    const searchText = searchTextFor(message.content);
     return [
       {
         id: message.key,
         messageKey: message.key,
         type,
-        preview: previewFor(message.content),
-        position: index + 1,
+        preview: previewFor(searchText),
+        searchText,
+        position: sourceIndex + 1,
       },
     ];
   });
 
-  return capMoments(moments);
+  return moments;
+}
+
+/**
+ * True when at least one message can anchor the chat search. Lets the header
+ * menu (rendered outside ChatMessages) decide whether "Find" is actionable
+ * without waiting on the map's own derivation.
+ */
+export function hasConversationMoments(messages: ChatMessage[]): boolean {
+  return (
+    deriveConversationMoments(
+      messages.map((message, sourceIndex) => ({
+        kind: "message" as const,
+        message,
+        sourceIndex,
+      })),
+    ).length > 0
+  );
+}
+
+/** Filter every loaded message before compacting the visible map. */
+export function searchConversationMoments(
+  moments: ConversationMoment[],
+  rawQuery: string,
+): ConversationMomentSearchResult {
+  const query = normalizeConversationSearchQuery(rawQuery);
+  const matched = query
+    ? moments.flatMap((moment) => {
+        if (!matchesConversationSearch(moment.searchText, query)) return [];
+        return [
+          {
+            ...moment,
+            preview:
+              conversationSearchSnippet(moment.searchText, query) ??
+              moment.preview,
+          },
+        ];
+      })
+    : moments.filter((moment) => moment.type === "user");
+  const visible = capMoments(matched);
+  const rangesById = query
+    ? Object.fromEntries(
+        visible.map((moment) => [
+          moment.id,
+          conversationSearchRanges(moment.preview, query),
+        ]),
+      )
+    : {};
+  return { moments: visible, hasQuery: query.length > 0, rangesById };
 }
 
 function momentTypeFor(message: ChatMessage): ConversationMomentType | null {
@@ -48,13 +116,16 @@ function momentTypeFor(message: ChatMessage): ConversationMomentType | null {
   return null;
 }
 
-function previewFor(content: string): string {
+function searchTextFor(content: string): string {
   // Decode Skill / attachment / interaction-answers markers so the map never
   // leaks raw marker JSON; plain assistant/user text passes through unchanged.
   const decoded = messagePreviewText(content);
-  const normalized = decoded.replace(/\s+/g, " ").trim();
-  if (normalized.length <= PREVIEW_LENGTH) return normalized;
-  return `${normalized.slice(0, PREVIEW_LENGTH - 3)}...`;
+  return decoded.replace(/\s+/g, " ").trim();
+}
+
+function previewFor(searchText: string): string {
+  if (searchText.length <= PREVIEW_LENGTH) return searchText;
+  return `${searchText.slice(0, PREVIEW_LENGTH - 3)}...`;
 }
 
 function capMoments(moments: ConversationMoment[]): ConversationMoment[] {

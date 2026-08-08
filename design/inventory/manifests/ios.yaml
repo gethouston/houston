@@ -76,6 +76,8 @@ components:
       wallpaper (ChatWallpaperLayout.swift / ChatWallpaperView.swift, static Canvas,
       theme.ink @ 0.035, OFF under Reduce Transparency) sits behind the feed
       via ChatView.swift.
+  conversation-map-search:
+    status: not-started
   assistant-message:
     status: partial
     ref: mobile/ios/Houston/Features/Chat/ChatBubbles.swift

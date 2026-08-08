@@ -1,12 +1,10 @@
-import { cn } from "@houston-ai/core";
-import type { TFunction } from "i18next";
-import { ChevronDownIcon, Lightbulb, Play, ScrollText } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
 import { isAgentManager } from "../lib/agent-access";
-import { fileNameOf } from "../lib/agent-file-paths";
+import { genericErrorDescription } from "../lib/error-report";
+import { tauriSystem } from "../lib/tauri";
 import {
   groupTurnSummaryItems,
   type SemanticUpdateKind,
@@ -14,7 +12,8 @@ import {
 } from "../lib/turn-summary-items";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
-import { getFileIcon } from "./file-card";
+import { TurnSummarySection } from "./turn-summary-section";
+import { useActionBrandResolver } from "./use-action-brand-resolver";
 
 interface TurnFileSummaryProps {
   items: TurnSummaryItem[];
@@ -24,8 +23,13 @@ interface TurnFileSummaryProps {
 export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
-  const [openUpdates, setOpenUpdates] = useState(false);
+  // "Updates made" starts EXPANDED (PRODUCT-1196): it is the turn's receipt,
+  // and a collapsed receipt was read as "nothing happened". New files keep
+  // their collapsed default — they are secondary.
+  const [openUpdates, setOpenUpdates] = useState(true);
   const [openFiles, setOpenFiles] = useState(false);
+  const addToast = useUIStore((s) => s.addToast);
+  const resolveBrand = useActionBrandResolver();
 
   const { openFile: handleOpen } = useOpenAgentFile(agentPath);
 
@@ -51,116 +55,51 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
     [agentPath, capabilities],
   );
 
+  const handleOpenUrl = useCallback(
+    (url: string) => {
+      tauriSystem.openUrl(url).catch((err) => {
+        addToast({
+          variant: "error",
+          title: t("summary.openLinkFailedTitle"),
+          description: genericErrorDescription("open_summary_link", err),
+        });
+      });
+    },
+    [addToast, t],
+  );
+
   if (items.length === 0) return null;
   const groups = groupTurnSummaryItems(items);
 
   return (
     <div className="mt-3 flex flex-col gap-2">
       {groups.updates.length > 0 && (
-        <SummarySection
+        <TurnSummarySection
           title={t("summary.updatesMade")}
           items={groups.updates}
           open={openUpdates}
+          done
           onOpenChange={setOpenUpdates}
           onOpenFile={handleOpen}
           onOpenSemantic={handleOpenSemantic}
+          onOpenUrl={handleOpenUrl}
+          resolveBrand={resolveBrand}
           t={t}
         />
       )}
       {groups.files.length > 0 && (
-        <SummarySection
+        <TurnSummarySection
           title={t("summary.newFiles", { count: groups.files.length })}
           items={groups.files}
           open={openFiles}
           onOpenChange={setOpenFiles}
           onOpenFile={handleOpen}
           onOpenSemantic={handleOpenSemantic}
+          onOpenUrl={handleOpenUrl}
+          resolveBrand={resolveBrand}
           t={t}
         />
       )}
     </div>
   );
-}
-
-function SummarySection({
-  title,
-  items,
-  open,
-  onOpenChange,
-  onOpenFile,
-  onOpenSemantic,
-  t,
-}: {
-  title: string;
-  items: TurnSummaryItem[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onOpenFile: (path: string) => void;
-  onOpenSemantic: (kind: SemanticUpdateKind) => void;
-  t: TFunction<"chat">;
-}) {
-  return (
-    <div className="rounded-lg border border-line/50 bg-chip overflow-hidden">
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink-muted hover:text-ink transition-colors"
-      >
-        <ChevronDownIcon
-          className={cn(
-            "h-4 w-4 transition-transform",
-            open ? "rotate-0" : "-rotate-90",
-          )}
-        />
-        <span>{title}</span>
-      </button>
-      {open && (
-        <div className="border-t border-line/50 divide-y divide-line/50">
-          {items.map((item) => {
-            const key = item.kind === "file" ? item.path : item.update;
-            const Icon = itemIcon(item);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() =>
-                  item.kind === "file"
-                    ? onOpenFile(item.path)
-                    : onOpenSemantic(item.update)
-                }
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-hover transition-colors"
-              >
-                <Icon className="h-4 w-4 text-ink-muted shrink-0" />
-                <span className="truncate">{itemLabel(item, t)}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function semanticIcon(kind: SemanticUpdateKind) {
-  if (kind === "instructions") return ScrollText;
-  if (kind === "skills") return Play;
-  return Lightbulb;
-}
-
-function itemIcon(item: TurnSummaryItem) {
-  if (item.kind === "semantic") return semanticIcon(item.update);
-  const fileName = fileNameOf(item.path);
-  const ext = fileName.includes(".")
-    ? fileName.split(".").pop()?.toLowerCase()
-    : undefined;
-  return getFileIcon(ext);
-}
-
-function itemLabel(item: TurnSummaryItem, t: TFunction<"chat">): string {
-  if (item.kind === "semantic") {
-    if (item.update === "instructions") return t("summary.instructionsUpdated");
-    if (item.update === "skills") return t("summary.skillsUpdated");
-    return t("summary.learningsUpdated");
-  }
-  return fileNameOf(item.path);
 }

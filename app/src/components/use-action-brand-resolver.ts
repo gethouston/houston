@@ -1,4 +1,8 @@
-import { type ChatActionBrand, humanizeActionGerund } from "@houston-ai/chat";
+import {
+  type ChatActionBrand,
+  humanizeActionDone,
+  humanizeActionGerund,
+} from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
 import {
   useCustomIntegrationsFor,
@@ -63,6 +67,7 @@ export function useActionBrandResolver(): (
             camelToSnakeCase(customRef.tool),
             "",
           ),
+          doneLabel: humanizeActionDone(camelToSnakeCase(customRef.tool), ""),
         };
       }
       const toolkit = toolkitOfActionSlug(action, slugs);
@@ -72,6 +77,7 @@ export function useActionBrandResolver(): (
         name: brand.name,
         logoUrl: brand.logoUrl,
         actionLabel: humanizeActionGerund(action, toolkit),
+        doneLabel: humanizeActionDone(action, toolkit),
       };
     },
     [slugs, customDefs, resolveBrand],

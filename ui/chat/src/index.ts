@@ -6,6 +6,7 @@ export {
   MAX_ATTACHMENT_FILES,
   TooManyAttachmentFilesError,
 } from "@houston-ai/core";
+export { humanizeActionDone, humanizeActionGerund } from "./action-labels";
 export type {
   ConversationContentProps,
   ConversationDownloadProps,
@@ -258,16 +259,23 @@ export {
   ChatThinkingIndicator,
   type ChatThinkingIndicatorProps,
 } from "./chat-thinking-indicator";
+export { ConversationActionsMenu } from "./conversation-actions-menu";
 export type {
+  ConversationMapActions,
   ConversationMapLabels,
   ConversationMapProps,
 } from "./conversation-map";
 export { ConversationMap } from "./conversation-map";
+export type { ResolvedConversationMapLabels } from "./conversation-map-labels";
+export { resolveConversationMapLabels } from "./conversation-map-labels";
 export type {
   ConversationMoment,
   ConversationMomentType,
 } from "./conversation-map-model";
-export { deriveConversationMoments } from "./conversation-map-model";
+export {
+  deriveConversationMoments,
+  hasConversationMoments,
+} from "./conversation-map-model";
 // === Dictation ===
 export type {
   DictationControl,
@@ -322,10 +330,7 @@ export type {
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
-export {
-  humanizeActionGerund,
-  prettifyToolkit,
-} from "./interaction-card-model";
+export { prettifyToolkit } from "./interaction-card-model";
 // The always-visible single-line free-text row every non-question step carries
 // (connect / sign-in / credential decline-with-instruction).
 export { InlineTextRow } from "./interaction-decline-row";

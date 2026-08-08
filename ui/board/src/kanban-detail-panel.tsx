@@ -110,6 +110,10 @@ export const KanbanDetailPanel = forwardRef<
           {isRunning && (
             <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
           )}
+          {/* Actions sit BEFORE the face stack: the overflow menu reads as
+              panel chrome next to the close button, while the people stack
+              stays glued to the close affordance on the right edge. */}
+          {actions}
           {people && people.length > 0 && (
             /* `surface="background"` because this header wears `bg-background`,
                not the card tier: the default `ring-input` ring would paint a
@@ -124,7 +128,6 @@ export const KanbanDetailPanel = forwardRef<
               className="shrink-0"
             />
           )}
-          {actions}
           {onClose && (
             <button
               type="button"

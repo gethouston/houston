@@ -32,6 +32,11 @@ export interface ChatActionBrand {
    *  Takes precedence over `logoUrl`; absent → logo, else the helmet. */
   icon?: "tool";
   actionLabel: string;
+  /** The past-tense counterpart of `actionLabel` ("Sent email"), for surfaces
+   *  that report a COMPLETED action — the turn-end "Updates made" rows
+   *  (PRODUCT-1196). Optional and additive; absent falls back to
+   *  `actionLabel`. */
+  doneLabel?: string;
 }
 
 export interface ChatProcessLabels {
