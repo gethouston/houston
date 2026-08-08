@@ -354,5 +354,13 @@
     "Mapping the milky way...",
     "Almost there, cadet...",
     "T-minus a few seconds..."
-  ]
+  ],
+  "editMessage": {
+    "edit": "Edit message",
+    "send": "Send",
+    "cancel": "Cancel"
+  },
+  "copyMessage": {
+    "copy": "Copy message"
+  }
 }

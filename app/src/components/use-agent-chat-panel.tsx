@@ -270,6 +270,23 @@ interface AgentChatPanelProps {
   attachMenu: AIBoardProps["attachMenu"];
   /** Decodes skill-invocation user messages into a card. */
   renderUserMessage: AIBoardProps["renderUserMessage"];
+  /** Edit-and-resend (PRODUCT-1217): begins editing a previous user message.
+   *  Undefined while a turn runs, so the affordance vanishes instead of
+   *  inviting the runtime's 409. */
+  onEditMessage: AIBoardProps["onEditMessage"];
+  /** Gates the affordance to messages the user actually typed (no markers,
+   *  no channel relays, own messages only in a shared thread). */
+  canEditMessage: AIBoardProps["canEditMessage"];
+  /** Localized label for the edit affordance. */
+  editMessageLabel: AIBoardProps["editMessageLabel"];
+  /** In-place editing state + Cancel/Send callbacks for the edited row. */
+  messageEditing: AIBoardProps["messageEditing"];
+  /** Copy-message affordance on both sides of the conversation. */
+  enableMessageCopy: AIBoardProps["enableMessageCopy"];
+  /** Gates copy to rows whose raw content is what the bubble shows. */
+  canCopyMessage: AIBoardProps["canCopyMessage"];
+  /** Localized label for the copy affordance. */
+  copyMessageLabel: AIBoardProps["copyMessageLabel"];
   /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
   renderLink: AIBoardProps["renderLink"];
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
@@ -1041,6 +1058,99 @@ export function useAgentChatPanel({
   useEffect(() => {
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
+
+  // ── Edit-and-resend (PRODUCT-1217) ─────────────────────────────────────
+  // The previous user turn being edited IN PLACE, or null: the row's bubble
+  // swaps for an inline editor (ChatGPT's grammar) — the composer is never
+  // touched. Send truncates the conversation at this turn and delivers the
+  // edited text as a plain send.
+  const [editingTurn, setEditingTurn] = useState<{
+    sessionKey: string;
+    turnId: string;
+    key: string;
+  } | null>(null);
+  useEffect(() => {
+    // Switching conversations abandons an in-progress edit — the pending
+    // rewind is meaningless against another transcript.
+    if (editingTurn && editingTurn.sessionKey !== selectedSessionKey)
+      setEditingTurn(null);
+  }, [editingTurn, selectedSessionKey]);
+  const cancelEditMessage = useCallback(() => setEditingTurn(null), []);
+  const onEditMessage = useCallback(
+    (msg: ChatMessage) => {
+      if (!selectedSessionKey || !msg.turnId) return;
+      setEditingTurn({
+        sessionKey: selectedSessionKey,
+        turnId: msg.turnId,
+        key: msg.key,
+      });
+    },
+    [selectedSessionKey],
+  );
+  const onEditMessageSubmit = useCallback(
+    async (_msg: ChatMessage, text: string) => {
+      if (!editingTurn || !path) return;
+      // Rewind FIRST: a truncate failure (e.g. a turn raced the edit) throws
+      // before anything was cut, surfaces as a toast (tauri `call`), and the
+      // editor stays open with the user's text.
+      await tauriChat.truncate(
+        path,
+        editingTurn.sessionKey,
+        editingTurn.turnId,
+      );
+      setEditingTurn(null);
+      await tauriChat.send(path, text, editingTurn.sessionKey, {
+        providerOverride: displayModelPin.provider,
+        modelOverride: displayModelPin.model,
+        effortOverride: displayModelPin.effort,
+        modeOverride: turnMode,
+      });
+      // An ARCHIVED mission was just re-activated by the resend, exactly as
+      // any other send into it would.
+      onSendReactivatedRef.current?.();
+    },
+    [editingTurn, path, displayModelPin, turnMode],
+  );
+  const messageEditing = useMemo<AIBoardProps["messageEditing"]>(
+    () =>
+      editingTurn
+        ? {
+            editingKey: editingTurn.key,
+            onSubmit: onEditMessageSubmit,
+            onCancel: cancelEditMessage,
+            labels: {
+              send: t("chat:editMessage.send"),
+              cancel: t("chat:editMessage.cancel"),
+              editor: t("chat:editMessage.edit"),
+            },
+          }
+        : undefined,
+    [editingTurn, onEditMessageSubmit, cancelEditMessage, t],
+  );
+  const canEditMessage = useCallback(
+    (msg: ChatMessage) => {
+      // Only what the user actually TYPED here is editable: channel-relayed
+      // rows and marker-encoded sends (skill / attachment / interaction
+      // answers) are not, and in a shared thread only your own messages are
+      // yours to rewrite.
+      if (msg.source) return false;
+      if (decodeSkillMessage(msg.content)) return false;
+      if (decodeAttachmentMessage(msg.content)) return false;
+      if (decodeInteractionAnswersMessage(msg.content)) return false;
+      if (msg.author && msg.author.userId !== currentUserId) return false;
+      return true;
+    },
+    [currentUserId],
+  );
+  // Copy is broader than Edit: anyone's message on either side, as long as
+  // the raw content IS what the bubble shows — marker-encoded sends render a
+  // card, and copying their wire encoding would paste gibberish.
+  const canCopyMessage = useCallback((msg: ChatMessage) => {
+    if (decodeSkillMessage(msg.content)) return false;
+    if (decodeAttachmentMessage(msg.content)) return false;
+    if (decodeInteractionAnswersMessage(msg.content)) return false;
+    return true;
+  }, []);
 
   // Both consumer callbacks live in refs so the send callbacks that fire them
   // don't re-create (and re-render the override cards) every time the consumer
@@ -2373,6 +2483,16 @@ export function useAgentChatPanel({
     footer,
     attachMenu,
     renderUserMessage,
+    // Rows carry the affordance only while the conversation is idle: a rewind
+    // behind an executing/queued turn is refused by the runtime (409) anyway,
+    // so the buttons vanish rather than invite the race.
+    onEditMessage: turnRunning ? undefined : onEditMessage,
+    canEditMessage,
+    editMessageLabel: t("chat:editMessage.edit"),
+    messageEditing,
+    enableMessageCopy: true,
+    canCopyMessage,
+    copyMessageLabel: t("chat:copyMessage.copy"),
     renderLink,
     isSpecialTool,
     renderToolResult,

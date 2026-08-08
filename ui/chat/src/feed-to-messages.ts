@@ -75,6 +75,12 @@ export interface ChatMessage {
    * The renderer shows a subtle divider instead of plain system text.
    */
   compaction?: ChatCompactionInfo;
+  /**
+   * The wire id of the turn a `from: "user"` message started (PRODUCT-1217).
+   * The edit-and-resend affordance anchors on it; absent on a still-optimistic
+   * send and on pre-turn-id transcripts, which are not editable.
+   */
+  turnId?: string;
 }
 
 export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
@@ -171,6 +177,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           source,
           author: item.author,
           mentions: item.mentions,
+          turnId: item.turnId,
         });
         break;
       }
