@@ -45,6 +45,12 @@ export function createActivity(
       contributors: input.contributors,
     }),
     ...(input.mentioned !== undefined && { mentioned: input.mentioned }),
+    // The agent-started marker (PRODUCT-1244) is stamped by the real host's
+    // missions route, never by a client POST — accept it here for the same
+    // reason as the attribution keys: an e2e needs to seed a child mission.
+    ...(input.origin_session_key !== undefined && {
+      origin_session_key: input.origin_session_key,
+    }),
   };
   setActivities(agentId, [...listActivities(agentId), activity]);
   return activity;

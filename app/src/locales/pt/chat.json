@@ -106,6 +106,9 @@
     "heading": "Continuar com",
     "dismiss": "Dispensar ações sugeridas"
   },
+  "childMissions": {
+    "heading": "Missões iniciadas aqui"
+  },
   "errors": {
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
     "stopSession": "Não foi possível parar a missão: {{error}}",

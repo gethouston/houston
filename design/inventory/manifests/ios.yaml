@@ -275,6 +275,9 @@ components:
   suggest-actions:
     status: not-started
     notes: Optional follow-up bubbles after a clean mission finish; not in mobile v1.
+  chat-mission-list:
+    status: not-started
+    notes: Child missions a chat started; not in mobile v1.
   interaction-answers-message:
     status: not-started
     notes: Structured question/answer user bubble from a completed interaction sequence; not in mobile v1.

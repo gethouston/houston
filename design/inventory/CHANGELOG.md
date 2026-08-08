@@ -3,6 +3,14 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v56 - 2026-08-07
+
+Agent-started missions (PRODUCT-1244). New `chat-mission-list`: the missions a
+chat started, listed above its composer with each one's live board status and
+opening to that mission's own chat. It stands in for the suggested-action
+bubbles on a coordinating chat, where reviewing what was handed out is the real
+next step.
+
 ## v55 - 2026-08-07
 
 Chat status messages rework (PRODUCT-1226), no new components. The

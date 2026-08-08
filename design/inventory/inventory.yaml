@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 55
+version: 56
 
 components:
   - id: agent-avatar
@@ -544,6 +544,25 @@ components:
       optional suggest-reusable card on the same clean-finish frame.
     a11y: heading and all pill buttons are visible at rest, keyboard reachable, and the dismiss control has an accessible label.
     since: 43
+
+  - id: chat-mission-list
+    title: Child mission list
+    purpose: The missions a chat started, listed above its composer so a coordinating mission is also its own monitor.
+    anatomy: [heading, mission-row, status-dot, status-label, open-chevron]
+    states: [default, scrolling]
+    variants: [alone, above-suggest-reusable]
+    behavior: >-
+      A mission the agent started with start_mission carries the parent chat's
+      conversation id, so the parent lists its children with each one's live
+      board status (running, awaiting review, done). Rows are controls: opening
+      one selects that mission's own chat, exactly as clicking its board card
+      would. The list stands in for the suggested-action bubbles on the same
+      clean-finish frame, since reviewing what the chat started is the concrete
+      next step; a blocking interaction still wins the composer. Archived
+      children drop off as they do on the board, and the list is bounded so a
+      wide fan-out scrolls instead of pushing the composer away.
+    a11y: every row is a button with a visible label and status at rest, keyboard reachable with a visible focus ring; the status dot is decorative and its meaning is duplicated in text.
+    since: 56
 
   - id: interaction-answers-message
     title: Interaction answers message

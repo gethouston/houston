@@ -48,6 +48,11 @@ export function buildAgentBoardItems({
       ...(activity.session_key ? { sessionKey: activity.session_key } : {}),
       ...(activity.routine_id ? { routineId: activity.routine_id } : {}),
       ...(activity.agent ? { agent: activity.agent } : {}),
+      // The parent chat this mission was started from (PRODUCT-1244) — what the
+      // child-mission list above that chat's composer filters on.
+      ...(activity.origin_session_key
+        ? { originSessionKey: activity.origin_session_key }
+        : {}),
     },
   }));
 }

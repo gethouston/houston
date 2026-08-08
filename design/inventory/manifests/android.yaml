@@ -81,6 +81,9 @@ components:
     status: not-started
   suggest-actions:
     status: not-started
+  chat-mission-list:
+    status: not-started
+    notes: Child missions a chat started; not in mobile v1.
   interaction-answers-message:
     status: not-started
   verified-badge:

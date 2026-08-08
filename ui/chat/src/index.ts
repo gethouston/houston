@@ -188,6 +188,20 @@ export { ChatInput } from "./chat-input";
 export type { AttachMenuItem } from "./chat-input-parts";
 export type { ChatAuthorLabels } from "./chat-messages";
 export { isOwnMessage, senderNameFor } from "./chat-messages";
+// === Child-mission list ===
+// The missions THIS chat started (PRODUCT-1244), listed above the composer so a
+// coordinating mission is also its own monitor. Props-only: the app resolves
+// which missions are children, localizes their status word, and wires opening.
+export type {
+  ChatMissionListItem,
+  ChatMissionListLabels,
+  ChatMissionListProps,
+  ChatMissionTone,
+} from "./chat-mission-list";
+export {
+  ChatMissionList,
+  DEFAULT_CHAT_MISSION_LIST_LABELS,
+} from "./chat-mission-list";
 // === Chat Components ===
 export { ChatPanel } from "./chat-panel";
 export type {
