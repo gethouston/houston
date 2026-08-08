@@ -251,6 +251,29 @@ test("a team's archive lets go of the shared panel when the user leaves", async 
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
+test("a plain member gets Routines and Files, and only loses Team Settings", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, MEMBER_CAPS);
+  await openShell(page);
+
+  // Routines and Files show the team's WORK, so they are every member's; only
+  // Team Settings CONFIGURES, so only Team Settings is gated.
+  await expect(sectionRows(page, "Routines").first()).toBeVisible();
+  await expect(sectionRows(page, "Files").first()).toBeVisible();
+  await expect(sectionRows(page, "Team Settings")).toHaveCount(0);
+
+  // And the rows go somewhere: the rail can never promise a section the screen
+  // will not render (`visibleTeamSections` is the one list both read).
+  const routines = sectionRows(page, "Routines").first();
+  await routines.click();
+  await expect(routines).toHaveAttribute("aria-current", "page");
+  const files = sectionRows(page, "Files").first();
+  await files.click();
+  await expect(files).toHaveAttribute("aria-current", "page");
+});
+
 test("a plain member gets no Team Settings row, and lands on Mission Control", async ({
   page,
   request,

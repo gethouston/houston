@@ -89,23 +89,44 @@ export function canSeeTeamSettings(caps: Capabilities | null): boolean {
 /**
  * The sections a team offers this caller, in render order. The ONE list the
  * sidebar's section rows and the team view itself read, so a section can never
- * exist in the rail and be unreachable in the view (or the reverse). Routines
- * and Files join it when their team-scoped surfaces land.
+ * exist in the rail and be unreachable in the view (or the reverse).
+ *
+ * Mission Control, Routines and Files are every member's: they are the team's
+ * WORK, and a member who may use the team's agents may see what those agents
+ * do on their own and what they keep. Only Team Settings is gated, because it
+ * is the only section that CONFIGURES rather than shows.
  */
 export function visibleTeamSections(
   caps: Capabilities | null,
 ): TeamSectionId[] {
-  return canSeeTeamSettings(caps)
-    ? ["mission-control", "settings"]
-    : ["mission-control"];
+  return [
+    "mission-control",
+    "routines",
+    "files",
+    ...(canSeeTeamSettings(caps) ? (["settings"] as const) : []),
+  ];
+}
+
+/**
+ * Whether a section actually narrows to the shared agent pin.
+ *
+ * Mission Control filters its board by it, Routines scopes its fan-out to it,
+ * and Files opens the pinned agent's tree. Team SETTINGS does not: it lists
+ * every agent in the team whatever the pin says, on purpose — you go there to
+ * manage the team, not one member. So the rail must not fill an agent row while
+ * Settings is open: a lit row would claim a narrowing that nothing on screen is
+ * doing, and clicking it again would look like a no-op.
+ */
+export function sectionHonorsAgentPin(section: TeamSectionId | null): boolean {
+  return section !== null && section !== "settings";
 }
 
 /**
  * The section the team view ACTUALLY renders: the requested one when this
  * caller can see it, else the team's first section (Mission Control). One rule
- * absorbs every stale-store case — no section chosen yet, a section that has no
- * surface yet (routines / files), and Team Settings requested by someone whose
- * role no longer allows it (a space switch demotes them while the view is open).
+ * absorbs every stale-store case — no section chosen yet, and Team Settings
+ * requested by someone whose role no longer allows it (a space switch demotes
+ * them while the view is open).
  */
 export function resolveTeamSection(
   sections: readonly TeamSectionId[],

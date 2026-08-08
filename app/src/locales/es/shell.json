@@ -356,6 +356,12 @@
       "rawLabel": "Salida cruda"
     }
   },
+  "agentReads": {
+    "failed": "No pudimos cargar {{failed}} de {{total}} agentes",
+    "failedOne": "No pudimos cargar {{name}}",
+    "retry": "Reintentar",
+    "report": "Reportar bug"
+  },
   "palette": {
     "title": "Paleta de comandos",
     "description": "Salta a cualquier parte de Houston",

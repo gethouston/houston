@@ -15,20 +15,37 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   agents: Agent[];
   onPick: (agent: Agent) => void;
+  /** Override the heading for a caller that is not starting a mission (a
+   *  team's Routines asks the same question about a routine). Defaults to the
+   *  mission wording, so the board is unchanged. */
+  title?: string;
+  description?: string;
 }
 
 /**
- * Modal that asks "which agent should run this mission?" and renders one
- * card per agent. Picking an agent switches the app to that agent's board
- * view and opens the new-mission right panel — the same flow you get from
- * the per-agent New Mission button. See the dashboard wiring for that
- * sequencing (it lives there because it depends on view-mode state).
+ * Modal that asks "which agent should run this?" and renders one card per
+ * agent. It is the ONE answer to that question wherever a create starts from a
+ * surface that spans several agents — but it only ASKS: what picking an agent
+ * leads to belongs entirely to the caller, and differs by caller.
+ *
+ * - The dashboard's "New mission" switches to that agent's board view and opens
+ *   the new-mission right panel, the same flow the per-agent New Mission button
+ *   gives. That sequencing lives in the dashboard wiring, because it depends on
+ *   view-mode state.
+ * - A team's Routines opens that agent's routine intake in the shared shell
+ *   panel; nothing navigates.
+ *
+ * So the copy is the caller's too: pass `title` / `description` whenever "a
+ * fresh conversation" is not what happens next. The defaults are the mission
+ * wording, so the board is unchanged.
  */
 export function AgentPickerDialog({
   open,
   onOpenChange,
   agents,
   onPick,
+  title,
+  description,
 }: Props) {
   const { t } = useTranslation("dashboard");
 
@@ -36,8 +53,10 @@ export function AgentPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl h-[80vh] flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
-          <DialogTitle>{t("agentPicker.title")}</DialogTitle>
-          <DialogDescription>{t("agentPicker.description")}</DialogDescription>
+          <DialogTitle>{title ?? t("agentPicker.title")}</DialogTitle>
+          <DialogDescription>
+            {description ?? t("agentPicker.description")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">

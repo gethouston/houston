@@ -376,7 +376,13 @@ export interface HostState {
   histories: Map<string, ChatMessage[]>;
   agentSeq: number;
   activitySeq: number;
-  /** Monotonic counter for minted routine ids. */
+  /**
+   * Monotonic counter for minted routine ids. GLOBAL, unlike the real host's:
+   * there, routine ids are unique per AGENT, so two agents genuinely can hold
+   * the same id. `/__test__/routine-seq` rewinds this so a spec can reproduce
+   * that collision on purpose (the cross-agent list's whole keying rests on
+   * it); nothing else touches it.
+   */
   routineSeq: number;
   // ── user-scoped gateway state (integrations, preferences) ──
   /** Advertised capabilities, armed by `/__test__/capabilities` (Teams e2e). */
@@ -407,6 +413,15 @@ export interface HostState {
    * every agent is healthy.
    */
   failingAgentReads: Set<string>;
+  /**
+   * Which sub-resources of those agents fail (`routines`, `routine_runs`,
+   * `activities`, `files`, ...). `null` (the default) = the whole pod is
+   * unreachable, every read 500s. A NAMED set is the subtler half-broken state
+   * a surface must also survive: one route down while the rest of that same
+   * agent answers, e.g. routines fine and their run history 500ing, which
+   * leaves every row without its last-run line.
+   */
+  failingAgentReadSegments: Set<string> | null;
   /**
    * Custom integrations (HOU-550), armed by `/__test__/custom-integrations`.
    * `null` (the default) = the host does not serve the feature at all: no
@@ -528,6 +543,7 @@ function freshState(): HostState {
     integrationsMode: "ready",
     agentReadHoldMs: 0,
     failingAgentReads: new Set<string>(),
+    failingAgentReadSegments: null,
     customIntegrations: null,
     orgMembers: null,
     meProfileBase: {},
@@ -551,9 +567,29 @@ export function setAgentReadHoldMs(ms: number): void {
   state.agentReadHoldMs = Math.max(0, ms);
 }
 
-/** Arm (or clear, with `[]`) the agents whose per-agent reads answer 500. */
-export function setFailingAgentReads(agentIds: string[]): void {
+/**
+ * Arm (or clear, with `[]`) the agents whose per-agent reads answer 500.
+ * `segments` narrows it to named sub-resources (`["routine_runs"]`); omitting
+ * it fails every read those agents serve.
+ */
+export function setFailingAgentReads(
+  agentIds: string[],
+  segments?: string[] | null,
+): void {
   state.failingAgentReads = new Set(agentIds);
+  state.failingAgentReadSegments =
+    segments && segments.length > 0 ? new Set(segments) : null;
+}
+
+/**
+ * Rewind the routine-id counter, so the NEXT routine created on ANY agent takes
+ * an id an earlier agent already used. Routine ids are unique per agent in the
+ * real host, never per workspace, so this collision is ordinary production
+ * truth — the fake's one global counter is what would otherwise hide it, and a
+ * spec asserting cross-agent routing has to be able to reproduce it.
+ */
+export function setRoutineSeq(next: number): void {
+  state.routineSeq = Math.max(0, next);
 }
 
 /** Restore the seed. Called by the harness before each test. */

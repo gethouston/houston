@@ -1,6 +1,6 @@
 import type { Agent } from "../../lib/types";
 import { MissionBoard } from "../board/mission-board";
-import type { MissionControlScope } from "../board/use-mc-scope.ts";
+import type { MissionControlScope } from "../board/use-mc-scope";
 import { useMissionControlSource } from "../board/use-mission-control-source";
 
 /**

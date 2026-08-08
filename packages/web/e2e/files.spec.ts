@@ -18,9 +18,15 @@ import { expect, test } from "./support/fixtures";
  * real host's `files*` routes (see `@houston/fake-host` routes-files.ts).
  */
 
+/** The AGENT's Files tab, by its tour anchor: the rail also carries a "Files"
+ *  row now (a team's Files section), so a bare name lookup is ambiguous. */
+function filesTab(page: import("@playwright/test").Page) {
+  return page.locator('[data-tour-target="tab-files"]');
+}
+
 async function openFilesTab(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Files", exact: true }).click();
+  await filesTab(page).click();
   // Seeded workspace: Q3 report.pdf + Docs/sales.csv.
   await expect(page.getByText("Q3 report.pdf")).toBeVisible();
 }
@@ -181,10 +187,10 @@ test("never shows the previous agent's files while the next read is in flight", 
   // catch it genuinely in flight.
   await page.reload();
   // The shell has to be mounted before ⌘K has a listener to reach.
-  const filesTab = page.getByRole("button", { name: "Files", exact: true });
-  await expect(filesTab).toBeVisible();
+  const tab = filesTab(page);
+  await expect(tab).toBeVisible();
   await jumpToAgent(page, "Houston");
-  await filesTab.click();
+  await tab.click();
   await expect(page.getByText("Q3 report.pdf")).toBeVisible();
   await page.getByText("Docs", { exact: true }).click();
   await expect(page.getByText("sales.csv")).toBeVisible();
@@ -195,7 +201,7 @@ test("never shows the previous agent's files while the next read is in flight", 
     data: { ms: 5_000 },
   });
   await jumpToAgent(page, "Research Bot");
-  await filesTab.click();
+  await tab.click();
   const loading = page.getByRole("status", { name: "Loading…" });
   await expect(loading).toBeVisible();
 

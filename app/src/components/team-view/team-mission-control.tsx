@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { TeamView } from "../../lib/teams-model.ts";
+import type { TeamView } from "../../lib/teams-model";
 import { useAgentStore } from "../../stores/agents";
 import { MissionControlArchived } from "../board/mission-control-archived";
+import { TeamMissionEmpty } from "./team-empty";
 import { TeamMissionBoard } from "./team-mission-board";
-import { TeamMissionEmpty } from "./team-mission-empty";
-import { useTeamBoardScope } from "./use-team-board-scope.ts";
+import { useTeamBoardScope } from "./use-team-board-scope";
 
 /**
  * A team's Mission Control section: the team's active board, its archive, or

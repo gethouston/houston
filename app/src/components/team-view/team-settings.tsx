@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { isMultiplayer } from "../../lib/org-roles";
-import type { TeamView } from "../../lib/teams-model.ts";
+import type { TeamView } from "../../lib/teams-model";
 import { useAgentStore } from "../../stores/agents";
 import { AgentDetail } from "../permissions/agent-detail";
 import { BackBarScreen } from "../shell/back-bar-screen";

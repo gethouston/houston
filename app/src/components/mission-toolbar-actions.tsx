@@ -10,8 +10,8 @@ import { Archive, AtSign } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shortcutLabel } from "../lib/shortcuts";
 import type { Agent } from "../lib/types";
+import { AgentFilterMenu } from "./agent-filter-menu";
 import { mentionCountLabel } from "./board/mentions-inbox-view-model";
-import { MissionAgentFilter } from "./mission-agent-filter";
 import { MissionPersonFilter } from "./mission-person-filter";
 import { HoustonLogo } from "./shell/experience-card";
 
@@ -87,7 +87,7 @@ export function MissionToolbarActions({
   return (
     <div className="flex shrink-0 items-center gap-2">
       {onFilterPathChange && (
-        <MissionAgentFilter
+        <AgentFilterMenu
           agents={agents}
           filterPath={filterPath}
           onFilterPathChange={onFilterPathChange}

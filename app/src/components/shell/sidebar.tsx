@@ -145,8 +145,15 @@ export function Sidebar({ children }: { children: ReactNode }) {
     sectionIds,
     sectionLabels: buildTeamSectionLabels(t),
     highlight,
+    // Moving between a team's destinations KEEPS the agent pin. Someone who
+    // clicked Kai and is looking at Kai's missions means Kai's routines and
+    // Kai's files when they click those rows next; dropping the pin on the way
+    // would answer a question they did not ask. A pin naming an agent the
+    // destination team does not hold is dropped where it is read
+    // (`teamPinnedAgent` / `resolveFilterPath`), so crossing to another team
+    // still opens on the whole team.
     onOpenSection: (teamId, section) => {
-      openTeamView(teamId, section);
+      openTeamView(teamId, section, { agentFilter: teamAgentFilter });
       closeMobileSidebar();
     },
     summaries: activitySummaries,

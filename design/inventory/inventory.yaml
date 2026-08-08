@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 55
+version: 56
 
 components:
   - id: agent-avatar
@@ -725,6 +725,7 @@ components:
         next-fire,
         enabled-toggle,
         quick-actions-menu,
+        owner-chip,
       ]
     states:
       [
@@ -739,7 +740,8 @@ components:
         trigger-paused,
         trigger-error,
       ]
-    variants: [list-row, grid-card, schedule-driven, event-driven]
+    variants:
+      [list-row, grid-card, schedule-driven, event-driven, cross-agent]
     behavior: >-
       Shows a humanized schedule summary + next fire time (cron routine) or a
       humanized event summary + live provisioning status badge (event-driven:
@@ -750,6 +752,12 @@ components:
       The inline edit panel authors the wake mechanism: where the deployment
       supports event triggers it offers a plain-language "When should this
       happen?" choice (schedule / app event); otherwise it is schedule-only.
+      In a CROSS-AGENT list (a team's Routines) the row carries an owner chip
+      beside its name -- the owning agent's avatar + name, supplied by the
+      surface. The chip never truncates; the routine's name does. A DRAFT row (a
+      routine still being built in chat) wears the same chip, or several
+      identical "being created" rows would be indistinguishable. A single-agent
+      list omits both, since every row would name the same owner.
     a11y: >-
       listitem role; toggle labeled with the routine name; next-run/status as
       text; status never color-alone (icon shape + row text carry it); menu
@@ -1077,9 +1085,10 @@ components:
     title: Team screen
     purpose: >-
       The full-window surface behind a team block's destination rows: one
-      team's missions, and the agents that belong to it.
-    anatomy: [board-toolbar, team-title, agent-filter, mission-board, archived-board, empty-state, settings-agent-list, agent-drill-in]
-    states: [mission-control, mission-control-filtered, archived, empty, settings, settings-agent-detail]
+      team's missions, what its agents do on their own, what they keep, and the
+      agents that belong to it.
+    anatomy: [board-toolbar, team-title, agent-filter, mission-board, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in]
+    states: [mission-control, mission-control-filtered, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail]
     variants: [named-team, default-team]
     behavior: >-
       ONE screen serves every team: which team and which of its sections are
@@ -1093,12 +1102,28 @@ components:
       with the team's name, reading the one cross-agent sweep rather than
       starting its own. Its agent filter is shared with the rail in both
       directions: selecting an agent row filters the board, and picking one in
-      the board's own filter menu moves the lit row. An empty team says why it
+      the board's own filter menu moves the lit row -- except under Team
+      Settings, which ignores the pin and lists the whole team, so no agent row
+      is filled there. An empty team says why it
       is empty -- the workspace's own team offers the create-an-agent door, a
       named team says to drag one in, because that is where a new agent would
-      land. Team Settings lists the team's agents with the same plain-language
-      access line every agent list shares, and opening one drills into the ONE
-      canonical agent settings page rather than a second copy of it.
+      land. Routines is ONE list of every team agent's routines, each row
+      naming its owner, because a routine is a flat thing and a team wants to
+      see what runs on its behalf in one place; routines still being BUILT in
+      chat are rows here too, resumable and discardable, so one started from
+      this surface never vanishes from it. Files is the opposite call:
+      folders are not flat and merging several agents' trees would invent a
+      filesystem nobody has, so the section picks ONE agent and shows that
+      agent's real tree, with every action the per-agent surface offers.
+      Both read the same per-agent caches the per-agent surfaces do, so an
+      event that refreshes one refreshes the other; when some agents answer and
+      others do not, the section says which ones failed and offers to retry
+      just those (and to report it), rather than presenting a short list as the
+      whole truth -- and when NOTHING answered it stops claiming the team is
+      idle at all. Team
+      Settings lists the team's agents with the same plain-language access line
+      every agent list shares, and opening one drills into the ONE canonical
+      agent settings page rather than a second copy of it.
     a11y: >-
       The board's team name is the screen's h1; the filter menu names the agent
       it is pinned to; the settings drill-in is framed by a labelled back

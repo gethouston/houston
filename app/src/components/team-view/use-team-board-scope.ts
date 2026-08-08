@@ -1,11 +1,8 @@
 import { useCallback, useMemo } from "react";
-import type { TeamView } from "../../lib/teams-model.ts";
+import type { TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
-import type { MissionControlScope } from "../board/use-mc-scope.ts";
-import {
-  teamFilterAgentId,
-  teamFilterPath,
-} from "./team-agent-filter-model.ts";
+import type { MissionControlScope } from "../board/use-mc-scope";
+import { teamFilterAgentId, teamFilterPath } from "./team-agent-filter-model";
 
 /**
  * The `MissionControlScope` a team's boards share: its ACTIVE board and its

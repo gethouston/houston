@@ -1,18 +1,25 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { latestCachedAgentActivities } from "../../lib/all-conversations-cache";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity } from "../../lib/tauri";
 import { useDraftStore } from "../../stores/drafts";
 
-export function useActivity(agentPath: string | undefined) {
-  const queryClient = useQueryClient();
-  return useQuery({
-    queryKey: queryKeys.activity(agentPath ?? ""),
-    queryFn: () => {
-      if (!agentPath) throw new Error("agentPath required");
-      return tauriActivity.list(agentPath);
-    },
-    enabled: !!agentPath,
+/**
+ * ONE agent's activity list, as options. `useActivity` below and any
+ * cross-agent fan-out (a team's Routines section reads every member's setup
+ * chats to list its DRAFT routines) build from this, so they share the key, the
+ * cache entry, the queryFn and the placeholder policy documented below — the
+ * activity invalidation refreshes both and neither can serve a different truth.
+ */
+export function activityQueryOptions(qc: QueryClient, agentPath: string) {
+  return {
+    queryKey: queryKeys.activity(agentPath),
+    queryFn: () => tauriActivity.list(agentPath),
     // No `initialData: []` here on purpose. With it, the query is in
     // "success with empty data" the instant a consumer mounts, so any
     // empty-state UI gated on `items.length === 0` flashes for the
@@ -40,10 +47,15 @@ export function useActivity(agentPath: string | undefined) {
     // always the previous AGENT's board, and serving it painted the old
     // agent's mission cards under the new agent until the fetch landed. Only
     // the agent-scoped cache lookup may seed the placeholder.
-    placeholderData: () =>
-      agentPath
-        ? latestCachedAgentActivities(queryClient, agentPath)
-        : undefined,
+    placeholderData: () => latestCachedAgentActivities(qc, agentPath),
+  };
+}
+
+export function useActivity(agentPath: string | undefined) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    ...activityQueryOptions(queryClient, agentPath ?? ""),
+    enabled: !!agentPath,
   });
 }
 
@@ -86,6 +98,30 @@ export function useUpdateActivity(agentPath: string | undefined) {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
     },
+  });
+}
+
+/**
+ * The same activity patch, with the AGENT in the variables instead of in the
+ * hook argument — the sibling of `useRoutineWritesForAnyAgent`, for the same
+ * reason: a cross-agent list (a team's Routines and its DRAFT rows) knows which
+ * agent a row belongs to only when the row is acted on, and hooks may not be
+ * called in a loop over a roster that changes.
+ */
+export function useUpdateActivityForAnyAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      agentPath,
+      activityId,
+      update,
+    }: {
+      agentPath: string;
+      activityId: string;
+      update: { status?: string; title?: string; description?: string };
+    }) => tauriActivity.update(agentPath, activityId, update),
+    onSuccess: (_r, { agentPath }) =>
+      qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) }),
   });
 }
 

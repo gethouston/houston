@@ -196,6 +196,7 @@
       "error": "Needs attention"
     },
     "statusUnknown": "Verifying trigger…",
+    "statusTimeout": "Houston couldn't confirm this trigger was set up.",
     "waitingFirstEvent": "Active. Waiting for the first event.",
     "reconnect": "Reconnect",
     "statusDisconnectedHint": "The connected account was disconnected.",

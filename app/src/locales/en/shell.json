@@ -356,6 +356,12 @@
       "rawLabel": "Raw output"
     }
   },
+  "agentReads": {
+    "failed": "Couldn't load {{failed}} of {{total}} agents",
+    "failedOne": "Couldn't load {{name}}",
+    "retry": "Try again",
+    "report": "Report bug"
+  },
   "palette": {
     "title": "Command palette",
     "description": "Jump anywhere in Houston",

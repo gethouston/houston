@@ -1,5 +1,5 @@
 import type { TriggerStatusItem, TriggerType } from "@houston-ai/engine-client";
-import { useQuery } from "@tanstack/react-query";
+import { type Query, useQuery } from "@tanstack/react-query";
 import { triggerStatusPollInterval } from "../../components/tabs/routine-trigger-maps";
 import { getEngine } from "../../lib/engine";
 import i18n from "../../lib/i18n";
@@ -34,28 +34,62 @@ export function useTriggerTypes(toolkit: string | null, enabled: boolean) {
   return query;
 }
 
+/** What the trigger-status route answers: `null` = this host serves no triggers. */
+type AgentTriggerStatusData = TriggerStatusItem[] | null;
+
+/** ONE agent's trigger-status cache entry. Named so a cross-agent retry can
+ *  target exactly the agents that failed without rebuilding their options. */
+export function agentTriggerStatusQueryKey(agentId: string): [string, string] {
+  return ["agent-trigger-status", agentId];
+}
+
+/**
+ * ONE agent's trigger status, as options. The per-agent Automations tab
+ * (`useAgentTriggerStatus`) and the team's cross-agent list (a `useQueries`
+ * fan-out over the team's agents) both build from this, so they share the key,
+ * the cache entry, the queryFn and the poll cadence — the same reasoning as
+ * `routinesQueryOptions`. An aggregate key would be a second source of the same
+ * truth, and the two surfaces could then disagree about whether a trigger is
+ * alive.
+ *
+ * `triggerRoutineIds` are the agent's OWN trigger-bound routine ids: while any
+ * of them is still settling (no status yet, `pending`, or `error`) the query
+ * polls on a modest cadence and stops once they all settle. Callers enable it
+ * only when that list is non-empty, so an agent with no event routine is never
+ * asked.
+ */
+export function agentTriggerStatusQueryOptions(
+  agentId: string,
+  triggerRoutineIds: string[],
+) {
+  return {
+    queryKey: agentTriggerStatusQueryKey(agentId),
+    queryFn: (): Promise<AgentTriggerStatusData> =>
+      getEngine().agentTriggerStatus(agentId),
+    staleTime: 30_000,
+    refetchInterval: (q: Query<AgentTriggerStatusData>) =>
+      triggerStatusPollInterval(triggerRoutineIds, q.state.data),
+  };
+}
+
 /**
  * One agent's per-routine trigger status. `data` is `TriggerStatusItem[] | null`:
  * `null` means the host does not serve triggers (404) — the rows then render the
  * unknown state rather than nothing. Any other failure surfaces as a toast.
  *
- * `triggerRoutineIds` are the agent's trigger-bound routines; while any of them
- * is still settling (no status yet, `pending`, or `error`) the query polls on a
- * modest cadence and stops once they all settle. Enable it whenever the agent
- * has at least one trigger routine — independent of the `triggers` capability.
+ * Enable it whenever the agent has at least one trigger routine — independent of
+ * the `triggers` capability. The toast is this hook's own, NOT the shared
+ * options': a fan-out over a team's agents reuses the options and would
+ * otherwise fire one toast per unreachable agent.
  */
 export function useAgentTriggerStatus(
   agentId: string,
   enabled: boolean,
   triggerRoutineIds: string[],
 ) {
-  const query = useQuery<TriggerStatusItem[] | null>({
-    queryKey: ["agent-trigger-status", agentId],
-    queryFn: () => getEngine().agentTriggerStatus(agentId),
+  const query = useQuery<AgentTriggerStatusData>({
+    ...agentTriggerStatusQueryOptions(agentId, triggerRoutineIds),
     enabled,
-    staleTime: 30_000,
-    refetchInterval: (q) =>
-      triggerStatusPollInterval(triggerRoutineIds, q.state.data),
   });
   useQueryErrorToast(
     query.isError,

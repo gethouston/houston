@@ -1,10 +1,12 @@
 export {
+  activityQueryOptions,
   useActivity,
   useBulkDeleteActivity,
   useBulkUpdateActivity,
   useCreateActivity,
   useDeleteActivity,
   useUpdateActivity,
+  useUpdateActivityForAnyAgent,
 } from "./use-activity";
 export { useAgentConfig } from "./use-agent-config";
 export {
@@ -71,11 +73,15 @@ export { USAGE_DEFAULT_DAYS, useOrgUsage } from "./use-org-usage";
 export { useCreateTeam } from "./use-orgs";
 export { useProviderUsage } from "./use-provider-usage";
 export {
+  type RoutineWriteFor,
+  routineRunsQueryOptions,
+  routinesQueryOptions,
   useCancelRoutineRun,
   useCreateRoutine,
   useDeleteRoutine,
   useRoutineRuns,
   useRoutines,
+  useRoutineWritesForAnyAgent,
   useRunRoutineNow,
   useUpdateRoutine,
 } from "./use-routines";

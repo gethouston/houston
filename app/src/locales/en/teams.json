@@ -434,6 +434,38 @@
         "teamBody": "Drag an agent onto {{name}} in the sidebar and its missions will show up here."
       }
     },
+    "routines": {
+      "newRoutine": "New routine",
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create your first agent and everything it does on its own will show up here.",
+        "createAgent": "Create agent",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Drag an agent onto {{name}} in the sidebar and its routines will show up here."
+      },
+      "noRoutines": {
+        "title": "Nothing runs on its own yet",
+        "body": "Set up a routine and this team's agents will start working without being asked."
+      },
+      "unreadable": {
+        "title": "Couldn't load this team's routines",
+        "body": "Nothing here is missing on purpose. Try again above to see what these agents run on their own."
+      },
+      "pickAgent": {
+        "title": "Which agent should run this?",
+        "description": "Pick the agent that will do the work. You can change it while you set the routine up."
+      }
+    },
+    "files": {
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create your first agent and the files it keeps will show up here.",
+        "createAgent": "Create agent",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Drag an agent onto {{name}} in the sidebar and the files it keeps will show up here."
+      },
+      "agentLabel": "Whose files"
+    },
     "settings": {
       "subtitle": "The agents in this team. Open one to manage who can use it and what it can use.",
       "empty": {

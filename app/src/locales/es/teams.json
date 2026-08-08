@@ -434,6 +434,38 @@
         "teamBody": "Arrastra un agente sobre {{name}} en la barra lateral y sus misiones aparecerán aquí."
       }
     },
+    "routines": {
+      "newRoutine": "Nueva rutina",
+      "empty": {
+        "workspaceTitle": "Aún no tienes agentes",
+        "workspaceBody": "Crea tu primer agente y todo lo que haga por su cuenta aparecerá aquí.",
+        "createAgent": "Crear agente",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Arrastra un agente sobre {{name}} en la barra lateral y sus rutinas aparecerán aquí."
+      },
+      "noRoutines": {
+        "title": "Todavía nada funciona solo",
+        "body": "Crea una rutina y los agentes de este equipo empezarán a trabajar sin que se lo pidas."
+      },
+      "unreadable": {
+        "title": "No pudimos cargar las rutinas de este equipo",
+        "body": "Nada de esto falta a propósito. Reintenta arriba para ver qué hacen estos agentes por su cuenta."
+      },
+      "pickAgent": {
+        "title": "¿Qué agente debería hacerlo?",
+        "description": "Elige el agente que hará el trabajo. Puedes cambiarlo mientras configuras la rutina."
+      }
+    },
+    "files": {
+      "empty": {
+        "workspaceTitle": "Aún no tienes agentes",
+        "workspaceBody": "Crea tu primer agente y los archivos que guarde aparecerán aquí.",
+        "createAgent": "Crear agente",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Arrastra un agente sobre {{name}} en la barra lateral y los archivos que guarde aparecerán aquí."
+      },
+      "agentLabel": "Archivos de quién"
+    },
     "settings": {
       "subtitle": "Los agentes de este equipo. Abre uno para gestionar quién puede usarlo y qué puede usar.",
       "empty": {

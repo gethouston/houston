@@ -14,6 +14,15 @@ Creation happens in an app-owned composer rendered *above* the grid, so the grid
 has no create button and its empty state is a text-only hint. A routine still
 being set up in chat shows as its own resumable draft row.
 
+A list that spans several agents (a team's Routines) passes `ownerChip`, a
+per-row slot the app fills with the OWNING agent's avatar + name. It sits beside
+the routine's name and never truncates, because "whose routine is this" is as
+load-bearing as the name once the list is cross-agent. `draftOwnerChip` is the
+same slot on a DRAFT row (a draft carries only its own id, so it needs its own
+accessor) — without it a cross-agent list would show several identical "being
+created" rows with no way to tell whose is whose. A single-agent list omits both
+and the rows are byte-identical to before.
+
 `TimezonePicker` renders the account-wide zone; its `variant` is `"card"`
 (default, titled panel) or `"bare"` (just the trigger, for inline toolbars).
 

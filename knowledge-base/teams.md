@@ -1550,8 +1550,9 @@ subscriber to `useReadCursorStore` depends on this filter.
 - **Mentions inbox** — Mission Control's third mode
   (`app/src/components/board/mentions-inbox.tsx`), hidden entirely when
   `!isMultiplayer(capabilities)`. `MissionControlToolbar` split into
-  `mission-toolbar-actions.tsx` + `mission-agent-filter.tsx`; the mode controls
-  are presence-gated (`onToggleMentions` absent = no chrome).
+  `mission-toolbar-actions.tsx` + the shared `agent-filter-menu.tsx` (the ONE
+  "which agent am I looking at" menu, also worn by both team sections); the mode
+  controls are presence-gated (`onToggleMentions` absent = no chrome).
 
   **The pill counts a narrower thing than the rows show.** A row's dot is
   `isUnreadForMe` (mention OR ambient movement); the pill's number is

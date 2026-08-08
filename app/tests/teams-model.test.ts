@@ -7,6 +7,7 @@ import {
   DEFAULT_TEAM_ID,
   resolveTeamSection,
   resolveTeams,
+  sectionHonorsAgentPin,
   TEAM_VIEW_ID,
   teamById,
   teamOfAgent,
@@ -119,25 +120,30 @@ describe("canSeeTeamSettings", () => {
 });
 
 describe("visibleTeamSections", () => {
-  it("offers Mission Control to everyone and Team Settings only to admins", () => {
+  it("offers the team's work to everyone and Team Settings only to admins", () => {
     assert.deepEqual(visibleTeamSections(null), [
       "mission-control",
+      "routines",
+      "files",
       "settings",
     ]);
     assert.deepEqual(
       visibleTeamSections(caps({ multiplayer: true, role: "admin" })),
-      ["mission-control", "settings"],
+      ["mission-control", "routines", "files", "settings"],
     );
     assert.deepEqual(
       visibleTeamSections(caps({ multiplayer: true, role: "user" })),
-      ["mission-control"],
+      ["mission-control", "routines", "files"],
     );
   });
 
-  it("does not offer Routines or Files yet", () => {
-    const sections = visibleTeamSections(null);
-    assert.equal(sections.includes("routines"), false);
-    assert.equal(sections.includes("files"), false);
+  it("gives a plain member Routines and Files, and only withholds Team Settings", () => {
+    const member = visibleTeamSections(
+      caps({ multiplayer: true, role: "user" }),
+    );
+    assert.equal(member.includes("routines"), true);
+    assert.equal(member.includes("files"), true);
+    assert.equal(member.includes("settings"), false);
   });
 });
 
@@ -151,13 +157,31 @@ describe("resolveTeamSection", () => {
       resolveTeamSection(admin, "mission-control"),
       "mission-control",
     );
+    assert.equal(resolveTeamSection(admin, "routines"), "routines");
+    assert.equal(resolveTeamSection(member, "files"), "files");
   });
 
-  it("falls back to Mission Control for nothing chosen, unbuilt sections, and a gated one", () => {
+  it("falls back to Mission Control for nothing chosen and for a gated section", () => {
     assert.equal(resolveTeamSection(admin, null), "mission-control");
-    assert.equal(resolveTeamSection(admin, "routines"), "mission-control");
-    assert.equal(resolveTeamSection(admin, "files"), "mission-control");
     assert.equal(resolveTeamSection(member, "settings"), "mission-control");
+  });
+});
+
+describe("sectionHonorsAgentPin", () => {
+  it("is true for every section that narrows by the shared agent pin", () => {
+    for (const section of ["mission-control", "routines", "files"] as const) {
+      assert.equal(sectionHonorsAgentPin(section), true, section);
+    }
+  });
+
+  it("is false for Team Settings, which lists the whole team regardless", () => {
+    // The rail reads this to decide whether to FILL an agent row: a lit row
+    // under Settings would claim a narrowing nothing on screen is doing.
+    assert.equal(sectionHonorsAgentPin("settings"), false);
+  });
+
+  it("is false with no section resolved at all", () => {
+    assert.equal(sectionHonorsAgentPin(null), false);
   });
 });
 

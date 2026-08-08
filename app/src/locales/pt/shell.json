@@ -356,6 +356,12 @@
       "bodyWithReset": "Por enquanto você esgotou seu plano. Ele é restabelecido às {{time}} e você poderá continuar."
     }
   },
+  "agentReads": {
+    "failed": "Não foi possível carregar {{failed}} de {{total}} agentes",
+    "failedOne": "Não foi possível carregar {{name}}",
+    "retry": "Tentar de novo",
+    "report": "Relatar problema"
+  },
   "palette": {
     "title": "Paleta de comandos",
     "description": "Vá para qualquer lugar do Houston",

@@ -1,3 +1,4 @@
+import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -82,4 +83,55 @@ test("leaving a board with the new-mission composer open still lets it reopen", 
   await page.locator('[data-tour-target="nav-dashboard"]').click();
   await page.getByText("Plan a trip to Tokyo").first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
+});
+
+test("a team's routine chat lets go of the shared panel when the team leaves the glass", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/routines`, {
+    data: { name: "Morning brief", prompt: "p", schedule: "0 9 * * *" },
+  });
+
+  // Open the team's Routines section from the rail and select a routine: its
+  // chat claims the ONE shell panel from a team SCREEN, not from a tab.
+  await page.goto("/");
+  await expect(page.getByText("Your teams")).toBeVisible();
+  await page
+    .locator("[data-tour-target='agents']")
+    .locator("[data-sidebar-section-row]")
+    .filter({ hasText: "Routines" })
+    .first()
+    .click();
+  const row = page
+    .getByTestId("routine-row")
+    .filter({ hasText: "Morning brief" });
+  await row.click();
+  await expect(page.getByTestId("mission-panel")).toBeVisible();
+  await expect(page.getByText("Routine: Morning brief")).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Off to the global board: the team screen is still mounted, so its chat has
+  // to release the panel itself — otherwise it stays painted over the board.
+  await page.locator('[data-tour-target="nav-dashboard"]').click();
+  await expect(page.getByTestId("mission-panel")).toBeHidden();
+
+  // And the board can then claim the panel for its own mission.
+  await page.getByText("Plan a trip to Tokyo").first().click();
+  await expect(page.getByTestId("mission-panel")).toBeVisible();
+
+  // Back to the team: the board lets go, the team's chat takes the panel back,
+  // and the list still says which routine is open. A section that quietly
+  // dropped its selection would leave a lit-nothing list beside a full panel.
+  await page
+    .locator("[data-tour-target='agents']")
+    .locator("[data-sidebar-section-row]")
+    .filter({ hasText: "Routines" })
+    .first()
+    .click();
+  await expect(page.getByText("Routine: Morning brief")).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(row).toHaveAttribute("aria-selected", "true");
 });

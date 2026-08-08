@@ -250,4 +250,4 @@ components:
     ref: "@houston-ai/layout AppSidebar (SidebarGroupSection + SidebarSectionRows + SidebarDefaultHeader), composed in app/src/components/shell/team-sidebar-lists.tsx"
   team-screen:
     status: implemented
-    ref: "app/src/components/team-view/ (TeamView + TeamMissionControl + TeamSettings) over @houston-ai/board MissionBoard"
+    ref: "app/src/components/team-view/ (TeamView switching TeamMissionControl over @houston-ai/board MissionBoard, TeamRoutines over @houston-ai/routines RoutinesGrid, TeamFiles over the shared AgentFilesSurface, TeamSettings), with AgentReadsFailed naming any agent whose read failed"

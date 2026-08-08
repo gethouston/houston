@@ -1,14 +1,44 @@
 # Files UI
 
-The agent's Files tab: a Drive-style card grid (default, navigated folder by folder with a
+An agent's files: a Drive-style card grid (default, navigated folder by folder with a
 breadcrumb trail) and a Finder-style list (the whole workspace, browsed by expanding rows), over
 the host's `files*` routes. Library code lives in `@houston-ai/agent` (props-only,
 i18n-agnostic); everything app-specific (queries, toasts, pickers, translations) lives in `app/`.
 
+## Two surfaces, one wiring
+
+**TWO surfaces show an agent's files** — the per-agent **Files tab**
+(`app/src/components/tabs/files-tab.tsx`) and the team view's **Files section**
+(`app/src/components/team-view/team-files/`, one agent at a time behind an agent dropdown;
+`knowledge-base/teams-ui.md`). There can only ever be one answer to "what happens when I rename
+this file", so neither owns any wiring of its own. Both mount
+**`AgentFilesSurface`** (`app/src/components/tabs/agent-files/agent-files-surface.tsx`) and add
+nothing but their frame: the tab a pane, the team section its dropdown band.
+
+`app/src/components/tabs/agent-files/`:
+
+| File | Role |
+|------|------|
+| `agent-files-surface.tsx` | What both surfaces mount: `FilesBrowser` + the overlays + the read-failed strip. Mount it KEYED on the agent id — an open preview, a pending move conflict and a half-answered delete confirm all belong to the agent that owns them (the view mode is the exception: it lives in the UI store, so it is shared) |
+| `use-agent-files.tsx` | The whole wiring: the read, every mutation, the label bundles, the four overlays, and `error` / `refetch` / `isFetching` for the strip. Returns props rather than rendering |
+| `agent-files-capabilities.ts` | `useLocalFilesAccess` — the ONE answer to "can this deployment hand a file to the OS, and which directory", so a web build and a cloud pod can't offer Reveal on one screen and Download on the other |
+| `agent-files-downloads.ts` | The three save-to-my-machine paths (one file, a folder as a zip, the workspace as a zip), split out only for the size cap |
+
+It is also what keeps the read **cache-shared**: the tree comes from `useFiles(agent.folderPath)`
+— key `queryKeys.files(agentPath)` — so both surfaces read the SAME cache entry, every mutation's
+invalidation lands in one place, and `use-agent-invalidation.ts`'s `FilesChanged` refreshes
+whichever of them is on screen. There is no second key and no cross-agent fan-out anywhere in the
+Files story (a team's files are never merged into one tree — see `teams-ui.md`).
+
+**A failed read is stated, never swallowed.** An empty tree and a broken tree look identical, so
+`AgentFilesSurface` renders `AgentReadsFailed` (`app/src/components/agent-reads-failed.tsx`, the
+same strip the team Routines section uses) above the browser, naming the agent and offering Retry
+plus the standard Report-bug pill. It pays the `FILES_CONTENT_COLUMN` gutter so its left edge
+lands on the listing's.
+
 ## Component map
 
-`app/src/components/tabs/files-tab.tsx` renders exactly one library component, `FilesBrowser`,
-and supplies every callback. Inside `ui/agent/src/`:
+Inside `ui/agent/src/`:
 
 | File | Role |
 |------|------|
@@ -35,7 +65,8 @@ and supplies every callback. Inside `ui/agent/src/`:
 | `card-chrome.tsx` (`KebabButton`) · `file-menu.tsx` · `bg-context-menu.tsx` · `inline-rename.tsx` | Row/card affordances |
 | `tree.ts` · `filter.ts` · `grid-utils.ts` · `utils.ts` | Flat entries → tree, query pruning, path resolution, size format + sort |
 
-App-side helpers: `files-tab-labels.ts` (label bundles), `files-upload-intake.ts` (validation +
+App-side helpers, all consumed through `use-agent-files.tsx`: `files-tab-labels.ts` (label
+bundles), `files-upload-intake.ts` (validation +
 toasts), `files-upload-pickers.tsx` (the two hidden inputs), `files-delete-confirm.tsx` +
 `files-delete-copy.ts` (the confirm dialog and its pure, unit-tested copy),
 `file-preview-dialog.tsx` + `hooks/use-file-preview-loader.ts` (previews). The dialog
@@ -121,9 +152,9 @@ do with a selection renders no checkbox.
   clear (X). No border, no fill — chrome on the canvas, like the header it replaces.
 - Delete routes through the app's existing confirm (`files-delete-confirm.tsx`), which now speaks
   two copies from one dialog: the kebab NAMES its target, the selection bar COUNTS it
-  (`files.delete.batchTitle`, pluralized). `files-tab.tsx` then fires one `useDeleteFile.mutate`
-  per file, so each keeps the same `call()` toast path — a failure on file 3 of 5 is still reported
-  by name.
+  (`files.delete.batchTitle`, pluralized). `use-agent-files.tsx` then fires one
+  `useDeleteFile.mutate` per file, so each keeps the same `call()` toast path — a failure on file 3
+  of 5 is still reported by name.
 
 Grid = two groups, no headings — the grouping is the layout (`files-grid.tsx`):
 
@@ -282,7 +313,7 @@ on its own row); the search miss and the loading skeleton are shared.
 
 `ui/agent` imports no i18n: every string is a `labels`/`menuLabels` prop with an English default,
 and `app/src/components/tabs/files-tab-labels.ts` fills them from `t()` over the `agents`
-namespace (`app/src/locales/<lang>/agents.json`, `files.*`). Adding a string = add the key in
+namespace (the failure strip is app chrome and speaks `shell:agentReads.*`) (`app/src/locales/<lang>/agents.json`, `files.*`). Adding a string = add the key in
 en/es/pt + the label field.
 
 **One label is a FUNCTION, deliberately**: `selectedCount?: (count: number) => string` (default
@@ -305,6 +336,9 @@ as the New menu's items.
   single target (file vs folder description), counted through the plural API for a batch.
 - `ui/agent/tests/format-modified.test.ts` — every branch of the friendly date, plus locales.
 - `packages/design-tokens/test/contrast.test.ts` — each `filetype.*` tint on the tile, both themes.
+- `packages/web/e2e/team-routines-files.spec.ts` — the team Files section over the same wiring:
+  ONE agent's real tree, the dropdown switching which, arriving on the rail's pinned agent, a write
+  landing on that agent, and a failed read naming it instead of showing an empty tree.
 - `packages/web/e2e/files.spec.ts` — 35 tests over the whole tab against `@houston/fake-host`:
   grid/list navigation, click-opens-preview, the HTML preview (uploaded `.html` opens as a
   RENDERED sandboxed iframe — script ran, `sandbox="allow-scripts"` asserted, no source dump),

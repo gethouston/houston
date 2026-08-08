@@ -137,14 +137,32 @@ export async function handle(req: Request): Promise<Response> {
   }
   // Fail every per-agent read (`GET /agents/:id/*`) for the named agents with a
   // 500, leaving the rest healthy — the half-broken fleet the cross-agent
-  // sweep must survive (HOU-981). `{ agentIds: [] }` (and the per-test reset)
-  // restores them.
+  // sweep must survive (HOU-981). `{ segments: ["routine_runs"] }` narrows it
+  // to named sub-resources, the subtler state where one route is down while the
+  // rest of that same agent answers. `{ agentIds: [] }` (and the per-test
+  // reset) restores them.
   if (path === "/__test__/fail-agent-reads" && method === "POST") {
     const body = await parseBody(req);
     state.setFailingAgentReads(
       Array.isArray(body?.agentIds) ? body.agentIds.map(String) : [],
+      Array.isArray(body?.segments) ? body.segments.map(String) : null,
     );
-    return json({ agentIds: [...state.state.failingAgentReads] });
+    return json({
+      agentIds: [...state.state.failingAgentReads],
+      segments: state.state.failingAgentReadSegments
+        ? [...state.state.failingAgentReadSegments]
+        : null,
+    });
+  }
+  // Rewind the routine-id counter so the NEXT created routine reuses an id an
+  // earlier agent already has (`{ next: 0 }` = start over at `routine-1`).
+  // Routine ids are unique per AGENT in the real host, so two agents holding
+  // `routine-1` is ordinary truth; the fake's single global counter is the only
+  // reason a spec would never see it.
+  if (path === "/__test__/routine-seq" && method === "POST") {
+    const body = await parseBody(req);
+    state.setRoutineSeq(Number(body?.next ?? 0));
+    return json({ next: state.state.routineSeq });
   }
   // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin" |
   // "absent" (not registered at all — only the custom provider, when armed).
@@ -355,11 +373,16 @@ export async function handle(req: Request): Promise<Response> {
       await new Promise((r) => setTimeout(r, state.state.agentReadHoldMs));
     // Armed per-agent read failure: this agent's pod is unreachable while the
     // rest of the fleet answers. Same shape the gateway returns for a pod it
-    // cannot reach, so the client's own error path runs unchanged.
+    // cannot reach, so the client's own error path runs unchanged. With
+    // `segments` armed only those sub-resources fail, which is the subtler
+    // half-broken state: one route down while the same agent answers the rest.
+    const failingSegments = state.state.failingAgentReadSegments;
     if (
       method === "GET" &&
       segs.length > 1 &&
-      state.state.failingAgentReads.has(decodeURIComponent(segs[1]))
+      state.state.failingAgentReads.has(decodeURIComponent(segs[1])) &&
+      (failingSegments === null ||
+        (segs.length > 2 && failingSegments.has(decodeURIComponent(segs[2]))))
     )
       return json({ error: { message: "agent unreachable" } }, 500);
     return handleAgents(

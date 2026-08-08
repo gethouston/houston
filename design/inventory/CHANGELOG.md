@@ -3,6 +3,50 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v56 - 2026-08-07
+
+The team screen gained the two sections its rail already promised: ROUTINES and
+FILES. Both are every member's, not an admin's -- they show the team's WORK,
+and only Team Settings configures anything, so only Team Settings stays gated.
+
+Routines is ONE list of every team agent's routines. Routines are flat rows, so
+aggregating them is honest, and each row now carries an OWNER CHIP beside its
+name -- the owning agent's avatar and name -- because in a cross-agent list
+"whose routine is this" is as load-bearing as what it is called. The chip never
+truncates; the routine's name does. A single-agent list omits the chip
+entirely, since every row there would name the same owner, so the per-agent
+Routines tab is unchanged. Every row action still reaches the agent that owns
+that routine: the toggle, run now, stop, delete and the inline schedule popover
+all write to that agent, and the setup chat opens in the ONE shell panel, only
+while the team screen is the screen on the glass.
+
+Files made the opposite call, deliberately. Folders are not flat, and merging
+several agents' trees would invent a filesystem nobody has, with no honest
+answer to where an upload lands or what a rename means. So the section picks
+ONE agent from the same dropdown the board uses and shows that agent's REAL
+tree, in the same browser the per-agent tab renders, with every action it
+offers. Arriving from an agent row starts on that agent; otherwise it starts on
+the team's first.
+
+Routines being BUILT in chat are rows in that list too, wearing the same owner
+chip and resumable or discardable from it, because a half-built routine is the
+one thing a list of "what runs on its own" must not lose track of.
+
+Both sections read the very same per-agent caches the per-agent surfaces read,
+so an event that refreshes one refreshes the other and no second cross-agent
+sweep exists to go stale. And when some agents answer while others do not, the
+section says so: a strip names the agents that failed, offers to retry just
+those, and carries the standard Report-bug pill, instead of presenting a short
+list as the whole truth. When NOTHING answered, it stops making the claim
+altogether: an empty list is not evidence of an idle team, and the copy says
+which of the two it is. That strip is now the per-agent Files tab's too -- an
+empty tree and a broken tree look identical, and only one of the two surfaces
+used to say which.
+
+One more thing the rail learned: it fills an agent row only under a section that
+actually narrows by that agent. Team Settings lists the whole team whatever the
+pin says, so a lit row there was claiming something nothing on screen was doing.
+
 ## v55 - 2026-08-07
 
 The navigation rail is a list of TEAMS, not a list of agents. "Your agents"

@@ -155,6 +155,20 @@ pnpm --filter houston-web test:visual:update  # re-record (intentional change on
 - **Update discipline.** Re-record ONLY when a UI change is deliberate, eyeball
   the new PNGs, and commit them in the same PR as the change so the diff
   documents the visual delta — never blindly re-record to green a red run.
+- **Bless log.** A re-record that absorbs drift from EARLIER commits (not just
+  the one in hand) gets a line here, so the bless is on the record instead of
+  hiding inside a binary diff:
+  - *2026-08-07, teams E4* — the four `chat` / `chat-markdown` baselines
+    (light + dark, both platforms) were re-synced. They had last been recorded
+    at `77a74bdf` and had drifted through four intervening commits: `419ee3f3`
+    (agent Settings tab split into Context / Skills / Admin — the tab strip),
+    `24c9542a` (labeled links wear the Slack chip), `1bc5236d` (the agent
+    settings page), `7ee706e2` (the "Your teams" rail). Verified by eye against
+    current truth before committing: the rail says "Your teams" with its
+    section rows, the strip is Activity / Context / Skills / Integrations /
+    Routines / Files, and the toolbar is the current search + avatar pair. The
+    `shell` board baselines moved in the same change for the rail's new section
+    rows, which is drift from that change alone.
 
 Full guide (determinism rules, the Docker Linux-regen command): `packages/web/e2e/README.md`
 → Visual regression.

@@ -11,9 +11,11 @@ import { expect, test } from "./support/fixtures";
  *   - the default block is labelled with the WORKSPACE name (the fake host's
  *     seed workspace is `default`) and offers no fold / rename / menu, because
  *     it is the container rather than a stored group;
- *   - Mission Control is present on EVERY team, always;
+ *   - Mission Control, Routines and Files are present on EVERY team, always —
+ *     they show the team's WORK, so they are every member's;
  *   - Team Settings follows `canSeeTeamSettings`: present single-player and for
- *     a multiplayer owner, absent for a plain multiplayer member;
+ *     a multiplayer owner, absent for a plain multiplayer member, because it is
+ *     the one section that CONFIGURES rather than shows;
  *   - selecting a destination or an agent lights exactly one row.
  *
  * Assertions are deliberately SIDEBAR-side (the row that is lit) rather than
@@ -65,7 +67,7 @@ async function createTeam(page: Page, name: string): Promise<void> {
   await expect(rail(page).getByText(name, { exact: true })).toBeVisible();
 }
 
-test("the default block is the workspace, and every team offers Mission Control", async ({
+test("the default block is the workspace, and every team offers the work sections", async ({
   page,
 }) => {
   await page.goto("/");
@@ -84,10 +86,14 @@ test("the default block is the workspace, and every team offers Mission Control"
   // It is the container itself: nothing to fold, rename or delete.
   await expect(defaultHeader.getByRole("button")).toHaveCount(0);
 
-  // One team → one Mission Control row. A second team → two.
-  await expect(sectionRows(page, "Mission Control")).toHaveCount(1);
+  // One team → one row of each work destination. A second team → two.
+  for (const section of ["Mission Control", "Routines", "Files"]) {
+    await expect(sectionRows(page, section)).toHaveCount(1);
+  }
   await createTeam(page, "Work");
-  await expect(sectionRows(page, "Mission Control")).toHaveCount(2);
+  for (const section of ["Mission Control", "Routines", "Files"]) {
+    await expect(sectionRows(page, section)).toHaveCount(2);
+  }
   // The named team keeps its own header affordances (the default one has none).
   await expect(page.locator("[data-sidebar-group-header]")).toHaveCount(1);
 });
@@ -131,6 +137,8 @@ test("Team Settings follows the caller's role", async ({ page, request }) => {
   await page.reload();
   await expect(page.getByText("Your teams")).toBeVisible();
   await expect(sectionRows(page, "Mission Control")).toHaveCount(1);
+  await expect(sectionRows(page, "Routines")).toHaveCount(1);
+  await expect(sectionRows(page, "Files")).toHaveCount(1);
   await expect(sectionRows(page, "Team Settings")).toHaveCount(0);
 
   // An org owner is an implicit owner of every team — the row comes back.

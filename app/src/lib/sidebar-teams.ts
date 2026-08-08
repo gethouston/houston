@@ -7,6 +7,7 @@
 
 import {
   resolveTeamSection,
+  sectionHonorsAgentPin,
   TEAM_VIEW_ID,
   type TeamSectionId,
   type TeamView,
@@ -80,13 +81,20 @@ export function teamSectionRowModels(
 }
 
 /**
- * Which agent row wears the selected fill. In a team view that is the Mission
- * Control agent filter (clicking an agent filters its team's board, so the row
- * the user clicked stays lit) — but only while that agent is still a member of
- * the open team. Drag it into another team and the board drops the filter and
- * shows everything (`teamFilterPath` / `resolveFilterPath`); a row left lit in
- * its new block would then point at a filter no board is applying. On an agent
- * tab it is the open agent; on any other top-level view, nothing.
+ * Which agent row wears the selected fill. In a team view that is the shared
+ * agent pin (clicking an agent narrows its team's board, routines and files, so
+ * the row the user clicked stays lit) — under two conditions, both of which are
+ * "the fill must describe something that is actually happening":
+ *
+ * - the OPEN SECTION has to honor the pin (`sectionHonorsAgentPin`). Team
+ *   Settings ignores it and lists the whole team, so a lit row there would
+ *   claim a narrowing nothing on screen is doing;
+ * - the agent has to still be a member of the open team. Drag it into another
+ *   team and every section drops the filter and shows everything
+ *   (`teamPinnedAgent` / `teamFilterPath` / `resolveFilterPath`); a row left lit
+ *   in its new block would point at a filter nothing is applying.
+ *
+ * On an agent tab it is the open agent; on any other top-level view, nothing.
  */
 export function sidebarSelectedAgentId(args: {
   viewMode: string;
@@ -96,8 +104,8 @@ export function sidebarSelectedAgentId(args: {
   currentAgentId: string | null;
 }): string | null {
   if (args.viewMode === TEAM_VIEW_ID) {
-    const { agentId } = args.highlight;
-    if (agentId === null) return null;
+    const { agentId, section } = args.highlight;
+    if (agentId === null || !sectionHonorsAgentPin(section)) return null;
     return args.activeTeam?.agents.some((a) => a.id === agentId)
       ? agentId
       : null;

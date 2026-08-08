@@ -7,6 +7,21 @@ import type { Routine, TriggerStatusItem } from "@houston-ai/engine-client";
  * unit-test under bare node.
  */
 
+/**
+ * The routines that wake on an EVENT rather than a clock. This is the ONE rule
+ * that decides whether an agent is asked about trigger health at all, so both
+ * the per-agent tab and the team's cross-agent list derive it here: a workspace
+ * with no event routine makes no status request anywhere.
+ *
+ * Whichever id the caller's rows carry is what comes back — the tab's routine
+ * ids, or the team list's namespaced row keys.
+ */
+export function triggerBoundRoutineIds(
+  routines: Routine[] | null | undefined,
+): string[] {
+  return (routines ?? []).filter((r) => r.trigger).map((r) => r.id);
+}
+
 /** Index a trigger-status list by routine id (empty when the host serves none). */
 export function toStatusMap(
   items: TriggerStatusItem[] | null | undefined,

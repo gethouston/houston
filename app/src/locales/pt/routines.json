@@ -196,6 +196,7 @@
       "error": "Precisa de atenção"
     },
     "statusUnknown": "Verificando o gatilho…",
+    "statusTimeout": "O Houston não conseguiu confirmar que este gatilho foi configurado.",
     "waitingFirstEvent": "Ativa. Aguardando o primeiro evento.",
     "reconnect": "Reconectar",
     "statusDisconnectedHint": "A conta conectada foi desconectada.",
