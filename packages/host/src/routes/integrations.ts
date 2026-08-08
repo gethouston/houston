@@ -6,7 +6,7 @@ import {
   IntegrationSigninRequiredError,
   IntegrationUpstreamError,
 } from "../integrations/types";
-import { json, readJson } from "./http";
+import { json, optionalTrimmed, readJson } from "./http";
 
 /**
  * Third-party integrations (Composio platform mode first) — the USER routes
@@ -190,12 +190,29 @@ export async function handleIntegrations(
       return true;
     }
     if (sub === "search" && method === "POST") {
-      const { query } = await readJson(req);
+      const { query, app } = await readJson(req);
       if (typeof query !== "string") {
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
-      json(res, 200, { items: await provider.search(userId, query) });
+      // Optional `app` hard-scopes discovery to one named app (PRODUCT-1274);
+      // the desktop gateway adapter forwards it here verbatim. STRICTLY
+      // scoped — no unscoped fallback here: the sandbox proxy at the top of
+      // the chain owns that retry, so a scoped call through this route never
+      // smuggles other apps' actions into a caller's merge. The `scoped` echo
+      // tells a downstream remote adapter what became of the scope (absent =
+      // the provider ignored it, which the adapter must surface, not trust).
+      const result = await provider.search(
+        userId,
+        query,
+        undefined,
+        optionalTrimmed(app),
+      );
+      json(res, 200, {
+        items: result.items,
+        ...(result.scope === "resolved" ? { scoped: true } : {}),
+        ...(result.scope === "unresolved" ? { scoped: false } : {}),
+      });
       return true;
     }
     if (sub === "execute" && method === "POST") {

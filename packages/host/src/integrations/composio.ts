@@ -12,14 +12,17 @@ import {
   type RawTool,
   type RawToolkit,
 } from "./composio-wire";
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  IntegrationProvider,
+  ProviderSearchResult,
+} from "./provider";
 import type {
   ActionResult,
   Connection,
   ConnectStart,
   ProviderReadiness,
   Toolkit,
-  ToolMatch,
 } from "./types";
 
 /**
@@ -304,13 +307,14 @@ export class ComposioProvider implements IntegrationProvider {
     userId: string,
     query: string,
     _acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
+    app?: string,
+  ): Promise<ProviderSearchResult> {
     // The direct adapter owns the platform key and derives identity from the
     // verified `userId`; there is no upstream to re-authenticate as, so the
     // acting context is intentionally ignored (self-host / dev only). The merge
-    // policy (scoped + global + catalog resolution) lives in composio-search.ts;
-    // this wires it to the Composio transport. Every returned entry carries its
-    // IntegrationAppStatus (connected/connectable derived from the user's set).
+    // policy (named-app + scoped + global + catalog resolution) lives in
+    // composio-search.ts; this wires it to the Composio transport. Every entry
+    // carries its IntegrationAppStatus (derived from the user's connections).
     return searchComposio(
       {
         listConnections: () => this.listConnections(userId),
@@ -327,6 +331,7 @@ export class ComposioProvider implements IntegrationProvider {
         catalog: () => this.cachedCatalog(),
       },
       query,
+      app,
     );
   }
 

@@ -27,6 +27,23 @@ export interface ActingContext {
 }
 
 /**
+ * What an adapter did with a requested `app` scope. Direct adapters answer
+ * "resolved" (the items are hard-scoped to the named app) or "unresolved"
+ * (the scope matched nothing they know — items are EMPTY, never an unscoped
+ * fallback). ONLY the remote adapter may report "ignored": its upstream
+ * predates the scope contract and served an unscoped result, which the
+ * sandbox proxy must surface rather than present as scoped.
+ */
+export type ScopeOutcome = "resolved" | "unresolved" | "ignored";
+
+/** One provider's search answer. `scope` is present iff an `app` scope was
+ *  requested on the call. */
+export interface ProviderSearchResult {
+  items: ToolMatch[];
+  scope?: ScopeOutcome;
+}
+
+/**
  * The integration-provider PORT: Composio is the first adapter, and a future
  * provider slots in by implementing this same interface. The host routes + the
  * agent's generic tools depend ONLY on this; no provider's wire types or SDK
@@ -75,13 +92,21 @@ export interface IntegrationProvider {
    * Discover actions matching a natural-language query (slug + param schema).
    * `acting` (optional) names the user the agent is acting as this turn (C2);
    * a gateway adapter authenticates upstream as that user, direct adapters
-   * ignore it.
+   * ignore it. `app` (optional) HARD-scopes discovery to one named app — a
+   * loose name or slug ("PostHog", "google sheets") the adapter resolves via
+   * the shared rules (scope-resolve.ts); the result is then STRICTLY that
+   * app's actions (PRODUCT-1274). A scope the adapter cannot resolve to any
+   * app it knows returns EMPTY items with scope "unresolved" — never an
+   * unscoped fallback, which would pollute a multi-provider merge where
+   * another provider resolves the same scope. The sandbox proxy owns the one
+   * unscoped retry after every provider reported "unresolved".
    */
   search(
     userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]>;
+    app?: string,
+  ): Promise<ProviderSearchResult>;
   /**
    * Run one action by slug with its params. `acting` (optional) as in `search`.
    * `account` (optional) targets ONE of the user's connected accounts for the

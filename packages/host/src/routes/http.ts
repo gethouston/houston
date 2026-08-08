@@ -4,6 +4,12 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 // the many routes that import `readJson` from here.
 export { readBody, readJson } from "./read-body";
 
+/** An optional trimmed string body field: whitespace-only and non-strings
+ *  become undefined — never a real (empty) value with different semantics. */
+export function optionalTrimmed(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
 export function json(
   res: ServerResponse,
   status: number,
