@@ -82,6 +82,20 @@ test("a chat lists the missions it started, and opening one goes there (PRODUCT-
   const titles = await list.getByRole("button").allInnerTexts();
   expect(titles[0]).toContain("Checking emails");
 
+  // The drawer is open by default; its title collapses it to just the title
+  // row (with the count), and expands it again.
+  const toggle = page.getByRole("button", {
+    name: /missions started here 2/i,
+  });
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    list.getByRole("button", { name: /Checking emails/ }),
+  ).toHaveCount(0);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
   // A row is a control: it opens that mission's own chat.
   await list.getByRole("button", { name: /Checking emails/ }).click();
   await expect(page.getByText("Mission: Checking emails")).toBeVisible();

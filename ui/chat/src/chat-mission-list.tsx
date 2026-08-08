@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
-import { useId } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useId, useState } from "react";
 
 /** How a listed mission reads at a glance: the board's three status families. */
 export type ChatMissionTone = "running" | "attention" | "done";
@@ -37,58 +37,75 @@ const TONE_DOT: Record<ChatMissionTone, string> = {
 };
 
 /**
- * The missions THIS chat started, listed above the composer so a coordinating
- * mission is also its own monitor: each row is one child mission with its live
- * status, and opening a row goes to that mission's chat.
+ * The missions THIS chat started, a collapsible drawer above the composer so a
+ * coordinating mission is also its own monitor: each row is one child mission
+ * with its live status, and opening a row goes to that mission's chat.
  *
- * Why a list and not a status blob: the value of a planning chat is reviewing
+ * The drawer is OPEN by default — the children are this chat's real "what
+ * next" — and its title is the toggle: collapsed, only the title row remains
+ * (with the count, so a closed drawer still says there is something inside).
+ * The toggle is a visible control, not hover-gated, and flips instantly (a
+ * high-frequency interaction, per the motion rules); only the chevron turns.
+ *
+ * Why rows and not a status blob: the value of a planning chat is reviewing
  * what it handed out, and the review target is the child's own conversation —
- * so every row is a control, not a readout. Rows are visible at rest (no
- * hover-gated affordance) and the list is bounded so a wide fan-out scrolls
- * instead of pushing the composer off-screen.
+ * so every row is a control, not a readout. The open list is bounded so a wide
+ * fan-out scrolls instead of pushing the composer off-screen.
  */
 export function ChatMissionList({
   missions,
   labels = DEFAULT_CHAT_MISSION_LIST_LABELS,
   onOpen,
 }: ChatMissionListProps) {
+  const listId = useId();
   const headingId = useId();
+  const [open, setOpen] = useState(true);
   if (missions.length === 0) return null;
+  const Chevron = open ? ChevronDown : ChevronRight;
   return (
     <div className="flex flex-col gap-1.5">
-      {/* px-2 matches the rows' own padding, so the heading and the status
-          dots share one left edge. */}
-      <p className="px-2 text-ink-muted text-xs" id={headingId}>
-        {labels.heading}
-      </p>
-      {/* Named by its own visible heading, so the group is announced once and
-          assistive tech can jump to it. */}
-      <ul
-        aria-labelledby={headingId}
-        className="flex max-h-40 flex-col gap-0.5 overflow-y-auto"
+      {/* px-2 matches the rows' own padding, so the title and the status dots
+          share one left edge. */}
+      <button
+        aria-controls={listId}
+        aria-expanded={open}
+        className="flex items-center gap-1.5 self-start rounded-full px-2 py-1 text-ink-muted text-xs outline-none transition-colors hover:bg-hover hover:text-ink focus-visible:ring-[3px] focus-visible:ring-focus/50"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
       >
-        {missions.map((mission) => (
-          <li key={mission.id}>
-            <button
-              className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-[3px] focus-visible:ring-focus/50"
-              onClick={() => onOpen(mission.id)}
-              type="button"
-            >
-              <span
-                aria-hidden="true"
-                className={`size-1.5 shrink-0 rounded-full ${TONE_DOT[mission.tone]}`}
-              />
-              <span className="min-w-0 flex-1 truncate text-ink text-xs">
-                {mission.title}
-              </span>
-              <span className="shrink-0 text-[11px] text-ink-muted">
-                {mission.statusLabel}
-              </span>
-              <ChevronRight className="size-3.5 shrink-0 text-ink-muted/40" />
-            </button>
-          </li>
-        ))}
-      </ul>
+        <span id={headingId}>{labels.heading}</span>
+        <span className="tabular-nums">{missions.length}</span>
+        <Chevron aria-hidden="true" className="size-3.5" />
+      </button>
+      {open ? (
+        <ul
+          aria-labelledby={headingId}
+          className="flex max-h-40 flex-col gap-0.5 overflow-y-auto"
+          id={listId}
+        >
+          {missions.map((mission) => (
+            <li key={mission.id}>
+              <button
+                className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-[3px] focus-visible:ring-focus/50"
+                onClick={() => onOpen(mission.id)}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`size-1.5 shrink-0 rounded-full ${TONE_DOT[mission.tone]}`}
+                />
+                <span className="min-w-0 flex-1 truncate text-ink text-xs">
+                  {mission.title}
+                </span>
+                <span className="shrink-0 text-[11px] text-ink-muted">
+                  {mission.statusLabel}
+                </span>
+                <ChevronRight className="size-3.5 shrink-0 text-ink-muted/40" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

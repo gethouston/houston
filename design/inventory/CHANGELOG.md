@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v57 - 2026-08-07
+
+`chat-mission-list` becomes a drawer: open by default, the title row (with a
+count and chevron) collapses it to just the title and expands it again. Anatomy
+and states updated accordingly.
+
 ## v56 - 2026-08-07
 
 Agent-started missions (PRODUCT-1244). New `chat-mission-list`: the missions a
