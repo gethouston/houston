@@ -181,6 +181,68 @@ test("connect reuses the project's enabled auth config and mints a link session"
   expect(calls[2]?.path).toBe("/api/v3.1/connected_accounts/link");
 });
 
+test("connect pre-answers highlevel's user_type via the direct initiate", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [{ id: "ac_hl", status: "ENABLED" }] } };
+    }
+    if (url.pathname === "/api/v3/connected_accounts" && method === "POST") {
+      return {
+        body: { id: "ca_hl", redirect_url: "https://provider/oauth" },
+      };
+    }
+    return { status: 404 };
+  });
+
+  // The redirect points at the provider's OAuth page, never Composio's
+  // hosted form — there is no field left for a user to overwrite.
+  const start = await provider.connect(USER, "highlevel");
+  expect(start).toEqual({
+    redirectUrl: "https://provider/oauth",
+    connectionId: "ca_hl",
+  });
+  expect(calls[1]?.body).toEqual({
+    auth_config: { id: "ac_hl" },
+    connection: {
+      user_id: USER,
+      data: { user_type: "Location" },
+      callback_url: "https://gethouston.ai/connected",
+    },
+  });
+});
+
+test("connect falls back to the hosted link when the prefilled initiate is rejected", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [{ id: "ac_hl", status: "ENABLED" }] } };
+    }
+    if (url.pathname === "/api/v3/connected_accounts" && method === "POST") {
+      // The retired-for-this-org shape.
+      return { status: 400, body: { error: "initiate is retired" } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: {
+          redirect_url: "https://connect.composio.dev/link/lk_1",
+          connected_account_id: "ca_hl",
+        },
+      };
+    }
+    return { status: 404 };
+  });
+
+  const start = await provider.connect(USER, "highlevel");
+  expect(start.connectionId).toBe("ca_hl");
+  // The hosted link still carries the prefill as the field's value.
+  const link = calls.find((c) =>
+    c.path.startsWith("/api/v3.1/connected_accounts/link"),
+  );
+  expect(link?.body).toMatchObject({
+    auth_config_id: "ac_hl",
+    connection_data: { user_type: "Location" },
+  });
+});
+
 test("connect creates a Composio-managed auth config when the toolkit has one", async () => {
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
