@@ -6,16 +6,18 @@ import { expect, test } from "./support/fixtures";
  * The Routines redesign: creation is chat-first, driven by locally-rendered
  * intake cards, and the whole tab reads like an email client.
  *
- * A persistent LIST sits on the left (header "Routines" + a "New routine"
- * button; the button moves into the empty state when the list is empty). The
- * SELECTED item's chat opens in the SAME shell-level panel the Activity board
- * uses. "New routine" opens that panel over an empty chat surface and floats
- * the create intake cards above the composer: a fork ("From scratch" / "Start
+ * A persistent LIST holds the main content (header "Routines" + a "New
+ * routine" button; the button moves into the empty state when the list is
+ * empty). Clicking a row REPLACES the main content with that routine's own
+ * screen (PRODUCT-1208): editable description (the prompt), editable
+ * frequency, model pin, a Runs modal — and "Edit in chat", which opens the
+ * routine's setup chat in the SAME shell-level panel the Activity board uses.
+ * "New routine" opens that panel over an empty chat surface and floats the
+ * create intake cards above the composer: a fork ("From scratch" / "Start
  * from a template") → a wake question (schedule / event / webhook, gated on
  * `capabilities.triggers`) → a schedule idea card or template picker. Completing
  * hands off to the agent (a real setup-chat mission, tagged so it never shows on
- * the board). Rows aren't menus-only: the whole row opens its chat in the panel
- * and highlights as selected; the switch pauses it and the kebab deletes it.
+ * the board). The row switch pauses a routine and the kebab deletes it.
  *
  * The intake cards are pure frontend (zero model calls), so the fork → wake →
  * schedule/template sequence is driven for real here. The handoff and every
@@ -164,7 +166,7 @@ test("Start from a template picks a template and hands off to the agent", async 
     .toBe(1);
 });
 
-test("a routine row opens its chat in the panel and highlights as selected", async ({
+test("a routine row opens its screen, and Edit in chat continues to the panel chat", async ({
   page,
 }) => {
   const agentId = await seedAgentId();
@@ -179,13 +181,22 @@ test("a routine row opens its chat in the panel and highlights as selected", asy
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute("aria-selected", "false");
 
-  // The whole row is the open-chat target: clicking its title (not a control)
-  // opens the routine's chat in the shell panel and marks the row selected.
+  // The whole row is the open target: clicking its title (not a control)
+  // REPLACES the main content with the routine's own screen (PRODUCT-1208) —
+  // its name as the heading, the prompt in an editable textarea, and the
+  // frequency + Runs affordances. The list (and its New routine button) yields.
   await row.getByText("Morning brief").click();
-  await expect(row).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByRole("heading", { name: "Morning brief" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "What this routine does" }),
+  ).toHaveValue("p");
+  await expect(page.getByRole("button", { name: "Runs" })).toBeVisible();
 
-  // The chat lands in the SAME panel the board uses, headed by the routine's
-  // name, and the agent speaks first.
+  // "Edit in chat" opens the routine's setup chat in the SAME panel the board
+  // uses, headed by the routine's name, and the agent speaks first.
+  await page.getByRole("button", { name: "Edit in chat" }).click();
   await expect(page.getByText("Routine: Morning brief")).toBeVisible({
     timeout: 15_000,
   });
@@ -211,12 +222,14 @@ test("switching tabs never stacks two chat panels in the shared shell panel (HOU
   // Activity board kept its selected mission and kept portaling its detail panel
   // into this SAME container while the Routines tab portaled the routine's chat —
   // two stacked panels, the chat "broken in half". The hidden tab must now yield
-  // the panel: opening a routine leaves exactly one conversation, the routine's.
+  // the panel: opening a routine's chat (row → its screen → "Edit in chat")
+  // leaves exactly one conversation, the routine's.
   await openRoutinesTab(page);
   const row = page
     .locator('[data-testid="routine-row"]')
     .filter({ hasText: "Morning brief" });
   await row.getByText("Morning brief").click();
+  await page.getByRole("button", { name: "Edit in chat" }).click();
 
   await expect(panel.getByText("Routine: Morning brief")).toBeVisible({
     timeout: 15_000,

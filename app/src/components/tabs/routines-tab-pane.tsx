@@ -1,8 +1,9 @@
 import type { Routine } from "@houston-ai/engine-client";
+import type { RoutineRun } from "@houston-ai/routines";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import { AutomationIntake, type IntakeResult } from "./automation-intake";
 import { RoutineSetupChat } from "./routine-setup-chat";
-import type { Selection } from "./routines-tab-model";
+import { runChatActivity, type Selection } from "./routines-tab-model";
 import type { useRoutineChatSetup } from "./use-routine-chat-setup";
 
 interface Props {
@@ -12,25 +13,30 @@ interface Props {
   agentDef: AgentDefinition;
   routines: Routine[] | undefined;
   chatSetup: ReturnType<typeof useRoutineChatSetup>;
+  /** ALL of the agent's runs (the tab's cached query) — the run-chat lookup
+   *  narrows by id here. */
+  allRuns: RoutineRun[] | undefined;
   /** The account-wide zone the intake cards schedule against. */
   accountTimezone: string;
   /** Whether this deployment can offer NEW event triggers (intake gate). */
   triggersAvailable: boolean;
-  /** The shell-level panel node this chat portals into (workspace-shell's
+  /** The shell-level panel node the chats portal into (workspace-shell's
    *  sibling panel). Null until the panel mounts. */
   panelContainer: HTMLElement | null;
   onIntakeComplete: (result: IntakeResult) => void;
   onIntakeDismiss: () => void;
   onIntakeSend: (text: string) => void;
   onDeselect: () => void;
+  /** Closing a routine's chat returns to its screen in the main content. */
+  onBackToRoutine: (routineId: string) => void;
 }
 
 /**
- * The Routines tab's chat surface: the selected routine's chat, rendered into
- * the shell-level panel (`panelContainer`). Intake runs the create cards over an
- * empty chat surface; a routine/draft continues its real conversation.
- * Extracted from `routines-tab.tsx` so both stay under the size cap — this owns
- * only the selection → surface mapping.
+ * The Routines tab's CHAT surfaces, rendered into the shell-level panel
+ * (PRODUCT-1208): the create intake, a draft's chat, a routine's setup chat,
+ * and one execution's result chat. The routine's own screen is NOT here — it
+ * replaces the tab's main content (`routine-screen.tsx`); a chat opened from
+ * that screen closes back to it, so the X (and Escape) never strand the user.
  */
 export function RoutinesTabPane({
   selected,
@@ -38,6 +44,7 @@ export function RoutinesTabPane({
   agentDef,
   routines,
   chatSetup,
+  allRuns,
   accountTimezone,
   triggersAvailable,
   panelContainer,
@@ -45,6 +52,7 @@ export function RoutinesTabPane({
   onIntakeDismiss,
   onIntakeSend,
   onDeselect,
+  onBackToRoutine,
 }: Props) {
   if (selected.kind === "intake") {
     return (
@@ -69,31 +77,51 @@ export function RoutinesTabPane({
     );
   }
 
-  const routine =
-    selected.kind === "routine"
-      ? routines?.find((r) => r.id === selected.routineId)
-      : undefined;
+  if (selected.kind === "draft") {
+    const activity = selected.activityId
+      ? (chatSetup.draftActivities.find((a) => a.id === selected.activityId) ??
+        null)
+      : null;
+    return (
+      <RoutineSetupChat
+        agent={agent}
+        agentDef={agentDef}
+        activity={activity}
+        kind="draft"
+        panelContainer={panelContainer}
+        onClose={onDeselect}
+      />
+    );
+  }
+
+  if (selected.kind !== "routineChat" && selected.kind !== "runChat")
+    return null; // kind "routine" renders in the main content, never here
+
+  const routine = routines?.find((r) => r.id === selected.routineId);
+  if (!routine) return null; // deleted under the selection; the pane just closes
+
+  // One execution's chat: a synthetic activity over the run's real session
+  // key (reconstructable from the routine + run id even if the record was
+  // pruned by the 50-run cap while the chat was open).
   const activity =
-    selected.kind === "routine"
-      ? routine
-        ? chatSetup.activityFor(routine)
-        : null
-      : selected.activityId
-        ? (chatSetup.draftActivities.find(
-            (a) => a.id === selected.activityId,
-          ) ?? null)
-        : null;
+    selected.kind === "runChat"
+      ? runChatActivity(
+          routine,
+          selected.runId,
+          allRuns?.find((r) => r.id === selected.runId),
+        )
+      : chatSetup.activityFor(routine);
 
   return (
     <RoutineSetupChat
       agent={agent}
       agentDef={agentDef}
       activity={activity}
-      kind={selected.kind === "routine" ? "routine" : "draft"}
-      routineName={routine?.name}
+      kind="routine"
+      routineName={routine.name}
       routine={routine}
       panelContainer={panelContainer}
-      onClose={onDeselect}
+      onClose={() => onBackToRoutine(routine.id)}
     />
   );
 }

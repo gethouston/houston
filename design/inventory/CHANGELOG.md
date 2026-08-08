@@ -3,6 +3,19 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v58 - 2026-08-08
+
+Add `routine-details` (PRODUCT-1208): a routine's own screen, replacing the
+routines list in the MAIN content when its row is clicked — the name, an
+editable description (the prompt IS what the routine does), an editable run
+frequency (the rows' schedule builder), the model pin (over the existing
+provider/model override fields), and the persisted execution history behind a
+Runs MODAL, n8n-style, where clicking an entry opens that run's chat (its
+result) in the shell panel. Web ships the run list in `@houston-ai/routines`
+(`RoutineRunList`) but the screen composition and the model row ride
+app-locked pieces (`ChatModelSelector`), so it lands as `partial` -- extract
+before mobile.
+
 ## v57 - 2026-08-08
 
 Edit a previous message + copy any message (PRODUCT-1217), no new
