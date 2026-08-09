@@ -61,6 +61,7 @@ export function TeamRoutines({ team }: { team: TeamView }) {
     list: data.list,
     drafts: data.drafts,
     accountTimezone: tz.timezone ?? "UTC",
+    triggerSummaries: data.triggers.triggerSummaries,
   });
   // Per-row identity glyph. It needs nothing per agent — only whether this host
   // has a trigger surface at all — so the merged list reuses it unchanged.
@@ -107,87 +108,89 @@ export function TeamRoutines({ team }: { team: TeamView }) {
 
   return (
     <div className="flex h-full min-h-0">
-      <div
-        className={cn(
-          "flex min-w-0 flex-col",
-          host.chatOpen ? "flex-1" : "mx-auto w-full max-w-3xl",
-        )}
-      >
-        <PageHeaderTools>
-          {(oneRow) => (
-            <TeamRoutinesHeader
-              variant={oneRow ? "strip" : "row"}
-              count={count}
-              agentFilter={
-                <TeamAgentFilterCapsule
-                  agents={team.agents}
-                  selectedAgentId={filterAgentId}
-                  onSelect={setFilterAgentId}
-                />
-              }
-              createButton={listEmpty ? undefined : createButton}
-            />
+      {!host.screenOpen && (
+        <div
+          className={cn(
+            "flex min-w-0 flex-col",
+            host.chatOpen ? "flex-1" : "mx-auto w-full max-w-3xl",
           )}
-        </PageHeaderTools>
+        >
+          <PageHeaderTools>
+            {(oneRow) => (
+              <TeamRoutinesHeader
+                variant={oneRow ? "strip" : "row"}
+                count={count}
+                agentFilter={
+                  <TeamAgentFilterCapsule
+                    agents={team.agents}
+                    selectedAgentId={filterAgentId}
+                    onSelect={setFilterAgentId}
+                  />
+                }
+                createButton={listEmpty ? undefined : createButton}
+              />
+            )}
+          </PageHeaderTools>
 
-        {/* The strip pays the list's own gutter, so its left edge lands on the
+          {/* The strip pays the list's own gutter, so its left edge lands on the
             rows' rather than four pixels inside them. */}
-        <div className="px-3">
-          <AgentReadsFailed
-            failures={data.failures}
-            onRetry={data.retry}
-            retrying={data.retrying}
-          />
-        </div>
+          <div className="px-3">
+            <AgentReadsFailed
+              failures={data.failures}
+              onRetry={data.retry}
+              retrying={data.retrying}
+            />
+          </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <RoutinesGrid
-            routines={data.list.routines}
-            lastRuns={data.list.lastRuns}
-            // Routines being built in chat are rows too: without them a routine
-            // half-started from here would vanish from the list the moment its
-            // chat lost focus.
-            draftActivities={data.drafts.drafts}
-            accountTimezone={tz.timezone}
-            loading={data.loading}
-            selectedRoutineId={host.selectedRoutineKey}
-            selectedDraftId={host.selectedDraftKey}
-            onOpenChat={host.openRoutineChat}
-            onToggle={actions.onToggle}
-            onScheduleChange={actions.onScheduleChange}
-            onDeleteRoutine={actions.onDeleteRoutine}
-            onRunNow={actions.onRunNow}
-            onStopRun={actions.onStopRun}
-            onResumeDraft={host.resumeDraft}
-            onDiscardDraft={actions.onDiscardDraft}
-            leadingIcon={leadingIcon}
-            // Keyed by the merged list's row keys, like every other map here:
-            // without them every event routine's chip would say "verifying"
-            // forever, a claim this surface could never settle.
-            triggerStatuses={data.triggers.triggerStatuses}
-            triggerSummaries={data.triggers.triggerSummaries}
-            onReconnectTrigger={data.triggers.onReconnectTrigger}
-            ownerChip={
-              oneOwner ? undefined : (routine) => ownerChipFor(routine.id)
-            }
-            draftOwnerChip={
-              oneOwner ? undefined : (draft) => ownerChipFor(draft.id)
-            }
-            labels={gridLabels}
-            rowLabels={labels.rowLabels}
-            scheduleLabels={labels.schedule}
-            scheduleSummaryLabels={labels.schedule.summary}
-            triggerLabels={labels.trigger}
-            nextFireLabels={labels.nextFire}
-            locale={labels.locale}
-            emptyAction={unreadable ? undefined : createButton}
-          />
-        </div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <RoutinesGrid
+              routines={data.list.routines}
+              lastRuns={data.list.lastRuns}
+              // Routines being built in chat are rows too: without them a routine
+              // half-started from here would vanish from the list the moment its
+              // chat lost focus.
+              draftActivities={data.drafts.drafts}
+              accountTimezone={tz.timezone}
+              loading={data.loading}
+              selectedRoutineId={host.selectedRoutineKey}
+              selectedDraftId={host.selectedDraftKey}
+              onOpenChat={host.openRoutineChat}
+              onToggle={actions.onToggle}
+              onScheduleChange={actions.onScheduleChange}
+              onDeleteRoutine={actions.onDeleteRoutine}
+              onRunNow={actions.onRunNow}
+              onStopRun={actions.onStopRun}
+              onResumeDraft={host.resumeDraft}
+              onDiscardDraft={actions.onDiscardDraft}
+              leadingIcon={leadingIcon}
+              // Keyed by the merged list's row keys, like every other map here:
+              // without them every event routine's chip would say "verifying"
+              // forever, a claim this surface could never settle.
+              triggerStatuses={data.triggers.triggerStatuses}
+              triggerSummaries={data.triggers.triggerSummaries}
+              onReconnectTrigger={data.triggers.onReconnectTrigger}
+              ownerChip={
+                oneOwner ? undefined : (routine) => ownerChipFor(routine.id)
+              }
+              draftOwnerChip={
+                oneOwner ? undefined : (draft) => ownerChipFor(draft.id)
+              }
+              labels={gridLabels}
+              rowLabels={labels.rowLabels}
+              scheduleLabels={labels.schedule}
+              scheduleSummaryLabels={labels.schedule.summary}
+              triggerLabels={labels.trigger}
+              nextFireLabels={labels.nextFire}
+              locale={labels.locale}
+              emptyAction={unreadable ? undefined : createButton}
+            />
+          </div>
 
-        {/* The zone every schedule above is read in, and the one place to
+          {/* The zone every schedule above is read in, and the one place to
             change it. Drops with the list: an empty state has no schedules. */}
-        {!listEmpty && <TeamRoutinesFooter tz={tz} />}
-      </div>
+          {!listEmpty && <TeamRoutinesFooter tz={tz} />}
+        </div>
+      )}
 
       {/* The selected routine's chat, portaled into the shared shell panel, plus
           the "which agent?" picker. Neither adds layout here. */}

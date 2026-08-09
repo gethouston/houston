@@ -1,131 +1,48 @@
-import type {
-  ConnectedAccount,
-  Connection,
-  IntegrationAppStatus,
-  Toolkit,
-  ToolMatch,
-} from "./types";
+import {
+  activeToolkitSlugs,
+  annotate,
+  isConnectedIn,
+  multiAccountsByToolkit,
+  noAuthSlugs,
+} from "./composio-annotate";
+import {
+  resolveCatalogToolkits,
+  resolveScopeToolkits,
+} from "./composio-resolve";
+import type { ProviderSearchResult } from "./provider";
+import type { Connection, Toolkit, ToolMatch } from "./types";
 
 /**
  * The Composio search algorithm, extracted from the adapter so composio.ts stays
  * request-shaping + port-mapping and this holds the discovery policy (and its
- * pure, unit-testable pieces).
+ * pure, unit-testable pieces). Status stamping lives in composio-annotate.ts.
  *
- * Discovery has two failure modes Composio's full-text `/tools` search cannot
- * cover on its own, so search runs THREE lookups and merges them:
+ * Discovery is PROGRESSIVE (PRODUCT-1274): a query that names an app gets that
+ * app's actions scoped hard to it, never a globally ranked list where unrelated
+ * connected apps drown the named one out. The lookups, merged in this order:
  *
- *  1. A query scoped to the user's CONNECTED toolkits — high precision for apps
- *     they already have (Composio ranks unrelated tools above the obvious match
- *     unqualified). When it scores zero, degrade to LISTING those toolkits'
- *     actions so an everyday phrasing still lands on a real slug.
- *  2. A GLOBAL query — so a connected-Gmail user asking for Google Sheets still
- *     discovers it. This ALWAYS runs; it is never short-circuited by (1) (the
- *     regression this module fixes: a connected user could not discover any new
- *     app because a scoped hit returned early).
- *  3. Catalog resolution — Composio's action search scores ~zero for plain app
- *     names, so an app named in the query is resolved against the toolkits
- *     catalog to a real slug and surfaced as a toolkit-level entry, even when no
- *     action scored. This is what makes "connect to Google Sheets" work.
- *
- * Every returned entry carries its IntegrationAppStatus, derived from the acting
- * user's active connections (the direct adapter cannot produce `blocked` — that
- * ceiling lives in the closed gateway — nor `unknown`, which is the empty case).
+ *  1. NAMED-APP lookups — the explicit `app` scope (the agent's hard filter),
+ *     or apps resolved from the query text. Each runs the query scoped to that
+ *     toolkit; a zero score degrades to LISTING the toolkit's actions when the
+ *     scope is explicit OR the named app is CONNECTED (Composio's full-text
+ *     scores everyday phrasings at zero; direct toolkit retrieval is its own
+ *     deterministic fallback — "En Clockify, dime cuánto tiempo he registrado"
+ *     must surface Clockify's real slugs in THIS search, not after a scoped
+ *     re-search). With an explicit scope these lookups are the WHOLE result.
+ *  2. A query scoped to the user's CONNECTED toolkits — high precision for apps
+ *     they already have. When it scores zero, degrade to listing those
+ *     toolkits' actions so an everyday phrasing still lands on a real slug.
+ *  3. Query-resolved apps that are NOT connected — after the connected results
+ *     (a loose text match must never outrank the app the user actually uses)
+ *     and without the listing fallback (their toolkit row + an `app`-scoped
+ *     re-search cover that).
+ *  4. A GLOBAL query — so a connected-Gmail user asking for Google Sheets still
+ *     discovers it. This ALWAYS runs; it is never short-circuited by (2).
+ *  5. Catalog resolution — an app named in the query is resolved against the
+ *     toolkits catalog and surfaced as a toolkit-level entry even when no
+ *     action scored, so the model always learns the slug for
+ *     request_connection. This is what makes "connect to Google Sheets" work.
  */
-
-/** Normalize an app name/slug/query for substring matching: lowercase, drop
- *  every non-alphanumeric char so "Google Sheets", "google-sheets" and
- *  "googlesheets" all collapse to one comparable form. */
-export function normalizeAppName(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
-/**
- * Resolve the toolkits an app-naming query plausibly refers to, against the
- * catalog. A toolkit matches when its normalized name OR slug (length >= 3, to
- * avoid trivial collisions) is a substring of the normalized query. Ordered
- * longest-match-first (the most specific name wins) and capped so a broad query
- * cannot flood the result.
- */
-export function resolveCatalogToolkits(
-  catalog: Toolkit[],
-  query: string,
-  limit = 3,
-): Toolkit[] {
-  const q = normalizeAppName(query);
-  if (!q) return [];
-  const hits = catalog.filter((tk) => {
-    const name = normalizeAppName(tk.name);
-    const slug = normalizeAppName(tk.slug);
-    return (
-      (name.length >= 3 && q.includes(name)) ||
-      (slug.length >= 3 && q.includes(slug))
-    );
-  });
-  hits.sort(
-    (a, b) => normalizeAppName(b.name).length - normalizeAppName(a.name).length,
-  );
-  return hits.slice(0, limit);
-}
-
-/** Active-connection lookup for one search: which toolkit slugs are connected. */
-export function activeToolkitSlugs(connections: Connection[]): string[] {
-  return [
-    ...new Set(
-      connections.filter((c) => c.status === "active").map((c) => c.toolkit),
-    ),
-  ];
-}
-
-/**
- * The accounts to attach per toolkit (lowercased slug): only toolkits holding
- * MORE than one active account get an entry — a single account needs no
- * disambiguation, so the common case adds nothing to the result.
- */
-export function multiAccountsByToolkit(
-  connections: Connection[],
-): ReadonlyMap<string, ConnectedAccount[]> {
-  const byToolkit = new Map<string, ConnectedAccount[]>();
-  for (const c of connections) {
-    if (c.status !== "active" || !c.connectionId) continue;
-    const key = c.toolkit.toLowerCase();
-    const list = byToolkit.get(key) ?? [];
-    list.push({
-      id: c.connectionId,
-      ...(c.accountLabel ? { label: c.accountLabel } : {}),
-    });
-    byToolkit.set(key, list);
-  }
-  return new Map([...byToolkit].filter(([, accounts]) => accounts.length > 1));
-}
-
-const isConnectedIn = (slugs: string[], toolkit: string): boolean =>
-  slugs.some((s) => s.toLowerCase() === toolkit.toLowerCase());
-
-/** The catalog's no-auth toolkit slugs, lowercased: these need no connection —
- *  their tools work as-is, so search treats them as `connected` (the agent
- *  must USE them, never offer a request_connection that can only 400). */
-function noAuthSlugs(catalog: Toolkit[]): Set<string> {
-  return new Set(
-    catalog.filter((tk) => tk.noAuth).map((tk) => tk.slug.toLowerCase()),
-  );
-}
-
-/** Stamp `connected` + `status` on a raw action match — an active connection or
- *  a no-auth toolkit (nothing to connect) both mean "usable now" — plus the
- *  account list when the toolkit holds several (so the model can target one). */
-function annotate(
-  match: ToolMatch,
-  connectedSlugs: string[],
-  noAuth: ReadonlySet<string>,
-  multiAccounts: ReadonlyMap<string, ConnectedAccount[]>,
-): ToolMatch {
-  const connected =
-    isConnectedIn(connectedSlugs, match.toolkit) ||
-    noAuth.has(match.toolkit.toLowerCase());
-  const status: IntegrationAppStatus = connected ? "connected" : "connectable";
-  const accounts = multiAccounts.get(match.toolkit.toLowerCase());
-  return { ...match, connected, status, ...(accounts ? { accounts } : {}) };
-}
 
 export interface SearchDeps {
   listConnections(): Promise<Connection[]>;
@@ -135,38 +52,45 @@ export interface SearchDeps {
   catalog(): Promise<Toolkit[]>;
 }
 
+/** One named-app lookup: the query scoped hard to the toolkit. A zero score
+ *  with `list` degrades to retrieving the toolkit's actions directly — the
+ *  deterministic fallback for a named app whose actions full-text missed. */
+async function namedAppLookup(
+  deps: SearchDeps,
+  query: string,
+  slug: string,
+  list: boolean,
+): Promise<ToolMatch[]> {
+  const scoped = await deps.queryTools({
+    query,
+    limit: "10",
+    toolkit_slug: slug,
+  });
+  if (scoped.length > 0 || !list) return scoped;
+  return deps.queryTools({ limit: "50", toolkit_slug: slug });
+}
+
 /**
- * Run the merged search. Order: scoped/listing action matches (connected apps)
- * first, then global action matches (deduped by action slug), then catalog
- * toolkit-level entries for any resolved app not already represented by an
- * action match.
+ * Run the merged search. `app` (optional) is the agent's explicit scope: the
+ * result is then ONLY that app's actions (plus its toolkit-level entry) and
+ * `scope` reports "resolved". A scope that resolves to nothing in the catalog
+ * returns EMPTY items with scope "unresolved" — falling back to an unscoped
+ * search here would pollute the multi-provider merge (another provider may
+ * resolve the same scope); the sandbox proxy owns the one unscoped retry.
  */
 export async function searchComposio(
   deps: SearchDeps,
   query: string,
-): Promise<ToolMatch[]> {
-  const connections = await deps.listConnections();
-  const slugs = activeToolkitSlugs(connections);
-  const multiAccounts = multiAccountsByToolkit(connections);
-  const scopedSlug = slugs.join(",");
-
-  const [scoped, global, catalog] = await Promise.all([
-    slugs.length > 0
-      ? deps.queryTools({ query, limit: "10", toolkit_slug: scopedSlug })
-      : Promise.resolve<ToolMatch[]>([]),
-    deps.queryTools({ query, limit: "10" }),
+  app?: string,
+): Promise<ProviderSearchResult> {
+  const [connections, catalog] = await Promise.all([
+    deps.listConnections(),
     deps.catalog(),
   ]);
-
-  // A zero-hit scoped query still degrades to listing the connected toolkits'
-  // actions (Composio's naive full-text scores everyday phrasings at zero), so
-  // the model gets a real slug rather than a dead end.
-  const scopedListed =
-    slugs.length > 0 && scoped.length === 0
-      ? await deps.queryTools({ limit: "50", toolkit_slug: scopedSlug })
-      : [];
-
+  const slugs = activeToolkitSlugs(connections);
+  const multiAccounts = multiAccountsByToolkit(connections);
   const noAuth = noAuthSlugs(catalog);
+
   const out: ToolMatch[] = [];
   const seenActions = new Set<string>();
   const push = (m: ToolMatch) => {
@@ -175,29 +99,91 @@ export async function searchComposio(
     seenActions.add(key);
     out.push(annotate(m, slugs, noAuth, multiAccounts));
   };
-  // Scoped (or its listing fallback) first — connected apps, highest precision.
-  for (const m of scoped.length > 0 ? scoped : scopedListed) push(m);
-  // Then global — NEVER dropped when scoped hit (the short-circuit fix).
-  for (const m of global) push(m);
+  // Toolkit-level entries for resolved apps with no action match, so the model
+  // always learns the slug to offer via request_connection (or, for a no-auth
+  // app, to use directly — those read `connected`). Stamped by annotate(), the
+  // one source of status truth, exactly like every action match.
+  const pushToolkitRows = (toolkits: Toolkit[]) => {
+    const represented = new Set(out.map((m) => m.toolkit.toLowerCase()));
+    for (const tk of toolkits) {
+      if (represented.has(tk.slug.toLowerCase())) continue;
+      represented.add(tk.slug.toLowerCase());
+      out.push(
+        annotate(
+          {
+            action: "",
+            toolkit: tk.slug,
+            description: tk.description
+              ? `${tk.name}: ${tk.description}`
+              : tk.name,
+          },
+          slugs,
+          noAuth,
+          multiAccounts,
+        ),
+      );
+    }
+  };
 
-  // Catalog: surface every resolved app that has no action match yet, so the
-  // model always learns the slug to offer via request_connection (or, for a
-  // no-auth app, to use directly — those read `connected`).
-  const represented = new Set(out.map((m) => m.toolkit.toLowerCase()));
-  for (const tk of resolveCatalogToolkits(catalog, query)) {
-    if (represented.has(tk.slug.toLowerCase())) continue;
-    represented.add(tk.slug.toLowerCase());
-    const connected =
-      isConnectedIn(slugs, tk.slug) || noAuth.has(tk.slug.toLowerCase());
-    const accounts = multiAccounts.get(tk.slug.toLowerCase());
-    out.push({
-      action: "",
-      toolkit: tk.slug,
-      description: tk.description ? `${tk.name}: ${tk.description}` : tk.name,
-      connected,
-      status: connected ? "connected" : "connectable",
-      ...(accounts ? { accounts } : {}),
-    });
+  // Explicit scope: a HARD filter — only the named app's actions come back,
+  // with the deterministic listing fallback. Unresolvable scope → EMPTY +
+  // "unresolved" (the sandbox proxy retries unscoped once every provider has
+  // said so).
+  if (app) {
+    const scoped = resolveScopeToolkits(catalog, app);
+    if (scoped.length === 0) return { items: [], scope: "unresolved" };
+    const results = await Promise.all(
+      scoped.map((tk) => namedAppLookup(deps, query, tk.slug, true)),
+    );
+    for (const matches of results) for (const m of matches) push(m);
+    pushToolkitRows(scoped);
+    return { items: out, scope: "resolved" };
   }
-  return out;
+
+  const named = resolveCatalogToolkits(catalog, query);
+  const connectedTk = (tk: Toolkit) =>
+    isConnectedIn(slugs, tk.slug) || noAuth.has(tk.slug.toLowerCase());
+  const namedConnected = named.filter(connectedTk);
+  const namedOther = named.filter((tk) => !connectedTk(tk));
+  const scopedSlug = slugs.join(",");
+  const [connectedResults, otherResults, scoped, global] = await Promise.all([
+    // A CONNECTED app named in the query gets the listing fallback: the user
+    // said the app and already has it, so a zero-scoring everyday phrasing
+    // must surface its real slugs NOW, not after a model-driven re-search.
+    Promise.all(
+      namedConnected.map((tk) => namedAppLookup(deps, query, tk.slug, true)),
+    ),
+    // An UNCONNECTED query-resolved app gets the scoped query but NOT the
+    // listing fallback: a loose text match must not flood the result.
+    Promise.all(
+      namedOther.map((tk) => namedAppLookup(deps, query, tk.slug, false)),
+    ),
+    slugs.length > 0
+      ? deps.queryTools({ query, limit: "10", toolkit_slug: scopedSlug })
+      : Promise.resolve<ToolMatch[]>([]),
+    deps.queryTools({ query, limit: "10" }),
+  ]);
+
+  // A zero-hit scoped query still degrades to listing the connected toolkits'
+  // actions (Composio's naive full-text scores everyday phrasings at zero), so
+  // the model gets a real slug rather than a dead end — but ONLY when the
+  // query named no app. A named app already got its own scoped lookup (with
+  // its own listing fallback when connected) + toolkit row; dumping EVERY
+  // connected app's actions on top buries the one app the user actually said
+  // (the PRODUCT-1274 wall-of-Canva failure).
+  const scopedListed =
+    slugs.length > 0 && scoped.length === 0 && named.length === 0
+      ? await deps.queryTools({ limit: "50", toolkit_slug: scopedSlug })
+      : [];
+
+  // Connected named apps first (the app the user actually said, already
+  // theirs), then connected-scoped precision (or its listing fallback), then
+  // unconnected named apps — a loose text match ("linear" inside "linear
+  // regression") must not outrank the connected hits — then global.
+  for (const matches of connectedResults) for (const m of matches) push(m);
+  for (const m of scoped.length > 0 ? scoped : scopedListed) push(m);
+  for (const matches of otherResults) for (const m of matches) push(m);
+  for (const m of global) push(m);
+  pushToolkitRows(named);
+  return { items: out };
 }

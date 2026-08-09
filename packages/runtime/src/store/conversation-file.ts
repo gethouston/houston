@@ -33,6 +33,15 @@ export type StoredConversation = {
   createdAt: number;
   updatedAt: number;
   messages: ChatMessage[];
+  /**
+   * Set when the backend-native session state was deliberately reset while the
+   * transcript kept messages (a truncation's edit-and-resend, PRODUCT-1217):
+   * the next turn must carry the kept transcript into its fresh session as a
+   * replay preamble (HOU-951). One-shot — exec-turn consumes it. Durable here
+   * (not in-memory) so a runtime restart between the reset and the next turn
+   * cannot lose the carried context.
+   */
+  needsSessionReplay?: true;
 };
 
 const fileFor = (dir: string, id: string) =>
@@ -51,6 +60,15 @@ export function loadConversation(
   id: string,
 ): StoredConversation | null {
   return readParsedFile(fileFor(dir, id));
+}
+
+/**
+ * Persist a (mutated) conversation atomically. Exported for the sibling
+ * truncate module (conversation-truncate.ts) — every writer must go through
+ * here so the parse cache is re-stamped with what landed on disk.
+ */
+export function saveConversation(dir: string, conv: StoredConversation) {
+  save(dir, conv);
 }
 
 function save(dir: string, conv: StoredConversation) {

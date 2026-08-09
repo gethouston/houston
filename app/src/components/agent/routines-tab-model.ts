@@ -3,13 +3,18 @@ import type { Activity, Routine } from "@houston-ai/engine-client";
 import type { RoutineRun } from "@houston-ai/routines";
 
 /**
- * Routines selection state: which item, if any, owns the right-hand chat
- * pane. The list is now ALWAYS visible (email-client split) — this is the
- * cursor into it, not a full-page view swap:
+ * Routines section selection state: which item, if any, owns the main-content
+ * drill-in or the right-hand pane.
  * - `null` — nothing selected; the list runs full width, no pane.
  * - `intake` — the pre-model create flow (chat surface + locally-driven intake
  *   cards floating over it), before any model call.
- * - `routine` — an existing routine's chat.
+ * - `routine` — an existing routine's own SCREEN (PRODUCT-1208): what it does,
+ *   when it runs, its model, and its execution history. The row click lands
+ *   here, never straight in a chat.
+ * - `routineChat` — the routine's setup chat, opened from the detail screen's
+ *   "Open chat" (editing stays chat-first).
+ * - `runChat` — one execution's chat (its result), opened from the detail
+ *   screen's run list. Back returns to the detail screen.
  * - `draft` — a not-yet-created routine's chat, keyed by its own activity id (a
  *   person can have several drafts going, each independently selectable).
  *   `activityId` null = the draft chat is still being created (calm surface).
@@ -17,7 +22,35 @@ import type { RoutineRun } from "@houston-ai/routines";
 export type Selection =
   | { kind: "intake" }
   | { kind: "routine"; routineId: string }
+  | { kind: "routineChat"; routineId: string }
+  | { kind: "runChat"; routineId: string; runId: string }
   | { kind: "draft"; activityId: string | null };
+
+/** The routine a selection is scoped to, if any (detail, its chat, a run's chat). */
+export function selectionRoutineId(selection: Selection | null): string | null {
+  if (!selection) return null;
+  return selection.kind === "routine" ||
+    selection.kind === "routineChat" ||
+    selection.kind === "runChat"
+    ? selection.routineId
+    : null;
+}
+
+/**
+ * Drop a cursor pointing at a routine that no longer exists — deleted from its
+ * row menu, or removed by the agent (PRODUCT-1208). A stale cursor kept the
+ * layout in its "something is open" shape (a full-width list with no panel)
+ * after the routine vanished. Callers must pass a LOADED list: `undefined`
+ * (still fetching) leaves the selection alone.
+ */
+export function clearMissingRoutine(
+  current: Selection | null,
+  routines: Routine[] | undefined,
+): Selection | null {
+  const id = selectionRoutineId(current);
+  if (!id || !routines) return current;
+  return routines.some((r) => r.id === id) ? current : null;
+}
 
 /**
  * Adopt the freshly-created draft id, but only if the user is still waiting on
@@ -35,29 +68,29 @@ export function adoptDraft(
 }
 
 /**
- * Clear the selection, but only if the user is still on that same routine's
- * chat — a slow failed `startForRoutine` must never deselect a user who has
- * since selected something else.
+ * Fall back from a routine's setup chat to its detail screen, but only if the
+ * user is still on that chat — a slow failed `startForRoutine` must never move
+ * a user who has since selected something else.
  */
 export function deselectIfOn(
   current: Selection | null,
   routineId: string,
 ): Selection | null {
-  return current?.kind === "routine" && current.routineId === routineId
-    ? null
+  return current?.kind === "routineChat" && current.routineId === routineId
+    ? { kind: "routine", routineId }
     : current;
 }
 
 /**
- * Row re-click toggles selection off. Selecting an already-selected routine
- * deselects it (the pane closes); selecting any other routine — or nothing
- * selected — selects it.
+ * Row re-click toggles selection off. Selecting a routine whose detail screen
+ * (or one of its chats) is already open deselects it (the pane closes);
+ * selecting any other routine — or nothing selected — opens its detail screen.
  */
 export function toggleRoutine(
   current: Selection | null,
   routineId: string,
 ): Selection | null {
-  return current?.kind === "routine" && current.routineId === routineId
+  return selectionRoutineId(current) === routineId
     ? null
     : { kind: "routine", routineId };
 }
@@ -96,10 +129,12 @@ export function resolvePendingActivity(
   chatSetup: ChatSetupView,
 ): PendingResolution {
   const claimed = claimedRoutineId(pendingId, routines, chatSetup);
+  // A finished-session notification points at the conversation, so land in
+  // the routine's chat (not its detail screen).
   if (claimed)
     return {
       action: "open",
-      selection: { kind: "routine", routineId: claimed },
+      selection: { kind: "routineChat", routineId: claimed },
     };
   if (chatSetup.draftActivities.some((a) => a.id === pendingId)) {
     return {
@@ -129,6 +164,37 @@ export function setupChatItem(
     updatedAt: activity.updated_at ?? new Date().toISOString(),
     group,
     metadata: sessionKey ? { sessionKey } : {},
+  };
+}
+
+/**
+ * A synthetic Activity for one execution's chat (PRODUCT-1208). Runs record a
+ * real conversation (`session_key` — the shared routine chat, or the run's own
+ * in `per_run` mode) but no board activity unless they surfaced; the chat
+ * surface only needs an identity + status to render, and sends target the
+ * session key, so this id never reaches the server. The session key is
+ * reconstructed from the routine's chat mode when the run record itself is
+ * gone (pruned by the 50-run cap while its chat was open) — mirrors the
+ * domain's `routineConversationId`.
+ */
+export function runChatActivity(
+  routine: Routine,
+  runId: string,
+  run?: RoutineRun,
+): Activity {
+  return {
+    id: `routine-run-${runId}`,
+    title: routine.name,
+    description: "",
+    status: run?.status === "running" ? "running" : "done",
+    session_key:
+      run?.session_key ??
+      (routine.chat_mode === "per_run"
+        ? `routine-${routine.id}-${runId}`
+        : `routine-${routine.id}`),
+    routine_id: routine.id,
+    routine_run_id: runId,
+    updated_at: run?.completed_at ?? run?.started_at ?? routine.updated_at,
   };
 }
 

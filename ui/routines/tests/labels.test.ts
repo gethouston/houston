@@ -11,8 +11,8 @@ import { describeNextFire } from "../src/next-fire.ts";
 import { cronSummary, presetSummary } from "../src/schedule-summary.ts";
 
 describe("chat-first label contract", () => {
-  it("row labels carry the Open chat affordance", () => {
-    assert.equal(DEFAULT_ROW_LABELS.openChat, "Open chat");
+  it("row labels carry the open-routine affordance (the row opens the routine's screen, PRODUCT-1208)", () => {
+    assert.equal(DEFAULT_ROW_LABELS.openChat, "Open routine");
   });
   it("carries the inline schedule-edit labels", () => {
     assert.equal(DEFAULT_ROW_LABELS.editSchedule, "Edit schedule");

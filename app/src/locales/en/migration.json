@@ -1,4 +1,8 @@
 {
+  "transport": {
+    "notConnected": "We can't reach the cloud right now. Check your connection and try again.",
+    "signedOut": "Sign in again to keep moving your data."
+  },
   "offer": {
     "title": "Houston is moving to the cloud",
     "body": "You believed in Houston before anyone else. Here's what moving to the cloud gives you.",

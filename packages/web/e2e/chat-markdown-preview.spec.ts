@@ -244,6 +244,9 @@ test("the preview grows to full screen and shrinks back (PRODUCT-1231)", async (
   // taken right after it reads the START value, not the settled one.
   await dialog.getByRole("button", { name: "Expand" }).click();
   await expect(dialog.getByRole("button", { name: "Shrink" })).toBeVisible();
+  // Poll rather than sample once, same as the shrink leg below: the toggle
+  // flips before the 200ms width transition has settled, so a single sample
+  // can still read the compact width.
   await expect
     .poll(async () => (await dialog.boundingBox())?.width ?? 0)
     .toBeGreaterThan(compact);

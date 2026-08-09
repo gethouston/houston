@@ -1,7 +1,10 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../../lib/types";
-import type { Selection } from "../../agent/routines-tab-model";
+import {
+  type Selection,
+  selectionRoutineId,
+} from "../../agent/routines-tab-model";
 import { AgentPickerDialog } from "../../agent-picker-dialog";
 import type { TeamRoutineDraftsList } from "../team-routine-drafts-model";
 import { type TeamRoutinesList, teamRoutineKey } from "../team-routines-model";
@@ -27,6 +30,8 @@ export interface TeamRoutineHost {
   selectedDraftKey: string | null;
   /** Whether a chat owns the shell panel (the list gives up its centering). */
   chatOpen: boolean;
+  /** Whether a routine's canonical screen replaces the list. */
+  screenOpen: boolean;
   /** Row click: open that routine's chat, or close it when it is already open. */
   openRoutineChat: (key: string) => void;
   /** Draft row click: reopen the setup chat that is still building it. */
@@ -57,6 +62,7 @@ export function useTeamRoutineHost({
   list,
   drafts,
   accountTimezone,
+  triggerSummaries,
 }: {
   /** The agents this section is looking at (the whole team, or the pinned one). */
   scoped: Agent[];
@@ -67,6 +73,7 @@ export function useTeamRoutineHost({
   list: TeamRoutinesList;
   drafts: TeamRoutineDraftsList;
   accountTimezone: string;
+  triggerSummaries: Record<string, string>;
 }): TeamRoutineHost {
   const { t } = useTranslation("teams");
   const [open, setOpen] = useState<OpenChat | null>(null);
@@ -150,8 +157,8 @@ export function useTeamRoutineHost({
 
   return {
     selectedRoutineKey:
-      owner && selection?.kind === "routine"
-        ? teamRoutineKey(owner.id, selection.routineId)
+      owner && selectionRoutineId(selection)
+        ? teamRoutineKey(owner.id, selectionRoutineId(selection) as string)
         : null,
     // `activityId` is null for the beat between the intake completing and the
     // draft chat existing; there is no row to light yet either.
@@ -159,7 +166,15 @@ export function useTeamRoutineHost({
       owner && selection?.kind === "draft" && selection.activityId
         ? teamRoutineKey(owner.id, selection.activityId)
         : null,
-    chatOpen: open !== null,
+    chatOpen:
+      selection?.kind === "intake" ||
+      selection?.kind === "draft" ||
+      selection?.kind === "routineChat" ||
+      selection?.kind === "runChat",
+    screenOpen:
+      selection?.kind === "routine" ||
+      selection?.kind === "routineChat" ||
+      selection?.kind === "runChat",
     openRoutineChat,
     resumeDraft,
     startNewRoutine,
@@ -171,6 +186,13 @@ export function useTeamRoutineHost({
             owner={owner}
             request={open.request}
             accountTimezone={accountTimezone}
+            triggerSummary={
+              selection && "routineId" in selection
+                ? triggerSummaries[
+                    teamRoutineKey(owner.id, selection.routineId)
+                  ]
+                : undefined
+            }
             onSelectionChange={handleSelectionChange}
           />
         )}

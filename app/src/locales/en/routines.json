@@ -99,13 +99,37 @@
       "checking": "Checking your trigger…",
       "activating": "Activating…",
       "active": "Trigger active"
+    },
+    "back": "Back"
+  },
+  "details": {
+    "promptTitle": "What this routine does",
+    "scheduleTitle": "When it runs",
+    "modelTitle": "Model",
+    "openChat": "Edit in chat",
+    "editName": "Edit name",
+    "nextRun": "Next run {{when}}",
+    "runsTitle": "Runs",
+    "runsLoading": "Loading runs…",
+    "runsEmpty": "No runs yet",
+    "openRun": "Open this run's chat",
+    "status": {
+      "running": "Running",
+      "silent": "Nothing to report",
+      "surfaced": "Done",
+      "error": "Failed",
+      "cancelled": "Stopped"
+    },
+    "model": {
+      "inherit": "Agent's model",
+      "reset": "Use the agent's model"
     }
   },
   "row": {
     "untitled": "Untitled",
     "pauseRoutine": "Pause routine",
     "resumeRoutine": "Resume routine",
-    "openChat": "Open chat",
+    "openChat": "Open routine",
     "editSchedule": "Edit schedule",
     "save": "Save",
     "cancel": "Cancel",
@@ -208,7 +232,9 @@
   "toasts": {
     "timezoneSet": "Timezone set to {{zone}}",
     "timezoneError": "Couldn't update the timezone",
-    "discardError": "Couldn't discard the draft"
+    "discardError": "Couldn't discard the draft",
+    "modelError": "Couldn't change the model",
+    "updateError": "Couldn't save the routine"
   },
   "webhook": {
     "createAddress": "Create webhook address",

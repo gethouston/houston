@@ -3,7 +3,7 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v61 - 2026-08-08
+## v68 - 2026-08-08
 
 The rail names TEAMS and nothing else. A team block is a header row and its
 agents; the four destination rows every block carried are gone from the rail and
@@ -35,7 +35,7 @@ was the one gesture in the rail that changed what a team HOLDS, which is a
 decision worth reading before taking, so it became a named action on the team's
 own screen instead.
 
-## v60 - 2026-08-08
+## v67 - 2026-08-08
 
 Teams got a face. A team now carries an icon and a colour, both optional, picked
 from one popover behind its "..." menu: a grid of solid marks from a curated set
@@ -71,7 +71,7 @@ from the rail. Settings itself moved to the rail's FOOTER, permanent and visible
 to everyone: it belongs to the person rather than to the space, and it has to be
 reachable in the deployments where the Workspace band does not exist at all.
 
-## v59 - 2026-08-08
+## v66 - 2026-08-08
 
 The general Mission Control is gone. It was a board spanning every agent in the
 workspace, sitting above a rail whose every other board belongs to a team, and
@@ -108,7 +108,7 @@ to a team from its settings, so the rail's "+" is New agent and New team and
 nothing else. Browsing a directory of teams you had already passed over was
 never the working surface it was shaped like.
 
-## v58 - 2026-08-08
+## v65 - 2026-08-08
 
 The rail's team blocks were three stacked lists pretending to be one. A team
 header, its destination rows and its agent rows each had their own height, their
@@ -180,7 +180,7 @@ truncates. The two exceptions are deliberate and small: the collapsed icon rail
 is a different anatomy rather than a narrower row, and inline rename swaps the
 row for a field, because a text field is not a state of a button.
 
-## v57 - 2026-08-08
+## v64 - 2026-08-08
 
 Teams stopped being a private filing habit and became something a space SHARES.
 Where the deployment owns them, a team is a named group of agents AND of people,
@@ -223,7 +223,7 @@ holds no rows at all because everybody is already in it. Only a team's owner
 sees the controls that write. It is also the one door to renaming the catch-all
 team, whose rail block deliberately has no menu to rename it from.
 
-## v56 - 2026-08-07
+## v63 - 2026-08-07
 
 The team screen gained the two sections its rail already promised: ROUTINES and
 FILES. Both are every member's, not an admin's -- they show the team's WORK,
@@ -267,7 +267,7 @@ One more thing the rail learned: it fills an agent row only under a section that
 actually narrows by that agent. Team Settings lists the whole team whatever the
 pin says, so a lit row there was claiming something nothing on screen was doing.
 
-## v55 - 2026-08-07
+## v62 - 2026-08-07
 
 The navigation rail is a list of TEAMS, not a list of agents. "Your agents"
 became "Your teams", the folder affordance became "New team", and every block in
@@ -295,6 +295,76 @@ board with nobody to run it. Team Settings lists the team's agents and opens the
 ONE canonical agent settings page, the same surface Settings > Permissions
 opens, so an agent is configured in one place whichever door the user came
 through.
+
+## v61 - 2026-08-08
+
+New `chat-parent-mission-link` (PRODUCT-1244): on a mission the agent started,
+one bar above the composer ("Go to main mission" + the parent's title) linking
+back to the chat that started it — the child-side twin of the child-mission
+drawer, mutually exclusive with it.
+
+## v60 - 2026-08-07
+
+`chat-mission-list` becomes a drawer: open by default, the title row (with a
+count and chevron) collapses it to just the title and expands it again. Anatomy
+and states updated accordingly.
+
+## v59 - 2026-08-07
+
+Agent-started missions (PRODUCT-1244). New `chat-mission-list`: the missions a
+chat started, listed above its composer with each one's live board status and
+opening to that mission's own chat. It stands in for the suggested-action
+bubbles on a coordinating chat, where reviewing what was handed out is the real
+next step.
+
+## v58 - 2026-08-08
+
+Add `routine-details` (PRODUCT-1208): a routine's own screen, replacing the
+routines list in the MAIN content when its row is clicked — the name, an
+editable description (the prompt IS what the routine does), an editable run
+frequency (the rows' schedule builder), the model pin (over the existing
+provider/model override fields), and the persisted execution history behind a
+Runs MODAL, n8n-style, where clicking an entry opens that run's chat (its
+result) in the shell panel. Web ships the run list in `@houston-ai/routines`
+(`RoutineRunList`) but the screen composition and the model row ride
+app-locked pieces (`ChatModelSelector`), so it lands as `partial` -- extract
+before mobile.
+
+## v57 - 2026-08-08
+
+Edit a previous message + copy any message (PRODUCT-1217), no new
+components. Settled rows gain a per-message action row under the bubble,
+revealed while the row is hovered or holds keyboard focus (ChatGPT's
+grammar; a sanctioned owner-decided exception to the no-hover-gating
+default). The viewer's own plain-text `user-message` rows carry an Edit
+action there while the conversation is idle: choosing it swaps the bubble
+for an in-place full-width editor card holding the message's text with
+Cancel / Send (Enter sends, Escape cancels; the composer is never touched).
+Send rewinds the conversation to that message and continues from the edited
+version, leaving every earlier turn untouched. Marker-encoded sends
+(skills, attachments, interaction answers), channel relays, teammates'
+messages, and pre-turn-id transcripts are not editable. Rows on BOTH sides
+also carry a Copy action in the same row -- `assistant-message` always
+specced `copy-action`; the web surface now ships it -- copying the row's
+verbatim text (an agent turn's markdown source) with a brief check-mark
+confirm. Marker-encoded rows are not copyable.
+
+## v56 - 2026-08-07
+
+Added the conversation map search inside the chat's compact three-dot actions
+menu, alongside status-aware Move to done and confirmation-gated Delete
+actions. The trigger lives in the chat panel header, left of the people stack
+and close control. Find opens an unfiltered map of prior messages by default, then narrows
+it with a case- and accent-insensitive text filter. Results jump to and
+highlight the selected message, while the footer returns to the latest reply.
+
+## v55 - 2026-08-07
+
+Chat status messages rework (PRODUCT-1226), no new components. The
+thinking-indicator's pre-token wait now renders as the turn-status line itself
+(one component, one size) and the rotating phrase deck plays only while
+connecting; an executing agent's header always names the concrete task,
+folding consecutive identical activities into an "xN" repeat counter.
 
 ## v54 - 2026-08-06
 

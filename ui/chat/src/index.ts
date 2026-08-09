@@ -6,6 +6,7 @@ export {
   MAX_ATTACHMENT_FILES,
   TooManyAttachmentFilesError,
 } from "@houston-ai/core";
+export { humanizeActionDone, humanizeActionGerund } from "./action-labels";
 export type {
   ConversationContentProps,
   ConversationDownloadProps,
@@ -188,6 +189,20 @@ export { ChatInput } from "./chat-input";
 export type { AttachMenuItem } from "./chat-input-parts";
 export type { ChatAuthorLabels } from "./chat-messages";
 export { isOwnMessage, senderNameFor } from "./chat-messages";
+// === Child-mission list ===
+// The missions THIS chat started (PRODUCT-1244), listed above the composer so a
+// coordinating mission is also its own monitor. Props-only: the app resolves
+// which missions are children, localizes their status word, and wires opening.
+export type {
+  ChatMissionListItem,
+  ChatMissionListLabels,
+  ChatMissionListProps,
+  ChatMissionTone,
+} from "./chat-mission-list";
+export {
+  ChatMissionList,
+  DEFAULT_CHAT_MISSION_LIST_LABELS,
+} from "./chat-mission-list";
 // === Chat Components ===
 export { ChatPanel } from "./chat-panel";
 export type {
@@ -196,6 +211,14 @@ export type {
   PrepareAttachments,
   PreparedAttachments,
 } from "./chat-panel-types";
+export type {
+  ChatParentMissionLinkLabels,
+  ChatParentMissionLinkProps,
+} from "./chat-parent-mission-link";
+export {
+  ChatParentMissionLink,
+  DEFAULT_CHAT_PARENT_MISSION_LINK_LABELS,
+} from "./chat-parent-mission-link";
 // === Plan-ready card ===
 // The composer-replacing surface shown when the agent finishes planning
 // (plan_ready): a compact plan lede + Start working / Run on Autopilot / Keep
@@ -244,16 +267,23 @@ export {
   ChatThinkingIndicator,
   type ChatThinkingIndicatorProps,
 } from "./chat-thinking-indicator";
+export { ConversationActionsMenu } from "./conversation-actions-menu";
 export type {
+  ConversationMapActions,
   ConversationMapLabels,
   ConversationMapProps,
 } from "./conversation-map";
 export { ConversationMap } from "./conversation-map";
+export type { ResolvedConversationMapLabels } from "./conversation-map-labels";
+export { resolveConversationMapLabels } from "./conversation-map-labels";
 export type {
   ConversationMoment,
   ConversationMomentType,
 } from "./conversation-map-model";
-export { deriveConversationMoments } from "./conversation-map-model";
+export {
+  deriveConversationMoments,
+  hasConversationMoments,
+} from "./conversation-map-model";
 // === Dictation ===
 export type {
   DictationControl,
@@ -308,10 +338,7 @@ export type {
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
-export {
-  humanizeActionGerund,
-  prettifyToolkit,
-} from "./interaction-card-model";
+export { prettifyToolkit } from "./interaction-card-model";
 // The always-visible single-line free-text row every non-question step carries
 // (connect / sign-in / credential decline-with-instruction).
 export { InlineTextRow } from "./interaction-decline-row";

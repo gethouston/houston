@@ -1,9 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { useRoutines } from "../../../hooks/queries";
+import { routineRunsQueryOptions, useRoutines } from "../../../hooks/queries";
 import { useCapabilities } from "../../../hooks/use-capabilities";
 import type { Agent } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
+import { RoutineScreen } from "../../agent/routine-screen";
 import type { Selection } from "../../agent/routines-tab-model";
+import { selectionRoutineId } from "../../agent/routines-tab-model";
 import { RoutinesTabPane } from "../../agent/routines-tab-pane";
 import { useRoutineChatSetup } from "../../agent/use-routine-chat-setup";
 import { useRoutinesTabView } from "../../agent/use-routines-tab-view";
@@ -31,6 +34,7 @@ interface Props {
    *  the create intake. A new object identity means "apply me". */
   request: TeamRoutineRequest;
   accountTimezone: string;
+  triggerSummary?: string;
   /** The live selection inside this chat, reported back so the section can
    *  light the right row and drop the panel when the chat closes. */
   onSelectionChange: (selection: Selection | null) => void;
@@ -57,11 +61,15 @@ export function TeamRoutinePanel({
   owner,
   request,
   accountTimezone,
+  triggerSummary,
   onSelectionChange,
 }: Props) {
   // The SAME per-agent cache key the section's fan-out already warmed, so
   // hosting a chat costs no extra read.
   const { data: routines } = useRoutines(owner.folderPath);
+  const { data: allRuns, isLoading: runsLoading } = useQuery(
+    routineRunsQueryOptions(owner.folderPath),
+  );
   const { capabilities } = useCapabilities();
 
   const chatSetup = useRoutineChatSetup(owner, routines);
@@ -72,15 +80,15 @@ export function TeamRoutinePanel({
   // identity changes with every selection, so without this guard a re-render
   // would re-fire the request and close the chat it just opened.
   const applied = useRef<TeamRoutineRequest | null>(null);
-  const { openIntake, handleOpenChat, handleResumeDraft } = nav;
+  const { openIntake, handleOpenRoutine, handleResumeDraft } = nav;
   useEffect(() => {
     if (applied.current === request) return;
     applied.current = request;
     if (request.kind === "pending") return; // resolved by `nav` itself
     if (request.kind === "intake") openIntake();
     else if (request.kind === "draft") handleResumeDraft(request.activityId);
-    else handleOpenChat(request.routineId);
-  }, [request, openIntake, handleOpenChat, handleResumeDraft]);
+    else handleOpenRoutine(request.routineId);
+  }, [request, openIntake, handleOpenRoutine, handleResumeDraft]);
 
   // Report the selection, but never the empty frame between mounting and the
   // request landing — the parent reads `null` as "the chat closed", and
@@ -111,26 +119,51 @@ export function TeamRoutinePanel({
   const screenActive = useIsActiveView();
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
   const portalContainer = screenActive ? panelContainer : null;
-  const claimable = screenActive && !!selected;
+  const claimable = screenActive && !!selected && selected.kind !== "routine";
   useEffect(() => {
     setPanelOpen(claimable);
   }, [claimable, setPanelOpen]);
 
   if (!selected) return null;
 
+  const routineId = selectionRoutineId(selected);
+  const routine = routineId
+    ? routines?.find((candidate) => candidate.id === routineId)
+    : undefined;
+
   return (
-    <RoutinesTabPane
-      selected={selected}
-      agent={owner}
-      routines={routines}
-      chatSetup={chatSetup}
-      accountTimezone={accountTimezone}
-      triggersAvailable={!!capabilities?.triggers}
-      panelContainer={portalContainer}
-      onIntakeComplete={nav.handleIntakeComplete}
-      onIntakeDismiss={nav.dismissIntake}
-      onIntakeSend={nav.handleIntakeComposerSend}
-      onDeselect={nav.deselect}
-    />
+    <>
+      {routine && (
+        <RoutineScreen
+          agent={owner}
+          routine={routine}
+          allRuns={allRuns}
+          runsLoading={runsLoading}
+          triggerSummary={triggerSummary}
+          accountTimezone={accountTimezone}
+          escapeActive={selected.kind === "routine"}
+          onBackToList={nav.deselect}
+          onOpenChat={() => nav.openRoutineChat(routine.id)}
+          onOpenRun={(run) => nav.openRun(routine.id, run.id)}
+        />
+      )}
+      {selected.kind !== "routine" && (
+        <RoutinesTabPane
+          selected={selected}
+          agent={owner}
+          routines={routines}
+          chatSetup={chatSetup}
+          allRuns={allRuns}
+          accountTimezone={accountTimezone}
+          triggersAvailable={!!capabilities?.triggers}
+          panelContainer={portalContainer}
+          onIntakeComplete={nav.handleIntakeComplete}
+          onIntakeDismiss={nav.dismissIntake}
+          onIntakeSend={nav.handleIntakeComposerSend}
+          onDeselect={nav.deselect}
+          onBackToRoutine={nav.backToRoutine}
+        />
+      )}
+    </>
   );
 }

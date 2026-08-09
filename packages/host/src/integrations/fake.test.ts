@@ -34,7 +34,7 @@ test("the full lifecycle runs through the IntegrationProvider port", async () =>
 
   // search + execute
   const matches = await p.search(USER, "send an email");
-  expect(matches.map((m) => m.action)).toContain("GMAIL_SEND_EMAIL");
+  expect(matches.items.map((m) => m.action)).toContain("GMAIL_SEND_EMAIL");
   const result = await p.execute(USER, "GMAIL_SEND_EMAIL", { to: "a@b.com" });
   expect(result.successful).toBe(true);
 

@@ -1,4 +1,8 @@
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  IntegrationProvider,
+  ProviderSearchResult,
+} from "./provider";
 import {
   type ActionResult,
   type Connection,
@@ -209,13 +213,33 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
     _userId: string,
     query: string,
     acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
-    const body = await this.call<{ items: ToolMatch[] }>("/search", {
-      method: "POST",
-      body: { query },
-      acting,
-    });
-    return this.must(body, "POST /search").items.map(readSearchItem);
+    app?: string,
+  ): Promise<ProviderSearchResult> {
+    // `app` (the hard scope) is forwarded as-is. A gateway that honors it
+    // echoes `scoped` (true = items are hard-scoped, false = scope unresolved
+    // and items are empty). A gateway that predates the contract echoes
+    // NOTHING and serves the unscoped result — reported as scope "ignored" so
+    // the sandbox proxy and the runtime tool never present that unscoped
+    // noise as the named app's actions (the original PRODUCT-1274 failure),
+    // and never read its emptiness as "no such app".
+    const body = await this.call<{ items: ToolMatch[]; scoped?: boolean }>(
+      "/search",
+      {
+        method: "POST",
+        body: { query, ...(app ? { app } : {}) },
+        acting,
+      },
+    );
+    const parsed = this.must(body, "POST /search");
+    const items = parsed.items.map(readSearchItem);
+    if (!app) return { items };
+    const scope =
+      parsed.scoped === true
+        ? "resolved"
+        : parsed.scoped === false
+          ? "unresolved"
+          : "ignored";
+    return { items, scope };
   }
 
   async execute(

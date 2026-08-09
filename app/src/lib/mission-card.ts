@@ -9,10 +9,16 @@
 export function missionCardTags({
   routineId,
   routineLabel,
+  originSessionKey,
+  agentStartedLabel,
 }: {
   routineId?: string | null;
   routineLabel: string;
+  /** Present when the agent started this mission itself (PRODUCT-1244). */
+  originSessionKey?: string | null;
+  agentStartedLabel?: string;
 }): string[] | undefined {
   if (routineId) return [routineLabel];
+  if (originSessionKey && agentStartedLabel) return [agentStartedLabel];
   return undefined;
 }

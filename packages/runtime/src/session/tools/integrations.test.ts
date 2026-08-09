@@ -193,6 +193,96 @@ test("an empty result is a genuine not-found, not a policy block", async () => {
   expect(text).not.toContain("request_connection");
 });
 
+test("search forwards the app scope to the host and omits it when unset (PRODUCT-1274)", async () => {
+  const calls = mockFetch(() => ({ body: { items: [] } }));
+  await run(search, { query: "get the top users", app: "posthog" });
+  await run(search, { query: "get the top users" });
+  expect(calls[0]?.body).toEqual({
+    query: "get the top users",
+    app: "posthog",
+  });
+  expect(calls[1]?.body).toEqual({ query: "get the top users" });
+});
+
+test("an unscoped-fallback result leads with the named-app-not-found note", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GMAIL_SEND_EMAIL",
+          toolkit: "gmail",
+          description: "Send an email",
+          connected: true,
+          status: "connected",
+        },
+      ],
+      unscopedFallback: true,
+    },
+  }));
+  const out = await run(search, { query: "send an email", app: "gmial" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text.startsWith('NOTE: no app matching "gmial" exists here')).toBe(
+    true,
+  );
+  expect(text).toContain("OTHER apps");
+  expect(text).toContain("GMAIL_SEND_EMAIL");
+});
+
+test("an empty APP-SCOPED result says the app was not found, with one spelling retry", async () => {
+  mockFetch(() => ({ body: { items: [] } }));
+  const out = await run(search, { query: "top users", app: "postohg" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain('No app matching "postohg"');
+  expect(text).toContain("genuine not-found");
+  expect(text).toContain("misspelled");
+  // The unscoped hint to retry with `app` set would be circular here.
+  expect(text).not.toContain("search again with `app`");
+});
+
+test("an empty UNSCOPED result tells the model to retry scoped before concluding", async () => {
+  mockFetch(() => ({ body: { items: [] } }));
+  const out = await run(search, { query: "in posthog get top users" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("search again with `app` set to that app");
+});
+
+test("a scope-ignored result leads with the could-not-scope note, never the not-found claim", async () => {
+  // A gateway predating the scope contract served unscoped items: the model
+  // must not attribute them to the named app, and must not read the response
+  // as proof the app exists or lacks actions.
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GITHUB_LIST_REPOS",
+          toolkit: "github",
+          description: "List repositories",
+          connected: true,
+          status: "connected",
+        },
+      ],
+      scopeIgnored: true,
+    },
+  }));
+  const out = await run(search, { query: "get top users", app: "posthog" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text.startsWith("NOTE: this Houston deployment could not scope")).toBe(
+    true,
+  );
+  expect(text).toContain("OTHER apps");
+  expect(text).not.toContain("no app matching");
+});
+
+test("an EMPTY scope-ignored result never claims the app does not exist", async () => {
+  mockFetch(() => ({ body: { items: [], scopeIgnored: true } }));
+  const out = await run(search, { query: "churn deltas", app: "posthog" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("could not verify the app scope");
+  expect(text).toContain("proves NOTHING");
+  expect(text).not.toContain("genuine not-found");
+  expect(text).not.toContain("no such app exists");
+});
+
 test("execute runs an action and returns its data; a failed action surfaces", async () => {
   mockFetch(() => ({ body: { successful: true, data: { id: "msg1" } } }));
   const out = await run(execute, {
@@ -548,6 +638,71 @@ test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off
   mockFetch(() => ({ status: 403, body: { error: "forbidden by upstream" } }));
   await expect(run(execute, { action: "X" })).rejects.toThrow(
     /integrations execute failed \(403\)/,
+  );
+});
+
+test("a stale action slug (Tool_ToolNotFound via the gateway's 502) returns re-search guidance, not a raw failure", async () => {
+  // PRODUCT-1266: in a long chat the model reuses an action slug from its
+  // context (a search result from before Composio renamed/removed the action,
+  // or an invented name — GMAIL_SEARCH_EMAILS never existed; the real slug is
+  // GMAIL_FETCH_EMAILS). The gateway wraps Composio's 404 in a 502 whose body
+  // keeps the stable "Tool_ToolNotFound" slug verbatim; the tool classifies it
+  // and RETURNS the mechanical recovery — search again — so the task completes
+  // in THIS chat instead of teaching the user that only a new mission works.
+  mockFetch(() => ({
+    status: 502,
+    body: {
+      error:
+        'composio POST /api/v3/tools/execute/GMAIL_SEARCH_EMAILS → 404: {"error":{"message":"Tool GMAIL_SEARCH_EMAILS not found","code":2401,"slug":"Tool_ToolNotFound","status":404,"suggested_fix":"Check your input."}}',
+    },
+  }));
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEARCH_EMAILS", params: { query: "x" } }),
+  );
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain('"GMAIL_SEARCH_EMAILS" does not exist');
+  expect(text).toContain("Call integration_search now");
+  expect(text).toContain("Do not retry this slug");
+  // Never the upstream jargon for the model to paraphrase at the user.
+  expect(text).not.toContain("Tool_ToolNotFound");
+  expect(text).not.toContain("502");
+  expect(text).not.toContain("404");
+  expect(out.details).toEqual({
+    action: "GMAIL_SEARCH_EMAILS",
+    actionNotFound: true,
+  });
+  // A recoverable model-side state: nothing is queued for the user.
+  expect(holder.pending).toBeUndefined();
+});
+
+test("a stale action slug via the DIRECT adapter's 500 classifies identically", async () => {
+  // Self-host/dev: the direct adapter's ComposioApiError reaches the runtime
+  // as the host's generic 500 { error: message } — same stable slug inside.
+  mockFetch(() => ({
+    status: 500,
+    body: {
+      error:
+        'composio POST /api/v3/tools/execute/OLD_ACTION → 404: {"error":{"slug":"Tool_ToolNotFound","code":2401}}',
+    },
+  }));
+  const out = await run(execute, { action: "OLD_ACTION" });
+  expect((out.content[0] as { text: string }).text).toContain(
+    "Call integration_search now",
+  );
+  expect(out.details).toEqual({ action: "OLD_ACTION", actionNotFound: true });
+});
+
+test("a plain relayed 502 WITHOUT the Composio slug stays a generic transient error", async () => {
+  // Any other upstream 502 (gateway outage, provider down) must not be read as
+  // a stale slug — the classification keys on Composio's stable error slug,
+  // never the bare status.
+  mockFetch(() => ({
+    status: 502,
+    body: { error: "upstream connect timeout" },
+  }));
+  await expect(run(execute, { action: "X" })).rejects.toThrow(
+    /integrations execute failed \(502\)/,
   );
 });
 

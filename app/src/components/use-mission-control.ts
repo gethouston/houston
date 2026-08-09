@@ -176,12 +176,19 @@ export function useMissionControl(agents: Agent[]) {
           tags: missionCardTags({
             routineId: c.routine_id,
             routineLabel: t("board:tags.routine"),
+            originSessionKey: c.origin_session_key,
+            agentStartedLabel: t("board:tags.agentStarted"),
           }),
           metadata: {
             agentPath: c.agent_path,
             sessionKey: c.session_key,
             ...(c.agent ? { agent: c.agent } : {}),
             ...(c.routine_id ? { routineId: c.routine_id } : {}),
+            // The parent chat this mission was started from (PRODUCT-1244) —
+            // what the child-mission list above that chat's composer filters on.
+            ...(c.origin_session_key
+              ? { originSessionKey: c.origin_session_key }
+              : {}),
           },
           ...(people.length > 0 ? { people } : {}),
         };

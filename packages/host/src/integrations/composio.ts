@@ -12,14 +12,17 @@ import {
   type RawTool,
   type RawToolkit,
 } from "./composio-wire";
-import type { ActingContext, IntegrationProvider } from "./provider";
+import type {
+  ActingContext,
+  IntegrationProvider,
+  ProviderSearchResult,
+} from "./provider";
 import type {
   ActionResult,
   Connection,
   ConnectStart,
   ProviderReadiness,
   Toolkit,
-  ToolMatch,
 } from "./types";
 
 /**
@@ -60,6 +63,22 @@ const CATALOG_TTL_MS = 60 * 60 * 1000;
  * connector that runs the SAME version.
  */
 const TOOL_VERSION = "latest";
+
+/**
+ * Initiation fields Houston answers FOR the user at connect time. The hosted
+ * connect page asks the user for every required initiation field — and renders
+ * it as an editable text box even when a value was supplied; for highlevel
+ * that was a free-text "Token Type" box whose value the token exchange relays
+ * verbatim as `user_type` — HighLevel 422s anything but Location/Company, and
+ * a user pasted their private-integration token into it (PRODUCT-1260).
+ * Houston's non-technical audience should never see that question, so
+ * toolkits listed here connect via the direct initiate path (the provider's
+ * own OAuth page, no Composio form); Location is the token type most
+ * HighLevel actions require.
+ */
+const PREFILLED_CONNECTION_DATA: Record<string, Record<string, string>> = {
+  highlevel: { user_type: "Location" },
+};
 
 export interface ComposioOptions {
   /** Houston's Composio PROJECT API key (dashboard → Project Settings). */
@@ -198,6 +217,15 @@ export class ComposioProvider implements IntegrationProvider {
    * Start connecting a toolkit: mint an auth-link session — Composio hosts the
    * OAuth dance and the user authorizes the APP (Gmail…), never Composio. The
    * returned connectionId is polled via connection() until it turns active.
+   *
+   * Toolkits with prefilled connection data try the legacy v3 initiate FIRST:
+   * with every required initiation field already answered it returns a
+   * redirect straight to the provider's own OAuth page, skipping Composio's
+   * hosted form entirely (the form renders even a supplied field as an
+   * editable text box, which is how PRODUCT-1260's user pasted a pit-… token
+   * over the prefill). Initiate is retired for Composio-managed auth (400s
+   * for orgs created after 2026-05-08), so any rejection falls back to the
+   * hosted link — which still carries the prefill as the field's value.
    */
   async connect(userId: string, toolkit: string): Promise<ConnectStart> {
     const authConfigId = await resolveAuthConfig(
@@ -205,6 +233,16 @@ export class ComposioProvider implements IntegrationProvider {
       this.authConfigs,
       toolkit,
     );
+    const prefill = PREFILLED_CONNECTION_DATA[toolkit.toLowerCase()];
+    if (prefill) {
+      try {
+        return await this.initiateConnection(authConfigId, userId, prefill);
+      } catch (err) {
+        console.warn(
+          `[integrations] composio: prefilled initiate rejected for '${toolkit}', falling back to hosted link: ${String(err)}`,
+        );
+      }
+    }
     const body = await this.http.call<{
       redirect_url?: string;
       connected_account_id?: string;
@@ -214,6 +252,7 @@ export class ComposioProvider implements IntegrationProvider {
         auth_config_id: authConfigId,
         user_id: userId,
         ...(this.callbackUrl ? { callback_url: this.callbackUrl } : {}),
+        ...(prefill ? { connection_data: prefill } : {}),
       },
     });
     if (!body?.redirect_url || !body.connected_account_id) {
@@ -223,6 +262,35 @@ export class ComposioProvider implements IntegrationProvider {
       redirectUrl: body.redirect_url,
       connectionId: body.connected_account_id,
     };
+  }
+
+  /** Direct (non-hosted) connect: POST the initiation data ourselves and get
+   *  the provider's OAuth redirect back. Only called with a complete prefill;
+   *  the response's redirect_url points at the provider (verified live:
+   *  highlevel → marketplace.gohighlevel.com's chooselocation). */
+  private async initiateConnection(
+    authConfigId: string,
+    userId: string,
+    data: Record<string, string>,
+  ): Promise<ConnectStart> {
+    const body = await this.http.call<{ id?: string; redirect_url?: string }>(
+      "/api/v3/connected_accounts",
+      {
+        method: "POST",
+        body: {
+          auth_config: { id: authConfigId },
+          connection: {
+            user_id: userId,
+            data,
+            ...(this.callbackUrl ? { callback_url: this.callbackUrl } : {}),
+          },
+        },
+      },
+    );
+    if (!body?.redirect_url || !body.id) {
+      throw new Error("composio: initiate returned no redirect_url");
+    }
+    return { redirectUrl: body.redirect_url, connectionId: body.id };
   }
 
   async connection(
@@ -304,13 +372,14 @@ export class ComposioProvider implements IntegrationProvider {
     userId: string,
     query: string,
     _acting?: ActingContext,
-  ): Promise<ToolMatch[]> {
+    app?: string,
+  ): Promise<ProviderSearchResult> {
     // The direct adapter owns the platform key and derives identity from the
     // verified `userId`; there is no upstream to re-authenticate as, so the
     // acting context is intentionally ignored (self-host / dev only). The merge
-    // policy (scoped + global + catalog resolution) lives in composio-search.ts;
-    // this wires it to the Composio transport. Every returned entry carries its
-    // IntegrationAppStatus (connected/connectable derived from the user's set).
+    // policy (named-app + scoped + global + catalog resolution) lives in
+    // composio-search.ts; this wires it to the Composio transport. Every entry
+    // carries its IntegrationAppStatus (derived from the user's connections).
     return searchComposio(
       {
         listConnections: () => this.listConnections(userId),
@@ -327,6 +396,7 @@ export class ComposioProvider implements IntegrationProvider {
         catalog: () => this.cachedCatalog(),
       },
       query,
+      app,
     );
   }
 

@@ -28,8 +28,10 @@ interface Props {
   /** The open routine itself (absent for a draft). When it carries a trigger
    *  binding, the header shows its live activation health right here. */
   routine?: Routine;
-  /** Close the panel and clear the selection (the list stays put). Wired to the
-   *  chat chrome's close X, Escape, and the intake cards' own dismiss. */
+  /** Close the panel. Wired to the chat chrome's close X, Escape, and the
+   *  intake cards' own dismiss. For a routine's chat (setup or a run's) the
+   *  parent passes "back to the routine's screen" here (PRODUCT-1208); drafts
+   *  and intake clear the selection outright. */
   onClose: () => void;
   /** The shell-level panel node this chat portals into (workspace-shell's
    *  sibling panel, the SAME one the mission board opens). Null until the
@@ -177,7 +179,7 @@ export function RoutineSetupChat({
 
   // A trigger-bound routine shows its live activation right in the one header:
   // checking -> activating -> active, or an alert with the reason + Reconnect.
-  const activationChip =
+  const panelActions =
     kind === "routine" && routine?.trigger ? (
       <RoutineActivationChip
         agentId={agent.id}
@@ -198,7 +200,7 @@ export function RoutineSetupChat({
         panelContainer={panelContainer}
         missionLabel={missionLabel}
         onPanelClose={onClose}
-        panelActions={activationChip}
+        panelActions={panelActions}
       />
     </div>
   );

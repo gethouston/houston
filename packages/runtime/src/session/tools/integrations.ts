@@ -3,6 +3,7 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
+import { searchEmptyText, searchLeadNote } from "./integrations-search-notes";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -19,8 +20,14 @@ import { assertNotPlanMode } from "../live-mode-gate";
 const SearchParams = Type.Object({
   query: Type.String({
     description:
-      "Plain-language description of what you want to do. Include the app name when you know it — 'gmail send email' finds better matches than 'send an email'. Returns matching action slugs + their input parameters.",
+      "Plain-language description of ONE specific thing you want to do (e.g. 'send an email', 'query analytics for the most active users'). A task with several independent steps gets one search per step — do not lump them into one loose query. Include the app name when you know it. Returns matching action slugs + their input parameters.",
   }),
+  app: Type.Optional(
+    Type.String({
+      description:
+        "The app the task names ('posthog', 'gmail', 'google sheets'). When set, results are scoped to ONLY that app's actions — ALWAYS set it when the user names the app. Omit it only when no app was named and you are discovering which app could do the task.",
+    }),
+  ),
 });
 type SearchParams = Static<typeof SearchParams>;
 
@@ -116,6 +123,25 @@ class NoAgentAccessError extends Error {
   constructor() {
     super("no agent access");
     this.name = "NoAgentAccessError";
+  }
+}
+
+/**
+ * Thrown by `post()` when Composio reports the EXECUTED action slug does not
+ * exist at the current tool version ("Tool_ToolNotFound", code 2401). The slug
+ * came from the model's context — a search result from earlier in a long chat
+ * (Composio renames and removes actions over time) or an invented name — so the
+ * recovery is mechanical: search again, run a slug from the fresh results
+ * (PRODUCT-1266: the raw failure taught users that only a NEW chat "fixes"
+ * integrations). Classified on Composio's stable error slug, which every relay
+ * path carries verbatim inside the failure body (the cloud gateway wraps the
+ * upstream 404 in a 502, the direct adapter surfaces it as a 500) — never the
+ * bare status, which any transient upstream failure shares.
+ */
+class ActionNotFoundError extends Error {
+  constructor() {
+    super("action not found");
+    this.name = "ActionNotFoundError";
   }
 }
 
@@ -292,6 +318,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
+      // Tool_ToolNotFound: Composio says the executed action slug does not
+      // exist at the current tool version — a stale or invented slug, fixed by
+      // searching again. The provider 404 reaches us wrapped in a relayed 5xx
+      // whose body keeps Composio's stable error slug verbatim, so that slug
+      // (not the outer status) is the classification key.
+      if (path === "execute" && detail.includes("Tool_ToolNotFound")) {
+        throw new ActionNotFoundError();
+      }
       // Anything else. A 4xx is a REFUSAL, and its body is gateway/provider
       // JSON written for us, not for a person — the model reads whatever we
       // throw and paraphrases it straight at the user, so the body is REDACTED
@@ -318,7 +352,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_search",
     label: "Find an app action",
     description:
-      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute.",
+      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute. When the user names an app, pass it as `app` to scope results to it — the result says so with a leading NOTE when this deployment could not apply the scope, and then the matches may belong to other apps. Never conclude an app has no actions from a result where other apps dominate: if the app appears only as an app row (no actions), search again with `app` set to it before reporting any capability gap.",
     promptSnippet: "Search the user's connected apps for an action to run",
     parameters: SearchParams,
     executionMode: "sequential",
@@ -328,10 +362,22 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       signal: AbortSignal | undefined,
     ) {
       let items: ToolMatch[];
+      // Host-set when the `app` scope matched NO known app and the results are
+      // an unscoped retry — they belong to OTHER apps, and the model must not
+      // attribute them to the one it named.
+      let unscopedFallback: boolean | undefined;
+      // Host-set when a provider IGNORED the scope (a gateway predating the
+      // contract): the results are not certainly the named app's, and an
+      // empty result proves nothing about the app existing.
+      let scopeIgnored: boolean | undefined;
       try {
-        ({ items } = await post<{ items: ToolMatch[] }>(
+        ({ items, unscopedFallback, scopeIgnored } = await post<{
+          items: ToolMatch[];
+          unscopedFallback?: boolean;
+          scopeIgnored?: boolean;
+        }>(
           "search",
-          { query: params.query },
+          { query: params.query, ...(params.app ? { app: params.app } : {}) },
           signal,
         ));
       } catch (err) {
@@ -349,19 +395,32 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         throw err;
       }
       if (items.length === 0) {
-        // Genuinely empty: not a policy block, not "unavailable" - no such app
-        // or action was found. The prompt tells the model to say so plainly.
+        // What may be CLAIMED from an empty result depends on why it is empty
+        // (a verified not-found vs a scope the deployment could not honor) —
+        // integrations-search-notes.ts owns that speech act.
         return {
           content: [
             {
               type: "text" as const,
-              text: `No matching app or action found for "${params.query}". This is a genuine not-found: no such app or action exists here. It does NOT mean an app is blocked or withheld by policy.`,
+              text: searchEmptyText(
+                params.query,
+                params.app,
+                scopeIgnored === true,
+              ),
             },
           ],
           details: { matches: 0, actions: [] as string[] },
         };
       }
       const list = items.map((m) => renderMatch(m, statusOf(m))).join("\n");
+      // Results that are NOT certainly the named app's (an unscoped retry, or
+      // a provider that ignored the scope) lead with a note saying so — or
+      // the model would present another app's action as the named app's.
+      const fallbackNote = searchLeadNote(
+        params.app,
+        unscopedFallback,
+        scopeIgnored,
+      );
 
       // Teach each speech act inline, only for the statuses actually present.
       const slugsWith = (s: AppStatus) => [
@@ -405,7 +464,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           {
             type: "text" as const,
             text: boundResultText(
-              parts.join("\n\n"),
+              fallbackNote + parts.join("\n\n"),
               "Search again with a more specific query to see the actions that were cut off.",
             ),
           },
@@ -421,9 +480,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   const execute = defineTool<
     typeof ExecuteParams,
     // Pinned so the success path ({ action }) and the refused paths (walled-off
-    // app, no access to the agent) share ONE details type — each flag is
-    // present only in its state.
-    { action: string; appTurnedOff?: boolean; noAgentAccess?: boolean }
+    // app, no access to the agent, stale slug) share ONE details type — each
+    // flag is present only in its state.
+    {
+      action: string;
+      appTurnedOff?: boolean;
+      noAgentAccess?: boolean;
+      actionNotFound?: boolean;
+    }
   >({
     name: "integration_execute",
     label: "Run an app action",
@@ -476,6 +540,22 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
               { type: "text" as const, text: NO_AGENT_ACCESS_GUIDANCE },
             ],
             details: { action: params.action, noAgentAccess: true },
+          };
+        }
+        // The action slug does not exist (any more): a stale slug remembered
+        // from earlier in the conversation, or an invented one. RETURN the
+        // mechanical recovery — search again, use a fresh slug — so the model
+        // completes the task in THIS chat instead of telling the user that
+        // integrations are broken (PRODUCT-1266).
+        if (err instanceof ActionNotFoundError) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `The action slug "${params.action}" does not exist in the app catalog. App actions are renamed and removed over time, so a slug remembered from earlier in this conversation (or guessed) may not be real any more. Call integration_search now to find the current action for what you are doing, then run integration_execute with a slug taken from those fresh results. Do not retry this slug, do not invent slugs, and never mention slugs or any other technical detail to the user.`,
+              },
+            ],
+            details: { action: params.action, actionNotFound: true },
           };
         }
         throw err;

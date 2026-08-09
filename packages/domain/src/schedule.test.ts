@@ -12,6 +12,7 @@ import {
   responseIsSilent,
   routineConversationId,
   routinePrompt,
+  routineRunPreamble,
   routineTriggerPrompt,
   SUPPRESSION_INSTRUCTION,
   validateSchedule,
@@ -159,14 +160,38 @@ test("pruneRoutineRuns caps history per routine, keeping the newest (parity with
 // --- run completion (parity with runner.rs) ---
 
 test("routinePrompt appends the suppression instruction only when suppress_when_silent", () => {
-  expect(
-    routinePrompt(routine({ prompt: "do it", suppress_when_silent: false })),
-  ).toBe("do it");
-  const suppressed = routinePrompt(
-    routine({ prompt: "check email", suppress_when_silent: true }),
+  const plain = routine({ prompt: "do it", suppress_when_silent: false });
+  expect(routinePrompt(plain)).toBe(`${routineRunPreamble(plain.name)}do it`);
+  const withSuppression = routine({
+    prompt: "check email",
+    suppress_when_silent: true,
+  });
+  const suppressed = routinePrompt(withSuppression);
+  expect(suppressed).toBe(
+    `${routineRunPreamble(withSuppression.name)}check email${SUPPRESSION_INSTRUCTION}`,
   );
-  expect(suppressed).toBe(`check email${SUPPRESSION_INSTRUCTION}`);
   expect(suppressed).toContain('"ROUTINE_OK"');
+});
+
+test("a fired run is framed as an execution, never as a request to set one up", () => {
+  // A routine whose prompt READS like a scheduling request ("Every hour, …")
+  // must not push the agent into save_routine — that duplicated the routine
+  // and skipped its work entirely (PRODUCT-1208).
+  const out = routinePrompt(
+    routine({
+      name: "Hourly Inspiration",
+      prompt: "Every hour, post two concise inspiring quotes into this chat.",
+      suppress_when_silent: false,
+    }),
+  );
+  expect(out).toContain('"Hourly Inspiration" running right now');
+  expect(out).toContain("never call save_routine");
+  // The routine's own instruction survives verbatim, after the framing.
+  expect(
+    out.endsWith(
+      "Every hour, post two concise inspiring quotes into this chat.",
+    ),
+  ).toBe(true);
 });
 
 test("routineTriggerPrompt frames events as untrusted data and preserves suppression", () => {

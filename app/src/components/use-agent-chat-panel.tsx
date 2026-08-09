@@ -26,6 +26,11 @@ import {
   type ChatInteractionAnswer,
   ChatInteractionCard,
   type ChatInteractionStep,
+  ChatMissionList,
+  type ChatMissionListItem,
+  type ChatMissionListLabels,
+  ChatParentMissionLink,
+  type ChatParentMissionLinkLabels,
   ChatPlanReadyCard,
   type ChatPlanReadyLabels,
   ChatSuggestActions,
@@ -213,7 +218,23 @@ interface UseAgentChatPanelArgs {
    *  board) wires its handoff here. Never called when the send fails — the
    *  failure surfaces on its own and the user stays where they are. */
   onSendReactivated?: () => void;
+  /** The missions this chat started (PRODUCT-1244), already resolved + ordered
+   *  by the surface that owns the board data. Listed above the composer in
+   *  place of the generic follow-up bubbles. Omit on surfaces with no board
+   *  behind them (the setup chats) and nothing renders. */
+  childMissions?: ChatMissionListItem[];
+  /** The way back UP (PRODUCT-1244): when THIS chat is a mission the agent
+   *  started, the mission it was started from. Renders the "Go to main
+   *  mission" bar above the composer. A chat never has both: spawned missions
+   *  can't spawn, so this and {@link childMissions} are mutually exclusive. */
+  parentMission?: { id: string; title: string } | null;
+  /** Opens a mission by id — the board's own selection. Serves both the
+   *  child-mission rows and the parent link. */
+  onOpenChildMission?: (id: string) => void;
 }
+
+/** Stable empty default, so the no-children case never re-runs the memo. */
+const EMPTY_CHILD_MISSIONS: ChatMissionListItem[] = [];
 
 function resolveCatalogProvider(model: string): string | null {
   return (
@@ -255,6 +276,23 @@ interface AgentChatPanelProps {
   attachMenu: AIBoardProps["attachMenu"];
   /** Decodes skill-invocation user messages into a card. */
   renderUserMessage: AIBoardProps["renderUserMessage"];
+  /** Edit-and-resend (PRODUCT-1217): begins editing a previous user message.
+   *  Undefined while a turn runs, so the affordance vanishes instead of
+   *  inviting the runtime's 409. */
+  onEditMessage: AIBoardProps["onEditMessage"];
+  /** Gates the affordance to messages the user actually typed (no markers,
+   *  no channel relays, own messages only in a shared thread). */
+  canEditMessage: AIBoardProps["canEditMessage"];
+  /** Localized label for the edit affordance. */
+  editMessageLabel: AIBoardProps["editMessageLabel"];
+  /** In-place editing state + Cancel/Send callbacks for the edited row. */
+  messageEditing: AIBoardProps["messageEditing"];
+  /** Copy-message affordance on both sides of the conversation. */
+  enableMessageCopy: AIBoardProps["enableMessageCopy"];
+  /** Gates copy to rows whose raw content is what the bubble shows. */
+  canCopyMessage: AIBoardProps["canCopyMessage"];
+  /** Localized label for the copy affordance. */
+  copyMessageLabel: AIBoardProps["copyMessageLabel"];
   /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
   renderLink: AIBoardProps["renderLink"];
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
@@ -309,8 +347,11 @@ export function useAgentChatPanel({
   draftScope,
   initialTurnMode,
   onSendReactivated,
+  childMissions = EMPTY_CHILD_MISSIONS,
+  parentMission,
+  onOpenChildMission,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
-  const { t, i18n } = useTranslation(["board", "chat", "teams"]);
+  const { t, i18n } = useTranslation(["board", "chat", "dashboard", "teams"]);
   const { processLabels, getThinkingMessage, thinkingIndicator } =
     useChatDisplayLabels();
   const queryClient = useQueryClient();
@@ -337,10 +378,15 @@ export function useAgentChatPanel({
     return {
       labels: {
         title: t("chat:conversationMap.title"),
-        view: t("chat:conversationMap.view"),
+        moreActions: t("chat:conversationMap.moreActions"),
+        find: t("chat:conversationMap.find"),
+        moveToDone: t("board:cardActions.approveTooltip"),
+        delete: t("board:cardActions.deleteTooltip"),
         hide: t("chat:conversationMap.hide"),
+        searchPlaceholder: t("chat:conversationMap.searchPlaceholder"),
+        clearSearch: t("chat:conversationMap.clearSearch"),
+        noResults: t("chat:conversationMap.noResults"),
         backToLatest: t("chat:conversationMap.backToLatest"),
-        empty: t("chat:conversationMap.empty"),
         selected: t("chat:conversationMap.selected"),
         messagePosition: (position: number) =>
           t("chat:conversationMap.messagePosition", { position }),
@@ -1018,6 +1064,99 @@ export function useAgentChatPanel({
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
 
+  // ── Edit-and-resend (PRODUCT-1217) ─────────────────────────────────────
+  // The previous user turn being edited IN PLACE, or null: the row's bubble
+  // swaps for an inline editor (ChatGPT's grammar) — the composer is never
+  // touched. Send truncates the conversation at this turn and delivers the
+  // edited text as a plain send.
+  const [editingTurn, setEditingTurn] = useState<{
+    sessionKey: string;
+    turnId: string;
+    key: string;
+  } | null>(null);
+  useEffect(() => {
+    // Switching conversations abandons an in-progress edit — the pending
+    // rewind is meaningless against another transcript.
+    if (editingTurn && editingTurn.sessionKey !== selectedSessionKey)
+      setEditingTurn(null);
+  }, [editingTurn, selectedSessionKey]);
+  const cancelEditMessage = useCallback(() => setEditingTurn(null), []);
+  const onEditMessage = useCallback(
+    (msg: ChatMessage) => {
+      if (!selectedSessionKey || !msg.turnId) return;
+      setEditingTurn({
+        sessionKey: selectedSessionKey,
+        turnId: msg.turnId,
+        key: msg.key,
+      });
+    },
+    [selectedSessionKey],
+  );
+  const onEditMessageSubmit = useCallback(
+    async (_msg: ChatMessage, text: string) => {
+      if (!editingTurn || !path) return;
+      // Rewind FIRST: a truncate failure (e.g. a turn raced the edit) throws
+      // before anything was cut, surfaces as a toast (tauri `call`), and the
+      // editor stays open with the user's text.
+      await tauriChat.truncate(
+        path,
+        editingTurn.sessionKey,
+        editingTurn.turnId,
+      );
+      setEditingTurn(null);
+      await tauriChat.send(path, text, editingTurn.sessionKey, {
+        providerOverride: displayModelPin.provider,
+        modelOverride: displayModelPin.model,
+        effortOverride: displayModelPin.effort,
+        modeOverride: turnMode,
+      });
+      // An ARCHIVED mission was just re-activated by the resend, exactly as
+      // any other send into it would.
+      onSendReactivatedRef.current?.();
+    },
+    [editingTurn, path, displayModelPin, turnMode],
+  );
+  const messageEditing = useMemo<AIBoardProps["messageEditing"]>(
+    () =>
+      editingTurn
+        ? {
+            editingKey: editingTurn.key,
+            onSubmit: onEditMessageSubmit,
+            onCancel: cancelEditMessage,
+            labels: {
+              send: t("chat:editMessage.send"),
+              cancel: t("chat:editMessage.cancel"),
+              editor: t("chat:editMessage.edit"),
+            },
+          }
+        : undefined,
+    [editingTurn, onEditMessageSubmit, cancelEditMessage, t],
+  );
+  const canEditMessage = useCallback(
+    (msg: ChatMessage) => {
+      // Only what the user actually TYPED here is editable: channel-relayed
+      // rows and marker-encoded sends (skill / attachment / interaction
+      // answers) are not, and in a shared thread only your own messages are
+      // yours to rewrite.
+      if (msg.source) return false;
+      if (decodeSkillMessage(msg.content)) return false;
+      if (decodeAttachmentMessage(msg.content)) return false;
+      if (decodeInteractionAnswersMessage(msg.content)) return false;
+      if (msg.author && msg.author.userId !== currentUserId) return false;
+      return true;
+    },
+    [currentUserId],
+  );
+  // Copy is broader than Edit: anyone's message on either side, as long as
+  // the raw content IS what the bubble shows — marker-encoded sends render a
+  // card, and copying their wire encoding would paste gibberish.
+  const canCopyMessage = useCallback((msg: ChatMessage) => {
+    if (decodeSkillMessage(msg.content)) return false;
+    if (decodeAttachmentMessage(msg.content)) return false;
+    if (decodeInteractionAnswersMessage(msg.content)) return false;
+    return true;
+  }, []);
+
   // Both consumer callbacks live in refs so the send callbacks that fire them
   // don't re-create (and re-render the override cards) every time the consumer
   // passes a fresh closure.
@@ -1433,6 +1572,16 @@ export function useAgentChatPanel({
     [t],
   );
 
+  const missionListLabels = useMemo<ChatMissionListLabels>(
+    () => ({ heading: t("chat:childMissions.heading") }),
+    [t],
+  );
+
+  const parentMissionLabels = useMemo<ChatParentMissionLinkLabels>(
+    () => ({ label: t("chat:childMissions.goToMain") }),
+    [t],
+  );
+
   const saveReusable = useCallback(
     (step: SuggestReusableStep) => {
       // No path / session guard here: `sendInteractionMessage` owns that check.
@@ -1485,7 +1634,28 @@ export function useAgentChatPanel({
     // thing the composer slot can honestly offer.
     if (connectAiComposer.node)
       return { mode: "replace" as const, node: connectAiComposer.node };
-    if (!agent || !activeInteraction) return none;
+    // Mission navigation (PRODUCT-1244): a coordinating chat lists the
+    // missions it started; a mission the agent started links back to the chat
+    // that started it (the two are mutually exclusive — spawned missions
+    // can't spawn). Either REPLACES the generic follow-up bubbles — but never
+    // a BLOCKING step: an unanswered question still owns the composer below.
+    const missionsNode = childMissions.length ? (
+      <ChatMissionList
+        labels={missionListLabels}
+        missions={childMissions}
+        onOpen={(id) => onOpenChildMission?.(id)}
+      />
+    ) : parentMission ? (
+      <ChatParentMissionLink
+        labels={parentMissionLabels}
+        onOpen={() => onOpenChildMission?.(parentMission.id)}
+        title={parentMission.title}
+      />
+    ) : null;
+    if (!agent || !activeInteraction)
+      return missionsNode
+        ? { mode: "above" as const, node: missionsNode }
+        : none;
     // Abandoned interactions stay suppressed while this conversation is open,
     // whatever their kind, and the composer stands alone.
     if (interactionKey === abandonedInteractionKey) return none;
@@ -1501,12 +1671,20 @@ export function useAgentChatPanel({
         activeInteraction.steps,
         dismissedSuggestReusable,
       );
-      if (actions.kind === "none" && reusable.kind === "none") return none;
+      if (actions.kind === "none" && reusable.kind === "none")
+        return missionsNode
+          ? { mode: "above" as const, node: missionsNode }
+          : none;
       return {
         mode: "above",
         node: (
           <div className="flex flex-col gap-3">
-            {actions.kind === "bubbles" ? (
+            {/* The children list stands in for the follow-up bubbles: on a
+                coordinating chat the concrete next step is reviewing what it
+                started, not a generic prompt. The save-as-reusable offer is a
+                different kind of offer and still rides below. */}
+            {missionsNode}
+            {actions.kind === "bubbles" && !missionsNode ? (
               <ChatSuggestActions
                 actions={actions.step.actions}
                 labels={suggestActionsLabels}
@@ -1839,6 +2017,11 @@ export function useAgentChatPanel({
     planReadyLabels,
     suggestReusableLabels,
     suggestActionsLabels,
+    missionListLabels,
+    parentMissionLabels,
+    childMissions,
+    parentMission,
+    onOpenChildMission,
     startPlan,
     saveReusable,
     interactionLabels,
@@ -2302,6 +2485,16 @@ export function useAgentChatPanel({
     footer,
     attachMenu,
     renderUserMessage,
+    // Rows carry the affordance only while the conversation is idle: a rewind
+    // behind an executing/queued turn is refused by the runtime (409) anyway,
+    // so the buttons vanish rather than invite the race.
+    onEditMessage: turnRunning ? undefined : onEditMessage,
+    canEditMessage,
+    editMessageLabel: t("chat:editMessage.edit"),
+    messageEditing,
+    enableMessageCopy: true,
+    canCopyMessage,
+    copyMessageLabel: t("chat:copyMessage.copy"),
     renderLink,
     isSpecialTool,
     renderToolResult,

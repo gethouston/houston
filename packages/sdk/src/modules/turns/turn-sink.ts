@@ -127,7 +127,7 @@ export class TurnSink {
           this.accepted &&
           this.s.turnId === undefined
         ) {
-          this.s.turnId = ev.turnId;
+          this.adoptTurnId(ev.turnId);
           break;
         }
         return; // another turn's frame — never fold it into ours
@@ -152,7 +152,7 @@ export class TurnSink {
     // history hydration covers observed turns), so echoes are never rendered.
     if (this.o.mode === "turn" && this.o.nonce === ev.data.nonce) {
       // OUR echo: the turn started — adopt its id (absent on legacy servers).
-      this.s.turnId = ev.turnId;
+      this.adoptTurnId(ev.turnId);
       this.accepted = true;
       this.sawRunning = true;
       this.s.delivered = true; // the engine echoed our send — it landed
@@ -226,7 +226,7 @@ export class TurnSink {
         this.settleFromHistorySoon(); // ours ended; a new turn runs
         return;
       case "adopt":
-        this.s.turnId = data.turnId;
+        this.adoptTurnId(data.turnId);
         break;
       case "ours":
         break;
@@ -314,6 +314,29 @@ export class TurnSink {
     this.cancelPresettlePoll(); // a running turn on the stream: the poll is moot
   }
 
+  /**
+   * Every path that learns OUR turn's wire id funnels here: the nonce echo,
+   * a running sync's adopt, a stamped terminal frame after an accepted send,
+   * and a history settle's persisted reply. Adopting sets the push-dedup
+   * identity (HOU-1214) and stamps the optimistic user bubble so the
+   * turn-anchored edit-and-resend affordance (PRODUCT-1217) works even when
+   * the echo frame itself was never delivered — a subscription that attaches
+   * a beat late gets no replay, and the bubble used to stay id-less until a
+   * full reload. Turn mode only for the stamp: only our own send has an
+   * optimistic bubble, and an observer stamping an observed turn's id could
+   * mis-stamp a concurrent send's pending bubble.
+   */
+  private adoptTurnId(turnId: string | undefined): void {
+    if (turnId === undefined) return;
+    this.s.turnId ??= turnId;
+    if (this.o.mode === "turn")
+      this.o.output.stampUserTurn?.(
+        this.o.agentPath,
+        this.o.sessionKey,
+        turnId,
+      );
+  }
+
   private settleFromHistorySoon(): void {
     if (this.settling || this.s.settled) return;
     this.cancelPresettlePoll(); // a confirmed-lost-terminal settle supersedes the poll
@@ -324,6 +347,7 @@ export class TurnSink {
       this.s.turnId,
       this.o.historyGuard,
       this.o.stop,
+      (turnId) => this.adoptTurnId(turnId),
     );
   }
 
@@ -377,6 +401,7 @@ export class TurnSink {
       this.s.turnId,
       this.o.historyGuard,
       () => this.sawRunning,
+      (turnId) => this.adoptTurnId(turnId),
     );
     if (settled) {
       this.settling = true;

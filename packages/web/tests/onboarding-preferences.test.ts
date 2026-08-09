@@ -2,13 +2,15 @@ import { afterEach, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
- * `houston_onboarding_segment` is an ACCOUNT_PREF_KEY (config-prefs-mixin.ts):
- * in hosted/cloud mode it must round-trip through the host's
- * `/v1/preferences/:key`, not this browser's localStorage, so the
- * segmentation question is answered once per account, not once per device.
+ * `houston_onboarding_segment` and `houston_onboarding_survey` are
+ * ACCOUNT_PREF_KEYs (config-prefs-mixin.ts): in hosted/cloud mode they must
+ * round-trip through the host's `/v1/preferences/:key`, not this browser's
+ * localStorage, so the onboarding questions are answered once per account, not
+ * once per device.
  */
 
 const PREF_PATH = "/v1/preferences/houston_onboarding_segment";
+const SURVEY_PREF_PATH = "/v1/preferences/houston_onboarding_survey";
 
 const originalFetch = globalThis.fetch;
 
@@ -76,5 +78,47 @@ test("hosted setPreference does not swallow a control-plane failure", async () =
 
   await expect(
     hostedClient().setPreference("houston_onboarding_segment", "operations"),
+  ).rejects.toThrow();
+});
+
+const SURVEY_RECORD = JSON.stringify({
+  version: 2,
+  segment: "marketing",
+  industry: "technology",
+  automationGoal: "Chase overdue invoices every Monday",
+  goalSkipped: false,
+  completionPromptDismissed: false,
+  updatedAt: "2026-08-08T10:00:00.000Z",
+  gatewaySyncedAt: null,
+});
+
+test("hosted getPreference reads the survey from the control plane", async () => {
+  const calls = stubFetch(json(200, { value: SURVEY_RECORD }));
+
+  await expect(
+    hostedClient().getPreference("houston_onboarding_survey"),
+  ).resolves.toBe(SURVEY_RECORD);
+
+  expect(calls[0].url).toBe(`http://host${SURVEY_PREF_PATH}`);
+});
+
+test("hosted setPreference writes the survey to the control plane", async () => {
+  const calls = stubFetch(json(200, { value: SURVEY_RECORD }));
+
+  await hostedClient().setPreference(
+    "houston_onboarding_survey",
+    SURVEY_RECORD,
+  );
+
+  expect(calls[0].url).toBe(`http://host${SURVEY_PREF_PATH}`);
+  expect((calls[0].init?.method ?? "GET").toUpperCase()).toBe("PUT");
+  expect(calls[0].init?.body).toBe(JSON.stringify({ value: SURVEY_RECORD }));
+});
+
+test("hosted survey setPreference does not swallow a control-plane failure", async () => {
+  stubFetch(json(500, { error: "boom" }));
+
+  await expect(
+    hostedClient().setPreference("houston_onboarding_survey", SURVEY_RECORD),
   ).rejects.toThrow();
 });

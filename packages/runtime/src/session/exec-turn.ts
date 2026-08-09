@@ -26,6 +26,7 @@ import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
+  consumeSessionReplay,
   getHistory,
 } from "../store/conversations";
 import { type ActingContext, runWithActingContext } from "./acting-context";
@@ -52,10 +53,12 @@ import {
   planReadyFallback,
   runWithInteractionCapture,
 } from "./interaction";
+import { reportMissionSettle } from "./mission-settle";
 import { switchNeedsCompaction } from "./provider-switch";
 import { renderReplayPreamble, replayCharBudget } from "./replay-transcript";
 import { createStallWatchdog } from "./stall-watchdog";
 import { runWithTurnMode, type TurnModeRef } from "./turn-mode-context";
+import { runWithTurnModel } from "./turn-model-context";
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
@@ -286,6 +289,13 @@ export async function execTurn(
     // preamble, prepended to THIS turn's prompt so the fresh session continues
     // the conversation instead of greeting the user anew (HOU-951).
     let replayPrefix = "";
+    // One-shot marker a transcript truncation stamped (edit-and-resend,
+    // PRODUCT-1217): the backend-native sessions were deleted with the cut, so
+    // this fresh session must carry the kept transcript in as a replay.
+    // Consumed unconditionally BEFORE the branch — a cross-backend rebuild on
+    // the same turn replays anyway, and a still-set marker would replay a
+    // second copy on the turn after.
+    const sessionWasReset = consumeSessionReplay(id);
     if (rebuilt) {
       // Cross-backend rebuild: the new backend cannot read the old backend's
       // session store, so the fresh session carries the conversation over via a
@@ -317,6 +327,25 @@ export async function execTurn(
         data: providerSwitch,
         turnId,
       });
+    } else if (sessionWasReset) {
+      // Truncation rebuild on the SAME backend: replay the kept transcript
+      // into the fresh session. No provider_switched frame — the provider did
+      // not change, so the chat draws no divider; the "reset" header keeps the
+      // preamble from claiming a model switch that never happened.
+      const replay = renderReplayPreamble(
+        getHistory(id)?.messages ?? [],
+        turnId,
+        replayCharBudget(
+          effectiveModelWindow(
+            model.provider,
+            model.id,
+            model.contextWindow,
+            0,
+          ),
+        ),
+        "reset",
+      );
+      replayPrefix = replay?.text ?? "";
     } else if (providerChanged || modelChanged) {
       // The leaving provider's last context fill, captured BEFORE the switch so
       // a PROVIDER change can be sized against the new model's window.
@@ -441,8 +470,12 @@ export async function execTurn(
       await runWithActingContext(acting, () =>
         runWithConversationId(id, () =>
           runWithTurnMode(liveMode, () =>
-            runWithInteractionCapture(interaction, () =>
-              conv.session.prompt(promptText),
+            runWithTurnModel(
+              { provider: model.provider, model: model.id },
+              () =>
+                runWithInteractionCapture(interaction, () =>
+                  conv.session.prompt(promptText),
+                ),
             ),
           ),
         ),
@@ -578,6 +611,16 @@ export async function execTurn(
         ...(pendingInteraction ? { pendingInteraction } : {}),
       });
     }
+    // Report the terminal board state to the host: applied ONLY to
+    // agent-started missions (which may have no client observing this
+    // conversation to settle their card); a no-op for everything else. Mirrors
+    // the client settle: clean/stopped → needs_you, streamed failure → error,
+    // and only the clean finish carries the interaction.
+    reportMissionSettle(
+      id,
+      providerError ? "error" : "needs_you",
+      providerError || stopped ? null : (pendingInteraction ?? null),
+    );
   } catch (err) {
     // Persist the failure even when nothing streamed: a thrown turn (bad pin,
     // missing credential, stale model id) must leave the same durable trace a
@@ -665,6 +708,10 @@ export async function execTurn(
         data: { message: errMessage(err) },
         turnId,
       });
+    // The thrown-failure twin of the clean path's report above: an
+    // agent-started mission's card must reach `error` even with no client
+    // observing this conversation.
+    reportMissionSettle(id, "error", null);
   } finally {
     conv.turnId = undefined;
     // Retire the live-mode ref with the turn: a Mode-pill switch between turns

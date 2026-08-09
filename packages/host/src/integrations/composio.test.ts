@@ -181,6 +181,68 @@ test("connect reuses the project's enabled auth config and mints a link session"
   expect(calls[2]?.path).toBe("/api/v3.1/connected_accounts/link");
 });
 
+test("connect pre-answers highlevel's user_type via the direct initiate", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [{ id: "ac_hl", status: "ENABLED" }] } };
+    }
+    if (url.pathname === "/api/v3/connected_accounts" && method === "POST") {
+      return {
+        body: { id: "ca_hl", redirect_url: "https://provider/oauth" },
+      };
+    }
+    return { status: 404 };
+  });
+
+  // The redirect points at the provider's OAuth page, never Composio's
+  // hosted form — there is no field left for a user to overwrite.
+  const start = await provider.connect(USER, "highlevel");
+  expect(start).toEqual({
+    redirectUrl: "https://provider/oauth",
+    connectionId: "ca_hl",
+  });
+  expect(calls[1]?.body).toEqual({
+    auth_config: { id: "ac_hl" },
+    connection: {
+      user_id: USER,
+      data: { user_type: "Location" },
+      callback_url: "https://gethouston.ai/connected",
+    },
+  });
+});
+
+test("connect falls back to the hosted link when the prefilled initiate is rejected", async () => {
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [{ id: "ac_hl", status: "ENABLED" }] } };
+    }
+    if (url.pathname === "/api/v3/connected_accounts" && method === "POST") {
+      // The retired-for-this-org shape.
+      return { status: 400, body: { error: "initiate is retired" } };
+    }
+    if (url.pathname === "/api/v3.1/connected_accounts/link") {
+      return {
+        body: {
+          redirect_url: "https://connect.composio.dev/link/lk_1",
+          connected_account_id: "ca_hl",
+        },
+      };
+    }
+    return { status: 404 };
+  });
+
+  const start = await provider.connect(USER, "highlevel");
+  expect(start.connectionId).toBe("ca_hl");
+  // The hosted link still carries the prefill as the field's value.
+  const link = calls.find((c) =>
+    c.path.startsWith("/api/v3.1/connected_accounts/link"),
+  );
+  expect(link?.body).toMatchObject({
+    auth_config_id: "ac_hl",
+    connection_data: { user_type: "Location" },
+  });
+});
+
 test("connect creates a Composio-managed auth config when the toolkit has one", async () => {
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
@@ -630,7 +692,7 @@ test("search runs BOTH the scoped and global query, merges (scoped first, dedupe
   // Scoped connected match first, then the global new app; the duplicate is
   // dropped, and every entry carries its status.
   expect(
-    found.map((t) => [t.action, t.toolkit, t.connected, t.status]),
+    found.items.map((t) => [t.action, t.toolkit, t.connected, t.status]),
   ).toEqual([
     ["GMAIL_SEND_EMAIL", "gmail", true, "connected"],
     ["GOOGLESHEETS_CREATE", "googlesheets", false, "connectable"],
@@ -674,7 +736,7 @@ test("a connected toolkit no longer short-circuits global discovery (the bug)", 
     };
   });
   const found = await provider.search(USER, "google sheets");
-  expect(found.find((t) => t.toolkit === "googlesheets")).toMatchObject({
+  expect(found.items.find((t) => t.toolkit === "googlesheets")).toMatchObject({
     action: "GOOGLESHEETS_CREATE_SPREADSHEET",
     connected: false,
     status: "connectable",
@@ -704,7 +766,7 @@ test("catalog resolution surfaces a connectable toolkit entry when no action sco
     return { body: { items: [] } }; // no action scored
   });
   const found = await provider.search(USER, "connect to google sheets");
-  expect(found).toEqual([
+  expect(found.items).toEqual([
     {
       action: "",
       toolkit: "googlesheets",
@@ -732,7 +794,7 @@ test("a resolved app the user already connected is a connected toolkit entry", a
     return { body: { items: [] } }; // no action scored, only the catalog entry
   });
   const found = await provider.search(USER, "google sheets");
-  expect(found).toEqual([
+  expect(found.items).toEqual([
     {
       action: "",
       toolkit: "googlesheets",
@@ -766,7 +828,7 @@ test("a query naming no app and matching no action returns empty (genuinely unkn
       return { body: { items: [{ slug: "gmail", name: "Gmail" }] } };
     return { body: { items: [] } };
   });
-  expect(await provider.search(USER, "zzznope")).toEqual([]);
+  expect((await provider.search(USER, "zzznope")).items).toEqual([]);
 });
 
 test("a zero-hit scoped query degrades to listing the connected toolkits' actions", async () => {
@@ -793,8 +855,11 @@ test("a zero-hit scoped query degrades to listing the connected toolkits' action
     };
   });
   const found = await provider.search(USER, "read my latest 5 emails");
-  expect(found.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
-  expect(found[0]).toMatchObject({ connected: true, status: "connected" });
+  expect(found.items.map((t) => t.action)).toEqual(["GMAIL_FETCH_EMAILS"]);
+  expect(found.items[0]).toMatchObject({
+    connected: true,
+    status: "connected",
+  });
 });
 
 test("with nothing connected, global discovery marks matches connectable (HOU-670)", async () => {
@@ -816,7 +881,7 @@ test("with nothing connected, global discovery marks matches connectable (HOU-67
   });
   const found = await provider.search(USER, "send an email");
   // Discoverable but connectable → the agent offers the card.
-  expect(found.map((t) => [t.action, t.connected, t.status])).toEqual([
+  expect(found.items.map((t) => [t.action, t.connected, t.status])).toEqual([
     ["GMAIL_SEND_EMAIL", false, "connectable"],
   ]);
   // No scoped query when nothing is connected — just the global one.
@@ -855,7 +920,7 @@ test("search stamps no-auth toolkit matches connected — usable now, never a co
   });
   // An action match on a no-auth toolkit → connected.
   expect(
-    (await provider.search(USER, "weathermap forecast")).map((t) => [
+    (await provider.search(USER, "weathermap forecast")).items.map((t) => [
       t.action,
       t.connected,
       t.status,
@@ -864,7 +929,7 @@ test("search stamps no-auth toolkit matches connected — usable now, never a co
   // A catalog-resolved toolkit entry (no action scored) → also connected,
   // while a normal unconnected app stays connectable.
   expect(
-    (await provider.search(USER, "use weathermap and gmail")).map((t) => [
+    (await provider.search(USER, "use weathermap and gmail")).items.map((t) => [
       t.toolkit,
       t.connected,
       t.status,

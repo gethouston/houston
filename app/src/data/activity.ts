@@ -42,6 +42,9 @@ export interface Activity {
   updated_at?: string;
   provider?: string;
   model?: string;
+  /** The conversation this mission was started from, present only when the
+   *  agent created the mission itself (PRODUCT-1244). Set by Houston. */
+  origin_session_key?: string;
   pending_interaction?: PendingInteraction;
 }
 

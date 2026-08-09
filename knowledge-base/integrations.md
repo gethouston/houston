@@ -669,3 +669,4 @@ When an agent needs an unconnected app it calls the integration-gated
 **No silent failures.** All engine mutations route through `call()`
 (`app/src/lib/tauri.ts`), which toasts + reports once, so the integration hooks carry
 NO `onError` (a second toast would double up).
+

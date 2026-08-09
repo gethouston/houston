@@ -105,33 +105,40 @@ describe("stepAfterAgentCreated", () => {
 
 describe("onboardingRoute (HOU-732 first-run gate)", () => {
   // Defaults: a genuine, uncompleted first run that can create agents and has
-  // not yet answered segmentation. Each test overrides only what it exercises.
+  // not yet answered the survey. Each test overrides only what it exercises.
   const base = {
     firstRun: true,
     onboardingPending: false,
     onboardingCompleted: false,
     canCreateAgents: true,
     capabilitiesError: false,
-    segmentAnswered: false,
+    surveyAnswered: false,
   };
 
-  it("fresh install: segmentation first, then the create flow once answered", () => {
+  it("fresh install: the survey first, then the create flow once answered", () => {
     strictEqual(onboardingRoute(base), "segment");
     strictEqual(
-      onboardingRoute({ ...base, segmentAnswered: true }),
+      onboardingRoute({ ...base, surveyAnswered: true }),
       "onboarding",
     );
   });
 
-  it("interrupted onboarding resumes via the pending flag (skips segment)", () => {
+  it("holds the survey route until every question is answered", () => {
+    // The gate reads the WHOLE survey, so saving the job answer (which flips
+    // one flag mid-flow) must not route the industry step out from under the
+    // user. `surveyAnswered` stays false until the last question lands.
+    strictEqual(onboardingRoute({ ...base, surveyAnswered: false }), "segment");
+  });
+
+  it("interrupted onboarding resumes via the pending flag (skips the survey)", () => {
     // Mid-flight the assistant exists, so firstRun is false; the pending flag is
-    // what re-enters onboarding, and a resume never re-asks segmentation.
+    // what re-enters onboarding, and a resume never re-asks the survey.
     strictEqual(
       onboardingRoute({
         ...base,
         firstRun: false,
         onboardingPending: true,
-        segmentAnswered: false,
+        surveyAnswered: false,
       }),
       "onboarding",
     );
@@ -148,7 +155,7 @@ describe("onboardingRoute (HOU-732 first-run gate)", () => {
       onboardingRoute({
         ...base,
         onboardingCompleted: true,
-        segmentAnswered: true,
+        surveyAnswered: true,
       }),
       "app",
     );

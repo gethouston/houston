@@ -13,7 +13,8 @@
     "description": "Este elemento y su historial se eliminarán de forma permanente."
   },
   "tags": {
-    "routine": "Rutina"
+    "routine": "Rutina",
+    "agentStarted": "Iniciada por el agente"
   },
   "panel": {
     "taskLabel": "Tarea: {{title}}",

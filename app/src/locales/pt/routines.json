@@ -99,13 +99,37 @@
       "checking": "Verificando seu evento…",
       "activating": "Ativando…",
       "active": "Evento ativo"
+    },
+    "back": "Voltar"
+  },
+  "details": {
+    "promptTitle": "O que esta rotina faz",
+    "scheduleTitle": "Quando ela executa",
+    "modelTitle": "Modelo",
+    "openChat": "Editar no chat",
+    "editName": "Editar nome",
+    "nextRun": "Próxima execução {{when}}",
+    "runsTitle": "Execuções",
+    "runsLoading": "Carregando execuções…",
+    "runsEmpty": "Ainda não há execuções",
+    "openRun": "Abrir o chat desta execução",
+    "status": {
+      "running": "Executando",
+      "silent": "Nada para reportar",
+      "surfaced": "Concluída",
+      "error": "Falhou",
+      "cancelled": "Interrompida"
+    },
+    "model": {
+      "inherit": "Modelo do agente",
+      "reset": "Usar o modelo do agente"
     }
   },
   "row": {
     "untitled": "Sem título",
     "pauseRoutine": "Pausar rotina",
     "resumeRoutine": "Retomar rotina",
-    "openChat": "Abrir chat",
+    "openChat": "Abrir rotina",
     "editSchedule": "Editar horário",
     "save": "Salvar",
     "cancel": "Cancelar",
@@ -208,7 +232,9 @@
   "toasts": {
     "timezoneSet": "Fuso horário definido como {{zone}}",
     "timezoneError": "Não foi possível atualizar o fuso horário",
-    "discardError": "Não foi possível descartar o rascunho"
+    "discardError": "Não foi possível descartar o rascunho",
+    "modelError": "Não foi possível alterar o modelo",
+    "updateError": "Não foi possível salvar a rotina"
   },
   "webhook": {
     "createAddress": "Criar endereço de webhook",

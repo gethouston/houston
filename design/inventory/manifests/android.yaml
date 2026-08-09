@@ -17,6 +17,8 @@ components:
     status: not-started
   conversation-feed:
     status: not-started
+  conversation-map-search:
+    status: not-started
   assistant-message:
     status: not-started
   user-message:
@@ -55,6 +57,8 @@ components:
     status: not-started
   routine-row:
     status: not-started
+  routine-details:
+    status: not-started
   skill-row:
     status: not-started
   empty-state:
@@ -81,6 +85,12 @@ components:
     status: not-started
   suggest-actions:
     status: not-started
+  chat-mission-list:
+    status: not-started
+    notes: Child missions a chat started; not in mobile v1.
+  chat-parent-mission-link:
+    status: not-started
+    notes: Back-link from a spawned mission to its parent chat; not in mobile v1.
   interaction-answers-message:
     status: not-started
   verified-badge:

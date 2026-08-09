@@ -141,6 +141,9 @@ export function createActivity(
       : {}),
     ...(input.provider !== undefined ? { provider: input.provider } : {}),
     ...(input.model !== undefined ? { model: input.model } : {}),
+    ...(input.origin_session_key !== undefined
+      ? { origin_session_key: input.origin_session_key }
+      : {}),
     ...(author !== undefined
       ? {
           created_by: author.user_id,

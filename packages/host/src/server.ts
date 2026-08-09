@@ -55,6 +55,7 @@ import {
 import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
 import { handleSandboxLearnings } from "./routes/learnings-sandbox";
 import { handleMigrationSource } from "./routes/migration-source";
+import { handleSandboxMissions } from "./routes/missions-sandbox";
 import { handlePortableAccount } from "./routes/portable";
 import { handlePortableFromStore } from "./routes/portable-from-store";
 import { handleSandboxProviderUsage } from "./routes/provider-usage";
@@ -303,6 +304,11 @@ async function handle(
   // token). The agent's save_learning tool calls this instead of editing
   // learnings.json — it is the only path that records who taught a learning.
   if (await handleSandboxLearnings(deps, method, path, url, req, res)) return;
+  // Runtime-facing mission board access (PRODUCT-1244; HMAC sandbox token).
+  // The agent's start_mission / list_missions / update_mission_status tools
+  // call these instead of touching activity.json, and the runtime reports each
+  // turn end to /settle so agent-started missions leave Running unobserved.
+  if (await handleSandboxMissions(deps, method, path, url, req, res)) return;
   // Runtime-facing skills directory (HMAC sandbox token). The agent's
   // find_skills / install_skill tools call this to answer "which skill should
   // I use for X?" and to install the answer into its own skills tree.

@@ -1,4 +1,8 @@
 {
+  "transport": {
+    "notConnected": "No podemos conectarnos a la nube en este momento. Revisa tu conexión e intenta de nuevo.",
+    "signedOut": "Inicia sesión de nuevo para seguir moviendo tus datos."
+  },
   "offer": {
     "title": "Houston se está mudando a la nube",
     "body": "Creíste en Houston antes que nadie. Esto es lo que ganas al mudarte a la nube.",

@@ -76,6 +76,13 @@ client and marketing site → [hosting.md](hosting.md) · auth → [auth.md](aut
   person property after auth, never as an event property.
 - **Analytics in `app/` only** — never in `ui/`. Library boundary rule applies.
 
+### Onboarding survey events
+
+The three-question survey emits viewed, selected, and continued events for job,
+industry, and automation goal, plus `onboarding_survey_prompted` for the
+profile-completion prompt. Confirmed answers become person properties; free text
+is truncated to 500 characters and never sent as an event property.
+
 ### Adding an event
 
 ```typescript
@@ -666,3 +673,4 @@ Houston host binary (`houston-host-<triple>` — the same self-contained binary 
 desktop embeds as its sidecar, and the one a `selfhost/` operator can run directly
 instead of the Docker image) for Linux (arm64 + x86_64 gnu) and macOS (arm64 + Intel).
 Four artifacts, no Rust toolchain needed (bun only).
+

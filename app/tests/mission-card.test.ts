@@ -17,10 +17,26 @@ describe("missionCardTags", () => {
     strictEqual(missionCardTags({ routineLabel: "Routine" }), undefined);
   });
 
-  it("treats a null routine id as no routine", () => {
-    strictEqual(
-      missionCardTags({ routineId: null, routineLabel: "Routine" }),
-      undefined,
+  it("tags an agent-started mission (PRODUCT-1244)", () => {
+    deepStrictEqual(
+      missionCardTags({
+        routineLabel: "Routine",
+        originSessionKey: "conv-parent",
+        agentStartedLabel: "Started by agent",
+      }),
+      ["Started by agent"],
+    );
+  });
+
+  it("routine tags outrank the agent-started tag", () => {
+    deepStrictEqual(
+      missionCardTags({
+        routineId: "routine-id",
+        routineLabel: "Routine",
+        originSessionKey: "conv-parent",
+        agentStartedLabel: "Started by agent",
+      }),
+      ["Routine"],
     );
   });
 });

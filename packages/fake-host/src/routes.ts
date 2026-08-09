@@ -250,6 +250,15 @@ export function handleAgents(
         // host, so it always answers the benign "nothing to apply" shape.
         return json({ ok: true, applied: false });
       }
+      if (action === "truncate" && method === "POST") {
+        // Edit-and-resend rewind (PRODUCT-1217): cut the transcript at the
+        // named user turn. No turn ever runs in the fake host, so the real
+        // route's 409-while-running never applies here.
+        const turnId = typeof body?.turnId === "string" ? body.turnId : "";
+        if (!state.truncateHistory(id, cid, turnId))
+          return json({ error: "turn not found" }, 404);
+        return json({ ok: true, removed: 0 });
+      }
       if (action === "dismiss-interaction" && method === "POST") {
         // Runtime passthrough: append the durable stop marker to the transcript
         // AND retire the bound activity's pending interaction (mirrors the real

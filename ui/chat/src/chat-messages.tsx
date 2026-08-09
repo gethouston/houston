@@ -41,6 +41,13 @@ export function ChatMessages({
   renderSystemMessage,
   contextCompactedLabel,
   renderUserMessage,
+  onEditMessage,
+  canEditMessage,
+  editMessageLabel,
+  enableMessageCopy,
+  canCopyMessage,
+  copyMessageLabel,
+  messageEditing,
   afterMessages,
   onLoadOlder,
   hasOlderMessages,
@@ -76,8 +83,8 @@ export function ChatMessages({
     [messages, status],
   );
   const moments = useMemo(
-    () => deriveConversationMoments(messages),
-    [messages],
+    () => deriveConversationMoments(displayItems),
+    [displayItems],
   );
   // Name + face print once per change of speaker, not once per message
   // (HOU-960). Computed over the DISPLAY items so a process block between two
@@ -119,8 +126,13 @@ export function ChatMessages({
           <ChatMessageItem
             agentLabel={agentLabel}
             authorLabels={authorLabels}
+            canCopyMessage={canCopyMessage}
+            canEditMessage={canEditMessage}
             contextCompactedLabel={contextCompactedLabel}
+            copyMessageLabel={copyMessageLabel}
             currentUserId={currentUserId}
+            editMessageLabel={editMessageLabel}
+            enableMessageCopy={enableMessageCopy}
             forcedSenders={showSenders === true}
             getThinkingMessage={getThinkingMessage}
             highlightedMessageKey={highlightedMessageKey}
@@ -132,6 +144,8 @@ export function ChatMessages({
             key={item.kind === "process" ? item.key : item.message.key}
             mentionPeople={mentionPeople}
             messageCount={messages.length}
+            messageEditing={messageEditing}
+            onEditMessage={onEditMessage}
             onOpenLink={onOpenLink}
             processLabels={processLabels}
             renderLink={renderLink}
@@ -162,6 +176,8 @@ export function ChatMessages({
       </ConversationContent>
       <ConversationMap
         conversationLength={messages.length}
+        findToken={conversationMap?.findToken}
+        returnFocusRef={conversationMap?.returnFocusRef}
         labels={conversationMap?.labels}
         moments={moments}
         onBackToLatest={conversationMap?.onBackToLatest}

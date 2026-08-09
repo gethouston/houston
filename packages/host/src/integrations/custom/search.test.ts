@@ -35,27 +35,125 @@ const pingTools: CustomToolRow[] = [
 ];
 
 test("token match on tool name/description", () => {
-  const results = searchCustomTools("ping", pingTools, defs);
-  expect(results.map((m) => m.action).sort()).toEqual(
+  const { items } = searchCustomTools("ping", pingTools, defs);
+  expect(items.map((m) => m.action).sort()).toEqual(
     ["tools.acme.org.default.ping", "tools.beta.org.default.ping"].sort(),
   );
 
   // A token with no hit anywhere yields nothing.
-  expect(searchCustomTools("nonexistent-term", pingTools, defs)).toEqual([]);
+  expect(searchCustomTools("nonexistent-term", pingTools, defs).items).toEqual(
+    [],
+  );
 });
 
 test("app-name tokens weigh double: naming the app ranks its tool first", () => {
   // Both tools score identically on "ping" (+1 each); "acme" only lands on
   // the acme tool's app text (+2), so acme's tool must sort ahead of beta's
   // otherwise-identical tool.
-  const results = searchCustomTools("acme ping", pingTools, defs);
-  expect(results.map((m) => m.toolkit)).toEqual(["acme", "beta"]);
+  const { items } = searchCustomTools("acme ping", pingTools, defs);
+  expect(items.map((m) => m.toolkit)).toEqual(["acme", "beta"]);
 });
 
 test("a zero-token query (empty or symbols-only) returns no matches", () => {
-  expect(searchCustomTools("", pingTools, defs)).toEqual([]);
-  expect(searchCustomTools("   ", pingTools, defs)).toEqual([]);
-  expect(searchCustomTools("!!!", pingTools, defs)).toEqual([]);
+  expect(searchCustomTools("", pingTools, defs).items).toEqual([]);
+  expect(searchCustomTools("   ", pingTools, defs).items).toEqual([]);
+  expect(searchCustomTools("!!!", pingTools, defs).items).toEqual([]);
+});
+
+// ── Explicit app scope (PRODUCT-1274) ────────────────────────────────────────
+
+test("an app scope is a hard filter: only that integration's tools come back", () => {
+  const out = searchCustomTools("ping", pingTools, defs, "Acme");
+  expect(out.scope).toBe("resolved");
+  expect(out.items.map((m) => m.action)).toEqual([
+    "tools.acme.org.default.ping",
+  ]);
+});
+
+test("a scoped zero-score query degrades to listing the app's tools", () => {
+  // "nonexistent-term" scores nothing, but the user named the app — its tools
+  // must surface (the deterministic fallback), never an empty result.
+  const out = searchCustomTools("nonexistent-term", pingTools, defs, "acme");
+  expect(out.scope).toBe("resolved");
+  expect(out.items.map((m) => m.action)).toEqual([
+    "tools.acme.org.default.ping",
+  ]);
+});
+
+test("a scope matching no custom integration reports unresolved (another provider owns it)", () => {
+  expect(searchCustomTools("ping", pingTools, defs, "posthog")).toEqual({
+    items: [],
+    scope: "unresolved",
+  });
+});
+
+test("an EXACT scope match excludes loose substring siblings (Acme vs Acme Staging)", () => {
+  const twinDefs: CustomDefRow[] = [
+    { slug: "acme", name: "Acme" },
+    { slug: "acme_staging", name: "Acme Staging" },
+  ];
+  const twinTools: CustomToolRow[] = [
+    ...pingTools.filter((t) => t.integration === "acme"),
+    {
+      address: "tools.acme_staging.org.default.ping",
+      integration: "acme_staging",
+      name: "ping",
+      description: "send a ping",
+    },
+  ];
+  const results = searchCustomTools("ping", twinTools, twinDefs, "Acme");
+  expect(results.items.map((m) => m.toolkit)).toEqual(["acme"]);
+  // No exact match → the loose both-way substring resolution still applies.
+  expect(
+    searchCustomTools("ping", twinTools, twinDefs, "staging").items.map(
+      (m) => m.toolkit,
+    ),
+  ).toEqual(["acme_staging"]);
+});
+
+test("an EXACT scope match resolves even a 1-2 char integration name", () => {
+  // The length guard exists for the loose tier only — a user's own "HR"
+  // integration must resolve when named exactly, never false-not-found.
+  const hrDefs: CustomDefRow[] = [{ slug: "hr", name: "HR" }, ...defs];
+  const hrTools: CustomToolRow[] = [
+    {
+      address: "tools.hr.org.default.sick_day",
+      integration: "hr",
+      name: "sick day",
+      description: "log a sick day",
+    },
+  ];
+  const out = searchCustomTools("log a sick day", hrTools, hrDefs, "HR");
+  expect(out.scope).toBe("resolved");
+  expect(out.items.map((m) => m.action)).toEqual([
+    "tools.hr.org.default.sick_day",
+  ]);
+});
+
+test("a loose scope matching SEVERAL integrations resolves only the closest one", () => {
+  // Same rule as the Composio resolver (shared scope-resolve.ts): "hub" must
+  // never hard-scope to two unrelated integrations at once.
+  const hubDefs: CustomDefRow[] = [
+    { slug: "acme_hub", name: "Acme Hub" },
+    { slug: "hubspot_clone", name: "HubSpot Clone" },
+  ];
+  const out = searchCustomTools("anything", [], hubDefs, "hub");
+  expect(out.scope).toBe("resolved");
+  expect(out.items).toHaveLength(1);
+});
+
+test("a scoped integration with no compiled tool still surfaces as an app row", () => {
+  const out = searchCustomTools("anything", [], defs, "beta");
+  expect(out.scope).toBe("resolved");
+  expect(out.items).toEqual([
+    {
+      action: "",
+      toolkit: "beta",
+      description: "Beta (custom integration)",
+      connected: true,
+      status: "connected",
+    },
+  ]);
 });
 
 test("results are capped at 20 even when every tool scores", () => {
@@ -65,10 +163,10 @@ test("results are capped at 20 even when every tool scores", () => {
     name: `t${i}`,
     description: "does a thing",
   }));
-  const results = searchCustomTools("thing", manyTools, [
+  const { items } = searchCustomTools("thing", manyTools, [
     { slug: "gen", name: "Gen" },
   ]);
-  expect(results).toHaveLength(20);
+  expect(items).toHaveLength(20);
 });
 
 test('a toolkit-level entry (action: "") is emitted for a def the query names but that has no scored tool', () => {
@@ -84,11 +182,11 @@ test('a toolkit-level entry (action: "") is emitted for a def the query names bu
       description: "send a ping",
     },
   ];
-  const results = searchCustomTools("emptyapp", tools, [
+  const { items } = searchCustomTools("emptyapp", tools, [
     { slug: "acme", name: "Acme" },
     { slug: "empty", name: "EmptyApp" },
   ]);
-  expect(results).toEqual([
+  expect(items).toEqual([
     {
       action: "",
       toolkit: "empty",
@@ -100,9 +198,9 @@ test('a toolkit-level entry (action: "") is emitted for a def the query names bu
 });
 
 test('every match carries connected:true and status:"connected" — a custom tool that exists IS connected', () => {
-  const results = searchCustomTools("ping", pingTools, defs);
-  expect(results.length).toBeGreaterThan(0);
-  for (const m of results) {
+  const { items } = searchCustomTools("ping", pingTools, defs);
+  expect(items.length).toBeGreaterThan(0);
+  for (const m of items) {
     expect(m.connected).toBe(true);
     expect(m.status).toBe("connected");
   }
@@ -111,7 +209,11 @@ test('every match carries connected:true and status:"connected" — a custom too
 test("the match's action is the executor tool address, not the tool name", () => {
   const acmePing = pingTools.find((t) => t.integration === "acme");
   expect(acmePing).toBeDefined();
-  const [match] = searchCustomTools("ping", acmePing ? [acmePing] : [], defs);
+  const [match] = searchCustomTools(
+    "ping",
+    acmePing ? [acmePing] : [],
+    defs,
+  ).items;
   expect(match?.action).toBe("tools.acme.org.default.ping");
   expect(match?.action).not.toBe("ping");
 });

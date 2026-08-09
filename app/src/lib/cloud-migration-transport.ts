@@ -7,16 +7,16 @@
  *  - the CLOUD GATEWAY — agent-scoped `/agents/:slug/migration/*` routes,
  *    authenticated with the live identity session token (a Firebase ID token).
  *
- * Gateway auth mirrors the engine adapter's `gatewayAuthFetch` (HOU-687): the
- * bearer is read LIVE from `window.__HOUSTON_ENGINE__` per attempt, and a 401
- * triggers one session refresh via `window.__HOUSTON_SESSION_REFRESH__` and
- * one replay. (The adapter's own helper isn't importable from app code — the
- * real `@houston-ai/engine-client` package types don't export it — so this
- * module speaks the same two globals `lib/engine.ts` declares and maintains.)
+ * Gateway auth, build identity and the update floor are the shared
+ * `./gateway-fetch` helper's job — the app-side peer of the engine adapter's
+ * `gatewayAuthFetch` (HOU-687), which app code cannot import across the
+ * package boundary.
  */
 
 import type { SourceAgent } from "./cloud-migration";
 import type { MigrationCounts } from "./cloud-migration-progress";
+import { gatewayFetch, liveGatewayDeps } from "./gateway-fetch.ts";
+import i18n from "./i18n";
 
 export interface SourceHostHandshake {
   baseUrl: string;
@@ -106,29 +106,17 @@ export async function exportSourceZip(
 
 // ── Cloud gateway (agent-scoped, live Firebase ID-token bearer) ───────
 
-function gatewayBaseUrl(): string {
-  const cfg = typeof window !== "undefined" ? window.__HOUSTON_ENGINE__ : null;
-  if (!cfg?.baseUrl) {
-    throw new Error("migration: the cloud connection isn't ready yet");
-  }
-  return cfg.baseUrl.replace(/\/+$/, "");
-}
-
-async function gatewayFetch(
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  const base = gatewayBaseUrl();
-  const send = (bearer: string) => {
-    const headers = new Headers(init?.headers);
-    if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
-    return fetch(`${base}${path}`, { ...init, headers });
-  };
-  const res = await send(window.__HOUSTON_ENGINE__?.token ?? "");
-  if (res.status !== 401) return res;
-  const fresh = await window.__HOUSTON_SESSION_REFRESH__?.();
-  if (!fresh) return res;
-  return send(fresh);
+// Both messages reach the user verbatim — the wizard's per-agent row renders
+// the thrown `Error.message` (`progress-agent-row.tsx`) — so they are localized
+// here rather than at a UI boundary that never reformats them. `i18n.t` (not
+// the hook) is the established way a non-React lib module speaks, as in
+// `provider-login-error.ts`.
+async function cloudFetch(path: string, init?: RequestInit): Promise<Response> {
+  const deps = liveGatewayDeps();
+  if (!deps) throw new Error(i18n.t("migration:transport.notConnected"));
+  const res = await gatewayFetch(deps, path, init);
+  if (!res) throw new Error(i18n.t("migration:transport.signedOut"));
+  return res;
 }
 
 /** Upload one raw zip chunk into a cloud agent. `overwrite` on retries so a
@@ -139,7 +127,7 @@ export async function importAgentZip(
   opts?: { overwrite?: boolean },
 ): Promise<ImportResult> {
   const query = opts?.overwrite ? "?overwrite=1" : "";
-  const res = await gatewayFetch(
+  const res = await cloudFetch(
     `/agents/${encodeURIComponent(agentId)}/migration/import${query}`,
     {
       method: "POST",
@@ -157,7 +145,7 @@ export async function completeAgentMigration(
   source: { workspace: string; agent: string },
   counts: MigrationCounts,
 ): Promise<void> {
-  const res = await gatewayFetch(
+  const res = await cloudFetch(
     `/agents/${encodeURIComponent(agentId)}/migration/complete`,
     {
       method: "POST",
@@ -172,7 +160,7 @@ export async function completeAgentMigration(
 export async function agentMigrationStatus(
   agentId: string,
 ): Promise<MigrationMarker | null> {
-  const res = await gatewayFetch(
+  const res = await cloudFetch(
     `/agents/${encodeURIComponent(agentId)}/migration/status`,
   );
   // An older pod without the route reads as "never imported" — resume just

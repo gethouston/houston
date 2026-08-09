@@ -24,7 +24,7 @@ function ChatThinkingIndicatorSpecimen() {
   return (
     <SpecimenPage
       title="ChatThinkingIndicator"
-      intro="The wait before the first word: a pulsing helmet beside an astronaut one-liner that changes every few seconds."
+      intro="The wait while the agent connects: the mission-log status line playing an astronaut one-liner that changes every few seconds."
     >
       <SpecimenSection
         title="Variants"
@@ -43,7 +43,7 @@ function ChatThinkingIndicatorSpecimen() {
 
       <SpecimenSection
         title="States"
-        note="It has one job and one state: mounted means waiting. A phrase rotates in every ~4s behind a soft fade, collapsed to a plain swap under `prefers-reduced-motion`. An empty deck leaves the helmet pulsing with no line, which is the honest rendering of a caller that passed nothing."
+        note="It has one job and one state: mounted means connecting. A phrase rotates in every ~4s behind the shimmer; the moment the agent starts executing, an active mission log replaces this line with the concrete task (PRODUCT-1226). An empty deck leaves the helmet with no line, which is the honest rendering of a caller that passed nothing."
       >
         <SpecimenRow label="Empty deck">
           <ChatThinkingIndicator phrases={[]} />
@@ -67,7 +67,7 @@ function ChatThinkingIndicatorSpecimen() {
 
       <SpecimenSection
         title="Sizes"
-        note="One size: a 20px helmet beside 14px text, on a row bounded to a small measure so a longer line truncates instead of nudging the helmet as phrases rotate."
+        note="One size, shared with the mission-log header: it IS `ChatStatusLine` (13px helmet, text-xs, shimmer), so the loading row and the Mission log row read as one component (PRODUCT-1226)."
       >
         <SpecimenRow label="Fixed row">
           <ChatThinkingIndicator phrases={DEFAULT_THINKING_PHRASES} />

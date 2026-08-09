@@ -273,6 +273,13 @@ Screen state machine (`OnboardingStep` in `tutorial-copy.ts`; milestone labels i
   uncompleted first run or an `onboarding_pending` resume; a completed zero-agent
   user lands in `WorkspaceShell`'s empty state.
 
+**Onboarding survey (3 questions).** The `"segment"` route renders
+`OnboardingSurveyScreen`: job, industry, then a free-text automation goal.
+Answers live in the uid-scoped `houston_onboarding_survey` account preference,
+reconcile between the local mirror and engine, and sync best-effort to
+`PUT /v1/me/onboarding`. Existing segment answers are absorbed, and users
+missing newer answers receive one dismissible profile-completion prompt.
+
 **The default assistant ships seeded.** Creation writes real capability into the
 new agent's tree via `personal-assistant-seeds.ts`
 (`buildPersonalAssistantSeeds` → `create(..., seeds)`):
@@ -502,3 +509,4 @@ screens, keyboard ownership and the ONE shared detail panel:
   `ActivityChanged` event auto-invalidates TanStack Query.
   (`sessionStatus`/`boardStatus` pair: [client-architecture.md](client-architecture.md);
   full interaction lifecycle: [architecture.md](architecture.md).)
+

@@ -127,7 +127,15 @@ export function RoutineRow({
       aria-selected={selected}
       aria-label={onOpenChat ? labels.openChat : undefined}
       tabIndex={onOpenChat ? 0 : undefined}
-      onClick={() => onOpenChat?.()}
+      onClick={(e) => {
+        // Clicks bubbling from PORTALED children (the kebab menu's items, the
+        // delete confirm dialog's buttons) reach this handler through the
+        // REACT tree while their DOM target sits under document.body. Opening
+        // on those turned "Run now" — and cancelling a delete — into a
+        // navigation (PRODUCT-1208). Only a click physically inside the row
+        // is an open intent.
+        if (e.currentTarget.contains(e.target as Node)) onOpenChat?.();
+      }}
       onKeyDown={(e) => {
         // Only the row itself opens the chat on Enter/Space; key events from a
         // focused inner control bubble here but carry a different target.

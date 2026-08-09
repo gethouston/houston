@@ -17,7 +17,6 @@
     "dismissError": "No pudimos guardar eso. Inténtalo de nuevo."
   },
   "onboardingSegment": {
-    "eyebrow": "Personaliza Houston",
     "title": "¿Cuál describe mejor tu trabajo?",
     "subtitle": "Personaliza Houston para tu trabajo.",
     "options": {
@@ -33,6 +32,40 @@
       "finance": "Finanzas",
       "sales": "Ventas",
       "something_else": "Otra cosa"
+    }
+  },
+  "onboardingSurvey": {
+    "industry": {
+      "title": "¿En qué industria trabajas?",
+      "subtitle": "Para que Houston entienda el mundo en el que trabajas.",
+      "options": {
+        "technology": "Tecnología",
+        "finance": "Finanzas y banca",
+        "legal": "Legal",
+        "healthcare": "Salud",
+        "education": "Educación",
+        "retail": "Retail y comercio electrónico",
+        "manufacturing": "Manufactura",
+        "real_estate": "Bienes raíces",
+        "marketing_agencies": "Marketing y agencias",
+        "government_nonprofit": "Gobierno y ONG",
+        "consulting": "Consultoría y servicios profesionales",
+        "something_else": "Otra cosa"
+      }
+    },
+    "goal": {
+      "title": "¿Qué te encantaría automatizar?",
+      "subtitle": "Describe una tarea que delegarías con gusto.",
+      "placeholder": "Por ejemplo, revisar mi correo cada mañana y redactar respuestas para lo urgente.",
+      "tooLong": "Es un poco largo. Manténlo por debajo de {{max}} caracteres."
+    },
+    "completion": {
+      "title": "Ayúdanos a personalizar Houston para ti",
+      "subtitle": "Un par de preguntas rápidas para que Houston se ajuste a tu forma de trabajar.",
+      "notNow": "Ahora no"
+    },
+    "progress": {
+      "label": "Paso {{current}} de {{total}}"
     }
   },
   "tutorial": {

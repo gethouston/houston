@@ -16,6 +16,16 @@ import type { ChatDisplayItem } from "./chat-process-groups";
 import type { ChatMessage } from "./feed-to-messages";
 import type { TurnEndSummary } from "./turn-tools";
 
+/** See `ChatMessageItemProps.messageEditing`. */
+export interface MessageEditingProps {
+  /** The `ChatMessage.key` of the row being edited, or null. */
+  editingKey: string | null;
+  /** Rewind + resend with the edited text — the consumer owns the wire. */
+  onSubmit: (msg: ChatMessage, text: string) => void | Promise<void>;
+  onCancel: () => void;
+  labels?: { send?: string; cancel?: string; editor?: string };
+}
+
 export interface ChatMessageItemProps {
   item: ChatDisplayItem;
   messageCount: number;
@@ -50,6 +60,29 @@ export interface ChatMessageItemProps {
   renderSystemMessage?: (msg: ChatMessage) => ReactNode | undefined;
   contextCompactedLabel?: string;
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
+  /** Edit-and-resend (PRODUCT-1217): the user asked to edit this previous user
+   *  message. Present = the affordance renders on the viewer's own settled
+   *  user rows that carry a `turnId`; the consumer rewinds + resends. */
+  onEditMessage?: (msg: ChatMessage) => void;
+  /** Consumer gate on top of the built-in ones (e.g. skill/attachment marker
+   *  messages are not editable). Absent = every eligible row is editable. */
+  canEditMessage?: (msg: ChatMessage) => boolean;
+  /** Localized label + tooltip for the edit affordance. English default. */
+  editMessageLabel?: string;
+  /** Copy-message affordance on settled user AND agent rows (PRODUCT-1217
+   *  follow-up). Off by default so existing consumers are unchanged. */
+  enableMessageCopy?: boolean;
+  /** Consumer gate on top of the built-in ones (e.g. marker-encoded rows whose
+   *  raw content is not what the bubble shows). Absent = every settled,
+   *  non-empty row is copyable. */
+  canCopyMessage?: (msg: ChatMessage) => boolean;
+  /** Localized label + tooltip for the copy affordance. English default. */
+  copyMessageLabel?: string;
+  /** In-place editing (PRODUCT-1217): which user message currently renders as
+   *  an inline editor and what its Cancel/Send do — ChatGPT's edit grammar,
+   *  the bubble swaps for a full-width editor card; the composer is never
+   *  touched. */
+  messageEditing?: MessageEditingProps;
   onOpenLink?: (url: string) => void;
   renderLink?: (props: RenderLinkProps) => ReactNode;
   currentUserId?: string;

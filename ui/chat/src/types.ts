@@ -71,6 +71,13 @@ type FeedItemVariant =
        * the sent bubble; absent when the message mentioned nobody.
        */
       mentions?: MessageMention[];
+      /**
+       * The wire id of the turn this message started (PRODUCT-1217). Present
+       * on server-persisted and settled live messages; absent on a still-
+       * optimistic send and on pre-turn-id transcripts. The edit-and-resend
+       * affordance anchors on it — no id, no edit.
+       */
+      turnId?: string;
     }
   | { feed_type: "tool_runtime_error"; data: ToolRuntimeErrorEntry }
   | { feed_type: "provider_error"; data: ProviderError }

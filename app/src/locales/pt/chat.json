@@ -106,6 +106,10 @@
     "heading": "Continuar com",
     "dismiss": "Dispensar ações sugeridas"
   },
+  "childMissions": {
+    "heading": "Missões iniciadas aqui",
+    "goToMain": "Ir para a missão principal"
+  },
   "errors": {
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
     "stopSession": "Não foi possível parar a tarefa: {{error}}",
@@ -242,17 +246,21 @@
     "newFiles_other": "{{count}} arquivos novos",
     "instructionsUpdated": "Instruções atualizadas",
     "skillsUpdated": "Skills atualizados",
-    "learningsUpdated": "Aprendizados atualizados"
+    "learningsUpdated": "Aprendizados atualizados",
+    "openLinkFailedTitle": "Não foi possível abrir o link"
   },
   "filesUpdated_one": "1 arquivo atualizado",
   "filesUpdated_other": "{{count}} arquivos atualizados",
   "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar",
   "conversationMap": {
-    "title": "Mapa da conversa",
-    "view": "Ver mapa",
-    "hide": "Ocultar mapa",
+    "title": "Buscar no chat",
+    "moreActions": "Ações do chat",
+    "find": "Buscar",
+    "hide": "Fechar busca no chat",
+    "searchPlaceholder": "Buscar mensagens",
+    "clearSearch": "Limpar busca",
+    "noResults": "Nenhuma mensagem corresponde à sua busca.",
     "backToLatest": "Voltar ao final",
-    "empty": "Esta conversa ainda não tem momentos suficientes para navegar.",
     "selected": "Mensagem selecionada",
     "messagePosition": "Mensagem {{position}}",
     "types": {
@@ -347,5 +355,13 @@
     "Mapeando a via láctea...",
     "Quase lá, cadete...",
     "Faltam poucos segundos..."
-  ]
+  ],
+  "editMessage": {
+    "edit": "Editar mensagem",
+    "send": "Enviar",
+    "cancel": "Cancelar"
+  },
+  "copyMessage": {
+    "copy": "Copiar mensagem"
+  }
 }

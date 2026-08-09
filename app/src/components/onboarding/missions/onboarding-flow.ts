@@ -50,9 +50,9 @@ export function isFirstRun(opts: {
  * The durable `onboarding_completed` flag closes that gap: once set, a first-run
  * signal is treated as an emptied workspace, and the user stays in the app.
  *
- * - `"segment"` — the segmentation question that precedes the create flow. Only
- *   on a genuine, uncompleted first run that isn't an interrupted-onboarding
- *   resume, and only until the segment has been answered.
+ * - `"segment"` — the onboarding survey (job, industry, automation goal) that
+ *   precedes the create flow. Only on a genuine, uncompleted first run that
+ *   isn't an interrupted-onboarding resume, and only until it is answered.
  * - `"onboarding"` — the create-your-assistant flow: a fresh uncompleted first
  *   run, or a resume of one interrupted mid-flight (`onboarding_pending`).
  * - `"app"` — everything else (returning users, emptied workspaces, and any
@@ -71,14 +71,19 @@ export function onboardingRoute(opts: {
   canCreateAgents: boolean;
   /** Capability fetch failed — fail closed into the shell, never onboarding. */
   capabilitiesError: boolean;
-  /** The segmentation question has resolved with a saved answer. */
-  segmentAnswered: boolean;
+  /**
+   * The onboarding survey has resolved with every question answered (or
+   * explicitly skipped). It gates on the WHOLE survey, not just the job
+   * question: saving one answer flips that question's flag mid-flow, and a
+   * per-question gate would route the user out from under the next step.
+   */
+  surveyAnswered: boolean;
 }): "segment" | "onboarding" | "app" {
   if (!opts.canCreateAgents || opts.capabilitiesError) return "app";
   // A genuine first run only if this install hasn't completed onboarding — a
   // completed user with zero agents emptied their workspace, they didn't reset.
   const firstRunOnboarding = opts.firstRun && !opts.onboardingCompleted;
-  if (firstRunOnboarding && !opts.onboardingPending && !opts.segmentAnswered) {
+  if (firstRunOnboarding && !opts.onboardingPending && !opts.surveyAnswered) {
     return "segment";
   }
   if (firstRunOnboarding || opts.onboardingPending) return "onboarding";

@@ -17,7 +17,6 @@
     "dismissError": "We couldn't save that. Please try again."
   },
   "onboardingSegment": {
-    "eyebrow": "Personalize Houston",
     "title": "What best describes your work?",
     "subtitle": "Help us tailor Houston.",
     "options": {
@@ -33,6 +32,40 @@
       "finance": "Finance",
       "sales": "Sales",
       "something_else": "Something else"
+    }
+  },
+  "onboardingSurvey": {
+    "industry": {
+      "title": "What industry do you work in?",
+      "subtitle": "So Houston understands the world you work in.",
+      "options": {
+        "technology": "Technology",
+        "finance": "Finance & Banking",
+        "legal": "Legal",
+        "healthcare": "Healthcare",
+        "education": "Education",
+        "retail": "Retail & E-commerce",
+        "manufacturing": "Manufacturing",
+        "real_estate": "Real Estate",
+        "marketing_agencies": "Marketing & Agencies",
+        "government_nonprofit": "Government & Non-profit",
+        "consulting": "Consulting & Professional Services",
+        "something_else": "Something else"
+      }
+    },
+    "goal": {
+      "title": "What would you love to automate?",
+      "subtitle": "Describe one task you would happily hand off.",
+      "placeholder": "For example, go through my inbox every morning and draft replies to anything urgent.",
+      "tooLong": "That is a bit long. Please keep it under {{max}} characters."
+    },
+    "completion": {
+      "title": "Help us tailor Houston to you",
+      "subtitle": "A couple of quick questions so Houston fits the way you work.",
+      "notNow": "Not now"
+    },
+    "progress": {
+      "label": "Step {{current}} of {{total}}"
     }
   },
   "tutorial": {

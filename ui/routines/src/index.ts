@@ -19,6 +19,9 @@ export {
   DEFAULT_TRIGGER_LABELS,
   interp,
 } from "./labels";
+// Routine execution history (PRODUCT-1208) — the run list + its helpers.
+export type { RoutineRunListLabels } from "./labels-details";
+export { DEFAULT_RUN_LIST_LABELS } from "./labels-details";
 export { describeNextFire, nextFire } from "./next-fire";
 export type { RoutineDraftRowProps } from "./routine-draft-row";
 export { RoutineDraftRow } from "./routine-draft-row";
@@ -28,6 +31,8 @@ export type { RoutineRowControlsProps } from "./routine-row-controls";
 export { RoutineRowControls } from "./routine-row-controls";
 export type { RoutineRowScheduleEditProps } from "./routine-row-schedule-edit";
 export { RoutineRowScheduleEdit } from "./routine-row-schedule-edit";
+export type { RoutineRunListProps } from "./routine-run-list";
+export { RoutineRunList } from "./routine-run-list";
 export type { RoutineTriggerStatusProps } from "./routine-trigger-status";
 export { RoutineTriggerStatus } from "./routine-trigger-status";
 export type { RoutineDraft, RoutinesGridProps } from "./routines-grid";
@@ -36,6 +41,7 @@ export { RoutinesGrid } from "./routines-grid";
 export type { RoutinesGridEmptyProps } from "./routines-grid-empty";
 export { RoutinesGridEmpty } from "./routines-grid-empty";
 export { RoutinesGridList } from "./routines-grid-list";
+export { formatRunDuration, formatRunStart } from "./run-history";
 export type { ScheduleBuilderProps } from "./schedule-builder";
 export { ScheduleBuilder } from "./schedule-builder";
 export { cronSummary, presetSummary } from "./schedule-summary";

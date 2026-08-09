@@ -5,6 +5,7 @@ import type { ChatActionBrand } from "../src/chat-process-header.ts";
 import {
   buildProcessHeader,
   buildProcessHeaderLabel,
+  countTrailingRepeats,
   getCurrentActionTool,
   getCurrentActionToolName,
   integrationActionOf,
@@ -329,7 +330,7 @@ describe("buildProcessHeader", () => {
         segments,
         labels: { resolveActionBrand },
       }),
-      { kind: "brand", brand },
+      { kind: "brand", brand, count: 1 },
     );
   });
 
@@ -365,54 +366,29 @@ describe("buildProcessHeader", () => {
     );
   });
 
-  // HOU-1047 follow-up: with the astronaut deck available, the active header
-  // plays it whenever nothing is visibly executing — before the first tool and
-  // in the gaps after a tool finishes. A running tool's verb/brand still wins,
-  // and WITHOUT a deck the sticky-verb behavior (HOU-448) is unchanged.
-  describe("with rotating phrases", () => {
-    const labels = { phrases: ["Braving the meteor shower..."] };
-
-    it("plays the deck before any tool runs", () => {
-      deepStrictEqual(
-        buildProcessHeader({ isActive: true, segments: [seg([])], labels }),
-        { kind: "phrase", fallback: "Thinking..." },
-      );
-    });
-
-    it("still names a RUNNING tool (no result yet)", () => {
+  // PRODUCT-1226: the playful phrase deck never plays in the mission-log
+  // header — once any tool has run, the header holds the concrete task
+  // (sticky through reasoning gaps, HOU-448). The deck belongs to the
+  // standalone connecting indicator alone.
+  describe("task stays visible while executing (PRODUCT-1226)", () => {
+    it("keeps the task after the tool finishes (reasoning gap, sticky verb)", () => {
       deepStrictEqual(
         buildProcessHeader({
           isActive: true,
-          segments: [seg([{ name: "Read" }])],
-          labels,
+          segments: [seg([{ name: "Read", result: RESULT }])],
         }),
         { kind: "tool", label: "Reading file", toolName: "Read" },
       );
     });
 
-    it("plays the deck once the latest tool has finished (reasoning gap)", () => {
+    it("reads the plain active label before any tool runs", () => {
       deepStrictEqual(
-        buildProcessHeader({
-          isActive: true,
-          segments: [seg([{ name: "Read", result: RESULT }])],
-          labels,
-        }),
-        { kind: "phrase", fallback: "Thinking..." },
+        buildProcessHeader({ isActive: true, segments: [seg([])] }),
+        { kind: "text", label: "Thinking..." },
       );
     });
 
-    it("carries the localized active label as the deck's fallback", () => {
-      deepStrictEqual(
-        buildProcessHeader({
-          isActive: true,
-          segments: [seg([])],
-          labels: { ...labels, active: "Pensando..." },
-        }),
-        { kind: "phrase", fallback: "Pensando..." },
-      );
-    });
-
-    it("still brands a RUNNING integration_execute", () => {
+    it("keeps branding a finished integration_execute through the gap", () => {
       deepStrictEqual(
         buildProcessHeader({
           isActive: true,
@@ -421,34 +397,143 @@ describe("buildProcessHeader", () => {
               {
                 name: "integration_execute",
                 input: { action: "GMAIL_SEND_EMAIL" },
+                result: RESULT,
               },
             ]),
           ],
-          labels: { ...labels, resolveActionBrand },
+          labels: { resolveActionBrand },
         }),
-        { kind: "brand", brand },
+        { kind: "brand", brand, count: 1 },
       );
     });
 
-    it("keeps the sticky verb when NO deck is provided (HOU-448 unchanged)", () => {
+    it("settles to the plain Mission log label", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: false,
+          segments: [seg([{ name: "Read", result: RESULT }])],
+        }),
+        { kind: "text", label: "Mission log" },
+      );
+    });
+  });
+
+  // PRODUCT-1226: a run of the SAME activity folds into one row with an "xN"
+  // suffix — 27 issue-creations must not read as one stuck step.
+  describe("repeat counter", () => {
+    const linear = (result?: unknown): ToolStub => ({
+      name: "integration_execute",
+      input: { action: "LINEAR_CREATE_ISSUE" },
+      result,
+    });
+    const linearBrand: ChatActionBrand = {
+      name: "Linear",
+      logoUrl: "https://logo",
+      actionLabel: "Creating linear issue",
+    };
+    const resolveLinear = (action: string) =>
+      action === "LINEAR_CREATE_ISSUE" ? linearBrand : undefined;
+
+    it("counts consecutive identical integration actions into the brand row", () => {
       deepStrictEqual(
         buildProcessHeader({
           isActive: true,
-          segments: [seg([{ name: "Read", result: RESULT }])],
+          segments: [seg([linear(RESULT), linear(RESULT), linear()])],
+          labels: { resolveActionBrand: resolveLinear },
+        }),
+        { kind: "brand", brand: linearBrand, count: 3 },
+      );
+    });
+
+    it("counts across segment boundaries", () => {
+      strictEqual(
+        countTrailingRepeats([
+          seg([linear(RESULT)]),
+          seg([]),
+          seg([linear(RESULT), linear()]),
+        ]),
+        3,
+      );
+    });
+
+    it("resets when a different activity interrupts the run", () => {
+      strictEqual(
+        countTrailingRepeats([
+          seg([linear(RESULT), { name: "Read", result: RESULT }, linear()]),
+        ]),
+        1,
+      );
+    });
+
+    it("suffixes a repeated plain tool verb", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: true,
+          segments: [seg([{ name: "Read", result: RESULT }, { name: "Read" }])],
+        }),
+        { kind: "tool", label: "Reading file x2", toolName: "Read" },
+      );
+    });
+
+    it("shows no suffix for a single occurrence", () => {
+      deepStrictEqual(
+        buildProcessHeader({
+          isActive: true,
+          segments: [seg([{ name: "Read" }])],
         }),
         { kind: "tool", label: "Reading file", toolName: "Read" },
       );
     });
 
-    it("settles to the plain Mission log label, never a phrase", () => {
+    it("treats different integration actions as different activities", () => {
+      strictEqual(
+        countTrailingRepeats([
+          seg([
+            {
+              name: "integration_execute",
+              input: { action: "LINEAR_CREATE_COMMENT" },
+              result: RESULT,
+            },
+            linear(),
+          ]),
+        ]),
+        1,
+      );
+    });
+
+    it("folds same-host web fetches and suffixes the activity label", () => {
+      const curl = (result?: unknown): ToolStub => ({
+        name: "bash",
+        input: { command: "curl https://anakin.io/x" },
+        result,
+      });
       deepStrictEqual(
         buildProcessHeader({
-          isActive: false,
-          segments: [seg([{ name: "Read", result: RESULT }])],
-          labels,
+          isActive: true,
+          segments: [seg([curl(RESULT), curl()])],
         }),
-        { kind: "text", label: "Mission log" },
+        {
+          kind: "activity",
+          activity: { kind: "web", host: "anakin.io" },
+          label: "Browsing the web · anakin.io x2",
+        },
       );
+    });
+
+    it("distinguishes web fetches to different hosts", () => {
+      strictEqual(
+        countTrailingRepeats([
+          seg([
+            { name: "bash", input: { command: "curl https://a.io" } },
+            { name: "bash", input: { command: "curl https://b.io" } },
+          ]),
+        ]),
+        1,
+      );
+    });
+
+    it("returns 0 with no tools", () => {
+      strictEqual(countTrailingRepeats([seg([]), seg([])]), 0);
     });
   });
 

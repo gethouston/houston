@@ -145,7 +145,10 @@ test("fires the routine now: records a running run and calls fireTurn with the p
   expect(channel.fired).toHaveLength(1);
   const fired0 = channel.fired[0];
   if (!fired0) throw new Error("expected channel.fired[0] to exist");
-  expect(fired0.text).toBe("send the weekly digest");
+  // The routine's own instruction rides the fired prompt, under the run
+  // framing that keeps the agent from re-creating the routine (PRODUCT-1208).
+  expect(fired0.text).toContain("send the weekly digest");
+  expect(fired0.text).toContain("never call save_routine");
   expect(fired0.conversationId).toBe(`routine-${routine.id}`);
   expect(fired0.pin?.mode).toBe("auto");
 

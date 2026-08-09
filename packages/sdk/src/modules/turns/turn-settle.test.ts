@@ -103,9 +103,11 @@ test("matches the assistant reply by turnId and adopts its text + usage", () => 
   // A clean settle with NO pending interaction still lands on `needs_you` —
   // the engine never writes `done`.
   expect(s.terminal).toBe("needs_you");
+  // The settle's pushes carry the adopted identity (HOU-1214 dedup).
   expect(items).toContainEqual({
     feed_type: "assistant_text",
     data: "Full reply",
+    turnId: "t-1",
   });
   const final = items.find((i) => i.feed_type === "final_result")?.data as {
     result: string;
@@ -236,6 +238,7 @@ test("a persisted stopped reply settles needs_you with the standard stop line, n
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: "Stopped by user",
+    turnId: "t-1",
   });
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
   expect(statuses).toEqual([["error", undefined]]);
@@ -267,6 +270,7 @@ test("a stopped reply with an (illegal) pendingInteraction: stopped wins, no car
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: "Stopped by user",
+    turnId: "t-1",
   });
 });
 

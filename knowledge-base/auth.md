@@ -640,6 +640,15 @@ photo. The photo is cover-cropped browser-side to 256px and sent as a capped dat
   **The engine receives no user-id env at spawn**; no `HOUSTON_APP_USER_ID` exists anywhere.
   Add an envelope carrier if a server-side consumer ever needs the uid.
 
+## App-side gateway calls
+
+- Direct gateway calls from `app/src` use `app/src/lib/gateway-fetch.ts` for
+  live bearer auth, one 401 refresh and replay, app-version enforcement, and the
+  active `x-houston-org` selector. User-scoped routes opt out with
+  `orgScoped: false`.
+- The gateway-backed profile store is live at `GET/PUT /v1/me/profile`;
+  `use-user-profiles.ts` reads `GET /v1/org/profiles`.
+
 ## Teams / orgs
 
 Orgs, roles (owner/admin/user), per-agent access and C8 Spaces ship in the paid hosted cloud;
@@ -647,3 +656,4 @@ the **gateway** owns and enforces all of it (org membership lives in the gateway
 not the identity project). The open repo carries only the capability-gated client surface —
 `knowledge-base/teams.md` + `knowledge-base/spaces.md`. Server contracts:
 `cloud/docs/contracts/C3-org-role-model.md`, `C7-teams.md`, `C8-spaces-billing.md`.
+
