@@ -74,6 +74,8 @@
   --color-chip-solid-hover: var(--ht-chip-solid-hover);
   --color-chip-text: var(--ht-chip-text);
   --color-chip-subtle: var(--ht-chip-subtle);
+  --color-tab-track: var(--ht-tab-track);
+  --color-tab-active: var(--ht-tab-active);
   --color-ink-muted: var(--ht-ink-muted);
   --color-hover: var(--ht-hover);
   --color-hover-text: var(--ht-hover-text);
@@ -161,6 +163,36 @@
   }
 }
 
+/* Houston's interface weight: 510, the notch just past medium.
+ *
+ * Linear's whole UI sits in a 400-510 band and its rails are set at 510 — far
+ * enough over regular that a 13px label holds its own against the canvas,
+ * nowhere near the semibold that makes a list read as a stack of headings. We
+ * want that exact colour of text, so this is the one place it is spelled.
+ *
+ * It is TWO declarations on purpose, because Houston ships no webfont — the
+ * family is the platform's (`ui-sans-serif, -apple-system, system-ui,
+ * "Segoe UI", …`), and half the platforms resolve it to a variable font and
+ * half to a static one:
+ *
+ * - `font-variation-settings` is what actually delivers 510. On macOS the
+ *   stack resolves to SF Pro, a VARIABLE face with a `wght` axis, so the axis
+ *   is set literally and the text renders at 510 exactly.
+ * - `font-weight: 500` is the face-selection anchor for everything else, and
+ *   it is the declaration that makes this safe. Writing `font-weight: 510`
+ *   alone would be a trap on Windows: Segoe UI ships STATIC faces with no 500,
+ *   and the CSS font-matching rule for a target above 500 searches UPWARD
+ *   first — so 510 would select Semibold (600) and every row in the rail would
+ *   come out heavy. Anchoring at 500 keeps the match inside the 400-500 band,
+ *   so a static family lands on its nearest face instead of overshooting, and
+ *   `font-variation-settings` is simply ignored by a font with no axes.
+ *
+ * Net: exactly 510 where the platform font is variable, the nearest weight at
+ * or under medium where it is not, and never a semibold rail anywhere. */
+@utility font-weight-510 {
+  font-weight: 500;
+  font-variation-settings: "wght" 510;
+}
 
 button,
 [role="button"],
@@ -347,19 +379,6 @@ body {
   animation: tool-pulse 1s ease-in-out infinite;
 }
 
-/* One-shot confirmation flash when an agent is dropped into a sidebar group —
-   the only signal when the folder is collapsed. */
-@keyframes sidebar-group-dropped {
-  0% { background-color: var(--ht-hover); }
-  100% { background-color: transparent; }
-}
-.sidebar-group-dropped {
-  animation: sidebar-group-dropped 0.6s ease-out;
-}
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-group-dropped { animation: none; }
-}
-
 /* The Files list's selection bar taking the column header's slot the instant a
    file is checked. Entrance only, transform + opacity only, 200ms on the
    entrance curve — a swap this small must be noticed, never waited for. */
@@ -372,6 +391,26 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .files-selection-bar-in { animation: none; }
+}
+
+/* A sidebar disclosure opening: the "Your teams" section, and every team block
+   under it. Entrance only, transform + opacity only, 200ms on the entrance
+   curve — the rail must feel like it unfolded, never like it waited.
+
+   Deliberately NOT a height animation: height is layout, and DESIGN.md allows
+   only transform + opacity per frame. The closing direction carries no
+   animation at all, which is both the honest reading of "exits faster than
+   entrances" and what keeps a collapsed team's drop target from lingering
+   mounted-but-invisible under the cursor. */
+@keyframes sidebar-disclosure-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.sidebar-disclosure-in {
+  animation: sidebar-disclosure-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-disclosure-in { animation: none; }
 }
 
 /* Custom scrollbars */

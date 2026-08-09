@@ -2,12 +2,12 @@
   "color": {
     "alpha": {
       "$type": "color",
-      "black-a07": { "$value": "rgba(0, 0, 0, 0.07)" },
       "black-a10": { "$value": "rgba(0, 0, 0, 0.1)" },
       "ink-a035": { "$value": "rgba(13, 13, 13, 0.035)" },
       "ink-a06": { "$value": "rgba(13, 13, 13, 0.06)" },
       "white-a045": { "$value": "rgba(255, 255, 255, 0.045)" },
       "white-a05": { "$value": "rgba(255, 255, 255, 0.05)" },
+      "white-a06": { "$value": "rgba(255, 255, 255, 0.06)" },
       "white-a08": { "$value": "rgba(255, 255, 255, 0.08)" },
       "white-a10": { "$value": "rgba(255, 255, 255, 0.1)" },
       "white-a16": { "$value": "rgba(255, 255, 255, 0.16)" },
