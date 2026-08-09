@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { collectFilePaths } from "../src/files-selection.ts";
 import { filterFolder } from "../src/filter.ts";
-import { folderAtPath } from "../src/grid-utils.ts";
 import type { FolderNode } from "../src/tree.ts";
-import { buildTree } from "../src/tree.ts";
+import { buildTree, folderAtPath } from "../src/tree.ts";
 import type { FileEntry } from "../src/types.ts";
 
 const entry = (path: string, is_directory = false): FileEntry => ({

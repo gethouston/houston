@@ -9,17 +9,12 @@
  * FilesBrowser; this owns only what renders inside the content column.
  */
 import type { FilesBrowserProps } from "./files-browser";
-import {
-  type FilesBrowserLabels,
-  toColumnLabels,
-  toGridLabels,
-} from "./files-browser-labels";
+import type { FilesBrowserLabels } from "./files-browser-labels";
 import { FilesEmptyFolder } from "./files-empty-folder";
-import { FilesGrid } from "./files-grid";
 import { FilesListView } from "./files-list-view";
 import { FilesSearchEmpty } from "./files-search-empty";
 import type { FilesSelection } from "./files-selection";
-import { FilesGridSkeleton, FilesListSkeleton } from "./files-skeleton";
+import { FilesListSkeleton } from "./files-skeleton";
 import type { useFilesBrowser } from "./use-files-browser";
 
 export function FilesBody({
@@ -34,18 +29,23 @@ export function FilesBody({
   /** Built by FilesBrowser only when the consumer passed onDeleteMany. */
   selection?: FilesSelection;
 }) {
-  if (props.loading || !b.visibleFolder) {
+  if (props.loading) {
     return (
       <div role="status" aria-label={l.loading}>
-        {b.view === "grid" ? (
-          <FilesGridSkeleton />
-        ) : (
-          // Read from the PROP, not from `selection` (which needs a listing to
-          // exist): the gutter has to be in the skeleton too, or the columns
-          // jump sideways the moment the listing lands.
-          <FilesListSkeleton selectable={!!props.onDeleteMany} />
-        )}
+        <FilesListSkeleton selectable={!!props.onDeleteMany} />
       </div>
+    );
+  }
+
+  if (!b.visibleFolder) {
+    return (
+      <FilesEmptyFolder
+        message={l.emptyFolder}
+        onUpload={b.uploadHere}
+        uploadLabel={l.emptyFolderUploadCta}
+        onNewFolder={props.onCreateFolder ? b.startCreatingFolder : undefined}
+        newFolderLabel={l.emptyFolderNewFolderCta}
+      />
     );
   }
 
@@ -79,31 +79,9 @@ export function FilesBody({
     );
   }
 
-  return b.view === "grid" ? (
-    <FilesGrid
-      folder={b.visibleFolder}
-      loadPreview={props.loadPreview}
-      onNavigate={b.navigate}
-      onOpen={props.onOpen}
-      onReveal={props.onReveal}
-      onDownload={props.onDownload}
-      onDownloadFolder={props.onDownloadFolder}
-      onDelete={props.onDelete}
-      onRename={props.onRename}
-      onMove={props.onMove}
-      onDragActive={b.onDragActive}
-      creatingFolder={b.creatingFolder}
-      onCreateFolder={onCreateFolder}
-      onCancelCreateFolder={onCancelCreateFolder}
-      menuLabels={props.menuLabels}
-      labels={toGridLabels(l)}
-    />
-  ) : (
+  return (
     <FilesListView
       tree={b.visibleFolder}
-      sortKey={b.sortKey}
-      sortDir={b.sortDir}
-      onSort={b.handleSort}
       selection={selection}
       loadPreview={props.loadPreview}
       onOpen={props.onOpen}
@@ -119,7 +97,6 @@ export function FilesBody({
       onCreateFolder={onCreateFolder}
       onCancelCreateFolder={onCancelCreateFolder}
       newFolderPlaceholder={l.newFolderPlaceholder}
-      columnLabels={toColumnLabels(l)}
       locale={props.locale}
       modifiedTodayLabel={l.modifiedToday}
       itemSingular={l.itemSingular}
@@ -127,6 +104,8 @@ export function FilesBody({
       menuLabels={props.menuLabels}
       menuButtonLabel={l.menuButton}
       emptyFolderLabel={l.emptyFolder}
+      dragScope={props.dragScope}
+      depth={props.depth}
     />
   );
 }

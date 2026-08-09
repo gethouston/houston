@@ -32,6 +32,7 @@
       "pickedDesc": "Pessoas com acesso só podem usar os modelos que você permitir abaixo.",
       "allowModel": "Permitir {{name}}",
       "searchModels": "Buscar modelos",
+      "clearSearch": "Limpar busca",
       "labFilter": "Filtrar por laboratório",
       "allLabs": "Todos os laboratórios",
       "searchLabs": "Buscar laboratórios",
@@ -77,10 +78,51 @@
     }
   },
   "agentTeams": {
-    "otherTeams": "Outras equipes",
-    "otherTeamsHint": "Equipes deste espaço que ainda não estão na sua barra lateral. Entrar em uma apenas a adiciona à sua barra lateral, não dá acesso a nada novo.",
-    "join": "Entrar na equipe",
-    "joining": "Entrando…",
+    "create": {
+      "title": "Criar uma equipe",
+      "nameLabel": "Nome da equipe",
+      "namePlaceholder": "por exemplo, Marketing",
+      "tooLong": "Use menos de {{max}} caracteres.",
+      "submit": "Criar equipe",
+      "newAgent": "Novo agente",
+      "members": "Membros, opcional",
+      "membersSelected_one": "{{count}} membro selecionado",
+      "membersSelected_other": "{{count}} membros selecionados"
+    },
+    "errors": {
+      "default_team": {
+        "title": "Esta é a equipe principal do espaço",
+        "body": "Todas as pessoas do espaço já estão nela, então ela não pode ser excluída e não tem uma lista de membros separada."
+      },
+      "personal_space": {
+        "title": "Só você está neste espaço",
+        "body": "Aqui você pode agrupar seus agentes em equipes. Para trabalhar com outras pessoas, crie uma organização."
+      },
+      "not_team_owner": {
+        "title": "Só os proprietários desta equipe podem alterá-la",
+        "body": "Peça para uma dessas pessoas fazer esta alteração."
+      },
+      "invalid_team_id": {
+        "title": "Não conseguimos identificar para qual equipe mover",
+        "body": "Nada mudou. Tente novamente."
+      },
+      "invalid_name": {
+        "title": "Esse nome de equipe não serve",
+        "body": "O nome de uma equipe precisa ser curto, até 60 caracteres. Tente um mais curto."
+      },
+      "invalid_icon": {
+        "title": "Não conseguimos aplicar esse ícone",
+        "body": "Nada mudou. Escolha um dos ícones da lista."
+      },
+      "invalid_color": {
+        "title": "Não conseguimos aplicar essa cor",
+        "body": "Nada mudou. Escolha uma das cores da lista."
+      },
+      "not_a_member": {
+        "title": "Essa pessoa ainda não está neste espaço",
+        "body": "Convide-a para o espaço primeiro e depois adicione-a a esta equipe."
+      }
+    },
     "leave": "Sair da equipe",
     "memberCount_one": "{{count}} membro",
     "memberCount_other": "{{count}} membros",
@@ -100,32 +142,6 @@
         "you": "(você)",
         "changeRole": "Alterar a função de {{name}}",
         "remove": "Remover"
-      }
-    },
-    "errors": {
-      "default_team": {
-        "title": "Esta é a equipe principal do espaço",
-        "body": "Todas as pessoas do espaço já estão nela, então ela não pode ser excluída e não tem uma lista de membros separada."
-      },
-      "personal_space": {
-        "title": "Este é o seu espaço privado",
-        "body": "As equipes ficam em um espaço que você compartilha com outras pessoas. Crie um ou entre em um para começar."
-      },
-      "not_team_owner": {
-        "title": "Só os proprietários desta equipe podem alterá-la",
-        "body": "Peça para uma dessas pessoas fazer esta alteração."
-      },
-      "invalid_team_id": {
-        "title": "Não conseguimos identificar para qual equipe mover",
-        "body": "Nada mudou. Tente novamente."
-      },
-      "invalid_name": {
-        "title": "Esse nome de equipe não serve",
-        "body": "O nome de uma equipe precisa ser curto, até 60 caracteres. Tente um mais curto."
-      },
-      "not_a_member": {
-        "title": "Essa pessoa ainda não está neste espaço",
-        "body": "Convide-a para o espaço primeiro e depois adicione-a a esta equipe."
       }
     }
   },
@@ -147,26 +163,26 @@
   },
   "org": {
     "title": "Administração",
-    "subtitle": "Gerencie sua equipe, atividade, uso e cobrança em um só lugar.",
+    "subtitle": "Suas pessoas, seu plano, seus números e o que cada agente sabe sobre a empresa.",
     "tabs": {
       "people": "Pessoas",
+      "billing": "Cobrança",
+      "analytics": "Análises",
+      "companyContext": "Contexto da empresa",
       "activity": "Atividade",
       "usage": "Uso",
-      "billing": "Cobrança"
+      "timeWorked": "Tempo trabalhado"
     },
     "agentDetail": {
       "subtitle": "Tudo o que você configura neste agente e quem pode usá-lo.",
       "openAgent": "Abrir agente"
     },
     "index": {
-      "groups": {
-        "insights": "Estatísticas"
-      },
       "rows": {
         "people": "Convide colegas, defina funções e remova membros.",
-        "activity": "O que aconteceu neste espaço de trabalho, do mais recente ao mais antigo.",
-        "usage": "Quantas mensagens cada agente e pessoa está enviando.",
-        "billing": "Assentos, plano e pagamento."
+        "billing": "Assentos, plano e pagamento.",
+        "analytics": "Atividade, uso e tempo trabalhado em um só lugar.",
+        "companyContext": "O que cada agente sabe sobre esta empresa."
       },
       "values": {
         "members_one": "{{count}} membro",
@@ -177,8 +193,6 @@
     "unavailable": "Não foi possível carregar seu espaço de trabalho."
   },
   "permissions": {
-    "title": "Permissões",
-    "subtitle": "Escolha um agente para gerenciar quem pode usá-lo e o que ele pode usar.",
     "agentPeople": {
       "none": "Sem acesso",
       "noneHint": "Não pode usar este agente.",
@@ -318,11 +332,6 @@
     "messages_other": "{{count}} mensagens"
   },
   "agentsTab": {
-    "empty": {
-      "title": "Crie seu primeiro agente",
-      "body": "Agentes são os assistentes que sua equipe compartilha. Crie um para começar.",
-      "action": "Criar agente"
-    },
     "managedBy": "Gerenciado por {{names}}",
     "access": {
       "everyone": "Toda a sua equipe",
@@ -471,13 +480,43 @@
     }
   },
   "teamView": {
+    "tabs": {
+      "missionControl": "Tarefas",
+      "routines": "Rotinas",
+      "files": "Arquivos",
+      "archived": "Arquivadas",
+      "settings": "Gerenciar agentes",
+      "label": "Seções da equipe"
+    },
+    "move": {
+      "trigger": "Mais ações para {{name}}",
+      "action": "Mover para uma equipe",
+      "confirmTitle": "Mover {{agent}} para {{team}}?",
+      "confirmBody": "{{agent}} passa para {{team}}. As pessoas que podem ver essa equipe verão este agente nela.",
+      "confirm": "Mover agente",
+      "cancel": "Cancelar"
+    },
+    "agentMenu": {
+      "rename": "Renomear agente",
+      "renameTitle": "Renomear {{name}}",
+      "renameLabel": "Nome do agente",
+      "renameConfirm": "Salvar",
+      "delete": "Excluir agente"
+    },
+    "context": {
+      "title": "Contexto da equipe",
+      "explainer": "Todos os agentes desta equipe sabem disto.",
+      "placeholder": "O que cada agente desta equipe deveria saber? A empresa, os clientes, como vocês trabalham.",
+      "saving": "Salvando…",
+      "saved": "Salvo"
+    },
     "missionControl": {
       "empty": {
         "workspaceTitle": "Você ainda não tem agentes",
-        "workspaceBody": "Crie seu primeiro agente e as missões dele aparecerão aqui.",
+        "workspaceBody": "Crie seu primeiro agente e as tarefas dele aparecerão aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Arraste um agente para {{name}} na barra lateral e as missões dele aparecerão aqui."
+        "teamBody": "Crie um agente aqui ou mova um para {{name}} pela página Gerenciar agentes de outra equipe."
       }
     },
     "routines": {
@@ -487,7 +526,7 @@
         "workspaceBody": "Crie seu primeiro agente e tudo o que ele fizer sozinho aparecerá aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Arraste um agente para {{name}} na barra lateral e as rotinas dele aparecerão aqui."
+        "teamBody": "Crie um agente aqui ou mova um para {{name}} pela página Gerenciar agentes de outra equipe."
       },
       "noRoutines": {
         "title": "Ainda não há nada rodando sozinho",
@@ -508,9 +547,8 @@
         "workspaceBody": "Crie seu primeiro agente e os arquivos que ele guardar aparecerão aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Arraste um agente para {{name}} na barra lateral e os arquivos que ele guardar aparecerão aqui."
-      },
-      "agentLabel": "Arquivos de quem"
+        "teamBody": "Crie um agente aqui ou mova um para {{name}} pela página Gerenciar agentes de outra equipe."
+      }
     },
     "settings": {
       "subtitle": "Os agentes desta equipe. Abra um para gerenciar quem pode usá-lo e o que ele pode usar.",
@@ -518,7 +556,7 @@
         "workspaceTitle": "Ainda não há agentes",
         "workspaceBody": "Crie um e ele aparecerá aqui.",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Arraste um agente para ela na barra lateral para adicionar um."
+        "teamBody": "Crie um agente aqui ou mova um pela página Gerenciar agentes de outra equipe."
       },
       "navUnavailable": "Ainda não conseguimos abrir as configurações deste agente",
       "navUnavailableBody": "A equipe deste agente ainda está carregando. Espere um momento e tente de novo. Se continuar acontecendo, reporte como um erro."

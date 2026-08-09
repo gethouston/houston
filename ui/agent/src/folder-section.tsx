@@ -14,7 +14,6 @@
  */
 import { cn, FolderGlyph } from "@houston-ai/core";
 import { useEffect, useState } from "react";
-import { KebabButton } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
 import { FileMenu } from "./file-menu";
 import {
@@ -33,6 +32,8 @@ import { folderChildCount } from "./filter";
 import { FolderEmptyRow } from "./folder-empty-row";
 import { formatModified, formatModifiedFull } from "./format-modified";
 import { RenameInput, useInlineRename } from "./inline-rename";
+import { internalDragPayload } from "./internal-file-drag";
+import { KebabButton } from "./kebab-button";
 import { ListRows } from "./list-rows";
 import type { FolderNode } from "./tree";
 import type { FileEntry } from "./types";
@@ -81,7 +82,10 @@ export function FolderSection({
         tabIndex={0}
         draggable={!!onMove && !rename.renaming}
         onDragStart={(e) => {
-          e.dataTransfer.setData(INTERNAL_DRAG_TYPE, node.path);
+          e.dataTransfer.setData(
+            INTERNAL_DRAG_TYPE,
+            internalDragPayload(node.path, rows.dragScope),
+          );
           e.dataTransfer.effectAllowed = "move";
           setDragging(true);
         }}

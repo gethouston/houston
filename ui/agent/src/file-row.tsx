@@ -11,7 +11,6 @@
  */
 import { cn } from "@houston-ai/core";
 import { useState } from "react";
-import { KebabButton } from "./card-chrome";
 import { INTERNAL_DRAG_TYPE } from "./drop-zone";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
 import { FileRowIcon } from "./file-row-icon";
@@ -29,6 +28,8 @@ import { RowIndent } from "./files-list-indent";
 import type { FilesSelection } from "./files-selection";
 import { formatModified, formatModifiedFull } from "./format-modified";
 import { RenameInput, useInlineRename } from "./inline-rename";
+import { internalDragPayload } from "./internal-file-drag";
+import { KebabButton } from "./kebab-button";
 import type { FileEntry, LoadFilePreview } from "./types";
 import { formatSize } from "./utils";
 
@@ -47,6 +48,7 @@ export function FileRow({
   modifiedTodayLabel,
   menuLabels,
   menuButtonLabel,
+  dragScope,
 }: {
   file: FileEntry;
   depth?: number;
@@ -66,6 +68,7 @@ export function FileRow({
   menuLabels?: FileMenuLabels;
   /** Accessible name for the always-visible kebab button. */
   menuButtonLabel?: string;
+  dragScope?: string;
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -84,7 +87,10 @@ export function FileRow({
         tabIndex={0}
         draggable={!!onMove && !rename.renaming}
         onDragStart={(e) => {
-          e.dataTransfer.setData(INTERNAL_DRAG_TYPE, file.path);
+          e.dataTransfer.setData(
+            INTERNAL_DRAG_TYPE,
+            internalDragPayload(file.path, dragScope),
+          );
           e.dataTransfer.effectAllowed = "move";
           setDragging(true);
         }}

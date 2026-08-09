@@ -11,14 +11,23 @@ export type { FilesBrowserProps } from "./files-browser";
 // Components
 export { FilesBrowser } from "./files-browser";
 export type { FilesBrowserLabels } from "./files-browser-labels";
+export {
+  FilesAgentRow,
+  FilesColumnBand,
+  type FilesColumnLabels,
+} from "./files-list-frame";
+export { FilesSearch } from "./files-search";
 export type { InstructionsPanelProps } from "./instructions-panel";
 export { InstructionsPanel } from "./instructions-panel";
+export {
+  internalDragPayload,
+  parseInternalDragPayload,
+} from "./internal-file-drag";
 export type { FileNode, FolderNode, TreeNode } from "./tree";
-export { buildTree } from "./tree";
+export { buildTree, folderAtPath } from "./tree";
 export type {
   FileEntry,
   FilePreviewData,
-  FilesViewMode,
   InstructionFile,
   LoadFilePreview,
 } from "./types";
