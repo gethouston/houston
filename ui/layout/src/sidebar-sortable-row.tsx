@@ -50,17 +50,7 @@ export function SidebarSortableRow({
       <SidebarItemRow
         item={item}
         isActive={item.id === ctx.selectedId}
-        isEditing={ctx.editingId === item.id}
-        editValue={ctx.editValue}
-        hasMenu={ctx.hasDefaultMenu || !!item.menuContent}
         onSelect={ctx.onSelect}
-        onKeyDown={ctx.onItemKeyDown}
-        onEditChange={ctx.onEditChange}
-        onCommitRename={ctx.onCommitRename}
-        onCancelEdit={ctx.onCancelEdit}
-        onStartRename={ctx.onStartRename}
-        onDelete={ctx.onDeleteItem}
-        labels={ctx.labels}
       />
     </div>
   );

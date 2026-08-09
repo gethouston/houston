@@ -1,8 +1,8 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import type { SidebarItem } from "./sidebar";
-import { sidebarClasses } from "./sidebar-classes";
 import { SidebarCollapsedItem } from "./sidebar-collapsed-item";
+import { sidebarClasses } from "./sidebar-geometry";
 import { SidebarItemRow } from "./sidebar-item-row";
 import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
@@ -38,17 +38,7 @@ export function SidebarFlatList({
             key={item.id}
             item={item}
             isActive={item.id === ctx.selectedId}
-            isEditing={ctx.editingId === item.id}
-            editValue={ctx.editValue}
-            hasMenu={ctx.hasDefaultMenu || !!item.menuContent}
             onSelect={ctx.onSelect}
-            onKeyDown={ctx.onItemKeyDown}
-            onEditChange={ctx.onEditChange}
-            onCommitRename={ctx.onCommitRename}
-            onCancelEdit={ctx.onCancelEdit}
-            onStartRename={ctx.onStartRename}
-            onDelete={ctx.onDeleteItem}
-            labels={l}
           />
         ))}
         {onAdd && (
@@ -58,7 +48,7 @@ export function SidebarFlatList({
                 type="button"
                 aria-label={l.addItem}
                 onClick={onAdd}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 {...(addItemDataAttrs ?? {})}
               >
                 <Plus className="size-4" />
@@ -80,17 +70,7 @@ export function SidebarFlatList({
           key={item.id}
           item={item}
           isActive={item.id === ctx.selectedId}
-          isEditing={ctx.editingId === item.id}
-          editValue={ctx.editValue}
-          hasMenu={ctx.hasDefaultMenu || !!item.menuContent}
           onSelect={ctx.onSelect}
-          onKeyDown={ctx.onItemKeyDown}
-          onEditChange={ctx.onEditChange}
-          onCommitRename={ctx.onCommitRename}
-          onCancelEdit={ctx.onCancelEdit}
-          onStartRename={ctx.onStartRename}
-          onDelete={ctx.onDeleteItem}
-          labels={l}
         />
       ))}
     </div>

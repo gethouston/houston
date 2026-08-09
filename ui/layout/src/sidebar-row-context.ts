@@ -1,21 +1,20 @@
-import type { KeyboardEvent } from "react";
 import type { SidebarLabels } from "./sidebar";
 
-/** Item-level editing state + handlers shared by every rendered section. */
+/**
+ * What every rendered row needs beyond its own item: which one is selected,
+ * what a click does, and the host's words.
+ *
+ * There is no rename / delete / menu plumbing here any more. An agent is edited
+ * on its team's Manage agents page, so the rail neither offers those actions
+ * nor carries the state for them — no editing id, no draft value, no per-row
+ * key handler. Renaming a TEAM is untouched: that lives on the block header,
+ * which owns its own inline-edit session.
+ */
 export interface SidebarRowContext {
   selectedId?: string | null;
-  editingId: string | null;
-  editValue: string;
-  hasDefaultMenu: boolean;
   onSelect: (id: string) => void;
-  onItemKeyDown: (e: KeyboardEvent, id: string) => void;
-  onEditChange: (value: string) => void;
-  onCommitRename: (id: string) => void;
-  onCancelEdit: () => void;
-  onStartRename?: (id: string, name: string) => void;
-  onDeleteItem?: (id: string) => void;
   labels: Required<SidebarLabels>;
 }
 
-/** Item editing state/handlers shared by both list modes. */
+/** Row state/handlers shared by both list modes. */
 export type SidebarBaseRowContext = SidebarRowContext;

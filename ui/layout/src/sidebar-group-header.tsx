@@ -1,192 +1,161 @@
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
-import { cn } from "@houston-ai/core";
-import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { clampToRunes } from "./rune-clamp";
+import type { ReactNode } from "react";
 import type { SidebarLabels } from "./sidebar";
-import { sidebarGroupClasses } from "./sidebar-classes";
-import { SidebarGroupMenu } from "./sidebar-group-menu";
-import type { SidebarGroupView } from "./sidebar-groups";
+import { useGroupRename } from "./sidebar-group-rename";
+import {
+  sidebarRowAffordanceGutter,
+  sidebarRowButtonClasses,
+} from "./sidebar-paint";
+import { SidebarRowButton } from "./sidebar-row-button";
 
 export interface SidebarGroupHeaderProps {
-  group: SidebarGroupView;
-  /** Resolved count shown beside the name. */
-  count: number;
+  name: string;
+  /** The block's mark, rendered in the shared glyph column. */
+  icon?: ReactNode;
+  /** A badge INSIDE the row, right-aligned: the block's rollup of what its
+   *  folded-away rows are signalling. */
+  trailing?: ReactNode;
+  collapsed: boolean;
+  /** The id of the region this row folds, wired as `aria-controls`. Omitted by
+   *  the drag preview, which folds nothing. */
+  contentId?: string;
   labels: Required<SidebarLabels>;
+  /**
+   * Painted as the selected row. A block carries no destination rows any more,
+   * so this row is the only one that can say the open view belongs here —
+   * folded or open alike.
+   */
+  active?: boolean;
+  /** The row was activated. Whether that opens the block's screen, folds it, or
+   *  both is entirely the host's decision; this component only reports it. */
+  onActivate?: () => void;
+  /**
+   * The "..." menu. Absent for a block that owns no affordances — the default
+   * team on a host that does not let its name be changed.
+   *
+   * A render prop rather than a plain node because the menu's Rename entry has
+   * to open the inline rename this component owns. Handing the caller
+   * `beginRename` keeps the session in one place and still leaves the header
+   * knowing nothing about what the menu contains.
+   */
+  menu?: (beginRename: () => void) => ReactNode;
   dragAttributes?: DraggableAttributes;
   dragListeners?: SyntheticListenerMap;
+  /** Inline rename. Absent means the name is not editable from the rail. */
+  rename?: {
+    /** Ceiling in RUNES; absent means no cap. */
+    maxRunes?: number;
+    onCommit: (newName: string) => void;
+    /** The session ended without committing. Fires EXACTLY once. Absent when
+     *  there is nothing to undo — the default block renames an existing name,
+     *  where a named group's rename may be retiring a never-created draft. */
+  };
   /**
-   * Ceiling on the inline-rename field, in RUNES (see `rune-clamp.ts` for why
-   * runes and not `maxLength`). ABSENT means no cap, so a host that passes
-   * nothing renders exactly as before. The field CLAMPS rather than refusing,
-   * so a paste that is too long lands truncated instead of being swallowed.
+   * Extra DOM attributes on the row's ROOT, not on the toggle button: they
+   * identify the BLOCK (`data-sidebar-group-header="<id>"`), which is what
+   * navigation and drag tests address it by, and that identity has to survive
+   * the row swapping into its rename input.
    */
-  maxNameRunes?: number;
-  /** Enter inline-rename immediately (a just-created group). */
-  startRenaming?: boolean;
-  onRenameStarted?: () => void;
-  onToggleCollapsed?: (groupId: string) => void;
-  onEditContext?: (groupId: string) => void;
-  onRenameGroup?: (groupId: string, newName: string) => void;
-  onDeleteGroup?: (groupId: string) => void;
-  /**
-   * Leave the group. Rendered last, behind a separator, because everything
-   * above it edits the GROUP and this one edits the caller's membership of it.
-   * Opt-in twice over: the callback must exist AND the group's mask must say
-   * `leave: true`.
-   */
-  onLeave?: (groupId: string) => void;
-  /**
-   * The inline rename ended WITHOUT committing: Escape, or leaving the field
-   * with nothing typed or nothing changed.
-   *
-   * It exists for the create-then-name flow. A host that mints the group only
-   * once a name is typed — so no placeholder-named team is ever broadcast to a
-   * team space — renders the not-yet-real group as a local draft row. Without
-   * this signal it cannot tell an abandoned name from one still being typed,
-   * and the draft stays on screen as a phantom row forever. Fires EXACTLY ONCE
-   * per abandoned edit.
-   */
-  onCancelRename?: (groupId: string) => void;
+  dataAttrs?: Record<string, string>;
 }
 
+const NOOP = () => {};
+
 /**
- * Collapsible group header (Mercury-clean: a quiet uppercase label, a hairline
- * chevron, a muted count, and a quiet always-visible "..." menu). The chevron + label are
- * the drag handle; clicking the label toggles collapse. The label swaps to an
- * inline rename input — focused ONCE on entry (a ref-callback that re-focuses
- * every render would re-`select()` and eat all but the first keystroke).
+ * A block's header row: ONE button carrying the block's glyph, its name, the
+ * triangle that states whether it is open and an optional rollup badge, with
+ * the "..." menu as a sibling.
+ *
+ * Three things about that shape are deliberate:
+ *
+ * - **One button, not three.** The triangle, the glyph and the name used to be
+ *   separate controls sharing one job, which gave a keyboard user three stops
+ *   to reach one disclosure and gave a screen reader no `aria-expanded` at all.
+ *   Now the row IS the single hit target, announced as expanded or collapsed,
+ *   pointing at the region it folds through `aria-controls`.
+ * - **The triangle is an INDICATOR, not a control.** It states the block's
+ *   fold and nothing else. What activating the row does is the host's rule —
+ *   it may open the block's screen rather than fold it — so a triangle that
+ *   claimed to be the fold button would be promising an outcome it does not
+ *   own.
+ * - **The menu is a SIBLING**, because a button may not nest inside a button.
+ *   It is always rendered, muted, and strengthens on hover / focus / open:
+ *   Houston forbids hover-GATED affordances, since a control that exists only
+ *   under the cursor is unreachable by touch and invisible to anyone scanning.
+ *
+ * The row is also the drag handle, exactly as before. @dnd-kit's pointer sensor
+ * has a 4px activation distance, so a click with no movement still activates.
  */
 export function SidebarGroupHeader({
-  group,
-  count,
+  name,
+  icon,
+  trailing,
+  collapsed,
+  contentId,
   labels,
+  active,
+  onActivate,
+  menu,
   dragAttributes,
   dragListeners,
-  maxNameRunes,
-  startRenaming,
-  onRenameStarted,
-  onToggleCollapsed,
-  onEditContext,
-  onRenameGroup,
-  onDeleteGroup,
-  onLeave,
-  onCancelRename,
+  rename,
+  dataAttrs,
 }: SidebarGroupHeaderProps) {
-  const [renaming, setRenaming] = useState(false);
-  const [nameDraft, setNameDraft] = useState(group.name);
-  const inputRef = useRef<HTMLInputElement>(null);
-  // A rename session reports its outcome EXACTLY ONCE. Escape ends it
-  // synchronously and the input then unmounts; browsers disagree on whether
-  // removing a focused node also fires blur, and this latch makes that
-  // disagreement unobservable instead of a double `onCancelRename`.
-  const ended = useRef(false);
+  // Hooks may not be conditional, so a block with no rename affordance still
+  // runs the session with inert callbacks and simply never begins one.
+  const session = useGroupRename({
+    name,
+    maxRunes: rename?.maxRunes,
+    onCommit: rename?.onCommit ?? NOOP,
+    onCancel: NOOP,
+  });
 
-  // A freshly created group opens straight into rename.
-  useEffect(() => {
-    if (startRenaming) {
-      ended.current = false;
-      setNameDraft(group.name);
-      setRenaming(true);
-      onRenameStarted?.();
-    }
-  }, [startRenaming, group.name, onRenameStarted]);
-
-  // Focus + select ONCE when rename mode begins (not on every render).
-  useEffect(() => {
-    if (renaming) {
-      const el = inputRef.current;
-      el?.focus();
-      el?.select();
-    }
-  }, [renaming]);
-
-  // End the session. A trimmed name that is actually new IS the commit;
-  // everything else is an abandonment and must SAY so, or a host that mints the
-  // group on commit cannot tell a pending name from one the user walked away
-  // from. Enter over an empty or unchanged field abandons for the same reason a
-  // blur does: nothing was named, so nothing can be created.
-  const endRename = (commit: boolean) => {
-    if (ended.current) return;
-    ended.current = true;
-    const trimmed = nameDraft.trim();
-    if (commit && trimmed && trimmed !== group.name) {
-      onRenameGroup?.(group.id, trimmed);
-    } else {
-      onCancelRename?.(group.id);
-    }
-    setRenaming(false);
-  };
-
-  const beginRename = () => {
-    ended.current = false;
-    setNameDraft(group.name);
-    setRenaming(true);
-  };
+  if (session.renaming) {
+    return (
+      <div className={sidebarRowButtonClasses.root} {...(dataAttrs ?? {})}>
+        <input
+          ref={session.inputRef}
+          value={session.draft}
+          placeholder={labels.newGroupPlaceholder}
+          onChange={(e) => session.setDraft(e.target.value)}
+          onBlur={() => session.end(true)}
+          onKeyDown={(e) => {
+            // Keep every keystroke in the field: the sortable wrapper spreads
+            // @dnd-kit's keyboard activators, whose Space/Enter would otherwise
+            // start a drag mid-type and swallow the character.
+            e.stopPropagation();
+            if (e.key === "Enter") session.end(true);
+            if (e.key === "Escape") session.end(false);
+          }}
+          className={sidebarRowButtonClasses.input}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div
-      data-sidebar-group-header={group.id}
-      className={sidebarGroupClasses.header}
-    >
-      <button
-        type="button"
-        aria-expanded={!group.collapsed}
-        aria-label={group.name}
-        onClick={() => onToggleCollapsed?.(group.id)}
-        className={sidebarGroupClasses.caret}
-        {...dragAttributes}
-        {...dragListeners}
-      >
-        <ChevronRight
-          className={cn(
-            "size-3 transition-transform duration-150",
-            !group.collapsed && "rotate-90",
-          )}
-        />
-      </button>
-      {renaming ? (
-        <input
-          ref={inputRef}
-          value={nameDraft}
-          placeholder={labels.newGroupPlaceholder}
-          onChange={(e) =>
-            setNameDraft(
-              maxNameRunes === undefined
-                ? e.target.value
-                : clampToRunes(e.target.value, maxNameRunes),
-            )
-          }
-          onBlur={() => endRename(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") endRename(true);
-            if (e.key === "Escape") endRename(false);
-          }}
-          className={sidebarGroupClasses.nameInput}
-        />
-      ) : (
-        <button
-          type="button"
-          className={sidebarGroupClasses.name}
-          onClick={() => onToggleCollapsed?.(group.id)}
-          {...dragAttributes}
-          {...dragListeners}
-        >
-          {group.name}
-        </button>
-      )}
-      {!renaming && <span className={sidebarGroupClasses.count}>{count}</span>}
-      {!renaming && (
-        <SidebarGroupMenu
-          group={group}
-          labels={labels}
-          onEditContext={onEditContext}
-          onStartRename={onRenameGroup ? beginRename : undefined}
-          onDeleteGroup={onDeleteGroup}
-          onLeave={onLeave}
-        />
-      )}
-    </div>
+    <SidebarRowButton
+      label={name}
+      icon={icon}
+      trailing={trailing}
+      depth="block"
+      active={active}
+      title={name}
+      onActivate={onActivate}
+      disclosure={{ expanded: !collapsed, contentId }}
+      dragAttributes={dragAttributes}
+      dragListeners={dragListeners}
+      dataAttrs={dataAttrs}
+      affordance={
+        // A block with no menu still reserves the affordance column: it sits in
+        // a stack of blocks that HAVE one, and a name that gets 28px more room
+        // on one row truncates at a different point from every other team's,
+        // which reads as a second list.
+        menu?.(session.begin) ?? (
+          <span aria-hidden="true" className={sidebarRowAffordanceGutter} />
+        )
+      }
+    />
   );
 }

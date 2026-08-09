@@ -1,18 +1,14 @@
 import { useDroppable } from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@houston-ai/core";
-import { SidebarDefaultHeader } from "./sidebar-default-header";
+import { useId } from "react";
+import { SidebarAddRow } from "./sidebar-add-row";
+import { SidebarBlockContent } from "./sidebar-block-content";
+import { SidebarBlockHeader } from "./sidebar-block-header";
 import { containerDndId, groupDndId } from "./sidebar-dnd";
-import { SidebarGroupHeader } from "./sidebar-group-header";
 import type { SidebarDefaultGroupView, SidebarSection } from "./sidebar-groups";
 import type { SidebarRowContext } from "./sidebar-row-context";
-import { SidebarSectionRows } from "./sidebar-section-rows";
-import { SidebarSortableRow } from "./sidebar-sortable-row";
 
 export interface SidebarGroupSectionProps {
   section: SidebarSection;
@@ -20,63 +16,68 @@ export interface SidebarGroupSectionProps {
   /** Renders the trailing default section as a labelled block (see the type).
    *  Ignored for a named group's section. */
   defaultGroup?: SidebarDefaultGroupView;
-  /** An item drag is in flight (opens the default section as a drop-out zone). */
-  dragging?: boolean;
-  /** This group is the current drop target — highlight it. */
+  /** This group is the current drop target — highlight it. Only ever true for
+   *  the block a drag STARTED in, since a drag may not leave it. */
   highlight?: boolean;
-  /** Play a one-shot confirmation pulse (an agent just landed in this group). */
-  pulse?: boolean;
   /** Rune ceiling for the header's inline rename; absent means no cap. */
   maxNameRunes?: number;
-  /** This group should open directly in inline-rename (just created). */
-  renaming?: boolean;
-  onRenameHandled?: () => void;
-  onToggleCollapsed?: (groupId: string) => void;
-  onEditGroupContext?: (groupId: string) => void;
+  onAdd?: (groupId: string | null) => void;
+  addItemLabel?: string;
+  addItemDataAttrs?: Record<string, string>;
+  /** The header row was activated. What that MEANS is the host's: it may open
+   *  the block's screen, fold it, or both (see {@link SidebarProps}). */
+  onActivateGroup?: (groupId: string) => void;
+  /** The DEFAULT block's header was activated. Its own callback because that
+   *  block is not a stored group and has no id to hand back. */
+  onActivateDefault?: () => void;
   onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   /** Leave the group (the caller's membership, not the group). */
   onLeaveGroup?: (groupId: string) => void;
-  /** The group's inline rename ended without committing. */
-  onCancelRenameGroup?: (groupId: string) => void;
 }
 
 /**
- * One sidebar section for the @dnd-kit grouped list: a collapsible, drag-to-
- * reorder group header (null for the trailing default section) plus a droppable
- * container holding this section's destination rows and then its item rows as a
- * vertical {@link SortableContext}. An empty group shows a faint drop hint and
- * keeps a drop target. Collapsing folds away the agents only — the destination
- * rows stay. Rows animate to make room via @dnd-kit; the lifted copy is the
- * parent's DragOverlay.
+ * One block of the grouped sidebar: a header row, then a droppable container
+ * holding the block's item rows as a vertical {@link SortableContext}.
  *
- * Given `defaultGroup`, the trailing default section renders as a labelled,
- * non-collapsible block instead of a bare list — same anatomy as a group, minus
- * the affordances the container itself does not have.
+ * **Collapsing folds away everything under the header.** The hole it leaves
+ * (the open view's block is now a single row) is answered by the header itself:
+ * the host marks it `active` and it wears the selected fill, and by the header's
+ * own `trailing` slot, which rolls up what the hidden rows were signalling.
+ *
+ * **The droppable stays mounted while collapsed.** Only the CONTENT is
+ * conditional, so a folded block still measures in the drag layer and its own
+ * items can still be reordered back into it. It is NOT a way in from another
+ * block: an item may only be dropped in the block it was picked up from
+ * ({@link useSidebarDragState}).
+ *
+ * The default block renders through the SAME header, so it collapses like any
+ * other. What it still does not get is the affordances the container itself
+ * lacks: no delete, no leave, no sortable handle. It DOES rename, when the host
+ * wires `defaultGroup.onRename` — see {@link SidebarBlockHeader}.
  */
 export function SidebarGroupSection({
   section,
   ctx,
   defaultGroup,
-  dragging,
   highlight,
-  pulse,
   maxNameRunes,
-  renaming,
-  onRenameHandled,
-  onToggleCollapsed,
-  onEditGroupContext,
+  onAdd,
+  addItemLabel,
+  addItemDataAttrs,
+  onActivateGroup,
+  onActivateDefault,
   onRenameGroup,
   onDeleteGroup,
   onLeaveGroup,
-  onCancelRenameGroup,
 }: SidebarGroupSectionProps) {
   const { group, groupId, items } = section;
-  const collapsed = group?.collapsed ?? false;
+  const contentId = useId();
   // A labelled block: a named group, or the default section once the caller
-  // gives it a name. Both indent their rows and both carry section rows.
+  // gives it a name. Both indent their rows.
   const block = group ?? (groupId === null ? defaultGroup : undefined);
-  const sectionRows = block?.sections ?? [];
+  // With no block there is no header, so there is nothing to fold behind.
+  const collapsed = block ? (block.collapsed ?? false) : false;
 
   const header = useSortable({
     id: group ? groupDndId(group.id) : "grp:__default__",
@@ -99,82 +100,65 @@ export function SidebarGroupSection({
       }}
       className={cn(
         "flex flex-col",
-        block && "pt-2.5",
+        // NO spacing of its own. A block is not a section floating above the
+        // next one: it is a run of rows in the same list, so it stacks on the
+        // list's own `space-y-0.5` rhythm and nothing else. Anything extra
+        // between two teams reads as a gap in the rail, which is exactly what
+        // it is — Linear's rail keeps one rhythm from the band to the last row.
         header.isDragging && "opacity-50",
       )}
     >
       <div
         data-drop-active={highlight ? "" : undefined}
         className={cn(
-          "flex flex-col rounded-lg transition-colors duration-150",
-          // Subtle fill on the section (group OR ungrouped) while it is the
-          // active drop target — a quiet "drop here" for both, no ring.
+          "flex flex-col gap-px rounded-lg transition-colors duration-150",
+          // Subtle fill on the section while it is the active drop target — a
+          // quiet "drop here", no ring.
           highlight && "bg-hover/60 pb-1",
-          // One-shot confirmation flash after an agent lands in this group.
-          pulse && "sidebar-group-dropped",
         )}
       >
-        {group && (
-          <SidebarGroupHeader
+        {block && (
+          <SidebarBlockHeader
+            block={block}
             group={group}
-            count={items.length}
-            labels={ctx.labels}
-            dragAttributes={header.attributes}
-            dragListeners={header.listeners}
+            // Only the DEFAULT block's own rename, and only when this section
+            // IS that block: `block` is the union, so the header cannot read
+            // the field off it.
+            onRenameDefault={group ? undefined : defaultGroup?.onRename}
+            ctx={ctx}
+            contentId={contentId}
+            dragAttributes={group ? header.attributes : undefined}
+            dragListeners={group ? header.listeners : undefined}
+            collapsed={collapsed}
             maxNameRunes={maxNameRunes}
-            startRenaming={renaming}
-            onRenameStarted={onRenameHandled}
-            onToggleCollapsed={onToggleCollapsed}
-            onEditContext={onEditGroupContext}
+            onActivateGroup={onActivateGroup}
+            onActivateDefault={onActivateDefault}
             onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
-            onLeave={onLeaveGroup}
-            onCancelRename={onCancelRenameGroup}
+            onLeaveGroup={onLeaveGroup}
           />
         )}
-        {!group && defaultGroup && (
-          <SidebarDefaultHeader name={defaultGroup.name} count={items.length} />
-        )}
 
+        {/* The droppable is ALWAYS mounted, even collapsed — see the header. */}
         <div
           ref={setDropRef}
+          id={contentId}
           data-sidebar-drop-section={groupId ?? ""}
-          className={cn(
-            "flex flex-col rounded-md transition-colors duration-150",
-            // Indent a block's rows (no dividing line — spacing carries hierarchy).
-            block && "mt-0.5 pl-3",
-            // While dragging, the ungrouped section reserves a comfortable
-            // target below the groups so an agent can always be pulled back out
-            // of a group (and it clearly glows).
-            !group && dragging && "min-h-[52px]",
-          )}
+          className="flex flex-col gap-px rounded-md transition-colors duration-150"
         >
-          <SidebarSectionRows rows={sectionRows} />
-          {/* Collapse folds away the MEMBERS only. The destination rows above
-              are how you get back to the team — Mission Control and Team
-              Settings. Hiding them too would erase the team the user is
-              currently looking at from the rail. */}
           {!collapsed && (
-            <>
-              <SortableContext
-                items={items.map((it) => `item:${it.id}`)}
-                strategy={verticalListSortingStrategy}
-              >
-                {items.map((item) => (
-                  <SidebarSortableRow
-                    key={item.id}
-                    item={item}
-                    containerId={groupId}
-                    ctx={ctx}
-                  />
-                ))}
-              </SortableContext>
-              {block && items.length === 0 && (
-                <div className="px-3 py-1.5 text-[11px] text-ink-muted/40">
-                  {ctx.labels.emptyGroupHint}
-                </div>
-              )}
-            </>
+            <SidebarBlockContent
+              items={items}
+              containerId={groupId}
+              ctx={ctx}
+            />
+          )}
+          {!collapsed && block && onAdd && addItemLabel && (
+            <SidebarAddRow
+              label={addItemLabel}
+              onClick={() => onAdd(groupId)}
+              dataAttrs={addItemDataAttrs}
+            />
           )}
         </div>
       </div>
