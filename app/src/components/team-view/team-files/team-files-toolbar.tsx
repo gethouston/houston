@@ -67,7 +67,15 @@ export function TeamFilesToolbar({
             {t("files.newMenu")} <ChevronDown aria-hidden className="size-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent
+          align="end"
+          // New-folder mounts an autofocused inline input; the menu's default
+          // close behavior then RESTORES focus to this trigger a beat later,
+          // blurring the input, whose blur-cancel kills the creation before
+          // the user ever sees it. The menu's actions all move focus onward
+          // (an input, a file picker), so the trigger never reclaims it.
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
           {direct ? (
             <ActionItems actions={direct} />
           ) : (

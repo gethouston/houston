@@ -128,28 +128,37 @@ export function useSidebarLayout(
   const layout = useSidebarLayoutValue(workspaceId);
 
   const mutation = useMutation({
-    mutationFn: (next: SidebarLayout) =>
-      tauriSidebar.setLayout(workspaceId as string, next),
-    onMutate: async (next) => {
+    mutationFn: (vars: { next: SidebarLayout; prev?: SidebarLayout }) =>
+      tauriSidebar.setLayout(workspaceId as string, vars.next),
+    onMutate: async () => {
+      // The optimistic cache write already happened, SYNCHRONOUSLY, inside
+      // `apply` — it cannot live here. `onMutate` runs behind an await
+      // (`cancelQueries` is a microtask), so two applies issued in the same
+      // tick would BOTH read the pre-write cache and the second would persist
+      // a layout computed without the first's change. That is exactly how
+      // "create team → stamp its identity" once wrote the new group and then
+      // clobbered it with an empty layout, silently losing the user's team.
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<SidebarLayout>(key);
-      qc.setQueryData<SidebarLayout>(key, next);
-      return { prev };
     },
-    onError: (_err, _next, ctx) => {
-      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    onError: (_err, vars) => {
+      if (vars.prev) qc.setQueryData(key, vars.prev);
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: key });
     },
   });
 
-  /** Apply a pure op to the FRESHEST cached layout, then mutate. Reading the
-   *  cache (not the closed-over `layout`) keeps overlapping drags composing. */
+  /** Apply a pure op to the FRESHEST cached layout, write the result into the
+   *  cache IN THE SAME TICK, then persist. The synchronous cache write is the
+   *  whole composition guarantee: the next `apply` — even one issued
+   *  back-to-back in the same handler — reads this one's result. */
   const apply = (op: (current: SidebarLayout) => SidebarLayout): void => {
     if (!workspaceId) return;
-    const next = op(normalizeSidebarLayout(qc.getQueryData(key)));
-    mutation.mutate(normalize ? normalize(next) : next);
+    const prev = qc.getQueryData<SidebarLayout>(key);
+    const computed = op(normalizeSidebarLayout(prev));
+    const next = normalize ? normalize(computed) : computed;
+    qc.setQueryData<SidebarLayout>(key, next);
+    mutation.mutate({ next, prev });
   };
 
   return {

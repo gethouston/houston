@@ -15,6 +15,7 @@ import {
   useSetAgentTeamMemberOwner,
 } from "../../hooks/queries";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
+import { useUIStore } from "../../stores/ui";
 import { AgentShareAddPeople } from "../agent/agent-share-add-people";
 import { TEAM_NAME_MAX_RUNES } from "../team-view/team-members-model";
 import { buildTeamIdentityChoices } from "./team-identity";
@@ -44,18 +45,25 @@ export function CreateAgentTeamDialog(props: {
     setColor(undefined);
     setMemberIds([]);
   };
+  const openTeamView = useUIStore((s) => s.openTeamView);
   const submit = async () => {
     if (!trimmed || tooLong || create.isPending) return;
+    let createdId: string | null = null;
     if (props.serverBacked) {
       const team = await create.mutateAsync({ name: trimmed, icon, color });
       for (const userId of memberIds) {
         await addMember.mutateAsync({ teamId: team.id, userId, owner: false });
       }
+      createdId = team.id;
     } else {
       const id = props.sidebar.createGroup(trimmed);
       if (id) props.sidebar.setGroupIdentity(id, { icon, color });
+      createdId = id;
     }
     close();
+    // You made a place; you land in it (the Linear grammar). Landing on the
+    // empty board is also what makes the next step obvious: add an agent.
+    if (createdId) openTeamView(createdId, "mission-control");
   };
 
   return (

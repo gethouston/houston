@@ -34,7 +34,9 @@ export function FilesColumnBand({
   onSort: (key: SortKey) => void;
 }) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: CSS grid preserves the shared column geometry; the sortable buttons remain the focusable controls.
     <div
+      role="row"
       className={cn("min-w-0 items-center", HEADER_ROW, LIST_INSET)}
       style={{ display: "grid", gridTemplateColumns: colGrid(false) }}
     >
@@ -79,7 +81,9 @@ export function FilesAgentRow({
   collapseLabel: string;
 }) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: CSS grid preserves the shared column geometry; the disclosure and actions remain the focusable controls.
     <div
+      role="row"
       className={cn(ROW_CLASS, LIST_INSET)}
       style={{ display: "grid", gridTemplateColumns: colGrid(false) }}
     >

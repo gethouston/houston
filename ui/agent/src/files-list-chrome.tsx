@@ -159,41 +159,44 @@ export function HeaderCell({
 }) {
   const active = sortKey === col;
   return (
-    <button
-      type="button"
-      onClick={() => onSort(col)}
-      style={style}
-      className={cn(
-        // The sort caret hugs its label instead of being pushed to the column's
-        // far edge — over a 1fr Name column that put it a screen away from the
-        // word it describes.
-        "flex h-full items-center gap-1.5 rounded-sm px-2 font-medium transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-        META_TEXT,
-        className,
-      )}
-    >
-      <span className="truncate">{label}</span>
-      {active && (
-        <svg
-          className="size-[8px] shrink-0"
-          viewBox="0 0 8 6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          role="img"
-          aria-label={
-            sortDir === "asc" ? "sorted ascending" : "sorted descending"
-          }
-        >
-          {sortDir === "asc" ? (
-            <path d="M1 4.5L4 1.5L7 4.5" />
-          ) : (
-            <path d="M1 1.5L4 4.5L7 1.5" />
-          )}
-        </svg>
-      )}
-    </button>
+    // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: the CSS-grid cell needs columnheader semantics while its nested sort button remains the focusable control.
+    <span role="columnheader" className="h-full min-w-0">
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        style={style}
+        className={cn(
+          // The sort caret hugs its label instead of being pushed to the column's
+          // far edge — over a 1fr Name column that put it a screen away from the
+          // word it describes.
+          "flex h-full w-full items-center gap-1.5 rounded-sm px-2 font-medium transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          META_TEXT,
+          className,
+        )}
+      >
+        <span className="truncate">{label}</span>
+        {active && (
+          <svg
+            className="size-[8px] shrink-0"
+            viewBox="0 0 8 6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            role="img"
+            aria-label={
+              sortDir === "asc" ? "sorted ascending" : "sorted descending"
+            }
+          >
+            {sortDir === "asc" ? (
+              <path d="M1 4.5L4 1.5L7 4.5" />
+            ) : (
+              <path d="M1 1.5L4 4.5L7 1.5" />
+            )}
+          </svg>
+        )}
+      </button>
+    </span>
   );
 }

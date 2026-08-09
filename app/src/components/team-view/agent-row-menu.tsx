@@ -68,15 +68,38 @@ export function AgentRowMenu({
   });
   const moveAgent = useMoveAgentTeam();
 
+  const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pendingTeam, setPendingTeam] = useState<TeamView | null>(null);
 
   const moveTargets = moveTargetTeams(teams, teamId);
 
+  // Items that OPEN A DIALOG must not ride Radix's default select-close: the
+  // close sequence lets the click fall through to the roster row underneath,
+  // which drills into the agent and unmounts this menu — and the dialog its
+  // selection just asked for dies with it. Prevent the default, close the
+  // (controlled) menu ourselves, then open the dialog.
+  const selectIntoDialog = (event: Event, open: () => void) => {
+    event.preventDefault();
+    setMenuOpen(false);
+    open();
+  };
+
   return (
-    <>
-      <DropdownMenu>
+    // `display: contents`, so the wrapper adds no box — it exists to STOP
+    // PROPAGATION. Radix portals the menu and the dialogs to document.body,
+    // but React synthetic events still bubble through the REACT tree: a click
+    // on a portaled menu item would reach the roster row's own onClick and
+    // drill into the agent, unmounting this menu and the dialog it just
+    // opened. Every event that starts in this cluster ends in it.
+    // biome-ignore lint/a11y/noStaticElementInteractions: propagation fence, not an interactive surface
+    <span
+      className="contents"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -88,7 +111,11 @@ export function AgentRowMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setRenaming(true)}>
+          <DropdownMenuItem
+            onSelect={(event) =>
+              selectIntoDialog(event, () => setRenaming(true))
+            }
+          >
             {t("teamView.agentMenu.rename")}
           </DropdownMenuItem>
           <AgentSidebarColorMenu
@@ -107,7 +134,9 @@ export function AgentRowMenu({
                   <DropdownMenuItem
                     key={team.id}
                     className="gap-2"
-                    onSelect={() => setPendingTeam(team)}
+                    onSelect={(event) =>
+                      selectIntoDialog(event, () => setPendingTeam(team))
+                    }
                   >
                     <TeamGlyph team={team} className="size-4 shrink-0" />
                     <span className="truncate">{team.name}</span>
@@ -121,7 +150,9 @@ export function AgentRowMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
-            onSelect={() => setDeleting(true)}
+            onSelect={(event) =>
+              selectIntoDialog(event, () => setDeleting(true))
+            }
           >
             {t("teamView.agentMenu.delete")}
           </DropdownMenuItem>
@@ -172,6 +203,6 @@ export function AgentRowMenu({
           void actions.remove(agent.id);
         }}
       />
-    </>
+    </span>
   );
 }
