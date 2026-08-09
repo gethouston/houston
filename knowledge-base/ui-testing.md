@@ -239,8 +239,15 @@ pnpm --filter houston-web test:visual:update  # re-record (intentional change on
 - **Bless log.** A re-record that absorbs drift from EARLIER commits (not just
   the one in hand) gets a line here, so the bless is on the record instead of
   hiding inside a binary diff:
-  - *2026-08-08, the sidebar row-primitive unification* — **DEFERRED, not yet
-    blessed.** Every interactive line in the rail now renders through one
+  - *2026-08-09, the teams-first freeze bless* — ALL eight screens force-
+    re-recorded (`--update-snapshots=all`) on darwin AND in the pinned linux
+    container, in the freeze that shipped the PageHeader family, the Safari
+    lozenge track, Files v3 accordions, the Integrations header adoption and
+    the search unification. This bless also absorbs the row-primitive drift
+    the previous entry deferred.
+  - *2026-08-08, the sidebar row-primitive unification* — **superseded: blessed
+    by the 2026-08-09 entry above.**
+    (original note) **DEFERRED, not yet blessed.** Every interactive line in the rail now renders through one
     `SidebarRowButton` (`ui/layout`), so the board and chat baselines no longer
     depict the rail they show. The re-record is deliberately held until the
     change is signed off in the running app, so the screens are blessed once
