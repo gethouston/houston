@@ -1,4 +1,4 @@
-import { Button } from "@houston-ai/core";
+import { Button, CatalogGrid } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,8 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { AgentPickerDialog } from "../agent-picker-dialog";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
+import { PageHeaderTools } from "../shell/page-header/page-header-tools";
+import { CustomControls } from "./custom-controls";
 import { CustomEmptyState, CustomLoadErrorState } from "./custom-empty-state";
 import {
   CustomIntegrationDialogs,
@@ -119,7 +121,10 @@ export function CustomIntegrationsSection({
   );
 
   const rowsGrid = (
-    <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
+    // The shared container-aware grid, not a viewport breakpoint: this list
+    // renders inside the centered catalog column, and a viewport rule would
+    // count the window's width instead of the column's.
+    <CatalogGrid>
       {visible.map((integration) => (
         <CustomIntegrationRow
           key={integration.slug}
@@ -130,7 +135,7 @@ export function CustomIntegrationsSection({
           onRemove={(i) => selection.openRemove(i.slug)}
         />
       ))}
-    </div>
+    </CatalogGrid>
   );
 
   return (
@@ -170,16 +175,20 @@ export function CustomIntegrationsSection({
         )
       ) : variant === "tab" ? (
         // The Custom MODE (HOU-980 review): the same shell grammar as the
-        // Composio mode — this mode's search + Add over an Installed card.
+        // Composio mode — this mode's search + Add through the header's tools
+        // portal, over an Installed card.
         <>
-          <CustomModeShell
-            query={query}
-            onQueryChange={setQuery}
-            addButton={addButton}
-            count={visible.length}
-          >
-            {rowsGrid}
-          </CustomModeShell>
+          <PageHeaderTools>
+            {(inStrip) => (
+              <CustomControls
+                query={query}
+                onQueryChange={setQuery}
+                addButton={addButton}
+                variant={inStrip ? "strip" : "row"}
+              />
+            )}
+          </PageHeaderTools>
+          <CustomModeShell count={visible.length}>{rowsGrid}</CustomModeShell>
           {visible.length === 0 && (
             <p className="text-sm text-ink-muted">{t("custom.noResults")}</p>
           )}

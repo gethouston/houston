@@ -73,10 +73,8 @@
     "loading": "Loading apps..."
   },
   "home": {
-    "title": "Integrations",
-    "description": "Work with your agents across your favorite tools.",
-    "descriptionCount": "Work with your agents across {{count, number}} of your favorite tools.",
     "tabs": {
+      "label": "Integration sections",
       "catalog": "Integrations",
       "custom": "Custom integrations"
     },

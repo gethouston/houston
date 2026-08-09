@@ -73,10 +73,8 @@
     "loading": "Cargando apps..."
   },
   "home": {
-    "title": "Integraciones",
-    "description": "Trabaja con tus agentes en tus herramientas favoritas.",
-    "descriptionCount": "Trabaja con tus agentes en {{count, number}} de tus herramientas favoritas.",
     "tabs": {
+      "label": "Secciones de integraciones",
       "catalog": "Integraciones",
       "custom": "Integraciones personalizadas"
     },

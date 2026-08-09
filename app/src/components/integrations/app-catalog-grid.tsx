@@ -1,6 +1,5 @@
-import { Spinner } from "@houston-ai/core";
+import { CatalogSearchField, Spinner } from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
-import { Search } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FilterCombobox } from "../shell/filter-combobox.tsx";
@@ -91,16 +90,13 @@ export function AppCatalogGrid({
   return (
     <div>
       <div className="mb-3 flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("picker.searchPlaceholder")}
-            className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
-          />
-        </div>
+        <CatalogSearchField
+          className="flex-1"
+          value={search}
+          onChange={setSearch}
+          label={t("picker.searchPlaceholder")}
+          clearLabel={t("home.clearSearch")}
+        />
         {categoryOptions.length > 0 && (
           <FilterCombobox
             ariaLabel={t("browse.allCategories")}

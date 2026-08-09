@@ -24,9 +24,10 @@ export const CATALOG_INSTALLED_PREVIEW_CAP = 6;
  * The controls row is STICKY: it pins to the top of the surface's scroll
  * container so search + filters stay reachable through a long catalog, fading
  * in an opaque `popover` fill (transparent at rest) only while rows pass behind
- * it. The installed section is a quiet CONTAINED panel (a rounded, hairline-
- * bordered `card` surface) so "yours" reads as its own thing above the flat
- * "available" browse below.
+ * it. The installed section is FLAT, exactly like the available browse below
+ * it: its heading and the sections' shared vertical rhythm are the whole
+ * separation. It wore a bordered card once, and the box read as a foreign
+ * widget on an otherwise borderless page.
  *
  * Domain-blind like the rest of the catalog family: the consumer owns the
  * controls, the strip's rows, each tab's content, and every string. With a
@@ -103,7 +104,7 @@ export function CatalogShell({
 
       <div className={cn("space-y-8", controls != null && "mt-4")}>
         {installed != null && (
-          <section className="rounded-2xl border border-line bg-card p-4">
+          <section>
             <CatalogSectionHeader
               title={installedTitle}
               count={installedCount}
