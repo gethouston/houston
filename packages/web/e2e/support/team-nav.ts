@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * Navigating the teams shell, for specs that used to click an agent tab.
@@ -15,6 +15,12 @@ import type { Locator, Page } from "@playwright/test";
  * rail switches sections any more.
  *
  * English is forced by the boot seed, so label selectors are stable.
+ *
+ * The functional desktop projects use a 1440px-wide viewport deliberately:
+ * after the rail takes its space, the team strip remains above its one-row
+ * threshold and these helpers exercise the full lozenge grammar. Compact
+ * switcher behavior belongs in explicit narrow-viewport specs, rather than
+ * becoming the accidental default for every desktop flow.
  */
 
 /**
@@ -129,6 +135,101 @@ export function teamTab(page: Page, section: TeamSection): Locator {
   );
 }
 
+/** The team row to return through when no team screen is on the glass: the
+ *  expanded block if one exists, else the FIRST block. Requiring an expanded
+ *  one would strand the helper on a top-level view after every block folded —
+ *  a folded header is still a door (clicking it opens the team). */
+function currentTeamRow(page: Page): Locator {
+  const headers = rail(page).locator(
+    "[data-sidebar-group-header], [data-sidebar-default-header]",
+  );
+  return headers
+    .filter({ has: page.locator("button[aria-expanded='true']") })
+    .or(headers)
+    .first();
+}
+
+/** The compact replacement for the full team-section lozenge cluster. */
+function teamSectionSwitcher(page: Page): Locator {
+  return screen(page).locator("[data-team-section-switcher]");
+}
+
+/** Assert the selected section in either the full strip or compact menu. */
+export async function expectTeamSectionSelected(
+  page: Page,
+  section: TeamSection,
+): Promise<void> {
+  const tab = teamTab(page, section);
+  if (await tab.isVisible()) {
+    await expect(tab).toHaveAttribute("aria-current", "page");
+    return;
+  }
+
+  const switcher = teamSectionSwitcher(page);
+  await expect(switcher).toBeVisible();
+  await switcher.click();
+  await expect(
+    page.locator(
+      `[role='menuitemcheckbox'][data-team-section-tab='${TEAM_SECTION_TAB_IDS[section]}']`,
+    ),
+  ).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+}
+
+/** Assert exactly which sections the current team offers in either layout. */
+export async function expectTeamSections(
+  page: Page,
+  sections: readonly TeamSection[],
+): Promise<void> {
+  const tabs = teamTabs(page);
+  if (await tabs.first().isVisible()) {
+    await expect(tabs).toHaveCount(sections.length);
+    for (const section of sections)
+      await expect(teamTab(page, section)).toBeVisible();
+    return;
+  }
+
+  const switcher = teamSectionSwitcher(page);
+  await expect(switcher).toBeVisible();
+  await switcher.click();
+  const menuSections = page.locator(
+    "[role='menuitemcheckbox'][data-team-section-tab]",
+  );
+  await expect(menuSections).toHaveCount(sections.length);
+  for (const section of sections) {
+    await expect(
+      page.locator(
+        `[role='menuitemcheckbox'][data-team-section-tab='${TEAM_SECTION_TAB_IDS[section]}']`,
+      ),
+    ).toBeVisible();
+  }
+  await page.keyboard.press("Escape");
+}
+
+async function clickVisibleTeamSection(
+  page: Page,
+  section: TeamSection,
+): Promise<boolean> {
+  const tab = teamTab(page, section);
+  if (await tab.isVisible()) {
+    await tab.click();
+    return true;
+  }
+
+  const switcher = teamSectionSwitcher(page);
+  if (await switcher.isVisible()) {
+    await switcher.click();
+    await page
+      .locator(
+        `[role='menuitemcheckbox'][data-team-section-tab='${TEAM_SECTION_TAB_IDS[section]}']`,
+      )
+      .click();
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Open a section of the team that is already OPEN.
  *
@@ -146,7 +247,27 @@ export async function openTeamSection(
   page: Page,
   section: TeamSection,
 ): Promise<void> {
-  await teamTab(page, section).click();
+  const teamRow = currentTeamRow(page);
+  // `.first()` on every or-chain wait: more than one surface being visible at
+  // once (tab cluster on screen AND the team's rail row) is the NORMAL state,
+  // and a bare or-chain trips strict mode exactly then. These waits ask "has
+  // at least one navigation surface arrived", not "is there exactly one".
+  await expect(
+    teamTab(page, section).or(teamSectionSwitcher(page)).or(teamRow).first(),
+    `a team navigation surface for "${section}" should become available`,
+  ).toBeVisible();
+
+  if (await clickVisibleTeamSection(page, section)) return;
+
+  await teamRow.getByRole("button").first().click();
+  await expect(
+    teamTab(page, section).or(teamSectionSwitcher(page)).first(),
+    `the team section controls should appear after returning to the team`,
+  ).toBeVisible();
+
+  if (!(await clickVisibleTeamSection(page, section))) {
+    throw new Error(`Cannot open team section "${section}"`);
+  }
 }
 
 /** The sections of the agent settings rail, as it labels them. */

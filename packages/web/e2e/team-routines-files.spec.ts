@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { type TeamSection, teamTab } from "./support/team-nav";
+import { openTeamSection, type TeamSection } from "./support/team-nav";
 
 /**
  * The team view's ROUTINES and FILES sections, driven from the rail that opens
@@ -31,12 +31,6 @@ function screen(page: Page): Locator {
   // The screen ON THE GLASS: several kept-alive screens sit in the DOM at
   // once, so a page-level lookup would match the hidden ones too.
   return page.locator("[data-screen-active='true']");
-}
-
-/** A tab in the team screen's own tab row: the ONE section switch there is,
- *  now that the rail draws no section rows. */
-function sectionTab(page: Page, section: TeamSection): Locator {
-  return teamTab(page, section);
 }
 
 function routineRows(page: Page): Locator {
@@ -97,7 +91,7 @@ async function routineEnabled(
 async function openSection(page: Page, label: TeamSection): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
-  await sectionTab(page, label).click();
+  await openTeamSection(page, label);
 }
 
 test("Routines merges the team's agents into one list, each row naming its owner", async ({
@@ -185,7 +179,7 @@ test("the Routines dropdown narrows the list to one agent, and drops the owner c
   // the rail narrows the BOARD; coming back to Routines still shows the whole
   // team, because a tab always opens its section team-wide.
   await rail(page).getByText("Kai", { exact: true }).click();
-  await sectionTab(page, "Routines").click();
+  await openTeamSection(page, "Routines");
   await expect(routineRows(page)).toHaveCount(2);
   await expect(
     screen(page).getByRole("button", { name: "All agents" }),
@@ -213,8 +207,8 @@ test("the Routines dropdown narrows the list to one agent, and drops the owner c
 
   // Leaving and coming back opens the section team-wide again: the filter is
   // the section's, and the section is remounted per team.
-  await sectionTab(page, "Files").click();
-  await sectionTab(page, "Routines").click();
+  await openTeamSection(page, "Files");
+  await openTeamSection(page, "Routines");
   await expect(routineRows(page)).toHaveCount(2);
 });
 
@@ -434,7 +428,7 @@ test("Files ignores the rail pin, and drilled-agent actions still work", async (
 
   // Arriving via an agent row pins the board, but Files stays team-wide.
   await rail(page).getByText("Kai", { exact: true }).click();
-  await sectionTab(page, "Files").click();
+  await openTeamSection(page, "Files");
   await expect(
     screen(page).getByRole("button", { name: "Expand Kai files" }),
   ).toBeVisible();
@@ -445,8 +439,13 @@ test("Files ignores the rail pin, and drilled-agent actions still work", async (
 
   // New names the target agent before exposing its actions.
   await screen(page).getByRole("button", { name: "New", exact: true }).click();
+  // Hover opens the agent's submenu; Enter selects the item. A pointer CLICK
+  // here is the one gesture that flakes headlessly: the instant mouse travel
+  // to the submenu leaves the hover-grace area and closes it mid-click.
   await page.getByRole("menuitem", { name: "Kai" }).hover();
-  await page.getByRole("menuitem", { name: "New folder" }).click();
+  const newFolderItem = page.getByRole("menuitem", { name: "New folder" });
+  await expect(newFolderItem).toBeVisible();
+  await newFolderItem.press("Enter");
   const name = page.getByPlaceholder("untitled folder");
   await expect(name).toBeVisible();
   await name.fill("Reports");

@@ -188,7 +188,9 @@ test("clicking a team you are NOT in opens it and folds every other", async ({
   const workToggle = work.getByRole("button", { name: "Work" });
   const defaultToggle = defaultHeader(page).getByRole("button");
 
-  // Boot is on the default team, and both blocks are open.
+  // Home is the first named team. Move to the default team to establish the
+  // "not in Work" starting point, with both blocks open.
+  await defaultToggle.click();
   await expect(litRows(defaultHeader(page))).toHaveCount(1);
   await expect(litRows(work)).toHaveCount(0);
   await expect(defaultToggle).toHaveAttribute("aria-expanded", "true");
@@ -226,8 +228,7 @@ test("clicking the team you are already on folds it, and the screen stays", asyn
   const work = teamHeader(page, WORK_TEAM);
   const toggle = work.getByRole("button", { name: "Work" });
 
-  // Open it (arm 1), then click again (arm 3).
-  await toggle.click();
+  // Home is already this first named team and its block starts open.
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await expect(rail(page).getByText("Houston", { exact: true })).toBeVisible();
 
@@ -256,7 +257,7 @@ test("a folded team rolls its agents' waiting work up onto its header", async ({
 
   const work = teamHeader(page, WORK_TEAM);
   const toggle = work.getByRole("button", { name: "Work" });
-  await toggle.click();
+  // Home is already this first named team and its block starts open.
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
   // Open, NOTHING in the block counts: an agent row shows no needs-you chip at
@@ -316,7 +317,10 @@ test("the default block folds too, and that fold is written to the layout", asyn
   const toggle = defaultHeader(page).getByRole("button");
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-  // Boot opens on the default team, so this is arm 3 straight away.
+  // Home is the first named team. The first click navigates to the default
+  // team; the second folds the team the user is now on.
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
 

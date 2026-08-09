@@ -2,7 +2,11 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
-import { openInbox, screen } from "./support/team-nav";
+import {
+  expectTeamSectionSelected,
+  openInbox,
+  screen,
+} from "./support/team-nav";
 
 /**
  * An @mention on an ARCHIVED mission, opened from the Inbox.
@@ -118,14 +122,9 @@ test("an @mention on an archived mission opens it ON THE ARCHIVE, with its histo
 
   // The nav landed on the agent's TEAM board (the destination every mention row
   // has since the agent tab shell went away) — and on its ARCHIVE, which is the
-  // only surface that can render a task with this status. "Back to tasks"
-  // is the archive's own exit control, so its presence IS the surface.
-  await expect(
-    screen(page).locator("[data-team-section-tab='mission-control']"),
-  ).toHaveAttribute("aria-current", "page");
-  await expect(
-    screen(page).getByRole("button", { name: "Back to tasks" }),
-  ).toBeVisible();
+  // only surface that can render a task with this status. The Archived lozenge
+  // is both the route and the selected-state proof.
+  await expectTeamSectionSelected(page, "Archived");
   await expect(screen(page).getByText(MISSION_TITLE).first()).toBeVisible();
 
   // The mission is SELECTED, not merely listed: its transcript is on screen.
@@ -156,14 +155,9 @@ test("the archived mission's composer still sends, and hands back to the active 
   await composer.fill(FOLLOW_UP);
   await composer.press("Enter");
 
-  // Back on the ACTIVE board: its labelled exit is gone, and the archive is
-  // once again only reachable through the filters row's quiet overflow.
-  await expect(
-    screen(page).getByRole("button", { name: "Back to tasks" }),
-  ).toHaveCount(0);
-  await expect(
-    screen(page).getByRole("button", { name: "More board actions" }),
-  ).toBeVisible();
+  // Back on the ACTIVE board: the team lozenge is current again, while the
+  // archive remains the adjacent section tab.
+  await expectTeamSectionSelected(page, "Tasks");
   await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
     timeout: 15_000,
   });

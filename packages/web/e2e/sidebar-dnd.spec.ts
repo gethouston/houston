@@ -62,10 +62,11 @@ function defaultRows(sidebar: Locator): Locator {
 /** A named team holding nobody yet, created through the rail's own flow. */
 async function createTeamNamed(page: Page, name: string) {
   await startNewTeam(page);
-  const nameInput = page.getByPlaceholder("Team name");
+  const dialog = page.getByRole("dialog", { name: "Create a team" });
+  const nameInput = dialog.getByRole("textbox", { name: "Team name" });
   await nameInput.waitFor({ state: "visible" });
   await nameInput.pressSequentially(name);
-  await nameInput.press("Enter");
+  await dialog.getByRole("button", { name: "Create team" }).click();
 }
 
 test("team create + type name + reorder agents inside the default team", async ({
@@ -80,9 +81,8 @@ test("team create + type name + reorder agents inside the default team", async (
   const sidebar = page.locator("[data-tour-target='agents']");
   const header = page.locator("[data-sidebar-group-header]");
 
-  // Create menu → "New team" opens the block in rename. TYPE the name
-  // char-by-char: a re-focus-and-select on every render used to eat all but the
-  // last keystroke.
+  // Create menu → "New team" opens the identity dialog. Type the name
+  // char-by-char to exercise the real field before submitting it.
   await createTeamNamed(page, "Work");
   await expect(header).toHaveCount(1);
   await expect(sidebar.getByText("Work")).toBeVisible(); // full name, not "k"
@@ -166,10 +166,9 @@ test("a COLLAPSED team is not a way in either", async ({ page }) => {
     .locator("[data-sidebar-default-header]")
     .getByRole("button")
     .click();
-  await expect(header.getByRole("button", { name: "Team" })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
+  await expect(
+    header.getByRole("button", { name: "Team", exact: true }),
+  ).toHaveAttribute("aria-expanded", "false");
 
   await dragOnto(page, sidebar.getByText("Nova", { exact: true }), header);
   await expect(defaultRows(sidebar)).toContainText("Nova");

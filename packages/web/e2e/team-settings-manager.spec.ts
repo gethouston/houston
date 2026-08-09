@@ -117,6 +117,8 @@ function sectionTab(page: Page, section: TeamSection): Locator {
  *  independent of what the rail draws above its agents. */
 async function openTeamOfAgent(page: Page, agentName: string): Promise<void> {
   await rail(page).getByText(agentName, { exact: true }).click();
+  const closePanel = page.getByRole("button", { name: "Close panel" });
+  if (await closePanel.isVisible()) await closePanel.click();
 }
 
 /**
@@ -138,6 +140,8 @@ async function openShell(page: Page): Promise<void> {
   await picker.waitFor({ state: "visible" });
   await page.keyboard.press("Escape");
   await expect(picker).toBeHidden();
+  const closePanel = page.getByRole("button", { name: "Close panel" });
+  if (await closePanel.isVisible()) await closePanel.click();
 }
 
 /** Open one agent's Job description from the Payroll team's settings list. */
@@ -174,7 +178,7 @@ test("a member who manages an agent gets Manage agents on THAT team only", async
   // The team whose agents they only use offers its WORK and nothing else.
   await openTeamOfAgent(page, "Support Bot");
   await expect(
-    screen(page).getByRole("heading", { name: "Support" }),
+    screen(page).getByRole("heading", { name: "Support", level: 1 }),
   ).toBeVisible();
   await expect(sectionTab(page, "Tasks")).toBeVisible();
   await expect(sectionTab(page, "Routines")).toBeVisible();
@@ -267,9 +271,16 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   // Back to the team, then into an agent of the SAME team they only use: the
   // page is reachable (it is honest — they can see what the agent is told) and
   // renders read-only. The gateway is the real enforcer either way.
-  await screen(page)
-    .getByRole("button", { name: "Payroll", exact: true })
-    .click();
+  await sectionTab(page, "Tasks").click();
+  // An EMPTY board auto-opens its composer, and a two-agent team asks who
+  // runs it first (use-mc-new-mission). That is the designed landing, not a
+  // detour — acknowledge and dismiss it before navigating on.
+  const picker = page.getByRole("dialog", {
+    name: "Which agent should run this?",
+  });
+  await expect(picker).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(picker).toHaveCount(0);
   await openJobDescription(page, "Payroll Helper");
   await expect(page.getByText("No instructions yet")).toBeVisible();
   await expect(

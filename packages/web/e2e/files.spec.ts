@@ -33,16 +33,22 @@ test("Files is one list with agent accordions and one shared column band", async
   await expect(page.getByRole("button", { name: "Grid view" })).toHaveCount(0);
 });
 
-test("one agent auto-expands and folders expand in place", async ({ page }) => {
+test("one agent auto-expands and folders fold in place", async ({ page }) => {
   await openFiles(page);
 
   await expect(
     page.getByRole("button", { name: "Collapse Houston files" }),
   ).toBeVisible();
+  // The list is the whole workspace: folders start OPEN (Library-list
+  // grammar), so the folder's contents are on screen from the first paint…
   await expect(row(page, "Q3 report.pdf")).toBeVisible();
-  await row(page, "Docs").click();
   await expect(row(page, "sales.csv")).toBeVisible();
+  // …and Enter on the folder row folds it in place, without navigating.
+  await row(page, "Docs").press("Enter");
+  await expect(row(page, "sales.csv")).toHaveCount(0);
   await expect(row(page, "Q3 report.pdf")).toBeVisible();
+  await row(page, "Docs").press("Enter");
+  await expect(row(page, "sales.csv")).toBeVisible();
 });
 
 test("multiple agents stay open and search filters only expanded sections", async ({
@@ -73,7 +79,7 @@ test("multiple agents stay open and search filters only expanded sections", asyn
   await page.getByRole("searchbox", { name: "Search files" }).fill("research");
   await expect(row(page, "research.md")).toBeVisible();
   await expect(row(page, "Q3 report.pdf")).toHaveCount(0);
-  await page.getByRole("button", { name: "Clear search" }).click();
+  await page.getByRole("button", { name: "Clear search" }).first().click();
   await expect(row(page, "Q3 report.pdf")).toBeVisible();
 });
 
@@ -88,7 +94,8 @@ test("New asks for an agent when the team has multiple agents", async ({
   await expect(page.getByRole("menuitem", { name: "Houston" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Kai" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Kai" }).hover();
-  await page.getByRole("menuitem", { name: "New folder" }).click();
+  await page.keyboard.press("ArrowRight");
+  await page.getByRole("menuitem", { name: "New folder" }).press("Enter");
   await expect(
     page.getByRole("button", { name: "Collapse Kai files" }),
   ).toBeVisible();

@@ -98,7 +98,7 @@ test("a chat lists the missions it started, and opening one goes there (PRODUCT-
 
   // A row is a control: it opens that mission's own chat.
   await list.getByRole("button", { name: /Checking emails/ }).click();
-  await expect(page.getByText("Mission: Checking emails")).toBeVisible();
+  await expect(page.getByText("Task: Checking emails")).toBeVisible();
   await expect(page.getByText("revisa el correo")).toBeVisible();
 
   // The child chat carries the way back up: "Go to main mission" opens the
@@ -107,7 +107,7 @@ test("a chat lists the missions it started, and opening one goes there (PRODUCT-
     name: /go to main mission Plan the launch/i,
   });
   await backLink.click();
-  await expect(page.getByText("Mission: Plan the launch")).toBeVisible();
+  await expect(page.getByText("Task: Plan the launch")).toBeVisible();
   await expect(
     page.getByRole("button", { name: /missions started here 2/i }),
   ).toBeVisible();

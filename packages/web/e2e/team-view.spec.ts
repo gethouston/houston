@@ -235,7 +235,8 @@ test("Manage agents lists the team's agents and drills into the agent settings p
       .getByRole("button", { name: "People with access" }),
   ).toBeVisible();
   await screen(page)
-    .getByRole("button", { name: workspace, exact: true })
+    .locator("button:not([data-team-section-tab])")
+    .filter({ hasText: workspace })
     .click();
   await expect(
     screen(page).getByRole("button", { name: "Open Kai" }),

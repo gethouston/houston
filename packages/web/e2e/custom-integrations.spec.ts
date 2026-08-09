@@ -80,15 +80,19 @@ test("a composio-absent host still renders the Custom integrations section", asy
   await armCustomIntegrations(request, []);
   await openIntegrationsPage(page);
 
-  // The custom section is alive: heading, add button, and the empty state.
-  await expect(
-    page.getByRole("heading", { name: "Custom integrations" }),
-  ).toBeVisible();
+  // The custom section is alive in the header lozenge, with its add action.
+  await page.getByRole("button", { name: "Custom integrations" }).click();
   await expect(
     page.getByRole("button", { name: "Add custom integration" }),
   ).toBeVisible();
 
-  // The catalog's absence is scoped to the catalog — never a page blackout.
+  // The catalog's absence is scoped to the CATALOG lozenge's own body — one
+  // source on screen at a time, so the note lives where the catalog would be,
+  // and it is never a page blackout.
+  await page
+    .getByLabel("Integration sections")
+    .getByRole("button", { name: "Integrations", exact: true })
+    .click();
   await expect(
     page.getByText("The app catalog isn't available in this setup", {
       exact: false,
@@ -111,7 +115,7 @@ test("ready mode lists a pending custom integration and the enter-key flow activ
   // The Custom integrations mode carries the row (name + its API/MCP badge
   // + status) in ITS Installed section — the Composio strip never mixes
   // custom rows in (the mode split shows one source at a time).
-  await page.getByRole("tab", { name: "Custom integrations" }).click();
+  await page.getByRole("button", { name: "Custom integrations" }).click();
   await expect(
     page.getByRole("button", { name: "Acme CRM API" }),
   ).toBeVisible();
@@ -149,7 +153,7 @@ test("a custom row opens the detail card: metadata, action count, and remove (HO
   await openIntegrationsPage(page);
 
   // The row's body is the open affordance for the detail card.
-  await page.getByRole("tab", { name: "Custom integrations" }).click();
+  await page.getByRole("button", { name: "Custom integrations" }).click();
   await page.getByRole("button", { name: "Acme Live API" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Acme Live")).toBeVisible();
@@ -186,7 +190,7 @@ test("a pending integration's detail card leads with Enter key and opens the sec
   await armCustomIntegrations(request, [ACME_PENDING]);
   await openIntegrationsPage(page);
 
-  await page.getByRole("tab", { name: "Custom integrations" }).click();
+  await page.getByRole("button", { name: "Custom integrations" }).click();
   await page.getByRole("button", { name: "Acme CRM API" }).click();
   const dialog = page.getByRole("dialog");
   await expect(

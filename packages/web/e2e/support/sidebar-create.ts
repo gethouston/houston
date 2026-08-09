@@ -24,16 +24,22 @@ export async function openCreateMenu(page: Page): Promise<void> {
  * Start a new team. Leaves the creation modal open for the caller.
  */
 export async function startNewTeam(page: Page): Promise<void> {
-  await openCreateMenu(page);
-  await page.getByRole("menuitem", { name: "New team" }).click();
+  const direct = page.getByRole("button", { name: "New team", exact: true });
+  if (await direct.isVisible()) {
+    await direct.click();
+  } else {
+    await openCreateMenu(page);
+    await page.getByRole("menuitem", { name: "New team" }).click();
+  }
 }
 
 /** Create a named team end to end: the menu, then the modal. */
 export async function createTeam(page: Page, name: string): Promise<void> {
   await startNewTeam(page);
-  const input = page.getByPlaceholder("Team name");
+  const dialog = page.getByRole("dialog", { name: "Create a team" });
+  const input = dialog.getByRole("textbox", { name: "Team name" });
   await input.waitFor({ state: "visible" });
   await input.fill(name);
-  await page.getByRole("button", { name: "Create team" }).click();
+  await dialog.getByRole("button", { name: "Create team" }).click();
   await expect(rail(page).getByText(name, { exact: true })).toBeVisible();
 }

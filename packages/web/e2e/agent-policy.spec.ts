@@ -3,10 +3,10 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { openAdmin } from "./support/settings-nav";
 import {
+  expectTeamSections,
   openAgentSettings,
   openTeamSection,
   screen,
-  teamTab,
 } from "./support/team-nav";
 
 /**
@@ -412,8 +412,7 @@ test("a plain member cannot reach the agent settings page at all", async ({
   // lozenge they cannot use would be a dead link, so the strip does not draw
   // one. (The sections are the team screen's own lozenge cluster now; the rail
   // names teams and nothing else.)
-  await expect(teamTab(page, "Tasks")).toBeVisible();
-  await expect(teamTab(page, "Manage agents")).toHaveCount(0);
+  await expectTeamSections(page, ["Tasks", "Routines", "Files", "Archived"]);
 });
 
 test("Admin People roster shows a member's gateway display name, email as a secondary line", async ({

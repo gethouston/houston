@@ -1,5 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import {
   aboutMeRow,
@@ -39,12 +39,19 @@ async function armOwner(request: APIRequestContext): Promise<void> {
   });
 }
 
+async function seedEmptyContext(page: Page) {
+  await page.route(/\/v1\/(workspace|user)-context$/, async (route) => {
+    await route.fulfill({ json: { content: "" } });
+  });
+}
+
 test("About me is a rail row of its own, owning the whole window", async ({
   page,
 }) => {
   // No capabilities armed: a plain single-player install, which is exactly
   // where this half has to exist — it is the whole of the product's standing
   // context there.
+  await seedEmptyContext(page);
   await page.goto("/");
   await expect(aboutMeRow(page)).toBeVisible();
   await openAboutMe(page);
@@ -74,6 +81,7 @@ test("Company context is a section of Admin, editing the workspace's half", asyn
   request,
 }) => {
   await armOwner(request);
+  await seedEmptyContext(page);
   await page.goto("/");
   await openAdminSection(page, "Company context");
 

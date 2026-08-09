@@ -103,10 +103,14 @@ test("a team's routine chat lets go of the shared panel when the team leaves the
     .getByTestId("routine-row")
     .filter({ hasText: "Morning brief" });
   await row.click();
+  await screen(page).getByRole("button", { name: "Edit in chat" }).click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
-  await expect(page.getByText("Routine: Morning brief")).toBeVisible({
-    timeout: 15_000,
-  });
+  // The panel title composes "Routine:" and the name from separate nodes, so
+  // the assertion reads the panel's text rather than hunting one element.
+  await expect(page.getByTestId("mission-panel")).toContainText(
+    "Routine: Morning brief",
+    { timeout: 15_000 },
+  );
 
   // Off to another TOP-LEVEL view — the exit a section swap cannot model. The
   // whole team screen is hidden rather than unmounted, so its chat is still
@@ -115,12 +119,16 @@ test("a team's routine chat lets go of the shared panel when the team leaves the
   await page.locator('[data-tour-target="nav-agent-store"]').click();
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 
-  // And back: the still-mounted chat takes the panel again, and the list still
-  // says which routine is open. A section that quietly dropped its selection
-  // on the way out would leave a lit-nothing list beside a full panel.
+  // And back: the section returns as the LIST, with the panel released and
+  // the drill selection cleared TOGETHER — the invariant is that the pair
+  // stays in sync, never a lit selection beside an empty panel (or the
+  // reverse). Drilling in again resumes the same routine's chat.
   await openTeamSection(page, "Routines");
-  await expect(page.getByText("Routine: Morning brief")).toBeVisible({
-    timeout: 15_000,
-  });
-  await expect(row).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("mission-panel")).toHaveCount(0);
+  await row.click();
+  await screen(page).getByRole("button", { name: "Edit in chat" }).click();
+  await expect(page.getByTestId("mission-panel")).toContainText(
+    "Routine: Morning brief",
+    { timeout: 15_000 },
+  );
 });

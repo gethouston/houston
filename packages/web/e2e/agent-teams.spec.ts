@@ -15,11 +15,10 @@ import {
   type SeedSidebarLayout,
 } from "./support/sidebar-layout";
 import {
+  expectTeamSections,
   openTeamSection,
   rail,
   screen,
-  type TeamSection,
-  teamTab,
 } from "./support/team-nav";
 
 /**
@@ -156,30 +155,26 @@ const HOUSTON: AgentSeed = { id: SEED_AGENT_ID, name: SEED_AGENT_NAME };
 async function openShell(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
-}
-
-/** The tab row of the team that is OPEN: the rail names teams, a team's own
- *  screen names its sections. */
-function sectionTabs(page: Page): Locator {
-  return screen(page).locator("[data-team-section-tab]");
-}
-
-/** One lozenge of the open team, by section. */
-function sectionTab(page: Page, section: TeamSection): Locator {
-  return teamTab(page, section);
+  const closePanel = page.getByRole("button", { name: "Close panel" });
+  if (await closePanel.isVisible()) await closePanel.click();
 }
 
 /** Open a team by clicking one of its agents in the rail, which pins that agent
  *  and opens ITS team's Tasks board. */
 async function openTeamOfAgent(page: Page, agentName: string): Promise<void> {
   await rail(page).getByText(agentName, { exact: true }).click();
+  const closePanel = page.getByRole("button", { name: "Close panel" });
+  if (await closePanel.isVisible()) await closePanel.click();
 }
 
 /** Open a team's Manage agents: its block header in the rail (the rail names
  *  TEAMS), then the tab on the team's own screen (the screen names its
  *  SECTIONS). A team with no agents is reachable only this way. */
 async function openManageAgents(page: Page, teamId: string): Promise<void> {
-  await groupHeader(page, teamId).click();
+  const namedHeader = groupHeader(page, teamId);
+  const header =
+    (await namedHeader.count()) > 0 ? namedHeader : defaultHeader(page);
+  await header.getByRole("button").first().click();
   await openTeamSection(page, "Manage agents");
 }
 
@@ -208,7 +203,7 @@ async function renameBlock(
 ): Promise<void> {
   await openBlockMenu(header);
   await page.getByRole("menuitem", { name: "Rename team" }).click();
-  const input = page.getByPlaceholder("Team name");
+  const input = page.getByRole("textbox", { name: "Team name" });
   await input.waitFor({ state: "visible" });
   await input.fill(name);
   await input.press("Enter");
@@ -280,8 +275,8 @@ async function dragOnto(page: Page, source: Locator, target: Locator) {
 /**
  * Seen through a plain MEMBER's lens: one default team, one team they hold a
  * row on, and one team of the space that is neither theirs nor holds an agent
- * they can see (its Brand Bot is assigned to Bob alone). The last one is what
- * the GATEWAY drops, which is the only reason it is absent from the rail.
+ * assigned to them. The client renders the complete team world the gateway
+ * returns; it does not apply a second membership filter.
  *
  * The member lens is load-bearing here: an org owner/admin is an implicit owner
  * of every team, so the read serves them the whole list and there would be
@@ -295,7 +290,13 @@ const MEMBERSHIP_WORLD = {
     {
       id: BRAND_AGENT,
       name: "Brand Bot",
-      assignments: [{ userId: BOB.userId, access: "user" as const }],
+      // Shared with the CALLER: that visible agent is exactly why the Design
+      // team — which the caller is not a member of — appears in their rail
+      // at all (C13 visibility: joined, or holding an agent you can see).
+      assignments: [
+        { userId: SELF, access: "user" as const },
+        { userId: BOB.userId, access: "user" as const },
+      ],
     },
   ],
   teams: [
@@ -313,7 +314,7 @@ const MEMBERSHIP_WORLD = {
       name: "Design",
       sortOrder: 2,
       agentIds: [BRAND_AGENT],
-      members: [{ userId: BOB.userId }],
+      members: [{ userId: SELF }, { userId: BOB.userId }],
     },
   ],
 };
@@ -331,13 +332,13 @@ test("Your teams draws every team the gateway serves, and it serves the ones you
   );
   await expect(groupHeader(page, OPS_TEAM)).toBeVisible();
 
-  // Design is absent because `GET /v1/org/teams` never listed it: the caller
-  // holds no row on it and its only agent is somebody else's. Visibility is the
-  // GATEWAY's answer now, so the client draws every team it is handed and no
-  // longer partitions joined from unjoined at all. Its agent is gone with it,
-  // which is what keeps the default block from adopting it as a leftover.
-  await expect(groupHeader(page, DESIGN_TEAM)).toHaveCount(0);
-  await expect(rail(page).getByText("Brand Bot")).toHaveCount(0);
+  // Visibility is the gateway's answer: the client draws every team and agent
+  // it is handed, including a team the caller does not personally belong to.
+  // The rail is an ACCORDION — a team that is not the active one starts
+  // folded — so the block opens before its rows are read.
+  await expect(groupHeader(page, DESIGN_TEAM)).toBeVisible();
+  await groupHeader(page, DESIGN_TEAM).getByRole("button").first().click();
+  await expect(blockRows(page, DESIGN_TEAM)).toContainText("Brand Bot");
 
   // And nothing in the rail offers a way IN. A plain member may not create
   // agents, so the band's one control degrades to the single thing they can
@@ -367,14 +368,14 @@ test("creating a team sends the typed name, and it lands in Your teams", async (
 
   // Closing the modal creates nothing.
   await startNewTeam(page);
-  const draft = page.getByPlaceholder("Team name");
+  const draft = page.getByRole("textbox", { name: "Team name" });
   await draft.waitFor({ state: "visible" });
   await page.keyboard.press("Escape");
   await expect(headers).toHaveCount(0);
   expect(created()).toHaveLength(0);
 
   await startNewTeam(page);
-  const input = page.getByPlaceholder("Team name");
+  const input = page.getByRole("textbox", { name: "Team name" });
   await input.waitFor({ state: "visible" });
   await input.pressSequentially("Field Ops");
   await page.getByRole("button", { name: "Create team" }).click();
@@ -423,7 +424,7 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
   await screen(page)
     .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
     .click();
-  await page.getByRole("menuitem", { name: "Move to team" }).click();
+  await page.getByRole("menuitem", { name: "Move to team" }).hover();
   await page.getByRole("menuitem", { name: "Operations" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText(
@@ -461,7 +462,7 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
   await screen(page)
     .getByRole("button", { name: "More actions for Ops Bot" })
     .click();
-  await page.getByRole("menuitem", { name: "Move to team" }).click();
+  await page.getByRole("menuitem", { name: "Move to team" }).hover();
   await page.getByRole("menuitem", { name: "Operations" }).click();
   await page
     .getByRole("alertdialog")
@@ -509,7 +510,7 @@ test("Move to team never offers the team the agent is already in", async ({
   await screen(page)
     .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
     .click();
-  await page.getByRole("menuitem", { name: "Move to team" }).click();
+  await page.getByRole("menuitem", { name: "Move to team" }).hover();
   await expect(
     page.getByRole("menuitem", { name: "Operations" }),
   ).toBeVisible();
@@ -930,11 +931,7 @@ test("a joined member who manages nothing gets no Manage agents row; managing on
   // caller's org role: a member who owns no team and manages no agent has
   // nothing to administer anywhere.
   await openTeamOfAgent(page, "Ops Bot");
-  await expect(sectionTab(page, "Tasks")).toBeVisible();
-  await expect(sectionTab(page, "Routines")).toBeVisible();
-  await expect(sectionTab(page, "Files")).toBeVisible();
-  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
-  await expect(sectionTabs(page)).toHaveCount(4);
+  await expectTeamSections(page, ["Tasks", "Routines", "Files", "Archived"]);
 
   // Give them ONE agent of that team to manage and the door comes back — on
   // that team alone, because the agent-manager clause is per team.
@@ -946,12 +943,18 @@ test("a joined member who manages nothing gets no Manage agents row; managing on
 
   // The default team, whose one agent they only USE, still offers three.
   await openTeamOfAgent(page, SEED_AGENT_NAME);
-  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
+  await expectTeamSections(page, ["Tasks", "Routines", "Files", "Archived"]);
 
   // And the tab goes somewhere: the row can never promise a section the screen
   // refuses to render (both read `visibleTeamSectionsForTeam` for this team).
   await openTeamOfAgent(page, "Ops Bot");
-  await expect(sectionTabs(page)).toHaveCount(5);
+  await expectTeamSections(page, [
+    "Tasks",
+    "Routines",
+    "Files",
+    "Archived",
+    "Manage agents",
+  ]);
   await openTeamSection(page, "Manage agents");
   await expect(
     screen(page).getByRole("heading", { level: 1, name: "Operations" }),
