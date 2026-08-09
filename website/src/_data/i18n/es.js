@@ -55,6 +55,7 @@ export default {
   },
 
   hero: {
+    eyebrow: "Agentes de IA para tu equipo",
     h1Html: "Una app para todos los agentes de IA de tu&nbsp;equipo",
     sub: "Houston le da a tu equipo un solo lugar para usar agentes de IA, con cualquier modelo y conectados a las herramientas que ya usan, para que cada agente y todo lo que aprende sea de la empresa y no de la cuenta de una persona.",
     ctaDownload: "Descargar la app",

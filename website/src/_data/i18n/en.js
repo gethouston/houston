@@ -53,6 +53,7 @@ export default {
   },
 
   hero: {
+    eyebrow: "AI agents for your team",
     h1Html: "One app to run all your team's AI&nbsp;agents",
     sub: "Houston gives your team one place to run AI agents, on any model, connected to the tools you already use, so every agent and everything it learns belongs to the company instead of one person's account.",
     ctaDownload: "Download the app",

@@ -54,6 +54,7 @@ export default {
   },
 
   hero: {
+    eyebrow: "Agentes de IA para o seu time",
     h1Html: "Um app para todos os agentes de IA do seu&nbsp;time",
     sub: "O Houston dá ao seu time um único lugar para usar agentes de IA, com qualquer modelo e conectados às ferramentas que vocês já usam, para que cada agente e tudo o que ele aprende pertença à empresa e não à conta de uma pessoa.",
     ctaDownload: "Baixar o app",
