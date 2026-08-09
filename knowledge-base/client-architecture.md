@@ -321,7 +321,7 @@ The desktop/web shell keeps visited top-level screens mounted in a workspace-key
 visited set. An inactive screen is `display: none`, not destroyed: local view
 state survives navigation, while view-owned polling and event ownership MUST gate
 on its active top-level view id. There are seven (`TOP_LEVEL_VIEWS`,
-`app/src/lib/top-level-views.ts`): `dashboard`, `settings`, `ai-hub`,
+`app/src/lib/top-level-views.ts`): `inbox`, `settings`, `ai-hub`,
 `integrations-home`, `skills-home`, `agent-store` and `team`. `team` is ONE id
 for every team — which team and which section is store state (`activeTeamId` /
 `teamSection`), so a deleted team cannot strand a dead view id. A drill-in

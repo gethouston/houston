@@ -9,14 +9,41 @@ holds them together. What the rail MEANS (teams, sections, highlight, drag write
 
 **Every interactive line in the rail is `SidebarRowButton`**
 (`ui/layout/src/sidebar-row-button.tsx`): the top-level destinations above the list,
-the "Your teams" band, each team's header, each team's destination rows, each agent,
-and the "New agent" row that closes it. They differ only in what they point at and how
-far their glyph is indented.
+all THREE bands that name a run ("My accounts", "Workspace", "Your teams"), each team's
+header, each team's destination rows, each agent, and the "New agent" row that closes it.
+They differ only in what they point at and how far their glyph is indented.
 
 Six presets wear it and nothing else in the rail draws a row:
-`sidebar-nav.tsx` · `sidebar-section-header.tsx` · `sidebar-group-header.tsx` ·
+`sidebar-nav.tsx` · `sidebar-band.tsx` · `sidebar-group-header.tsx` ·
 `sidebar-section-rows.tsx` · `sidebar-item-row.tsx` · `sidebar-add-row.tsx`.
 Exported from `ui/layout/src/index.ts`.
+
+## One band component
+
+**`SidebarBand` (`ui/layout/src/sidebar-band.tsx`) is the ONE way the rail names
+a run of rows**, and the rail has three: "My accounts" and "Workspace" over the
+top-level destinations (`sidebar-rail-chrome.tsx`) and "Your teams" over the team
+blocks (`sidebar.tsx`). Three instances, different props — not three lookalikes.
+
+It owns the whole band end to end: the `SidebarRowButton` in the `band` type
+step, the disclosure triangle immediately after the words (the LABEL is the
+toggle), the `aria-expanded` + `aria-controls` pair over a content id it MINTS
+itself (a caller can neither forget it nor collide with another band's), the
+optional `affordance` slot — only "Your teams" uses it, for the create "+" — and
+the flush rhythm, where the heading's own `pb-0.5` is the entire gap to its rows.
+Folding drops the ROWS and keeps the region, so `aria-controls` always resolves.
+
+It is called a BAND and not a "section" because `SidebarSection` already names
+the resolved data of one team block in that package and `SidebarSectionRows`
+names a team's destination rows. Props-only and i18n-agnostic per the `ui/`
+boundary: the label arrives translated, the fold arrives resolved, and the app
+holds the three persisted keys (`teamsSectionCollapsed`,
+`myAccountsSectionCollapsed`, `workspaceSectionCollapsed`).
+
+Two tests in `sidebar-row-anatomy.test.ts` hold it: *draws EVERY band through the
+ONE band component* (both renderers use `<SidebarBand`, and no other rail module
+passes the bare `band` prop) and *lets the band component own the fold and its
+aria wiring*.
 
 Prop surface (the whole vocabulary):
 
@@ -70,7 +97,8 @@ the perceptual floor — it read as having no hover at all. Also exported:
   button. One field (`sidebarRowButtonClasses.input`) serves a team's name and an
   agent's alike, since by that point they are one row.
 
-A block header that owns no menu (the default team) still reserves the affordance
+A block header that owns no menu (the default team on local hosts, or for a non-owner
+on server hosts — owners get a Rename-only "…") still reserves the affordance
 column with an `aria-hidden` spacer: it stands in a stack of blocks that HAVE one, and
 a name given 28px more room truncates at a different point from every other team's,
 which reads as a second list.
@@ -103,10 +131,11 @@ keyframe in `ui/core/src/globals.css` (modelled on `files-selection-bar-in`, sam
 
 ## Test
 
-`ui/layout/tests/sidebar-row-anatomy.test.ts` — 20 tests under one
-`describe("sidebar row anatomy")`. Two of them are the structural guard: *draws EVERY
-rail row through the one row component* and *keeps the row geometry OUT of its
-consumers*, so the six presets cannot drift apart. The rest pin each invariant plus the
+`ui/layout/tests/sidebar-row-anatomy.test.ts` — 23 tests under one
+`describe("sidebar row anatomy")`. Three of them are the structural guard: *draws EVERY
+rail row through the one row component*, *draws EVERY band through the ONE band
+component* (`sidebar-band.tsx` — "My accounts", "Workspace", "Your teams") and *keeps
+the row geometry OUT of its consumers*, so the six presets cannot drift apart. The rest pin each invariant plus the
 focus ring, the transform-only disclosure transition, the filled-triangle mark, the
 single rename field, the gapless band→list join, and the collapsed rail keeping its own
 anatomy. `ui/layout/tests/rune-clamp.test.ts` covers the rename input's ceiling

@@ -68,7 +68,7 @@ teams cutover along with `app/src/agents/standard-tabs.ts`, `tab-resolver.ts`,
 | job description / memory / people / apps / models / skills | the canonical **agent settings page** (`components/agent-settings/agent-settings-page.tsx`), via **Team Settings → the agent's row** |
 | connecting apps | the global **Integrations** page (connections are the caller's, not an agent's) |
 
-- **`TOP_LEVEL_VIEWS` is SEVEN**: `dashboard`, `settings`, `ai-hub`,
+- **`TOP_LEVEL_VIEWS` is SEVEN**: `inbox`, `settings`, `ai-hub`,
   `integrations-home`, `skills-home`, `agent-store`, `team`. Both `sidebar.tsx`
   and `workspace-shell.tsx` source from that one set. Time worked / Permissions /
   Admin are NOT in it — they are settings sections
@@ -451,17 +451,17 @@ onToggleSelect, selectionLockColumnId, bulkActions`) and drag-and-drop
 screens, keyboard ownership and the ONE shared detail panel:
 [board-shell.md](board-shell.md).
 
-- **One component, one source.** The global Mission Control AND every team's board
-  render `<MissionBoard source={…}>` (`app/src/components/board/`), which owns
+- **One component, one source.** Every team's board
+  renders `<MissionBoard source={…}>` (`app/src/components/board/`), which owns
   columns, multi-select, `useAgentChatPanel`, the message queue, draft persistence,
   keyboard nav, run-in-terminal actions and the full AIBoard prop spread. There is
   exactly ONE `BoardSource`: `useMissionControlSource(agents, onShowArchived,
-  mentions?, scope?)` — cross-agent data, cross-agent bulk (grouped by owning
+  scope?)` — cross-agent data, cross-agent bulk (grouped by owning
   agent), cross-agent DnD (a dragged card moves within its own agent), an
   agent-picker "New mission", and the filter/search/Archived toolbar.
-  `MissionControlActive` mounts it unscoped; `TeamMissionBoard` mounts it with a
-  `MissionControlScope`. The per-agent `useAgentBoardSource` is gone with the tab
-  shell. **Adding a board capability = add it to `<MissionBoard>` or the one
+  `TeamMissionBoard` is its ONE mount, always with a `MissionControlScope`: there
+  is no global board any more. The per-agent `useAgentBoardSource` is gone with
+  the tab shell. **Adding a board capability = add it to `<MissionBoard>` or the one
   `BoardSource`.**
 - **The nav handoff.** Notification clicks, @mention rows, the command palette and
   the archived→active handoff publish their target as `activityPanelId`; the source
@@ -484,9 +484,8 @@ screens, keyboard ownership and the ONE shared detail panel:
   flushes queued sends and **awaits `warmingFlushRefetchKeys(agentPath)`**
   (`lib/agent-provisioning.ts`) before `clearProvisioning` drops the optimistic rows,
   so the handoff is gapless.
-- **Archive.** `dashboard.tsx` SWAPS (not hides — only the mounted view's hooks run)
-  between `MissionControlActive`, `MissionControlArchived` and the Mentions inbox;
-  `TeamMissionControl` does the same minus Mentions. Entered from the toolbar's
+- **Archive.** `TeamMissionControl` SWAPS (not hides — only the mounted view's hooks
+  run) between `TeamMissionBoard` and `MissionControlArchived`. Entered from the toolbar's
   Archived button (outline pill, one rank below the filled "New mission"), left via
   the labelled `BoardBackButton` — the Archived toolbar drops the Archived pill so
   the back button is its single unambiguous exit (HOU-1043). Sending in an archived

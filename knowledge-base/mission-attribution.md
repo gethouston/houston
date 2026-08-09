@@ -375,23 +375,33 @@ observer).
   single-player — `use-agent-activity-summaries.ts` omits the `unread` option unless
   `isMultiplayer(capabilities)`, and `buildAgentActivitySummaries` leaves every count at 0
   without it.
-- **Mentions inbox** — Mission Control's third mode
-  (`app/src/components/board/mentions-inbox.tsx`), hidden entirely when
-  `!isMultiplayer(capabilities)`. Its chrome is `app/src/components/mission-toolbar-actions.tsx`
-  + the shared `agent-filter-menu.tsx` (the ONE "which agent am I looking at" menu, also
-  worn by both team sections); the mode controls are presence-gated (`onToggleMentions`
-  absent = no chrome).
-  **The pill counts a narrower thing than the rows show**: a row's dot is `isUnreadForMe`
-  (mention OR ambient movement); the pill's number is `mentionOutstanding` (a mention
+- **The Inbox** — a TOP-LEVEL screen of its own (`app/src/components/inbox/inbox-view.tsx`,
+  `INBOX_VIEW_ID`), not a board mode. It was Mission Control's third mode until the global
+  board was deleted; promoting it dropped the toolbar's Mentions pill and its
+  `mentionsActive` / `onToggleMentions` / `mentionCount` props with it. It reads the roster
+  from `useAgentStore` and wears the canonical `PageContainer` + `PageHeader` chrome
+  (`dashboard:inbox.title` / `inbox.subtitle`), never `MissionControlToolbar` — there is no
+  board behind it to go back to, no mode to pill and nothing to search.
+  Deliberately **NOT** capability-gated: it is the app's landing surface whenever no team
+  has resolved, so single player sees the row and lands on the honest `mentions.empty.*`
+  state. The rows, the ordering model and the nav are unchanged
+  (`mentions-inbox-row.tsx`, `mentions-inbox-model.ts`, `mentions-inbox-view-model.ts`,
+  `board/mention-row-nav.ts`).
+  **The count is a narrower thing than the rows show**: a row's dot is `isUnreadForMe`
+  (mention OR ambient movement); the bell's number is `mentionOutstanding` (a mention
   strictly newer than my cursor for that conversation) — the control says "N unread
   mentions", and a mission that merely moved is not somebody typing your name.
   `MentionInboxRow` carries both booleans so neither surface re-derives the other's rule.
 - **The notifications bell** — `NotificationsBell`
-  (`app/src/components/shell/notifications-bell.tsx:45`) is mounted by
-  `mission-toolbar-actions.tsx:115` as `{!onToggleMentions && <NotificationsBell />}`, i.e.
-  on the surfaces that are NOT the inbox itself. Badge = the outstanding-mention count; the
-  menu reuses `mentions-inbox-row`, `mentions-inbox-view-model` and the shared
-  `board/mention-row-nav.ts` `openMentionRow`. Multiplayer-gated.
+  (`app/src/components/shell/notifications-bell.tsx`) is mounted UNCONDITIONALLY by
+  `mission-toolbar-actions.tsx`, on every mission board and archive: the same rows in a
+  popover, so a mention never needs a screen change to be seen. Badge = the
+  outstanding-mention count; the menu reuses `mentions-inbox-row`,
+  `mentions-inbox-view-model` and the shared `board/mention-row-nav.ts` `openMentionRow`.
+  Multiplayer-gated (it passes an empty roster to `useMentionInbox` in single player).
+  Both it and the Inbox read the ONE `useMentionInbox` hook
+  (`app/src/components/board/use-mention-inbox.ts`), which rides the shared
+  `all-conversations` query, so two consumers cost no extra fetch.
 - **Mission cards carry NO unread dot** (removed 2026-07-30, inventory `mission-card` v51).
   `KanbanItem.unread`, `ui/board/src/kanban-card-unread.ts` and the `use-board-unread.ts`
   join are gone — it fired too broadly to be a trustworthy signal. The read-cursor model

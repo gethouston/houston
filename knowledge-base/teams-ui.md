@@ -32,8 +32,8 @@ palette and a turn summary can never land three different places.
 
 | Module | Half |
 | --- | --- |
-| `app/src/lib/agent-nav.ts` | The PURE rules — `AgentNavTarget` (`board` / `routines` / `files` / `settings`), `agentDestination(teams, agentId, target)` → `{view:"team", teamId, section, agentFilter}` (or the honest `dashboard` fallback for an agent no team claims), and `canOpenAgentSettings(caps, agent, team?)`. Tests: `app/tests/agent-nav.test.ts` |
-| `app/src/lib/open-agent.ts` | The IMPERATIVE half — `currentTeams()` (the same inputs `useTeams()` composes, read outside React and branched by the very same `resolveTeamsForBackend`), `openAgentBoard`, `openAgentSection("routines"\|"files")`, `openAgentSettings(agentId, section?)`. Settings is the one target that toasts rather than falling back, and it clears any armed one-shot first so a failed nav cannot fire later |
+| `app/src/lib/agent-nav.ts` | The PURE rules — `AgentNavTarget` (`board` / `routines` / `files` / `settings`), `agentDestination(teams, agentId, target)` → `{view:"team", teamId, section, agentFilter}` (or `{view:"none"}` for an agent no team claims, which the caller answers — a board request goes HOME, a settings request refuses out loud), and `canOpenAgentSettings(caps, agent, team?)`. Tests: `app/tests/agent-nav.test.ts` |
+| `app/src/lib/open-agent.ts` | The IMPERATIVE half — `openAgentBoard`, `openAgentSection("routines"\|"files")`, `openAgentSettings(agentId, section?)`. Settings is the one target that toasts rather than falling back, and it clears any armed one-shot first so a failed nav cannot fire later |
 
 The destination MAP itself is `agent-manifest.md` → *Where an agent's surfaces live*;
 `packages/web/e2e/teams-nav.spec.ts` drives it end to end.
@@ -64,7 +64,9 @@ describing whether it serves C13 teams.
 - The capability is read through ONE predicate, `hasAgentTeams(caps)` (`lib/org-roles.ts`).
   The branch is the pure `resolveTeamsForBackend` in `lib/teams-backend.ts` — not in the
   hook module, because `lib/open-agent.ts` needs it and a lib reaching into `hooks/` for a
-  pure function is the wrong direction. Its store-free twin `currentTeams()` reads the same
+  pure function is the wrong direction. Its store-free twin `currentTeams()`
+  (`lib/current-teams.ts`, its own module because BOTH imperative navigators need it —
+  `open-agent.ts` and `home-nav.ts` — and one importing the other would close a cycle) reads the same
   two caches (`getCurrentAgentTeams()` and
   `queryClient.getQueryData(queryKeys.capabilities())`). Two copies of that rule would let
   the rail and a keyboard shortcut resolve different teams for the same agent.
@@ -102,9 +104,9 @@ agent store and the ordering overlay into the `TeamView[]` everything renders.
    write instead of accumulating) and fills a BLANK name from the server's own (a row
    upserted by a first collapse or first drop is born nameless via `blankOverlayGroup`).
    Every OTHER stored group is carried through untouched, in place. Deleting them fires on
-   a personal space, which serves exactly ONE team — every local group the user ever built
-   is "not live", and one drag used to persist their names, shared context and membership
-   away for good. The price is an inert invisible row for a team someone else deleted,
+   a FRESH personal space (one default team, no created ones) — every local group the user
+   ever built is "not live" there, and one drag used to persist their names, shared context
+   and membership away for good. The price is an inert invisible row for a team someone else deleted,
    which cannot cost anyone their work. Normalizing on write rather than on read is
    deliberate: a read-side pass would touch the user's drag order during any window where
    the teams read is empty or in flight.
@@ -133,14 +135,18 @@ can only mean the host advertised the surface and then denied it.
 
 ### The one user-visible consequence
 
-On a gateway that advertises `agentTeams`, a personal space serves exactly ONE team (the
-default; every mutation answers `403 personal_space`). A user who had built LOCAL sidebar
-groups in that space sees them **stop grouping** — the overlay preserves their agent ORDER,
-not their grouping, because the server is now the authority and it says "all of them, the
-default one". The groups are not destroyed: names, shared context and membership sit intact
-in the overlay and come back if the capability ever goes away. Pinned by
-`server-teams-model.test.ts` ("a personal space's single team does not erase the user's
-local groups", plus the collapse-toggle and group-reorder writes that used to erase them).
+On a gateway that advertises `agentTeams`, a personal space GROUPS AGENTS like any team
+space — create/rename/delete/move all work; only the three people routes refuse
+(`403 personal_space`: join, member add/remove/owner — the "work with people" path is
+creating an organization). The client hides the people affordances there
+(`isPersonalSpace(caps, activeSpaceIsTeam)` in `lib/org-roles.ts` → no Members card, no
+Leave; `partitionTeams` folds everything into `joined`). A user who
+had built LOCAL sidebar groups before the capability sees them **stop grouping** on a
+FRESH personal space — the overlay preserves agent ORDER, not grouping, until they recreate
+teams server-side. The old groups are not destroyed: names, shared context and membership
+sit intact in the overlay and come back if the capability ever goes away. Pinned by
+`server-teams-model.test.ts` ("a FRESH personal space does not erase the user's local
+groups", plus the collapse-toggle and group-reorder writes that used to erase them).
 
 ### Writes: the expected-error taxonomy
 
@@ -194,6 +200,7 @@ local groups", plus the collapse-toggle and group-reorder writes that used to er
 | Export | What it is |
 | --- | --- |
 | `TEAM_VIEW_ID = "team"` | The one `viewMode` every team shares |
+| `homeTeam(teams)` | HOME: the FIRST team in rail order, whose Mission Control the app opens on and where every fallback lands. `null` while no team has resolved, which the callers answer with the Inbox. Imperative half: `openHome()` in `lib/home-nav.ts` |
 | `DEFAULT_TEAM_ID = "team:default"` | Id of the virtual default team, LOCAL backend only. Server-backed the default team wears a real server id, so nothing may assume this sentinel when resolving a drop target |
 | `TeamSectionId` | `"mission-control" \| "routines" \| "files" \| "settings"` |
 | `TeamView` | `{ id, name, agents, isDefault, server? }` — one team, members in drag order |
@@ -223,10 +230,12 @@ everyone, `+ "settings"` when
 
 **Team-action gates** — affordance gates ONLY; the gateway is the sole enforcer and every
 refusal is also an expected state. Rename: locally any named group (never the virtual
-default, which wears the workspace's name); server-side the team OWNER, and the default
-team IS renamable there. Delete: never the default on either backend, plus owner-only
-server-side. Leave: server-only (`server.joined && !isDefault` — locally there is no
-membership to give up). Join: server-only, `server.joined === false`.
+default, which wears the workspace's name — no local rename path exists end-to-end);
+server-side the team OWNER, and the default team IS renamable there (its "…" carries
+Rename only). Delete: never the default on either backend, plus owner-only server-side.
+Leave: server-only, `canLeaveTeam(team, personalSpace)` = `server.joined && !isDefault
+&& !personalSpace` (a personal space's creator row is unremovable — Leave never shows
+there). There is no Join: a member is shown only the teams they are already in.
 
 ## Store contract (`app/src/stores/ui.ts`)
 
@@ -237,10 +246,14 @@ membership to give up). Join: server-only, `server.joined === false`.
   which also sets `viewMode: TEAM_VIEW_ID`, so the view is never half-set. Omitting
   `agentFilter` **clears** it (the rail passes the live pin through instead);
   `setTeamAgentFilter(agentId | null)` is a section dropdown writing back. The initial
-  `viewMode` is `"dashboard"`, an honest landing that needs no correction effect.
-- **`partialize` persists exactly THREE keys**: `sidebarCollapsed`,
-  `teamsSectionCollapsed`, `filesViewMode` (`app/src/stores/ui.ts:435`). `reset()` keeps
-  the same three (`:416`) — they are per-MACHINE layout prefs, not identity-scoped. None of
+  `viewMode` is `INBOX_VIEW_ID` — the one screen that needs no team, so the first paint is
+  honest while the teams are still resolving; the guard's BOOT rule moves the user to the
+  first team's Mission Control the moment one lands.
+- **`partialize` persists exactly FIVE keys**: `sidebarCollapsed`, the three rail band
+  folds (`teamsSectionCollapsed`, `myAccountsSectionCollapsed`,
+  `workspaceSectionCollapsed`) and `filesViewMode`. `reset()` keeps the same five — they are
+  per-MACHINE layout prefs, not identity-scoped. Pinned by `app/tests/ui-store-reset.test.ts`
+  ("keeps the per-machine layout preferences"). None of
   the four team fields is persisted, so "stale" means within a session, typically a space
   switch changing the caller's role.
 - **There is no highlight state in the store.** Which rail row is lit is DERIVED, purely,
@@ -258,16 +271,29 @@ membership to give up). Join: server-only, `server.joined === false`.
 - `TeamView` (`team-view.tsx`) reads `useTeams()` + `activeTeamId` + `teamSection`, resolves
   the section, and keys its child on the team id so switching teams starts clean.
 - **Two guards, no third**: `resolveTeamSection` (never a blank pane), inside `TeamView`;
-  and `blockedTeamView`, in `shell/use-workspace-view-guards.ts` (a dead team id resets
-  `viewMode` to `dashboard`; `TeamView` renders `null` for that frame). A team the caller
-  has not JOINED is not blocked — it renders.
+  and `blockedTeamView`, in `shell/use-workspace-view-guards.ts` (a dead team id sends the
+  user HOME; `TeamView` renders `null` for that frame). A team the caller has not JOINED is
+  not blocked — it renders.
 - `useWorkspaceViewGuards(showAiModels)` is the shell's standing-rules module, called once
-  from `workspace-shell.tsx`, holding three effects: (1) **the open view must exist** —
-  `!isTopLevelView(viewMode)`, `blockedTopLevelView` (a role-hidden screen such as the AI
-  Models hub) or `blockedTeamView` all reset to `DASHBOARD_VIEW_ID`; (2) **something is
-  always current** — `currentAgent` picks no SCREEN any more, but provider routing, model
-  prefs and the palette still read it, so the first agent adopts it when nothing has;
-  (3) **one `tab_opened` point** — watching `viewMode` catches rail click, shortcut and
+  from `workspace-shell.tsx`, holding FOUR effects. The two DECISIONS behind the first two
+  are pure functions in `shell/view-guard-rules.ts` (`bootGuardStep`, `deadViewStep`), pinned
+  by `app/tests/view-guard-rules.test.ts`; the hook is only the effect around them.
+  (1) **Boot lands on the first team's Mission Control** — the store starts on the Inbox and
+  the moment `homeTeam(teams)` resolves the user moves to its board. One shot per workspace,
+  re-armed on a workspace change (each space boots into its own first team) and DISARMED if
+  the user navigated somewhere of their own during the read. The boot state is two fields
+  (`workspaceId`, `armed`) rather than one ref, because a single ref disarms on the
+  space-switch tick and would break `create-team-dialog`'s `openHome()` → boot composition.
+  (2) **The open view must exist** — `!isTopLevelView(viewMode)`, `blockedTopLevelView` (a
+  role-hidden screen such as the AI Models hub) or `blockedTeamView` all go home. The ONE
+  carve-out: a dead TEAM view with `teams.length === 0` WAITS, because the server-teams read
+  answers `[]` on its first pass and "your team is gone" is indistinguishable from "the teams
+  have not arrived". A `viewMode` that is not a top-level view at all carries no such
+  ambiguity and goes home even with no teams, which there means the Inbox.
+  (3) **something is always current** — `currentAgent` picks no SCREEN any more, but provider
+  routing, model prefs and the palette still read it, so the first agent adopts it when
+  nothing has;
+  (4) **one `tab_opened` point** — watching `viewMode` catches rail click, shortcut and
   programmatic redirect alike, fires on real transitions only, and skips `settings`, which
   emits its own (vocabulary: `production-infra.md`).
 
@@ -297,8 +323,9 @@ what the team runs on its own → the app-level destinations.
 
 ## Sections
 
-- **Mission Control** (`team-mission-control.tsx`) — the team's active board, its archive,
-  or `TeamMissionEmpty`. The three SWAP, as the global Mission Control does, so only the
+- **Tasks** (`team-mission-control.tsx`; the code id stays `mission-control`, the label users
+  read is "Tasks") — the team's active board, its archive,
+  or `TeamMissionEmpty`. The three SWAP, so only the
   on-screen surface runs hooks and claims the panel. It owns the full roster + the shared
   scope for both boards (*The one-sweep rule*).
 - **Routines** (`team-view/team-routines/`) — ONE list of every team agent's routines, each
@@ -353,8 +380,9 @@ routines" / "the files it keeps").
   hung off `team.server !== undefined` so the page stays byte-identical on the local backend
   (where the header is the read-only `PageHeader title={team.name}` it has always been):
   - **The team's name**, editable in place (`team-name-field.tsx`) when `canRenameTeam(team)`.
-    This is the DEFAULT team's only rename door — its rail block deliberately carries no
-    menu, yet its name is what every member reads at the top of the rail. The field is
+    The default team's rail block also carries a "…" with Rename (owner-gated, the same
+    inline-edit machinery as named teams) — this field and that menu are the two doors
+    onto the one PATCH. The field is
     seeded with the saved name and REMOUNTED by its `key` when that name changes, so it
     re-syncs to server truth without an effect that could overwrite what the user is typing.
     Save is disabled until `teamNameCommit(draft, saved)` says the write would change
@@ -369,10 +397,10 @@ routines" / "the files it keeps").
     leaving, and the card already offers Leave as one deliberate action. The **default team
     is READ-ONLY per the wire** (every member write answers `400 default_team` and it holds
     no explicit rows), so it renders its note INSTEAD of a roster and never fires the
-    membership read. There is no Join counterpart here: joining is sidebar pinning, this
-    card's writes are owner-gated either way, and keeping the act in one place (the rail's
-    "Join a team" submenu, which Leave puts a team straight back into) makes it one
-    deliberate click. A failed read says it failed rather than rendering as an empty team.
+    membership read. This card is now the ONLY door onto team membership: browsing and
+    joining other teams is dead product (a member sees only the teams they are in), so people
+    are ADDED here and nowhere else. A failed read says it failed rather than rendering as an
+    empty team.
 
 ## The one-sweep rule
 
@@ -527,31 +555,41 @@ and the `ui/layout` props → `agent-manifest.md` → *Sidebar structure*. The s
 
 ### The band, and the ONE create menu
 
-- Above the blocks sits the rail's list header, `SidebarSectionHeader` — one per rail however
-  many blocks hang under it. Same row primitive in the `band` type step: 12px against the
-  rows' 13px, none of a block head's weight, same resting ink. The LABEL is the toggle, with
-  the disclosure triangle immediately after the words, so it reads as a phrase you click.
-  **Size, not weight or greyness, distinguishes it** — semibold `ink-muted` read as a heading
-  bolted above a list instead of the first line of one.
-- **Folding it puts every block away at once, and the rail remembers.** The state is
-  `teamsSectionCollapsed` in the UI store (`stores/ui.ts:162`, toggle `:412`), persisted and
-  device-scoped. `sidebar.tsx:47` reads it and passes it as `sectionCollapsed` (`:116`) with
-  `onToggleSectionCollapsed` (`:117`); `ui/layout/src/sidebar.tsx:63` computes
-  `listHidden = !collapsed && sectionCollapsed`. The `!collapsed` guard is why the icon rail
-  can never inherit a hidden list — folding is an expanded-rail idea, and the icon rail has no
-  band to fold from.
-- **One "+" carries everything the rail can create or acquire.** `SidebarCreateMenu`
+- **The rail has THREE bands and they are one COMPONENT.** "My accounts" and "Workspace"
+  (over the top-level nav runs) and "Your teams" (over the blocks) are three instances of
+  `SidebarBand` (`ui/layout/src/sidebar-band.tsx`, see `sidebar-anatomy.md` → *One band
+  component*): same row primitive, same `band` type step (12px against the rows'
+  13px, none of a block head's weight, same resting ink), same disclosure triangle
+  immediately after the words so the label reads as a phrase you click, same fold, same
+  persistence. A rail that folded one of them differently would be teaching two rules for one
+  row shape. **Size, not weight or greyness, distinguishes a band** — semibold `ink-muted`
+  read as a heading bolted above a list instead of the first line of one. The two rows that
+  LEAD the rail (Inbox, Agent Store) wear no band and fold nothing: there is no heading to
+  fold them under.
+- **Folding a band puts its whole run away, and the rail remembers.** Three persisted,
+  device-scoped keys in the UI store — `teamsSectionCollapsed`, `myAccountsSectionCollapsed`,
+  `workspaceSectionCollapsed`. The nav runs carry theirs on the `SidebarNavSection`
+  (`collapsed` + `onToggleCollapsed`, read in `use-sidebar-nav-items.tsx`, rendered by
+  `ui/layout/src/sidebar-rail-chrome.tsx`); "Your teams" carries its own as `AppSidebar`'s
+  `sectionCollapsed` / `onToggleSectionCollapsed`, where `ui/layout/src/sidebar.tsx` computes
+  `listHidden = !collapsed && sectionCollapsed`. **The icon rail ignores every fold** — the
+  same `!collapsed` guard in both places. Folding is an expanded-rail idea, the icon rail has
+  no band to fold from, and a run hidden there would leave a destination unreachable with
+  nothing on screen to bring it back.
+- **One "+" carries everything the rail can create.** `SidebarCreateMenu`
   (`app/src/components/shell/sidebar-create-menu.tsx`) is the band's single `sectionAction`:
-  New agent, New team, and a "Join a team" submenu (`sidebar-join-team-menu.tsx`,
-  scroll-bounded `max-h-72`) listing `partitionTeams(...).other`. It replaced three
-  affordances for one idea — a "+" beside the label, a New team glyph next to it, and the
-  "Other teams" disclosure at the foot of the rail (`other-teams-block.tsx` and
-  `sidebar-new-team-button.tsx` are both DELETED, and `SidebarFooter` lost its `otherTeams`
-  prop). The menu is only DRAWN when there is a choice: with exactly one thing to create and
-  nothing joinable it degrades to a plain icon button that does that thing, named for it, and
-  with nothing at all it renders nothing. The single-item case is never Join on its own,
-  because a host that lists unjoined teams is a C13 host and there any member may create a
-  team.
+  New agent and New team. It replaced two unnamed glyphs sitting on a row that already had a
+  label (`other-teams-block.tsx` and `sidebar-new-team-button.tsx` are both DELETED, and
+  `SidebarFooter` lost its `otherTeams` prop). The menu is only DRAWN when there is a choice:
+  with exactly one thing to create it degrades to a plain icon button that does that thing,
+  named for it, and with nothing at all it renders nothing. The single-item case is in
+  practice always New team, since creating a team is not an admin power on a C13 host.
+- **JOINING A TEAM IS GONE**, and with it `sidebar-join-team-menu.tsx`. A member now sees only
+  the teams they are part of (the gateway filters the list), so there is no "other teams"
+  bucket to browse and nothing to pin: people are added through Team Settings' Members card.
+  The MODEL layer is deliberately untouched pending the server-side filter —
+  `partitionTeams(...).other` has no production consumer left (only its own unit tests) and
+  `useJoinAgentTeam` is unreferenced, both kept on purpose.
 - **"New agent" is ALSO a visible row** at the foot of the list (`SidebarAddRow`, child depth,
   muted): creating an agent is the rail's primary action and a primary action may not live one
   level deep inside a menu. That row is the `newAgent` tour anchor.
@@ -578,11 +616,10 @@ every write goes to the stored layout exactly as before.
   only the joined teams would spill an unjoined team's agents into the default team's
   leftovers. The helper returns the SAME array when nothing is excluded, so the local backend
   is untouched down to object identity.
-- **An unjoined team lives in the band's Join menu, and nowhere else.** The taxonomy is
-  unchanged from the deleted "Other teams" block, only the door: the entry is ABSENT rather
-  than empty when nothing is left to join, and each row names its team and how many people are
-  in it, because the choice must never be made on a bare name. It stays APP-level, not a new
-  `ui/layout` slot: the library knows about groups, not about membership in a shared space.
+- **There is NO join door anywhere.** Team visibility became members-see-only-their-teams
+  (gateway-side), so the rail draws `partitionTeams(...).joined` and nothing else. The band's
+  "+" creates (new agent / new team); it never offers a team to join. The client-side mirror of
+  the visibility filter is still outstanding — `partitionTeams`'s `other` half survives unread.
 - **Unjoined teams are VIEWABLE.** The rail keeps them out of the blocks and keeps their agents
   out of the blocks above, but the SCREEN renders like any other: Mission Control, Routines and
   Files read the team they are handed and ask nothing about membership, and `blockedTeamView`
@@ -593,12 +630,9 @@ every write goes to the stored layout exactly as before.
   configuration. No Join button was added to the team view: the four sections own their own
   chrome and none has a trailing-action slot. Nothing lights in the rail while an unjoined team
   is open, which is honest — it is not one of "Your teams".
-- **JOINING IS SIDEBAR-PINNING AND IT GRANTS NOTHING.** C13's first non-negotiable and the one
-  thing a future reader must not "improve": every team listed is one the gateway ALREADY lets
-  this caller see, and joining only moves it up into "Your teams". No agent, file or permission
-  changes hands. Agent access is per-agent assignments and only that; making a team gate access
-  is a contract break. It is also why Join can sit in the open with no confirmation — the worst
-  outcome is a team in your sidebar you did not want, and Leave puts it straight back.
+- **MEMBERSHIP GRANTS NOTHING.** C13's first non-negotiable and the one thing a future reader
+  must not "improve": agent access is per-agent assignments and only that. Making a team gate
+  access is a contract break.
 - **Leave** is the last item of the team header menu, below a separator, because it acts on the
   CALLER's membership rather than on the group. In `ui/layout` it is the one **opt-in**
   affordance: `groupAllows` treats the mask as a veto for rename/delete/context, but `leave`
@@ -656,11 +690,10 @@ every write goes to the stored layout exactly as before.
 | Wire | `ui/engine-client/tests/client-agent-teams.test.ts` (all nine methods' `{method, url, body}` and parse side, id encoding, and **"a 404 throws, it is NOT degraded"** for every one) · `packages/web/tests/agent-teams-urls.test.ts` (the adapter's whole URL strings, and a slash/percent-bearing id staying inside its own path segment) · `ui/layout/tests/sidebar-groups.test.ts` (the affordance mask: veto for rename/delete/context, opt-in for `leave`) · `ui/layout/tests/rune-clamp.test.ts` |
 | Fake host | `packages/fake-host/src/server.test.ts` → *agent teams (C13)*, the only place the client's assumptions meet a server: each test pins a rule of the contract rather than an implementation detail (the EFFECTIVE `joined`/`owner`/`memberCount`, the role filter on `agentSlugs`, every refusal code, the `AgentsChanged` fan-out). Arm with `POST /__test__/agent-teams` `{teams?, personalSpace?}`, paired with `POST /__test__/capabilities {agentTeams: true}` |
 | Wiring | `team-one-sweep.test.ts` — roster + scope to BOTH boards, the archive's panel release, the shared agent grid |
-| e2e (`packages/web/e2e/`) | `teams-nav.spec.ts` (**the destination map, walked**) · `support/team-nav.ts` (the ONE helper specs navigate with: `openTeamSection`, `openAgentSettings`, `rail`, `screen` — the screen ON THE GLASS, since kept-alive screens leave every other board's cards in the DOM) · `sidebar-teams.spec.ts` (what the rail SAYS) · `team-view.spec.ts` (the screen behind each row is what the rail promised) · `team-routines-files.spec.ts` (aggregation with owner chips; a toggle reaching the OWNING agent's route with the id collision armed via `POST /__test__/routine-seq`; the draft row's create → resume → discard round trip; the Files dropdown switching trees; the failed-agent strip via `POST /__test__/fail-agent-reads`) · `team-settings-manager.spec.ts` (the PER-TEAM Settings gate — and it must keep passing UNCHANGED, which is the standing proof that the capability-off path is byte-identical) · `agent-teams.spec.ts` (the SERVER backend: joined/other split with one-click Join, creation sending the TYPED name, a cross-team drag moving the agent and a refusal putting it back, the Members card's owner toggle, the default team's read-only list, the per-team Settings gate, a cross-team drop landing WHERE it was dropped and surviving a reload, a team-header drag `PATCH`ing `sortOrder` without touching the overlay) |
+| e2e (`packages/web/e2e/`) | `teams-nav.spec.ts` (**the destination map, walked**) · `support/team-nav.ts` (the ONE helper specs navigate with: `openTeamSection`, `openAgentSettings`, `rail`, `screen` — the screen ON THE GLASS, since kept-alive screens leave every other board's cards in the DOM) · `sidebar-teams.spec.ts` (what the rail SAYS) · `team-view.spec.ts` (the screen behind each row is what the rail promised) · `team-routines-files.spec.ts` (aggregation with owner chips; a toggle reaching the OWNING agent's route with the id collision armed via `POST /__test__/routine-seq`; the draft row's create → resume → discard round trip; the Files dropdown switching trees; the failed-agent strip via `POST /__test__/fail-agent-reads`) · `team-settings-manager.spec.ts` (the PER-TEAM Settings gate — and it must keep passing UNCHANGED, which is the standing proof that the capability-off path is byte-identical) · `agent-teams.spec.ts` (the SERVER backend: the joined split, creation sending the TYPED name, a cross-team drag moving the agent and a refusal putting it back, the Members card's owner toggle, the default team's read-only list, the per-team Settings gate, a cross-team drop landing WHERE it was dropped and surviving a reload, a team-header drag `PATCH`ing `sortOrder` without touching the overlay) |
 
 i18n: `shell:sidebar.teamSections.*` for the rows, `teams:teamView.*` for the screen,
-`teams:agentTeams.*` for everything the server backend adds (`joinTeam` and its per-team
-`joinNamed_one`/`joinNamed_other`/`joiningNamed` accessible names, Join/Leave, the member count
+`teams:agentTeams.*` for everything the server backend adds (Leave, the member count
 plural, the Settings name field and Members card, and the five expected-error title/body pairs),
 plus `shell:sidebar.teams.leave` and `shell:sidebar.createMenu` / `shell:sidebar.newTeam` /
 `shell:sidebar.addAgent` for the band's one create menu (en/es/pt).

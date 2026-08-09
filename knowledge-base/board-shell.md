@@ -17,8 +17,8 @@ Both in `app/src/lib/top-level-views.ts`:
 
 | Predicate | Definition | Gates |
 | --- | --- | --- |
-| `isMissionBoardView(viewMode)` (`:67`) | `dashboard \|\| team` — VIEW level, coarse | **⌘N** (`hooks/use-keyboard-shortcuts.ts:99`) and the **command palette** (`components/command-palette.tsx:140`) |
-| `isMissionBoardSurface({viewMode, teamSection})` (`:86`) | dashboard ⇒ true; non-team ⇒ false; else `teamSection === null \|\| "mission-control"` | **board arrows** (`use-keyboard-shortcuts.ts:176`) and **bare Enter** (`:192`) |
+| `isMissionBoardView(viewMode)` (`:67`) | `team` — VIEW level, coarse | **⌘N** (`hooks/use-keyboard-shortcuts.ts:99`) and the **command palette** (`components/command-palette.tsx:140`) |
+| `isMissionBoardSurface({viewMode, teamSection})` (`:86`) | non-team ⇒ false; else `teamSection === null \|\| "mission-control"` | **board arrows** (`use-keyboard-shortcuts.ts:176`) and **bare Enter** (`:192`) |
 
 The asymmetry is deliberate and noted in-code (`use-keyboard-shortcuts.ts:92-98`):
 ⌘N and the palette have a FALLBACK — off a board they navigate to the board that owns
@@ -65,7 +65,8 @@ null session, a blank chat whose composer swallowed every send.
   The rows are the shared `all-conversations` query, the key both boards already read
   (*the one-sweep rule*, `teams-ui.md`), so this costs no second fan-out.
 - **`useBoardSurfaceOnNav`** (`components/board/use-board-surface-on-nav.ts`) — mounted
-  by the OWNER of the two surfaces (`Dashboard`, `team-mission-control.tsx`), the
+  by the OWNER of the two surfaces (`team-mission-control.tsx` — every board is a
+  team's now, so it is the only owner), the
   component that survives the swap. It puts the named surface on screen
   (`show("archived") | show("active")`).
 - **`usePendingMissionTarget`** (`components/board/use-pending-mission-target.ts:32`;
@@ -88,8 +89,12 @@ coming back onto the glass shows `surfaceOnActivate(pending)` — the surface a 
 nav names, else ACTIVE. A team change already remounts (`TeamMissionControl` is keyed on
 `team.id`) and a team section change unmounts the section; this covers the `viewMode`
 change, which unmounts nothing. In-view toggling (the toolbar's Archived button, Back)
-never leaves the glass and is untouched. On the global board the same edge also drops
-the Mentions inbox, a transient sub-surface of the same kind.
+never leaves the glass and is untouched.
+
+There is no third surface any more: the Mentions inbox used to be a transient
+sub-surface of the global board and is now the top-level **Inbox** screen
+(`components/inbox/inbox-view.tsx`, `INBOX_VIEW_ID`), so a board's surface union is
+exactly ACTIVE and ARCHIVE.
 
 ## Naming the open mission on a cross-agent board
 

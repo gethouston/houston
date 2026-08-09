@@ -240,7 +240,7 @@ ids, from exactly four emitters:
 
 | Emitter | `tab_name` | Values |
 | --- | --- | --- |
-| `shell/use-workspace-view-guards.ts` (every top-level view switch) | the raw `viewMode` | `dashboard`, `team`, `ai-hub`, `integrations-home`, `skills-home`, `agent-store` (`settings` deliberately skipped) |
+| `shell/use-workspace-view-guards.ts` (every top-level view switch) | the raw `viewMode` | `inbox`, `team`, `ai-hub`, `integrations-home`, `skills-home`, `agent-store` (`settings` deliberately skipped) |
 | `settings/settings-view.tsx` | `settings` (index) or `settings:<section>` | `SETTINGS_SECTION_IDS`: `profile`, `apiKeys`, `workspaceContext`, `userContext`, `shortcuts`, `reportBug`, `migration`, `timeWorked`, `permissions`, `organization` |
 | `permissions/permissions-view.tsx` | `permissions:<section>` (+ an `agent_id` prop) | the agent settings rail sections: `job-description`, `learnings`, `people`, `integrations`, `models`, `skills` — the one ACTUALLY shown, never the one requested |
 | `organization/organization-view.tsx` | `org:<section>` | the Admin page's `OrgTabId`s: `people`, `activity`, `usage`, `billing` |
