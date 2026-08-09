@@ -55,7 +55,7 @@ Need specific knowledge? Load on demand:
 - Updater, analytics, Sentry, env vars, CI → `knowledge-base/production-infra.md`
 - Daily/weekly/monthly data rituals + dashboard reading guide → `knowledge-base/data-rituals.md`
 - UTM conventions, campaign attribution, IRL event tracking → `growth/utm-conventions.md` + `growth/campaigns/_template.md` + `scripts/event-qr.sh`
-- Supabase auth, Google SSO, Keychain → `knowledge-base/auth.md`
+- GCIP (Firebase) auth, Google SSO, Keychain → `knowledge-base/auth.md`
 - Translating UI strings, namespaces, ui/ labels prop pattern, `t()` rules → `knowledge-base/i18n.md`
 - Automated UI / end-to-end tests (Playwright, web build, fake host, new TS engine) → `knowledge-base/ui-testing.md` + `packages/web/e2e/README.md`
 

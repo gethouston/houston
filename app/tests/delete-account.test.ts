@@ -12,6 +12,7 @@ import {
 interface Sent {
   url: string;
   bearer: string | null;
+  org: string | null;
 }
 
 function fakeFetch(statuses: number[], sent: Sent[]): typeof fetch {
@@ -20,6 +21,7 @@ function fakeFetch(statuses: number[], sent: Sent[]): typeof fetch {
     sent.push({
       url: String(input),
       bearer: headers.get("Authorization"),
+      org: headers.get("x-houston-org"),
     });
     const status = statuses.shift() ?? 500;
     return new Response(null, { status });
@@ -37,6 +39,21 @@ test("204 resolves and sends the live bearer to /v1/me", async () => {
   assert.equal(sent.length, 1);
   assert.equal(sent[0].url, "https://gw.example/v1/me");
   assert.equal(sent[0].bearer, "Bearer tok-1");
+});
+
+test("carries no active-space pin, even with a team space selected", async () => {
+  // `/v1/me` is mounted behind RequireAuth ALONE (no org resolution), so the
+  // header is at best noise and at worst a 403 on a stale selector — on the one
+  // request whose entire point is leaving.
+  const sent: Sent[] = [];
+  await requestAccountDeletion({
+    baseUrl: "https://gw.example",
+    token: () => "tok-1",
+    refresh: async () => null,
+    org: () => "fedcba9876543210",
+    fetchFn: fakeFetch([204], sent),
+  });
+  assert.equal(sent[0].org, null);
 });
 
 test("401 refreshes once and replays with the fresh bearer", async () => {

@@ -681,10 +681,16 @@ the full checklist and open human tasks. In brief:
   (an earlier note claiming a `HOUSTON_APP_USER_ID` env was passed was inaccurate —
   no such variable exists; add an envelope carrier when a server-side consumer
   needs the uid).
-- A gateway-backed profile/avatar store. The old Supabase `public.profiles` table +
-  avatar storage retired with Supabase auth (RLS `auth.uid()` can't match Firebase
-  uids); `use-user-profiles.ts` is stubbed, so faces fall back to initials and
-  self-face uses the session `displayName`/`photoUrl` until the gateway store lands.
+## App-side gateway calls
+
+- All direct gateway calls from `app/src` go through `app/src/lib/gateway-fetch.ts`
+  (live bearer, single 401 refresh+replay via `gateway-refresh.ts`,
+  `X-Houston-App-Version` + 426 upgrade sink, `x-houston-org` selector with a
+  per-call `orgScoped: false` opt-out for user-scoped routes — needed because the
+  gateway's billing write-gate keys off the pinned team). Never hand-roll a
+  gateway fetch; parity source is `packages/web/src/engine-adapter/cp/fetch.ts`.
+- The gateway-backed profile store (`GET/PUT /v1/me/profile`, migration `024`) is
+  live; `use-user-profiles.ts` reads `GET /v1/org/profiles` (see `teams.md`).
 
 ## Teams / orgs
 

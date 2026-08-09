@@ -1,5 +1,5 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { completeSurvey, resetToFirstRun } from "./support/onboarding";
 
 /**
  * First-run onboarding's "Connect your AI" step, end to end against the fake
@@ -47,22 +47,13 @@ test("onboarding connect step shows the curated view, searches, expands, and ope
 }) => {
   // Empty the host's agents so App's first-run gate opens the onboarding
   // orchestrator (v3 first-run = zero agents).
-  const agents = (await (
-    await request.get(`${FAKE_HOST_URL}/agents`)
-  ).json()) as {
-    id: string;
-  }[];
-  for (const agent of agents) {
-    await request.delete(`${FAKE_HOST_URL}/agents/${agent.id}`);
-  }
+  await resetToFirstRun(request);
 
   await page.goto("/");
 
-  // First-run asks the work-segmentation question before the
-  // create-your-assistant flow. The selection is required, so make one
-  // explicit choice before exercising the connect step.
-  await page.getByRole("button", { name: /Operations/ }).click();
-  await page.getByRole("button", { name: "Continue" }).click();
+  // First-run asks the onboarding survey (job, industry, automation goal)
+  // before the create-your-assistant flow. Answer it to reach the connect step.
+  await completeSurvey(page);
 
   // Onboarding opens directly on the connect step (the welcome/intro screen
   // was removed).

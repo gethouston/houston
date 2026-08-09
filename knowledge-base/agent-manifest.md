@@ -276,7 +276,7 @@ onboarding while it is set.
 fresh install from an emptied workspace (all agents deleted) or a
 just-finished cloud migration, so the durable `onboarding_completed` engine
 preference (`app/src/hooks/use-onboarding-completed.ts`, upgrade-only, uid-keyed
-localStorage mirror + try/catch fallback like the segment pref — a pod-pref
+localStorage mirror + try/catch fallback like the survey pref — a pod-pref
 blip must never re-onboard anyone) records "this install has onboarded".
 It is set in both onboarding terminal paths, on cloud-migration outcome
 `"done"` (`use-cloud-migration.ts::persistOutcome` — `"skipped"` deliberately
@@ -286,6 +286,20 @@ boot for anyone with ≥1 agent. Routing is the pure `onboardingRoute()`
 `"segment"` / `"onboarding"` only on an uncompleted first run (or an
 `onboarding_pending` resume); a completed zero-agent user lands in
 `WorkspaceShell`'s empty state.
+
+**Onboarding survey (3 questions).** The `"segment"` route renders
+`OnboardingSurveyScreen` (`app/src/components/onboarding/survey-screen.tsx`):
+job → industry → free-text automation goal (no per-question skip; the global
+escape hatch and, in completion mode, "Not now" are the exits). Answers live in
+the account pref `houston_onboarding_survey` (`app/src/lib/onboarding-survey.ts`;
+uid-scoped localStorage mirror written FIRST, engine-write failure never blocks,
+mirror↔engine reconciled on load; an old `houston_onboarding_segment` answer is
+absorbed so those users are never re-asked the job question) and sync
+whole-record, serialized, best-effort to the gateway's `PUT /v1/me/onboarding`
+(Cloud SQL `gateway.user_onboarding` is the company-queryable copy; failed
+pushes catch up on next launch). A user missing the newer answers gets the
+survey once in `profile_completion` mode; "Not now" persists
+`completionPromptDismissed` and it never auto-shows again.
 
 **The default assistant ships seeded.** Creation writes real capability into the
 new agent's tree via `personal-assistant-seeds.ts` (`buildPersonalAssistantSeeds`

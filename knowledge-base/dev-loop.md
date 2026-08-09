@@ -146,5 +146,4 @@ new engine) or connect one in-app per agent.
 Pod/PVC/NetworkPolicy/PV-move behavior is NOT exercised by `pnpm dev` — that
 is the kind loop's job: `make -C ../cloud kind-up` (see
 `cloud/k8s/kind/README.md`). Run it before releases that touch the
-gateway↔engine surface. It is being migrated from the legacy TS gateway to
-the Go gateway.
+gateway↔engine surface.
