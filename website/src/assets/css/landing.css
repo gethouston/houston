@@ -487,6 +487,33 @@ img {
 .lnav-drop a:last-child {
   border-bottom: none;
 }
+/* ── Nav collapse (the missing breakpoints) ────────────────────────────────
+   The burger and the dropdown sheet always existed in markup and JS, but no
+   media query ever hid the centered links or showed the burger, so on
+   narrow screens the links overlapped the wordmark. Below 1020px the links
+   move into the sheet; below 560px the GitHub icon and the language menu
+   follow them (both have rows in the sheet), leaving brand + Download +
+   burger. */
+@media (max-width: 1020px) {
+  .lnav-links {
+    display: none;
+  }
+  .lnav-burger {
+    display: flex;
+  }
+}
+@media (max-width: 560px) {
+  .lnav {
+    padding: 12px 16px;
+  }
+  .lnav-icon,
+  .lnav-lang {
+    display: none;
+  }
+  .lnav-right {
+    gap: 10px;
+  }
+}
 
 /* ── Footer (the deepest ground, a step below the page) ──────────────────── */
 .lfoot {
