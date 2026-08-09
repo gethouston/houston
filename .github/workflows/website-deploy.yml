@@ -91,6 +91,26 @@ jobs:
             exit 1
           fi
 
+      # Certificate images are expensive: every issued certificate is two big
+      # satori + resvg canvases, and without this cache a fresh runner re-draws
+      # the whole cohort on every deploy (~20 min of the run). The digest
+      # manifest (website/.cache) decides staleness per attendee, but the skip
+      # also requires the previously rendered PNGs to exist in _site/c, so both
+      # are cached. The key is per-run so the post-job save always records the
+      # latest state; restore falls back to the most recent previous deploy.
+      # Correctness lives in the manifest digests (attendee data + renderer
+      # fingerprint), and render.mjs prunes images for certificates that are no
+      # longer issued, so a stale cache can never ship a wrong or revoked image.
+      - name: Restore certificate image cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            website/.cache
+            website/_site/c
+          key: cert-images-${{ github.run_id }}
+          restore-keys: |
+            cert-images-
+
       - name: Build site
         working-directory: website
         run: npx @11ty/eleventy
