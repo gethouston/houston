@@ -23,13 +23,13 @@ import {
   type ProvisioningEntry,
   parsePersistedProvisioning,
   runProvisioningProbe,
+  warmingFlushRefetchKeys,
 } from "../lib/agent-provisioning";
 import { getEngine, isCoLocatedEngine, whenEngineReady } from "../lib/engine";
 import { reportError } from "../lib/error-report";
 import { showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
 import { queryClient } from "../lib/query-client";
-import { queryKeys } from "../lib/query-keys";
 import {
   buildWarmingSend,
   flushWarmingSends,
@@ -253,14 +253,18 @@ function startProbe(entry: ProvisioningEntry): void {
     onReady: (id) => {
       // Deliver the queued messages FIRST (their turns register before any
       // new composer send can). Then refetch the board BEFORE dropping the
-      // entry, so the optimistic rows hand off to the real rows the flush
-      // wrote without a one-frame gap (HOU-713) — new sends already steer to
-      // the normal wire path once the flush has started.
+      // entry — and AWAIT every refetch, so the optimistic rows hand off to
+      // the real rows the flush wrote without a one-frame gap (HOU-713).
+      // Which keys that is (the cross-agent sweep the boards actually read,
+      // plus the per-agent activity list) is `warmingFlushRefetchKeys`. New
+      // sends already steer to the normal wire path once the flush started.
       void flushWarmingSends(entry)
         .then(() =>
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.activity(entry.agentPath),
-          }),
+          Promise.all(
+            warmingFlushRefetchKeys(entry.agentPath).map((queryKey) =>
+              queryClient.invalidateQueries({ queryKey }),
+            ),
+          ),
         )
         .finally(() => store.clearProvisioning(id, entry));
     },

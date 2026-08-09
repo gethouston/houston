@@ -8,6 +8,10 @@ import {
   visibleAttachmentFiles,
 } from "@houston-ai/core";
 import { useCallback, useRef, useState } from "react";
+import {
+  parseInternalDragPayload,
+  resolveInternalMoveTarget,
+} from "./internal-file-drag";
 
 /** MIME type used for internal file moves. */
 export const INTERNAL_DRAG_TYPE = "application/x-houston-file";
@@ -20,6 +24,7 @@ function hasDragData(e: React.DragEvent) {
 }
 
 export interface DropZoneOptions {
+  dragScope?: string;
   onFilesDropped?: (files: File[], targetFolder?: string) => void;
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
   /** Snapshot the hovered drop target SYNCHRONOUSLY at drop time — folder
@@ -40,6 +45,7 @@ export function useDropZone({
   onMove,
   resolveTargetFolder,
   onDropError,
+  dragScope,
 }: DropZoneOptions) {
   const [isDragging, setIsDragging] = useState(false);
   const counter = useRef(0);
@@ -67,7 +73,18 @@ export function useDropZone({
       setIsDragging(false);
       const internal = e.dataTransfer.getData(INTERNAL_DRAG_TYPE);
       if (internal && onMove) {
-        onMove(internal, null);
+        let payload: { path: string; scope?: string };
+        try {
+          payload = parseInternalDragPayload(internal);
+        } catch (error) {
+          onDropError?.(error);
+          return;
+        }
+        if (payload.scope !== dragScope) {
+          onDropError?.(new Error("Files cannot move between agents"));
+          return;
+        }
+        onMove(payload.path, resolveInternalMoveTarget(resolveTargetFolder));
         return;
       }
       if (!onFilesDropped) return;
@@ -86,7 +103,7 @@ export function useDropZone({
           onDropError(error);
         });
     },
-    [onFilesDropped, onMove, resolveTargetFolder, onDropError],
+    [dragScope, onFilesDropped, onMove, resolveTargetFolder, onDropError],
   );
 
   return {

@@ -3,7 +3,7 @@
  * and the top-level gating (loading spinner, empty state) and delegates the
  * populated view to RoutinesGridList, keeping each file under the size cap.
  *
- * The tab is chat-first: routines are created and changed by asking the agent,
+ * The surface is chat-first: routines are created and changed by asking the agent,
  * so the grid itself never edits a routine. This is the LEFT pane of the
  * Scheduled split — a persistent, selectable list beside the selected task's
  * chat. A row click opens (selects) that routine's chat; the grid otherwise
@@ -58,6 +58,14 @@ export interface RoutinesGridProps {
    *  app's logo for a trigger routine (`ui/` cannot resolve logos); absent or
    *  `null` falls back to a clock for a schedule, a bell for a trigger. */
   leadingIcon?: (routine: Routine) => ReactNode;
+  /** Per-row OWNER chip, for a list that spans several agents (a team's
+   *  Routines): the app returns the owning agent's avatar + name, since `ui/`
+   *  cannot resolve an agent. Absent on a single-agent list, where every row
+   *  has the same owner and naming it on each one would be noise. */
+  ownerChip?: (routine: Routine) => ReactNode;
+  /** The same slot for a DRAFT row. Separate from `ownerChip` because a draft
+   *  is not a routine and has none of its fields — only its own id. */
+  draftOwnerChip?: (draft: RoutineDraft) => ReactNode;
   /** Edit a schedule routine's cron inline. When supplied, a schedule routine's
    *  summary line becomes an always-visible edit affordance (popover builder). */
   onScheduleChange?: (routineId: string, cron: string) => void;

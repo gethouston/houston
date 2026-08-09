@@ -15,7 +15,7 @@ import {
 } from "../../../src/specimen";
 import { TAB_BAR_PROPS } from "./tab-bar-api";
 
-/** The tab bar owns no fill of its own — it sits on the agent workspace. */
+/** The tab bar owns no fill of its own — it sits on whatever surface mounts it. */
 function Stage({ children }: { children: ReactNode }) {
   return (
     <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-line bg-gutter pb-4">
@@ -24,7 +24,12 @@ function Stage({ children }: { children: ReactNode }) {
   );
 }
 
-/** The agent tabs, named exactly as `agents:tabLabels.*` names them. */
+/**
+ * A representative set, kept from the deleted per-agent tab strip so the
+ * specimen shows a realistic label mix. These are NOT live product surfaces:
+ * the tab shell is gone (those screens are team sections and agent-settings
+ * sections now) and no app code mounts `TabBar` any more.
+ */
 const agentTabs: TabBarProps["tabs"] = [
   { id: "activity", label: "Activity", badge: 3 },
   { id: "context", label: "Context" },
@@ -64,7 +69,7 @@ function TabBarSpecimen() {
   return (
     <SpecimenPage
       title="TabBar"
-      intro="The strip over an agent's workspace: its name, and the tabs that switch what you are looking at."
+      intro="A horizontal strip: an optional title row, and the tabs that switch what you are looking at. A library primitive — the Houston app mounts none today (it used to be the per-agent tab strip), so this page is its contract, not a screenshot of the product."
     >
       <SpecimenSection
         title="Variants"
@@ -132,9 +137,9 @@ function TabBarSpecimen() {
 
       <SpecimenSection
         title="Sizes"
-        note="One size: 14px labels on a 20px gap, 10px above and 10px of underline room below. The strip does not scroll — a workspace that outgrows the width drops tabs on the server side instead."
+        note="One size: 14px labels on a 20px gap, 10px above and 10px of underline room below. The strip does not scroll — a consumer that outgrows the width must drop tabs before passing them in."
       >
-        <SpecimenRow label="Two tabs / the full agent set">
+        <SpecimenRow label="Two tabs / a longer set">
           <LiveTabs
             title="Weekly Report"
             tabs={[

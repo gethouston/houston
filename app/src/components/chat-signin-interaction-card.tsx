@@ -39,7 +39,7 @@ interface ChatSigninInteractionCardProps extends StepChrome {
  * `ChatInteractionCard` sequence (its `renderSignin` prop). A tool call hit
  * `signin_required` (the desktop host has an integration registry but the user
  * is signed out), so the host queued this step; the Sign in button drives the
- * SAME Google SSO the Integrations tab uses (via {@link useIntegrationsGate}),
+ * SAME Google SSO the Integrations page uses (via {@link useIntegrationsGate}),
  * and the sequence advances the instant the gate reports `ready`.
  *
  * Following the reference "Coworker card" language, it renders as its OWN
@@ -58,7 +58,7 @@ interface ChatSigninInteractionCardProps extends StepChrome {
  * signing in is offered.
  *
  * Auto-advance also covers the STALE step: the user may have signed in elsewhere
- * (the Integrations tab) between the turn ending and this card rendering, so the
+ * (the Integrations page) between the turn ending and this card rendering, so the
  * gate is ALREADY `ready` on first render with no button to click — fire
  * `onSignedIn` once so the queued connects/answers still send.
  */

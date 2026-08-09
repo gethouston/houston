@@ -45,7 +45,7 @@ export function TurnSummarySection({
   done?: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenFile: (path: string) => void;
-  onOpenSemantic: (kind: SemanticUpdateKind) => void;
+  onOpenSemantic?: (kind: SemanticUpdateKind) => void;
   onOpenUrl: (url: string) => void;
   resolveBrand: (action: string) => ChatActionBrand | undefined;
   t: TFunction<"chat">;
@@ -70,31 +70,47 @@ export function TurnSummarySection({
       </button>
       {open && (
         <div className="border-t border-line/50 divide-y divide-line/50">
-          {items.map((item) =>
-            item.kind === "integration" ? (
-              <IntegrationUpdateRow
-                key={`${item.action}|${item.url ?? ""}`}
-                action={item.action}
-                url={item.url}
-                brand={resolveBrand(item.action)}
-                onOpenUrl={onOpenUrl}
-              />
-            ) : (
+          {items.map((item) => {
+            if (item.kind === "integration")
+              return (
+                <IntegrationUpdateRow
+                  key={`${item.action}|${item.url ?? ""}`}
+                  action={item.action}
+                  url={item.url}
+                  brand={resolveBrand(item.action)}
+                  onOpenUrl={onOpenUrl}
+                />
+              );
+            const content = (
+              <>
+                <ItemIcon item={item} />
+                <span className="truncate">{itemLabel(item, t)}</span>
+              </>
+            );
+            if (item.kind === "semantic" && !onOpenSemantic)
+              return (
+                <div
+                  key={item.update}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left"
+                >
+                  {content}
+                </div>
+              );
+            return (
               <button
                 key={item.kind === "file" ? item.path : item.update}
                 type="button"
                 onClick={() =>
                   item.kind === "file"
                     ? onOpenFile(item.path)
-                    : onOpenSemantic(item.update)
+                    : onOpenSemantic?.(item.update)
                 }
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-hover transition-colors"
               >
-                <ItemIcon item={item} />
-                <span className="truncate">{itemLabel(item, t)}</span>
+                {content}
               </button>
-            ),
-          )}
+            );
+          })}
         </div>
       )}
     </div>

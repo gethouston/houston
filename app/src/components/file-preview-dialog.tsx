@@ -27,7 +27,7 @@ import { FilePreviewBody, type Loaded } from "./file-preview-body";
  * Bytes come over the authenticated download route, so nothing here assumes a
  * local filesystem, and a file the Files grid already thumbnailed is served
  * from the shared byte cache (`lib/file-bytes-cache.ts`) instead of downloaded
- * twice. Opened from the Files tab and from chat file surfaces (file cards,
+ * twice. Opened from the Files section and from chat file surfaces (file cards,
  * turn summaries, prose file pills) via `useOpenAgentFile`.
  */
 
@@ -39,7 +39,7 @@ interface Props {
   filePath: string | null;
   fileName: string;
   /** Key into the shared byte cache, from `sharedBytesKey(file)` when the
-   *  opener holds the entry (the Files tab does). Omitted for anything the
+   *  opener holds the entry (the Files section does). Omitted for anything the
    *  grid could not have thumbnailed, which downloads directly rather than
    *  parking an unbounded blob in memory. */
   bytesCacheKey?: number;

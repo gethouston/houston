@@ -1,105 +1,44 @@
-import type { SidebarLabels, SidebarNavItemEntry } from "@houston-ai/layout";
+import type { SidebarLabels } from "@houston-ai/layout";
 import { WorkspaceSwitcher } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import {
-  Blocks,
-  Boxes,
-  LayoutDashboard,
-  LibraryBig,
-  Settings,
-  Store,
-} from "lucide-react";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
-import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
-import { SKILLS_VIEW_ID } from "../skills-view/id";
-import { STORE_VIEW_ID } from "../store-view";
 import { CreateTeamDialog } from "./create-team-dialog";
-
-type ShellT = TFunction<["shell", "common", "portable", "teams"]>;
+import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
- * The top-level navigation entries: Mission Control, Integrations, AI Models
- * (Teams-gated), Agent Store, Settings. Usage, Permissions and Admin are NOT
- * here since HOU-788 — they are sections inside Settings.
+ * The namespaces every builder and component in the rail's chrome reads from.
+ * `dashboard` is here for one string: the Inbox row's unread-mention count,
+ * whose copy belongs to the mentions surface that also feeds the header bell.
+ * `settings` is here for two: the Admin and Permissions rows keep the names the
+ * Settings index already owned for those screens rather than growing a second
+ * pair of strings for the same two destinations.
  */
-export function buildSidebarNavItems(args: {
-  t: ShellT;
-  showAiModels: boolean;
-  setViewMode: (view: string) => void;
-  /** Opens Settings on its INDEX — see `UIState.openSettings`. Never plain
-   *  `setViewMode("settings")`: that would be a dead click while a section is
-   *  open, leaving the user staring at the section they wanted to leave. */
-  openSettingsIndex: () => void;
-}): SidebarNavItemEntry[] {
-  const { t, showAiModels, setViewMode, openSettingsIndex } = args;
-  return [
-    {
-      id: "dashboard",
-      label: t("shell:sidebar.missionControl"),
-      icon: <LayoutDashboard className="h-4 w-4" />,
-      onClick: () => setViewMode("dashboard"),
-      dataAttrs: { "data-tour-target": "nav-dashboard" },
-    },
-    {
-      id: INTEGRATIONS_VIEW_ID,
-      label: t("shell:sidebar.integrations"),
-      icon: <Blocks className="h-4 w-4" />,
-      onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
-      dataAttrs: { "data-tour-target": "nav-integrations" },
-    },
-    {
-      id: SKILLS_VIEW_ID,
-      label: t("shell:sidebar.skills"),
-      icon: <LibraryBig className="h-4 w-4" />,
-      onClick: () => setViewMode(SKILLS_VIEW_ID),
-      dataAttrs: { "data-tour-target": "nav-skills" },
-    },
-    ...(showAiModels
-      ? [
-          {
-            id: "ai-hub",
-            label: t("shell:sidebar.aiModels"),
-            icon: <Boxes className="h-4 w-4" />,
-            onClick: () => setViewMode("ai-hub"),
-            dataAttrs: { "data-tour-target": "nav-ai-hub" },
-          },
-        ]
-      : []),
-    {
-      id: STORE_VIEW_ID,
-      label: t("shell:sidebar.agentStore"),
-      icon: <Store className="h-4 w-4" />,
-      onClick: () => setViewMode(STORE_VIEW_ID),
-      dataAttrs: { "data-tour-target": "nav-agent-store" },
-    },
-    {
-      id: "settings",
-      label: t("shell:sidebar.settings"),
-      icon: <Settings className="h-4 w-4" />,
-      onClick: openSettingsIndex,
-      dataAttrs: { "data-tour-target": "nav-settings" },
-    },
-  ];
-}
+export type SidebarChromeT = TFunction<
+  ["shell", "common", "teams", "dashboard", "settings"]
+>;
 
-/** Localized `AppSidebar` labels (agent row actions + group actions). */
-export function buildSidebarLabels(t: ShellT): SidebarLabels {
+/**
+ * Localized `AppSidebar` labels (team actions, and the words the list itself
+ * uses). An agent row has no actions to name any more: it is renamed,
+ * recoloured, moved and deleted on its team's Manage agents page. The
+ * trailing block is named after the workspace and passed as `defaultGroup`, so
+ * there is no anonymous "ungrouped" header to label — the library dropped that
+ * branch and its untranslated string with it.
+ */
+export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
   return {
     addItem: t("shell:sidebar.addAgent"),
-    moreOptions: t("shell:sidebar.agentMenu"),
-    renameItem: t("common:actions.rename"),
-    deleteItem: t("common:actions.delete"),
     collapseSidebar: t("shell:sidebar.collapse"),
-    createGroup: t("shell:sidebar.groups.new"),
-    renameGroup: t("shell:sidebar.groups.rename"),
-    deleteGroup: t("shell:sidebar.groups.delete"),
-    editGroupContext: t("shell:sidebar.groups.editContext"),
-    groupMenu: t("shell:sidebar.groups.menu"),
-    newGroupPlaceholder: t("shell:sidebar.groups.namePlaceholder"),
-    emptyGroupHint: t("shell:sidebar.groups.emptyHint"),
-    ungroupedLabel: t("shell:sidebar.groups.ungrouped"),
+    createGroup: t("shell:sidebar.newTeam"),
+    renameGroup: t("shell:sidebar.teams.rename"),
+    deleteGroup: t("shell:sidebar.teams.delete"),
+    // Only ever rendered for a team whose `affordances.leave` is explicitly
+    // true, which is a server-teams host talking about a team you joined.
+    leaveGroup: t("shell:sidebar.teams.leave"),
+    groupMenu: t("shell:sidebar.teams.menu"),
+    newGroupPlaceholder: t("shell:sidebar.teams.namePlaceholder"),
   };
 }
 
@@ -119,7 +58,7 @@ export function buildSidebarLabels(t: ShellT): SidebarLabels {
  * squeeze the cards and drag the toggle down to the middle of them.
  */
 export function SidebarWorkspaceHeader(props: {
-  t: ShellT;
+  t: SidebarChromeT;
   workspaces: { id: string; name: string }[];
   currentId: string | null;
   currentName: string | undefined;
@@ -133,7 +72,7 @@ export function SidebarWorkspaceHeader(props: {
   const spacesEnabled = hasSpaces(capabilities);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   return (
-    <div data-tour-target="spaceSwitcher">
+    <div {...tourAnchor("spaceSwitcher")}>
       <WorkspaceSwitcher
         workspaces={props.workspaces}
         currentId={props.currentId}

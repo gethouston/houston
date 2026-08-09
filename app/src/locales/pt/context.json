@@ -9,5 +9,27 @@
     "tokensUsed": "{{used}} tokens usados",
     "empty": "Envie uma mensagem e o uso do contexto vai aparecer aqui.",
     "unknownWindow": "O tamanho do contexto deste modelo ainda não é conhecido, então a quantidade usada aparece sem porcentagem."
+  },
+  "aboutMe": {
+    "title": "Sobre mim",
+    "subtitle": "O que cada agente sabe sobre você antes de começar."
+  },
+  "editor": {
+    "saving": "Salvando…",
+    "saved": "Salvo",
+    "user": {
+      "emptyTitle": "Conte para todo agente sobre você",
+      "emptyDescription": "Seu papel, o que importa pra você, como prefere trabalhar. Entra em cada conversa nova deste espaço.",
+      "writeButton": "Escrever contexto do usuário",
+      "helper": "Entra em cada conversa nova deste espaço. Os agentes podem atualizar quando você contar algo novo.",
+      "placeholder": "ex. Sou o Juan, líder de vendas. Me importo com velocidade de pipeline e prefiro respostas curtas."
+    },
+    "workspace": {
+      "emptyTitle": "Conte para todo agente sobre este espaço",
+      "emptyDescription": "A empresa, o produto, os clientes. Entra em cada conversa nova deste espaço.",
+      "writeButton": "Escrever contexto do espaço",
+      "helper": "Compartilhado por todos os agentes deste espaço. Entra em cada conversa nova. Os agentes podem atualizar quando você contar algo novo.",
+      "placeholder": "ex. Acme Corp, fintech B2B, Série A. Os clientes são CFOs de empresas médias."
+    }
   }
 }

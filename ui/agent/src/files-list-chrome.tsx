@@ -5,11 +5,7 @@
  * exactly once, or the header, the rows and the skeleton drift apart. How a row
  * states its DEPTH (indent + disclosure chevron) is files-list-indent.tsx.
  *
- * The doctrine: the list draws NO rules. Rows are transparent objects separated
- * by their own height, and the only thing that ever paints is the row under the
- * pointer — a soft `rounded-xl` fill the width of the listing. That is what
- * lets the tab stay borderless while a 14px medium name still reads a clear
- * step above its 12px muted metadata.
+ * The list draws no rules; spacing and a soft hover fill separate rows.
  */
 import { cn } from "@houston-ai/core";
 import type { CSSProperties } from "react";
@@ -24,6 +20,8 @@ import type { SortDirection, SortKey } from "./utils";
  * threaded through each level of the recursion by hand.
  */
 export interface ListRowCallbacks {
+  /** Identifies the filesystem boundary encoded into internal drags. */
+  dragScope?: string;
   /** Present only when the consumer can act on a selection: its presence is
    *  what puts the checkbox gutter on every row. */
   selection?: FilesSelection;
@@ -73,6 +71,7 @@ export const TRIANGLE_AREA = 24;
  * columns shift the moment the header swaps for the selection bar.
  */
 export const LIST_INSET = "-mx-2";
+export const FILES_CONTENT_COLUMN = "w-full px-6";
 const ROW_PAD_X = "px-2";
 
 /**
@@ -88,7 +87,7 @@ const ROW_PAD_X = "px-2";
  * columns drift.
  */
 export function colGrid(selectable: boolean): string {
-  const plain = "minmax(0,1fr) 116px 80px 44px";
+  const plain = "minmax(180px,1fr) minmax(96px,116px) minmax(64px,80px) 44px";
   return selectable ? `${SELECT_COL}px ${plain}` : plain;
 }
 
@@ -160,41 +159,44 @@ export function HeaderCell({
 }) {
   const active = sortKey === col;
   return (
-    <button
-      type="button"
-      onClick={() => onSort(col)}
-      style={style}
-      className={cn(
-        // The sort caret hugs its label instead of being pushed to the column's
-        // far edge — over a 1fr Name column that put it a screen away from the
-        // word it describes.
-        "flex h-full items-center gap-1.5 rounded-sm px-2 font-medium transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-        META_TEXT,
-        className,
-      )}
-    >
-      <span className="truncate">{label}</span>
-      {active && (
-        <svg
-          className="size-[8px] shrink-0"
-          viewBox="0 0 8 6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          role="img"
-          aria-label={
-            sortDir === "asc" ? "sorted ascending" : "sorted descending"
-          }
-        >
-          {sortDir === "asc" ? (
-            <path d="M1 4.5L4 1.5L7 4.5" />
-          ) : (
-            <path d="M1 1.5L4 4.5L7 1.5" />
-          )}
-        </svg>
-      )}
-    </button>
+    // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: the CSS-grid cell needs columnheader semantics while its nested sort button remains the focusable control.
+    <span role="columnheader" className="h-full min-w-0">
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        style={style}
+        className={cn(
+          // The sort caret hugs its label instead of being pushed to the column's
+          // far edge — over a 1fr Name column that put it a screen away from the
+          // word it describes.
+          "flex h-full w-full items-center gap-1.5 rounded-sm px-2 font-medium transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          META_TEXT,
+          className,
+        )}
+      >
+        <span className="truncate">{label}</span>
+        {active && (
+          <svg
+            className="size-[8px] shrink-0"
+            viewBox="0 0 8 6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            role="img"
+            aria-label={
+              sortDir === "asc" ? "sorted ascending" : "sorted descending"
+            }
+          >
+            {sortDir === "asc" ? (
+              <path d="M1 4.5L4 1.5L7 4.5" />
+            ) : (
+              <path d="M1 1.5L4 4.5L7 1.5" />
+            )}
+          </svg>
+        )}
+      </button>
+    </span>
   );
 }

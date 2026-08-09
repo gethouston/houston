@@ -5,7 +5,7 @@ import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,
   providerAuthSignalKey,
-} from "../src/components/tabs/provider-auth-feed.ts";
+} from "../src/components/agent/provider-auth-feed.ts";
 
 describe("isProviderAuthMessage", () => {
   it("recognizes the new engine's not-connected refusal (both variants)", () => {

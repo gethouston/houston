@@ -6,7 +6,7 @@ import {
   triggerActivationKind,
   triggerStatusPollInterval,
   webhookActivationState,
-} from "../src/components/tabs/routine-trigger-maps.ts";
+} from "../src/components/agent/routine-trigger-maps.ts";
 
 const item = (
   routine_id: string,

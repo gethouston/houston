@@ -1,7 +1,7 @@
 /**
  * Write guard for agents whose engine is still warming up (HOU-693).
  *
- * The tabs stay fully explorable during the warm-up, but a write (save a
+ * Every screen stays fully explorable during the warm-up, but a write (save a
  * routine, update instructions, install a skill…) would be a held request
  * that dies with infrastructure timeouts or a reload. Instead of letting the
  * button hang for minutes, the guard opens the "your agent is almost ready"

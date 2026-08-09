@@ -12,8 +12,6 @@ The current look is the **futuristic theme** — a calm, futuristic desktop AI
 product ("quiet expert"). Dark mode is the loved baseline (aurora glow + glass);
 light mode is the cool solid light palette. Content stays near-monochrome;
 colour lives in the chrome. Everything below describes the current system.
-(Pre-futuristic monochrome doctrine is archived in
-`knowledge-base/design-system-history.md` — history only, don't copy from it.)
 
 ## Design tokens are the source of truth
 
@@ -182,19 +180,20 @@ helpers, so desktop and mobile render same palette.
 ## Brand theming
 Override `--color-action` via globals.css. NEVER hardcode hex — always semantic token.
 
-## Typography
-System font stack. No webfonts.
+## The mandatory spec lives in `/DESIGN.md`
 
-| Element | Size | Weight | Tailwind |
-|---------|------|--------|----------|
-| h1 / page title | 28px | 400 | `text-[28px] font-normal` |
-| model selector | 18px | 400 | `text-lg` |
-| body/input | 16px | 400 | `text-base` |
-| buttons | 14px | 500 | `text-sm font-medium` |
-| sidebar items | 14px | 400 | `text-sm` |
-| small labels | 12px | 400 | `text-xs` |
+The hard rules, the token quick-reference (type scale, spacing, radii, motion,
+elevation), the motion contract, the banned generic-AI defaults, the polish
+checklist and the `@houston-ai/core` component inventory live in
+**`/DESIGN.md`** — read it, it is mandatory. This doc does not restate them; it
+records what is BUILT on top of them.
 
-Section headers: sentence case, never uppercase/tracking-wider. `text-sm font-medium`.
+One place the shipped app differs from that spec's type table: the canonical
+page title is **24px**, not 28px. `PageHeader`
+(`app/src/components/shell/page-shell.tsx`) renders
+`<h1 className="text-2xl font-normal text-ink">`. The portable-agents wizard
+(`app/src/components/portable/*`) is the one surface still on
+`text-[28px] font-normal leading-tight`.
 
 ## Buttons
 Pill shape (`rounded-full`) everywhere. Use the `Button` primitive from
@@ -232,7 +231,7 @@ One shared component (`app/src/components/cards/row-card.tsx`) for the compact h
 
 Interaction cards use a visible-at-rest header chevron and a 40vh scrolling body cap. Collapsing retains the loud title, pager, and expand control so a blocked agent is never visually lost. Plan approval uses this same shell, clamps its lede to two lines, and places the shared free-text row in the fixed trailing region. It replaces the composer while shown; the complete plan belongs in the assistant transcript.
 
-> **AI Models hub is the one deliberate exception.** The hub (Providers/Models tabs) reaches for a full-color brand mark — `BrandMark` (`app/src/components/ai-hub/brand-mark.tsx`) renders the same `ProviderGlyph` boxless (no tile or wash), full-bleed at sm/md/lg (`size-6/8/10`), colored via the sanctioned hex map in `shell/provider-brand-colors.ts` (the ONLY place raw brand hex may live; every other surface stays on tokens). This is a "candy store" recognition device scoped to the hub — chat surfaces (RowCard, provider-switch, error/reconnect cards) stay monochrome. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
+> **AI Models hub is the one deliberate exception.** The hub (Providers/Models tabs) reaches for a full-color brand mark — `BrandMark` (`app/src/components/provider-browser/brand-mark.tsx`) renders the same `ProviderGlyph` boxless (no tile or wash), full-bleed at sm/md/lg (`size-6/8/10`), colored via the sanctioned hex map in `shell/provider-brand-colors.ts` (the ONLY place raw brand hex may live; every other surface stays on tokens). This is a "candy store" recognition device scoped to the hub — chat surfaces (RowCard, provider-switch, error/reconnect cards) stay monochrome. Multi-button error cards stay on `ErrorCard` (icon-bubble) in `provider-error-cards/shared.tsx`.
 
 ## Empty states
 `Empty` from `@houston-ai/core`. Big `text-2xl font-semibold` title + description + optional action. No icon-in-box. Container must be `flex flex-col` for `flex-1 justify-center`.
@@ -244,27 +243,34 @@ Interaction cards use a visible-at-rest header chevron and a 40vh scrolling body
 
 ```
 +----------+---------------+-------------+
-| Sidebar  | Tab Bar       | Right Panel |
-| 200px    |---------------| (optional)  |
+| Sidebar  | Page header   | Right Panel |
+| 220px    |---------------| (optional)  |
 |          | Main Content  |             |
 +----------+---------------+-------------+
 ```
 
-Sidebar 200px, **transparent** — its token is transparent, so it melts into the
-window gutter (`bg-gutter`, the Arc/Zen canvas layout). Right panel 45% width,
-380px min. Split view resizable, default 55/45. Chat max-width 768px
-(`max-w-3xl`). Header 52px.
+(The middle column's top band used to be the per-agent `TabBar`. Screens are all
+top-level now, so it is each screen's own `PageHeader` / section chrome — the
+library `TabBar` survives in `@houston-ai/layout` but the app mounts none. There
+is no fixed-height app header band.)
 
-### Radii
-`rounded` (0.25rem chips) · `rounded-md` (inputs) · `rounded-lg` (sidebar items, icon btns) · `rounded-xl` (cards) · `rounded-2xl` (large cards, dialogs) · `rounded-[28px]` (composer) · `rounded-full` (pills, avatars)
-
-### Button sizes
-`h-9` standard · `h-11` large · `w-9 h-9` icon
-
-## Shadows
-The composer shadow is the signature depth cue. Otherwise flat or a 1px edge
-(`edge` = `0 1px 0 rgba(0,0,0,0.05)`). **In dark mode use NO drop shadows** —
-depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen.
+- **Sidebar** — `w-[220px]` expanded, `w-[56px]` collapsed, with a 200ms
+  `transition-[width]` between them (`ui/layout/src/sidebar.tsx`). It is
+  **transparent** (`bg-sidebar` resolves transparent), so it melts into the
+  window gutter (`bg-gutter`, the Arc/Zen canvas layout).
+- **Sidebar rows** — every interactive line is the same row, defined once in
+  `ui/layout/src/sidebar-classes.ts` and spent only by `SidebarRowButton`:
+  fixed `h-7` (28px) height in every state, a 20px glyph box
+  (`sidebarIconBox`), the fill spanning the full rail with hierarchy carried by
+  the glyph indent (`depthBlock` `pl-2` / `depthChild` `pl-5`), and exactly two
+  type steps (`sidebarRowType`: `item` 13px for anything that points somewhere,
+  `band` 12px for the row that names the list). Hover is `sidebar-hover` (6%),
+  selected is `sidebar-active` (10%) — the 6-of-10 ratio is deliberate.
+  Trailing controls are siblings of the row button (never nested) and are
+  always rendered, muted at rest; a header with no menu still reserves the
+  column (`sidebarRowAffordanceGutter`) so labels truncate at the same point.
+- **Right panel** — 45% width, 380px min. Split view resizable, default 55/45.
+- **Chat** — max-width 768px (`max-w-3xl`).
 
 ## Animation
 - **card-running-glow** — rotating conic-gradient border. blue→indigo→orange→yellow. 2.5s infinite. Comet tail.
@@ -272,10 +278,6 @@ depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen.
 - **Spring preferred:** `{type:"spring", stiffness:300, damping:30, mass:1}`.
 - **typing-bounce** — 3-dot indicator, vertical translate + opacity.
 - **tool-pulse** — pulsing dot, 1s, active tool calls.
-
-Duration: fast 0.2s / common 0.667s / bounce 0.833s / elegant 0.582s. Under 0.3s for interactions.
-
-Rules: `layout` prop on reordering items. `AnimatePresence mode="popLayout"` for lists. Spring > CSS easing. (Full craft rules — exits faster than entrances, animate only transform+opacity, never `scale(0)`, no animation on high-frequency menus — in `/DESIGN.md` §5.)
 
 ### First-run flow (flat light, `FirstRunScreen`)
 The language + disclaimer gates, **sign-in**, **onboarding**, and the
@@ -350,23 +352,14 @@ The workspace-loading splash is the themed screen surface above; the
 storage-unavailable gate and the cloud-migration progress screen render on the
 standard semantic canvas with the shared `Spinner`.
 
-## Icons
-Lucide React only. 20px standard (`h-5 w-5`), 16px small, 24px large. Stroke 2px (or 1.5px lighter). `currentColor`.
+## Design judgment is Julian's
 
-**No emoji as icons.**
-
-## Rules
-1. No emoji icons
-2. No hover-only affordances
-3. Monochrome *content*; brand-coloured *chrome* (futuristic theme)
-4. Compact not cramped
-5. Animations serve purpose
-6. Pill shapes for buttons (`rounded-full`)
-7. Brand via tokens only — never hardcode hex
-
-## Design skill workflow
-1. `/frontend-design` — before building a new surface (3–5 genuinely distinct variants, two-pass discipline)
-2. `/design-review` — the screenshot self-critique loop, mandatory before calling any UI done
+- Build to `/DESIGN.md`, then **show him** — never self-review the look.
+- **No `/design-review` screenshot loops.** They are forbidden (`houston/CLAUDE.md`).
+- `/frontend-design` variants only if he asks for options (3–5 genuinely
+  distinct directions, two-pass discipline).
+- UI touched → `pnpm --filter houston-web test:visual`, baselines blessed once
+  per element, never during iteration.
 
 ## Component showcase (`ui/showcase`)
 
@@ -376,7 +369,9 @@ semantic `--ht-*` tokens with live theme-resolved values, plus the aurora/glass
 Effects). Nav tiers: Foundations · Primitives (all ui/core components:
 Variants/States/Sizes/Props/allowed Tokens, derived from source) · Product
 areas (Activity, Chat, Routines, Skills, Your Agents, Agent Store — the
-feature-package components under the app's real tab names). Every page shows
+feature-package components under the names those surfaces carried as agent tabs;
+they are team sections and agent-settings sections now, and the showcase's
+`SURFACE_RULES` map keeps the historical names). Every page shows
 "Used in" chips generated from real import sites (`pnpm --filter
 @houston-ai/showcase gen:usage`; staleness is test-enforced). New/changed ui
 components get a specimen in the same PR; a broken specimen fails the SSR test
@@ -482,25 +477,26 @@ glass blur, `--ht-card-solid`, the canvas tokens). Dark mode is the loved baseli
 when adjusting, scope changes to light (`:root`) and pin dark
 (`[data-theme="dark"]`) so it stays put.
 
-**Top-level surface shell (`app/src/components/shell/page-shell.tsx`)** — the five
-sidebar destinations (Mission Control, Integrations, AI Models, Agent Store,
-Settings) share two app-local primitives so their width and header spacing are
-identical. Since HOU-788 the same primitives also carry the Settings SECTIONS
-(Time worked, Permissions, Admin moved in from the sidebar).
-`PageContainer` is the canonical horizontal column (`mx-auto w-full max-w-5xl
+**Top-level surface shell (`app/src/components/shell/page-shell.tsx`)** — the SIX
+sidebar destinations, in order (`buildSidebarNavItems`,
+`app/src/components/shell/sidebar-chrome.tsx`): Mission Control · Integrations ·
+Skills · AI Models (rendered only when `showAiModels`) · Agent Store · Settings.
+Team rows follow below them, under the band that names the list. Usage,
+Permissions and Admin are NOT destinations since HOU-788 — they are sections
+inside Settings, carried by the same primitives.
+`PageContainer` is the canonical horizontal column (`mx-auto w-full max-w-4xl
 px-8`, the single source of the shared page width; callers add vertical rhythm
 and it spreads div props so it can also be a tab's `role="tabpanel"`). Two
 vertical rhythms, by depth: a TOP-LEVEL surface opens and closes itself
 (`py-10`); a screen under a back bar only closes (`pb-10`) because the bar
-above it (`back-bar-screen.tsx`, `pt-8 pb-2`) already sets the top rhythm. All
-five back-bar screens use plain `pb-10` — no per-screen top nudges.
-`PageHeader` is the canonical title block: a 28px normal-weight `h1` + optional
-muted subtitle + optional trailing slot. These
-are deliberately NOT in `ui/` (page chrome, not a reusable widget → no
-inventory/parity churn). The fixed-masthead surfaces (hub, org) split the
+above it (`back-bar-screen.tsx`, `px-8 pt-8 pb-2`) already sets the top rhythm —
+no per-screen top nudges.
+`PageHeader` is the canonical title block: a 24px normal-weight `h1`
+(`text-2xl font-normal text-ink`) + optional muted subtitle + optional trailing
+slot. These are deliberately NOT in `ui/` (page chrome, not a reusable widget →
+no inventory/parity churn). The fixed-masthead surfaces (hub, org) split the
 container across a `shrink-0` masthead + a scrolling `PageContainer` below; the
-single-scroll surfaces (integrations, settings landing) use one. Settings landing
-now shares `max-w-5xl` (cards render wider than before, by design).
+single-scroll surfaces (integrations, settings landing) use one.
 
 **Flat "plane" page language (rolling out page by page; first: Integrations).**
 The owner is refactoring top-level pages against flat reference designs (the
@@ -517,7 +513,8 @@ the row edge; the page hero is the shared `PageHeader` with a rounded
 `bg-input` search field (`border-line-input`, magnifier glyph) in its
 `trailing` slot. Two-column row grids collapse to one under `lg`. Shipped
 surfaces: the Integrations personal page (`integrations-view/`, see
-`knowledge-base/integrations.md` §3) and the agent **Files tab** — the old
+`knowledge-base/integrations.md` §3) and the **Files** surface (`AgentFilesSurface`,
+mounted by a team's Files section) — the old
 nested `rounded-xl border` "file manager window" frame (bordered toolbar,
 zebra list with decorative filler stripes, bottom status bar whose 11px
 footer links held Upload / Open in File Manager) was flattened onto the
@@ -538,8 +535,8 @@ Apply this language when refactoring further pages instead of inventing
 new row chrome.
 
 **Settings (`app/src/components/settings/`)** — no sidebar. The landing is the
-**overview** (`settings-index.tsx`); it uses the shared `PageContainer` +
-`PageHeader` (title `text-[28px] font-normal`). Two row primitives (`settings-row.tsx`), both with a
+**overview** (`settings-index.tsx`); it uses the shared `PageContainer
+className="py-10"` + `PageHeader`. Two row primitives (`settings-row.tsx`), both with a
 **bare icon** (no tile/background): `SettingsControlRow` resolves a setting in
 place (bare icon · title · right-side control) and `SettingsRow` navigates (adds
 a value + chevron). Simple settings are inline control rows rendered straight
@@ -554,11 +551,3 @@ editors render full-width, the rest in a centered `max-w-xl` column, all under a
 appear only when `accountAvailable` / `showMembers`. Version string = overview
 footer. Nav-row copy + group titles + `Set`/count values live under
 `settings.index.*` / `settings.nav.*` in the three locale files.
-
----
-
-**History:** the pre-futuristic monochrome ("ChatGPT-like") doctrine — the old
-gray ladder, `light mode only`, hardcoded `gray-*` / `rgba(13,13,13,X)` recipes,
-and the transition banner that once topped this doc — is archived in
-[`design-system-history.md`](design-system-history.md). It is superseded; read
-it only for archaeology, never copy from it.

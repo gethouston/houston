@@ -1,17 +1,12 @@
 {
   "sidebar": {
-    "missionControl": "Mission Control",
-    "aiModels": "AI Models",
-    "integrations": "Integrations",
-    "skills": "Skills",
-    "agentStore": "Agent Store",
-    "settings": "Settings",
-    "yourAgents": "Your Agents",
-    "selectWorkspace": "Select workspace",
+    "aboutMe": "About me",
     "addAgent": "New agent",
-    "agentMenu": "Agent menu",
-    "color": "Color",
+    "agentStore": "Agent Store",
+    "aiModels": "AI Models",
     "changeColor": "Change color",
+    "collapse": "Collapse sidebar",
+    "color": "Color",
     "colorLabels": {
       "charcoal": "Charcoal",
       "forest": "Forest",
@@ -21,38 +16,97 @@
       "orange": "Orange",
       "golden": "Golden"
     },
+    "createMenu": "Create",
+    "createWorkspace": "Create workspace",
+    "expand": "Expand sidebar",
+    "guideMe": "Guide me",
+    "help": "Help",
+    "inbox": "Inbox",
+    "integrations": "Integrations",
+    "mobileNavTitle": "Navigation",
+    "myAccounts": "My accounts",
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
+    "newTeam": "New team",
+    "openMenu": "Open menu",
+    "reportProblem": "Report a problem",
     "runningCount_one": "{{count}} issue running",
     "runningCount_other": "{{count}} issues running",
-    "unreadCount_one": "{{count}} unread update",
-    "unreadCount_other": "{{count}} unread updates",
-    "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar",
-    "openMenu": "Open menu",
-    "mobileNavTitle": "Navigation",
-    "createWorkspace": "Create workspace",
-    "groups": {
-      "new": "New group",
-      "newDefault": "New group",
-      "rename": "Rename group",
-      "delete": "Delete group",
-      "menu": "Group options",
-      "namePlaceholder": "Group name",
-      "emptyHint": "Drag agents here",
-      "ungrouped": "Ungrouped",
-      "editContext": "Edit shared context",
-      "contextDialog": {
-        "title": "Shared context for {{name}}",
-        "description": "This note is added to every agent in this group, so they all share the same background.",
-        "placeholder": "e.g. We are a design studio. Keep replies short and never share client names.",
-        "save": "Save",
-        "cancel": "Cancel"
-      }
-    }
-  },
-  "tabActions": {
-    "newMission": "New mission"
+    "selectWorkspace": "Select workspace",
+    "settings": "Settings",
+    "skills": "Skills",
+    "teams": {
+      "newDefault": "New team",
+      "rename": "Rename team",
+      "delete": "Delete team",
+      "leave": "Leave team",
+      "menu": "Team options",
+      "namePlaceholder": "Team name",
+      "identity": "Change icon & color",
+      "identityIcons": "Icons",
+      "identityColors": "Colors",
+      "identityNone": "Default"
+    },
+    "teamIcons": {
+      "people": "People",
+      "person": "Person",
+      "home": "Home",
+      "briefcase": "Briefcase",
+      "calendar": "Calendar",
+      "clipboard": "Clipboard",
+      "folder": "Folder",
+      "document": "Document",
+      "mail": "Mail",
+      "phone": "Phone",
+      "chat": "Chat",
+      "megaphone": "Megaphone",
+      "camera": "Camera",
+      "music": "Music",
+      "headset": "Headset",
+      "gamepad": "Gamepad",
+      "code": "Code",
+      "terminal": "Terminal",
+      "server": "Server",
+      "cloud": "Cloud",
+      "key": "Key",
+      "gear": "Gear",
+      "chart": "Chart",
+      "bug": "Bug",
+      "wrench": "Wrench",
+      "hammer": "Hammer",
+      "flask": "Flask",
+      "bulb": "Bulb",
+      "cube": "Cube",
+      "gem": "Gem",
+      "ribbon": "Ribbon",
+      "trophy": "Trophy",
+      "cart": "Cart",
+      "card": "Card",
+      "shield": "Shield",
+      "bandage": "Bandage",
+      "barbell": "Barbell",
+      "cutlery": "Cutlery",
+      "coffee": "Coffee",
+      "book": "Book",
+      "leaf": "Leaf",
+      "flame": "Flame",
+      "bolt": "Bolt",
+      "star": "Star",
+      "heart": "Heart",
+      "paw": "Paw",
+      "planet": "Planet",
+      "globe": "Globe",
+      "rocket": "Rocket",
+      "plane": "Plane",
+      "car": "Car",
+      "boat": "Boat",
+      "telescope": "Telescope",
+      "flag": "Flag",
+      "target": "Target",
+      "school": "School"
+    },
+    "workspace": "Workspace",
+    "yourTeams": "Your teams"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Native Sentry smoke triggered",
@@ -84,53 +138,41 @@
         "title": "Spaces",
         "body": "Your personal agents, and teams you share with others. Switch spaces anytime from here."
       },
-      "assistant": {
-        "title": "Your agents",
-        "body": "Every agent in this workspace lives here. Switch between them with one click."
+      "teams": {
+        "title": "Your teams",
+        "body": "Every agent lives in a team. Open a team to see everything its agents are up to."
       },
-      "board": {
-        "title": "The agent's workspace",
-        "body": "This is where the selected agent works. Everything you see on the right is scoped to that agent."
+      "teamBoard": {
+        "title": "The team's board",
+        "body": "Every task this team's agents are on, in one place. Click a card to open its chat."
       },
       "newMission": {
         "title": "Start a new chat",
-        "body": "Click here to open a fresh conversation. Each one becomes a mission card."
+        "body": "Click here to open a fresh conversation. Each one becomes a task card."
       },
-      "tabActivity": {
-        "title": "Activity",
-        "body": "The board of every conversation with this agent. Running, needs you, done."
-      },
-      "tabRoutines": {
-        "title": "Routines",
-        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Set up anything else to happen on its own here."
-      },
-      "tabIntegrations": {
-        "title": "Integrations",
-        "body": "Tools your agents can use, like Gmail and Calendar. Connections live here, shared across all your agents."
-      },
-      "tabFiles": {
-        "title": "Files",
-        "body": "Docs your assistant can read or share with you. Drop anything here for context."
-      },
-      "tabArchived": {
+      "archivedMissions": {
         "title": "Archived",
-        "body": "Use this button to revisit missions this agent has wrapped up. Send a message to reopen one and it comes right back to the active board."
+        "body": "Tasks the team has wrapped up live in here. Send a message to reopen one and it comes right back to the board."
       },
-      "tabContext": {
-        "title": "Context",
-        "body": "Your assistant's job description and everything it has learned. Update them any time."
+      "teamRoutines": {
+        "title": "Routines",
+        "body": "Your assistant already comes with ready-made routines, like the Morning briefing. Everything this team runs on its own lives here."
       },
-      "tabSkills": {
-        "title": "Skills",
-        "body": "Teach your assistant reusable skills it can apply across its missions."
+      "teamFiles": {
+        "title": "Files",
+        "body": "Docs the team's agents can read or share with you. Drop anything here for context."
       },
-      "missionControl": {
-        "title": "Mission Control",
-        "body": "When you add more agents, this becomes the single board across all of them. One place to see everything."
+      "inbox": {
+        "title": "Inbox",
+        "body": "When a teammate mentions you in a task, it lands here. One place to see where you are needed."
       },
       "navIntegrations": {
         "title": "Connect your apps",
         "body": "Link Gmail, Calendar, and hundreds more here. Every agent can use what you connect."
+      },
+      "navSkills": {
+        "title": "Skills",
+        "body": "Things you teach your agents to do the same way every time. Add a skill here and pick who learns it."
       },
       "aiHub": {
         "title": "AI Models",
@@ -138,12 +180,7 @@
       },
       "settings": {
         "title": "Settings",
-        "body": "Your account, your workspace, and your app preferences all live here.",
-        "bodyTeam": "Your account, your workspace, your app preferences, and your team's admin, permissions and time worked all live here."
-      },
-      "appTour": {
-        "title": "Replay the tour",
-        "body": "Forget how something works? Click this any time to run the tour again."
+        "body": "Your account, your workspace, and your app preferences all live here."
       },
       "newAgent": {
         "title": "Add another agent",
@@ -152,6 +189,10 @@
       "agentStore": {
         "title": "The Agent Store",
         "body": "Browse ready-made agents here, free to install, and bring one into your workspace with a click."
+      },
+      "appTour": {
+        "title": "Replay the tour",
+        "body": "Forget how something works? Click this any time to run the tour again."
       },
       "outro": {
         "title": "Now go build something amazing",
@@ -282,7 +323,7 @@
     },
     "contextOverflow": {
       "title": "This chat got too long for its model",
-      "body": "{{model}} can no longer read this whole conversation. Switch this chat to a model with more memory, or start a new mission for the next step.",
+      "body": "{{model}} can no longer read this whole conversation. Switch this chat to a model with more memory, or start a new task for the next step.",
       "switchModel": "Switch model"
     },
     "modelUnavailable": {
@@ -351,22 +392,29 @@
       "rawLabel": "Raw output"
     }
   },
+  "agentReads": {
+    "failed": "Couldn't load {{failed}} of {{total}} agents",
+    "failedOne": "Couldn't load {{name}}",
+    "retry": "Try again",
+    "report": "Report bug"
+  },
   "palette": {
     "title": "Command palette",
     "description": "Jump anywhere in Houston",
-    "placeholder": "Search agents, missions, actions...",
+    "placeholder": "Search agents, tasks, actions...",
     "empty": "Nothing matched. Try a different word.",
     "groups": {
       "actions": "Actions",
       "agents": "Agents",
-      "recentMissions": "Recent missions"
+      "recentMissions": "Recent tasks",
+      "teams": "Teams"
     },
     "actions": {
-      "newMission": "Start new mission",
-      "missionControl": "Go to Mission Control",
+      "newMission": "Start new task",
       "integrations": "Open Integrations",
       "settings": "Open Settings",
-      "shortcuts": "Show keyboard shortcuts"
+      "shortcuts": "Show keyboard shortcuts",
+      "inbox": "Go to Inbox"
     }
   },
   "cheatsheet": {
@@ -379,29 +427,14 @@
     },
     "rows": {
       "palette": "Open command palette",
-      "missionControl": "Go to Mission Control",
-      "newMission": "Start new mission",
+      "inbox": "Go to Inbox",
+      "newMission": "Start new task",
       "prevAgent": "Previous agent",
       "nextAgent": "Next agent",
-      "boardNavigate": "Move between missions",
-      "boardOpen": "Open highlighted mission",
+      "boardNavigate": "Move between tasks",
+      "boardOpen": "Open highlighted task",
       "panelEscape": "Leave chat, then close",
       "cheatsheet": "Show this sheet"
     }
-  },
-  "userMenu": {
-    "sendFeedback": "Send feedback"
-  },
-  "feedback": {
-    "title": "Send feedback",
-    "description": "Crash data reaches us automatically. This is for everything else: a feature that feels off, a flow that broke, an idea.",
-    "placeholder": "What's on your mind?",
-    "send": "Send",
-    "sending": "Sending...",
-    "cancel": "Cancel",
-    "successTitle": "Roger that, report received.",
-    "successWithId": "Mission control is on it. Reference: {{id}}",
-    "successNoId": "Mission control is on it.",
-    "errorTitle": "Couldn't send report"
   }
 }

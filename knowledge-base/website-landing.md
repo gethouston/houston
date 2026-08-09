@@ -48,8 +48,10 @@ on the white bar/sheet.
   learning/skill its own bordered card), context files as gallery tiles with
   CSS-miniature previews (`.file-prev`: page/sheet/folder + type badge).
 - **Stack tiles** (`stack.njk`): four dark tiles with monochrome-white brand
-  marks rendered through ONE `mark(label, d)` njk macro (simple-icons paths as
-  data). Every tile closes with a `.st-more` line so walls align. Jan has no
+  marks rendered through ONE `mark(id)` njk macro, which looks the path data up
+  in `landing.stack.marks[id]` (`_data/landing.js` — the single source of the
+  brand paths, so size/placement/tone cannot drift). Each tile's `logos` array
+  holds ids. Every tile closes with a `.st-more` line so walls align. Jan has no
   vector mark → `.st-word` wordmark chip.
 - **Pricing**: annual price leads ($12 big, "billed annually · $15 billed
   monthly" small; from `_data/pricing.js`, never hardcoded). Team card is a
@@ -104,11 +106,21 @@ One two-step modal replaces the old invite-code gates AND the standalone
 form (name, email, phone with country-code dropdown, LinkedIn, country), step 2
 the OS-aware download buttons (Windows keeps the x64/ARM64 promote logic in
 scripts.njk via the preserved `dl-windows-*` ids). Pieces: markup
-`landing/download-modals.njk`, logic `assets/download-gate{,-form,-countries}.js`
-(classic scripts, config via `landing/scripts-download.njk`), styles
-`assets/css/download-gate.css` — the ONE gate stylesheet, loaded by the landing
+`landing/download-modals.njk`; styles `assets/css/download-gate.css` +
+`assets/css/dl-dropdown.css`; logic in SIX classic scripts, config-injected and
+`defer`-loaded in this order by `landing/scripts-download.njk` (which also emits
+`window.HOUSTON_DL_CONFIG` from `_data/env.js`):
+`download-gate-countries.js` (the country + dial-code data),
+`download-gate-placement.js` (pure flip/clamp math, unit-tested with no DOM via
+`test/placement.test.mjs`), `download-gate-anchor.js` (keeps an open fixed menu
+pinned to its toggle — an anchor that moved is a menu to re-place, never one to
+close, which is what used to kill the country menu when the phone keyboard slid
+in), `download-gate-dropdown.js`, `download-gate-form.js`, `download-gate.js`.
+`download-gate.css` is the ONE gate stylesheet, loaded by the landing
 AND subpages (the old duplicate block in landing-hero.css is gone). Writes go to
-the same Supabase `waitlist` table (`source: "download_gate"`) + Sheet mirror;
+the same Supabase `waitlist` table (`source: "download_gate"`) + Sheet mirror
+— the gate is the ONE place Supabase deliberately stays, and it is a plain
+anon-key data write, not auth (app identity is GCIP/Firebase, `auth.md`);
 `localStorage.houston_dl_registered` skips the form for returning visitors;
 failures surface inline (`#dl-form-err`). Details + funnel events:
 `production-infra.md` → Download gate.
@@ -117,28 +129,16 @@ Gate v2 (HOU-1178): opening the modal scroll-locks the page (`lockScroll()` in
 download-gate.js: `lenis.stop()` + `html.dl-modal-open`; `data-lenis-prevent`
 on `.dl-card` and menus — Lenis otherwise eats wheel events over the
 fixed-position dropdowns). Both the country-code menu and the Country field
-use ONE searchable dropdown component (`assets/download-gate-dropdown.js`,
-`window.HoustonDropdown`; styles `assets/css/dl-dropdown.css`): fixed
-positioning with flip/clamp, keyboard + ARIA combobox semantics, Escape closes
-the menu not the modal. The Country field's hidden input dispatches a
-synthetic bubbling `input` event on select — without it the submit button
-never enables.
+use ONE searchable dropdown component (`download-gate-dropdown.js`,
+`window.HoustonDropdown`, placed by `download-gate-placement.js` and kept
+pinned by `download-gate-anchor.js`): fixed positioning with flip/clamp,
+keyboard + ARIA combobox semantics, Escape closes the menu not the modal. The
+Country field's hidden input dispatches a synthetic bubbling `input` event on
+select — without it the submit button never enables.
 
+## Certificates
 
-## Certificates (same system, rendered at build time)
-
-The bootcamp certificate art extends this black/white system off the page and
-into PNGs: the printable certificate is white ground + hairline frame + one
-solid ink bar, the social card is the same ink ground as `.section.is-dark`, and
-both use the site's own helmet mark and Hanken Grotesk — no color, no second
-language of forms. It is generated with satori + resvg at build time, not styled
-in CSS, so the rules live elsewhere: see `website-certificates.md`.
-
-## History note
-
-The session that produced this also trialled and DISCARDED: Oro-style poster
-hero (image + corner frames + fixed dock), generated backdrop videos (Veo,
-slowed/looped via ffmpeg), an aurora WebGL shader, and scroll-snap. If those
-return, mine git history of this branch — the plumbing (video treatment
-pipeline, shader, poster layout) all worked; the direction was rejected in
-favour of the plain B/W statement hero.
+Bootcamp participation certificates are rendered to PNG at build time with
+satori + resvg, not styled in CSS, and follow their own visual system (a
+full-bleed photograph under a translucent glass panel, General Sans).
+See `knowledge-base/website-certificates.md`.

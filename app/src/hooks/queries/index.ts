@@ -1,10 +1,9 @@
 export {
+  activityQueryOptions,
   useActivity,
   useBulkDeleteActivity,
-  useBulkUpdateActivity,
   useCreateActivity,
-  useDeleteActivity,
-  useUpdateActivity,
+  useUpdateActivityForAnyAgent,
 } from "./use-activity";
 export { useAgentConfig } from "./use-agent-config";
 export {
@@ -16,12 +15,22 @@ export {
   useSetAgentAllowedModels,
   useSetAgentSettings,
 } from "./use-agent-settings";
-export { COMPUTE_USAGE_DAYS, useComputeUsage } from "./use-compute-usage";
 export {
-  useAllConversations,
-  useChatHistory,
-  useConversations,
-} from "./use-conversations";
+  agentTeamsQueryOptions,
+  getCurrentAgentTeams,
+  useAgentTeamMembers,
+  useAgentTeams,
+  useCreateAgentTeam,
+  useDeleteAgentTeam,
+  useLeaveAgentTeam,
+  useMoveAgentToTeam,
+  useRemoveAgentTeamMember,
+  useSetAgentTeamIdentity,
+  useSetAgentTeamMemberOwner,
+  useUpdateAgentTeam,
+} from "./use-agent-teams";
+export { COMPUTE_USAGE_DAYS, useComputeUsage } from "./use-compute-usage";
+export { useAllConversations, useChatHistory } from "./use-conversations";
 export {
   useAddCustomIntegration,
   useAgentCustomIntegrations,
@@ -71,13 +80,12 @@ export { USAGE_DEFAULT_DAYS, useOrgUsage } from "./use-org-usage";
 export { useCreateTeam } from "./use-orgs";
 export { useProviderUsage } from "./use-provider-usage";
 export {
-  useCancelRoutineRun,
+  type RoutineWriteFor,
+  routineRunsQueryOptions,
+  routinesQueryOptions,
   useCreateRoutine,
-  useDeleteRoutine,
-  useRoutineRuns,
   useRoutines,
-  useRunRoutineNow,
-  useUpdateRoutine,
+  useRoutineWritesForAnyAgent,
 } from "./use-routines";
 export {
   useCreateSkill,

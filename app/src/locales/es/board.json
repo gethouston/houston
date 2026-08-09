@@ -5,7 +5,7 @@
     "archiveTooltip": "Archivar",
     "renameTooltip": "Cambiar título",
     "deleteTooltip": "Eliminar",
-    "select": "Seleccionar misión",
+    "select": "Seleccionar tarea",
     "closePanel": "Cerrar panel"
   },
   "deleteCard": {
@@ -16,27 +16,26 @@
     "routine": "Rutina",
     "agentStarted": "Iniciada por el agente"
   },
+  "panel": {
+    "taskLabel": "Tarea: {{title}}",
+    "newTask": "Tarea nueva"
+  },
   "people": {
-    "label": "Personas en esta misión",
+    "label": "Personas en esta tarea",
     "expand": "Todas las personas"
   },
-  "empty": {
-    "title": "Aún no hay conversaciones",
-    "description": "Inicia una conversación nueva para delegarle trabajo a un agente.",
-    "newMission": "Nueva misión"
-  },
   "search": {
-    "placeholder": "Buscar misiones",
+    "placeholder": "Buscar tareas",
     "placeholderShort": "Buscar...",
     "clear": "Borrar búsqueda",
     "clearCta": "Borrar búsqueda",
-    "searchingText": "Buscando en el texto de las misiones",
-    "searchingTitle": "Buscando en el texto de las misiones",
+    "searchingText": "Buscando en el texto de las tareas",
+    "searchingTitle": "Buscando en el texto de las tareas",
     "searchingDescription": "Revisando mensajes anteriores.",
-    "emptyTitle": "No hay misiones que coincidan",
+    "emptyTitle": "No hay tareas que coincidan",
     "emptyDescription": "Prueba otra búsqueda o borra la actual.",
-    "historyErrorTitle": "No se pudieron buscar todas las misiones",
-    "historyErrorDescription": "No se pudo cargar parte del texto de misiones anteriores."
+    "historyErrorTitle": "No se pudieron buscar todas las tareas",
+    "historyErrorDescription": "No se pudo cargar parte del texto de tareas anteriores."
   },
   "toasts": {
     "attached": "Adjuntó: {{names}}"
@@ -69,23 +68,23 @@
     "delete": "Eliminar",
     "clear": "Quitar selección",
     "cancel": "Cancelar",
-    "error": "No se pudieron actualizar las misiones seleccionadas: {{error}}",
+    "error": "No se pudieron actualizar las tareas seleccionadas: {{error}}",
     "confirmMove": {
-      "title": "¿Mover misiones?",
-      "description_one": "¿Mover {{count}} misión a {{target}}?",
-      "description_other": "¿Mover {{count}} misiones a {{target}}?",
+      "title": "¿Mover tareas?",
+      "description_one": "¿Mover {{count}} tarea a {{target}}?",
+      "description_other": "¿Mover {{count}} tareas a {{target}}?",
       "action": "Mover"
     },
     "confirmArchive": {
-      "title": "¿Archivar misiones?",
-      "description_one": "¿Archivar {{count}} misión? Puedes reabrirla desde la pestaña Archivadas.",
-      "description_other": "¿Archivar {{count}} misiones? Puedes reabrirlas desde la pestaña Archivadas.",
+      "title": "¿Archivar tareas?",
+      "description_one": "¿Archivar {{count}} tarea? Puedes reabrirla desde la pestaña Archivadas.",
+      "description_other": "¿Archivar {{count}} tareas? Puedes reabrirlas desde la pestaña Archivadas.",
       "action": "Archivar"
     },
     "confirmDelete": {
-      "title": "¿Eliminar misiones?",
-      "description_one": "¿Eliminar de forma permanente {{count}} misión y su historial?",
-      "description_other": "¿Eliminar de forma permanente {{count}} misiones y su historial?",
+      "title": "¿Eliminar tareas?",
+      "description_one": "¿Eliminar de forma permanente {{count}} tarea y su historial?",
+      "description_other": "¿Eliminar de forma permanente {{count}} tareas y su historial?",
       "action": "Eliminar"
     }
   },
@@ -94,11 +93,10 @@
     "selectAll": "Seleccionar toda la columna"
   },
   "archived": {
-    "emptyTitle": "No hay misiones archivadas",
-    "emptyDescription": "Las misiones archivadas aparecen aquí. Responde a una para reactivarla.",
-    "searchPlaceholder": "Buscar misiones archivadas"
+    "emptyTitle": "No hay tareas archivadas",
+    "emptyDescription": "Las tareas archivadas aparecen aquí. Responde a una para reactivarla."
   },
   "dnd": {
-    "moveError": "No se pudo mover la misión: {{error}}"
+    "moveError": "No se pudo mover la tarea: {{error}}"
   }
 }

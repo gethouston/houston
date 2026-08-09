@@ -11,7 +11,7 @@ interface CustomAddFlowProps {
   /** The add fork dialog's open state — the parent's Add button drives it. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The AMBIENT agent (the per-agent tab): the guided chat starts with THIS
+  /** The AMBIENT agent (an agent-scoped caller): the guided chat starts with THIS
    *  agent, no picker. Absent on the global page, where the workspace's only
    *  agent resolves the target and only a multi-agent workspace asks. */
   agent?: Agent;
@@ -61,7 +61,7 @@ export function CustomAddFlow({
         onOpenChange={onOpenChange}
         agentId={transportAgentId}
         onStartChat={() => {
-          // The ambient agent (per-agent tab), else the workspace's only
+          // The ambient agent, else the workspace's only
           // agent. Only a genuinely ambiguous workspace gets the picker:
           // asking "which agent?" when there is exactly one is a dead
           // question the #1171 flow already stopped asking.

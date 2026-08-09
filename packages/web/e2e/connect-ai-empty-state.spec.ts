@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures";
+import { openNewMission } from "./support/mission";
 
 /**
  * With zero providers connected, the whole composer (textarea + footer with
@@ -17,7 +18,7 @@ test("composer is replaced by the connect-AI empty state when no provider is con
   );
 
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
 
   await expect(page.getByRole("button", { name: "Connect AI" })).toBeVisible({
     timeout: 15_000,
@@ -34,7 +35,7 @@ test("composer renders normally while the provider is connected", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.locator('[data-tour-target="newMission"]').click();
+  await openNewMission(page);
   await expect(
     page.getByPlaceholder("What should the agent work on?"),
   ).toBeVisible();

@@ -1,5 +1,5 @@
 import { AIBoard, type MessageMention } from "@houston-ai/board";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { childMissionsOf, parentMissionOf } from "../../lib/child-missions";
@@ -18,6 +18,7 @@ import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
 import type { BoardSource } from "./board-source";
+import { panelTaskLabel } from "./panel-task-label";
 import { useBoardDrafts } from "./use-board-drafts";
 import { useBoardKeyboard } from "./use-board-keyboard";
 import { useBoardLabels } from "./use-board-labels";
@@ -25,34 +26,23 @@ import { useBoardSelectionUI } from "./use-board-selection-ui";
 import { useBoardSendQueue } from "./use-board-send-queue";
 
 /**
- * The one board both views render. It owns every shared concern — columns,
+ * The one board every mission surface renders (Mission Control and each team
+ * board, which is the same source narrowed by a scope). It owns every shared
+ * concern — columns,
  * the multi-select UI, the `useAgentChatPanel` integration, the message
  * queue, draft persistence, keyboard navigation, run-in-terminal actions, and
  * the full AIBoard prop spread — and pulls the divergent pieces (data, active
  * agent, new-mission flow, bulk routing, toolbar, dialogs) from `source`.
  */
-export function MissionBoard({
-  source,
-  isActive: tabActive,
-}: {
-  source: BoardSource;
-  /** When this board is one agent-detail TAB (the Activity tab), the tab's own
-   *  active flag. Every agent tab stays mounted (only CSS-hidden), so without
-   *  it the board keeps its selected mission and keeps portaling a detail panel
-   *  into the shared shell panel while another tab (Routines) portals its own —
-   *  two stacked panels, the chat "split in half" (HOU-1165). Composed with the
-   *  screen-level active-view signal below. Omit for the top-level Mission
-   *  Control board, which the screen signal governs alone. */
-  isActive?: boolean;
-}) {
+export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
-  // "Active" here means BOTH the enclosing screen is visible AND (when this is a
-  // tab) the tab is the selected one. `useIsActiveView` is only tab-accurate for
-  // top-level kept-alive screens, not agent tabs, so tab callers pass their own
-  // flag; the top-level board passes none and rides the screen signal alone.
-  const screenActive = useIsActiveView();
-  const isActive = screenActive && (tabActive ?? true);
+  // Every board is the whole of a kept-alive top-level screen, so the
+  // screen-level signal alone says whether this one is on the glass. It gates
+  // the keyboard nav and the shell detail panel: a hidden-but-mounted screen
+  // must stop portaling its panel, or two screens stack their panels into the
+  // one shared slot and the chat renders "split in half" (HOU-1165).
+  const isActive = useIsActiveView();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const addToast = useUIStore((s) => s.addToast);
   const queuedLabels = useQueuedMessageLabels();
@@ -75,16 +65,24 @@ export function MissionBoard({
       ),
     [t, source.openNewMission],
   );
+  // The panel's own task line, composed here rather than left to `ui/`'s
+  // i18n-agnostic English fallback (`panelTaskLabel`).
+  const panelLabel = useMemo(
+    () =>
+      panelTaskLabel(
+        {
+          task: (title) => t("board:panel.taskLabel", { title }),
+          newTask: t("board:panel.newTask"),
+        },
+        source.selectedId,
+        source.allItems.find((item) => item.id === source.selectedId)?.title,
+      ),
+    [t, source.selectedId, source.allItems],
+  );
   const closeOpenChat = useCallback(
     () => source.setSelectedId(null),
     [source.setSelectedId],
   );
-  useEffect(() => {
-    if (!isActive) {
-      source.setSelectedId(null);
-      setPanelOpen(false);
-    }
-  }, [isActive, source.setSelectedId, setPanelOpen]);
   const { columns, selectionProps } = useBoardSelectionUI({
     baseColumns,
     allItems: source.allItems,
@@ -115,7 +113,6 @@ export function MissionBoard({
   );
   const panel = useAgentChatPanel({
     agent: source.activeAgent,
-    agentDef: source.activeAgentDef,
     selectedSessionKey: source.selectedSessionKey,
     onSelectSession: source.onSelectSession,
     draftScope: source.draftScope,
@@ -142,6 +139,7 @@ export function MissionBoard({
   });
 
   const { handleCloserReady } = useBoardKeyboard({
+    isActive,
     items: source.items,
     columns,
     selectedId: source.selectedId,
@@ -149,6 +147,7 @@ export function MissionBoard({
     highlightedId: source.highlightedId,
     setHighlightedId: source.setHighlightedId,
     missionPanelOpen,
+    setPanelOpen,
     isLoaded: source.isLoaded,
     hasSearchQuery: source.hasSearchQuery,
     openerReady: source.openerReady,
@@ -231,9 +230,9 @@ export function MissionBoard({
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}
-          cardAvatar={source.cardAvatar}
           thinkingIndicator={panel.thinkingIndicator}
           panelAgentName={source.panelAgentName}
+          panelMissionLabel={panelLabel}
           panelAvatar={
             <AgentPanelAvatar
               color={source.activeAgent?.color}

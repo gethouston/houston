@@ -10,7 +10,7 @@ import { tauriAgentSettings } from "../../lib/tauri";
  * `access`. Gated on the `teams` capability
  * via `enabled`: a host that predates Teams has no settings route (or the
  * desktop/local engine throws), so the query stays idle there and the
- * Integrations tab renders exactly as it does today. On a Teams host the route
+ * Apps section renders exactly as it does today. On a Teams host the route
  * always answers for an assigned caller or owner, so no 404→null degradation is
  * needed here — feature detection is the `teams` flag, not a swallowed error.
  */

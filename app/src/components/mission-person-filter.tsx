@@ -83,6 +83,10 @@ export function MissionPersonFilter({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <FilterTrigger
+          // The team strip's lozenge height, so the right zone is one row of
+          // capsules. Passed from HERE and not baked into `FilterTrigger`,
+          // which the empty-board teaser also renders at its own scale.
+          size={collapsed ? "icon-sm" : "sm"}
           face={activeFace}
           text={activeText}
           label={t("peopleFilter.label")}

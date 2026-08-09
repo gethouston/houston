@@ -1,19 +1,16 @@
 /**
  * RoutineRow — one compact, selectable row in the Scheduled list pane.
  *
- * The list/chat split makes the model visible: each routine IS a chat,
- * and the row is the way into it. The whole row is the click target (a
- * `role="option"` element that opens the task's chat on click/Enter/Space and
- * carries an unmistakable selected state), rhyming with the Activity list rows.
- * Interactive controls (the switch, the kebab, the inline schedule pencil, a
- * trigger's Reconnect) stop click/keydown from bubbling so operating them never
- * opens the chat.
+ * The list/chat split makes the model visible: each routine IS a chat, and the
+ * row is the way into it. The whole row is the click target (a `role="option"`
+ * element that opens the chat on click/Enter/Space and carries an unmistakable
+ * selected state), rhyming with the Activity list rows. Interactive controls
+ * (the switch, the kebab, the inline schedule pencil, a trigger's Reconnect)
+ * stop click/keydown from bubbling so operating them never opens the chat.
  *
- * One aligned grid per row: the identity icon (clock for a schedule, the app's
- * logo for a trigger via `leadingIcon`, run state as a ring) | a min-w-0 title
- * over ONE muted summary line (the schedule summary — editable inline — or a
- * trigger's status chip + event, never a third line) | a compact trailing slot
- * (the next-run relative time, the enable switch, the kebab).
+ * One aligned grid per row: the identity icon (`RoutineRowStatus`) | the title
+ * (`RoutineRowTitle`) over ONE muted summary line (`RoutineRowSummary`, never a
+ * third) | a compact trailing slot (the next-run time, the switch, the kebab).
  */
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
@@ -33,6 +30,7 @@ import { describeNextFire, nextFire } from "./next-fire";
 import { RoutineRowControls } from "./routine-row-controls";
 import { RoutineRowStatus } from "./routine-row-status";
 import { RoutineRowSummary } from "./routine-row-summary";
+import { RoutineRowTitle } from "./routine-row-title";
 import type { Routine, RoutineRun, TriggerStatusItem } from "./types";
 import { useNow } from "./use-now";
 
@@ -56,6 +54,8 @@ export interface RoutineRowProps {
    *  routine (`ui/` cannot resolve logos); absent or `null` falls back to a
    *  clock for a schedule, a bell for a trigger. */
   leadingIcon?: (routine: Routine) => ReactNode;
+  /** OWNER chip beside the name, for a cross-agent list (see RoutineRowTitle). */
+  ownerChip?: ReactNode;
   /** Edit a schedule routine's cron inline. Supplied + a schedule present turns
    *  the summary line into an always-visible edit affordance. */
   onScheduleChange?: (routineId: string, cron: string) => void;
@@ -89,6 +89,7 @@ export function RoutineRow({
   onRunNow,
   onStopRun,
   leadingIcon,
+  ownerChip,
   onScheduleChange,
   labels = DEFAULT_ROW_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
@@ -166,9 +167,10 @@ export function RoutineRow({
       />
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium leading-tight text-ink">
-          {routine.name || labels.untitled}
-        </p>
+        <RoutineRowTitle
+          name={routine.name || labels.untitled}
+          ownerChip={ownerChip}
+        />
         <RoutineRowSummary
           routine={routine}
           lastRun={lastRun}

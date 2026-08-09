@@ -37,7 +37,7 @@ export const SNIPPET: Record<string, BoardSearchSnippet> = {
   },
 };
 
-/** The list as the Archived tab mounts it, with a working delete. */
+/** The list as Mission Control's Archived view mounts it, with a working delete. */
 export function LiveArchivedList({
   align = "center",
 }: {

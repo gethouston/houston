@@ -1,16 +1,17 @@
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
+import { canSeeBilling, canSeeBillingTab } from "../src/lib/billing-gates.ts";
 import {
   canCreateAgents,
   canDeleteWorkspace,
   canManageMembers,
   canSeeAiModelsPage,
-  canSeeBilling,
-  canSeeBillingTab,
   canSeeMembers,
   GRANTABLE_ROLES,
+  hasAgentTeams,
   isMultiplayer,
+  isSpaceOwner,
   orgRole,
 } from "../src/lib/org-roles.ts";
 
@@ -157,6 +158,70 @@ describe("canDeleteWorkspace (PRODUCT-1247)", () => {
 
   it("multiplayer without an explicit role denies (least privilege)", () => {
     strictEqual(canDeleteWorkspace(caps({ multiplayer: true })), false);
+  });
+});
+
+describe("isSpaceOwner", () => {
+  const withSpaces = (role: OrgRole): Capabilities =>
+    caps({ multiplayer: true, role, spaces: true });
+
+  it("single player owns the space, whatever the active-space flag says", () => {
+    strictEqual(isSpaceOwner(caps(), false), true);
+    strictEqual(isSpaceOwner(caps(), true), true);
+    strictEqual(isSpaceOwner(null, false), true);
+    strictEqual(isSpaceOwner(undefined, false), true);
+  });
+
+  it("a C8 personal space belongs to its one human, whatever the org role", () => {
+    strictEqual(isSpaceOwner(withSpaces("owner"), false), true);
+    strictEqual(isSpaceOwner(withSpaces("admin"), false), true);
+    strictEqual(isSpaceOwner(withSpaces("user"), false), true);
+  });
+
+  it("a multiplayer team space: the owner owns it", () => {
+    strictEqual(isSpaceOwner(withSpaces("owner"), true), true);
+    strictEqual(isSpaceOwner(multiplayer("owner"), true), true);
+  });
+
+  it("an admin RUNS a team space but does not own it", () => {
+    strictEqual(isSpaceOwner(withSpaces("admin"), true), false);
+    strictEqual(isSpaceOwner(multiplayer("admin"), true), false);
+  });
+
+  it("a plain member never owns it", () => {
+    strictEqual(isSpaceOwner(withSpaces("user"), true), false);
+    strictEqual(isSpaceOwner(multiplayer("user"), true), false);
+  });
+
+  it("multiplayer without spaces is never personal, so the role decides", () => {
+    // No `spaces` capability means no personal/team split at all: the
+    // active-space flag is meaningless and must not grant ownership.
+    strictEqual(isSpaceOwner(multiplayer("admin"), false), false);
+    strictEqual(isSpaceOwner(multiplayer("user"), false), false);
+    strictEqual(isSpaceOwner(multiplayer("owner"), false), true);
+  });
+
+  it("multiplayer without an explicit role denies (least privilege)", () => {
+    strictEqual(isSpaceOwner(caps({ multiplayer: true }), true), false);
+  });
+});
+
+describe("hasAgentTeams (C13 feature-detect)", () => {
+  it("true only when the host advertises the surface", () => {
+    strictEqual(hasAgentTeams(caps({ agentTeams: true })), true);
+  });
+
+  it("false when the host advertises it as off", () => {
+    strictEqual(hasAgentTeams(caps({ agentTeams: false })), false);
+  });
+
+  it("absent means the LOCAL backend — desktop, self-host, pre-C13 gateways", () => {
+    strictEqual(hasAgentTeams(caps()), false);
+  });
+
+  it("no capabilities at all is the local backend too", () => {
+    strictEqual(hasAgentTeams(null), false);
+    strictEqual(hasAgentTeams(undefined), false);
   });
 });
 

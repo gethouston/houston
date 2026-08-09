@@ -1,40 +1,31 @@
 import {
   CommandDialog,
   CommandEmpty,
-  CommandGroup,
   CommandInput,
-  CommandItem,
   CommandList,
-  CommandSeparator,
-  CommandShortcut,
-  HoustonAvatar,
-  resolveAgentColor,
 } from "@houston-ai/core";
-import { Keyboard, LayoutDashboard, Plus, Settings, Store } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { useAllConversations } from "../hooks/queries";
-import { useSidebarLayout } from "../hooks/use-sidebar-layout";
+import { useSidebarLayoutValue } from "../hooks/use-sidebar-layout";
+import { useTeams } from "../hooks/use-teams";
 import { flatSidebarOrder } from "../lib/agent-order";
 import { analytics } from "../lib/analytics";
+import { openHome } from "../lib/home-nav";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
-import { shortcutLabel } from "../lib/shortcuts";
+import { ARCHIVED_STATUS } from "../lib/mission-selection";
+import { openAgentBoard } from "../lib/open-agent";
+import { isMissionBoardView } from "../lib/top-level-views";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
-import { STORE_VIEW_ID } from "./store-view";
-
-// 28px outer circle so the inner helmet (forced to 20px by cmdk's
-// `[&_[cmdk-item]_svg]:h-5` rule) sits at roughly its native 65%
-// proportion instead of overflowing the badge.
-const AVATAR_PX = 28;
-
-function PaletteAvatar({ color }: { color?: string }) {
-  return (
-    <HoustonAvatar color={resolveAgentColor(color)} diameter={AVATAR_PX} />
-  );
-}
+import { agentsByPath } from "./board/mission-card-agent";
+import { PaletteActions } from "./command-palette-actions";
+import {
+  PaletteAgents,
+  PaletteMissions,
+  PaletteTeams,
+} from "./command-palette-lists";
 
 const RECENT_MISSION_LIMIT = 12;
 
@@ -42,27 +33,28 @@ const RECENT_MISSION_LIMIT = 12;
  * Global ⌘K command palette. Open state lives in the UI store so any
  * shortcut handler can toggle it. Sections:
  *  - Actions: top-level navigation + new-mission
+ *  - Teams: open a team's Mission Control (every board belongs to a team)
  *  - Agents: jump to any agent (sidebar order)
- *  - Recent missions: open a card directly in Mission Control
+ *  - Recent missions: open a card directly on its board
  *
- * Keeps its data sources out of the dashboard tree so it works from any
- * view (settings, integrations, agent files, etc.).
+ * Keeps its data sources out of the board tree so it works from any
+ * view (settings, integrations, agent files, etc.). The three list groups
+ * render from `command-palette-lists.tsx`.
  */
 export function CommandPalette() {
-  const { t } = useTranslation(["shell", "dashboard"]);
+  const { t } = useTranslation("shell");
   const open = useUIStore((s) => s.paletteOpen);
   const setOpen = useUIStore((s) => s.setPaletteOpen);
   useEffect(() => {
     if (open) analytics.track("command_palette_opened");
   }, [open]);
-  const setViewMode = useUIStore((s) => s.setViewMode);
-  const openSettings = useUIStore((s) => s.openSettings);
+  const openTeamView = useUIStore((s) => s.openTeamView);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
-  const setCheatsheetOpen = useUIStore((s) => s.setCheatsheetOpen);
   const agents = useAgentStore((s) => s.agents);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
+  const teams = useTeams();
   const workspaceId = useWorkspaceStore((s) => s.current?.id);
-  const { layout } = useSidebarLayout(workspaceId);
+  const layout = useSidebarLayoutValue(workspaceId);
   const orderedAgents = useMemo(
     () => flatSidebarOrder(agents, layout),
     [agents, layout],
@@ -74,12 +66,13 @@ export function CommandPalette() {
     if (!convos) return [];
     return (
       convos
-        // Archived missions live in the per-agent Archived tab, not the
+        // Archived missions live in the board's archived view, and
+        // guided-setup chats are never missions — neither belongs in the
         // quick-switcher's recent list.
         .filter(
           (c) =>
             c.type === "activity" &&
-            c.status !== "archived" &&
+            c.status !== ARCHIVED_STATUS &&
             !isSetupChatMode(c.agent),
         )
         .slice()
@@ -93,30 +86,38 @@ export function CommandPalette() {
     for (const a of agents) m[a.folderPath] = a.color;
     return m;
   }, [agents]);
+  const rosterByPath = useMemo(() => agentsByPath(agents), [agents]);
 
   const close = () => setOpen(false);
+
+  function jumpToTeam(teamId: string) {
+    openTeamView(teamId, "mission-control");
+    close();
+  }
 
   function jumpToAgent(agentId: string) {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;
     setCurrentAgent(agent);
-    setViewMode(DEFAULT_TAB_ID);
+    // An agent has no screen of its own any more: "jump to Kai" means Kai's
+    // team board, filtered to Kai.
+    openAgentBoard(agent.id);
     close();
   }
 
   function openMission(agentPath: string, missionId: string) {
     const agent = agents.find((a) => a.folderPath === agentPath);
     if (!agent) {
-      setViewMode("dashboard");
+      openHome();
       close();
       return;
     }
-    // Same handoff `session-notifications.ts` uses: switch to the
-    // agent's activity tab, then publish the mission id via
-    // `activityPanelId`. BoardTab consumes it and selects the card,
-    // which opens the right panel.
+    // Same handoff `session-notifications.ts` uses: open the board the
+    // mission's card lives on (its agent's team, filtered to that agent), then
+    // publish the mission id via `activityPanelId`. The board on the glass
+    // consumes it and selects the card, which opens the right panel.
     setCurrentAgent(agent);
-    setViewMode("activity");
+    openAgentBoard(agent.id);
     setActivityPanelId(missionId);
     close();
   }
@@ -127,19 +128,22 @@ export function CommandPalette() {
     // change runs, so focus lands on the right place.
     setTimeout(() => {
       const ui = useUIStore.getState();
-      if (ui.viewMode === "dashboard") {
-        ui.onStartMission?.();
-      } else if (useAgentStore.getState().current) {
-        if (ui.viewMode !== "activity") {
-          ui.setViewMode("activity");
-          setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
-        } else {
-          ui.onStartMission?.();
-        }
-      } else {
-        ui.setViewMode("dashboard");
-        setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
+      // A team's board owns the handler already. The guard is two-part because
+      // the `team` view also renders Team Settings, Routines, Files and the
+      // no-agents empty state, none of which mounts a board — with no
+      // registered handler this has to fall through to the navigate-then-fire
+      // path instead of silently doing nothing.
+      if (isMissionBoardView(ui.viewMode) && ui.onStartMission) {
+        ui.onStartMission();
+        return;
       }
+      // Anywhere else (Settings, Files, the Store): go to the board that owns
+      // the handler. The agent the user last worked with names the team board
+      // to land on; with none, home does.
+      const current = useAgentStore.getState().current;
+      if (current) openAgentBoard(current.id);
+      else openHome();
+      setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
     }, 30);
   }
 
@@ -147,103 +151,23 @@ export function CommandPalette() {
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
-      title={t("shell:palette.title")}
-      description={t("shell:palette.description")}
+      title={t("palette.title")}
+      description={t("palette.description")}
     >
-      <CommandInput placeholder={t("shell:palette.placeholder")} />
+      <CommandInput placeholder={t("palette.placeholder")} />
       <CommandList>
-        <CommandEmpty>{t("shell:palette.empty")}</CommandEmpty>
+        <CommandEmpty>{t("palette.empty")}</CommandEmpty>
 
-        <CommandGroup heading={t("shell:palette.groups.actions")}>
-          <CommandItem onSelect={startNewMission} value="action new-mission">
-            <Plus />
-            <span>{t("shell:palette.actions.newMission")}</span>
-            <CommandShortcut>{shortcutLabel("newMission")}</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => {
-              setViewMode("dashboard");
-              close();
-            }}
-            value="action mission-control"
-          >
-            <LayoutDashboard />
-            <span>{t("shell:palette.actions.missionControl")}</span>
-            <CommandShortcut>{shortcutLabel("missionControl")}</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => {
-              setViewMode(STORE_VIEW_ID);
-              close();
-            }}
-            value="action agent-store"
-          >
-            <Store />
-            <span>{t("shell:sidebar.agentStore")}</span>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => {
-              openSettings(null);
-              close();
-            }}
-            value="action settings"
-          >
-            <Settings />
-            <span>{t("shell:palette.actions.settings")}</span>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => {
-              close();
-              setTimeout(() => setCheatsheetOpen(true), 30);
-            }}
-            value="action shortcuts"
-          >
-            <Keyboard />
-            <span>{t("shell:palette.actions.shortcuts")}</span>
-            <CommandShortcut>{shortcutLabel("cheatsheet")}</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
+        <PaletteActions onNewMission={startNewMission} onClose={close} />
 
-        {orderedAgents.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading={t("shell:palette.groups.agents")}>
-              {orderedAgents.map((agent) => (
-                <CommandItem
-                  key={agent.id}
-                  value={`agent ${agent.name}`}
-                  onSelect={() => jumpToAgent(agent.id)}
-                >
-                  <PaletteAvatar color={agent.color} />
-                  <span>{agent.name}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-
-        {recentMissions.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading={t("shell:palette.groups.recentMissions")}>
-              {recentMissions.map((m) => (
-                <CommandItem
-                  key={m.id}
-                  value={`mission ${m.title} ${m.agent_name}`}
-                  onSelect={() => openMission(m.agent_path, m.id)}
-                >
-                  <PaletteAvatar color={colorByPath[m.agent_path]} />
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate">{m.title}</span>
-                    <span className="truncate text-xs text-ink-muted">
-                      {m.agent_name}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
+        <PaletteTeams teams={teams} onSelect={jumpToTeam} />
+        <PaletteAgents agents={orderedAgents} onSelect={jumpToAgent} />
+        <PaletteMissions
+          missions={recentMissions}
+          colorByPath={colorByPath}
+          agentsByPath={rosterByPath}
+          onSelect={openMission}
+        />
       </CommandList>
     </CommandDialog>
   );

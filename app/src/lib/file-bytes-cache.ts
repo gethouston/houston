@@ -1,6 +1,6 @@
 /**
  * One cache for workspace-file bytes, shared by the two surfaces that can
- * download the SAME file: the Files-tab grid thumbnails (`useFilePreviewLoader`)
+ * download the SAME file: the Files grid thumbnails (`useFilePreviewLoader`)
  * and the in-app preview dialog (`FilePreviewDialog`). Before this, opening a
  * file whose thumbnail had just been fetched downloaded the exact same bytes a
  * second time (HOU-970).

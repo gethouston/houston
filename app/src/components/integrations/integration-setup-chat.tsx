@@ -1,17 +1,16 @@
 import { Button } from "@houston-ai/core";
 import type { Activity } from "@houston-ai/engine-client";
 import { Loader2, X } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import type { Agent } from "../../lib/types";
+import { RoutineSetupChatBoard } from "../agent/routine-setup-chat-board";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
-import { RoutineSetupChatBoard } from "../tabs/routine-setup-chat-board";
 
 interface Props {
   /** The agent that owns this setup chat (resolved by the section's hook). */
   agent: Agent;
-  agentDef: AgentDefinition | null;
   /**
    * The agent's live integration-setup draft, or null while it is still being
    * created (renders a calm loading state — never a dead screen).
@@ -20,7 +19,7 @@ interface Props {
   /**
    * Whether the surface that mounted this chat owns the visible screen. The
    * custom section stays mounted inside kept-alive views (the global page AND
-   * every agent tab), and only the visible instance may drive the SHARED
+   * every mounted screen), and only the visible instance may drive the SHARED
    * shell panel — two portals into one container would double-mount the chat.
    */
   active: boolean;
@@ -34,9 +33,9 @@ interface Props {
 
 /**
  * The custom-integration setup chat, rendered into the big shell-level panel
- * (`useShellDetailPanel`) — the EXACT right-hand panel the Activity board and
+ * (`useShellDetailPanel`) — the EXACT right-hand panel the mission board and
  * the routine chat open, so the Integrations page stays visible on the left
- * while the agent runs the interview on the right (the Automations look; the
+ * while the agent runs the interview on the right (the Routines look; the
  * old inline-box embed buried the page under the chat).
  *
  * The guided chat is a real mission under the hood, but every board filters
@@ -48,7 +47,6 @@ interface Props {
  */
 export function IntegrationSetupChat({
   agent,
-  agentDef,
   activity,
   active,
   onClose,
@@ -88,19 +86,6 @@ export function IntegrationSetupChat({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [active, onClose]);
-
-  // The Integrations page is global, so the catalog may not resolve a def for
-  // this agent's (fabricated) configId. RoutineSetupChatBoard needs a non-null
-  // def only for its agent-modes list, which a setup chat never uses —
-  // synthesize a minimal one so the send path still compiles and runs.
-  const resolvedDef = useMemo<AgentDefinition>(
-    () =>
-      agentDef ?? {
-        config: { id: agent.configId, name: agent.name, description: "" },
-        source: "builtin",
-      },
-    [agentDef, agent.configId, agent.name],
-  );
 
   // The panel div mounts only after setPanelOpen(true) lands — render nothing
   // for that frame (and always nothing while another surface owns the screen).
@@ -152,7 +137,6 @@ export function IntegrationSetupChat({
     <div className="hidden">
       <RoutineSetupChatBoard
         agent={agent}
-        agentDef={resolvedDef}
         activity={activity}
         sessionKey={sessionKey}
         panelContainer={panelContainer}

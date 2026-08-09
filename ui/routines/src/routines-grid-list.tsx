@@ -35,6 +35,8 @@ export function RoutinesGridList({
   onResumeDraft,
   onDiscardDraft,
   leadingIcon,
+  ownerChip,
+  draftOwnerChip,
   onScheduleChange,
   labels = DEFAULT_GRID_LABELS,
   rowLabels = DEFAULT_ROW_LABELS,
@@ -57,6 +59,7 @@ export function RoutinesGridList({
         accountTimezone={accountTimezone}
         selected={selectedRoutineId === routine.id}
         leadingIcon={leadingIcon}
+        ownerChip={ownerChip?.(routine)}
         onScheduleChange={onScheduleChange}
         onOpenChat={onOpenChat ? () => onOpenChat(routine.id) : undefined}
         onToggle={
@@ -101,6 +104,7 @@ export function RoutinesGridList({
             selected={selectedDraftId === draft.id}
             onResume={() => onResumeDraft?.(draft.id)}
             onDiscard={() => onDiscardDraft?.(draft.id)}
+            ownerChip={draftOwnerChip?.(draft)}
             labels={labels}
           />
         ))}

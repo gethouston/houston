@@ -50,7 +50,6 @@ export interface QueueWarmingSendArgs {
   buildPrompt?: () => Promise<string> | string;
   /** Board row for a NEW conversation's first message (created at flush). */
   row?: PendingWarmingSend["row"];
-  promptFile?: string;
   provider?: string;
   model?: string;
   effort?: string;
@@ -92,7 +91,6 @@ export function buildWarmingSend(
     sessionKey: args.sessionKey,
     text: args.text,
     row: args.row,
-    promptFile: args.promptFile,
     provider: args.provider,
     model: args.model,
     effort: args.effort,
@@ -236,7 +234,6 @@ export async function flushWarmingSends(
     );
     try {
       await tauriChat.send(entry.agentPath, prompt, send.sessionKey, {
-        mode: send.promptFile,
         providerOverride: pin.provider,
         modelOverride: pin.model,
         effortOverride: pin.effort,

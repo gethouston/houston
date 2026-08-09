@@ -3,7 +3,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
 import {
   isActiveTopLevelView,
-  SETTINGS_VIEW_ID,
+  ORGANIZATION_VIEW_ID,
 } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 
@@ -30,14 +30,20 @@ export const COMPUTE_USAGE_DAYS = 90;
  */
 export function useComputeUsage(enabled: boolean) {
   const active = useUIStore((s) =>
-    isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID),
+    isActiveTopLevelView(s.viewMode, ORGANIZATION_VIEW_ID),
   );
   return useQuery({
     queryKey: queryKeys.computeUsage(COMPUTE_USAGE_DAYS),
     queryFn: () => tauriOrg.computeUsage(COMPUTE_USAGE_DAYS),
-    // The Usage section rides the kept-alive Settings screen, which stays
-    // mounted while hidden. Disable its observer off screen so neither its
-    // interval nor focus refetch wakes a pod-held read.
+    // This is the Time worked LENS's own read (Admin > Analytics > Time
+    // worked), and Admin is kept alive: it stays mounted while hidden, on
+    // whichever tab and lens it was left on. Disable the observer off screen so
+    // neither its interval nor its focus refetch wakes a pod-held read. Gate on
+    // the SCREEN that renders it — gating on any other view id disables the
+    // observer exactly when the lens is on the glass and the fetch never fires.
+    // The lens itself is the second half of the gate: Analytics mounts only the
+    // sub-tab the user selected, so no observer exists while Activity or Usage
+    // is up.
     enabled: enabled && active,
     staleTime: 20_000,
     // The pod flushes its report on every turn start/end (edge-triggered), so

@@ -53,7 +53,7 @@ test("skip-onboarding escape hatch shows on the connect step and exits to the sh
   await expect(page.getByText("No agents yet")).toBeVisible();
   // Scoped to main: the sidebar carries its own "New agent" icon button.
   await expect(
-    page.getByRole("main").getByRole("button", { name: "New agent" }),
+    page.getByRole("main").getByRole("button", { name: "Create agent" }),
   ).toBeVisible();
 });
 
@@ -74,7 +74,7 @@ test("skip-onboarding escape hatch exits straight from the survey", async ({
   await expect(skip).toHaveCount(0);
   await expect(page.getByText("No agents yet")).toBeVisible();
   await expect(
-    page.getByRole("main").getByRole("button", { name: "New agent" }),
+    page.getByRole("main").getByRole("button", { name: "Create agent" }),
   ).toBeVisible();
 });
 

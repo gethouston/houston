@@ -2,7 +2,7 @@ import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import {
-  browseCatalogView,
+  browseCatalog,
   UNCATEGORIZED,
 } from "../src/components/integrations/browse-model.ts";
 import {
@@ -300,13 +300,12 @@ describe("groupCatalogByCategory narrowed to one category (any-match)", () => {
 
   /** The "Available" chip's number for the same query + category. */
   const chip = (query: string, category: string) =>
-    browseCatalogView({
+    browseCatalog({
       catalog: CATALOG,
       query,
       category,
       connected: new Set(),
-      allowlist: null,
-    }).connectable.length;
+    }).length;
 
   it("surfaces a SECONDARY-category app under that category (all in one section)", () => {
     // notion is [collaboration, developer-tools]; narrowing to developer-tools
@@ -323,7 +322,7 @@ describe("groupCatalogByCategory narrowed to one category (any-match)", () => {
     ]);
   });
 
-  it("renders exactly the chip count (rows === browseCatalogView.connectable)", () => {
+  it("renders exactly the chip count (rows === browseCatalog)", () => {
     // Chip parity across categories: what the header promises equals what shows.
     for (const category of [
       "productivity",

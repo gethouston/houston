@@ -7,12 +7,6 @@
  */
 import { cn, Skeleton } from "@houston-ai/core";
 import {
-  cardClass,
-  cardHeaderClass,
-  cardPreviewClass,
-  chipClass,
-} from "./card-chrome";
-import {
   ACTIONS_CELL,
   colGrid,
   HEADER_ROW,
@@ -25,35 +19,7 @@ import {
 import { RowIndent } from "./files-list-indent";
 
 /** Stable keys: the placeholder count is fixed, so no index-derived keys. */
-const CHIP_KEYS = ["h1", "h2", "h3"];
-const CARD_KEYS = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"];
 const ROW_KEYS = ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"];
-
-export function FilesGridSkeleton() {
-  return (
-    <div className="flex shrink-0 flex-col gap-6 pt-1">
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] content-start gap-3">
-        {CHIP_KEYS.map((key) => (
-          <div key={key} aria-hidden className={chipClass({})}>
-            <Skeleton className="size-4 shrink-0 rounded-sm" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] content-start gap-4">
-        {CARD_KEYS.map((key) => (
-          <div key={key} aria-hidden className={cardClass({})}>
-            <div className={cardHeaderClass()}>
-              <Skeleton className="size-7 shrink-0 rounded-lg" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-            <div className={cardPreviewClass} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function FilesListSkeleton({ selectable }: { selectable?: boolean }) {
   return (

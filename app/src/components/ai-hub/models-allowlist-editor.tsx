@@ -1,19 +1,19 @@
-import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CatalogSearchField } from "@houston-ai/core";
+import { useId, useMemo, useState } from "react";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../../lib/ai-hub/search.ts";
-import { AccessChoice } from "../tabs/agent-admin/access-choice.tsx";
+import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import {
   type AccessMode,
   ceilingMode,
-} from "../tabs/agent-admin/agent-admin-row-values.ts";
-import { LabFilter } from "../tabs/agent-admin/lab-filter.tsx";
-import { ModelAllowRow } from "../tabs/agent-admin/model-allow-row.tsx";
+} from "../agent/agent-admin/agent-admin-row-values.ts";
+import { LabFilter } from "../agent/agent-admin/lab-filter.tsx";
+import { ModelAllowRow } from "../agent/agent-admin/model-allow-row.tsx";
 import {
   allowedListView,
   modelChecked,
   toggleModel,
-} from "../tabs/agent-admin/model-allowlist.ts";
+} from "../agent/agent-admin/model-allowlist.ts";
 import type { ProviderValue } from "./facets.ts";
 
 /** i18n copy for {@link ModelsAllowlistEditor}; the consumer passes translated strings. */
@@ -29,6 +29,7 @@ export interface ModelsAllowlistEditorCopy {
   allowedEmpty: string;
   allowedEmptyLab: string;
   searchModels: string;
+  clearSearch: string;
   noModels: string;
   /** aria-label for a per-model allow toggle. */
   allowModel: (name: string) => string;
@@ -70,6 +71,7 @@ export function ModelsAllowlistEditor({
   onSave,
   copy,
 }: ModelsAllowlistEditorProps) {
+  const headingId = useId();
   const [search, setSearch] = useState("");
   // View-only lab filter (never touches saved data); composes with the search.
   const [lab, setLab] = useState<ProviderValue>("all");
@@ -120,7 +122,9 @@ export function ModelsAllowlistEditor({
 
   return (
     <div>
-      <h2 className="mb-1 text-lg font-medium text-ink">{copy.question}</h2>
+      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
+        {copy.question}
+      </h2>
       <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
 
       {readOnly && copy.readOnlyNote && (
@@ -128,7 +132,7 @@ export function ModelsAllowlistEditor({
       )}
 
       <AccessChoice
-        question={copy.question}
+        labelledBy={headingId}
         value={ceilingMode(allowedModels)}
         disabled={saving || readOnly}
         onChange={onChoice}
@@ -167,16 +171,13 @@ export function ModelsAllowlistEditor({
                 {copy.addHeading}
               </h3>
               <div className="mb-3 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={copy.searchModels}
-                    className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
-                  />
-                </div>
+                <CatalogSearchField
+                  className="flex-1"
+                  value={search}
+                  onChange={setSearch}
+                  label={copy.searchModels}
+                  clearLabel={copy.clearSearch}
+                />
                 <LabFilter models={models} value={lab} onChange={setLab} />
               </div>
               {results.length === 0 ? (

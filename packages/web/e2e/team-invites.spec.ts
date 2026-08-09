@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { navRow } from "./support/team-nav";
 
 /**
  * C8 team invites, the INVITEE side: the invite inbox that rides the sidebar's
@@ -65,9 +66,8 @@ async function expectUnderTheSwitcher(page: Page): Promise<void> {
     .boundingBox();
   const section = await inbox(page).boundingBox();
   const card = await inviteCards(page).first().boundingBox();
-  const firstNavItem = await page
-    .locator("[data-tour-target='nav-dashboard']")
-    .boundingBox();
+  // The Inbox row leads the rail's top-level destinations.
+  const firstNavItem = await navRow(page, "inbox").boundingBox();
   if (!switcher || !section || !card || !firstNavItem)
     throw new Error("sidebar header, inbox or nav is not laid out");
   expect(section.y).toBeGreaterThanOrEqual(switcher.y + switcher.height);

@@ -1,75 +1,51 @@
-import {
-  ConfirmDialog,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  useIsMobile,
-} from "@houston-ai/core";
-import { AppSidebar } from "@houston-ai/layout";
-import { Users } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useIsMobile } from "@houston-ai/core";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
-import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
-import { useSurfaceGates } from "../../hooks/use-surface-gates";
-import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
-import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
-import { showExpectedStateToast } from "../../lib/error-toast";
-import { renameAgentWithFollowUp } from "../../lib/rename-agent-follow-up";
-import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
-import { isTopLevelView } from "../../lib/top-level-views";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { hasAgentTeams } from "../../lib/org-roles";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { buildAgentSidebarLists } from "./agent-sidebar-items";
-import { GroupContextDialog } from "./group-context-dialog";
-import { SidebarInviteInbox } from "./pending-invites";
-import {
-  buildSidebarLabels,
-  buildSidebarNavItems,
-  SidebarWorkspaceHeader,
-} from "./sidebar-chrome";
+import { CreateAgentTeamDialog } from "./create-agent-team-dialog";
+import { SidebarDialogs } from "./sidebar-dialogs";
 import { MobileSidebarSheet } from "./sidebar-mobile";
-import { UpdateChecker } from "./update-checker";
+import { SidebarRail, type SidebarRailModel } from "./sidebar-rail";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
-import { UserMenu } from "./user-menu";
-import { CreateWorkspaceDialog } from "./workspace-dialog";
+import { useSidebarAutoCollapse } from "./use-sidebar-auto-collapse";
+import { useSidebarNavItems } from "./use-sidebar-nav-items";
+import { useSidebarNavigation } from "./use-sidebar-navigation";
+import { useSidebarOverlayLayout } from "./use-sidebar-overlay-layout";
+import { useSidebarTeamsModel } from "./use-sidebar-teams-model";
 
 export function Sidebar({ children }: { children: ReactNode }) {
-  const { t } = useTranslation(["shell", "common", "portable", "teams"]);
+  const { t } = useTranslation([
+    "shell",
+    "common",
+    "portable",
+    "teams",
+    "agents",
+    "dashboard",
+    "settings",
+  ]);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
 
   const agents = useAgentStore((s) => s.agents);
-  const currentAgent = useAgentStore((s) => s.current);
-  const setCurrentAgent = useAgentStore((s) => s.setCurrent);
-  const loadAgents = useAgentStore((s) => s.loadAgents);
-  const renameAgent = useAgentStore((s) => s.rename);
-  const deleteAgent = useAgentStore((s) => s.delete);
-  const updateAgentColor = useAgentStore((s) => s.updateColor);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [createWsOpen, setCreateWsOpen] = useState(false);
-  // A just-created group: the sidebar opens it straight into inline-rename.
-  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
-  // The group whose shared context is open in the editor dialog (null = closed).
-  const [editingContextGroupId, setEditingContextGroupId] = useState<
-    string | null
-  >(null);
+  const [createTeamOpen, setCreateTeamOpen] = useState(false);
 
-  const viewMode = useUIStore((s) => s.viewMode);
-  const setViewMode = useUIStore((s) => s.setViewMode);
-  const openSettings = useUIStore((s) => s.openSettings);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const { canCreate: canCreateAgents } = useCanCreateAgents();
-  // Teams v2: in a Teams workspace the AI Models hub is owner/admin territory
-  // (org-level provider credentials + admin model policy), so plain members lose
-  // its nav entry too — they pick their model per agent in the composer.
-  const { showAiModels } = useSurfaceGates();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
+  // Folding "Your teams" is a device layout preference, persisted beside the
+  // rail's own collapse so the rail comes back the way it was left.
+  const teamsSectionCollapsed = useUIStore((s) => s.teamsSectionCollapsed);
+  const toggleTeamsSectionCollapsed = useUIStore(
+    (s) => s.toggleTeamsSectionCollapsed,
+  );
 
   // Below md the fixed rail becomes a Sheet drawer (opened by MobileTopBar's
   // hamburger). Selecting anything that navigates closes the drawer so the
@@ -79,111 +55,75 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
   const closeMobileSidebar = () => setMobileSidebarOpen(false);
 
-  const sidebar = useSidebarLayout(currentWorkspace?.id);
-
-  // Auto-collapse the rail when the window gets narrow (e.g. Houston docked to
-  // half the screen). Acts only when crossing the threshold, so a manual toggle
-  // is otherwise respected; auto-expands again when it widens back across it.
-  const prevWidth = useRef<number | null>(null);
-  useEffect(() => {
-    // Mobile has no rail to auto-collapse; the drawer is always expanded.
-    if (isMobile) return;
-    const apply = () => {
-      const w = window.innerWidth;
-      const decision = resolveAutoCollapse(prevWidth.current, w);
-      if (decision !== null) setSidebarCollapsed(decision);
-      prevWidth.current = w;
-    };
-    apply();
-    window.addEventListener("resize", apply);
-    return () => window.removeEventListener("resize", apply);
-  }, [setSidebarCollapsed, isMobile]);
+  const { capabilities } = useCapabilities();
+  const serverBacked = hasAgentTeams(capabilities);
+  const sidebar = useSidebarOverlayLayout(currentWorkspace?.id, serverBacked);
+  useSidebarAutoCollapse(isMobile, setSidebarCollapsed);
 
   const activitySummaries = useAgentActivitySummaries(agents);
-  const { items, groups } = buildAgentSidebarLists({
+  const {
+    teams,
+    teamActions,
+    selectedAgentId,
+    items,
+    groups,
+    defaultGroup,
+    onActivateGroup,
+    onActivateDefault,
+  } = useSidebarTeamsModel({
+    t,
     agents,
-    layout: sidebar.layout,
+    sidebar,
+    serverBacked,
+    canCreateAgents,
     summaries: activitySummaries,
-    runningLabel: (count) => t("shell:sidebar.runningCount", { count }),
-    needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
-    unreadLabel: (count) => t("shell:sidebar.unreadCount", { count }),
-    onChangeColor: (agentId, color) => void handleChangeColor(agentId, color),
-    onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
-    shareLabel: t("portable:exportMenu"),
+    closeMobileSidebar,
   });
-  const isTopLevel = isTopLevelView(viewMode);
+  const { navSections, activeNavId } = useSidebarNavItems(
+    t,
+    closeMobileSidebar,
+  );
+  const { switchWorkspace, selectAgent } = useSidebarNavigation({
+    teams,
+    closeMobileSidebar,
+  });
 
-  const handleWorkspaceSwitch = async (wsId: string) => {
-    if (wsId === currentWorkspace?.id) return;
-    const ws = workspaces.find((s) => s.id === wsId);
-    if (!ws) return;
-    closeMobileSidebar();
-    setCurrentWorkspace(ws);
-    await loadAgents(ws.id);
+  const model: SidebarRailModel = {
+    workspaces,
+    currentWorkspace,
+    collapsed,
+    onToggleCollapsed: toggleCollapsed,
+    onExpand: () => setSidebarCollapsed(false),
+    onCreateWorkspace: () => setCreateWsOpen(true),
+    onSwitchWorkspace: switchWorkspace,
+    navSections,
+    activeNavId,
+    teamActions,
+    items,
+    groups,
+    defaultGroup,
+    selectedAgentId,
+    onSelectAgent: selectAgent,
+    onActivateGroup,
+    onActivateDefault,
+    sectionCollapsed: teamsSectionCollapsed,
+    onToggleSectionCollapsed: toggleTeamsSectionCollapsed,
+    onNewTeam: teamActions.canCreateTeam
+      ? () => setCreateTeamOpen(true)
+      : undefined,
+    onAddAgentToTeam: canCreateAgents
+      ? (teamId) => {
+          setDialogOpen(true, teamId);
+          closeMobileSidebar();
+        }
+      : undefined,
+    onAddAgent: canCreateAgents
+      ? () => {
+          setDialogOpen(true);
+          closeMobileSidebar();
+        }
+      : undefined,
   };
-
-  const handleSelectAgent = (agentId: string) => {
-    const agent = agents.find((a) => a.id === agentId);
-    if (!agent) return;
-    setCurrentAgent(agent);
-    setViewMode(DEFAULT_TAB_ID);
-    closeMobileSidebar();
-  };
-
-  const handleRename = async (agentId: string, newName: string) => {
-    if (!currentWorkspace) return;
-    // Validate BEFORE the PATCH (HOU-1166): bad shapes and known duplicates
-    // get the expected-state toast without a round-trip. The 409 catch below
-    // stays for races (a sibling took the name after this list loaded).
-    const issue = agentNameIssue(
-      newName,
-      agents.filter((a) => a.id !== agentId).map((a) => a.name),
-    );
-    if (issue) {
-      showExpectedStateToast(
-        issue === "taken"
-          ? t("agents:toasts.nameConflict", { name: newName.trim() })
-          : issue === "tooLong"
-            ? t("agents:nameErrors.tooLong", { max: AGENT_NAME_MAX_LENGTH })
-            : t("agents:nameErrors.invalidChars"),
-        t("agents:toasts.nameConflictDescription"),
-      );
-      return;
-    }
-    try {
-      await renameAgentWithFollowUp({
-        workspaceId: currentWorkspace.id,
-        agentId,
-        name: newName,
-        renameAgent,
-        remapAgentId: sidebar.remapAgentId,
-      });
-    } catch (err) {
-      if (isAgentNameConflictError(err)) {
-        showExpectedStateToast(
-          t("agents:toasts.nameConflict", { name: newName }),
-          t("agents:toasts.nameConflictDescription"),
-        );
-        return;
-      }
-      throw err;
-    }
-  };
-
-  async function handleChangeColor(agentId: string, color: string) {
-    if (!currentWorkspace) return;
-    await updateAgentColor(currentWorkspace.id, agentId, color);
-  }
-
-  const confirmDelete = async () => {
-    if (!currentWorkspace || !pendingDeleteId) return;
-    await deleteAgent(currentWorkspace.id, pendingDeleteId);
-    setPendingDeleteId(null);
-  };
-
-  const editingContextGroup = editingContextGroupId
-    ? sidebar.layout.groups.find((g) => g.id === editingContextGroupId)
-    : undefined;
 
   /* Gutter around the floating "screen" (Arc canvas). The small padding lets
      the window background show as a frame on all four sides; the screen
@@ -196,31 +136,15 @@ export function Sidebar({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <ConfirmDialog
-        open={pendingDeleteId !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingDeleteId(null);
-        }}
-        title={t("shell:agentDelete.title")}
-        description={t("shell:agentDelete.description")}
-        confirmLabel={t("common:actions.delete")}
-        onConfirm={confirmDelete}
+      <SidebarDialogs
+        createWorkspaceOpen={createWsOpen}
+        onCreateWorkspaceOpenChange={setCreateWsOpen}
       />
-      <CreateWorkspaceDialog
-        open={createWsOpen}
-        onOpenChange={setCreateWsOpen}
-      />
-      <GroupContextDialog
-        open={editingContextGroup !== undefined}
-        onOpenChange={(open) => {
-          if (!open) setEditingContextGroupId(null);
-        }}
-        groupName={editingContextGroup?.name ?? ""}
-        content={editingContextGroup?.context ?? ""}
-        onSave={(next) => {
-          if (editingContextGroupId)
-            sidebar.setGroupContext(editingContextGroupId, next);
-        }}
+      <CreateAgentTeamDialog
+        open={createTeamOpen}
+        onOpenChange={setCreateTeamOpen}
+        serverBacked={serverBacked}
+        sidebar={sidebar}
       />
       <div className="flex h-full flex-1 min-w-0">
         {/* Mobile: the same AppSidebar element, hosted in a drawer; the
@@ -231,115 +155,20 @@ export function Sidebar({ children }: { children: ReactNode }) {
             onOpenChange={setMobileSidebarOpen}
             title={t("shell:sidebar.mobileNavTitle")}
           >
-            {renderAppSidebar(true)}
+            <SidebarRail model={model} t={t} mobile />
           </MobileSidebarSheet>
         )}
-        {isMobile ? gutter : renderAppSidebar(false, gutter)}
+        {isMobile ? (
+          gutter
+        ) : (
+          <SidebarRail
+            model={model}
+            t={t}
+            mobile={false}
+            gutterChildren={gutter}
+          />
+        )}
       </div>
     </>
   );
-
-  // Shared AppSidebar invocation for both presentations. A plain function
-  // (not a nested component) so switching presentation never remounts the
-  // sidebar tree. Mobile is always expanded: collapse is a rail concept.
-  function renderAppSidebar(mobile: boolean, gutterChildren?: ReactNode) {
-    const effectiveCollapsed = mobile ? false : collapsed;
-    return (
-      <AppSidebar
-        collapsed={effectiveCollapsed}
-        onToggleCollapsed={mobile ? undefined : toggleCollapsed}
-        header={
-          <SidebarWorkspaceHeader
-            t={t}
-            workspaces={workspaces}
-            currentId={currentWorkspace?.id ?? null}
-            currentName={currentWorkspace?.name}
-            collapsed={effectiveCollapsed}
-            onSwitch={handleWorkspaceSwitch}
-            onCreate={() => setCreateWsOpen(true)}
-            onExpand={() => setSidebarCollapsed(false)}
-          />
-        }
-        // Pending team invitations: same place in the eye (right under the
-        // switcher, where a user picks a space), but their OWN full-width row —
-        // the header line belongs to the switcher and the collapse toggle.
-        headerBelow={
-          <SidebarInviteInbox
-            collapsed={effectiveCollapsed}
-            onExpand={() => setSidebarCollapsed(false)}
-          />
-        }
-        navItems={buildSidebarNavItems({
-          t,
-          showAiModels,
-          setViewMode: (view) => {
-            setViewMode(view);
-            closeMobileSidebar();
-          },
-          openSettingsIndex: () => {
-            openSettings(null);
-            closeMobileSidebar();
-          },
-        })}
-        activeNavId={isTopLevel ? viewMode : undefined}
-        sectionLabel={t("shell:sidebar.yourAgents")}
-        sectionAction={
-          canCreateAgents ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={t("shell:sidebar.groups.new")}
-                  onClick={() => {
-                    const id = sidebar.createGroup(
-                      t("shell:sidebar.groups.newDefault"),
-                    );
-                    if (id) setRenamingGroupId(id);
-                  }}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
-                >
-                  <Users className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {t("shell:sidebar.groups.new")}
-              </TooltipContent>
-            </Tooltip>
-          ) : undefined
-        }
-        items={items}
-        groups={groups}
-        renamingGroupId={renamingGroupId}
-        onRenamingGroupIdHandled={() => setRenamingGroupId(null)}
-        onToggleGroupCollapsed={sidebar.toggleGroupCollapsed}
-        onEditGroupContext={(id) => setEditingContextGroupId(id)}
-        onRenameGroup={sidebar.renameGroup}
-        onDeleteGroup={sidebar.deleteGroup}
-        onMoveItem={sidebar.moveItem}
-        onMoveGroup={sidebar.moveGroup}
-        selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
-        onSelect={handleSelectAgent}
-        onAdd={
-          canCreateAgents
-            ? () => {
-                setDialogOpen(true);
-                closeMobileSidebar();
-              }
-            : undefined
-        }
-        addItemDataAttrs={{ "data-tour-target": "newAgent" }}
-        onRename={handleRename}
-        onDelete={(agentId) => setPendingDeleteId(agentId)}
-        labels={buildSidebarLabels(t)}
-        footer={
-          <div className="flex flex-col">
-            <UserMenu collapsed={effectiveCollapsed} />
-            <UpdateChecker />
-          </div>
-        }
-      >
-        {gutterChildren}
-      </AppSidebar>
-    );
-  }
 }

@@ -9,14 +9,14 @@ import i18n from "../../lib/i18n";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriFiles } from "../../lib/tauri";
 
-export function useFiles(agentPath: string | undefined) {
+export function useFiles(agentPath: string | undefined, enabled = true) {
   return useQuery({
     queryKey: queryKeys.files(agentPath ?? ""),
     queryFn: () => {
       if (!agentPath) throw new Error("agentPath is required");
       return tauriFiles.list(agentPath);
     },
-    enabled: !!agentPath,
+    enabled: enabled && !!agentPath,
     staleTime: 30_000,
   });
 }

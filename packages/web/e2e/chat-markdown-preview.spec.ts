@@ -237,6 +237,11 @@ test("the preview grows to full screen and shrinks back (PRODUCT-1231)", async (
 
   // A long document is unreadable through a 60vh porthole, so the reader can
   // claim the viewport — and get the small window back.
+  // Poll on the way OUT too, for the same reason the shrink half below does:
+  // `DialogContent` carries `duration-200` with CSS's default
+  // `transition-property: all`, so `max-width` interpolates from the compact
+  // width. The toggle flips on frame 0 of that animation, and a single sample
+  // taken right after it reads the START value, not the settled one.
   await dialog.getByRole("button", { name: "Expand" }).click();
   await expect(dialog.getByRole("button", { name: "Shrink" })).toBeVisible();
   // Poll rather than sample once, same as the shrink leg below: the toggle

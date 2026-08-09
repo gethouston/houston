@@ -10,7 +10,7 @@ describe("mission board columns", () => {
         running: "Running",
         needsYou: "Needs you",
         done: "Done",
-        newMission: "New mission",
+        newMission: "New task",
       },
       openNewMission,
     );
@@ -32,7 +32,7 @@ describe("mission board columns", () => {
       ],
     );
     strictEqual(columns[0].onAdd, openNewMission);
-    strictEqual(columns[0].addLabel, "New mission");
+    strictEqual(columns[0].addLabel, "New task");
     strictEqual(columns[1].onAdd, undefined);
     strictEqual(columns[2].onAdd, undefined);
   });

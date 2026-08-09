@@ -220,6 +220,7 @@
       "error": "Requiere atención"
     },
     "statusUnknown": "Verificando el disparador…",
+    "statusTimeout": "Houston no pudo confirmar que este disparador quedó configurado.",
     "waitingFirstEvent": "Activa. Esperando el primer evento.",
     "reconnect": "Reconectar",
     "statusDisconnectedHint": "La cuenta conectada se desconectó.",

@@ -1,14 +1,17 @@
 /**
- * Pure helpers for partitioning missions by archived state and for the
- * bulk "move to" targets. No engine / React imports so it stays unit-
- * testable and reusable from both the board tab and the archived tab.
+ * The mission status vocabulary, plus the pure rules the board's selection
+ * and drag-and-drop are built on (bulk "move to" targets, drop eligibility,
+ * the Done celebration). No engine / React imports, so every mission surface
+ * shares one definition of these statuses and stays unit-testable.
  */
 
-import { isSetupChatMode } from "./integration-chat-setup.ts";
-
 /** The status that hides a mission from the active board and surfaces it in
- *  the Archived missions tab. Matches `activity.schema.json`. */
+ *  Mission Control's archived view. Matches `activity.schema.json`. */
 export const ARCHIVED_STATUS = "archived";
+
+/** The status of a mission whose turn is under way. The engine writes it at
+ *  turn start, including the start that re-activates an archived mission. */
+export const RUNNING_STATUS = "running";
 
 /** The status of a mission the user has signed off on. Only the user ever puts
  *  a mission here: the engine settles finished work into `needs_you` (or
@@ -96,31 +99,4 @@ export function selectAllIds(
   const next = new Set(selected);
   for (const id of ids) next.add(id);
   return next;
-}
-
-export function isArchived<T extends { status: string }>(item: T): boolean {
-  return item.status === ARCHIVED_STATUS;
-}
-
-interface SelectableMission {
-  status: string;
-  /** Agent-mode id; a guided-setup sentinel hides the mission entirely. */
-  agent?: string | null;
-}
-
-/** Missions shown on the active board (not archived, not a guided-setup
- *  chat — the routine / custom-integration chats live in their own surface,
- *  never as a card). */
-export function selectActive<T extends SelectableMission>(items: T[]): T[] {
-  return items.filter(
-    (item) => !isArchived(item) && !isSetupChatMode(item.agent),
-  );
-}
-
-/** Missions shown in the Archived missions tab. Closed guided-setup chats
- *  stay out of here too: they were never a mission the user managed. */
-export function selectArchived<T extends SelectableMission>(items: T[]): T[] {
-  return items.filter(
-    (item) => isArchived(item) && !isSetupChatMode(item.agent),
-  );
 }

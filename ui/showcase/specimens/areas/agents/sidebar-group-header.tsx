@@ -1,8 +1,3 @@
-import type { SidebarGroupView } from "@houston-ai/layout";
-import { SidebarGroupHeader } from "@houston-ai/layout";
-import type { ReactNode } from "react";
-import { useState } from "react";
-
 import type { Specimen } from "../../../src/specimen";
 import {
   SpecimenPage,
@@ -11,110 +6,54 @@ import {
   SpecimenSection,
   SpecimenTokens,
 } from "../../../src/specimen";
-import {
-  GROUP_LABELS,
-  SIDEBAR_GROUP_HEADER_PROPS,
-} from "./sidebar-group-header-api";
-
-/** Group headers live on the rail, at the rail's width. */
-function Rail({ children }: { children: ReactNode }) {
-  return (
-    <div className="w-[220px] space-y-1 rounded-xl bg-sidebar px-2 py-2">
-      {children}
-    </div>
-  );
-}
-
-/** Collapse and rename both move real state, as they do in the shell. */
-function LiveGroup({
-  initial,
-  startRenaming,
-}: {
-  initial: SidebarGroupView;
-  startRenaming?: boolean;
-}) {
-  const [group, setGroup] = useState(initial);
-  return (
-    <SidebarGroupHeader
-      group={group}
-      count={group.itemIds.length}
-      labels={GROUP_LABELS}
-      startRenaming={startRenaming}
-      onToggleCollapsed={() =>
-        setGroup((one) => ({ ...one, collapsed: !one.collapsed }))
-      }
-      onRenameGroup={(_id, name) => setGroup((one) => ({ ...one, name }))}
-      onEditContext={() => setGroup((one) => ({ ...one, collapsed: false }))}
-    />
-  );
-}
-
-const mornings: SidebarGroupView = {
-  id: "mornings",
-  name: "Mornings",
-  collapsed: false,
-  itemIds: ["inbox-zero", "meeting-notes"],
-};
-
-const finance: SidebarGroupView = {
-  id: "finance",
-  name: "Finance",
-  collapsed: true,
-  itemIds: ["weekly-report", "expense-filer", "contract-reader"],
-};
+import { SIDEBAR_GROUP_HEADER_PROPS } from "./sidebar-group-header-api";
+import { LiveTeam, Rail } from "./sidebar-group-header-parts";
 
 function SidebarGroupHeaderSpecimen() {
   return (
     <SpecimenPage
       title="SidebarGroupHeader"
-      intro="The quiet label over a named group of agents: a hairline chevron, the name, a muted count, and a ⋯ menu that only appears on hover."
+      intro="The head of a team block: one button carrying the team's glyph, its name, the disclosure triangle and its rollup badge, with the ⋯ menu beside it."
     >
       <SpecimenSection
-        title="Variants"
-        note="No `variant` prop. What changes is which callbacks you pass: each of `onEditContext`, `onRenameGroup` and `onDeleteGroup` adds its own entry, and with none of them the ⋯ trigger is not rendered at all."
+        title="Anatomy"
+        note="One button, not three. The triangle, the glyph and the name used to be separate controls sharing a single job, which gave a keyboard user three stops to reach one disclosure and a screen reader no aria-expanded at all. Now the row IS the single hit target, and the menu sits beside it because a button may not nest inside a button. The triangle is an indicator, not a control: what activating the row does is the host's rule, so a triangle claiming to be the fold button would promise an outcome it does not own. The row wears the same 28px box and the same pill as the member rows under it, so a team reads as the head of its ladder rather than as chrome above one — its glyph simply sits 12px to their left."
       >
-        <SpecimenRow label="Full menu — hover for ⋯">
+        <SpecimenRow label="Named team — click the row to fold it">
           <Rail>
-            <LiveGroup initial={mornings} />
+            <LiveTeam name="Mornings" owns />
           </Rail>
         </SpecimenRow>
-        <SpecimenRow label="No menu — read-only group">
+        <SpecimenRow label="Default team — no menu, no drag handle">
           <Rail>
-            <SidebarGroupHeader
-              group={mornings}
-              count={mornings.itemIds.length}
-              labels={GROUP_LABELS}
-            />
+            <LiveTeam name="Julian's workspace" menu={false} />
+          </Rail>
+        </SpecimenRow>
+        <SpecimenRow label="Monochrome glyph — colour belongs to the avatars below">
+          <Rail>
+            <LiveTeam name="Finance" />
           </Rail>
         </SpecimenRow>
       </SpecimenSection>
 
       <SpecimenSection
         title="States"
-        note="Collapse is the group's own `collapsed` flag — the chevron rotates 90°, it never disappears. Rename swaps the label for an input that focuses and selects once, commits on Enter or blur, and abandons on Escape."
+        note="Folding hides EVERYTHING under the header. The hole that leaves is answered by the header itself: it wears the selected pill whenever the block owns the open view, and its trailing slot rolls up what the hidden rows were signalling, so folding a team never means losing sight of it. Rename swaps the row for an input that commits on Enter or blur and abandons on Escape, reporting every abandonment exactly once, which is how a team that does not exist yet knows to disappear."
       >
-        <SpecimenRow label="Expanded / collapsed — click a chevron">
+        <SpecimenRow label="Expanded and collapsed — fold either one">
           <Rail>
-            <LiveGroup initial={mornings} />
-            <LiveGroup initial={finance} />
+            <LiveTeam name="Mornings" />
+            <LiveTeam name="Finance" startCollapsed />
           </Rail>
         </SpecimenRow>
-        <SpecimenRow label="Renaming — a just-created group opens here">
+        <SpecimenRow label="Active — the block owns the open view">
           <Rail>
-            <LiveGroup
-              initial={{
-                id: "new-group",
-                name: "Untitled",
-                collapsed: false,
-                itemIds: [],
-              }}
-              startRenaming
-            />
+            <LiveTeam name="Mornings" owns />
           </Rail>
         </SpecimenRow>
-        <SpecimenRow label="Count fades under the hover menu">
+        <SpecimenRow label="Collapsed and active — the header stands in for it">
           <Rail>
-            <LiveGroup initial={finance} />
+            <LiveTeam name="Mornings" owns startCollapsed />
           </Rail>
         </SpecimenRow>
       </SpecimenSection>
@@ -123,7 +62,10 @@ function SidebarGroupHeaderSpecimen() {
 
       <SpecimenTokens
         classes={[
+          "bg-sidebar",
+          "bg-sidebar-active",
           "bg-hover",
+          "text-hover-text",
           "text-ink",
           "text-ink-muted",
           "bg-input",

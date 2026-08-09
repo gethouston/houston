@@ -15,7 +15,7 @@ import { useSelectionSet } from "./use-selection-set";
  * `bulkDelete` call is scoped to a single agent. So a bulk action groups the
  * selection by owning agent ({@link groupIdsByAgent}) and fans out one call
  * per agent, then refreshes both the flattened cross-agent query and each
- * touched agent's per-agent activity query (so the board tab stays in sync).
+ * touched agent's per-agent activity query (so every board stays in sync).
  * Failures propagate so the caller surfaces a toast (no silent swallow).
  */
 export function useCrossAgentSelection({

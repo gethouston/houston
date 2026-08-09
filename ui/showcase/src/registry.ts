@@ -25,9 +25,8 @@ import type { Specimen } from "./specimen";
  * primitive, not a screen of the product.
  *
  * **Product areas** is the same inventory by *where the user meets it*, named
- * and ordered exactly as the app names and orders it (`agents:tabLabels.*` and
- * `shell:sidebar.*` — the agent tab bar first, then the rail section and the
- * store view). A designer reviewing "the Routines screen" starts here.
+ * for the app's own surfaces (`shell:sidebar.*`) and ordered as the rail orders
+ * them. A designer reviewing "the Routines screen" starts here.
  *
  * A specimen files itself under one group by name; `tests/registry.test.ts`
  * fails the build on a group that is not declared below, so a typo can never

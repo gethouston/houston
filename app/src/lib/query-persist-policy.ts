@@ -3,18 +3,17 @@
  * the list-query persistence (follow-up to HOU-712). Pure and dependency-free
  * so it unit-tests under node:test; the wiring lives in query-persist.ts.
  *
- * Only the POD-HELD list surfaces qualify: conversation lists and board
- * activities live on a cloud agent's engine pod, and the gateway holds their
- * reads for the whole pod cold start — exactly the queries whose absence
- * blanks the sidebar/board. Everything else either answers from the gateway
- * without a pod wake (agents, org) or is already covered by the conversation
- * transcript cache.
+ * Only the POD-HELD list surfaces qualify: an agent's board activities and the
+ * cross-agent conversation sweep live on cloud engine pods, and the gateway
+ * holds their reads for the whole pod cold start — exactly the queries whose
+ * absence blanks the board and the sidebar. Everything else either answers
+ * from the gateway without a pod wake (agents, org) or is already covered by
+ * the conversation transcript cache.
  */
 
 /** Query-key prefixes (see query-keys.ts) restored on boot as stale data. */
 export const PERSISTED_QUERY_PREFIXES = [
   "activity",
-  "conversations",
   "all-conversations",
 ] as const;
 

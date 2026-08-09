@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import type { Agent, SkillSummary } from "../../lib/types";
-import { SkillSetupChat } from "../tabs/skill-setup-chat";
-import { useSkillChatSetup } from "../tabs/use-skill-chat-setup";
-import { useSkillSetupView } from "../tabs/use-skill-setup-view";
+import { SkillSetupChat } from "../agent/skill-setup-chat";
+import { useSkillChatSetup } from "../agent/use-skill-chat-setup";
+import { useSkillSetupView } from "../agent/use-skill-setup-view";
 
 /**
  * The global Skills page's create-with-AI chat (HOU-792): mounts the same

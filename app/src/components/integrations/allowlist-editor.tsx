@@ -1,11 +1,11 @@
 import { Switch } from "@houston-ai/core";
 import type { IntegrationToolkit } from "@houston-ai/engine-client";
-import { useMemo, useState } from "react";
-import { AccessChoice } from "../tabs/agent-admin/access-choice.tsx";
+import { useId, useMemo, useState } from "react";
+import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import {
   type AccessMode,
   ceilingMode,
-} from "../tabs/agent-admin/agent-admin-row-values.ts";
+} from "../agent/agent-admin/agent-admin-row-values.ts";
 import { AppCatalogGrid } from "./app-catalog-grid";
 import { appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
@@ -65,6 +65,7 @@ export function AllowlistEditor({
   copy,
   rowMeta,
 }: AllowlistEditorProps) {
+  const headingId = useId();
   // View-only category filter shared by the allowed list + "Add apps" catalog.
   const [category, setCategory] = useState("all");
 
@@ -108,14 +109,16 @@ export function AllowlistEditor({
 
   return (
     <div>
-      <h2 className="mb-1 text-lg font-medium text-ink">{copy.question}</h2>
+      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
+        {copy.question}
+      </h2>
       <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
 
       {readOnly && copy.readOnlyNote && (
         <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>
       )}
       <AccessChoice
-        question={copy.question}
+        labelledBy={headingId}
         value={ceilingMode(allowedToolkits)}
         disabled={saving || readOnly}
         onChange={onChoice}

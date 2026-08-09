@@ -4,48 +4,27 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@houston-ai/core";
-import type { KeyboardEvent } from "react";
 import type { SidebarItem } from "./sidebar";
-import { sidebarItemRowClasses } from "./sidebar-classes";
-import type { SidebarItemRowLabels } from "./sidebar-item-row";
 import { SidebarItemRow } from "./sidebar-item-row";
+import { sidebarCollapsedItemClasses } from "./sidebar-paint";
 
 export interface SidebarCollapsedItemProps {
   item: SidebarItem;
   isActive: boolean;
-  isEditing: boolean;
-  editValue: string;
-  hasMenu: boolean;
   onSelect: (id: string) => void;
-  onKeyDown: (e: KeyboardEvent, id: string) => void;
-  onEditChange: (value: string) => void;
-  onCommitRename: (id: string) => void;
-  onCancelEdit: () => void;
-  onStartRename?: (id: string, name: string) => void;
-  onDelete?: (id: string) => void;
-  labels?: SidebarItemRowLabels;
 }
 
 /**
  * Collapsed-rail agent entry: an icon-only trigger (the agent avatar) that
  * reveals a flyout to the right on hover OR keyboard focus. The flyout reuses
- * the full {@link SidebarItemRow} so the name and every action (rename, delete,
- * color, share) are exactly what expanded mode shows — no duplicated logic.
+ * the full {@link SidebarItemRow}, so the name and the row's one behaviour
+ * (select) are exactly what expanded mode shows — no duplicated logic. There is
+ * nothing else to show: an agent is edited on its team's Manage agents page.
  */
 export function SidebarCollapsedItem({
   item,
   isActive,
-  isEditing,
-  editValue,
-  hasMenu,
   onSelect,
-  onKeyDown,
-  onEditChange,
-  onCommitRename,
-  onCancelEdit,
-  onStartRename,
-  onDelete,
-  labels,
 }: SidebarCollapsedItemProps) {
   return (
     <HoverCard openDelay={120} closeDelay={120}>
@@ -54,15 +33,14 @@ export function SidebarCollapsedItem({
           type="button"
           aria-label={item.name}
           onClick={() => onSelect(item.id)}
-          onKeyDown={(e) => onKeyDown(e, item.id)}
           className={cn(
-            "relative flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus",
+            "relative flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
             isActive ? "bg-sidebar-active" : "hover:bg-hover/50",
           )}
         >
           {item.icon}
           {item.trailing && (
-            <span className={sidebarItemRowClasses.collapsedTrailing}>
+            <span className={sidebarCollapsedItemClasses.trailing}>
               {item.trailing}
             </span>
           )}
@@ -74,21 +52,7 @@ export function SidebarCollapsedItem({
         sideOffset={8}
         className="w-56 p-1"
       >
-        <SidebarItemRow
-          item={item}
-          isActive={isActive}
-          isEditing={isEditing}
-          editValue={editValue}
-          hasMenu={hasMenu}
-          onSelect={onSelect}
-          onKeyDown={onKeyDown}
-          onEditChange={onEditChange}
-          onCommitRename={onCommitRename}
-          onCancelEdit={onCancelEdit}
-          onStartRename={onStartRename}
-          onDelete={onDelete}
-          labels={labels}
-        />
+        <SidebarItemRow item={item} isActive={isActive} onSelect={onSelect} />
       </HoverCardContent>
     </HoverCard>
   );

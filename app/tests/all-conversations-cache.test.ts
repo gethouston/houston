@@ -82,19 +82,18 @@ describe("latestCachedAgentActivities", () => {
     ]);
   });
 
-  it("prefers the newest source that actually has rows", () => {
+  it("prefers the newest roster variant that actually has rows", () => {
     const qc = new QueryClient();
-    // Older per-agent list with a row the newer aggregate is missing: the
-    // aggregate has NO rows for this agent, so it is not evidence of empty.
-    qc.setQueryData(
-      queryKeys.conversations("agent-a"),
-      [row("m1", "agent-a")],
-      {
-        updatedAt: 1_000,
-      },
-    );
+    // An older roster variant carries a row for this agent; the newer variant
+    // (a roster this agent is not in) has none — absence is not evidence of
+    // empty, so the older rows must still win.
     qc.setQueryData(
       queryKeys.allConversations(["agent-a", "agent-b"]),
+      [row("m1", "agent-a")],
+      { updatedAt: 1_000 },
+    );
+    qc.setQueryData(
+      queryKeys.allConversations(["agent-b"]),
       [row("m2", "agent-b")],
       { updatedAt: 2_000 },
     );
@@ -105,10 +104,10 @@ describe("latestCachedAgentActivities", () => {
     );
   });
 
-  it("serves the newest rows when both sources have some", () => {
+  it("serves the newest rows when several roster variants have some", () => {
     const qc = new QueryClient();
     qc.setQueryData(
-      queryKeys.conversations("agent-a"),
+      queryKeys.allConversations(["agent-a", "agent-b"]),
       [row("stale", "agent-a")],
       { updatedAt: 1_000 },
     );

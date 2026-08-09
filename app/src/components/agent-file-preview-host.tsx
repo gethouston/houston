@@ -6,7 +6,7 @@ import { FilePreviewDialog } from "./file-preview-dialog";
  * fed by `useUIStore.filePreview` (set by `useOpenAgentFile` from chat file
  * cards, turn summaries, and prose file pills). Mounted once per app tree —
  * app/src/main.tsx and packages/web/src/app-tree.tsx — so it works on every
- * screen, onboarding included. The Files tab keeps its own local instance.
+ * screen, onboarding included. The Files section keeps its own local instance.
  */
 export function AgentFilePreviewHost() {
   const preview = useUIStore((s) => s.filePreview);

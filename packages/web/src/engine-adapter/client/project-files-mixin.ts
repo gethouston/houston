@@ -103,9 +103,9 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         })
       ).json()) as { created: string };
     }
-    /** Upload browser Files into the workspace (Files tab drag-drop / Browse /
-     * folder pick), optionally into a subfolder. Folder-derived files carry
-     * `webkitRelativePath`, forwarded as `relPath` so the host stores them
+    /** Upload browser Files into the workspace (Files section drag-drop /
+     * Browse / folder pick), optionally into a subfolder. Folder-derived files
+     * carry `webkitRelativePath`, forwarded as `relPath` so the host stores them
      * nested and the folder structure survives (HOU-889); hosts predating it
      * ignore the field and store the flat name. Small files batch together
      * (the same size-budgeted plan attachments use) so a many-file folder

@@ -6,9 +6,9 @@ visionPath: "../vision/index.html"
 permalink: "learn/04-custom-components.html"
 ---
 {% extends "base.njk" %}
-{% block title %}The agent shell — Learn Houston{% endblock %}
+{% block title %}Where things live — Learn Houston{% endblock %}
 {% block meta %}
-<meta name="description" content="Every Houston agent renders the same five tabs: Activity, Routines, Files, Job Description, and Integrations. Here is what each one is for.">
+<meta name="description" content="An agent has no screen of its own. Its missions, routines, files and settings all live in its team. Here is the map: teams in the sidebar, Mission Control, Routines, Files, agent settings, and Integrations.">
 {% endblock %}
 {% block stylesheets %}
 <link rel="stylesheet" href="style.css?v=3">
@@ -22,82 +22,144 @@ permalink: "learn/04-custom-components.html"
 
       <main class="content">
         <div class="content-label">Chapter 04</div>
-        <h1>The agent shell.</h1>
+        <h1>Where things live.</h1>
         <p class="lead">
-          Every agent in Houston renders the same five tabs. The shape
-          is fixed on purpose, so users learn one layout and reuse it
-          across every agent they install.
+          An agent has no screen of its own. Its work, its schedules,
+          its documents and its settings all live in its team. Learn
+          the shape once and it holds for every agent you install.
         </p>
 
         <div class="toc">
           <div class="toc-label">On this page</div>
           <ol>
-            <li><a href="#tabs">The five tabs</a></li>
-            <li><a href="#why-fixed">Why the layout is fixed</a></li>
-            <li><a href="#integrations">Two ways to reach Integrations</a></li>
+            <li><a href="#teams">Your teams, in the sidebar</a></li>
+            <li><a href="#mission-control">Mission Control</a></li>
+            <li><a href="#routines-files">Routines and Files</a></li>
+            <li><a href="#agent-settings">Agent settings</a></li>
+            <li><a href="#integrations">Integrations</a></li>
           </ol>
         </div>
 
-        <h2 id="tabs">The five tabs</h2>
+        <h2 id="teams">Your teams, in the sidebar</h2>
         <p>
-          From left to right:
+          The sidebar is the whole map. Under <strong>Your teams</strong>,
+          each team is a block of four rows, then the agents that belong
+          to it:
         </p>
         <ul>
+          <li><strong>Mission Control.</strong> The team's board of work.</li>
+          <li><strong>Routines.</strong> What its agents do on their own.</li>
+          <li><strong>Files.</strong> What its agents keep.</li>
+          <li><strong>Team Settings.</strong> The team's agents, and the
+          way into each one's settings page.</li>
+        </ul>
+        <p>
+          Every agent belongs to exactly one team, so there is no loose
+          remainder at the bottom of the list. A new agent lands in the
+          default team, which wears your workspace's name; drag it into
+          another team to move it. Click an agent and you land on its
+          team's Mission Control, already narrowed to that agent, and the
+          narrowing follows you when you click Routines or Files next.
+        </p>
+        <p>
+          Team Settings appears for people who can configure something in
+          that team. On your own computer that is always you.
+        </p>
+
+        <h2 id="mission-control">Mission Control</h2>
+        <p>
+          A kanban board of missions in three columns:
+          <strong>Running</strong>, <strong>Needs you</strong>,
+          <strong>Done</strong>. Each card is one conversation with one
+          agent. Click a card and the chat opens beside the board.
+        </p>
+        <p>
+          The board covers the whole team at once, which is the point: you
+          watch four agents working without visiting four screens. The
+          dropdown in the toolbar narrows it to one agent when you want
+          that instead.
+        </p>
+        <p>
+          A finished mission sits in Needs you until you sign it off, then
+          in Done until you archive it. Drag cards between those two
+          columns, or use the one button on the card. Archived missions
+          move to the <strong>Archived</strong> view behind the button in
+          the toolbar, with its own search; "Back to missions" returns you.
+          Reply to an archived mission and it comes back to the active
+          board on its own.
+        </p>
+        <p>
+          The <strong>Mission Control</strong> entry at the top of the
+          sidebar, above your teams, is the same board across every team
+          at once.
+        </p>
+
+        <h2 id="routines-files">Routines and Files</h2>
+        <p>
+          <strong>Routines</strong> is everything the team's agents do
+          without being asked, in one list, each row naming the agent that
+          owns it. Schedules like "every Monday at 8am, summarize last
+          week's inbox" and event triggers share the list, because the
+          difference between them is an engineering detail, not something
+          you should have to think about. A routine you are still setting
+          up in chat gets a row too, so a half-built one is never lost when
+          you close its chat.
+        </p>
+        <p>
+          <strong>Files</strong> is what the agents have read or written:
+          drafts, notes, structured data, exports. Folders nest, so merging
+          several agents' folders would invent a filesystem nobody has.
+          This section shows one agent's tree at a time and you pick the
+          agent from a dropdown. Browse it as a card grid or as a list.
+        </p>
+
+        <h2 id="agent-settings">Agent settings</h2>
+        <p>
+          Everything configurable about one agent lives on one page. Open
+          <strong>Team Settings</strong> and click the agent's row. The
+          page has a rail on the left with two groups.
+        </p>
+        <p><strong>Context</strong>, what the agent knows:</p>
+        <ul>
           <li>
-            <strong>Activity.</strong> A kanban board of conversations.
-            Each card is one mission. Clicking a card opens the chat.
-            This is the default tab when an agent opens.
+            <strong>Job description.</strong> The agent's
+            <code>CLAUDE.md</code>. This is what it reads at the start of
+            every conversation to know who it is and how to behave. Edit
+            it whenever the role changes.
           </li>
           <li>
-            <strong>Routines.</strong> Scheduled jobs the agent runs on
-            its own, like "every Monday at 8am, summarize last week's
-            inbox." Houston runs the schedule, the agent runs the work.
-          </li>
-          <li>
-            <strong>Files.</strong> Browse anything the agent has read
-            or written inside its working directory. Drafts, notes,
-            structured data, exports.
-          </li>
-          <li>
-            <strong>Job Description.</strong> The agent's
-            <code>CLAUDE.md</code>. This is what the agent reads at the
-            start of every conversation to know who it is and how to
-            behave. Edit it whenever the agent's role changes.
-          </li>
-          <li>
-            <strong>Integrations.</strong> Connect Gmail, Calendar,
-            Slack, Notion, and the rest. Houston supports 1000+ tools
-            through Composio. Connections are workspace-wide, so every
-            agent in the workspace sees the same accounts.
+            <strong>Memory.</strong> What the agent has learned while
+            working, as cards you can read and remove.
           </li>
         </ul>
-
-        <h2 id="why-fixed">Why the layout is fixed</h2>
+        <p><strong>Permissions</strong>, what it and its team may reach:</p>
+        <ul>
+          <li><strong>People with access</strong>, either everyone on your
+          team or a list you pick.</li>
+          <li><strong>Apps</strong>, which of your connected integrations
+          this agent may use.</li>
+          <li><strong>AI models</strong>, which models it may run on.</li>
+          <li><strong>Skills</strong>, the skills installed on it.</li>
+        </ul>
         <p>
-          Earlier versions of Houston let every agent declare its own
-          tab list in <code>houston.json</code>, and an experimental
-          path let agents ship a <code>bundle.js</code> with custom
-          React components for their own tabs. In practice nobody used
-          the custom-component path, and the per-agent tab list mostly
-          caused drift, where an old installed agent kept showing tabs
-          a new version of the agent no longer declared.
-        </p>
-        <p>
-          The fixed shell is simpler for users (one layout to learn) and
-          simpler for agent authors (you write a manifest and a
-          <code>CLAUDE.md</code>, nothing else). The list of tabs lives
-          in <code>app/src/agents/standard-tabs.ts</code> if you want to
-          read it in code.
+          On a single computer the page is Job description, Memory and
+          Skills. The three access rows appear once you share a workspace
+          with other people, since there is nobody to grant access to
+          before that. If you administer a shared workspace, the same page
+          is also reachable from Settings, under Permissions.
         </p>
 
-        <h2 id="integrations">Two ways to reach Integrations</h2>
+        <h2 id="integrations">Integrations</h2>
         <p>
-          The per-agent <strong>Integrations</strong> tab and the
-          sidebar <strong>Connections</strong> entry render the same
-          surface. The two entry points exist because users reach for
-          them at different moments: from inside an agent (the tab), or
-          when setting Houston up as a whole (the sidebar). Connections
-          are workspace-wide either way.
+          One place, the <strong>Integrations</strong> entry in the
+          sidebar. Connect Gmail, Calendar, Slack, Notion and around a
+          thousand more.
+        </p>
+        <p>
+          A connection belongs to <em>you</em>, not to one agent, so you
+          connect Gmail once and every agent you run can be given it. What
+          is per agent is which of those connected apps it may reach, and
+          that is the Apps row on its settings page.
         </p>
 
         <div class="pager">

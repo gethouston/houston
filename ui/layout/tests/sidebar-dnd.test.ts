@@ -14,6 +14,7 @@ import {
   toWorkingSections,
   type WorkingSection,
 } from "../src/sidebar-dnd.ts";
+import { projectSidebarDrag } from "../src/sidebar-drag-view.ts";
 
 const item = (id: string) => ({ id, name: id });
 
@@ -104,4 +105,40 @@ test("toWorkingSections strips item content to ids", () => {
     { groupId: "g1", itemIds: ["a", "b"] },
     { groupId: null, itemIds: ["c"] },
   ]);
+});
+
+test("projectSidebarDrag reports a refusal only while an ITEM is in flight", () => {
+  const markers = {
+    working: null,
+    activeItemId: null,
+    activeGroupId: null,
+    rejecting: false,
+  };
+  const items = [item("a")];
+  const groups = [{ id: "g1", name: "g1", collapsed: false, itemIds: ["a"] }];
+  // An item over a block it may not land in: the lifted copy says so.
+  assert.equal(
+    projectSidebarDrag(items, groups, {
+      ...markers,
+      activeItemId: "a",
+      rejecting: true,
+    }).rejected,
+    true,
+  );
+  // Over its own block, nothing is refused.
+  assert.equal(
+    projectSidebarDrag(items, groups, { ...markers, activeItemId: "a" })
+      .rejected,
+    false,
+  );
+  // A GROUP drag is a reorder of whole blocks and has no refusal state at all,
+  // whatever a stale marker says.
+  assert.equal(
+    projectSidebarDrag(items, groups, {
+      ...markers,
+      activeGroupId: "g1",
+      rejecting: true,
+    }).rejected,
+    false,
+  );
 });

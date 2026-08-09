@@ -31,8 +31,6 @@ export type LoadFilePreview = (
   file: FileEntry,
 ) => Promise<FilePreviewData | null>;
 
-export type FilesViewMode = "grid" | "list";
-
 // --- Instructions panel ---
 
 export interface InstructionFile {

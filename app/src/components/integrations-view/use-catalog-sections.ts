@@ -5,7 +5,7 @@ import type {
 import { useMemo, useState } from "react";
 import {
   type BrokenConnection,
-  browseCatalogView,
+  browseCatalog,
   type CatalogSection,
   catalogHiddenToolkits,
   groupCatalogByCategory,
@@ -20,8 +20,6 @@ import type { VisibleSection } from "./catalog-category-section";
 export interface CatalogSections {
   /** The category sections on screen, each capped until the user expands it. */
   visible: VisibleSection[];
-  /** Apps a Teams ceiling blocks, shown as read-only locked rows below. */
-  locked: IntegrationToolkit[];
   /** slug -> the origin key of the ONE rendered row that owns its inline
    *  connect state (the spotlight repeats rows; only one may expand). */
   owners: Map<string, string>;
@@ -33,11 +31,10 @@ export interface CatalogSections {
 
 /**
  * The browse plane's derivation, lifted out of the view: which apps are
- * connectable (a WORKING connection has left for the Installed strip, an
- * admin-blocked one for the "Not allowed" section — a broken connection stays
- * right here), how they group into capped category sections, which single copy
- * of a repeated app owns the live connect state, and which apps wear a broken
- * connection's status.
+ * connectable (a WORKING connection has left for the Installed strip — a broken
+ * connection stays right here), how they group into capped category sections,
+ * which single copy of a repeated app owns the live connect state, and which
+ * apps wear a broken connection's status.
  *
  * A fresh query OR category resets every section back to its capped preview
  * (changing category re-groups the sections, so a stale expansion no longer
@@ -49,35 +46,24 @@ export function useCatalogSections(opts: {
   connections: IntegrationConnection[];
   query: string;
   category: string;
-  allowlist: string[] | null;
   /** This catalog's half of every row's origin key. */
   surface: string;
   /** slug -> the origin key the live flow was started from. */
   origins: Record<string, string>;
 }): CatalogSections {
-  const { catalog, connections, query, category, allowlist, surface, origins } =
-    opts;
+  const { catalog, connections, query, category, surface, origins } = opts;
 
   const hidden = useMemo(
-    () => catalogHiddenToolkits(connections, allowlist),
-    [connections, allowlist],
+    () => catalogHiddenToolkits(connections),
+    [connections],
   );
   const broken = useMemo(
     () => partitionConnections(connections).broken,
     [connections],
   );
-  // The ceiling splits the browse set BEFORE grouping: sections hold only the
-  // connectable apps; the blocked remainder renders as the locked strip below.
-  const { connectable, locked } = useMemo(
-    () =>
-      browseCatalogView({
-        catalog,
-        query,
-        category,
-        connected: hidden,
-        allowlist,
-      }),
-    [catalog, query, category, hidden, allowlist],
+  const connectable = useMemo(
+    () => browseCatalog({ catalog, query, category, connected: hidden }),
+    [catalog, query, category, hidden],
   );
   const sections: CatalogSection[] = useMemo(
     () =>
@@ -131,7 +117,6 @@ export function useCatalogSections(opts: {
 
   return {
     visible,
-    locked,
     owners,
     broken,
     expand: (name) => setExpanded((prev) => new Set(prev).add(name)),

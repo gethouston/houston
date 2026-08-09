@@ -13,9 +13,9 @@ import AppTree from "./app-tree";
  *
  * The web build configures the app's OWN Firebase Auth (VITE_CP_FIREBASE_* /
  * FIREBASE_* baked at build time), so the desktop app's native auth drives
- * everything: its `SignInScreen` renders when signed out, and its sidebar
- * `UserMenu` shows the signed-in user — no bespoke cloud login UI, no floating
- * profile chip. All this component does is point the engine adapter at the
+ * everything: its `SignInScreen` renders when signed out, and the Settings
+ * index's identity header shows the signed-in user — no bespoke cloud login UI,
+ * no floating profile chip. All this component does is point the engine adapter at the
  * control plane and keep the bearer (Firebase ID) token in sync with the live
  * SDK session (`onIdTokenChanged`), which also covers silent token refresh.
  */

@@ -72,9 +72,8 @@ export interface CachedBoardActivity {
 }
 
 /**
- * One agent's board rows, recovered from the freshest cached conversation
- * list that has any (the per-agent list, or any roster variant of the
- * aggregate — both restored from disk at boot).
+ * One agent's board rows, recovered from the freshest roster variant of the
+ * cached aggregate that has any (every variant is restored from disk at boot).
  *
  * Why the board needs this: the per-agent `["activity", X]` query is only
  * fetched while X's board is open AND only reaches the disk mirror when that
@@ -103,12 +102,6 @@ export function latestCachedAgentActivities(
     bestUpdatedAt = updatedAt;
     bestRows = rows;
   };
-
-  const own = queryClient.getQueryState<CachedConversationRow[]>(
-    queryKeys.conversations(agentPath),
-  );
-  if (own?.status === "success" && own.data)
-    consider(own.data, own.dataUpdatedAt);
 
   const aggregates = queryClient
     .getQueryCache()

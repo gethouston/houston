@@ -2,6 +2,7 @@ import type { ProviderCatalog } from "@houston/protocol";
 import type { Capabilities } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
+import { fetchCapabilities } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
 
 export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -29,18 +30,11 @@ export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
       return (await res.json()) as never;
     }
     async capabilities(): Promise<Capabilities> {
-      // gatewayAuthFetch (not `this.engine.capabilities()`) on purpose: hosted
-      // mode rotates the Supabase bearer mid-session, so the live token is read
-      // per attempt and a 401 refreshes + replays (HOU-687).
-      const res = await controlPlane.gatewayAuthFetch(
-        this.ctx.token,
-        () => this.ctx.cp?.activeOrgSlug,
-      )(`${this.ctx.baseUrl}/v1/capabilities`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new HoustonEngineError(res.status, body);
-      }
-      return (await res.json()) as Capabilities;
+      // Uncached on purpose: `role` is PER-SPACE, so the caller re-fetches after
+      // a space switch (C8 §capabilities). The shared implementation lives in
+      // `host-capabilities.ts` — the sidebar-layout store reads the same route to
+      // learn whether it is talking to an open host.
+      return fetchCapabilities(this.ctx);
     }
     /**
      * pi-ai's FULL static model catalog — every provider and every runnable model

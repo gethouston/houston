@@ -1,14 +1,47 @@
 # Files UI
 
-The agent's Files tab: a Drive-style card grid (default, navigated folder by folder with a
+An agent's files: a Drive-style card grid (default, navigated folder by folder with a
 breadcrumb trail) and a Finder-style list (the whole workspace, browsed by expanding rows), over
 the host's `files*` routes. Library code lives in `@houston-ai/agent` (props-only,
 i18n-agnostic); everything app-specific (queries, toasts, pickers, translations) lives in `app/`.
 
+## One surface, one wiring
+
+**ONE surface shows an agent's files**: the team view's **Files section**
+(`app/src/components/team-view/team-files/`, one agent at a time behind an agent dropdown;
+`knowledge-base/teams-ui.md`). The per-agent **Files tab** (`app/src/components/tabs/files-tab.tsx`)
+was deleted with the rest of the agent tab shell, so the section is the SOLE mount of
+**`AgentFilesSurface`** (`app/src/components/agent/agent-files/agent-files-surface.tsx`) and
+adds nothing but its frame: the dropdown band above the browser. The surface stays a
+self-contained mount rather than being folded into the section, because there can only ever
+be one answer to "what happens when I rename this file" and a second home for files (an
+agent settings section, a share view) must reuse it rather than fork it.
+
+`app/src/components/agent/agent-files/`:
+
+| File | Role |
+|------|------|
+| `agent-files-surface.tsx` | What the section mounts: `FilesBrowser` + the overlays + the read-failed strip. Mount it KEYED on the agent id — an open preview, a pending move conflict and a half-answered delete confirm all belong to the agent that owns them (the view mode is the exception: it lives in the UI store, so it is shared) |
+| `use-agent-files.tsx` | The whole wiring: the read, every mutation, the label bundles, the four overlays, and `error` / `refetch` / `isFetching` for the strip. Returns props rather than rendering |
+| `agent-files-capabilities.ts` | `useLocalFilesAccess` — the ONE answer to "can this deployment hand a file to the OS, and which directory", so a web build and a cloud pod can't offer Reveal on one screen and Download on the other |
+| `agent-files-downloads.ts` | The three save-to-my-machine paths (one file, a folder as a zip, the workspace as a zip), split out only for the size cap |
+
+It is also what keeps the read **cache-shared** with every other files reader: the tree comes
+from `useFiles(agent.folderPath)` — key `queryKeys.files(agentPath)`, the same entry chat
+attachments and the preview dialog resolve against — so every mutation's invalidation lands
+in one place and `use-agent-invalidation.ts`'s `FilesChanged` refreshes the section for free.
+There is no second key and no cross-agent fan-out anywhere in the Files story (a team's files
+are never merged into one tree — see `teams-ui.md`).
+
+**A failed read is stated, never swallowed.** An empty tree and a broken tree look identical, so
+`AgentFilesSurface` renders `AgentReadsFailed` (`app/src/components/agent-reads-failed.tsx`, the
+same strip the team Routines section uses) above the browser, naming the agent and offering Retry
+plus the standard Report-bug pill. It pays the `FILES_CONTENT_COLUMN` gutter so its left edge
+lands on the listing's.
+
 ## Component map
 
-`app/src/components/tabs/files-tab.tsx` renders exactly one library component, `FilesBrowser`,
-and supplies every callback. Inside `ui/agent/src/`:
+Inside `ui/agent/src/`:
 
 | File | Role |
 |------|------|
@@ -28,24 +61,84 @@ and supplies every callback. Inside `ui/agent/src/`:
 | `files-list-view.tsx` + `list-rows.tsx` / `file-row.tsx` / `folder-section.tsx` / `folder-empty-row.tsx` / `files-list-chrome.tsx` / `files-list-indent.tsx` | List view. `files-list-chrome.tsx` is the ONE source of geometry (column template, row shell, cell classes); `files-list-indent.tsx` is how a row states depth; `list-rows.tsx` is the level dispatcher — it and `folder-section.tsx` import each other, which is the honest shape of a recursive tree (neither reference is evaluated at module scope) |
 | `files-checkbox.tsx` · `files-selection-bar.tsx` | The gutter checkbox (checked / indeterminate) and what the column header becomes while files are checked |
 | `files-skeleton.tsx` · `files-search-empty.tsx` · `files-empty-folder.tsx` · `files-empty-state.tsx` | Loading + the three zero states (search miss, empty folder, empty workspace) |
-| `file-type-icons.tsx` | `FileTypeTile` (outlined tile + type-tinted Lucide glyph, both views) + the monochrome `FolderGlyph` and the card's large fallback glyph |
 | `use-file-preview.ts` | `useVisibleOnce` + `useFilePreview`: the ONE lazy byte-loading machine behind both the grid card and the list row |
 | `file-card-preview.tsx` · `file-row-icon.tsx` | The two consumers of it: the card's hero panel, the row's 32px thumbnail |
 | `format-modified.ts` | Pure friendly-date helper for the Modified column (Today / weekday / date) |
 | `card-chrome.tsx` (`KebabButton`) · `file-menu.tsx` · `bg-context-menu.tsx` · `inline-rename.tsx` | Row/card affordances |
 | `tree.ts` · `filter.ts` · `grid-utils.ts` · `utils.ts` | Flat entries → tree, query pruning, path resolution, size format + sort |
 
-App-side helpers: `files-tab-labels.ts` (label bundles), `files-upload-intake.ts` (validation +
-toasts), `files-upload-pickers.tsx` (the two hidden inputs), `files-delete-confirm.tsx` +
-`files-delete-copy.ts` (the confirm dialog and its pure, unit-tested copy),
-`file-preview-dialog.tsx` + `hooks/use-file-preview-loader.ts` (previews). The dialog
-renders HTML files LIVE in a sandboxed iframe (`allow-scripts` only, never
-`allow-same-origin` — the blob document runs in an opaque origin, so agent-built decks
-run their JS without reaching the app's origin/session), in a near-fullscreen dialog
-(`95vw × 92vh`, sized from the `.html` extension so it opens full-size — decks are
-mostly 16:9 and need the window's horizontal shape);
-single-file decks render fully, relative subresources don't resolve (blob URLs have no
-base path).
+The type iconography is NOT in `ui/agent`: `FileTypeTile` (outlined tile + type-tinted
+Lucide glyph, both views), the monochrome `FolderGlyph`, the card's large fallback glyph and
+`file-type.ts` live in **`ui/core`** (`ui/core/src/components/file-type-icons.tsx`,
+`ui/core/src/file-type.ts`), moved there in PRODUCT-1231 so chat's file chips wear the same
+glyph as the listing. `ui/agent` imports them from `@houston-ai/core` like any other consumer.
+
+App-side helpers, all consumed through `use-agent-files.tsx` and living in
+`app/src/components/agent/`: `files-tab-labels.ts` (label bundles), `files-upload-intake.ts`
+(validation + toasts), `files-upload-pickers.tsx` (the two hidden inputs),
+`files-delete-confirm.tsx` + `files-delete-copy.ts` (the confirm dialog and its pure,
+unit-tested copy). Previews are one level up, shared with chat:
+`app/src/components/file-preview-dialog.tsx` + `app/src/hooks/use-file-preview-loader.ts`.
+
+## The preview dialog
+
+`FilePreviewDialog` is a thin shell (load the bytes, size the surface, offer Download);
+everything inside its scroll frame is `app/src/components/file-preview-body.tsx`. It branches
+on the fetched `content-type` into five states — `image` · `pdf` · `html` · `text` · `binary` —
+plus `loading` and an inline `error` (the fetch is toast-free by design).
+
+- **A markdown file previews as a rendered DOCUMENT, not as source** (PRODUCT-1231). A `.md`
+  opened from chat is the deliverable the agent just wrote, so `isMarkdownFile` (`.md`,
+  `.markdown`, `.mdown`, `.mkd`, `.mdx`) routes the text through `MessageResponse` — the same
+  Streamdown pipeline chat renders with — while every other text-ish file still shows verbatim
+  in a `<pre>`. The `PREVIEW_MARKDOWN` class retunes it for a document surface: full heading
+  scale (this IS a document, so `h1` may tower) and hard `break-words` wrapping so a pasted URL
+  or a 200-character token cannot widen the dialog. No `renderLink` override — a URL is the
+  inline Autolink chip and a workspace file is the file chip, so a document names its files
+  exactly the way chat does. `onOpenLink` sends a URL to the system browser and a sibling file
+  back into this same dialog; without it Streamdown's default `<a>` would navigate the whole
+  app away inside the webview.
+- **Reader-chosen expand.** A long document is unreadable in a 60vh window, so the dialog has
+  an expand/collapse toggle (`files.preview.expand` / `.collapse`) that grows it to the full
+  viewport and shrinks back; it resets on every new file. Collapsed the frame is
+  `min-h-[200px] max-h-[60vh]` and always scrolls — `overflow-hidden` would clip the very
+  content the reader expanded to see.
+- **HTML files render LIVE** in a sandboxed iframe (`allow-scripts` only, never
+  `allow-same-origin` — the blob document runs in an opaque origin, so agent-built decks run
+  their JS without reaching the app's origin/session), in a near-fullscreen dialog
+  (`95vw × 92vh`, sized from the `.html` extension so it opens full-size: decks are mostly 16:9
+  and need the window's horizontal shape). A deck fills the frame with its own iframe and must
+  NOT scroll the frame, so it alone gets `overflow-hidden`. Single-file decks render fully;
+  relative subresources don't resolve (blob URLs have no base path).
+
+### Chat links into the preview (`ui/chat/src/file-link-rehype.ts`)
+
+The other door onto this dialog is a markdown link an agent wrote in chat —
+`[Perfil](perfil.md)`, `[Plan](<Tropical Food - Plan.md>)`. Two passes in Streamdown's own
+chain destroyed exactly those links, so `fileLinkRehypePlugin` runs **after `sanitize`** (whose
+attribute whitelist would strip what it mints) and **before `harden`** (so it can hand harden a
+shape harden accepts):
+
+- **micromark percent-encodes every destination**, so `Tropical Food - Plan.md` arrived as
+  `Tropical%20Food%20-%20Plan.md` and named a file that does not exist. The pass records the
+  decoded, pristine path on **`data-file-path`** (`FILE_PATH_ATTR`); the `a` override in
+  `ui/chat/src/ai-elements/message.tsx` opens THAT, not the href. `decodePath` returns the
+  input unchanged when the escapes are malformed, which is also the right answer for a file
+  genuinely named `100%.md`.
+- **rehype-harden blocked bare destinations** — it treats a path as relative only when it
+  starts with `/`, `./` or `../`, so `perfil.md` became an inert grey span with " [blocked]"
+  appended: the user's own file named in chat as dead text. The pass rewrites a bare
+  destination to `./`-prefixed form. Harden still owns and rewrites the `href`; nothing here
+  weakens it.
+- `markdownFilePath` is what decides a destination is a file at all: anything with a scheme, a
+  protocol-relative `//host`, an `#anchor` or a bare `?query` is not. `SKIP_TAGS`
+  (`code`, `pre`, `a`) keeps verbatim content untouched. The plugin takes no options so
+  Streamdown's processor cache (keyed on plugin name + `JSON.stringify(options)`) stays one
+  stable entry.
+- Siblings from the same change: `file-link-text.ts` (`splitFileLinks`, recovering links
+  CommonMark refused to parse) and `file-chip.tsx` (the inline chip a file link renders as).
+  Tests: `ui/chat/tests/file-link-rehype.test.ts`, `packages/web/e2e/chat-markdown-preview.spec.ts`,
+  `packages/web/e2e/chat-link-pill.spec.ts`.
 
 ## Layout (a minimal library's structure in Houston's tokens)
 
@@ -54,7 +147,7 @@ zero states all use the pane's FULL width with one shared gutter. There is no re
 
 **The page is borderless — completely.** There is no rule under the header band, none under the
 list's column headers, none between list rows, and no ring around the view tabs; vertical rhythm is
-spacing alone. The ONLY hairlines left anywhere in the tab are the deliberate outlines that carry
+spacing alone. The ONLY hairlines left anywhere in the surface are the deliberate outlines that carry
 meaning: the search field, the `FileTypeTile`, popovers/menus, and every focus ring. Nothing
 structural is drawn, which is exactly what lets the list's ONE painted surface — the hover fill
 under the row you are pointing at — be the thing the eye follows.
@@ -92,7 +185,7 @@ either: the root has no path to state.
 
 A **single click opens** a file, in both views (`onOpen` → OS-open on a co-located desktop, else
 `FilePreviewDialog`). Enter on a focused row/card does the same. There is no click-to-select and no
-selected ring anywhere in the tab: a click that only highlighted was a dead click, and it collided
+selected ring anywhere in the surface: a click that only highlighted was a dead click, and it collided
 with the gesture people actually wanted. Rename moved entirely to the kebab / right-click menu
 (it used to be Enter-on-selected). Folders are unchanged: click navigates in the grid, toggles
 expansion in the list.
@@ -121,9 +214,9 @@ do with a selection renders no checkbox.
   clear (X). No border, no fill — chrome on the canvas, like the header it replaces.
 - Delete routes through the app's existing confirm (`files-delete-confirm.tsx`), which now speaks
   two copies from one dialog: the kebab NAMES its target, the selection bar COUNTS it
-  (`files.delete.batchTitle`, pluralized). `files-tab.tsx` then fires one `useDeleteFile.mutate`
-  per file, so each keeps the same `call()` toast path — a failure on file 3 of 5 is still reported
-  by name.
+  (`files.delete.batchTitle`, pluralized). `use-agent-files.tsx` then fires one
+  `useDeleteFile.mutate` per file, so each keeps the same `call()` toast path — a failure on file 3
+  of 5 is still reported by name.
 
 Grid = two groups, no headings — the grouping is the layout (`files-grid.tsx`):
 
@@ -142,7 +235,8 @@ folder: the trail is grid-only now, so inline expansion is the list's only way a
 that silently inherited the grid's folder would have no way to say where it was. Toggling
 list→grid returns to the folder the grid still remembers; grid→list always shows everything.
 A folder expanded onto zero children renders a quiet `emptyFolderLabel` row at the child indent,
-so an open chevron over blank space never reads as a listing that failed to load.
+so an open chevron over blank space never reads as a listing that failed to load. `SortKey` is the
+same three (`name` / `dateModified` / `size`) in the column headers and the grid's sort menu.
 
 ### The row language: no rules, one fill
 
@@ -197,13 +291,6 @@ moves) and **arrives on a 200ms entrance** — `.files-selection-bar-in` in `ui/
 opacity + `translateY(-4px)` on the entrance curve, `prefers-reduced-motion` respected. A silent
 swap of the row above the listing was easy to miss.
 
-List = the **whole workspace tree, always rooted at the workspace**, browsed by expanding folder
-rows in place (`FolderSection`, open by default). It is deliberately NOT scoped to the grid's open
-folder: the trail is grid-only, so inline expansion is the list's only way around, and a list that
-silently inherited the grid's folder would have no way to say where it was. Toggling list→grid
-returns to the folder the grid still remembers; grid→list always shows everything. `SortKey` is the
-same three (`name` / `dateModified` / `size`) in the column headers and the grid's sort menu.
-
 `files-skeleton.tsx` mirrors both layouts one-for-one (chip row + hero cards / the real
 `ROW_CLASS` geometry with the checkbox gutter, a `ROW_TILE`-sized placeholder and the same column
 template) so nothing shifts when the listing lands. Its rows carry `hover:bg-transparent`: a fill
@@ -222,7 +309,7 @@ The web adapter implements them in `packages/web/src/engine-adapter/client/proje
 
 Capability gating: `onReveal` / `onOpen`-in-OS and `onRevealAgent` exist only on a co-located
 desktop (`isTauri()` + `isCoLocatedEngine()` + `capabilities.revealInOs` + a real `localDir`);
-otherwise the tab offers in-app preview, per-file Download and Download all. Drag-move and
+otherwise the surface offers in-app preview, per-file Download and Download all. Drag-move and
 folder upload require the TS host (`newEngineActive()`).
 
 ## Upload path
@@ -281,8 +368,8 @@ the workspace, so an empty root is the empty-workspace state and an empty folder
 on its own row); the search miss and the loading skeleton are shared.
 
 `ui/agent` imports no i18n: every string is a `labels`/`menuLabels` prop with an English default,
-and `app/src/components/tabs/files-tab-labels.ts` fills them from `t()` over the `agents`
-namespace (`app/src/locales/<lang>/agents.json`, `files.*`). Adding a string = add the key in
+and `app/src/components/agent/files-tab-labels.ts` fills them from `t()` over the `agents`
+namespace (the failure strip is app chrome and speaks `shell:agentReads.*`) (`app/src/locales/<lang>/agents.json`, `files.*`). Adding a string = add the key in
 en/es/pt + the label field.
 
 **One label is a FUNCTION, deliberately**: `selectedCount?: (count: number) => string` (default
@@ -305,7 +392,15 @@ as the New menu's items.
   single target (file vs folder description), counted through the plural API for a batch.
 - `ui/agent/tests/format-modified.test.ts` — every branch of the friendly date, plus locales.
 - `packages/design-tokens/test/contrast.test.ts` — each `filetype.*` tint on the tile, both themes.
-- `packages/web/e2e/files.spec.ts` — 35 tests over the whole tab against `@houston/fake-host`:
+- `packages/web/e2e/team-routines-files.spec.ts` — the team Files section over the same wiring:
+  ONE agent's real tree, the dropdown switching which, arriving on the rail's pinned agent, a write
+  landing on that agent, and a failed read naming it instead of showing an empty tree.
+- `packages/web/e2e/files.spec.ts` — 35 tests over the whole surface against
+  `@houston/fake-host`. It navigates the way a user does now: `openTeamSection(page, "Files")`
+  (`e2e/support/team-nav.ts`) instead of clicking an agent tab, and switches whose files are
+  shown through the section's own "Whose files" dropdown (a `getByRole("group")` lookup — the
+  dropdown re-keys `AgentFilesSurface` without unmounting the section, which is itself under
+  test). Coverage:
   grid/list navigation, click-opens-preview, the HTML preview (uploaded `.html` opens as a
   RENDERED sandboxed iframe — script ran, `sandbox="allow-scripts"` asserted, no source dump),
   the checkbox gutter (partial/indeterminate/select-all,

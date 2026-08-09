@@ -52,8 +52,8 @@ export function installedPreview<T>(
   return { visible: items.slice(0, cap), showExpander: true };
 }
 
-/** The minimal shape an installed integration row needs — both the global
- *  page's `ActiveAppRow` and the agent tab's usable rows satisfy it. */
+/** The minimal shape an installed integration row needs — the global
+ *  Integrations page's `ActiveAppRow` satisfies it. */
 export interface InstalledRow {
   connection: IntegrationConnection;
   app: AppDisplay;

@@ -9,7 +9,7 @@
  * because `↗` means "leaves the app" and a workspace file opens a preview
  * INSIDE it (or hands off to the OS on a co-located desktop).
  *
- * So a file gets the file vocabulary instead, the same one the Files tab and
+ * So a file gets the file vocabulary instead, the same one the file browser and
  * the turn summary already use: the per-extension glyph tinted with its
  * reserved `filetype.*` token, on the recessed chip surface. Two consequences
  * worth keeping:

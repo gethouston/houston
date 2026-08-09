@@ -8,18 +8,19 @@ import type { OrgTabId } from "./org-view-model.ts";
  * it: the C8 team-status banner / trial pill (in the shell) sends the user to
  * the Billing tab. Rather than lift that state into the shared UI store (and
  * couple every consumer to it), this tiny colocated store carries the intent:
- * the caller sets the request then calls `openSettings("organization")` (Admin is
- * a Settings section since HOU-788, so that ONE store action replaces the old
- * viewMode switch); `OrganizationView` consumes it (initial mount AND while
- * already open) and clears it so a later plain nav to the dashboard lands on the
- * default tab.
+ * the caller sets the request, then navigates with
+ * `setViewMode(ORGANIZATION_VIEW_ID)`. `OrganizationView` consumes it and clears
+ * it, so a later plain nav to the dashboard lands on the default tab.
  *
- * A pin outlives the navigation that set it only if the section never renders,
- * so `SettingsView` clears it (`settings-nav-pins.ts`) whenever a blocked
- * section falls back to the index.
+ * Admin is a KEPT-ALIVE top-level screen, so it does not remount per
+ * navigation: the view consumes the pin from an effect on this field, which
+ * fires on the first mount AND while the screen is already open (the same shape
+ * `team-view/team-settings-nav-store.ts` uses). A pin nothing consumes — the
+ * gates hide Admin, so the screen is never mounted — cannot mislead either: the
+ * caller that sets it is itself behind the team-space gate.
  *
- * (Per-agent / permission deep links target Settings > Permissions via
- * `usePermissionsNav`, not this store.)
+ * (Per-agent settings are opened directly by `lib/open-agent.ts`, which routes
+ * through Team Settings rather than pinning anything here.)
  */
 interface OrgNavState {
   /** The tab to open on the next Organization render, or null for the default. */

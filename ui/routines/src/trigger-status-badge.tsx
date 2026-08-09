@@ -1,7 +1,7 @@
 /**
  * TriggerStatusBadge — the live provisioning status of an event-driven routine
- * (C9), as a sober colored-dot + human label (mirrors the integrations tab's
- * ConnectionStatusBadge treatment, never a tinted card). A disconnected account
+ * (C9), as a sober colored-dot + human label (mirrors the integrations
+ * `ConnectionStatusBadge` treatment, never a tinted card). A disconnected account
  * offers a one-click Reconnect; a revoked toolkit explains access was turned
  * off.
  *

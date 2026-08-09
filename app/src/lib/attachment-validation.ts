@@ -31,7 +31,7 @@ export interface ComposerAttachmentRejection<T extends ComposerAttachmentFile> {
 // Only archives and executables are blocked: the agent can't act on them and
 // expanding them can flood the workspace. Every other binary — video and audio
 // included — is a legitimate workspace file the agent processes with its shell
-// and code tools (and the Files tab accepts them already), so the composer
+// and code tools (and the Files section accepts them already), so the composer
 // must too. Size is bounded separately by MAX_COMPOSER_ATTACHMENT_BYTES.
 const BLOCKED_EXTENSIONS = new Set([
   "7z",

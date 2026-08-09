@@ -7,6 +7,7 @@ import {
   collectContributorIds,
   distinctBoardPeople,
   type MissionAttribution,
+  missionMatchesMe,
   missionMatchesPerson,
 } from "../src/lib/mission-people.ts";
 
@@ -148,6 +149,36 @@ describe("missionMatchesPerson", () => {
     strictEqual(missionMatchesPerson(people, "u-9"), false);
     strictEqual(missionMatchesPerson(undefined, "u-1"), false);
     strictEqual(missionMatchesPerson([], "u-1"), false);
+  });
+});
+
+describe("missionMatchesMe", () => {
+  const mineStack: KanbanPerson[] = [{ id: "me", label: "Me" }];
+  const sharedStack: KanbanPerson[] = [
+    { id: "me", label: "Me" },
+    { id: "mate", label: "Mate" },
+  ];
+  const theirStack: KanbanPerson[] = [{ id: "mate", label: "Mate" }];
+
+  it("matches my missions and shared missions I am on", () => {
+    strictEqual(missionMatchesMe(mineStack, "me"), true);
+    strictEqual(missionMatchesMe(sharedStack, "me"), true);
+    strictEqual(missionMatchesMe(theirStack, "me"), false);
+  });
+
+  it("keeps unattributed / legacy missions mine (empty or absent stack)", () => {
+    // The load-bearing clause: pre-Teams / unstamped missions carry no people,
+    // and off multiplayer none do. Without it, `missionIsMine` would go silent
+    // on a long-tenured user's whole history and on all of single player.
+    strictEqual(missionMatchesMe(undefined, "me"), true);
+    strictEqual(missionMatchesMe([], "me"), true);
+  });
+
+  it("is strictly wider than missionMatchesPerson, only for unattributed work", () => {
+    // The two rules must not be confused: the filter-by-person control stays
+    // strict, so a named teammate never picks up unstamped missions.
+    strictEqual(missionMatchesPerson(undefined, "me"), false);
+    strictEqual(missionMatchesPerson([], "me"), false);
   });
 });
 

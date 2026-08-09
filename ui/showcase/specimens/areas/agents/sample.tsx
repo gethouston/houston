@@ -1,7 +1,7 @@
-import { Badge, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import type { SidebarGroupView, SidebarItem } from "@houston-ai/layout";
 import type { LucideIcon } from "lucide-react";
-import { Blocks, LayoutDashboard, Settings, Store } from "lucide-react";
+import { Blocks, LayoutDashboard, Settings, Store, Users } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
@@ -31,18 +31,18 @@ export function AgentIcon({
   );
 }
 
-/** "Act on me now": a count chip, the loudest signal a row carries. */
-export function NeedsYouChip({ count }: { count: number }) {
-  return (
-    <Badge
-      variant="outline"
-      aria-label={`${count} need you`}
-      className="h-5 min-w-7 bg-input/90 px-2 font-semibold text-[11px] text-ink/80 leading-none"
-    >
-      {count}
-    </Badge>
-  );
+/**
+ * A team block's mark, in the same glyph column the agent avatars use one
+ * indent to the right. Deliberately MONOCHROME — it inherits the row's colour,
+ * because the identity colour in that column belongs to the avatars below it
+ * and a second palette stacked above them would compete with the one that
+ * carries real meaning.
+ */
+export function TeamIcon() {
+  return <Users className="size-4" />;
 }
+
+/** "Act on me now": a count chip, the loudest signal a row carries. */
 
 /** "There is something new here": deliberately a dot, never a count. */
 export function UnreadDot() {
@@ -64,7 +64,6 @@ export const agentItems: SidebarItem[] = [
     id: "inbox-zero",
     name: "Inbox Zero",
     icon: <AgentIcon color="navy" running />,
-    trailing: <NeedsYouChip count={3} />,
   },
   {
     id: "meeting-notes",
@@ -121,9 +120,9 @@ export const workspaces: readonly { id: string; name: string }[] = [
 ];
 
 /**
- * A bounded stage for a full-height app-frame component. The rail, the tab bar
- * and the split view all size themselves from their parent, so a specimen has
- * to give them a window with a real height or they collapse to nothing.
+ * A bounded stage for a full-height app-frame component. The rail and the split
+ * view both size themselves from their parent, so a specimen has to give them a
+ * window with a real height or they collapse to nothing.
  */
 export function Viewport({
   children,

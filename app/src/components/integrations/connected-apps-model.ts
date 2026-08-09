@@ -2,7 +2,7 @@ import type { IntegrationConnection } from "@houston-ai/engine-client";
 
 /**
  * Pure, DOM-free derivations for the connected-apps read-model both catalog
- * surfaces share (the global Integrations page and the per-agent tab). Kept
+ * surfaces share (the global Integrations page and the in-chat connect cards). Kept
  * separate so the connection arithmetic is unit-tested in isolation.
  */
 
@@ -109,27 +109,16 @@ export function groupAccounts(
 /**
  * The toolkits the browse catalog must NOT offer, because they already have a
  * home elsewhere on the surface: a WORKING connection is an Installed strip
- * row, and a connection the agent's Teams ceiling forbids is a "Not allowed"
- * row. A pending or errored connection inside the ceiling is deliberately
- * absent from this set — it stays in the catalog, in its own category section,
- * where its `+` retries the connect.
- *
- * `allowlist === null` (single player, or Teams with no ceiling) blocks
- * nothing, so the set is the working connections alone.
+ * row. A pending or errored connection is deliberately absent from this set —
+ * it stays in the catalog, in its own category section, where its `+` retries
+ * the connect.
  */
 export function catalogHiddenToolkits(
   connections: IntegrationConnection[],
-  allowlist: string[] | null = null,
 ): Set<string> {
-  const allowed = allowlist === null ? null : new Set(allowlist);
   const hidden = new Set<string>();
   for (const c of connections) {
-    if (
-      c.status === "active" ||
-      (allowed !== null && !allowed.has(c.toolkit))
-    ) {
-      hidden.add(c.toolkit);
-    }
+    if (c.status === "active") hidden.add(c.toolkit);
   }
   return hidden;
 }

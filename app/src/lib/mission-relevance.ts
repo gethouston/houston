@@ -1,8 +1,8 @@
 import type { UserProfile } from "../hooks/queries/use-user-profiles.ts";
-import { missionMatchesScope } from "./agent-person-scope.ts";
 import {
   buildMissionPeople,
   type MissionAttribution,
+  missionMatchesMe,
 } from "./mission-people.ts";
 
 /**
@@ -22,10 +22,10 @@ import {
  *    them. Guessing "not mine" on a cache miss would swallow a real ping — the
  *    one failure mode a notification can never have — so a miss notifies.
  *
- * The "is it mine" half deliberately delegates to {@link missionMatchesScope}
- * with the `me` scope rather than re-deriving the rule, which is what carries
- * its own third fail-open clause into this module: a mission with NO attribution
- * whatsoever counts as mine. Legacy and pre-Teams missions carry no
+ * The "is it mine" half deliberately delegates to {@link missionMatchesMe}
+ * rather than re-deriving the rule, which is what carries its own third
+ * fail-open clause into this module: a mission with NO attribution whatsoever
+ * counts as mine. Legacy and pre-Teams missions carry no
  * `created_by`/`contributors`, and treating them as somebody else's would go
  * silent on a long-tenured user's entire history on day one of this change.
  */
@@ -52,19 +52,15 @@ export interface RelevanceConversation extends MissionAttribution {
 const NO_PROFILES: ReadonlyMap<string, UserProfile> = new Map();
 
 /**
- * Is this mission MINE? Delegates to the `me` person scope over the mission's
- * face stack, so the "created by me OR I contributed OR nobody is stamped at
- * all" rule lives in exactly one place ({@link missionMatchesScope}).
+ * Is this mission MINE? Delegates to the face-stack rule, so "created by me OR
+ * I contributed OR nobody is stamped at all" lives in exactly one place
+ * ({@link missionMatchesMe}).
  */
 export function missionIsMine(
   conv: RelevanceConversation,
   selfId: string,
 ): boolean {
-  return missionMatchesScope(
-    buildMissionPeople(conv, NO_PROFILES),
-    { kind: "me" },
-    selfId,
-  );
+  return missionMatchesMe(buildMissionPeople(conv, NO_PROFILES), selfId);
 }
 
 /**

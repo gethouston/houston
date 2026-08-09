@@ -78,7 +78,7 @@ export function WorkspaceSwitcher({
               type="button"
               aria-label={expandLabel}
               onClick={onExpand}
-              className="group flex size-9 items-center justify-center rounded-lg bg-hover text-sm font-semibold text-ink transition-colors hover:bg-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
+              className="group flex size-9 items-center justify-center rounded-lg bg-hover text-sm font-semibold text-ink transition-colors hover:bg-hover/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               <span className="group-hover:hidden group-focus-visible:hidden">
                 {workspaceMonogram(currentName)}

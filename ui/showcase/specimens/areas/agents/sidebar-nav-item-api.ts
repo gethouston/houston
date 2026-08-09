@@ -1,6 +1,10 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** `SidebarNavItemProps`, read off `ui/layout/src/sidebar-nav.tsx`. */
+/**
+ * `SidebarNavItemProps`, read off `ui/layout/src/sidebar-nav.tsx`. Expanded,
+ * every one of these is forwarded to a `SidebarRowButton` at BLOCK depth — see
+ * the SidebarRowButton page for the anatomy they land in.
+ */
 export const SIDEBAR_NAV_ITEM_PROPS: readonly SpecimenProp[] = [
   { name: "icon", type: "ReactNode", note: "Required. 16px Lucide." },
   {
@@ -11,7 +15,7 @@ export const SIDEBAR_NAV_ITEM_PROPS: readonly SpecimenProp[] = [
   {
     name: "active",
     type: "boolean",
-    note: "Sidebar-active fill and medium weight.",
+    note: 'Sidebar-active fill plus text-ink, and aria-current="page". Weight does NOT change: a nav row is block-level and therefore always medium, so selecting one cannot re-measure its label.',
   },
   { name: "onClick", type: "() => void", note: "Required." },
   {
@@ -22,7 +26,7 @@ export const SIDEBAR_NAV_ITEM_PROPS: readonly SpecimenProp[] = [
   {
     name: "dataAttrs",
     type: "Record<string, string>",
-    note: "Spread onto the button, e.g. a product-tour target.",
+    note: "Spread onto the row's ROOT (the pill), e.g. a product-tour target — so the spotlight covers the row rather than the label inside it.",
   },
   {
     name: "collapsed",

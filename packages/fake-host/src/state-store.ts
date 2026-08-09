@@ -89,6 +89,13 @@ export type FakeCapabilities = Capabilities & {
   teams?: boolean;
   spaces?: boolean;
   computeUsage?: boolean;
+  /**
+   * C13 agent teams. Mirrors the `agentTeams` feature-detect flag on
+   * `@houston-ai/engine-client`'s `Capabilities` (gateway-only, like `teams`
+   * and `spaces`, so the host protocol type does not carry it): armed on, the
+   * client swaps its sidebar grouping to the server-owned teams below.
+   */
+  agentTeams?: boolean;
 };
 
 /**
@@ -125,6 +132,57 @@ export type OrgRole = "owner" | "admin" | "user";
  * the row `/v1/me/profile` reads and writes.
  */
 export const SELF_USER_ID = "u-self";
+
+/**
+ * The active space's display name — what `GET /v1/org` serves and the name the
+ * C13 default team is minted with (it is "named after the org"). One constant
+ * so the two can never drift apart.
+ */
+export const FAKE_ORG_NAME = "Acme";
+
+/**
+ * One C13 agent team as the fake STORES it: the durable columns only. The three
+ * fields the client actually renders (`joined`, `owner`, `memberCount`) plus
+ * `agentSlugs` are the CALLER's effective values, resolved per read in
+ * `state-agent-teams.ts` and never stored — the same split the gateway keeps.
+ */
+export interface FakeAgentTeam {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  sortOrder: number;
+  /**
+   * The team's visual identity (C13 §Team identity), both OPTIONAL in the
+   * strict sense: an unset field is ABSENT from the row and therefore from the
+   * wire, never stored as `""`. "Unset" tells the client to render its own
+   * default, which is a different instruction from "render this empty string",
+   * so the two are never collapsed. `""` reaches the fake only as the CLEAR on
+   * a PATCH, where it deletes the field rather than being written.
+   */
+  icon?: string;
+  color?: string;
+  /**
+   * The team's shared CONTEXT (C13 §Team context): prose every agent of the
+   * team is given before it starts a turn. A plain TEXT COLUMN with an empty
+   * default, not an identity field — so unlike `icon`/`color` the wire ALWAYS
+   * carries it (`""` when unwritten), and `""` is an ordinary value rather than
+   * a CLEAR. The absence of the key on the wire is reserved for a gateway that
+   * predates the column, which is what the client feature-detects on; the row
+   * stores it only once something has been written.
+   */
+  context?: string;
+}
+
+/**
+ * One EXPLICIT membership row (`gateway.team_memberships`). Implicit ownership
+ * — an org owner/admin owns every team — is resolved at permission-check time
+ * and NEVER written here, which is exactly what keeps a role change from
+ * leaving stale team ownership behind.
+ */
+export interface FakeAgentTeamMember {
+  userId: string;
+  owner: boolean;
+}
 
 /**
  * The caller's own display profile as `GET`/`PUT /v1/me/profile` serve it. The
@@ -376,7 +434,13 @@ export interface HostState {
   histories: Map<string, ChatMessage[]>;
   agentSeq: number;
   activitySeq: number;
-  /** Monotonic counter for minted routine ids. */
+  /**
+   * Monotonic counter for minted routine ids. GLOBAL, unlike the real host's:
+   * there, routine ids are unique per AGENT, so two agents genuinely can hold
+   * the same id. `/__test__/routine-seq` rewinds this so a spec can reproduce
+   * that collision on purpose (the cross-agent list's whole keying rests on
+   * it); nothing else touches it.
+   */
   routineSeq: number;
   // ── user-scoped gateway state (integrations, preferences) ──
   /** Advertised capabilities, armed by `/__test__/capabilities` (Teams e2e). */
@@ -407,6 +471,15 @@ export interface HostState {
    * every agent is healthy.
    */
   failingAgentReads: Set<string>;
+  /**
+   * Which sub-resources of those agents fail (`routines`, `routine_runs`,
+   * `activities`, `files`, ...). `null` (the default) = the whole pod is
+   * unreachable, every read 500s. A NAMED set is the subtler half-broken state
+   * a surface must also survive: one route down while the rest of that same
+   * agent answers, e.g. routines fine and their run history 500ing, which
+   * leaves every row without its last-run line.
+   */
+  failingAgentReadSegments: Set<string> | null;
   /**
    * Custom integrations (HOU-550), armed by `/__test__/custom-integrations`.
    * `null` (the default) = the host does not serve the feature at all: no
@@ -458,6 +531,35 @@ export interface HostState {
   spaceInvites: FakeSpaceInvite[];
   /** Monotonic counter for minted team-space slugs (`POST /v1/orgs`). */
   teamSeq: number;
+  /**
+   * The active space's C13 agent teams. Empty (the default) = none minted yet:
+   * the first teams READ mints the default team lazily and idempotently, named
+   * after the org, exactly as the gateway does for an org that predates the
+   * migration. Armed wholesale by `/__test__/agent-teams`.
+   */
+  agentTeams: FakeAgentTeam[];
+  /**
+   * teamId -> its EXPLICIT membership rows. The default team never holds any
+   * (everyone belongs to it implicitly), which is why both member writes on it
+   * are refused with `400 default_team`.
+   */
+  agentTeamMembers: Map<string, FakeAgentTeamMember[]>;
+  /**
+   * agentId -> the team it belongs to. An ABSENT entry resolves to the default
+   * team, mirroring the NULL `agents.team_id` the gateway reads that way: no
+   * agent is ever teamless, and deleting a team needs no sweep.
+   */
+  agentTeamOf: Map<string, string>;
+  /**
+   * C13 personal space: a space with exactly one human in it. It groups agents
+   * with teams like any other space (the real list, create/patch/delete and the
+   * agent move all allowed); only join and the two member writes answer
+   * `403 personal_space`. Armed by `/__test__/agent-teams`
+   * `{personalSpace:true}`.
+   */
+  personalSpace: boolean;
+  /** Monotonic counter for minted agent-team ids (`POST /v1/org/teams`). */
+  agentTeamSeq: number;
   /** connectionId -> the acting user's connected account. */
   connections: Map<string, IntegrationConnection>;
   /** Per-user preference key -> value (locale, timezone, …). */
@@ -528,6 +630,7 @@ function freshState(): HostState {
     integrationsMode: "ready",
     agentReadHoldMs: 0,
     failingAgentReads: new Set<string>(),
+    failingAgentReadSegments: null,
     customIntegrations: null,
     orgMembers: null,
     meProfileBase: {},
@@ -537,6 +640,11 @@ function freshState(): HostState {
     teamWorkspaces: [],
     spaceInvites: [],
     teamSeq: 0,
+    agentTeams: [],
+    agentTeamMembers: new Map(),
+    agentTeamOf: new Map(),
+    personalSpace: false,
+    agentTeamSeq: 0,
     connections,
     preferences: new Map(),
     sidebarLayouts: new Map(),
@@ -551,9 +659,29 @@ export function setAgentReadHoldMs(ms: number): void {
   state.agentReadHoldMs = Math.max(0, ms);
 }
 
-/** Arm (or clear, with `[]`) the agents whose per-agent reads answer 500. */
-export function setFailingAgentReads(agentIds: string[]): void {
+/**
+ * Arm (or clear, with `[]`) the agents whose per-agent reads answer 500.
+ * `segments` narrows it to named sub-resources (`["routine_runs"]`); omitting
+ * it fails every read those agents serve.
+ */
+export function setFailingAgentReads(
+  agentIds: string[],
+  segments?: string[] | null,
+): void {
   state.failingAgentReads = new Set(agentIds);
+  state.failingAgentReadSegments =
+    segments && segments.length > 0 ? new Set(segments) : null;
+}
+
+/**
+ * Rewind the routine-id counter, so the NEXT routine created on ANY agent takes
+ * an id an earlier agent already used. Routine ids are unique per agent in the
+ * real host, never per workspace, so this collision is ordinary production
+ * truth — the fake's one global counter is what would otherwise hide it, and a
+ * spec asserting cross-agent routing has to be able to reproduce it.
+ */
+export function setRoutineSeq(next: number): void {
+  state.routineSeq = Math.max(0, next);
 }
 
 /** Restore the seed. Called by the harness before each test. */

@@ -83,7 +83,7 @@ test("searching filters the category sections live", async ({
     page.getByRole("heading", { name: "Productivity" }),
   ).toBeVisible();
 
-  const search = page.getByRole("textbox", { name: "Search integrations" });
+  const search = page.getByRole("searchbox", { name: "Search integrations" });
   await search.fill("slack");
 
   // Only the section holding Slack (Communication) survives; the Slack row
@@ -112,7 +112,7 @@ test("catalog search clears manually and after its matching app connects", async
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
-  const search = page.getByRole("textbox", { name: "Search integrations" });
+  const search = page.getByRole("searchbox", { name: "Search integrations" });
   const clear = page.getByRole("button", { name: "Clear search" });
   await expect(clear).toHaveCount(0);
 
@@ -135,7 +135,7 @@ test("a delayed connection preserves a newer non-matching search", async ({
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
-  const search = page.getByRole("textbox", { name: "Search integrations" });
+  const search = page.getByRole("searchbox", { name: "Search integrations" });
   await search.fill("Slack");
   await page.getByRole("button", { name: "Connect Slack" }).first().click();
   await search.fill("Notion");

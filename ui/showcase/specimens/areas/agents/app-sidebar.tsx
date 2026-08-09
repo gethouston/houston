@@ -9,7 +9,8 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 import { APP_SIDEBAR_PROPS } from "./app-sidebar-api";
-import { EmptyRail, LiveSidebar, SidebarStage } from "./app-sidebar-parts";
+import { LiveSidebar } from "./app-sidebar-parts";
+import { EmptyRail, SidebarStage } from "./app-sidebar-stage";
 
 function AppSidebarSpecimen() {
   return (
@@ -20,7 +21,7 @@ function AppSidebarSpecimen() {
       >
         <SpecimenSection
           title="Variants"
-          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Every example below is live; rename, delete, collapse and drag them."
+          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Add an `icon` to a group and `defaultGroup` for the trailing block, and each block becomes a team: one header row, then its agents. Every example below is live; rename, delete, fold and drag them."
         >
           <SpecimenRow label="Flat list">
             <SidebarStage>
@@ -32,20 +33,51 @@ function AppSidebarSpecimen() {
               <LiveSidebar grouped />
             </SidebarStage>
           </SpecimenRow>
+          <SpecimenRow label="Teams — one ladder of rows per block">
+            <SidebarStage>
+              <LiveSidebar grouped teams />
+            </SidebarStage>
+          </SpecimenRow>
           <SpecimenRow label="Full shell chrome — header, nav, footer">
             <SidebarStage>
-              <LiveSidebar chrome grouped />
+              <LiveSidebar chrome grouped teams />
+            </SidebarStage>
+          </SpecimenRow>
+        </SpecimenSection>
+
+        <SpecimenSection
+          title="Anatomy"
+          note="A team block is ONE ladder, not a header with a list under it: the team row and every agent row share one fixed height, one glyph column and one type size, with hierarchy carried by an indent inside the row so the inset pills line up in a single column down the left edge. The team row itself is one hit target — glyph, name, triangle and rollup badge together — with the ⋯ menu beside it. Its glyph is monochrome on purpose: the identity colour in that column belongs to the agent avatars one indent to the right."
+        >
+          <SpecimenRow label="Expanded team, collapsed team, default block">
+            <SidebarStage>
+              <LiveSidebar grouped teams />
+            </SidebarStage>
+          </SpecimenRow>
+          <SpecimenRow label="The band — its label folds the whole list, its + creates and joins">
+            <SidebarStage>
+              <LiveSidebar chrome grouped teams />
             </SidebarStage>
           </SpecimenRow>
         </SpecimenSection>
 
         <SpecimenSection
           title="States"
-          note="Row state comes from `selectedId` and each item's `trailing` node; the rail itself paints only the selection fill. Rename is inline — open a row's ⋯ menu and pick Rename, and the row swaps for a focused input that commits on Enter or blur."
+          note="Selection is one paint for every kind of row: a team header and an agent row wear the same pill, so “where am I” reads the same whichever is open. Folding a team hides everything under it — its header keeps the pill and picks up a rollup badge, so the rail never goes dark on the question. Renaming is inline and belongs to TEAMS: open a block's ⋯ menu, pick Rename, and the header swaps for a focused input that commits on Enter or blur. Agent rows carry no menu at all."
         >
           <SpecimenRow label="Selected, running, needs-you, unread">
             <SidebarStage>
               <LiveSidebar />
+            </SidebarStage>
+          </SpecimenRow>
+          <SpecimenRow label="Active team header — the block owns the open view">
+            <SidebarStage>
+              <LiveSidebar grouped teams />
+            </SidebarStage>
+          </SpecimenRow>
+          <SpecimenRow label="Collapsed and active — Finance holds the open agent">
+            <SidebarStage>
+              <LiveSidebar grouped teams initialSelectedId="weekly-report" />
             </SidebarStage>
           </SpecimenRow>
           <SpecimenRow label="Empty — a brand-new workspace">
@@ -82,8 +114,11 @@ function AppSidebarSpecimen() {
             "text-hover-text",
             "text-ink",
             "text-ink-muted",
+            "bg-card",
             "bg-input",
             "border-line",
+            "border-ink",
+            "ring-line",
             "text-danger",
             "ring-focus",
           ]}

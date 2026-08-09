@@ -1,23 +1,21 @@
 "use client";
 
 import {
+  CatalogSearchField,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  SearchClearButton,
 } from "@houston-ai/core";
-import { ArrowUpDown, Check, ChevronDown, Search } from "lucide-react";
-import { useRef } from "react";
+import { ArrowUpDown, Check, ChevronDown } from "lucide-react";
 
 import type { StoreCategoryRow } from "../types";
 
 export type CatalogView = "agents" | "creators";
 export type CatalogSort = "installs" | "alphabetical";
 const pill =
-  "flex h-12 shrink-0 items-center gap-2 rounded-full border border-line-input bg-input px-5 text-[15px] text-ink transition-colors duration-150 hover:bg-hover";
+  "flex h-9 shrink-0 items-center gap-2 rounded-full border border-line bg-chip px-4 text-[13px] font-medium text-ink transition-colors duration-150 hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-focus/20";
 const defaults = {
-  searchLabel: "Search the Agent Store",
   searchPlaceholder: "Search agents and creators",
   clearSearch: "Clear search",
   allCategories: "All categories",
@@ -72,7 +70,6 @@ export function CatalogControls({
   labels?: Partial<typeof defaults>;
 }) {
   const labels = { ...defaults, ...provided };
-  const searchRef = useRef<HTMLInputElement>(null);
   const activeCategory = categories.find((item) => item.slug === category);
   return (
     <div className="flex w-full min-w-0 flex-wrap items-center gap-3">
@@ -80,28 +77,12 @@ export function CatalogControls({
         className="min-w-64 flex-1"
         onSubmit={(event) => event.preventDefault()}
       >
-        <label className="relative flex h-12 items-center gap-3 rounded-full border border-line-input bg-input px-5 transition-colors duration-150 focus-within:ring-[3px] focus-within:ring-focus/30">
-          <Search className="size-5 shrink-0 text-ink-muted" />
-          <span className="sr-only">{labels.searchLabel}</span>
-          <input
-            ref={searchRef}
-            name="q"
-            type="search"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder={labels.searchPlaceholder}
-            className="min-w-0 flex-1 bg-transparent pr-6 text-[15px] text-ink placeholder:text-ink-muted focus:outline-none"
-          />
-          {query && (
-            <SearchClearButton
-              label={labels.clearSearch}
-              onClear={() => {
-                onQueryChange("");
-                searchRef.current?.focus();
-              }}
-            />
-          )}
-        </label>
+        <CatalogSearchField
+          value={query}
+          onChange={onQueryChange}
+          label={labels.searchPlaceholder}
+          clearLabel={labels.clearSearch}
+        />
       </form>
       {view === "agents" ? (
         <Menu

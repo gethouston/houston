@@ -6,7 +6,7 @@ import {
   type DeleteTarget,
   deleteCopy,
   targetFiles,
-} from "../src/components/tabs/files-delete-copy.ts";
+} from "../src/components/agent/files-delete-copy.ts";
 
 /**
  * A stub `t` that echoes the key and whatever it was interpolated with, so the

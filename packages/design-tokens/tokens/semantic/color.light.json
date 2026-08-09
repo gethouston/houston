@@ -23,6 +23,8 @@
     "chip-solid-hover": { "$value": "{color.neutral.150}" },
     "chip-text": { "$value": "{color.neutral.950}" },
     "chip-subtle": { "$value": "{color.alpha.ink-a035}" },
+    "tab-track": { "$value": "{color.alpha.ink-a06}" },
+    "tab-active": { "$value": "{color.base.white}" },
     "bubble-text": { "$value": "{color.base.white}" },
     "prose-text": { "$value": "{color.cool.ink}" },
     "line": { "$value": "{color.brand.border-wash}" },
@@ -39,7 +41,7 @@
     "sidebar": { "$value": "{color.base.transparent}" },
     "sidebar-text": { "$value": "{color.neutral.950}" },
     "sidebar-line": { "$value": "{color.alpha.ink-a06}" },
-    "sidebar-hover": { "$value": "{color.alpha.black-a07}" },
+    "sidebar-hover": { "$value": "{color.alpha.ink-a06}" },
     "sidebar-hover-text": { "$value": "{color.neutral.950}" },
     "sidebar-active": { "$value": "{color.alpha.black-a10}" },
     "agent": {

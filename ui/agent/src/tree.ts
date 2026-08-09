@@ -27,6 +27,23 @@ export interface FileNode {
 
 export type TreeNode = FolderNode | FileNode;
 
+export function folderAtPath(
+  root: FolderNode,
+  path: string,
+): FolderNode | null {
+  if (!path) return root;
+  let current = root;
+  for (const segment of path.split("/")) {
+    const next = current.children.find(
+      (node): node is FolderNode =>
+        node.kind === "folder" && node.name === segment,
+    );
+    if (!next) return null;
+    current = next;
+  }
+  return current;
+}
+
 /**
  * Convert a flat list of FileEntry (with relative paths) into a tree.
  * Path separators are "/" (as produced by the Rust backend).

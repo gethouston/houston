@@ -22,7 +22,6 @@ export function creatorCardLabels(t: TFunction<"store">) {
 
 export function catalogControlLabels(t: TFunction<"store">) {
   return {
-    searchLabel: t("browse.searchLabel"),
     searchPlaceholder: t("browse.searchPlaceholder"),
     clearSearch: t("clearSearch"),
     allCategories: t("browse.allCategories"),

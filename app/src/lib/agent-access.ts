@@ -43,8 +43,14 @@ export function isAgentManager(
  * configuration — instructions (CLAUDE.md), skills, the AI model, and agent
  * settings (allowed toolkits)? Same gate, named for the config-editing call
  * sites so their intent reads clearly (matrix v2: configure-scope is
- * agent-manager only; a plain member gets a read-only view and the gateway
- * 403s any write).
+ * agent-manager only, and the gateway 403s any write from anyone else).
+ *
+ * Editing is a narrower question than REACHING the page. The configure page is
+ * reachable by the org owner/admin and by an agent-MANAGER (`canOpenAgentSettings`
+ * / `visibleTeamSectionsForTeam`): a manager edits, and anyone else who can
+ * reach it gets `AgentDetail`'s read-only face. A plain member who manages no
+ * agent of the team gets no Team Settings section at all, so for them the page
+ * does not exist rather than existing read-only.
  */
 export const canEditAgentConfig = isAgentManager;
 

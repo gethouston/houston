@@ -71,19 +71,24 @@ describe("canSeeOrganization", () => {
 
 describe("ORG_TAB_IDS", () => {
   it("is the always-present sections in display order", () => {
-    strictEqual(ORG_TAB_IDS.join(","), "people,activity,usage");
+    // Activity, Usage and Time worked are no longer sections: they are the
+    // three LENSES of one Analytics section, which is why they do not appear
+    // here. Company context is unconditional because the whole Admin view is
+    // already gated on `canSeeOrganization`, which is false in a personal
+    // space, so a second branch for it here would be dead code.
+    strictEqual(ORG_TAB_IDS.join(","), "people,analytics,companyContext");
   });
 });
 
 describe("orgTabIds", () => {
-  it("appends billing only when in scope", () => {
+  it("splices billing in after People only when it is in scope", () => {
     strictEqual(
       orgTabIds({ billing: false }).join(","),
-      "people,activity,usage",
+      "people,analytics,companyContext",
     );
     strictEqual(
       orgTabIds({ billing: true }).join(","),
-      "people,activity,usage,billing",
+      "people,billing,analytics,companyContext",
     );
   });
 });

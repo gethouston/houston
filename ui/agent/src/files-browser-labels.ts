@@ -13,10 +13,6 @@ export interface FilesBrowserLabels {
   /** The Modified cell's word for a file changed today (list view). */
   modifiedToday?: string;
   loading?: string;
-  browseFiles?: string;
-  viewGrid?: string;
-  viewList?: string;
-  sortBy?: string;
   newFolder?: string;
   newFolderPlaceholder?: string;
   emptyFolder?: string;
@@ -27,18 +23,10 @@ export interface FilesBrowserLabels {
   itemSingular?: string;
   itemPlural?: string;
   menuButton?: string;
-  /** Accessible name for the breadcrumb navigation. */
-  breadcrumbs?: string;
-  /** The toolbar's one filled pill: everything that ADDS to the workspace. */
-  newMenu?: string;
   /** Header action labels (promoted from the old status-bar footer). */
   uploadFiles?: string;
   /** Menu item / empty-state CTA for uploading a whole folder (HOU-889). */
   uploadFolder?: string;
-  openInFileManager?: string;
-  downloadAll?: string;
-  /** Empty-state hint that the zero-files screen also accepts a drop. */
-  dropHint?: string;
   /** Busy label on the upload actions while an upload is in flight. */
   uploadingBusy?: string;
   /** Header search field: placeholder, clear button, empty-result notice. */
@@ -57,15 +45,6 @@ export interface FilesBrowserLabels {
 }
 
 /** Slice the flat label bag into the shapes the subcomponents take. */
-export function toSortLabels(l: Required<FilesBrowserLabels>) {
-  return {
-    sortBy: l.sortBy,
-    name: l.columnName,
-    dateModified: l.columnDateModified,
-    size: l.columnSize,
-  };
-}
-
 export function toColumnLabels(l: Required<FilesBrowserLabels>) {
   return {
     columnName: l.columnName,
@@ -86,25 +65,12 @@ export function toSelectionLabels(
   };
 }
 
-export function toGridLabels(l: Required<FilesBrowserLabels>) {
-  return {
-    newFolderPlaceholder: l.newFolderPlaceholder,
-    itemSingular: l.itemSingular,
-    itemPlural: l.itemPlural,
-    menuButton: l.menuButton,
-  };
-}
-
 export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   columnName: "Name",
   columnDateModified: "Modified",
   columnSize: "Size",
   modifiedToday: "Today",
   loading: "Loading…",
-  browseFiles: "Browse files",
-  viewGrid: "Grid view",
-  viewList: "List view",
-  sortBy: "Sort by",
   newFolder: "New Folder",
   newFolderPlaceholder: "untitled folder",
   emptyFolder: "This folder is empty",
@@ -113,13 +79,8 @@ export const DEFAULT_FILES_BROWSER_LABELS: Required<FilesBrowserLabels> = {
   itemSingular: "item",
   itemPlural: "items",
   menuButton: "More actions",
-  breadcrumbs: "Folder path",
-  newMenu: "New",
   uploadFiles: "Upload files",
   uploadFolder: "Upload folder",
-  openInFileManager: "Open in File Manager",
-  downloadAll: "Download all",
-  dropHint: "or drag and drop files here",
   uploadingBusy: "Uploading…",
   searchPlaceholder: "Search files",
   searchClear: "Clear search",

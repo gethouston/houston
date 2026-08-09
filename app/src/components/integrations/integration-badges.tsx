@@ -8,7 +8,7 @@ import { useToolkitBySlug } from "./use-toolkit-catalog";
  * {@link IntegrationChips}, for detail surfaces that have room to spell the app
  * out (a store listing's detail dialog, a skill's edit modal). Names and logos
  * resolve through the Composio toolkit catalog (the same `appDisplay` path the
- * Integrations tab uses) so a detail surface never shows a machine slug. While
+ * Integrations page uses) so a detail surface never shows a machine slug. While
  * the catalog hasn't loaded, or on a deployment with no integration provider
  * wired, `appDisplay` degrades to a favicon guess and the slug as its name.
  *

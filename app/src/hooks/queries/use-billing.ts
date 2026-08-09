@@ -1,6 +1,6 @@
 import type { BillingSummary } from "@houston-ai/engine-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { canSeeBillingTab } from "../../lib/org-roles";
+import { canSeeBillingTab } from "../../lib/billing-gates";
 import { queryKeys } from "../../lib/query-keys";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { tauriOrg, tauriSystem } from "../../lib/tauri";

@@ -62,7 +62,12 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
 
     // ---- conversations (derived from activities) ----
     async listConversations(agentPath: string): Promise<ConversationEntry[]> {
-      const agentName = agents.agentNameByPath(agentPath) ?? "Houston";
+      // NEVER a product name: this registry is localStorage-backed while the
+      // ACTIVITIES below come from the host, so a real agent misses here and
+      // the old `?? "Houston"` put the product's name on every card. The path
+      // is at least the agent's own identity; the app resolves the display
+      // name from the workspace roster anyway (`board/mission-card-agent.ts`).
+      const agentName = agents.agentNameByPath(agentPath) ?? agentPath;
       // The board/missions list is derived from activities; in cloud those live on
       // the host (this.listActivities un-fakes it), not localStorage.
       const acts = await this.listActivities(agentPath);

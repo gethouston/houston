@@ -14,10 +14,8 @@ import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../hooks/queries";
 import { useUserProfiles } from "../hooks/queries/use-user-profiles";
 import { useCapabilities } from "../hooks/use-capabilities";
-import {
-  getConversationStatus,
-  useConversationVm,
-} from "../hooks/use-conversation-vm";
+import { getConversationStatus } from "../hooks/use-conversation-vm";
+import { useWarmingConversations } from "../hooks/use-warming-conversations";
 import { latestCachedAllConversations } from "../lib/all-conversations-cache";
 import { sweepIsAuthoritative } from "../lib/all-conversations-recovery";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
@@ -43,8 +41,10 @@ import {
 } from "../lib/tauri";
 import { DEFAULT_TURN_MODE } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
-import { useAgentCatalogStore } from "../stores/agent-catalog";
+import { mergeWarmingRows } from "../lib/warming-board-rows";
 import { useUIStore } from "../stores/ui";
+import { agentsByPath, missionCardAgentName } from "./board/mission-card-agent";
+import { useMcOpenConversation } from "./board/use-mc-open-conversation";
 import { resolveMissionControlSendOverrides } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
@@ -52,7 +52,6 @@ export function useMissionControl(agents: Agent[]) {
   const { t } = useTranslation(["chat", "board"]);
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
-  const getAgentDef = useAgentCatalogStore((s) => s.getById);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -98,13 +97,22 @@ export function useMissionControl(agents: Agent[]) {
     else perfSpans.boardRendered();
   }, [sweepSettled]);
 
-  const convos = useMemo(
+  const swept = useMemo(
     () =>
       sweptConvos ??
       (isError
         ? latestCachedAllConversations<RawConversation[]>(queryClient)
         : undefined),
     [sweptConvos, isError, queryClient],
+  );
+  // Missions started against a still-cold engine (HOU-713). Their board-row
+  // write is held for the whole warm-up, and this is the only board they can
+  // appear on now that agents have none of their own, so they are overlaid as
+  // running cards until the flush's real rows arrive and win by id.
+  const warming = useWarmingConversations(agents);
+  const convos = useMemo(
+    () => mergeWarmingRows(swept, warming as RawConversation[]),
+    [swept, warming],
   );
 
   // Per-mission attribution (hosted Teams only): resolve the contributor ids on
@@ -119,17 +127,11 @@ export function useMissionControl(agents: Agent[]) {
   );
   const { profiles } = useUserProfiles(contributorIds);
 
-  const agentColorMap = useMemo(() => {
-    const m: Record<string, string | undefined> = {};
-    for (const a of agents) m[a.folderPath] = a.color;
-    return m;
-  }, [agents]);
-  const agentMap = useMemo(() => {
-    const m: Record<string, Agent> = {};
-    for (const a of agents) m[a.folderPath] = a;
-    return m;
-  }, [agents]);
-
+  // ONE roster lookup behind both halves of a card's identity. The colour was
+  // always taken from here; the NAME used to come off the swept row, which the
+  // web adapter stamps from a registry that does not know the host's agents —
+  // so every card read "Houston". See `mission-card-agent.ts`.
+  const agentsByFolderPath = useMemo(() => agentsByPath(agents), [agents]);
   const items: KanbanItem[] = useMemo(() => {
     if (!convos) return [];
     const map: Record<string, string> = {};
@@ -138,21 +140,17 @@ export function useMissionControl(agents: Agent[]) {
       { agentPath: string; activityId: string }
     > = {};
     const result = convos
-      // Archived missions live in the per-agent Archived tab — keep them off
-      // the cross-agent active board. Routine-setup chats live in the
-      // Routines tab, never as a card.
+      // Archived missions live in Mission Control's archived view — keep them
+      // off the active board. Guided-setup chats (routine / skill / custom
+      // integration) live in the team's own sections, never as a card.
       .filter(
         (c) =>
           c.type === "activity" &&
           c.status &&
-          c.status !== "archived" &&
+          c.status !== ARCHIVED_STATUS &&
           !isSetupChatMode(c.agent),
       )
       .map((c) => {
-        const agent = agentMap[c.agent_path];
-        const agentModes = agent
-          ? getAgentDef(agent.configId)?.config.agents
-          : undefined;
         map[c.id] = c.agent_path;
         sessionMap[c.session_key] = {
           agentPath: c.agent_path,
@@ -165,15 +163,17 @@ export function useMissionControl(agents: Agent[]) {
           // Decode a Skill / attachment first-message marker to the user's
           // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
-          group: c.agent_name,
+          group: missionCardAgentName(
+            agentsByFolderPath,
+            c.agent_path,
+            c.agent_name,
+          ),
           icon: createElement(AgentCardAvatar, {
-            color: agentColorMap[c.agent_path],
+            color: agentsByFolderPath.get(c.agent_path)?.color,
           }),
           status: c.status ?? "",
           updatedAt: c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags({
-            agent: c.agent,
-            agentModes,
             routineId: c.routine_id,
             routineLabel: t("board:tags.routine"),
             originSessionKey: c.origin_session_key,
@@ -196,34 +196,19 @@ export function useMissionControl(agents: Agent[]) {
     pathMapRef.current = map;
     sessionMapRef.current = sessionMap;
     return result;
-  }, [convos, agentColorMap, agentMap, getAgentDef, multiplayer, profiles, t]);
+  }, [convos, agentsByFolderPath, multiplayer, profiles, t]);
 
-  // The open conversation's reactive feed, straight from the SDK conversation
-  // VM. AIBoard only ever reads `feedItems[activeSessionKey]`, so a
-  // single-entry map for the selected session is the whole contract.
-  const selectedItem = useMemo(
-    () => items.find((i) => i.id === selectedId) ?? null,
-    [items, selectedId],
-  );
-  const activeSessionKey = selectedItem
-    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
-      `activity-${selectedItem.id}`)
-    : null;
-  const activeAgentPath =
-    (selectedItem?.metadata?.agentPath as string | undefined) ?? null;
-  const activeVm = useConversationVm(activeAgentPath, activeSessionKey);
-  const feedItems = useMemo<Record<string, FeedItem[]>>(
-    () =>
-      activeSessionKey ? { [activeSessionKey]: activeVm?.feed ?? [] } : {},
-    [activeSessionKey, activeVm],
-  );
-  // Scroll-up lazy-load (HOU-819): the open chat renders the transcript's
-  // tail window; older pages prepend on scroll. See use-agent-board-data.
-  const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
-  const onLoadOlderMessages = useCallback(async () => {
-    if (!activeAgentPath || !activeSessionKey) return;
-    await tauriChat.loadOlderHistory(activeAgentPath, activeSessionKey);
-  }, [activeAgentPath, activeSessionKey]);
+  // Which conversation is open, and its live feed — including the beat after a
+  // create, before the sweep has returned the new mission's row.
+  const {
+    activeSessionKey,
+    activeAgentPath,
+    activeVm,
+    feedItems,
+    hasOlderMessages,
+    onLoadOlderMessages,
+    rememberCreated,
+  } = useMcOpenConversation(items, selectedId);
 
   const loadHistory = useCallback(
     async (
@@ -356,8 +341,6 @@ export function useMissionControl(agents: Agent[]) {
       text: string,
       files: File[],
       opts?: {
-        agentMode?: string;
-        promptFile?: string;
         providerOverride?: string;
         modelOverride?: string;
         /** Teammates the first message @mentions (HOU-944). */
@@ -379,8 +362,6 @@ export function useMissionControl(agents: Agent[]) {
           },
           text,
           {
-            agentMode: opts?.agentMode,
-            promptFile: opts?.promptFile,
             providerOverride: opts?.providerOverride,
             modelOverride: opts?.modelOverride,
             mentions: opts?.mentions,
@@ -396,6 +377,13 @@ export function useMissionControl(agents: Agent[]) {
           },
         );
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
+        // Hold the new mission's identity until the sweep returns its row, so
+        // the panel that just opened on it keeps a session key and an agent.
+        rememberCreated({ activityId: conversationId, agentPath, sessionKey });
+        sessionMapRef.current[sessionKey] = {
+          agentPath,
+          activityId: conversationId,
+        };
         // createMission bypasses the activity mutation hooks, so refresh
         // the cross-agent conversation list manually.
         queryClient.invalidateQueries({
@@ -413,7 +401,7 @@ export function useMissionControl(agents: Agent[]) {
         throw err;
       }
     },
-    [t, queryClient, paths, addToast],
+    [t, queryClient, paths, addToast, rememberCreated],
   );
 
   // Per-session run state. The conversation VM is the live source: the open
@@ -472,8 +460,19 @@ export function useMissionControl(agents: Agent[]) {
 
   return {
     items,
+    /** The swept rows BEFORE any board filtered them — the one view of the
+     *  workspace where active and archived missions coexist. The surface
+     *  router classifies a published nav target against these
+     *  (`lib/board-surface-nav.ts`); neither board's items can, each holding
+     *  only its own half. */
+    rawConversations: convos,
     selectedId,
     setSelectedId,
+    /** The open conversation's session key and agent path, with the
+     *  just-created fallback applied. The panel reads BOTH from here so it can
+     *  never disagree with the feed above. */
+    activeSessionKey,
+    activeAgentPath,
     loading: effectiveLoading,
     isLoaded: sweepIsAuthoritative({ isSuccess, isPlaceholderData }),
     feedItems,

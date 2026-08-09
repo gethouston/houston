@@ -1,4 +1,4 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   detectEngineAsleep,
@@ -7,6 +7,7 @@ import {
   parsePersistedProvisioning,
   probeSaysStillStarting,
   runProvisioningProbe,
+  warmingFlushRefetchKeys,
   warmingReadsAnswerEmpty,
 } from "../src/lib/agent-provisioning.ts";
 
@@ -184,6 +185,24 @@ describe("warmingReadsAnswerEmpty", () => {
 
   it("an existing asleep agent's reads ride the hold — an instant empty success would wipe the cached board (HOU-730)", () => {
     strictEqual(warmingReadsAnswerEmpty({ ...base, reason: "asleep" }), false);
+  });
+});
+
+describe("warmingFlushRefetchKeys (HOU-713)", () => {
+  const has = (keys: readonly (readonly unknown[])[], key: unknown[]) =>
+    keys.some(
+      (k) => k.length === key.length && k.every((seg, i) => seg === key[i]),
+    );
+
+  it("refetches the cross-agent sweep the boards actually read", () => {
+    // PREFIX, not one roster variant: the aggregate's key embeds every agent
+    // path (`["all-conversations", ...paths]`), so only the prefix matches the
+    // variant the open board is mounted on.
+    deepStrictEqual(warmingFlushRefetchKeys("/w/a1")[0], ["all-conversations"]);
+  });
+
+  it("refetches the agent's own activity list for the per-agent surfaces", () => {
+    ok(has(warmingFlushRefetchKeys("/w/a1"), ["activity", "/w/a1"]));
   });
 });
 

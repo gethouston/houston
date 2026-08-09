@@ -22,8 +22,8 @@ const NAV_ROWS: Row[] = [
     labelKey: "shell:cheatsheet.rows.palette",
   },
   {
-    glyphs: shortcutLabel("missionControl"),
-    labelKey: "shell:cheatsheet.rows.missionControl",
+    glyphs: shortcutLabel("inbox"),
+    labelKey: "shell:cheatsheet.rows.inbox",
   },
   {
     glyphs: shortcutLabel("newMission"),

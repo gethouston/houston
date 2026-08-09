@@ -12,12 +12,12 @@ interface Props {
 /**
  * A compact row of 16px toolkit logos: the apps a card's subject works with
  * (a first-party agent in the new-agent store, a skill in the picker / chat /
- * installed strip). Purely informational: the user connects apps once in the
- * Integrations tab (Composio), and every skill reaches them through the
+ * installed strip). Purely informational: the user connects apps once on the
+ * Integrations page (Composio), and every skill reaches them through the
  * integration tools.
  *
  * Logos resolve through the Composio toolkit catalog (the same `appDisplay`
- * path as the Integrations tab), because the favicon guess alone breaks for
+ * path as the Integrations page), because the favicon guess alone breaks for
  * every slug that isn't literally a `.com` domain (googledocs, metaads,
  * perplexityai, ...). While the catalog hasn't loaded — or on a deployment
  * with no integration provider wired — `appDisplay` falls back to the guess,

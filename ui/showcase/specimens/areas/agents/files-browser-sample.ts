@@ -85,34 +85,19 @@ export const FILES_BROWSER_PROPS: readonly SpecimenProp[] = [
     note: "Swaps the body for the loading line; suppresses the empty state.",
   },
   {
-    name: "view / onViewChange",
-    type: '"grid" | "list" / (view) => void',
-    note: "Controlled view mode. Omit both and the browser keeps its own.",
-  },
-  {
-    name: "rootLabel",
-    type: "string",
-    note: 'First breadcrumb — the agent\'s name. Defaults to "Files".',
-  },
-  {
-    name: "selectedPath / onSelect",
-    type: "string | null / (file) => void",
-    note: "Controlled selection; onSelect also fires on a background click with nothing.",
-  },
-  {
     name: "loadPreview",
     type: "(file) => Promise<FilePreviewData | null>",
-    note: "Lazily fetches thumbnail bytes per visible card. Null falls back to the type icon.",
+    note: "Lazily fetches preview bytes. Null falls back to the type icon.",
   },
   {
     name: "onOpen / onReveal / onDownload",
     type: "(file: FileEntry) => void",
-    note: "Double-click, reveal in the OS file manager, save to the machine. Each one supplied adds its context-menu entry.",
+    note: "Open, reveal in the OS file manager, or save to the machine. Each supplied callback adds its context-menu entry.",
   },
   {
     name: "onDownloadFolder",
     type: "(folder: FileEntry) => void",
-    note: "Zips a subtree; adds a context menu to folder rows and cards.",
+    note: "Zips a subtree; adds a context menu to folder rows.",
   },
   {
     name: "onDelete / onRename",
@@ -122,7 +107,7 @@ export const FILES_BROWSER_PROPS: readonly SpecimenProp[] = [
   {
     name: "onCreateFolder",
     type: "(name: string) => void",
-    note: "Adds New Folder to the header and the background right-click. Receives the workspace-relative path.",
+    note: "Creates an inline root folder and supports the background context menu.",
   },
   {
     name: "onMove",
@@ -137,17 +122,7 @@ export const FILES_BROWSER_PROPS: readonly SpecimenProp[] = [
   {
     name: "onUpload / onUploadFolder",
     type: "() => void",
-    note: "The header's filled pill; supplying both turns it into a files/folder menu.",
-  },
-  {
-    name: "onRevealAgent / onDownloadAll / onBrowse",
-    type: "() => void",
-    note: "Whole-workspace actions: open in the OS file manager, zip everything, the empty state's CTA.",
-  },
-  {
-    name: "emptyTitle / emptyDescription",
-    type: "string",
-    note: 'Defaults to "No files yet" and the line about agent-created files.',
+    note: "Root upload actions used by the compact empty-folder hint.",
   },
   {
     name: "labels / menuLabels",

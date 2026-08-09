@@ -2,9 +2,12 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
-import { isAgentManager } from "../lib/agent-access";
+import { useTeams } from "../hooks/use-teams";
+import { canOpenAgentSettings } from "../lib/agent-nav";
 import { genericErrorDescription } from "../lib/error-report";
+import { openAgentSettings } from "../lib/open-agent";
 import { tauriSystem } from "../lib/tauri";
+import { teamOfAgent } from "../lib/teams-model";
 import {
   groupTurnSummaryItems,
   type SemanticUpdateKind,
@@ -12,6 +15,7 @@ import {
 } from "../lib/turn-summary-items";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
+import { targetToSection } from "./agent-settings/agent-settings-nav.ts";
 import { TurnSummarySection } from "./turn-summary-section";
 import { useActionBrandResolver } from "./use-action-brand-resolver";
 
@@ -23,45 +27,40 @@ interface TurnFileSummaryProps {
 export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
-  // "Updates made" starts EXPANDED (PRODUCT-1196): it is the turn's receipt,
-  // and a collapsed receipt was read as "nothing happened". New files keep
-  // their collapsed default — they are secondary.
   const [openUpdates, setOpenUpdates] = useState(true);
   const [openFiles, setOpenFiles] = useState(false);
   const addToast = useUIStore((s) => s.addToast);
   const resolveBrand = useActionBrandResolver();
+  const { openFile } = useOpenAgentFile(agentPath);
+  const agent = useAgentStore((s) =>
+    s.agents.find((candidate) => candidate.folderPath === agentPath),
+  );
+  const teams = useTeams();
+  const semanticIsLink =
+    !!agent &&
+    canOpenAgentSettings(capabilities, agent, teamOfAgent(teams, agent.id));
+  const setCurrentAgent = useAgentStore((s) => s.setCurrent);
 
-  const { openFile: handleOpen } = useOpenAgentFile(agentPath);
-
-  const handleOpenSemantic = useCallback(
+  const openSemantic = useCallback(
     (kind: SemanticUpdateKind) => {
-      const agents = useAgentStore.getState().agents;
-      const agent = agents.find((a) => a.folderPath === agentPath);
-      const ui = useUIStore.getState();
-      // Semantic updates land on manager-editable surfaces: skills on the
-      // Skills tab, instructions and learnings on the Context tab's matching
-      // section. Non-managers keep their read-only Context view untouched.
-      if (agent && isAgentManager(capabilities, agent)) {
-        useAgentStore.getState().setCurrent(agent);
-        if (kind === "skills") {
-          ui.setViewMode("skills");
-        } else {
-          ui.setContextTarget(kind);
-          ui.setViewMode("context");
-        }
-      }
-      ui.closeMissionPanel();
+      if (!agent) return;
+      setCurrentAgent(agent);
+      openAgentSettings(
+        agent.id,
+        kind === "skills" ? "skills" : targetToSection(kind),
+      );
+      useUIStore.getState().closeMissionPanel();
     },
-    [agentPath, capabilities],
+    [agent, setCurrentAgent],
   );
 
-  const handleOpenUrl = useCallback(
+  const openUrl = useCallback(
     (url: string) => {
-      tauriSystem.openUrl(url).catch((err) => {
+      tauriSystem.openUrl(url).catch((error) => {
         addToast({
           variant: "error",
           title: t("summary.openLinkFailedTitle"),
-          description: genericErrorDescription("open_summary_link", err),
+          description: genericErrorDescription("open_summary_link", error),
         });
       });
     },
@@ -70,6 +69,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
 
   if (items.length === 0) return null;
   const groups = groupTurnSummaryItems(items);
+  const semanticHandler = semanticIsLink ? openSemantic : undefined;
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -80,9 +80,9 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
           open={openUpdates}
           done
           onOpenChange={setOpenUpdates}
-          onOpenFile={handleOpen}
-          onOpenSemantic={handleOpenSemantic}
-          onOpenUrl={handleOpenUrl}
+          onOpenFile={openFile}
+          onOpenSemantic={semanticHandler}
+          onOpenUrl={openUrl}
           resolveBrand={resolveBrand}
           t={t}
         />
@@ -93,9 +93,9 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
           items={groups.files}
           open={openFiles}
           onOpenChange={setOpenFiles}
-          onOpenFile={handleOpen}
-          onOpenSemantic={handleOpenSemantic}
-          onOpenUrl={handleOpenUrl}
+          onOpenFile={openFile}
+          onOpenSemantic={semanticHandler}
+          onOpenUrl={openUrl}
           resolveBrand={resolveBrand}
           t={t}
         />

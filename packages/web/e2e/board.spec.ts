@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * The persisted query mirror's query-key heads, or null while no mirror
@@ -112,6 +113,13 @@ function newestMirrorUpdatedAt(page: Page): Promise<number> {
   );
 }
 
+/**
+ * How long the persisted cache's IndexedDB read is held open in the restore
+ * race below. Long enough that the shell boots, mounts the board, and would
+ * have issued its sweep several times over inside the window.
+ */
+const RESTORE_HOLD_MS = 4_000;
+
 /** Give the page a JWT-shaped per-user token: the fake host accepts any
  *  bearer, while the query/transcript caches scope themselves to `e2e-user`
  *  (the standard non-JWT token deliberately turns persistence off). */
@@ -151,15 +159,22 @@ test("restores cached missions before starting fresh board reads", async ({
 
   // Let the async persister commit this populated board (the write throttle
   // lags the fetch by a second or more — wait for the CONTENT, not just the
-  // store), then make its next IndexedDB read visibly slow. This pins the
-  // startup race: no activity read may start while the older, populated cache
-  // is still being restored.
+  // store), then hold its next IndexedDB read open for `RESTORE_HOLD_MS`. That
+  // hold IS the window this test lives in: it pins the startup race, where no
+  // board read may start while the older, populated cache is still being
+  // restored. The board's read is the CROSS-AGENT sweep now (there is no
+  // per-agent board left to read `["activity", path]`), and that sweep fans out
+  // to ONE `GET /agents/:id/activities` per agent — that per-agent GET is the
+  // wire signal to count. The hold has to outlast the app's own boot by a wide
+  // margin: unpaused, the shell reaches its first sweep read ~150ms after the
+  // restore begins, so a window of a few hundred ms would go green whether the
+  // pause worked or not.
   await expect
     .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
       timeout: 15_000,
     })
-    .toContain("activity");
-  await page.addInitScript(() => {
+    .toContain("all-conversations");
+  await page.addInitScript((holdMs: number) => {
     const nativeGet = IDBObjectStore.prototype.get;
     IDBObjectStore.prototype.get = function delayedGet(query) {
       const nativeRequest = nativeGet.call(this, query);
@@ -175,18 +190,18 @@ test("restores cached missions before starting fresh board reads", async ({
         window as typeof window & { __queryRestoreStarted?: boolean }
       ).__queryRestoreStarted = true;
       nativeRequest.addEventListener("success", (event) => {
-        setTimeout(() => delayedRequest.onsuccess?.(event), 500);
+        setTimeout(() => delayedRequest.onsuccess?.(event), holdMs);
       });
       nativeRequest.addEventListener("error", (event) => {
-        setTimeout(() => delayedRequest.onerror?.(event), 500);
+        setTimeout(() => delayedRequest.onerror?.(event), holdMs);
       });
       return delayedRequest;
     };
-  });
+  }, RESTORE_HOLD_MS);
 
-  let activityReads = 0;
+  let boardReads = 0;
   await page.route("**/agents/*/activities", async (route) => {
-    if (route.request().method() === "GET") activityReads += 1;
+    if (route.request().method() === "GET") boardReads += 1;
     await route.continue();
   });
   await page.reload();
@@ -195,25 +210,26 @@ test("restores cached missions before starting fresh board reads", async ({
       (window as typeof window & { __queryRestoreStarted?: boolean })
         .__queryRestoreStarted === true,
   );
-  await page.waitForTimeout(100);
+  // The shell is fully up while the restore is still held, so the board and its
+  // query observer are mounted: an unpaused read would already be on the wire.
+  await expect(page.locator("[data-tour-target='agents']")).toBeVisible();
+  await page.waitForTimeout(500);
 
-  expect(activityReads).toBe(0);
+  expect(boardReads).toBe(0);
+  // The restore then lands, and yesterday's cards paint off it.
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 });
 
 /**
- * The cold-open reality check: on a real cloud boot every per-agent read
- * hangs behind the gateway for the whole pod wake (~seconds), so the ONLY
- * thing that can paint the board immediately is what's cached locally. The
- * restore test above can't prove that — its live read answers instantly and
- * would paint the card even if the restored data never reached the board.
+ * The cold-open reality check: on a real cloud boot every per-agent read hangs
+ * behind the gateway for the whole pod wake (~seconds), so the ONLY thing that
+ * can paint the board immediately is what is cached locally. The restore test
+ * above cannot prove that — its live read answers instantly and would paint the
+ * card even if the restored data never reached the board.
  *
- * This models the exact production failure: the per-agent `["activity", X]`
- * mirror entry is MISSING (it only lands when a session with X's board open
- * outlives the pod wake plus the persist throttle), while the aggregate the
- * sidebar badges paint from is present (it's swept every session). The board
- * must seed its cards from that aggregate instead of showing empty columns
- * for the whole wake — the badge says 2 missions, the columns must agree.
+ * This models the exact production failure: the cross-agent sweep the board
+ * reads is held for the entire wake, and the cards have to come off the
+ * persisted mirror of that same sweep rather than leaving empty columns up.
  */
 test("paints cached missions immediately while cold-start reads are held", async ({
   page,
@@ -223,53 +239,12 @@ test("paints cached missions immediately while cold-start reads are held", async
   await page.goto("/");
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 
-  // Let the async persister commit both list surfaces to IndexedDB.
+  // Let the async persister commit the board's list surface to IndexedDB.
   await expect
-    .poll(
-      async () => {
-        const heads = (await persistedMirrorHeads(page)) ?? [];
-        return (
-          heads.includes("activity") && heads.includes("all-conversations")
-        );
-      },
-      { timeout: 15_000 },
-    )
-    .toBe(true);
-
-  // Drop the per-agent board entries, keeping the aggregate — the mirror a
-  // real cold open typically finds. The app is idle here (no cache events →
-  // no persister rewrites), so the strip sticks until the reload.
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open("houston-query-cache", 1);
-        open.onsuccess = () => {
-          const store = open.result
-            .transaction("kv", "readwrite")
-            .objectStore("kv");
-          const get = store.get("houston.list-queries");
-          get.onsuccess = () => {
-            const parsed = JSON.parse(get.result as string) as {
-              clientState: { queries: { queryKey: unknown[] }[] };
-            };
-            parsed.clientState.queries = parsed.clientState.queries.filter(
-              (q) => q.queryKey[0] !== "activity",
-            );
-            const put = store.put(
-              JSON.stringify(parsed),
-              "houston.list-queries",
-            );
-            put.onsuccess = () => resolve();
-            put.onerror = () => reject(put.error);
-          };
-          get.onerror = () => reject(get.error);
-        };
-        open.onerror = () => reject(open.error);
-      }),
-  );
-  const stripped = (await persistedMirrorHeads(page)) ?? [];
-  expect(stripped).toContain("all-conversations");
-  expect(stripped).not.toContain("activity");
+    .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
+      timeout: 15_000,
+    })
+    .toContain("all-conversations");
 
   // Cold open: every per-agent read now stalls the way an asleep pod's do.
   await request.post(`${FAKE_HOST_URL}/__test__/hold-agent-reads`, {
@@ -277,13 +252,10 @@ test("paints cached missions immediately while cold-start reads are held", async
   });
   await page.reload();
 
-  // The cards must come from the locally cached aggregate — well before any
-  // held read can answer. The grace only has to stay far under the hold to
-  // keep the proof sharp; it must ALSO absorb a full dev-server reload on a
-  // contended CI runner, which alone can blow a too-tight budget (a 4s grace
-  // under an 8s hold flaked there). 12s of grace, 20s hold: same invariant,
-  // CI-realistic slack. On success the assertion resolves at paint time, so
-  // the bigger numbers cost nothing.
+  // The cards must come from the locally cached sweep — well before any held
+  // read can answer. The grace only has to stay far under the hold to keep the
+  // proof sharp; it must ALSO absorb a full dev-server reload on a contended CI
+  // runner, which alone can blow a too-tight budget. 12s of grace, 20s hold.
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible({
     timeout: 12_000,
   });
@@ -296,7 +268,7 @@ test("opens a mission's chat when its card is clicked", async ({ page }) => {
 
   // The mission's conversation opens (an existing mission uses the follow-up
   // composer; a brand-new conversation uses "What should the agent work on?").
-  await expect(page.getByText("Mission: Plan a trip to Tokyo")).toBeVisible();
+  await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
@@ -318,13 +290,13 @@ test("keeps the open chat when clicking app chrome outside the panel", async ({
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
-/** The "Search missions" box filters the board client-side. */
+/** The "Search tasks" box filters the board client-side. */
 test("filters the board with the search box", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 
-  await page.getByPlaceholder("Search missions").fill("Tokyo");
+  await page.getByRole("searchbox", { name: "Search tasks" }).fill("Tokyo");
 
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
@@ -363,7 +335,7 @@ test("archives a Done mission from its card", async ({ page }) => {
 
   // Off the active board, and found again in the archived list.
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
-  await page.getByRole("button", { name: "Archived" }).click();
+  await openTeamSection(page, "Archived");
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 });
 
@@ -424,16 +396,20 @@ test("deletes a mission from the board", async ({ page }) => {
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
 });
 
-/** Cross-agent Mission Control (the aggregate's own surface). */
-async function openMissionControl(page: Page): Promise<void> {
-  await page.locator("[data-tour-target='nav-dashboard']").click();
+/**
+ * The team's board — the aggregate's own surface. Every board belongs to a
+ * team now, and in the seeded single-team workspace the default team holds
+ * EVERY agent, so this is still the cross-agent board the sweep feeds.
+ */
+async function openTeamBoard(page: Page): Promise<void> {
+  await openTeamSection(page, "Tasks");
 }
 
 /**
  * HOU-981, the half-broken fleet. The cross-agent sweep is one read per agent;
  * it used to run under `Promise.all`, so ONE unreachable pod rejected the whole
  * aggregate — and since React Query's placeholder covers the pending state
- * only, Mission Control rendered an EMPTY board (and auto-opened the composer
+ * only, the board rendered EMPTY (and auto-opened the composer
  * over it) while every healthy agent's missions sat right there in cache.
  *
  * The healthy agents' missions must survive one sick agent, always.
@@ -455,7 +431,7 @@ test("keeps the healthy agents' missions when one agent's reads fail", async ({
   });
 
   await page.goto("/");
-  await openMissionControl(page);
+  await openTeamBoard(page);
 
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByText("Draft the launch email")).toBeVisible();
@@ -467,7 +443,7 @@ test("keeps the healthy agents' missions when one agent's reads fail", async ({
   // it even though the user no longer does. What this asserts is only that the
   // healthy agents' missions never depended on the toast.
   await expect(
-    page.getByText("Some missions could not load. We are trying again."),
+    page.getByText("Some tasks could not load. We are trying again."),
   ).toHaveCount(0);
 });
 
@@ -526,7 +502,7 @@ test("re-reads the restored board on boot so missions created offline appear", a
   expect(written.ok()).toBe(true);
 
   await page.reload();
-  await openMissionControl(page);
+  await openTeamBoard(page);
 
   // Yesterday's board is still there...
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();

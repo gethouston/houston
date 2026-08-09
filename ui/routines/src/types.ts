@@ -106,7 +106,7 @@ export interface RoutineRun {
 /**
  * Form shape used by the "new agent" onboarding wizard's AI-suggested starter
  * routine (`AiRoutineStep`) and the app-owned creation stepper's ScheduleBuilder.
- * The Routines tab itself is chat-first — routines are created and changed by
+ * The routines surface itself is chat-first — routines are created and changed by
  * asking the agent, not by editing this shape in a grid.
  */
 export interface RoutineFormData {

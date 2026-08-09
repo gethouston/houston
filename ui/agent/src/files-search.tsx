@@ -11,8 +11,7 @@
  * visible once there is something to clear, so the way back to the full listing
  * never hides behind a hover.
  */
-import { Input } from "@houston-ai/core";
-import { Search, X } from "lucide-react";
+import { CatalogSearchField } from "@houston-ai/core";
 
 export function FilesSearch({
   value,
@@ -26,31 +25,13 @@ export function FilesSearch({
   clearLabel: string;
 }) {
   return (
-    <div className="relative w-full max-w-md min-w-0">
-      <Search
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted"
-      />
-      <Input
-        type="search"
+    <div className="w-full max-w-md min-w-0">
+      <CatalogSearchField
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        autoComplete="off"
-        className="h-9 rounded-full pr-9 pl-9 [&::-webkit-search-cancel-button]:hidden"
+        onChange={onChange}
+        label={placeholder}
+        clearLabel={clearLabel}
       />
-      {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          aria-label={clearLabel}
-          title={clearLabel}
-          className="absolute top-1/2 right-1 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          <X aria-hidden className="size-4" />
-        </button>
-      )}
     </div>
   );
 }

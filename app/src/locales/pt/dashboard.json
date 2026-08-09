@@ -1,13 +1,5 @@
 {
-  "title": "Central de missões",
-  "archived": {
-    "back": "Voltar para missões",
-    "button": "Arquivadas",
-    "title": "Arquivadas"
-  },
   "mentions": {
-    "button": "Menções",
-    "title": "Menções",
     "ariaCount_one": "{{count}} menção não lida",
     "ariaCount_other": "{{count}} menções não lidas",
     "row": {
@@ -17,7 +9,7 @@
     },
     "empty": {
       "title": "Ainda não há menções",
-      "description": "Quando alguém do time citar você em uma missão, aparece aqui."
+      "description": "Quando alguém do time citar você em uma tarefa, aparece aqui."
     },
     "bell": {
       "label": "Notificações"
@@ -29,22 +21,21 @@
   "peopleFilter": {
     "label": "Filtrar por pessoa",
     "everyone": "Todos",
-    "mine": "Minhas missões",
-    "invite": "Convidar colegas",
+    "mine": "Minhas tarefas",
     "inviteTeaser": "Convide seu time para ver quem está trabalhando em quê"
   },
   "search": {
-    "placeholder": "Buscar missões",
+    "placeholder": "Buscar tarefas",
     "placeholderShort": "Buscar...",
     "clear": "Limpar busca",
     "clearCta": "Limpar busca",
-    "searchingText": "Buscando no texto das missões",
-    "searchingTitle": "Buscando no texto das missões",
+    "searchingText": "Buscando no texto das tarefas",
+    "searchingTitle": "Buscando no texto das tarefas",
     "searchingDescription": "Verificando mensagens antigas agora.",
-    "emptyTitle": "Nenhuma missão encontrada",
+    "emptyTitle": "Nenhuma tarefa encontrada",
     "emptyDescription": "Tente outra busca ou limpe a atual.",
-    "historyErrorTitle": "Não foi possível buscar todas as missões",
-    "historyErrorDescription": "Parte do texto de missões antigas não pôde ser carregada."
+    "historyErrorTitle": "Não foi possível buscar todas as tarefas",
+    "historyErrorDescription": "Parte do texto de tarefas antigas não pôde ser carregada."
   },
   "columns": {
     "running": "Em execução",
@@ -54,17 +45,12 @@
   "empty": {
     "boardTitle": "Ainda sem conversas",
     "boardDescription": "Comece uma conversa nova para delegar trabalho a um agente.",
-    "newMission": "Nova missão"
-  },
-  "noAgents": {
-    "title": "Ainda sem agentes",
-    "description": "Monte seu time de IA e realize o impossível.",
-    "cta": "Novo agente"
+    "newMission": "Nova tarefa"
   },
   "errors": {
-    "noAgentForMission": "Escolha um agente antes de iniciar uma missão.",
-    "partialMissionLoad": "Algumas missões não puderam carregar. Estamos tentando novamente.",
-    "stopSession": "Não foi possível parar a missão: {{error}}"
+    "noAgentForMission": "Escolha um agente antes de iniciar uma tarefa.",
+    "partialMissionLoad": "Algumas tarefas não puderam carregar. Estamos tentando novamente.",
+    "stopSession": "Não foi possível parar a tarefa: {{error}}"
   },
   "agentPicker": {
     "title": "Qual agente deve fazer isso?",
@@ -75,5 +61,9 @@
     "descriptionWithAgent": "Veja os skills que {{name}} já sabe fazer.",
     "empty": "Ainda sem skills.",
     "skillsLoading": "Carregando skills..."
+  },
+  "inbox": {
+    "title": "Caixa de entrada",
+    "subtitle": "Tarefas onde alguém do seu time mencionou você."
   }
 }

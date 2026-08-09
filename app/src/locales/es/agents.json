@@ -53,10 +53,6 @@
     "invalidChars": "El nombre del agente no puede contener barras ni caracteres especiales",
     "tooLong": "El nombre del agente puede tener máximo {{max}} caracteres"
   },
-  "empty": {
-    "title": "Aún no hay agentes",
-    "description": "Crea tu equipo de IA e inicia una misión."
-  },
   "instructions": {
     "emptyTitle": "Aún no hay instrucciones",
     "emptyDescription": "Dile a tu agente cómo debe pensar y actuar.",
@@ -88,22 +84,6 @@
     "skills": "Skills",
     "learnings": "Aprendizajes"
   },
-  "tabLabels": {
-    "activity": "Actividad",
-    "routines": "Rutinas",
-    "files": "Archivos",
-    "context": "Contexto",
-    "admin": "Admin",
-    "integrations": "Integraciones",
-    "chat": "Chat",
-    "board": "Tablero",
-    "skills": "Skills",
-    "prompts": "Instrucciones",
-    "events": "Eventos",
-    "learnings": "Aprendizajes",
-    "configure": "Configurar",
-    "settings": "Configuración"
-  },
   "configure": {
     "projectContext": {
       "title": "Contexto del proyecto",
@@ -128,7 +108,7 @@
       "description": "Configuración del agente y opciones de ejecución.",
       "savingHint": "Guardando...",
       "worktreeMode": "Modo worktree",
-      "worktreeModeDescription": "Crear un worktree de git aparte para cada misión",
+      "worktreeModeDescription": "Crear un worktree de git aparte para cada tarea",
       "installCommand": "Comando de instalación",
       "installCommandPlaceholder": "p. ej. pnpm install, npm install, cargo build",
       "devCommand": "Comando de desarrollo",
@@ -141,13 +121,8 @@
     "modeSummary": "{{file}}, {{count}} líneas"
   },
   "files": {
-    "emptyTitle": "Aún no hay archivos",
-    "emptyDescription": "Los archivos creados por tu asistente aparecerán aquí.",
     "openInFileManager": "Abrir en el Explorador de Archivos",
     "loading": "Cargando…",
-    "browseFiles": "Elegir archivos",
-    "viewGrid": "Vista de cuadrícula",
-    "viewList": "Vista de lista",
     "sortBy": "Ordenar por",
     "newMenu": "Nuevo",
     "newFolder": "Nueva carpeta",
@@ -156,7 +131,8 @@
     "itemSingular": "elemento",
     "itemPlural": "elementos",
     "menuButton": "Más acciones",
-    "breadcrumbs": "Ruta de carpetas",
+    "expandAgent": "Expandir archivos de {{name}}",
+    "collapseAgent": "Contraer archivos de {{name}}",
     "conflict": {
       "title": "“{{name}}” ya existe",
       "description": "La carpeta de destino ya tiene un elemento llamado “{{name}}”. Puedes reemplazarlo o conservar ambos.",
@@ -168,7 +144,6 @@
     "uploadFolder": "Subir carpeta",
     "folderDropFailed": "No pudimos leer esa carpeta. Intenta con el botón Subir.",
     "downloadAll": "Descargar todo",
-    "dropHint": "o arrastra y suelta archivos aquí",
     "uploadingBusy": "Subiendo…",
     "searchPlaceholder": "Buscar archivos",
     "searchClear": "Borrar búsqueda",

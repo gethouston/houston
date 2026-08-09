@@ -34,7 +34,8 @@ export const REACTION_SETUP_AGENT_MODE = "houston:reaction-setup";
 /**
  * True when an activity's `agent` (mode) marks it as a setup chat (current or
  * legacy sentinel). Board/mission surfaces use this to hide them — a setup chat
- * never shows as a board card, its only home is the tab's full-page chat view.
+ * never shows as a board card, its only home is the Routines section's
+ * setup-chat panel.
  */
 export function isRoutineSetupMode(agent: string | null | undefined): boolean {
   return (

@@ -33,33 +33,63 @@ Deploying / shipping a release? → `/release`
 Manual macOS build, notarize, staple? → `/build-app-local`
 Bug? Don't guess → `/debug`
 
-Need specific knowledge? Load on demand:
-- **Host architecture (host + pi runtime + adapter profiles, protocol v3, Composio-as-REST) → `knowledge-base/architecture.md`.** `convergence/` is the record of how we got here (the Rust→host cutover) — historical, not the day-to-day map.
-- Design — the rules before ANY UI work → **`/DESIGN.md`** (repo-root compact agent spec: identity, hard rules, tokens, motion, banned defaults, polish checklist; **MANDATORY, hold it in context**). The deep narrative (rationale, component/animation detail, futuristic-theme internals) → `knowledge-base/design-system.md`
-- Client architecture — SDK / tokens / inventory / parity procedures → `knowledge-base/client-architecture.md`
-- `.houston/` layout, schemas, reactivity → `knowledge-base/files-first.md`
-- Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
-- Integrations (Composio platform mode — provider port, direct vs gateway adapter, sandbox path, app-usage policy = per-agent allowlist ceiling (org ceilings + per-agent grants layer removed), UI map; PLUS custom integrations, HOU-550: the embedded executor engine, `custom` provider, secure credential card, agent setup tools) → `knowledge-base/integrations.md`
-- Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
-- Agent Store (public catalog, publish/install, agents.gethouston.ai) → `knowledge-base/agent-store.md`
-- Multiplayer Teams (orgs) client surface — roles owner/admin/user + per-agent access manager/user, role matrix v2 (`app/src/lib/org-roles.ts`), org dashboard, Share dialog, allowed-models ceiling + per-user model choice, integration allowlists; **plus C8 Spaces** (personal + team spaces, the `org:<slug>` workspace switcher / `x-houston-org` active-space pin, create-team, share-via-team pipeline, seat billing + trial + degrade states, `capabilities.spaces` + per-space role); the gateway is the sole enforcer → `knowledge-base/teams.md` (server contracts: `cloud/docs/contracts/C3`,`C4`,`C7-teams.md`,`C8-spaces-billing.md`)
-- v3 wire protocol (REST + SSE) → `packages/protocol/` (types + zod). The host is `packages/host` (run: `pnpm --filter @houston/host dev`).
-- Provider error taxonomy → `knowledge-base/provider-errors.md` (the shared taxonomy the host/pi providers map to; the old Rust classifier is gone).
-- Anthropic credential lifecycle (Claude-SDK backend: keychain scoping, cloud push, per-turn access-only serve, single-rotator rule) → `knowledge-base/anthropic-credentials.md`
-- Integrations: Composio is an in-process REST tool behind the `IntegrationProvider` port (`packages/host/src/integrations/`) — no bundled CLI, pi has no provider CLIs.
-- Self-host the TS engine on a VPS (Docker + Caddy TLS) → `selfhost/README.md`
-- Windows testing loop from a Mac (UTM VM, SSH bridge, cross-compile, log fetch) → `knowledge-base/windows-testing.md`
-- _[REMOVED]_ Custom-frontend integration reference (`examples/smartbooks/`) was deleted in the convergence sweep
-- _[REMOVED feature]_ Mobile PWA (tunnel, pairing, relay) was cut; `mobile/` + `houston-relay/` are deleted — `docs/mobile-architecture.md` + `docs/relay-operations.md` are historical only
-- Houston Cloud (control plane, per-turn runtime, code sandbox, credential model) → `cloud/README.md` + `cloud/code-execution.md`
-- Updater, analytics, Sentry, env vars, CI → `knowledge-base/production-infra.md`
-- Daily/weekly/monthly data rituals + dashboard reading guide → `knowledge-base/data-rituals.md`
-- UTM conventions, campaign attribution, IRL event tracking → `growth/utm-conventions.md` + `growth/campaigns/_template.md` + `scripts/event-qr.sh`
-- GCIP (Firebase) auth, Google SSO, Keychain → `knowledge-base/auth.md`
-- Translating UI strings, namespaces, ui/ labels prop pattern, `t()` rules → `knowledge-base/i18n.md`
-- Automated UI / end-to-end tests (Playwright, web build, fake host, new TS engine) → `knowledge-base/ui-testing.md` + `packages/web/e2e/README.md`
+Need specific knowledge? Load on demand. Every `knowledge-base/` doc is routed below; the index with one-line topics is `knowledge-base/README.md`.
 
-UI / design work? Two skills: **`/frontend-design`** when creating a new surface (3–5 genuinely distinct variants, two-pass discipline) and **`/design-review`** (the screenshot self-critique loop — MANDATORY before calling any UI done).
+**Foundations**
+- **Host architecture (host + pi runtime + adapter profiles, protocol v3, every product surface incl. the live native iOS app) → `knowledge-base/architecture.md`.** `convergence/` is the record of how we got here (the Rust→host cutover) — historical, not the day-to-day map.
+- Client architecture — SDK / tokens / inventory / parity procedures → `knowledge-base/client-architecture.md`
+- `.houston/` layout, schemas, reactivity, boot migrations → `knowledge-base/files-first.md`
+- v3 wire protocol (REST + SSE) → `packages/protocol/` (types + zod). The host is `packages/host` (run: `pnpm --filter @houston/host dev`).
+- Windows builds + the UTM VM loop, and the Windows rules for `app/src-tauri` code → `knowledge-base/windows-vm.md`
+
+**Design + shell**
+- Design — the rules before ANY UI work → **`/DESIGN.md`** (repo-root compact agent spec: identity, hard rules, tokens, motion, banned defaults, polish checklist; **MANDATORY, hold it in context**). The deep narrative (rationale, component/animation detail, futuristic-theme internals) → `knowledge-base/design-system.md`
+- Sidebar TEAMS + the `team` screen — **the whole shell since the agent tab strip was deleted** (teams-model, `openTeamView` store contract, `visibleTeamSections` gating, the one-sweep team-scoped board, Team Settings drill-in) → `knowledge-base/teams-ui.md` (client-side grouping; NOT the multiplayer orgs in `teams.md`). The "agent X's <thing> lives WHERE now" map is `knowledge-base/agent-manifest.md` → *Where an agent's surfaces live*.
+- Sidebar ROW anatomy in `ui/layout` (row component, geometry module, the test that pins them) → `knowledge-base/sidebar-anatomy.md`
+- Kept-alive screens, keyboard ownership, the ONE shared detail panel → `knowledge-base/board-shell.md`
+- Translating UI strings, namespaces, ui/ labels prop pattern, `t()` rules → `knowledge-base/i18n.md`
+
+**Agents + their surfaces**
+- Agent manifest, tiers, creation/import/activation, workspaces → `knowledge-base/agent-manifest.md`
+- The ONE per-agent settings surface (section model + caps gating; two doors onto the same page — Team Settings → the agent's row in every deployment, and Settings > Permissions → the agent's row in multiplayer only — with `openAgentSettings` always taking the Team Settings door; the People "everyone vs specific people" choice, read-only, share analytics) → `knowledge-base/agent-settings.md`
+- Files UI (grid + list, upload caps, preview dialog, chat links into it) → `knowledge-base/files-ui.md`
+- Skills on disk + UI, picker, manage dialog, invocation marker → `knowledge-base/skills.md`
+- Agent Store (public catalog, publish/install, agents.gethouston.ai) → `knowledge-base/agent-store.md`
+- Portable agents (`.houstonagent` export/import wizards) → `knowledge-base/portable-agents.md`
+- Routine triggers — cron `schedule` OR a `trigger` binding (Composio event / incoming webhook) → `knowledge-base/routine-triggers.md`
+
+**AI providers**
+- Provider + model wiring (catalog, chat model picker, reasoning effort, turn mode, mid-conversation switching) → `knowledge-base/providers.md`
+- AI Hub — the connect-an-account / browse-providers view → `knowledge-base/ai-hub.md`
+- Provider error taxonomy — the eight typed wire kinds and their chat cards → `knowledge-base/provider-errors.md`
+- Anthropic credential lifecycle (Claude-SDK backend: keychain scoping, cloud push, per-turn access-only serve, single-rotator rule) → `knowledge-base/anthropic-credentials.md`
+- BYO local model (LM Studio / Jan / Ollama) from a cloud agent, incl. team endpoint sharing → `knowledge-base/local-models.md`
+- Desktop-only dictation (whisper.cpp sidecar, model download UX) → `knowledge-base/dictation.md`
+- Adding a provider: pi talks to providers **in-process** — no provider CLIs.
+
+**Integrations**
+- Composio platform mode — the `IntegrationProvider` port, direct vs gateway adapter, sandbox path, per-agent allowlist ceiling, UI map → `knowledge-base/integrations.md`
+- User-added APIs & MCP servers (the `custom` provider, secure credential card, agent setup tools) → `knowledge-base/custom-integrations.md`
+
+**Multiplayer**
+- Multiplayer Teams (orgs) client surface — roles owner/admin/user + per-agent access manager/user, role matrix v2 (`app/src/lib/org-roles.ts`), org dashboard, Share dialog, integration allowlists; the gateway is the sole enforcer → `knowledge-base/teams.md` (server contracts: `cloud/docs/contracts/C3`, `C7-teams.md`, `C8-spaces-billing.md`)
+- Spaces (C8) — personal + team spaces, the `org:<slug>` switcher / `x-houston-org` pin, invites, seat billing + trial + degrade states → `knowledge-base/spaces.md`
+- Per-user AI accounts + the per-agent model ceiling (no shared credential in a team space) → `knowledge-base/ai-accounts.md`
+- Mission attribution — faces, senders, @mentions, unread → `knowledge-base/mission-attribution.md`
+- GCIP (Firebase) auth, Google/Apple/Microsoft SSO + email OTP, Keychain → `knowledge-base/auth.md`
+
+**Ship + operate**
+- Updater, analytics, in-app bug reports, release env vars, code signing, CI/CD → `knowledge-base/production-infra.md`
+- Crash reporting (Sentry — three runtimes, one project, dormant without a DSN) → `knowledge-base/sentry.md`
+- Firebase Hosting for the web client + marketing site → `knowledge-base/hosting.md`
+- Automated UI / end-to-end tests (Playwright, web build, fake host, visual regression) → `knowledge-base/ui-testing.md` + `packages/web/e2e/README.md`
+- Marketing landing (black-and-white system, download gate) → `knowledge-base/website-landing.md`
+- Bootcamp participation certificates (`/c/<CODE>`, satori/resvg pipeline, claim wizard) → `knowledge-base/website-certificates.md`
+- Self-host the TS engine on a VPS (Docker + Caddy TLS) → `selfhost/README.md`
+- Houston Cloud (gateway, per-agent engine pods, code sandbox, credential model) → `cloud/README.md` + `cloud/code-execution.md`
+- UTM conventions, campaign attribution, IRL event tracking → `growth/utm-conventions.md` + `growth/campaigns/_template.md` + `scripts/event-qr.sh`
+
+UI / design work? Build to `/DESIGN.md` (tokens, motion, hard rules). **Design judgment is Julian's alone — show him, never self-review the look.** No `/design-review` screenshot loops; `/frontend-design` variants only if he asks for options.
 
 ---
 
@@ -71,7 +101,7 @@ The phases themselves are in the workspace CLAUDE.md. In this repo they mean:
 - Phase 3 (challenge): library or app? Generic → ui/engine. App-specific → app/. Props generic, no store imports, no app types?
 - Phase 4 (plan): tag each step `[ui/board]`, `[host]`, `[app]`. Library before app.
 - Phase 6 (test): host/runtime/domain → vitest; the Tauri shell (`app/src-tauri`) → `cargo test`, not just check.
-- Phase 7 (verify): UI touched → run the `/design-review` loop + `pnpm --filter houston-web test:visual`. Issue? Add logging first (`/debug`), never blind fix.
+- Review gate: UI touched → `pnpm --filter houston-web test:visual` with baselines blessed once per element (never during iteration). Design judgment is Julian's. Issue? Add logging first (`/debug`), never blind fix.
 - Phase 9 (cleanup): ui/ → no `@/`, no Zustand, no Tauri. app/ → no duplicated logic.
 - Phase 10 (document): `knowledge-base/*.md`, skills, showcase.
 
@@ -102,7 +132,7 @@ The dev loop (`pnpm dev` — doctor + mprocs, THE single entry point; `knowledge
 
 ## Hard rules (ALWAYS)
 
-### Features default ON — no dark switches (Felipe's rule)
+### Features default ON — no dark switches (Julian's rule)
 Polarity is fixed: everything on; turning something OFF is an explicit, committed, visible act. Three classes, three rules:
 1. **Needs nothing external → no switch exists.** Merging = releasing. Not ready to be seen = not merged (short branches, not long-lived flags). Never add an `X_ENABLED` boolean for a plain code path — the Apple button rotted invisible for months behind one.
 2. **Needs a credential → the credential IS the switch.** Key present = feature on, automatically. Key absent = loud, named OFF with the remedy (the dev doctor's feature matrix line; in-app, a visible error — never a hidden surface). Never layer a boolean on top of a credential.

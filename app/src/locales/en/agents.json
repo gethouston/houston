@@ -53,10 +53,6 @@
     "invalidChars": "Agent names can't contain slashes or special characters",
     "tooLong": "Agent names can be at most {{max}} characters"
   },
-  "empty": {
-    "title": "No agents yet",
-    "description": "Build your AI team and start a mission."
-  },
   "instructions": {
     "emptyTitle": "No instructions yet",
     "emptyDescription": "Tell your agent how it should think and act.",
@@ -88,22 +84,6 @@
     "skills": "Skills",
     "learnings": "Learnings"
   },
-  "tabLabels": {
-    "activity": "Activity",
-    "routines": "Routines",
-    "files": "Files",
-    "context": "Context",
-    "admin": "Admin",
-    "integrations": "Integrations",
-    "chat": "Chat",
-    "board": "Board",
-    "skills": "Skills",
-    "prompts": "Prompts",
-    "events": "Events",
-    "learnings": "Learnings",
-    "configure": "Configure",
-    "settings": "Settings"
-  },
   "configure": {
     "projectContext": {
       "title": "Project context",
@@ -128,7 +108,7 @@
       "description": "Agent configuration and runtime settings.",
       "savingHint": "Saving...",
       "worktreeMode": "Worktree mode",
-      "worktreeModeDescription": "Create a separate git worktree for each mission",
+      "worktreeModeDescription": "Create a separate git worktree for each task",
       "installCommand": "Install command",
       "installCommandPlaceholder": "e.g. pnpm install, npm install, cargo build",
       "devCommand": "Dev command",
@@ -141,13 +121,8 @@
     "modeSummary": "{{file}}, {{count}} lines"
   },
   "files": {
-    "emptyTitle": "No files yet",
-    "emptyDescription": "Files created by your assistant will appear here.",
     "openInFileManager": "Open in File Manager",
     "loading": "Loading…",
-    "browseFiles": "Browse files",
-    "viewGrid": "Grid view",
-    "viewList": "List view",
     "sortBy": "Sort by",
     "newMenu": "New",
     "newFolder": "New folder",
@@ -156,7 +131,8 @@
     "itemSingular": "item",
     "itemPlural": "items",
     "menuButton": "More actions",
-    "breadcrumbs": "Folder path",
+    "expandAgent": "Expand {{name}} files",
+    "collapseAgent": "Collapse {{name}} files",
     "conflict": {
       "title": "“{{name}}” already exists",
       "description": "The destination folder already has an item named “{{name}}”. You can replace it or keep both.",
@@ -168,7 +144,6 @@
     "uploadFolder": "Upload folder",
     "folderDropFailed": "We could not read that folder. Try the Upload button instead.",
     "downloadAll": "Download all",
-    "dropHint": "or drag and drop files here",
     "uploadingBusy": "Uploading…",
     "searchPlaceholder": "Search files",
     "searchClear": "Clear search",

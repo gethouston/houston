@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * Mission cards carry the HUMANS on the mission as an overlapping face stack
@@ -20,7 +21,7 @@ import { expect, test } from "./support/fixtures";
 const TEAMS_CAPS = { multiplayer: true, teams: true, role: "owner" };
 
 /** Accessible group label of a card's face stack (app/src/locales/en/board.json). */
-const PEOPLE_LABEL = "People on this mission";
+const PEOPLE_LABEL = "People on this task";
 
 async function armTeams(request: APIRequestContext): Promise<void> {
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
@@ -29,15 +30,16 @@ async function armTeams(request: APIRequestContext): Promise<void> {
 }
 
 /**
- * Open Mission Control — the CROSS-AGENT board, the "shared board" the face
- * stacks were built for. The per-agent board opens on the `me` person scope,
- * which hides missions the signed-in user is not stamped on; identity is off in
- * this project (no session uid), so every attributed mission would be filtered
- * out there. Mission Control has no default person filter.
+ * Open the team's board — the CROSS-AGENT board the face stacks were built
+ * for. Every board belongs to a team now, and the seeded workspace's default
+ * team holds every agent, so this is the shared board. It has no default
+ * person filter, which matters here: a board scoped to `me` would hide every
+ * mission the signed-in user is not stamped on, and identity is off in this
+ * project (no session uid), so nothing attributed would survive.
  */
-async function openMissionControl(page: Page): Promise<void> {
+async function openTeamBoard(page: Page): Promise<void> {
   await page.goto("/");
-  await page.locator("[data-tour-target='nav-dashboard']").click();
+  await openTeamSection(page, "Tasks");
 }
 
 /** The mission card carrying `title` (the board's `role="option"` cards). */
@@ -67,7 +69,7 @@ test("a two-person mission shows both faces, no overflow chip", async ({
   request,
 }) => {
   await armTeams(request);
-  await openMissionControl(page);
+  await openTeamBoard(page);
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 
   const faces = stack(page, "Plan a trip to Tokyo").locator(
@@ -95,7 +97,7 @@ test("a seven-person mission caps at five faces and shows a +2 chip", async ({
   request,
 }) => {
   await armTeams(request);
-  await openMissionControl(page);
+  await openTeamBoard(page);
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 
   const launch = stack(page, "Draft the launch email");
@@ -111,7 +113,7 @@ test("the +N chip expands to every contributor, none unreachable", async ({
   request,
 }) => {
   await armTeams(request);
-  await openMissionControl(page);
+  await openTeamBoard(page);
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 
   await overflowChip(page, "Draft the launch email").click();
@@ -135,7 +137,7 @@ test("initials faces are opaque, so an overlapped face never bleeds through", as
   request,
 }) => {
   await armTeams(request);
-  await openMissionControl(page);
+  await openTeamBoard(page);
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 
   const fallbacks = stack(page, "Plan a trip to Tokyo").locator(
@@ -164,7 +166,7 @@ test("the card body reserves a gutter so text never runs under the stack", async
   request,
 }) => {
   await armTeams(request);
-  await openMissionControl(page);
+  await openTeamBoard(page);
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 
   const description = card(page, "Draft the launch email").getByText(

@@ -11,6 +11,7 @@ import {
   UNCATEGORIZED,
 } from "../integrations";
 import { FilterCombobox } from "../shell/filter-combobox";
+import { HeaderSearch } from "../shell/page-header/header-search";
 
 /**
  * The catalog surface's ONE controls row — the shared search field + the house
@@ -18,8 +19,8 @@ import { FilterCombobox } from "../shell/filter-combobox";
  * "Other"). It sits ABOVE both sections of the {@link CatalogShell}; the surface
  * owns the `query` + `category` state and threads it through here, into the
  * installed-section filter, and into the discovery {@link CatalogPane}, so ONE
- * query narrows everything. Shared verbatim by the global Integrations page and
- * the per-agent Integrations tab so the controls never drift.
+ * query narrows everything. Owned by the global Integrations page; the controls
+ * live here so both of its catalog sections read from one row.
  */
 export function CatalogControls({
   catalog,
@@ -28,6 +29,7 @@ export function CatalogControls({
   onQueryChange,
   category,
   onCategoryChange,
+  variant,
 }: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
@@ -36,6 +38,7 @@ export function CatalogControls({
   /** A primary-category slug, the `UNCATEGORIZED` bucket, or the "all" sentinel. */
   category: string;
   onCategoryChange: (value: string) => void;
+  variant: "strip" | "row";
 }) {
   const { t } = useTranslation("integrations");
   const categoryOptions = useMemo(() => {
@@ -47,15 +50,18 @@ export function CatalogControls({
     }));
   }, [catalog, connections, t]);
 
+  const inStrip = variant === "strip";
   return (
-    <div className="flex gap-2">
-      <CatalogSearchField
-        value={query}
-        onChange={onQueryChange}
-        label={t("home.searchPlaceholder")}
-        clearLabel={t("home.clearSearch")}
-        className="flex-1"
-      />
+    <div className={inStrip ? "flex gap-2" : "mb-8 flex gap-2 pt-2"}>
+      <HeaderSearch query={query} inStrip={inStrip}>
+        <CatalogSearchField
+          value={query}
+          onChange={onQueryChange}
+          label={t("home.searchPlaceholder")}
+          clearLabel={t("home.clearSearch")}
+          className={inStrip ? "[&_input]:h-8" : "w-full"}
+        />
+      </HeaderSearch>
       <FilterCombobox
         options={categoryOptions}
         value={category}
@@ -65,6 +71,7 @@ export function CatalogControls({
         searchPlaceholder={t("browse.searchCategories")}
         emptyText={t("browse.noCategoryResults")}
         searchable
+        className={inStrip ? "h-8" : undefined}
       />
     </div>
   );

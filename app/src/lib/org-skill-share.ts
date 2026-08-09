@@ -6,7 +6,7 @@
 // enable it per agent from the Skills surfaces. Dependency-injected and
 // framework-free so the whole flow is node-testable
 // (app/tests/org-skill-share.test.ts); the hook wrapper
-// (components/tabs/use-org-skill-default.ts) binds it to the engine client.
+// (components/agent/use-org-skill-default.ts) binds it to the engine client.
 
 /**
  * True when the workspace store DECLINED the promotion for an expected,

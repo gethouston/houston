@@ -1,11 +1,14 @@
 /**
  * The one navigation a mention notification performs, shared by the Mission
  * Control inbox and the header bell so a row can never land two different
- * places: pick the agent, switch to its Activity view, open the mission's
- * panel — the same three-step nav a completion notification does.
+ * places: make the agent current, open the board its missions live on —
+ * its TEAM's Mission Control, filtered to that agent ({@link openAgentBoard}) —
+ * and publish the mission for that board to open. The same three-step nav a
+ * completion notification does.
  */
 
 import { activityIdForSessionKey } from "../../lib/notification-nav";
+import { openAgentBoard } from "../../lib/open-agent";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -29,6 +32,6 @@ export function openMentionRow(
       row.sessionKey,
     ) ?? row.conversationId;
   useAgentStore.getState().setCurrent(agent);
-  useUIStore.getState().setViewMode("activity");
+  openAgentBoard(agent.id);
   useUIStore.getState().setActivityPanelId(activityId, { forceOpen: true });
 }

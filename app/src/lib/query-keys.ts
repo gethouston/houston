@@ -26,11 +26,7 @@ export const queryKeys = {
   config: (agentPath: string) => ["config", agentPath] as const,
   routines: (agentPath: string) => ["routines", agentPath] as const,
   learnings: (agentPath: string) => ["learnings", agentPath] as const,
-  routineRuns: (agentPath: string, routineId?: string) =>
-    routineId
-      ? (["routine-runs", agentPath, routineId] as const)
-      : (["routine-runs", agentPath] as const),
-  conversations: (agentPath: string) => ["conversations", agentPath] as const,
+  routineRuns: (agentPath: string) => ["routine-runs", agentPath] as const,
   allConversations: (agentPaths: string[]) =>
     ["all-conversations", ...agentPaths] as const,
   chatHistory: (agentPath: string, sessionKey: string) =>
@@ -115,7 +111,7 @@ export const queryKeys = {
   cloudMigrationDetect: () => ["cloud-migration-detect"] as const,
 
   // Integrations are user-level (shared across the user's agents), so they are
-  // NOT keyed by agentPath even though they surface in a per-agent tab.
+  // NOT keyed by agentPath even though they surface on per-agent surfaces.
   integrationStatus: () => ["integration-status"] as const,
   integrationConnections: (provider: string) =>
     ["integration-connections", provider] as const,
@@ -165,4 +161,11 @@ export const queryKeys = {
    */
   agentModelChoice: (agentId: string) =>
     ["agent-model-choice", agentId] as const,
+
+  /** C13 agent teams: the active space's teams, as the CALLER sees them
+   *  (`GET /v1/org/teams`). App-scoped — one active space at a time, and a
+   *  space switch drops the whole cache (`resetCacheForSpaceChange`). */
+  agentTeams: () => ["agent-teams"] as const,
+  /** C13: one team's EXPLICIT membership rows. Keyed by team id. */
+  agentTeamMembers: (teamId: string) => ["agent-team-members", teamId] as const,
 };

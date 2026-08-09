@@ -107,13 +107,14 @@ export interface PendingActivityArgs {
 }
 
 /**
- * Decide which activity the active BoardTab should select when an
- * `activityPanelId` nav is published (notification click, command palette,
- * Mission Control). Returns the activity id to open, or null to open nothing.
+ * Decide which activity the mission board on the glass should select when an
+ * `activityPanelId` nav is published (notification click, @mention row, command
+ * palette, the archived → active handoff). Returns the activity id to open, or
+ * null to open nothing.
  *
- * The keyed agent subtree mounts a fresh board for cross-agent navigation. This
- * helper therefore owns only same-agent guards: a passive nav must not yank the
- * user out of an open conversation or composer.
+ * It owns only the "don't yank the user" guards: a passive nav must not pull
+ * them out of an open conversation or composer, while an explicit one always
+ * may. Which BOARD hears it is the caller's business (`lib/open-agent.ts`).
  */
 export function resolvePendingActivitySelection({
   pendingActivityId,
@@ -155,34 +156,4 @@ export function shouldArmNotificationNav(
  */
 export function shouldNavigateOnAppActivation(isMacPlatform: boolean): boolean {
   return isMacPlatform;
-}
-
-/**
- * Where a consumed skill-setup-chat notification should land, given where the
- * user actually is. A skill chat lives on TWO surfaces — the owning agent's
- * Skills section and the global Skills page (HOU-792's create flow) — and on
- * macOS a bare refocus consumes the nav too (focus is the click proxy, see
- * `shouldNavigateOnAppActivation`). HOU-980 set the rule for integration
- * chats: never yank a user who is already on a surface hosting the chat.
- *
- * - `"stay"` — the user is on the global Skills page; an open chat is already
- *   visible there (it renders in the page's own right panel), and a closed
- *   one was closed deliberately. Touch nothing.
- * - `"reopen-in-place"` — the user is on THIS agent's Skills tab; arm the
- *   one-shot activity id so a closed chat reopens on the spot, no view change.
- * - `"navigate"` — anywhere else: a genuine jump to the agent's Skills tab,
- *   the chat's home.
- */
-export function skillChatNavDecision(args: {
-  prevViewMode: string;
-  prevAgentId: string | undefined;
-  /** The agent hosting the finished skill chat. */
-  agentId: string;
-  /** The global Skills page's view id (`SKILLS_VIEW_ID`). */
-  skillsHomeViewId: string;
-}): "stay" | "reopen-in-place" | "navigate" {
-  if (args.prevViewMode === args.skillsHomeViewId) return "stay";
-  const onOwnSkillsTab =
-    args.prevViewMode === "skills" && args.prevAgentId === args.agentId;
-  return onOwnSkillsTab ? "reopen-in-place" : "navigate";
 }

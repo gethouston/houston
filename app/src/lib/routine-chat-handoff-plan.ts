@@ -7,7 +7,7 @@
  * stays under the size cap.
  */
 
-import type { WakePick } from "../components/tabs/automation-intake/types.ts";
+import type { WakePick } from "../components/agent/automation-intake/types.ts";
 import { eventNameExamples } from "./routine-chat-handoff-catalog.ts";
 import { scheduleHintStep } from "./routine-chat-handoff-wake.ts";
 

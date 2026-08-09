@@ -1,4 +1,4 @@
-import type { FileEntry, FilesViewMode } from "@houston-ai/agent";
+import type { FileEntry } from "@houston-ai/agent";
 import { FilesBrowser } from "@houston-ai/agent";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -48,35 +48,25 @@ function moved(files: FileEntry[], sourcePath: string, folder: string | null) {
 export interface LiveFilesProps {
   /** Seed content; `[]` gives the empty state. */
   initial?: FileEntry[];
-  /** Start in the Finder-style list instead of the card grid. */
-  startView?: FilesViewMode;
   /** Render the loading line instead of a body. */
   loading?: boolean;
 }
 
 /**
- * `FilesBrowser` wired the way the Files tab wires it: selection, the view
- * toggle, inline rename, delete, new folder and internal drag-and-drop all move
+ * `FilesBrowser` wired the way one agent section wires it: selection, inline
+ * rename, delete, new folder and internal drag-and-drop all move
  * real state, so every gesture here behaves as it does in the product. The
  * host-only actions (reveal in the OS, download) are deliberately absent —
  * see the page's note.
  */
-export function LiveFiles({
-  initial = agentFiles,
-  startView = "grid",
-  loading,
-}: LiveFilesProps) {
+export function LiveFiles({ initial = agentFiles, loading }: LiveFilesProps) {
   const [files, setFiles] = useState(initial);
-  const [view, setView] = useState<FilesViewMode>(startView);
 
   return (
     <FilesStage>
       <FilesBrowser
         files={files}
         loading={loading}
-        view={view}
-        onViewChange={setView}
-        rootLabel="Inbox Zero"
         onRename={(file, name) => setFiles((all) => renamed(all, file, name))}
         onDelete={(file) =>
           setFiles((all) =>

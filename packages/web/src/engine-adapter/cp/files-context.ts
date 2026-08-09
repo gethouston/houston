@@ -64,7 +64,7 @@ export async function setContext(
 
 /**
  * Composer attachments. Upload the dropped files INTO the agent's workspace —
- * its durable, Files-tab-visible `uploads/` folder — so the runtime's clamped
+ * its durable, Files-section-visible `uploads/` folder — so the runtime's clamped
  * file tools can Read them during this turn and any later conversation
  * (HOU-706), and return the RELATIVE workspace paths the host stored them at —
  * which the sender encodes verbatim into the message ("Read these attached
@@ -141,7 +141,7 @@ export function planAttachmentBatches(files: readonly File[]): File[][] {
  * The upload-relative path for a folder-derived file, or undefined for a plain
  * file. Normalized to forward slashes with no leading slash; a value without a
  * `/` carries no structure and is treated as plain. Shared by composer
- * attachments and the Files tab's folder upload (HOU-889).
+ * attachments and the Files section's folder upload (HOU-889).
  */
 export function uploadRelPath(f: File): string | undefined {
   const raw = f.webkitRelativePath;

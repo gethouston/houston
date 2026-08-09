@@ -1,5 +1,5 @@
 /**
- * Folder uploads (HOU-808 composer attachments, HOU-889 Files tab) — shared
+ * Folder uploads (HOU-808 composer attachments, HOU-889 file browser) — shared
  * by every surface that accepts a whole folder from the user.
  *
  * A folder can enter a surface two ways:

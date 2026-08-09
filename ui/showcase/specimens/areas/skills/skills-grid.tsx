@@ -20,7 +20,7 @@ import {
 import { installedSkills, installedSlugs } from "./sample";
 import { gridProps } from "./skills-grid-parts";
 
-/** The white page body the tab gives the surface, bounded to a real measure. */
+/** The white page body the app gives the surface, bounded to a real measure. */
 function Frame({ children }: { children: ReactNode }) {
   return <div className="flex w-full max-w-2xl flex-col">{children}</div>;
 }

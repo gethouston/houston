@@ -5,8 +5,9 @@ import {
   timedOutTriggerIds,
   toStatusMap,
   toTriggerSummaries,
+  triggerBoundRoutineIds,
   withTriggerTimeouts,
-} from "../src/components/tabs/routine-trigger-maps.ts";
+} from "../src/components/agent/routine-trigger-maps.ts";
 
 const routine = (over) => ({
   id: "r1",
@@ -19,6 +20,42 @@ const routine = (over) => ({
   created_at: "",
   updated_at: "",
   ...over,
+});
+
+test("triggerBoundRoutineIds picks only event routines, in list order", () => {
+  // This is the rule that decides whether an agent is asked about triggers at
+  // all, so an all-schedule list must come back empty: no ids, no request.
+  assert.deepEqual(triggerBoundRoutineIds(undefined), []);
+  assert.deepEqual(triggerBoundRoutineIds(null), []);
+  assert.deepEqual(
+    triggerBoundRoutineIds([routine({ id: "cron", schedule: "0 9 * * *" })]),
+    [],
+  );
+  assert.deepEqual(
+    triggerBoundRoutineIds([
+      routine({ id: "cron", schedule: "0 9 * * *" }),
+      routine({
+        id: "evt",
+        trigger: { toolkit: "gmail", trigger_slug: "X", trigger_config: {} },
+      }),
+      routine({ id: "hook", trigger: { kind: "webhook", key_prefix: "wh_1" } }),
+    ]),
+    ["evt", "hook"],
+  );
+});
+
+test("triggerBoundRoutineIds returns whatever id the rows carry", () => {
+  // A team's merged list namespaces its rows, and the same helper has to serve
+  // it — otherwise the two surfaces would disagree on which rows can time out.
+  assert.deepEqual(
+    triggerBoundRoutineIds([
+      routine({
+        id: "agent-1::evt",
+        trigger: { toolkit: "slack", trigger_slug: "Y", trigger_config: {} },
+      }),
+    ]),
+    ["agent-1::evt"],
+  );
 });
 
 test("toStatusMap indexes by routine id and tolerates null", () => {

@@ -3,23 +3,23 @@ import type { FeedItem, MessageMention } from "@houston-ai/chat";
 import type { ReactNode } from "react";
 import type { HistoryLoadOptions } from "../../lib/tauri";
 import type { TurnMode } from "../../lib/turn-mode";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import type { Agent } from "../../lib/types";
 
 /**
  * Shared mission-board architecture.
  *
- * `<MissionBoard>` owns every piece of wiring that the cross-agent Mission
- * Control view and the per-agent board tab used to duplicate: the AIBoard
- * prop spread, the `useAgentChatPanel` integration, the message queue,
- * draft persistence, keyboard navigation, the bulk-action UI, columns, and
- * all i18n labels.
+ * `<MissionBoard>` owns every piece of wiring a cross-agent board needs: the
+ * AIBoard prop spread, the `useAgentChatPanel` integration, the message queue,
+ * draft persistence, keyboard navigation, the bulk-action UI, columns, and all
+ * i18n labels.
  *
- * The genuinely divergent parts — where the data comes from, who the active
- * agent is, how a new mission is started, and how bulk mutations are routed
- * to the right agent — live behind this `BoardSource` interface. Each view
- * builds a source with a hook (`useAgentBoardSource` / `useMissionControlSource`)
- * and hands it to the shared component. This is the headless-logic pattern:
- * one presentational/wiring component, two injected data backends.
+ * The scope-dependent parts — where the data comes from, who the active agent
+ * is, how a new mission is started, and how bulk mutations are routed to the
+ * right agent — live behind this `BoardSource` interface, which
+ * `useMissionControlSource` builds. This is the headless-logic pattern: one
+ * presentational/wiring component, an injected data backend. Mission Control
+ * and each team board are the SAME source narrowed by a
+ * `MissionControlScope`, so they never drift apart.
  */
 
 /** Everything a user-typed send carries beside its text and files: the
@@ -39,11 +39,11 @@ export interface SendOverrides {
 
 /**
  * Multi-select state + bulk mutations for one board. The set-state half is
- * identical for both views (see `useSelectionSet`); only the bulk dispatch
- * (`move` / `archive` / `remove`) differs — per-agent for the
- * board tab, grouped-by-agent for cross-agent Mission Control. The section
- * lock, toggle guard, header actions, and bulk-bar labels are derived by
- * `<MissionBoard>` and stay out of here.
+ * generic (see `useSelectionSet`); the bulk dispatch (`move` / `archive` /
+ * `remove`) groups the selection by agent before writing, because one
+ * cross-agent selection can span several agents. The section lock, toggle
+ * guard, header actions, and bulk-bar labels are derived by `<MissionBoard>`
+ * and stay out of here.
  */
 export interface BoardSelectionModel {
   selectedIds: ReadonlySet<string>;
@@ -64,14 +64,12 @@ export interface BoardSelectionModel {
 }
 
 /**
- * Everything the shared `<MissionBoard>` needs that differs between the
- * cross-agent and per-agent views. Anything that can be derived from these
- * fields (panel avatar, columns, section lock, labels) is built by the
- * component, not duplicated here.
+ * Everything the shared `<MissionBoard>` needs that depends on the board's
+ * scope. Anything that can be derived from these fields (panel avatar,
+ * columns, section lock, labels) is built by the component, not duplicated
+ * here.
  */
 export interface BoardSource {
-  variant: "mission-control" | "agent";
-
   // ── Data ──────────────────────────────────────────────────────────────────
   /** Already filtered + searched: exactly what renders on the board. */
   items: KanbanItem[];
@@ -85,8 +83,9 @@ export interface BoardSource {
   isLoaded: boolean;
 
   // ── Open-chat selection + keyboard highlight ──────────────────────────────
-  // Owned by the source because the per-agent board reconciles both across
-  // agent switches; Mission Control never switches agent.
+  // Owned by the source, not the component: the open mission's session key
+  // and owning agent are resolved from the swept data, which only the source
+  // holds.
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   highlightedId: string | null;
@@ -94,12 +93,11 @@ export interface BoardSource {
 
   // ── Panel scope (the agent whose chat features the right panel shows) ─────
   activeAgent: Agent | null;
-  activeAgentDef: AgentDefinition | null;
   /**
-   * Scope for the new-conversation composer draft (HOU-730): the agent id on
-   * the per-agent board (a parked first message must never surface in another
-   * agent's composer), a view constant in Mission Control (one composer whose
-   * draft survives switching the target agent).
+   * Scope for the new-conversation composer draft (HOU-730): a per-board
+   * constant (Mission Control, or one per team board), so a parked first
+   * message survives switching the target agent but never surfaces in another
+   * board's composer.
    */
   draftScope: string;
   selectedSessionKey: string | null;
@@ -149,7 +147,7 @@ export interface BoardSource {
   ) => Promise<string>;
   stopSession: (sessionKey: string) => void;
 
-  // ── Drag & drop (per-agent board only) ────────────────────────────────────
+  // ── Drag & drop ───────────────────────────────────────────────────────────
   onItemMove?: (item: KanbanItem, toColumnId: string) => void;
   canDropItem?: (item: KanbanItem, toColumnId: string) => boolean;
 
@@ -186,12 +184,9 @@ export interface BoardSource {
    *  dot). Resolved against the full in-scope set so a search that hides the
    *  open card doesn't drop the indicator. */
   selectedRunning: boolean;
-  /** Per-card avatar for the per-agent board. Mission Control sets a per-card
-   *  `icon` on each item instead and leaves this undefined. */
-  cardAvatar?: ReactNode;
 
   // ── Slots rendered by the component ───────────────────────────────────────
-  /** Toolbar rendered above the board (Mission Control only). */
+  /** Toolbar rendered above the board (filters, search, New mission). */
   toolbar?: ReactNode;
   /** Dialogs mounted alongside the board (agent picker, attachment rejection,
    *  skill picker). */

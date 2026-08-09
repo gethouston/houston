@@ -18,9 +18,9 @@ export function detectTimezone(): string {
  * the browser-detected zone. Returns the effective IANA zone. Never overwrites
  * an existing value.
  *
- * Shared by the Routines-tab hook (below) and the onboarding create path
- * (`use-create-assistant`). The hook only mounts on the Routines tab, so a user
- * who never opens it would otherwise never have a zone seeded — and the cloud
+ * Shared by the Routines hook (below) and the onboarding create path
+ * (`use-create-assistant`). The hook only mounts on the Routines section, so a
+ * user who never opens it would otherwise never have a zone seeded — and the cloud
  * scheduler would fire their routines in the pod's UTC instead of their local
  * time. Both callers seed through this one guard.
  *

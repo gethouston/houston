@@ -7,7 +7,7 @@ import {
   buildAgentPeople,
   canPersonBeManager,
   writeAgentPerson,
-} from "../src/components/permissions/agent-people-model.ts";
+} from "../src/components/agent-settings/agent-people-model.ts";
 
 const agent = (over: Partial<Agent>): Agent => ({
   id: over.id ?? "a",

@@ -30,28 +30,6 @@ export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_ATTEMPTS = 150; // ~5 min at 2s/attempt.
 
 /**
- * Split the user's connections into the two grant buckets:
- *
- *  - `granted`   — connected AND in this agent's grant set.
- *  - `available` — connected but NOT granted.
- *
- * A grant slug with no matching connection is ignored (a grant only means
- * something once the app is actually connected). Connection order is preserved
- * within each bucket. Pure so it's unit-testable.
- */
-export function splitByGrant(opts: {
-  connections: IntegrationConnection[];
-  grants: ReadonlySet<string>;
-}): { granted: IntegrationConnection[]; available: IntegrationConnection[] } {
-  const granted: IntegrationConnection[] = [];
-  const available: IntegrationConnection[] = [];
-  for (const c of opts.connections) {
-    (opts.grants.has(c.toolkit) ? granted : available).push(c);
-  }
-  return { granted, available };
-}
-
-/**
  * Outcome of the post-connect poll loop. `timeout` and `error` are first-class
  * results, NOT silent fall-throughs: the caller MUST surface them so an
  * abandoned or failed browser OAuth never leaves the user staring at a stopped

@@ -62,11 +62,11 @@ function SidebarNavItemSpecimen() {
     <TooltipProvider>
       <SpecimenPage
         title="SidebarNavItem"
-        intro="One destination above the agent list — Mission Control, Integrations, the Agent Store, Settings."
+        intro="One destination above the agent list — Mission Control, Integrations, the Agent Store, Settings. Expanded it is a SidebarRowButton at block depth, so it shares its 28px box, its glyph column and its pill with every team header below it."
       >
         <SpecimenSection
           title="Variants"
-          note="No `variant` prop. A nav item is an icon, a label and an optional right-aligned slot; `collapsed` is the only structural fork. Click either list — the highlight is live."
+          note="No `variant` prop. A nav item is an icon, a label and an optional right-aligned slot; `collapsed` is the only structural fork, and it is a genuinely different anatomy rather than a narrower row. Click either list — the highlight is live."
         >
           <SpecimenRow label="Expanded">
             <LiveNav />
@@ -88,7 +88,7 @@ function SidebarNavItemSpecimen() {
 
         <SpecimenSection
           title="States"
-          note="Two, and `active` is the only one that is a prop: the fill plus a medium weight. Rest picks up the hover fill on pointer-over; there is no disabled state — a destination the user cannot reach is not rendered."
+          note="Two, and `active` is the only one that is a prop: the sidebar-active fill plus text-ink. Weight is NOT part of it — a nav row is block-level and therefore always medium, so clicking one cannot re-measure its label. Rest picks up the hover fill on pointer-over; there is no disabled state, because a destination the user cannot reach is not rendered."
         >
           <SpecimenRow label="Rest (hover me) / active">
             <Rail>
@@ -126,7 +126,7 @@ function SidebarNavItemSpecimen() {
 
         <SpecimenSection
           title="Sizes"
-          note="One size per mode: a full-width 8px-radius row expanded, a 36px square in the rail. The icon is the caller's — every Houston nav entry passes a 16px Lucide glyph."
+          note="One size per mode: the shared full-width 28px row expanded, a 36px square in the icon rail. The icon is the caller's — every Houston nav entry passes a 16px Lucide glyph, and the row reserves the same 20px box for it that a team glyph and an agent avatar get."
         >
           <SpecimenRow label="Full width vs. 36px square">
             <Rail>

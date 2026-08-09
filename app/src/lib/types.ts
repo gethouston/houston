@@ -19,14 +19,6 @@ export type AgentCategory =
   | "creative"
   | "business";
 
-/** An agent mode defines a prompt profile (e.g. "execution" or "planning"). */
-export interface AgentMode {
-  id: string; // e.g. "execution", "planning"
-  name: string; // Display name, e.g. "Coder", "Planner"
-  promptFile: string; // Mode name → reads .houston/prompts/modes/{promptFile}.md
-  createLabel: string; // Button label, e.g. "New Mission"
-}
-
 /** The agent config (houston.json schema) */
 export interface AgentConfig {
   id: string;
@@ -44,7 +36,6 @@ export interface AgentConfig {
   systemPrompt?: string; // System prompt for the assistant
   agentSeeds?: Record<string, string>; // Files to seed in new agents
   features?: string[]; // Rust feature flags needed
-  agents?: AgentMode[]; // Multiple prompt profiles for multi-agent setups
 }
 
 /** A resolved agent definition (config + where it came from) */
@@ -95,14 +86,6 @@ export interface Agent {
    * back-compat.
    */
   assignments?: { userId: string; access: "manager" | "user" }[];
-}
-
-/** Props injected into every tab component */
-export interface TabProps {
-  agent: Agent;
-  agentDef: AgentDefinition;
-  /** Whether this mounted tab owns the visible agent surface. */
-  isActive?: boolean;
 }
 
 /** Skill summary returned by list_skills */

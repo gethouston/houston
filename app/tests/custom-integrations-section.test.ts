@@ -25,8 +25,8 @@ describe("custom integrations section error truth table", () => {
       "../src/components/integrations/custom-integrations-section.tsx",
     );
     // The chooser dialog (guided chat vs manual form) was cut: clicking Add
-    // starts the chat with the ambient (or only) agent immediately; only a
-    // multi-agent workspace on the global page may interpose the agent picker.
+    // starts the chat with the workspace's only agent immediately; only a
+    // multi-agent workspace interposes the agent picker.
     ok(
       src.includes("void chatSetup.start(target)"),
       "the add handler starts the setup chat directly",
@@ -37,16 +37,23 @@ describe("custom integrations section error truth table", () => {
     );
   });
 
-  it("agent-less surfaces ride the per-agent transport (gateway-safe)", () => {
+  it("the agent-less surface rides the per-agent transport (gateway-safe)", () => {
     const src = read(
       "../src/components/integrations/custom-integrations-section.tsx",
     );
-    // The hosted gateway proxies only the per-agent custom routes: without a
-    // transport fallback the global Integrations page's custom tab silently
-    // hides on managed cloud (its top-level fetch 404s to null).
+    // The hosted gateway proxies only the per-agent custom routes: reading the
+    // list through the transport agent is what keeps the global Integrations
+    // page's Custom tab from silently hiding on managed cloud (its top-level
+    // fetch 404s to null). The section has no ambient agent of its own since
+    // the per-agent Integrations tab was deleted, so the transport agent is the
+    // ONLY thing standing between it and that silent hide.
     ok(
-      src.includes("useCustomTransportAgentId(agent?.id)"),
-      "the list rides the transport agent, not only the ambient one",
+      src.includes("useCustomTransportAgentId()"),
+      "the list rides the transport agent",
+    );
+    ok(
+      src.includes("useCustomIntegrationsFor(transportAgentId)"),
+      "and the list query is keyed on it",
     );
   });
 });

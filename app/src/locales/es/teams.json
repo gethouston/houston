@@ -32,6 +32,7 @@
       "pickedDesc": "Las personas con acceso solo pueden usar los modelos que permitas abajo.",
       "allowModel": "Permitir {{name}}",
       "searchModels": "Buscar modelos",
+      "clearSearch": "Borrar búsqueda",
       "labFilter": "Filtrar por laboratorio",
       "allLabs": "Todos los laboratorios",
       "searchLabs": "Buscar laboratorios",
@@ -45,6 +46,103 @@
     },
     "integrations": {
       "unavailable": "Los límites de integraciones no están disponibles aquí."
+    }
+  },
+  "agentSettings": {
+    "railLabel": "Secciones de la configuración del agente",
+    "groups": {
+      "context": "Contexto",
+      "permissions": "Permisos"
+    },
+    "people": {
+      "question": "¿Quién puede usar este agente?",
+      "helper": "Elige si todo tu equipo puede usar este agente o solo las personas que tú elijas.",
+      "anyLabel": "Todo tu equipo",
+      "anyDesc": "Cualquier persona del equipo puede usar este agente, incluidas las que se sumen después.",
+      "pickedLabel": "Solo personas específicas",
+      "pickedDesc": "Solo las personas que elijas abajo pueden usar este agente.",
+      "everyoneNote": "Todo tu equipo puede usar este agente, así que no hay nada que definir persona por persona. Cambia a Solo personas específicas para gestionar el acceso individualmente.",
+      "confirmEveryone": {
+        "title": "¿Dar acceso a todo el equipo?",
+        "description": "Esto reemplaza la lista actual. Todo tu equipo podrá usar este agente y se quitará el acceso de Manager que hayas dado aquí.",
+        "confirm": "Sí, dar acceso a todos",
+        "cancel": "Cancelar"
+      },
+      "confirmSpecific": {
+        "title": "¿Cambiar a personas específicas?",
+        "description_one": "La {{count}} persona que puede usar este agente hoy conserva el acceso. Las personas que se sumen después no se agregarán automáticamente.",
+        "description_other": "Las {{count}} personas que pueden usar este agente hoy conservan el acceso. Las personas que se sumen después no se agregarán automáticamente.",
+        "confirm": "Sí, elegir personas",
+        "cancel": "Cancelar"
+      }
+    }
+  },
+  "agentTeams": {
+    "create": {
+      "title": "Crear un equipo",
+      "nameLabel": "Nombre del equipo",
+      "namePlaceholder": "p. ej., Marketing",
+      "tooLong": "Usa menos de {{max}} caracteres.",
+      "submit": "Crear equipo",
+      "newAgent": "Nuevo agente",
+      "members": "Miembros, opcional",
+      "membersSelected_one": "{{count}} miembro seleccionado",
+      "membersSelected_other": "{{count}} miembros seleccionados"
+    },
+    "errors": {
+      "default_team": {
+        "title": "Este es el equipo principal del espacio",
+        "body": "Todas las personas del espacio ya están en él, así que no se puede eliminar y no tiene una lista de miembros aparte."
+      },
+      "personal_space": {
+        "title": "Solo tú estás en este espacio",
+        "body": "Aquí puedes agrupar tus agentes en equipos. Para trabajar con otras personas, crea una organización."
+      },
+      "not_team_owner": {
+        "title": "Solo los propietarios de este equipo pueden cambiarlo",
+        "body": "Pídele a una de esas personas que haga este cambio."
+      },
+      "invalid_team_id": {
+        "title": "No pudimos saber a qué equipo moverlo",
+        "body": "No cambió nada. Inténtalo de nuevo."
+      },
+      "invalid_name": {
+        "title": "Ese nombre de equipo no sirve",
+        "body": "El nombre de un equipo tiene que ser corto, hasta 60 caracteres. Prueba con uno más corto."
+      },
+      "invalid_icon": {
+        "title": "No pudimos poner ese icono",
+        "body": "No cambió nada. Elige uno de los iconos de la lista."
+      },
+      "invalid_color": {
+        "title": "No pudimos poner ese color",
+        "body": "No cambió nada. Elige uno de los colores de la lista."
+      },
+      "not_a_member": {
+        "title": "Esa persona todavía no está en este espacio",
+        "body": "Invítala al espacio primero y después agrégala a este equipo."
+      }
+    },
+    "leave": "Salir del equipo",
+    "memberCount_one": "{{count}} miembro",
+    "memberCount_other": "{{count}} miembros",
+    "settings": {
+      "nameLabel": "Nombre del equipo",
+      "nameSave": "Guardar",
+      "nameSaving": "Guardando…",
+      "members": {
+        "title": "Miembros",
+        "subtitle": "Las personas que se unieron a este equipo.",
+        "empty": "Todavía nadie se unió a este equipo.",
+        "error": "No pudimos cargar esta lista. Vuelve a intentarlo.",
+        "defaultNote": "Todas las personas de este espacio ya están en este equipo, así que no hay una lista aparte que gestionar.",
+        "adminNote": "Los propietarios y managers de este espacio pueden gestionar todos los equipos, por eso no aparecen aquí.",
+        "ownerLabel": "Propietario",
+        "memberLabel": "Miembro",
+        "you": "(tú)",
+        "changeRole": "Cambiar el rol de {{name}}",
+        "remove": "Quitar"
+      }
     }
   },
   "integrations": {
@@ -61,38 +159,30 @@
       "allowedEmptyCategory": "Aún no hay apps permitidas en esta categoría.",
       "addHeading": "Agregar aplicaciones",
       "readOnlyNote": "Alguien que administre este agente puede cambiar qué aplicaciones puede usar."
-    },
-    "notAllowed": {
-      "title": "No permitida para este agente",
-      "body": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Pídele a tu administrador que las habilite para este agente.",
-      "bodyManager": "Estas aplicaciones están conectadas a tu cuenta, pero este agente no tiene permitido usarlas. Actívalas en Permisos.",
-      "enableInPermissions": "Actívala en Permisos",
-      "badge": "No permitida"
     }
   },
   "org": {
     "title": "Administración",
-    "subtitle": "Gestiona tu equipo, actividad, uso y facturación en un solo lugar.",
+    "subtitle": "Tu gente, tu plan, tus números y lo que cada agente sabe sobre la empresa.",
     "tabs": {
       "people": "Personas",
+      "billing": "Facturación",
+      "analytics": "Analítica",
+      "companyContext": "Contexto de la empresa",
       "activity": "Actividad",
       "usage": "Uso",
-      "billing": "Facturación"
+      "timeWorked": "Tiempo trabajado"
     },
     "agentDetail": {
-      "subtitle": "Qué tiene permitido utilizar este agente.",
-      "openAgent": "Abrir agente",
-      "managerOnly": "Solo los Managers de este agente pueden cambiar su acceso."
+      "subtitle": "Todo lo que configuras en este agente y quién puede usarlo.",
+      "openAgent": "Abrir agente"
     },
     "index": {
-      "groups": {
-        "insights": "Estadísticas"
-      },
       "rows": {
         "people": "Invita compañeros, asigna roles y quita miembros.",
-        "activity": "Lo que pasó en este espacio de trabajo, lo más reciente primero.",
-        "usage": "Cuántos mensajes envía cada agente y persona.",
-        "billing": "Asientos, plan y pago."
+        "billing": "Asientos, plan y pago.",
+        "analytics": "Actividad, uso y tiempo trabajado en un solo lugar.",
+        "companyContext": "Lo que cada agente sabe sobre esta empresa."
       },
       "values": {
         "members_one": "{{count}} miembro",
@@ -103,13 +193,6 @@
     "unavailable": "No pudimos cargar tu espacio de trabajo."
   },
   "permissions": {
-    "title": "Permisos",
-    "subtitle": "Elige un agente para gestionar quién puede usarlo y qué puede usar.",
-    "agentTabs": {
-      "people": "Personas",
-      "integrations": "Integraciones",
-      "models": "Modelos de IA"
-    },
     "agentPeople": {
       "none": "Sin acceso",
       "noneHint": "No puede usar este agente.",
@@ -249,11 +332,6 @@
     "messages_other": "{{count}} mensajes"
   },
   "agentsTab": {
-    "empty": {
-      "title": "Crea tu primer agente",
-      "body": "Los agentes son los asistentes que tu equipo comparte. Crea uno para empezar.",
-      "action": "Crear agente"
-    },
     "managedBy": "Gestionado por {{names}}",
     "access": {
       "everyone": "Todo tu equipo",
@@ -399,6 +477,89 @@
       "alreadyMemberBody": "No hay nada que hacer. Encuéntralo en el menú de espacios, arriba en la barra lateral.",
       "goneTitle": "Esta invitación ya no está disponible",
       "goneBody": "Se canceló o ya se usó. Pídele a tu equipo que te envíe una nueva."
+    }
+  },
+  "teamView": {
+    "tabs": {
+      "missionControl": "Tareas",
+      "routines": "Rutinas",
+      "files": "Archivos",
+      "archived": "Archivadas",
+      "settings": "Gestionar agentes",
+      "label": "Secciones del equipo"
+    },
+    "move": {
+      "trigger": "Más acciones para {{name}}",
+      "action": "Mover a un equipo",
+      "confirmTitle": "¿Mover {{agent}} a {{team}}?",
+      "confirmBody": "{{agent}} pasa a {{team}}. Las personas que pueden ver ese equipo verán este agente ahí.",
+      "confirm": "Mover agente",
+      "cancel": "Cancelar"
+    },
+    "agentMenu": {
+      "rename": "Cambiar nombre",
+      "renameTitle": "Cambiar el nombre de {{name}}",
+      "renameLabel": "Nombre del agente",
+      "renameConfirm": "Guardar",
+      "delete": "Eliminar agente"
+    },
+    "context": {
+      "title": "Contexto del equipo",
+      "explainer": "Todos los agentes de este equipo saben esto.",
+      "placeholder": "¿Qué debería saber cada agente de este equipo? La empresa, los clientes, cómo trabajan.",
+      "saving": "Guardando…",
+      "saved": "Guardado"
+    },
+    "missionControl": {
+      "empty": {
+        "workspaceTitle": "Aún no tienes agentes",
+        "workspaceBody": "Crea tu primer agente y sus tareas aparecerán aquí.",
+        "createAgent": "Crear agente",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Crea un agente aquí o mueve uno a {{name}} desde la página Gestionar agentes de otro equipo."
+      }
+    },
+    "routines": {
+      "newRoutine": "Nueva rutina",
+      "empty": {
+        "workspaceTitle": "Aún no tienes agentes",
+        "workspaceBody": "Crea tu primer agente y todo lo que haga por su cuenta aparecerá aquí.",
+        "createAgent": "Crear agente",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Crea un agente aquí o mueve uno a {{name}} desde la página Gestionar agentes de otro equipo."
+      },
+      "noRoutines": {
+        "title": "Todavía nada funciona solo",
+        "body": "Crea una rutina y los agentes de este equipo empezarán a trabajar sin que se lo pidas."
+      },
+      "unreadable": {
+        "title": "No pudimos cargar las rutinas de este equipo",
+        "body": "Nada de esto falta a propósito. Reintenta arriba para ver qué hacen estos agentes por su cuenta."
+      },
+      "pickAgent": {
+        "title": "¿Qué agente debería hacerlo?",
+        "description": "Elige el agente que hará el trabajo. Puedes cambiarlo mientras configuras la rutina."
+      }
+    },
+    "files": {
+      "empty": {
+        "workspaceTitle": "Aún no tienes agentes",
+        "workspaceBody": "Crea tu primer agente y los archivos que guarde aparecerán aquí.",
+        "createAgent": "Crear agente",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Crea un agente aquí o mueve uno a {{name}} desde la página Gestionar agentes de otro equipo."
+      }
+    },
+    "settings": {
+      "subtitle": "Los agentes de este equipo. Abre uno para gestionar quién puede usarlo y qué puede usar.",
+      "empty": {
+        "workspaceTitle": "Aún no hay agentes",
+        "workspaceBody": "Crea uno y aparecerá aquí.",
+        "teamTitle": "Este equipo aún no tiene agentes",
+        "teamBody": "Crea un agente aquí o mueve uno desde la página Gestionar agentes de otro equipo."
+      },
+      "navUnavailable": "Todavía no pudimos abrir la configuración de este agente",
+      "navUnavailableBody": "El equipo de este agente todavía se está cargando. Espera un momento y vuelve a intentarlo. Si sigue pasando, repórtalo como un error."
     }
   }
 }

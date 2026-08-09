@@ -15,7 +15,7 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { PageContainer, PageHeader } from "../shell/page-shell";
+import { PageContainer, PageHero } from "../shell/page-shell";
 import { type ManagedSkillRow, ManageSkillDialog } from "./manage-skill-dialog";
 import { NewSkillDialog } from "./new-skill-dialog";
 import { useGlobalChatFlow } from "./use-global-chat-flow";
@@ -28,7 +28,7 @@ import { useWorkspaceSkills } from "./use-workspace-skills";
 import { useWorkspaceSkillRows } from "./workspace-skill-rows";
 
 /** Approximate skills.sh size, shown on the Available chip (async store, no
- *  cheap total — same label the per-agent tab shows). */
+ *  cheap total — same label the agent's Skills section shows). */
 const SKILL_STORE_SIZE_LABEL = "9000+";
 
 /**
@@ -130,7 +130,7 @@ export function SkillsView() {
   return (
     <div className="h-full overflow-y-auto [scrollbar-gutter:stable]">
       <PageContainer className="flex flex-col gap-6 py-10">
-        <PageHeader
+        <PageHero
           title={t("global.pageTitle")}
           subtitle={t("global.pageSubtitle")}
           trailing={

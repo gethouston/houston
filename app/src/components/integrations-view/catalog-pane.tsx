@@ -3,14 +3,13 @@ import type {
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
 import type { ReactNode } from "react";
-import type { ConnectFlow, PermissionsFix } from "../integrations";
+import type { ConnectFlow } from "../integrations";
 import { CatalogSkeleton } from "./catalog-skeletons";
 import { CategoryCatalog } from "./category-catalog";
 
 /**
- * The Integrations tab of a catalog surface — shared VERBATIM by the global
- * page and the per-agent Integrations tab: any surface-specific `children` (the
- * agent tab's disallowed-apps section) over the grouped category catalog. It is
+ * The Integrations tab of a catalog surface: any surface-specific `children`
+ * over the grouped category catalog. It is
  * CONTROLLED: the surface owns the ONE search + category (its `controls` row
  * above BOTH sections) and threads them in as `query` + `category`, so the same
  * filter narrows this discovery area and the Installed strip together (the
@@ -20,8 +19,7 @@ import { CategoryCatalog } from "./category-catalog";
  *
  * There is NO recovery section at the top of the pane: an app whose connection
  * is pending or errored stays in its own category rows, wearing its status, and
- * is finished or removed from there. On a Teams host `allowlist` renders blocked
- * apps as locked rows. While the data settles it shows the
+ * is finished or removed from there. While the data settles it shows the
  * {@link CatalogSkeleton}, which mirrors the grouped catalog it replaces so
  * resolving costs no layout shift.
  */
@@ -35,14 +33,12 @@ export function CatalogPane({
   connectFlow,
   onConnected,
   onRemove,
-  allowlist = null,
-  lockedFix,
   children,
 }: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
-  /** Which surface these rows belong to (the global page vs. one agent's tab),
-   *  half of each row's connect-flow origin key. */
+  /** Which surface these rows belong to, half of each row's connect-flow
+   *  origin key. */
   surface: string;
   /** The surface's shared search query (from its one controls row). */
   query: string;
@@ -54,11 +50,6 @@ export function CatalogPane({
   onConnected?: (toolkit: string) => void;
   /** Disconnect an app's half-made connection (the app modal's Remove). */
   onRemove: (toolkit: string) => void;
-  /** The Teams effective allowlist (`null` = unrestricted, no locks ever). */
-  allowlist?: string[] | null;
-  /** Role-aware "Enable it in Permissions" resolver for locked rows (a viewer
-   *  who can lift the ceiling); absent = the read-only member view. */
-  lockedFix?: PermissionsFix;
   /** Surface-specific sections above the catalog. */
   children?: ReactNode;
 }) {
@@ -78,8 +69,6 @@ export function CatalogPane({
           query={query}
           category={category}
           onRemove={onRemove}
-          allowlist={allowlist}
-          lockedFix={lockedFix}
         />
       )}
     </div>

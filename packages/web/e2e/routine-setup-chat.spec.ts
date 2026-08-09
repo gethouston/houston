@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * The Routines redesign: creation is chat-first, driven by locally-rendered
@@ -72,7 +73,7 @@ async function armTriggers(): Promise<void> {
 }
 
 async function openRoutinesTab(page: Page): Promise<void> {
-  await page.locator('[data-tour-target="tab-routines"]').click();
+  await openTeamSection(page, "Routines");
   await expect(
     page.getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();
@@ -215,7 +216,7 @@ test("switching tabs never stacks two chat panels in the shared shell panel (HOU
   // exactly one conversation (each ChatPanel owns exactly one composer textarea).
   await page.getByText("Plan a trip to Tokyo").click();
   const panel = page.getByTestId("mission-panel");
-  await expect(panel.getByText("Mission: Plan a trip to Tokyo")).toBeVisible();
+  await expect(panel.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
   await expect(panel.locator("textarea")).toHaveCount(1);
 
   // Every agent tab stays mounted (only CSS-hidden). Before HOU-1165 the hidden
@@ -234,7 +235,7 @@ test("switching tabs never stacks two chat panels in the shared shell panel (HOU
   await expect(panel.getByText("Routine: Morning brief")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(panel.getByText("Mission: Plan a trip to Tokyo")).toHaveCount(0);
+  await expect(panel.getByText("Task: Plan a trip to Tokyo")).toHaveCount(0);
   await expect(panel.locator("textarea")).toHaveCount(1);
 });
 

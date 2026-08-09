@@ -53,10 +53,6 @@
     "invalidChars": "O nome do agente não pode conter barras nem caracteres especiais",
     "tooLong": "O nome do agente pode ter no máximo {{max}} caracteres"
   },
-  "empty": {
-    "title": "Ainda não há agentes",
-    "description": "Crie sua equipe de IA e inicie uma missão."
-  },
   "instructions": {
     "emptyTitle": "Ainda sem instruções",
     "emptyDescription": "Diga ao seu agente como ele deve pensar e agir.",
@@ -88,22 +84,6 @@
     "skills": "Skills",
     "learnings": "Aprendizados"
   },
-  "tabLabels": {
-    "activity": "Atividade",
-    "routines": "Rotinas",
-    "files": "Arquivos",
-    "context": "Contexto",
-    "admin": "Admin",
-    "integrations": "Integrações",
-    "chat": "Chat",
-    "board": "Quadro",
-    "skills": "Skills",
-    "prompts": "Instruções",
-    "events": "Eventos",
-    "learnings": "Aprendizados",
-    "configure": "Configurar",
-    "settings": "Configurações"
-  },
   "configure": {
     "projectContext": {
       "title": "Contexto do projeto",
@@ -128,7 +108,7 @@
       "description": "Configuração do agente e opções de execução.",
       "savingHint": "Salvando...",
       "worktreeMode": "Modo worktree",
-      "worktreeModeDescription": "Criar um worktree do git separado para cada missão",
+      "worktreeModeDescription": "Criar um worktree do git separado para cada tarefa",
       "installCommand": "Comando de instalação",
       "installCommandPlaceholder": "ex. pnpm install, npm install, cargo build",
       "devCommand": "Comando de desenvolvimento",
@@ -141,13 +121,8 @@
     "modeSummary": "{{file}}, {{count}} linhas"
   },
   "files": {
-    "emptyTitle": "Ainda não há arquivos",
-    "emptyDescription": "Os arquivos criados pelo seu assistente aparecerão aqui.",
     "openInFileManager": "Abrir no Explorador de Arquivos",
     "loading": "Carregando…",
-    "browseFiles": "Escolher arquivos",
-    "viewGrid": "Visualização em grade",
-    "viewList": "Visualização em lista",
     "sortBy": "Ordenar por",
     "newMenu": "Novo",
     "newFolder": "Nova pasta",
@@ -156,7 +131,8 @@
     "itemSingular": "item",
     "itemPlural": "itens",
     "menuButton": "Mais ações",
-    "breadcrumbs": "Caminho de pastas",
+    "expandAgent": "Expandir arquivos de {{name}}",
+    "collapseAgent": "Recolher arquivos de {{name}}",
     "conflict": {
       "title": "“{{name}}” já existe",
       "description": "A pasta de destino já tem um item chamado “{{name}}”. Você pode substituí-lo ou manter os dois.",
@@ -168,7 +144,6 @@
     "uploadFolder": "Enviar pasta",
     "folderDropFailed": "Não conseguimos ler essa pasta. Tente o botão Enviar.",
     "downloadAll": "Baixar tudo",
-    "dropHint": "ou arraste e solte arquivos aqui",
     "uploadingBusy": "Enviando…",
     "searchPlaceholder": "Buscar arquivos",
     "searchClear": "Limpar busca",

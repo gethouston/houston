@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
-import { canSeeBillingTab } from "../../lib/org-roles";
+import { canSeeBillingTab } from "../../lib/billing-gates";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { BackBarScreen } from "../shell/back-bar-screen";
@@ -33,32 +33,30 @@ export interface OrgTabProps {
 }
 
 /**
- * The Admin (Organization) dashboard (Settings > Admin): membership + insights +
- * billing. A shell only: it loads the org, builds the shared `OrgViewContext`,
+ * The Admin (Organization) dashboard: People, Billing, Analytics, Company
+ * context. A shell only: it loads the org, builds the shared `OrgViewContext`,
  * and switches between two screens in the settings-page grammar —
  *
- * - INDEX (`active === null`): a landing of grouped, self-describing rows
- *   ({@link AdminIndex}) — People (membership), Insights (Activity, Usage), and
- *   Billing when in scope.
- * - DETAIL (`active` set): a back bar + section heading + the section body.
+ * - INDEX (`active === null`): a landing of self-describing rows
+ *   ({@link AdminIndex}) — People (membership), Billing when in scope, then
+ *   Analytics (activity / usage / time worked) and Company context.
+ * - DETAIL (`active` set): a back bar + section heading + the section body. That
+ *   bar is now the ONLY one on the page: as a TOP-LEVEL view in the rail's
+ *   "Workspace" band, Admin owns the whole window and has no level above it.
  *
- * Permission surfaces (who can use which agent, per-agent + org-wide ceilings)
- * moved OUT to the Permissions section. Rendered ONLY when `canSeeOrganization`
+ * Permission surfaces (who can use which agent, per-agent ceilings) are NOT
+ * here: per-agent policy is discovered through each team's Manage agents page,
+ * in the team view's settings section. Mounted ONLY when `canSeeOrganization`
  * (multiplayer owner/admin, and on a Spaces host a TEAM active space — never the
- * personal one) — the Settings index hides the row and `SettingsView` falls a
- * stale section back to the index for everyone else.
+ * personal one): the rail hides the row, the kept-alive screen is not even
+ * mounted, and `blockedTopLevelView` sends a stale `viewMode` home the moment
+ * the gates resolve against it.
  *
- * A settings section since HOU-788 (it had its own sidebar entry before), so the
- * caller owns the way back out: `onBack`/`backLabel` name the level above, and
- * each section detail reuses the same bar one level down.
+ * Kept alive like every top-level screen, so it comes back on the section it was
+ * left on — and so the Billing deep link below has to land while the view is
+ * ALREADY open, not on a mount that never happens again.
  */
-export function OrganizationView({
-  backLabel,
-  onBack,
-}: {
-  backLabel: string;
-  onBack: () => void;
-}) {
+export function OrganizationView() {
   const { t } = useTranslation("teams");
   const { data: org, isLoading } = useOrg(true);
   const { capabilities } = useCapabilities();
@@ -78,16 +76,22 @@ export function OrganizationView({
   // index so the admin lands on the scannable overview, not a section body.
   const [active, setActive] = useState<OrgTabId | null>(null);
 
-  // One event per section detail opened (index → detail), keyed like the
-  // global view switches so a single tab_name breakdown covers everything.
+  // One event per section DETAIL opened (index → detail), keyed like the global
+  // view switches so a single tab_name breakdown covers everything. Landing on
+  // the view at all is the shell's `tab_opened` / `organization`, so this fires
+  // strictly below it and the two never double-count.
   useEffect(() => {
     if (active !== null)
       analytics.track("tab_opened", { tab_name: `org:${active}` });
   }, [active]);
 
-  // Honor a deep link straight into a section's detail (the C8 team-status
-  // banner routes to Billing), then clear it so a later plain nav to the
-  // dashboard opens the index again.
+  // Honor a deep link straight into a section's detail — the C8 team-status
+  // banner is the one caller, and it asks for Billing — then clear it so a later
+  // plain nav to the dashboard opens the index again. (The create-team toast
+  // pins nothing: it wants the index, whose lead card is People.) This is an
+  // effect on the STORE field, not mount-time state, precisely because the
+  // screen is kept alive: it fires on the first mount AND while already open,
+  // the same way `team-settings.tsx` consumes its own one-shot pin.
   useEffect(() => {
     if (requestedTab === null) return;
     if (visibleIds.includes(requestedTab)) setActive(requestedTab);
@@ -106,13 +110,13 @@ export function OrganizationView({
 
   if (active === null) {
     return (
-      <BackBarScreen backLabel={backLabel} onBack={onBack}>
+      <div className="flex-1 overflow-y-auto pt-10 [scrollbar-gutter:stable]">
         <AdminIndex
           visibleIds={visibleIds}
           memberCount={org?.members?.length}
           onSelect={setActive}
         />
-      </BackBarScreen>
+      </div>
     );
   }
 

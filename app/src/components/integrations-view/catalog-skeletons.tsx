@@ -1,9 +1,8 @@
 import { CatalogGrid, Skeleton } from "@houston-ai/core";
 
 /**
- * The catalog surfaces' loading language, in ONE place so the global
- * Integrations page and the per-agent tab never disagree about what "still
- * loading" looks like.
+ * The catalog surfaces' loading language, in ONE place so the page's Installed
+ * and Available sections never disagree about what "still loading" looks like.
  *
  * Every placeholder MIRRORS the real layout it stands in for, down to the row
  * padding, the 40px art tile, and the two text lines, so resolving swaps
@@ -67,30 +66,6 @@ export function CatalogSkeleton() {
           <Skeleton className="mt-1 ml-3 h-5 w-36" />
         </section>
       ))}
-    </div>
-  );
-}
-
-/**
- * The WHOLE catalog surface while its queries settle: the controls row, the
- * Installed section, and the Available section, in the `CatalogShell` order.
- * The per-agent Integrations tab shows this instead of the boot `LoadingState`
- * so an already-booted surface reloading its data reads the same as the global
- * page (a full-page "Loading your integrations" for a section refresh was the
- * loudest of the three loading languages this page used to speak).
- */
-export function CatalogSurfaceSkeleton() {
-  return (
-    <div aria-hidden className="space-y-8">
-      <Skeleton className="h-9 w-full rounded-full" />
-      <div className="space-y-3">
-        <Skeleton className="h-5 w-24" />
-        <InstalledSkeleton />
-      </div>
-      <div className="space-y-3">
-        <Skeleton className="h-5 w-24" />
-        <CatalogSkeleton />
-      </div>
     </div>
   );
 }

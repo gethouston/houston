@@ -45,7 +45,13 @@ e2e/
     seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
     fixtures.ts     # the `test`/`expect` used by specs (resets the host per test)
     identity.ts     # sign the harness in as a known user (see Signed-in specs below)
-    settings-nav.ts # open Settings + its Usage / Permissions / Admin sections
+    settings-nav.ts # the rail's anchorless rows (Admin + its sections and
+                    # Analytics lenses, About me) and Settings
+    team-nav.ts     # the rail (top-level rows + the Inbox) + the screen ON THE
+                    # GLASS; open a team's section, and an agent's settings page
+                    # through it ("Manage agents", the ONE door onto agent policy)
+    tour-nav.ts     # arm the guided tour from the footer's help control
+    sidebar-create.ts # the rail band's ONE "+" menu: new agent / new team
     global-setup.ts # warms the vite dev server once before the suite (see CI below)
   *.spec.ts         # the tests
 ```
@@ -117,13 +123,14 @@ controls arm it (documented in the `@houston/fake-host` README):
 
 - `POST /__test__/capabilities` (`Partial<Capabilities>`) — merge a partial into
   `/v1/capabilities`. `{ integrations:["composio"], multiplayer:true,
-  teams:true, role:"owner" }` puts the agent Integrations tab into Teams mode;
+  teams:true, role:"owner" }` puts the app into Teams mode;
   `{ integrations:["composio"] }` alone is single-player-with-apps.
 - `POST /__test__/agent-settings` (`{ allowedToolkits?, orgAllowedToolkits?,
   allowedModels?, access? }`) — the Teams v2 ceilings the fake host serves at
-  `/v1/agents/:slug/settings` + `/v1/org/settings`. The effective allowlist
-  (agent ∩ org) splits the browse catalog into connectable vs locked rows
-  (`integrations-locked.spec.ts`). `null` = unrestricted, `[]` = none.
+  `/v1/agents/:slug/settings` + `/v1/org/settings`. `null` = unrestricted,
+  `[]` = none. (The per-agent Integrations tab that turned the effective
+  allowlist into locked browse rows went away with the agent tab shell; the
+  ceilings are now edited on the agent settings page's Apps section.)
 
 **C8 Spaces arming.** The fake host serves the whole cross-org surface
 (`@houston/fake-host` `routes-spaces.ts`): `GET /v1/orgs` → `{orgs, invites}`,
@@ -133,6 +140,27 @@ inbox and can force a per-invite `needs_upgrade` / `already_member` /
 `invite_not_found` rejection; pair it with `/__test__/capabilities`
 `{ spaces:true }`, because the sidebar cards are capability-gated on the client
 (`team-invites.spec.ts`).
+
+**C13 agent-teams arming.** `POST /__test__/agent-teams`
+(`{ teams: [{ id, name, isDefault?, sortOrder?, agentIds?, members? }],
+personalSpace? }`) arms the server-owned team world `GET /v1/org/teams` serves —
+who is in each team, which agents it holds, and who owns it. Pair it with
+`/__test__/capabilities` `{ agentTeams:true }` (the client feature-detects on the
+capability, never on the data) and with `/__test__/org` `{ agents, members }`,
+because a team is only as real as the fleet and roster behind it. That is the
+whole setup for `agent-teams.spec.ts`: the rail listing only the teams the caller
+is in, creating a team with the TYPED name, a drag that writes
+`PUT /v1/agents/:slug/team` and rolls back on a refusal, and Manage agents'
+Members card. Browsing and JOINING other teams is dead product: a member only
+ever sees the teams they are part of, people are added through the Members card,
+and the rail's "+" is New agent · New team. `personalSpace: true` arms the space
+a user has to themselves: the teams behave exactly the same there (real list,
+create/patch/delete, the agent move), but every PEOPLE affordance is gone from
+the client, no Members card, because the gateway refuses the member writes with
+`403 personal_space`. With the capability off
+the client runs the pre-C13 local `sidebar_layout` backend unchanged, which is
+what `sidebar-teams.spec.ts` / `sidebar-dnd.spec.ts` /
+`team-settings-manager.spec.ts` already guard.
 
 The seeded catalog (`SEED_TOOLKIT_SLUGS`, exported for specs) holds 15 A-Z apps,
 enough that a tight allowlist blocks past the locked preview cap (8) so the
@@ -188,8 +216,9 @@ so each server gets its own optimizer output — no shared state, no race.
 ## Adding a spec
 
 1. `import { test, expect } from "./support/fixtures"` (gives you a seeded page).
-2. `await page.goto("/")` — the app boots straight to the shell, one agent
-   selected.
+2. `await page.goto("/")` — the app boots straight to the shell, onto the FIRST
+   team's Tasks board (there is no global board; the Inbox is where boot
+   waits when no team has resolved), one agent selected.
 3. Prefer role/label/text selectors; the app forces `en`, so English copy is
    stable. Reach for an existing stable anchor (e.g. `data-tour-target`) over a
    brittle one before adding a new `data-testid`.
@@ -212,7 +241,7 @@ pnpm --filter houston-web test:visual:update   # re-record baselines (intentiona
 
 | Screen | Themes | Spec |
 | --- | --- | --- |
-| Mission board (home) | light + dark, and one 640px narrow run | `shell.visual.spec.ts` |
+| Mission board (home: the first team's) | light + dark, and one 640px narrow run | `shell.visual.spec.ts` |
 | Chat conversation (settled reply) | light + dark | `chat.visual.spec.ts` |
 | First-run language gate | one (the flow pins `data-theme="light"` itself) | `onboarding.visual.spec.ts` |
 
@@ -247,12 +276,34 @@ with `test:visual:update`, eyeball the new PNGs under
 `e2e/visual/__screenshots__/`, and commit them in the same PR as the change so
 the diff documents the visual delta.
 
-**Platforms.** Baselines are platform-suffixed (`…-<platform>.png`). Both
-`darwin` (local/agent gate) and `linux` (CI) baselines are committed; regenerate
-the Linux set in the official Playwright container so a CI render matches:
+`test:visual:update` passes a BARE `--update-snapshots`, which Playwright reads
+as `changed`: it rewrites only the baselines that actually failed. A screen that
+moved but stayed under `maxDiffPixelRatio` is therefore reported clean and left
+stale. When you know a screen changed, force it and scope it to the specs that
+changed, so nothing else is churned:
 
 ```bash
-docker run --rm -v "$PWD/../..":/w -w /w/packages/web \
+pnpm exec playwright test --project=visual --update-snapshots=all \
+  e2e/visual/shell.visual.spec.ts e2e/visual/chat.visual.spec.ts
+```
+
+**Platforms.** Baselines are platform-suffixed (`…-<platform>.png`). Both
+`darwin` (local/agent gate) and `linux` (CI) baselines are committed; regenerate
+the Linux set in the official Playwright container so a CI render matches.
+Mount a COPY of the worktree rather than the worktree itself: the container
+installs a linux-native dependency tree, and letting it write `node_modules` in
+place leaves the darwin checkout with linux binaries.
+
+```bash
+# from the repo root
+rsync -a --exclude node_modules --exclude .git --exclude dist --exclude target \
+  ./ ../linux-visual/
+docker run --rm -v "$PWD/../linux-visual":/w -w /w/packages/web \
   mcr.microsoft.com/playwright:v1.61.1-noble \
   bash -c "corepack enable && pnpm install --frozen-lockfile && pnpm test:visual:update"
+# then copy the regenerated *-linux.png back into e2e/visual/__screenshots__/
 ```
+
+Docker Desktop on macOS does not reliably share `/private/tmp/...` scratch
+paths — a mount can show up partially empty inside the container. Keep the copy
+under `$HOME` (e.g. beside the worktree) and the mount is whole.

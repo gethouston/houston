@@ -150,7 +150,7 @@
         "tagline": "Ahora ve y haz lo imposible.",
         "cta": "Empieza a construir",
         "inviteTeam": "Invita a tu equipo",
-        "inviteTeamBody": "Mira quién trabaja en cada misión. Crea un equipo y comparte tus agentes."
+        "inviteTeamBody": "Mira quién trabaja en cada tarea. Crea un equipo y comparte tus agentes."
       }
     },
     "stepCounter": "Paso {{current}} de {{total}}"

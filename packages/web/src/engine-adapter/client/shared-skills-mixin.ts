@@ -6,43 +6,17 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
-import { DEFAULT_WORKSPACE_ID } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 
 export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
   class SharedSkills extends Base {
-    /** Resolved server-side personal workspace id (see `wireWorkspaceId`). */
-    #personalWsId: Promise<string> | undefined;
-
     /**
-     * The workspace id the UI holds for the personal space is the SYNTHETIC
-     * "default" (`workspaces-mixin` replaces the served personal row with it;
-     * its id is load-bearing for prefs/caches). No server speaks that
-     * vocabulary: the local host's personal workspace id is its folder name
-     * and the gateway's is its fixed engine id ("Houston") — both 404
-     * "workspace not found" for "default". Team spaces (`org:<slug>`) bridge
-     * through with their real ids and pass through here untouched. So the
-     * personal id is resolved from the server's own `/v1/workspaces` list
-     * (the non-`org:` row) and cached for the client's lifetime.
+     * The server's own id for this workspace — the synthetic "default" personal
+     * id no server speaks is translated (once per client) by the shared
+     * {@link AdapterContext} resolver. See `wire-workspace-id.ts`.
      */
     private wireWorkspaceId(workspaceId: string): Promise<string> {
-      if (workspaceId !== DEFAULT_WORKSPACE_ID)
-        return Promise.resolve(workspaceId);
-      const cp = this.ctx.cp;
-      if (!cp) throw new Error("Shared skills need a host workspace.");
-      this.#personalWsId ??= (async () => {
-        const rows = await controlPlane.listWorkspaces(cp);
-        const personal = rows.find((w) => !w.id.startsWith("org:"));
-        if (!personal)
-          throw new Error("The host serves no personal workspace.");
-        return personal.id;
-      })();
-      // A transient failure must not wedge shared skills for the session:
-      // drop the cached rejection so the next call re-resolves.
-      return this.#personalWsId.catch((err: unknown) => {
-        this.#personalWsId = undefined;
-        throw err;
-      });
+      return this.ctx.workspaceIds.resolve(workspaceId);
     }
 
     async listSharedSkills(workspaceId: string) {

@@ -1,9 +1,8 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { ReadCursorStore } from "../src/lib/read-cursors.ts";
 import { ROUTINE_SETUP_AGENT_MODE } from "../src/lib/routine-chat-setup.ts";
 import {
-  countUnreadByAgentPath,
   isUnreadForMe,
   type UnreadConversationInput,
 } from "../src/lib/unread-model.ts";
@@ -191,45 +190,6 @@ describe("isUnreadForMe", () => {
         ME,
       ),
       false,
-    );
-  });
-});
-
-describe("countUnreadByAgentPath", () => {
-  it("counts only relevant, unread activity rows per agent", () => {
-    const convs: UnreadConversationInput[] = [
-      conv({ id: "a1", created_by: ME }),
-      conv({
-        id: "a2",
-        created_by: MATE,
-        contributors: [{ user_id: MATE }],
-        mentioned: [{ user_id: ME, at: NEWER }],
-      }),
-      // A teammate's own mission: relevant to them, not to me.
-      conv({ id: "a3", created_by: MATE, contributors: [{ user_id: MATE }] }),
-      // Already read.
-      conv({ id: "a4", created_by: ME }),
-      conv({ id: "b1", agent_path: "/w/beta", created_by: ME }),
-    ];
-    const cursors = { "/w/alpha::a4": { readAt: Date.parse(NEWER) } };
-    deepStrictEqual(countUnreadByAgentPath(convs, store(cursors), ME), {
-      "/w/alpha": 2,
-      "/w/beta": 1,
-    });
-  });
-
-  it("excludes setup chats and non-activity rows", () => {
-    const convs: UnreadConversationInput[] = [
-      conv({ id: "p1", type: "primary", created_by: ME }),
-      conv({ id: "s1", agent: ROUTINE_SETUP_AGENT_MODE, created_by: ME }),
-    ];
-    deepStrictEqual(countUnreadByAgentPath(convs, store(), ME), {});
-  });
-
-  it("counts nothing with nobody signed in", () => {
-    deepStrictEqual(
-      countUnreadByAgentPath([conv({ created_by: ME })], store(), null),
-      {},
     );
   });
 });

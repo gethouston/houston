@@ -1,23 +1,30 @@
 /**
  * Where a file lives → what the user calls that place.
  *
- * The labels are the product's own words, not invented ones: agent tab names
- * come from `app/src/locales/en/agents.json` → `tabLabels` (Activity, Chat,
- * Routines, Skills, Integrations, Files, Archived, Permissions, Agent
- * Settings), the sidebar entries from `shell.json` → `sidebar` (Mission
- * Control, AI Models, Usage, Agent Store, Settings, Your Agents), and both are
- * wired in `app/src/components/shell/sidebar-chrome.tsx` +
- * `app/src/agents/standard-tabs.ts`. A designer reading a "Used in" chip should
- * be able to click straight to that surface.
+ * The navigation labels are the product's own words: they come from
+ * `app/src/locales/en/shell.json` → `sidebar` (Mission Control, Integrations,
+ * Skills, AI Models, Agent Store, Settings, Your teams) plus
+ * `sidebar.teamSections` (Mission Control, Routines, Files, Team Settings), all
+ * wired in `app/src/components/shell/sidebar-chrome.tsx`.
+ *
+ * The remaining per-area labels below (Activity, Chat, Routines, Skills,
+ * Integrations, Files, Archived, Permissions, Agent Settings) are HISTORICAL
+ * names: they were the per-agent tab strip, which was deleted along with
+ * `agents:tabLabels.*` and `app/src/agents/standard-tabs.ts`. Those surfaces
+ * live on as team sections (Mission Control / Routines / Files) and as sections
+ * of the agent settings page (job description, memory, people, apps, AI models,
+ * skills). The names are kept because they are still how the team talks about
+ * these component families, and a "Used in" chip is a wayfinding hint, not a
+ * route. Rename a group only if the product's own word for it changes.
  *
  * Keys are repo-relative path prefixes and the **longest** match wins, so a
  * broad folder rule and the narrow exceptions inside it sit side by side in any
  * order. Folder keys end in `/`; a few keys are file-name prefixes, because
- * `app/src/components/` and `app/src/components/{shell,tabs}/` each hold
+ * `app/src/components/` and `app/src/components/{shell,agent}/` each hold
  * several product areas at once.
  */
 export const SURFACE_RULES = {
-  // ── Agent tab bar (agents:tabLabels.*) ─────────────────────────────────
+  // ── Agent surfaces (historical tab names, now sections) ────────────────
   "app/src/components/board/": "Activity",
   "app/src/components/cards/": "Activity",
   "app/src/components/mission-": "Activity",
@@ -38,21 +45,19 @@ export const SURFACE_RULES = {
   "app/src/components/use-interaction-": "Chat",
   "app/src/components/use-queued-message-": "Chat",
 
-  "app/src/components/tabs/automation-intake/": "Routines",
-  "app/src/components/tabs/routine": "Routines",
-  "app/src/components/tabs/use-routine": "Routines",
-  "app/src/components/tabs/webhook-": "Routines",
+  "app/src/components/agent/automation-intake/": "Routines",
+  "app/src/components/agent/routine": "Routines",
+  "app/src/components/agent/use-routine": "Routines",
+  "app/src/components/agent/webhook-": "Routines",
 
   "app/src/components/skill-": "Skills",
   "app/src/components/selected-skill-": "Skills",
   "app/src/components/user-skill-": "Skills",
-  "app/src/components/tabs/skill": "Skills",
-  "app/src/components/tabs/houston-skill": "Skills",
-  "app/src/components/tabs/installed-skills": "Skills",
-  "app/src/components/tabs/learning": "Skills",
-  "app/src/components/tabs/use-skill": "Skills",
-  "app/src/components/tabs/use-community-skill": "Skills",
-  "app/src/components/tabs/use-houston-skill": "Skills",
+  "app/src/components/agent/skill": "Skills",
+  "app/src/components/agent/installed-skills": "Skills",
+  "app/src/components/agent/learning": "Skills",
+  "app/src/components/agent/use-skill": "Skills",
+  "app/src/components/agent/use-community-skill": "Skills",
 
   "app/src/components/integrations/": "Integrations",
   "app/src/components/integrations-view/": "Integrations",
@@ -60,33 +65,36 @@ export const SURFACE_RULES = {
   "app/src/components/use-integration-connect": "Integrations",
   "app/src/components/use-action-brand-resolver": "Integrations",
   "app/src/components/use-toolkit-brand-resolver": "Integrations",
-  "app/src/components/tabs/agent-integrations/": "Integrations",
-  "app/src/components/tabs/integrations-tab": "Integrations",
+  // The per-agent Integrations tab is gone; only the shared allowlist editor
+  // remains under this path, and it is the settings page's Apps section.
+  "app/src/components/agent/agent-integrations/": "Agent Settings",
 
   "app/src/components/agent-file-preview-host": "Files",
   "app/src/components/file-preview-dialog": "Files",
   "app/src/components/move-conflict-dialog": "Files",
-  "app/src/components/tabs/files-": "Files",
+  "app/src/components/agent/files-": "Files",
+  "app/src/components/agent/agent-files/": "Files",
 
-  "app/src/components/tabs/archived": "Archived",
-  "app/src/components/tabs/use-archived": "Archived",
+  // The archive is cross-agent now, but its empty state still lives here.
+  "app/src/components/agent/archived": "Archived",
 
   "app/src/components/permissions/": "Permissions",
-  "app/src/components/tabs/agent-access": "Permissions",
-  "app/src/components/tabs/agent-permissions": "Permissions",
-  "app/src/components/tabs/agent-share": "Permissions",
-  "app/src/components/tabs/share-via-team": "Permissions",
-  "app/src/components/tabs/use-share-agent": "Permissions",
+  "app/src/components/agent/agent-access": "Permissions",
+  "app/src/components/agent/agent-share": "Permissions",
+  "app/src/components/agent/share-via-team": "Permissions",
+  "app/src/components/agent/use-share-agent": "Permissions",
 
-  "app/src/components/tabs/agent-admin/": "Agent Settings",
-  "app/src/components/tabs/job-description": "Agent Settings",
-  // Everything else on an agent's tab bar that no rule above claimed.
-  "app/src/components/tabs/": "Agent tabs",
+  "app/src/components/agent/agent-admin/": "Agent Settings",
+  "app/src/components/agent/job-description": "Agent Settings",
+  // Everything else under `components/agent/` — the per-agent component
+  // family (renamed from `tabs/` when the tab strip went away). It holds the
+  // shared surfaces the team sections and the agent settings page mount.
+  // Anything landing here has no clearer home yet.
+  "app/src/components/agent/": "Agent surfaces",
 
   // ── Sidebar rail + top-level views (shell:sidebar.*) ────────────────────
   "app/src/components/shell/": "App shell",
   "app/src/components/shell/agent-avatar": "Your Agents",
-  "app/src/components/shell/agent-brief-form": "Your Agents",
   "app/src/components/shell/agent-card-avatar": "Your Agents",
   "app/src/components/shell/agent-panel-avatar": "Your Agents",
   "app/src/components/shell/agent-sidebar-": "Your Agents",
@@ -94,7 +102,6 @@ export const SURFACE_RULES = {
   "app/src/components/shell/experience-": "Your Agents",
   "app/src/components/shell/create-workspace-dialog": "Your Agents",
   "app/src/components/shell/workspace-dialog": "Your Agents",
-  "app/src/components/agent-person-scope-": "Your Agents",
   "app/src/components/agent-picker-dialog": "Your Agents",
   "app/src/components/shell/create-team-": "Organization",
   "app/src/components/shell/team-status-banner": "Organization",
@@ -104,16 +111,23 @@ export const SURFACE_RULES = {
   "app/src/components/shell/provider-": "AI Models",
   "app/src/components/shell/agent-picker-step": "Onboarding",
   "app/src/components/shell/ai-": "Onboarding",
-  "app/src/components/shell/connect-": "Onboarding",
   "app/src/components/shell/disclaimer-gate": "Onboarding",
   "app/src/components/shell/language-gate": "Onboarding",
   "app/src/components/shell/naming-step": "Onboarding",
   "app/src/components/shell/workspace-setup-flow": "Onboarding",
 
+  // The `team` screen behind every rail row: the team's board, its archive and
+  // its settings. Named for the rail section that opens it
+  // (shell:sidebar.yourTeams), not for the stored group it draws.
+  "app/src/components/team-view/": "Your teams",
+  // A team's sections are the surfaces those ideas wear now, so they keep the
+  // section's own name rather than the rail block's.
+  "app/src/components/team-view/team-routines/": "Routines",
+  "app/src/components/team-view/team-files/": "Files",
+
   "app/src/components/ai-hub/": "AI Models",
   "app/src/components/provider-browser/": "AI Models",
   "app/src/components/provider-switch-dialog": "AI Models",
-  "app/src/components/usage-view/": "Usage",
   "app/src/components/store-view/": "Agent Store (in app)",
   "app/src/components/organization/": "Organization",
   "app/src/components/settings/": "Settings",
@@ -121,7 +135,6 @@ export const SURFACE_RULES = {
   "app/src/components/onboarding/": "Onboarding",
   "app/src/components/auth/": "Sign in",
   "app/src/components/portable/": "Import & export",
-  "app/src/components/space/": "App shell",
   "app/src/components/command-palette": "App shell",
   "app/src/components/shortcut-cheatsheet": "App shell",
   "app/src/hooks/": "App shell",

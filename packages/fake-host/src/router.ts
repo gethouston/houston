@@ -20,6 +20,7 @@ import {
 import { SEED_AGENT_ID } from "./config";
 import { CORS, json } from "./http";
 import { handleAgents } from "./routes";
+import { handleAgentTeamsRoutes } from "./routes-agent-teams";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
 import { handleSetupRuntime } from "./routes-setup-runtime";
@@ -137,14 +138,32 @@ export async function handle(req: Request): Promise<Response> {
   }
   // Fail every per-agent read (`GET /agents/:id/*`) for the named agents with a
   // 500, leaving the rest healthy — the half-broken fleet the cross-agent
-  // sweep must survive (HOU-981). `{ agentIds: [] }` (and the per-test reset)
-  // restores them.
+  // sweep must survive (HOU-981). `{ segments: ["routine_runs"] }` narrows it
+  // to named sub-resources, the subtler state where one route is down while the
+  // rest of that same agent answers. `{ agentIds: [] }` (and the per-test
+  // reset) restores them.
   if (path === "/__test__/fail-agent-reads" && method === "POST") {
     const body = await parseBody(req);
     state.setFailingAgentReads(
       Array.isArray(body?.agentIds) ? body.agentIds.map(String) : [],
+      Array.isArray(body?.segments) ? body.segments.map(String) : null,
     );
-    return json({ agentIds: [...state.state.failingAgentReads] });
+    return json({
+      agentIds: [...state.state.failingAgentReads],
+      segments: state.state.failingAgentReadSegments
+        ? [...state.state.failingAgentReadSegments]
+        : null,
+    });
+  }
+  // Rewind the routine-id counter so the NEXT created routine reuses an id an
+  // earlier agent already has (`{ next: 0 }` = start over at `routine-1`).
+  // Routine ids are unique per AGENT in the real host, so two agents holding
+  // `routine-1` is ordinary truth; the fake's single global counter is the only
+  // reason a spec would never see it.
+  if (path === "/__test__/routine-seq" && method === "POST") {
+    const body = await parseBody(req);
+    state.setRoutineSeq(Number(body?.next ?? 0));
+    return json({ next: state.state.routineSeq });
   }
   // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin" |
   // "absent" (not registered at all — only the custom provider, when armed).
@@ -223,6 +242,25 @@ export async function handle(req: Request): Promise<Response> {
       members: state.getOrgMembers(),
       agents: state.listAgents(),
     });
+  }
+  // Arm the C13 agent-team world `GET /v1/org/teams` serves: `{ teams: [{ id,
+  // name, isDefault?, sortOrder?, icon?, color?, agentIds?, members? }],
+  // personalSpace? }`. Omit `icon`/`color` to arm a team that HAS no identity —
+  // the field is then absent from the row, and so from the wire.
+  // Arming REPLACES it wholesale; an omitted (or `null`) `teams` clears it back
+  // to lazy, so the next read mints the default team again. The client
+  // feature-detects on the capability, not on this data, so pair it with
+  // `/__test__/capabilities` `{ agentTeams:true }`. Returns the armed value.
+  if (path === "/__test__/agent-teams" && method === "POST") {
+    const body = await parseBody(req);
+    return json(
+      state.armAgentTeams(
+        Array.isArray(body?.teams)
+          ? (body.teams as state.AgentTeamSeed[])
+          : null,
+        body?.personalSpace === true,
+      ),
+    );
   }
   // Arm the team-space rows `GET /v1/workspaces` bridges in (C8 Spaces): each
   // `{ slug, name }` becomes an `{ id:"org:<slug>", kind:"org" }` switcher row,
@@ -329,6 +367,10 @@ export async function handle(req: Request): Promise<Response> {
   const teamsRoute = handleTeamsRoutes(method, segs, body, url);
   if (teamsRoute) return teamsRoute;
 
+  // --- C13 agent teams (the space's teams of agents + people) ---
+  const agentTeamsRoute = handleAgentTeamsRoutes(method, segs, body);
+  if (agentTeamsRoute) return agentTeamsRoute;
+
   // --- C8 Spaces gateway routes (the cross-org list + the invitee's inbox) ---
   const spacesRoute = handleSpacesRoutes(method, segs, body);
   if (spacesRoute) return spacesRoute;
@@ -355,11 +397,16 @@ export async function handle(req: Request): Promise<Response> {
       await new Promise((r) => setTimeout(r, state.state.agentReadHoldMs));
     // Armed per-agent read failure: this agent's pod is unreachable while the
     // rest of the fleet answers. Same shape the gateway returns for a pod it
-    // cannot reach, so the client's own error path runs unchanged.
+    // cannot reach, so the client's own error path runs unchanged. With
+    // `segments` armed only those sub-resources fail, which is the subtler
+    // half-broken state: one route down while the same agent answers the rest.
+    const failingSegments = state.state.failingAgentReadSegments;
     if (
       method === "GET" &&
       segs.length > 1 &&
-      state.state.failingAgentReads.has(decodeURIComponent(segs[1]))
+      state.state.failingAgentReads.has(decodeURIComponent(segs[1])) &&
+      (failingSegments === null ||
+        (segs.length > 2 && failingSegments.has(decodeURIComponent(segs[2]))))
     )
       return json({ error: { message: "agent unreachable" } }, 500);
     return handleAgents(

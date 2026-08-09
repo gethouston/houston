@@ -6,31 +6,49 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
  * Integrations, Settings and its sections) so their width and header spacing stay
  * identical. Deliberately NOT in `ui/` — these encode Houston page chrome, not a
  * reusable widget, so they carry no inventory/parity churn. Props-only, no store
- * imports. The canon is the AI hub's structure: a centered `max-w-4xl px-8`
- * column with a 24px normal-weight title. See knowledge-base/design-system.md.
+ * imports. The canon is the AI hub's structure: a centered `px-8` column (two
+ * named widths — see {@link PageContainer}) with a 24px normal-weight title.
+ * See knowledge-base/design-system.md.
  */
 
 /**
- * The canonical horizontal container for a top-level surface: centered, capped
- * at `max-w-5xl`, `px-8` gutters. The single source of the shared page width.
- * Vertical padding is the caller's (top surfaces open at `pt-10`, close at
- * `pb-10`; the fixed-masthead surfaces split that across two containers). Extra
- * div props pass through so it can also be the ARIA `tabpanel` of a surface.
+ * The canonical horizontal container for a top-level surface: centered,
+ * `px-8` gutters, one of exactly TWO caps. The single source of the shared
+ * page widths. `default` (max-w-4xl, ~75ch of text) is for reading surfaces —
+ * settings forms, prose, anything where a longer line gets harder to read.
+ * `wide` (max-w-6xl) is for BROWSE surfaces under the full-width page header —
+ * card grids and catalogs, which spend width on columns instead of line
+ * length. Two named widths and not a free `className` override, so pages
+ * cannot each drift a few pixels apart. Vertical padding is the caller's (top
+ * surfaces open at `pt-10`, close at `pb-10`; the fixed-masthead surfaces
+ * split that across two containers). Extra div props pass through so it can
+ * also be the ARIA `tabpanel` of a surface.
  */
 export function PageContainer({
   children,
   className,
+  width = "default",
   ...rest
-}: ComponentPropsWithoutRef<"div">) {
+}: ComponentPropsWithoutRef<"div"> & { width?: "default" | "wide" }) {
   return (
-    <div className={cn("mx-auto w-full max-w-4xl px-8", className)} {...rest}>
+    <div
+      className={cn(
+        "mx-auto w-full px-8",
+        width === "wide" ? "max-w-6xl" : "max-w-4xl",
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </div>
   );
 }
 
-interface PageHeaderProps {
-  title: string;
+interface PageHeroProps {
+  /** The words, or a node when the title carries a mark beside them (a team's
+   *  glyph). It renders inside the one `<h1>` either way, so the typography
+   *  and truncation are the header's, not the caller's. */
+  title: ReactNode;
   /** Optional muted one-line subtitle under the title. */
   subtitle?: string;
   /** Optional right-aligned slot (e.g. a primary action), vertically top-aligned. */
@@ -40,16 +58,16 @@ interface PageHeaderProps {
 }
 
 /**
- * The canonical page header for a top-level surface: a 24px normal-weight title
+ * The canonical page hero for a top-level surface: a 24px normal-weight title
  * with an optional muted subtitle and an optional trailing slot. Guarantees the
  * four surfaces open with identical title typography and spacing.
  */
-export function PageHeader({
+export function PageHero({
   title,
   subtitle,
   trailing,
   className,
-}: PageHeaderProps) {
+}: PageHeroProps) {
   return (
     <header className={cn("flex items-start justify-between gap-4", className)}>
       <div className="min-w-0">

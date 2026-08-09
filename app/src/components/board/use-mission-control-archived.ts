@@ -7,14 +7,15 @@ import { useAllConversations } from "../../hooks/queries";
 import { useOpenConversationFeed } from "../../hooks/use-open-conversation-feed";
 import { isSetupChatMode } from "../../lib/integration-chat-setup";
 import { missionCardTags } from "../../lib/mission-card";
+import { ARCHIVED_STATUS } from "../../lib/mission-selection";
 import {
   type HistoryLoadOptions,
   tauriActivity,
   tauriChat,
 } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
+import { agentsByPath, missionCardAgentName } from "./mission-card-agent";
 
 /**
  * Cross-agent archived data: every agent's *archived* missions on one list,
@@ -25,16 +26,15 @@ import { AgentCardAvatar } from "../shell/agent-card-avatar";
  */
 export function useMissionControlArchived(agents: Agent[]) {
   const { t } = useTranslation(["board"]);
-  const getAgentDef = useAgentCatalogStore((s) => s.getById);
 
   const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: convos } = useAllConversations(agentPaths);
 
-  const agentColorMap = useMemo(() => {
-    const m: Record<string, string | undefined> = {};
-    for (const a of agents) m[a.folderPath] = a.color;
-    return m;
-  }, [agents]);
+  // ONE roster lookup behind both halves of a card's identity. The colour was
+  // always taken from here; the NAME used to come off the swept row, which the
+  // web adapter stamps from a registry that does not know the host's agents —
+  // so every card read "Houston". See `mission-card-agent.ts`.
+  const agentsByFolderPath = useMemo(() => agentsByPath(agents), [agents]);
   const agentMap = useMemo(() => {
     const m: Record<string, Agent> = {};
     for (const a of agents) m[a.folderPath] = a;
@@ -55,17 +55,15 @@ export function useMissionControlArchived(agents: Agent[]) {
       { agentPath: string; activityId: string }
     > = {};
     const result = convos
+      // The mirror of the active board's filter: archived missions only, and
+      // never a guided-setup chat (it was never a mission the user managed).
       .filter(
         (c) =>
           c.type === "activity" &&
-          c.status === "archived" &&
+          c.status === ARCHIVED_STATUS &&
           !isSetupChatMode(c.agent),
       )
       .map((c) => {
-        const agent = agentMap[c.agent_path];
-        const agentModes = agent
-          ? getAgentDef(agent.configId)?.config.agents
-          : undefined;
         map[c.id] = c.agent_path;
         sessionMap[c.session_key] = {
           agentPath: c.agent_path,
@@ -77,15 +75,17 @@ export function useMissionControlArchived(agents: Agent[]) {
           // Decode a Skill / attachment first-message marker to the user's
           // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
-          group: c.agent_name,
+          group: missionCardAgentName(
+            agentsByFolderPath,
+            c.agent_path,
+            c.agent_name,
+          ),
           icon: createElement(AgentCardAvatar, {
-            color: agentColorMap[c.agent_path],
+            color: agentsByFolderPath.get(c.agent_path)?.color,
           }),
           status: c.status ?? "archived",
           updatedAt: c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags({
-            agent: c.agent,
-            agentModes,
             routineId: c.routine_id,
             routineLabel: t("board:tags.routine"),
             originSessionKey: c.origin_session_key,
@@ -102,7 +102,7 @@ export function useMissionControlArchived(agents: Agent[]) {
     pathMapRef.current = map;
     sessionMapRef.current = sessionMap;
     return result;
-  }, [convos, agentColorMap, agentMap, getAgentDef, t]);
+  }, [convos, agentsByFolderPath, t]);
 
   const sessionKeyFor = useCallback(
     (activityId: string) => {
@@ -116,7 +116,7 @@ export function useMissionControlArchived(agents: Agent[]) {
   );
 
   // The open conversation's reactive feed, plus its scroll-up lazy-load — the
-  // same seam the per-agent Archived tab uses.
+  // same seam the active board uses.
   const activeSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
   const activeAgentPath = activeSessionKey
     ? (sessionMapRef.current[activeSessionKey]?.agentPath ?? null)
@@ -154,25 +154,25 @@ export function useMissionControlArchived(agents: Agent[]) {
 
   // The open mission resolved all the way through to the agent that owns it:
   // the chat panel, the send path and the archived → active handoff all need
-  // the same four values, so they are derived ONCE here rather than in the view.
+  // the same values, so they are derived ONCE here rather than in the view.
   const selectedItem = selectedId
     ? (items.find((i) => i.id === selectedId) ?? null)
     : null;
   const activeAgent = selectedItem
     ? (agentMap[selectedItem.metadata?.agentPath as string] ?? null)
     : null;
-  const activeAgentDef = activeAgent
-    ? (getAgentDef(activeAgent.configId) ?? null)
-    : null;
 
   return {
     items,
+    /** The swept rows BEFORE the archived filter — the one view of the
+     *  workspace where active and archived missions coexist, and so the only
+     *  honest input to the surface decision (`lib/board-surface-nav.ts`). */
+    rawConversations: convos,
     feedItems,
     selectedId,
     setSelectedId,
     selectedItem,
     activeAgent,
-    activeAgentDef,
     selectedSessionKey: activeSessionKey,
     sessionKeyFor,
     loadHistory,

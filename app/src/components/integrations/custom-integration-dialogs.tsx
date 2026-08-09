@@ -52,7 +52,7 @@ export function useCustomSelection(): CustomSelection {
 /**
  * The dialog trio for one surface, driven by {@link useCustomSelection}. With
  * an `agentId` every read/write rides the per-agent routes (HOU-823), so the
- * per-agent Integrations tab keeps working behind the hosted gateway (where
+ * per-agent transport keeps working behind the hosted gateway (where
  * the top-level custom routes 404). The detail card's own Enter/Update key and
  * Remove buttons chain into the sibling dialogs, closing the detail first so
  * one modal is on stage at a time.

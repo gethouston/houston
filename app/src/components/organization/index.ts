@@ -1,3 +1,4 @@
+export { ORGANIZATION_VIEW_ID } from "./id";
 export {
   AUDIT_PAGE_SIZE,
   canSeeOrganization,

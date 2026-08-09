@@ -31,12 +31,13 @@ export function useIntegrationSessionSync(): void {
     tauriIntegrations
       .setSession(value)
       .then(() => {
-        // Readiness likely flipped (signin ↔ ready) — refresh the tab's view.
+        // Readiness likely flipped (signin ↔ ready) — refresh what the
+        // Integrations page shows.
         qc.invalidateQueries({ queryKey: queryKeys.integrationStatus() });
       })
       .catch(() => {
         // Already surfaced by call() (red toast + Report bug); the
-        // Integrations tab independently shows the sign-in-needed state.
+        // Integrations page independently shows the sign-in-needed state.
       });
   };
   const pushRef = useRef(push);

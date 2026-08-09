@@ -39,6 +39,7 @@ import { IntegrationsMixin } from "./client/integrations-mixin";
 import { LegacyUnsupportedMixin } from "./client/legacy-unsupported-mixin";
 import { MarketplaceMixin } from "./client/marketplace-mixin";
 import { MeProfileMixin } from "./client/me-profile-mixin";
+import { OrgTeamsMixin } from "./client/org-teams-mixin";
 import { OrgsMixin } from "./client/orgs-mixin";
 import { PortableMixin } from "./client/portable-mixin";
 import { ProjectFilesMixin } from "./client/project-files-mixin";
@@ -74,12 +75,14 @@ const Composed = BootMixin(
                                 CustomIntegrationsMixin(
                                   MeProfileMixin(
                                     OrgsMixin(
-                                      TeamsMixin(
-                                        ApiKeysMixin(
-                                          StoreMixin(
-                                            PortableMixin(
-                                              LegacyUnsupportedMixin(
-                                                HoustonClientBase,
+                                      OrgTeamsMixin(
+                                        TeamsMixin(
+                                          ApiKeysMixin(
+                                            StoreMixin(
+                                              PortableMixin(
+                                                LegacyUnsupportedMixin(
+                                                  HoustonClientBase,
+                                                ),
                                               ),
                                             ),
                                           ),

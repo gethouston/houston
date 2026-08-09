@@ -17,6 +17,7 @@ import { registerSetupGreeting } from "../hooks/use-setup-greeting";
 import { useUIStore } from "../stores/ui";
 import { analytics } from "./analytics";
 import { createMission } from "./create-mission";
+import { publishCreatedMission } from "./created-mission-handoff";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { buildSetupMissionPrompt } from "./setup-mission-prompt";
@@ -55,6 +56,15 @@ export async function startAgentSetupMission(
       agentPath: agent.folderPath,
       sessionKey: result.sessionKey,
       agentName: agent.name,
+    });
+    // Name the mission for the board BEFORE its panel opens: the sweep has
+    // not returned this row yet, and on a co-located engine there is no
+    // warming entry to carry it either, so without this the panel opens with
+    // no session key and no agent path — a blank welcome chat.
+    publishCreatedMission({
+      activityId: result.conversationId,
+      agentPath: agent.folderPath,
+      sessionKey: result.sessionKey,
     });
     // Open the chat on the new mission, like the old welcome flow did.
     useUIStore

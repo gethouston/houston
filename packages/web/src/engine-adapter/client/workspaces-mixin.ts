@@ -9,36 +9,11 @@ import {
 import { syntheticWorkspace } from "../synthetic";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
-
-const SIDEBAR_LAYOUT_PREF = "houston.sidebar-layout";
-const EMPTY_SIDEBAR_LAYOUT: SidebarLayout = {
-  groups: [],
-  ungroupedOrder: [],
-};
-
-/** Pure-local (no control plane) sidebar-layout persistence, mirroring how this
- *  adapter keeps other preferences in `localStorage`. */
-function readLocalSidebarLayout(workspaceId: string): SidebarLayout {
-  try {
-    const raw = localStorage.getItem(`${SIDEBAR_LAYOUT_PREF}.${workspaceId}`);
-    return raw ? (JSON.parse(raw) as SidebarLayout) : EMPTY_SIDEBAR_LAYOUT;
-  } catch {
-    return EMPTY_SIDEBAR_LAYOUT;
-  }
-}
-function writeLocalSidebarLayout(workspaceId: string, layout: SidebarLayout) {
-  try {
-    localStorage.setItem(
-      `${SIDEBAR_LAYOUT_PREF}.${workspaceId}`,
-      JSON.stringify(layout),
-    );
-  } catch {
-    /* storage disabled */
-  }
-}
+import { SidebarLayoutStore } from "./sidebar-layout-store";
 
 export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
   class Workspaces extends Base {
+    #sidebarLayout: SidebarLayoutStore | undefined;
     async listWorkspaces(): Promise<Workspace[]> {
       const { provider, model } = await this.ctx.activeOld();
       const personal = syntheticWorkspace(provider, model);
@@ -99,20 +74,24 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       const { provider, model } = await this.ctx.activeOld();
       return syntheticWorkspace(provider, model);
     }
-    // Sidebar order + grouping is per-workspace UI state, persisted to
-    // localStorage exactly like the adapter's other preferences (getPreference).
-    // Deliberately NOT host-backed: it must work regardless of the engine's
-    // version, and a stale sidecar without the route would otherwise 404 every
-    // create-group / drag write.
+    // Sidebar order + grouping. Host-backed wherever the host serves the route
+    // (desktop sidecar + self-host) — that PUT is what triggers the host's
+    // GROUP.md fan-out, so a team's shared context actually reaches its agents —
+    // and device-local on the gateway-fronted cloud, which does not serve it.
+    // The whole policy (predicate, one-time lift, 404 degrade) lives in
+    // `sidebar-layout-store.ts`.
+    private sidebarLayoutStore(): SidebarLayoutStore {
+      this.#sidebarLayout ??= new SidebarLayoutStore(this.ctx);
+      return this.#sidebarLayout;
+    }
     async getSidebarLayout(workspaceId: string): Promise<SidebarLayout> {
-      return readLocalSidebarLayout(workspaceId);
+      return this.sidebarLayoutStore().get(workspaceId);
     }
     async setSidebarLayout(
       workspaceId: string,
       layout: SidebarLayout,
     ): Promise<SidebarLayout> {
-      writeLocalSidebarLayout(workspaceId, layout);
-      return layout;
+      return this.sidebarLayoutStore().set(workspaceId, layout);
     }
   }
   return Workspaces;

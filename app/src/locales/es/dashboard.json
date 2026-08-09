@@ -1,13 +1,5 @@
 {
-  "title": "Centro de misiones",
-  "archived": {
-    "back": "Volver a misiones",
-    "button": "Archivadas",
-    "title": "Archivadas"
-  },
   "mentions": {
-    "button": "Menciones",
-    "title": "Menciones",
     "ariaCount_one": "{{count}} mención sin leer",
     "ariaCount_other": "{{count}} menciones sin leer",
     "row": {
@@ -17,7 +9,7 @@
     },
     "empty": {
       "title": "Aún no hay menciones",
-      "description": "Cuando alguien de tu equipo te nombre en una misión, aparece aquí."
+      "description": "Cuando alguien de tu equipo te nombre en una tarea, aparece aquí."
     },
     "bell": {
       "label": "Notificaciones"
@@ -29,22 +21,21 @@
   "peopleFilter": {
     "label": "Filtrar por persona",
     "everyone": "Todos",
-    "mine": "Mis misiones",
-    "invite": "Invitar compañeros",
+    "mine": "Mis tareas",
     "inviteTeaser": "Invita a tu equipo para ver quién trabaja en qué"
   },
   "search": {
-    "placeholder": "Buscar misiones",
+    "placeholder": "Buscar tareas",
     "placeholderShort": "Buscar...",
     "clear": "Borrar búsqueda",
     "clearCta": "Borrar búsqueda",
-    "searchingText": "Buscando en el texto de las misiones",
-    "searchingTitle": "Buscando en el texto de las misiones",
+    "searchingText": "Buscando en el texto de las tareas",
+    "searchingTitle": "Buscando en el texto de las tareas",
     "searchingDescription": "Revisando mensajes anteriores.",
-    "emptyTitle": "No hay misiones que coincidan",
+    "emptyTitle": "No hay tareas que coincidan",
     "emptyDescription": "Prueba otra búsqueda o borra la actual.",
-    "historyErrorTitle": "No se pudieron buscar todas las misiones",
-    "historyErrorDescription": "No se pudo cargar parte del texto de misiones anteriores."
+    "historyErrorTitle": "No se pudieron buscar todas las tareas",
+    "historyErrorDescription": "No se pudo cargar parte del texto de tareas anteriores."
   },
   "columns": {
     "running": "En curso",
@@ -54,17 +45,12 @@
   "empty": {
     "boardTitle": "Aún no hay conversaciones",
     "boardDescription": "Inicia una conversación nueva para delegarle trabajo a un agente.",
-    "newMission": "Nueva misión"
-  },
-  "noAgents": {
-    "title": "Aún no tienes agentes",
-    "description": "Arma tu equipo de IA y haz lo imposible.",
-    "cta": "Nuevo agente"
+    "newMission": "Nueva tarea"
   },
   "errors": {
-    "noAgentForMission": "Elige un agente antes de iniciar una misión.",
-    "partialMissionLoad": "Algunas misiones no se pudieron cargar. Lo estamos intentando de nuevo.",
-    "stopSession": "No se pudo detener la misión: {{error}}"
+    "noAgentForMission": "Elige un agente antes de iniciar una tarea.",
+    "partialMissionLoad": "Algunas tareas no se pudieron cargar. Lo estamos intentando de nuevo.",
+    "stopSession": "No se pudo detener la tarea: {{error}}"
   },
   "agentPicker": {
     "title": "¿Qué agente debería ejecutar esto?",
@@ -75,5 +61,9 @@
     "descriptionWithAgent": "Explora los skills que {{name}} ya sabe hacer.",
     "empty": "Aún no hay skills.",
     "skillsLoading": "Cargando skills..."
+  },
+  "inbox": {
+    "title": "Bandeja de entrada",
+    "subtitle": "Tareas donde alguien de tu equipo te mencionó."
   }
 }

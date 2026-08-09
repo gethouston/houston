@@ -1,13 +1,5 @@
 {
-  "title": "Mission Control",
-  "archived": {
-    "back": "Back to missions",
-    "button": "Archived",
-    "title": "Archived"
-  },
   "mentions": {
-    "button": "Mentions",
-    "title": "Mentions",
     "ariaCount_one": "{{count}} unread mention",
     "ariaCount_other": "{{count}} unread mentions",
     "row": {
@@ -17,7 +9,7 @@
     },
     "empty": {
       "title": "No mentions yet",
-      "description": "When a teammate names you in a mission, it shows up here."
+      "description": "When a teammate names you in a task, it shows up here."
     },
     "bell": {
       "label": "Notifications"
@@ -29,22 +21,21 @@
   "peopleFilter": {
     "label": "Filter by person",
     "everyone": "Everyone",
-    "mine": "My missions",
-    "invite": "Invite teammates",
+    "mine": "My tasks",
     "inviteTeaser": "Invite your team to see who's working on what"
   },
   "search": {
-    "placeholder": "Search missions",
+    "placeholder": "Search tasks",
     "placeholderShort": "Search...",
     "clear": "Clear search",
     "clearCta": "Clear search",
-    "searchingText": "Searching mission text",
-    "searchingTitle": "Searching mission text",
+    "searchingText": "Searching task text",
+    "searchingTitle": "Searching task text",
     "searchingDescription": "Looking through older messages now.",
-    "emptyTitle": "No matching missions",
+    "emptyTitle": "No matching tasks",
     "emptyDescription": "Try a different search or clear the current one.",
-    "historyErrorTitle": "Couldn't search every mission",
-    "historyErrorDescription": "Some older mission text could not be loaded."
+    "historyErrorTitle": "Couldn't search every task",
+    "historyErrorDescription": "Some older task text could not be loaded."
   },
   "columns": {
     "running": "Running",
@@ -54,17 +45,12 @@
   "empty": {
     "boardTitle": "No conversations yet",
     "boardDescription": "Start a new conversation to delegate work to an agent.",
-    "newMission": "New mission"
-  },
-  "noAgents": {
-    "title": "No agents yet",
-    "description": "Build your AI team and ship the impossible.",
-    "cta": "New Agent"
+    "newMission": "New task"
   },
   "errors": {
-    "noAgentForMission": "Pick an agent before starting a mission.",
-    "partialMissionLoad": "Some missions could not load. We are trying again.",
-    "stopSession": "Couldn't stop the mission: {{error}}"
+    "noAgentForMission": "Pick an agent before starting a task.",
+    "partialMissionLoad": "Some tasks could not load. We are trying again.",
+    "stopSession": "Couldn't stop the task: {{error}}"
   },
   "agentPicker": {
     "title": "Which agent should run this?",
@@ -75,5 +61,9 @@
     "descriptionWithAgent": "Browse the skills {{name}} already knows how to do.",
     "empty": "No skills yet.",
     "skillsLoading": "Loading skills..."
+  },
+  "inbox": {
+    "title": "Inbox",
+    "subtitle": "Tasks where a teammate mentioned you."
   }
 }

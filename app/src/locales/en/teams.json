@@ -32,6 +32,7 @@
       "pickedDesc": "People with access can only use the models you allow below.",
       "allowModel": "Allow {{name}}",
       "searchModels": "Search models",
+      "clearSearch": "Clear search",
       "labFilter": "Filter by lab",
       "allLabs": "All labs",
       "searchLabs": "Search labs",
@@ -45,6 +46,103 @@
     },
     "integrations": {
       "unavailable": "Integration limits are not available here."
+    }
+  },
+  "agentSettings": {
+    "railLabel": "Agent settings sections",
+    "groups": {
+      "context": "Context",
+      "permissions": "Permissions"
+    },
+    "people": {
+      "question": "Who can use this agent?",
+      "helper": "Pick whether everyone on your team can use this agent, or only the people you choose.",
+      "anyLabel": "Everyone on your team",
+      "anyDesc": "Every teammate can use this agent, including people who join later.",
+      "pickedLabel": "Only specific people",
+      "pickedDesc": "Only the people you pick below can use this agent.",
+      "everyoneNote": "Everyone on your team can use this agent, so there is nothing to set person by person. Switch to Only specific people to manage access individually.",
+      "confirmEveryone": {
+        "title": "Give everyone access?",
+        "description": "This replaces the current list. Everyone on your team will be able to use this agent, and any Manager access granted here will be removed.",
+        "confirm": "Yes, give everyone access",
+        "cancel": "Cancel"
+      },
+      "confirmSpecific": {
+        "title": "Switch to specific people?",
+        "description_one": "The {{count}} person who can use this agent today keeps access. New teammates will not be added automatically.",
+        "description_other": "The {{count}} people who can use this agent today keep access. New teammates will not be added automatically.",
+        "confirm": "Yes, pick people",
+        "cancel": "Cancel"
+      }
+    }
+  },
+  "agentTeams": {
+    "create": {
+      "title": "Create a team",
+      "nameLabel": "Team name",
+      "namePlaceholder": "e.g. Marketing",
+      "tooLong": "Keep the name under {{max}} characters.",
+      "submit": "Create team",
+      "newAgent": "New agent",
+      "members": "Members, optional",
+      "membersSelected_one": "{{count}} member selected",
+      "membersSelected_other": "{{count}} members selected"
+    },
+    "errors": {
+      "default_team": {
+        "title": "This is the space's main team",
+        "body": "Everyone in the space is already in it, so it cannot be removed and it has no separate member list."
+      },
+      "personal_space": {
+        "title": "Only you are in this space",
+        "body": "You can group your agents into teams here. To work with other people, create an organization."
+      },
+      "not_team_owner": {
+        "title": "Only this team's owners can change it",
+        "body": "Ask one of them to make this change for you."
+      },
+      "invalid_team_id": {
+        "title": "We could not tell which team to move this to",
+        "body": "Nothing changed. Please try again."
+      },
+      "invalid_name": {
+        "title": "That team name will not work",
+        "body": "A team name has to be short, up to 60 characters. Try a shorter one."
+      },
+      "invalid_icon": {
+        "title": "We could not set that icon",
+        "body": "Nothing changed. Please pick one of the icons in the list."
+      },
+      "invalid_color": {
+        "title": "We could not set that color",
+        "body": "Nothing changed. Please pick one of the colors in the list."
+      },
+      "not_a_member": {
+        "title": "That person is not in this space yet",
+        "body": "Invite them to the space first, then add them to this team."
+      }
+    },
+    "leave": "Leave team",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "settings": {
+      "nameLabel": "Team name",
+      "nameSave": "Save",
+      "nameSaving": "Saving…",
+      "members": {
+        "title": "Members",
+        "subtitle": "The people who joined this team.",
+        "empty": "No one has joined this team yet.",
+        "error": "We could not load this list. Please try again.",
+        "defaultNote": "Everyone in this space is already in this team, so there is no separate list to manage.",
+        "adminNote": "Owners and managers of this space can manage every team, so they do not show up here.",
+        "ownerLabel": "Owner",
+        "memberLabel": "Member",
+        "you": "(you)",
+        "changeRole": "Change role for {{name}}",
+        "remove": "Remove"
+      }
     }
   },
   "integrations": {
@@ -61,38 +159,30 @@
       "allowedEmptyCategory": "No allowed apps in this category yet.",
       "addHeading": "Add apps",
       "readOnlyNote": "Someone who manages this agent can change which apps it can use."
-    },
-    "notAllowed": {
-      "title": "Not allowed for this agent",
-      "body": "These apps are connected to your account, but this agent isn't allowed to use them. Ask your admin to enable them for this agent.",
-      "bodyManager": "These apps are connected to your account, but this agent isn't allowed to use them. Enable them in Permissions.",
-      "enableInPermissions": "Enable it in Permissions",
-      "badge": "Not allowed"
     }
   },
   "org": {
     "title": "Admin",
-    "subtitle": "Manage your team, activity, usage, and billing in one place.",
+    "subtitle": "Your people, your plan, your numbers, and what every agent knows about the company.",
     "tabs": {
       "people": "People",
+      "billing": "Billing",
+      "analytics": "Analytics",
+      "companyContext": "Company context",
       "activity": "Activity",
       "usage": "Usage",
-      "billing": "Billing"
+      "timeWorked": "Time worked"
     },
     "agentDetail": {
-      "subtitle": "What this agent is allowed to use.",
-      "openAgent": "Open agent",
-      "managerOnly": "Only this agent's Managers can change its access."
+      "subtitle": "Everything you configure on this agent, and who can use it.",
+      "openAgent": "Open agent"
     },
     "index": {
-      "groups": {
-        "insights": "Insights"
-      },
       "rows": {
         "people": "Invite teammates, set roles, remove members.",
-        "activity": "What happened in this workspace, newest first.",
-        "usage": "How much each agent and person is messaging.",
-        "billing": "Seats, plan, and payment."
+        "billing": "Seats, plan, and payment.",
+        "analytics": "Activity, usage, and time worked in one place.",
+        "companyContext": "What every agent knows about this company."
       },
       "values": {
         "members_one": "{{count}} member",
@@ -103,13 +193,6 @@
     "unavailable": "We couldn't load your workspace."
   },
   "permissions": {
-    "title": "Permissions",
-    "subtitle": "Pick an agent to manage who can use it and what it can use.",
-    "agentTabs": {
-      "people": "People",
-      "integrations": "Integrations",
-      "models": "AI Models"
-    },
     "agentPeople": {
       "none": "No access",
       "noneHint": "Cannot use this agent.",
@@ -249,11 +332,6 @@
     "messages_other": "{{count}} messages"
   },
   "agentsTab": {
-    "empty": {
-      "title": "Create your first agent",
-      "body": "Agents are the assistants your team shares. Create one to get started.",
-      "action": "Create agent"
-    },
     "managedBy": "Managed by {{names}}",
     "access": {
       "everyone": "Everyone on your team",
@@ -399,6 +477,89 @@
       "alreadyMemberBody": "Nothing to do. Find it in the space menu at the top of the sidebar.",
       "goneTitle": "This invitation is no longer available",
       "goneBody": "It was withdrawn or already used. Ask your team to send a new one."
+    }
+  },
+  "teamView": {
+    "tabs": {
+      "missionControl": "Tasks",
+      "routines": "Routines",
+      "files": "Files",
+      "archived": "Archived",
+      "settings": "Manage agents",
+      "label": "Team sections"
+    },
+    "move": {
+      "trigger": "More actions for {{name}}",
+      "action": "Move to team",
+      "confirmTitle": "Move {{agent}} to {{team}}?",
+      "confirmBody": "{{agent}} moves to {{team}}. People who can see that team will see this agent in it.",
+      "confirm": "Move agent",
+      "cancel": "Cancel"
+    },
+    "agentMenu": {
+      "rename": "Rename agent",
+      "renameTitle": "Rename {{name}}",
+      "renameLabel": "Agent name",
+      "renameConfirm": "Save",
+      "delete": "Delete agent"
+    },
+    "context": {
+      "title": "Team context",
+      "explainer": "Every agent in this team knows this.",
+      "placeholder": "What should every agent in this team know? The company, the customers, how you work.",
+      "saving": "Saving…",
+      "saved": "Saved"
+    },
+    "missionControl": {
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create your first agent and its tasks will show up here.",
+        "createAgent": "Create agent",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Create an agent here or move one into {{name}} from another team's Manage agents page."
+      }
+    },
+    "routines": {
+      "newRoutine": "New routine",
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create your first agent and everything it does on its own will show up here.",
+        "createAgent": "Create agent",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Create an agent here or move one into {{name}} from another team's Manage agents page."
+      },
+      "noRoutines": {
+        "title": "Nothing runs on its own yet",
+        "body": "Set up a routine and this team's agents will start working without being asked."
+      },
+      "unreadable": {
+        "title": "Couldn't load this team's routines",
+        "body": "Nothing here is missing on purpose. Try again above to see what these agents run on their own."
+      },
+      "pickAgent": {
+        "title": "Which agent should run this?",
+        "description": "Pick the agent that will do the work. You can change it while you set the routine up."
+      }
+    },
+    "files": {
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create your first agent and the files it keeps will show up here.",
+        "createAgent": "Create agent",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Create an agent here or move one into {{name}} from another team's Manage agents page."
+      }
+    },
+    "settings": {
+      "subtitle": "The agents in this team. Open one to manage who can use it and what it can use.",
+      "empty": {
+        "workspaceTitle": "No agents yet",
+        "workspaceBody": "Create one and it will show up here.",
+        "teamTitle": "No agents in this team yet",
+        "teamBody": "Create an agent here or move one from another team's Manage agents page."
+      },
+      "navUnavailable": "We couldn't open this agent's settings yet",
+      "navUnavailableBody": "This agent's team is still loading. Wait a moment and try again. If it keeps happening, report it as a bug."
     }
   }
 }

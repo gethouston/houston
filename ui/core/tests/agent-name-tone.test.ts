@@ -120,7 +120,7 @@ describe("agent name contrast", () => {
     const measured = agentNameContrast();
     // Golden on the light screen and crimson on the dark glass are the two
     // tightest pairs; if a token edit moves them, these numbers move with it.
-    assert.equal(measured.golden.light.toFixed(2), "4.80");
+    assert.equal(measured.golden.light.toFixed(2), "4.92");
     assert.equal(measured.crimson.dark.toFixed(2), "6.02");
     const worstLight = Math.min(...Object.values(measured).map((r) => r.light));
     const worstDark = Math.min(...Object.values(measured).map((r) => r.dark));

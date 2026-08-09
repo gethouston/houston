@@ -1,5 +1,5 @@
 /**
- * Client-side move-conflict detection for the Files tab. The listing already
+ * Client-side move-conflict detection for the Files section. The listing already
  * holds the whole workspace, so a name collision is known before calling the
  * host's `files/move` (which 409s on clobber) — letting the UI offer
  * Replace / Keep both instead of surfacing an error toast.

@@ -1,6 +1,6 @@
 /**
  * SkillMarketplaceSection — the Skills.sh marketplace rendered inline as a page
- * section (styled like the app's Integrations tab), not inside a dialog.
+ * section (styled like the app's Integrations page), not inside a dialog.
  *
  * {@link SkillMarketplaceGrid} renders a control row (search box + category
  * picker), publisher filter chips, and a two-column grid of compact rows; the

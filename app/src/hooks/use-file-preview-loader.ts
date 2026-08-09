@@ -1,5 +1,5 @@
 /**
- * Loader for the Files-tab grid card thumbnails. Classifies by extension
+ * Loader for the Files grid card thumbnails. Classifies by extension
  * (previewKind) and reads bytes through the shared per file+mtime byte cache
  * (`lib/file-bytes-cache.ts`), so scrolling back is instant AND opening the
  * same file in the preview dialog reuses the bytes instead of downloading them

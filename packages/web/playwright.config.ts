@@ -8,6 +8,8 @@ import {
   WEB_URL,
 } from "./e2e/config";
 
+const DESKTOP_VIEWPORT = { width: 1440, height: 900 } as const;
+
 /**
  * Playwright drives the FULL desktop UI (app/src) as it runs in the browser
  * (packages/web), on the host adapter in host mode, against an
@@ -78,7 +80,7 @@ export default defineConfig({
       // default `test:e2e` run — and CI — never picks up pixel baselines).
       name: "chromium",
       testIgnore: ["**/sign-in.spec.ts", "**/visual/**"],
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], viewport: DESKTOP_VIEWPORT },
     },
     {
       // Visual-regression suite (pixel baselines). Runs ONLY via `test:visual`
@@ -99,7 +101,11 @@ export default defineConfig({
       // The GCIP SignInScreen spec, driven against the identity-ON server below.
       name: "auth",
       testMatch: "**/sign-in.spec.ts",
-      use: { ...devices["Desktop Chrome"], baseURL: AUTH_WEB_URL },
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: AUTH_WEB_URL,
+        viewport: DESKTOP_VIEWPORT,
+      },
     },
   ],
   webServer: [
@@ -112,9 +118,13 @@ export default defineConfig({
     },
     {
       // The host adapter is aliased in unconditionally and NewEngineRoot is
-      // the default web root (see packages/web/src/main.tsx) — no env needed.
+      // the default web root (see packages/web/src/main.tsx). Identity must be
+      // explicitly OFF here: loadEnv also reads the developer's ambient env,
+      // and an installed Firebase key would otherwise turn the entire
+      // functional project into the sign-in surface.
       command: "pnpm dev",
       port: WEB_PORT,
+      env: { FIREBASE_API_KEY: "" },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",

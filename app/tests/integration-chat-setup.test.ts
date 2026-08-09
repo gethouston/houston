@@ -12,7 +12,7 @@ import {
   isIntegrationSetupMode,
   isSetupChatMode,
 } from "../src/lib/integration-chat-setup.ts";
-import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
+import { ARCHIVED_STATUS } from "../src/lib/mission-selection.ts";
 import { ROUTINE_SETUP_AGENT_MODE } from "../src/lib/routine-chat-setup.ts";
 
 // The custom-integration kickoff is Houston-sent, not user-typed: it must ride
@@ -79,18 +79,21 @@ describe("integration chat setup message", () => {
     };
     const normal = { id: "n1", status: "needs_you", agent: "researcher" };
     const archivedNormal = { id: "n2", status: "archived" };
+    // Both mission surfaces drop `isSetupChatMode` rows before splitting on
+    // ARCHIVED_STATUS (`components/use-mission-control.ts` for the active
+    // board, `components/board/use-mission-control-archived.ts` for the
+    // archived view), so the setup chat is invisible in EITHER status.
+    const missions = [setup, archivedSetup, normal, archivedNormal].filter(
+      (m) => !isSetupChatMode(m.agent),
+    );
     // Active board: only the normal mission survives.
     deepStrictEqual(
-      selectActive([setup, archivedSetup, normal, archivedNormal]).map(
-        (i) => i.id,
-      ),
+      missions.filter((m) => m.status !== ARCHIVED_STATUS).map((m) => m.id),
       ["n1"],
     );
-    // Archived tab: closed setup chats stay invisible too.
+    // Archived view: closed setup chats stay invisible too.
     deepStrictEqual(
-      selectArchived([setup, archivedSetup, normal, archivedNormal]).map(
-        (i) => i.id,
-      ),
+      missions.filter((m) => m.status === ARCHIVED_STATUS).map((m) => m.id),
       ["n2"],
     );
   });

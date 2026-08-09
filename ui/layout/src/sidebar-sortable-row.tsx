@@ -3,8 +3,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@houston-ai/core";
 import type { SidebarItem } from "./sidebar";
 import { itemDndId } from "./sidebar-dnd";
-import type { SidebarRowContext } from "./sidebar-group-section";
 import { SidebarItemRow } from "./sidebar-item-row";
+import type { SidebarRowContext } from "./sidebar-row-context";
 
 export interface SidebarSortableRowProps {
   item: SidebarItem;
@@ -50,17 +50,7 @@ export function SidebarSortableRow({
       <SidebarItemRow
         item={item}
         isActive={item.id === ctx.selectedId}
-        isEditing={ctx.editingId === item.id}
-        editValue={ctx.editValue}
-        hasMenu={ctx.hasDefaultMenu || !!item.menuContent}
         onSelect={ctx.onSelect}
-        onKeyDown={ctx.onItemKeyDown}
-        onEditChange={ctx.onEditChange}
-        onCommitRename={ctx.onCommitRename}
-        onCancelEdit={ctx.onCancelEdit}
-        onStartRename={ctx.onStartRename}
-        onDelete={ctx.onDeleteItem}
-        labels={ctx.labels}
       />
     </div>
   );

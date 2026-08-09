@@ -1,17 +1,12 @@
 {
   "sidebar": {
-    "missionControl": "Centro de misiones",
-    "aiModels": "Modelos de IA",
-    "integrations": "Integraciones",
-    "skills": "Skills",
-    "agentStore": "Tienda de agentes",
-    "settings": "Configuración",
-    "yourAgents": "Tus agentes",
-    "selectWorkspace": "Elige un espacio de trabajo",
+    "aboutMe": "Sobre mí",
     "addAgent": "Nuevo agente",
-    "agentMenu": "Menú del agente",
-    "color": "Color",
+    "agentStore": "Tienda de agentes",
+    "aiModels": "Modelos de IA",
     "changeColor": "Cambiar color",
+    "collapse": "Contraer barra lateral",
+    "color": "Color",
     "colorLabels": {
       "charcoal": "Carbón",
       "forest": "Bosque",
@@ -21,38 +16,97 @@
       "orange": "Naranja",
       "golden": "Dorado"
     },
+    "createMenu": "Crear",
+    "createWorkspace": "Crear espacio de trabajo",
+    "expand": "Expandir barra lateral",
+    "guideMe": "Guíame",
+    "help": "Ayuda",
+    "inbox": "Bandeja de entrada",
+    "integrations": "Integraciones",
+    "mobileNavTitle": "Navegación",
+    "myAccounts": "Mis cuentas",
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
     "needsYouCount_other": "{{count}} asuntos necesitan tu atención",
+    "newTeam": "Nuevo equipo",
+    "openMenu": "Abrir menú",
+    "reportProblem": "Reportar un problema",
     "runningCount_one": "{{count}} asunto en curso",
     "runningCount_other": "{{count}} asuntos en curso",
-    "unreadCount_one": "{{count}} novedad sin leer",
-    "unreadCount_other": "{{count}} novedades sin leer",
-    "collapse": "Contraer barra lateral",
-    "expand": "Expandir barra lateral",
-    "openMenu": "Abrir menú",
-    "mobileNavTitle": "Navegación",
-    "createWorkspace": "Crear espacio de trabajo",
-    "groups": {
-      "new": "Nuevo grupo",
-      "newDefault": "Nuevo grupo",
-      "rename": "Renombrar grupo",
-      "delete": "Eliminar grupo",
-      "menu": "Opciones de grupo",
-      "namePlaceholder": "Nombre del grupo",
-      "emptyHint": "Arrastra agentes aquí",
-      "ungrouped": "Sin grupo",
-      "editContext": "Editar contexto compartido",
-      "contextDialog": {
-        "title": "Contexto compartido de {{name}}",
-        "description": "Esta nota se agrega a cada agente de este grupo, así todos comparten el mismo trasfondo.",
-        "placeholder": "ej. Somos un estudio de diseño. Mantén las respuestas cortas y nunca compartas nombres de clientes.",
-        "save": "Guardar",
-        "cancel": "Cancelar"
-      }
-    }
-  },
-  "tabActions": {
-    "newMission": "Nueva misión"
+    "selectWorkspace": "Elige un espacio de trabajo",
+    "settings": "Configuración",
+    "skills": "Skills",
+    "teams": {
+      "newDefault": "Nuevo equipo",
+      "rename": "Renombrar equipo",
+      "delete": "Eliminar equipo",
+      "leave": "Salir del equipo",
+      "menu": "Opciones de equipo",
+      "namePlaceholder": "Nombre del equipo",
+      "identity": "Cambiar icono y color",
+      "identityIcons": "Iconos",
+      "identityColors": "Colores",
+      "identityNone": "Predeterminado"
+    },
+    "teamIcons": {
+      "people": "Personas",
+      "person": "Persona",
+      "home": "Casa",
+      "briefcase": "Maletín",
+      "calendar": "Calendario",
+      "clipboard": "Portapapeles",
+      "folder": "Carpeta",
+      "document": "Documento",
+      "mail": "Correo",
+      "phone": "Teléfono",
+      "chat": "Chat",
+      "megaphone": "Megáfono",
+      "camera": "Cámara",
+      "music": "Música",
+      "headset": "Audífonos",
+      "gamepad": "Control",
+      "code": "Código",
+      "terminal": "Terminal",
+      "server": "Servidor",
+      "cloud": "Nube",
+      "key": "Llave",
+      "gear": "Engranaje",
+      "chart": "Gráfico",
+      "bug": "Insecto",
+      "wrench": "Llave inglesa",
+      "hammer": "Martillo",
+      "flask": "Matraz",
+      "bulb": "Bombilla",
+      "cube": "Cubo",
+      "gem": "Joya",
+      "ribbon": "Cinta",
+      "trophy": "Trofeo",
+      "cart": "Carrito",
+      "card": "Tarjeta",
+      "shield": "Escudo",
+      "bandage": "Curita",
+      "barbell": "Mancuerna",
+      "cutlery": "Cubiertos",
+      "coffee": "Café",
+      "book": "Libro",
+      "leaf": "Hoja",
+      "flame": "Llama",
+      "bolt": "Rayo",
+      "star": "Estrella",
+      "heart": "Corazón",
+      "paw": "Huella",
+      "planet": "Planeta",
+      "globe": "Globo",
+      "rocket": "Cohete",
+      "plane": "Avión",
+      "car": "Auto",
+      "boat": "Barco",
+      "telescope": "Telescopio",
+      "flag": "Bandera",
+      "target": "Objetivo",
+      "school": "Escuela"
+    },
+    "workspace": "Espacio de trabajo",
+    "yourTeams": "Tus equipos"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Prueba nativa de Sentry activada",
@@ -84,53 +138,41 @@
         "title": "Espacios",
         "body": "Tus agentes personales, y los equipos que compartes con otros. Cambia de espacio cuando quieras desde aquí."
       },
-      "assistant": {
-        "title": "Tus agentes",
-        "body": "Todos los agentes de este espacio viven aquí. Cambia entre ellos con un clic."
+      "teams": {
+        "title": "Tus equipos",
+        "body": "Cada agente vive en un equipo. Abre un equipo para ver todo lo que hacen sus agentes."
       },
-      "board": {
-        "title": "El espacio del agente",
-        "body": "Aquí es donde trabaja el agente seleccionado. Todo lo que ves a la derecha pertenece a ese agente."
+      "teamBoard": {
+        "title": "El tablero del equipo",
+        "body": "Todas las tareas de los agentes de este equipo, en un solo lugar. Haz clic en una tarjeta para abrir su chat."
       },
       "newMission": {
         "title": "Inicia un nuevo chat",
-        "body": "Haz clic aquí para abrir una conversación nueva. Cada una se vuelve una tarjeta de misión."
+        "body": "Haz clic aquí para abrir una conversación nueva. Cada una se vuelve una tarjeta de tarea."
       },
-      "tabActivity": {
-        "title": "Actividad",
-        "body": "El tablero de cada conversación con este agente. En marcha, esperando, listas."
-      },
-      "tabRoutines": {
-        "title": "Rutinas",
-        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Configura aquí cualquier otra cosa para que ocurra por su cuenta."
-      },
-      "tabIntegrations": {
-        "title": "Integraciones",
-        "body": "Herramientas que tus agentes pueden usar, como Gmail y Calendar. Las conexiones viven aquí, compartidas entre todos tus agentes."
-      },
-      "tabFiles": {
-        "title": "Archivos",
-        "body": "Documentos que tu asistente puede leer o compartir contigo. Arrastra lo que quieras para dar contexto."
-      },
-      "tabArchived": {
+      "archivedMissions": {
         "title": "Archivadas",
-        "body": "Usa este botón para revisar las misiones que este agente ya terminó. Envía un mensaje para reabrir una y vuelve directo al tablero activo."
+        "body": "Las tareas que el equipo ya terminó viven aquí. Envía un mensaje para reabrir una y vuelve al tablero."
       },
-      "tabContext": {
-        "title": "Contexto",
-        "body": "La descripción de trabajo de tu asistente y todo lo que ha aprendido. Actualízalo cuando quieras."
+      "teamRoutines": {
+        "title": "Rutinas",
+        "body": "Tu asistente ya viene con rutinas listas, como el Resumen matutino. Todo lo que este equipo hace por su cuenta vive aquí."
       },
-      "tabSkills": {
-        "title": "Skills",
-        "body": "Enséñale a tu asistente skills reutilizables que puede aplicar en sus misiones."
+      "teamFiles": {
+        "title": "Archivos",
+        "body": "Documentos que los agentes del equipo pueden leer o compartir contigo. Suelta aquí lo que quieras darles de contexto."
       },
-      "missionControl": {
-        "title": "Centro de Misión",
-        "body": "Cuando agregues más agentes, esto se vuelve el tablero único de todos. Un solo lugar para verlo todo."
+      "inbox": {
+        "title": "Bandeja de entrada",
+        "body": "Cuando alguien de tu equipo te menciona en una tarea, aparece aquí. Un solo lugar para ver dónde te necesitan."
       },
       "navIntegrations": {
         "title": "Conecta tus apps",
         "body": "Vincula Gmail, Calendar y cientos más aquí. Cada agente puede usar lo que conectes."
+      },
+      "navSkills": {
+        "title": "Habilidades",
+        "body": "Cosas que le enseñas a tus agentes para que las hagan igual cada vez. Agrega una habilidad aquí y elige quién la aprende."
       },
       "aiHub": {
         "title": "Modelos de IA",
@@ -138,12 +180,7 @@
       },
       "settings": {
         "title": "Configuración",
-        "body": "Tu cuenta, tu espacio de trabajo y tus preferencias de la app viven aquí.",
-        "bodyTeam": "Tu cuenta, tu espacio de trabajo, tus preferencias de la app y la administración, los permisos y el tiempo trabajado de tu equipo viven aquí."
-      },
-      "appTour": {
-        "title": "Repite el tour",
-        "body": "¿Olvidaste cómo funciona algo? Haz clic aquí cuando quieras para correr el tour de nuevo."
+        "body": "Tu cuenta, tu espacio de trabajo y tus preferencias de la app viven aquí."
       },
       "newAgent": {
         "title": "Agrega otro agente",
@@ -152,6 +189,10 @@
       "agentStore": {
         "title": "La Tienda de agentes",
         "body": "Explora aquí agentes listos para usar, gratis, y agrega uno a tu espacio con un clic."
+      },
+      "appTour": {
+        "title": "Repite el tour",
+        "body": "¿Olvidaste cómo funciona algo? Haz clic aquí cuando quieras para correr el tour de nuevo."
       },
       "outro": {
         "title": "Ahora ve a construir algo increíble",
@@ -282,7 +323,7 @@
     },
     "contextOverflow": {
       "title": "Esta conversación es muy larga para su modelo",
-      "body": "{{model}} ya no puede leer toda esta conversación. Cambia esta conversación a un modelo con más memoria o comienza una nueva misión para el siguiente paso.",
+      "body": "{{model}} ya no puede leer toda esta conversación. Cambia esta conversación a un modelo con más memoria o comienza una nueva tarea para el siguiente paso.",
       "switchModel": "Cambiar modelo"
     },
     "modelUnavailable": {
@@ -351,22 +392,29 @@
       "rawLabel": "Salida cruda"
     }
   },
+  "agentReads": {
+    "failed": "No pudimos cargar {{failed}} de {{total}} agentes",
+    "failedOne": "No pudimos cargar {{name}}",
+    "retry": "Reintentar",
+    "report": "Reportar bug"
+  },
   "palette": {
     "title": "Paleta de comandos",
     "description": "Salta a cualquier parte de Houston",
-    "placeholder": "Buscar agentes, misiones, acciones...",
+    "placeholder": "Buscar agentes, tareas, acciones...",
     "empty": "Sin coincidencias. Prueba con otra palabra.",
     "groups": {
       "actions": "Acciones",
       "agents": "Agentes",
-      "recentMissions": "Misiones recientes"
+      "recentMissions": "Tareas recientes",
+      "teams": "Equipos"
     },
     "actions": {
-      "newMission": "Iniciar misión nueva",
-      "missionControl": "Ir a Centro de Misiones",
+      "newMission": "Iniciar tarea nueva",
       "integrations": "Abrir Integraciones",
       "settings": "Abrir Ajustes",
-      "shortcuts": "Ver atajos de teclado"
+      "shortcuts": "Ver atajos de teclado",
+      "inbox": "Ir a la bandeja de entrada"
     }
   },
   "cheatsheet": {
@@ -379,29 +427,14 @@
     },
     "rows": {
       "palette": "Abrir paleta de comandos",
-      "missionControl": "Ir a Centro de Misiones",
-      "newMission": "Iniciar misión nueva",
+      "inbox": "Ir a la bandeja de entrada",
+      "newMission": "Iniciar tarea nueva",
       "prevAgent": "Agente anterior",
       "nextAgent": "Agente siguiente",
-      "boardNavigate": "Moverse entre misiones",
-      "boardOpen": "Abrir la misión resaltada",
+      "boardNavigate": "Moverse entre tareas",
+      "boardOpen": "Abrir la tarea resaltada",
       "panelEscape": "Salir del chat y luego cerrar",
       "cheatsheet": "Mostrar esta hoja"
     }
-  },
-  "userMenu": {
-    "sendFeedback": "Enviar comentarios"
-  },
-  "feedback": {
-    "title": "Enviar comentarios",
-    "description": "Los reportes de errores nos llegan automáticamente. Esto es para todo lo demás: algo que se siente raro, un flujo que falló, una idea.",
-    "placeholder": "¿Qué tienes en mente?",
-    "send": "Enviar",
-    "sending": "Enviando...",
-    "cancel": "Cancelar",
-    "successTitle": "Recibido, gracias por el reporte.",
-    "successWithId": "El centro de control está en eso. Referencia: {{id}}",
-    "successNoId": "El centro de control está en eso.",
-    "errorTitle": "No se pudo enviar el reporte"
   }
 }

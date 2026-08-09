@@ -1,6 +1,6 @@
 /**
  * One provider CARD in the marketplace grid (Providers tab). A colorful,
- * recognition-first card mirroring the Integrations tab's `AppRow`: a boxless
+ * recognition-first card mirroring the Integrations page's `AppRow`: a boxless
  * full-color brand mark + name (with an inline `LiveStatus` "Connected" dot
  * when connected) on the first line, then a secondary line leading with the
  * live model count in bold (`{N} models`), a middot, then

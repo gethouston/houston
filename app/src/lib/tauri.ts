@@ -444,8 +444,6 @@ export const tauriChat = {
     prompt: string,
     sessionKey: string,
     opts?: {
-      mode?: string;
-      promptFile?: string;
       workingDirOverride?: string;
       providerOverride?: string;
       modelOverride?: string;
@@ -453,9 +451,7 @@ export const tauriChat = {
       /**
        * Per-turn mode pin (composer "Mode" selector). `"plan"` pins a read-only
        * planning turn; `"auto"` (Autopilot) drops the blocking tools so the turn
-       * runs fire-and-forget; `"execute"` (or omitted) is a normal turn. Distinct
-       * from the legacy `mode`/`promptFile` opts above (Rust-era prompt profiles,
-       * dropped at this boundary) — never collides with them.
+       * runs fire-and-forget; `"execute"` (or omitted) is a normal turn.
        */
       modeOverride?: "execute" | "plan" | "auto";
       /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
@@ -1896,9 +1892,8 @@ export const tauriTunnel = {
 /**
  * Integrations (Composio, platform mode). The user never creates a provider
  * account — they only OAuth apps (Gmail, Slack…); Houston's platform key lives
- * server-side. Host-only — these reach the v3 host's /v1/integrations routes;
- * the tab is gated to the control-plane build so they never run on the legacy
- * Rust wire. Types flow by inference.
+ * server-side. Host-only — these reach the v3 host's /v1/integrations routes.
+ * Types flow by inference.
  */
 export const tauriIntegrations = {
   status: () =>
@@ -2121,6 +2116,103 @@ export const tauriOrg = {
     call("create_checkout", () => getEngine().createCheckout(interval)),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
+};
+
+/**
+ * C13 agent teams: the active space's server-owned teams (named groups of
+ * agents AND people). Hosted-gateway only — the adapter throws "agent teams
+ * require the hosted gateway" anywhere else, so every caller feature-detects on
+ * `capabilities.agentTeams` first rather than probing and degrading.
+ *
+ * Every MUTATION takes an `options?: EngineCallOptions` passthrough. That is how
+ * the hooks silence the EXPECTED business states (`isExpectedAgentTeamError`)
+ * and surface them as one authored informational toast of their own instead of
+ * `call()`'s red report-a-bug pair. Reads take no passthrough: a failed read has
+ * no expected state to explain, so it must reach us as a bug.
+ */
+export const tauriAgentTeams = {
+  list: () => call("agent_teams_list", () => getEngine().listAgentTeams()),
+  create: (
+    input: { name: string; icon?: string; color?: string },
+    options?: EngineCallOptions,
+  ) =>
+    call(
+      "agent_team_create",
+      () => getEngine().createAgentTeam(input),
+      undefined,
+      options,
+    ),
+  /** Rename, reorder or restyle a team. `icon`/`color` are the C13 identity
+   *  fields: a string SETS, `""` CLEARS, an omitted key leaves the field alone
+   *  (`null` is a `400`, not a clear). `context` is the team's shared prose and
+   *  follows none of that: any string is valid and `""` is simply empty. */
+  update: (
+    teamId: string,
+    patch: {
+      name?: string;
+      sortOrder?: number;
+      icon?: string;
+      color?: string;
+      context?: string;
+    },
+    options?: EngineCallOptions,
+  ) =>
+    call(
+      "agent_team_update",
+      () => getEngine().updateAgentTeam(teamId, patch),
+      undefined,
+      options,
+    ),
+  /** Delete a team. The space's default team refuses this (`400 default_team`),
+   *  which the caller explains rather than reports. */
+  remove: (teamId: string, options?: EngineCallOptions) =>
+    call<void>(
+      "agent_team_delete",
+      () => getEngine().deleteAgentTeam(teamId),
+      undefined,
+      options,
+    ),
+  /** One team's EXPLICIT membership rows. Implicit owners (a space owner/admin)
+   *  are a permission rule, not a row, so they are deliberately absent. */
+  members: (teamId: string) =>
+    call("agent_team_members", () => getEngine().listAgentTeamMembers(teamId)),
+  // No `join`: a member is shown only the teams they are already in (the
+  // gateway filters the list), so there is no "other teams" bucket to join from
+  // and the app has no caller. `HoustonClient.joinAgentTeam` and the adapter's
+  // stay — the route is live and shim parity requires them.
+  /** Remove a member. The caller's own id is a LEAVE; anyone else's is an
+   *  owner-only removal. Same route either way — the gateway tells them apart. */
+  removeMember: (teamId: string, userId: string, options?: EngineCallOptions) =>
+    call<void>(
+      "agent_team_member_remove",
+      () => getEngine().removeAgentTeamMember(teamId, userId),
+      undefined,
+      options,
+    ),
+  setMemberOwner: (
+    teamId: string,
+    userId: string,
+    owner: boolean,
+    options?: EngineCallOptions,
+  ) =>
+    call<void>(
+      "agent_team_member_owner",
+      () => getEngine().setAgentTeamMemberOwner(teamId, userId, owner),
+      undefined,
+      options,
+    ),
+  /** Move one agent into a team. On the gateway an agent's id IS its slug. */
+  setAgentTeam: (
+    agentSlugOrId: string,
+    teamId: string,
+    options?: EngineCallOptions,
+  ) =>
+    call<void>(
+      "agent_set_team",
+      () => getEngine().setAgentTeam(agentSlugOrId, teamId),
+      undefined,
+      options,
+    ),
 };
 
 /**

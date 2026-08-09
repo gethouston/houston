@@ -21,7 +21,7 @@
     "react-resizable-panels": "4.12.1"
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsgo --noEmit"
   }
 }

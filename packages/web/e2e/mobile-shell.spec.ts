@@ -25,7 +25,7 @@ test("replaces the sidebar rail with a hamburger drawer", async ({ page }) => {
   await expect(drawer.locator('[data-tour-target="sidebar"]')).toBeVisible();
 
   // Navigating from the drawer closes it so the content is visible again.
-  await drawer.getByRole("button", { name: "Mission Control" }).click();
+  await drawer.locator("[data-tour-target='nav-inbox']").click();
   await expect(drawer).toBeHidden();
 });
 
@@ -47,7 +47,7 @@ test("opens a mission's chat covering the full content width", async ({
   await page.goto("/");
 
   await page.getByText("Plan a trip to Tokyo").click();
-  await expect(page.getByText("Mission: Plan a trip to Tokyo")).toBeVisible();
+  await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 
   const panel = page.getByTestId("mission-panel");
   await expect(panel).toBeVisible();

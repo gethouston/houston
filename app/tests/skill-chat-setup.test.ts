@@ -8,7 +8,7 @@ import {
 } from "../src/lib/auto-continue-message.ts";
 import { skillDisplayTitle } from "../src/lib/humanize-skill-name.ts";
 import { isSetupChatMode } from "../src/lib/integration-chat-setup.ts";
-import { selectActive, selectArchived } from "../src/lib/mission-selection.ts";
+import { ARCHIVED_STATUS } from "../src/lib/mission-selection.ts";
 import {
   encodeSkillModifyMessage,
   encodeSkillSetupMessage,
@@ -74,18 +74,21 @@ describe("skill chat setup message", () => {
     ok(!isSkillSetupMode(null));
     // The ONE shared predicate every board filter uses covers the new kind.
     ok(isSetupChatMode(SKILL_SETUP_AGENT_MODE));
+    // Both mission surfaces drop `isSetupChatMode` rows before splitting on
+    // ARCHIVED_STATUS (`components/use-mission-control.ts` for the active
+    // board, `components/board/use-mission-control-archived.ts` for the
+    // archived view), so a skill chat is invisible in EITHER status.
+    const missions = [setup, archivedSetup, normal, archivedNormal].filter(
+      (m) => !isSetupChatMode(m.agent),
+    );
     // Active board: only the normal mission survives.
     deepStrictEqual(
-      selectActive([setup, archivedSetup, normal, archivedNormal]).map(
-        (i) => i.id,
-      ),
+      missions.filter((m) => m.status !== ARCHIVED_STATUS).map((m) => m.id),
       ["n1"],
     );
-    // Archived tab: closed setup chats stay invisible too.
+    // Archived view: closed setup chats stay invisible too.
     deepStrictEqual(
-      selectArchived([setup, archivedSetup, normal, archivedNormal]).map(
-        (i) => i.id,
-      ),
+      missions.filter((m) => m.status === ARCHIVED_STATUS).map((m) => m.id),
       ["n2"],
     );
   });
@@ -104,7 +107,6 @@ describe("skill chat setup message", () => {
     deepStrictEqual(summaries.a, {
       needsYouCount: 1,
       runningCount: 0,
-      unreadCount: 0,
     });
   });
 

@@ -3,13 +3,13 @@ import { describe, it } from "node:test";
 import {
   ceilingMode,
   ceilingValue,
-} from "../src/components/tabs/agent-admin/agent-admin-row-values.ts";
+} from "../src/components/agent/agent-admin/agent-admin-row-values.ts";
 import {
   allowedListView,
   allowedModelCount,
   modelChecked,
   toggleModel,
-} from "../src/components/tabs/agent-admin/model-allowlist.ts";
+} from "../src/components/agent/agent-admin/model-allowlist.ts";
 import type { CatalogModel } from "../src/lib/ai-hub/catalog-types.ts";
 
 /** A minimal `CatalogModel` fixture: only the fields the allowlist helpers read. */

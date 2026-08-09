@@ -56,12 +56,12 @@
     },
     "preprompt": {
       "title": "Want a ping when your agent finishes?",
-      "body": "Turn on notifications and Houston will let you know the moment a mission finishes or needs you.",
+      "body": "Turn on notifications and Houston will let you know the moment a task finishes or needs you.",
       "cta": "Turn on notifications"
     },
     "catchNet": {
       "title": "You missed a heads-up",
-      "body": "Turn on notifications so Houston can ping you when a mission finishes.",
+      "body": "Turn on notifications so Houston can ping you when a task finishes.",
       "cta": "Turn on notifications"
     },
     "granted": "Notifications are on.",
