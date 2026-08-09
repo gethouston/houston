@@ -28,11 +28,12 @@ import {
 type AgentNavTarget = "board" | "routines" | "files" | "settings";
 
 /**
- * The resolved destination. `dashboard` is the honest fallback for an agent no
- * team claims (no workspace resolved yet): the cross-agent board still holds
- * every agent's missions, so a mission nav lands on something real instead of a
- * blank pane. It is never a valid answer for a CONFIGURE target — see
- * {@link agentDestination}'s contract.
+ * The resolved destination. `none` means NO TEAM CLAIMS THIS AGENT (no
+ * workspace resolved yet, or a roster read that landed before the teams read):
+ * there is no honest surface for the request, and every agent surface is a
+ * slice of a team now, so the answer is stated rather than substituted. What to
+ * do about it is the CALLER's decision and it differs per target — a board
+ * request goes home, a settings request refuses out loud (`lib/open-agent.ts`).
  */
 type AgentDestination =
   | {
@@ -42,7 +43,7 @@ type AgentDestination =
       /** The agent pin the team sections narrow by (`null` = the whole team). */
       agentFilter: string | null;
     }
-  | { view: "dashboard" };
+  | { view: "none" };
 
 /** The team section each target opens. */
 const TARGET_SECTION: Record<AgentNavTarget, TeamSectionId> = {
@@ -67,7 +68,7 @@ export function agentDestination(
   target: AgentNavTarget,
 ): AgentDestination {
   const team = teamOfAgent(teams, agentId);
-  if (team === null) return { view: "dashboard" };
+  if (team === null) return { view: "none" };
   return {
     view: "team",
     teamId: team.id,
@@ -87,7 +88,8 @@ export function agentDestination(
  * per agent: the org owner/admin reaches every agent, and a member reaches the
  * agents they MANAGE, because managing one is exactly what opens their team's
  * Settings row. A caller who fails it must not be shown a "configure this"
- * affordance: it would resolve back to Mission Control and read as a dead link.
+ * affordance: it would resolve to a section the rail does not draw and read as
+ * a dead link.
  */
 export function canOpenAgentSettings(
   caps: Capabilities | null | undefined,

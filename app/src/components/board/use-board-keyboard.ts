@@ -13,10 +13,10 @@ import { useUIStore } from "../../stores/ui";
  * hold the latest items / columns / highlight so the callbacks registered in
  * the UI store stay stable while always reading current state.
  *
- * Every global registration here is gated on `isActive`: several mission
- * boards are mounted at once (the dashboard board plus every kept-alive team
- * board), so an unconditional registration is last-writer-wins and a HIDDEN
- * board would own the arrow navigator and the Enter opener.
+ * Every global registration here is gated on `isActive`: a mission board can be
+ * mounted while hidden (the kept-alive team screen), so an unconditional
+ * registration is last-writer-wins and a HIDDEN board would own the arrow
+ * navigator and the Enter opener.
  *
  * View-specific knobs (`autoOpenKey` / `autoOpenItemCount` / `autoOpenBlocked`
  * / `onAutoOpenEmpty`) come from the source so Mission Control and the board

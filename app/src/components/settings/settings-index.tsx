@@ -1,23 +1,10 @@
-import {
-  Bug,
-  Building2,
-  CircleUserRound,
-  CloudUpload,
-  FileText,
-  Keyboard,
-  ShieldCheck,
-  Timer,
-  User,
-} from "lucide-react";
+import { Bug, CircleUserRound, CloudUpload, Keyboard } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useWorkspaceContext } from "../../hooks/queries/use-workspace-context";
 import { genericErrorDescription } from "../../lib/error-report";
 import type { SettingsSectionId } from "../../lib/settings-sections";
-import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { PageContainer, PageHeader } from "../shell/page-shell";
-import { HelpGroup } from "./help-group";
-import { AccountSection } from "./sections/account";
+import { PageContainer, PageHero } from "../shell/page-shell";
+import { SettingsIdentityHeader } from "./identity-header";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
 import { DeleteAccountSection } from "./sections/delete-account";
@@ -26,40 +13,38 @@ import { NotificationsSection } from "./sections/notifications";
 import { SettingsCard, SettingsRow } from "./settings-row";
 
 interface SettingsIndexProps {
-  accountAvailable: boolean;
   migrationAvailable: boolean;
   profileAvailable: boolean;
-  /** Deployment gate for the Time worked row (`capabilities.computeUsage`). */
-  showTimeWorked: boolean;
-  /** Teams gate for the Admin + Permissions rows. */
-  showOrganization: boolean;
   onSelect: (id: SettingsSectionId) => void;
 }
 
 /**
- * The settings landing page. Simple settings (appearance, language, account,
- * delete) are resolved inline as control rows; the heavier
- * ones (context editors, shortcuts, bug report, and since HOU-788 Time worked,
- * Permissions and Admin) are navigable rows that drill into their own screen.
- * Account appears only when applicable; the Workspace and Team groups only when
- * their Teams gate passes. Help leads the page: it is where the guided tour is
- * started from since the topbar "Guide me" button moved in here.
+ * The settings landing page, and ONLY settings: the things every user adjusts
+ * about their own app.
+ *
+ * Everything that was not a setting has left. The guided tour starts from the
+ * Agent Store, the Context editors are one step from the Inbox, and Time worked,
+ * Admin and Permissions are screens of their own in the rail's "Workspace" band
+ * — none of them was a preference, and the index reads shorter for it. What is
+ * left is ONE general group everybody sees (identity, appearance, language,
+ * notifications, account, then the help-shaped rows that used to sit under a
+ * "Support" heading of their own), plus Danger. There is no role gate on this
+ * page at all any more.
+ *
+ * The page OPENS on the signed-in person: the rail's avatar menu was a second
+ * door onto this page and is gone, so identity is a header here rather than a
+ * row buried in the general group. Everything below it is a preference.
+ *
+ * Simple settings are resolved inline as control rows; the heavier ones
+ * (shortcuts, bug report) are navigable rows that drill into their own screen.
  */
 export function SettingsIndex({
-  accountAvailable,
   migrationAvailable,
   profileAvailable,
-  showTimeWorked,
-  showOrganization,
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation("settings");
-  const agentPath = useAgentStore((s) => s.current?.folderPath);
-  const { data: context } = useWorkspaceContext(agentPath);
   const addToast = useUIStore((s) => s.addToast);
-
-  const contextValue = (slot: "workspace" | "user") =>
-    context?.[slot]?.trim() ? t("settings:index.values.set") : undefined;
 
   async function handleVersionClick() {
     try {
@@ -76,14 +61,14 @@ export function SettingsIndex({
 
   return (
     <PageContainer className="py-10">
-      <PageHeader
+      <PageHero
         title={t("settings:title")}
         subtitle={t("settings:index.subtitle")}
         className="mb-8 px-1"
       />
 
       <div className="space-y-8">
-        <HelpGroup />
+        <SettingsIdentityHeader />
 
         <SettingsCard title={t("settings:index.groups.general")}>
           {/* WorkspaceSection (rename) is deliberately not rendered: the
@@ -99,62 +84,10 @@ export function SettingsIndex({
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />
-          {accountAvailable && <AccountSection />}
           {/* The API-keys row is HIDDEN for now (HOU-806): the Agents API
               surface lives in the Routines tab. The section, its strings, and
               all plumbing remain — restore by re-adding this row (and the
               apiKeysAvailable gate from apiKeysSupported) when it returns. */}
-        </SettingsCard>
-
-        {showTimeWorked && (
-          <SettingsCard title={t("settings:index.groups.workspace")}>
-            <SettingsRow
-              icon={Timer}
-              title={t("settings:nav.timeWorked")}
-              description={t("settings:index.rows.timeWorked")}
-              testId="settings-row-time-worked"
-              onClick={() => onSelect("timeWorked")}
-            />
-          </SettingsCard>
-        )}
-
-        {showOrganization && (
-          <SettingsCard title={t("settings:index.groups.team")}>
-            <SettingsRow
-              icon={Building2}
-              title={t("settings:nav.organization")}
-              description={t("settings:index.rows.organization")}
-              testId="settings-row-organization"
-              onClick={() => onSelect("organization")}
-            />
-            <SettingsRow
-              icon={ShieldCheck}
-              title={t("settings:nav.permissions")}
-              description={t("settings:index.rows.permissions")}
-              testId="settings-row-permissions"
-              onClick={() => onSelect("permissions")}
-            />
-          </SettingsCard>
-        )}
-
-        <SettingsCard title={t("settings:index.groups.context")}>
-          <SettingsRow
-            icon={FileText}
-            title={t("settings:nav.workspaceContext")}
-            description={t("settings:index.rows.workspaceContext")}
-            value={contextValue("workspace")}
-            onClick={() => onSelect("workspaceContext")}
-          />
-          <SettingsRow
-            icon={User}
-            title={t("settings:nav.userContext")}
-            description={t("settings:index.rows.userContext")}
-            value={contextValue("user")}
-            onClick={() => onSelect("userContext")}
-          />
-        </SettingsCard>
-
-        <SettingsCard title={t("settings:index.groups.support")}>
           <SettingsRow
             icon={Keyboard}
             title={t("settings:nav.shortcuts")}

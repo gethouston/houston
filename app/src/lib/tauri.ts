@@ -2121,16 +2121,29 @@ export const tauriOrg = {
  */
 export const tauriAgentTeams = {
   list: () => call("agent_teams_list", () => getEngine().listAgentTeams()),
-  create: (name: string, options?: EngineCallOptions) =>
+  create: (
+    input: { name: string; icon?: string; color?: string },
+    options?: EngineCallOptions,
+  ) =>
     call(
       "agent_team_create",
-      () => getEngine().createAgentTeam(name),
+      () => getEngine().createAgentTeam(input),
       undefined,
       options,
     ),
+  /** Rename, reorder or restyle a team. `icon`/`color` are the C13 identity
+   *  fields: a string SETS, `""` CLEARS, an omitted key leaves the field alone
+   *  (`null` is a `400`, not a clear). `context` is the team's shared prose and
+   *  follows none of that: any string is valid and `""` is simply empty. */
   update: (
     teamId: string,
-    patch: { name?: string; sortOrder?: number },
+    patch: {
+      name?: string;
+      sortOrder?: number;
+      icon?: string;
+      color?: string;
+      context?: string;
+    },
     options?: EngineCallOptions,
   ) =>
     call(
@@ -2152,13 +2165,10 @@ export const tauriAgentTeams = {
    *  are a permission rule, not a row, so they are deliberately absent. */
   members: (teamId: string) =>
     call("agent_team_members", () => getEngine().listAgentTeamMembers(teamId)),
-  join: (teamId: string, options?: EngineCallOptions) =>
-    call<void>(
-      "agent_team_join",
-      () => getEngine().joinAgentTeam(teamId),
-      undefined,
-      options,
-    ),
+  // No `join`: a member is shown only the teams they are already in (the
+  // gateway filters the list), so there is no "other teams" bucket to join from
+  // and the app has no caller. `HoustonClient.joinAgentTeam` and the adapter's
+  // stay — the route is live and shim parity requires them.
   /** Remove a member. The caller's own id is a LEAVE; anyone else's is an
    *  owner-only removal. Same route either way — the gateway tells them apart. */
   removeMember: (teamId: string, userId: string, options?: EngineCallOptions) =>

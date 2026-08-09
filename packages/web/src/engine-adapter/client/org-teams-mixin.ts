@@ -19,14 +19,24 @@ export function OrgTeamsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("agent teams require the hosted gateway");
       return controlPlane.listAgentTeams(this.ctx.cp);
     }
-    async createAgentTeam(name: string): Promise<controlPlane.AgentTeam> {
+    async createAgentTeam(input: {
+      name: string;
+      icon?: string;
+      color?: string;
+    }): Promise<controlPlane.AgentTeam> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.createAgentTeam(this.ctx.cp, name);
+      return controlPlane.createAgentTeam(this.ctx.cp, input);
     }
     async updateAgentTeam(
       teamId: string,
-      patch: { name?: string; sortOrder?: number },
+      patch: {
+        name?: string;
+        sortOrder?: number;
+        icon?: string;
+        color?: string;
+        context?: string;
+      },
     ): Promise<controlPlane.AgentTeam> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");

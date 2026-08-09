@@ -8,22 +8,14 @@ import {
 } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { analytics } from "../../lib/analytics";
-import {
-  parseSettingsSection,
-  settingsSectionGate,
-  settingsSectionNeedsWorkspace,
-} from "../../lib/settings-sections";
+import { parseSettingsSection } from "../../lib/settings-sections";
 import { workspaceGateState } from "../../lib/workspace-switch";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { BackBarScreen } from "../shell/back-bar-screen";
-import { useAccountAvailable } from "./sections/account";
 import { useMigrationAvailable } from "./sections/migration";
 import { useProfileAvailable } from "./sections/profile";
 import { SettingsIndex } from "./settings-index";
-import { clearSettingsSectionPin } from "./settings-nav-pins";
 import { SettingsSectionBody } from "./settings-section-body";
 
 /**
@@ -45,10 +37,8 @@ export function SettingsView() {
   const workspacesLoading = useWorkspaceStore((s) => s.loading);
   const workspaceLoadError = useWorkspaceStore((s) => s.loadError);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
-  const accountAvailable = useAccountAvailable();
   const profileAvailable = useProfileAvailable();
   const migrationAvailable = useMigrationAvailable();
-  const { showOrganization, showTimeWorked, ready } = useSurfaceGates();
   // The open section lives in the UI store, not in local state: every surface
   // that navigates here goes through `openSettings`, so a deep link lands even
   // when Settings is ALREADY open (a toast action fired from inside Settings
@@ -57,39 +47,14 @@ export function SettingsView() {
   const setActive = useUIStore((s) => s.setSettingsSection);
   const active = parseSettingsSection(useUIStore((s) => s.settingsSection));
 
-  // A section this caller can't see (a stale deep-link, or a role/space change
-  // that hid Admin + Permissions while one was open) falls back to the index —
-  // the settings mirror of the shell's blocked top-level view reset. The
-  // decision WAITS for `ready`: capabilities are null while they load and every
-  // gate reads false then, so deciding early would dump an owner out of an open
-  // section on every team-space switch (which drops the capabilities query).
-  const sectionGate =
-    active === null
-      ? null
-      : settingsSectionGate(active, {
-          showOrganization,
-          showTimeWorked,
-          ready,
-        });
-  const visible = sectionGate === "visible" ? active : null;
-  useEffect(() => {
-    if (active === null || sectionGate !== "blocked") return;
-    setActive(null);
-    // The section never rendered, so nothing consumed its one-shot deep-link
-    // pin. Drop it here or it hijacks the next legitimate open.
-    clearSettingsSectionPin(active);
-  }, [active, sectionGate, setActive]);
-
-  // Every ORIGINAL section (and the index) reads the current workspace, so they
-  // sit behind the workspace gate. "No workspace yet" hides three genuinely
+  // The index and EVERY section read the current workspace, so the whole screen
+  // sits behind the workspace gate — no section opts out, because none of them
+  // is a team surface any more. "No workspace yet" hides three genuinely
   // different situations, and conflating them left a failed load spinning
   // forever (HOU-818): still loading is a spinner; a load that THREW blames the
   // connection and offers a retry; a load that succeeded with nothing is a dead
   // end the user can also only escape by retrying, but nothing is broken, so
-  // the copy must not accuse their network. The three MOVED surfaces (HOU-788)
-  // opt out — see `settingsSectionNeedsWorkspace`.
-  const needsWorkspace =
-    visible === null || settingsSectionNeedsWorkspace(visible);
+  // the copy must not accuse their network.
   const gate = workspaceGateState({
     current: currentWorkspace,
     loading: workspacesLoading,
@@ -97,18 +62,17 @@ export function SettingsView() {
   });
 
   // One `tab_opened` per Settings surface actually reached, keyed like every
-  // other view switch (`settings` for the index, `settings:timeWorked` for a
-  // section) so a single tab_name breakdown keeps covering the surfaces that
-  // used to be top-level views. Settings owns this event outright — the shell's
-  // generic viewMode effect skips `settings`, so a deep link can no longer
-  // double-count — and a loading or error frame emits nothing, because nobody
-  // opened it.
+  // other view switch (`settings` for the index, `settings:profile` for a
+  // section) so a single tab_name breakdown covers both depths. Settings owns
+  // this event outright — the shell's generic viewMode effect skips `settings`,
+  // so a deep link can no longer double-count — and a loading or error frame
+  // emits nothing, because nobody opened it.
   const reached =
-    sectionGate === "loading" || (needsWorkspace && gate !== "ready")
+    gate !== "ready"
       ? null
-      : visible === null
+      : active === null
         ? "settings"
-        : `settings:${visible}`;
+        : `settings:${active}`;
   const lastReached = useRef<string | null>(null);
   useEffect(() => {
     if (reached === null || lastReached.current === reached) return;
@@ -116,22 +80,8 @@ export function SettingsView() {
     analytics.track("tab_opened", { tab_name: reached });
   }, [reached]);
 
-  // A gated section whose capabilities are still in flight holds its place at
-  // its own depth: the same single back bar the section itself will render, so
-  // resolving swaps only the body.
-  if (sectionGate === "loading") {
-    return (
-      <BackBarScreen
-        backLabel={t("settings:title")}
-        onBack={() => setActive(null)}
-      >
-        <LoadingPane />
-      </BackBarScreen>
-    );
-  }
-
-  if (needsWorkspace && gate === "loading") return <LoadingPane />;
-  if (needsWorkspace && gate !== "ready") {
+  if (gate === "loading") return <LoadingPane />;
+  if (gate !== "ready") {
     const copy =
       gate === "failed"
         ? {
@@ -162,15 +112,12 @@ export function SettingsView() {
     );
   }
 
-  if (visible === null) {
+  if (active === null) {
     return (
       <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
         <SettingsIndex
-          accountAvailable={accountAvailable}
           migrationAvailable={migrationAvailable}
           profileAvailable={profileAvailable}
-          showTimeWorked={showTimeWorked}
-          showOrganization={showOrganization}
           onSelect={setActive}
         />
       </div>
@@ -179,7 +126,7 @@ export function SettingsView() {
 
   return (
     <SettingsSectionBody
-      active={visible}
+      active={active}
       backLabel={t("settings:title")}
       onBack={() => setActive(null)}
     />

@@ -17,6 +17,7 @@ import {
 } from "../conversation-cache";
 import { createEngineSdk } from "../sdk-client";
 import { DEFAULT_AGENT_ID, toOldProvider } from "../synthetic";
+import { WorkspaceIdResolver } from "./wire-workspace-id";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -79,6 +80,10 @@ export class AdapterContext {
    *  (`setActiveOrg` mutates `_cp` in place; both re-read it). Rebuilt only by
    *  `setEndpoint`, which keeps its fallback bearer current. */
   authFetch: typeof fetch;
+  /** Client→server workspace-id translation (the synthetic "default" personal
+   *  id no server speaks), resolved once and shared by every caller that puts a
+   *  workspace id on the wire. See `wire-workspace-id.ts`. */
+  readonly workspaceIds = new WorkspaceIdResolver(this);
   /** In-flight cloud device-code logins, keyed `${agentId}:${providerId}` — the poll guard. */
   readonly activeLogins = new Set<string>();
   /** Per-provider auth-status pollers that translate login completion into events (local mode). */

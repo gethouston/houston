@@ -7,11 +7,11 @@ import { hasAgentTeams } from "../../lib/org-roles";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { CreateAgentTeamDialog } from "./create-agent-team-dialog";
 import { SidebarDialogs } from "./sidebar-dialogs";
 import { MobileSidebarSheet } from "./sidebar-mobile";
 import { SidebarRail, type SidebarRailModel } from "./sidebar-rail";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
-import { useSidebarAgentActions } from "./use-sidebar-agent-actions";
 import { useSidebarAutoCollapse } from "./use-sidebar-auto-collapse";
 import { useSidebarNavItems } from "./use-sidebar-nav-items";
 import { useSidebarNavigation } from "./use-sidebar-navigation";
@@ -25,23 +25,27 @@ export function Sidebar({ children }: { children: ReactNode }) {
     "portable",
     "teams",
     "agents",
+    "dashboard",
+    "settings",
   ]);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
   const agents = useAgentStore((s) => s.agents);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [createWsOpen, setCreateWsOpen] = useState(false);
-  // The group whose shared context is open in the editor dialog (null = closed).
-  const [editingContextGroupId, setEditingContextGroupId] = useState<
-    string | null
-  >(null);
+  const [createTeamOpen, setCreateTeamOpen] = useState(false);
 
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const { canCreate: canCreateAgents } = useCanCreateAgents();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
+  // Folding "Your teams" is a device layout preference, persisted beside the
+  // rail's own collapse so the rail comes back the way it was left.
+  const teamsSectionCollapsed = useUIStore((s) => s.teamsSectionCollapsed);
+  const toggleTeamsSectionCollapsed = useUIStore(
+    (s) => s.toggleTeamsSectionCollapsed,
+  );
 
   // Below md the fixed rail becomes a Sheet drawer (opened by MobileTopBar's
   // hamburger). Selecting anything that navigates closes the drawer so the
@@ -57,20 +61,15 @@ export function Sidebar({ children }: { children: ReactNode }) {
   useSidebarAutoCollapse(isMobile, setSidebarCollapsed);
 
   const activitySummaries = useAgentActivitySummaries(agents);
-  const agentActions = useSidebarAgentActions({
-    t,
-    workspaceId: currentWorkspace?.id,
-    agentNamesById: agents,
-    remapAgentId: sidebar.remapAgentId,
-  });
   const {
     teams,
-    other,
     teamActions,
     selectedAgentId,
     items,
     groups,
     defaultGroup,
+    onActivateGroup,
+    onActivateDefault,
   } = useSidebarTeamsModel({
     t,
     agents,
@@ -78,11 +77,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
     serverBacked,
     canCreateAgents,
     summaries: activitySummaries,
-    onChangeColor: (agentId, color) =>
-      void agentActions.changeColor(agentId, color),
     closeMobileSidebar,
   });
-  const { navItems, activeNavId } = useSidebarNavItems(t, closeMobileSidebar);
+  const { navSections, activeNavId } = useSidebarNavItems(
+    t,
+    closeMobileSidebar,
+  );
   const { switchWorkspace, selectAgent } = useSidebarNavigation({
     teams,
     closeMobileSidebar,
@@ -96,25 +96,33 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onExpand: () => setSidebarCollapsed(false),
     onCreateWorkspace: () => setCreateWsOpen(true),
     onSwitchWorkspace: switchWorkspace,
-    navItems,
+    navSections,
     activeNavId,
     teamActions,
     items,
     groups,
     defaultGroup,
-    otherTeams: other,
     selectedAgentId,
     onSelectAgent: selectAgent,
-    onToggleGroupCollapsed: sidebar.toggleGroupCollapsed,
-    onEditGroupContext: setEditingContextGroupId,
+    onActivateGroup,
+    onActivateDefault,
+    sectionCollapsed: teamsSectionCollapsed,
+    onToggleSectionCollapsed: toggleTeamsSectionCollapsed,
+    onNewTeam: teamActions.canCreateTeam
+      ? () => setCreateTeamOpen(true)
+      : undefined,
+    onAddAgentToTeam: canCreateAgents
+      ? (teamId) => {
+          setDialogOpen(true, teamId);
+          closeMobileSidebar();
+        }
+      : undefined,
     onAddAgent: canCreateAgents
       ? () => {
           setDialogOpen(true);
           closeMobileSidebar();
         }
       : undefined,
-    onRenameAgent: agentActions.rename,
-    onDeleteAgent: setPendingDeleteId,
   };
 
   /* Gutter around the floating "screen" (Arc canvas). The small padding lets
@@ -129,16 +137,14 @@ export function Sidebar({ children }: { children: ReactNode }) {
   return (
     <>
       <SidebarDialogs
-        t={t}
-        pendingDeleteId={pendingDeleteId}
-        onPendingDeleteIdChange={setPendingDeleteId}
-        onDeleteAgent={agentActions.remove}
         createWorkspaceOpen={createWsOpen}
         onCreateWorkspaceOpenChange={setCreateWsOpen}
-        editingContextGroupId={editingContextGroupId}
-        onEditingContextGroupIdChange={setEditingContextGroupId}
-        groups={sidebar.layout.groups}
-        onSaveGroupContext={sidebar.setGroupContext}
+      />
+      <CreateAgentTeamDialog
+        open={createTeamOpen}
+        onOpenChange={setCreateTeamOpen}
+        serverBacked={serverBacked}
+        sidebar={sidebar}
       />
       <div className="flex h-full flex-1 min-w-0">
         {/* Mobile: the same AppSidebar element, hosted in a drawer; the

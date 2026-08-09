@@ -25,7 +25,23 @@ import { teamFilterAgentId, teamFilterPath } from "./team-agent-filter-model";
 export function useTeamBoardScope(team: TeamView): MissionControlScope {
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
   const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
+  return useTeamScope(team, teamAgentFilter, setTeamAgentFilter);
+}
 
+/**
+ * The same scope over an arbitrary filter SOURCE.
+ *
+ * The board's source is the team-wide pin above. The ARCHIVE's is its own
+ * `useState`, because a section's dropdown must not rewrite what the rail set
+ * for the whole team (`team-agent-filter-capsule.tsx` says why). Everything
+ * else — the one-sweep paths, the id/path translation — is identical, which is
+ * exactly why it is one hook rather than two.
+ */
+export function useTeamScope(
+  team: TeamView,
+  filterAgentId: string | null,
+  onFilterAgentId: (agentId: string | null) => void,
+): MissionControlScope {
   const teamAgents = team.agents;
   const scopePaths = useMemo(
     () => teamAgents.map((a) => a.folderPath),
@@ -33,25 +49,17 @@ export function useTeamBoardScope(team: TeamView): MissionControlScope {
   );
   const onFilterPathChange = useCallback(
     (path: string | null) =>
-      setTeamAgentFilter(teamFilterAgentId(teamAgents, path)),
-    [teamAgents, setTeamAgentFilter],
+      onFilterAgentId(teamFilterAgentId(teamAgents, path)),
+    [teamAgents, onFilterAgentId],
   );
 
   return useMemo(
     () => ({
       scopePaths,
-      title: team.name,
       teamId: team.id,
-      filterPath: teamFilterPath(teamAgents, teamAgentFilter),
+      filterPath: teamFilterPath(teamAgents, filterAgentId),
       onFilterPathChange,
     }),
-    [
-      scopePaths,
-      team.name,
-      team.id,
-      teamAgents,
-      teamAgentFilter,
-      onFilterPathChange,
-    ],
+    [scopePaths, team.id, teamAgents, filterAgentId, onFilterPathChange],
   );
 }

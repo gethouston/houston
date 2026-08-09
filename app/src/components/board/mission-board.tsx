@@ -17,6 +17,7 @@ import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
 import type { BoardSource } from "./board-source";
+import { panelTaskLabel } from "./panel-task-label";
 import { useBoardDrafts } from "./use-board-drafts";
 import { useBoardKeyboard } from "./use-board-keyboard";
 import { useBoardLabels } from "./use-board-labels";
@@ -62,6 +63,20 @@ export function MissionBoard({ source }: { source: BoardSource }) {
         source.openNewMission,
       ),
     [t, source.openNewMission],
+  );
+  // The panel's own task line, composed here rather than left to `ui/`'s
+  // i18n-agnostic English fallback (`panelTaskLabel`).
+  const panelLabel = useMemo(
+    () =>
+      panelTaskLabel(
+        {
+          task: (title) => t("board:panel.taskLabel", { title }),
+          newTask: t("board:panel.newTask"),
+        },
+        source.selectedId,
+        source.allItems.find((item) => item.id === source.selectedId)?.title,
+      ),
+    [t, source.selectedId, source.allItems],
   );
   const closeOpenChat = useCallback(
     () => source.setSelectedId(null),
@@ -194,6 +209,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onOpenLink={handleOpenLink}
           thinkingIndicator={panel.thinkingIndicator}
           panelAgentName={source.panelAgentName}
+          panelMissionLabel={panelLabel}
           panelAvatar={
             <AgentPanelAvatar
               color={source.activeAgent?.color}

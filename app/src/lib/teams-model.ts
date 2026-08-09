@@ -1,19 +1,22 @@
-import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
-import { isAgentManager } from "./agent-access.ts";
+import type { SidebarLayout } from "@houston-ai/engine-client";
 import { resolveSidebarSections } from "./agent-order.ts";
-import { canSeeTeamSettings } from "./team-permissions.ts";
 import type { Agent } from "./types.ts";
 
-// The "may I do this to a team?" gates live in their own module (the 200-line
-// rule), re-exported here so `teams-model` stays the ONE door onto a team's
-// rules for every caller.
+// Two families live in their own modules (the 200-line rule) and are
+// re-exported here, so `teams-model` stays the ONE door onto a team's rules for
+// every caller: the "may I do this to a team?" gates, and the team's SECTIONS.
 export {
   canDeleteTeam,
-  canJoinTeam,
   canLeaveTeam,
   canRenameTeam,
   canSeeTeamSettings,
 } from "./team-permissions.ts";
+export {
+  resolveTeamSection,
+  sectionHonorsAgentPin,
+  type TeamSectionId,
+  visibleTeamSectionsForTeam,
+} from "./team-sections.ts";
 
 /** The `viewMode` value the team view renders under (see `stores/ui.ts`). */
 export const TEAM_VIEW_ID = "team";
@@ -24,12 +27,6 @@ export const TEAM_VIEW_ID = "team";
  * to it, exactly as they belong to `ungroupedOrder` on the wire.
  */
 export const DEFAULT_TEAM_ID = "team:default";
-
-export type TeamSectionId =
-  | "mission-control"
-  | "routines"
-  | "files"
-  | "settings";
 
 /**
  * What the SERVER says about the caller's standing in one team (C13). Present
@@ -43,7 +40,13 @@ export interface ServerTeamFacts {
   sortOrder: number;
 }
 
-/** One sidebar team: a named home for agents and the people who use them. */
+/**
+ * One sidebar team: a named home for agents and the people who use them.
+ *
+ * `icon` and `color` sit at the TOP level, not inside {@link ServerTeamFacts}:
+ * a team's identity exists on BOTH backends (locally it is stored on the named
+ * group), while the server facts are precisely what exists on only one.
+ */
 export interface TeamView {
   /** `DEFAULT_TEAM_ID` for the virtual default team, else the group id. */
   id: string;
@@ -51,6 +54,28 @@ export interface TeamView {
   /** Members in drag order (the same order the sections derive from). */
   agents: Agent[];
   isDefault: boolean;
+  /** The team's glyph NAME, from the CLIENT's own vocabulary
+   *  (`shell:sidebar.teamIcons.*`), never an image and never a list the gateway
+   *  curates: it validates SHAPE only. ABSENT when unset, which tells the rail
+   *  to draw its own default. */
+  icon?: string;
+  /** A palette id / theme token name, or a literal `#rrggbb`. ABSENT when
+   *  unset, exactly like {@link icon}. */
+  color?: string;
+  /**
+   * The team's shared CONTEXT: prose every agent of the team is given before it
+   * starts a turn. Locally it is the named group's stored `context`, mirrored to
+   * each member agent's `GROUP.md` by the host on the layout write; on a server
+   * host it is the gateway's own column.
+   *
+   * ABSENCE means two different things, and the ONE reader
+   * (`teamContextSource`) branches on the backend before it looks: locally it
+   * only means nobody has written one yet, while on a SERVER team it means the
+   * gateway does not serve the field at all, which is how the editor stays
+   * hidden on a gateway that predates it. The virtual default team never
+   * carries it — it owns no row on either backend.
+   */
+  context?: string;
   /** Server truth for this team, on an `agentTeams` host only. Absent on the
    *  local backend, which is what leaves every rule here untouched. */
   server?: ServerTeamFacts;
@@ -62,6 +87,11 @@ export interface TeamView {
  * (its name = the workspace name) and holds every ungrouped agent — so every
  * agent belongs to exactly one team without any stored-layout migration.
  * The default team renders even when empty: it is the workspace's home team.
+ *
+ * A named team's `icon`/`color`/`context` are copied off its stored group,
+ * spread only when present so an unset one stays ABSENT. The VIRTUAL default
+ * team gets none of them: it owns no stored group row to hold them, exactly as
+ * it owns no `collapsed` of its own.
  */
 export function resolveTeams(
   agents: Agent[],
@@ -74,6 +104,9 @@ export function resolveTeams(
     name: group.name,
     agents: members,
     isDefault: false,
+    ...(group.icon === undefined ? {} : { icon: group.icon }),
+    ...(group.color === undefined ? {} : { color: group.color }),
+    ...(group.context === undefined ? {} : { context: group.context }),
   }));
   return [
     ...named,
@@ -95,6 +128,21 @@ export function teamById(
   return teams.find((t) => t.id === id) ?? null;
 }
 
+/**
+ * HOME: the team whose Mission Control the app opens on, and where every
+ * fallback lands. `null` means no team has resolved yet (no workspace, or a
+ * server-teams read still in flight), which is the one case the callers answer
+ * with the Inbox instead.
+ *
+ * The FIRST team, because `teams` arrives in rail order: home is the top of the
+ * user's own sidebar, not an alphabetical or server-internal pick. There is no
+ * global mission board any more, so this is the whole of "where does the app
+ * start" — see `lib/home-nav.ts` for the imperative half.
+ */
+export function homeTeam(teams: TeamView[]): TeamView | null {
+  return teams[0] ?? null;
+}
+
 /** The team that owns an agent (every agent belongs to exactly one team). */
 export function teamOfAgent(
   teams: TeamView[],
@@ -104,86 +152,16 @@ export function teamOfAgent(
 }
 
 /**
- * The sections THIS team offers this caller, in render order. The ONE list the
- * sidebar's section rows and the team view itself read, so a section can never
- * exist in the rail and be unreachable in the view (or the reverse). It is per
- * TEAM, not per caller: the same person may configure one team and only use the
- * next, so the rail asks it again for every block it draws.
- *
- * Mission Control, Routines and Files are every member's: they are the team's
- * WORK, and a member who may use the team's agents may see what those agents do
- * on their own and what they keep. Team Settings is the only section that
- * CONFIGURES rather than shows, so it goes to anyone who may configure
- * SOMETHING in this team: the org owner/admin (implicit owner of every team) or
- * a member who manages at least one of THIS team's agents. It is also the only
- * door to the agent settings page, so gating it org-wide would have taken every
- * configure surface away from an agent's own manager.
- *
- * On a SERVER-teams host the client-derived org-role half is REPLACED by the
- * server's own `owner` for this team: it already folds in the org owner/admin
- * (implicit owner of every team) and adds the explicit team owner, who
- * configures their team without being an org admin. The agent-manager clause is
- * untouched, so a member who manages one of the team's agents still gets in.
- */
-export function visibleTeamSectionsForTeam(
-  caps: Capabilities | null,
-  team: TeamView,
-): TeamSectionId[] {
-  const configures =
-    (team.server ? team.server.owner : canSeeTeamSettings(caps)) ||
-    team.agents.some((agent) => isAgentManager(caps, agent));
-  return [
-    "mission-control",
-    "routines",
-    "files",
-    ...(configures ? (["settings"] as const) : []),
-  ];
-}
-
-/**
- * Whether a section actually narrows to the shared agent pin.
- *
- * Mission Control filters its board by it, Routines scopes its fan-out to it,
- * and Files opens the pinned agent's tree. Team SETTINGS does not: it lists
- * every agent in the team whatever the pin says, on purpose — you go there to
- * manage the team, not one member. So the rail must not fill an agent row while
- * Settings is open: a lit row would claim a narrowing that nothing on screen is
- * doing, and clicking it again would look like a no-op.
- */
-export function sectionHonorsAgentPin(section: TeamSectionId | null): boolean {
-  return section !== null && section !== "settings";
-}
-
-/**
- * The section the team view ACTUALLY renders: the requested one when this
- * caller can see it, else the team's first section (Mission Control). One rule
- * absorbs every stale-store case — no section chosen yet, and Team Settings
- * requested by someone whose role no longer allows it (a space switch demotes
- * them while the view is open).
- */
-export function resolveTeamSection(
-  sections: readonly TeamSectionId[],
-  requested: TeamSectionId | null,
-): TeamSectionId {
-  return requested && sections.includes(requested) ? requested : sections[0];
-}
-
-/**
  * Whether the open team view points at a team that no longer resolves — its
  * sidebar group was deleted, or the workspace it belonged to is gone. Such a
  * `viewMode` would otherwise fall through every render branch and strand the
  * user on an empty pane, so the workspace shell resets it to the dashboard.
  * Pure, mirroring `blockedTopLevelView`, so the fallback rule is unit-tested.
  *
- * "No longer resolves" is the WHOLE rule, on both backends. Not being a member
- * of a server team is deliberately NOT blocking: joining is sidebar PINNING and
- * it grants nothing (C13's first non-negotiable), so every team the gateway
- * lists is one this caller may ALREADY see, and the gateway is the only thing
- * that decides that. Blocking on `joined` made every jump to an agent that
- * lives in an unjoined team dead-end on the dashboard — `agentDestination`
- * resolved the right team and this guard threw the user straight off it. The
- * rail still lists unjoined teams under "Other teams" rather than in "Your
- * teams", which is what joining changes and all it changes.
+ * "No longer resolves" is the WHOLE rule, on both backends. It deliberately
+ * does NOT ask about membership: the gateway now serves a caller only the teams
+ * they are part of, so every team in hand is one they may already see, and the
+ * gateway is the only thing that decides that.
  */
 export function blockedTeamView(
   viewMode: string,

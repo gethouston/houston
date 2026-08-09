@@ -68,3 +68,17 @@ export function resolveFilterPath(
   if (!filterPath) return "";
   return inScope(filterPath, scopePaths) ? filterPath : "";
 }
+
+/**
+ * The agent the board's title picker names, or `null` for "every agent on this
+ * board". A path no agent on the board owns is deliberately NOT an agent: the
+ * title is the filter now, so a path with nobody behind it would leave the
+ * board's only heading blank while the board itself shows everything.
+ */
+export function filteredScopeAgent<T extends { folderPath: string }>(
+  agents: T[],
+  filterPath: string,
+): T | null {
+  if (!filterPath) return null;
+  return agents.find((agent) => agent.folderPath === filterPath) ?? null;
+}

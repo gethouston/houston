@@ -15,6 +15,7 @@ import {
 } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
+import { agentsByPath, missionCardAgentName } from "./mission-card-agent";
 
 /**
  * Cross-agent archived data: every agent's *archived* missions on one list,
@@ -29,11 +30,11 @@ export function useMissionControlArchived(agents: Agent[]) {
   const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: convos } = useAllConversations(agentPaths);
 
-  const agentColorMap = useMemo(() => {
-    const m: Record<string, string | undefined> = {};
-    for (const a of agents) m[a.folderPath] = a.color;
-    return m;
-  }, [agents]);
+  // ONE roster lookup behind both halves of a card's identity. The colour was
+  // always taken from here; the NAME used to come off the swept row, which the
+  // web adapter stamps from a registry that does not know the host's agents —
+  // so every card read "Houston". See `mission-card-agent.ts`.
+  const agentsByFolderPath = useMemo(() => agentsByPath(agents), [agents]);
   const agentMap = useMemo(() => {
     const m: Record<string, Agent> = {};
     for (const a of agents) m[a.folderPath] = a;
@@ -74,9 +75,13 @@ export function useMissionControlArchived(agents: Agent[]) {
           // Decode a Skill / attachment first-message marker to the user's
           // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
-          group: c.agent_name,
+          group: missionCardAgentName(
+            agentsByFolderPath,
+            c.agent_path,
+            c.agent_name,
+          ),
           icon: createElement(AgentCardAvatar, {
-            color: agentColorMap[c.agent_path],
+            color: agentsByFolderPath.get(c.agent_path)?.color,
           }),
           status: c.status ?? "archived",
           updatedAt: c.updated_at ?? new Date().toISOString(),
@@ -95,7 +100,7 @@ export function useMissionControlArchived(agents: Agent[]) {
     pathMapRef.current = map;
     sessionMapRef.current = sessionMap;
     return result;
-  }, [convos, agentColorMap, t]);
+  }, [convos, agentsByFolderPath, t]);
 
   const sessionKeyFor = useCallback(
     (activityId: string) => {

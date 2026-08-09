@@ -80,8 +80,10 @@ export function buildTeamMemberRows(input: {
 
 /** Which face the Members card wears for this team and this caller. */
 export interface TeamMembersView {
-  /** The card exists at all. Absent `server` facts is the local sidebar
-   *  backend, where a team is one person's grouping and has no people. */
+  /** The card exists at all. It does not on the local sidebar backend (absent
+   *  `server` facts, where a team is one person's grouping), nor in a PERSONAL
+   *  space, which holds exactly one human and therefore has no people to
+   *  manage. */
   visible: boolean;
   /** Read the membership rows. False on the default team, which holds no
    *  explicit rows at all. */
@@ -97,14 +99,27 @@ export interface TeamMembersView {
 }
 
 /**
+ * A PERSONAL space has NO members card, on any of its teams. It holds exactly
+ * one human, so there is nobody to add, promote or remove, and the gateway
+ * answers all three member-management routes `403 personal_space` (C13
+ * §Personal spaces). Rendering the card there would offer a roster of one and a
+ * Leave button onto a refusal — the only 403 a solo user could reach in this
+ * whole surface. Its Team Settings keeps the name field and the agents, which
+ * is exactly what a team means to somebody working alone.
+ *
  * The default team is READ-ONLY by the wire, not by taste: every member write
  * on it answers `400 default_team`, because everyone in the space is already in
  * it and it keeps no rows to write. So it shows its note where the others show
  * a roster, and never fires the membership read at all.
  */
-export function teamMembersView(team: TeamView): TeamMembersView {
+export function teamMembersView(
+  team: TeamView,
+  /** Whether the ACTIVE space is a personal one (`usePersonalSpace`, over
+   *  `isPersonalSpace` in `lib/org-roles`). */
+  personalSpace: boolean,
+): TeamMembersView {
   const server = team.server;
-  if (server === undefined) {
+  if (server === undefined || personalSpace) {
     return {
       visible: false,
       showRoster: false,
@@ -133,14 +148,19 @@ export function teamMembersView(team: TeamView): TeamMembersView {
  * screen now renders (joining is sidebar PINNING and grants nothing, so nothing
  * gates the view on it). This card's writes are owner-gated and the default
  * team shows its note instead of a roster; joining stays one deliberate act in
- * one place, the rail's Other teams block, which is also where Leave puts a
- * team straight back.
+ * one place, the "Join a team" submenu of the rail's create menu, which is also
+ * where Leave puts a team straight back.
  */
 export function teamLeaveUserId(
   team: TeamView,
   selfId: string | null,
+  /** Whether the ACTIVE space is a personal one (`usePersonalSpace`). The card
+   *  does not render there at all, but the gate is asked in full anyway: a call
+   *  site that answers a permission question with a hardcoded `false` is how
+   *  the rail ended up offering Leave in a personal space. */
+  personalSpace: boolean,
 ): string | null {
-  if (selfId === null || !canLeaveTeam(team)) return null;
+  if (selfId === null || !canLeaveTeam(team, personalSpace)) return null;
   return selfId;
 }
 

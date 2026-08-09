@@ -16,10 +16,15 @@ import { shareErrorCode } from "./share-via-team.ts";
 
 /**
  * The C13 rejections that are EXPECTED business states, not Houston bugs: the
- * default team refusing a rename-adjacent write, a personal space refusing
- * every team mutation, a non-owner attempting an owner-only write, a stale team
- * id, a name the gateway will not take, and removing someone who is not an
- * explicit member. Everything else the gateway can answer (`team_not_found`,
+ * default team refusing a rename-adjacent write, a personal space refusing to
+ * manage PEOPLE (it groups agents into teams like any other space; only join
+ * and the two member writes refuse there), a non-owner attempting an owner-only
+ * write, a stale team id, a name the gateway will not take, and removing
+ * someone who is not an explicit member. The code set is unchanged by that
+ * narrowing — `personal_space` is still one answer the gateway can give, just
+ * from three routes instead of every mutation.
+ *
+ * Everything else the gateway can answer (`team_not_found`,
  * `invalid_sort_order`, `invalid_owner`) means the client sent something it
  * should never have sent, so it must reach us as a bug report.
  *
@@ -28,6 +33,16 @@ import { shareErrorCode } from "./share-via-team.ts";
  * gateway's ceiling of 1..60 runes (`TEAM_NAME_MAX_RUNES`), so this should be
  * unreachable; if a name ever does get past them, a calm sentence about how
  * long a name may be is a truer answer than "report a bug".
+ *
+ * `invalid_icon` and `invalid_color` are the same bet, and the same honesty is
+ * owed about it: they too should be unreachable. The gateway validates SHAPE
+ * only (`^[a-z0-9-]{1,32}$` for a glyph name, `#rrggbb` or a token name for a
+ * color) because the VOCABULARY is the client's, and the picker only ever sends
+ * a name from the client's own curated glyph set and a color from the shared
+ * palette. So one of these arriving means the two drifted apart, which is our
+ * bug — but the user is mid-gesture in a picker and nothing was changed, so a
+ * calm sentence pointing back at the list beats a report-a-bug toast for a
+ * choice they made from a list we drew.
  */
 const EXPECTED_AGENT_TEAM_CODES = new Set([
   "default_team",
@@ -35,6 +50,8 @@ const EXPECTED_AGENT_TEAM_CODES = new Set([
   "not_team_owner",
   "invalid_team_id",
   "invalid_name",
+  "invalid_icon",
+  "invalid_color",
   "not_a_member",
 ]);
 

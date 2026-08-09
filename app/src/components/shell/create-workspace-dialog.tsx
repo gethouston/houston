@@ -6,13 +6,18 @@ import {
 } from "@houston-ai/core";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useMoveAgentToTeam } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
+import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { pickDefaultProviderModel } from "../../lib/default-provider-model";
+import { newAgentPlacement } from "../../lib/new-agent-placement";
 import { openAgentBoard } from "../../lib/open-agent";
+import { hasAgentTeams } from "../../lib/org-roles";
 import { providerIsConnected } from "../../lib/provider-connection";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -27,11 +32,16 @@ type Step = 1 | 2;
 export function CreateAgentDialog() {
   const { t } = useTranslation(["shell", "agents"]);
   const open = useUIStore((s) => s.createAgentDialogOpen);
+  const targetTeamId = useUIStore((s) => s.createAgentTeamId);
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const agentDefs = useAgentCatalogStore((s) => s.agents);
   const existingAgents = useAgentStore((s) => s.agents);
   const createAgent = useAgentStore((s) => s.create);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
+  const { capabilities } = useCapabilities();
+  const serverBacked = hasAgentTeams(capabilities);
+  const sidebar = useSidebarLayout(currentWorkspace?.id);
+  const moveToTeam = useMoveAgentToTeam();
 
   const [step, setStep] = useState<Step>(1);
   const [name, setName] = useState("");
@@ -145,6 +155,18 @@ export function CreateAgentDialog() {
       );
       setCreating(false);
       return;
+    }
+    const placement = newAgentPlacement(targetTeamId, serverBacked);
+    if (placement.kind === "server") {
+      await moveToTeam.mutateAsync({
+        agentId: created.id,
+        teamId: placement.teamId,
+      });
+    } else if (placement.kind === "local") {
+      sidebar.moveItem(created.id, {
+        groupId: placement.groupId,
+        beforeItemId: null,
+      });
     }
     // Reveal the agent NOW. The provider/model write and setup mission dispatch
     // to the agent's engine, which on the hosted profile is a pod still

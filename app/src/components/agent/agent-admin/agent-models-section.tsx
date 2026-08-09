@@ -53,6 +53,7 @@ export function AgentModelsSection({
         allowedEmpty: t("agentAdmin.models.allowedEmpty"),
         allowedEmptyLab: t("agentAdmin.models.allowedEmptyLab"),
         searchModels: t("agentAdmin.models.searchModels"),
+        clearSearch: t("agentAdmin.models.clearSearch"),
         noModels: t("agentAdmin.models.noModels"),
         allowModel: (name) => t("agentAdmin.models.allowModel", { name }),
       }}

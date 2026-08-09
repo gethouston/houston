@@ -28,10 +28,10 @@ interface Props {
  * surface that spans several agents — but it only ASKS: what picking an agent
  * leads to belongs entirely to the caller, and differs by caller.
  *
- * - The dashboard's "New mission" switches to that agent's board view and opens
- *   the new-mission right panel, the same flow the per-agent New Mission button
- *   gives. That sequencing lives in the dashboard wiring, because it depends on
- *   view-mode state.
+ * - A team's Mission Control "New mission" switches to that agent's board view
+ *   and opens the new-mission right panel, the same flow the per-agent New
+ *   Mission button gives. That sequencing lives in the board's own wiring,
+ *   because it depends on view-mode state.
  * - A team's Routines opens that agent's routine intake in the shared shell
  *   panel; nothing navigates.
  *

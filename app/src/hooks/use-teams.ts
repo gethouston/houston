@@ -23,7 +23,7 @@ import { useSidebarLayoutValue } from "./use-sidebar-layout.ts";
  *
  * This hook is the SEAM; the branch itself is the pure
  * {@link resolveTeamsForBackend} in `lib/teams-backend.ts`, shared with
- * `lib/open-agent.ts`'s store-free `currentTeams()`.
+ * `lib/current-teams.ts`'s store-free `currentTeams()`.
  *
  * Memoized because consumers derive memoized structures from the result; a
  * fresh array every render would invalidate all of them.

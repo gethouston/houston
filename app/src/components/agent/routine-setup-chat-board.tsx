@@ -10,6 +10,7 @@ import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import type { Activity } from "@houston-ai/engine-client";
 import { type ReactNode, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { modelAcceptsImages } from "../../lib/providers";
@@ -43,10 +44,9 @@ interface Props {
    *  it deselects the item (closing the pane). Omit for a non-dismissable
    *  companion (the integration chat exits via its own chrome). */
   onPanelClose?: () => void;
-  /** Overrides the panel's auto "Mission: {title}" line (routines pass
-   *  "Routine: {name}"). Omit to keep the default "Mission: {title}" — the
-   *  custom-integration setup chat reuses this board and IS a mission, so it
-   *  wants that default. */
+  /** Overrides the panel's task line (routines pass "Routine: {name}"). Omit
+   *  to keep the localized "Task: {title}" — the custom-integration setup chat
+   *  reuses this board and IS a task, so it wants that line. */
   missionLabel?: string;
   /** Header actions on the panel's right side (the integration setup chat
    *  puts its "Done" button here). Omit for none (routines). */
@@ -67,6 +67,7 @@ export function RoutineSetupChatBoard({
   onPanelClose,
   promptContext,
 }: Props) {
+  const { t } = useTranslation("board");
   const path = agent.folderPath;
   const openHref = useOpenAgentHref(path);
   const queuedLabels = useQueuedMessageLabels();
@@ -174,7 +175,9 @@ export function RoutineSetupChatBoard({
         panelLeading={panelLeading}
         panelActions={panelActions ? () => panelActions : undefined}
         panelAgentName={agent.name}
-        panelMissionLabel={missionLabel}
+        panelMissionLabel={
+          missionLabel ?? t("board:panel.taskLabel", { title: activity.title })
+        }
         panelAvatar={<AgentPanelAvatar color={agent.color} running={running} />}
         chatEmptyState={panel.chatEmptyState}
         composerHeader={panel.composerHeader}

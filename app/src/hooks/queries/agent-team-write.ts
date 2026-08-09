@@ -24,8 +24,9 @@ export const SILENCE_EXPECTED = { silence: isExpectedAgentTeamError } as const;
  * rejection becomes an informational toast in the user's own words, anything
  * else falls through to `call()`'s report-a-bug path. Exactly one surface per
  * action, either way. Deliberately NOT a branch in `surfaceError`
- * (`lib/tauri.ts`): `personal_space` already means the invite flow there and
- * the error alone cannot tell the two apart, only the call site can.
+ * (`lib/tauri.ts`): `personal_space` already means the invite flow there, where
+ * C13's means "this space has no people to manage", and the error alone cannot
+ * tell the two apart, only the call site can.
  */
 export function surfaceExpectedAgentTeamError(err: unknown): void {
   const copy = agentTeamErrorCopy(err);
@@ -65,6 +66,47 @@ export function useAgentTeamWrite<TVars, TData>(
           queryKey: queryKeys.agentTeamMembers(membersOf(vars)),
         });
       }
+    },
+  });
+}
+
+/**
+ * Every OPTIMISTIC agent-teams write, wired identically: patch the cached teams
+ * before the round trip, restore the snapshot on a refusal, re-read on settle.
+ *
+ * The three writes that need it — the cross-team drop, the identity picker, the
+ * shared-context editor — all act on a surface that has ALREADY moved by the
+ * time the request leaves (the agent animated into its new block, the rail
+ * repainted, the textarea holds what the user typed). Without the patch each of
+ * them snaps back to server truth for the length of the request. The rollback
+ * IS the error surface: the old value visibly returns and the expected-state
+ * toast says why.
+ *
+ * `patch` receives the cached list and the write's own vars, and answers the
+ * list the cache should hold; nothing cached means nothing patched, so there is
+ * nothing to restore either.
+ */
+export function useOptimisticAgentTeamWrite<TVars, TData, TCached>(
+  key: readonly unknown[],
+  mutationFn: (vars: TVars) => Promise<TData>,
+  patch: (cached: TCached, vars: TVars) => TCached,
+) {
+  const qc = useQueryClient();
+  return useMutation<TData, unknown, TVars, { prev: TCached | undefined }>({
+    mutationFn,
+    onMutate: async (vars) => {
+      // Cancel first: a read landing after the patch would overwrite it.
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<TCached>(key);
+      if (prev) qc.setQueryData(key, patch(prev, vars));
+      return { prev };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+      surfaceExpectedAgentTeamError(err);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
     },
   });
 }

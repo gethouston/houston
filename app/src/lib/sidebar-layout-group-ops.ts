@@ -53,6 +53,47 @@ export function setGroupContextOp(
   };
 }
 
+/** One group's visual identity after a patch. The two keys are REMOVED rather
+ *  than set to `undefined`, so an unset field reads absent exactly the way a
+ *  layout written before identity existed does. Rest-destructuring instead of
+ *  `delete` keeps every OTHER field of the group carried through untouched. */
+function withIdentity(
+  group: SidebarGroup,
+  patch: { icon?: string | null; color?: string | null },
+): SidebarGroup {
+  const { icon: _icon, color: _color, ...base } = group;
+  const icon =
+    patch.icon === undefined ? group.icon : (patch.icon ?? undefined);
+  const color =
+    patch.color === undefined ? group.color : (patch.color ?? undefined);
+  return {
+    ...base,
+    ...(icon !== undefined ? { icon } : {}),
+    ...(color !== undefined ? { color } : {}),
+  };
+}
+
+/**
+ * Set a group's glyph + color (no-op if the id is unknown, like
+ * {@link renameGroupOp}).
+ *
+ * `null` CLEARS a field, a string sets it, an omitted field is untouched —
+ * the same three-state spelling the C13 wire uses (`""` there, `null` here,
+ * because a stored layout has no wire to serialise an empty string onto).
+ */
+export function setGroupIdentityOp(
+  layout: SidebarLayout,
+  groupId: string,
+  patch: { icon?: string | null; color?: string | null },
+): SidebarLayout {
+  return {
+    ...layout,
+    groups: layout.groups.map((g) =>
+      g.id === groupId ? withIdentity(g, patch) : g,
+    ),
+  };
+}
+
 /** Delete a group and append its members to the default section. */
 export function deleteGroupOp(
   layout: SidebarLayout,

@@ -35,9 +35,16 @@ export function useSidebarNavigation(args: {
   };
 
   /**
-   * Clicking an agent opens ITS TEAM's Mission Control, pre-filtered to that
-   * agent, instead of the agent's own tab: the board is where its work lives.
-   * The agent store's `current` still moves with it so the command palette and
+   * Clicking an agent opens ITS TEAM's Tasks board, pre-filtered to that agent,
+   * instead of the agent's own tab: the board is where its work lives, and a
+   * team's Tasks is its home.
+   *
+   * ALWAYS Tasks, wherever the user was — including another section of this
+   * same team. Keeping the open section instead was considered and dropped: the
+   * one surface that made it feel right was Files, which is being redesigned
+   * around agents-as-folders and will carry no agent selection at all.
+   *
+   * The agent store's `current` moves with it so the command palette and
    * ⌘[ / ⌘] cycling keep pointing at the agent the user just picked.
    */
   const selectAgent = (agentId: string) => {
@@ -47,9 +54,7 @@ export function useSidebarNavigation(args: {
     openTeamView(
       teamOfAgent(teams, agentId)?.id ?? DEFAULT_TEAM_ID,
       "mission-control",
-      {
-        agentFilter: agent.id,
-      },
+      { agentFilter: agent.id },
     );
     closeMobileSidebar();
   };

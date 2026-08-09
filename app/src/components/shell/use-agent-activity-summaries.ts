@@ -2,10 +2,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Activity } from "../../data/activity";
 import { useAllConversations } from "../../hooks/queries";
-import { useCapabilities } from "../../hooks/use-capabilities";
-import { useReadCursorStore } from "../../hooks/use-read-cursors";
-import { useSession } from "../../hooks/use-session";
-import { isMultiplayer } from "../../lib/org-roles";
 import { queryKeys } from "../../lib/query-keys";
 import type { Agent } from "../../lib/types";
 import {
@@ -58,28 +54,11 @@ export function useAgentActivitySummaries(
     return activityCacheVersion.current;
   });
 
-  // Unread badges (HOU-945). Multiplayer-gated twice over: off multiplayer the
-  // `unread` option is never passed, so every count stays 0 and single-player /
-  // desktop renders today's chrome with no dot to explain; and the model itself
-  // counts nothing without a `selfId` —
-  // an unread mark nobody is signed in to clear is a mark that never clears.
-  // The cursor store is an EXTERNAL store, not a query, so reading it here adds
-  // no observer and keeps the perf discipline above intact.
-  const { capabilities } = useCapabilities();
-  const multiplayer = isMultiplayer(capabilities);
-  const cursors = useReadCursorStore();
-  const { data: session } = useSession();
-  const selfId = session?.uid ?? null;
-
   return useMemo(() => {
     // The version stamp is not read below — it is a dependency so the memo
     // recomputes when a board query lands/updates in the cache.
     void cacheVersion;
-    const summaries = buildAgentActivitySummaries(
-      agents,
-      conversations ?? [],
-      multiplayer ? { store: cursors, selfId } : undefined,
-    );
+    const summaries = buildAgentActivitySummaries(agents, conversations ?? []);
     if (!aggregateIsAuthoritative) {
       // While the aggregate has not fetched for the current roster key (cold
       // boot, pods still waking), an agent with restored/live board data gets
@@ -90,13 +69,7 @@ export function useAgentActivitySummaries(
           queryKeys.activity(agent.folderPath),
         );
         if (!activities) continue;
-        // Board rows carry no attribution, so they can only answer needs-you /
-        // running. Keep the unread number the aggregate already computed rather
-        // than zeroing a badge the user can see.
-        summaries[agent.id] = {
-          ...summarizeActivities(activities),
-          unreadCount: summaries[agent.id]?.unreadCount ?? 0,
-        };
+        summaries[agent.id] = summarizeActivities(activities);
       }
     }
     return summaries;
@@ -106,8 +79,5 @@ export function useAgentActivitySummaries(
     aggregateIsAuthoritative,
     queryClient,
     cacheVersion,
-    multiplayer,
-    cursors,
-    selfId,
   ]);
 }

@@ -8,16 +8,17 @@ import {
 } from "./mission-control-scope.ts";
 
 /**
- * How a Mission Control board is narrowed and named. Omit it entirely and the
- * board is the global one: every agent, its own local agent filter, its own
- * title. That is what the Dashboard passes, so its behaviour is untouched by
- * the team-scoped board.
+ * How a Mission Control board is narrowed. Every board on screen is a team's,
+ * so every live caller passes one; omitting it leaves an unnarrowed board over
+ * the whole roster, which nothing renders today.
+ *
+ * It carries no TITLE: the team screen's row 1 names the team above every one
+ * of its sections, so a board that named itself again would print the same
+ * words twice on one screen.
  */
 export interface MissionControlScope {
   /** Restrict the board to these agent folder paths (one team's agents). */
   scopePaths?: string[];
-  /** The board's title. A team names its board after the team. */
-  title?: string;
   /** Identifies the team this board belongs to, for the per-team concerns that
    *  are not a matter of which cards show — today the new-mission draft scope
    *  (`missionControlDraftScope`). The global board omits it. */

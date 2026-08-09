@@ -14,7 +14,6 @@ import { newEngineActive } from "../../../lib/engine";
 import { sharedBytesKey } from "../../../lib/file-bytes-cache";
 import { tauriFiles } from "../../../lib/tauri";
 import type { Agent } from "../../../lib/types";
-import { useUIStore } from "../../../stores/ui";
 import { FilePreviewDialog } from "../../file-preview-dialog";
 import { MoveConflictDialog } from "../../move-conflict-dialog";
 import { useFilesDeleteConfirm } from "../files-delete-confirm";
@@ -47,8 +46,14 @@ import { useAgentFileDownloads } from "./agent-files-downloads";
  * the one component that assembles them.
  */
 export interface AgentFiles {
-  /** Everything `FilesBrowser` needs, `rootLabel` included. Spread it. */
+  /** Everything `FilesBrowser` needs. Spread it. */
   browserProps: FilesBrowserProps;
+  actions: {
+    upload: () => void;
+    uploadFolder?: () => void;
+    reveal?: () => void;
+    downloadAll?: () => void;
+  };
   /** The hidden upload inputs + preview / move-conflict / delete dialogs.
    *  Render once, anywhere inside the surface. */
   overlays: ReactNode;
@@ -61,15 +66,16 @@ export interface AgentFiles {
   isFetching: boolean;
 }
 
-export function useAgentFiles(agent: Agent): AgentFiles {
+export function useAgentFiles(
+  agent: Agent,
+  options?: { enabled?: boolean },
+): AgentFiles {
   const { t, i18n } = useTranslation("agents");
   const { osDir, canUseLocalFiles } = useLocalFilesAccess(agent);
   const [preview, setPreview] = useState<FileEntry | null>(null);
   const browserLabels = buildBrowserLabels(t);
   const menuLabels = buildMenuLabels(t, canUseLocalFiles);
   const path = agent.folderPath;
-  const filesViewMode = useUIStore((s) => s.filesViewMode);
-  const setFilesViewMode = useUIStore((s) => s.setFilesViewMode);
   const loadPreview = useFilePreviewLoader(path);
   const {
     data: files,
@@ -77,7 +83,7 @@ export function useAgentFiles(agent: Agent): AgentFiles {
     error,
     isFetching,
     refetch,
-  } = useFiles(path);
+  } = useFiles(path, options?.enabled);
   const deleteFile = useDeleteFile(path);
   const renameFile = useRenameFile(path);
   const createFolder = useCreateFolder(path);
@@ -104,9 +110,7 @@ export function useAgentFiles(agent: Agent): AgentFiles {
     files: files ?? [],
     loading,
     uploading: uploadFiles.isPending,
-    view: filesViewMode,
-    onViewChange: setFilesViewMode,
-    rootLabel: agent.name,
+    dragScope: agent.id,
     // The Modified column formats its dates in the user's language.
     locale: i18n.language,
     loadPreview,
@@ -130,21 +134,21 @@ export function useAgentFiles(agent: Agent): AgentFiles {
     onDropError,
     // Drag-move needs the TS host's move route; the legacy engine has none.
     onMove: newEngineActive() ? move.requestMove : undefined,
-    // An empty workspace has no open folder to land in: always the root.
-    onBrowse: () => pickFiles(),
-    emptyTitle: t("files.emptyTitle"),
-    emptyDescription: t("files.emptyDescription"),
     labels: browserLabels,
     menuLabels,
     onUpload: pickFiles,
     // Folder structure needs the TS host's relPath-aware import route;
     // the legacy engine's import flattens everything to the root.
     onUploadFolder: newEngineActive() ? pickFolder : undefined,
-    onRevealAgent:
+  };
+  const actions = {
+    upload: pickFiles,
+    uploadFolder: newEngineActive() ? pickFolder : undefined,
+    reveal:
       canUseLocalFiles && osDir
         ? () => tauriFiles.revealAgent(osDir)
         : undefined,
-    onDownloadAll: canUseLocalFiles ? undefined : downloadAll,
+    downloadAll: canUseLocalFiles ? undefined : downloadAll,
   };
 
   const overlays = (
@@ -177,5 +181,5 @@ export function useAgentFiles(agent: Agent): AgentFiles {
     void refetch();
   }, [refetch]);
 
-  return { browserProps, overlays, error, refetch: retry, isFetching };
+  return { browserProps, actions, overlays, error, refetch: retry, isFetching };
 }

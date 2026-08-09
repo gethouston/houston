@@ -5,9 +5,9 @@ import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { useTeams } from "../../hooks/use-teams";
+import { openHome } from "../../lib/home-nav";
 import { openAgentSection } from "../../lib/open-agent";
-import { teamOfAgent } from "../../lib/teams-model";
-import { DASHBOARD_VIEW_ID } from "../../lib/top-level-views";
+import { homeTeam, teamOfAgent } from "../../lib/teams-model";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { UiTour } from "./ui-tour";
@@ -27,13 +27,12 @@ import { workspaceTourSteps } from "./workspace-tour";
 export function WorkspaceTourOverlay() {
   const { t } = useTranslation(["agents", "dashboard", "shell", "board"]);
   const { capabilities } = useCapabilities();
-  const { showAiModels, showOrganization } = useSurfaceGates();
+  const { showAiModels } = useSurfaceGates();
   const { canCreate } = useCanCreateAgents();
   const isMobile = useIsMobile();
   const teams = useTeams();
   const currentAgent = useAgentStore((s) => s.current);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
-  const setViewMode = useUIStore((s) => s.setViewMode);
 
   // Most steps anchor on the rail, and the rail is collapsible (auto on a
   // narrow window, or by the toggle). Arming the tour expands it ONCE, here:
@@ -43,9 +42,14 @@ export function WorkspaceTourOverlay() {
     useUIStore.getState().setSidebarCollapsed(false);
   }, []);
 
-  const tourTeam = currentAgent
-    ? teamOfAgent(teams, currentAgent.id)
-    : (teams[0] ?? null);
+  // The team the tour teaches on: the one holding the agent the user works
+  // with, else HOME's team. Falling back through `homeTeam` (not just when
+  // there is no current agent) is what makes `tourTeamId === null` mean "this
+  // workspace has no teams at all" — which is the fact the step list needs to
+  // land its shell-only steps on home without reading the stores itself.
+  const tourTeam =
+    (currentAgent ? teamOfAgent(teams, currentAgent.id) : null) ??
+    homeTeam(teams);
   const tourTeamId = tourTeam?.id ?? null;
 
   // `UiTour` re-runs a step's `onEnter` whenever the step OBJECT changes, so a
@@ -56,20 +60,11 @@ export function WorkspaceTourOverlay() {
         t,
         capabilities,
         showAiModels,
-        showOrganization,
         tourTeamId,
         canCreateAgents: canCreate,
         isMobile,
       }),
-    [
-      t,
-      capabilities,
-      showAiModels,
-      showOrganization,
-      tourTeamId,
-      canCreate,
-      isMobile,
-    ],
+    [t, capabilities, showAiModels, tourTeamId, canCreate, isMobile],
   );
 
   return (
@@ -78,7 +73,7 @@ export function WorkspaceTourOverlay() {
       onDismiss={() => {
         setUiTourActive(false);
         if (currentAgent) openAgentSection(currentAgent.id, "routines");
-        else setViewMode(DASHBOARD_VIEW_ID);
+        else openHome();
       }}
     />
   );

@@ -1,94 +1,28 @@
-import type { SidebarLabels, SidebarNavItemEntry } from "@houston-ai/layout";
+import type { SidebarLabels } from "@houston-ai/layout";
 import { WorkspaceSwitcher } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import {
-  Blocks,
-  Boxes,
-  LayoutDashboard,
-  LibraryBig,
-  Settings,
-  Store,
-} from "lucide-react";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
-import type { TeamSectionId } from "../../lib/teams-model";
-import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
-import { SKILLS_VIEW_ID } from "../skills-view/id";
-import { STORE_VIEW_ID } from "../store-view";
 import { CreateTeamDialog } from "./create-team-dialog";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
-/** The namespaces every builder and component in this file reads from. */
-export type SidebarChromeT = TFunction<["shell", "common", "teams"]>;
-
 /**
- * The top-level navigation entries: Mission Control, Integrations, AI Models
- * (Teams-gated), Agent Store, Settings. Usage, Permissions and Admin are NOT
- * here since HOU-788 — they are sections inside Settings.
+ * The namespaces every builder and component in the rail's chrome reads from.
+ * `dashboard` is here for one string: the Inbox row's unread-mention count,
+ * whose copy belongs to the mentions surface that also feeds the header bell.
+ * `settings` is here for two: the Admin and Permissions rows keep the names the
+ * Settings index already owned for those screens rather than growing a second
+ * pair of strings for the same two destinations.
  */
-export function buildSidebarNavItems(args: {
-  t: SidebarChromeT;
-  showAiModels: boolean;
-  setViewMode: (view: string) => void;
-  /** Opens Settings on its INDEX — see `UIState.openSettings`. Never plain
-   *  `setViewMode("settings")`: that would be a dead click while a section is
-   *  open, leaving the user staring at the section they wanted to leave. */
-  openSettingsIndex: () => void;
-}): SidebarNavItemEntry[] {
-  const { t, showAiModels, setViewMode, openSettingsIndex } = args;
-  return [
-    {
-      id: "dashboard",
-      label: t("shell:sidebar.missionControl"),
-      icon: <LayoutDashboard className="h-4 w-4" />,
-      onClick: () => setViewMode("dashboard"),
-      dataAttrs: tourAnchor("nav-dashboard"),
-    },
-    {
-      id: INTEGRATIONS_VIEW_ID,
-      label: t("shell:sidebar.integrations"),
-      icon: <Blocks className="h-4 w-4" />,
-      onClick: () => setViewMode(INTEGRATIONS_VIEW_ID),
-      dataAttrs: tourAnchor("nav-integrations"),
-    },
-    {
-      id: SKILLS_VIEW_ID,
-      label: t("shell:sidebar.skills"),
-      icon: <LibraryBig className="h-4 w-4" />,
-      onClick: () => setViewMode(SKILLS_VIEW_ID),
-      dataAttrs: tourAnchor("nav-skills"),
-    },
-    ...(showAiModels
-      ? [
-          {
-            id: "ai-hub",
-            label: t("shell:sidebar.aiModels"),
-            icon: <Boxes className="h-4 w-4" />,
-            onClick: () => setViewMode("ai-hub"),
-            dataAttrs: tourAnchor("nav-ai-hub"),
-          },
-        ]
-      : []),
-    {
-      id: STORE_VIEW_ID,
-      label: t("shell:sidebar.agentStore"),
-      icon: <Store className="h-4 w-4" />,
-      onClick: () => setViewMode(STORE_VIEW_ID),
-      dataAttrs: tourAnchor("nav-agent-store"),
-    },
-    {
-      id: "settings",
-      label: t("shell:sidebar.settings"),
-      icon: <Settings className="h-4 w-4" />,
-      onClick: openSettingsIndex,
-      dataAttrs: tourAnchor("nav-settings"),
-    },
-  ];
-}
+export type SidebarChromeT = TFunction<
+  ["shell", "common", "teams", "dashboard", "settings"]
+>;
 
 /**
- * Localized `AppSidebar` labels (agent row actions + team actions). The
+ * Localized `AppSidebar` labels (team actions, and the words the list itself
+ * uses). An agent row has no actions to name any more: it is renamed,
+ * recoloured, moved and deleted on its team's Manage agents page. The
  * trailing block is named after the workspace and passed as `defaultGroup`, so
  * there is no anonymous "ungrouped" header to label — the library dropped that
  * branch and its untranslated string with it.
@@ -96,9 +30,6 @@ export function buildSidebarNavItems(args: {
 export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
   return {
     addItem: t("shell:sidebar.addAgent"),
-    moreOptions: t("shell:sidebar.agentMenu"),
-    renameItem: t("common:actions.rename"),
-    deleteItem: t("common:actions.delete"),
     collapseSidebar: t("shell:sidebar.collapse"),
     createGroup: t("shell:sidebar.newTeam"),
     renameGroup: t("shell:sidebar.teams.rename"),
@@ -106,27 +37,8 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
     // Only ever rendered for a team whose `affordances.leave` is explicitly
     // true, which is a server-teams host talking about a team you joined.
     leaveGroup: t("shell:sidebar.teams.leave"),
-    editGroupContext: t("shell:sidebar.teams.editContext"),
     groupMenu: t("shell:sidebar.teams.menu"),
     newGroupPlaceholder: t("shell:sidebar.teams.namePlaceholder"),
-    emptyGroupHint: t("shell:sidebar.teams.emptyHint"),
-  };
-}
-
-/**
- * The label for every team section, including the ones a given team does not
- * offer this caller (`visibleTeamSectionsForTeam` decides which get a row, per
- * team). Complete by construction, so a section that starts rendering never
- * ships without its translation.
- */
-export function buildTeamSectionLabels(
-  t: SidebarChromeT,
-): Record<TeamSectionId, string> {
-  return {
-    "mission-control": t("shell:sidebar.teamSections.missionControl"),
-    routines: t("shell:sidebar.teamSections.routines"),
-    files: t("shell:sidebar.teamSections.files"),
-    settings: t("shell:sidebar.teamSections.settings"),
   };
 }
 

@@ -1,10 +1,14 @@
 import type { Agent } from "../../lib/types.ts";
 
 /**
- * The two translations between the store's team agent filter and the mission
- * board's. They speak different languages on purpose: the sidebar sets the
- * filter by clicking an agent ROW, so the store holds an agent id, while the
- * board's filter menu works in folder paths (the key every mission card carries).
+ * Which agent a team surface is narrowed to, in the two vocabularies the app
+ * speaks. They differ on purpose: a filter is CHOSEN by agent (the rail's row,
+ * a section's own dropdown), so it is held as an agent id, while a mission
+ * board FILTERS on a folder path — the key every mission card carries.
+ *
+ * The same two translations serve the store's team-wide pin (the board) and a
+ * section's own local filter (Routines, Archived), because the question is the
+ * same shape either way; only who owns the answer differs.
  *
  * Pure and DOM-free so the round trip is unit-tested
  * (`app/tests/team-agent-filter-model.test.ts`).
@@ -31,4 +35,20 @@ export function teamFilterAgentId(
 ): string | null {
   if (!folderPath) return null;
   return agents.find((a) => a.folderPath === folderPath)?.id ?? null;
+}
+
+/**
+ * The agent a SECTION-LOCAL filter is showing, or `null` for the whole team.
+ *
+ * An id the team no longer holds resolves to `null` — the same drop rule the
+ * pin gets. A team's roster can change while a section sits open (someone
+ * moves an agent out, a share is revoked), and a filter naming an agent that
+ * is gone would empty the list with a control still claiming to show them.
+ */
+export function sectionFilterAgent(
+  agents: Agent[],
+  agentId: string | null,
+): Agent | null {
+  if (!agentId) return null;
+  return agents.find((a) => a.id === agentId) ?? null;
 }

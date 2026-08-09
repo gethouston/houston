@@ -1,4 +1,32 @@
 import { Badge, cn, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import type { ReactNode } from "react";
+
+/**
+ * The rail's ONE "something is running here" treatment: a ring around whatever
+ * mark sits in the glyph column. An agent row wears it around its avatar; a
+ * FOLDED team's header wears it around the team's glyph, on behalf of the agent
+ * rows it is hiding. Same component, because a second ring drawn a hair
+ * differently would read as a second kind of running.
+ */
+export function RunningRing({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "size-6 shrink-0 rounded-full flex items-center justify-center",
+        "avatar-running-ring",
+      )}
+      title={label}
+    >
+      {children}
+    </span>
+  );
+}
 
 interface AgentSidebarIconProps {
   color?: string;
@@ -17,17 +45,7 @@ export function AgentSidebarIcon({
 
   if (!running) return avatar;
 
-  return (
-    <span
-      className={cn(
-        "size-6 shrink-0 rounded-full flex items-center justify-center",
-        "avatar-running-ring",
-      )}
-      title={runningLabel}
-    >
-      {avatar}
-    </span>
-  );
+  return <RunningRing label={runningLabel}>{avatar}</RunningRing>;
 }
 
 interface NeedsYouChipProps {
@@ -47,23 +65,5 @@ export function NeedsYouChip({ count, label }: NeedsYouChipProps) {
     >
       {count > 99 ? "99+" : count}
     </Badge>
-  );
-}
-
-/** The quiet unread signal: a small filled dot, deliberately NOT a count chip.
- *  `NeedsYouChip` means "act now"; this only means "there is something new here
- *  for you". Different weight, different shape, so the two never read alike.
- *  The count lives in the accessible label, where a screen reader and a hover
- *  can reach it without the rail turning into a wall of numbers. */
-export function UnreadDot({ label }: { label: string }) {
-  return (
-    <span
-      role="img"
-      aria-label={label}
-      title={label}
-      className="flex size-3 shrink-0 items-center justify-center"
-    >
-      <span className="size-1.5 rounded-full bg-action" />
-    </span>
   );
 }

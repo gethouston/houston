@@ -28,6 +28,35 @@ export function hasSpaces(caps: Capabilities | null | undefined): boolean {
 }
 
 /**
+ * Is the ACTIVE space a PERSONAL one — a space holding exactly one human?
+ *
+ * The question only exists on a C8 Spaces host: there the switcher offers a
+ * personal space beside the team spaces, and the gateway gives the personal one
+ * single-player semantics (non-invitable, no roster to manage). On a non-spaces
+ * host there is no personal/team split at all, so the answer is always false and
+ * every people surface behaves exactly as it did before Spaces shipped.
+ *
+ * Every surface that asks the question LIVE reads it here, through
+ * `usePersonalSpace`, and several do: the org dashboard and Permissions drop
+ * out entirely (`canSeeOrganization`), and the C13 people affordances — a
+ * team's Members card, the rail's "Join a team" and its "Leave team" — hide,
+ * because a space with one human has nobody to add, remove, promote or leave a
+ * team to, and the gateway answers those routes `403 personal_space`. The pure
+ * models downstream (`agent-access-model.ts`,
+ * `mission-person-filter-model.ts`) take the ANSWER as a boolean rather than
+ * calling this, which is what keeps them testable without capabilities.
+ *
+ * What a personal space DOES keep is teams themselves: a solo user groups their
+ * own agents with them exactly like anyone else.
+ */
+export function isPersonalSpace(
+  caps: Capabilities | null | undefined,
+  activeSpaceIsTeam: boolean,
+): boolean {
+  return hasSpaces(caps) && !activeSpaceIsTeam;
+}
+
+/**
  * Does this deployment serve C13 agent teams? A FEATURE-DETECT — the gateway
  * describing whether IT owns the teams and their rosters (`GET /v1/org/teams`),
  * not a feature flag we may flip. Absent/false on desktop, self-host and every
@@ -107,38 +136,6 @@ export function canManageMembers(
 }
 
 /**
- * Can this caller SEE the team's billing detail (C8 §Billing wire surface)?
- * Owner/admin only — the gateway 403s a plain member's `GET /v1/org/billing`.
- * Members NEVER see billing data; they render the `OrgSummary.degraded` banner
- * and "ask your owner" copy instead. The admin/owner asymmetry lives elsewhere:
- * an admin sees the summary (this gate) but cannot checkout (owner-only write) —
- * the client shows admins the same "ask the owner to upgrade" copy, just better
- * informed. Single-player has no billing, so `null` role is denied here (unlike
- * `canCreateAgents`, which grants the sole user everything). A cosmetic gate:
- * the gateway is the sole enforcer.
- */
-export function canSeeBilling(caps: Capabilities | null | undefined): boolean {
-  const role = orgRole(caps);
-  return role === "owner" || role === "admin";
-}
-
-/**
- * Whether the C8 Billing surface (the org dashboard tab AND the `useBilling`
- * query) belongs at all: only on a Spaces-capable host (`caps.spaces`), only
- * when the ACTIVE space is a team (personal spaces are free forever and never
- * bill), and only for owner/admin (`canSeeBilling`; members never see billing
- * data — C8 §Client UX). One source of truth for both the tab-visibility gate
- * and the query-fire gate so they can never drift. The gateway is the sole
- * enforcer; this only hides an unusable affordance.
- */
-export function canSeeBillingTab(
-  caps: Capabilities | null | undefined,
-  activeSpaceIsTeam: boolean,
-): boolean {
-  return hasSpaces(caps) && activeSpaceIsTeam && canSeeBilling(caps);
-}
-
-/**
  * Can this caller DELETE the active workspace? Owner only (PRODUCT-1247) — an
  * admin ("Manager" in the Teams UI) may run the space day-to-day but must not
  * be able to destroy it, and a plain member never could. Single-player (null
@@ -150,6 +147,33 @@ export function canDeleteWorkspace(
 ): boolean {
   const role = orgRole(caps);
   return role === null || role === "owner";
+}
+
+/**
+ * Does this caller OWN the space they are looking at, as opposed to merely
+ * running it? The same owner/admin line {@link canDeleteWorkspace} draws, asked
+ * of the ACTIVE space rather than of the workspace record: an admin ("Manager"
+ * in the Teams UI) keeps the space working day to day, but the things that
+ * define what the space IS are the owner's.
+ *
+ * Only the last of the three answers is about roles at all. Not multiplayer
+ * (desktop, self-host, single player) is true: one human, everything here is
+ * theirs, and a role gate with no second person to gate against would only
+ * hide the user's own product from them. A C8 personal space is true for the
+ * same reason one layer up — the gateway gives it single-player semantics
+ * (non-invitable, no roster), so its one human owns it however the org role
+ * happens to read. Everything else is `owner` only.
+ *
+ * Cosmetic: the gateway is the real enforcer, and this only decides whether an
+ * affordance is worth offering.
+ */
+export function isSpaceOwner(
+  caps: Capabilities | null | undefined,
+  activeSpaceIsTeam: boolean,
+): boolean {
+  if (!isMultiplayer(caps)) return true;
+  if (isPersonalSpace(caps, activeSpaceIsTeam)) return true;
+  return orgRole(caps) === "owner";
 }
 
 /**

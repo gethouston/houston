@@ -10,6 +10,11 @@ import type { Agent } from "./types.ts";
  * team id. Unknown or stale ids normalize away silently rather than erroring —
  * the overlay is a preference, never a source of truth.
  *
+ * Six rules: five in {@link resolveServerTeams} and the write-side
+ * {@link normalizeTeamOverlay}. There is no longer a joined/other SPLIT among
+ * them — the visibility filter moved SERVER-side, so a caller is served only
+ * the teams they are part of and the client has nothing left to partition.
+ *
  * Pure and DOM-free so every merge rule below unit-tests under bare Node
  * (`app/tests/server-teams-model.test.ts`). The LOCAL backend
  * (`resolveTeams`) is untouched by any of this: a `TeamView` produced here
@@ -42,8 +47,8 @@ function orderByOverlay(members: Agent[], order: readonly string[]): Agent[] {
 
 /**
  * Merge the server's teams with the local agent store and the ordering overlay
- * into the `TeamView[]` the rail and the team screen render. Seven rules, in
- * the order they apply:
+ * into the `TeamView[]` the rail and the team screen render. Five rules here,
+ * in the order they apply (rule 6 is the write-side {@link normalizeTeamOverlay}):
  *
  * 1. SERVER ORDER WINS. Teams come out in the server's array order (the gateway
  *    already sorts by `(sortOrder, createdAt, id)`); the overlay never reorders
@@ -65,7 +70,18 @@ function orderByOverlay(members: Agent[], order: readonly string[]): Agent[] {
  *    sortOrder}` are the caller's EFFECTIVE values, resolved server-side; the
  *    client re-deriving any of them would get them wrong (an org admin owns
  *    every team, everyone is joined to the default, and the default's
- *    `memberCount` is the whole space's).
+ *    `memberCount` is the whole space's). The team's IDENTITY rides along the
+ *    same way: `icon` and `color` are copied straight off the wire, spread only
+ *    when present, so a team with none keeps them ABSENT rather than gaining
+ *    `undefined`-valued keys — absent is what tells the rail to draw its own
+ *    default, and it is also how the gateway spells "unset".
+ *
+ *    `context` is copied by the SAME spread, and its absence carries more
+ *    weight: the field is a text column with an empty default, so a gateway
+ *    that has it serves it for every team (`""` when nobody wrote one) and only
+ *    a gateway PREDATING it omits the key. That is exactly the feature
+ *    detection `teamContextSource` reads, so the key must never be manufactured
+ *    here with an `undefined` value.
  */
 export function resolveServerTeams(
   serverTeams: readonly AgentTeam[],
@@ -90,6 +106,9 @@ export function resolveServerTeams(
       name: team.name,
       agents: orderByOverlay(members, overlayOrderFor(layout, team.id)),
       isDefault: team.isDefault,
+      ...(team.icon === undefined ? {} : { icon: team.icon }),
+      ...(team.color === undefined ? {} : { color: team.color }),
+      ...(team.context === undefined ? {} : { context: team.context }),
       server: {
         joined: team.joined,
         owner: team.owner,
@@ -110,26 +129,7 @@ export function resolveServerTeams(
 }
 
 /**
- * RULE 6. Split the teams into the caller's own and the rest, preserving order:
- * the rail lists `joined` as "Your teams" and files `other` under a collapsed
- * "Other teams" disclosure. The test is `server?.joined !== false`, so with no
- * server facts at all (the LOCAL backend) everything is joined and the split is
- * a no-op, which is what keeps the off-capability sidebar byte-identical.
- */
-export function partitionTeams(teams: readonly TeamView[]): {
-  joined: TeamView[];
-  other: TeamView[];
-} {
-  const joined: TeamView[] = [];
-  const other: TeamView[] = [];
-  for (const team of teams) {
-    (team.server?.joined !== false ? joined : other).push(team);
-  }
-  return { joined, other };
-}
-
-/**
- * RULE 7. What gets PERSISTED after an overlay write. It may only ADJUST the
+ * RULE 6. What gets PERSISTED after an overlay write. It may only ADJUST the
  * rows that describe a LIVE server team, and it must carry every other stored
  * group through UNTOUCHED, in place.
  *

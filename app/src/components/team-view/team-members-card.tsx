@@ -10,6 +10,7 @@ import {
 } from "../../hooks/queries/use-agent-teams";
 import { useUserProfiles } from "../../hooks/queries/use-user-profiles";
 import { avatarUrlFromProfiles } from "../../hooks/queries/user-profiles-map";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useSession } from "../../hooks/use-session";
 import type { TeamView } from "../../lib/teams-model";
 import { TeamMemberRowView } from "./team-member-row.tsx";
@@ -44,6 +45,11 @@ function MemberSkeleton() {
  * claim a team nobody is in charge of. The default team goes further and has no
  * rows to read at all, so it says why instead of showing an empty list.
  *
+ * In a PERSONAL space the card does not exist. One human is in it, so there is
+ * nobody to list or manage, and the three member-management routes are the only
+ * thing the gateway refuses there (`403 personal_space`) — the teams themselves
+ * are as usable as in any other space. `teamMembersView` owns that decision.
+ *
  * Every write here is owner-only and every one of them can still be refused by
  * the gateway, which is the real enforcer; the mutation hooks already own that
  * surface (an expected refusal is an informational toast, anything else the red
@@ -62,7 +68,8 @@ export function TeamMembersCard({
   const { t } = useTranslation("teams");
   const { data: session } = useSession();
   const selfId = session?.uid ?? null;
-  const view = teamMembersView(team);
+  const personalSpace = usePersonalSpace();
+  const view = teamMembersView(team, personalSpace);
 
   const { data, isLoading, isError } = useAgentTeamMembers(
     team.id,
@@ -86,7 +93,7 @@ export function TeamMembersCard({
 
   if (!view.visible) return null;
 
-  const leaveUserId = teamLeaveUserId(team, selfId);
+  const leaveUserId = teamLeaveUserId(team, selfId, personalSpace);
   const pending = setOwner.isPending || removeMember.isPending;
 
   return (

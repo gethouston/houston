@@ -11,10 +11,12 @@ import {
 import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCreateTeam } from "../../hooks/queries/use-orgs";
+import { openHome } from "../../lib/home-nav";
 import { orgSlugFromWorkspaceId } from "../../lib/space-id";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { ORGANIZATION_VIEW_ID } from "../organization/id";
 import { MAX_TEAM_NAME_LENGTH, validateTeamName } from "./create-team-model";
 
 interface Props {
@@ -42,7 +44,6 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
   const loadAgents = useAgentStore((s) => s.loadAgents);
   const addToast = useUIStore((s) => s.addToast);
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const openSettings = useUIStore((s) => s.openSettings);
   const [name, setName] = useState("");
 
   // Start every open with a clean field; reset on close so a reopen after a
@@ -80,22 +81,26 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
           // from Settings (or any non-home view, or an agent that belonged to
           // the old space and the reload above just dropped), the view would
           // stay put and the whole create reads as a silent failure. Land them
-          // in the new team's home — the same "dashboard" the shell resets a
-          // blocked view to — so the switch is visible. The toast's Invite
-          // action then takes them on to Admin from home.
-          setViewMode("dashboard");
+          // on home — the same place the shell sends a blocked view — so the
+          // switch is visible. The new space's teams may not have resolved yet,
+          // in which case home IS the Inbox and the shell's boot rule moves
+          // them on to the first team's Mission Control the moment it lands;
+          // that composition is deliberate. The toast's Invite action then
+          // takes them on to Admin from home.
+          openHome();
         }
-        // Point the user at the next step: the Admin dashboard's People card,
-        // now guaranteed visible because the active space is the fresh team.
-        // The switch (setCurrent) already happened above, so the org view is
-        // reachable the moment they click.
+        // Point the user at the next step: the Admin screen's People card, now
+        // guaranteed visible because the active space is the fresh team. The
+        // switch (setCurrent) already happened above, so `showOrganization` has
+        // resolved true and the kept-alive Admin screen is mounted by the time
+        // they click.
         addToast({
           title: t("teams:createTeam.successTitle", { name: org.name }),
           description: t("teams:createTeam.successBody"),
           variant: "success",
           action: {
             label: t("teams:createTeam.successAction"),
-            onClick: () => openSettings("organization"),
+            onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
           },
         });
         onOpenChange(false);

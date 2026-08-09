@@ -59,7 +59,7 @@ export function SkillCatalogGrid({
   columns = "responsive",
 }: SkillCatalogGridProps) {
   return (
-    <CatalogGrid className={columns === 1 ? "lg:grid-cols-1" : undefined}>
+    <CatalogGrid columns={columns === 1 ? 1 : "auto"}>
       {skills.map((skill) => (
         <SkillCatalogRow
           key={skill.name}

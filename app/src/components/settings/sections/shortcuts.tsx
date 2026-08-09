@@ -12,8 +12,8 @@ interface Row {
 const NAV_ROWS: Row[] = [
   { action: "palette", labelKey: "shell:cheatsheet.rows.palette" },
   {
-    action: "missionControl",
-    labelKey: "shell:cheatsheet.rows.missionControl",
+    action: "inbox",
+    labelKey: "shell:cheatsheet.rows.inbox",
   },
   { action: "newMission", labelKey: "shell:cheatsheet.rows.newMission" },
 ];

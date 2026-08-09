@@ -8,12 +8,17 @@ import {
   createGroupOp,
   DEFAULT_SIDEBAR_LAYOUT,
   deleteGroupOp,
+  type ExpandOnlyTeam,
+  expandOnlyTeamOp,
   moveGroupOp,
   moveItemOp,
   normalizeSidebarLayout,
   remapAgentIdOp,
   renameGroupOp,
+  setDefaultContextOp,
   setGroupContextOp,
+  setGroupIdentityOp,
+  toggleDefaultCollapsedOp,
   toggleGroupCollapsedOp,
 } from "../lib/sidebar-layout-ops";
 import { tauriSidebar } from "../lib/tauri";
@@ -68,26 +73,27 @@ export interface UseSidebarLayout {
   renameGroup: (id: string, name: string) => void;
   remapAgentId: (oldId: string, newId: string) => void;
   setGroupContext: (id: string, context: string) => void;
+  /** Set a team's glyph + color: `null` CLEARS a field, a string sets it, an
+   *  omitted field is untouched. */
+  setGroupIdentity: (
+    id: string,
+    patch: { icon?: string | null; color?: string | null },
+  ) => void;
   deleteGroup: (id: string) => void;
   toggleGroupCollapsed: (id: string) => void;
+  /** Fold/unfold the DEFAULT team block, which owns no group row to hold the
+   *  flag (it is the workspace itself); absent reads as expanded. */
+  toggleDefaultCollapsed: () => void;
+  /** The rail's accordion: leave one team open and fold every other, as ONE
+   *  write. See {@link expandOnlyTeamOp} for why it cannot be N toggles. */
+  expandOnlyTeam: (args: ExpandOnlyTeam) => void;
+  /** Set the DEFAULT team's shared context — `setGroupContext` for the team
+   *  that owns no group row, optimistic in exactly the same way. */
+  setDefaultContext: (context: string) => void;
+  /** Reorder an agent WITHIN its own team. A drag cannot move an agent between
+   *  teams any more, so `dest.groupId` is always the team it was already in. */
   moveItem: (agentId: string, dest: ItemDest) => void;
   moveGroup: (groupId: string, beforeGroupId: string | null) => void;
-  /**
-   * The seam every helper above is built on, exposed for the ONE caller that
-   * needs more than they offer: apply a pure op to the FRESHEST cached layout,
-   * persist the result, and hand back the layout it REPLACED (`undefined` when
-   * there is no workspace and nothing was written).
-   *
-   * `normalizeWith` overrides the ambient normalizer for this one write, and
-   * `null` writes the op's output verbatim. Both halves exist for a CROSS-TEAM
-   * drop (`use-server-team-actions.ts`): it must be pruned against the roster
-   * the move ASSERTS rather than the one still cached, and it must be
-   * restorable byte-for-byte when the gateway refuses that move.
-   */
-  applyOp: (
-    op: (current: SidebarLayout) => SidebarLayout,
-    normalizeWith?: ((next: SidebarLayout) => SidebarLayout) | null,
-  ) => SidebarLayout | undefined;
 }
 
 /**
@@ -138,22 +144,12 @@ export function useSidebarLayout(
     },
   });
 
-  /** Apply a pure op to the FRESHEST cached layout, then mutate; return the
-   *  layout it replaced. Reading the cache (not the closed-over `layout`) keeps
-   *  overlapping drags composing. `normalizeWith` defaults to the ambient
-   *  normalizer and `null` opts out of it entirely. */
-  const apply = (
-    op: (current: SidebarLayout) => SidebarLayout,
-    normalizeWith:
-      | ((next: SidebarLayout) => SidebarLayout)
-      | null
-      | undefined = normalize,
-  ): SidebarLayout | undefined => {
-    if (!workspaceId) return undefined;
-    const current = normalizeSidebarLayout(qc.getQueryData(key));
-    const next = op(current);
-    mutation.mutate(normalizeWith ? normalizeWith(next) : next);
-    return current;
+  /** Apply a pure op to the FRESHEST cached layout, then mutate. Reading the
+   *  cache (not the closed-over `layout`) keeps overlapping drags composing. */
+  const apply = (op: (current: SidebarLayout) => SidebarLayout): void => {
+    if (!workspaceId) return;
+    const next = op(normalizeSidebarLayout(qc.getQueryData(key)));
+    mutation.mutate(normalize ? normalize(next) : next);
   };
 
   return {
@@ -169,9 +165,14 @@ export function useSidebarLayout(
       apply((c) => remapAgentIdOp(c, oldId, newId)),
     setGroupContext: (id, context) =>
       apply((c) => setGroupContextOp(c, id, context)),
+    setGroupIdentity: (id, patch) =>
+      apply((c) => setGroupIdentityOp(c, id, patch)),
     deleteGroup: (id) => apply((c) => deleteGroupOp(c, id)),
     toggleGroupCollapsed: (id) => apply((c) => toggleGroupCollapsedOp(c, id)),
-    applyOp: apply,
+    toggleDefaultCollapsed: () => apply((c) => toggleDefaultCollapsedOp(c)),
+    expandOnlyTeam: (args) => apply((c) => expandOnlyTeamOp(c, args)),
+    setDefaultContext: (context) =>
+      apply((c) => setDefaultContextOp(c, context)),
     moveItem: (agentId, dest) => apply((c) => moveItemOp(c, agentId, dest)),
     moveGroup: (groupId, beforeGroupId) =>
       apply((c) => moveGroupOp(c, groupId, beforeGroupId)),

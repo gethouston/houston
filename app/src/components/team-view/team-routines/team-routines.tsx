@@ -1,18 +1,19 @@
-import { Button, cn } from "@houston-ai/core";
+import { cn } from "@houston-ai/core";
 import { RoutinesGrid } from "@houston-ai/routines";
-import { Plus } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineLabels } from "../../../hooks/use-routine-labels";
 import { useTimezonePreference } from "../../../hooks/use-timezone-preference";
 import { allAgentReadsFailed } from "../../../lib/agent-read-failures";
 import type { TeamView } from "../../../lib/teams-model";
-import { useUIStore } from "../../../stores/ui";
 import { useRoutineLeadingIcon } from "../../agent/routine-leading-icon";
 import { AgentReadsFailed } from "../../agent-reads-failed";
+import { PageHeaderTools } from "../../shell/page-header/page-header-tools";
 import { teamScopedAgents } from "../team-agent-choice";
+import { TeamAgentFilterCapsule } from "../team-agent-filter-capsule";
 import { TeamRoutinesEmpty } from "../team-empty";
 import { TeamRoutineOwnerChip } from "./team-routine-owner-chip";
+import { TeamRoutinesCreateButton } from "./team-routines-create-button";
 import { TeamRoutinesFooter } from "./team-routines-footer";
 import { TeamRoutinesHeader } from "./team-routines-header";
 import { useTeamGridLabels } from "./use-team-grid-labels";
@@ -36,16 +37,21 @@ export function TeamRoutines({ team }: { team: TeamView }) {
   const { t } = useTranslation(["teams", "routines"]);
   const labels = useRoutineLabels();
   const tz = useTimezonePreference();
-  const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
-  const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
+  // This section's OWN filter, not the team-wide pin: narrowing this list must
+  // not silently narrow the board the user goes back to
+  // (`team-agent-filter-capsule.tsx` says why). It resets with the section,
+  // which remounts per team because `TeamView` keys it on the team id — so a
+  // tab click always opens Routines team-wide.
+  const [filterAgentId, setFilterAgentId] = useState<string | null>(null);
 
-  // The ONE pin every team surface shares: the rail's agent click and this
-  // section's dropdown are the same act, in both directions. Memoized because
-  // it is the dependency every read below memoizes on — a fresh array per
-  // render would rebuild the merged list and re-arm the trigger timeout with it.
+  // Memoized because it is the dependency every read below memoizes on — a
+  // fresh array per render would rebuild the merged list and re-arm the
+  // trigger timeout with it. Narrowing here narrows the FAN-OUT as well as the
+  // rows, and costs nothing to undo: every agent keeps its own query key, so
+  // widening again reads from cache.
   const scoped = useMemo(
-    () => teamScopedAgents(team.agents, teamAgentFilter),
-    [team.agents, teamAgentFilter],
+    () => teamScopedAgents(team.agents, filterAgentId),
+    [team.agents, filterAgentId],
   );
   const data = useTeamRoutinesData(scoped);
   const actions = useTeamRoutineActions(data.list, data.drafts);
@@ -91,10 +97,7 @@ export function TeamRoutines({ team }: { team: TeamView }) {
   const listEmpty = count === 0 && data.drafts.drafts.length === 0;
 
   const createButton = (
-    <Button onClick={host.startNewRoutine}>
-      <Plus className="size-4" />
-      {t("teams:teamView.routines.newRoutine")}
-    </Button>
+    <TeamRoutinesCreateButton onClick={host.startNewRoutine} />
   );
 
   const ownerChipFor = (key: string) => {
@@ -110,13 +113,22 @@ export function TeamRoutines({ team }: { team: TeamView }) {
           host.chatOpen ? "flex-1" : "mx-auto w-full max-w-3xl",
         )}
       >
-        <TeamRoutinesHeader
-          agents={team.agents}
-          pinnedAgentId={teamAgentFilter}
-          onPinAgent={setTeamAgentFilter}
-          count={count}
-          createButton={listEmpty ? undefined : createButton}
-        />
+        <PageHeaderTools>
+          {(oneRow) => (
+            <TeamRoutinesHeader
+              variant={oneRow ? "strip" : "row"}
+              count={count}
+              agentFilter={
+                <TeamAgentFilterCapsule
+                  agents={team.agents}
+                  selectedAgentId={filterAgentId}
+                  onSelect={setFilterAgentId}
+                />
+              }
+              createButton={listEmpty ? undefined : createButton}
+            />
+          )}
+        </PageHeaderTools>
 
         {/* The strip pays the list's own gutter, so its left edge lands on the
             rows' rather than four pixels inside them. */}

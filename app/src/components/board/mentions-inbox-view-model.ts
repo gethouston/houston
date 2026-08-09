@@ -16,8 +16,8 @@ import type {
  */
 
 /**
- * The unread count as it appears on the Mentions pill. Clamped because the
- * control shares one line with the Mission Control title and the search field:
+ * The unread count as it appears on the notifications bell. Clamped because the
+ * bell shares one line with a board's title, its filters and the search field:
  * a four-digit backlog would push the title off-screen, and past "lots" the
  * exact number tells the user nothing they act on differently.
  */

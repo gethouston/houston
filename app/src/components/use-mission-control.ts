@@ -43,6 +43,7 @@ import { DEFAULT_TURN_MODE } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
 import { mergeWarmingRows } from "../lib/warming-board-rows";
 import { useUIStore } from "../stores/ui";
+import { agentsByPath, missionCardAgentName } from "./board/mission-card-agent";
 import { useMcOpenConversation } from "./board/use-mc-open-conversation";
 import { resolveMissionControlSendOverrides } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
@@ -126,11 +127,11 @@ export function useMissionControl(agents: Agent[]) {
   );
   const { profiles } = useUserProfiles(contributorIds);
 
-  const agentColorMap = useMemo(() => {
-    const m: Record<string, string | undefined> = {};
-    for (const a of agents) m[a.folderPath] = a.color;
-    return m;
-  }, [agents]);
+  // ONE roster lookup behind both halves of a card's identity. The colour was
+  // always taken from here; the NAME used to come off the swept row, which the
+  // web adapter stamps from a registry that does not know the host's agents —
+  // so every card read "Houston". See `mission-card-agent.ts`.
+  const agentsByFolderPath = useMemo(() => agentsByPath(agents), [agents]);
   const items: KanbanItem[] = useMemo(() => {
     if (!convos) return [];
     const map: Record<string, string> = {};
@@ -162,9 +163,13 @@ export function useMissionControl(agents: Agent[]) {
           // Decode a Skill / attachment first-message marker to the user's
           // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
-          group: c.agent_name,
+          group: missionCardAgentName(
+            agentsByFolderPath,
+            c.agent_path,
+            c.agent_name,
+          ),
           icon: createElement(AgentCardAvatar, {
-            color: agentColorMap[c.agent_path],
+            color: agentsByFolderPath.get(c.agent_path)?.color,
           }),
           status: c.status ?? "",
           updatedAt: c.updated_at ?? new Date().toISOString(),
@@ -184,7 +189,7 @@ export function useMissionControl(agents: Agent[]) {
     pathMapRef.current = map;
     sessionMapRef.current = sessionMap;
     return result;
-  }, [convos, agentColorMap, multiplayer, profiles, t]);
+  }, [convos, agentsByFolderPath, multiplayer, profiles, t]);
 
   // Which conversation is open, and its live feed — including the beat after a
   // create, before the sweep has returned the new mission's row.

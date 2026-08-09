@@ -1,6 +1,5 @@
 import { canSeeOrganization } from "../components/organization/org-view-model.ts";
-import { showComputeSection } from "../components/time-worked/compute-usage-model.ts";
-import { canSeeAiModelsPage } from "../lib/org-roles.ts";
+import { canSeeAiModelsPage, isSpaceOwner } from "../lib/org-roles.ts";
 import { isTeamWorkspace } from "../lib/space-id.ts";
 import { useWorkspaceStore } from "../stores/workspaces.ts";
 import { useCapabilities } from "./use-capabilities.ts";
@@ -8,9 +7,10 @@ import { useCapabilities } from "./use-capabilities.ts";
 /** The Teams gates that decide which non-agent surfaces this caller can reach. */
 export interface SurfaceGates {
   /**
-   * Admin + Permissions. Multiplayer owner/admin only, and on a C8 Spaces host
-   * only while the ACTIVE space is a team (a personal space has single-player
-   * semantics: non-invitable, no roster, no policy).
+   * Admin, the lead row of the rail's "Workspace" band. Multiplayer owner/admin
+   * only, and on a C8 Spaces host only while the ACTIVE space is a team (a
+   * personal space has single-player semantics: non-invitable, no roster, no
+   * policy).
    */
   showOrganization: boolean;
   /**
@@ -21,14 +21,17 @@ export interface SurfaceGates {
    */
   showAiModels: boolean;
   /**
-   * Settings > Time worked. Only a deployment that meters how long agents run
-   * (`capabilities.computeUsage`, hosted cloud only) has anything to show, and
-   * the screen holds nothing else, so everywhere else must not offer it.
+   * The Skills library, in the rail's "Workspace" run. Skills are what every
+   * agent in the space can do, so editing them edits everyone's agents at once:
+   * that belongs to whoever OWNS the space (`isSpaceOwner`), not to the manager
+   * who runs it and not to a member who uses it. A RAIL gate only — nothing
+   * bounces a caller out of the screen, because the gateway is the enforcer and
+   * a hidden nav row is the whole of the claim being made here.
    */
-  showTimeWorked: boolean;
+  showSkills: boolean;
   /**
-   * False while the capabilities the gates read are still loading. All three
-   * flags above are computed from `capabilities`, which is `null` until the
+   * False while the capabilities the gates read are still loading. Every flag
+   * above is computed from `capabilities`, which is `null` until the
    * fetch resolves, so an unresolved gate is indistinguishable from a denied
    * one.
    * Anything that DROPS a surface on a false gate (rather than merely hiding an
@@ -57,7 +60,7 @@ export function useSurfaceGates(): SurfaceGates {
   return {
     showOrganization: canSeeOrganization(capabilities, isTeam),
     showAiModels: canSeeAiModelsPage(capabilities),
-    showTimeWorked: showComputeSection(capabilities),
+    showSkills: isSpaceOwner(capabilities, isTeam),
     ready: !isLoading,
   };
 }

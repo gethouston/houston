@@ -75,6 +75,7 @@ export * from "./cp/org-teams";
 export * from "./cp/orgs";
 export * from "./cp/retry";
 export * from "./cp/runtime-clients";
+export * from "./cp/sidebar-layout";
 export * from "./cp/skills";
 export * from "./cp/spaces-billing";
 export * from "./cp/transient-retry";

@@ -1,5 +1,5 @@
 import type { AuditEntry, Capabilities } from "@houston-ai/engine-client";
-import { canSeeMembers, hasSpaces } from "../../lib/org-roles.ts";
+import { canSeeMembers, isPersonalSpace } from "../../lib/org-roles.ts";
 
 /**
  * Pure, DOM-free logic for the Organization dashboard (Teams v2 + C8 billing).
@@ -8,32 +8,44 @@ import { canSeeMembers, hasSpaces } from "../../lib/org-roles.ts";
  */
 
 /**
- * The sections of the Organization dashboard, in tab order. Permissions (who can
- * use which agent, each agent's ceilings, the org-wide defaults) moved OUT to
- * the top-level Permissions view; the Organization dashboard is now membership +
- * insights + billing only.
+ * The four sections of the Admin (Organization) dashboard. Analytics is the one
+ * measurement section (activity feed, message usage, time worked as its lenses);
+ * Company context is the workspace half of the standing context every agent
+ * starts a turn with. Per-agent policy is NOT here: it is reached through each
+ * team's Manage agents page.
  */
-export type OrgTabId = "people" | "activity" | "usage" | "billing";
+export type OrgTabId = "people" | "billing" | "analytics" | "companyContext";
 
 /**
- * The always-present sections, in display order. `billing` (C8) is appended
- * conditionally by {@link orgTabIds} only on a Spaces host, in a team space, for
- * owner/admin.
+ * The always-present sections. `billing` (C8) is the only conditional one, added
+ * by {@link orgTabIds} on a Spaces host, in a team space, for owner/admin — see
+ * that function for the authoritative display order.
  */
 export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "people",
-  "activity",
-  "usage",
+  "analytics",
+  "companyContext",
 ] as const;
 
 /**
- * The dashboard's tab ids in display order: the fixed set, plus `billing` when
- * `canSeeBillingTab` (in `lib/org-roles`) holds. Pure so the tab set is
- * unit-tested without React; the view maps each id to its component + `t()`
- * label.
+ * The dashboard's tab ids in display order, written out literally so the order
+ * reads off the source: People, then Billing when `canSeeBillingTab` (in
+ * `lib/billing-gates`) holds, then Analytics, then Company context. Pure so the
+ * tab set is unit-tested without React; the view maps each id to its component +
+ * `t()` label.
+ *
+ * Company context takes no gate of its own on purpose: the whole Admin view is
+ * mounted only behind {@link canSeeOrganization}, which is false on a personal
+ * space (`isPersonalSpace`), so "org spaces only" is already enforced one level
+ * up and a second branch here would be dead code.
  */
 export function orgTabIds(gates: { billing: boolean }): readonly OrgTabId[] {
-  return [...ORG_TAB_IDS, ...(gates.billing ? (["billing"] as const) : [])];
+  return [
+    "people",
+    ...(gates.billing ? (["billing"] as const) : []),
+    "analytics",
+    "companyContext",
+  ];
 }
 
 /**
@@ -58,7 +70,7 @@ export function canSeeOrganization(
   caps: Capabilities | null | undefined,
   activeSpaceIsTeam: boolean,
 ): boolean {
-  if (hasSpaces(caps) && !activeSpaceIsTeam) return false;
+  if (isPersonalSpace(caps, activeSpaceIsTeam)) return false;
   return canSeeMembers(caps);
 }
 

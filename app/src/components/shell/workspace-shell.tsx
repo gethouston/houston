@@ -49,16 +49,18 @@ export function WorkspaceShell({
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
   );
-  // `showAiModels` guards the AI Models hub render so a stale `viewMode` can
-  // never show it to a plain member (the sidebar already hides the entry) — the
-  // hub is owner/admin only in a Teams workspace (org-level providers + admin
-  // model policy).
-  const { showAiModels } = useSurfaceGates();
+  // The gated top-level screens. `showAiModels` keeps a stale `viewMode` from
+  // showing the AI Models hub to a plain member (it is owner/admin only in a
+  // Teams workspace: org-level providers + admin model policy);
+  // `showOrganization` does the same for Admin (multiplayer owner/admin, and a
+  // TEAM active space on a Spaces host). `ready` says whether the gates mean
+  // anything yet, so the guard waits instead of bouncing a user mid-load.
+  const { showAiModels, showOrganization, ready } = useSurfaceGates();
   // Keying the kept-alive set by workspace drops every cached screen when the
   // user switches workspace/space: their contents are workspace-scoped.
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
-  useWorkspaceViewGuards(showAiModels);
+  useWorkspaceViewGuards({ showAiModels, showOrganization, ready });
   useKeyboardShortcuts();
 
   const isMobile = useIsMobile();
@@ -105,7 +107,10 @@ export function WorkspaceShell({
                   <KeepAliveViews
                     key={currentWorkspace?.id ?? "no-workspace"}
                     activeId={viewMode}
-                    views={topLevelScreenViews({ showAiModels })}
+                    views={topLevelScreenViews({
+                      showAiModels,
+                      showOrganization,
+                    })}
                   />
                 </div>
               </main>

@@ -2,18 +2,17 @@ import type {
   SidebarDefaultGroupView,
   SidebarGroupView,
   SidebarItem,
-  SidebarNavItemEntry,
+  SidebarNavSection,
 } from "@houston-ai/layout";
 import { AppSidebar } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
-import type { TeamView } from "../../lib/teams-model";
 import type { Workspace } from "../../lib/types";
 import { TEAM_NAME_MAX_RUNES } from "../team-view/team-members-model";
 import { SidebarInviteInbox } from "./pending-invites";
 import { buildSidebarLabels, SidebarWorkspaceHeader } from "./sidebar-chrome";
+import { SidebarCreateMenu } from "./sidebar-create-menu";
 import { SidebarFooter } from "./sidebar-footer";
-import { SidebarNewTeamButton } from "./sidebar-new-team-button";
 import type { ServerTeamActions } from "./use-server-team-actions";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
@@ -26,22 +25,26 @@ export interface SidebarRailModel {
   onExpand: () => void;
   onCreateWorkspace: () => void;
   onSwitchWorkspace: (id: string) => void;
-  navItems: SidebarNavItemEntry[];
+  navSections: SidebarNavSection[];
   activeNavId: string | undefined;
   teamActions: ServerTeamActions;
   items: SidebarItem[];
   groups: SidebarGroupView[];
   defaultGroup: SidebarDefaultGroupView | undefined;
-  /** The teams of this space the caller has not joined. */
-  otherTeams: TeamView[];
   selectedAgentId: string | null;
   onSelectAgent: (id: string) => void;
-  onToggleGroupCollapsed: (id: string) => void;
-  onEditGroupContext: (id: string) => void;
+  /** A team's name was clicked. What that does is the four-arm grammar in
+   *  `lib/team-header-click.ts`, executed by `use-sidebar-teams-model.ts`. */
+  onActivateGroup: (id: string) => void;
+  /** The DEFAULT block's name was clicked (it hands back no id). */
+  onActivateDefault: () => void;
+  /** Fold the whole "Your teams" list (persisted in the UI store). */
+  sectionCollapsed: boolean;
+  onToggleSectionCollapsed: () => void;
+  onNewTeam: (() => void) | undefined;
+  onAddAgentToTeam: ((teamId: string | null) => void) | undefined;
   /** Absent when this caller may not create agents. */
   onAddAgent: (() => void) | undefined;
-  onRenameAgent: (id: string, name: string) => void;
-  onDeleteAgent: (id: string) => void;
 }
 
 /**
@@ -62,7 +65,7 @@ export function SidebarRail({
   gutterChildren,
 }: {
   model: SidebarRailModel;
-  t: TFunction<["shell", "common", "portable", "teams", "agents"]>;
+  t: TFunction<["shell", "common", "portable", "teams", "agents", "dashboard"]>;
   /** Hosted in the mobile drawer (always expanded, no collapse toggle). */
   mobile: boolean;
   /** The floating "screen" the desktop rail sits beside. */
@@ -76,20 +79,21 @@ export function SidebarRail({
     onExpand,
     onCreateWorkspace,
     onSwitchWorkspace,
-    navItems,
+    navSections,
     activeNavId,
     teamActions,
     items,
     groups,
     defaultGroup,
-    otherTeams,
     selectedAgentId,
     onSelectAgent,
-    onToggleGroupCollapsed,
-    onEditGroupContext,
+    onActivateGroup,
+    onActivateDefault,
+    sectionCollapsed,
+    onToggleSectionCollapsed,
+    onNewTeam,
+    onAddAgentToTeam,
     onAddAgent,
-    onRenameAgent,
-    onDeleteAgent,
   } = model;
   const effectiveCollapsed = mobile ? false : collapsed;
 
@@ -118,36 +122,38 @@ export function SidebarRail({
           onExpand={onExpand}
         />
       }
-      navItems={navItems}
+      navSections={navSections}
       activeNavId={activeNavId}
       sectionLabel={t("shell:sidebar.yourTeams")}
+      // ONE control on the band: everything a user can ADD to this rail. The
+      // menu itself decides whether there is a choice to make, and collapses
+      // to a plain button when there is only one thing to create.
       sectionAction={
-        teamActions.canCreateTeam ? (
-          <SidebarNewTeamButton
-            label={t("shell:sidebar.newTeam")}
-            onClick={teamActions.createTeam}
-          />
-        ) : undefined
+        <SidebarCreateMenu
+          labels={{
+            menu: t("shell:sidebar.createMenu"),
+            newAgent: t("shell:sidebar.addAgent"),
+            newTeam: t("shell:sidebar.newTeam"),
+          }}
+          onAddAgent={onAddAgent}
+          onNewTeam={onNewTeam}
+        />
       }
+      sectionCollapsed={sectionCollapsed}
+      onToggleSectionCollapsed={onToggleSectionCollapsed}
       items={items}
-      // The draft team (a server host between "New team" and the first typed
-      // name) is a LOCAL row appended to the real ones, so it renders and
-      // renames exactly like a team without existing as one.
-      groups={
-        teamActions.draftGroup ? [...groups, teamActions.draftGroup] : groups
-      }
+      groups={groups}
       defaultGroup={defaultGroup}
       // The gateway's own ceiling, counted in RUNES like the gateway counts it,
       // so the inline rename cannot compose a name the write would refuse.
       groupNameMaxRunes={TEAM_NAME_MAX_RUNES}
-      renamingGroupId={teamActions.renamingGroupId}
-      onRenamingGroupIdHandled={teamActions.onRenamingGroupIdHandled}
-      onToggleGroupCollapsed={onToggleGroupCollapsed}
-      onEditGroupContext={onEditGroupContext}
+      onActivateGroup={onActivateGroup}
+      onActivateDefault={onActivateDefault}
       onRenameGroup={teamActions.renameGroup}
       onDeleteGroup={teamActions.deleteGroup}
       onLeaveGroup={teamActions.leaveGroup}
-      onCancelRenameGroup={teamActions.cancelRenameGroup}
+      // A drag reorders an agent inside its OWN team and nothing more: moving
+      // an agent between teams is a named action on the team screen.
       onMoveItem={teamActions.moveItem}
       // Reordering a team goes through the team actions on BOTH backends: on a
       // server host it is a `sortOrder` write, not a stored-layout one, and
@@ -156,13 +162,10 @@ export function SidebarRail({
       selectedId={selectedAgentId}
       onSelect={onSelectAgent}
       onAdd={onAddAgent}
+      onAddToGroup={onAddAgentToTeam}
       addItemDataAttrs={tourAnchor("newAgent")}
-      onRename={onRenameAgent}
-      onDelete={onDeleteAgent}
       labels={buildSidebarLabels(t)}
-      footer={
-        <SidebarFooter collapsed={effectiveCollapsed} otherTeams={otherTeams} />
-      }
+      footer={<SidebarFooter collapsed={effectiveCollapsed} />}
     >
       {gutterChildren}
     </AppSidebar>

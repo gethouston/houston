@@ -16,25 +16,18 @@ import { useMissionControlSource } from "../board/use-mission-control-source";
  * This board is the whole of a kept-alive top-level screen, so it rides
  * `MissionBoard`'s own `useIsActiveView` signal to release the shell detail
  * panel when the team view hides (HOU-1165). That covers the ACTIVE board
- * only; the team's archive carries its own release, in
+ * only; the Archived SECTION carries its own release, in
  * `MissionControlArchived`.
  */
 export function TeamMissionBoard({
   agents,
   scope,
-  onShowArchived,
 }: {
   /** The FULL workspace roster: the sweep spans it, the scope narrows what
    *  this board renders. */
   agents: Agent[];
   scope: MissionControlScope;
-  onShowArchived: () => void;
 }) {
-  const source = useMissionControlSource(
-    agents,
-    onShowArchived,
-    undefined,
-    scope,
-  );
+  const source = useMissionControlSource(agents, scope);
   return <MissionBoard source={source} />;
 }

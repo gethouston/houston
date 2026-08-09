@@ -1,7 +1,7 @@
-import { CreditCard, Gauge, History, Users } from "lucide-react";
+import { Building2, ChartColumn, CreditCard, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SettingsCard, SettingsRow } from "../settings/settings-row";
-import { PageContainer, PageHeader } from "../shell/page-shell";
+import { PageContainer, PageHero } from "../shell/page-shell";
 import type { OrgTabId } from "./org-view-model";
 
 interface AdminIndexProps {
@@ -14,16 +14,19 @@ interface AdminIndexProps {
 
 /**
  * The Admin (Organization) landing index. Settings-page grammar
- * (SettingsCard/SettingsRow): grouped rows with icon + title + one-line
- * description + an at-a-glance value that drill into a detail screen, so a
- * non-technical admin scans membership / insights / billing at a glance instead
- * of reading an anonymous tab strip.
+ * (SettingsCard/SettingsRow): rows with icon + title + one-line description + an
+ * at-a-glance value that drill into a detail screen, so a non-technical admin
+ * scans the whole dashboard instead of reading an anonymous tab strip.
+ *
+ * Four sections: People (the roster and its invites), Billing (the team's plan
+ * and seats), Analytics (the activity feed, message usage, and time worked as
+ * lenses), and Company context (the standing knowledge every agent in this
+ * workspace starts a turn with).
  *
  * Presentational only: the shell owns loading/gating and passes the visible id
- * set plus each row's value. Access CONTROL (who can use which agent, per-agent
- * + org-wide ceilings) lives in the top-level Permissions view now — this
- * dashboard keeps membership + insights + billing. Insights always renders;
- * Billing only when it is in the visible set.
+ * set plus each row's value. Every row but Billing always renders; Billing only
+ * when it is in the visible set. Per-agent policy (who can use which agent, its
+ * ceilings) is NOT here — it is reached through each team's Manage agents page.
  */
 export function AdminIndex({
   visibleIds,
@@ -35,7 +38,7 @@ export function AdminIndex({
 
   return (
     <PageContainer className="pb-10">
-      <PageHeader
+      <PageHero
         title={t("org.title")}
         subtitle={t("org.subtitle")}
         className="mb-8 px-1"
@@ -56,21 +59,6 @@ export function AdminIndex({
           />
         </SettingsCard>
 
-        <SettingsCard title={t("org.index.groups.insights")}>
-          <SettingsRow
-            icon={History}
-            title={t("org.tabs.activity")}
-            description={t("org.index.rows.activity")}
-            onClick={() => onSelect("activity")}
-          />
-          <SettingsRow
-            icon={Gauge}
-            title={t("org.tabs.usage")}
-            description={t("org.index.rows.usage")}
-            onClick={() => onSelect("usage")}
-          />
-        </SettingsCard>
-
         {showBilling && (
           <SettingsCard>
             <SettingsRow
@@ -81,6 +69,21 @@ export function AdminIndex({
             />
           </SettingsCard>
         )}
+
+        <SettingsCard>
+          <SettingsRow
+            icon={ChartColumn}
+            title={t("org.tabs.analytics")}
+            description={t("org.index.rows.analytics")}
+            onClick={() => onSelect("analytics")}
+          />
+          <SettingsRow
+            icon={Building2}
+            title={t("org.tabs.companyContext")}
+            description={t("org.index.rows.companyContext")}
+            onClick={() => onSelect("companyContext")}
+          />
+        </SettingsCard>
       </div>
     </PageContainer>
   );

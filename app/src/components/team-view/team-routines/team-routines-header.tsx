@@ -1,65 +1,70 @@
 import { Badge } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import type { Agent } from "../../../lib/types";
-import { AgentFilterMenu } from "../../agent-filter-menu";
-import { teamFilterAgentId, teamFilterPath } from "../team-agent-filter-model";
 
 /**
- * The team Routines list's header band: what this list is, how many rows it
- * holds, whose routines it is showing, and the one way to add another.
+ * The Routines section's own tools: how many routines this team has, and the
+ * one thing you came here to do. Two forms, and the CALLER never picks — the
+ * team chrome measures its strip and says which is honest for the width
+ * (`team-chrome-tools.tsx`).
  *
- * Two decisions live here.
+ * - **`strip`**: the third zone of the one-row team strip. The count and the
+ *   create button, and NO "Routines" title: the lit tab three inches to the
+ *   left already said that word, and saying it twice on one line is the
+ *   crowding this layout exists to undo.
+ * - **`row`**: the two-row fallback — a slim band with the title, the count,
+ *   and the button at its right edge.
  *
- * The band stays even when the list is EMPTY: the agent dropdown is the only
- * way back out of a filter that emptied the section, so hiding it would be a
- * dead end.
+ * Its agent dropdown is back, but it is a different control: a SECTION-LOCAL
+ * filter (`TeamAgentFilterCapsule`), not the team-wide pin. Narrowing this
+ * list no longer narrows the board the user returns to, which is why a tab
+ * click always opens Routines team-wide.
  *
- * Its CREATE button does step aside when the grid is showing its EMPTY state,
- * which carries the same button: two identical filled pills on one screen is not
- * a choice the user has, it is the same act twice. The caller decides, by
- * passing no button — the grid stops being empty the moment a DRAFT row lands,
- * and the header has to take the button back then.
- *
- * The dropdown reads and writes the ONE `teamAgentFilter` pin that the rail's
- * agent rows and the team board's own filter menu use, so all three are the
- * same act. `teamFilterPath` / `teamFilterAgentId` are the pure translations
- * between the store's agent ID and the folder path a filter menu speaks.
+ * The create button steps aside in either form when the grid is showing its
+ * EMPTY state, which carries the same button: two identical filled pills on
+ * one screen is not a choice the user has, it is the same act twice. The
+ * caller decides, by passing no button — the grid stops being empty the moment
+ * a DRAFT row lands, and the header takes the button back then.
  */
 export function TeamRoutinesHeader({
-  agents,
-  pinnedAgentId,
-  onPinAgent,
+  variant,
   count,
+  agentFilter,
   createButton,
 }: {
-  /** The whole team: the dropdown offers every member, not just the shown one. */
-  agents: Agent[];
-  pinnedAgentId: string | null;
-  onPinAgent: (agentId: string | null) => void;
+  /** Which form to draw. The chrome decides; see the module comment. */
+  variant: "strip" | "row";
   /** Created routines in the list. Zero hides the badge (a draft is not one). */
   count: number;
+  /** This section's OWN "All agents" capsule — never the team-wide pin. */
+  agentFilter: ReactNode;
   /** The create action, or nothing while the grid's empty state carries it. */
   createButton?: ReactNode;
 }) {
   const { t } = useTranslation("routines");
 
+  const countBadge = count > 0 && (
+    <Badge variant="secondary" className="tabular-nums">
+      {count}
+    </Badge>
+  );
+
+  if (variant === "strip") {
+    return (
+      <>
+        {countBadge}
+        {agentFilter}
+        {createButton}
+      </>
+    );
+  }
+
   return (
-    <div className="flex shrink-0 items-center gap-2 px-3 py-3">
+    <div className="flex shrink-0 items-center gap-2 px-3 pt-1 pb-3">
       <h2 className="text-sm font-medium text-ink">{t("listTitle")}</h2>
-      {count > 0 && (
-        <Badge variant="secondary" className="tabular-nums">
-          {count}
-        </Badge>
-      )}
-      <div className="ml-auto flex items-center gap-1.5">
-        <AgentFilterMenu
-          agents={agents}
-          filterPath={teamFilterPath(agents, pinnedAgentId)}
-          onFilterPathChange={(path) =>
-            onPinAgent(teamFilterAgentId(agents, path))
-          }
-        />
+      {countBadge}
+      <div className="ml-auto flex items-center gap-2">
+        {agentFilter}
         {createButton}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { CatalogSectionHeader, resolveAgentColor } from "@houston-ai/core";
 import type { OrgMember } from "@houston-ai/engine-client";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 import { PermissionsAgentRow } from "./agent-row";
@@ -19,11 +20,16 @@ import { useAgentAccessLine } from "./use-agent-access-line";
 export function PermissionsAgentGrid({
   agents,
   members,
+  rowAction,
   onOpenAgent,
 }: {
   agents: Agent[];
   /** Org roster used to name each agent's managers. Empty on single player. */
   members: OrgMember[];
+  /** A per-row right-edge control the CALLER owns, or nothing. A team's Manage
+   *  agents page hangs "Move to team" here; the org-wide Permissions list has
+   *  no team to move within, so it passes none and its rows are unchanged. */
+  rowAction?: (agent: Agent) => ReactNode;
   onOpenAgent: (agent: Agent) => void;
 }) {
   const { t } = useTranslation("teams");
@@ -44,6 +50,7 @@ export function PermissionsAgentGrid({
             color={resolveAgentColor(agent.color)}
             summary={accessLine(agent)}
             openLabel={t("agentsTab.open", { name: agent.name })}
+            action={rowAction?.(agent)}
             onOpen={() => onOpenAgent(agent)}
           />
         ))}

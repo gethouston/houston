@@ -8,6 +8,7 @@ import type { OrgMember } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 import { PermissionsAgentGrid } from "../permissions/agent-grid";
+import { AgentRowMenu } from "./agent-row-menu";
 
 /**
  * The team's agents as flat rows: the SAME {@link PermissionsAgentGrid}
@@ -21,11 +22,14 @@ import { PermissionsAgentGrid } from "../permissions/agent-grid";
  */
 export function TeamAgentsList({
   agents,
+  teamId,
   isDefaultTeam,
   members,
   onOpenAgent,
 }: {
   agents: Agent[];
+  /** The team these rows belong to: the one team "Move to team" leaves out. */
+  teamId: string;
   /** The workspace's own team: a new agent lands here, so its empty state says
    *  "create one" where a named team's says "drag one in". */
   isDefaultTeam: boolean;
@@ -58,6 +62,11 @@ export function TeamAgentsList({
     <PermissionsAgentGrid
       agents={agents}
       members={members}
+      // Everything you can do TO an agent, on the page that is about
+      // administering them. It absorbed the rail's agent menu (rename, colour,
+      // delete) when that menu left the sidebar, and the cross-team DRAG the
+      // rail no longer offers.
+      rowAction={(agent) => <AgentRowMenu agent={agent} teamId={teamId} />}
       onOpenAgent={onOpenAgent}
     />
   );

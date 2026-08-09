@@ -3,17 +3,16 @@ import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { isAgentManager } from "../../lib/agent-access";
 import { openAgentBoard } from "../../lib/open-agent";
-import { isTeamWorkspace } from "../../lib/space-id";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useWorkspaceStore } from "../../stores/workspaces";
 import { agentShareSurface } from "../agent/agent-access-model";
 import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
 import { AgentSettingsPage } from "../agent-settings/agent-settings-page";
-import { PageContainer, PageHeader } from "../shell/page-shell";
+import { PageContainer, PageHero } from "../shell/page-shell";
 
 /**
  * Permissions agent detail: an org owner/admin opens ONE agent on the canonical
@@ -53,14 +52,12 @@ export function AgentDetail({
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
-  const currentWorkspace = useWorkspaceStore((s) => s.current);
   const canManage = isAgentManager(capabilities, agent);
+  const personalSpace = usePersonalSpace();
   const [shareOpen, setShareOpen] = useState(false);
-  const shareSurface = agentShareSurface(
-    capabilities,
-    agent,
-    !isTeamWorkspace(currentWorkspace?.id ?? ""),
-  );
+  // The ONE reading of "am I in a personal space", shared with the rail and the
+  // Members card, rather than a second inline derivation off the workspace id.
+  const shareSurface = agentShareSurface(capabilities, agent, personalSpace);
 
   // Leave the settings page and go where the agent WORKS: its team's Mission
   // Control, filtered to this agent.
@@ -73,7 +70,7 @@ export function AgentDetail({
     <PageContainer className="pb-10">
       <div className="mb-8 flex items-start gap-3">
         <HoustonAvatar color={resolveAgentColor(agent.color)} diameter={40} />
-        <PageHeader
+        <PageHero
           className="flex-1"
           title={agent.name}
           subtitle={t("org.agentDetail.subtitle")}

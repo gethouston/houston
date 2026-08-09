@@ -13,7 +13,7 @@ import {
 
 /**
  * Pure, DOM-free unread model (HOU-945): which missions have moved since I last
- * looked at them, and how many per agent — the numbers the sidebar paints.
+ * looked at them.
  *
  * Unread is defined against MY read floor ({@link readFloorFor}), never against
  * a server flag, so it stays correct with no write on every mission open and
@@ -75,25 +75,4 @@ export function isUnreadForMe(
   const updatedAt = Date.parse(conv.updated_at);
   if (Number.isNaN(updatedAt)) return false;
   return updatedAt > readFloorFor(store, key);
-}
-
-/**
- * Unread counts per `agent_path`. Setup chats and non-`activity` rows never
- * count — the same exclusions the sidebar's needs-you badge already applies
- * ({@link buildAgentActivitySummaries}), so the two badges can never disagree
- * about what a mission is. Agents with nothing unread get no entry, so the
- * caller reads a missing key as zero.
- */
-export function countUnreadByAgentPath(
-  convs: readonly UnreadConversationInput[],
-  store: ReadCursorStore,
-  selfId: string | null,
-): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const conv of convs) {
-    if (conv.type !== "activity") continue;
-    if (!isUnreadForMe(conv, store, selfId)) continue;
-    counts[conv.agent_path] = (counts[conv.agent_path] ?? 0) + 1;
-  }
-  return counts;
 }

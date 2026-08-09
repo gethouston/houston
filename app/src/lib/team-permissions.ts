@@ -37,8 +37,9 @@ export function canSeeTeamSettings(caps: Capabilities | null): boolean {
  * May the caller RENAME this team? Locally a rename edits your own sidebar
  * group, which the virtual default team is not (it wears the workspace's name).
  * On a server host it is a team-owner power, and the default team IS renamable
- * there: its name is the space's own, and Team Settings is the only place that
- * offers the field, since the default block deliberately carries no rail menu.
+ * there: its name is the space's own. Two doors offer it — Team Settings' name
+ * field and the default block's own rail menu — and both read THIS gate, so a
+ * caller who may not rename it sees neither.
  */
 export function canRenameTeam(team: TeamView): boolean {
   return team.server ? team.server.owner : !team.isDefault;
@@ -59,17 +60,18 @@ export function canDeleteTeam(team: TeamView): boolean {
  * the caller's own grouping, so there is no membership to give up. Never on the
  * default team, which everyone in the space belongs to by definition (the wire
  * answers `400 default_team`).
+ *
+ * And never in a PERSONAL space. That space holds one human, who therefore
+ * created every team in it and holds an owner row nothing can remove, so
+ * `joined` is true there forever and the joined test alone would offer Leave on
+ * every team — onto a `403 personal_space`. Leaving is the third people route
+ * the gateway refuses there, beside join and the member writes, so it hides for
+ * exactly the reason the Members card does.
  */
-export function canLeaveTeam(team: TeamView): boolean {
-  return team.server?.joined === true && !team.isDefault;
-}
-
-/**
- * May the caller JOIN this team? A server-host power only, offered on the teams
- * they have not joined (the ones the rail files under "Other teams"). Joining
- * pins the team to the rail; it grants nothing, since the gateway already
- * decides which of the team's agents this caller may see.
- */
-export function canJoinTeam(team: TeamView): boolean {
-  return team.server?.joined === false;
+export function canLeaveTeam(
+  team: TeamView,
+  /** Whether the ACTIVE space is a personal one (`usePersonalSpace`). */
+  personalSpace: boolean,
+): boolean {
+  return !personalSpace && team.server?.joined === true && !team.isDefault;
 }

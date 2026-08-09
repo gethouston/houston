@@ -1,6 +1,5 @@
 import type { Capabilities } from "@houston-ai/engine-client";
 import { hasSpaces } from "../../lib/org-roles.ts";
-import type { TeamSectionId } from "../../lib/teams-model.ts";
 
 /**
  * The closed vocabulary of `data-tour-target` anchors the guided tour uses.
@@ -8,18 +7,18 @@ import type { TeamSectionId } from "../../lib/teams-model.ts";
  * A step names one of these and builds its selector with `tourSelector`, never
  * a hand-written string, so a typo is a compile error instead of a step whose
  * spotlight silently finds nothing. Every name here is rendered by a real
- * element: `sidebar-chrome.tsx` (the nav rows + the space switcher),
- * `sidebar.tsx` (`newAgent`), `@houston-ai/layout`'s sidebar (`agents`),
- * `workspace-shell.tsx` (`main`), `mission-toolbar-actions.tsx` (`newMission`,
- * `archivedMissions`) and `settings/help-group.tsx` (`appTour`).
+ * element: `sidebar-nav-sections.tsx` (the rail's nav rows — `nav-inbox` and
+ * the "Guide me" row carrying `appTour` among them), `sidebar-chrome.tsx` (the
+ * space switcher), `sidebar-rail.tsx` (`newAgent`), `@houston-ai/layout`'s
+ * sidebar (`agents`), `workspace-shell.tsx` (`main`) and
+ * `new-mission-button.tsx` (`newMission`).
  */
 export const TOUR_TARGETS = [
   "spaceSwitcher",
   "agents",
-  "nav-dashboard",
+  "nav-inbox",
   "main",
   "newMission",
-  "archivedMissions",
   "nav-integrations",
   "nav-skills",
   "nav-ai-hub",
@@ -51,14 +50,6 @@ export function tourAnchor(target: TourTarget): {
   return { "data-tour-target": target };
 }
 
-/** The sidebar row for one of a team's sections (`SidebarSectionRows`). */
-export function sectionRowSelector(
-  teamId: string,
-  section: TeamSectionId,
-): string {
-  return `[data-sidebar-section-row="${teamId}:${section}"]`;
-}
-
 /**
  * Whether each target lives INSIDE the sidebar rail.
  *
@@ -68,26 +59,25 @@ export function sectionRowSelector(
  * a centered card describing a row nobody can see, so the gate below drops it
  * instead. The map is exhaustive over `TourTarget`, so a new target cannot ship
  * without answering this question; the answer itself must match where
- * `sidebar-chrome.tsx` / `sidebar.tsx` render the element.
+ * `sidebar-nav-sections.tsx` / `sidebar-chrome.tsx` / `sidebar-rail.tsx`
+ * render the element.
  */
 export const RAIL_ANCHORED: Readonly<Record<TourTarget, boolean>> = {
   spaceSwitcher: true,
   agents: true,
-  "nav-dashboard": true,
+  "nav-inbox": true,
   "nav-integrations": true,
   "nav-skills": true,
   "nav-ai-hub": true,
   "nav-agent-store": true,
   "nav-settings": true,
   newAgent: true,
+  appTour: true,
   main: false,
   newMission: false,
-  archivedMissions: false,
-  appTour: false,
 };
 
 const TOUR_TARGET_PATTERN = /^\[data-tour-target='(?<name>[^']+)'\]$/;
-const SECTION_ROW_PREFIX = "[data-sidebar-section-row=";
 
 function isTourTarget(name: string): name is TourTarget {
   return TOUR_TARGET_NAMES.has(name);
@@ -101,14 +91,8 @@ export function tourTargetName(
   return name !== undefined && isTourTarget(name) ? name : null;
 }
 
-/** Whether a selector points at a team's section row in the rail. */
-export function isSectionRowSelector(selector: string | undefined): boolean {
-  return selector?.startsWith(SECTION_ROW_PREFIX) ?? false;
-}
-
 /** Whether a selector points at anything the sidebar rail renders. */
 export function isRailAnchored(selector: string | undefined): boolean {
-  if (isSectionRowSelector(selector)) return true;
   const target = tourTargetName(selector);
   return target !== null && RAIL_ANCHORED[target];
 }
@@ -140,8 +124,7 @@ export function isStepAvailable(
 ): boolean {
   if (gates.isMobile && isRailAnchored(targetSelector)) return false;
   const target = tourTargetName(targetSelector);
-  // Not a tour target: the closing card (no selector) or a team's section row,
-  // whose only gate is the rail check above.
+  // Not a tour target: the closing card, which carries no selector at all.
   if (target === null) return true;
   switch (target) {
     // Off a spaces host there is no team to switch to.
@@ -153,10 +136,9 @@ export function isStepAvailable(
       return gates.canCreateAgents;
     // Rendered for every caller, on every deployment.
     case "agents":
-    case "nav-dashboard":
+    case "nav-inbox":
     case "main":
     case "newMission":
-    case "archivedMissions":
     case "nav-integrations":
     case "nav-skills":
     case "nav-settings":

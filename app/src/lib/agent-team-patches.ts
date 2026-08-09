@@ -1,12 +1,8 @@
-import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
-import { normalizeTeamOverlay } from "./server-teams-model.ts";
-import { type ItemDest, moveItemOp } from "./sidebar-layout-ops.ts";
+import type { AgentTeam } from "@houston-ai/engine-client";
 
 /**
  * The pure patches an OPTIMISTIC agent-teams write applies before its round
- * trip (C13). One module, because a single gesture touches two caches — the
- * server's teams and the per-user ordering overlay — and two rules living apart
- * is exactly how they end up disagreeing about the same drop.
+ * trip (C13).
  *
  * Everything here is total and mutation-free: the value a function is handed is
  * still intact afterwards, which is what lets a caller keep it as the snapshot
@@ -14,9 +10,15 @@ import { type ItemDest, moveItemOp } from "./sidebar-layout-ops.ts";
  * `app/tests/agent-team-patches.test.ts`.
  */
 
-/** The optimistic move patch: the agent leaves every team holding it and is
- *  APPENDED to the target (the server owns team order, the overlay owns the
- *  position inside one, and the drop records that separately). */
+/**
+ * The optimistic move patch: the agent leaves every team holding it and is
+ * APPENDED to the target.
+ *
+ * Appended, and not placed: moving an agent between teams is an explicit action
+ * on the team screen rather than a drag, so there is no drop position to
+ * honour. The overlay is left alone — it only orders agents INSIDE a team, and
+ * an id it no longer holds decays out of it on the next write (rule 7).
+ */
 export function moveAgentInTeams(
   teams: readonly AgentTeam[],
   agentId: string,
@@ -31,38 +33,6 @@ export function moveAgentInTeams(
       ? team
       : { ...team, agentSlugs: without };
   });
-}
-
-/**
- * The overlay write a CROSS-TEAM drop persists: WHERE inside the destination
- * block the agent landed, pruned against the roster the move ASSERTS rather
- * than the one still cached.
- *
- * The two halves have to be one function, because getting them out of order is
- * a bug with a silent symptom. `normalizeTeamOverlay` narrows a live team's row
- * to the agents the server puts in that team, and until the move lands the
- * destination team does not hold the dropped agent yet: normalized against THAT
- * roster the write deletes the id the drop just recorded, so the position is
- * lost and the agent reappears appended to the block the moment the layout read
- * comes back. Sequencing the two writes instead (patch the teams cache first,
- * then the overlay) cannot fix it either — React Query's `onMutate` runs a
- * microtask after `mutate()`, so a synchronous overlay write that follows it
- * still reads the pre-move roster.
- *
- * `dest.groupId` is the RESOLVED target team id — a real server id, never the
- * local `DEFAULT_TEAM_ID` sentinel and never `null`, which would key the write
- * into `ungroupedOrder`, a list nothing reads on this backend.
- */
-export function crossTeamDropOverlay(
-  layout: SidebarLayout,
-  serverTeams: readonly AgentTeam[],
-  agentId: string,
-  dest: ItemDest & { groupId: string },
-): SidebarLayout {
-  return normalizeTeamOverlay(
-    moveItemOp(layout, agentId, dest),
-    moveAgentInTeams(serverTeams, agentId, dest.groupId),
-  );
 }
 
 /**
@@ -124,4 +94,71 @@ export function applyTeamSortOrder(
   return teams
     .map((team) => (team.id === teamId ? { ...team, sortOrder } : team))
     .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/** Where one identity field ENDS UP: an omitted patch field leaves what was
+ *  there, `""` clears it (back to unset), any other string sets it. */
+function nextIdentity(
+  current: string | undefined,
+  patched: string | undefined,
+): string | undefined {
+  if (patched === undefined) return current;
+  return patched === "" ? undefined : patched;
+}
+
+/**
+ * Apply an identity patch to the cached teams the way the gateway will:
+ * `""` CLEARS the field (it comes back ABSENT), any other string sets it,
+ * an omitted field is untouched.
+ *
+ * The picker LIVE-APPLIES a choice — the rail repaints the moment a glyph is
+ * clicked — so the cache has to agree before the round trip, and the rule the
+ * patch follows has to be the gateway's own or the block would flicker back to
+ * server truth on the next read. An unknown team id changes nothing (the list
+ * comes back with every team by identity), because a stale id is a cache one
+ * refetch behind, not an error worth inventing a team for.
+ *
+ * A cleared field is REBUILT away rather than set to `undefined`: unset is
+ * ABSENT on the wire, and a cached team carrying an `undefined`-valued `icon`
+ * would answer `"icon" in team` differently from the one the next read brings
+ * back.
+ */
+export function applyTeamIdentity(
+  teams: readonly AgentTeam[],
+  teamId: string,
+  patch: { icon?: string; color?: string },
+): AgentTeam[] {
+  return teams.map((team) => {
+    if (team.id !== teamId) return team;
+    const { icon: _icon, color: _color, ...rest } = team;
+    const icon = nextIdentity(team.icon, patch.icon);
+    const color = nextIdentity(team.color, patch.color);
+    return {
+      ...rest,
+      ...(icon === undefined ? {} : { icon }),
+      ...(color === undefined ? {} : { color }),
+    };
+  });
+}
+
+/**
+ * Apply a shared-context write to the cached teams. Unlike
+ * {@link applyTeamIdentity} the key is always WRITTEN, `""` included: `context`
+ * is a plain text column with an empty default, so a gateway that serves the
+ * field serves it for every team, and its presence is what the client reads as
+ * "this gateway supports team context" (`teamContextSource`). Rebuilding it away
+ * on an empty string would make saving a blank context look like the feature
+ * disappearing.
+ *
+ * A team the cache does not hold changes nothing — a stale id is a cache one
+ * refetch behind, not an error worth inventing a team for.
+ */
+export function applyTeamContext(
+  teams: readonly AgentTeam[],
+  teamId: string,
+  context: string,
+): AgentTeam[] {
+  return teams.map((team) =>
+    team.id === teamId ? { ...team, context } : team,
+  );
 }

@@ -5,10 +5,12 @@ import {
   mentionReadFloorFor,
   type ReadCursorStore,
 } from "../../lib/read-cursors.ts";
+import type { Agent } from "../../lib/types.ts";
 import {
   isUnreadForMe,
   type UnreadConversationInput,
 } from "../../lib/unread-model.ts";
+import { missionCardAgentName } from "./mission-card-agent.ts";
 
 /**
  * Pure, DOM-free model for the Mentions inbox (HOU-945): every mission where a
@@ -33,9 +35,9 @@ import {
  *   same verdict the board card and the sidebar paint). The ROW's dot reads it,
  *   and reading it broadly is right there: the dot promises news, not a name.
  * - `mentionOutstanding` — "somebody typed my name and I have not been back
- *   since". The toolbar PILL reads this one, and only this one.
+ *   since". The notifications BELL's count reads this one, and only this one.
  *
- * Collapsing them would make the pill lie. Its accessible name is literally "N
+ * Collapsing them would make the bell lie. Its accessible name is literally "N
  * unread mentions", so a mission that merely MOVED would inflate a number the
  * user reads as "N people typed my name" — the one count in the product that has
  * to mean exactly that, or the whole mention signal becomes noise.
@@ -61,7 +63,7 @@ export interface MentionInboxRow {
   /** Something new here for me, mention or ambient movement. The row's dot. */
   unread: boolean;
   /** A mention of me newer than my read cursor for this conversation — strictly
-   *  narrower than {@link MentionInboxRow.unread}. The toolbar pill's count. */
+   *  narrower than {@link MentionInboxRow.unread}. The bell's count. */
   mentionOutstanding: boolean;
 }
 
@@ -70,14 +72,17 @@ export interface MentionInboxRow {
  * on conversation id so the list never reshuffles between renders.
  *
  * `selfId === null` yields `[]`: with nobody signed in there is no "me" to be
- * mentioned, and the inbox itself is a multiplayer surface that never renders
- * on desktop. Guided setup chats are excluded like everywhere else — they have
- * no board card to open, so a row for one would navigate nowhere.
+ * mentioned. The Inbox screen is a top-level row for EVERYONE (it is the app's
+ * landing surface before any team resolves), so single player reaches this and
+ * gets the honest empty list rather than a hidden screen. Guided setup chats are
+ * excluded like everywhere else — they have no board card to open, so a row for
+ * one would navigate nowhere.
  */
 export function buildMentionInbox(
   convs: readonly MentionInboxConversation[],
   store: ReadCursorStore,
   selfId: string | null,
+  agentsByPath: Map<string, Agent> = new Map(),
 ): MentionInboxRow[] {
   if (selfId === null) return [];
 
@@ -89,7 +94,9 @@ export function buildMentionInbox(
     rows.push({
       conversationId: conv.id,
       agentPath: conv.agent_path,
-      agentName: conv.agent_name,
+      agentName:
+        missionCardAgentName(agentsByPath, conv.agent_path, conv.agent_name) ??
+        conv.agent_name,
       sessionKey: conv.session_key,
       title: conv.title,
       at: latest.at,

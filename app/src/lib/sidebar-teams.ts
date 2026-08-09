@@ -1,8 +1,8 @@
 /**
- * What the sidebar paints as selected, and which destination rows each team
- * block offers. Pure so the highlight rules are unit-tested rather than read
- * off a rendered rail: "which row is lit" is the one thing a navigation surface
- * must never get wrong, and it depends on three stores at once.
+ * What the sidebar paints as selected. Pure so the highlight rules are
+ * unit-tested rather than read off a rendered rail: "which row is lit" is the
+ * one thing a navigation surface must never get wrong, and it depends on three
+ * stores at once.
  */
 
 import {
@@ -66,29 +66,37 @@ export function resolveTeamHighlight(
   };
 }
 
-/** One destination row of one team, and whether it is the open one. */
-export interface TeamSectionRowModel {
-  teamId: string;
-  section: TeamSectionId;
-  active: boolean;
-}
-
 /**
- * The destination rows a team block renders, in `sections` order. The caller
- * passes THIS team's list (`visibleTeamSectionsForTeam(caps, team)`), so a
- * section the user may not open on this team never gets a row here — even when
- * the team next to it offers one.
+ * Whether the TEAM ROW wears the active fill.
+ *
+ * **Exactly one row in the rail is ever filled.** A block carries no
+ * destination rows any more, so its header is what answers "where am I" for the
+ * team — but the moment the board is narrowed to one agent, that AGENT's row is
+ * the more precise answer and the header steps aside. Two fills in one block
+ * claim the user is in two places at once, which is worse than one that is
+ * merely coarse.
+ *
+ * So the header lights whenever the open view belongs to this team AND no agent
+ * row inside it is lit. That covers the folded block (its agent rows are not
+ * drawn), Team Settings (which lists the whole team and honors no pin), a pin
+ * naming an agent this team no longer holds, and the plain unfiltered board —
+ * every case where nothing narrower is on screen to speak for the block.
+ *
+ * `section === null` is false: `resolveTeamHighlight` returns it off a team
+ * view and when the active team no longer resolves, and lighting a block over
+ * a dashboard would name a screen that is not there.
  */
-export function teamSectionRowModels(
-  team: TeamView,
-  sections: readonly TeamSectionId[],
-  highlight: TeamHighlight,
-): TeamSectionRowModel[] {
-  return sections.map((section) => ({
-    teamId: team.id,
-    section,
-    active: highlight.teamId === team.id && highlight.section === section,
-  }));
+export function teamRowActive(args: {
+  teamId: string;
+  highlight: TeamHighlight;
+  /** An AGENT row inside this block is already lit (`sidebarSelectedAgentId`
+   *  resolved to one of its members). The block's own fill defers to it. */
+  agentRowLit: boolean;
+}): boolean {
+  if (args.agentRowLit) return false;
+  return (
+    args.highlight.teamId === args.teamId && args.highlight.section !== null
+  );
 }
 
 /**
@@ -108,14 +116,26 @@ export function teamSectionRowModels(
  * Off a team view, nothing: an agent has no screen of its own since the per-agent
  * tab shell was deleted, so every other `viewMode` is a top-level view no agent
  * row belongs to.
+ *
+ * A COLLAPSED open team fills no agent row either, for the plainest reason
+ * there is: the row is not rendered. Returning the pinned id would ask the rail
+ * to light a row that does not exist — and the header takes the fill instead,
+ * which is exactly what `teamRowActive` does with this answer.
+ *
+ * This is the FIRST half of the rail's one-fill rule: whatever it says, the
+ * header says the opposite. It is asked first, and `teamRowActive` is handed
+ * the result, so the two can never both light.
  */
 export function sidebarSelectedAgentId(args: {
   viewMode: string;
   highlight: TeamHighlight;
   /** The team the highlight points at, `null` off a team view. */
   activeTeam: TeamView | null;
+  /** That team's block is folded shut, so its agent rows are not drawn. */
+  collapsed?: boolean;
 }): string | null {
   if (args.viewMode !== TEAM_VIEW_ID) return null;
+  if (args.collapsed === true) return null;
   const { agentId, section } = args.highlight;
   if (agentId === null || !sectionHonorsAgentPin(section)) return null;
   return args.activeTeam?.agents.some((a) => a.id === agentId) ? agentId : null;

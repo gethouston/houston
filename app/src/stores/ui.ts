@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 import { setPanelOwner } from "../components/shell/detail-panel-owners.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
+import { INBOX_VIEW_ID } from "../lib/top-level-views.ts";
 
 export interface ToastItem {
   id: string;
@@ -26,6 +27,14 @@ export interface FilePreviewTarget {
 }
 
 interface UIState {
+  /**
+   * The open top-level screen (`lib/top-level-views.ts`). It starts as the
+   * INBOX: there is no global mission board any more, so the app's home is the
+   * first team's Mission Control and no team has resolved on the first paint.
+   * The Inbox is the one screen that needs none, which makes it the honest
+   * landing — and `use-workspace-view-guards.ts`'s boot rule moves the user on
+   * to home the moment the first team lands.
+   */
   viewMode: string;
   /**
    * Which Settings section is open (`null` = the Settings index). The single
@@ -56,6 +65,7 @@ interface UIState {
   authRequired: string | null;
   toasts: ToastItem[];
   createAgentDialogOpen: boolean;
+  createAgentTeamId: string | null;
   /** "Your agent is still being created" write-blocked notice (HOU-693). */
   agentWarmingNoticeOpen: boolean;
   /** Callback registered by whichever mission board is on the glass (the
@@ -156,11 +166,29 @@ interface UIState {
   creatorEditorOpen: boolean;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
-  /** Files section layout: Drive-style card grid or Finder-style list. Persisted. */
-  filesViewMode: "grid" | "list";
+  /**
+   * Whether each of the rail's three LABELLED bands is folded away.
+   *
+   * All three fold the same way and persist the same way, because they ARE the
+   * same band: a rail whose "My accounts" folded and whose "Your teams" did not
+   * would be teaching two rules for one row shape. Persisted, because a rail
+   * that forgets it was folded on every reload is worse than one that never
+   * folded, and per-MACHINE rather than per-account, like every other layout
+   * pref here. The two rows that LEAD the rail (Inbox, Agent Store) wear no
+   * band and fold nothing: there is no heading to fold them under.
+   */
+  teamsSectionCollapsed: boolean;
+  myAccountsSectionCollapsed: boolean;
+  workspaceSectionCollapsed: boolean;
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
   setViewMode: (mode: string) => void;
+  /**
+   * Open a team view: the ONE writer of `viewMode` + `activeTeamId` +
+   * `teamSection` (+ `teamAgentFilter`), so the view is never half-set. It is
+   * also what "go home" means — `lib/home-nav.ts` calls it with the first
+   * team and `mission-control`.
+   */
   openTeamView: (
     teamId: string,
     section: TeamSectionId,
@@ -183,7 +211,7 @@ interface UIState {
   setAuthRequired: (provider: string | null) => void;
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
-  setCreateAgentDialogOpen: (open: boolean) => void;
+  setCreateAgentDialogOpen: (open: boolean, teamId?: string | null) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
   /** Claim (`open`) or release the shell detail panel for one surface. */
@@ -215,14 +243,16 @@ interface UIState {
   setCreatorEditorOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
-  setFilesViewMode: (mode: "grid" | "list") => void;
+  toggleTeamsSectionCollapsed: () => void;
+  toggleMyAccountsSectionCollapsed: () => void;
+  toggleWorkspaceSectionCollapsed: () => void;
   setFilePreview: (preview: FilePreviewTarget | null) => void;
   /**
    * Reset the ephemeral, identity-scoped view state to its initial values on an
    * identity change (HOU-903) — the outgoing account's open view, panels,
-   * dialogs, and searches must not greet the next account. The two persisted
-   * device layout prefs (`sidebarCollapsed`, `filesViewMode`) are kept: they are
-   * per-machine, not per-account.
+   * dialogs, and searches must not greet the next account. The persisted device
+   * layout prefs (`sidebarCollapsed` and the three band folds)
+   * are kept: they are per-machine, not per-account.
    */
   reset: () => void;
 }
@@ -230,7 +260,7 @@ interface UIState {
 /** The initial data state, shared by the store's creator and `reset()` so the
  *  two can never drift. Excludes the action functions. */
 const initialUIState = {
-  viewMode: "dashboard",
+  viewMode: INBOX_VIEW_ID,
   settingsSection: null,
   activityPanelId: null,
   activityPanelForceOpen: false,
@@ -238,6 +268,7 @@ const initialUIState = {
   authRequired: null,
   toasts: [],
   createAgentDialogOpen: false,
+  createAgentTeamId: null,
   agentWarmingNoticeOpen: false,
   onStartMission: null,
   missionPanelOpen: false,
@@ -262,7 +293,9 @@ const initialUIState = {
   storeCreatorHandle: null,
   creatorEditorOpen: false,
   sidebarCollapsed: false,
-  filesViewMode: "grid",
+  teamsSectionCollapsed: false,
+  myAccountsSectionCollapsed: false,
+  workspaceSectionCollapsed: false,
   filePreview: null,
   activeTeamId: null,
   teamSection: null,
@@ -352,8 +385,11 @@ export const useUIStore = create<UIState>()(
           return { toasts: s.toasts.filter((t) => t.id !== id) };
         }),
 
-      setCreateAgentDialogOpen: (createAgentDialogOpen) =>
-        set({ createAgentDialogOpen }),
+      setCreateAgentDialogOpen: (createAgentDialogOpen, teamId = null) =>
+        set({
+          createAgentDialogOpen,
+          createAgentTeamId: createAgentDialogOpen ? teamId : null,
+        }),
 
       setAgentWarmingNoticeOpen: (agentWarmingNoticeOpen) =>
         set({ agentWarmingNoticeOpen }),
@@ -402,7 +438,16 @@ export const useUIStore = create<UIState>()(
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-      setFilesViewMode: (filesViewMode) => set({ filesViewMode }),
+      toggleTeamsSectionCollapsed: () =>
+        set((s) => ({ teamsSectionCollapsed: !s.teamsSectionCollapsed })),
+      toggleMyAccountsSectionCollapsed: () =>
+        set((s) => ({
+          myAccountsSectionCollapsed: !s.myAccountsSectionCollapsed,
+        })),
+      toggleWorkspaceSectionCollapsed: () =>
+        set((s) => ({
+          workspaceSectionCollapsed: !s.workspaceSectionCollapsed,
+        })),
       setFilePreview: (filePreview) => set({ filePreview }),
 
       reset: () => {
@@ -414,7 +459,9 @@ export const useUIStore = create<UIState>()(
           ...initialUIState,
           // Keep the per-machine layout prefs (not identity-scoped).
           sidebarCollapsed: s.sidebarCollapsed,
-          filesViewMode: s.filesViewMode,
+          teamsSectionCollapsed: s.teamsSectionCollapsed,
+          myAccountsSectionCollapsed: s.myAccountsSectionCollapsed,
+          workspaceSectionCollapsed: s.workspaceSectionCollapsed,
         }));
       },
     }),
@@ -425,7 +472,9 @@ export const useUIStore = create<UIState>()(
       // must NOT survive a reload.
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
-        filesViewMode: state.filesViewMode,
+        teamsSectionCollapsed: state.teamsSectionCollapsed,
+        myAccountsSectionCollapsed: state.myAccountsSectionCollapsed,
+        workspaceSectionCollapsed: state.workspaceSectionCollapsed,
       }),
     },
   ),

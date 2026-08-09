@@ -1,9 +1,5 @@
 import { isSetupChatMode } from "../../lib/integration-chat-setup.ts";
-import type { ReadCursorStore } from "../../lib/read-cursors.ts";
-import {
-  countUnreadByAgentPath,
-  type UnreadConversationInput,
-} from "../../lib/unread-model.ts";
+import type { UnreadConversationInput } from "../../lib/unread-model.ts";
 
 export interface AgentActivitySummaryInput {
   id: string;
@@ -24,16 +20,42 @@ export interface ActivityConversationSummaryInput
 export interface AgentActivitySummary {
   needsYouCount: number;
   runningCount: number;
-  /** Missions that moved since I last read them (HOU-945). Always 0 off
-   *  multiplayer or without a signed-in user, so single-player / desktop
-   *  renders no new chrome. */
-  unreadCount: number;
 }
 
-/** Everything the unread count needs: the reader's cursors and who they are. */
-export interface UnreadSummaryOptions {
-  store: ReadCursorStore;
-  selfId: string | null;
+/** What a TEAM's header says on behalf of the agent rows folded under it. */
+export interface TeamActivityRollup {
+  /** The sum of its members' needs-you counts. A sum and not a member count:
+   *  the badge answers "how much is waiting in here", which is the same
+   *  question an agent row's badge answers, one level up. */
+  needsYouCount: number;
+  /** The sum of its members' running missions. The rail DRAWS it as a ring
+   *  (running or not — the same binary an agent row shows) and only ever SAYS
+   *  the number, in the ring's accessible label. */
+  runningCount: number;
+}
+
+/**
+ * Roll a team's members up into the one line its header can carry.
+ *
+ * A folded team draws no agent rows, so everything they were signalling leaves
+ * the rail with them — and "collapse this team" must not mean "stop telling me
+ * my agents need something". It reads the SAME per-agent summaries the rows
+ * do, so a header can never disagree with the rows behind it, and an agent with
+ * no summary yet contributes nothing rather than a zero-shaped guess.
+ */
+export function teamActivityRollup(
+  agentIds: readonly string[],
+  summaries: Record<string, AgentActivitySummary>,
+): TeamActivityRollup {
+  let needsYouCount = 0;
+  let runningCount = 0;
+  for (const agentId of agentIds) {
+    const summary = summaries[agentId];
+    if (!summary) continue;
+    needsYouCount += summary.needsYouCount;
+    runningCount += summary.runningCount;
+  }
+  return { needsYouCount, runningCount };
 }
 
 /** One agent's board rows (`.houston/activity`), the summary-relevant bits. */
@@ -49,10 +71,6 @@ export interface ActivitySummaryInput {
  * as the sidebar fallback while the all-conversations aggregate has not
  * fetched for the current roster key (cold boot, pods still waking).
  *
- * `unreadCount` is always 0 here, and cannot be anything else: a board row
- * carries no attribution (no `created_by`, no `mentioned`), so there is nothing
- * to decide relevance against. The aggregate path below owns the unread number,
- * and this fallback simply reports none rather than guessing one.
  */
 export function summarizeActivities(
   activities: ActivitySummaryInput[],
@@ -60,7 +78,6 @@ export function summarizeActivities(
   const summary: AgentActivitySummary = {
     needsYouCount: 0,
     runningCount: 0,
-    unreadCount: 0,
   };
   for (const activity of activities) {
     if (isSetupChatMode(activity.agent)) continue;
@@ -76,19 +93,10 @@ export function summarizeActivities(
 /**
  * The sidebar's per-agent badge numbers.
  *
- * `unread` is OPTIONAL, and its absence (or a null `selfId`) leaves every
- * `unreadCount` at 0 — so single-player and desktop render exactly the chrome
- * they render today, with no new dot to explain. That absence is how the gate
- * is expressed: the sidebar hook omits the option entirely unless the
- * deployment advertises `capabilities.multiplayer`. The counting itself is
- * delegated to {@link countUnreadByAgentPath} rather than re-derived here: the
- * badge, the Mentions inbox and the notifier must agree on what "unread" means,
- * and they only can if there is one implementation of it.
  */
 export function buildAgentActivitySummaries(
   agents: AgentActivitySummaryInput[],
   conversations: ActivityConversationSummaryInput[],
-  unread?: UnreadSummaryOptions,
 ): Record<string, AgentActivitySummary> {
   const summaries: Record<string, AgentActivitySummary> = {};
   const agentIdByPath = new Map<string, string>();
@@ -97,7 +105,6 @@ export function buildAgentActivitySummaries(
     summaries[agent.id] = {
       needsYouCount: 0,
       runningCount: 0,
-      unreadCount: 0,
     };
     agentIdByPath.set(agent.folderPath, agent.id);
   }
@@ -116,19 +123,6 @@ export function buildAgentActivitySummaries(
       summary.needsYouCount += 1;
     } else if (conversation.status === "running") {
       summary.runningCount += 1;
-    }
-  }
-
-  if (unread) {
-    const byPath = countUnreadByAgentPath(
-      conversations,
-      unread.store,
-      unread.selfId,
-    );
-    for (const [agentPath, count] of Object.entries(byPath)) {
-      const agentId = agentIdByPath.get(agentPath);
-      const summary = agentId ? summaries[agentId] : undefined;
-      if (summary) summary.unreadCount = count;
     }
   }
 

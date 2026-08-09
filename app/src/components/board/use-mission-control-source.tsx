@@ -4,10 +4,13 @@ import { missionMatchesPerson } from "../../lib/mission-people";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { MissionControlToolbar } from "../mission-control-toolbar";
-import type { MissionsToolbarMentions } from "../mission-toolbar-actions";
+import { PageHeaderTools } from "../shell/page-header/page-header-tools";
 import { useMissionControl } from "../use-mission-control";
 import type { BoardSource } from "./board-source";
-import { missionControlDraftScope } from "./mission-control-scope.ts";
+import {
+  filteredScopeAgent,
+  missionControlDraftScope,
+} from "./mission-control-scope.ts";
 import { useCrossAgentSelection } from "./use-cross-agent-selection";
 import { useMcActions } from "./use-mc-actions";
 import { useMcNewMission } from "./use-mc-new-mission";
@@ -18,20 +21,17 @@ import { usePendingMissionTarget } from "./use-pending-mission-target";
 /**
  * Builds the {@link BoardSource} for cross-agent Mission Control: every
  * agent's missions on one board, a "which agent?" picker before a new
- * mission, an agent filter + search toolbar, and bulk actions routed per
+ * mission, a search + person filter toolbar, and bulk actions routed per
  * agent. The active agent that scopes the right panel is whichever the
  * selected card belongs to, or the one just picked for a new mission.
  *
  * `scope` narrows all of that to one team's agents and lets the caller own the
- * agent filter (see {@link MissionControlScope}); omitting it gives the global
- * board exactly the behaviour it had before teams existed. The cross-agent
- * sweep always spans the agents it is handed, so a team board passes the FULL
- * roster and scopes what it renders — one shared query, no per-team re-sweep.
+ * agent filter (see {@link MissionControlScope}). The cross-agent sweep always
+ * spans the agents it is handed, so a team board passes the FULL roster and
+ * scopes what it renders — one shared query, no per-team re-sweep.
  */
 export function useMissionControlSource(
   agents: Agent[],
-  onShowArchived: () => void,
-  mentions?: MissionsToolbarMentions,
   scope?: MissionControlScope,
 ): BoardSource {
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
@@ -58,14 +58,13 @@ export function useMissionControlSource(
     mc.selectedId,
   );
 
-  const {
-    scopedAgents,
-    paths,
-    agentFilteredItems,
-    visibleAgents,
-    filterPath,
-    setFilterPath,
-  } = useMcScope(agents, mc.items, scope);
+  // No `setFilterPath` any more: the scope is a breadcrumb in row 1 of the
+  // team strip, which reads and writes the same `teamAgentFilter` pin
+  // directly. `filterPath` is still READ, for the auto-open key. The scope's
+  // `onFilterPathChange` still has to exist, because its presence is what
+  // makes `filterPath` CONTROLLED rather than local to this hook.
+  const { scopedAgents, paths, agentFilteredItems, visibleAgents, filterPath } =
+    useMcScope(agents, mc.items, scope);
 
   // Person filter runs AFTER the agent filter, BEFORE text search: narrow to the
   // missions the chosen person is on. `null` (Everyone) is a no-op. The filter
@@ -81,9 +80,14 @@ export function useMissionControlSource(
     [agentFilteredItems, filterUserId],
   );
 
+  // The agent the board is NARROWED to, if any: "New task" on a pinned board
+  // must not ask a question the board already answered.
+  const pinnedAgent = filteredScopeAgent(scopedAgents, filterPath);
   const newMission = useMcNewMission({
     agents: scopedAgents,
     visibleAgents,
+    scopedAgents,
+    pinnedAgent,
     selectedId: mc.selectedId,
     setSelectedId: mc.setSelectedId,
   });
@@ -124,23 +128,28 @@ export function useMissionControlSource(
   });
 
   const toolbar = (
-    <MissionControlToolbar
-      title={scope?.title}
-      agents={scopedAgents}
-      items={agentFilteredItems}
-      filterPath={filterPath}
-      filterUserId={filterUserId}
-      search={missionSearch.query}
-      isSearchingText={missionSearch.isSearchingText}
-      onFilterPathChange={setFilterPath}
-      onFilterUserIdChange={setFilterUserId}
-      onSearchChange={missionSearch.setQuery}
-      onShowArchived={onShowArchived}
-      onToggleMentions={mentions?.onShow}
-      mentionCount={mentions?.count}
-      onNewMission={newMission.openNewMission}
-      collapsed={missionPanelOpen}
-    />
+    // One row or two is the STRIP's call, not this hook's: it is the only
+    // thing that knows how much room the three zones actually have.
+    <PageHeaderTools>
+      {(oneRow) => (
+        <MissionControlToolbar
+          variant={oneRow ? "strip" : "row"}
+          items={agentFilteredItems}
+          filterUserId={filterUserId}
+          search={missionSearch.query}
+          isSearchingText={missionSearch.isSearchingText}
+          onFilterUserIdChange={setFilterUserId}
+          onSearchChange={missionSearch.setQuery}
+          newMission={{
+            agents: newMission.newMissionAgents,
+            menuOpen: newMission.menuOpen,
+            onMenuOpenChange: newMission.requestNewMission,
+            onPick: newMission.pickNewMissionAgent,
+          }}
+          collapsed={missionPanelOpen}
+        />
+      )}
+    </PageHeaderTools>
   );
 
   return {

@@ -4,11 +4,11 @@ import type {
   SidebarItem,
 } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useTeams } from "../../hooks/use-teams";
-import { partitionTeams } from "../../lib/server-teams-model";
 import {
   resolveTeamHighlight,
   sidebarSelectedAgentId,
@@ -21,22 +21,26 @@ import {
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import type { AgentItemArgs } from "./agent-sidebar-items";
-import { buildTeamSectionLabels } from "./sidebar-chrome";
+import { buildTeamIdentityChoices, teamIdentityFor } from "./team-identity";
 import { buildTeamSidebarLists } from "./team-sidebar-lists";
-import { agentsInTeams } from "./team-sidebar-model";
+import { teamCollapsedLookup } from "./team-sidebar-model";
 import {
   type ServerTeamActions,
   useServerTeamActions,
 } from "./use-server-team-actions";
+import {
+  type TeamActivateHandlers,
+  useTeamActivate,
+} from "./use-team-activate";
 
 /** The namespaces the labels below are read from. */
-type TeamsModelT = TFunction<["shell", "common", "portable", "teams"]>;
+type TeamsModelT = TFunction<
+  ["shell", "common", "portable", "teams", "dashboard"]
+>;
 
-export interface SidebarTeamsModel {
-  /** Every team the caller can see, joined or not, in display order. */
+export interface SidebarTeamsModel extends TeamActivateHandlers {
+  /** Every team the read served, in display order. */
   teams: TeamView[];
-  /** The teams of this space the caller has not joined (`partitionTeams`). */
-  other: TeamView[];
   teamActions: ServerTeamActions;
   /** The agent row the rail draws as selected, or null for none. */
   selectedAgentId: string | null;
@@ -47,30 +51,30 @@ export interface SidebarTeamsModel {
 
 /**
  * Everything the rail DRAWS about teams, resolved in one place: the teams
- * themselves, the writes their header menus perform, which row is lit, and the
- * `AppSidebar` view model the three combine into.
+ * themselves, the writes their header menus perform, which row is lit, what a
+ * click on a team's name does, and the `AppSidebar` view model they combine
+ * into.
  *
- * It is one hook and not four because the steps are one pipeline — the
- * partition decides which teams get actions, the actions decide each block's
- * affordances, and the highlight decides which of its rows is active. Splitting
- * them would only hand the same values back and forth through the caller.
+ * It is one hook and not five because the steps are one pipeline — the teams
+ * decide which actions exist, the actions decide each block's affordances and
+ * identity picker, and the highlight decides both which block is lit and what
+ * clicking it means. Splitting them would only hand the same values back and
+ * forth through the caller.
  */
 export function useSidebarTeamsModel(args: {
   t: TeamsModelT;
-  /** Every agent in the workspace, before the partition narrows them. */
+  /** Every agent in the workspace. */
   agents: Agent[];
   sidebar: UseSidebarLayout;
   /** `capabilities.agentTeams === true` — the host owns the teams (C13). */
   serverBacked: boolean;
   canCreateAgents: boolean;
   summaries: AgentItemArgs["summaries"];
-  onChangeColor: (agentId: string, color: string) => void;
   closeMobileSidebar: () => void;
 }): SidebarTeamsModel {
   const { t, agents, sidebar, serverBacked, canCreateAgents } = args;
   const { capabilities } = useCapabilities();
   const viewMode = useUIStore((s) => s.viewMode);
-  const openTeamView = useUIStore((s) => s.openTeamView);
   const activeTeamId = useUIStore((s) => s.activeTeamId);
   const teamSection = useUIStore((s) => s.teamSection);
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
@@ -80,25 +84,26 @@ export function useSidebarTeamsModel(args: {
   // stored layout changes to make it exist). `useTeams` is the ONE resolution
   // path, shared with the team view and the workspace shell's guard, so the
   // rail can never disagree with the screen it navigates to.
+  //
+  // VISIBILITY IS THE GATEWAY'S: it serves a member only the teams they are
+  // part of, so every team this read hands back is one the rail draws. There is
+  // no joined/other split and no "other teams" bucket anywhere, and the agent
+  // store goes through whole. The space's KIND is still read — a personal space
+  // holds no membership to give up, which is what the team actions ask it.
   const teams = useTeams();
-  // On a server-teams host (C13) the space may hold teams this user never
-  // joined. Those are NOT "Your teams": they get a disclosure of their own at
-  // the foot of the rail, and their agents are kept out of the blocks above so
-  // the default team's leftovers cannot quietly adopt them. Off-capability
-  // there is nothing to partition — every team is the user's own.
-  const { joined, other } = partitionTeams(teams);
+  const personalSpace = usePersonalSpace();
   const teamActions = useServerTeamActions({
     serverBacked,
-    teams: joined,
+    teams,
     sidebar,
-    newTeamName: t("shell:sidebar.teams.newDefault"),
     canCreateAgents,
+    personalSpace,
   });
   // The invariant: the rail and the view read the SAME section list for the
   // SAME team. Team Settings is a per-team door (a member may manage an agent
   // in one team and only use the agents of the next), so the list is resolved
   // per team here, and the highlight resolves against the ACTIVE team's own —
-  // never another team's, which would light the wrong row or none at all.
+  // never another team's, which would light the wrong block or none at all.
   const sectionsForTeam = useCallback(
     (team: TeamView) => visibleTeamSectionsForTeam(capabilities, team),
     [capabilities],
@@ -108,43 +113,70 @@ export function useSidebarTeamsModel(args: {
     { viewMode, activeTeamId, teamSection, teamAgentFilter },
     activeTeam ? sectionsForTeam(activeTeam) : [],
   );
-  const { items, groups, defaultGroup } = buildTeamSidebarLists({
-    agents: agentsInTeams(agents, joined),
-    layout: sidebar.layout,
-    teams: joined,
-    sectionsForTeam,
-    affordancesFor: teamActions.affordancesFor,
-    sectionLabels: buildTeamSectionLabels(t),
+  const collapsedLookup = teamCollapsedLookup(sidebar.layout);
+  // The picker each block offers. Its vocabulary is the same for every team, so
+  // it is built ONCE per language; who may use it, and what a stored colour
+  // means, are `team-identity.ts`'s to decide.
+  const identityChoices = useMemo(() => buildTeamIdentityChoices(t), [t]);
+  const identityFor = teamIdentityFor({
+    choices: identityChoices,
+    serverBacked,
+    setIdentity: teamActions.setIdentity,
+  });
+
+  // The rail fills EXACTLY ONE row, so the agent answer is resolved FIRST and
+  // every block header is handed it: a block whose own agent is lit leaves its
+  // header unfilled (`teamRowActive`). A folded block draws no agent rows, so
+  // the pin must not name one — its header carries the fill instead.
+  const highlightedTeam = teamById(teams, highlight.teamId);
+  const selectedAgentId = sidebarSelectedAgentId({
+    viewMode,
     highlight,
-    // Moving between a team's destinations KEEPS the agent pin. Someone who
-    // clicked Kai and is looking at Kai's missions means Kai's routines and
-    // Kai's files when they click those rows next; dropping the pin on the way
-    // would answer a question they did not ask. A pin naming an agent the
-    // destination team does not hold is dropped where it is read
-    // (`teamPinnedAgent` / `resolveFilterPath`), so crossing to another team
-    // still opens on the whole team.
-    onOpenSection: (teamId, section) => {
-      openTeamView(teamId, section, { agentFilter: teamAgentFilter });
-      args.closeMobileSidebar();
-    },
+    activeTeam: highlightedTeam,
+    collapsed: highlightedTeam ? collapsedLookup(highlightedTeam) : false,
+  });
+
+  // What a click on a team's NAME does — the rail's one hit target. The rule
+  // itself is the pure, unit-tested `teamHeaderClick`; this hook is its
+  // imperative half.
+  const activate = useTeamActivate({
+    teams,
+    sidebar,
+    highlight,
+    collapsedLookup,
+    teamAgentFilter,
+    // The FIFTH arm asks whether a pin is actually being applied on screen, not
+    // whether one sits in the store: clearing a pin nothing is narrowing by
+    // would read as a broken click.
+    selectedAgentId,
+    closeMobileSidebar: args.closeMobileSidebar,
+  });
+
+  const { items, groups, defaultGroup } = buildTeamSidebarLists({
+    agents,
+    layout: sidebar.layout,
+    teams,
+    selectedAgentId,
+    affordancesFor: teamActions.affordancesFor,
+    identityFor,
+    // The default team's name is the SPACE's on a host that owns the teams, and
+    // C13 lets its owner rename it like any other. Locally that name is the
+    // workspace's, and nothing in the stack can actually change a workspace
+    // name (the adapter's `renameWorkspace` is synthetic and no host route
+    // exists), so the block gets no rename door there rather than one that
+    // quietly does nothing.
+    onRenameDefaultTeam: serverBacked ? teamActions.renameGroup : undefined,
+    highlight,
     summaries: args.summaries,
     runningLabel: (count) => t("shell:sidebar.runningCount", { count }),
     needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
-    unreadLabel: (count) => t("shell:sidebar.unreadCount", { count }),
-    onChangeColor: args.onChangeColor,
-    onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
-    shareLabel: t("portable:exportMenu"),
   });
 
   return {
+    ...activate,
     teams,
-    other,
     teamActions,
-    selectedAgentId: sidebarSelectedAgentId({
-      viewMode,
-      highlight,
-      activeTeam: teamById(teams, highlight.teamId),
-    }),
+    selectedAgentId,
     items,
     groups,
     defaultGroup,

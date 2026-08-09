@@ -28,21 +28,33 @@ export async function listAgentTeams(
 /** Create a team with the typed name; the creator becomes its owner. */
 export async function createAgentTeam(
   cfg: ControlPlaneConfig,
-  name: string,
+  input: { name: string; icon?: string; color?: string },
 ): Promise<AgentTeam> {
   const res = await cpFetch(cfg, "/v1/org/teams", {
     method: "POST",
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(input),
   });
   return (await res.json()) as AgentTeam;
 }
 
-/** Rename or reorder a team. Partial: an omitted field is left untouched, so
- *  forwarding only what the caller set is the whole contract. */
+/** Rename, reorder or restyle a team. Partial: an omitted field is left
+ *  untouched, so forwarding only what the caller set is the whole contract.
+ *  `icon`/`color` (C13 §Team identity) have three states: a string SETS, `""`
+ *  CLEARS, an omitted key leaves alone. `null` is not a clear — it is a `400`,
+ *  alongside `invalid_icon`/`invalid_color` for a bad shape. Neither is trimmed.
+ *  `context` is the team's shared prose, not an identity field: any string is
+ *  valid, `""` is an empty context rather than a CLEAR, and it is never
+ *  trimmed. */
 export async function updateAgentTeam(
   cfg: ControlPlaneConfig,
   teamId: string,
-  patch: { name?: string; sortOrder?: number },
+  patch: {
+    name?: string;
+    sortOrder?: number;
+    icon?: string;
+    color?: string;
+    context?: string;
+  },
 ): Promise<AgentTeam> {
   const res = await cpFetch(
     cfg,

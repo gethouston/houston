@@ -19,7 +19,8 @@ const NAME_MAX_CHARS = 60;
  * Whether Settings shows the Profile section at all. Gated by DATA, never by a
  * flag: the section appears only once the profile READ succeeded, so a host
  * that 404s the route (`data === null`) or a read that failed hides an editor
- * that could not save anyway. Mirrors {@link useAccountAvailable}.
+ * that could not save anyway. Mirrors {@link useMigrationAvailable} in shape:
+ * a hook the settings view calls to gate one row of the index.
  */
 export function useProfileAvailable(): boolean {
   const { data: session } = useSession();

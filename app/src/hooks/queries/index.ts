@@ -22,10 +22,10 @@ export {
   useAgentTeams,
   useCreateAgentTeam,
   useDeleteAgentTeam,
-  useJoinAgentTeam,
   useLeaveAgentTeam,
   useMoveAgentToTeam,
   useRemoveAgentTeamMember,
+  useSetAgentTeamIdentity,
   useSetAgentTeamMemberOwner,
   useUpdateAgentTeam,
 } from "./use-agent-teams";
