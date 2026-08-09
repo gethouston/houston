@@ -17,6 +17,10 @@ const ACTIVE_DATE_KEY = "analytics:last_active_date";
 const FIRST_INSTALL_VERSION_KEY = "analytics:first_install_version";
 const FIRST_INSTALL_DATE_KEY = "analytics:first_install_date";
 
+// Ceiling on the automation goal stored as a person property: enough to read
+// the intent, short enough that a pasted essay can't bloat every person record.
+const GOAL_PERSON_PROP_MAX = 500;
+
 // Per-process session id. Regenerated every app launch — lets us group
 // events that happened in the same "sit-down session" without making
 // users a tracking surface.
@@ -44,6 +48,19 @@ export type AnalyticsEventName =
   | "onboarding_segment_screen_viewed"
   | "onboarding_segment_selected"
   | "onboarding_segment_continued"
+  // The two questions the segment screen grew into (industry + the automation
+  // goal in the user's own words). Same three-beat shape as the segment step —
+  // viewed / selected / continued — so one funnel covers the whole survey, and
+  // `source_screen` says whether it was asked at first run or later, from the
+  // profile-completion prompt.
+  | "onboarding_industry_screen_viewed"
+  | "onboarding_industry_selected"
+  | "onboarding_industry_continued"
+  | "onboarding_goal_screen_viewed"
+  | "onboarding_goal_continued"
+  // The completion prompt appeared for someone who answered the segment before
+  // the survey existed (or bailed mid-way); `missing_steps` names the gaps.
+  | "onboarding_survey_prompted"
   // One-time "reconnect your AI" moment after upgrading from the legacy build.
   | "migration_reconnect_completed"
   // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
@@ -220,7 +237,21 @@ type AnalyticsProperty =
   // Cloud migration (payload sizes, where already known)
   | "bytes"
   | "selected_segment"
+  // Onboarding survey: the industry id, whether the automation goal was given
+  // or skipped, and (on onboarding_survey_prompted) which questions are still
+  // open — "industry", "goal", or "industry,goal".
+  | "selected_industry"
+  | "goal_provided"
+  | "missing_steps"
+  // Which screen asked the question: "first_run_segment" (the onboarding flow)
+  // or "profile_completion" (the later prompt for an unfinished survey).
   | "source_screen"
+  // The automation goal IN THE USER'S OWN WORDS. Deliberately absent from
+  // ALLOWED_PROPS: it is free text, so it never rides an event (autocapture
+  // masks user content and events must stay content-free). `track` reads it
+  // ONLY to stamp the `onboarding_automation_goal` person property, truncated,
+  // which is where the growth team reads goals from.
+  | "goal_text"
   // Org membership role (org_member_added / org_role_changed)
   | "role"
   // Client UX timing (perf_span)
@@ -275,6 +306,9 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "surface",
   "bytes",
   "selected_segment",
+  "selected_industry",
+  "goal_provided",
+  "missing_steps",
   "source_screen",
   "role",
   "span",
@@ -516,6 +550,25 @@ export const analytics = {
         typeof props?.selected_segment === "string"
       ) {
         posthog.people.set({ onboarding_segment: props.selected_segment });
+      }
+      // The other two survey answers, stamped on the same "Continue" beat and
+      // for the same reason: cohort by industry, and read what people actually
+      // want automated without joining back to a one-off event. Skippers get
+      // "skipped" so they form a cohort instead of vanishing into "no value".
+      if (
+        event === "onboarding_industry_continued" &&
+        typeof props?.selected_industry === "string"
+      ) {
+        posthog.people.set({ onboarding_industry: props.selected_industry });
+      }
+      if (event === "onboarding_goal_continued") {
+        const goal =
+          props?.goal_provided === true && typeof props.goal_text === "string"
+            ? props.goal_text.slice(0, GOAL_PERSON_PROP_MAX)
+            : props?.goal_provided === false
+              ? "skipped"
+              : null;
+        if (goal) posthog.people.set({ onboarding_automation_goal: goal });
       }
     } catch {
       // Analytics unavailable

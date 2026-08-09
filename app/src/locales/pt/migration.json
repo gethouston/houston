@@ -1,4 +1,8 @@
 {
+  "transport": {
+    "notConnected": "Não conseguimos falar com a nuvem agora. Verifique sua conexão e tente de novo.",
+    "signedOut": "Entre na sua conta de novo para continuar movendo seus dados."
+  },
   "offer": {
     "title": "O Houston está indo para a nuvem",
     "body": "Você acreditou no Houston antes de todo mundo. Veja o que você ganha ao ir para a nuvem.",

@@ -1,5 +1,5 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { completeSurvey, resetToFirstRun } from "./support/onboarding";
 
 /**
  * NVIDIA's connect dialog ships a step-by-step key guide (HOU-890): a working
@@ -17,16 +17,10 @@ test("NVIDIA connect dialog shows the NGC Personal Key guide", async ({
   page,
   request,
 }) => {
-  const agents = (await (
-    await request.get(`${FAKE_HOST_URL}/agents`)
-  ).json()) as { id: string }[];
-  for (const agent of agents) {
-    await request.delete(`${FAKE_HOST_URL}/agents/${agent.id}`);
-  }
+  await resetToFirstRun(request);
 
   await page.goto("/");
-  await page.getByRole("button", { name: /Operations/ }).click();
-  await page.getByRole("button", { name: "Continue" }).click();
+  await completeSurvey(page);
   await expect(
     page.getByRole("heading", { name: "Connect your AI" }),
   ).toBeVisible();

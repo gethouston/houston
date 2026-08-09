@@ -8,11 +8,16 @@
 //     · anything else → retryable failure (the flow is idempotent server-side)
 // ─────────────────────────────────────────────────────────────────────────
 //
-// Auth mirrors `cloud-migration-transport.ts` (the app-side gatewayAuthFetch
-// idiom): the bearer is read LIVE from `window.__HOUSTON_ENGINE__` per attempt,
-// and a 401 triggers one session refresh via `window.__HOUSTON_SESSION_REFRESH__`
-// plus one replay. Kept dependency-injected so `app/tests` can drive it without
-// a window or network.
+// Transport, auth and the update floor are the shared `../gateway-fetch`
+// helper's job (live bearer per attempt, one refresh + replay on a 401, build
+// identity header, 426 forwarding). Kept dependency-injected so `app/tests` can
+// drive it without a window or network.
+
+import {
+  type GatewayFetchDeps,
+  gatewayFetch,
+  liveGatewayDeps,
+} from "../gateway-fetch.ts";
 
 /** Why the deletion did not complete. `team_member` is the one NON-retryable
  *  outcome (the server refused and deleted nothing); the rest are transient. */
@@ -32,41 +37,30 @@ export class AccountDeletionError extends Error {
   }
 }
 
-export interface AccountDeletionDeps {
-  /** Gateway base URL (no trailing slash needed; it is stripped). */
-  baseUrl: string;
-  /** The current bearer, read fresh per call. */
-  token: () => string | undefined;
-  /** Mint a fresh bearer after a 401; resolves null when it cannot. */
-  refresh: () => Promise<string | null>;
-  fetchFn: typeof fetch;
-}
-
 /**
  * Issue the deletion request. Resolves on 204; throws `AccountDeletionError`
  * otherwise. Retryable by design: the server deletes the auth user BEFORE the
  * database commit, so a failed attempt leaves a session that can try again.
  */
 export async function requestAccountDeletion(
-  deps: AccountDeletionDeps,
+  deps: GatewayFetchDeps,
 ): Promise<void> {
-  const url = `${deps.baseUrl.replace(/\/+$/, "")}/v1/me`;
-  const send = async (bearer: string | undefined): Promise<Response> => {
-    try {
-      return await deps.fetchFn(url, {
-        method: "DELETE",
-        headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
-      });
-    } catch (e) {
-      throw new AccountDeletionError("network", { cause: e });
-    }
-  };
-
-  let res = await send(deps.token());
-  if (res.status === 401) {
-    const fresh = await deps.refresh().catch(() => null);
-    if (fresh) res = await send(fresh);
+  let res: Response | null;
+  try {
+    // No `x-houston-org`: the route is mounted behind `RequireAuth` alone (no
+    // org resolution), so the pin is at best noise and at worst a 403 on a
+    // stale selector — for the one request whose whole point is leaving.
+    res = await gatewayFetch(deps, "/v1/me", {
+      method: "DELETE",
+      orgScoped: false,
+    });
+  } catch (e) {
+    throw new AccountDeletionError("network", { cause: e });
   }
+  // No session at all — the same outcome the gateway would give, without the
+  // guaranteed-401 round trip. (`accountDeletionAvailable` already gates the
+  // surface on a signed-in user, so this is a belt-and-braces path.)
+  if (!res) throw new AccountDeletionError("http", { httpStatus: 401 });
   if (res.status === 204) return;
   if (res.status === 409) {
     throw new AccountDeletionError("team_member", { httpStatus: 409 });
@@ -93,16 +87,11 @@ export function accountDeletionAvailable(input: {
 
 /** The live-globals wrapper the settings UI calls. */
 export function deleteHostedAccount(): Promise<void> {
-  const cfg = typeof window !== "undefined" ? window.__HOUSTON_ENGINE__ : null;
-  if (!cfg?.baseUrl) {
+  const deps = liveGatewayDeps();
+  if (!deps) {
     throw new AccountDeletionError("network", {
       cause: new Error("account deletion unavailable: no gateway configured"),
     });
   }
-  return requestAccountDeletion({
-    baseUrl: cfg.baseUrl,
-    token: () => window.__HOUSTON_ENGINE__?.token,
-    refresh: async () => (await window.__HOUSTON_SESSION_REFRESH__?.()) ?? null,
-    fetchFn: (input, init) => fetch(input, init),
-  });
+  return requestAccountDeletion(deps);
 }

@@ -1,6 +1,6 @@
 import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { StorageUnavailableScreen } from "./components/auth/storage-unavailable-screen";
 import { CloudMigrationGate } from "./components/onboarding/cloud-migration/cloud-migration-gate";
@@ -10,7 +10,7 @@ import {
   onboardingRoute,
 } from "./components/onboarding/missions/onboarding-flow";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
-import { OnboardingSegmentScreen } from "./components/onboarding/segment-screen";
+import { OnboardingSurveyScreen } from "./components/onboarding/survey-screen";
 import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
 import { WorkspaceLoading } from "./components/shell/workspace-loading";
@@ -27,7 +27,7 @@ import { useMoveResume } from "./hooks/use-move-resume";
 import { useNotificationNudges } from "./hooks/use-notification-nudges";
 import { useOnboardingCompleted } from "./hooks/use-onboarding-completed";
 import { useOnboardingPending } from "./hooks/use-onboarding-pending";
-import { useOnboardingSegment } from "./hooks/use-onboarding-segment";
+import { useOnboardingSurvey } from "./hooks/use-onboarding-survey";
 import { usePerfSpans } from "./hooks/use-perf-spans";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
 import { useReadCursorTracker } from "./hooks/use-read-cursors";
@@ -61,7 +61,6 @@ function logFirstRunRoute(line: string): void {
 }
 
 export default function App() {
-  const authConfigured = isIdentityConfigured();
   useHoustonInit();
   useSessionEvents();
   // HOU-945: ping on @mentions, and remember which missions have been read so
@@ -252,22 +251,15 @@ export default function App() {
   // not. Shows only when (migrated AND no provider connected AND not yet
   // dismissed) — never on a fresh install, never once a provider is connected.
   const migrationReconnect = useMigrationReconnect();
-  const firstRunCandidate = isFirstRun({
-    controlPlane: newEngineActive(),
-    workspaceCount: workspaces.length,
-    agentCount: agents.length,
-  });
-  const segmentGateEnabled =
-    (!authConfigured || (!sessionLoading && Boolean(session))) &&
-    !tutorialActive &&
-    !agentLoading &&
-    wsLoaded &&
-    !capabilitiesLoading &&
-    !(newEngineActive() && !agentsLoaded) &&
-    firstRunCandidate &&
-    canCreateAgents &&
-    !capabilitiesError;
-  const onboardingSegment = useOnboardingSegment(segmentGateEnabled);
+
+  // The onboarding survey (job, industry, automation goal). Read on every boot,
+  // not just first runs: it also drives the in-app prompt that re-opens the
+  // survey for anyone who answered the job question before the other two
+  // existed. Latches below hold each mounting on screen across the async gap
+  // between the last save and the hook's flags catching up.
+  const survey = useOnboardingSurvey();
+  const [firstRunSurveyDone, setFirstRunSurveyDone] = useState(false);
+  const [completionPromptClosed, setCompletionPromptClosed] = useState(false);
 
   // Interrupted-onboarding resume: a durable flag set while first-run is
   // mid-flight and cleared on finish/skip. Because the assistant is created
@@ -411,22 +403,36 @@ export default function App() {
   // provider connected) — see useMigrationReconnect for its trigger.
 
   // The first-run gate (HOU-732), decided by a pure function so its four
-  // behaviors are unit-tested: fresh install shows segmentation then the
+  // behaviors are unit-tested: fresh install shows the survey then the
   // create-your-assistant flow; an interrupted flow resumes via
   // `onboarding_pending`; a completed user (migration done, or an emptied
-  // workspace) lands in the shell. The segmentation question is answered once
-  // and persisted in engine prefs — `segmentAnswered` folds its load + saved
-  // value so a first-run user still splashes while it resolves.
-  const segmentAnswered =
-    !onboardingSegment.isLoading && Boolean(onboardingSegment.preference);
+  // workspace) lands in the shell. The survey is answered once and persisted in
+  // engine prefs — `surveyAnswered` folds its load + saved answers so a
+  // first-run user still splashes while it resolves, and the local latch keeps
+  // the screen up across the gap between its last save and the refreshed flags.
+  const surveyAnswered =
+    firstRunSurveyDone ||
+    (!survey.loading &&
+      survey.segmentAnswered &&
+      survey.industryAnswered &&
+      survey.goalAnswered);
   const firstRunRoute = onboardingRoute({
     firstRun,
     onboardingPending,
     onboardingCompleted,
     canCreateAgents,
     capabilitiesError,
-    segmentAnswered,
+    surveyAnswered,
   });
+
+  // Anyone who answered the job question before industry + goal existed gets
+  // the survey re-opened once, in front of the shell, until they finish it or
+  // say "Not now" (which is remembered in the preference, never re-asked).
+  const showSurveyPrompt =
+    firstRunRoute === "app" &&
+    !survey.loading &&
+    survey.needsCompletionPrompt &&
+    !completionPromptClosed;
 
   // The route inputs, in the frontend log: "why did this boot land where it
   // did" is unanswerable after the fact without them (a mis-routed first run
@@ -436,30 +442,39 @@ export default function App() {
   logFirstRunRoute(
     `[first-run] route=${firstRunRoute} firstRun=${firstRun} agents=${agents.length} ` +
       `completed=${onboardingCompleted} pending=${onboardingPending} ` +
-      `canCreate=${canCreateAgents} capErr=${capabilitiesError} segmentAnswered=${segmentAnswered}`,
+      `canCreate=${canCreateAgents} capErr=${capabilitiesError} surveyAnswered=${surveyAnswered} ` +
+      `surveyPrompt=${showSurveyPrompt}`,
   );
 
   return (
     <CloudMigrationGate>
       {firstRunRoute === "segment" ? (
-        onboardingSegment.isLoading ? (
+        survey.loading ? (
           <WorkspaceLoading />
         ) : (
-          <OnboardingSegmentScreen
-            saving={onboardingSegment.isSaving}
-            onContinue={async (segment) => {
-              await onboardingSegment.saveSegment(segment);
-            }}
-            onSkip={() => {
+          <OnboardingSurveyScreen
+            mode="first_run"
+            survey={survey}
+            onComplete={() => setFirstRunSurveyDone(true)}
+            onDismiss={() => {
               // Terminal escape hatch, mirroring the orchestrator's
-              // skipOnboarding. The segment screen mounts BEFORE the
-              // orchestrator, so no pending flag or tutorialActive exists yet:
-              // marking completed is the whole teardown, and it flips this
-              // route to the shell synchronously (query cache set first).
+              // skipOnboarding. The survey mounts BEFORE the orchestrator, so
+              // no pending flag or tutorialActive exists yet: marking completed
+              // is the whole teardown, and it flips this route to the shell
+              // synchronously (query cache set first). Deliberately saves NO
+              // answer.
+              //
+              // Declining onboarding declines the completion prompt with it.
+              // Skipping AFTER answering the job question leaves a segmented
+              // record with gaps, which is exactly what `needsCompletionPrompt`
+              // fires on — without this the survey would re-mount as the
+              // in-app prompt in the very same render, and "Skip onboarding"
+              // would visibly do nothing.
               analytics.track("onboarding_skipped", {
                 step: "segment",
                 source: "escape_hatch",
               });
+              void survey.dismissCompletionPrompt();
               void markCompleted();
             }}
           />
@@ -475,6 +490,16 @@ export default function App() {
           <ClaudeBrowserLogin />
           <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
         </>
+      ) : showSurveyPrompt ? (
+        <OnboardingSurveyScreen
+          mode="profile_completion"
+          survey={survey}
+          onComplete={() => setCompletionPromptClosed(true)}
+          onDismiss={() => {
+            void survey.dismissCompletionPrompt();
+            setCompletionPromptClosed(true);
+          }}
+        />
       ) : (
         <>
           <ProviderLoginFallback />

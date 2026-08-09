@@ -1,5 +1,9 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import {
+  answerJobStep,
+  completeSurvey,
+  resetToFirstRun,
+} from "./support/onboarding";
 
 /**
  * The global "Skip onboarding" escape hatch: a subtle ghost button pinned to
@@ -8,38 +12,15 @@ import { expect, test } from "./support/fixtures";
  *
  * Two properties guarded here:
  *   1. AVAILABILITY: the button is visible from the very FIRST screen (the
- *      segment question) and every step after it, before any assistant
+ *      survey's job question) and every step after it, before any assistant
  *      exists. A zero-agent skip is safe: the workspace shell's empty state
  *      offers a "New agent" CTA, and onboarding only ever mounts for users
  *      allowed to create agents.
  *   2. EXIT: clicking it is a terminal exit — onboarding unmounts and the
- *      workspace shell takes over on its zero-agent empty state. The segment
- *      screen's exit is a separate code path (App-level markCompleted, no
- *      orchestrator mounted yet), so both exits are exercised.
+ *      workspace shell takes over on its zero-agent empty state. The survey's
+ *      exit is a separate code path (App-level markCompleted, no orchestrator
+ *      mounted yet), so both exits are exercised.
  */
-async function resetToFirstRun(
-  request: Parameters<Parameters<typeof test>[2]>[0]["request"],
-) {
-  const agents = (await (
-    await request.get(`${FAKE_HOST_URL}/agents`)
-  ).json()) as { id: string }[];
-  for (const agent of agents) {
-    await request.delete(`${FAKE_HOST_URL}/agents/${agent.id}`);
-  }
-  // The fake host is shared across this worker's tests, and an earlier skip
-  // persists the durable flags — clear them so every test boots first-run.
-  // (localStorage mirrors reset for free: fresh browser context per test.)
-  for (const key of [
-    "onboarding_completed",
-    "onboarding_pending",
-    "houston_onboarding_segment",
-  ]) {
-    await request.put(`${FAKE_HOST_URL}/v1/preferences/${key}`, {
-      data: { value: null },
-    });
-  }
-}
-
 test("skip-onboarding escape hatch shows on the connect step and exits to the shell", async ({
   page,
   request,
@@ -47,13 +28,12 @@ test("skip-onboarding escape hatch shows on the connect step and exits to the sh
   await resetToFirstRun(request);
 
   await page.goto("/");
-  // Segment question: the escape hatch is already present on the very first
+  // Job question: the escape hatch is already present on the very first
   // first-run screen, before the orchestrator (and any agent) exists.
   await expect(
     page.getByRole("button", { name: "Skip onboarding" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /Operations/ }).click();
-  await page.getByRole("button", { name: "Continue" }).click();
+  await completeSurvey(page);
 
   // Connect step: no agent exists yet, but the escape hatch is already there.
   await expect(
@@ -77,7 +57,7 @@ test("skip-onboarding escape hatch shows on the connect step and exits to the sh
   ).toBeVisible();
 });
 
-test("skip-onboarding escape hatch exits straight from the segment screen", async ({
+test("skip-onboarding escape hatch exits straight from the survey", async ({
   page,
   request,
 }) => {
@@ -87,7 +67,7 @@ test("skip-onboarding escape hatch exits straight from the segment screen", asyn
   const skip = page.getByRole("button", { name: "Skip onboarding" });
   await expect(skip).toBeVisible();
 
-  // Skip without answering the segment question: App-level terminal exit
+  // Skip without answering the survey: App-level terminal exit
   // (markCompleted only — no orchestrator, no pending flag) lands on the
   // shell's zero-agent empty state.
   await skip.click();
@@ -96,4 +76,34 @@ test("skip-onboarding escape hatch exits straight from the segment screen", asyn
   await expect(
     page.getByRole("main").getByRole("button", { name: "New agent" }),
   ).toBeVisible();
+});
+
+test("skipping PART WAY through the survey does not bounce into the prompt", async ({
+  page,
+  request,
+}) => {
+  // The job question answered and the other two not is exactly the state the
+  // in-app completion prompt fires on. Declining onboarding has to decline
+  // that prompt too, or Skip re-mounts the survey in the same render and reads
+  // as a dead button.
+  await resetToFirstRun(request);
+
+  await page.goto("/");
+  await answerJobStep(page);
+  await expect(
+    page.getByRole("heading", { name: "What industry do you work in?" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Skip onboarding" }).click();
+
+  const prompt = page.getByRole("heading", {
+    name: "Help us tailor Houston to you",
+  });
+  await expect(page.getByText("No agents yet")).toBeVisible();
+  await expect(prompt).toHaveCount(0);
+
+  // And it stays declined: the dismissal is stored, not just this render.
+  await page.reload();
+  await expect(page.getByText("No agents yet")).toBeVisible();
+  await expect(prompt).toHaveCount(0);
 });
