@@ -212,8 +212,15 @@ async function clickVisibleTeamSection(
 ): Promise<boolean> {
   const tab = teamTab(page, section);
   if (await tab.isVisible()) {
-    await tab.click();
-    return true;
+    try {
+      await tab.click({ timeout: 5_000 });
+      return true;
+    } catch {
+      // The strip re-modes when its width observer reports — on a slow CI box
+      // that can land BETWEEN the visibility check and the click, unmounting
+      // the tab cluster into the compact switcher. The section is still
+      // reachable; it just moved. Fall through to the switcher path.
+    }
   }
 
   const switcher = teamSectionSwitcher(page);
