@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { CatalogSearchField } from "@houston-ai/core";
 import { useId, useMemo, useState } from "react";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../../lib/ai-hub/search.ts";
@@ -29,6 +29,7 @@ export interface ModelsAllowlistEditorCopy {
   allowedEmpty: string;
   allowedEmptyLab: string;
   searchModels: string;
+  clearSearch: string;
   noModels: string;
   /** aria-label for a per-model allow toggle. */
   allowModel: (name: string) => string;
@@ -170,16 +171,13 @@ export function ModelsAllowlistEditor({
                 {copy.addHeading}
               </h3>
               <div className="mb-3 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={copy.searchModels}
-                    className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
-                  />
-                </div>
+                <CatalogSearchField
+                  className="flex-1"
+                  value={search}
+                  onChange={setSearch}
+                  label={copy.searchModels}
+                  clearLabel={copy.clearSearch}
+                />
                 <LabFilter models={models} value={lab} onChange={setLab} />
               </div>
               {results.length === 0 ? (

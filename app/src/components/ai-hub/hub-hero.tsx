@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { PageHeader } from "../shell/page-shell";
+import { PageHero } from "../shell/page-shell";
 import { fewModels, roundedModelCount } from "./format.ts";
 
 /**
  * The AI models hub masthead: the app-wide landing-page header (matching
- * Settings / Integrations / Organization) via the shared `PageHeader`, so every
+ * Settings / Integrations / Organization) via the shared `PageHero`, so every
  * top-level surface opens the same way. The model count rounds DOWN to the
  * nearest 50 so the copy reads as a confident round number ("400+"); when few
  * providers are visible the rounded number would read "0+", so the subtitle
@@ -14,7 +14,7 @@ export function HubHero({ modelCount }: { modelCount: number }) {
   const { t } = useTranslation("aiHub");
 
   return (
-    <PageHeader
+    <PageHero
       title={t("hero.title")}
       subtitle={
         fewModels(modelCount)

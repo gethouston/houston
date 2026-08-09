@@ -19,13 +19,13 @@
 
 import {
   CatalogGrid,
+  CatalogSearchField,
   cn,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@houston-ai/core";
-import { Search } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types.ts";
@@ -117,16 +117,12 @@ export function ModelsBrowser({
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-col gap-2">
         {!controlled && (
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" />
-            <input
-              type="text"
-              value={internalQuery}
-              onChange={(e) => setInternalQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="h-9 w-full rounded-full border border-line bg-input pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus/20"
-            />
-          </div>
+          <CatalogSearchField
+            value={internalQuery}
+            onChange={setInternalQuery}
+            label={searchPlaceholder}
+            clearLabel={t("providerModal.clearSearch")}
+          />
         )}
 
         <ModelFacets
@@ -152,7 +148,7 @@ export function ModelsBrowser({
           </EmptyHeader>
         </Empty>
       ) : (
-        <CatalogGrid className={layout === "list" ? "lg:grid-cols-1" : ""}>
+        <CatalogGrid columns={layout === "list" ? 1 : "auto"}>
           {results.slice(0, visible).map((model) => (
             <ModelCardRow
               key={model.key}

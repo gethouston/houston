@@ -13,7 +13,6 @@ export const STORE_HOME_HERO_CLASS =
 
 const defaults = {
   hero: "Hire your next teammate",
-  searchLabel: "Search the Agent Store",
   searchPlaceholder: "Search agents and creators",
   allCategories: "All categories",
   agents: "Agents",

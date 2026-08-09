@@ -11,6 +11,7 @@ import { reportError } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 import { CreatorProfilePane } from "./creator/creator-profile-pane";
 import { MyAgentsPanel } from "./my-agents-panel";
+import { CreatorProfileEditorDialog } from "./profile/creator-profile-editor";
 import { StoreBrowse } from "./store-browse";
 import { StoreDetailPane } from "./store-detail-pane";
 import { actionLink } from "./store-link";
@@ -29,6 +30,15 @@ export function StoreView() {
   const focusSlug = useUIStore((state) => state.storeFocusSlug);
   const creatorHandle = useUIStore((state) => state.storeCreatorHandle);
   const setCreatorHandle = useUIStore((state) => state.setStoreCreatorHandle);
+  // The creator-profile editor is mounted HERE, at the Store's root, because
+  // every control that opens it is inside this view: the claim card and the
+  // owner pencils in `MyAgentsPanel`, which this view renders from two
+  // branches. It used to hang off the rail's avatar menu, which meant a store
+  // affordance depended on a shell control that has since been removed.
+  const creatorEditorOpen = useUIStore((state) => state.creatorEditorOpen);
+  const setCreatorEditorOpen = useUIStore(
+    (state) => state.setCreatorEditorOpen,
+  );
 
   useEffect(() => {
     if (!ownerTab) return;
@@ -125,6 +135,10 @@ export function StoreView() {
       ) : (
         <StoreBrowse onOpenAgent={setDetailAgent} onOpenCreator={openCreator} />
       )}
+      <CreatorProfileEditorDialog
+        open={creatorEditorOpen}
+        onOpenChange={setCreatorEditorOpen}
+      />
     </div>
   );
 }

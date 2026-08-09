@@ -17,6 +17,7 @@ export * from "./components/catalog-add-button";
 export * from "./components/catalog-detail-dialog";
 export * from "./components/catalog-row";
 export * from "./components/catalog-row-surface";
+export * from "./components/catalog-search-field";
 export * from "./components/catalog-shell";
 export * from "./components/collapsible";
 export * from "./components/command";
