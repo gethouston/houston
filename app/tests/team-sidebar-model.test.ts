@@ -1,66 +1,139 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { agentsInTeams } from "../src/components/shell/team-sidebar-model.ts";
-import type { TeamView } from "../src/lib/teams-model.ts";
-import type { Agent } from "../src/lib/types.ts";
+import type { SidebarLayout } from "@houston-ai/engine-client";
+import {
+  teamAffordanceMask,
+  teamCollapsedLookup,
+} from "../src/components/shell/team-sidebar-model.ts";
+import type { ServerTeamFacts, TeamView } from "../src/lib/teams-model.ts";
 
-// What the rail may DRAW once the teams are split into joined and other: the
-// grouped list files every unclaimed item under the default block, so a
-// non-joined team's agents must never reach it.
+// The rail's pure team vocabulary: which blocks are folded, and which
+// header-menu affordances each block offers.
+//
+// `agentsInTeams` is GONE, along with its tests: the gateway now serves a
+// member only the teams they are part of, so the rail draws every team the read
+// returned and there is no unjoined team whose agents could spill into the
+// default block.
 
-const agent = (id: string): Agent =>
-  ({ id, name: id, configId: "c", folderPath: `/w/${id}` }) as Agent;
-
-const team = (id: string, agents: Agent[], isDefault = false): TeamView => ({
+const team = (
+  id: string,
+  isDefault = false,
+  server?: Partial<ServerTeamFacts>,
+): TeamView => ({
   id,
   name: id,
-  agents,
+  agents: [],
   isDefault,
+  ...(server
+    ? {
+        server: {
+          joined: true,
+          owner: false,
+          memberCount: 1,
+          sortOrder: 0,
+          ...server,
+        },
+      }
+    : {}),
 });
 
-describe("agentsInTeams", () => {
-  it("drops the agents no listed team holds", () => {
-    const [a, b, c] = [agent("a"), agent("b"), agent("c")];
-    const kept = agentsInTeams(
-      [a, b, c],
-      [team("t1", [a]), team("t2", [c], true)],
+const layout = (partial: Partial<SidebarLayout>): SidebarLayout =>
+  ({ groups: [], ungroupedOrder: [], ...partial }) as SidebarLayout;
+
+describe("teamCollapsedLookup", () => {
+  it("reads a named team's own stored group flag", () => {
+    const isCollapsed = teamCollapsedLookup(
+      layout({
+        groups: [
+          { id: "t1", name: "t1", agentIds: [], collapsed: true },
+          { id: "t2", name: "t2", agentIds: [], collapsed: false },
+        ],
+      } as Partial<SidebarLayout>),
     );
-    assert.deepEqual(
-      kept.map((x) => x.id),
-      ["a", "c"],
+    assert.equal(isCollapsed(team("t1")), true);
+    assert.equal(isCollapsed(team("t2")), false);
+  });
+
+  it("reads the VIRTUAL default team from the layout's own field", () => {
+    // The default team owns no stored group row, so a `groups` entry that
+    // happens to share its id must not answer for it.
+    const isCollapsed = teamCollapsedLookup(
+      layout({
+        defaultCollapsed: true,
+        groups: [{ id: "ws", name: "ws", agentIds: [], collapsed: false }],
+      } as Partial<SidebarLayout>),
     );
+    assert.equal(isCollapsed(team("ws", true)), true);
   });
 
-  it("keeps the agent-store order, not the teams' order", () => {
-    const [a, b] = [agent("a"), agent("b")];
-    const kept = agentsInTeams([a, b], [team("t1", [b]), team("t2", [a])]);
-    assert.deepEqual(
-      kept.map((x) => x.id),
-      ["a", "b"],
+  it("treats an absent flag, an absent row and a corrupt layout as expanded", () => {
+    assert.equal(teamCollapsedLookup(layout({}))(team("ws", true)), false);
+    assert.equal(teamCollapsedLookup(layout({}))(team("t1")), false);
+    const corrupt = teamCollapsedLookup({} as SidebarLayout);
+    assert.equal(corrupt(team("t1")), false);
+    assert.equal(corrupt(team("ws", true)), false);
+  });
+});
+
+describe("teamAffordanceMask", () => {
+  const mask = (args: {
+    serverBacked: boolean;
+    personalSpace?: boolean;
+    selfId?: string | null;
+  }) =>
+    teamAffordanceMask({
+      serverBacked: args.serverBacked,
+      personalSpace: args.personalSpace ?? false,
+      selfId: args.selfId === undefined ? "u1" : args.selfId,
+    });
+
+  it("passes NO mask off-capability, which is the pre-C13 rendering", () => {
+    const off = mask({ serverBacked: false });
+    assert.equal(off(team("t1")), undefined);
+    assert.equal(off(team("ws", true)), undefined);
+  });
+
+  it("gives an owner rename, delete and identity", () => {
+    // No context entry among them on EITHER backend any more: a team's shared
+    // context is the first card of its Manage agents page, one door onto it,
+    // and the rail menu that used to open a dialog is gone.
+    const owned = mask({ serverBacked: true })(
+      team("t1", false, { owner: true }),
     );
+    assert.deepEqual(owned, {
+      rename: true,
+      delete: true,
+      leave: true,
+      identity: true,
+    });
   });
 
-  it("returns the SAME array when every agent is held (the local backend)", () => {
-    const agents = [agent("a"), agent("b")];
-    const teams = [team("t1", [agents[0]]), team("ws", [agents[1]], true)];
-    assert.equal(agentsInTeams(agents, teams), agents);
-  });
+  it("offers identity exactly where it offers rename, the default team included", () => {
+    const asOwner = mask({ serverBacked: true });
+    const def = asOwner(team("ws", true, { owner: true }));
+    // The default team is renamable server-side but never deletable, and
+    // identity follows rename rather than delete.
+    assert.equal(def?.rename, true);
+    assert.equal(def?.identity, true);
+    assert.equal(def?.delete, false);
 
-  it("returns the same array for no agents at all", () => {
-    const agents: Agent[] = [];
-    assert.equal(agentsInTeams(agents, []), agents);
-  });
-
-  it("drops everything when no team is listed but agents exist", () => {
-    assert.deepEqual(agentsInTeams([agent("a")], []), []);
-  });
-
-  it("counts an agent once when two teams both name it", () => {
-    const a = agent("a");
-    const kept = agentsInTeams([a], [team("t1", [a]), team("t2", [a])]);
-    assert.deepEqual(
-      kept.map((x) => x.id),
-      ["a"],
+    const member = mask({ serverBacked: true })(
+      team("t1", false, { owner: false }),
     );
+    assert.equal(member?.rename, false);
+    assert.equal(member?.identity, false);
+  });
+
+  it("withholds Leave with no session id and in a personal space", () => {
+    const joined = team("t1", false, { joined: true });
+    assert.equal(
+      mask({ serverBacked: true, selfId: null })(joined)?.leave,
+      false,
+    );
+    assert.equal(
+      mask({ serverBacked: true, personalSpace: true })(joined)?.leave,
+      false,
+    );
+    assert.equal(mask({ serverBacked: true })(joined)?.leave, true);
   });
 });

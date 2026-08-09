@@ -56,12 +56,12 @@
     },
     "preprompt": {
       "title": "¿Quieres un aviso cuando tu agente termine?",
-      "body": "Activa las notificaciones y Houston te avisará en cuanto una misión termine o te necesite.",
+      "body": "Activa las notificaciones y Houston te avisará en cuanto una tarea termine o te necesite.",
       "cta": "Activar notificaciones"
     },
     "catchNet": {
       "title": "Te perdiste un aviso",
-      "body": "Activa las notificaciones para que Houston pueda avisarte cuando una misión termine.",
+      "body": "Activa las notificaciones para que Houston pueda avisarte cuando una tarea termine.",
       "cta": "Activar notificaciones"
     },
     "granted": "Las notificaciones están activadas.",

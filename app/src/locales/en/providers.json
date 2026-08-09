@@ -9,7 +9,7 @@
   },
   "signOutConfirm": {
     "title": "Sign out of {{provider}}?",
-    "description": "Houston will stop using {{provider}} until you sign in again. Existing missions can still finish their current turn.",
+    "description": "Houston will stop using {{provider}} until you sign in again. Existing tasks can still finish their current turn.",
     "confirm": "Sign out",
     "cancel": "Cancel"
   },

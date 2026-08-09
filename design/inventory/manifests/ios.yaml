@@ -306,5 +306,11 @@ components:
     status: not-started
   sidebar-team-block:
     status: not-started
+  sidebar-nav-band:
+    status: not-started
+  team-identity-picker:
+    status: not-started
+  sidebar-teams-band:
+    status: not-started
   team-screen:
     status: not-started

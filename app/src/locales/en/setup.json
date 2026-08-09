@@ -117,7 +117,7 @@
         "tagline": "Now go ship the impossible.",
         "cta": "Start building",
         "inviteTeam": "Invite your team",
-        "inviteTeamBody": "See who's working on every mission. Create a team and share your agents."
+        "inviteTeamBody": "See who's working on every task. Create a team and share your agents."
       }
     },
     "stepCounter": "Step {{current}} of {{total}}"

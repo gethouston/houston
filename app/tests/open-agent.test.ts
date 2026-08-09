@@ -38,28 +38,42 @@ function fnSource(source: string, name: string): string {
 const OPEN_AGENT = read("../src/lib/open-agent.ts");
 
 describe("openAgentSection's no-team fallback", () => {
-  // The dashboard is the cross-agent MISSION board: it shows no routines and no
-  // files. Answering "take me to this agent's Routines" with it was a silent
-  // second fallback on top of the one `agentDestination` documents.
+  // "Take me to this agent's Routines" with no team to open has exactly one
+  // honest answer, and it is the app's ONE home rule. Naming a view here would
+  // be a second, unexplained fallback beside the one `home-nav.ts` documents.
   const body = fnSource(OPEN_AGENT, "openAgentSection");
 
   it("routes an unclaimed agent through openAgentBoard, the one justified fallback", () => {
     ok(
       body.includes("openAgentBoard(agentId)"),
-      "the dashboard branch must delegate to openAgentBoard",
+      "the no-team branch must delegate to openAgentBoard",
     );
   });
 
-  it("never drops the user on the dashboard itself", () => {
+  it("never names a view of its own", () => {
     ok(
-      !body.includes('setViewMode("dashboard")'),
-      "a Routines/Files request must not set the dashboard directly",
+      !body.includes("setViewMode("),
+      "a Routines/Files request must not set a view directly",
     );
   });
 
   it("explains why the board is the honest landing spot", () => {
     // Rule 0: the next reader must not "simplify" this back into a setViewMode.
     ok(/board/i.test(body) && /fallback/i.test(body));
+  });
+});
+
+describe("openAgentBoard's no-team fallback", () => {
+  const body = fnSource(OPEN_AGENT, "openAgentBoard");
+
+  it("goes through the ONE shared home rule, never a view id", () => {
+    // There is no global mission board any more, so an agent no team claims
+    // has to land wherever every other missed nav lands: `lib/home-nav.ts`.
+    ok(body.includes("openHome()"), "the no-team branch must call openHome");
+    ok(
+      !body.includes("setViewMode("),
+      "the fallback must not name a view of its own",
+    );
   });
 });
 
@@ -73,7 +87,7 @@ describe("openAgentSettings's failure path", () => {
     // Settings by hand, drilling them into an agent they never asked for.
     ok(
       failure.includes("clearRequested()"),
-      "the dashboard branch must clear the one-shot",
+      "the no-team branch must clear the one-shot",
     );
   });
 

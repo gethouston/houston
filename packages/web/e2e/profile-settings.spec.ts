@@ -2,6 +2,7 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
+import { openSettings } from "./support/settings-nav";
 
 /**
  * A user names themselves, and Houston believes them everywhere.
@@ -74,10 +75,11 @@ async function openProfileSettings(page: Page): Promise<void> {
   await expect(page.getByTestId("profile-name-input")).toBeVisible();
 }
 
-/** The sidebar user row: a self-face OUTSIDE the editor, painted from the org
- *  profile the save reflected into. */
-const sidebarName = (page: Page) =>
-  page.getByRole("button", { name: NEW_NAME });
+/** The Settings index's identity header: a self-face OUTSIDE the editor,
+ *  painted from the org profile the save reflected into. It replaced the rail's
+ *  avatar menu, which was a second door onto this very page. */
+const identityName = (page: Page) =>
+  page.getByTestId("settings-identity").getByText(NEW_NAME, { exact: true });
 
 test("a display name the user picks becomes the name Houston shows them", async ({
   page,
@@ -95,16 +97,18 @@ test("a display name the user picks becomes the name Houston shows them", async 
   await field.fill(NEW_NAME);
   await page.getByTestId("profile-name-save").click();
 
-  // The save lands on a surface that is NOT the form: the sidebar user row is
-  // painted by `useMyProfile` -> `GET /v1/org/profiles`, which only knows the
-  // new name because the write reached the host and the mutation invalidated
-  // the profile caches.
-  await expect(sidebarName(page)).toBeVisible();
+  // The save lands on a surface that is NOT the form: one level up, the
+  // Settings index's identity header is painted by `useMyProfile` ->
+  // `GET /v1/org/profiles`, which only knows the new name because the write
+  // reached the host and the mutation invalidated the profile caches.
+  await openSettings(page);
+  await expect(identityName(page)).toBeVisible();
 
   // A full reload re-reads everything from the host, so this proves the name
   // was persisted rather than held in the client cache.
   await page.reload();
-  await expect(sidebarName(page)).toBeVisible();
+  await openSettings(page);
+  await expect(identityName(page)).toBeVisible();
 });
 
 test("a picture the user uploads replaces their initials, and removing it falls back", async ({

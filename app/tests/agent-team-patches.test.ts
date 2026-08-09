@@ -1,15 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
+import type { AgentTeam } from "@houston-ai/engine-client";
 import {
+  applyTeamIdentity,
   applyTeamSortOrder,
-  crossTeamDropOverlay,
   moveAgentInTeams,
   teamSortOrderBetween,
 } from "../src/lib/agent-team-patches.ts";
 
-// The pure patches an OPTIMISTIC C13 write applies to the two caches one
-// gesture touches: the server's teams, and the per-user ordering overlay.
+// The pure patches an OPTIMISTIC C13 write applies to the cached teams.
 
 const serverTeam = (over: Partial<AgentTeam> & { id: string }): AgentTeam => ({
   name: over.id,
@@ -19,18 +18,6 @@ const serverTeam = (over: Partial<AgentTeam> & { id: string }): AgentTeam => ({
   memberCount: 1,
   joined: true,
   owner: true,
-  ...over,
-});
-
-const group = (
-  id: string,
-  agentIds: string[],
-  over: Partial<SidebarLayout["groups"][number]> = {},
-): SidebarLayout["groups"][number] => ({
-  id,
-  name: id,
-  collapsed: false,
-  agentIds,
   ...over,
 });
 
@@ -55,103 +42,6 @@ describe("moveAgentInTeams", () => {
     // structural sharing keeps the consumers that memoize on it.
     const elsewhere = moveAgentInTeams(teams, "zzz", "t-dst");
     assert.equal(elsewhere[0], teams[0]);
-  });
-});
-
-describe("crossTeamDropOverlay", () => {
-  const teams = [
-    serverTeam({ id: "t-src", agentSlugs: ["a", "b"] }),
-    serverTeam({ id: "t-dst", agentSlugs: ["x", "y"] }),
-  ];
-  const layout: SidebarLayout = {
-    groups: [
-      group("t-src", ["a", "b"]),
-      group("t-dst", ["x", "y"]),
-      group("grp_local", ["a"], { name: "Design", context: "the brand" }),
-    ],
-    ungroupedOrder: [],
-  };
-
-  it("keeps the DROP POSITION, because it prunes against the roster the move asserts", () => {
-    // The whole point: normalized against the roster as it still STANDS, the
-    // destination team does not hold the dropped agent yet, so the pruning rule
-    // deletes the id the drop just wrote and the agent reappears appended.
-    const next = crossTeamDropOverlay(layout, teams, "a", {
-      groupId: "t-dst",
-      beforeItemId: "y",
-    });
-    assert.deepEqual(next.groups.find((g) => g.id === "t-dst")?.agentIds, [
-      "x",
-      "a",
-      "y",
-    ]);
-  });
-
-  it("takes the agent out of the source block's order", () => {
-    const next = crossTeamDropOverlay(layout, teams, "a", {
-      groupId: "t-dst",
-      beforeItemId: null,
-    });
-    assert.deepEqual(next.groups.find((g) => g.id === "t-src")?.agentIds, [
-      "b",
-    ]);
-  });
-
-  it("appends when the drop names no sibling to land before", () => {
-    const next = crossTeamDropOverlay(layout, teams, "a", {
-      groupId: "t-dst",
-      beforeItemId: null,
-    });
-    assert.deepEqual(next.groups.find((g) => g.id === "t-dst")?.agentIds, [
-      "x",
-      "y",
-      "a",
-    ]);
-  });
-
-  it("carries a local group that is no server team through untouched", () => {
-    const next = crossTeamDropOverlay(layout, teams, "b", {
-      groupId: "t-dst",
-      beforeItemId: "x",
-    });
-    assert.deepEqual(
-      next.groups.find((g) => g.id === "grp_local"),
-      layout.groups[2],
-    );
-  });
-
-  it("leaves the layout it was handed intact, so a refusal can put it back", () => {
-    // The rollback contract: the caller keeps the pre-drop layout as its
-    // snapshot, and a `not_team_owner` 403 must restore the source block's
-    // order exactly, not a copy this function quietly reordered.
-    const before = structuredClone(layout);
-    crossTeamDropOverlay(layout, teams, "a", {
-      groupId: "t-dst",
-      beforeItemId: "y",
-    });
-    assert.deepEqual(layout, before);
-  });
-
-  it("leaves the teams it was handed intact", () => {
-    const before = structuredClone(teams);
-    crossTeamDropOverlay(layout, teams, "a", {
-      groupId: "t-dst",
-      beforeItemId: "y",
-    });
-    assert.deepEqual(teams, before);
-  });
-
-  it("records the position even before the overlay has ever named the team", () => {
-    // A server host's overlay starts EMPTY: the first drop into a team names an
-    // id it does not hold yet, which upserts.
-    const empty: SidebarLayout = { groups: [], ungroupedOrder: [] };
-    const next = crossTeamDropOverlay(empty, teams, "a", {
-      groupId: "t-dst",
-      beforeItemId: null,
-    });
-    assert.deepEqual(next.groups.find((g) => g.id === "t-dst")?.agentIds, [
-      "a",
-    ]);
   });
 });
 
@@ -238,5 +128,76 @@ describe("applyTeamSortOrder", () => {
       applyTeamSortOrder(teams, "c", 1).map((t) => t.id),
       ["a", "c", "b"],
     );
+  });
+});
+
+describe("applyTeamIdentity", () => {
+  // The picker LIVE-APPLIES a choice, so this has to patch the cache the way
+  // the gateway will patch the row: `""` clears, another string sets, an
+  // omitted field is untouched.
+  const teams = [
+    serverTeam({ id: "a", icon: "book", color: "#5E6AD2" }),
+    serverTeam({ id: "b" }),
+  ];
+
+  it("sets a field, on a team that had none", () => {
+    const next = applyTeamIdentity(teams, "b", { icon: "rocket" });
+    assert.equal(next[1]?.icon, "rocket");
+  });
+
+  it("replaces a field the team already carried", () => {
+    const next = applyTeamIdentity(teams, "a", { color: "indigo-500" });
+    assert.equal(next[0]?.color, "indigo-500");
+  });
+
+  it("CLEARS a field on the empty string, leaving it ABSENT", () => {
+    // Not `undefined`-valued: unset is absent on the wire, so a cached team
+    // must answer `"icon" in team` the way the next read will.
+    const next = applyTeamIdentity(teams, "a", { icon: "" });
+    assert.equal("icon" in (next[0] as AgentTeam), false);
+  });
+
+  it("leaves the sibling field alone when the patch omits it", () => {
+    assert.equal(
+      applyTeamIdentity(teams, "a", { icon: "" })[0]?.color,
+      "#5E6AD2",
+    );
+    assert.equal(applyTeamIdentity(teams, "a", { color: "" })[0]?.icon, "book");
+    assert.equal(applyTeamIdentity(teams, "a", {})[0]?.icon, "book");
+    assert.equal(applyTeamIdentity(teams, "a", {})[0]?.color, "#5E6AD2");
+  });
+
+  it("sets both fields in one patch", () => {
+    const next = applyTeamIdentity(teams, "b", {
+      icon: "flask",
+      color: "forest",
+    });
+    assert.equal(next[1]?.icon, "flask");
+    assert.equal(next[1]?.color, "forest");
+  });
+
+  it("leaves the list unchanged for a team id the cache does not hold", () => {
+    const next = applyTeamIdentity(teams, "ghost", { icon: "star" });
+    assert.deepEqual(next, teams);
+    // Untouched teams come back by identity, so React Query's structural
+    // sharing keeps the consumers that memoize on them.
+    assert.equal(next[0], teams[0]);
+    assert.equal(next[1], teams[1]);
+  });
+
+  it("does not mutate the teams it was handed, so a refusal can put them back", () => {
+    const before = structuredClone(teams);
+    applyTeamIdentity(teams, "a", { icon: "", color: "star" });
+    assert.deepEqual(teams, before);
+  });
+
+  it("keeps every other field of the patched team", () => {
+    const next = applyTeamIdentity(
+      [serverTeam({ id: "a", agentSlugs: ["x"], sortOrder: 3, icon: "book" })],
+      "a",
+      { icon: "" },
+    );
+    assert.deepEqual(next[0]?.agentSlugs, ["x"]);
+    assert.equal(next[0]?.sortOrder, 3);
   });
 });

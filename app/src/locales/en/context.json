@@ -9,5 +9,27 @@
     "tokensUsed": "{{used}} tokens used",
     "empty": "Send a message and the context usage will show up here.",
     "unknownWindow": "The context size for this model is not known yet, so the amount used is shown without a percentage."
+  },
+  "aboutMe": {
+    "title": "About me",
+    "subtitle": "What every agent knows about you before it starts."
+  },
+  "editor": {
+    "saving": "Saving…",
+    "saved": "Saved",
+    "user": {
+      "emptyTitle": "Tell every agent about you",
+      "emptyDescription": "Your role, what you care about, how you like to work. Loaded into every new chat in this workspace.",
+      "writeButton": "Write user context",
+      "helper": "Loaded into each new chat in this workspace. Agents can update this when you tell them something new.",
+      "placeholder": "e.g. I'm Juan, head of sales. I care about pipeline velocity and prefer short replies."
+    },
+    "workspace": {
+      "emptyTitle": "Tell every agent about this workspace",
+      "emptyDescription": "The company, the product, the customers. Loaded into every new chat in this workspace.",
+      "writeButton": "Write workspace context",
+      "helper": "Shared by every agent in this workspace. Loaded into each new chat. Agents can update this when you tell them something new.",
+      "placeholder": "e.g. Acme Corp, B2B fintech, Series A. Customers are CFOs at mid-market companies."
+    }
   }
 }

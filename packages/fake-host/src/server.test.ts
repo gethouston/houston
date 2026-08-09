@@ -681,6 +681,9 @@ interface TeamWire {
   memberCount: number;
   joined: boolean;
   owner: boolean;
+  /** Optional in the strict sense: ABSENT on a team with no identity. */
+  icon?: string;
+  color?: string;
 }
 
 /**
@@ -808,7 +811,16 @@ describe("agent teams (C13)", () => {
     await arm({
       teams: [
         { id: "t-default", name: "Acme", isDefault: true },
-        { id: "t-design", name: "Design", members: [{ userId: "u-bob" }] },
+        // Design holds an agent the caller can see, which is the ONLY reason a
+        // team they hold no row on reaches their listing at all
+        // (§Team visibility clause c). It still reads `joined: false` — visible
+        // is not subscribed, and that distinction is what this test pins.
+        {
+          id: "t-design",
+          name: "Design",
+          members: [{ userId: "u-bob" }],
+          agentIds: [SEED_AGENT_ID],
+        },
         {
           id: "t-ops",
           name: "Ops",
@@ -956,6 +968,207 @@ describe("agent teams (C13)", () => {
       name: "Renamed",
       sortOrder: team.sortOrder,
     });
+  });
+
+  it("styles a team on create, and omits an identity it never got", async () => {
+    // A styled create is ONE round trip: `icon`/`color` are optional here and
+    // policed exactly as they are on PATCH.
+    const res = await send("POST", "/v1/org/teams", {
+      name: "Design",
+      icon: "pen-tool",
+      color: "#5E6AD2",
+    });
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({
+      icon: "pen-tool",
+      color: "#5E6AD2",
+    });
+
+    // SHAPE only, but the shape is enforced: an icon is a lowercase glyph NAME
+    // (never an image), and a colour is `#rrggbb` or a theme token.
+    expect(
+      await refusal(
+        await send("POST", "/v1/org/teams", { name: "Bad", icon: "PenTool" }),
+      ),
+    ).toEqual({ status: 400, code: "invalid_icon" });
+    expect(
+      await refusal(
+        await send("POST", "/v1/org/teams", { name: "Bad", color: "#5E6AD" }),
+      ),
+    ).toEqual({ status: 400, code: "invalid_color" });
+
+    // `""` on create means "no identity", and unset is ABSENT from the wire —
+    // never `""`, because "render your own default" is a different instruction
+    // from "render this empty string".
+    const bare = await send("POST", "/v1/org/teams", {
+      name: "Bare",
+      icon: "",
+      color: "",
+    });
+    expect(bare.status).toBe(201);
+    const wire = (await bare.json()) as TeamWire;
+    expect(Object.hasOwn(wire, "icon")).toBe(false);
+    expect(Object.hasOwn(wire, "color")).toBe(false);
+  });
+
+  it("sets identity on patch, clears it with an empty string, and refuses null", async () => {
+    const team = (await teamNamed("Acme")).id;
+    const patch = (body: unknown) =>
+      send("PATCH", `/v1/org/teams/${team}`, body);
+
+    // Identity is a RENAME, not a structural change, so the DEFAULT team is
+    // stylable exactly like any other.
+    expect((await patch({ icon: "rocket", color: "#5E6AD2" })).status).toBe(
+      200,
+    );
+    expect(await teamNamed("Acme")).toMatchObject({
+      icon: "rocket",
+      color: "#5E6AD2",
+    });
+    // Both colour spellings are accepted: a literal hex, or a theme TOKEN name
+    // the app resolves. Which tokens exist is the client's vocabulary.
+    expect((await patch({ color: "indigo-500" })).status).toBe(200);
+    expect((await teamNamed("Acme")).color).toBe("indigo-500");
+
+    // `""` CLEARS the field back to unset — without that spelling a client
+    // could set an icon and never take it off. The field goes ABSENT again.
+    expect((await patch({ icon: "" })).status).toBe(200);
+    const cleared = await teamNamed("Acme");
+    expect(Object.hasOwn(cleared, "icon")).toBe(false);
+    // A partial patch leaves the field it never named alone.
+    expect(cleared.color).toBe("indigo-500");
+
+    // `null` is NOT a clear: there is ONE way to erase a field and it is `""`,
+    // exactly as `{"name": null}` is a 400 rather than a rename to nothing.
+    expect(await refusal(await patch({ icon: null }))).toEqual({
+      status: 400,
+      code: "invalid_icon",
+    });
+    expect(await refusal(await patch({ color: null }))).toEqual({
+      status: 400,
+      code: "invalid_color",
+    });
+    // Neither field is TRIMMED, unlike `name`: these are tokens a client
+    // generates, so whitespace in one is a client bug worth a 400 — and
+    // trimming would quietly turn `"   "` into a clear.
+    for (const icon of [" rocket", "rocket ", "   "]) {
+      expect(await refusal(await patch({ icon }))).toEqual({
+        status: 400,
+        code: "invalid_icon",
+      });
+    }
+    // The refused patches changed nothing.
+    expect((await teamNamed("Acme")).color).toBe("indigo-500");
+  });
+
+  it("gates identity behind the rename gate, not a structural one", async () => {
+    await armOrg({
+      members: [
+        { userId: "u-self", role: "user" },
+        { userId: "u-bob", role: "user" },
+      ],
+    });
+    await armCaps({ multiplayer: true, teams: true, role: "user" });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        {
+          id: "t-design",
+          name: "Design",
+          members: [{ userId: "u-self" }, { userId: "u-bob", owner: true }],
+        },
+      ],
+    });
+    // Whoever may RENAME the team may style it — and whoever may not, may not.
+    expect(
+      await refusal(
+        await send("PATCH", "/v1/org/teams/t-design", { icon: "pen-tool" }),
+      ),
+    ).toEqual({ status: 403, code: "not_team_owner" });
+    // Standing is settled before the body: an unstylable team never reports
+    // WHICH of its fields was malformed.
+    expect(
+      await refusal(
+        await send("PATCH", "/v1/org/teams/t-design", { icon: "NOPE" }),
+      ),
+    ).toEqual({ status: 403, code: "not_team_owner" });
+
+    // An org admin owns every team implicitly, the default one included.
+    await armCaps({ role: "admin" });
+    expect(
+      (await send("PATCH", "/v1/org/teams/t-default", { icon: "rocket" }))
+        .status,
+    ).toBe(200);
+    expect((await teamNamed("Acme")).icon).toBe("rocket");
+  });
+
+  it("serves a member the teams they are part of, and an admin every team", async () => {
+    await armOrg({
+      members: [
+        { userId: "u-self", role: "user" },
+        { userId: "u-bob", role: "user" },
+      ],
+      agents: [
+        {
+          id: "a-mine",
+          name: "Mine",
+          assignments: [{ userId: "u-self", access: "user" }],
+        },
+        {
+          id: "a-theirs",
+          name: "Theirs",
+          assignments: [{ userId: "u-bob", access: "user" }],
+        },
+      ],
+    });
+    await armCaps({
+      multiplayer: true,
+      teams: true,
+      agentTeams: true,
+      role: "user",
+    });
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        { id: "t-mine", name: "Mine", members: [{ userId: "u-self" }] },
+        { id: "t-agent", name: "Agent", agentIds: ["a-mine"] },
+        {
+          id: "t-strangers",
+          name: "Strangers",
+          members: [{ userId: "u-bob" }],
+          agentIds: ["a-theirs"],
+        },
+      ],
+    });
+
+    // The catch-all everyone is in, the team they were put in, and the team
+    // holding an agent they can see — an assigned agent must never orphan off
+    // the rail because somebody filed it elsewhere. "Strangers" is neither, so
+    // it costs this member nothing. The filter only DROPS rows, so what is left
+    // is in the order it always was.
+    const seen = await listTeams();
+    expect(seen.map((t) => t.name)).toEqual(["Acme", "Mine", "Agent"]);
+    // Kept by the AGENT clause alone: visible, not subscribed.
+    expect(seen[2]).toMatchObject({ joined: false, agentSlugs: ["a-mine"] });
+
+    // Only the LISTING filters: a member holding a hidden team's id can still
+    // read its roster. A team is not an access object and grants nothing, so
+    // there is nothing here to leak.
+    expect(await members("t-strangers")).toEqual([
+      { userId: "u-bob", owner: false },
+    ]);
+
+    // An org admin owns every team implicitly, so a team hidden from them would
+    // be one nobody could administer. Their listing is the full directory.
+    for (const role of ["admin", "owner"]) {
+      await armCaps({ role });
+      expect((await listTeams()).map((t) => t.name)).toEqual([
+        "Acme",
+        "Mine",
+        "Agent",
+        "Strangers",
+      ]);
+    }
   });
 
   it("joins idempotently, never demotes an owner, and no-ops on the default team", async () => {
@@ -1273,38 +1486,101 @@ describe("agent teams (C13)", () => {
     ).toEqual({ status: 404, code: "team_not_found" });
   });
 
-  it("serves the default team alone in a personal space and 403s every mutation", async () => {
+  it("lets a personal space group its agents exactly like a team space", async () => {
+    // The half a personal space MAY do. Teams are how a SOLO user groups their
+    // own agents, so the read serves the real list and every grouping write
+    // behaves as it does anywhere else; only the default team's own rules bite.
+    await armOrg({ agents: [{ id: "a-one", name: "One", everyone: true }] });
     await arm({
-      // Even with a second team armed, a personal space serves exactly one, so
-      // the client renders one team named after the workspace with no branch.
-      teams: [{ id: "t-design", name: "Design" }],
+      teams: [{ id: "t-default", name: "Acme", isDefault: true }],
       personalSpace: true,
     });
+    expect(await listTeams()).toMatchObject([
+      { id: "t-default", isDefault: true, joined: true, owner: true },
+    ]);
+
+    // Create: the sole human owns what they made, creator row and all.
+    const created = await send("POST", "/v1/org/teams", { name: "Design" });
+    expect(created.status).toBe(201);
+    const design = (await created.json()) as TeamWire;
+    expect(design).toMatchObject({ joined: true, owner: true });
+
+    // The listing serves the REAL list — the default team is no longer the
+    // only one a personal space can show — and every team in it reads as the
+    // one person's own.
     const teams = await listTeams();
-    expect(teams).toHaveLength(1);
-    expect(teams[0]).toMatchObject({
-      isDefault: true,
-      name: "Acme",
-      joined: true,
-      owner: true,
-      memberCount: 1,
+    expect(teams.map((t) => t.name)).toEqual(["Acme", "Design"]);
+    for (const team of teams)
+      expect(team).toMatchObject({ joined: true, owner: true });
+
+    // Rename and reorder, then move an agent between the two teams (ownership
+    // of BOTH sides, which the sole owner holds implicitly).
+    const patched = await send("PATCH", `/v1/org/teams/${design.id}`, {
+      name: "Design Guild",
+      sortOrder: 9,
+    });
+    expect(patched.status).toBe(200);
+    expect(
+      (await send("PUT", "/v1/agents/a-one/team", { teamId: design.id }))
+        .status,
+    ).toBe(204);
+    expect((await teamNamed("Design Guild")).agentSlugs).toEqual(["a-one"]);
+    // The roster READ manages nobody, so it is open here like everywhere else.
+    expect(await members(design.id)).toEqual([
+      { userId: "u-self", owner: true },
+    ]);
+
+    // The default team's own rules are untouched: still undeletable, and it
+    // still catches the agents of a team that goes away.
+    expect(
+      await refusal(await send("DELETE", "/v1/org/teams/t-default")),
+    ).toEqual({ status: 400, code: "default_team" });
+    expect((await send("DELETE", `/v1/org/teams/${design.id}`)).status).toBe(
+      204,
+    );
+    expect(await listTeams()).toMatchObject([
+      { id: "t-default", agentSlugs: ["a-one"] },
+    ]);
+  });
+
+  it("refuses only the three people routes in a personal space", async () => {
+    // The half it may NOT do: manage PEOPLE. One human is in the space, so a
+    // membership row there is meaningless and growing past yourself means
+    // creating an organization.
+    await arm({
+      teams: [
+        { id: "t-default", name: "Acme", isDefault: true },
+        { id: "t-design", name: "Design" },
+      ],
+      personalSpace: true,
     });
 
-    const mutations: Array<[string, string, unknown?]> = [
-      ["POST", "/v1/org/teams", { name: "Design" }],
-      ["PATCH", "/v1/org/teams/t-design", { name: "X" }],
-      ["DELETE", "/v1/org/teams/t-design"],
-      ["POST", "/v1/org/teams/t-design/join"],
-      ["DELETE", "/v1/org/teams/t-design/members/u-self"],
-      ["PUT", "/v1/org/teams/t-design/members/u-self", { owner: true }],
-      ["PUT", `/v1/agents/${SEED_AGENT_ID}/team`, { teamId: "t-design" }],
+    const people = (teamId: string): Array<[string, string, unknown?]> => [
+      ["POST", `/v1/org/teams/${teamId}/join`],
+      ["DELETE", `/v1/org/teams/${teamId}/members/u-self`],
+      ["PUT", `/v1/org/teams/${teamId}/members/u-self`, { owner: true }],
     ];
-    for (const [method, path, body] of mutations) {
-      expect(await refusal(await send(method, path, body))).toEqual({
-        status: 403,
-        code: "personal_space",
-      });
+    // On the default team and on a created one alike — and on the default team
+    // the answer is `personal_space`, NOT `default_team`: "there is nobody to
+    // manage" is the accurate answer, where `default_team` would send a client
+    // hunting for another team to write to.
+    // A team id that does not resolve answers the same, because the refusal
+    // lands before the lookup: the space has no people whichever team is named.
+    for (const teamId of ["t-default", "t-design", "t-ghost"]) {
+      for (const [method, path, body] of people(teamId)) {
+        expect(await refusal(await send(method, path, body))).toEqual({
+          status: 403,
+          code: "personal_space",
+        });
+      }
     }
+    // The roster READ is not people management, and is served. What it serves
+    // is the one row a personal-space team ALWAYS has: its creator, as owner.
+    // Arming cannot produce a team here that the one human has not joined, so
+    // no spec can pass against a state the gateway is unable to reach.
+    expect(await members("t-design")).toEqual([
+      { userId: "u-self", owner: true },
+    ]);
   });
 
   it("fans out AgentsChanged on every mutation", async () => {

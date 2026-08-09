@@ -1,4 +1,5 @@
 import { expect, test } from "./support/fixtures";
+import { navRow } from "./support/team-nav";
 
 /**
  * Collapsed-sidebar expand affordances (HOU-657): the workspace monogram at
@@ -10,9 +11,7 @@ test("collapsed sidebar expands from the top monogram and rail clicks", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(
-    page.locator("[data-tour-target='nav-dashboard']"),
-  ).toBeVisible();
+  await expect(navRow(page, "inbox")).toBeVisible();
 
   const sidebar = page.locator("[data-tour-target='sidebar']");
 

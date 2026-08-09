@@ -1,78 +1,95 @@
-import type { SidebarGroupView } from "@houston-ai/layout";
-import { SidebarGroupHeader } from "@houston-ai/layout";
+import { SidebarGroupHeader, SidebarRowButton } from "@houston-ai/layout";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { GROUP_LABELS } from "./sidebar-group-header-api";
+import { TeamGlyph, TeamMenu } from "./sidebar-group-header-chrome";
 
-/** Group headers live on the rail, at the rail's width. */
+/** Team blocks live on the rail, at the rail's width. */
 export function Rail({ children }: { children: ReactNode }) {
   return (
-    <div className="w-[220px] space-y-1 rounded-xl bg-sidebar px-2 py-2">
+    <div className="w-[220px] space-y-2.5 rounded-xl bg-sidebar px-2 py-2">
       {children}
     </div>
   );
 }
 
-/** Collapse and rename both move real state, as they do in the shell. */
-export function LiveGroup({
-  initial,
-  startRenaming,
-}: {
-  initial: SidebarGroupView;
-  startRenaming?: boolean;
-}) {
-  const [group, setGroup] = useState(initial);
-  return (
-    <SidebarGroupHeader
-      group={group}
-      count={group.itemIds.length}
-      labels={GROUP_LABELS}
-      startRenaming={startRenaming}
-      onToggleCollapsed={() =>
-        setGroup((one) => ({ ...one, collapsed: !one.collapsed }))
-      }
-      onRenameGroup={(_id, name) => setGroup((one) => ({ ...one, name }))}
-      onEditContext={() => setGroup((one) => ({ ...one, collapsed: false }))}
-    />
-  );
+/** A block holds MEMBERS and nothing else: its destinations are tabs on the
+ *  screen its header opens. */
+const MEMBERS: readonly string[] = ["Ada", "Kai", "Nova"];
+
+export interface LiveTeamProps {
+  name: string;
+  /** Start folded. The header stays live either way. */
+  startCollapsed?: boolean;
+  /** This block owns the open view, so its header wears the pill. */
+  owns?: boolean;
+  /** The default block passes none: it has no menu, because it stands for the
+   *  container and the container cannot be renamed, deleted or left. */
+  menu?: boolean;
 }
 
 /**
- * The create-then-name flow, live: the row is only local until a name is
- * committed, so `onCancelRename` is the one thing that can take it back off the
- * screen. Type a name and press Enter, or press Escape and watch it go.
+ * A whole block, live: the header and the region it folds.
+ *
+ * The region is here rather than mocked because it is what makes the folded
+ * state legible. Folding hides EVERYTHING under the header, so the header is
+ * left carrying both answers: the pill that says the open view belongs here,
+ * and the `trailing` badge that rolls up what the hidden rows were signalling.
+ *
+ * Activating the row FOLDS here. The library takes no position on what a header
+ * click means — Houston's own rail opens the team's screen on most clicks and
+ * only folds when the user is already on it.
  */
-export function LiveDraft() {
-  const [drafting, setDrafting] = useState(true);
-  const [outcome, setOutcome] = useState<string | null>(null);
-  if (!drafting) {
-    return (
-      <button
-        type="button"
-        className="px-1.5 py-1 text-left text-[13px] text-ink-muted"
-        onClick={() => {
-          setOutcome(null);
-          setDrafting(true);
-        }}
-      >
-        {outcome
-          ? `Created “${outcome}”. Draft again`
-          : "Abandoned, nothing created. Draft again"}
-      </button>
-    );
-  }
+export function LiveTeam({
+  name,
+  startCollapsed = false,
+  owns = false,
+  menu = true,
+}: LiveTeamProps) {
+  const [label, setLabel] = useState(name);
+  const [collapsed, setCollapsed] = useState(startCollapsed);
+  const contentId = useId();
+
   return (
-    <SidebarGroupHeader
-      group={{ id: "team:draft", name: "", collapsed: false, itemIds: [] }}
-      count={0}
-      labels={GROUP_LABELS}
-      startRenaming
-      onRenameGroup={(_id, name) => {
-        setOutcome(name);
-        setDrafting(false);
-      }}
-      onCancelRename={() => setDrafting(false)}
-    />
+    <div className="flex flex-col">
+      <SidebarGroupHeader
+        name={label}
+        icon={<TeamGlyph />}
+        trailing={
+          collapsed ? (
+            <span className="rounded-full bg-input/90 px-2 text-[11px] text-ink/80 leading-5">
+              {MEMBERS.length}
+            </span>
+          ) : undefined
+        }
+        collapsed={collapsed}
+        contentId={contentId}
+        labels={GROUP_LABELS}
+        active={owns}
+        onActivate={() => setCollapsed((on) => !on)}
+        menu={
+          menu
+            ? (beginRename) => <TeamMenu beginRename={beginRename} />
+            : undefined
+        }
+        rename={
+          // Renaming rides on the menu that offers it: a block with no menu is
+          // a block with no way in, and the default team is exactly that.
+          menu
+            ? {
+                maxRunes: 24,
+                onCommit: setLabel,
+              }
+            : undefined
+        }
+      />
+      <div id={contentId} className="flex flex-col">
+        {!collapsed &&
+          MEMBERS.map((member) => (
+            <SidebarRowButton key={member} label={member} />
+          ))}
+      </div>
+    </div>
   );
 }

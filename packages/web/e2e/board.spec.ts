@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openTeamSection } from "./support/team-nav";
 
 /**
  * The persisted query mirror's query-key heads, or null while no mirror
@@ -267,7 +268,7 @@ test("opens a mission's chat when its card is clicked", async ({ page }) => {
 
   // The mission's conversation opens (an existing mission uses the follow-up
   // composer; a brand-new conversation uses "What should the agent work on?").
-  await expect(page.getByText("Mission: Plan a trip to Tokyo")).toBeVisible();
+  await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
@@ -289,13 +290,13 @@ test("keeps the open chat when clicking app chrome outside the panel", async ({
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
-/** The "Search missions" box filters the board client-side. */
+/** The "Search tasks" box filters the board client-side. */
 test("filters the board with the search box", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 
-  await page.getByPlaceholder("Search missions").fill("Tokyo");
+  await page.getByRole("searchbox", { name: "Search tasks" }).fill("Tokyo");
 
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
@@ -334,7 +335,7 @@ test("archives a Done mission from its card", async ({ page }) => {
 
   // Off the active board, and found again in the archived list.
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
-  await page.getByRole("button", { name: "Archived" }).click();
+  await openTeamSection(page, "Archived");
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 });
 
@@ -395,16 +396,20 @@ test("deletes a mission from the board", async ({ page }) => {
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
 });
 
-/** Cross-agent Mission Control (the aggregate's own surface). */
-async function openMissionControl(page: Page): Promise<void> {
-  await page.locator("[data-tour-target='nav-dashboard']").click();
+/**
+ * The team's board — the aggregate's own surface. Every board belongs to a
+ * team now, and in the seeded single-team workspace the default team holds
+ * EVERY agent, so this is still the cross-agent board the sweep feeds.
+ */
+async function openTeamBoard(page: Page): Promise<void> {
+  await openTeamSection(page, "Tasks");
 }
 
 /**
  * HOU-981, the half-broken fleet. The cross-agent sweep is one read per agent;
  * it used to run under `Promise.all`, so ONE unreachable pod rejected the whole
  * aggregate — and since React Query's placeholder covers the pending state
- * only, Mission Control rendered an EMPTY board (and auto-opened the composer
+ * only, the board rendered EMPTY (and auto-opened the composer
  * over it) while every healthy agent's missions sat right there in cache.
  *
  * The healthy agents' missions must survive one sick agent, always.
@@ -426,7 +431,7 @@ test("keeps the healthy agents' missions when one agent's reads fail", async ({
   });
 
   await page.goto("/");
-  await openMissionControl(page);
+  await openTeamBoard(page);
 
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByText("Draft the launch email")).toBeVisible();
@@ -438,7 +443,7 @@ test("keeps the healthy agents' missions when one agent's reads fail", async ({
   // it even though the user no longer does. What this asserts is only that the
   // healthy agents' missions never depended on the toast.
   await expect(
-    page.getByText("Some missions could not load. We are trying again."),
+    page.getByText("Some tasks could not load. We are trying again."),
   ).toHaveCount(0);
 });
 
@@ -497,7 +502,7 @@ test("re-reads the restored board on boot so missions created offline appear", a
   expect(written.ok()).toBe(true);
 
   await page.reload();
-  await openMissionControl(page);
+  await openTeamBoard(page);
 
   // Yesterday's board is still there...
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();

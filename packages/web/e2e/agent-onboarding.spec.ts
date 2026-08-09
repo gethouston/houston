@@ -40,7 +40,7 @@ test("creating an agent auto-starts its setup mission and opens the chat", async
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
     timeout: 10_000,
   });
-  await expect(page.getByText("Mission: Getting set up")).toBeVisible();
+  await expect(page.getByText("Task: Getting set up")).toBeVisible();
 });
 
 test("the welcome chat is live before the board sweep returns its row", async ({

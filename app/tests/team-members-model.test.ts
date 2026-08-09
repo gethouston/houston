@@ -126,19 +126,23 @@ describe("buildTeamMemberRows", () => {
 });
 
 describe("teamMembersView", () => {
+  /** Every card that exists at all is in a team space; the personal-space case
+   *  has a test of its own below. */
+  const hidden = {
+    visible: false,
+    showRoster: false,
+    readOnly: true,
+    showDefaultNote: false,
+    showAdminNote: false,
+  };
+
   it("hides the whole card on the local backend", () => {
-    assert.deepEqual(teamMembersView(team()), {
-      visible: false,
-      showRoster: false,
-      readOnly: true,
-      showDefaultNote: false,
-      showAdminNote: false,
-    });
+    assert.deepEqual(teamMembersView(team(), false), hidden);
   });
 
   it("gives an owner a writable roster with the admin note", () => {
     assert.deepEqual(
-      teamMembersView(team({ server: facts({ owner: true }) })),
+      teamMembersView(team({ server: facts({ owner: true }) }), false),
       {
         visible: true,
         showRoster: true,
@@ -150,7 +154,10 @@ describe("teamMembersView", () => {
   });
 
   it("gives a non-owner the same roster, static", () => {
-    const view = teamMembersView(team({ server: facts({ owner: false }) }));
+    const view = teamMembersView(
+      team({ server: facts({ owner: false }) }),
+      false,
+    );
     assert.equal(view.showRoster, true);
     assert.equal(view.readOnly, true);
   });
@@ -159,6 +166,7 @@ describe("teamMembersView", () => {
     assert.deepEqual(
       teamMembersView(
         team({ isDefault: true, server: facts({ owner: true }) }),
+        false,
       ),
       {
         visible: true,
@@ -169,23 +177,43 @@ describe("teamMembersView", () => {
       },
     );
   });
+
+  it("hides the card in a PERSONAL space, on every team", () => {
+    // One human is in the space, so there is nobody to list, promote or remove
+    // and all three member-management routes answer `403 personal_space`. The
+    // owner of the default team is the strongest case there is, and it still
+    // gets nothing: this is a property of the SPACE, not of the caller.
+    for (const isDefault of [false, true]) {
+      assert.deepEqual(
+        teamMembersView(
+          team({ isDefault, server: facts({ owner: true }) }),
+          true,
+        ),
+        hidden,
+      );
+    }
+  });
 });
 
 describe("teamLeaveUserId", () => {
   it("offers Leave to a joined member of a named team", () => {
-    assert.equal(teamLeaveUserId(team({ server: facts() }), "me"), "me");
+    assert.equal(teamLeaveUserId(team({ server: facts() }), "me", false), "me");
   });
 
   it("offers nothing without a session, since the call names a user", () => {
-    assert.equal(teamLeaveUserId(team({ server: facts() }), null), null);
+    assert.equal(teamLeaveUserId(team({ server: facts() }), null, false), null);
   });
 
   it("offers nothing on the default team or on the local backend", () => {
     assert.equal(
-      teamLeaveUserId(team({ isDefault: true, server: facts() }), "me"),
+      teamLeaveUserId(team({ isDefault: true, server: facts() }), "me", false),
       null,
     );
-    assert.equal(teamLeaveUserId(team(), "me"), null);
+    assert.equal(teamLeaveUserId(team(), "me", false), null);
+  });
+
+  it("offers nothing in a personal space, where leaving is a 403", () => {
+    assert.equal(teamLeaveUserId(team({ server: facts() }), "me", true), null);
   });
 });
 

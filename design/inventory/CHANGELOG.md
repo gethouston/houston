@@ -3,6 +3,183 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v61 - 2026-08-08
+
+The rail names TEAMS and nothing else. A team block is a header row and its
+agents; the four destination rows every block carried are gone from the rail and
+live on the team's own screen, as tabs over its work. Four rows per team spent
+most of the rail on the same four words repeated, and the rail's job is to say
+which team, not which of its surfaces.
+
+That leaves one hit target per team, and it answers four questions. From
+anywhere else, clicking a team's name opens that team, unfolds it, and folds
+every other block: an accordion, because a rail of eight expanded teams is a
+list of agents with headings in it. From another of the same team's surfaces it
+comes back to the team's work. On the team's own work it folds the block, and
+unfolds it on the next click. Folding is the only one of the four that leaves
+the screen where it is, which is deliberate and user-invoked. The caret beside
+the name became an indicator: what the row does depends on where the user
+already is, so a caret claiming to be the fold button would promise an outcome
+it does not own.
+
+A folded team stops hiding things. Its header keeps the selected pill whenever
+the team's work is on screen, and it picks up a rollup of what its hidden agent
+rows were saying: the sum of their waiting work as a badge, and the same running
+treatment an agent's mark wears if any member is working. Both only while
+folded, since an open block's rows say it themselves.
+
+Drag was demoted to reordering. An agent moves inside its own team, a team block
+moves among its siblings, and an agent dragged over any other block is refused:
+no block offers to receive it, and the lifted copy dims. A drop across blocks
+was the one gesture in the rail that changed what a team HOLDS, which is a
+decision worth reading before taking, so it became a named action on the team's
+own screen instead.
+
+## v60 - 2026-08-08
+
+Teams got a face. A team now carries an icon and a colour, both optional, picked
+from one popover behind its "..." menu: a grid of solid marks from a curated set
+and a row of swatches. The swatches are not a new palette, they are the same
+ones an agent's avatar wears, so one vocabulary of colour carries identity
+everywhere in the product and a team can never mean a different purple than the
+agents inside it. The marks are a fixed set rather than an upload or an open
+icon library, because a fixed set is the only way every mark still reads at
+14px in the rail, and it costs the user a choice instead of a design task.
+
+That bends one rail rule on purpose. A row's glyph never pinned a colour before,
+so an active row brightened as one object; the team's mark now does, because it
+is identity a person chose rather than decoration a component invented. A team
+that has picked neither keeps the neutral people mark inheriting the row's own
+ink, which is what every block looked like yesterday and is still what most of
+them look like. Every pick applies immediately and puts itself back if the
+server refuses.
+
+The rail's three bands finally sit on ONE left edge. Two of them were inset
+twice -- once by the container, once by the band component -- so their labels
+hung 8px right of "Your teams" while all of their child rows lined up
+correctly. The inset is one exported value now, spent once per heading, and a
+test holds the three of them together.
+
+The rail also changed what it files where. "Guide me" left the Agent Store's
+chrome and became a row in the leading run, beside the store a new user opens
+first: being walked through the app is a destination people go looking for, not
+a control hiding on one screen. The Workspace band became what the SPACE is made
+of and who runs it -- Admin, Permissions, Skills, Time worked -- and is hidden
+entirely from anyone who is not one of those people; Admin and Permissions
+stopped being pages inside Settings and are top-level screens again, one click
+from the rail. Settings itself moved to the rail's FOOTER, permanent and visible
+to everyone: it belongs to the person rather than to the space, and it has to be
+reachable in the deployments where the Workspace band does not exist at all.
+
+## v59 - 2026-08-08
+
+The general Mission Control is gone. It was a board spanning every agent in the
+workspace, sitting above a rail whose every other board belongs to a team, and
+it answered a question nobody was asking twice: users work in a team, and the
+cross-agent view of everything was a second place for the same cards to live.
+The app now opens on the FIRST team's board, and every fallback in the product
+lands there too, so there is one home instead of one home and one board.
+
+Its Mentions inbox was the one thing on it that had nowhere else to go, so it
+was promoted rather than dropped: the inbox is now a top-level screen of its
+own, with a real page heading instead of a mode pill on a board toolbar, and its
+rail row carries the unread count that used to sit on that pill. It is also the
+only destination in the rail that needs no team, which is why it is where the
+app waits while the teams are still arriving.
+
+The rail's top-level rows are now filed. Two lead it with no heading, because
+they are the two a user heads for without being asked: the inbox, where work
+arrives, and the store, where agents come from. The rest sit under a band that
+says whose they are. "My accounts" holds what belongs to the PERSON, the apps
+they authorised and the AI accounts their turns run on. "Workspace" holds what
+the whole space is made of, its skills and its settings, and its skills row
+belongs to whoever owns the space rather than to the manager who runs it.
+
+Those two bands are the SAME band as "Your teams" below them, not lookalikes.
+There is now one band component owning the type step, the caret placement, the
+fold, the aria wiring and the gap under the heading, and the three headings are
+three instances of it. Three headings in one rail that folded or sat differently
+would have been three rules for one row shape. Each remembers its own fold, per
+machine, exactly as the team list already did.
+
+Joining a team is gone, and with it the submenu that listed the ones you had not
+joined. A member now sees only the teams they are part of, and people are added
+to a team from its settings, so the rail's "+" is New agent and New team and
+nothing else. Browsing a directory of teams you had already passed over was
+never the working surface it was shaped like.
+
+## v58 - 2026-08-08
+
+The rail's team blocks were three stacked lists pretending to be one. A team
+header, its destination rows and its agent rows each had their own height, their
+own indent and their own type size, and the eye read every seam. They are now
+ONE ladder: a single fixed row height, a single glyph column every child row
+indents into, one type size, one rounded hover fill, and an active state that is
+a clearly-defined pill instead of a faint tint. Hierarchy is carried by the
+indent INSIDE the row, so the pills line up in one clean column down the left
+edge rather than stepping in and out with their contents, and a row's glyph
+inherits its label's colour so an active row brightens as one object.
+
+The team row became one control. It used to be a caret, a name and a menu
+sharing a single job, which gave a keyboard user three stops to reach one
+disclosure and gave a screen reader no aria-expanded at all. It is now a single
+button carrying the glyph, the name and the caret, announcing whether the block
+is open and naming the region it folds. The menu stays beside it rather than
+inside it, because a button may not nest inside a button.
+
+Collapsing a team now hides everything under it, destination rows included. The
+old behaviour kept them on the theory that they are how you get back to the
+team, but that made a collapsed block a half-closed thing still costing four
+rows of rail, and it is not what a disclosure means anywhere else in the
+product. The hole it leaves is answered where the row went: when the collapsed
+team owns the open view, its header wears the selected pill on the hidden row's
+behalf, so the rail never goes dark on the question of where you are. The block
+stays a drop target throughout, so folding it hides rows and not behaviour.
+
+The workspace's own team stopped being an exception. It renders and folds
+exactly like a named team, remembered through an additive field of its own
+because the block is virtual and has no stored record to live in. A block that
+folded everywhere except there would have made the one team everybody has the
+one row in the rail that answers a click differently. What it still does not get
+is what the container itself lacks: no rename, no delete, no leave, no menu, and
+no drag handle.
+
+Team glyphs are deliberately monochrome. A colour per team was the obvious move
+and the wrong one: the identity colour in that column belongs to the agent
+avatars directly below it, and a second palette stacked on top would compete
+with the one that carries real meaning.
+
+Above the blocks, the band naming the list became a component in its own right
+and the rail's only list-level control. Its label is the toggle, with the caret
+right after the words instead of pinned to the far edge, because a phrase you
+click is a different thing from a label with a detached arrow; folding it puts
+the whole list away and the rail remembers. Beside it, one "+" menu now carries
+everything the rail can create or acquire: New agent, New team, and a Join a
+team submenu. That replaces three affordances for one idea, the third of which
+was the "other teams" disclosure at the foot of the rail, and stacking every
+team you never open underneath the few you live in was a directory pretending to
+be a working surface. Unjoined teams live in the submenu now, each named with
+how many people are in it.
+
+New agent is also a row at the foot of the list, not only a menu entry. Creating
+an agent is the rail's primary action, a primary action may not live one level
+deep inside a menu, and the row wears the same child-row geometry as everything
+above it so the list ends on the ladder it was drawn on.
+
+And then the same row went everywhere else. The top-level destinations above the
+list and the agent rows inside the blocks were the last two places still drawing
+their own line -- their own height, their own padding, their own glyph size,
+their own idea of what selected looks like -- which is why a nav entry never
+quite sat on the same optical column as the team glyph twenty pixels below it.
+Every interactive line in the rail is now literally the same component: the nav
+destinations, the band, each team header, each destination row, each agent, and
+the New agent row. One indent step between a row that heads something and a row
+that hangs under one, and weight states that depth rather than the selection, so
+clicking a row no longer re-measures its label and moves where a long agent name
+truncates. The two exceptions are deliberate and small: the collapsed icon rail
+is a different anatomy rather than a narrower row, and inline rename swaps the
+row for a field, because a text field is not a state of a button.
+
 ## v57 - 2026-08-08
 
 Teams stopped being a private filing habit and became something a space SHARES.

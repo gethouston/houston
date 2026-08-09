@@ -1,27 +1,28 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openSettings, settingsRow } from "./support/settings-nav";
+import { adminRow } from "./support/settings-nav";
 
 /**
  * The integrations permissioning information architecture (the IA end-state).
  * Each concept now has exactly one home:
  *  - POLICY (who can use each agent + what each agent may use — org/agent app
- *    and model ceilings) → the ONE Permissions surface, Settings > Permissions
- *    (owner/admin).
- *    Covered by `permissions-*.spec.ts`; it is NOT the global Integrations page,
+ *    and model ceilings) → the ONE canonical agent settings page, reached
+ *    through the team that owns the agent ("Manage agents").
+ *    Covered by `agent-policy.spec.ts`; it is NOT the global Integrations page,
  *    which is always the personal catalog now;
  *  - CATALOG + ACCOUNTS (the caller's personal connected apps) → the global
  *    Integrations page, visible to EVERY role in every mode (a plain member
  *    keeps its nav). Opening a connected app's detail modal shows info +
  *    reconnect + disconnect ONLY — which agents may use an app is managed in one
- *    place, the Permissions view, never here. Settings > Connected accounts is
- *    GONE (no settings row at all; the sidebar nav is the one way in);
+ *    place, the agent's own settings page, never here. Settings > Connected
+ *    accounts is GONE (no settings row at all; the sidebar nav is the one way
+ *    in);
  *
  * The per-agent Integrations TAB is GONE with the agent tab shell: connections
  * are the caller's, not an agent's (Composio platform mode), so the global page
  * is the one catalog, and the agent's app CEILING is the "Apps" section of its
- * settings page (`permissions.spec.ts`).
+ * settings page (`agent-policy.spec.ts`).
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`)
@@ -60,15 +61,16 @@ test("Teams member: no Admin nav, but the Integrations nav opens the personal ca
   await armCapabilities(request, { ...OWNER_CAPS, role: "user" });
   await page.goto("/");
 
-  // No Admin (Organization) row for a plain member. It lives in Settings since
-  // HOU-788, so the absence is asserted on the Settings index itself.
-  await openSettings(page);
-  await expect(settingsRow(page, "organization")).toHaveCount(0);
-
   // The Integrations nav IS present for a member now (unconditional), and it
-  // opens the personal catalog — never the org policy question.
+  // opens the personal catalog — never the org policy question. Asserted FIRST
+  // so the Admin absence below cannot pass on an unpainted rail.
   const integrationsNav = page.locator('[data-tour-target="nav-integrations"]');
   await expect(integrationsNav).toBeVisible();
+
+  // No Admin row for a plain member: it is a top-level rail screen behind the
+  // org gate, so the absence is asserted on the rail itself.
+  await expect(adminRow(page)).toHaveCount(0);
+
   await integrationsNav.click();
   await expect(
     page.getByRole("heading", { name: "Integrations", exact: true }),
@@ -79,10 +81,8 @@ test("Teams member: no Admin nav, but the Integrations nav opens the personal ca
     }),
   ).toHaveCount(0);
 
-  // Mission Control and Settings remain too.
-  await expect(
-    page.locator('[data-tour-target="nav-dashboard"]'),
-  ).toBeVisible();
+  // The Inbox and Settings remain too — the two rows every caller gets.
+  await expect(page.locator('[data-tour-target="nav-inbox"]')).toBeVisible();
   await expect(page.locator('[data-tour-target="nav-settings"]')).toBeVisible();
 });
 

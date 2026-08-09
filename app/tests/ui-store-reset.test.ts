@@ -21,9 +21,11 @@ describe("useUIStore.reset", () => {
     useUIStore.getState().reset();
 
     const next = useUIStore.getState();
-    // The honest initial view: Mission Control, the app's home. There is no
-    // per-agent screen to fall back to any more.
-    strictEqual(next.viewMode, "dashboard");
+    // The honest initial view: the Inbox. Home is the first team's Mission
+    // Control, and no team has resolved at this point, so the one screen that
+    // needs no team is where the store starts (the shell's boot rule moves the
+    // user on once a team lands).
+    strictEqual(next.viewMode, "inbox");
     strictEqual(next.activityPanelId, null);
     strictEqual(next.shareAgentId, null);
     strictEqual(next.paletteOpen, false);
@@ -35,13 +37,20 @@ describe("useUIStore.reset", () => {
 
   it("keeps the per-machine layout preferences", () => {
     useUIStore.getState().setSidebarCollapsed(true);
-    useUIStore.getState().setFilesViewMode("list");
+    // All THREE rail bands fold and survive the same way. They are one band
+    // anatomy wearing three labels, so a reset that kept one and dropped the
+    // others would make the rail come back half the way the user left it.
+    useUIStore.getState().toggleTeamsSectionCollapsed();
+    useUIStore.getState().toggleMyAccountsSectionCollapsed();
+    useUIStore.getState().toggleWorkspaceSectionCollapsed();
 
     useUIStore.getState().reset();
 
     const next = useUIStore.getState();
     strictEqual(next.sidebarCollapsed, true);
-    strictEqual(next.filesViewMode, "list");
+    strictEqual(next.teamsSectionCollapsed, true);
+    strictEqual(next.myAccountsSectionCollapsed, true);
+    strictEqual(next.workspaceSectionCollapsed, true);
   });
 
   it("drops a one-shot routine-chat target on an identity change", () => {

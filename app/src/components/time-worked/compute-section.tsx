@@ -26,13 +26,14 @@ import {
 const RANGES: ComputeRange[] = ["week", "month", "quarter"];
 
 /**
- * The Time worked screen's body: how long this user's agents actually spent
- * executing tasks, per day/week, with a per-agent breakdown. The full pod
- * up-time (`awakeMs`) is deliberately never shown. Rendered ONLY where the
- * gateway advertises `capabilities.computeUsage` (the surface gate keeps the
- * whole screen off elsewhere, so the query never fires there). One fetch covers
- * 90 days; range switches re-bucket locally. The screen's title lives in its
- * PageHeader, so the section leads with its range control.
+ * The Time worked lens of Admin > Analytics: how long this user's agents
+ * actually spent executing tasks, per day/week, with a per-agent breakdown. The
+ * full pod up-time (`awakeMs`) is deliberately never shown. Rendered ONLY where
+ * the gateway advertises `capabilities.computeUsage` — the Analytics tab's own
+ * `showComputeSection` check omits the sub-tab entirely elsewhere, so the query
+ * never fires there. One fetch covers 90 days; range switches re-bucket locally.
+ * The Analytics sub-tab already names the lens, so it leads with its range
+ * control rather than a heading of its own.
  */
 export function ComputeSection() {
   const { t, i18n } = useTranslation("aiHub");

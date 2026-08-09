@@ -2,10 +2,11 @@ import { strictEqual } from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import { useUIStore } from "../src/stores/ui.ts";
 
-// HOU-788: Usage, Permissions and Admin became Settings sections, so "go to
-// Settings" is now two pieces of state (the view AND the open section). They
-// move together through one store action, because setting only the view left a
-// dead click: with a section open, the sidebar's Settings entry did nothing.
+// "Go to Settings" is two pieces of state (the view AND the open section), and
+// they move together through one store action: setting only the view left a
+// dead click, since with a section open the sidebar's Settings entry did
+// nothing. Admin and Permissions are NOT reachable this way any more — they are
+// top-level views, opened with `setViewMode`.
 
 afterEach(() => useUIStore.getState().reset());
 
@@ -13,7 +14,7 @@ describe("useUIStore.openSettings", () => {
   it("lands on the index from anywhere, even with a section already open", () => {
     const s = useUIStore.getState();
     s.setViewMode("team");
-    s.setSettingsSection("permissions");
+    s.setSettingsSection("shortcuts");
 
     useUIStore.getState().openSettings(null);
 
@@ -23,16 +24,16 @@ describe("useUIStore.openSettings", () => {
 
   it("deep-links a section, replacing whatever section was open", () => {
     const s = useUIStore.getState();
-    s.setSettingsSection("timeWorked");
+    s.setSettingsSection("shortcuts");
 
-    useUIStore.getState().openSettings("organization");
+    useUIStore.getState().openSettings("reportBug");
 
     strictEqual(useUIStore.getState().viewMode, "settings");
-    strictEqual(useUIStore.getState().settingsSection, "organization");
+    strictEqual(useUIStore.getState().settingsSection, "reportBug");
   });
 
   it("resets the open section on an identity change", () => {
-    useUIStore.getState().openSettings("organization");
+    useUIStore.getState().openSettings("reportBug");
 
     useUIStore.getState().reset();
 

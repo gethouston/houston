@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import type { KanbanItem } from "@houston-ai/board";
 import {
   agentsInScope,
+  filteredScopeAgent,
   GLOBAL_MISSION_DRAFT_SCOPE,
   inScope,
   itemsInScope,
@@ -93,6 +94,25 @@ describe("missionControlDraftScope", () => {
       missionControlDraftScope("team-a"),
       GLOBAL_MISSION_DRAFT_SCOPE,
     );
+  });
+});
+
+describe("filteredScopeAgent", () => {
+  const roster = [agent("Sales/Ana"), agent("Sales/Beto")];
+
+  it("names the filtered agent, which the board's title then wears", () => {
+    assert.deepEqual(filteredScopeAgent(roster, "Sales/Beto"), roster[1]);
+  });
+
+  it("means every agent when nothing is filtered", () => {
+    assert.equal(filteredScopeAgent(roster, ""), null);
+  });
+
+  it("falls back to every agent when the path has no agent behind it", () => {
+    // The title IS the filter now: a path nobody owns would otherwise leave
+    // the board's only heading blank while the board shows everything.
+    assert.equal(filteredScopeAgent(roster, "Sales/Gone"), null);
+    assert.equal(filteredScopeAgent([], "Sales/Ana"), null);
   });
 });
 

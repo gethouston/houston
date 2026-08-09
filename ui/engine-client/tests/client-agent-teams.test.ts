@@ -78,10 +78,18 @@ describe("HoustonClient C13 agent teams — listAgentTeams", () => {
 describe("HoustonClient C13 agent teams — createAgentTeam", () => {
   it("POSTs /org/teams with {name} and returns the AgentTeam", async () => {
     const { client, calls } = makeClient(TEAM, 201);
-    const got = await client.createAgentTeam("Design");
+    const got = await client.createAgentTeam({
+      name: "Design",
+      icon: "palette",
+      color: "purple",
+    });
     strictEqual(calls[0].method, "POST");
     strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org/teams");
-    deepStrictEqual(calls[0].body, { name: "Design" });
+    deepStrictEqual(calls[0].body, {
+      name: "Design",
+      icon: "palette",
+      color: "purple",
+    });
     deepStrictEqual(got, TEAM);
   });
 });
@@ -106,6 +114,92 @@ describe("HoustonClient C13 agent teams — updateAgentTeam", () => {
     const { client, calls } = makeClient(TEAM);
     await client.updateAgentTeam("a/b c", { name: "x" });
     strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org/teams/a%2Fb%20c");
+  });
+
+  // C13 §Team identity. The vocabulary is the CLIENT's — the gateway checks the
+  // shape and nothing else — so the client forwards what it was handed verbatim
+  // rather than validating a glyph list it would have to keep in sync.
+  it("forwards icon and color verbatim", async () => {
+    const { client, calls } = makeClient({
+      ...TEAM,
+      icon: "pen-tool",
+      color: "#5E6AD2",
+    });
+    const got = await client.updateAgentTeam("t1", {
+      icon: "pen-tool",
+      color: "#5E6AD2",
+    });
+    strictEqual(calls[0].method, "PATCH");
+    strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org/teams/t1");
+    deepStrictEqual(calls[0].body, { icon: "pen-tool", color: "#5E6AD2" });
+    strictEqual(got.icon, "pen-tool");
+    strictEqual(got.color, "#5E6AD2");
+  });
+
+  it("sends the empty string as the CLEAR rather than dropping the key", async () => {
+    // `""` is the one spelling that erases a field; an ABSENT key means "leave
+    // it alone", so a dropped `""` would make an icon impossible to take off.
+    const { client, calls } = makeClient(TEAM);
+    await client.updateAgentTeam("t1", { icon: "" });
+    deepStrictEqual(calls[0].body, { icon: "" });
+    strictEqual("icon" in (calls[0].body as Record<string, unknown>), true);
+  });
+
+  it("clears one field while leaving the other untouched", async () => {
+    const { client, calls } = makeClient(TEAM);
+    await client.updateAgentTeam("t1", { color: "" });
+    deepStrictEqual(calls[0].body, { color: "" });
+  });
+
+  it("does not trim either field, so the gateway can refuse whitespace", async () => {
+    const { client, calls } = makeClient(TEAM);
+    await client.updateAgentTeam("t1", { icon: "  ", color: " indigo-500" });
+    deepStrictEqual(calls[0].body, { icon: "  ", color: " indigo-500" });
+  });
+
+  it("throws the 400 invalid_icon refusal", async () => {
+    const { client } = makeClient(
+      { error: "invalid icon", code: "invalid_icon" },
+      400,
+    );
+    await rejects(
+      () => client.updateAgentTeam("t1", { icon: "Pen Tool" }),
+      HoustonEngineError,
+    );
+  });
+
+  it("throws the 400 invalid_color refusal", async () => {
+    const { client } = makeClient(
+      { error: "invalid color", code: "invalid_color" },
+      400,
+    );
+    await rejects(
+      () => client.updateAgentTeam("t1", { color: "#GGG" }),
+      HoustonEngineError,
+    );
+  });
+});
+
+describe("HoustonClient C13 agent teams — team identity off the read", () => {
+  // ABSENT on the wire is UNSET, which is a different instruction from `""`:
+  // "render your own default" rather than "render this empty string". So the
+  // parsed team must leave both keys `undefined`, never coerce them.
+  it("keeps icon and color when the team carries them", async () => {
+    const styled = { ...TEAM, icon: "rocket", color: "indigo-500" };
+    const { client } = makeClient({ teams: [styled] });
+    const [got] = await client.listAgentTeams();
+    strictEqual(got?.icon, "rocket");
+    strictEqual(got?.color, "indigo-500");
+    deepStrictEqual(got, styled);
+  });
+
+  it("leaves them undefined on a team that has none", async () => {
+    const { client } = makeClient({ teams: [TEAM] });
+    const [got] = await client.listAgentTeams();
+    strictEqual(got?.icon, undefined);
+    strictEqual(got?.color, undefined);
+    strictEqual("icon" in (got as object), false);
+    strictEqual("color" in (got as object), false);
   });
 });
 
@@ -230,7 +324,7 @@ describe("HoustonClient C13 agent teams — a 404 throws, it is NOT degraded", (
   // truth. Every one of the nine must surface it.
   const cases: Array<[string, (c: HoustonClient) => Promise<unknown>]> = [
     ["listAgentTeams", (c) => c.listAgentTeams()],
-    ["createAgentTeam", (c) => c.createAgentTeam("Design")],
+    ["createAgentTeam", (c) => c.createAgentTeam({ name: "Design" })],
     ["updateAgentTeam", (c) => c.updateAgentTeam("t1", { name: "x" })],
     ["deleteAgentTeam", (c) => c.deleteAgentTeam("t1")],
     ["listAgentTeamMembers", (c) => c.listAgentTeamMembers("t1")],

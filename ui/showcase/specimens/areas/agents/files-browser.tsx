@@ -15,53 +15,43 @@ function FilesBrowserSpecimen() {
   return (
     <SpecimenPage
       title="FilesBrowser"
-      intro="Everything an agent has made or been given: a Drive-style card grid by default, with the Finder-style tree behind a toggle."
+      intro="Everything an agent has made or been given, in one expandable list tree."
     >
       <SpecimenSection
         title="Variants"
-        note="No `variant` prop — two views, and which one shows is `view` (or the browser's own state when you leave it uncontrolled). The grid navigates folder by folder through the breadcrumb; the list is a tree rooted at the workspace, which is why it carries no breadcrumb of its own. Both below are live: open a folder, rename a file, drag one into another folder."
+        note="The list is a tree rooted at the workspace. Expand folders in place, rename a file, or drag one into another folder."
       >
-        <SpecimenRow label="Grid — the default">
+        <SpecimenRow label="Expandable list">
           <LiveFiles />
-        </SpecimenRow>
-        <SpecimenRow label="List — sortable columns, expandable tree">
-          <LiveFiles startView="list" />
         </SpecimenRow>
       </SpecimenSection>
 
       <SpecimenSection
         title="States"
-        note="Selection is a controlled path; a click on the background clears it. Rename is inline on the row or card. The header's actions are opt-in: every one of them appears only because its callback was passed, which is how the same component serves the desktop (reveal in Finder) and the browser (download a zip)."
+        note="Selection uses the checkbox gutter and a background click clears it. Rename stays inline on the row. Agent-level actions live on the surrounding accordion row."
       >
         <SpecimenRow label="Loading">
           <LiveFiles loading />
         </SpecimenRow>
         <SpecimenRow label="Empty — the agent has produced nothing yet">
           <FilesStage>
-            <FilesBrowser
-              files={[]}
-              rootLabel="Meeting Notes"
-              emptyTitle="No files yet"
-              emptyDescription="When Meeting Notes writes a summary, it will appear here."
-              onBrowse={() => undefined}
-              onUploadFolder={() => undefined}
-            />
+            <FilesBrowser files={[]} onUpload={() => undefined} />
           </FilesStage>
         </SpecimenRow>
         <SpecimenRow label="Read-only — no callbacks, so no actions at all">
           <FilesStage>
-            <FilesBrowser files={agentFiles} rootLabel="Weekly Report" />
+            <FilesBrowser files={agentFiles} />
           </FilesStage>
         </SpecimenRow>
       </SpecimenSection>
 
       <SpecimenSection
         title="Sizes"
-        note="The browser fills its parent in both directions, and caps its own content to a 896px column so the header and the body stay aligned on a wide window. Card and row heights are fixed; only the number of columns responds."
+        note="The browser fills its parent in both directions. Name keeps the flexible column while Modified and Size remain aligned."
       >
-        <SpecimenRow label="Narrow frame — the grid reflows to fewer columns">
+        <SpecimenRow label="Narrow frame">
           <div className="flex h-[420px] w-full max-w-md overflow-hidden rounded-2xl border border-line bg-gutter">
-            <FilesBrowser files={agentFiles} rootLabel="Inbox Zero" />
+            <FilesBrowser files={agentFiles} />
           </div>
         </SpecimenRow>
       </SpecimenSection>

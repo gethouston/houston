@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 57
+version: 61
 
 components:
   - id: agent-avatar
@@ -1051,53 +1051,260 @@ components:
   - id: sidebar-team-block
     title: Sidebar team block
     purpose: >-
-      One team in the navigation rail: its name, the destinations that team
-      offers, and the agents that belong to it.
-    anatomy: [header-name, collapse-caret, member-count, header-menu, section-rows, agent-rows, empty-hint, join-action]
-    states: [resting, collapsed, drop-target, drop-confirmed, empty, renaming, unjoined]
-    variants: [named-team, default-team, other-team]
+      One team in the navigation rail: its name and the agents that belong to
+      it.
+    anatomy: [header-row, team-glyph, team-name, disclosure-caret, rollup-badge, header-menu, identity-picker, agent-rows, empty-hint]
+    states: [resting, active, collapsed, collapsed-active, collapsed-rollup, drop-target, drop-refused, empty, renaming]
+    variants: [named-team, default-team]
     behavior: >-
       Every agent belongs to exactly one team, so the rail is a list of team
       blocks and nothing else. Named teams are the stored sidebar groups; the
       trailing DEFAULT team is the workspace itself, wearing the workspace name
-      and holding every agent in no group. The default variant is virtual -- no
-      stored record backs it -- and therefore carries no caret and no rename /
-      delete / shared-context menu: it cannot be folded away or destroyed,
-      because it is the container. Each block draws its SECTION ROWS above its
-      agent rows: Mission Control always, plus whichever further sections the
-      caller may open (Team Settings today, gated on the capability role;
-      Routines and Files as they land). Section rows are destinations, never
-      members -- they are not draggable and are not drop targets, and a drag
-      passing over one targets the team it belongs to. Selecting a section opens
-      that team on that section; selecting an agent opens its team's Mission
-      Control pre-filtered to that agent, so the rail and the open view always
-      agree on where the user is. Agents drag within and between teams (the
-      default team included) and team headers reorder teams; that is the only
-      thing that writes to the stored layout.
-      Where teams are SERVER-OWNED and shared with other people, the rail splits
-      in two: the teams the caller JOINED are the blocks, in full, and every
-      other team in the space collapses into one quiet disclosure at the foot of
-      the rail -- the UNJOINED state, a name, how many people are in it, and a
-      JOIN ACTION. Joining is sidebar PINNING, not a grant: it moves the team
-      into the rail and nothing else, because who may see a team's agents was
-      already settled by the space's roles, and a rail that implied otherwise
-      would be selling permission it does not hold. Leaving is the same move
-      backwards, which is why it lives at the BOTTOM of the header menu behind a
-      separator: everything above it edits the team, and this one edits the
-      caller's relationship to it. Which menu entries a block offers is decided
-      PER TEAM, not once for the rail -- the caller may own one team and merely
-      belong to the next -- and a block that offers none shows no menu at all
-      rather than an empty one. Creating a team asks for the name FIRST: the new
-      block is a local draft until a name is committed, and abandoning the field
-      removes it, so no placeholder-named team is ever broadcast to the people
-      sharing the space.
+      and holding every agent in no group.
+      A block is ONE LADDER of rows, not a header with a list beneath it. The
+      team row and every agent row share a single anatomy: one fixed row
+      height, one glyph column, one type size, one rounded hover fill, and an
+      active state that is a clearly-defined pill rather than a faint tint. Hierarchy is carried by an indent INSIDE the
+      row, so the pills line up in one clean column down the block's left edge
+      instead of stepping in and out with their contents; a row's glyph also
+      inherits its label's colour, so an active row brightens as one object
+      rather than as a label with a stale mark beside it. Any of the three row
+      kinds drifting in height or indent makes the block read as several stacked
+      lists, which is exactly what it used to do.
+      That ladder is not the block's alone. EVERY interactive line in the rail
+      is the same row wearing different options -- the top-level destinations
+      above the list, the band that names it, each team header, each destination
+      row, each agent, and the New agent row that closes it -- so the whole rail
+      is one column of pills with one glyph column running down it, and there is
+      exactly one indent step between a row that heads something and a row that
+      hangs under one. Weight states that DEPTH and never the state: a block-
+      level row is medium and a child row is regular, whatever is selected, so
+      clicking a row cannot re-measure its label and shift where a long agent
+      name truncates. The two things deliberately outside the shared row are the
+      collapsed icon rail, which is a different anatomy rather than a narrower
+      one, and inline rename, because a text field is not a state of a button.
+      The team row itself is ONE hit target carrying the glyph, the name, the
+      caret that states whether the block is open and the block's rollup badge,
+      with the "..." menu beside it rather than inside it. It used to be three
+      separate controls sharing one job, which cost a keyboard user three stops
+      to reach a single disclosure. The caret is an INDICATOR and takes no
+      clicks of its own: what the row does depends on where the user already
+      is, so a caret claiming to be the fold button would promise an outcome it
+      does not own.
+      Clicking a team's name answers four questions with one gesture. From
+      anywhere else it OPENS that team, unfolds it, and folds every other block
+      -- an accordion, because a rail of eight expanded teams is a list of
+      agents with headings in it, and the team just asked for is the only one
+      whose members are worth the space. From another of the same team's
+      surfaces it simply comes back to the team's work. On the team's own work,
+      it folds the block, and folds it back open on the next click. Folding is
+      the only one of the four that does not move the screen: the rail may fold
+      while the surface stays, which is deliberate and user-invoked.
+      The team's glyph is the team's IDENTITY: a solid mark the user picked
+      from a curated set, tinted by a colour they picked from the SAME palette
+      the agent avatars below it use. One vocabulary, so a team and an agent can
+      never mean two different purples, and a team stays recognisable at a
+      glance in a rail full of blocks. A team that has chosen neither wears a
+      neutral people mark inheriting the row's own colour, which is what every
+      block looked like before and is still what most of them look like. This
+      is the one place a rail glyph pins a colour, and it is deliberate: the
+      mark is identity a person chose, not decoration a component invented.
+      Collapsing folds away EVERYTHING under the header. The hole that leaves is
+      answered by the header twice over. It wears the selected pill whenever the
+      open view belongs to this team, folded or open alike -- with no
+      destination rows left in the block, the header is the only row that can
+      answer "where am I" for a team at all. And it picks up a ROLLUP of what
+      its hidden agent rows were signalling: the sum of their waiting work as a
+      badge, and the same running treatment an agent's mark wears if any member
+      is working. Both only while folded, because an open block's rows say it
+      themselves and two badges in one block would count the same work twice.
+      Folding a team must never mean losing sight of it.
+      The DEFAULT block renders and folds exactly like a named team. One that
+      folded everywhere except there would make the team everybody has the one
+      row in the rail that answers a click differently, which is the kind of
+      exception a user reads as a bug. Its folded state is persisted separately
+      from the stored groups, because the block is virtual -- it is the
+      container, not a record -- and its absence reads as open, so every layout
+      written before it stays untouched. What it still does not get is what the
+      container itself lacks: no rename, no delete, no leave, no menu at all,
+      and no drag handle.
+      A block holds MEMBERS and nothing else. A team's sections live on the
+      screen its name opens, as tabs over the team's own work: four rows per
+      team spent most of the rail on the same four words repeated, and the
+      rail's job is to say WHICH team, not which of its surfaces. Selecting an
+      agent opens its team's work pre-filtered to that agent, so the rail and
+      the open view always agree on where the user is.
+      A DRAG reorders and nothing more: an agent inside its own team, a team
+      block among its siblings. An agent dragged over any other block is
+      REFUSED -- no block offers to receive it and the lifted copy dims -- because
+      a drop across blocks was the one gesture here that changed what a team
+      HOLDS, and a slip of the wrist across a rail full of blocks is not a way
+      to decide that. Moving an agent to another team is a named action on the
+      team's own screen, where it can be read before it is taken.
+      Where teams are SERVER-OWNED and shared with other people, the blocks are
+      the teams the caller has JOINED. A team they have not joined is not a
+      block at all: it lives in the band's Join menu (see sidebar-teams-band),
+      because the rail is a working surface and not a directory. Joining is
+      sidebar PINNING, not a grant: it moves the team into the rail and nothing
+      else, because who may see a team's agents was already settled by the
+      space's roles, and a rail that implied otherwise would be selling
+      permission it does not hold. Leaving is the same move backwards, which is
+      why it lives at the BOTTOM of the header menu behind a separator:
+      everything above it edits the team, and this one edits the caller's
+      relationship to it. Which menu entries a block offers is decided PER TEAM,
+      not once for the rail -- the caller may own one team and merely belong to
+      the next -- and a block that offers none shows no menu at all rather than
+      an empty one. Creating a team asks for the name FIRST: the new block is a
+      local draft until a name is committed, and abandoning the field removes
+      it, so no placeholder-named team is ever broadcast to the people sharing
+      the space.
     a11y: >-
-      Section rows are buttons carrying aria-current="page" when open; the named
-      team's header exposes aria-expanded and an accessible name; the default
-      team's header is a plain label with no interactive affordance, so nothing
-      promises a click that does nothing. The other-teams disclosure names its
-      count, and each join control names the team it joins.
+      The team row is ONE button carrying aria-expanded and an aria-controls
+      pointing at the region it folds, so the disclosure is announced rather
+      than inferred from a rotating caret; the caret is decorative and hidden.
+      The default block's row is that same button -- it folds a real region, so
+      it makes a real promise, which is the opposite of the inert label it used
+      to be. It carries aria-current="page" whenever the team's work is the open
+      view, so "you are here" survives folding instead of vanishing with the
+      rows it hid, and its rollup badge and running treatment both carry a
+      spoken label with the number in it, since the rail must never turn into a
+      wall of digits to be read. The "..." menu is always rendered rather than revealed on
+      hover: a control that exists only under a cursor is unreachable by touch
+      and invisible to anyone scanning the rail.
     since: 55
+
+  - id: sidebar-teams-band
+    title: Sidebar teams band
+    purpose: >-
+      The furniture wrapping the rail's team blocks: the band that names the
+      list and folds all of it, the one menu that creates teams and agents, and
+      the New agent row that closes the list. The BAND itself is shared with the
+      two nav runs above it (see sidebar-nav-band).
+    anatomy: [band-label-toggle, band-caret, add-menu-trigger, add-menu, add-agent-row]
+    states: [resting, collapsed, menu-open]
+    variants: [personal, shared-space]
+    behavior: >-
+      The band is the rail's list header and its only LIST-level control -- one
+      per rail, however many team blocks hang under it, which is what makes it a
+      different thing from the block headers it sits above.
+      Its LABEL is the toggle. The caret sits immediately after the words rather
+      than pinned to the far edge, so the control reads as one phrase you can
+      click instead of a label that happens to have an arrow near it, and the
+      button is sized to its text because everything to the right of the words
+      belongs to the action, not to the disclosure. Folding it puts every team
+      block away at once, and the state is persisted: a rail that forgets it was
+      folded on every reload is worse than one that never folded. Folding is an
+      EXPANDED-rail idea only -- the icon rail has no band to fold from, so it
+      must never inherit a hidden list.
+      ONE "+" menu carries everything the rail can create: New agent and New
+      team. Those used to be two unnamed glyphs sitting on a row that already
+      had a label. Browsing and joining OTHER teams is gone entirely: a member
+      sees only the teams they are part of, and people are added to a team from
+      its settings, so the rail no longer stacks teams the user never opens
+      underneath the few they live in. The menu degrades to a plain named button
+      when there is exactly one thing to create, and renders nothing when there
+      is none.
+      New agent is ALSO a visible row at the foot of the list, not only a menu
+      entry, because creating an agent is the rail's primary action and a
+      primary action may not live one level deep inside a menu. That row wears
+      the child-row geometry of the blocks above it (see sidebar-team-block), so
+      the list ends on the same ladder it was drawn on rather than on a control
+      that has floated free of it, and it is the one the guided tour points at.
+    a11y: >-
+      The label is a real button with aria-expanded and an aria-controls
+      pointing at the list it folds; its caret is decorative and hidden. The
+      menu trigger carries an accessible name of its own rather than borrowing
+      the band's, because a "+" says nothing aloud. The add row is a button
+      inside the list's own reading order, not chrome parked outside it.
+    since: 58
+
+  - id: sidebar-nav-band
+    title: Sidebar nav band
+    purpose: >-
+      The rail's top-level destinations above the team list, and the two bands
+      that name them: My accounts and Workspace.
+    anatomy: [nav-row, nav-glyph, nav-label, nav-count-badge, band-label-toggle, band-caret, footer-row]
+    states: [resting, hover, active, collapsed, with-count, icon-rail]
+    variants: [unlabelled-run, labelled-run]
+    behavior: >-
+      Two destinations LEAD the rail with no band over them, because they are
+      the two a user heads for without being asked: where work arrives, and
+      where agents come from. Everything else is filed under a band that says
+      whose it is. The leading run also carries the offer to be WALKED through
+      the app, beside the store a new user opens first: the guided tour is a
+      destination people go looking for, not a control hiding on one screen's
+      chrome. My accounts holds the connections that belong to the PERSON, the
+      apps they have authorised and the AI accounts their turns run on: nobody
+      else in the space is affected by either. Workspace holds what the whole
+      SPACE is made of and belongs to the people who run it: who is in it, who
+      may use which agent, its skills, and how long its agents have worked. A
+      plain member is not shown any of that, so for them the band does not
+      exist at all.
+      Settings is not in any of those runs. It belongs to the person rather
+      than to the space, and it has to be reachable in every deployment,
+      including the ones where the Workspace band is absent entirely, so it is
+      a permanent row in the rail's FOOTER beside the account menu.
+      A band whose rows are all hidden by a gate is DROPPED with its rows: a
+      heading may never outlive the list it names.
+      The bands are the SAME band as the team list's below them, down to the
+      type step, the caret placement, the fold, the gap under the heading and
+      the LEFT EDGE all three sit on. Three headings in one rail that folded,
+      sat or aligned differently would be three rules for one row shape, so
+      there is one of them wearing three labels and the inset is spent exactly
+      once per heading. Each remembers its own fold, per machine.
+      There is no general mission board among these rows. Every board belongs to
+      a team, so the app opens on the first team's board and the only
+      destination here that needs no team is the inbox, which is where the app
+      waits while the teams are still arriving.
+      The inbox row carries a count when someone has typed your name, and
+      nothing at all when they have not: a permanent zero is a number the eye
+      learns to skip, leaving the row no way to say something arrived. It is the
+      same count, from the same list, as the notifications control on a board.
+      The icon rail drops the bands and every fold with them: a heading has
+      nowhere to go at that width, the labels it would carry are already in each
+      glyph's tooltip, and a run left folded there would strand a destination
+      with nothing on screen to bring it back.
+    a11y: >-
+      Each band label is a real button carrying aria-expanded and an
+      aria-controls pointing at the run it folds; its caret is decorative. A
+      destination row announces its own name plus its count when it has one, so
+      the number is never carried by colour or position alone. In the icon rail
+      every row keeps an accessible name through its tooltip trigger.
+    since: 59
+
+  - id: team-identity-picker
+    title: Team identity picker
+    purpose: >-
+      The popover behind a team's "Change icon & color": a grid of solid marks
+      and a row of colour swatches, applied as they are clicked.
+    anatomy: [menu-entry, icon-grid, icon-cell, swatch-row, swatch, reset-entry]
+    states: [resting, hover, selected, none-chosen, applied]
+    variants: [named-team, default-team]
+    behavior: >-
+      A team's identity is a GLYPH NAME and a COLOUR, both optional and both
+      edited by whoever may rename the team. The set of marks is the client's
+      own curated vocabulary rather than an image upload or an open icon
+      library: a fixed set is the only way every mark reads at rail size and
+      renders the same on every surface, and it costs the user a choice instead
+      of a design task. The colours are not a new palette either -- they are the
+      same swatches an agent's avatar uses, so one vocabulary of colour carries
+      identity everywhere.
+      Every pick is applied IMMEDIATELY and optimistically: the rail repaints
+      the moment a mark is clicked, and a refusal puts the previous identity
+      back and says why in the user's own words. Choosing a mark before a
+      colour has to look right, so the grid itself is tinted by whatever colour
+      is currently chosen -- picking either half previews the pair.
+      Clearing is a first-class choice, not a missing one: a single Default
+      entry drops BOTH fields and returns the team to the neutral mark, and it
+      is offered only when there is something to clear.
+      The catch-all team is included. Restyling is a rename, not a structural
+      change, so a team you may name is a team you may style.
+    a11y: >-
+      The entry opens a submenu of the block's own "..." menu, so it is reached
+      by keyboard the same way every other block action is. Each mark and each
+      swatch is a real button carrying its own name and a pressed state, so the
+      current choice is never signalled by colour or position alone.
+    since: 60
 
   - id: team-screen
     title: Team screen
@@ -1112,7 +1319,7 @@ components:
       ONE screen serves every team: which team and which of its sections are
       open is state, so a team can be renamed, reordered or deleted without
       leaving a dead view behind, and a team that stops existing sends the user
-      back to the global board rather than a blank pane. The sections it can
+      home, to the first team's board, rather than to a blank pane. The sections it can
       show are exactly the destination rows the team block offers, so the rail
       can never point at something the screen will not render; a section the
       caller may not open resolves to Mission Control. Mission Control is the

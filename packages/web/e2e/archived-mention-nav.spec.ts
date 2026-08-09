@@ -2,10 +2,10 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
-import { rail, screen } from "./support/team-nav";
+import { openInbox, screen } from "./support/team-nav";
 
 /**
- * An @mention on an ARCHIVED mission, opened from the Mentions inbox.
+ * An @mention on an ARCHIVED mission, opened from the Inbox.
  *
  * A mission board is two surfaces that SWAP — the active board and the archive
  * — and each holds half the workspace: the active one filters
@@ -90,22 +90,18 @@ async function seedArchivedMention(request: APIRequestContext): Promise<void> {
   });
 }
 
-/** Mission Control, the top-level view that owns the inbox. */
-async function openMissionControl(page: Page): Promise<void> {
-  await page.locator("[data-tour-target='nav-dashboard']").click();
-}
-
-/** The Mentions mode control, and the inbox rows behind it. */
-const mentionsControl = (page: Page) =>
-  page.getByRole("button", { name: /mention/i });
+/** The inbox rows (each row is a real button, so keyboard users reach them),
+ *  scoped to the screen ON THE GLASS — the board the Inbox was opened from is
+ *  kept alive one screen behind it. */
 const inboxRows = (page: Page) =>
-  page.getByRole("button").filter({ hasText: "mentioned you" });
+  screen(page).getByRole("button").filter({ hasText: "mentioned you" });
 
-/** Open the inbox and click the one row in it. */
+/** Open the Inbox — its own top-level screen now — and click the one row. */
 async function openTheMentionRow(page: Page): Promise<void> {
-  await openMissionControl(page);
-  await expect(mentionsControl(page)).toHaveAccessibleName(/1 unread mention/);
-  await mentionsControl(page).click();
+  await openInbox(page);
+  await expect(
+    screen(page).getByRole("heading", { name: "Inbox" }),
+  ).toBeVisible();
   await expect(inboxRows(page)).toHaveCount(1);
   await inboxRows(page).first().click();
 }
@@ -122,16 +118,13 @@ test("an @mention on an archived mission opens it ON THE ARCHIVE, with its histo
 
   // The nav landed on the agent's TEAM board (the destination every mention row
   // has since the agent tab shell went away) — and on its ARCHIVE, which is the
-  // only surface that can render a mission with this status. "Back to missions"
+  // only surface that can render a task with this status. "Back to tasks"
   // is the archive's own exit control, so its presence IS the surface.
   await expect(
-    rail(page)
-      .locator("[data-sidebar-section-row]")
-      .filter({ hasText: "Mission Control" })
-      .first(),
+    screen(page).locator("[data-team-section-tab='mission-control']"),
   ).toHaveAttribute("aria-current", "page");
   await expect(
-    screen(page).getByRole("button", { name: "Back to missions" }),
+    screen(page).getByRole("button", { name: "Back to tasks" }),
   ).toBeVisible();
   await expect(screen(page).getByText(MISSION_TITLE).first()).toBeVisible();
 
@@ -163,12 +156,14 @@ test("the archived mission's composer still sends, and hands back to the active 
   await composer.fill(FOLLOW_UP);
   await composer.press("Enter");
 
+  // Back on the ACTIVE board: its labelled exit is gone, and the archive is
+  // once again only reachable through the filters row's quiet overflow.
   await expect(
-    screen(page).getByRole("button", { name: "Archived", exact: true }),
-  ).toBeVisible();
-  await expect(
-    screen(page).getByRole("button", { name: "Back to missions" }),
+    screen(page).getByRole("button", { name: "Back to tasks" }),
   ).toHaveCount(0);
+  await expect(
+    screen(page).getByRole("button", { name: "More board actions" }),
+  ).toBeVisible();
   await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
     timeout: 15_000,
   });

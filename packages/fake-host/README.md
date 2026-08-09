@@ -76,7 +76,7 @@ They drive the failure/reactivity scenarios the specs assert against:
 | `/__test__/capabilities` | `Partial<Capabilities>` | Merge a partial into the advertised `/v1/capabilities`. Arm the Teams-shaped state single-player can't reach — e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }` to light up the agent Integrations tab's locked browse rows, or just `{ integrations:["composio"] }` for a single-player-with-apps run. Returns the merged capabilities. |
 | `/__test__/agent-settings` | `{ allowedToolkits?, orgAllowedToolkits?, allowedModels?, access? }` | Set the Teams v2 ceilings served at `/v1/agents/:slug/settings` + `/v1/org/settings` (`allowedToolkits`/`orgAllowedToolkits`: `null` = unrestricted, `[]` = none). The `effectiveAllowlist` = agent ∩ org drives the tab's connectable-vs-locked partition. Returns the merged settings. |
 | `/__test__/org` | `{ members?: [{ userId, email?, role, displayName?, photoUrl? }], agents?: [...] }` | Arm the org roster `GET /v1/org` serves (owner/admin only) and the co-member directory `GET /v1/org/people` serves to EVERY member. `displayName`/`photoUrl` are the stored GCIP profile: a member without a `displayName` is still served, and the client decides who is @mentionable. Arming also SEEDS the identity-provider fallback behind `/v1/me/profile` from the `u-self` row, so clearing a custom name/photo has something honest to fall back to. Pair with `/__test__/capabilities` `{ multiplayer:true, teams:true, role:"owner" }`. Returns `{ members, agents }`. |
-| `/__test__/agent-teams` | `{ teams?: [{ id, name, isDefault?, sortOrder?, agentIds?, members?: [{ userId, owner? }] }], personalSpace? }` | Arm the C13 agent-team world `GET /v1/org/teams` serves: the teams of the active space, the agents each holds (`agentIds`; every other agent stays in the default team, exactly as a NULL `team_id` resolves) and its EXPLICIT membership rows (`members` — never one for an org owner/admin, whose ownership is implicit). Arming REPLACES the whole world; an omitted or `null` `teams` clears it back to lazy, so the next read mints the default team again, named after the org. `personalSpace: true` makes the space personal: the read serves the default team alone and every mutation answers `403 personal_space`. The client feature-detects on the capability, so pair with `/__test__/capabilities` `{ agentTeams: true }`. Returns the armed `{ teams, personalSpace }`. |
+| `/__test__/agent-teams` | `{ teams?: [{ id, name, isDefault?, sortOrder?, icon?, color?, agentIds?, members?: [{ userId, owner? }] }], personalSpace? }` | Arm the C13 agent-team world `GET /v1/org/teams` serves: the teams of the active space, their visual identity (`icon`/`color`, omitted on a team that has none — the field is then absent from the row and from the wire), the agents each holds (`agentIds`; every other agent stays in the default team, exactly as a NULL `team_id` resolves) and its EXPLICIT membership rows (`members` — never one for an org owner/admin, whose ownership is implicit). Arming REPLACES the whole world; an omitted or `null` `teams` clears it back to lazy, so the next read mints the default team again, named after the org. `personalSpace: true` makes the space personal: it still serves its REAL team list and still allows create, patch, delete and the agent move (a team is how a solo user groups their own agents), but the three PEOPLE routes — join, `PUT …/members/:id`, `DELETE …/members/:id` — answer `403 personal_space`, ahead of both the `:id` resolve and `default_team`. The client feature-detects on the capability, so pair with `/__test__/capabilities` `{ agentTeams: true }`. Returns the armed `{ teams, personalSpace }`. |
 | `/__test__/workspaces` | `{ teams: [{ slug, name }] }` | Arm the team-space rows the C8 Spaces workspaces bridge serves at `GET /v1/workspaces` (alongside the always-present personal seed row). Each `slug` (exactly `[a-f0-9]{16}`) becomes an `{ id:"org:<slug>", kind:"org" }` switcher row. Pair with `/__test__/capabilities` `{ spaces:true }`. `{ teams: [] }` (and reset) restores personal-only. Returns the armed `{ teams }`. |
 | `/__test__/space-invites` | `{ invites: [{ orgName, role?, invitedBy?, orgSlug?, id?, reject? }] }` | Arm the INVITEE-side invite inbox `GET /v1/orgs` surfaces in `invites` (C8 Spaces) — the sidebar cards under the workspace switcher. Only `orgName` is required (`role` defaults to `user`, the id and the 16-hex `orgSlug` the accepted team lands under are minted). `invitedBy` is the raw gateway field: the card names the inviter only when it is human-readable (an email, or a name with whitespace). `reject` forces THAT invite's answer — `needs_upgrade` (403, invite kept), `already_member` (409, invite kept), `invite_not_found` (404, invite dropped: the revoked-behind-your-back case). The card is capability-gated on the CLIENT, so pair with `/__test__/capabilities` `{ spaces:true }`. `{ invites: [] }` (and reset) empties the inbox. Returns the normalized `{ invites }`. |
 | `/__test__/provider-usage` | `{ rows: ProviderUsage[] \| null }` | Arm the live per-account usage `GET /providers/usage` serves — what the AI Models hub's Connected rows meter with (windows, plan, credits, metered tokens, and the honest `unsupported`/`unauthenticated`/`error` rows). `null` (and reset) restores the default seed: the connected Claude subscription on plan `max`, its session window 42% used and its weekly 12%. Returns the served `{ rows }`. |
@@ -133,11 +133,26 @@ They drive the failure/reactivity scenarios the specs assert against:
   (it holds no rows at all). `agentSlugs` obeys the same C7 v2 matrix
   `GET /agents` does — an `admin` sees only the agents assigned to them, because
   a team is a grouping and must never become a side channel onto the roster.
+  The LISTING serves the teams the caller **is part of**, not the space's team
+  directory: an org owner/admin gets every team, everyone else gets the default
+  team, the teams they hold a row on, and the teams holding an agent they can
+  see. It only drops rows, so the order never changes, and the id-addressed
+  routes are deliberately unfiltered (a team is not an access object).
+  A team also carries an optional identity — `icon` (`^[a-z0-9-]{1,32}$`, a
+  glyph NAME) and `color` (`#rrggbb` or a theme token `^[a-z][a-z0-9-]{0,23}$`)
+  — settable on create and patch by whoever may RENAME the team, the default
+  team included. Shape only is checked; the vocabulary is the client's. An unset
+  field is ABSENT from the wire, `""` CLEARS it, `null` is a `400`, and neither
+  is trimmed.
   Refusals are the flat `{error, code}` the Go gateway writes
   (`team_not_found` · `not_team_owner` · `default_team` · `personal_space` ·
-  `invalid_name` · `invalid_sort_order` · `invalid_owner` · `not_a_member` ·
-  `invalid_team_id`), and every mutation fans out the same `AgentsChanged` the
-  client already reacts to. Arm it with `/__test__/agent-teams`.
+  `invalid_name` · `invalid_sort_order` · `invalid_icon` · `invalid_color` ·
+  `invalid_owner` · `not_a_member` · `invalid_team_id`), and every mutation fans
+  out the same `AgentsChanged` the
+  client already reacts to. A PERSONAL space differs in one thing only: it has
+  no people to manage, so join and the two member writes answer
+  `403 personal_space` while everything else behaves as in a team space. Arm it
+  with `/__test__/agent-teams`.
 - `/v1/agents/:slug/settings` + `/v1/org/settings` (Teams v2, the gateway-only
   allowlist/model ceilings `getAgentSettings` / `getOrgSettings` read; GET + the
   manager/owner PUT). Seeded unrestricted; armed by `/__test__/agent-settings`.

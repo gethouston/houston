@@ -5,7 +5,7 @@
     "archiveTooltip": "Archive",
     "renameTooltip": "Change title",
     "deleteTooltip": "Delete",
-    "select": "Select mission",
+    "select": "Select task",
     "closePanel": "Close panel"
   },
   "deleteCard": {
@@ -15,22 +15,26 @@
   "tags": {
     "routine": "Routine"
   },
+  "panel": {
+    "taskLabel": "Task: {{title}}",
+    "newTask": "New task"
+  },
   "people": {
-    "label": "People on this mission",
+    "label": "People on this task",
     "expand": "All people"
   },
   "search": {
-    "placeholder": "Search missions",
+    "placeholder": "Search tasks",
     "placeholderShort": "Search...",
     "clear": "Clear search",
     "clearCta": "Clear search",
-    "searchingText": "Searching mission text",
-    "searchingTitle": "Searching mission text",
+    "searchingText": "Searching task text",
+    "searchingTitle": "Searching task text",
     "searchingDescription": "Looking through older messages now.",
-    "emptyTitle": "No matching missions",
+    "emptyTitle": "No matching tasks",
     "emptyDescription": "Try a different search or clear the current one.",
-    "historyErrorTitle": "Couldn't search every mission",
-    "historyErrorDescription": "Some older mission text could not be loaded."
+    "historyErrorTitle": "Couldn't search every task",
+    "historyErrorDescription": "Some older task text could not be loaded."
   },
   "toasts": {
     "attached": "Attached: {{names}}"
@@ -63,23 +67,23 @@
     "delete": "Delete",
     "clear": "Clear selection",
     "cancel": "Cancel",
-    "error": "Couldn't update the selected missions: {{error}}",
+    "error": "Couldn't update the selected tasks: {{error}}",
     "confirmMove": {
-      "title": "Move missions?",
-      "description_one": "Move {{count}} mission to {{target}}?",
-      "description_other": "Move {{count}} missions to {{target}}?",
+      "title": "Move tasks?",
+      "description_one": "Move {{count}} task to {{target}}?",
+      "description_other": "Move {{count}} tasks to {{target}}?",
       "action": "Move"
     },
     "confirmArchive": {
-      "title": "Archive missions?",
-      "description_one": "Archive {{count}} mission? You can reopen it from the Archived tab.",
-      "description_other": "Archive {{count}} missions? You can reopen them from the Archived tab.",
+      "title": "Archive tasks?",
+      "description_one": "Archive {{count}} task? You can reopen it from the Archived tab.",
+      "description_other": "Archive {{count}} tasks? You can reopen them from the Archived tab.",
       "action": "Archive"
     },
     "confirmDelete": {
-      "title": "Delete missions?",
-      "description_one": "Permanently delete {{count}} mission and its history?",
-      "description_other": "Permanently delete {{count}} missions and their history?",
+      "title": "Delete tasks?",
+      "description_one": "Permanently delete {{count}} task and its history?",
+      "description_other": "Permanently delete {{count}} tasks and their history?",
       "action": "Delete"
     }
   },
@@ -88,10 +92,10 @@
     "selectAll": "Select all in column"
   },
   "archived": {
-    "emptyTitle": "No archived missions",
-    "emptyDescription": "Archived missions appear here. Reply to one to bring it back."
+    "emptyTitle": "No archived tasks",
+    "emptyDescription": "Archived tasks appear here. Reply to one to bring it back."
   },
   "dnd": {
-    "moveError": "Couldn't move the mission: {{error}}"
+    "moveError": "Couldn't move the task: {{error}}"
   }
 }

@@ -107,7 +107,6 @@ describe("skill chat setup message", () => {
     deepStrictEqual(summaries.a, {
       needsYouCount: 1,
       runningCount: 0,
-      unreadCount: 0,
     });
   });
 

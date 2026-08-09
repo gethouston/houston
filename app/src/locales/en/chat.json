@@ -108,10 +108,10 @@
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
-    "stopSession": "Couldn't stop the mission: {{error}}",
+    "stopSession": "Couldn't stop the task: {{error}}",
     "modelPersistFailed": "Failed to save model preference",
     "modelNotAllowed": "This model isn't allowed for this agent",
-    "missionRowFailed": "We could not save this mission to your board. Your message was still sent.",
+    "missionRowFailed": "We could not save this task to your board. Your message was still sent.",
     "interactionDismissFailed": "Couldn't dismiss the request."
   },
   "toolRuntimeError": {
@@ -234,7 +234,7 @@
   },
   "process": {
     "active": "Thinking...",
-    "complete": "Mission log"
+    "complete": "Task log"
   },
   "summary": {
     "updatesMade": "Updates made",

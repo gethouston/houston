@@ -123,9 +123,9 @@ export function buildWorkspaceContextSection(
  *
  * Unlike workspace/user context there is NO empty-marker stub and no `.houston`
  * gate: group membership is optional per-agent, and the host only writes
- * `GROUP.md` into an agent that actually belongs to a sidebar group. So the
- * file's mere presence with non-blank content is the whole signal — an ungrouped
- * agent (no file) or a group whose shared context is blank injects nothing.
+ * `GROUP.md` into an agent whose team actually has shared context. So the
+ * file's mere presence with non-blank content is the whole signal — an agent
+ * whose team has no shared context (no file) injects nothing.
  */
 export function buildGroupContextSection(cwd: string): string | null {
   const groupPath = join(cwd, GROUP_MD);
@@ -137,9 +137,9 @@ export function buildGroupContextSection(cwd: string): string | null {
     content,
     "",
     "The section above is context shared by every agent in this agent's " +
-      `sidebar group, loaded from the file at \`${groupPath}\`. Like ` +
+      `team, loaded from the file at \`${groupPath}\`. Like ` +
       "WORKSPACE.md/USER.md it is an exception to your working-directory rule: " +
-      "you may read and write it directly. But a person edits this group's " +
+      "you may read and write it directly. But a person edits this team's " +
       "shared context from the sidebar, and doing so overwrites whatever you " +
       "wrote here, so treat it as theirs to own. Edits take effect on the next " +
       "chat.",

@@ -2,15 +2,29 @@ import {
   FAKE_HOST_URL,
   SEED_AGENT_ID,
   SEED_AGENT_NAME,
-  SEED_WORKSPACE_ID,
 } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { rail, screen } from "./support/team-nav";
+import {
+  createTeam,
+  openCreateMenu,
+  startNewTeam,
+} from "./support/sidebar-create";
+import {
+  readSidebarLayout,
+  type SeedSidebarLayout,
+} from "./support/sidebar-layout";
+import {
+  openTeamSection,
+  rail,
+  screen,
+  type TeamSection,
+  teamTab,
+} from "./support/team-nav";
 
 /**
  * SERVER-BACKED agent teams (C13), driven against the real rail and the real
- * Team Settings screen.
+ * "Manage agents" screen.
  *
  * A team stops being one user's sidebar grouping the moment the gateway
  * advertises `agentTeams`: it is a named group of agents AND people inside a
@@ -18,11 +32,15 @@ import { rail, screen } from "./support/team-nav";
  * and every structural question is the server's to answer. That is a different
  * product, and these specs guard the four places a user meets it:
  *
- *   - the rail splits into "Your teams" and the ones you have not joined;
+ *   - the rail draws every team the READ returns, and the read returns the ones
+ *     you are part of — the filter is the gateway's, not the client's, so a
+ *     team of the space that is neither yours nor holds an agent you can see
+ *     costs no rail, and no sidebar affordance lets you add yourself to one
+ *     (that is the team's own Members card);
  *   - creating a team broadcasts the name the user TYPED, never a placeholder;
- *   - a drag is a write, so it can be refused, and a refusal must undo itself
- *     visibly and explain itself calmly;
- *   - Team Settings grows the two surfaces a shared team has and a private
+ *   - moving an agent between teams is a write, so it can be refused, and a
+ *     refusal must undo itself visibly and explain itself calmly;
+ *   - "Manage agents" grows the two surfaces a shared team has and a private
  *     grouping does not: its people, and a per-team configure gate that no
  *     longer follows the caller's org role.
  *
@@ -39,6 +57,11 @@ const OWNER_CAPS = {
   agentTeams: true,
   role: "owner",
 };
+
+/** The same gateway, on the space the caller has to themselves. A C8 Spaces
+ *  host is what makes "personal vs team space" a question at all, so the flag
+ *  is armed here and the workspace switcher's personal row stays selected. */
+const PERSONAL_CAPS = { ...OWNER_CAPS, spaces: true };
 
 /** The same gateway seen by a plain member: they own only the teams they hold
  *  an explicit owner row on, and manage only the agents assigned to them. */
@@ -73,12 +96,20 @@ interface TeamSeed {
   sortOrder?: number;
   agentIds?: string[];
   members?: { userId: string; owner?: boolean }[];
+  /** The team's shared context. Omitted arms a team nobody has written one for,
+   *  which the wire still serves as `""` — the column's empty default. */
+  context?: string;
 }
 
 interface AgentSeed {
   id: string;
   name: string;
   access?: "manager" | "user";
+  /** Explicit assignees. An agent with none is the everyone sentinel and is
+   *  visible to the whole space; naming somebody ELSE is the only way to make
+   *  an agent invisible to the caller, which is what the C7 role matrix does to
+   *  `GET /agents` and, through it, to a team's `agentSlugs`. */
+  assignments?: { userId: string; access: "manager" | "user" }[];
 }
 
 /**
@@ -95,6 +126,9 @@ async function armServerTeams(
     agents: AgentSeed[];
     teams: TeamSeed[];
     members?: { userId: string; email: string; role: "owner" | "user" }[];
+    /** Make the active space a PERSONAL one (C13 §Personal spaces): the same
+     *  team surface, minus the three member-management routes. */
+    personalSpace?: boolean;
   },
 ): Promise<void> {
   const request = page.request;
@@ -108,7 +142,10 @@ async function armServerTeams(
     },
   });
   await request.post(`${FAKE_HOST_URL}/__test__/agent-teams`, {
-    data: { teams: seed.teams },
+    data: {
+      teams: seed.teams,
+      ...(seed.personalSpace ? { personalSpace: true } : {}),
+    },
   });
 }
 
@@ -121,11 +158,29 @@ async function openShell(page: Page): Promise<void> {
   await expect(page.getByText("Your teams")).toBeVisible();
 }
 
-/** One team's destination row, by the id the rail gives it (`<team>:<section>`). */
-function sectionRow(page: Page, teamId: string, section: string): Locator {
-  return rail(page).locator(
-    `[data-sidebar-section-row="${teamId}:${section}"]`,
-  );
+/** The tab row of the team that is OPEN: the rail names teams, a team's own
+ *  screen names its sections. */
+function sectionTabs(page: Page): Locator {
+  return screen(page).locator("[data-team-section-tab]");
+}
+
+/** One lozenge of the open team, by section. */
+function sectionTab(page: Page, section: TeamSection): Locator {
+  return teamTab(page, section);
+}
+
+/** Open a team by clicking one of its agents in the rail, which pins that agent
+ *  and opens ITS team's Tasks board. */
+async function openTeamOfAgent(page: Page, agentName: string): Promise<void> {
+  await rail(page).getByText(agentName, { exact: true }).click();
+}
+
+/** Open a team's Manage agents: its block header in the rail (the rail names
+ *  TEAMS), then the tab on the team's own screen (the screen names its
+ *  SECTIONS). A team with no agents is reachable only this way. */
+async function openManageAgents(page: Page, teamId: string): Promise<void> {
+  await groupHeader(page, teamId).click();
+  await openTeamSection(page, "Manage agents");
 }
 
 /** One team's block header, by server team id. */
@@ -133,9 +188,42 @@ function groupHeader(page: Page, teamId: string): Locator {
   return rail(page).locator(`[data-sidebar-group-header="${teamId}"]`);
 }
 
-/** The agent rows of one team's block; `""` is the trailing default block. */
+/** The trailing DEFAULT block's header. Server-backed it is a real team, so it
+ *  wears the SERVER's name and carries the affordances C13 gives it. */
+function defaultHeader(page: Page): Locator {
+  return rail(page).locator("[data-sidebar-default-header]");
+}
+
+/** Open a block header's "..." menu. */
+async function openBlockMenu(header: Locator): Promise<void> {
+  await header.getByRole("button", { name: "Team options" }).click();
+}
+
+/** Rename a block through its header menu, which drops the row into the inline
+ *  field every team's rename shares. */
+async function renameBlock(
+  page: Page,
+  header: Locator,
+  name: string,
+): Promise<void> {
+  await openBlockMenu(header);
+  await page.getByRole("menuitem", { name: "Rename team" }).click();
+  const input = page.getByPlaceholder("Team name");
+  await input.waitFor({ state: "visible" });
+  await input.fill(name);
+  await input.press("Enter");
+}
+
+/** The contents of one team's block; `""` is the trailing default block. */
 function blockRows(page: Page, teamId: string): Locator {
   return rail(page).locator(`[data-sidebar-drop-section="${teamId}"]`);
+}
+
+/** Just the AGENT rows of one team's block. How many agents a block holds used
+ *  to be readable off a count badge on its header; the header carries only its
+ *  name now, so the honest question is how many rows are in it. */
+function blockAgentRows(page: Page, teamId: string): Locator {
+  return blockRows(page, teamId).locator("[data-sidebar-item]");
 }
 
 interface WireCall {
@@ -189,35 +277,51 @@ async function dragOnto(page: Page, source: Locator, target: Locator) {
   await page.waitForTimeout(300); // drop-animation + overlay unmount
 }
 
-test("Your teams shows the joined ones; the rest sit under Other teams, one click from joining", async ({
+/**
+ * Seen through a plain MEMBER's lens: one default team, one team they hold a
+ * row on, and one team of the space that is neither theirs nor holds an agent
+ * they can see (its Brand Bot is assigned to Bob alone). The last one is what
+ * the GATEWAY drops, which is the only reason it is absent from the rail.
+ *
+ * The member lens is load-bearing here: an org owner/admin is an implicit owner
+ * of every team, so the read serves them the whole list and there would be
+ * nothing to observe.
+ */
+const MEMBERSHIP_WORLD = {
+  caps: MEMBER_CAPS,
+  agents: [
+    HOUSTON,
+    { id: OPS_AGENT, name: "Ops Bot" },
+    {
+      id: BRAND_AGENT,
+      name: "Brand Bot",
+      assignments: [{ userId: BOB.userId, access: "user" as const }],
+    },
+  ],
+  teams: [
+    { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
+    {
+      id: OPS_TEAM,
+      name: "Operations",
+      sortOrder: 1,
+      agentIds: [OPS_AGENT],
+      members: [{ userId: SELF, owner: true }],
+    },
+    // A public team of the space the caller is not a member of.
+    {
+      id: DESIGN_TEAM,
+      name: "Design",
+      sortOrder: 2,
+      agentIds: [BRAND_AGENT],
+      members: [{ userId: BOB.userId }],
+    },
+  ],
+};
+
+test("Your teams draws every team the gateway serves, and it serves the ones you are part of", async ({
   page,
 }) => {
-  await armServerTeams(page, {
-    caps: OWNER_CAPS,
-    agents: [
-      HOUSTON,
-      { id: OPS_AGENT, name: "Ops Bot" },
-      { id: BRAND_AGENT, name: "Brand Bot" },
-    ],
-    teams: [
-      { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
-      {
-        id: OPS_TEAM,
-        name: "Operations",
-        sortOrder: 1,
-        agentIds: [OPS_AGENT],
-        members: [{ userId: SELF, owner: true }],
-      },
-      // Nobody the caller is: a public team of the space they never joined.
-      {
-        id: DESIGN_TEAM,
-        name: "Design",
-        sortOrder: 2,
-        agentIds: [BRAND_AGENT],
-        members: [{ userId: BOB.userId }],
-      },
-    ],
-  });
+  await armServerTeams(page, MEMBERSHIP_WORLD);
   await openShell(page);
 
   // The default block wears the SERVER's name for it, not the workspace's:
@@ -227,32 +331,22 @@ test("Your teams shows the joined ones; the rest sit under Other teams, one clic
   );
   await expect(groupHeader(page, OPS_TEAM)).toBeVisible();
 
-  // The unjoined team is not in the rail at all, and neither is its agent —
-  // narrowing the rail's input is what keeps the default block from quietly
-  // adopting an "Other teams" agent as one of its own leftovers.
+  // Design is absent because `GET /v1/org/teams` never listed it: the caller
+  // holds no row on it and its only agent is somebody else's. Visibility is the
+  // GATEWAY's answer now, so the client draws every team it is handed and no
+  // longer partitions joined from unjoined at all. Its agent is gone with it,
+  // which is what keeps the default block from adopting it as a leftover.
   await expect(groupHeader(page, DESIGN_TEAM)).toHaveCount(0);
   await expect(rail(page).getByText("Brand Bot")).toHaveCount(0);
 
-  // It sits in the FOOTER instead, closed: these are by definition the teams
-  // the user did not choose, so the rows stay out of the way until asked for.
-  const other = page.getByRole("region", { name: "Other teams" });
-  await expect(other).toBeVisible();
+  // And nothing in the rail offers a way IN. A plain member may not create
+  // agents, so the band's one control degrades to the single thing they can
+  // add; joining is not on it, because people are added on a team's own
+  // Members card and never claimed from the sidebar.
   await expect(
-    other.getByRole("button", { name: "Join team Design" }),
-  ).toHaveCount(0);
-
-  await other.getByRole("button", { name: /^Other teams/ }).click();
-  // Each row states what it is and how big it is before offering the action.
-  await expect(other.getByText("Design", { exact: true })).toBeVisible();
-  await expect(other.getByText("1 member")).toBeVisible();
-
-  await other.getByRole("button", { name: "Join team Design" }).click();
-
-  // Joining is sidebar PINNING: the team moves up into "Your teams" with its
-  // agents, and the disclosure empties out because nothing is left unjoined.
-  await expect(groupHeader(page, DESIGN_TEAM)).toBeVisible();
-  await expect(rail(page).getByText("Brand Bot")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Other teams" })).toHaveCount(
+    rail(page).getByRole("button", { name: "New team", exact: true }),
+  ).toBeVisible();
+  await expect(rail(page).getByRole("button", { name: /join/i })).toHaveCount(
     0,
   );
 });
@@ -271,22 +365,19 @@ test("creating a team sends the typed name, and it lands in Your teams", async (
   const created = () => callsTo(calls, "POST", "/v1/org/teams");
   const headers = rail(page).locator("[data-sidebar-group-header]");
 
-  // An abandoned name creates NOTHING. The draft row is local to this user
-  // until a name exists, which is the whole reason it is a draft.
-  await page.getByRole("button", { name: "New team" }).click();
+  // Closing the modal creates nothing.
+  await startNewTeam(page);
   const draft = page.getByPlaceholder("Team name");
   await draft.waitFor({ state: "visible" });
-  await draft.press("Escape");
+  await page.keyboard.press("Escape");
   await expect(headers).toHaveCount(0);
   expect(created()).toHaveLength(0);
 
-  await page.getByRole("button", { name: "New team" }).click();
+  await startNewTeam(page);
   const input = page.getByPlaceholder("Team name");
   await input.waitFor({ state: "visible" });
-  // Typed character by character: a re-focus-and-select on every render used to
-  // eat all but the last keystroke, and the name is exactly what is broadcast.
   await input.pressSequentially("Field Ops");
-  await input.press("Enter");
+  await page.getByRole("button", { name: "Create team" }).click();
 
   // Exactly ONE create, carrying the typed name...
   await expect.poll(() => created().length).toBe(1);
@@ -304,7 +395,7 @@ test("creating a team sends the typed name, and it lands in Your teams", async (
   await expect(headers).toContainText("Field Ops");
 });
 
-test("dragging an agent to another team moves it on the server, and a refusal puts it back", async ({
+test("Move to team re-homes the agent on the server, and a refusal puts it back", async ({
   page,
 }) => {
   await armServerTeams(page, {
@@ -322,26 +413,34 @@ test("dragging an agent to another team moves it on the server, and a refusal pu
   });
   const calls = recordGatewayCalls(page);
   await openShell(page);
+  await expect(blockAgentRows(page, OPS_TEAM)).toHaveCount(0);
 
-  const ops = groupHeader(page, OPS_TEAM);
-  await expect(ops).toContainText("0");
-
-  // A drop is a WRITE on this backend: the rail asks the server to re-home the
-  // agent, it does not merely re-draw its own layout.
-  await dragOnto(
-    page,
-    rail(page).getByText(SEED_AGENT_NAME, { exact: true }),
-    ops,
+  // The EXPLICIT action that replaced cross-team drag: an agent's row in its
+  // team's Manage agents list carries the full agent menu, and "Move to team"
+  // opens a submenu of the OTHER teams plus a confirmation that says the
+  // consequence before anything is sent.
+  await openTeamSection(page, "Manage agents");
+  await screen(page)
+    .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
+    .click();
+  await page.getByRole("menuitem", { name: "Move to team" }).click();
+  await page.getByRole("menuitem", { name: "Operations" }).click();
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm).toContainText(
+    `${SEED_AGENT_NAME} moves to Operations. People who can see that team will see this agent in it.`,
   );
+  await confirm.getByRole("button", { name: "Move agent" }).click();
 
+  // It is a WRITE on this backend: the client asks the server to re-home the
+  // agent, it does not merely re-draw its own layout.
   const moves = () => callsTo(calls, "PUT", `/v1/agents/${SEED_AGENT_ID}/team`);
   await expect.poll(() => moves().length).toBe(1);
   expect(JSON.parse(moves()[0].body as string)).toEqual({ teamId: OPS_TEAM });
-  await expect(ops).toContainText("1");
+  await expect(blockAgentRows(page, OPS_TEAM)).toHaveCount(1);
   await expect(blockRows(page, OPS_TEAM)).toContainText(SEED_AGENT_NAME);
 
   // Now the half that matters: the gateway is the real enforcer, and it can
-  // refuse a move the rail already animated. Only the PUT is intercepted —
+  // refuse a move the client already applied. Only the PUT is intercepted —
   // fulfilling the CORS preflight too would fail the call as a network error
   // and never deliver the `{error, code}` body the taxonomy reads.
   await page.route("**/v1/agents/*/team", async (route) => {
@@ -359,12 +458,20 @@ test("dragging an agent to another team moves it on the server, and a refusal pu
     });
   });
 
-  await dragOnto(page, rail(page).getByText("Ops Bot", { exact: true }), ops);
+  await screen(page)
+    .getByRole("button", { name: "More actions for Ops Bot" })
+    .click();
+  await page.getByRole("menuitem", { name: "Move to team" }).click();
+  await page.getByRole("menuitem", { name: "Operations" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Move agent" })
+    .click();
 
   // The optimistic move is UNDONE, visibly: the agent is back in the block it
-  // came from and the team it was dropped on is the size it was.
+  // came from and the team it was moved to is the size it was.
   await expect(blockRows(page, "")).toContainText("Ops Bot");
-  await expect(ops).toContainText("1");
+  await expect(blockAgentRows(page, OPS_TEAM)).toHaveCount(1);
   await expect(blockRows(page, OPS_TEAM)).not.toContainText("Ops Bot");
 
   // And it says why, informationally. Nothing is broken: this is a permission
@@ -380,7 +487,68 @@ test("dragging an agent to another team moves it on the server, and a refusal pu
   await expect(page.getByText("Houston, we have a problem!")).toHaveCount(0);
 });
 
-test("Team Settings names the team's members, and its owner toggle writes", async ({
+test("Move to team never offers the team the agent is already in", async ({
+  page,
+}) => {
+  // A picker that listed the current team would make a no-op look like a move.
+  await armServerTeams(page, {
+    caps: OWNER_CAPS,
+    agents: [HOUSTON],
+    teams: [
+      { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
+      {
+        id: OPS_TEAM,
+        name: "Operations",
+        sortOrder: 1,
+        members: [{ userId: SELF, owner: true }],
+      },
+    ],
+  });
+  await openShell(page);
+  await openTeamSection(page, "Manage agents");
+  await screen(page)
+    .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
+    .click();
+  await page.getByRole("menuitem", { name: "Move to team" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: "Operations" }),
+  ).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Acme" })).toHaveCount(0);
+});
+
+test("an agent's row carries the whole agent menu, not just the move", async ({
+  page,
+}) => {
+  // The rail's agent rows dropped their "..." menu — a navigation row is no
+  // place for a destructive act — so the roster took it over whole.
+  await armServerTeams(page, {
+    caps: OWNER_CAPS,
+    agents: [HOUSTON],
+    teams: [{ id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 }],
+  });
+  await openShell(page);
+  await openTeamSection(page, "Manage agents");
+  await screen(page)
+    .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
+    .click();
+
+  await expect(
+    page.getByRole("menuitem", { name: "Rename agent" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Change color" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Delete agent" }),
+  ).toBeVisible();
+  // One team in the workspace, so there is nowhere to move to and the entry
+  // is absent rather than opening on "no other teams".
+  await expect(
+    page.getByRole("menuitem", { name: "Move to team" }),
+  ).toHaveCount(0);
+});
+
+test("Manage agents names the team's members, and its owner toggle writes", async ({
   page,
 }) => {
   await armServerTeams(page, {
@@ -401,7 +569,7 @@ test("Team Settings names the team's members, and its owner toggle writes", asyn
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await sectionRow(page, OPS_TEAM, "settings").click();
+  await openManageAgents(page, OPS_TEAM);
   await expect(
     screen(page).getByRole("heading", { level: 1, name: "Operations" }),
   ).toBeVisible();
@@ -462,7 +630,7 @@ test("the default team's member list is read-only and says why", async ({
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await sectionRow(page, ACME_TEAM, "settings").click();
+  await openManageAgents(page, ACME_TEAM);
   await expect(
     screen(page).getByRole("heading", { level: 1, name: "Acme" }),
   ).toBeVisible();
@@ -495,7 +663,240 @@ test("the default team's member list is read-only and says why", async ({
   ).toHaveLength(0);
 });
 
-test("a joined member who manages nothing gets no Team Settings row; managing one agent gives it back", async ({
+test("a team's shared context is the first card of its settings, and it saves", async ({
+  page,
+}) => {
+  // The ONE door onto what a team's agents are told. It used to be a rail menu
+  // entry opening a dialog, which only ever worked on the local backend; here
+  // the field is the gateway's own and the card writes it with a PATCH.
+  await armServerTeams(page, {
+    caps: OWNER_CAPS,
+    agents: [HOUSTON, { id: OPS_AGENT, name: "Ops Bot" }],
+    teams: [
+      { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
+      {
+        id: OPS_TEAM,
+        name: "Operations",
+        sortOrder: 1,
+        agentIds: [OPS_AGENT],
+        context: "We ship on Fridays.",
+        members: [{ userId: SELF, owner: true }],
+      },
+    ],
+  });
+  const calls = recordGatewayCalls(page);
+  await openShell(page);
+
+  await openManageAgents(page, OPS_TEAM);
+  await expect(
+    screen(page).getByRole("heading", { level: 1, name: "Operations" }),
+  ).toBeVisible();
+
+  // It LEADS the page: above the roster, because it is the only thing here that
+  // changes how the team's agents behave.
+  const card = screen(page).getByRole("heading", { name: "Team context" });
+  await expect(card).toBeVisible();
+  await expect(
+    screen(page).getByText("Every agent in this team knows this."),
+  ).toBeVisible();
+
+  const box = screen(page).getByTestId("team-context-input");
+  await expect(box).toHaveValue("We ship on Fridays.");
+
+  // Saves on BLUR, the same idiom the agent's own instructions editor uses.
+  await box.fill("We ship on Fridays. Ask before promising a date.");
+  await box.blur();
+  const patches = () => callsTo(calls, "PATCH", `/v1/org/teams/${OPS_TEAM}`);
+  await expect.poll(() => patches().length).toBe(1);
+  expect(JSON.parse(patches()[0].body ?? "{}")).toEqual({
+    context: "We ship on Fridays. Ask before promising a date.",
+  });
+});
+
+test("a team's context is READ-ONLY for someone who does not own the team", async ({
+  page,
+}) => {
+  // Knowing what your team's agents are told is not a privilege, so the card
+  // stays and stays legible; only the write is withheld, and the gateway would
+  // refuse it anyway (`403 not_team_owner`).
+  await armServerTeams(page, {
+    caps: MEMBER_CAPS,
+    members: [{ ...ADA, role: "user" }, BOB],
+    agents: [{ ...HOUSTON, access: "manager" }],
+    teams: [
+      { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
+      {
+        id: OPS_TEAM,
+        name: "Operations",
+        sortOrder: 1,
+        agentIds: [SEED_AGENT_ID],
+        context: "We ship on Fridays.",
+        members: [{ userId: SELF }, { userId: BOB.userId, owner: true }],
+      },
+    ],
+  });
+  const calls = recordGatewayCalls(page);
+  await openShell(page);
+
+  await openManageAgents(page, OPS_TEAM);
+  const box = screen(page).getByTestId("team-context-input");
+  await expect(box).toHaveValue("We ship on Fridays.");
+  await expect(box).toHaveAttribute("readonly", "");
+
+  // Read-only all the way down to the wire: a blur writes nothing.
+  await box.click();
+  await box.blur();
+  expect(callsTo(calls, "PATCH", `/v1/org/teams/${OPS_TEAM}`)).toHaveLength(0);
+});
+
+test("the default team renames from the rail, and that is the ONLY thing its menu offers", async ({
+  page,
+}) => {
+  // Server-backed the trailing block is not a virtual container any more: it is
+  // a real team whose name is the SPACE's, so an owner has to be able to change
+  // it where they read it. Everything else stays off — the wire answers
+  // `400 default_team` to a delete, and everyone is in it so there is nothing
+  // to leave. The team's shared context is not here either: it lives on the
+  // team's Manage agents page now, on every backend.
+  await armServerTeams(page, {
+    caps: OWNER_CAPS,
+    agents: [HOUSTON],
+    teams: [{ id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 }],
+  });
+  const calls = recordGatewayCalls(page);
+  await openShell(page);
+
+  const header = defaultHeader(page);
+  await expect(header).toContainText("Acme");
+  await openBlockMenu(header);
+  await expect(
+    page.getByRole("menuitem", { name: "Rename team" }),
+  ).toBeVisible();
+  for (const gone of ["Delete team", "Leave team"])
+    await expect(page.getByRole("menuitem", { name: gone })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  // The rename is a WRITE against the default team's own id, not a local edit
+  // of a label: the block used to have no door onto it at all.
+  await renameBlock(page, header, "Acme Studio");
+  const patches = () => callsTo(calls, "PATCH", `/v1/org/teams/${ACME_TEAM}`);
+  await expect.poll(() => patches().length).toBe(1);
+  expect(JSON.parse(patches()[0].body ?? "{}")).toEqual({
+    name: "Acme Studio",
+  });
+  await expect(header).toContainText("Acme Studio");
+});
+
+test("a caller who does not own the default team gets no menu on it", async ({
+  page,
+}) => {
+  // Renaming is a team-owner power (C13), and the default block reads the same
+  // gate every other block reads. A plain member sees the block, its name and
+  // its work, and no "..." at all — not a menu whose one entry would 403.
+  await armServerTeams(page, {
+    caps: MEMBER_CAPS,
+    members: [{ ...ADA, role: "user" }],
+    agents: [{ ...HOUSTON, access: "user" }],
+    teams: [{ id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 }],
+  });
+  await openShell(page);
+
+  await expect(defaultHeader(page)).toContainText("Acme");
+  await expect(
+    defaultHeader(page).getByRole("button", { name: "Team options" }),
+  ).toHaveCount(0);
+});
+
+test("a personal space groups its agents into teams, and offers nothing about people", async ({
+  page,
+}) => {
+  // The line C13 draws is PEOPLE, not teams. A space with one human in it uses
+  // teams exactly like a shared one; what it must not do is put a roster, a
+  // Leave button or a Join entry in front of somebody who is alone in there —
+  // the three member-management routes are the only thing the gateway still
+  // refuses (`403 personal_space`), so those would be the only 403 a solo user
+  // could reach in this whole surface.
+  await armServerTeams(page, {
+    caps: PERSONAL_CAPS,
+    personalSpace: true,
+    agents: [HOUSTON, { id: OPS_AGENT, name: "Ops Bot" }],
+    teams: [
+      { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
+      // The one human in the space created this team, so they hold its owner
+      // row and always will — nothing can remove it. That is the ONLY state the
+      // gateway can serve here, and the fake host forces it too, so a spec
+      // cannot pass against a personal-space team nobody has joined.
+      {
+        id: OPS_TEAM,
+        name: "Operations",
+        sortOrder: 1,
+        agentIds: [OPS_AGENT],
+        members: [{ userId: SELF, owner: true }],
+      },
+    ],
+  });
+  const calls = recordGatewayCalls(page);
+  await openShell(page);
+
+  await expect(groupHeader(page, OPS_TEAM)).toBeVisible();
+  await expect(blockRows(page, OPS_TEAM)).toContainText("Ops Bot");
+
+  // The team's own menu keeps what acts on the TEAM and drops the one entry
+  // that acts on a membership. Leaving is impossible here — the creator's owner
+  // row cannot be removed and `POST …/leave` answers `403 personal_space` — so
+  // offering it would be a dead end dressed as a choice.
+  await openBlockMenu(groupHeader(page, OPS_TEAM));
+  await expect(
+    page.getByRole("menuitem", { name: "Rename team" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Delete team" }),
+  ).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Leave team" })).toHaveCount(
+    0,
+  );
+  await page.keyboard.press("Escape");
+
+  // The default team is renamable here too: a personal space's default team is
+  // still a real team, and its one human owns it.
+  await openBlockMenu(defaultHeader(page));
+  await expect(
+    page.getByRole("menuitem", { name: "Rename team" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Creating one works exactly as it does in a shared space: the gateway takes
+  // it, and it lands in the rail.
+  await createTeam(page, "Field Ops");
+  await expect
+    .poll(() => callsTo(calls, "POST", "/v1/org/teams").length)
+    .toBe(1);
+
+  // The create menu offers what a solo user can act on, and only that.
+  await openCreateMenu(page);
+  await expect(page.getByRole("menuitem", { name: "New agent" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "New team" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // "Manage agents" keeps the two surfaces a team HAS for one person — its name
+  // and its agents — and drops the Members card whole.
+  await openManageAgents(page, OPS_TEAM);
+  await expect(
+    screen(page).getByRole("heading", { level: 1, name: "Operations" }),
+  ).toBeVisible();
+  await expect(screen(page).getByLabel("Team name")).toBeVisible();
+  await expect(screen(page).getByText("Ops Bot")).toBeVisible();
+  await expect(
+    screen(page).getByRole("heading", { name: /^Members/ }),
+  ).toHaveCount(0);
+  await expect(
+    screen(page).getByRole("button", { name: "Leave team" }),
+  ).toHaveCount(0);
+  // The card never mounts, so its read is never fired either.
+  expect(calls.filter((c) => c.path.endsWith("/members"))).toHaveLength(0);
+});
+
+test("a joined member who manages nothing gets no Manage agents row; managing one agent gives it back", async ({
   page,
 }) => {
   const fleet = (access: "manager" | "user"): AgentSeed[] => [
@@ -522,19 +923,18 @@ test("a joined member who manages nothing gets no Team Settings row; managing on
   });
   await openShell(page);
 
-  // The team is in "Your teams" and offers its WORK, whole...
+  // The team is in "Your teams"...
   await expect(groupHeader(page, OPS_TEAM)).toBeVisible();
-  await expect(sectionRow(page, OPS_TEAM, "mission-control")).toBeVisible();
-  await expect(sectionRow(page, OPS_TEAM, "routines")).toBeVisible();
-  await expect(sectionRow(page, OPS_TEAM, "files")).toBeVisible();
-  // ...and nothing that configures it. On this backend the gate is the SERVER's
-  // answer for THIS team, not the caller's org role: a member who owns no team
-  // and manages no agent has nothing to administer anywhere.
-  await expect(
-    rail(page)
-      .locator("[data-sidebar-section-row]")
-      .filter({ hasText: "Team Settings" }),
-  ).toHaveCount(0);
+  // ...and its screen offers its WORK, whole, and nothing that configures it.
+  // On this backend the gate is the SERVER's answer for THIS team, not the
+  // caller's org role: a member who owns no team and manages no agent has
+  // nothing to administer anywhere.
+  await openTeamOfAgent(page, "Ops Bot");
+  await expect(sectionTab(page, "Tasks")).toBeVisible();
+  await expect(sectionTab(page, "Routines")).toBeVisible();
+  await expect(sectionTab(page, "Files")).toBeVisible();
+  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
+  await expect(sectionTabs(page)).toHaveCount(4);
 
   // Give them ONE agent of that team to manage and the door comes back — on
   // that team alone, because the agent-manager clause is per team.
@@ -544,171 +944,27 @@ test("a joined member who manages nothing gets no Team Settings row; managing on
   await page.reload();
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  await expect(sectionRow(page, OPS_TEAM, "settings")).toBeVisible();
-  await expect(sectionRow(page, ACME_TEAM, "settings")).toHaveCount(0);
-  await expect(
-    rail(page)
-      .locator("[data-sidebar-section-row]")
-      .filter({ hasText: "Team Settings" }),
-  ).toHaveCount(1);
+  // The default team, whose one agent they only USE, still offers three.
+  await openTeamOfAgent(page, SEED_AGENT_NAME);
+  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
 
-  // The row goes somewhere: the rail can never promise a section the screen
+  // And the tab goes somewhere: the row can never promise a section the screen
   // refuses to render (both read `visibleTeamSectionsForTeam` for this team).
-  await sectionRow(page, OPS_TEAM, "settings").click();
+  await openTeamOfAgent(page, "Ops Bot");
+  await expect(sectionTabs(page)).toHaveCount(5);
+  await openTeamSection(page, "Manage agents");
   await expect(
     screen(page).getByRole("heading", { level: 1, name: "Operations" }),
   ).toBeVisible();
 });
 
-/** The vertical position of an agent row, the same way `sidebar-dnd.spec.ts`
- *  reads order: where a row SITS is the only order the user can see. */
-async function rowY(page: Page, name: string): Promise<number> {
-  const box = await rail(page).getByText(name, { exact: true }).boundingBox();
-  return box?.y ?? 0;
+/** The per-workspace ordering overlay as it is actually STORED on this surface:
+ *  the fake host advertises the local profile, so the adapter writes it through
+ *  `PUT /v1/workspaces/:id/sidebar-layout` and "was the overlay written?" is a
+ *  question for the host. */
+function storedOverlay(page: Page): Promise<SeedSidebarLayout> {
+  return readSidebarLayout(page.request);
 }
-
-/** Assert `above` sits higher in the rail than `below`, polled: a drop, a
- *  rollback and a reload all settle asynchronously, and where a row SITS is the
- *  only order the user can see. */
-async function expectAbove(page: Page, above: string, below: string) {
-  await expect
-    .poll(async () => (await rowY(page, above)) < (await rowY(page, below)))
-    .toBe(true);
-}
-
-/** The per-workspace sidebar layout as it is actually STORED on this surface:
- *  the web adapter keeps it in `localStorage`, not on the wire, so "was the
- *  overlay written?" is a storage question, never a request one. */
-function storedOverlay(page: Page): Promise<string | null> {
-  return page.evaluate(
-    (key) => localStorage.getItem(key),
-    `houston.sidebar-layout.${SEED_WORKSPACE_ID}`,
-  );
-}
-
-test("a cross-team drop lands WHERE it was dropped, not at the bottom of the block", async ({
-  page,
-}) => {
-  // The drop position is the overlay's to remember, and the overlay decays
-  // against the server's roster on every write. Pruned against the roster as it
-  // still stands, the destination team does not hold the dropped agent yet, so
-  // the write deletes the id it just recorded and the agent silently reappears
-  // last. Two agents in the target block is the smallest arrangement where
-  // "where it landed" and "at the end" are different answers.
-  await armServerTeams(page, {
-    caps: OWNER_CAPS,
-    agents: [
-      HOUSTON,
-      { id: OPS_AGENT, name: "Ops Bot" },
-      { id: BRAND_AGENT, name: "Brand Bot" },
-    ],
-    teams: [
-      { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
-      {
-        id: OPS_TEAM,
-        name: "Operations",
-        sortOrder: 1,
-        agentIds: [BRAND_AGENT],
-        members: [{ userId: SELF, owner: true }],
-      },
-    ],
-  });
-  await openShell(page);
-
-  await dragOnto(
-    page,
-    rail(page).getByText("Ops Bot", { exact: true }),
-    blockRows(page, OPS_TEAM).getByText("Brand Bot", { exact: true }),
-  );
-
-  await expect(blockRows(page, OPS_TEAM)).toContainText("Ops Bot");
-  await expectAbove(page, "Ops Bot", "Brand Bot");
-
-  // And it is the SERVER that was told, so a reload reads it back: the position
-  // survives in the overlay, the membership in the team.
-  await page.reload();
-  await expect(page.getByText("Your teams")).toBeVisible();
-  await expect(blockRows(page, OPS_TEAM)).toContainText("Ops Bot");
-  await expectAbove(page, "Ops Bot", "Brand Bot");
-});
-
-test("a refused cross-team drag puts the SOURCE block's order back exactly", async ({
-  page,
-}) => {
-  // A drop is two optimistic writes, the team cache and the ordering overlay,
-  // and a refusal has to undo BOTH. Undoing only the cache leaves the agent in
-  // the block it came from but stripped from that block's stored order, so it
-  // falls to the bottom as an unordered leftover: the drag was refused and the
-  // rail rearranged itself anyway.
-  await armServerTeams(page, {
-    caps: OWNER_CAPS,
-    agents: [
-      HOUSTON,
-      { id: OPS_AGENT, name: "Ops Bot" },
-      { id: BRAND_AGENT, name: "Brand Bot" },
-    ],
-    teams: [
-      { id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 },
-      {
-        id: OPS_TEAM,
-        name: "Operations",
-        sortOrder: 1,
-        agentIds: [OPS_AGENT, BRAND_AGENT],
-        members: [{ userId: SELF, owner: true }],
-      },
-    ],
-  });
-  // The order the user already dragged into place, seeded as the OVERLAY the
-  // gateway knows nothing about: Brand Bot above Ops Bot, the opposite of the
-  // roster order the block would fall back to without it.
-  await page.addInitScript(
-    ([key, layout]) => localStorage.setItem(key, layout),
-    [
-      `houston.sidebar-layout.${SEED_WORKSPACE_ID}`,
-      JSON.stringify({
-        groups: [
-          {
-            id: OPS_TEAM,
-            name: "",
-            collapsed: false,
-            agentIds: [BRAND_AGENT, OPS_AGENT],
-          },
-        ],
-        ungroupedOrder: [],
-      }),
-    ] as const,
-  );
-  await openShell(page);
-  await expectAbove(page, "Brand Bot", "Ops Bot");
-
-  await page.route("**/v1/agents/*/team", async (route) => {
-    if (route.request().method() !== "PUT") return route.fallback();
-    await route.fulfill({
-      status: 403,
-      headers: {
-        "content-type": "application/json",
-        "access-control-allow-origin": "*",
-      },
-      body: JSON.stringify({
-        error: "not a team owner",
-        code: "not_team_owner",
-      }),
-    });
-  });
-
-  // Drag Brand Bot OUT of Operations, into the default block. Refused.
-  await dragOnto(
-    page,
-    rail(page).getByText("Brand Bot", { exact: true }),
-    rail(page).getByText(SEED_AGENT_NAME, { exact: true }),
-  );
-
-  // Back in Operations, and STILL above Ops Bot: the order the user set
-  // survived a gesture the gateway refused.
-  await expect(groupHeader(page, OPS_TEAM)).toContainText("2");
-  await expect(blockRows(page, OPS_TEAM)).toContainText("Brand Bot");
-  await expectAbove(page, "Brand Bot", "Ops Bot");
-});
 
 test("dragging a team block reorders it on the SERVER, and the block stays put", async ({
   page,
@@ -754,8 +1010,12 @@ test("dragging a team block reorders it on the SERVER, and the block stays put",
   // The block does not snap back while the round trip runs.
   await expect(headers).toContainText(["Design", "Operations"]);
   // And nothing was written to the stored layout: the overlay has no say in
-  // team order, so writing it would be a lie about what just happened.
-  expect(await storedOverlay(page)).toBeNull();
+  // team order, so writing it would be a lie about what just happened. An
+  // untouched layout reads back as the host's default — empty on both halves.
+  expect(await storedOverlay(page)).toMatchObject({
+    groups: [],
+    ungroupedOrder: [],
+  });
 
   // The round trip: a reload re-reads `GET /v1/org/teams`, which now sorts
   // Design first because the gateway was actually told.

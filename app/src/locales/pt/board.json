@@ -5,7 +5,7 @@
     "archiveTooltip": "Arquivar",
     "renameTooltip": "Mudar título",
     "deleteTooltip": "Excluir",
-    "select": "Selecionar missão",
+    "select": "Selecionar tarefa",
     "closePanel": "Fechar painel"
   },
   "deleteCard": {
@@ -15,22 +15,26 @@
   "tags": {
     "routine": "Rotina"
   },
+  "panel": {
+    "taskLabel": "Tarefa: {{title}}",
+    "newTask": "Tarefa nova"
+  },
   "people": {
-    "label": "Pessoas nesta missão",
+    "label": "Pessoas nesta tarefa",
     "expand": "Todas as pessoas"
   },
   "search": {
-    "placeholder": "Buscar missões",
+    "placeholder": "Buscar tarefas",
     "placeholderShort": "Buscar...",
     "clear": "Limpar busca",
     "clearCta": "Limpar busca",
-    "searchingText": "Buscando no texto das missões",
-    "searchingTitle": "Buscando no texto das missões",
+    "searchingText": "Buscando no texto das tarefas",
+    "searchingTitle": "Buscando no texto das tarefas",
     "searchingDescription": "Verificando mensagens antigas agora.",
-    "emptyTitle": "Nenhuma missão encontrada",
+    "emptyTitle": "Nenhuma tarefa encontrada",
     "emptyDescription": "Tente outra busca ou limpe a atual.",
-    "historyErrorTitle": "Não foi possível buscar todas as missões",
-    "historyErrorDescription": "Parte do texto de missões antigas não pôde ser carregada."
+    "historyErrorTitle": "Não foi possível buscar todas as tarefas",
+    "historyErrorDescription": "Parte do texto de tarefas antigas não pôde ser carregada."
   },
   "toasts": {
     "attached": "Anexou: {{names}}"
@@ -63,23 +67,23 @@
     "delete": "Excluir",
     "clear": "Limpar seleção",
     "cancel": "Cancelar",
-    "error": "Não foi possível atualizar as missões selecionadas: {{error}}",
+    "error": "Não foi possível atualizar as tarefas selecionadas: {{error}}",
     "confirmMove": {
-      "title": "Mover missões?",
-      "description_one": "Mover {{count}} missão para {{target}}?",
-      "description_other": "Mover {{count}} missões para {{target}}?",
+      "title": "Mover tarefas?",
+      "description_one": "Mover {{count}} tarefa para {{target}}?",
+      "description_other": "Mover {{count}} tarefas para {{target}}?",
       "action": "Mover"
     },
     "confirmArchive": {
-      "title": "Arquivar missões?",
-      "description_one": "Arquivar {{count}} missão? Você pode reabrir pela aba Arquivadas.",
-      "description_other": "Arquivar {{count}} missões? Você pode reabrir pela aba Arquivadas.",
+      "title": "Arquivar tarefas?",
+      "description_one": "Arquivar {{count}} tarefa? Você pode reabrir pela aba Arquivadas.",
+      "description_other": "Arquivar {{count}} tarefas? Você pode reabrir pela aba Arquivadas.",
       "action": "Arquivar"
     },
     "confirmDelete": {
-      "title": "Excluir missões?",
-      "description_one": "Excluir de forma permanente {{count}} missão e seu histórico?",
-      "description_other": "Excluir de forma permanente {{count}} missões e seu histórico?",
+      "title": "Excluir tarefas?",
+      "description_one": "Excluir de forma permanente {{count}} tarefa e seu histórico?",
+      "description_other": "Excluir de forma permanente {{count}} tarefas e seu histórico?",
       "action": "Excluir"
     }
   },
@@ -88,10 +92,10 @@
     "selectAll": "Selecionar toda a coluna"
   },
   "archived": {
-    "emptyTitle": "Nenhuma missão arquivada",
-    "emptyDescription": "As missões arquivadas aparecem aqui. Responda a uma para reativá-la."
+    "emptyTitle": "Nenhuma tarefa arquivada",
+    "emptyDescription": "As tarefas arquivadas aparecem aqui. Responda a uma para reativá-la."
   },
   "dnd": {
-    "moveError": "Não foi possível mover a missão: {{error}}"
+    "moveError": "Não foi possível mover a tarefa: {{error}}"
   }
 }

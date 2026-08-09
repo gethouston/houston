@@ -230,6 +230,185 @@ test("PUT sidebar-layout with an invalid body is a 400", async () => {
   );
 });
 
+/**
+ * `defaultCollapsed` is the fold state of the DEFAULT team, the one team with
+ * no stored group row to hold a `collapsed` of its own. It is ADDITIVE: a
+ * layout written before it existed must round-trip byte-identically, which is
+ * why the absent case asserts the KEY is missing rather than falsy.
+ */
+test("PUT sidebar-layout round-trips defaultCollapsed", async () => {
+  const id = await wsIdOf("judy");
+  const withFlag: SidebarLayout = { ...LAYOUT, defaultCollapsed: true };
+  const put = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("judy"),
+    body: JSON.stringify(withFlag),
+  });
+  expect(put.status).toBe(200);
+  expect(await put.json()).toEqual(withFlag);
+
+  const get = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    headers: auth("judy"),
+  });
+  expect(await get.json()).toEqual(withFlag);
+});
+
+test("PUT sidebar-layout with a non-boolean defaultCollapsed is a 400", async () => {
+  const id = await wsIdOf("karl");
+  const bad = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("karl"),
+    body: JSON.stringify({ ...LAYOUT, defaultCollapsed: "yes" }),
+  });
+  expect(bad.status).toBe(400);
+  expect(((await bad.json()) as { error: string }).error).toBe(
+    "invalid sidebar layout",
+  );
+});
+
+test("sidebar-layout leaves an absent defaultCollapsed absent", async () => {
+  const id = await wsIdOf("liam");
+  const put = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("liam"),
+    body: JSON.stringify(LAYOUT),
+  });
+  expect(put.status).toBe(200);
+  expect("defaultCollapsed" in (await put.json())).toBe(false);
+
+  const get = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    headers: auth("liam"),
+  });
+  expect("defaultCollapsed" in (await get.json())).toBe(false);
+});
+
+/**
+ * `defaultContext` is the DEFAULT team's shared context — the same additive
+ * rules as the fold flag above, and STRICT on type like a group's `context`: a
+ * present-but-non-string value rejects the whole layout rather than being
+ * quietly dropped, because a context that fails to persist is a promise the
+ * card already made to the user.
+ */
+test("PUT sidebar-layout round-trips defaultContext", async () => {
+  const id = await wsIdOf("nina");
+  const withContext: SidebarLayout = {
+    ...LAYOUT,
+    defaultContext: "We ship daily.",
+  };
+  const put = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("nina"),
+    body: JSON.stringify(withContext),
+  });
+  expect(put.status).toBe(200);
+  expect(await put.json()).toEqual(withContext);
+
+  const get = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    headers: auth("nina"),
+  });
+  expect(await get.json()).toEqual(withContext);
+});
+
+test("PUT sidebar-layout with a non-string defaultContext is a 400", async () => {
+  const id = await wsIdOf("omar");
+  const bad = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("omar"),
+    body: JSON.stringify({ ...LAYOUT, defaultContext: 42 }),
+  });
+  expect(bad.status).toBe(400);
+  expect(((await bad.json()) as { error: string }).error).toBe(
+    "invalid sidebar layout",
+  );
+});
+
+test("sidebar-layout leaves an absent defaultContext absent", async () => {
+  const id = await wsIdOf("pia");
+  const put = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("pia"),
+    body: JSON.stringify(LAYOUT),
+  });
+  expect(put.status).toBe(200);
+  expect("defaultContext" in (await put.json())).toBe(false);
+});
+
+/**
+ * A group's `icon` + `color` — the LOCAL half of the team identity C13 stores
+ * server-side. STRICT here exactly like `context`: a present-but-non-string
+ * value rejects the whole parse rather than being quietly dropped, so a hostile
+ * or corrupt layout can never persist. Absent stays absent, which is why the
+ * round-trip below asserts the styled object WHOLE.
+ */
+test("PUT sidebar-layout round-trips a group's icon and color", async () => {
+  const id = await wsIdOf("mona");
+  const styled: SidebarLayout = {
+    ...LAYOUT,
+    groups: LAYOUT.groups.map((g) => ({
+      ...g,
+      icon: "pen-tool",
+      color: "#5E6AD2",
+    })),
+  };
+  const put = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("mona"),
+    body: JSON.stringify(styled),
+  });
+  expect(put.status).toBe(200);
+  expect(await put.json()).toEqual(styled);
+
+  const get = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    headers: auth("mona"),
+  });
+  expect(await get.json()).toEqual(styled);
+});
+
+test("PUT sidebar-layout with a non-string group icon is a 400", async () => {
+  const id = await wsIdOf("nina");
+  const bad = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("nina"),
+    body: JSON.stringify({
+      ...LAYOUT,
+      groups: LAYOUT.groups.map((g) => ({ ...g, icon: 7 })),
+    }),
+  });
+  expect(bad.status).toBe(400);
+  expect(((await bad.json()) as { error: string }).error).toBe(
+    "invalid sidebar layout",
+  );
+});
+
+test("PUT sidebar-layout with a non-string group color is a 400", async () => {
+  const id = await wsIdOf("omar");
+  const bad = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("omar"),
+    body: JSON.stringify({
+      ...LAYOUT,
+      groups: LAYOUT.groups.map((g) => ({ ...g, color: false })),
+    }),
+  });
+  expect(bad.status).toBe(400);
+  expect(((await bad.json()) as { error: string }).error).toBe(
+    "invalid sidebar layout",
+  );
+});
+
+test("sidebar-layout leaves an absent icon and color absent", async () => {
+  const id = await wsIdOf("pia");
+  const put = await fetch(`${base}/v1/workspaces/${id}/sidebar-layout`, {
+    method: "PUT",
+    headers: auth("pia"),
+    body: JSON.stringify(LAYOUT),
+  });
+  expect(put.status).toBe(200);
+  const group = ((await put.json()) as SidebarLayout).groups[0] ?? {};
+  expect("icon" in group).toBe(false);
+  expect("color" in group).toBe(false);
+});
+
 test("PUT sidebar-layout emits SidebarLayoutChanged to the owner", async () => {
   const emitted: { userId: string; event: HoustonEvent }[] = [];
   const events: EventHub = {

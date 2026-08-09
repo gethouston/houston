@@ -3,12 +3,11 @@ import { describe, it } from "node:test";
 import {
   teamPinnedAgent,
   teamScopedAgents,
-  teamSelectedAgent,
 } from "../src/components/team-view/team-agent-choice.ts";
 import type { Agent } from "../src/lib/types.ts";
 
 /**
- * Which of a team's agents a section is looking at. Three shapes over ONE pin,
+ * Which of a team's agents an aggregating section is looking at over ONE pin,
  * and the rule that matters most is the one that is invisible until it breaks:
  * a pin naming an agent this team no longer holds is DROPPED. Without it a
  * section opens empty (Routines) or on somebody else's tree (Files) with no
@@ -83,26 +82,5 @@ describe("teamScopedAgents", () => {
   it("has nothing to scope on an empty team", () => {
     assert.deepEqual(teamScopedAgents([], null), []);
     assert.deepEqual(teamScopedAgents([], "a"), []);
-  });
-});
-
-describe("teamSelectedAgent", () => {
-  it("opens on the pinned agent when the rail sent one", () => {
-    assert.equal(teamSelectedAgent(TEAM, "b")?.id, "b");
-  });
-
-  it("falls back to the team's first agent with no pin", () => {
-    assert.equal(teamSelectedAgent(TEAM, null)?.id, "a");
-  });
-
-  it("falls back to the first agent when the pin left the team", () => {
-    // A single-agent section cannot show "all agents", so a dropped pin has to
-    // land somewhere real — never on nothing while the team still has members.
-    assert.equal(teamSelectedAgent(TEAM, "gone")?.id, "a");
-  });
-
-  it("has nothing to open on an empty team", () => {
-    assert.equal(teamSelectedAgent([], null), null);
-    assert.equal(teamSelectedAgent([], "a"), null);
   });
 });

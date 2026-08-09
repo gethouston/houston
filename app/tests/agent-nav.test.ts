@@ -63,12 +63,13 @@ describe("agentDestination", () => {
     });
   });
 
-  it("falls back to the cross-agent board when no team claims the agent", () => {
-    // No workspace resolved yet -> no teams at all. Mission Control still holds
-    // every agent's missions, so a mission nav lands somewhere real.
-    deepStrictEqual(agentDestination([], "a1", "board"), {
-      view: "dashboard",
-    });
+  it("answers `none` when no team claims the agent", () => {
+    // No workspace resolved yet -> no teams at all. There is no global board to
+    // substitute any more, so the rule STATES the miss and leaves the landing
+    // to the caller: a board request goes home, a settings request refuses.
+    for (const target of ["board", "routines", "files", "settings"] as const) {
+      deepStrictEqual(agentDestination([], "a1", target), { view: "none" });
+    }
   });
 });
 

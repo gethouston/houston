@@ -60,7 +60,7 @@ function capture(payload = "{}") {
 test("the team reads and writes hit exactly the C13 team routes", async () => {
   const calls = capture();
   await listAgentTeams(cfg);
-  await createAgentTeam(cfg, "Design");
+  await createAgentTeam(cfg, { name: "Design" });
   await updateAgentTeam(cfg, "t1", { name: "Design", sortOrder: 2 });
   await deleteAgentTeam(cfg, "t1");
   expect(calls).toEqual([
@@ -79,6 +79,33 @@ test("the team reads and writes hit exactly the C13 team routes", async () => {
       method: "DELETE",
       url: "http://gw.test/v1/org/teams/t1",
       body: undefined,
+    },
+  ]);
+});
+
+test('a team\'s identity rides the same PATCH, with `""` as the clear', async () => {
+  // C13 §Team identity: a string SETS, `""` CLEARS, an omitted key leaves the
+  // field alone. Asserting the serialized body is what pins the clear — a `""`
+  // dropped on the way out would make an icon impossible to take off again.
+  const calls = capture();
+  await updateAgentTeam(cfg, "t1", { icon: "pen-tool", color: "#5E6AD2" });
+  await updateAgentTeam(cfg, "t1", { icon: "" });
+  await updateAgentTeam(cfg, "t1", { color: "" });
+  expect(calls).toEqual([
+    {
+      method: "PATCH",
+      url: "http://gw.test/v1/org/teams/t1",
+      body: '{"icon":"pen-tool","color":"#5E6AD2"}',
+    },
+    {
+      method: "PATCH",
+      url: "http://gw.test/v1/org/teams/t1",
+      body: '{"icon":""}',
+    },
+    {
+      method: "PATCH",
+      url: "http://gw.test/v1/org/teams/t1",
+      body: '{"color":""}',
     },
   ]);
 });

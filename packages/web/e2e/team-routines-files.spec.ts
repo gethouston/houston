@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { type TeamSection, teamTab } from "./support/team-nav";
 
 /**
  * The team view's ROUTINES and FILES sections, driven from the rail that opens
@@ -11,10 +12,9 @@ import { expect, test } from "./support/fixtures";
  *   - a row action lands on the OWNING agent's route, not on whichever agent
  *     the section happened to read first (two agents' routines can share an id,
  *     which is why rows are keyed `agentId::routineId`);
- *   - the agent dropdown narrows the list, and is the same pin the rail writes;
- *   - Files never merges trees: it shows ONE agent's real tree and the dropdown
- *     switches which, so an agent with no files says so instead of showing
- *     another agent's;
+ *   - the Routines dropdown narrows that list independently of the rail pin;
+ *   - Files never merges trees: its synthetic root shows agents as folders,
+ *     then drills into one real tree whose actions stay wired to its owner;
  *   - a routine still being BUILT in chat is a row here too, resumable and
  *     discardable, or one started from this surface would vanish from it;
  *   - an agent whose reads fail is NAMED, not silently dropped from the list —
@@ -33,10 +33,10 @@ function screen(page: Page): Locator {
   return page.locator("[data-screen-active='true']");
 }
 
-function sectionRows(page: Page, label: string): Locator {
-  return rail(page)
-    .locator("[data-sidebar-section-row]")
-    .filter({ hasText: label });
+/** A tab in the team screen's own tab row: the ONE section switch there is,
+ *  now that the rail draws no section rows. */
+function sectionTab(page: Page, section: TeamSection): Locator {
+  return teamTab(page, section);
 }
 
 function routineRows(page: Page): Locator {
@@ -94,10 +94,10 @@ async function routineEnabled(
   return items.find((r) => r.name === name)?.enabled;
 }
 
-async function openSection(page: Page, label: string): Promise<void> {
+async function openSection(page: Page, label: TeamSection): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
-  await sectionRows(page, label).first().click();
+  await sectionTab(page, label).click();
 }
 
 test("Routines merges the team's agents into one list, each row naming its owner", async ({
@@ -181,23 +181,41 @@ test("the Routines dropdown narrows the list to one agent, and drops the owner c
   await openSection(page, "Routines");
   await expect(routineRows(page)).toHaveCount(2);
 
+  // The team-wide pin does NOT ride into this section any more. Pinning Kai in
+  // the rail narrows the BOARD; coming back to Routines still shows the whole
+  // team, because a tab always opens its section team-wide.
+  await rail(page).getByText("Kai", { exact: true }).click();
+  await sectionTab(page, "Routines").click();
+  await expect(routineRows(page)).toHaveCount(2);
+  await expect(
+    screen(page).getByRole("button", { name: "All agents" }),
+  ).toBeVisible();
+
+  // Narrowing is this SECTION's own act, through its own capsule.
   await screen(page).getByRole("button", { name: "All agents" }).click();
   await page.getByRole("menuitem", { name: "Kai" }).click();
 
   // One owner in view, so the chip that names the owner stops earning its
-  // place: the dropdown already says whose list this is.
+  // place: the capsule already says whose list this is.
   await expect(routineRows(page)).toHaveCount(1);
   await expect(screen(page).getByText("Payroll run")).toBeVisible();
   await expect(screen(page).getByText("Morning digest")).toHaveCount(0);
   await expect(routineRows(page).first()).not.toContainText("Kai");
 
-  // The pin is the rail's: the agent row the section narrowed to is lit.
+  // And it stayed local: the rail lights NO agent row, because nothing
+  // team-wide was narrowed.
   await expect(
     rail(page)
       .locator("[data-sidebar-item]")
       .filter({ hasText: "Kai" })
       .locator("[aria-current='page']"),
-  ).toHaveCount(1);
+  ).toHaveCount(0);
+
+  // Leaving and coming back opens the section team-wide again: the filter is
+  // the section's, and the section is remounted per team.
+  await sectionTab(page, "Files").click();
+  await sectionTab(page, "Routines").click();
+  await expect(routineRows(page)).toHaveCount(2);
 });
 
 test("an agent whose routines fail is named, not silently dropped", async ({
@@ -359,35 +377,44 @@ test("a routine half-built from the team surface is a row in the team's list", a
   ).toBeVisible();
 });
 
-test("Files shows ONE agent's real tree, and the dropdown switches which", async ({
+test("Files keeps multiple agent trees in one accordion list", async ({
   page,
   request,
 }) => {
   await addKai(request);
   await openSection(page, "Files");
 
-  // The seeded agent's actual files, under its own name as the root.
-  await expect(screen(page).getByText("Q3 report.pdf")).toBeVisible();
+  // A multi-agent team starts collapsed and reads no filesystem yet.
   await expect(
-    screen(page).getByRole("button", { name: "Houston", exact: true }),
+    screen(page).getByRole("button", { name: "Expand Houston files" }),
   ).toBeVisible();
-
-  // Kai keeps no files, and says so — rather than inheriting Houston's tree,
-  // which is exactly what a merged filesystem would have shown.
-  await screen(page)
-    .getByRole("button", { name: "Houston", exact: true })
-    .click();
-  await page.getByRole("menuitem", { name: "Kai" }).click();
-  await expect(screen(page).getByText("No files yet")).toBeVisible();
+  await expect(
+    screen(page).getByRole("button", { name: "Expand Kai files" }),
+  ).toBeVisible();
+  await expect(screen(page).getByText("Name", { exact: true })).toBeVisible();
+  await expect(
+    screen(page).getByText("Modified", { exact: true }),
+  ).toBeVisible();
+  await expect(screen(page).getByText("Size", { exact: true })).toBeVisible();
+  await expect(
+    screen(page).getByRole("button", { name: "Grid view" }),
+  ).toHaveCount(0);
+  await expect(
+    screen(page).getByRole("button", { name: "List view" }),
+  ).toHaveCount(0);
   await expect(screen(page).getByText("Q3 report.pdf")).toHaveCount(0);
-
-  // Back again: the tree is per agent, not a one-way switch.
-  await screen(page).getByRole("button", { name: "Kai", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Houston" }).click();
+  await screen(page)
+    .getByRole("button", { name: "Expand Houston files" })
+    .click();
+  await screen(page).getByRole("button", { name: "Expand Kai files" }).click();
   await expect(screen(page).getByText("Q3 report.pdf")).toBeVisible();
+  await expect(screen(page).getByText("This folder is empty")).toBeVisible();
+  await expect(
+    screen(page).getByRole("navigation", { name: "Folder path" }),
+  ).toHaveCount(0);
 });
 
-test("Files opens on the agent the rail pinned, and its actions still work", async ({
+test("Files ignores the rail pin, and drilled-agent actions still work", async ({
   page,
   request,
 }) => {
@@ -405,20 +432,20 @@ test("Files opens on the agent the rail pinned, and its actions still work", asy
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // Arriving via an agent row pins that agent; the Files section reads the same
-  // pin, so it opens on Kai rather than on the team's first agent — and the pin
-  // survives the section row click, which is the whole point of carrying it.
+  // Arriving via an agent row pins the board, but Files stays team-wide.
   await rail(page).getByText("Kai", { exact: true }).click();
-  await sectionRows(page, "Files").first().click();
+  await sectionTab(page, "Files").click();
   await expect(
-    screen(page).getByRole("button", { name: "Kai", exact: true }),
+    screen(page).getByRole("button", { name: "Expand Kai files" }),
   ).toBeVisible();
-  await expect(screen(page).getByText("brief.md")).toBeVisible();
+  await expect(screen(page).getByText("brief.md")).toHaveCount(0);
   await expect(screen(page).getByText("Q3 report.pdf")).toHaveCount(0);
+  await screen(page).getByRole("button", { name: "Expand Kai files" }).click();
+  await expect(screen(page).getByText("brief.md")).toBeVisible();
 
-  // The section IS the per-agent tab's wiring, so a write works here exactly as
-  // it does there, and it lands on Kai rather than on the team's first agent.
+  // New names the target agent before exposing its actions.
   await screen(page).getByRole("button", { name: "New", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Kai" }).hover();
   await page.getByRole("menuitem", { name: "New folder" }).click();
   const name = page.getByPlaceholder("untitled folder");
   await expect(name).toBeVisible();
@@ -442,6 +469,7 @@ test("a failed Files read names the agent instead of showing an empty tree", asy
     data: { agentIds: [SEED_AGENT_ID] },
   });
   await openSection(page, "Files");
+  // A one-agent team auto-expands, so the failing lazy read is immediately named.
 
   // "No files yet" and "we could not read this agent" look identical on screen
   // unless the section says which one it is.

@@ -5,8 +5,8 @@ import { openAdmin } from "./support/settings-nav";
 import {
   openAgentSettings,
   openTeamSection,
-  rail,
   screen,
+  teamTab,
 } from "./support/team-nav";
 
 /**
@@ -405,14 +405,15 @@ test("a plain member cannot reach the agent settings page at all", async ({
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // The team's WORK is theirs — Tasks, Routines, Files — but the one
-  // section that CONFIGURES is not, and the agent settings page has no other
-  // door: `visibleTeamSectionsForTeam` withholds "Manage agents", and there is
-  // no top-level Permissions screen to reach the page around it any more. A row
-  // they cannot use would be a dead link, so there is no row.
-  const rows = rail(page).locator("[data-sidebar-section-row]");
-  await expect(rows.filter({ hasText: "Tasks" }).first()).toBeVisible();
-  await expect(rows.filter({ hasText: "Manage agents" })).toHaveCount(0);
+  // The team's WORK is theirs — Tasks, Routines, Files — but the one section
+  // that CONFIGURES is not, and the agent settings page has no other door:
+  // `visibleTeamSectionsForTeam` withholds "Manage agents", and there is no
+  // top-level Permissions screen to reach the page around it any more. A
+  // lozenge they cannot use would be a dead link, so the strip does not draw
+  // one. (The sections are the team screen's own lozenge cluster now; the rail
+  // names teams and nothing else.)
+  await expect(teamTab(page, "Tasks")).toBeVisible();
+  await expect(teamTab(page, "Manage agents")).toHaveCount(0);
 });
 
 test("Admin People roster shows a member's gateway display name, email as a secondary line", async ({

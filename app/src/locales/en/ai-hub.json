@@ -77,6 +77,7 @@
     "connect": "Connect",
     "models": "Models",
     "searchModels": "Search models",
+    "clearSearch": "Clear search",
     "noModels": "Models are ready as soon as you connect."
   },
   "model": {
@@ -164,8 +165,6 @@
     "error": "Couldn't load usage right now. Try again in a moment."
   },
   "timeWorked": {
-    "title": "Time worked",
-    "subtitle": "How much time your agents spent working and how many messages they answered.",
     "range": {
       "week": "7 days",
       "month": "30 days",

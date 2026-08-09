@@ -27,6 +27,31 @@ export interface AgentTeamSeed {
   /** EXPLICIT rows only — never one for an org owner/admin. `owner` defaults
    *  to false, so a seed may name a plain member as bare `{userId}`. */
   members?: { userId: string; owner?: boolean }[];
+  /** The team's visual identity. Omit either to arm a team that HAS none: the
+   *  field is then absent from the row, exactly as an unstyled team reads. */
+  icon?: string;
+  color?: string;
+  /** The team's shared context. Omitting it arms a team NOBODY has written one
+   *  for, which still serves `context: ""` — the column's empty default, not a
+   *  missing field. */
+  context?: string;
+}
+
+/**
+ * The identity of a team being written, copied onto the row SPREAD-WHEN-PRESENT
+ * so an unset field stays absent instead of becoming an explicit `undefined`
+ * key. `JSON.stringify` drops both alike, but the stored row is also what the
+ * `/__test__/agent-teams` control echoes and what specs read, and a row
+ * carrying `icon: undefined` claims a field the gateway would never have.
+ */
+function identityFields(identity?: {
+  icon?: string;
+  color?: string;
+}): Partial<Pick<FakeAgentTeam, "icon" | "color">> {
+  return {
+    ...(identity?.icon === undefined ? {} : { icon: identity.icon }),
+    ...(identity?.color === undefined ? {} : { color: identity.color }),
+  };
 }
 
 /** The armed team world, as the control route echoes it back. */
@@ -35,10 +60,16 @@ export interface ArmedAgentTeams {
     agentIds: string[];
     members: FakeAgentTeamMember[];
   })[];
+  /** Whether the active space is a PERSONAL one ({@link isPersonalSpace}). */
   personalSpace: boolean;
 }
 
-/** C13 personal space: one team, and every mutation refused. */
+/**
+ * C13 personal space: a space holding exactly one human. It groups its agents
+ * with teams like any other — the read serves the real list, and create, patch,
+ * delete and the agent move all behave normally. Only the three PEOPLE routes
+ * (join, the owner write, the member remove) answer `403 personal_space`.
+ */
 export function isPersonalSpace(): boolean {
   return state.personalSpace;
 }
@@ -91,8 +122,15 @@ export function teamIdOfAgent(agentId: string): string {
   return state.agentTeamOf.get(agentId) ?? ensureDefaultAgentTeam().id;
 }
 
-/** Create a team: the creator becomes an EXPLICIT owner, sorted after the last. */
-export function createAgentTeamRow(name: string): FakeAgentTeam {
+/**
+ * Create a team: the creator becomes an EXPLICIT owner, sorted after the last.
+ * `identity` is the optional `{icon?, color?}` a styled create carries, so one
+ * round trip both names and styles the team.
+ */
+export function createAgentTeamRow(
+  name: string,
+  identity?: { icon?: string; color?: string },
+): FakeAgentTeam {
   ensureDefaultAgentTeam();
   const last = Math.max(...state.agentTeams.map((t) => t.sortOrder), 0);
   const team: FakeAgentTeam = {
@@ -100,6 +138,7 @@ export function createAgentTeamRow(name: string): FakeAgentTeam {
     name,
     isDefault: false,
     sortOrder: last + 1,
+    ...identityFields(identity),
   };
   state.agentTeams.push(team);
   state.agentTeamMembers.set(team.id, [{ userId: SELF_USER_ID, owner: true }]);
@@ -155,6 +194,14 @@ export function setAgentTeamOfAgent(agentId: string, teamId: string): void {
  * Replace the whole team world (`POST /__test__/agent-teams`). An absent or
  * `null` `teams` clears it back to lazy, so the very next read mints the
  * default team again — that, plus `freshState()`, is the entire reset story.
+ * `personalSpace` sets the KIND of the space the world belongs to. The three
+ * people routes read it ({@link isPersonalSpace}), and so does the seeding
+ * below: a personal space holds ONE human, who therefore created every team in
+ * it, so the creator's owner row is forced onto each of them. The gateway
+ * cannot produce a personal-space team the caller has not joined — the row is
+ * written on create and no route can remove it — and a fake that CAN produce
+ * that state lets a spec pass against a world the product never sees, which is
+ * exactly how the rail kept offering "Leave team" there.
  */
 export function armAgentTeams(
   seed: AgentTeamSeed[] | null,
@@ -170,17 +217,24 @@ export function armAgentTeams(
       name: row.name,
       isDefault: row.isDefault === true,
       sortOrder: row.sortOrder ?? index,
+      ...identityFields(row),
+      ...(row.context === undefined ? {} : { context: row.context }),
     });
     // Normalized, never stored verbatim: the wire promises a BOOLEAN `owner`,
     // and a seed's bare `{userId}` would otherwise serve `owner: undefined` —
     // a field the client would read as absent rather than as "not an owner".
-    state.agentTeamMembers.set(
-      row.id,
-      (row.members ?? []).map((m) => ({
-        userId: m.userId,
-        owner: m.owner === true,
-      })),
-    );
+    const members: FakeAgentTeamMember[] = (row.members ?? []).map((m) => ({
+      userId: m.userId,
+      owner: m.owner === true,
+    }));
+    // The default team keeps NO member list (every write to it answers
+    // `400 default_team`), so the forcing applies to created teams only.
+    if (personalSpace && row.isDefault !== true)
+      state.agentTeamMembers.set(row.id, [
+        { userId: SELF_USER_ID, owner: true },
+        ...members.filter((m) => m.userId !== SELF_USER_ID),
+      ]);
+    else state.agentTeamMembers.set(row.id, members);
     for (const agentId of row.agentIds ?? [])
       state.agentTeamOf.set(agentId, row.id);
   }

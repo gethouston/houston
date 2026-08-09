@@ -1,17 +1,12 @@
 {
   "title": "Settings",
   "nav": {
-    "guideMe": "Guide me",
     "profile": "Profile",
     "apiKeys": "API keys",
-    "workspaceContext": "Workspace context",
-    "userContext": "Your context",
     "language": "Language",
     "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug",
     "danger": "Delete workspace",
-    "timeWorked": "Time worked",
-    "permissions": "Permissions",
     "organization": "Admin"
   },
   "workspaceGate": {
@@ -22,7 +17,6 @@
     "retry": "Try again"
   },
   "account": {
-    "title": "Account",
     "signOut": "Sign out"
   },
   "profile": {
@@ -58,24 +52,6 @@
   "workspace": {
     "title": "Workspace name"
   },
-  "workspaceContext": {
-    "emptyTitle": "Tell every agent about this workspace",
-    "emptyDescription": "The company, the product, the customers. Loaded into every new chat in this workspace.",
-    "writeButton": "Write workspace context",
-    "helper": "Shared by every agent in this workspace. Loaded into each new chat. Agents can update this when you tell them something new.",
-    "placeholder": "e.g. Acme Corp, B2B fintech, Series A. Customers are CFOs at mid-market companies.",
-    "saving": "Saving…",
-    "saved": "Saved"
-  },
-  "userContext": {
-    "emptyTitle": "Tell every agent about you",
-    "emptyDescription": "Your role, what you care about, how you like to work. Loaded into every new chat in this workspace.",
-    "writeButton": "Write user context",
-    "helper": "Loaded into each new chat in this workspace. Agents can update this when you tell them something new.",
-    "placeholder": "e.g. I'm Juan, head of sales. I care about pipeline velocity and prefer short replies.",
-    "saving": "Saving…",
-    "saved": "Saved"
-  },
   "connectPhone": {
     "title": "Connect phone",
     "description": "Scan this code to manage Houston from your phone. The same code keeps working as long as this computer is on and Houston is open.",
@@ -105,7 +81,7 @@
   },
   "notifications": {
     "title": "Notifications",
-    "description": "Get pinged when a mission finishes or needs you",
+    "description": "Get pinged when a task finishes or needs you",
     "state": {
       "on": "On",
       "off": "Off",
@@ -147,7 +123,7 @@
   },
   "reportBug": {
     "title": "Report bug",
-    "intro": "Tell us what went wrong. We'll send your message along with the logs from your last activity so we can see what happened.",
+    "intro": "Tell us what went wrong. We'll send your message along with the logs from your last activity so we can see what happened. An idea, or something that just feels off, is welcome here too.",
     "timingTip": "We only get the most recent activity, so send the report as soon as the bug happens for the most useful info.",
     "toastEquivalence": "This is the same as tapping Report bug on the red error notification, you don't need to send both.",
     "label": "What happened?",
@@ -176,38 +152,24 @@
   "index": {
     "subtitle": "Manage your workspace and account.",
     "groups": {
-      "general": "General",
-      "help": "Help",
-      "context": "Context",
-      "support": "Support",
-      "workspace": "Workspace",
-      "team": "Team"
+      "general": "General"
     },
     "rows": {
-      "guideMe": "Take a quick tour of the app",
       "profile": "Your name and picture",
-      "apiKeys": "Let other apps and AI assistants start missions with your agents",
-      "workspaceContext": "What every agent knows about this workspace",
-      "userContext": "What every agent knows about you",
+      "apiKeys": "Let other apps and AI assistants start tasks with your agents",
       "shortcuts": "Run Houston without the mouse",
-      "reportBug": "Something broke? Tell us",
-      "migration": "Pick up your move to the cloud",
-      "timeWorked": "How long your agents have been working",
-      "permissions": "Who can use each agent, and what each agent can use",
-      "organization": "Your team, its activity, usage, and billing"
-    },
-    "values": {
-      "set": "Set"
+      "reportBug": "Something broke, or you have an idea? Tell us",
+      "migration": "Pick up your move to the cloud"
     }
   },
   "apiKeys": {
     "title": "API keys",
-    "intro": "Other apps, AI assistants, and automation tools can start missions with your agents. Each connection needs a key you create here. <docs>Read the developer docs</docs>.",
+    "intro": "Other apps, AI assistants, and automation tools can start tasks with your agents. Each connection needs a key you create here. <docs>Read the developer docs</docs>.",
     "dialogClose": "Close",
     "createButton": "Create key",
     "empty": {
       "title": "No API keys yet",
-      "description": "A key lets an app you trust start missions with your agents. Create one to connect your first app."
+      "description": "A key lets an app you trust start tasks with your agents. Create one to connect your first app."
     },
     "error": {
       "title": "Couldn't load your keys",

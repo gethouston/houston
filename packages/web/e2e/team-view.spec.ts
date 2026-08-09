@@ -1,22 +1,27 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { createTeam } from "./support/sidebar-create";
+import { type TeamSection, teamTab } from "./support/team-nav";
 
 /**
- * The TEAM VIEW, driven end to end from the rail that navigates to it. Where
- * `sidebar-teams.spec.ts` asserts what the rail says, this asserts that the
- * screen behind each row is the one the rail promised:
+ * The TEAM VIEW and its own chrome. Where `sidebar-teams.spec.ts` asserts what
+ * the rail says, this asserts the screen: one frame around four sections, and
+ * the team named exactly once on it.
  *
- *   - a team's Mission Control row opens a board TITLED with the team and
- *     SCOPED to its agents (an empty team shows its own empty state, not the
- *     other team's missions);
+ *   - row 1 carries the team's name and the TAB ROW, which is the only section
+ *     switch there is (the rail draws no section rows);
+ *   - a team's Tasks tab opens a board SCOPED to its agents, whose own heading
+ *     is the scope picker and says nothing about the team (an empty team shows
+ *     its own empty state, not the other team's missions);
  *   - clicking an agent row filters that board to the agent, and the board's
  *     own filter menu shows it — the store holds an agent ID and the board
  *     works in folder paths, so this is the id -> path mapping under test;
- *   - changing the filter INSIDE the board moves the rail's selected row back,
- *     because both sides read the one `teamAgentFilter`;
- *   - Team Settings lists the team's agents and drills into the canonical agent
- *     settings page, and a plain member never gets the row at all.
+ *   - the team-wide pin is the BOARD's alone: the rail sets it, the board
+ *     shows it, the team's lozenge names it — and no other section reads it
+ *     (Routines and Archived carry filters of their own);
+ *   - Manage agents lists the team's agents and drills into the canonical agent
+ *     settings page, and a plain member never gets the tab at all.
  */
 
 const OWNER_CAPS = { multiplayer: true, teams: true, role: "owner" };
@@ -62,10 +67,27 @@ function screen(page: Page): Locator {
   return page.locator("[data-screen-active='true']");
 }
 
-function sectionRows(page: Page, label: string): Locator {
-  return rail(page)
-    .locator("[data-sidebar-section-row]")
-    .filter({ hasText: label });
+/**
+ * A tab in the team screen's own tab row (row 1). The rail draws no section
+ * rows any more: the team frame names the team and carries the ONE section
+ * switch, so "open Files" is a click on the screen, not in the rail.
+ */
+function sectionTab(page: Page, section: TeamSection): Locator {
+  return teamTab(page, section);
+}
+
+/**
+ * The screen's heading — which IS the team's own lozenge, the first in the
+ * cluster. Its accessible name is whatever the lozenge says: the team alone,
+ * or "<team> <agent>" while an agent is pinned.
+ */
+function teamTitle(page: Page, name: string): Locator {
+  return screen(page).getByRole("heading", { level: 1, name, exact: true });
+}
+
+/** The team's lozenge: the board's door, and the pin's undo. */
+function homeLozenge(page: Page): Locator {
+  return teamTab(page, "Tasks");
 }
 
 /**
@@ -88,22 +110,12 @@ async function workspaceName(page: Page): Promise<string> {
   ).trim();
 }
 
-/** Create a named team through the real folder affordance + inline rename. */
-async function createTeam(page: Page, name: string): Promise<void> {
-  await page.getByRole("button", { name: "New team" }).click();
-  const input = page.getByPlaceholder("Team name");
-  await input.waitFor({ state: "visible" });
-  await input.fill(name);
-  await input.press("Enter");
-  await expect(rail(page).getByText(name, { exact: true })).toBeVisible();
-}
-
 async function openShell(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 }
 
-test("a team's Mission Control row opens that team's board, titled and scoped", async ({
+test("a team's Tasks tab opens that team's board, named once and scoped", async ({
   page,
   request,
 }) => {
@@ -111,27 +123,54 @@ test("a team's Mission Control row opens that team's board, titled and scoped", 
   await openShell(page);
   const workspace = await workspaceName(page);
 
-  // The default team IS the workspace, so its board carries the workspace's
-  // name (not the global board's "Mission Control") and holds every agent's
-  // missions, because every agent is in it.
-  await sectionRows(page, "Mission Control").first().click();
-  await expect(
-    screen(page).getByRole("heading", { level: 1, name: workspace }),
-  ).toBeVisible();
+  // The strip names the team ONCE, inside its own lozenge, and says nothing
+  // else while no agent is pinned. There is no "Tasks" label anywhere: the
+  // team's lozenge IS the board's door. No second heading either.
+  await sectionTab(page, "Tasks").click();
+  await expect(teamTitle(page, workspace)).toBeVisible();
+  await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
+  await expect(screen(page).getByText("Tasks", { exact: true })).toHaveCount(0);
+  await expect(screen(page).getByText("All agents")).toHaveCount(0);
+  await expect(screen(page).getByRole("heading", { level: 2 })).toHaveCount(0);
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
 
   // A named team starts empty, and its board says so instead of showing the
   // workspace's missions — the scope is the team, not the sweep behind it.
   await createTeam(page, "Work");
-  await sectionRows(page, "Mission Control").first().click();
+  await sectionTab(page, "Tasks").click();
+  await expect(teamTitle(page, "Work")).toBeVisible();
   await expect(
     screen(page).getByText("No agents in this team yet"),
   ).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 });
 
-test("an agent row filters its team's board, and the board's own menu moves it back", async ({
+test("the lozenge cluster is the only section switch, and it lights the open one", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, OWNER_CAPS);
+  await openShell(page);
+
+  // The rail promises no sections any more: every one of them is a lozenge on
+  // the screen, and the cluster IS `visibleTeamSectionsForTeam` for this team
+  // — the team's own lozenge standing in for the board.
+  await expect(rail(page).locator("[data-sidebar-section-row]")).toHaveCount(0);
+  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(5);
+
+  // The lozenge that is open says so, and exactly one does.
+  await sectionTab(page, "Routines").click();
+  await expect(sectionTab(page, "Routines")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(
+    screen(page).locator("[data-team-section-tab][aria-current='page']"),
+  ).toHaveCount(1);
+});
+
+test("an agent row filters the board, and the team's lozenge undoes it", async ({
   page,
   request,
 }) => {
@@ -143,31 +182,30 @@ test("an agent row filters its team's board, and the board's own menu moves it b
   await rail(page).getByText("Kai", { exact: true }).click();
   await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
-  // The board's own filter menu shows the same choice the rail made.
-  const filter = screen(page).getByRole("button", { name: "Kai", exact: true });
-  await expect(filter).toBeVisible();
+  // The team's lozenge grows a second segment naming the pinned agent, so the
+  // heading itself becomes "<team> <agent>".
+  const workspace = await workspaceName(page);
+  await expect(homeLozenge(page)).toContainText("Kai");
+  await expect(teamTitle(page, `${workspace} Kai`)).toBeVisible();
   await expect(litAgentRow(page, "Kai")).toHaveCount(1);
   await expect(litAgentRow(page, "Houston")).toHaveCount(0);
 
-  // Change it from INSIDE the board: the rail's selected row follows, because
-  // the rail and the board read the same pin.
-  await filter.click();
-  await page.getByRole("menuitem", { name: "Houston" }).click();
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(screen(page).getByText("Ship the payroll run")).toHaveCount(0);
-  await expect(litAgentRow(page, "Houston")).toHaveCount(1);
-  await expect(litAgentRow(page, "Kai")).toHaveCount(0);
-
-  // Clearing it releases the rail's fill too.
-  await screen(page)
-    .getByRole("button", { name: "Houston", exact: true })
-    .click();
-  await page.getByRole("menuitem", { name: "All agents" }).click();
+  // Arm 2 of the home lozenge's grammar: already on the board and narrowed, so
+  // the click widens back to the whole team rather than navigating.
+  await homeLozenge(page).click();
   await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
-  await expect(litAgentRow(page, "Houston")).toHaveCount(0);
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(litAgentRow(page, "Kai")).toHaveCount(0);
+  await expect(homeLozenge(page)).not.toContainText("Kai");
+  await expect(teamTitle(page, workspace)).toBeVisible();
+
+  // Arm 3: on the whole team's own board, the same click does nothing at all.
+  await homeLozenge(page).click();
+  await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
+  await expect(teamTitle(page, workspace)).toBeVisible();
 });
 
-test("Team Settings lists the team's agents and drills into the agent settings page", async ({
+test("Manage agents lists the team's agents and drills into the agent settings page", async ({
   page,
   request,
 }) => {
@@ -176,10 +214,11 @@ test("Team Settings lists the team's agents and drills into the agent settings p
   await openShell(page);
   const workspace = await workspaceName(page);
 
-  await sectionRows(page, "Team Settings").first().click();
-  await expect(
-    screen(page).getByRole("heading", { level: 1, name: workspace }),
-  ).toBeVisible();
+  await sectionTab(page, "Manage agents").click();
+  // ONE title on the page: row 1's. The section's own page header collapsed
+  // into it, so the team's name is never printed twice.
+  await expect(teamTitle(page, workspace)).toBeVisible();
+  await expect(screen(page).getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(
     screen(page).getByRole("button", { name: "Open Kai" }),
   ).toBeVisible();
@@ -187,8 +226,8 @@ test("Team Settings lists the team's agents and drills into the agent settings p
     screen(page).getByRole("button", { name: "Open Houston" }),
   ).toBeVisible();
 
-  // Drilling in lands on the ONE canonical agent settings page — the same rail
-  // Settings > Permissions opens — under a back bar naming the team.
+  // Drilling in lands on the ONE canonical agent settings page — this is its
+  // only door, in every deployment — under a back bar naming the team.
   await screen(page).getByRole("button", { name: "Open Kai" }).click();
   await expect(
     page
@@ -203,37 +242,33 @@ test("Team Settings lists the team's agents and drills into the agent settings p
   ).toBeVisible();
 });
 
-test("a team's archive is titled with the team; the global one stays bare", async ({
-  page,
-}) => {
+test("the archive is a TAB, and the tab is both doors", async ({ page }) => {
   await openShell(page);
   const workspace = await workspaceName(page);
 
-  // The heading composes the BOARD's name with the MODE on purpose: titled
-  // with the bare team name, a team's archive would read exactly like that
-  // team's active board.
-  await sectionRows(page, "Mission Control").first().click();
-  await screen(page).getByRole("button", { name: "Archived" }).click();
+  // The archive stopped being a mode the board swapped into. It is a section,
+  // so the lit tab is the only thing that has to say where you are: no title,
+  // no "· Archived" qualifier, no crumb segment. HOU-1043's rule is satisfied
+  // better than by the old pill-in / back-button-out pair, because one
+  // permanently visible LABELLED control is both doors.
+  await sectionTab(page, "Tasks").click();
+  await sectionTab(page, "Archived").click();
+  await expect(sectionTab(page, "Archived")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(teamTitle(page, workspace)).toBeVisible();
+  await expect(screen(page).getByRole("heading", { level: 2 })).toHaveCount(0);
   await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: `${workspace} · Archived`,
-      exact: true,
-    }),
-  ).toBeVisible();
+    screen(page).getByRole("button", { name: "Back to tasks" }),
+  ).toHaveCount(0);
 
-  // The GLOBAL archive has no board name to compose with, so it stays the
-  // mode alone.
-  await screen(page).getByRole("button", { name: "Back to missions" }).click();
-  await page.locator("[data-tour-target='nav-dashboard']").click();
-  await screen(page).getByRole("button", { name: "Archived" }).click();
-  await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: "Archived",
-      exact: true,
-    }),
-  ).toBeVisible();
+  // And back, by the same control.
+  await sectionTab(page, "Tasks").click();
+  await expect(sectionTab(page, "Tasks")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
 test("a team's archive lets go of the shared panel when the user leaves", async ({
@@ -246,8 +281,7 @@ test("a team's archive lets go of the shared panel when the user leaves", async 
   // The archive is not a `MissionBoard`, so it carries its own release of the
   // ONE shell detail panel (HOU-1165's family). Without it the archived chat
   // keeps portaling into that panel after the user has navigated away.
-  await sectionRows(page, "Mission Control").first().click();
-  await screen(page).getByRole("button", { name: "Archived" }).click();
+  await sectionTab(page, "Archived").click();
   await screen(page).getByText("Old expense report").first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
@@ -255,7 +289,7 @@ test("a team's archive lets go of the shared panel when the user leaves", async 
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
-test("a plain member gets Routines and Files, and only loses Team Settings", async ({
+test("a plain member gets Routines and Files, and only loses Manage agents", async ({
   page,
   request,
 }) => {
@@ -263,36 +297,43 @@ test("a plain member gets Routines and Files, and only loses Team Settings", asy
   await openShell(page);
 
   // Routines and Files show the team's WORK, so they are every member's; only
-  // Team Settings CONFIGURES, so only Team Settings is gated.
-  await expect(sectionRows(page, "Routines").first()).toBeVisible();
-  await expect(sectionRows(page, "Files").first()).toBeVisible();
-  await expect(sectionRows(page, "Team Settings")).toHaveCount(0);
+  // Manage agents CONFIGURES, so only Manage agents is gated. The tab row IS
+  // the visible-sections list, so a missing tab is the whole gate.
+  await expect(sectionTab(page, "Routines")).toBeVisible();
+  await expect(sectionTab(page, "Files")).toBeVisible();
+  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
+  // Archived is the team's WORK in the past tense, so a member keeps it.
+  await expect(sectionTab(page, "Archived")).toBeVisible();
+  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(4);
 
-  // And the rows go somewhere: the rail can never promise a section the screen
+  // And the tabs go somewhere: the row can never promise a section the screen
   // will not render (`visibleTeamSectionsForTeam` is the one list both read).
-  const routines = sectionRows(page, "Routines").first();
-  await routines.click();
-  await expect(routines).toHaveAttribute("aria-current", "page");
-  const files = sectionRows(page, "Files").first();
-  await files.click();
-  await expect(files).toHaveAttribute("aria-current", "page");
+  await sectionTab(page, "Routines").click();
+  await expect(sectionTab(page, "Routines")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await sectionTab(page, "Files").click();
+  await expect(sectionTab(page, "Files")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
-test("a plain member gets no Team Settings row, and lands on Mission Control", async ({
+test("a plain member lands on Tasks, with the team named once", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, MEMBER_CAPS);
   await openShell(page);
 
-  await expect(sectionRows(page, "Team Settings")).toHaveCount(0);
-  const missionControl = sectionRows(page, "Mission Control").first();
-  await missionControl.click();
-  await expect(missionControl).toHaveAttribute("aria-current", "page");
-  await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: await workspaceName(page),
-    }),
-  ).toBeVisible();
+  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
+  await sectionTab(page, "Tasks").click();
+  await expect(sectionTab(page, "Tasks")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(teamTitle(page, await workspaceName(page))).toBeVisible();
+  // No agent pinned, so the crumb is the team and nothing else.
+  await expect(screen(page).getByText("All agents")).toHaveCount(0);
 });

@@ -23,6 +23,8 @@ const EXPECTED = [
   "not_team_owner",
   "invalid_team_id",
   "invalid_name",
+  "invalid_icon",
+  "invalid_color",
   "not_a_member",
 ];
 
@@ -74,6 +76,16 @@ describe("isExpectedAgentTeamError", () => {
   // at 60 runes; this is what remains if one ever gets past them.
   it("is true for invalid_name, which a user can type their way into", () => {
     assert.equal(isExpectedAgentTeamError(flat("invalid_name")), true);
+  });
+
+  // The identity pair is the same bet as `invalid_name`: the picker only ever
+  // sends a glyph from the client's own curated set and a color from the shared
+  // palette, so these should be unreachable. If the two ever drift apart, the
+  // user is mid-gesture in a list we drew and nothing changed, so a calm
+  // sentence pointing back at that list beats a report-a-bug toast.
+  it("is true for invalid_icon and invalid_color, the picker's refusals", () => {
+    assert.equal(isExpectedAgentTeamError(flat("invalid_icon")), true);
+    assert.equal(isExpectedAgentTeamError(flat("invalid_color")), true);
   });
 
   it("is false for a plain error and for nothing at all", () => {

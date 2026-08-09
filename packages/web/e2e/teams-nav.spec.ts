@@ -5,8 +5,8 @@ import {
 } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openSettings } from "./support/settings-nav";
-import { rail, screen } from "./support/team-nav";
+import { litRows, rail, screen } from "./support/team-nav";
+import { startGuidedTour } from "./support/tour-nav";
 
 /**
  * The destination map, driven end to end.
@@ -18,12 +18,15 @@ import { rail, screen } from "./support/team-nav";
  * caller shows up as a click that does nothing.
  */
 
-/** The rail row for a team section, and whether it says "you are here". */
-function sectionRow(page: Page, label: string) {
-  return rail(page)
-    .locator("[data-sidebar-section-row]")
-    .filter({ hasText: label })
-    .first();
+/**
+ * The rail row for a TEAM, and whether it says "you are here".
+ *
+ * A block is a name and its agents now — its sections are tabs on the screen
+ * the name opens — so the header is the only row that can answer the question
+ * for a team. The seeded workspace has one team, the trailing default block.
+ */
+function teamRow(page: Page) {
+  return rail(page).locator("[data-sidebar-default-header]");
 }
 
 test("the guided tour ends on the team's Routines, where the seeded routine is", async ({
@@ -32,11 +35,10 @@ test("the guided tour ends on the team's Routines, where the seeded routine is",
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // The tour's one entry point: Settings > Help > Guide me. It leaves Settings
-  // before arming, so every anchor it spotlights is on screen.
-  await openSettings(page);
-  await page.getByTestId("settings-row-guide-me").click();
-  await expect(page.getByText(/Tour 1 of/)).toBeVisible();
+  // The tour's one entry point: "Guide me", behind the help control in the
+  // rail's footer. It lands the user on home before arming, so every anchor the
+  // overlay spotlights is on screen.
+  await startGuidedTour(page);
 
   // Walk the whole thing. Every step OPENS its destination and spotlights a
   // real anchor, so a step whose surface or anchor moved (the team section rows
@@ -59,10 +61,8 @@ test("the guided tour ends on the team's Routines, where the seeded routine is",
   await page.getByRole("button", { name: "I'll do something amazing" }).click();
   await expect(page.getByText(/Tour \d+ of/)).toHaveCount(0);
 
-  await expect(sectionRow(page, "Routines")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  // The rail says which TEAM is open; the screen says which of its sections.
+  await expect(litRows(teamRow(page))).toHaveCount(1);
   await expect(
     screen(page).getByRole("button", { name: "New routine" }).first(),
   ).toBeVisible();
@@ -75,23 +75,21 @@ test("the command palette's agent jump opens that agent's team board", async ({
   await expect(page.getByText("Your teams")).toBeVisible();
 
   await page.keyboard.press("ControlOrMeta+KeyK");
-  const search = page.getByPlaceholder("Search agents, missions, actions...");
+  const search = page.getByPlaceholder("Search agents, tasks, actions...");
   await expect(search).toBeVisible();
   await search.fill("Houston");
   await page.getByRole("option", { name: "Houston", exact: true }).click();
 
-  // Not "the agent's screen" (there is none): its team's Mission Control,
-  // filtered to it — so the rail lights the team's row AND the agent's.
-  await expect(sectionRow(page, "Mission Control")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  // Not "the agent's screen" (there is none): its team's Tasks board, filtered
+  // to it. The rail fills exactly ONE row, and a narrowed board makes the AGENT
+  // row the precise answer, so the team's own header steps aside.
   await expect(
     rail(page)
       .locator("[data-sidebar-item]")
       .filter({ hasText: "Houston" })
       .locator("[aria-current='page']"),
   ).toHaveCount(1);
+  await expect(litRows(teamRow(page))).toHaveCount(0);
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
 });
 
@@ -102,30 +100,33 @@ test("the palette's recent missions open the mission's chat on that team board",
   await expect(page.getByText("Your teams")).toBeVisible();
 
   await page.keyboard.press("ControlOrMeta+KeyK");
-  await page
-    .getByPlaceholder("Search agents, missions, actions...")
-    .fill("Tokyo");
+  await page.getByPlaceholder("Search agents, tasks, actions...").fill("Tokyo");
   await page.getByRole("option", { name: /Plan a trip to Tokyo/ }).click();
 
   // The published target (`activityPanelId`) has exactly one consumer now — the
   // cross-agent board source — and it has to be the board the nav just opened.
   // Before the cutover the per-agent board owned this; a migration that forgot
   // to move it leaves the panel shut and this red.
-  await expect(sectionRow(page, "Mission Control")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-  await expect(page.getByText("Mission: Plan a trip to Tokyo")).toBeVisible();
+  // Same handoff as the agent jump: the board is the mission's agent's team,
+  // filtered to that agent, so the AGENT row is the one filled.
+  await expect(
+    rail(page)
+      .locator("[data-sidebar-item]")
+      .filter({ hasText: SEED_AGENT_NAME })
+      .locator("[aria-current='page']"),
+  ).toHaveCount(1);
+  await expect(litRows(teamRow(page))).toHaveCount(0);
+  await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 });
 
-test("the palette's jump reaches an agent that lives in a team the user has NOT joined", async ({
+test("a team the user holds no membership in is drawn, and the palette jumps into it", async ({
   page,
 }) => {
-  // C13's first non-negotiable: joining a team is sidebar PINNING and it grants
-  // nothing. Every team the gateway lists is one this caller may already SEE, so
-  // the destination map resolving an unjoined team is a real destination, not a
-  // dead end. Blocking the view on `joined` made this jump land on the dashboard.
+  // C13's first non-negotiable: membership of a team grants NOTHING. Every team
+  // the gateway lists is one this caller may already SEE, so the destination map
+  // resolving a team the caller never joined is a real destination, not a dead
+  // end. Blocking the view on `joined` made this jump land on home instead.
   await page.request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
     data: { multiplayer: true, teams: true, agentTeams: true, role: "user" },
   });
@@ -134,8 +135,8 @@ test("the palette's jump reaches an agent that lives in a team the user has NOT 
       teams: [
         { id: "team-acme", name: "Acme", isDefault: true, sortOrder: 0 },
         {
-          // A public team of the space, holding the seeded agent (and therefore
-          // its seeded mission), whose only member is somebody else.
+          // A team of the space holding the seeded agent (and therefore its
+          // seeded mission), whose only MEMBER is somebody else.
           id: "team-design",
           name: "Design",
           sortOrder: 1,
@@ -149,32 +150,44 @@ test("the palette's jump reaches an agent that lives in a team the user has NOT 
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // Not joined, and the rail says so: no block of its own, and its agent is
-  // kept out of the default team's leftovers. The footer disclosure is the
-  // join door, and it stays the join door.
+  // The rail DRAWS it. Visibility is the gateway's call and it serves a member
+  // only the teams they are PART OF — which includes any team holding an agent
+  // the caller can see. The seeded agent carries no assignments, so a plain
+  // member sees it, so Design comes back from the read, and the client has no
+  // joined/unjoined split left to filter it out with. "Not joined" now means
+  // exactly one thing: the caller holds no membership ROW (no Leave entry, no
+  // member list) — never that the team is hidden from them.
   await expect(
     rail(page).locator('[data-sidebar-group-header="team-design"]'),
-  ).toHaveCount(0);
-  await expect(rail(page).getByText(SEED_AGENT_NAME)).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "Other teams" })).toBeVisible();
+  ).toHaveCount(1);
+  await expect(
+    rail(page)
+      .locator("[data-sidebar-item]")
+      .filter({ hasText: SEED_AGENT_NAME }),
+  ).toHaveCount(1);
 
   await page.keyboard.press("ControlOrMeta+KeyK");
-  const search = page.getByPlaceholder("Search agents, missions, actions...");
+  const search = page.getByPlaceholder("Search agents, tasks, actions...");
   await expect(search).toBeVisible();
   await search.fill(SEED_AGENT_NAME);
   await page
     .getByRole("option", { name: SEED_AGENT_NAME, exact: true })
     .click();
 
-  // The board on the glass is DESIGN's, titled with the team, carrying the
-  // agent's missions...
+  // The board on the glass is DESIGN's, carrying the agent's missions. The
+  // team's own lozenge is the screen's heading AND the jump's destination, and
+  // the jump PINNED an agent — so the heading is both names, in order.
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Design" }),
+    screen(page).getByRole("heading", {
+      level: 1,
+      name: `Design ${SEED_AGENT_NAME}`,
+      exact: true,
+    }),
   ).toBeVisible();
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
-  // ...and not the dashboard, which is where the joined-ness guard used to
-  // dump every one of these jumps.
+  // ...and not HOME (the first team, "Acme"), which is where the joined-ness
+  // guard used to dump every one of these jumps.
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Mission Control" }),
+    screen(page).getByRole("heading", { level: 1, name: /^Acme/ }),
   ).toHaveCount(0);
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
 });

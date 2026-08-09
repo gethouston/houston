@@ -20,9 +20,8 @@ const teamMissionBoard = read(
   "../src/components/team-view/team-mission-board.tsx",
 );
 const teamAgentsList = read("../src/components/team-view/team-agents-list.tsx");
-const permissionsAgentsList = read(
-  "../src/components/permissions/agents-list.tsx",
-);
+// The archive is its OWN section now, not a mode of the Tasks one.
+const teamArchived = read("../src/components/team-view/team-archived.tsx");
 
 /** The JSX attributes of the `<MissionControlArchived …>` element. */
 const archivedCallSite = (source: string) => {
@@ -49,28 +48,40 @@ const card = (id: string, agentPath: string): KanbanItem =>
  */
 describe("one sweep, whatever the scope", () => {
   it("gives the team archive the full roster plus the shared scope", () => {
-    const call = archivedCallSite(teamMissionControl);
-    assert.ok(
-      !call.includes("agents={team.agents}"),
-      "the team archive must not key its sweep on the team's agents",
+    // The element's FIRST prop is the sweep roster. Scanning the whole call
+    // site would catch `scopedAgents` (the "New task" menu's roster) and the
+    // filter capsule's own `agents`, which are the team's slice on purpose.
+    assert.match(
+      teamArchived,
+      /<MissionControlArchived\s+agents=\{agents\}/,
+      "the archive sweeps the FULL roster, never the team's slice",
     );
-    assert.match(call, /agents=\{agents\}/);
+    const call = archivedCallSite(teamArchived);
     assert.match(call, /scope=\{scope\}/);
     assert.match(
-      teamMissionControl,
+      teamArchived,
       /useAgentStore\(\(s\) => s\.agents\)/,
-      "the team section must own the full roster",
+      "the archive section must own the full roster",
     );
-    assert.match(teamMissionControl, /useTeamBoardScope\(team\)/);
+    // Its own filter SOURCE, the same scope shape: the one-sweep rule is
+    // about the paths and the query key, and neither moved.
+    assert.match(
+      teamArchived,
+      /useTeamScope\(team, filterAgentId, setFilterAgentId\)/,
+    );
   });
 
-  it("shares one scope object between the team's active board and its archive", () => {
-    const board = archivedCallSite(teamMissionControl);
-    assert.match(board, /scope=\{scope\}/);
+  it("shares one scope object between the team's two board sections", () => {
+    // Two SECTIONS now rather than two modes of one, so the thing that keeps
+    // them on one sweep is that both build the scope from the same hook over
+    // the same full roster — not that they share a parent.
+    assert.match(archivedCallSite(teamArchived), /scope=\{scope\}/);
     assert.match(
       teamMissionControl,
       /<TeamMissionBoard[\s\S]*?scope=\{scope\}/,
     );
+    // The BOARD is the one surface still keyed on the team-wide pin.
+    assert.match(teamMissionControl, /useTeamBoardScope\(team\)/);
     // The scope now belongs to the hook, not to the active board alone.
     assert.ok(
       !teamMissionBoard.includes("scopePaths"),
@@ -139,30 +150,46 @@ describe("the archive releases the shell detail panel", () => {
       !teamMissionBoard.includes("already releases the shell detail panel"),
       "the active board covers only itself",
     );
-    assert.match(teamMissionBoard, /archive carries its own release/);
+    assert.match(teamMissionBoard, /Archived SECTION carries its own release/);
   });
 });
 
-describe("a team's archive is named after the team", () => {
-  it("passes the scope's title through, and only the team's agents to the filter", () => {
-    assert.match(missionControlArchived, /title=\{scope\?\.title\}/);
-    assert.match(missionControlArchived, /agents=\{scopedAgents\}/);
+describe("a team's archive names nothing: the lit tab already did", () => {
+  it("hands the toolbar no title and no roster", () => {
+    // Row 1 of the team frame (`TeamChrome`) names the team above every one of
+    // its sections, and the Archived TAB says which section is up, so a board
+    // that titled itself printed the same words twice on one screen.
+    assert.ok(
+      !missionControlArchived.includes("title={scope?.title}"),
+      "the team frame owns the team's name, not the board",
+    );
+    assert.ok(
+      !missionControlArchived.includes("agents={scopedAgents}"),
+      "the agent scope is the strip's crumb, not the archive's toolbar",
+    );
+    // It still NARROWS through the one shared scope — that never moved.
+    assert.match(
+      missionControlArchived,
+      /useMcScope\(agents, data\.items, scope\)/,
+    );
   });
 });
 
-describe("one agent grid, two doors", () => {
-  it("has both agent lists delegate their populated case to the shared grid", () => {
-    for (const source of [teamAgentsList, permissionsAgentsList]) {
-      assert.match(source, /<PermissionsAgentGrid/);
-      assert.ok(
-        !source.includes("<CatalogSectionHeader"),
-        "the section header belongs to the shared grid",
-      );
-      assert.ok(
-        !source.includes("<PermissionsAgentRow"),
-        "the rows belong to the shared grid",
-      );
-    }
+describe("one agent grid, ONE door", () => {
+  it("has the team's agent list delegate its populated case to the shared grid", () => {
+    // There used to be two doors onto this grid: a team's settings section and
+    // the top-level Permissions screen. Permissions is deleted, so a team's
+    // Manage agents section is the only one, and the grid stays shared because
+    // an agent's settings page is still reached from it.
+    assert.match(teamAgentsList, /<PermissionsAgentGrid/);
+    assert.ok(
+      !teamAgentsList.includes("<CatalogSectionHeader"),
+      "the section header belongs to the shared grid",
+    );
+    assert.ok(
+      !teamAgentsList.includes("<PermissionsAgentRow"),
+      "the rows belong to the shared grid",
+    );
   });
 
   it("gives the team's empty state a designed title and body", () => {

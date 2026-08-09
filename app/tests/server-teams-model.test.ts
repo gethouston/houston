@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
 import {
   normalizeTeamOverlay,
-  partitionTeams,
   resolveServerTeams,
 } from "../src/lib/server-teams-model.ts";
 import {
@@ -158,6 +157,31 @@ describe("resolveServerTeams", () => {
     });
   });
 
+  it("rule 5: the team's identity is copied verbatim off the wire too", () => {
+    const teams = resolveServerTeams(
+      [serverTeam({ id: "t1", icon: "rocket", color: "#5E6AD2" })],
+      [],
+      layout(),
+    );
+    assert.equal(teams[0]?.icon, "rocket");
+    assert.equal(teams[0]?.color, "#5E6AD2");
+  });
+
+  it("rule 5: an unset icon or color stays ABSENT, not undefined-valued", () => {
+    // Absent is what tells the rail to draw its own default, and it is also how
+    // the gateway spells "unset" — a key carrying `undefined` would answer
+    // `"icon" in team` differently from the wire shape it mirrors.
+    const teams = resolveServerTeams(
+      [serverTeam({ id: "t1" }), serverTeam({ id: "t2", icon: "book" })],
+      [],
+      layout(),
+    );
+    assert.equal("icon" in (teams[0] as TeamView), false);
+    assert.equal("color" in (teams[0] as TeamView), false);
+    // One field set does not conjure the other.
+    assert.equal("color" in (teams[1] as TeamView), false);
+  });
+
   it("a repeated slug inside one team renders the agent once", () => {
     const teams = resolveServerTeams(
       [serverTeam({ id: "t1", agentSlugs: ["a", "a"] })],
@@ -180,44 +204,6 @@ describe("resolveServerTeams", () => {
   });
 });
 
-describe("partitionTeams", () => {
-  const view = (id: string, server?: TeamView["server"]): TeamView => ({
-    id,
-    name: id,
-    agents: [],
-    isDefault: false,
-    ...(server ? { server } : {}),
-  });
-  const facts = (joined: boolean): TeamView["server"] => ({
-    joined,
-    owner: false,
-    memberCount: 1,
-    sortOrder: 0,
-  });
-
-  it("rule 6: splits joined from other, preserving order", () => {
-    const { joined, other } = partitionTeams([
-      view("a", facts(true)),
-      view("b", facts(false)),
-      view("c", facts(true)),
-      view("d", facts(false)),
-    ]);
-    assert.deepEqual(ids(joined), ["a", "c"]);
-    assert.deepEqual(ids(other), ["b", "d"]);
-  });
-
-  it("rule 6: with no server facts EVERYTHING is joined (the local backend is a no-op)", () => {
-    const local = [view("g1"), view("g2")];
-    const { joined, other } = partitionTeams(local);
-    assert.deepEqual(joined, local);
-    assert.deepEqual(other, []);
-  });
-
-  it("rule 6: an empty list splits into two empty lists", () => {
-    assert.deepEqual(partitionTeams([]), { joined: [], other: [] });
-  });
-});
-
 describe("normalizeTeamOverlay", () => {
   const stored = layout(
     [
@@ -232,12 +218,12 @@ describe("normalizeTeamOverlay", () => {
     serverTeam({ id: "t2", agentSlugs: ["b"] }),
   ];
 
-  it("rule 7: adjusts a live server team's row, keeping only agent ids that team holds", () => {
+  it("rule 6: adjusts a live server team's row, keeping only agent ids that team holds", () => {
     const next = normalizeTeamOverlay(stored, server);
     assert.deepEqual(next.groups[0]?.agentIds, ["a"]);
   });
 
-  it("rule 7: carries a stored group that is NOT a live server team through UNTOUCHED", () => {
+  it("rule 6: carries a stored group that is NOT a live server team through UNTOUCHED", () => {
     // The user's own local grouping. It names no server team, so there is
     // nothing to adjust it against, and deleting it would destroy work the
     // capability going away is supposed to hand straight back.
@@ -246,19 +232,20 @@ describe("normalizeTeamOverlay", () => {
     assert.deepEqual(carried, stored.groups[1]);
   });
 
-  it("rule 7: preserves group order, live and stored alike", () => {
+  it("rule 6: preserves group order, live and stored alike", () => {
     assert.deepEqual(
       normalizeTeamOverlay(stored, server).groups.map((g) => g.id),
       ["t1", "grp_local", "t2"],
     );
   });
 
-  it("rule 7: a personal space's single team does not erase the user's local groups", () => {
-    // The reviewer's scenario: an `agentTeams` personal space serves exactly
-    // ONE team (the default), and every local group the user built before the
-    // capability appeared names an id that team list does not hold. One drag
-    // or one collapse used to persist them all away, names and context with
-    // them.
+  it("rule 6: a personal space's single team does not erase the user's local groups", () => {
+    // The reviewer's scenario: a FRESH `agentTeams` personal space serves one
+    // team, its default (it may create more, and the read serves them all —
+    // only PEOPLE management is refused there), and every local group the user
+    // built before the capability appeared names an id that team list does not
+    // hold. One drag or one collapse used to persist them all away, names and
+    // context with them.
     const before = layout([
       group("grp_design", ["a"], { name: "Design", context: "the brand" }),
       group("grp_ops", ["b"], { name: "Ops", collapsed: true }),
@@ -296,7 +283,7 @@ describe("normalizeTeamOverlay", () => {
     );
   });
 
-  it("rule 7: the collapse toggle's write keeps the local groups too", () => {
+  it("rule 6: the collapse toggle's write keeps the local groups too", () => {
     const before = layout([
       group("grp_design", ["a"], { name: "Design", context: "the brand" }),
     ]);
@@ -311,7 +298,7 @@ describe("normalizeTeamOverlay", () => {
     assert.equal(persisted.groups[1]?.collapsed, true);
   });
 
-  it("rule 7: a group reorder's write keeps the local groups too", () => {
+  it("rule 6: a group reorder's write keeps the local groups too", () => {
     const before = layout([
       group("t1", ["a"]),
       group("grp_design", [], { name: "Design", context: "the brand" }),
@@ -331,7 +318,7 @@ describe("normalizeTeamOverlay", () => {
     );
   });
 
-  it("rule 7: a BLANK overlay name on a live team is filled from the server's own", () => {
+  it("rule 6: a BLANK overlay name on a live team is filled from the server's own", () => {
     // An upserted overlay row is born nameless (`blankOverlayGroup`), which is
     // fine while the capability is on (the server names its teams) and renders
     // a nameless block the moment it goes away. Filling it costs nothing and
@@ -341,13 +328,13 @@ describe("normalizeTeamOverlay", () => {
     assert.equal(normalizeTeamOverlay(before, named).groups[0]?.name, "Growth");
   });
 
-  it("rule 7: a name the user already set is never overwritten by the server's", () => {
+  it("rule 6: a name the user already set is never overwritten by the server's", () => {
     const before = layout([group("t1", ["a"], { name: "Mine" })]);
     const named = [serverTeam({ id: "t1", name: "Growth", agentSlugs: ["a"] })];
     assert.equal(normalizeTeamOverlay(before, named).groups[0]?.name, "Mine");
   });
 
-  it("rule 7: leaves collapsed, context and ungroupedOrder untouched", () => {
+  it("rule 6: leaves collapsed, context and ungroupedOrder untouched", () => {
     // Inert on a server host (only id/collapsed/agentIds are read), so
     // rewriting them would churn the stored preference for nothing.
     const next = normalizeTeamOverlay(stored, server);
@@ -356,13 +343,13 @@ describe("normalizeTeamOverlay", () => {
     assert.deepEqual(next.ungroupedOrder, ["a", "b"]);
   });
 
-  it("rule 7: does not mutate the layout it was handed", () => {
+  it("rule 6: does not mutate the layout it was handed", () => {
     normalizeTeamOverlay(stored, server);
     assert.equal(stored.groups.length, 3);
     assert.deepEqual(stored.groups[0]?.agentIds, ["a", "moved", "ghost"]);
   });
 
-  it("rule 7: an empty server list leaves every stored group exactly as it was", () => {
+  it("rule 6: an empty server list leaves every stored group exactly as it was", () => {
     assert.deepEqual(normalizeTeamOverlay(stored, []).groups, stored.groups);
   });
 });

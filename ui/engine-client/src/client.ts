@@ -1723,8 +1723,9 @@ export class HoustonClient {
    * Every team of the active space, as the CALLER sees it: ordered by the
    * gateway (`sortOrder`, then creation), with `agentSlugs` role-filtered and
    * `joined`/`owner`/`memberCount` already resolved. A personal space answers
-   * exactly the default team, so the client renders it with no branch. A GET,
-   * so it replays safely on a transient transport blip.
+   * its REAL list too — the default team plus whatever its owner created, all
+   * of them joined and owned by the one person in it — so the client renders it
+   * with no branch. A GET, so it replays safely on a transient transport blip.
    */
   async listAgentTeams(): Promise<AgentTeam[]> {
     const body = await this.request<{ teams?: AgentTeam[] }>(
@@ -1741,19 +1742,48 @@ export class HoustonClient {
    * auto-replays it — the gateway has no dedup, so a LOST response must be
    * reconciled with {@link listAgentTeams}, never blind-retried.
    */
-  createAgentTeam(name: string): Promise<AgentTeam> {
-    return this.request("POST", "/org/teams", { name });
+  createAgentTeam(input: {
+    name: string;
+    icon?: string;
+    color?: string;
+  }): Promise<AgentTeam> {
+    return this.request("POST", "/org/teams", input);
   }
   /**
-   * Rename or reorder one team (effective team owner only). Partial: an omitted
-   * key is untouched, so a rename must not also send `sortOrder`. Allowed on the
-   * default team — that is the only way its name changes, since its rail block
-   * deliberately offers no menu. Answers the full team so the caller repaints
-   * from the host's truth rather than its own optimistic guess.
+   * Rename, reorder or restyle one team (effective team owner only — identity
+   * is not a structural property: the team you may rename is the team you may
+   * style). Partial: an omitted key is untouched, so a rename must not also send
+   * `sortOrder`. Allowed on the default team — that is the only way its name
+   * changes, since its rail block deliberately offers no menu. Answers the full
+   * team so the caller repaints from the host's truth rather than its own
+   * optimistic guess.
+   *
+   * `icon`/`color` follow C13 §Team identity, and their three states are
+   * distinct: a string SETS the field, `""` CLEARS it back to unset, and an
+   * OMITTED key leaves it alone. `null` is NOT a clear — the gateway answers
+   * `400`, exactly as it does for `{"name": null}`, because there is one
+   * spelling for erasing a field and it is `""`. Neither field is trimmed
+   * (unlike `name`): these are tokens a client generates, so whitespace in one
+   * is a client bug worth the refusal. The gateway validates SHAPE only —
+   * `icon` `^[a-z0-9-]{1,32}$` (`400 invalid_icon`), `color` `#rrggbb` or a
+   * theme token name `^[a-z][a-z0-9-]{0,23}$` (`400 invalid_color`), both with
+   * the flat `{error, code}` body — because the VOCABULARY is the client's and
+   * a gateway policing the list would ship a release per glyph.
+   *
+   * `context` is the team's shared prose (see {@link AgentTeam.context}). It is
+   * NOT an identity field: any string is valid, `""` is simply an empty context
+   * rather than a special CLEAR, and it is never trimmed — the user's own line
+   * breaks and indentation are the content.
    */
   updateAgentTeam(
     teamId: string,
-    patch: { name?: string; sortOrder?: number },
+    patch: {
+      name?: string;
+      sortOrder?: number;
+      icon?: string;
+      color?: string;
+      context?: string;
+    },
   ): Promise<AgentTeam> {
     return this.request("PATCH", `/org/teams/${this.seg(teamId)}`, patch);
   }
@@ -1783,7 +1813,9 @@ export class HoustonClient {
   /**
    * Subscribe the caller to a team (v1 teams are all public). Idempotent, and it
    * never demotes an existing owner row, so a double-click is harmless. A no-op
-   * on the default team, which everyone is already in.
+   * on the default team, which everyone is already in. One of the THREE
+   * people-management routes a personal space refuses (`403 personal_space`) —
+   * it holds one human, so there is nobody to subscribe to anyone's team.
    */
   async joinAgentTeam(teamId: string): Promise<void> {
     await this.request("POST", `/org/teams/${this.seg(teamId)}/join`);
@@ -1792,7 +1824,8 @@ export class HoustonClient {
    * Drop one membership row: the caller's own (leave) or someone else's (remove,
    * effective team owner only). Idempotent — removing a non-member still answers
    * `204`, so a double-click cannot 404. `400 default_team`: nobody leaves the
-   * catch-all.
+   * catch-all. `403 personal_space` in a personal space, ahead of that — there
+   * are no people to manage there, whichever team is named.
    */
   async removeAgentTeamMember(teamId: string, userId: string): Promise<void> {
     await this.request(
@@ -1805,7 +1838,8 @@ export class HoustonClient {
    * owner only. An UPSERT: it also adds a member who never joined, and the
    * target must already be in the space (`400 not_a_member`). Demoting the last
    * explicit owner is allowed, because implicit owners always exist. Refused
-   * with `400 default_team`, which carries no explicit rows at all.
+   * with `400 default_team`, which carries no explicit rows at all, and with
+   * `403 personal_space` ahead of that in a personal space.
    */
   async setAgentTeamMemberOwner(
     teamId: string,

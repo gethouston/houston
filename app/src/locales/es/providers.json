@@ -9,7 +9,7 @@
   },
   "signOutConfirm": {
     "title": "¿Cerrar sesión de {{provider}}?",
-    "description": "Houston dejará de usar {{provider}} hasta que vuelvas a iniciar sesión. Las misiones existentes pueden terminar su turno actual.",
+    "description": "Houston dejará de usar {{provider}} hasta que vuelvas a iniciar sesión. Las tareas existentes pueden terminar su turno actual.",
     "confirm": "Cerrar sesión",
     "cancel": "Cancelar"
   },

@@ -17,9 +17,9 @@ test("leaving the team's Routines with its chat open closes the shared panel", a
 }) => {
   await page.goto("/");
 
-  // Mission Control first: the board owns the panel and nothing is selected,
+  // Tasks first: the board owns the panel and nothing is selected,
   // so the panel is closed.
-  await openTeamSection(page, "Mission Control");
+  await openTeamSection(page, "Tasks");
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 
   // Routines: the create intake opens the shared panel.
@@ -30,7 +30,7 @@ test("leaving the team's Routines with its chat open closes the shared panel", a
 
   // Back to the board: the routine chat no longer renders into the panel, so
   // the panel must close with it — never linger as an empty card.
-  await openTeamSection(page, "Mission Control");
+  await openTeamSection(page, "Tasks");
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
@@ -40,7 +40,7 @@ test("leaving the team's board with a mission open closes the shared panel", asy
   await page.goto("/");
 
   // A mission chat claims the panel from the board side.
-  await openTeamSection(page, "Mission Control");
+  await openTeamSection(page, "Tasks");
   await screen(page).getByText("Plan a trip to Tokyo").first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
@@ -53,7 +53,7 @@ test("leaving the team's board with a mission open closes the shared panel", asy
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 
   // And returning to the board does not resurrect a stale panel.
-  await openTeamSection(page, "Mission Control");
+  await openTeamSection(page, "Tasks");
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
@@ -62,26 +62,26 @@ test("leaving a board with the new-mission composer open still lets it reopen", 
 }) => {
   await page.goto("/");
 
-  // Mission Control, with the EMPTY new-mission composer claiming the panel.
+  // The team's board, with the EMPTY new-mission composer claiming the panel.
   // That composer's open state lives inside AIBoard, not in the app store, so
   // releasing the panel means calling the closer the board handed back — not
   // just dropping the app-side selection.
-  await page.locator('[data-tour-target="nav-dashboard"]').click();
-  await page.getByRole("button", { name: "New mission" }).first().click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Houston", exact: true })
-    .click();
+  await openTeamSection(page, "Tasks");
+  // A one-agent team has nothing to ask: "New task" opens that agent's
+  // composer straight away, with no picker in the way.
+  await page.getByRole("button", { name: "New task" }).first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
-  // Off to another top-level view: the board goes off screen and lets go.
+  // Off to another top-level view: the team screen is only HIDDEN, never
+  // unmounted, so the board goes off screen still holding its own state and
+  // has to let go of the panel itself.
   await page.locator('[data-tour-target="nav-skills"]').click();
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 
   // Back on the board, a mission card must be able to open the panel AGAIN.
   // Releasing only the app-side selection left AIBoard's own `showPanel` stuck
   // true, so its open-change effect never fired and this click did nothing.
-  await page.locator('[data-tour-target="nav-dashboard"]').click();
+  await openTeamSection(page, "Tasks");
   await screen(page).getByText("Plan a trip to Tokyo").first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 });
@@ -108,18 +108,16 @@ test("a team's routine chat lets go of the shared panel when the team leaves the
     timeout: 15_000,
   });
 
-  // Off to the global board: the team screen is still mounted, so its chat has
-  // to release the panel itself — otherwise it stays painted over the board.
-  await page.locator('[data-tour-target="nav-dashboard"]').click();
+  // Off to another TOP-LEVEL view — the exit a section swap cannot model. The
+  // whole team screen is hidden rather than unmounted, so its chat is still
+  // mounted and has to release the panel itself; otherwise it stays painted
+  // over whatever the user went to look at.
+  await page.locator('[data-tour-target="nav-agent-store"]').click();
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 
-  // And the board can then claim the panel for its own mission.
-  await screen(page).getByText("Plan a trip to Tokyo").first().click();
-  await expect(page.getByTestId("mission-panel")).toBeVisible();
-
-  // Back to the team: the board lets go, the team's chat takes the panel back,
-  // and the list still says which routine is open. A section that quietly
-  // dropped its selection would leave a lit-nothing list beside a full panel.
+  // And back: the still-mounted chat takes the panel again, and the list still
+  // says which routine is open. A section that quietly dropped its selection
+  // on the way out would leave a lit-nothing list beside a full panel.
   await openTeamSection(page, "Routines");
   await expect(page.getByText("Routine: Morning brief")).toBeVisible({
     timeout: 15_000,

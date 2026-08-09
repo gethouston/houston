@@ -2,18 +2,18 @@ import { expect, test } from "./support/fixtures";
 import { openTeamSection } from "./support/team-nav";
 
 /**
- * WHO owns the board keyboard when several boards are alive at once.
+ * WHO owns the board keyboard while a board is alive but off the glass.
  *
- * Mission Control and every team's Mission Control are kept-alive top-level
- * screens: once visited they stay mounted, hidden behind `display: none`. Each
- * of them mounts a mission board, and a board claims the arrow-key navigator
- * and the Enter opener by publishing callbacks into the UI store — a single
- * slot, so every registration is last-writer-wins.
+ * The team view is a kept-alive top-level screen: once visited it stays
+ * mounted, hidden behind `display: none`, with its mission board and all of
+ * its state intact. A board claims the arrow-key navigator and the Enter
+ * opener by publishing callbacks into the UI store — a single slot, so every
+ * registration is last-writer-wins.
  *
  * That makes the claim a correctness rule rather than a detail: only the board
  * actually ON SCREEN may hold it. A hidden board that keeps the slot moves a
- * highlight ring inside its own invisible screen, and the user's arrow key
- * does nothing they can see.
+ * highlight ring inside its own invisible screen and swallows the key, so the
+ * user's arrow does nothing they can see.
  */
 
 /** The kanban card wearing the arrow-key highlight ring, on screen. */
@@ -52,41 +52,43 @@ async function pressAndRecordPrevention(
   );
 }
 
-test("the visible board owns the arrow keys, not a kept-alive team board", async ({
+test("a kept-alive team board off the glass owns nothing, and takes the keys back", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // Both boards carry the same seeded mission, and a hidden screen keeps its
-  // copy in the DOM — so every "the board is up" check counts the VISIBLE one.
+  // A hidden screen keeps its cards in the DOM, so every "the board is up"
+  // check counts the VISIBLE copy.
   const onScreenMission = page
     .getByText("Plan a trip to Tokyo")
     .filter({ visible: true });
 
-  // The global Mission Control board mounts and registers its handlers.
-  const nav = page.locator("[data-tour-target='nav-dashboard']");
-  await nav.click();
+  // The team's Tasks board mounts and registers its handlers.
+  await openTeamSection(page, "Tasks");
   await expect(onScreenMission).toHaveCount(1);
 
-  // A team's Mission Control mounts a SECOND board. It is the later mount, so
-  // an unguarded registration leaves it holding the slot for good.
-  await page
-    .locator("[data-tour-target='agents']")
-    .locator("[data-sidebar-section-row]")
-    .filter({ hasText: "Mission Control" })
-    .first()
-    .click();
-  await expect(onScreenMission).toHaveCount(1);
-  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(2);
+  // Off to a top-level view with no board of its own. The team screen is only
+  // HIDDEN — its board is still mounted, still holding whatever it registered.
+  await page.locator("[data-tour-target='nav-agent-store']").click();
+  await expect(onScreenMission).toHaveCount(0);
+  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(1);
 
-  // Back to the global board. The team screen is only hidden, never unmounted.
-  await nav.click();
-  await expect(onScreenMission).toHaveCount(1);
+  // The keys belong to the user here: nothing on screen has a highlight to
+  // move, so an arrow must neither light a card inside the invisible screen nor
+  // be swallowed on the way past.
+  const prevented = await pressAndRecordPrevention(page, [
+    "ArrowRight",
+    "Enter",
+  ]);
+  expect(prevented).toEqual({ ArrowRight: false, Enter: false });
+  await expect(visibleHighlight(page)).toHaveCount(0);
+  await expect(page.getByTestId("mission-panel")).toBeHidden();
 
-  // One arrow key: exactly one highlight, and it is on screen. Before the fix
-  // the count was 0 — the hidden team board had highlighted a card inside its
-  // own `display: none` screen.
+  // Back on the board, it takes the keys back: one arrow, exactly one
+  // highlight, and it is on screen.
+  await openTeamSection(page, "Tasks");
+  await expect(onScreenMission).toHaveCount(1);
   await page.keyboard.press("ArrowRight");
   await expect(visibleHighlight(page)).toHaveCount(1);
 
@@ -106,10 +108,10 @@ test("a team's Routines section does not swallow the arrow keys or Enter", async
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // Visit the team's Mission Control first, exactly as a user would: its board
+  // Visit the team's Tasks board first, exactly as a user would: its board
   // mounts, claims the arrow/Enter handlers, and then stays mounted behind the
   // section the user moves on to.
-  await openTeamSection(page, "Mission Control");
+  await openTeamSection(page, "Tasks");
   await expect(
     page.getByText("Plan a trip to Tokyo").filter({ visible: true }),
   ).toHaveCount(1);
@@ -140,7 +142,7 @@ test("a team's Routines section does not swallow the arrow keys or Enter", async
 
   // And the board still owns them where a board really is on the glass, so the
   // narrowing did not just disable the feature.
-  await openTeamSection(page, "Mission Control");
+  await openTeamSection(page, "Tasks");
   await page.keyboard.press("ArrowRight");
   await expect(visibleHighlight(page)).toHaveCount(1);
 });

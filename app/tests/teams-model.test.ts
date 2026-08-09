@@ -4,11 +4,11 @@ import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
 import {
   blockedTeamView,
   canDeleteTeam,
-  canJoinTeam,
   canLeaveTeam,
   canRenameTeam,
   canSeeTeamSettings,
   DEFAULT_TEAM_ID,
+  homeTeam,
   resolveTeamSection,
   resolveTeams,
   type ServerTeamFacts,
@@ -110,6 +110,38 @@ describe("resolveTeams", () => {
     assert.equal(teams.find((t) => t.id === "g2")?.agents.length, 0);
   });
 
+  it("copies a named group's icon and color onto its team", () => {
+    // Identity lives on BOTH backends: locally it is stored on the group.
+    const teams = resolveTeams(
+      [agent("a")],
+      layout([
+        {
+          id: "g1",
+          name: "Sales",
+          agentIds: ["a"],
+          icon: "rocket",
+          color: "#5E6AD2",
+        },
+      ]),
+      "Acme",
+    );
+    assert.equal(teams[0]?.icon, "rocket");
+    assert.equal(teams[0]?.color, "#5E6AD2");
+  });
+
+  it("leaves an unset icon or color ABSENT, and gives the default team neither", () => {
+    // Absent means "draw the rail's own default". The VIRTUAL default team owns
+    // no stored group row to hold either one, exactly as it owns no `collapsed`.
+    const teams = resolveTeams(
+      [agent("a")],
+      layout([{ id: "g1", name: "Sales", agentIds: [], icon: "book" }], ["a"]),
+      "Acme",
+    );
+    assert.equal("color" in (teams[0] as TeamView), false);
+    assert.equal("icon" in (teams[1] as TeamView), false);
+    assert.equal("color" in (teams[1] as TeamView), false);
+  });
+
   it("teamById resolves both stored and virtual ids", () => {
     const teams = resolveTeams(
       [agent("a")],
@@ -119,6 +151,27 @@ describe("resolveTeams", () => {
     assert.equal(teamById(teams, "g1")?.name, "One");
     assert.equal(teamById(teams, DEFAULT_TEAM_ID)?.isDefault, true);
     assert.equal(teamById(teams, "missing"), null);
+  });
+
+  it("homeTeam is the FIRST team in rail order", () => {
+    // Home is the top of the user's own sidebar. There is no global board to
+    // land on any more, so this single pick is where the app opens and where
+    // every fallback lands.
+    const teams = resolveTeams(
+      [agent("a")],
+      layout([
+        { id: "g1", name: "One", agentIds: ["a"] },
+        { id: "g2", name: "Two", agentIds: [] },
+      ]),
+      "Acme",
+    );
+    assert.equal(homeTeam(teams)?.id, "g1");
+  });
+
+  it("homeTeam answers null while no team has resolved", () => {
+    // The in-flight window of a server-teams read, and a caller with no
+    // workspace. The callers answer it with the Inbox, never with a guess.
+    assert.equal(homeTeam([]), null);
   });
 });
 
@@ -146,7 +199,10 @@ describe("canSeeTeamSettings", () => {
 });
 
 describe("visibleTeamSectionsForTeam", () => {
-  const WORK = ["mission-control", "routines", "files"] as const;
+  // ARCHIVED is the team's work in the past tense, so it belongs to the WORK
+  // run and goes to everyone: only Settings CONFIGURES, and only Settings is
+  // gated.
+  const WORK = ["mission-control", "routines", "files", "archived"] as const;
   const ALL = [...WORK, "settings"] as const;
   const MEMBER = caps({ multiplayer: true, role: "user" });
 
@@ -281,20 +337,41 @@ describe("resolveTeamSection", () => {
 });
 
 describe("sectionHonorsAgentPin", () => {
-  it("is true for every section that narrows by the shared agent pin", () => {
-    for (const section of ["mission-control", "routines", "files"] as const) {
-      assert.equal(sectionHonorsAgentPin(section), true, section);
-    }
+  it("is true for the BOARD, and only the board", () => {
+    // The pin is what the rail SETS by clicking an agent, and the board is the
+    // one surface that shows what that click means.
+    assert.equal(sectionHonorsAgentPin("mission-control"), true);
   });
 
-  it("is false for Team Settings, which lists the whole team regardless", () => {
-    // The rail reads this to decide whether to FILL an agent row: a lit row
-    // under Settings would claim a narrowing nothing on screen is doing.
-    assert.equal(sectionHonorsAgentPin("settings"), false);
+  it("is false for every other section, each for its own reason", () => {
+    // Two surfaces read this to decide whether to CLAIM a narrowing — the rail
+    // fills an agent row, the team's lozenge grows its second segment. On any
+    // of these, both would assert something nothing on screen is doing.
+    //  - Manage agents lists the whole team whatever the pin says;
+    //  - Files resolves its OWN agent (falling back to the team's first, never
+    //    writing back);
+    //  - Routines and Archived carry a SECTION-LOCAL filter instead, so a tab
+    //    click opens them team-wide and narrowing one narrows nothing else.
+    for (const section of [
+      "routines",
+      "files",
+      "archived",
+      "settings",
+    ] as const) {
+      assert.equal(sectionHonorsAgentPin(section), false, section);
+    }
   });
 
   it("is false with no section resolved at all", () => {
     assert.equal(sectionHonorsAgentPin(null), false);
+  });
+
+  it("does not mean the pin is FORGOTTEN off the board", () => {
+    // The rule governs what a surface may CLAIM, never what the store holds:
+    // opening Routines and coming back finds the board still pinned. Nothing
+    // here writes, which is the whole guarantee.
+    assert.equal(sectionHonorsAgentPin("routines"), false);
+    assert.equal(sectionHonorsAgentPin("mission-control"), true);
   });
 });
 
@@ -354,7 +431,7 @@ describe("blockedTeamView", () => {
   });
 });
 
-describe("canRenameTeam / canDeleteTeam / canLeaveTeam / canJoinTeam", () => {
+describe("canRenameTeam / canDeleteTeam / canLeaveTeam", () => {
   const local = team([]);
   const localDefault = team([], { id: DEFAULT_TEAM_ID, isDefault: true });
   const srv = (over: Partial<ServerTeamFacts>, isDefault = false) =>
@@ -365,16 +442,14 @@ describe("canRenameTeam / canDeleteTeam / canLeaveTeam / canJoinTeam", () => {
     assert.equal(canDeleteTeam(local), true);
     assert.equal(canRenameTeam(localDefault), false);
     assert.equal(canDeleteTeam(localDefault), false);
-    // There is no membership to join or leave without a server.
-    assert.equal(canLeaveTeam(local), false);
-    assert.equal(canJoinTeam(local), false);
-    assert.equal(canLeaveTeam(localDefault), false);
-    assert.equal(canJoinTeam(localDefault), false);
+    // There is no membership to leave without a server.
+    assert.equal(canLeaveTeam(local, false), false);
+    assert.equal(canLeaveTeam(localDefault, false), false);
   });
 
   it("canRenameTeam is the server owner, INCLUDING on the default team", () => {
-    // The default team's rail block carries no menu, so Team Settings is the
-    // only place its name (the space's own) can be edited.
+    // Two doors read this one gate: Team Settings' name field, and the default
+    // block's own rail menu, whose single entry is this rename.
     assert.equal(canRenameTeam(srv({ owner: true })), true);
     assert.equal(canRenameTeam(srv({ owner: false })), false);
     assert.equal(canRenameTeam(srv({ owner: true }, true)), true);
@@ -387,13 +462,17 @@ describe("canRenameTeam / canDeleteTeam / canLeaveTeam / canJoinTeam", () => {
   });
 
   it("canLeaveTeam needs a joined, non-default server team", () => {
-    assert.equal(canLeaveTeam(srv({ joined: true })), true);
-    assert.equal(canLeaveTeam(srv({ joined: false })), false);
-    assert.equal(canLeaveTeam(srv({ joined: true }, true)), false);
+    assert.equal(canLeaveTeam(srv({ joined: true }), false), true);
+    assert.equal(canLeaveTeam(srv({ joined: false }), false), false);
+    assert.equal(canLeaveTeam(srv({ joined: true }, true), false), false);
   });
 
-  it("canJoinTeam is offered exactly on the server teams you are not in", () => {
-    assert.equal(canJoinTeam(srv({ joined: false })), true);
-    assert.equal(canJoinTeam(srv({ joined: true })), false);
+  it("canLeaveTeam is NEVER offered in a personal space", () => {
+    // The one human there created every team and holds an owner row nothing can
+    // remove, so `joined` is true forever and the joined test alone would offer
+    // Leave on all of them — straight onto a `403 personal_space`.
+    assert.equal(canLeaveTeam(srv({ joined: true }), true), false);
+    assert.equal(canLeaveTeam(srv({ joined: true, owner: true }), true), false);
+    assert.equal(canLeaveTeam(srv({ joined: true }, true), true), false);
   });
 });

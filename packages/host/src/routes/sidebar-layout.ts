@@ -28,7 +28,9 @@ export function parseSidebarLayout(body: unknown): SidebarLayout | null {
       typeof gr.name !== "string" ||
       typeof gr.collapsed !== "boolean" ||
       !isStringArray(gr.agentIds) ||
-      (gr.context !== undefined && typeof gr.context !== "string")
+      (gr.context !== undefined && typeof gr.context !== "string") ||
+      (gr.icon !== undefined && typeof gr.icon !== "string") ||
+      (gr.color !== undefined && typeof gr.color !== "string")
     )
       return null;
     groups.push({
@@ -37,10 +39,28 @@ export function parseSidebarLayout(body: unknown): SidebarLayout | null {
       collapsed: gr.collapsed,
       agentIds: gr.agentIds,
       ...(gr.context !== undefined ? { context: gr.context } : {}),
+      ...(gr.icon !== undefined ? { icon: gr.icon } : {}),
+      ...(gr.color !== undefined ? { color: gr.color } : {}),
     });
   }
   if (!isStringArray(b.ungroupedOrder)) return null;
-  return { groups, ungroupedOrder: b.ungroupedOrder };
+  if (
+    b.defaultCollapsed !== undefined &&
+    typeof b.defaultCollapsed !== "boolean"
+  )
+    return null;
+  if (b.defaultContext !== undefined && typeof b.defaultContext !== "string")
+    return null;
+  return {
+    groups,
+    ungroupedOrder: b.ungroupedOrder,
+    ...(b.defaultCollapsed !== undefined
+      ? { defaultCollapsed: b.defaultCollapsed }
+      : {}),
+    ...(b.defaultContext !== undefined
+      ? { defaultContext: b.defaultContext }
+      : {}),
+  };
 }
 
 /** Parse the stored `sidebar_layout` pref, falling back to the default. */

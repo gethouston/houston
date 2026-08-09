@@ -117,7 +117,7 @@
         "tagline": "Agora vá e realize o impossível.",
         "cta": "Comece a construir",
         "inviteTeam": "Convide seu time",
-        "inviteTeamBody": "Veja quem está trabalhando em cada missão. Crie um time e compartilhe seus agentes."
+        "inviteTeamBody": "Veja quem está trabalhando em cada tarefa. Crie um time e compartilhe seus agentes."
       }
     },
     "stepCounter": "Passo {{current}} de {{total}}"

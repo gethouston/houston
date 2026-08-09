@@ -188,8 +188,10 @@ export function durationParts(ms: number): DurationParts {
   };
 }
 
-/** The screen exists only where the gateway advertises the endpoint (read via
- *  `useSurfaceGates().showTimeWorked`, which gates the Settings row too). */
+/** The Time worked LENS exists only where the gateway advertises the endpoint.
+ *  Read by Admin > Analytics (`analytics-tab.tsx`), which omits the sub-tab
+ *  entirely when this is false, so the lens never opens empty and its query
+ *  never fires off the hosted cloud. */
 export function showComputeSection(
   capabilities: Capabilities | null | undefined,
 ): boolean {

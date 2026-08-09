@@ -1,8 +1,9 @@
 /**
  * Visual-regression baselines for the main shell (sidebar + mission board).
  *
- * The board is Houston's home screen — "Mission Control" with the sidebar,
- * titlebar, and the seeded missions. It is fully deterministic under the fake
+ * The board is Houston's home screen — the FIRST team's Tasks board (there
+ * is no global board any more), with the sidebar, titlebar, and the seeded
+ * missions. It is fully deterministic under the fake
  * host: two seeded missions with FIXED timestamps (state-store.ts `EPOCH`),
  * and the kanban cards render no relative time (only sort by it), so the whole
  * screen is stable. We capture it in both themes at a fixed desktop viewport,
@@ -15,6 +16,7 @@
  * streaming region — no masks are needed here.
  */
 import { expect, test } from "../support/fixtures";
+import { navRow } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
 
 for (const theme of THEMES) {
@@ -22,9 +24,7 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     // Anchor on the shell being fully painted before pinning theme + comparing.
-    await expect(
-      page.locator("[data-tour-target='nav-dashboard']"),
-    ).toBeVisible();
+    await expect(navRow(page, "inbox")).toBeVisible();
     await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
     await expect(page.getByText("Draft the launch email")).toBeVisible();
     await pinTheme(page, theme);

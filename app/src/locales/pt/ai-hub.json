@@ -77,6 +77,7 @@
     "connect": "Conectar",
     "models": "Modelos",
     "searchModels": "Buscar modelos",
+    "clearSearch": "Limpar busca",
     "noModels": "Os modelos ficam prontos assim que você conecta."
   },
   "model": {
@@ -164,8 +165,6 @@
     "error": "Não foi possível carregar o uso. Tente de novo em instantes."
   },
   "timeWorked": {
-    "title": "Tempo trabalhado",
-    "subtitle": "Quanto tempo seus agentes passaram trabalhando e quantas mensagens responderam.",
     "range": {
       "week": "7 dias",
       "month": "30 dias",

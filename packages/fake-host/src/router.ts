@@ -244,7 +244,9 @@ export async function handle(req: Request): Promise<Response> {
     });
   }
   // Arm the C13 agent-team world `GET /v1/org/teams` serves: `{ teams: [{ id,
-  // name, isDefault?, sortOrder?, agentIds?, members? }], personalSpace? }`.
+  // name, isDefault?, sortOrder?, icon?, color?, agentIds?, members? }],
+  // personalSpace? }`. Omit `icon`/`color` to arm a team that HAS no identity —
+  // the field is then absent from the row, and so from the wire.
   // Arming REPLACES it wholesale; an omitted (or `null`) `teams` clears it back
   // to lazy, so the next read mints the default team again. The client
   // feature-detects on the capability, not on this data, so pair it with

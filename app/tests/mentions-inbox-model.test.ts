@@ -6,6 +6,7 @@ import {
 } from "../src/components/board/mentions-inbox-model.ts";
 import type { ReadCursorStore } from "../src/lib/read-cursors.ts";
 import { ROUTINE_SETUP_AGENT_MODE } from "../src/lib/routine-chat-setup.ts";
+import type { Agent } from "../src/lib/types.ts";
 
 const ME = "user-me";
 const MATE = "user-mate";
@@ -219,5 +220,18 @@ describe("buildMentionInbox", () => {
       ME,
     );
     deepStrictEqual(rows, []);
+  });
+
+  it("uses the roster name before the activity fallback", () => {
+    const c = conv({
+      id: "named",
+      agent_name: "Houston",
+      mentioned: [{ user_id: ME, at: "2026-07-05T00:00:00.000Z" }],
+    });
+    const roster = new Map([[c.agent_path, { name: "Kai" } as Agent]]);
+    strictEqual(
+      buildMentionInbox([c], store(), ME, roster)[0]?.agentName,
+      "Kai",
+    );
   });
 });

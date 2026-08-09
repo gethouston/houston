@@ -141,7 +141,7 @@ components:
 
   mentions-inbox:
     status: partial
-    ref: "app/src/components/board/mentions-inbox.tsx (+ mentions-inbox-row.tsx, mentions-inbox-model.ts)"
+    ref: "app/src/components/inbox/inbox-view.tsx (+ board/mentions-inbox-row.tsx, board/mentions-inbox-model.ts)"
     notes: >-
       Ships and works, but app/-locked: the row and the list live in app/src
       rather than a shared @houston-ai/ package, so a native surface cannot yet
@@ -161,7 +161,7 @@ components:
 
   skill-row:
     status: partial
-    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/skills/skill-catalog-rows.tsx + app/src/components/tabs/installed-skills-strip.tsx"
+    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/skills/skill-catalog-rows.tsx + app/src/components/agent/installed-skills-strip.tsx"
     notes: >-
       Rides the shared ui/ catalog family (CatalogRow / CatalogAddButton /
       CatalogShowMore / CatalogShell); the skills composition itself is split
@@ -247,7 +247,16 @@ components:
     ref: "@houston-ai/store CreatorProfileScreen"
   sidebar-team-block:
     status: implemented
-    ref: "@houston-ai/layout AppSidebar (SidebarGroupSection + SidebarSectionRows + SidebarDefaultHeader), composed in app/src/components/shell/team-sidebar-lists.tsx"
+    ref: "@houston-ai/layout AppSidebar (SidebarGroupSection over SidebarGroupHeader + SidebarBlockContent; every rail row drawn through SidebarRowButton on the one anatomy in sidebar-classes.ts -- SidebarNavItem, SidebarBand, SidebarGroupHeader, SidebarItemRow, SidebarAddRow), composed in app/src/components/shell/team-sidebar-lists.tsx"
+  sidebar-nav-band:
+    status: implemented
+    ref: "@houston-ai/layout AppSidebar -> SidebarNavList (SidebarBand per labelled run, SidebarNavItem per row, one sidebarBandInset), built by app/src/components/shell/sidebar-nav-sections.tsx with the Workspace gates from useSurfaceGates() and the inbox count from useMentionInbox; the footer Settings row is app/src/components/shell/sidebar-footer.tsx"
+  team-identity-picker:
+    status: implemented
+    ref: "@houston-ai/layout SidebarGroupIdentityMenu + SidebarGroupGlyph (sidebar-group-identity.tsx / sidebar-group-glyphs.tsx, both props-only), composed in app/src/components/shell/team-identity.ts from AGENT_COLORS and rendered by app/src/components/shell/team-glyph.tsx; the write is useSetAgentTeamIdentity (optimistic) or sidebar.setGroupIdentity off-capability"
+  sidebar-teams-band:
+    status: implemented
+    ref: "@houston-ai/layout AppSidebar (SidebarBand + SidebarAddRow, both over SidebarRowButton), with SidebarCreateMenu wearing sidebarRowAffordanceClasses and passed as sectionAction from app/src/components/shell/sidebar-rail.tsx"
   team-screen:
     status: implemented
     ref: "app/src/components/team-view/ (TeamView switching TeamMissionControl over @houston-ai/board MissionBoard, TeamRoutines over @houston-ai/routines RoutinesGrid, TeamFiles over the shared AgentFilesSurface, TeamSettings), with AgentReadsFailed naming any agent whose read failed"

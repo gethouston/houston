@@ -9,7 +9,7 @@
   },
   "signOutConfirm": {
     "title": "Sair de {{provider}}?",
-    "description": "Houston vai parar de usar {{provider}} até você entrar de novo. As missões em andamento podem terminar o turno atual.",
+    "description": "Houston vai parar de usar {{provider}} até você entrar de novo. As tarefas em andamento podem terminar o turno atual.",
     "confirm": "Sair",
     "cancel": "Cancelar"
   },

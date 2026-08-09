@@ -151,6 +151,26 @@ export interface FakeAgentTeam {
   name: string;
   isDefault: boolean;
   sortOrder: number;
+  /**
+   * The team's visual identity (C13 §Team identity), both OPTIONAL in the
+   * strict sense: an unset field is ABSENT from the row and therefore from the
+   * wire, never stored as `""`. "Unset" tells the client to render its own
+   * default, which is a different instruction from "render this empty string",
+   * so the two are never collapsed. `""` reaches the fake only as the CLEAR on
+   * a PATCH, where it deletes the field rather than being written.
+   */
+  icon?: string;
+  color?: string;
+  /**
+   * The team's shared CONTEXT (C13 §Team context): prose every agent of the
+   * team is given before it starts a turn. A plain TEXT COLUMN with an empty
+   * default, not an identity field — so unlike `icon`/`color` the wire ALWAYS
+   * carries it (`""` when unwritten), and `""` is an ordinary value rather than
+   * a CLEAR. The absence of the key on the wire is reserved for a gateway that
+   * predates the column, which is what the client feature-detects on; the row
+   * stores it only once something has been written.
+   */
+  context?: string;
 }
 
 /**
@@ -531,9 +551,11 @@ export interface HostState {
    */
   agentTeamOf: Map<string, string>;
   /**
-   * C13 personal space: `GET /v1/org/teams` serves the default team alone and
-   * every team mutation answers `403 personal_space`. Armed by
-   * `/__test__/agent-teams` `{personalSpace:true}`.
+   * C13 personal space: a space with exactly one human in it. It groups agents
+   * with teams like any other space (the real list, create/patch/delete and the
+   * agent move all allowed); only join and the two member writes answer
+   * `403 personal_space`. Armed by `/__test__/agent-teams`
+   * `{personalSpace:true}`.
    */
   personalSpace: boolean;
   /** Monotonic counter for minted agent-team ids (`POST /v1/org/teams`). */

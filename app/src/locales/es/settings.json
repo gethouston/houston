@@ -1,17 +1,12 @@
 {
   "title": "Configuración",
   "nav": {
-    "guideMe": "Guíame",
     "profile": "Perfil",
     "apiKeys": "Claves de API",
-    "workspaceContext": "Contexto del espacio",
-    "userContext": "Tu contexto",
     "language": "Idioma",
     "shortcuts": "Atajos de teclado",
     "reportBug": "Reportar bug",
     "danger": "Eliminar espacio",
-    "timeWorked": "Tiempo trabajado",
-    "permissions": "Permisos",
     "organization": "Administración"
   },
   "workspaceGate": {
@@ -22,7 +17,6 @@
     "retry": "Reintentar"
   },
   "account": {
-    "title": "Cuenta",
     "signOut": "Cerrar sesión"
   },
   "profile": {
@@ -58,24 +52,6 @@
   "workspace": {
     "title": "Nombre del espacio"
   },
-  "workspaceContext": {
-    "emptyTitle": "Cuéntale a todo agente sobre este espacio",
-    "emptyDescription": "La empresa, el producto, los clientes. Se carga en cada chat nuevo de este espacio.",
-    "writeButton": "Escribir contexto del espacio",
-    "helper": "Compartido por todos los agentes de este espacio. Se carga en cada chat nuevo. Los agentes pueden actualizarlo cuando les cuentes algo nuevo.",
-    "placeholder": "p. ej. Acme Corp, fintech B2B, Serie A. Los clientes son CFOs de empresas medianas.",
-    "saving": "Guardando…",
-    "saved": "Guardado"
-  },
-  "userContext": {
-    "emptyTitle": "Cuéntale a todo agente sobre ti",
-    "emptyDescription": "Tu rol, lo que te importa, cómo prefieres trabajar. Se carga en cada chat nuevo de este espacio.",
-    "writeButton": "Escribir contexto del usuario",
-    "helper": "Se carga en cada chat nuevo de este espacio. Los agentes pueden actualizarlo cuando les cuentes algo nuevo.",
-    "placeholder": "p. ej. Soy Juan, líder de ventas. Me importa la velocidad del pipeline y prefiero respuestas cortas.",
-    "saving": "Guardando…",
-    "saved": "Guardado"
-  },
   "connectPhone": {
     "title": "Conectar celular",
     "description": "Escanea este código para manejar Houston desde tu celular. El mismo código sigue funcionando mientras esta computadora esté encendida y Houston esté abierto.",
@@ -105,7 +81,7 @@
   },
   "notifications": {
     "title": "Notificaciones",
-    "description": "Recibe un aviso cuando una misión termine o te necesite",
+    "description": "Recibe un aviso cuando una tarea termine o te necesite",
     "state": {
       "on": "Activadas",
       "off": "Desactivadas",
@@ -147,7 +123,7 @@
   },
   "reportBug": {
     "title": "Reportar bug",
-    "intro": "Cuéntanos qué salió mal. Enviaremos tu mensaje junto con los registros de tu última actividad para ver qué pasó.",
+    "intro": "Cuéntanos qué salió mal. Enviaremos tu mensaje junto con los registros de tu última actividad para ver qué pasó. Una idea, o algo que simplemente se siente raro, también es bienvenido aquí.",
     "timingTip": "Solo recibimos la actividad más reciente, así que envía el reporte apenas ocurra el bug para que la información sea útil.",
     "toastEquivalence": "Esto es lo mismo que tocar Reportar bug en la notificación roja de error, no necesitas enviar las dos.",
     "label": "¿Qué pasó?",
@@ -176,38 +152,24 @@
   "index": {
     "subtitle": "Administra tu espacio de trabajo y tu cuenta.",
     "groups": {
-      "general": "General",
-      "help": "Ayuda",
-      "context": "Contexto",
-      "support": "Soporte",
-      "workspace": "Espacio de trabajo",
-      "team": "Equipo"
+      "general": "General"
     },
     "rows": {
-      "guideMe": "Haz un recorrido rápido por la app",
       "profile": "Tu nombre y tu foto",
-      "apiKeys": "Permite que otras apps y asistentes de IA inicien misiones con tus agentes",
-      "workspaceContext": "Lo que cada agente sabe sobre este espacio",
-      "userContext": "Lo que cada agente sabe sobre ti",
+      "apiKeys": "Permite que otras apps y asistentes de IA inicien tareas con tus agentes",
       "shortcuts": "Usa Houston sin el mouse",
-      "reportBug": "¿Algo falló? Cuéntanos",
-      "migration": "Retoma tu mudanza a la nube",
-      "timeWorked": "Cuánto tiempo llevan trabajando tus agentes",
-      "permissions": "Quién puede usar cada agente y qué puede usar cada agente",
-      "organization": "Tu equipo, su actividad, uso y facturación"
-    },
-    "values": {
-      "set": "Definido"
+      "reportBug": "¿Algo falló o tienes una idea? Cuéntanos",
+      "migration": "Retoma tu mudanza a la nube"
     }
   },
   "apiKeys": {
     "title": "Claves de API",
-    "intro": "Otras apps, asistentes de IA y herramientas de automatización pueden iniciar misiones con tus agentes. Cada conexión necesita una clave que creas aquí. <docs>Lee la documentación para desarrolladores</docs>.",
+    "intro": "Otras apps, asistentes de IA y herramientas de automatización pueden iniciar tareas con tus agentes. Cada conexión necesita una clave que creas aquí. <docs>Lee la documentación para desarrolladores</docs>.",
     "dialogClose": "Cerrar",
     "createButton": "Crear clave",
     "empty": {
       "title": "Aún no tienes claves de API",
-      "description": "Una clave permite que una app de tu confianza inicie misiones con tus agentes. Crea una para conectar tu primera app."
+      "description": "Una clave permite que una app de tu confianza inicie tareas con tus agentes. Crea una para conectar tu primera app."
     },
     "error": {
       "title": "No se pudieron cargar tus claves",

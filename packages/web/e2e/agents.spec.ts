@@ -37,9 +37,12 @@ test("switches between two agents", async ({ page }) => {
   await createAgent(page, "Research Bot");
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 
-  // Switch back to the seeded agent → its mission returns.
+  // Switch back to the seeded agent → its mission returns. Anchored rather than
+  // exact: an agent row may still carry a quiet unread mark inside its button,
+  // which joins the accessible name. The needs-you COUNT is gone from the rail
+  // entirely — a rail says what exists and where you are, not the score.
   await rail(page)
-    .getByRole("button", { name: "Houston", exact: true })
+    .getByRole("button", { name: /^Houston\b/ })
     .click();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
 });
@@ -56,38 +59,13 @@ test("switches between two agents", async ({ page }) => {
  * gone with the code that could break it.
  */
 
-/**
- * HOU-708's rename contract: picking Rename swaps the rail row for an inline
- * field that arrives FOCUSED with the current name PRESELECTED, so the user
- * types the new name straight away. Both halves are asserted, the selection
- * included — "typing replaced it" would also pass on an empty field, which is
- * a different (lossy) product.
+/*
+ * REMOVED with the agent row's "..." menu: "renames an agent" (HOU-708's
+ * focused-and-preselected inline field).
+ *
+ * An agent is renamed, recoloured, moved and deleted on its team's Manage
+ * agents page now — the same page that configures it — so the rail offers none
+ * of those and carries no menu to reach them from. The rename contract still
+ * exists and still deserves this test; it belongs to that page's spec, not to
+ * one about the rail.
  */
-test("renames an agent", async ({ page }) => {
-  await page.goto("/");
-
-  const row = rail(page);
-  await row.getByRole("button", { name: "Agent menu" }).first().click();
-  await page.getByRole("menuitem", { name: "Rename" }).click();
-
-  // The rail's only textbox is the rename field (the agent search box is a
-  // searchbox role), so this is unambiguous inside the rail.
-  const input = row.getByRole("textbox");
-  await expect(input).toBeFocused();
-  await expect(input).toHaveValue("Houston");
-  // The whole existing name is selected, so the first keystroke replaces it.
-  await expect
-    .poll(() =>
-      input.evaluate((el: HTMLInputElement) =>
-        el.selectionStart === 0 && el.selectionEnd === el.value.length
-          ? el.value
-          : null,
-      ),
-    )
-    .toBe("Houston");
-
-  await page.keyboard.type("Mission Control Bot");
-  await page.keyboard.press("Enter");
-
-  await expect(row.getByText("Mission Control Bot").first()).toBeVisible();
-});

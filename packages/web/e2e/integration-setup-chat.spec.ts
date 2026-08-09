@@ -75,9 +75,9 @@ test("composio-absent: Add custom integration opens the embedded chat, agent spe
   await startSetupChat(page);
 
   // The embedded setup-chat panel opens with the integration mission title…
-  await expect(
-    page.getByText("Mission: Set up a custom integration"),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
+    { timeout: 10_000 },
+  );
   // …and the agent's reply is the FIRST message — the user typed nothing (the
   // fake host's canned reply echoes the kickoff, so "no kickoff bubble" is
   // covered by the unit test on filterAutoContinueFeedItems, not by text here).
@@ -106,9 +106,9 @@ test("a multi-agent workspace interposes ONLY the agent picker before the chat",
     .getByRole("dialog")
     .getByRole("button", { name: "Houston" })
     .click();
-  await expect(
-    page.getByText("Mission: Set up a custom integration"),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
+    { timeout: 10_000 },
+  );
 });
 
 test("a draft chat survives a reload as a Continue banner that resumes the same chat", async ({
@@ -134,9 +134,9 @@ test("a draft chat survives a reload as a Continue banner that resumes the same 
 
   // Continue reopens the SAME chat (no duplicate mission), with its history.
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(
-    page.getByText("Mission: Set up a custom integration"),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
+    { timeout: 10_000 },
+  );
   await expect(page.getByText(/Roger that\./).first()).toBeVisible({
     timeout: 15_000,
   });
@@ -175,9 +175,9 @@ test("the interview surface renders: an ask_user question card replaces the comp
   await openCustomIntegrations(page, "absent");
 
   await startSetupChat(page);
-  await expect(
-    page.getByText("Mission: Set up a custom integration"),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
+    { timeout: 10_000 },
+  );
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 
   // The ask_user card shows once the turn settles — proof the setup panel
@@ -207,7 +207,7 @@ test("Done retires the chat: no banner, and the next Add starts a FRESH chat", a
   // The user says the integration works: Done retires the draft on the spot.
   await page.getByRole("button", { name: "Done" }).click();
   await expect(
-    page.getByText("Mission: Set up a custom integration"),
+    page.getByText("Task: Set up a custom integration"),
   ).not.toBeVisible();
   await expect(
     page.getByText("You are setting up a custom integration in chat"),
@@ -218,9 +218,9 @@ test("Done retires the chat: no banner, and the next Add starts a FRESH chat", a
   // is asserted on the HOST's state: two distinct setup missions now exist,
   // and only the first is archived.
   await startSetupChat(page);
-  await expect(
-    page.getByText("Mission: Set up a custom integration"),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
+    { timeout: 10_000 },
+  );
   const agents = (await (await fetch(`${FAKE_HOST_URL}/agents`)).json()) as {
     id: string;
   }[];
