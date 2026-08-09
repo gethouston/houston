@@ -55,8 +55,8 @@ export default {
   },
 
   hero: {
-    h1Html: "Donde las personas y los agentes trabajan&nbsp;juntos",
-    sub: "Agentes compartidos que aprenden de todo tu equipo. Lo que una persona enseña, lo conservan todos.",
+    h1Html: "Una app para todos los agentes de IA de tu&nbsp;equipo",
+    sub: "Houston le da a tu equipo un solo lugar para usar agentes de IA, con cualquier modelo y conectados a las herramientas que ya usan, para que cada agente y todo lo que aprende sea de la empresa y no de la cuenta de una persona.",
     ctaDownload: "Descargar la app",
     ctaSeeHow: "Ver cómo funciona",
     windowAlt:
