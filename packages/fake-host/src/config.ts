@@ -7,14 +7,46 @@
  * glue and live with the harness, not here.
  */
 
+import { existsSync } from "node:fs";
+import path from "node:path";
+
+/**
+ * A stable per-worktree port offset, derived from the workspace root's path.
+ *
+ * Parallel worktrees running e2e at once would otherwise silently reuse EACH
+ * OTHER'S servers (Playwright's reuseExistingServer sees a live port and
+ * assumes it's ours), producing bogus results against foreign code. Deriving
+ * the default from the worktree path makes every checkout land on its own
+ * ports with zero configuration; the env overrides still win when set.
+ *
+ * The root is found by walking up from cwd to `pnpm-workspace.yaml` — every
+ * process that resolves ports (playwright main, its workers, the standalone
+ * fake host, vite) runs from somewhere inside the worktree, so they all agree.
+ */
+export function worktreePortOffset(startDir: string = process.cwd()): number {
+  let dir = path.resolve(startDir);
+  for (;;) {
+    if (existsSync(path.join(dir, "pnpm-workspace.yaml"))) break;
+    const parent = path.dirname(dir);
+    // No workspace marker (e.g. an installed consumer): one stable bucket.
+    if (parent === dir) break;
+    dir = parent;
+  }
+  let hash = 5381;
+  for (const ch of dir) hash = ((hash * 33) ^ ch.charCodeAt(0)) >>> 0;
+  return hash % 200;
+}
+
+/** ≥ the per-worker fake-host slots (workers + 1) and the +5 auth vite server,
+ *  so neighboring offsets can never collide on a derived port. */
+export const WORKTREE_PORT_STRIDE = 40;
+
 /**
  * Resolve the fake host's port for the current process.
  *
- * The base port is overridable via HOUSTON_E2E_FAKE_HOST_PORT: parallel
- * worktrees running e2e at once would otherwise silently reuse EACH OTHER'S
- * servers (Playwright's reuseExistingServer sees a live port and assumes it's
- * ours), producing bogus results against foreign code. Set a distinct base per
- * worktree, spaced ≥ 32 apart so the per-worker slots below can't overlap.
+ * The base port is HOUSTON_E2E_FAKE_HOST_PORT when set, else derived per
+ * worktree ({@link worktreePortOffset}) in 28100..36060 — disjoint from the
+ * web ports' derived range (packages/web/e2e/config.ts).
  *
  * Playwright sets TEST_PARALLEL_INDEX only inside worker processes, where each
  * parallel slot runs its OWN in-process fake host (e2e/support/fixtures.ts) —
@@ -26,7 +58,10 @@
 export function resolveFakeHostPort(
   env: Record<string, string | undefined>,
 ): number {
-  const base = Number(env.HOUSTON_E2E_FAKE_HOST_PORT || 4399);
+  const base = Number(
+    env.HOUSTON_E2E_FAKE_HOST_PORT ||
+      28100 + worktreePortOffset() * WORKTREE_PORT_STRIDE,
+  );
   const slot = env.TEST_PARALLEL_INDEX;
   return slot === undefined ? base : base + 1 + Number(slot);
 }

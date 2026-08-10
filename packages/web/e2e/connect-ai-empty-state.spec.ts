@@ -28,7 +28,9 @@ test("composer is replaced by the connect-AI empty state when no provider is con
   ).toHaveCount(0);
 
   await page.getByRole("button", { name: "Connect AI" }).click();
-  await expect(page.getByRole("heading", { name: "AI Models" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "AI Providers" }),
+  ).toBeVisible();
 });
 
 test("composer renders normally while the provider is connected", async ({

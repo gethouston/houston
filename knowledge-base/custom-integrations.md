@@ -265,22 +265,21 @@ wrapper, and the per-agent dispatch `/agents/:id/integrations/custom/*`.
 
 ## UI
 
-- **Page-level source toggle** — `integrations-view/catalog-mode-tabs.tsx`
-  (`CatalogModeTabs` + the shared `CatalogBrowsePane`) shows ONE source at a time:
-  **Integrations** (Composio) or **Custom integrations** (the same `CatalogShell`
-  grammar via `CustomModeShell`: the mode's own search + Add button over an
-  Installed card of the custom rows). Custom rows never appear in the Composio strip
-  — the old layout showed them twice. With no custom source served
-  (`useCustomIntegrations` → `null`) the shell has one mode and drops the chrome.
+- **Home: the global Integrations page's Installed strip.** Custom rows render in
+  the same `CatalogGrid` as the connected catalog apps, after them, behind the
+  shared preview cap; the page's ONE search and the category filter's pinned
+  **Custom** entry narrow them (`filterInstalledBy`'s `"custom"` branch keeps
+  custom rows only and the page drops the Available section). The page machinery
+  — list, setup chat, draft banner, dialogs, loud load-error state — is
+  `integrations/use-custom-integrations-surface.tsx` (`useCustomIntegrationsSurface`
+  + `AddCustomButton` + `CustomSurfaceSupport`). With no custom source served
+  (list resolves `null`) the filter entry and the Add button don't exist.
 - Rows are `CustomIntegrationRow`: leading letter avatar (or `iconUrl`),
-  transparent-at-rest `hover:bg-hover`. Filtering is the pure, node-tested
-  `filterCustomIntegrations`. With zero items and no draft chat in flight the tab
-  collapses to a pure empty state (`custom-empty-state.tsx` — the one accent of an
-  empty surface).
-- **"Add custom integration"** opens `CustomAddDialog` (chained by `CustomAddFlow`),
-  a two-way fork:
-  - **LEAD path — "Set up with your agent"** (filled `bg-chip` card, first in the
-    DOM, `emphasis="lead"`): the guided chat. It resolves its agent without asking
+  transparent-at-rest `hover:bg-hover`; the row body opens the detail card.
+- **"Add custom integration"** — the header's primary button — goes STRAIGHT to
+  the guided chat (the manual form `custom-add-*.tsx` stays in the tree,
+  deliberately unwired, until discovery is deterministic enough for a raw form):
+  - **The chat.** It resolves its agent without asking
     wherever it can (an agent passed in, else the workspace's only agent) and
     interposes `AgentPickerDialog` only for a genuinely multi-agent workspace. The
     chat opens in the shell-level RIGHT panel (the same one routine chat and the

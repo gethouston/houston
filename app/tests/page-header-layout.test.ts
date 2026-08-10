@@ -5,7 +5,6 @@ import {
   headerCollapsesTabs,
   headerHoldsTools,
   headerMode,
-  searchFieldGrown,
 } from "../src/components/shell/page-header/page-header-layout.ts";
 
 describe("headerMode", () => {
@@ -46,13 +45,5 @@ describe("header mode semantics", () => {
 
   it("declares the strip height once", () => {
     assert.equal(HEADER_HEIGHT, "h-12");
-  });
-});
-
-describe("searchFieldGrown", () => {
-  it("grows for focus or a retained query", () => {
-    assert.equal(searchFieldGrown(true, ""), true);
-    assert.equal(searchFieldGrown(false, "quarterly report"), true);
-    assert.equal(searchFieldGrown(false, ""), false);
   });
 });

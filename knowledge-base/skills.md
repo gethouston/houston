@@ -279,7 +279,11 @@ skills live once in the workspace store (see above). The top-level **Skills**
 page (`app/src/components/skills-view/`, viewMode `skills-home`, sidebar entry
 between Integrations and AI Models) is a pure client aggregation over the
 existing per-agent routes — the host's skill routes already accept ANY agent
-the caller owns (`canUseAgent` is workspace ownership), so no backend changed:
+the caller owns (`canUseAgent` is workspace ownership), so no backend changed.
+The page wears the shared page header: a static "Skills" lozenge (the rail's
+`LibraryBig` mark, `skills-header.tsx`) with search + the New skill menu riding
+the strip (`skills-controls.tsx` on `header-tools-row.tsx`), content on the
+centered catalog plane:
 
 - **Your skills** — one row per slug across the workspace's agents
   (`aggregateWorkspaceSkills` in `app/src/lib/workspace-skills.ts`,
@@ -295,18 +299,18 @@ the caller owns (`canUseAgent` is workspace ownership), so no backend changed:
   `tauriAgent.writeFile`, the Houston-library copy primitive); existing
   holders are rewritten only when the content itself was edited; unassignments
   confirm first (destructive), and Delete removes it from every holder.
-- **Store tab** — the same `SkillMarketplaceSection`; search/preview ride the
-  first agent (read-only marketplace proxies), install opens the
-  pick-agents dialog (`install-skill-dialog.tsx`; agents already holding the
-  slug lock out) and fans out `installCommunity` per picked agent.
-- **Custom skills tab** (`global-custom-tab.tsx`) — Create skill (the guided
-  chat), Add skill (the multi-agent from-scratch dialog,
-  `new-skill-dialog.tsx`), and the Houston library shelves
-  (`useHoustonSkillLibraryData`, the agent-agnostic half of the library hook);
-  library installs route through the same pick-agents flow
-  (`use-global-install-flow.tsx` unifies marketplace + library pending
-  installs behind one dialog).
-- **New skill / Create skill** — the guided create chat (HOU-791) in the
+- **Store** — the Available section's one source, rendered bare under the
+  "9000+" chip (`use-store-tab-content.tsx` → the same
+  `SkillMarketplaceSection`); search/preview ride the first agent (read-only
+  marketplace proxies), install opens the pick-agents dialog
+  (`install-skill-dialog.tsx`; agents already holding the slug lock out) and
+  fans out `installCommunity` per picked agent
+  (`use-global-install-flow.tsx` unifies pending installs behind one dialog).
+- **New skill** — the header's one creation door, a two-item menu on the
+  primary button (`skills-controls.tsx`): **Create with AI** (the guided chat,
+  below) and **Add manually** (the multi-agent from-scratch dialog,
+  `new-skill-dialog.tsx`).
+- **Create with AI** — the guided create chat (HOU-791) in the
   SHELL'S right-hand panel: `use-global-chat-flow.tsx` picks the hosting
   agent (`choose-chat-agent-dialog.tsx`; skipped with one agent) and mounts
   `global-skill-chat.tsx`, which drives the per-agent setup-chat machinery

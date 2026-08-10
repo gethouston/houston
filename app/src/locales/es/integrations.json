@@ -75,12 +75,12 @@
   "home": {
     "tabs": {
       "label": "Secciones de integraciones",
-      "catalog": "Integraciones",
-      "custom": "Integraciones personalizadas"
+      "catalog": "Integraciones"
     },
     "searchPlaceholder": "Buscar integraciones",
     "clearSearch": "Borrar búsqueda",
     "allCategories": "Todas las categorías",
+    "customCategory": "Personalizadas",
     "categoryFilter": "Filtrar por categoría",
     "connect": "Conectar",
     "connectApp": "Conectar {{name}}",
@@ -107,14 +107,11 @@
     "disconnectAction": "Desconectar cuenta"
   },
   "custom": {
-    "title": "Integraciones personalizadas",
     "description": "Conecta una API o un servidor MCP que no esté en el catálogo de aplicaciones.",
-    "addButton": "Agregar integración personalizada",
-    "searchPlaceholder": "Buscar integraciones personalizadas...",
-    "clearSearch": "Borrar búsqueda",
     "empty": "Aún no tienes integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
-    "emptyTitle": "Aún no tienes integraciones personalizadas",
     "noResults": "Ninguna integración personalizada coincide con tu búsqueda.",
+    "catalogUnavailable": "El catálogo de aplicaciones no está disponible en esta configuración, pero aún puedes agregar integraciones personalizadas.",
+    "addButton": "Agregar integración personalizada",
     "loadError": "No pudimos cargar tus integraciones personalizadas.",
     "retry": "Intentar de nuevo",
     "badge": {
@@ -200,7 +197,6 @@
       "done": "Listo",
       "doneToast": "¡Perfecto! Tu integración personalizada está lista para usar."
     },
-    "catalogUnavailable": "El catálogo de aplicaciones no está disponible en esta configuración, pero aún puedes agregar integraciones personalizadas.",
     "signIn": "Iniciar sesión",
     "signInAgain": "Iniciar sesión de nuevo",
     "oauth": {

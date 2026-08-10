@@ -28,6 +28,7 @@ export function ModelFacets({
   setCost,
   memory,
   setMemory,
+  compact = false,
 }: {
   labOptions: FilterOption[];
   provider: ProviderValue;
@@ -38,6 +39,7 @@ export function ModelFacets({
   setCost: (value: CostBucket) => void;
   memory: MemoryBucket;
   setMemory: (value: MemoryBucket) => void;
+  compact?: boolean;
 }) {
   const { t } = useTranslation("aiHub");
   return (
@@ -52,6 +54,7 @@ export function ModelFacets({
           options={labOptions}
           value={provider}
           onChange={(next) => setProvider(next as ProviderValue)}
+          className={compact ? "h-8" : undefined}
         />
       )}
       <FilterCombobox
@@ -64,6 +67,7 @@ export function ModelFacets({
         ]}
         value={goodAt}
         onChange={(next) => setGoodAt(next as GoodAt)}
+        className={compact ? "h-8" : undefined}
       />
       <FilterCombobox
         ariaLabel={t("directory.filters.cost")}
@@ -76,6 +80,7 @@ export function ModelFacets({
         ]}
         value={cost}
         onChange={(next) => setCost(next as CostBucket)}
+        className={compact ? "h-8" : undefined}
       />
       <FilterCombobox
         ariaLabel={t("directory.filters.memory")}
@@ -87,6 +92,7 @@ export function ModelFacets({
         ]}
         value={memory}
         onChange={(next) => setMemory(next as MemoryBucket)}
+        className={compact ? "h-8" : undefined}
       />
     </div>
   );

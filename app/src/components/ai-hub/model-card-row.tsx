@@ -1,7 +1,7 @@
 /**
  * One model row in the directory, in the shared catalog grammar
  * ({@link CatalogRow}, the same flat row the Integrations catalog and the
- * hub's Providers tab use): the model's colorful {@link BrandMark}, its
+ * hub's provider surface uses): the model's colorful {@link BrandMark}, its
  * friendly name, its muted lab name. The whole row opens the model modal —
  * models install through a provider offer inside that modal, so the row
  * carries no `+`; the transparent-at-rest hover fill is the click affordance.

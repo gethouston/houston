@@ -12,10 +12,9 @@ import { CategoryCatalog } from "./category-catalog";
  * over the grouped category catalog. It is
  * CONTROLLED: the surface owns the ONE search + category (its `controls` row
  * above BOTH sections) and threads them in as `query` + `category`, so the same
- * filter narrows this discovery area and the Installed strip together (the
- * custom tab keeps its own internal search). The connect flow is app-wide
- * shared state, so switching tabs (or leaving the surface entirely) never kills
- * an in-flight OAuth poll.
+ * filter narrows this discovery area and every row in the Installed strip.
+ * The connect flow is app-wide shared state, so leaving the surface never
+ * kills an in-flight OAuth poll.
  *
  * There is NO recovery section at the top of the pane: an app whose connection
  * is pending or errored stays in its own category rows, wearing its status, and

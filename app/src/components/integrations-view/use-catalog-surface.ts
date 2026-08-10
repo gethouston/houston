@@ -1,4 +1,5 @@
 import type {
+  CustomIntegrationView,
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
@@ -13,8 +14,6 @@ import { browseCatalog, catalogHiddenToolkits } from "../integrations";
 /** The consolidated catalog surface's shared view state, ready for
  *  {@link CatalogShell}. */
 export interface CatalogSurface {
-  tab: string;
-  setTab: (value: string) => void;
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
   category: string;
@@ -32,7 +31,7 @@ export interface CatalogSurface {
 }
 
 /**
- * Own the catalog surface's ONE controls row once: the mode + shared query +
+ * Own the catalog surface's ONE controls row once: the shared query +
  * category state, the {@link filterInstalledBy} result feeding the Installed
  * strip, and the connectable-match count feeding the Available header, so the
  * two-section wiring lives in one place.
@@ -41,19 +40,16 @@ export function useCatalogSurface(opts: {
   active: readonly InstalledRow[];
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
+  custom: CustomIntegrationView[];
 }): CatalogSurface {
-  const { active, catalog, connections } = opts;
-  const [tab, setTab] = useState("catalog");
+  const { active, catalog, connections, custom } = opts;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
 
   const filtering = query.trim() !== "" || category !== "all";
-  // Composio only since the mode split (HOU-980 review): custom integrations
-  // live behind their own mode with their own installed list, never in this
-  // strip.
   const shown = useMemo(
-    () => filterInstalledBy(active, [], catalog, { query, category }),
-    [active, catalog, query, category],
+    () => filterInstalledBy(active, custom, catalog, { query, category }),
+    [active, custom, catalog, query, category],
   );
   const availableCount = useMemo(() => {
     const connected = catalogHiddenToolkits(connections);
@@ -61,15 +57,13 @@ export function useCatalogSurface(opts: {
   }, [catalog, connections, query, category]);
 
   return {
-    tab,
-    setTab,
     query,
     setQuery,
     category,
     setCategory,
     filtering,
     shown,
-    installedCount: shown.active.length,
+    installedCount: shown.active.length + shown.custom.length,
     availableCount,
   };
 }

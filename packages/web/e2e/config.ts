@@ -6,10 +6,17 @@
  * seeded agent) come from `@houston/fake-host`.
  */
 
-/** Vite dev server (packages/web). Matches `server.port` in vite.config.ts,
- *  including its HOUSTON_E2E_WEB_PORT override (distinct ports per parallel
- *  worktree keep e2e runs from silently reusing a foreign worktree's server). */
-export const WEB_PORT = Number(process.env.HOUSTON_E2E_WEB_PORT || 1430);
+import { WORKTREE_PORT_STRIDE, worktreePortOffset } from "@houston/fake-host";
+
+/** Vite dev server (packages/web). HOUSTON_E2E_WEB_PORT when set, else derived
+ *  per worktree in 20000..27960 (disjoint from the fake host's derived range) —
+ *  distinct ports per parallel worktree keep e2e runs from silently reusing a
+ *  foreign worktree's server. playwright.config passes the resolved value to
+ *  vite explicitly, so the two processes cannot disagree. */
+export const WEB_PORT = Number(
+  process.env.HOUSTON_E2E_WEB_PORT ||
+    20000 + worktreePortOffset() * WORKTREE_PORT_STRIDE,
+);
 export const WEB_URL = `http://localhost:${WEB_PORT}`;
 
 /**

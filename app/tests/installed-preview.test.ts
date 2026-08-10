@@ -205,6 +205,28 @@ describe("filterInstalledBy", () => {
     deepStrictEqual(byCategory.noMatches, false);
   });
 
+  it("shows only custom rows for the pinned custom category", () => {
+    const byCustom = filterInstalledBy(ACTIVE, CUSTOM, CATALOG, {
+      query: "",
+      category: "custom",
+    });
+    deepStrictEqual(byCustom.active, []);
+    deepStrictEqual(byCustom.custom, CUSTOM);
+    deepStrictEqual(byCustom.noMatches, false);
+  });
+
+  it("composes the custom category with the shared query", () => {
+    const byCustom = filterInstalledBy(ACTIVE, CUSTOM, CATALOG, {
+      query: "acme",
+      category: "custom",
+    });
+    deepStrictEqual(byCustom.active, []);
+    deepStrictEqual(
+      byCustom.custom.map((item) => item.slug),
+      ["acme-api"],
+    );
+  });
+
   it("composes the category filter with the query", () => {
     // productivity keeps gmail; the "slack" query then hits nothing in it.
     const composed = filterInstalledBy(ACTIVE, CUSTOM, CATALOG, {

@@ -121,6 +121,9 @@ export function filterInstalledBy(
   catalog: IntegrationToolkit[],
   opts: { query: string; category: string },
 ): FilteredInstalled {
+  if (opts.category === "custom") {
+    return filterInstalled([], custom, opts.query);
+  }
   const slugs = toolkitsInCategory(catalog, opts.category);
   const byCategory = slugs
     ? active.filter((row) => slugs.has(row.connection.toolkit))

@@ -10,6 +10,12 @@ import {
 
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 } as const;
 
+// Pin the resolved (possibly worktree-derived) ports into our own env before
+// workers spawn: workers inherit them verbatim instead of re-deriving, so a
+// worker's in-process fake host can never disagree with the main process.
+process.env.HOUSTON_E2E_FAKE_HOST_PORT ??= String(FAKE_HOST_PORT);
+process.env.HOUSTON_E2E_WEB_PORT ??= String(WEB_PORT);
+
 /**
  * Playwright drives the FULL desktop UI (app/src) as it runs in the browser
  * (packages/web), on the host adapter in host mode, against an
@@ -36,9 +42,15 @@ export default defineConfig({
   // 30597930896: stuck AnimatePresence exit ghosts duplicate kanban cards).
   // CI therefore runs ONE worker per runner — the density the suite has
   // always been stable at — and gets its throughput from sharding across
-  // runners (ci.yml `--shard`). Locally, let Playwright pick from the
-  // machine's cores; fast machines don't starve.
-  workers: process.env.CI ? 1 : undefined,
+  // runners (ci.yml `--shard`).
+  //
+  // Locally the cap is 4, NOT Playwright's half-the-cores default: a worker is
+  // a full Chromium, and nine of them own an 18-core Mac outright — on a
+  // machine hosting many agent worktrees the review-phase suite must leave the
+  // iteration sessions their cores (the suite also holds the machine-wide lock,
+  // so capped throughput only stretches a phase where wall time is cheap).
+  // HOUSTON_E2E_WORKERS overrides for a dedicated box.
+  workers: process.env.CI ? 1 : Number(process.env.HOUSTON_E2E_WORKERS || 4),
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
@@ -110,8 +122,11 @@ export default defineConfig({
   ],
   webServer: [
     {
+      // The resolved (possibly worktree-derived) port is passed EXPLICITLY so
+      // the child process cannot re-derive differently from another cwd.
       command: "pnpm fake-host",
       port: FAKE_HOST_PORT,
+      env: { HOUSTON_E2E_FAKE_HOST_PORT: String(FAKE_HOST_PORT) },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",
@@ -124,7 +139,10 @@ export default defineConfig({
       // functional project into the sign-in surface.
       command: "pnpm dev",
       port: WEB_PORT,
-      env: { FIREBASE_API_KEY: "" },
+      env: {
+        HOUSTON_E2E_WEB_PORT: String(WEB_PORT),
+        FIREBASE_API_KEY: "",
+      },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",

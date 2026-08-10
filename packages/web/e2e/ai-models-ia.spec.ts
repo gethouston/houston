@@ -10,9 +10,8 @@ import { openAgentSettings } from "./support/team-nav";
  *  - POLICY (the allowed-models ceiling) is PER AGENT only → the agent settings
  *    page's AI models section, reached through the team that owns the agent
  *    ("Manage agents", the one door). The old workspace-wide
- *    "Defaults for every agent" model ceiling was removed as overengineering, and
- *    the AI Models hub's "Workspace policy" tab stays gone — the hub keeps only
- *    Providers / Models.
+ *    "Defaults for every agent" model ceiling was removed as overengineering.
+ *    The AI Models hub has provider and model-directory header lozenges.
  *  - ACCOUNTS (HOU-976) are per PERSON and only per person: a team space has no
  *    shared AI account at all — every agent runs on the AI account of whoever
  *    messages it — so the hub is visible to EVERYONE and shows each viewer their
@@ -40,7 +39,7 @@ const OWNER_CAPS = {
 };
 
 /** Teams + Spaces, so the switcher can reach an armed TEAM space. The hub's
- *  "Your accounts" note exists only there — a personal space has one account. */
+ *  The old "Your accounts" note is gone everywhere (removed Aug 2026). */
 const SPACES_CAPS = { multiplayer: true, teams: true, spaces: true };
 
 /** The armed team space (id `org:<16-hex>`), reachable through the switcher. */
@@ -79,23 +78,40 @@ async function openHub(page: Page): Promise<void> {
   await page.locator('[data-tour-target="nav-ai-hub"]').click();
 }
 
-// ── 1. The AI hub dropped the Workspace policy tab ─────────────────────────
+// ── 1. The AI hub has provider and model-directory surfaces ────────────────
 
-test("Teams owner: the AI hub keeps only Providers / Models, the Workspace policy tab is gone", async ({
+test("Teams owner: the AI hub has AI Providers and AI Models lozenges", async ({
   page,
   request,
 }) => {
-  // Model policy is per agent (on the agent's own settings page), never a hub
-  // tab, so the owner finds only the two browse tabs in the hub.
+  // Model policy is per agent, never a hub mode. Direct model discovery is the
+  // second header lozenge and shares the page query with provider discovery.
   await armCapabilities(request, OWNER_CAPS);
   await page.goto("/");
   await page.locator('[data-tour-target="nav-ai-hub"]').click();
 
-  await expect(page.getByRole("tab", { name: "Providers" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: /Models/ })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Workspace policy" })).toHaveCount(
-    0,
-  );
+  // Scoped to the header nav: the sidebar row shares the "AI Models" name.
+  const headerNav = page.getByRole("navigation", {
+    name: "AI providers and models",
+  });
+  await expect(
+    headerNav.getByRole("button", { name: "AI Providers", exact: true }),
+  ).toBeVisible();
+  const allModels = headerNav.getByRole("button", {
+    name: "AI Models",
+    exact: true,
+  });
+  await expect(allModels).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Available" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Connect / }).first(),
+  ).toBeVisible();
+  const search = page.getByPlaceholder("Search AI models and providers");
+  await search.fill("claude");
+  await allModels.click();
+  await expect(search).toHaveValue("claude");
+  await expect(page.getByRole("heading", { name: "Connected" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Good at" })).toBeVisible();
 });
 
 // ── 2. Plain member: the hub is theirs, but only their own accounts ─────────
@@ -134,12 +150,11 @@ test("Teams member in a team space: the hub is theirs, and says so", async ({
   await switchToTeam(page);
   await openHub(page);
 
-  await expect(
-    page.getByRole("heading", { name: "Your accounts" }),
-  ).toBeVisible();
+  // The old "Your accounts" note is gone; the surface itself is the answer:
+  // connect is right there, on every provider this member has not connected
+  // yet. No approval step, nobody to go ask.
+  await expect(page.getByText("Your accounts")).toHaveCount(0);
   await expect(page.getByText("Team account", { exact: true })).toHaveCount(0);
-  // …and the connect the note promises is right there, on every provider this
-  // member has not connected yet. No approval step, nobody to go ask.
   await expect(
     page.getByRole("button", { name: "Connect OpenAI" }),
   ).toBeVisible();
@@ -159,9 +174,7 @@ test("Teams owner in a team space: the same one surface, no account choice", asy
   await switchToTeam(page);
   await openHub(page);
 
-  await expect(
-    page.getByRole("heading", { name: "Your accounts" }),
-  ).toBeVisible();
+  await expect(page.getByText("Your accounts")).toHaveCount(0);
   await expect(page.getByRole("radio", { name: "Team account" })).toHaveCount(
     0,
   );
@@ -185,7 +198,12 @@ test("personal space: the hub renders NO account note at all", async ({
   await expect(page.getByText("Team account", { exact: true })).toHaveCount(0);
   // The hub itself is fully there, so the absence above is the frame, not a
   // failed render.
-  await expect(page.getByRole("tab", { name: "Providers" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Available" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "AI providers and models" })
+      .getByRole("button", { name: "AI Models", exact: true }),
+  ).toBeVisible();
 });
 
 // ── 3. Per-agent model ceiling editor ──────────────────────────────────────
