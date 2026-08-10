@@ -4,9 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  Input,
 } from "@houston-ai/core";
-import { SidebarGroupGlyph } from "@houston-ai/layout";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -19,6 +17,7 @@ import { useUIStore } from "../../stores/ui";
 import { AgentShareAddPeople } from "../agent/agent-share-add-people";
 import { TEAM_NAME_MAX_RUNES } from "../team-view/team-members-model";
 import { buildTeamIdentityChoices } from "./team-identity";
+import { TeamIdentityNameRow } from "./team-identity-name-row";
 
 export function CreateAgentTeamDialog(props: {
   open: boolean;
@@ -72,34 +71,21 @@ export function CreateAgentTeamDialog(props: {
         <DialogHeader>
           <DialogTitle>{t("teams:agentTeams.create.title")}</DialogTitle>
         </DialogHeader>
-        <Input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={t("teams:agentTeams.create.namePlaceholder")}
-          aria-label={t("teams:agentTeams.create.nameLabel")}
+        <TeamIdentityNameRow
+          icon={icon}
+          colorId={color}
+          name={name}
+          choices={choices}
+          onIconChange={setIcon}
+          onColorChange={setColor}
+          onNameChange={setName}
+          nameInvalid={tooLong}
         />
         {tooLong && (
           <p className="text-sm text-danger-text">
             {t("teams:agentTeams.create.tooLong", { max: TEAM_NAME_MAX_RUNES })}
           </p>
         )}
-        <div>
-          <p className="mb-2 text-sm text-ink-muted">{choices.labels.icons}</p>
-          <div className="grid grid-cols-8 gap-1">
-            {choices.glyphs.map((choice) => (
-              <button
-                key={choice.name}
-                type="button"
-                aria-label={choice.label}
-                aria-pressed={icon === choice.name}
-                onClick={() => setIcon(choice.name)}
-                className="flex size-8 items-center justify-center rounded-md hover:bg-hover aria-pressed:bg-sidebar-active"
-              >
-                <SidebarGroupGlyph name={choice.name} className="size-4" />
-              </button>
-            ))}
-          </div>
-        </div>
         {props.serverBacked && org?.members && (
           <div>
             <p className="mb-2 text-sm text-ink-muted">
@@ -122,26 +108,6 @@ export function CreateAgentTeamDialog(props: {
             )}
           </div>
         )}
-        <div>
-          <p className="mb-2 text-sm text-ink-muted">{choices.labels.colors}</p>
-          <div className="flex gap-2">
-            {choices.colors.map((choice) => (
-              <button
-                key={choice.id}
-                type="button"
-                aria-label={choice.label}
-                aria-pressed={color === choice.id}
-                onClick={() => setColor(choice.id)}
-                className="flex size-8 items-center justify-center rounded-md hover:bg-hover aria-pressed:bg-sidebar-active"
-              >
-                <span
-                  className="size-4 rounded-full"
-                  style={{ backgroundColor: choice.value }}
-                />
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={close}>
             {t("common:actions.cancel")}

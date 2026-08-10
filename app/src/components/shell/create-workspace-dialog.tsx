@@ -206,8 +206,11 @@ export function CreateAgentDialog() {
     >
       <DialogContent
         className={
+          // Step 1 is two square choice tiles; the same surface width as the
+          // sidebar's create chooser gives both screens identical tile
+          // geometry, so they read as one flow.
           step === 1
-            ? "sm:max-w-[560px] p-0 gap-0 overflow-hidden"
+            ? "sm:max-w-sm p-0 gap-0 overflow-hidden"
             : "sm:max-w-[900px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
         }
       >
