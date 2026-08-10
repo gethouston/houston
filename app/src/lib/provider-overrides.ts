@@ -656,10 +656,12 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   // to /v1/catalog, see packages/host/src/providers/qwen-dashscope.ts): Qwen
   // on Alibaba Model Studio's INTERNATIONAL pay-as-you-go endpoint, the home
   // for regular (free-quota) Model Studio keys the Token Plan card rejects.
+  // The three Qwen cards differ ONLY in which Alibaba key they accept, so
+  // every user-facing string below leads with the KEY, not the product.
   qwen: {
     name: "Qwen",
-    subtitle: "Alibaba Model Studio",
-    description: "Qwen models from Alibaba, pay as you go.",
+    subtitle: "Standard Model Studio API key",
+    description: "Standard Model Studio key. Free quota, then pay as you go.",
     cost: "Free quota, then pay as you go",
     installUrl: "https://modelstudio.console.alibabacloud.com",
     apiKeyUrl:
@@ -672,10 +674,10 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   // a 401 "Invalid API-key provided" (HOU-1077), so the connect guidance must
   // send users to the Token Plan setup guide, not a generic key console.
   "qwen-token-plan": {
-    name: "Qwen Token Plan",
-    subtitle: "Alibaba Cloud token plan",
-    description: "Qwen and hosted open models on an Alibaba token plan.",
-    cost: "Requires a purchased token plan",
+    name: "Qwen Token Plan (Team)",
+    subtitle: "Team token plan subscription",
+    description: "Needs the dedicated key from a purchased team token plan.",
+    cost: "Requires a purchased team token plan",
     billing: "subscription",
     installUrl:
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-team-quickstart",
@@ -688,10 +690,11 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
   // pi 0.84's individual (personal) tier of the same product — same endpoint,
   // its own dedicated-key + seat purchase flow, so the same guidance applies.
   "qwen-token-plan-individual": {
-    name: "Qwen Token Plan Individual",
-    subtitle: "Alibaba Cloud personal token plan",
-    description: "Qwen and hosted open models on a personal token plan.",
-    cost: "Requires a purchased token plan",
+    name: "Qwen Token Plan (Individual)",
+    subtitle: "Personal token plan subscription",
+    description:
+      "Needs the dedicated key from a purchased personal token plan.",
+    cost: "Requires a purchased personal token plan",
     billing: "subscription",
     installUrl:
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-individual-quickstart",
