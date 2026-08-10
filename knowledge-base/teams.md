@@ -133,50 +133,55 @@ tightened in one place and forgotten in another.
 
 ---
 
-## Settings > Admin (the org dashboard) — membership + insights + billing
+## Admin (the org dashboard) — company context + membership + insights + billing
 
-`org.title` ("Admin" / "Administración" / "Administração"), a SETTINGS SECTION with id
-`"organization"` (`app/src/lib/settings-sections.ts`); components in
+`org.title` ("Admin" / "Administración" / "Administração"), a TOP-LEVEL view in the
+rail's Workspace band (`ORGANIZATION_VIEW_ID`); components in
 `app/src/components/organization/`. Rendered only when
-`canSeeOrganization(caps, activeSpaceIsTeam)`. The Settings index row and `SettingsView`'s
-blocked-section fallback both guard on it. `OrganizationView` takes `backLabel`/`onBack`
-from `SettingsView` so there is exactly ONE back bar at each depth.
+`canSeeOrganization(caps, activeSpaceIsTeam)`; `blockedTopLevelView` sends a stale
+`viewMode` home when the gates resolve against it.
 
-**All policy lives in Settings > Permissions instead** — the Admin page is who's in the
-org, what they're doing, and the bill.
+One header lozenge cluster (the shared page-header grammar with Integrations and the
+team screen):
 
-**Index/detail grammar (settings-page style), NOT a tab strip.**
-
-- Landing screen `admin-index.tsx`: grouped, self-describing rows (`SettingsCard` /
-  `SettingsRow` reused from `components/settings/settings-row.tsx`), each with an icon, a
-  title (`teams:org.tabs.<id>`), a one-line description (`teams:org.index.rows.<id>`) and
-  an at-a-glance value chip (`teams:org.index.values.*`). Groups: **People** (membership),
-  **Insights** (Activity, Usage), **Billing** (when in scope).
-- Clicking a row opens its detail: a back bar (label `org.title`) + a `PageHeader` section
-  heading + the section body at full width. All sections render on the generic `{ ctx }`
-  path (`admin-section-detail.tsx` special-cases nothing).
+- `admin-header.tsx`: the identity lozenge (Building2 + "Admin") carries the screen's
+  `<h1>` and opens Company context, the landing section, which titles itself in its
+  body. People, Billing (when `canSeeBillingTab`), and Analytics follow as lozenges.
+  Narrow widths collapse the cluster into a switcher naming the ACTIVE section.
+  Lozenges carry `data-admin-section-tab`; the mounted body carries
+  `data-admin-section-body` — the e2e helpers (`e2e/support/settings-nav.ts`) wait on it.
+- Analytics is a drilled level: `admin-analytics-header.tsx` = `PageHeaderBackChip`
+  (‹ + the destination's glyph + "Admin") + lens lozenges Activity (the drilled
+  identity, text-only per the chip's drilled-header rules) / Usage / Time worked
+  (only with `capabilities.computeUsage`). Lens state lives in `organization-view.tsx`,
+  threaded as props to the header and the body.
+- The rail's Admin row always opens the dashboard HOME through the org-nav one-shot pin
+  (`requestTab(DEFAULT_ORG_TAB)`) — the same rail rule as a team row (its board) and
+  Settings (its index). The C8 team-status banner deep-links Billing through the same
+  store.
 - Section set, order fixed by `orgTabIds` in `org-view-model.ts`:
-  `OrgTabId = "people" | "activity" | "usage" | "billing"`, with
-  `ORG_TAB_IDS = ["people","activity","usage"]` and `orgTabIds({billing})` appending
-  Billing conditionally last.
-- `organization-view.tsx` is a thin index/detail shell: it loads `GET /org` once, builds
-  the shared `OrgViewContext` (`{org, role, isOwner}`), and each section owns its data + UI.
-- `org-nav-store.ts` is pruned to Billing only (`requestedTab` + `requestTab` +
-  `clearRequestedTab`); the sole consumer is `team-status-banner.tsx`'s Billing deep link.
-  When the visible set drops the active section the view falls back to the index.
+  `OrgTabId = "companyContext" | "people" | "billing" | "analytics"`, Billing spliced
+  after People when in scope. `organization-view.tsx` loads `GET /org` once and builds
+  the shared `OrgViewContext` (`{org, role, isOwner}`); each section owns its data + UI.
+- Per-agent policy lives in each team's Manage agents page.
 
 Sections:
 
+- **Company context** (`company-context-tab.tsx`) — the workspace half of standing
+  context, drawn with the ONE standing-prose editor
+  (`app/src/components/context/context-editor.tsx`: always-open box, saves on blur,
+  the data layer owns the failure toast). The same component draws About me, an
+  agent's Job description (agent settings), and the team context card.
 - **People** (`members-tab.tsx` / `people-roster.tsx`) — roster + pending invites,
-  **membership only**: owner mutates (add/remove/re-role, revoke invite), admin sees them
-  read-only. The roster row is NOT a drill-in — per-agent access is managed on the agent
-  settings page's People section. This is the ONLY membership surface; "members" is no
-  longer a `SettingsSectionId`.
-- **Activity** (`activity-tab.tsx`) — the audit log, paged.
-- **Usage** (`usage-tab.tsx`) — per-agent/user message counters.
+  **membership only**: owner mutates (add/remove/re-role, revoke invite), admin sees
+  them read-only. Per-agent access is managed on the agent settings page's People
+  section. This is the ONLY membership surface.
+- **Analytics** (`analytics-tab.tsx`) — one measurement section; Activity (audit log,
+  paged), Usage (per-agent/user message counters), and Time worked are its lenses.
 - **Billing** (`billing-tab.tsx`) — `spaces.md` → *Billing surface*.
 
-Tests: `org-view-model.test.ts` covers the section set and the billing-only gating.
+Tests: `org-view-model.test.ts` (section set, billing gate, lens set/resolve),
+`context-editor.test.ts` (editor grammar), e2e helpers in `settings-nav.ts`.
 
 ---
 
