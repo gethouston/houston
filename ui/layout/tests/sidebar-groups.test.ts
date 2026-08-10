@@ -81,9 +81,8 @@ describe("computeSidebarSections", () => {
 
 describe("affordanceAllowed", () => {
   it("allows every group affordance when there is no mask at all", () => {
-    assert.equal(affordanceAllowed(undefined, "rename"), true);
+    assert.equal(affordanceAllowed(undefined, "edit"), true);
     assert.equal(affordanceAllowed(undefined, "delete"), true);
-    assert.equal(affordanceAllowed(undefined, "context"), true);
   });
 
   it("hides leave unless the mask asks for it explicitly", () => {
@@ -93,45 +92,43 @@ describe("affordanceAllowed", () => {
     assert.equal(affordanceAllowed({ leave: true }, "leave"), true);
   });
 
-  it("treats identity as a VETO, like rename and delete and unlike leave", () => {
-    // Restyling a block edits the BLOCK, not the caller's standing in it, so it
-    // follows the same rule as rename and delete: an absent mask allows it and
+  it("treats edit as a VETO, like delete and unlike leave", () => {
+    // Editing a block's identity edits the BLOCK, not the caller's standing in
+    // it, so it follows the same rule as delete: an absent mask allows it and
     // only an explicit false takes it away. Were it opt-in like `leave`, every
     // host that already ships a mask would silently lose the entry.
-    assert.equal(affordanceAllowed(undefined, "identity"), true);
-    assert.equal(affordanceAllowed({}, "identity"), true);
-    assert.equal(affordanceAllowed({ identity: true }, "identity"), true);
-    assert.equal(affordanceAllowed({ identity: false }, "identity"), false);
+    assert.equal(affordanceAllowed(undefined, "edit"), true);
+    assert.equal(affordanceAllowed({}, "edit"), true);
+    assert.equal(affordanceAllowed({ edit: true }, "edit"), true);
+    assert.equal(affordanceAllowed({ edit: false }, "edit"), false);
     // And describing some OTHER affordance never retracts it.
-    assert.equal(affordanceAllowed({ delete: false }, "identity"), true);
+    assert.equal(affordanceAllowed({ delete: false }, "edit"), true);
   });
 
   it("treats only false as a veto, so a partial mask retracts nothing else", () => {
     const mask: SidebarGroupAffordances = { delete: false };
     assert.equal(affordanceAllowed(mask, "delete"), false);
-    assert.equal(affordanceAllowed(mask, "rename"), true);
-    assert.equal(affordanceAllowed(mask, "context"), true);
+    assert.equal(affordanceAllowed(mask, "edit"), true);
   });
 
   it("answers each affordance independently", () => {
     const mask: SidebarGroupAffordances = {
-      rename: true,
+      edit: true,
       delete: false,
-      context: false,
       leave: true,
     };
     assert.deepEqual(
-      (["rename", "delete", "context", "leave"] as const).map((a) =>
+      (["edit", "delete", "leave"] as const).map((a) =>
         affordanceAllowed(mask, a),
       ),
-      [true, false, false, true],
+      [true, false, true],
     );
   });
 
   // The mask is read for the DEFAULT block too, which carries no id and only
-  // ever offers a rename. One rule, both block kinds.
+  // ever offers its icon-and-name edit. One rule, both block kinds.
   it("reads a default block's mask by exactly the same rule", () => {
-    assert.equal(affordanceAllowed({ rename: true }, "rename"), true);
-    assert.equal(affordanceAllowed({ rename: false }, "rename"), false);
+    assert.equal(affordanceAllowed({ edit: true }, "edit"), true);
+    assert.equal(affordanceAllowed({ edit: false }, "edit"), false);
   });
 });

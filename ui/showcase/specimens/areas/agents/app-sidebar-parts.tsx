@@ -157,11 +157,6 @@ export function LiveSidebar({
         )
       }
       onActivateDefault={() => setDefaultCollapsed((on) => !on)}
-      onRenameGroup={(id, name) =>
-        setGroups((all) =>
-          all.map((group) => (group.id === id ? { ...group, name } : group)),
-        )
-      }
       onDeleteGroup={(id) =>
         setGroups((all) => all.filter((group) => group.id !== id))
       }

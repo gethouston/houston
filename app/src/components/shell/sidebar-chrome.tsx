@@ -32,13 +32,12 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
     addItem: t("shell:sidebar.addAgent"),
     collapseSidebar: t("shell:sidebar.collapse"),
     createGroup: t("shell:sidebar.newTeam"),
-    renameGroup: t("shell:sidebar.teams.rename"),
+    editGroup: t("shell:sidebar.teams.identity"),
     deleteGroup: t("shell:sidebar.teams.delete"),
     // Only ever rendered for a team whose `affordances.leave` is explicitly
     // true, which is a server-teams host talking about a team you joined.
     leaveGroup: t("shell:sidebar.teams.leave"),
     groupMenu: t("shell:sidebar.teams.menu"),
-    newGroupPlaceholder: t("shell:sidebar.teams.namePlaceholder"),
   };
 }
 

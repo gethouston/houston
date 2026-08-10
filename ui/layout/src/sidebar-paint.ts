@@ -89,19 +89,12 @@ export const sidebarRowButtonClasses = {
    */
   caret:
     "size-4 shrink-0 fill-current text-ink-muted transition-transform duration-150 group-hover/row:text-ink motion-reduce:transition-none",
-  /**
-   * The row swapped for a text field (inline rename). One field for a team's
-   * name and an agent's, because by this point they are one row.
-   */
-  input:
-    "mx-1 min-w-0 flex-1 rounded-md border border-line bg-input px-2 py-1 text-sm outline-none focus:border-ink/30",
 } as const;
 
 /**
  * A row's trailing control: the "..." menu on a team or an agent, the "+" on
  * the band. A SIBLING of the row button, never a child, because a button may
- * not nest inside a button — which is also why it survives the row swapping
- * into its rename input.
+ * not nest inside a button.
  *
  * Always rendered, muted at rest, strengthening on hover / focus / open.
  * Houston forbids hover-GATED affordances: a control that only exists under the

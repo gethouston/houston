@@ -8,8 +8,6 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import type { SidebarLabels } from "./sidebar";
-import type { SidebarGroupIdentity } from "./sidebar-group-identity";
-import { SidebarGroupIdentityMenu } from "./sidebar-group-identity";
 import {
   affordanceAllowed,
   type SidebarGroupAffordances,
@@ -23,12 +21,11 @@ export interface SidebarGroupMenuProps {
   /** What this block offers, independently of its siblings. */
   affordances?: SidebarGroupAffordances;
   labels: Required<SidebarLabels>;
-  /** The block's icon-and-colour picker, already bound to it. Absent means the
-   *  block offers no identity entry; see {@link SidebarGroupIdentity}. */
-  identity?: SidebarGroupIdentity;
-  /** Enter the header's inline rename. Supplied only when the host wired a
-   *  rename — the header owns the input, the menu owns the entry. */
-  onStartRename?: () => void;
+  /** Open the host's "change icon & name" surface for this block. A block's
+   *  name, mark and colour are ONE identity, so the menu carries one entry for
+   *  all of it — the host owns the surface it opens, which is what keeps the
+   *  create form and the edit form the same component over there. */
+  onEdit?: () => void;
   onDelete?: () => void;
   onLeave?: () => void;
 }
@@ -41,8 +38,8 @@ export interface SidebarGroupMenuProps {
  * is not rendered either — an empty menu is a promise the block cannot keep.
  *
  * That rule is what lets the DEFAULT block share this component: it is handed
- * the two entries it can have (rename, identity) and the same mask, so on a
- * host where the caller may do neither the menu simply does not exist.
+ * the one entry it can have (edit) and the same mask, so on a host where the
+ * caller may not edit it the menu simply does not exist.
  *
  * With nothing to show it still RESERVES the affordance column rather than
  * rendering nothing at all. The gutter is what keeps every block's name
@@ -55,20 +52,17 @@ export interface SidebarGroupMenuProps {
 export function SidebarGroupMenu({
   affordances,
   labels,
-  identity,
-  onStartRename,
+  onEdit,
   onDelete,
   onLeave,
 }: SidebarGroupMenuProps) {
   const [open, setOpen] = useState(false);
 
-  const showIdentity = !!identity && affordanceAllowed(affordances, "identity");
-  const showRename =
-    !!onStartRename && affordanceAllowed(affordances, "rename");
+  const showEdit = !!onEdit && affordanceAllowed(affordances, "edit");
   const showDelete = !!onDelete && affordanceAllowed(affordances, "delete");
   const showLeave = !!onLeave && affordanceAllowed(affordances, "leave");
   // Everything that edits the GROUP, as opposed to the caller's standing in it.
-  const showGroupItems = showIdentity || showRename || showDelete;
+  const showGroupItems = showEdit || showDelete;
   if (!showGroupItems && !showLeave)
     return <span aria-hidden="true" className={sidebarRowAffordanceGutter} />;
 
@@ -84,14 +78,9 @@ export function SidebarGroupMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom">
-        {/* The look comes FIRST: it is the entry a user reaches for most often
-            and the only one that opens a panel rather than acting at once. */}
-        {showIdentity && identity && (
-          <SidebarGroupIdentityMenu identity={identity} />
-        )}
-        {showRename && (
-          <DropdownMenuItem onSelect={() => onStartRename?.()}>
-            {labels.renameGroup}
+        {showEdit && (
+          <DropdownMenuItem onSelect={() => onEdit?.()}>
+            {labels.editGroup}
           </DropdownMenuItem>
         )}
         {showDelete && (

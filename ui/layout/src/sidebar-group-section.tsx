@@ -19,8 +19,6 @@ export interface SidebarGroupSectionProps {
   /** This group is the current drop target — highlight it. Only ever true for
    *  the block a drag STARTED in, since a drag may not leave it. */
   highlight?: boolean;
-  /** Rune ceiling for the header's inline rename; absent means no cap. */
-  maxNameRunes?: number;
   onAdd?: (groupId: string | null) => void;
   addItemLabel?: string;
   addItemDataAttrs?: Record<string, string>;
@@ -30,7 +28,6 @@ export interface SidebarGroupSectionProps {
   /** The DEFAULT block's header was activated. Its own callback because that
    *  block is not a stored group and has no id to hand back. */
   onActivateDefault?: () => void;
-  onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   /** Leave the group (the caller's membership, not the group). */
   onLeaveGroup?: (groupId: string) => void;
@@ -53,21 +50,20 @@ export interface SidebarGroupSectionProps {
  *
  * The default block renders through the SAME header, so it collapses like any
  * other. What it still does not get is the affordances the container itself
- * lacks: no delete, no leave, no sortable handle. It DOES rename, when the host
- * wires `defaultGroup.onRename` — see {@link SidebarBlockHeader}.
+ * lacks: no delete, no leave, no sortable handle. It DOES offer its
+ * icon-and-name edit, when the host wires `defaultGroup.onEdit` — see
+ * {@link SidebarBlockHeader}.
  */
 export function SidebarGroupSection({
   section,
   ctx,
   defaultGroup,
   highlight,
-  maxNameRunes,
   onAdd,
   addItemLabel,
   addItemDataAttrs,
   onActivateGroup,
   onActivateDefault,
-  onRenameGroup,
   onDeleteGroup,
   onLeaveGroup,
 }: SidebarGroupSectionProps) {
@@ -121,19 +117,13 @@ export function SidebarGroupSection({
           <SidebarBlockHeader
             block={block}
             group={group}
-            // Only the DEFAULT block's own rename, and only when this section
-            // IS that block: `block` is the union, so the header cannot read
-            // the field off it.
-            onRenameDefault={group ? undefined : defaultGroup?.onRename}
             ctx={ctx}
             contentId={contentId}
             dragAttributes={group ? header.attributes : undefined}
             dragListeners={group ? header.listeners : undefined}
             collapsed={collapsed}
-            maxNameRunes={maxNameRunes}
             onActivateGroup={onActivateGroup}
             onActivateDefault={onActivateDefault}
-            onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
             onLeaveGroup={onLeaveGroup}
           />

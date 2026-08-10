@@ -7,7 +7,7 @@ import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import {
   createTeam,
-  openCreateMenu,
+  openCreateDialog,
   startNewTeam,
 } from "./support/sidebar-create";
 import {
@@ -194,19 +194,20 @@ async function openBlockMenu(header: Locator): Promise<void> {
   await header.getByRole("button", { name: "Team options" }).click();
 }
 
-/** Rename a block through its header menu, which drops the row into the inline
- *  field every team's rename shares. */
+/** Rename a block through its header menu's ONE identity entry: the
+ *  "Change icon & name" dialog every team (and the create flow) shares. */
 async function renameBlock(
   page: Page,
   header: Locator,
   name: string,
 ): Promise<void> {
   await openBlockMenu(header);
-  await page.getByRole("menuitem", { name: "Rename team" }).click();
-  const input = page.getByRole("textbox", { name: "Team name" });
+  await page.getByRole("menuitem", { name: "Change icon & name" }).click();
+  const dialog = page.getByRole("dialog", { name: "Change icon & name" });
+  const input = dialog.getByRole("textbox", { name: "Team name" });
   await input.waitFor({ state: "visible" });
   await input.fill(name);
-  await input.press("Enter");
+  await dialog.getByRole("button", { name: "Save" }).click();
 }
 
 /** The contents of one team's block; `""` is the trailing default block. */
@@ -771,7 +772,7 @@ test("the default team renames from the rail, and that is the ONLY thing its men
   await expect(header).toContainText("Acme");
   await openBlockMenu(header);
   await expect(
-    page.getByRole("menuitem", { name: "Rename team" }),
+    page.getByRole("menuitem", { name: "Change icon & name" }),
   ).toBeVisible();
   for (const gone of ["Delete team", "Leave team"])
     await expect(page.getByRole("menuitem", { name: gone })).toHaveCount(0);
@@ -848,7 +849,7 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   // offering it would be a dead end dressed as a choice.
   await openBlockMenu(groupHeader(page, OPS_TEAM));
   await expect(
-    page.getByRole("menuitem", { name: "Rename team" }),
+    page.getByRole("menuitem", { name: "Change icon & name" }),
   ).toBeVisible();
   await expect(
     page.getByRole("menuitem", { name: "Delete team" }),
@@ -862,7 +863,7 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   // still a real team, and its one human owns it.
   await openBlockMenu(defaultHeader(page));
   await expect(
-    page.getByRole("menuitem", { name: "Rename team" }),
+    page.getByRole("menuitem", { name: "Change icon & name" }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
 
@@ -873,10 +874,15 @@ test("a personal space groups its agents into teams, and offers nothing about pe
     .poll(() => callsTo(calls, "POST", "/v1/org/teams").length)
     .toBe(1);
 
-  // The create menu offers what a solo user can act on, and only that.
-  await openCreateMenu(page);
-  await expect(page.getByRole("menuitem", { name: "New agent" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "New team" })).toBeVisible();
+  // The create dialog offers what a solo user can act on, and only that.
+  await openCreateDialog(page);
+  const chooser = page.getByRole("dialog", { name: "Create", exact: true });
+  await expect(
+    chooser.getByRole("button", { name: "New agent", exact: true }),
+  ).toBeVisible();
+  await expect(
+    chooser.getByRole("button", { name: "New team", exact: true }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
 
   // "Manage agents" keeps the two surfaces a team HAS for one person — its name

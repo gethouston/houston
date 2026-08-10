@@ -1,15 +1,11 @@
 import type { ReactNode } from "react";
-import type { SidebarGroupIdentity } from "./sidebar-group-identity";
 import type { SidebarItem } from "./sidebar-props";
-
-/** Re-exported so a host describing a block never needs a second import. */
-export type { SidebarGroupIdentity };
 
 /**
  * Which header-menu affordances THIS group offers, independently of its
  * siblings. Per GROUP rather than per list because a server-owned team may be
- * renamable while the next one is not, and one set of list-level callbacks
- * cannot say that.
+ * the caller's to edit while the next one is not, and one set of list-level
+ * callbacks cannot say that.
  *
  * An absent mask means every affordance the host wired a callback for, which is
  * exactly the behavior before masks existed. A field left `undefined` inside a
@@ -18,14 +14,12 @@ export type { SidebarGroupIdentity };
  * retract the ones you did not mention.
  */
 export interface SidebarGroupAffordances {
-  rename?: boolean;
+  /** The ONE "change icon & name" door: a block's name, mark and colour are a
+   *  single identity, edited in a single surface the host opens. A veto like
+   *  `delete`: absent leaves the decision to whether the host wired
+   *  {@link SidebarGroupView.onEdit} at all. */
+  edit?: boolean;
   delete?: boolean;
-  /** The icon-and-colour picker. A VETO like `rename` and `delete`, NOT an
-   *  opt-in like `leave`: absent leaves the decision to whether the host
-   *  supplied an {@link SidebarGroupView.identity} at all, and only an explicit
-   *  `false` takes it away. Restyling edits the BLOCK, not the caller's
-   *  standing in it, so silence must never retract it. */
-  identity?: boolean;
   /**
    * Leaving is the one OPT-IN flag: only an explicit `true` shows it, and an
    * absent mask hides it. It acts on the CALLER's membership rather than on the
@@ -70,15 +64,18 @@ export interface SidebarGroupView {
    */
   active?: boolean;
   /**
-   * The block's icon-and-colour picker. ABSENT ⇒ the block offers no identity
-   * entry; PRESENT and not vetoed by
-   * {@link SidebarGroupAffordances.identity} ⇒ it does.
+   * Open the host's "change icon & name" surface for this block. ABSENT ⇒ the
+   * block offers no edit entry; PRESENT and not vetoed by
+   * {@link SidebarGroupAffordances.edit} ⇒ it does.
    *
-   * Its `onChange` arrives ALREADY BOUND to this block, exactly like
-   * {@link SidebarDefaultGroupView.onRename}: the default block hands back no
-   * id, so a callback that expected one could not serve both block kinds.
+   * Arrives ALREADY BOUND to this block: the default block hands back no id,
+   * so a callback that expected one could not serve both block kinds. What the
+   * surface looks like is entirely the host's — the library only opens the
+   * door, which is what keeps the create-team and edit-team forms one
+   * component on the host's side instead of a submenu here drifting from a
+   * dialog there.
    */
-  identity?: SidebarGroupIdentity;
+  onEdit?: () => void;
 }
 
 /**
@@ -88,9 +85,9 @@ export interface SidebarGroupView {
  * own, which is what keeps a host that passes none rendering exactly as before.
  *
  * It takes the MASK and not a group because both block kinds carry one now: the
- * default block's header offers a rename on a host that owns the teams, and one
- * rule read two ways is how the two block kinds start disagreeing about what
- * `false` means.
+ * default block's header offers its icon-and-name edit on a host that owns the
+ * teams, and one rule read two ways is how the two block kinds start
+ * disagreeing about what `false` means.
  */
 export function affordanceAllowed(
   affordances: SidebarGroupAffordances | undefined,
@@ -110,34 +107,24 @@ export function affordanceAllowed(
  * row in the rail that answers a click differently, which is exactly the kind
  * of exception a user reads as a bug. It is still not a stored group, so it is
  * never a drag source and it can be neither deleted nor left; the one thing it
- * CAN offer is a rename, and only when the host wires {@link onRename}.
+ * CAN offer is its icon-and-name edit, and only when the host wires
+ * {@link onEdit}.
  */
 export interface SidebarDefaultGroupView {
   name: string;
   /** The block's rollup badge, on exactly the terms a named group has it
    *  ({@link SidebarGroupView.trailing}). */
   trailing?: ReactNode;
-  /**
-   * Rename this block, committed from the header's inline edit. Absent means
-   * the name is not the user's to change here, and then the block carries no
-   * "..." menu at all — an affordance that silently does nothing is worse than
-   * no affordance.
-   *
-   * A field on the view model rather than a sibling prop because the default
-   * block hands back no id (the host already knows what it is naming), exactly
-   * as {@link SidebarGroupView.identity}'s `onChange` does.
-   */
-  onRename?: (newName: string) => void;
+  /** Open the host's "change icon & name" surface for this block, on exactly
+   *  the terms a named group has it ({@link SidebarGroupView.onEdit}). Absent
+   *  means the block's identity is not the caller's to change here, and then
+   *  the block carries no "..." menu at all — an affordance that silently does
+   *  nothing is worse than no affordance. */
+  onEdit?: () => void;
   /** Which header-menu affordances this block offers. Absent ⇒ all of the ones
-   *  the host wired up; see {@link SidebarGroupAffordances}. Only `rename` and
-   *  `identity` are ever read here — they are the block's two possible
-   *  entries. */
+   *  the host wired up; see {@link SidebarGroupAffordances}. Only `edit` is
+   *  ever read here — it is the block's one possible entry. */
   affordances?: SidebarGroupAffordances;
-  /** The block's icon-and-colour picker, on exactly the terms a named group has
-   *  it ({@link SidebarGroupView.identity}); absent ⇒ no identity entry. Its
-   *  `onChange` is already bound to this block for the same reason
-   *  {@link onRename} is: the default block has no id to hand back. */
-  identity?: SidebarGroupIdentity;
   /**
    * Folded shut. Separate from a group's own `collapsed` because the default
    * block is VIRTUAL on the local backend — it is the workspace itself, not a

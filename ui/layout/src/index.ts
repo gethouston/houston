@@ -34,11 +34,9 @@ export type { SidebarGroupHeaderProps } from "./sidebar-group-header";
 export { SidebarGroupHeader } from "./sidebar-group-header";
 export type {
   SidebarGroupGlyphChoice,
-  SidebarGroupIdentity,
   SidebarGroupIdentityLabels,
   SidebarGroupSwatch,
-} from "./sidebar-group-identity";
-export { SidebarGroupIdentityMenu } from "./sidebar-group-identity";
+} from "./sidebar-group-identity-model";
 export type { SidebarGroupSectionProps } from "./sidebar-group-section";
 export { SidebarGroupSection } from "./sidebar-group-section";
 export type { SidebarGroupedListProps } from "./sidebar-grouped-list";

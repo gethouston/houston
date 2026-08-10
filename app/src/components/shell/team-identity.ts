@@ -1,7 +1,6 @@
 import { AGENT_COLORS, colorValue } from "@houston-ai/core";
 import type {
   SidebarGroupGlyphChoice,
-  SidebarGroupIdentity,
   SidebarGroupIdentityLabels,
   SidebarGroupSwatch,
 } from "@houston-ai/layout";
@@ -11,9 +10,9 @@ import { canRenameTeam, type TeamView } from "../../lib/teams-model.ts";
 import { AGENT_COLOR_LABEL_KEYS } from "./agent-sidebar-color-menu.tsx";
 
 /**
- * Everything a team's ICON-AND-COLOUR picker is made of: the vocabulary it
- * offers, the reading of a team's stored colour, and the per-team factory the
- * rail hands to `buildTeamSidebarLists`.
+ * Everything a team's ICON-AND-NAME editing is made of: the vocabulary the
+ * picker offers, the reading of a team's stored colour, and the gate deciding
+ * WHOSE identity this caller may edit.
  *
  * Its own module rather than lines inside `use-sidebar-teams-model.ts`, which
  * is at the file-size ceiling and whose job is composing the rail, not deciding
@@ -58,7 +57,6 @@ export function buildTeamIdentityChoices(
       trigger: t("shell:sidebar.teams.identity"),
       icons: t("shell:sidebar.teams.identityIcons"),
       colors: t("shell:sidebar.teams.identityColors"),
-      none: t("shell:sidebar.teams.identityNone"),
     },
   };
 }
@@ -83,43 +81,20 @@ export function teamPaletteColorId(
 }
 
 /**
- * The picker each team block offers, or `undefined` for a team this caller
- * cannot restyle — exactly the teams whose NAME they cannot change either,
- * because setting a team's mark is a rename by another name.
+ * Whether this caller may edit `team`'s identity — its name, mark and colour,
+ * which are ONE thing changed in one dialog (a team's mark is a rename by
+ * another name).
  *
  * Server host: `canRenameTeam`, so the default team is included (C13 reads its
  * identity as a rename, not a structural change). LOCAL backend: named groups
  * only, because the default team is VIRTUAL there — it IS the workspace, with
  * no stored group row to hold an icon or a colour and nothing in the stack that
- * can change a workspace's identity, which is why it has no rename door either.
+ * can change a workspace's identity.
  */
-export function teamIdentityFor({
-  choices,
-  serverBacked,
-  setIdentity,
-}: {
-  choices: TeamIdentityChoices;
+export function canEditTeamIdentity(
+  team: TeamView,
   /** `hasAgentTeams(capabilities)` — the host owns the teams (C13). */
-  serverBacked: boolean;
-  /** `ServerTeamActions.setIdentity` — `null` clears a field. */
-  setIdentity: (
-    teamId: string,
-    patch: { icon?: string | null; color?: string | null },
-  ) => void;
-}): (team: TeamView) => SidebarGroupIdentity | undefined {
-  return (team) => {
-    if (!(serverBacked ? canRenameTeam(team) : !team.isDefault)) return;
-    return {
-      ...choices,
-      icon: team.icon,
-      colorId: teamPaletteColorId(team.color),
-      onChange: (patch) =>
-        setIdentity(team.id, {
-          ...(patch.icon !== undefined ? { icon: patch.icon } : {}),
-          // The palette ID is what we persist, never the resolved value: a
-          // token name survives a theme switch, a snapshot hex does not.
-          ...(patch.colorId !== undefined ? { color: patch.colorId } : {}),
-        }),
-    };
-  };
+  serverBacked: boolean,
+): boolean {
+  return serverBacked ? canRenameTeam(team) : !team.isDefault;
 }

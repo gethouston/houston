@@ -80,6 +80,7 @@
   "agentTeams": {
     "create": {
       "title": "Create a team",
+      "iconAndName": "Icon & Name",
       "nameLabel": "Team name",
       "namePlaceholder": "e.g. Marketing",
       "tooLong": "Keep the name under {{max}} characters.",

@@ -4,7 +4,7 @@ import type {
   SidebarItem,
 } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
@@ -21,7 +21,7 @@ import {
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import type { AgentItemArgs } from "./agent-sidebar-items";
-import { buildTeamIdentityChoices, teamIdentityFor } from "./team-identity";
+import { canEditTeamIdentity } from "./team-identity";
 import { buildTeamSidebarLists } from "./team-sidebar-lists";
 import { teamCollapsedLookup } from "./team-sidebar-model";
 import {
@@ -114,15 +114,17 @@ export function useSidebarTeamsModel(args: {
     activeTeam ? sectionsForTeam(activeTeam) : [],
   );
   const collapsedLookup = teamCollapsedLookup(sidebar.layout);
-  // The picker each block offers. Its vocabulary is the same for every team, so
-  // it is built ONCE per language; who may use it, and what a stored colour
-  // means, are `team-identity.ts`'s to decide.
-  const identityChoices = useMemo(() => buildTeamIdentityChoices(t), [t]);
-  const identityFor = teamIdentityFor({
-    choices: identityChoices,
-    serverBacked,
-    setIdentity: teamActions.setIdentity,
-  });
+  // The menu's one identity entry: opens the shared "Change icon & name"
+  // dialog (the same form the create-team dialog renders). Who may edit which
+  // team is `team-identity.ts`'s to decide.
+  const setEditTeamIdentityId = useUIStore((s) => s.setEditTeamIdentityId);
+  const onEditTeamFor = useCallback(
+    (team: TeamView) =>
+      canEditTeamIdentity(team, serverBacked)
+        ? () => setEditTeamIdentityId(team.id)
+        : undefined,
+    [serverBacked, setEditTeamIdentityId],
+  );
 
   // The rail fills EXACTLY ONE row, so the agent answer is resolved FIRST and
   // every block header is handed it: a block whose own agent is lit leaves its
@@ -158,14 +160,11 @@ export function useSidebarTeamsModel(args: {
     teams,
     selectedAgentId,
     affordancesFor: teamActions.affordancesFor,
-    identityFor,
-    // The default team's name is the SPACE's on a host that owns the teams, and
-    // C13 lets its owner rename it like any other. Locally that name is the
-    // workspace's, and nothing in the stack can actually change a workspace
-    // name (the adapter's `renameWorkspace` is synthetic and no host route
-    // exists), so the block gets no rename door there rather than one that
-    // quietly does nothing.
-    onRenameDefaultTeam: serverBacked ? teamActions.renameGroup : undefined,
+    // The default team is asked the same question every named team is: on a
+    // host that owns the teams C13 lets its owner rename it like any other,
+    // and locally it is the workspace itself, whose identity nothing in the
+    // stack can change — `canEditTeamIdentity` answers both.
+    onEditTeamFor,
     highlight,
     summaries: args.summaries,
     runningLabel: (count) => t("shell:sidebar.runningCount", { count }),

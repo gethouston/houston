@@ -93,35 +93,33 @@ describe("teamAffordanceMask", () => {
     assert.equal(off(team("ws", true)), undefined);
   });
 
-  it("gives an owner rename, delete and identity", () => {
+  it("gives an owner edit and delete", () => {
+    // ONE identity entry: name, mark and colour are edited together in the
+    // "Change icon & name" dialog, so the mask carries a single `edit` gate.
     // No context entry among them on EITHER backend any more: a team's shared
-    // context is the first card of its Manage agents page, one door onto it,
-    // and the rail menu that used to open a dialog is gone.
+    // context is the first card of its Manage agents page, one door onto it.
     const owned = mask({ serverBacked: true })(
       team("t1", false, { owner: true }),
     );
     assert.deepEqual(owned, {
-      rename: true,
+      edit: true,
       delete: true,
       leave: true,
-      identity: true,
     });
   });
 
-  it("offers identity exactly where it offers rename, the default team included", () => {
+  it("offers edit on the rename gate, the default team included", () => {
     const asOwner = mask({ serverBacked: true });
     const def = asOwner(team("ws", true, { owner: true }));
-    // The default team is renamable server-side but never deletable, and
-    // identity follows rename rather than delete.
-    assert.equal(def?.rename, true);
-    assert.equal(def?.identity, true);
+    // The default team is renamable server-side (C13 reads its identity as a
+    // rename) but never deletable, so edit follows rename rather than delete.
+    assert.equal(def?.edit, true);
     assert.equal(def?.delete, false);
 
     const member = mask({ serverBacked: true })(
       team("t1", false, { owner: false }),
     );
-    assert.equal(member?.rename, false);
-    assert.equal(member?.identity, false);
+    assert.equal(member?.edit, false);
   });
 
   it("withholds Leave with no session id and in a personal space", () => {
