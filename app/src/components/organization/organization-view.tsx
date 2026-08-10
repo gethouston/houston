@@ -10,7 +10,15 @@ import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools"
 import { ADMIN_HEADER_THRESHOLDS, AdminHeader } from "./admin-header";
 import { AdminSectionBody } from "./admin-section-body";
 import { useOrgNav } from "./org-nav-store";
-import { DEFAULT_ORG_TAB, type OrgTabId, orgTabIds } from "./org-view-model";
+import {
+  type AnalyticsLens,
+  analyticsLenses,
+  DEFAULT_ANALYTICS_LENS,
+  DEFAULT_ORG_TAB,
+  type OrgTabId,
+  orgTabIds,
+  resolveAnalyticsLens,
+} from "./org-view-model";
 
 /**
  * The shared context every Organization section receives. `org` is the loaded
@@ -67,6 +75,14 @@ export function OrganizationView() {
 
   const [active, setActive] = useState<OrgTabId>(DEFAULT_ORG_TAB);
 
+  // The Analytics lens, owned HERE beside the section it narrows — the drilled
+  // header and the section body both draw it, exactly as they draw `active`.
+  // Kept-alive screen state, so leaving and returning lands on the lens you
+  // left; the rail's home pin resets the SECTION, deliberately not the lens.
+  const [lens, setLens] = useState<AnalyticsLens>(DEFAULT_ANALYTICS_LENS);
+  const lenses = analyticsLenses(capabilities);
+  const activeLens = resolveAnalyticsLens(lens, lenses);
+
   // One event per section OPENED (a lozenge click or a deep link), keyed like
   // the global view switches so a single tab_name breakdown covers everything.
   // Landing on the view at all is the shell's `tab_opened` / `organization`, so
@@ -81,12 +97,12 @@ export function OrganizationView() {
     [active],
   );
 
-  // Honor a deep link straight into a section — the C8 team-status banner is
-  // the one caller, and it asks for Billing — then clear it so a later plain
-  // nav to the dashboard lands on the default section again. This is an effect
-  // on the STORE field, not mount-time state, precisely because the screen is
-  // kept alive: it fires on the first mount AND while already open, the same
-  // way `team-settings.tsx` consumes its own one-shot pin.
+  // Honor a pinned section request — the C8 team-status banner deep-links to
+  // Billing, and the rail's Admin row pins the landing section on every click
+  // — then clear it. This is an effect on the STORE field, not mount-time
+  // state, precisely because the screen is kept alive: it fires on the first
+  // mount AND while already open, the same way `team-settings.tsx` consumes
+  // its own one-shot pin.
   useEffect(() => {
     if (requestedTab === null) return;
     if (visibleIds.includes(requestedTab)) openSection(requestedTab);
@@ -111,9 +127,17 @@ export function OrganizationView() {
           active={active}
           visibleIds={visibleIds}
           onSelect={openSection}
+          lens={activeLens}
+          lenses={lenses}
+          onSelectLens={setLens}
         />
         <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-          <AdminSectionBody active={active} ctx={ctx} isLoading={isLoading} />
+          <AdminSectionBody
+            active={active}
+            ctx={ctx}
+            isLoading={isLoading}
+            lens={activeLens}
+          />
         </div>
       </div>
     </PageHeaderToolsProvider>

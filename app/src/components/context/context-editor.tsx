@@ -1,5 +1,5 @@
 import { cn, Spinner } from "@houston-ai/core";
-import { useEffect, useState } from "react";
+import { type ComponentProps, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PageHero } from "../shell/page-shell";
 
@@ -55,9 +55,17 @@ export function ContextEditorBox({
   const handleBlur = async () => {
     if (readOnly || value === content) return;
     setState("saving");
-    await onSave(value);
-    setState("saved");
-    window.setTimeout(() => setState("idle"), 2000);
+    try {
+      await onSave(value);
+      setState("saved");
+      window.setTimeout(() => setState("idle"), 2000);
+    } catch {
+      // The data layer owns the toast (`lib/tauri.ts` `call()` /
+      // `surfaceEngineError` on every save path) — the box only recovers so
+      // "Saving…" never sticks, and the unsaved text stays in the field for
+      // the user to retry.
+      setState("idle");
+    }
   };
 
   return (
@@ -67,7 +75,7 @@ export function ContextEditorBox({
       <div className="mb-1 flex items-baseline justify-end">
         <span
           className={cn(
-            "text-[11px] tabular-nums transition-opacity duration-200",
+            "text-xs tabular-nums transition-opacity duration-200",
             state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
           )}
           aria-live="polite"
@@ -87,14 +95,16 @@ export function ContextEditorBox({
           onChange={(e) => setValue(e.target.value)}
           onBlur={handleBlur}
           readOnly={readOnly}
-          placeholder={placeholder}
+          // A locked box must not invite writing: the greyed suggestion IS
+          // the write invitation, so the read-only face drops it.
+          placeholder={readOnly ? undefined : placeholder}
           rows={Math.max(minRows, value.split("\n").length + 2)}
           className={cn(
             "w-full px-4 py-3 text-sm text-ink leading-relaxed",
             "placeholder:text-ink-muted/60",
             "bg-input border border-ink/[0.04] rounded-lg",
-            "outline-none resize-none transition-shadow duration-200",
-            "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+            "outline-none resize-none",
+            "focus-visible:ring-2 focus-visible:ring-focus",
             readOnly && "cursor-default text-ink-muted",
           )}
         />
@@ -121,7 +131,7 @@ export function ContextEditorPage({
   subtitle: string;
   level?: 1 | 2;
   ready?: boolean;
-} & Parameters<typeof ContextEditorBox>[0]) {
+} & ComponentProps<typeof ContextEditorBox>) {
   return (
     <div className="w-full pb-12">
       <PageHero
@@ -131,7 +141,10 @@ export function ContextEditorPage({
         className="mb-3"
       />
       {ready ? (
-        <ContextEditorBox {...box} />
+        // The hero visually titles the box but is not programmatically
+        // associated with it, so the title doubles as the accessible name
+        // unless the caller passes a more specific one.
+        <ContextEditorBox ariaLabel={title} {...box} />
       ) : (
         <div className="flex items-center justify-center py-16">
           <Spinner className="h-5 w-5" />

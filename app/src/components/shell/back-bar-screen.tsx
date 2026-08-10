@@ -4,14 +4,16 @@ import type { ReactNode } from "react";
 /**
  * The shared drill-in scaffold: a back-bar with a labelled chevron over a
  * full-height scroll region. ONE frame for every screen that sits one level
- * below something else — the Settings sections, the Admin dashboard's section
- * details, the Permissions agent drill-in — so the chevron, its label spacing
- * and the scroll behaviour can never drift between them. It also keeps each
- * level to exactly one back affordance: a screen nested inside another renders
- * its own bar only for its own depth.
+ * below something else — the Settings sections, the Team Settings agent
+ * drill-in — so the chevron, its label spacing and the scroll behaviour can
+ * never drift between them. It also keeps each level to exactly one back
+ * affordance: a screen nested inside another renders its own bar only for its
+ * own depth. (Admin has no drill-in anymore: its sections are header-cluster
+ * siblings, and its drilled Analytics level uses the header's own
+ * `PageHeaderBackChip`, not this bar.)
  *
- * `onBack` returns to the level above (the Settings index, the Admin index, the
- * agent list); `backLabel` names it.
+ * `onBack` returns to the level above (the Settings index, the team's agent
+ * list); `backLabel` names it.
  */
 export function BackBarScreen({
   backLabel,

@@ -87,20 +87,23 @@ export const ADMIN_SECTION_TAB_IDS: Readonly<Record<AdminSection, string>> = {
  *
  * The sections are lozenges in the header cluster (the shared grammar with the
  * team screen), addressed by their `data-admin-section-tab` id so the helper
- * survives label changes. `aria-current="page"` is the landing assertion: the
- * header swaps the section body under it, and there is no per-section `<h1>`
- * to wait on anymore.
+ * survives label changes. The landing waits on the BODY's
+ * `data-admin-section-body` marker, not just the lozenge's `aria-current`: the
+ * lozenge repaints synchronously on click, so only the body attribute proves
+ * the section actually swapped in before a spec's first assertion runs.
  */
 export async function openAdminSection(
   page: Page,
   name: AdminSection,
 ): Promise<void> {
   await openAdmin(page);
-  const tab = screen(page).locator(
-    `[data-admin-section-tab='${ADMIN_SECTION_TAB_IDS[name]}']`,
-  );
+  const id = ADMIN_SECTION_TAB_IDS[name];
+  const tab = screen(page).locator(`[data-admin-section-tab='${id}']`);
   await tab.click();
   await expect(tab).toHaveAttribute("aria-current", "page");
+  await expect(
+    screen(page).locator(`[data-admin-section-body='${id}']`),
+  ).toBeVisible();
 }
 
 /** The three lenses of Admin > Analytics, as its lozenges label them. */

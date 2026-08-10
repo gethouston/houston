@@ -17,8 +17,6 @@ export {
   type FilesColumnLabels,
 } from "./files-list-frame";
 export { FilesSearch } from "./files-search";
-export type { InstructionsPanelProps } from "./instructions-panel";
-export { InstructionsPanel } from "./instructions-panel";
 export {
   internalDragPayload,
   parseInternalDragPayload,
@@ -28,7 +26,6 @@ export { buildTree, folderAtPath } from "./tree";
 export type {
   FileEntry,
   FilePreviewData,
-  InstructionFile,
   LoadFilePreview,
 } from "./types";
 export type { SortDirection, SortKey } from "./utils";

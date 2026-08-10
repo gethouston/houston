@@ -2,6 +2,7 @@ import type { WorkspaceContext } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEngine } from "../../lib/engine";
 import { queryKeys } from "../../lib/query-keys";
+import { surfaceEngineError } from "../../lib/tauri";
 
 /**
  * Workspace + user context = the two blobs injected into every chat's system
@@ -59,6 +60,12 @@ export function useSaveWorkspaceContext(agentPath: string | undefined) {
         queryKeys.workspaceContext(agentPath),
         (prev) => ({ workspace: "", user: "", ...prev, [slot]: content }),
       );
+    },
+    // This engine call bypasses `lib/tauri.ts`'s `call()` wrapper, so surface
+    // here or a failed context save is silent (no-silent-failures policy).
+    // The mutation still rejects to the editor, which resets its save state.
+    onError: (err, { slot }) => {
+      void surfaceEngineError("set_workspace_context", err, { slot });
     },
   });
 }

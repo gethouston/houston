@@ -261,11 +261,15 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   await openShell(page);
 
   // Their own agent: the editable face. The standing-prose editor is always
-  // open (no invite empty state), so editable-vs-locked is the box itself.
+  // open (no invite empty state), so editable-vs-locked is the box itself —
+  // and only the editable face carries the greyed write invitation.
   await openJobDescription(page, "Payroll Bot");
-  await expect(
-    page.getByPlaceholder("Write instructions for your agent…"),
-  ).toBeEditable();
+  const jobBox = () => page.getByLabel("Job description");
+  await expect(jobBox()).toBeEditable();
+  await expect(jobBox()).toHaveAttribute(
+    "placeholder",
+    "Write instructions for your agent…",
+  );
 
   // Back to the team, then into an agent of the SAME team they only use: the
   // page is reachable (it is honest — they can see what the agent is told) and
@@ -281,7 +285,7 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   await page.keyboard.press("Escape");
   await expect(picker).toHaveCount(0);
   await openJobDescription(page, "Payroll Helper");
-  await expect(
-    page.getByPlaceholder("Write instructions for your agent…"),
-  ).not.toBeEditable();
+  await expect(jobBox()).not.toBeEditable();
+  // The locked face drops the write invitation — the user-visible tell.
+  await expect(jobBox()).not.toHaveAttribute("placeholder");
 });

@@ -165,7 +165,7 @@
     "title": "Admin",
     "tabs": {
       "label": "Admin sections",
-      "lensLabel": "Analytics sections",
+      "lensLabel": "Analytics views",
       "people": "People",
       "billing": "Billing",
       "analytics": "Analytics",

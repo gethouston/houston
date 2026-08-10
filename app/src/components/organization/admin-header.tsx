@@ -9,7 +9,11 @@ import { PageHeaderSwitcher } from "../shell/page-header/page-header-switcher";
 import { PageHeaderTabs } from "../shell/page-header/page-header-tabs";
 import { usePageHeaderMode } from "../shell/page-header/page-header-tools";
 import { AdminAnalyticsHeader } from "./admin-analytics-header";
-import { DEFAULT_ORG_TAB, type OrgTabId } from "./org-view-model";
+import {
+  type AnalyticsLens,
+  DEFAULT_ORG_TAB,
+  type OrgTabId,
+} from "./org-view-model";
 
 /**
  * The widest forms are Spanish. Dashboard level: identity "Administración"
@@ -50,17 +54,31 @@ export function AdminHeader({
   active,
   visibleIds,
   onSelect,
+  lens,
+  lenses,
+  onSelectLens,
 }: {
   active: OrgTabId;
   /** The sections visible for this caller + space, from `orgTabIds`. */
   visibleIds: readonly OrgTabId[];
   onSelect: (id: OrgTabId) => void;
+  /** The Analytics lens state, owned by the view beside `active`. */
+  lens: AnalyticsLens;
+  lenses: readonly AnalyticsLens[];
+  onSelectLens: (lens: AnalyticsLens) => void;
 }) {
   const { t } = useTranslation("teams");
   const collapsed = headerCollapsesTabs(usePageHeaderMode());
 
   if (active === "analytics")
-    return <AdminAnalyticsHeader onBack={() => onSelect(DEFAULT_ORG_TAB)} />;
+    return (
+      <AdminAnalyticsHeader
+        lens={lens}
+        lenses={lenses}
+        onSelectLens={onSelectLens}
+        onBack={() => onSelect(DEFAULT_ORG_TAB)}
+      />
+    );
 
   const identity = (
     <>

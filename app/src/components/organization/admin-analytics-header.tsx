@@ -1,6 +1,5 @@
 import { Building2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../../hooks/use-capabilities";
 import { PageHeader } from "../shell/page-header/page-header";
 import { PageHeaderBackChip } from "../shell/page-header/page-header-back-chip";
 import { headerCollapsesTabs } from "../shell/page-header/page-header-layout";
@@ -10,13 +9,7 @@ import {
   PageHeaderTabs,
 } from "../shell/page-header/page-header-tabs";
 import { usePageHeaderMode } from "../shell/page-header/page-header-tools";
-import { useAnalyticsLens } from "./analytics-lens-store";
-import {
-  type AnalyticsLens,
-  analyticsLenses,
-  DEFAULT_ANALYTICS_LENS,
-  resolveAnalyticsLens,
-} from "./org-view-model";
+import { type AnalyticsLens, DEFAULT_ANALYTICS_LENS } from "./org-view-model";
 
 /**
  * The Admin strip DRILLED INTO Analytics: the back chip returning to the
@@ -32,18 +25,26 @@ import {
  * cluster's identity does, and the bare words plus the chip are what make
  * this read as an inner page.
  *
+ * Stateless: the lens (and the deployment's lens set) is owned by
+ * `OrganizationView` beside the section state and threaded here, the same
+ * way `AdminHeader` receives `active`.
+ *
  * Narrow: the cluster collapses into a switcher naming the ACTIVE lens; the
  * back chip stays put.
  */
-export function AdminAnalyticsHeader({ onBack }: { onBack: () => void }) {
+export function AdminAnalyticsHeader({
+  lens,
+  lenses,
+  onSelectLens,
+  onBack,
+}: {
+  lens: AnalyticsLens;
+  lenses: readonly AnalyticsLens[];
+  onSelectLens: (lens: AnalyticsLens) => void;
+  onBack: () => void;
+}) {
   const { t } = useTranslation("teams");
   const collapsed = headerCollapsesTabs(usePageHeaderMode());
-  const { capabilities } = useCapabilities();
-  const lens = useAnalyticsLens((s) => s.lens);
-  const setLens = useAnalyticsLens((s) => s.setLens);
-
-  const lenses = analyticsLenses(capabilities);
-  const active = resolveAnalyticsLens(lens, lenses);
 
   const identity = (
     <span className="min-w-0 truncate">{t("org.tabs.analytics")}</span>
@@ -77,22 +78,20 @@ export function AdminAnalyticsHeader({ onBack }: { onBack: () => void }) {
         {collapsed ? (
           <PageHeaderSwitcher
             identity={
-              <span className="min-w-0 truncate">
-                {t(`org.tabs.${active}`)}
-              </span>
+              <span className="min-w-0 truncate">{t(`org.tabs.${lens}`)}</span>
             }
             items={switcherLenses}
-            active={active}
+            active={lens}
             label={t("org.tabs.lensLabel")}
-            onSelect={setLens}
+            onSelect={onSelectLens}
             dataAttrs={{ "data-analytics-lens-switcher": "" }}
           />
         ) : (
           <PageHeaderTabs
             items={tabs}
-            active={active}
+            active={lens}
             label={t("org.tabs.lensLabel")}
-            onSelect={setLens}
+            onSelect={onSelectLens}
           />
         )}
       </div>

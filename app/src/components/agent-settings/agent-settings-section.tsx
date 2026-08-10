@@ -11,10 +11,10 @@ import type {
 import { AgentSettingsPeople } from "./agent-settings-people.tsx";
 
 /**
- * The access bodies (people, apps, models) are deliberately flush (`w-full`) so
- * the mounting surface owns their width. This gives them the SAME column the
- * self-padded bodies (job description, learnings) bring — `max-w-3xl px-6` on
- * one `pt-2` top rhythm — so nothing shifts as the rail switches sections.
+ * The flush bodies (job description, people, apps, models) deliberately own no
+ * width of their own, so the mounting surface does. This gives them the SAME
+ * column the one self-padded body (learnings) brings — `max-w-3xl px-6` on one
+ * `pt-2` top rhythm — so nothing shifts as the rail switches sections.
  */
 function AccessColumn({ children }: { children: ReactNode }) {
   return (
@@ -34,7 +34,11 @@ export function AgentSettingsSectionView({
 }: AgentSectionProps & { section: AgentSettingsSection }) {
   switch (section) {
     case "job-description":
-      return <AgentAdminInstructions agent={agent} readOnly={readOnly} />;
+      return (
+        <AccessColumn>
+          <AgentAdminInstructions agent={agent} readOnly={readOnly} />
+        </AccessColumn>
+      );
     case "learnings":
       return <AgentAdminKnowledge agent={agent} readOnly={readOnly} />;
     case "people":
