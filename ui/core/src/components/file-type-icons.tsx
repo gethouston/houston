@@ -1,6 +1,6 @@
 /**
- * File-type iconography shared by BOTH views: an outlined tile carrying a
- * Lucide glyph tinted with its type's reserved `filetype.*` token. The tint is
+ * File-type iconography shared by file surfaces: a Lucide glyph tinted with
+ * its type's reserved `filetype.*` token. The tint is
  * IDENTITY, like an agent's helmet colour — never status, never decoration:
  * it is what lets a list of forty filenames read as "four PDFs and a video" at
  * a glance. Folders keep a monochrome glyph, because a folder is not a type.
@@ -57,72 +57,27 @@ const TINTS: Record<FileCategory, string> = {
   other: "text-filetype-generic",
 };
 
-/** The tile itself: a paper chip hairlined against the row, in both themes. */
-const TILE_CLASS =
-  "flex shrink-0 items-center justify-center rounded-lg border border-line-input bg-input";
-
-/**
- * Type tile for a list row (32px) or a grid card's title row (`small`, 28px).
- * The glyph inside stays on the Lucide 20/16px steps.
- */
-export function FileTypeTile({
-  extension,
-  small,
-  className,
-  glyphClassName,
-}: {
-  extension: string;
-  small?: boolean;
-  className?: string;
-  /** The list scales the glyph with its tile (see files-list-chrome). */
-  glyphClassName?: string;
-}) {
-  const category = fileCategory(extension);
-  const Icon = ICONS[category];
-  return (
-    <span
-      aria-hidden
-      className={cn(TILE_CLASS, small ? "size-7" : "size-8", className)}
-    >
-      <Icon
-        className={cn(
-          small ? "size-4" : "size-5",
-          glyphClassName,
-          TINTS[category],
-        )}
-        strokeWidth={1.75}
-      />
-    </span>
-  );
-}
-
-/**
- * Large centered glyph for a card body with no thumbnail. Stays MONOCHROME:
- * the tile above it already states the type, and a 40px tinted glyph on the
- * preview panel would be decorative colour filling a content surface.
- */
-export function FileTypeGlyph({ extension }: { extension: string }) {
-  const Icon = ICONS[fileCategory(extension)];
-  return (
-    <Icon aria-hidden strokeWidth={1.25} className="size-10 text-ink-muted" />
-  );
-}
-
 /**
  * Text-sized glyph for a file named INLINE in prose (chat's file chip). Keeps
- * its type TINT, unlike {@link FileTypeGlyph}: that one is monochrome because
- * the tile above it already states the type, whereas inline there is no tile —
- * the glyph is the only thing carrying it. At 14px the tint is a hint of hue
- * on a hairline mark, not colour poured onto a content surface.
+ * its type tint. At 14px the tint is a hint of hue on a hairline mark, not
+ * colour poured onto a content surface.
  */
-export function FileTypeGlyphInline({ extension }: { extension: string }) {
+export function FileTypeGlyphInline({
+  extension,
+  className,
+}: {
+  extension: string;
+  /** Consumers that size the glyph to their own icon column (the file list's
+   *  rows) override the inline 14px step here. */
+  className?: string;
+}) {
   const category = fileCategory(extension);
   const Icon = ICONS[category];
   return (
     <Icon
       aria-hidden
       strokeWidth={2}
-      className={cn("size-3.5 shrink-0", TINTS[category])}
+      className={cn("size-3.5 shrink-0", TINTS[category], className)}
     />
   );
 }

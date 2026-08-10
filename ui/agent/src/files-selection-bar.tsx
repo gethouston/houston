@@ -1,19 +1,18 @@
 /**
- * What the list's column-header row becomes while files are checked: the SAME
- * slot geometry, so nothing below it moves, holding the select-all checkbox in its
- * gutter, the count, the destructive action and a way out. No border and no
- * fill — like the header it replaces, it is chrome on the canvas. It arrives on
- * a 200ms entrance (see `.files-selection-bar-in`), because a silent swap of
- * the row above the listing is easy to miss.
+ * Selection chrome holding the select-all checkbox in the Name column's tree
+ * slot, the count, the destructive action and a way out. It replaces a column
+ * header where that row exists; in the team frame it inserts above the rows and
+ * shifts them by its height. No border or fill, just chrome on the canvas. It
+ * arrives on a 200ms entrance (see `.files-selection-bar-in`).
  */
 import { Button, cn } from "@houston-ai/core";
 import { Trash2, X } from "lucide-react";
 import { FilesCheckbox } from "./files-checkbox";
-import { HEADER_ROW, SELECT_COL } from "./files-list-chrome";
+import { BASE_INDENT, HEADER_ROW, TRIANGLE_AREA } from "./files-list-chrome";
 import type { FilesSelection } from "./files-selection";
 
 /**
- * The gutter checkbox that acts on the whole visible listing. Shared by the
+ * The tree-slot checkbox that acts on the whole visible listing. Shared by the
  * column header and this bar, so the two can never disagree about whether
  * everything on screen is checked.
  */
@@ -46,7 +45,7 @@ export function FilesSelectionBar({
     >
       <span
         className="flex shrink-0 items-center justify-center"
-        style={{ width: SELECT_COL }}
+        style={{ marginLeft: BASE_INDENT, width: TRIANGLE_AREA }}
       >
         <SelectAllCheckbox selection={selection} />
       </span>

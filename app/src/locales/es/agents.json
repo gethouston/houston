@@ -130,6 +130,8 @@
     "emptyFolder": "Esta carpeta está vacía",
     "itemSingular": "elemento",
     "itemPlural": "elementos",
+    "itemCount_one": "{{count}} elemento",
+    "itemCount_other": "{{count}} elementos",
     "menuButton": "Más acciones",
     "expandAgent": "Expandir archivos de {{name}}",
     "collapseAgent": "Contraer archivos de {{name}}",

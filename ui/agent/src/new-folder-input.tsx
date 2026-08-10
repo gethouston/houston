@@ -22,13 +22,10 @@ export function NewFolderInput({
   onConfirm,
   onCancel,
   placeholder = "untitled folder",
-  selectable,
 }: {
   onConfirm: (name: string) => void;
   onCancel: () => void;
   placeholder?: string;
-  /** The list has a checkbox gutter: keep this row's columns aligned with it. */
-  selectable?: boolean;
 }) {
   const [value, setValue] = useState("");
   const committed = useRef(false);
@@ -54,15 +51,14 @@ export function NewFolderInput({
       className={cn(ROW_CLASS, "hover:bg-transparent", NAMING_ROW)}
       style={{
         display: "grid",
-        gridTemplateColumns: colGrid(!!selectable),
+        gridTemplateColumns: colGrid(),
       }}
     >
-      {selectable && <span />}
       <div className="flex h-full min-w-0 items-center">
         <RowIndent depth={0} />
         {/* Invisible, not absent: the row keeps the exact geometry of the
             folder row it is about to become. */}
-        <DisclosureChevron open={false} className="invisible mr-2" />
+        <DisclosureChevron open={false} className="invisible mr-1" />
         <div className={NAME_CELL_INNER}>
           <FolderGlyph small className={ROW_TILE_GLYPH} />
           <input

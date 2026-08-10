@@ -3,22 +3,22 @@
  * thumbnail once it scrolls into view — a library of photos should look like
  * the photos, not like forty identical tiles. Everything else (and every image
  * that has not loaded, cannot load, or was never offered a preview loader)
- * keeps the outlined type tile, so a row never sits empty while bytes travel.
- * Both wear the SAME box (`ROW_TILE`), so a listing of mixed types keeps one
- * unbroken icon column.
+ * shows the BARE type-tinted glyph, with no tile or fill. Every mark uses the
+ * same centered footprint, so mixed listings keep one unbroken icon column.
  */
-import { cn, FileTypeTile, previewKind } from "@houston-ai/core";
-import { ROW_TILE, ROW_TILE_GLYPH } from "./files-list-chrome";
+import { cn, FileTypeGlyphInline, previewKind } from "@houston-ai/core";
+import { ROW_MARK, ROW_TILE, ROW_TILE_GLYPH } from "./files-list-chrome";
 import type { FileEntry, LoadFilePreview } from "./types";
 import { useFilePreview, useVisibleOnce } from "./use-file-preview";
 
-function TypeTile({ file }: { file: FileEntry }) {
+function TypeGlyph({ file }: { file: FileEntry }) {
   return (
-    <FileTypeTile
-      extension={file.extension}
-      className={cn("shrink-0", ROW_TILE)}
-      glyphClassName={ROW_TILE_GLYPH}
-    />
+    <span aria-hidden className={ROW_MARK}>
+      <FileTypeGlyphInline
+        extension={file.extension}
+        className={ROW_TILE_GLYPH}
+      />
+    </span>
   );
 }
 
@@ -33,7 +33,7 @@ export function FileRowIcon({
   // unreadable at this size, and observing rows that can never show one would
   // put an IntersectionObserver on every row of the workspace for nothing.
   if (!loadPreview || previewKind(file) !== "image") {
-    return <TypeTile file={file} />;
+    return <TypeGlyph file={file} />;
   }
   return <FileRowThumbnail file={file} loadPreview={loadPreview} />;
 }
@@ -49,10 +49,7 @@ function FileRowThumbnail({
   const state = useFilePreview(file, loadPreview, visible);
 
   return (
-    <div
-      ref={ref}
-      className={cn("flex shrink-0 items-center justify-center", ROW_TILE)}
-    >
+    <div ref={ref} className={cn(ROW_MARK, "rounded-md")}>
       {state.kind === "image" ? (
         <img
           src={state.url}
@@ -61,7 +58,10 @@ function FileRowThumbnail({
           className={cn("shrink-0 object-cover", ROW_TILE)}
         />
       ) : (
-        <TypeTile file={file} />
+        <FileTypeGlyphInline
+          extension={file.extension}
+          className={ROW_TILE_GLYPH}
+        />
       )}
     </div>
   );

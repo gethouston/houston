@@ -22,8 +22,8 @@ import type { SortDirection, SortKey } from "./utils";
 export interface ListRowCallbacks {
   /** Identifies the filesystem boundary encoded into internal drags. */
   dragScope?: string;
-  /** Present only when the consumer can act on a selection: its presence is
-   *  what puts the checkbox gutter on every row. */
+  /** Present only when the consumer can act on a selection: its presence puts
+   *  a checkbox in each file row's tree slot. */
   selection?: FilesSelection;
   /** Lazily fetch thumbnail bytes for a visible image row. */
   loadPreview?: LoadFilePreview;
@@ -53,15 +53,13 @@ export interface ListRowCallbacks {
   emptyFolderLabel?: string;
 }
 
-/** The checkbox gutter to the left of every row's icon (px). */
-export const SELECT_COL = 36;
 /** Where the first level starts, measured from inside ROW_PAD_X. */
 export const BASE_INDENT = 4;
 /** One level of the tree. */
-export const DEPTH_INDENT = 24;
-/** Chevron (16px) + its gap (8px): what a file row pads past so its tile lines
+export const DEPTH_INDENT = 20;
+/** Chevron (16px) + its gap (4px): what a file row pads past so its tile lines
  *  up with the folder glyphs at the same depth. */
-export const TRIANGLE_AREA = 24;
+export const TRIANGLE_AREA = 20;
 
 /**
  * The hover pill bleeds 8px past the text gutter on both sides, so the fill
@@ -77,27 +75,23 @@ const ROW_PAD_X = "px-2";
 /**
  * One source of truth for the column template: Name, Modified, Size, then the
  * actions column where every row's kebab sits, aligned with the one above it.
- * A file's TYPE is carried by its icon tile, which is why there is no Kind
+ * A file's TYPE is carried by its leading mark, which is why there is no Kind
  * column to align. Modified and Size are held narrow ON PURPOSE: right-aligned
  * and packed, the two read as ONE block against the pane's right edge instead
  * of as two islands adrift in the middle of the row.
  *
- * A browser with no selection capability has no gutter, and the header, the
- * rows and the skeleton must all decide that from the same boolean or the
- * columns drift.
  */
-export function colGrid(selectable: boolean): string {
-  const plain = "minmax(180px,1fr) minmax(96px,116px) minmax(64px,80px) 44px";
-  return selectable ? `${SELECT_COL}px ${plain}` : plain;
+export function colGrid(): string {
+  return "minmax(180px,1fr) minmax(96px,116px) minmax(64px,80px) 44px";
 }
 
 /**
  * Row shell shared by file rows, folder rows, the empty-folder row, the
- * new-folder row and the skeleton. `group/row` is what lets the gutter checkbox
+ * new-folder row and the skeleton. `group/row` is what lets the tree checkbox
  * strengthen while the pointer is anywhere on the row.
  */
 export const ROW_CLASS = cn(
-  "group/row h-13 cursor-default select-none items-center rounded-xl outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus",
+  "group/row h-10 cursor-default select-none items-center rounded-lg outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus",
   ROW_PAD_X,
 );
 
@@ -108,9 +102,8 @@ export const ROW_CLASS = cn(
  */
 export const ROW_CHECKED = "bg-chip-subtle";
 
-/** The column header / selection-bar slot: same padding as a row, so the
- *  gutter checkbox above the listing lines up with the ones inside it. */
-export const HEADER_ROW = cn("h-9 shrink-0 select-none", ROW_PAD_X);
+/** The column header / selection-bar slot: same padding as a row. */
+export const HEADER_ROW = cn("h-8 shrink-0 select-none", ROW_PAD_X);
 
 /** Filenames: the one thing on this screen worth reading first. */
 export const NAME_TEXT = "text-sm font-medium text-ink";
@@ -134,10 +127,12 @@ export const ACTIONS_CELL = "flex h-full items-center justify-center";
 export const NAME_CELL_INNER =
   "flex h-full min-w-0 flex-1 items-center gap-2 pr-1.5";
 
-/** The row's leading icon box — type tile and image thumbnail wear the SAME
- *  one, so a listing of mixed types keeps an unbroken icon column. */
-export const ROW_TILE = "size-8 rounded-lg";
-export const ROW_TILE_GLYPH = "size-5";
+/** The shared footprint for every leading mark in the icon column. */
+export const ROW_MARK = "flex size-6 shrink-0 items-center justify-center";
+
+/** The rounded image-thumbnail footprint. */
+export const ROW_TILE = "size-6 rounded-md";
+export const ROW_TILE_GLYPH = "size-4";
 
 export function HeaderCell({
   label,

@@ -11,7 +11,7 @@ import { BASE_INDENT, DEPTH_INDENT, TRIANGLE_AREA } from "./files-list-chrome";
 /**
  * The leading space a row's name cell reserves for its depth. `chevron` adds
  * the room a FOLDER's disclosure triangle occupies, so a file's tile lines up
- * with the folder glyphs at its own depth instead of 24px to their left.
+ * with the folder glyphs at its own depth instead of 20px to their left.
  */
 export function RowIndent({
   depth,

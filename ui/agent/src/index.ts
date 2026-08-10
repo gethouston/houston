@@ -7,12 +7,12 @@ export {
   useFolderDropTarget,
 } from "./drop-zone";
 export type { FileMenuLabels } from "./file-menu";
+export { FilesAgentRow } from "./files-agent-row";
 export type { FilesBrowserProps } from "./files-browser";
 // Components
 export { FilesBrowser } from "./files-browser";
 export type { FilesBrowserLabels } from "./files-browser-labels";
 export {
-  FilesAgentRow,
   FilesColumnBand,
   type FilesColumnLabels,
 } from "./files-list-frame";
@@ -23,6 +23,7 @@ export {
   internalDragPayload,
   parseInternalDragPayload,
 } from "./internal-file-drag";
+export { KEBAB_BUTTON_CLASS } from "./kebab-button";
 export type { FileNode, FolderNode, TreeNode } from "./tree";
 export { buildTree, folderAtPath } from "./tree";
 export type {
