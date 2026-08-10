@@ -2,12 +2,9 @@ import type { TFunction } from "i18next";
 
 export function agentCardLabels(t: TFunction<"store">) {
   return {
-    skill: t("shared.skill"),
-    skills: t("shared.skills"),
     newAgent: t("shared.newAgent"),
     installs: t("shared.installs"),
     tryNow: t("shared.tryNow"),
-    verified: t("creator.verified"),
   };
 }
 

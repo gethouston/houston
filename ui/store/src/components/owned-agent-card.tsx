@@ -19,7 +19,11 @@ import type {
   StoreCategoryRow,
   StoreLinkComponent,
 } from "../types";
-import { AgentCard, type AgentCardLabels } from "./agent-card";
+import {
+  AgentCard,
+  type AgentCardLabels,
+  cornerActionClasses,
+} from "./agent-card";
 import { EditListingDialog } from "./edit-listing-dialog";
 import type { EditListingDialogLabels } from "./edit-listing-model";
 import {
@@ -65,8 +69,6 @@ export interface OwnedAgentCardProps {
   onEditSave?: (identity: OwnedAgentIdentity) => Promise<void>;
   /** The store's category vocabulary for the Edit-listing dialog. */
   categories?: StoreCategoryRow[];
-  /** The surface's install action for the visible Try button. */
-  onTry?: (agent: OwnedAgentRow) => void;
   /** The agent's public link, for the Share dialog's copy affordance. */
   shareHref?: string | null;
   labels?: Partial<OwnedAgentCardLabels>;
@@ -77,9 +79,11 @@ export interface OwnedAgentCardProps {
 }
 
 /**
- * THE owner's agent card: the PUBLIC AgentCard verbatim, wearing a corner
- * state badge (only when not publicly listed) and a visible pencil menu —
- * Edit listing… · Share… · Delete. Visibility lives in the Share dialog.
+ * THE owner's agent card: the PUBLIC AgentCard verbatim, with the pencil
+ * menu — Edit listing… · Share… · Delete — as ITS corner affordance (the
+ * card's `action` slot, so it sits exactly where a visitor's `+` would, never
+ * stacked on top of one) and a state badge beside it while the listing is
+ * not publicly visible. Visibility lives in the Share dialog.
  */
 export function OwnedAgentCard({
   agent,
@@ -89,7 +93,6 @@ export function OwnedAgentCard({
   onDelete,
   onEditSave,
   categories,
-  onTry,
   shareHref,
   labels: overrides,
   shareLabels,
@@ -110,49 +113,50 @@ export function OwnedAgentCard({
         ? labels.visibilityUnlisted
         : null;
   return (
-    <div className="relative">
+    <div className="h-full">
       <AgentCard
         agent={agent}
         href={href}
         LinkComponent={LinkComponent}
-        onTry={onTry}
         labels={cardLabels}
+        action={
+          <span className="pointer-events-auto relative z-10 flex shrink-0 items-center gap-2">
+            {stateBadge && <Badge variant="secondary">{stateBadge}</Badge>}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={labels.manage}
+                  disabled={busy}
+                  className={`${cornerActionClasses} p-0`}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {onEditSave && (
+                  <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+                    <SquarePen className="size-4" />
+                    {labels.edit}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+                  <Share2 className="size-4" />
+                  {labels.share}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setConfirmOpen(true)}
+                >
+                  {labels.delete}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </span>
+        }
       />
-      <div className="absolute top-4 right-4 flex items-center gap-2">
-        {stateBadge && <Badge variant="secondary">{stateBadge}</Badge>}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={labels.manage}
-              disabled={busy}
-              className="size-8 rounded-full p-0 text-ink-muted hover:text-ink"
-            >
-              <Pencil className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {onEditSave && (
-              <DropdownMenuItem onSelect={() => setEditOpen(true)}>
-                <SquarePen className="size-4" />
-                {labels.edit}
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onSelect={() => setShareOpen(true)}>
-              <Share2 className="size-4" />
-              {labels.share}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => setConfirmOpen(true)}
-            >
-              {labels.delete}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
       {onEditSave && (
         <EditListingDialog
           agent={agent}

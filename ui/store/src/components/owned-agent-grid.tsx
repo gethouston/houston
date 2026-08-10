@@ -38,14 +38,12 @@ export function OwnedAgentGrid({
   agents,
   owner,
   agentHref,
-  onTryAgent,
   agentCardLabels,
   LinkComponent,
 }: {
   agents: OwnedAgentRow[];
   owner: CreatorProfileOwner;
   agentHref: (agent: OwnedAgentRow) => string;
-  onTryAgent?: (agent: OwnedAgentRow) => void;
   agentCardLabels?: Partial<AgentCardLabels>;
   LinkComponent?: StoreLinkComponent;
 }) {
@@ -58,7 +56,6 @@ export function OwnedAgentGrid({
           agent={agent}
           href={agentHref(agent)}
           busy={owner.busyId === agent.id}
-          onTry={onTryAgent}
           shareHref={owner.shareHrefFor?.(agent)}
           onShareSelect={(next) => owner.onShareSelect(agent.id, next)}
           onDelete={() => owner.onDelete(agent.id)}

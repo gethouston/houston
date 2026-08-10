@@ -25,7 +25,6 @@ import {
 } from "./my-agents-labels";
 import { actionLink } from "./store-link";
 import { STORE_SITE_URL, useMyStoreAgents } from "./use-my-store-agents";
-import { useStoreInstall } from "./use-store-install";
 
 type Sort = "recent" | "installs";
 
@@ -47,7 +46,6 @@ export function MyAgentsPanel({
   const setCreatorEditorOpen = useUIStore((s) => s.setCreatorEditorOpen);
   const [signingIn, setSigningIn] = useState(false);
   const [sort, setSort] = useState<Sort>("recent");
-  const { install } = useStoreInstall();
 
   const navLink = actionLink((href) => {
     if (href === "edit-profile") setCreatorEditorOpen(true);
@@ -141,9 +139,6 @@ export function MyAgentsPanel({
       loading={loading}
       failed={my.isError}
       onRetry={() => void my.refetch()}
-      onTryAgent={(agent) => {
-        if (agent.slug) void install(agent.slug);
-      }}
       labels={{ loadFailed: t("loadFailed"), retry: t("retry") }}
       owner={{
         editHref: "edit-profile",

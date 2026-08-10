@@ -56,6 +56,7 @@ export function CatalogControls({
   onCategoryChange,
   onViewChange,
   onSortChange,
+  variant = "row",
   labels: provided,
 }: {
   categories: StoreCategoryRow[];
@@ -67,14 +68,26 @@ export function CatalogControls({
   onCategoryChange: (category?: string) => void;
   onViewChange: (view: CatalogView) => void;
   onSortChange: (sort: CatalogSort) => void;
+  /**
+   * `row` is the site's full-width toolbar: the search grows to fill the
+   * measure and the cluster wraps. `strip` rides inside a host's header row
+   * beside other chrome, so the search holds a fixed width and nothing wraps.
+   */
+  variant?: "row" | "strip";
   labels?: Partial<typeof defaults>;
 }) {
   const labels = { ...defaults, ...provided };
   const activeCategory = categories.find((item) => item.slug === category);
   return (
-    <div className="flex w-full min-w-0 flex-wrap items-center gap-3">
+    <div
+      className={
+        variant === "strip"
+          ? "flex min-w-0 items-center gap-2"
+          : "flex w-full min-w-0 flex-wrap items-center gap-3"
+      }
+    >
       <form
-        className="min-w-64 flex-1"
+        className={variant === "strip" ? "w-56 shrink-0" : "min-w-64 flex-1"}
         onSubmit={(event) => event.preventDefault()}
       >
         <CatalogSearchField
@@ -152,9 +165,15 @@ function Menu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label={ariaLabel} className={pill}>
-          {trigger}
           {typeof trigger === "string" ? (
-            <ChevronDown className="size-4 text-ink-muted" />
+            // A category name is user/vocabulary text ("Atención al cliente");
+            // the pill caps and truncates it instead of pushing the strip wide.
+            <span className="max-w-36 truncate">{trigger}</span>
+          ) : (
+            trigger
+          )}
+          {typeof trigger === "string" ? (
+            <ChevronDown className="size-4 shrink-0 text-ink-muted" />
           ) : null}
         </button>
       </DropdownMenuTrigger>

@@ -4,15 +4,20 @@ import {
   fetchStoreCreators,
   type StoreCatalogAgent,
 } from "@houston-ai/engine-client";
-import { StoreHomeScreen } from "@houston-ai/store";
+import {
+  CatalogControls,
+  StoreHomeScreen,
+  type StoreHomeState,
+} from "@houston-ai/store";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { showErrorToast } from "../../lib/error-toast";
 import {
   isStoreCategory,
   storeCategoryLabelKey,
 } from "../../lib/store-categories";
+import { PageHeaderTools } from "../shell/page-header/page-header-tools";
 import { actionLink } from "./store-link";
 import {
   agentCardLabels,
@@ -54,6 +59,14 @@ export function StoreBrowse({
   const { t } = useTranslation("store");
   const { install } = useStoreInstall();
   const { t: tPortable } = useTranslation("portable");
+  // The browse state lives HERE, not in the shared screen: the search and
+  // filters render in the page header (the app's grammar for a screen's
+  // tools), so the screen runs in controlled mode and only shows results.
+  const [state, setState] = useState<StoreHomeState>({
+    query: "",
+    view: "agents",
+    sort: "installs",
+  });
   const options = storeBrowseQueryOptions();
   const catalog = useQuery(options.catalog);
   const categories = useQuery(options.categories);
@@ -95,26 +108,58 @@ export function StoreBrowse({
     ]);
   };
   return (
-    <StoreHomeScreen
-      onTryAgent={(agent) => {
-        if (agent.slug) void install(agent.slug);
-      }}
-      rows={rows}
-      agentHref={(agent) => `agent:${agent.id}`}
-      creatorHref={(creator) => `creator:${creator.handle}`}
-      LinkComponent={LinkComponent}
-      loading={catalog.isPending || categories.isPending || creators.isPending}
-      failed={catalog.isError || categories.isError || creators.isError}
-      onRetry={retry}
-      labels={{
-        hero: t("browse.heroTitle"),
-        empty: t("empty"),
-        loadFailed: t("loadFailed"),
-        retry: t("retry"),
-        ...catalogControlLabels(t),
-        agentCard: agentCardLabels(t),
-        creatorCard: creatorCardLabels(t),
-      }}
-    />
+    <>
+      <PageHeaderTools>
+        {(inStrip) => {
+          const controls = (
+            <CatalogControls
+              categories={rows.categories}
+              {...state}
+              onQueryChange={(query) => setState((s) => ({ ...s, query }))}
+              onCategoryChange={(category) =>
+                setState((s) => ({ ...s, category }))
+              }
+              onViewChange={(view) => setState((s) => ({ ...s, view }))}
+              onSortChange={(sort) => setState((s) => ({ ...s, sort }))}
+              variant={inStrip ? "strip" : "row"}
+              labels={catalogControlLabels(t)}
+            />
+          );
+          return inStrip ? (
+            controls
+          ) : (
+            <div className="mx-auto w-full max-w-[1040px] px-6 pt-6 md:px-8">
+              {controls}
+            </div>
+          );
+        }}
+      </PageHeaderTools>
+      <StoreHomeScreen
+        onTryAgent={(agent) => {
+          if (agent.slug) void install(agent.slug);
+        }}
+        rows={rows}
+        state={state}
+        featured
+        agentHref={(agent) => `agent:${agent.id}`}
+        creatorHref={(creator) => `creator:${creator.handle}`}
+        LinkComponent={LinkComponent}
+        loading={
+          catalog.isPending || categories.isPending || creators.isPending
+        }
+        failed={catalog.isError || categories.isError || creators.isError}
+        onRetry={retry}
+        labels={{
+          empty: t("empty"),
+          loadFailed: t("loadFailed"),
+          retry: t("retry"),
+          creators: t("browse.creators"),
+          featuredAgents: t("browse.featuredAgents"),
+          allAgents: t("browse.allAgents"),
+          agentCard: agentCardLabels(t),
+          creatorCard: creatorCardLabels(t),
+        }}
+      />
+    </>
   );
 }

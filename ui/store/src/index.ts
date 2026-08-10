@@ -30,6 +30,7 @@ export {
   MAX_LISTING_TAGS,
   normalizeListingTags,
 } from "./components/edit-listing-model";
+export { FeaturedAgentCard } from "./components/featured-agent-card";
 export { AgentGrid, CreatorGrid } from "./components/grids";
 export type {
   InstallsPanelLabels,
@@ -111,6 +112,7 @@ export type {
 export {
   filterStoreAgents,
   filterStoreCreators,
+  splitFeaturedAgents,
 } from "./screens/store-home-model";
 export {
   STORE_HOME_HERO_CLASS,

@@ -1,5 +1,9 @@
 {
   "title": "Agent Store",
+  "header": {
+    "profile": "Profile",
+    "tabsLabel": "Agent Store pages"
+  },
   "subtitle": "Ready-made agents from the Houston community. Install one and make it yours.",
   "searchPlaceholder": "Search agents",
   "clearSearch": "Clear search",
@@ -30,7 +34,6 @@
     "learnings_other": "Comes with {{count}} learnings from real use"
   },
   "browse": {
-    "heroTitle": "Hire your next teammate",
     "searchPlaceholder": "Search agents and creators",
     "allCategories": "All categories",
     "agents": "Agents",
@@ -40,11 +43,11 @@
     "alphabetical": "Alphabetical",
     "publish": "Publish an agent",
     "sortRecent": "Recent",
-    "sortInstalls": "Most installed"
+    "sortInstalls": "Most installed",
+    "featuredAgents": "Featured agents",
+    "allAgents": "All agents"
   },
   "shared": {
-    "skill": "skill",
-    "skills": "skills",
     "newAgent": "New",
     "installs": "installs",
     "creatorFallbackBio": "Creator on the Agent Store",
@@ -53,10 +56,6 @@
     "tryNow": "Try it now"
   },
   "installFailed": "Houston could not fetch that agent from the store. Try again in a moment.",
-  "tabs": {
-    "browse": "Browse",
-    "myAgents": "My agents"
-  },
   "allIntegrations": "All integrations",
   "report": {
     "open": "Report",
@@ -183,11 +182,6 @@
     "empty": "No installs yet in this period.",
     "loadFailed": "Your analytics could not be loaded. Please try again.",
     "barLabel": "{{day}}: {{count}}"
-  },
-  "nav": {
-    "toLight": "Switch to light mode",
-    "toDark": "Switch to dark mode",
-    "signIn": "Sign in"
   },
   "me": {
     "signedOutTitle": "Your agents",

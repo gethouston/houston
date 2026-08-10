@@ -1,6 +1,7 @@
 import type { AgentCardLabels } from "../components/agent-card";
 import { CatalogEmpty, FilteredEmpty } from "../components/catalog-empty";
 import type { CreatorCardLabels } from "../components/creator-card";
+import { FeaturedAgentCard } from "../components/featured-agent-card";
 import { AgentGrid, CreatorGrid } from "../components/grids";
 import type { StoreLinkComponent } from "../types";
 import type { StoreHomeRows, StoreHomeState } from "./store-home-model";
@@ -8,6 +9,7 @@ import type { StoreHomeRows, StoreHomeState } from "./store-home-model";
 export function StoreHomeResults({
   rows,
   state,
+  featured: featuredEnabled,
   agentHref,
   creatorHref,
   LinkComponent,
@@ -18,6 +20,8 @@ export function StoreHomeResults({
 }: {
   rows: StoreHomeRows;
   state: StoreHomeState;
+  /** Host opt-in for the featured pair — see StoreHomeScreenProps.featured. */
+  featured?: boolean;
   agentHref: (agent: StoreHomeRows["agents"][number]) => string;
   creatorHref: (creator: StoreHomeRows["creators"][number]) => string;
   LinkComponent?: StoreLinkComponent;
@@ -27,11 +31,16 @@ export function StoreHomeResults({
   labels: {
     creators: string;
     empty: string;
+    featuredAgents: string;
+    allAgents: string;
     agentCard?: Partial<AgentCardLabels>;
     creatorCard?: Partial<CreatorCardLabels>;
   };
 }) {
-  const agents = filterStoreAgents(rows.agents, state);
+  const { featured, rest } = featuredEnabled
+    ? splitFeaturedAgents(rows.agents, state)
+    : { featured: [], rest: filterStoreAgents(rows.agents, state) };
+  const agents = featured.length ? [...featured, ...rest] : rest;
   const creators = filterStoreCreators(rows.creators, state.query);
   const filtered = Boolean(state.query || state.category);
   if (
@@ -59,18 +68,43 @@ export function StoreHomeResults({
   }
   return (
     <div className="flex w-full flex-col gap-14">
-      {agents.length ? (
-        <section className="flex flex-col gap-10">
+      {featured.length ? (
+        <section className="flex flex-col gap-5">
+          <h2 className="font-display text-xl font-semibold tracking-tight">
+            {labels.featuredAgents}
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {featured.map((agent) => (
+              <FeaturedAgentCard
+                key={agent.id}
+                agent={agent}
+                href={agentHref(agent)}
+                LinkComponent={LinkComponent}
+                labels={labels.agentCard}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {rest.length ? (
+        <section className="flex flex-col gap-5">
+          {featured.length ? (
+            <h2 className="font-display text-xl font-semibold tracking-tight">
+              {labels.allAgents}
+            </h2>
+          ) : null}
           <AgentGrid
-            agents={agents}
+            agents={rest}
             agentHref={agentHref}
             LinkComponent={LinkComponent}
             onTry={onTryAgent}
             labels={labels.agentCard}
           />
-          {!state.query ? pagination : null}
         </section>
       ) : null}
+      {/* Outside the grid section: a page whose every agent went featured
+          still has more catalog behind it. */}
+      {!state.query ? pagination : null}
       {state.query && creators.length ? (
         <section className="flex flex-col gap-5">
           <h2 className="font-display text-xl font-semibold tracking-tight">
@@ -88,4 +122,8 @@ export function StoreHomeResults({
   );
 }
 
-import { filterStoreAgents, filterStoreCreators } from "./store-home-model";
+import {
+  filterStoreAgents,
+  filterStoreCreators,
+  splitFeaturedAgents,
+} from "./store-home-model";
