@@ -319,25 +319,37 @@ Teams "policy" identity (`integrationsPageMode` / `integrations-view-model.ts` /
   `canSeeIntegrationsPage` gate in `org-roles.ts` was removed). It renders no
   allowlist editor and no locked/blocked row: it is a personal connections lens, and a
   ceiling is per agent.
-- **Structure** — a `PageHeader` hero (title + `home.description` subtitle, whose
-  count reads the FULL catalog size via `home.descriptionCount`), then the
-  **page-level `CatalogModeTabs`** (Composio vs Custom — see
-  [custom-integrations.md](custom-integrations.md)) wrapping the generic
-  **`CatalogShell`** (`ui/core/src/components/catalog-shell.tsx`: ONE `controls` row
-  over an Installed section and an Available section, each under an `lg`
-  `CatalogSectionHeader` with a live `CatalogCount` chip).
+- **Structure** — the shared page header (a static "Integrations" lozenge wearing
+  the rail's `Blocks` mark, `integrations-header.tsx`) over the generic
+  **`CatalogShell`** (`ui/core/src/components/catalog-shell.tsx`: an Installed
+  section and an Available section, each under an `lg` `CatalogSectionHeader`
+  with a live `CatalogCount` chip), centered on the `CATALOG_PLANE_MAX_W` plane
+  in the wide page container. The tools ride the header strip via
+  `PageHeaderTools` — search + category combobox + the primary "Add custom
+  integration" button — and stack into a body row below
+  `INTEGRATIONS_HEADER_THRESHOLDS` (the shared cluster container is
+  `shell/page-header/header-tools-row.tsx`).
+- **Non-ready gates keep custom working.** The header renders outside every gate;
+  when the host serves custom integrations (the custom LIST's own truth:
+  `useCustomIntegrationsSurface` resolves an array; `null` = unsupported), a
+  composio-absent install shows `custom.catalogUnavailable` over the live custom
+  rows + the Add button, and the flat `UnavailableState` is only for hosts where
+  nothing works.
 - **(0) The ONE controls row** (`catalog-controls.tsx` → `CatalogControls`): a
   `CatalogSearchField` (`home.searchPlaceholder`, always-available clear X whenever it
   holds text) + the searchable A-Z category `FilterCombobox`. It sits ABOVE both
   sections and narrows the Installed strip AND the Available tab together. State lives
-  in `use-catalog-surface.ts` (`useCatalogSurface({active, catalog, connections})` →
-  `tab`, `query`, `category`, `filtering`, `shown`, `installedCount`,
-  `availableCount`). A successful connect clears the query only when the landed app
+  in `use-catalog-surface.ts`
+  (`useCatalogSurface({active, catalog, connections, custom})` → `query`,
+  `category`, `filtering`, `shown`, `installedCount`, `availableCount`;
+  `installedCount` = catalog + custom matches). A successful connect clears the query only when the landed app
   still matches it, so a later OAuth completion cannot erase a newer search.
   - The category combobox is the shared `components/shell/filter-combobox.tsx` (forced
     `searchable`), options from `catalogCategorySlugs` — A-Z by label with
     `UNCATEGORIZED` pinned last (a lookup-by-name surface orders alphabetically even
-    though the page's sections order mainstream-first). Three domains share the
+    though the page's sections order mainstream-first), and a **Custom** entry
+    pinned FIRST — present only when the host serves custom integrations, with any
+    remote slug named `custom` filtered out so the sentinel owns the id. Three domains share the
     component now: ai-hub, agent-admin models, integrations.
 - **(1) The consolidated Installed strip**, OUTSIDE the tabs (identity, not discovery
   — it never changes with the tab): active catalog connections AND custom
@@ -347,8 +359,8 @@ Teams "policy" identity (`integrationsPageMode` / `integrations-view-model.ts` /
   presence-style `StatusDot` LEFT of the name ("● Asana", sr-only status label, via the
   `CatalogRow` `statusDot` slot) so connected state reads on the ROW, not just from
   section placement. A quiet trailing `ChevronRight` marks each row as an
-  open-affordance. A catalog row opens `AppDetailDialog`; a custom row jumps to the
-  Custom mode.
+  open-affordance. A catalog row opens `AppDetailDialog`; a custom row opens its
+  detail card (key / sign-in / remove stay one-click).
   - Catalog rows pass `status="active"` literally: both callers keep pending/errored
     connections in the CATALOG (on the app's own row, wearing its status), so the
     amber/red branches were unreachable. Custom rows keep their real status.
@@ -363,15 +375,18 @@ Teams "policy" identity (`integrationsPageMode` / `integrations-view-model.ts` /
   - The shared query + category narrow the rows via the pure
     `filterInstalledBy(active, custom, catalog, { query, category })` — category
     narrows first via `toolkitsInCategory`, then `filterInstalled` does the substring
-    query; custom integrations carry no category, so any active category excludes them.
+    query; custom integrations carry no category, so a real category excludes them,
+    and the pinned `"custom"` value inverts the split (custom rows only). A
+    resolved-but-empty slice explains itself (`custom.empty` / `custom.noResults`);
+    an unresolved list claims nothing (the load-error state speaks instead).
   - When the filter leaves NOTHING installed the whole Installed section is OMITTED
     (no heading over an empty list).
 - **(2) The Available section** (`home.availableTitle`) whose `availableCount` chip =
   connectable apps matching the shared filter (via `browseCatalog`, minus
   `catalogHiddenToolkits`). **It has exactly ONE tab**, `catalog`
   (`home.tabs.catalog`) → `CatalogBrowsePane` with `surface="integrations"`, so
-  `CatalogShell` drops the tab chrome. (The Custom source is the page-level
-  `CatalogModeTabs`, not a tab here.)
+  `CatalogShell` drops the tab chrome. With the Custom filter active the Available
+  section is not rendered at all — custom things are not browsable.
   - `CatalogPane` is CONTROLLED: it takes `query` + `category` props from the page (its
     own controls row moved UP into `CatalogControls`) and renders the grouped
     `CategoryCatalog`.

@@ -19,30 +19,44 @@ screen. Provider/model *wiring* (catalog, picker, effort, switching) is
 Laid out by the shared **`CatalogShell`** (`ui/core/src/components/catalog-shell.tsx`
 — the same two-section grammar as the Integrations page):
 
-- ONE top page search field (`ai-hub-view.tsx` owns `query`,
-  `search.placeholder`) that narrows the Connected strip AND both tabs at once.
+- Two header lozenges (`ai-hub-header.tsx`): **AI Providers** — identity, the
+  rail's `Boxes` mark, the page h1 — and **AI Models**. ONE `query`
+  (`ai-hub-view.tsx`, `search.placeholder`) is shared by both modes and survives
+  switching; it narrows the Connected strip AND the active mode's content.
+- The mode's tools ride the header strip via `PageHeaderTools`
+  (`ai-hub-catalog-controls.tsx` on the shared `header-tools-row.tsx`):
+  providers = search + the Subscription / Pay-as-you-go chips; models = search +
+  the four facet comboboxes. The one-row threshold follows the ACTIVE mode
+  (`aiHubHeaderThresholds`: 780 providers / 1140 models); below it the cluster
+  stacks into a body row.
 - **Connected** section — an `lg` header + `CatalogCount` chip (shown count while
-  filtering, total at rest) over provider rows rendered OUTSIDE the tabs by
-  `connected-providers-strip.tsx`. Omitted entirely when the query matches no
-  connected provider.
-- **Available** section header over the **Providers** / **Models** tabs, each with
-  a `CatalogCount` chip.
+  filtering, total at rest) over provider rows rendered by
+  `connected-providers-strip.tsx`, in BOTH modes. Omitted entirely when the query
+  matches no connected provider.
+- **Available** section header over the active mode's content; count = provider
+  matches (billing filter applied, so the chip and the grid always agree) or the
+  facet-narrowed model count.
+- **Search widens through model offers** (`lib/ai-hub/search-groups.ts`,
+  node-tested): a provider matches by name/id/subtitle OR by offering a matching
+  model, resolved through `providerGatewayIds` — typing a model name surfaces
+  every provider serving it, connected ones included.
 - ONE scroll region (the old fixed-masthead split is gone). While a modal is open
   the scroller flips to `overflow-y-hidden` (Radix only locks `<body>`) with
   `scrollbar-gutter: stable` holding the offset.
-- Navigation = `CatalogShell`'s controlled tab state + two local modal states in
+- Navigation = the header lozenges (`mode` state) + two local modal states in
   `AiHubView` (`openProvider` / `openModel`; last value retained through the exit
   animation). Modal stack: `hub-modal-stack.tsx`.
 
 ## Four surfaces
 
-- **Providers tab** (`providers-pane.tsx`) — CONTROLLED by the page query (owns no
-  search). Its controls row is the two Subscription / Pay-as-you-go billing toggle
-  buttons (single-select; click the active one to clear) over a two-column grid of
-  flat `CatalogRow`s (brand mark, name, live model count · cost prose). The row
-  BODY opens the provider modal; the ghost `+` (`CatalogAddButton`) connects
-  directly, flipping to a Cancel pill while that provider's OAuth is in flight.
-  Only NOT-connected providers browse here.
+- **Providers mode** (`providers-pane.tsx`) — a two-column grid of flat
+  `CatalogRow`s (brand mark, name, live model count · cost prose), receiving a
+  list the PAGE already narrowed by query + billing facet (the pane owns only
+  featured-first ordering). The billing chips (`provider-quick-filter-chips.tsx`,
+  single-select; click the active one to clear) live in the header tools with
+  page-owned state. The row BODY opens the provider modal; the ghost `+`
+  (`CatalogAddButton`) connects directly, flipping to a Cancel pill while that
+  provider's OAuth is in flight. Only NOT-connected providers browse here.
   - The filter is driven by **billing**, not auth: `providerBilling()`
     (`components/provider-browser/provider-grouping.ts`) defaults from `auth`
     (oauth → subscription, apiKey → payg) and `PROVIDER_OVERRIDES[id].billing`
@@ -53,15 +67,17 @@ Laid out by the shared **`CatalogShell`** (`ui/core/src/components/catalog-shell
   / `provider-modal-footer.tsx`) — connect / sign-out plus that provider's model
   list (the same `ModelsBrowser`, passed no `query`, so it keeps its own local
   pill search).
-- **Model directory** (`model-directory.tsx` → `models-browser.tsx` /
-  `model-card-row.tsx`) — the cross-provider catalog as flat `CatalogRow`s
-  (BrandMark + name + lab; whole row opens the modal, no trailing cue and no `+`
-  — models install through a provider offer inside the modal) in the responsive
-  two-column `CatalogGrid` (`layout="grid"`; the provider modal passes the default
-  `"list"` because the grid's `lg:` breakpoint is viewport-based and would cramp
-  the dialog). Above a control row of four facet comboboxes: AI provider
-  (self-hides at one lab), Good at, Cost, Memory (`model-facets.tsx`). Free-text
-  search is the hub's ONE page field, threaded in as `query`.
+- **AI Models mode** (`model-results.tsx` / `model-card-row.tsx`) — the
+  cross-provider catalog as flat `CatalogRow`s (BrandMark + name + lab; whole row
+  opens the modal, no trailing cue and no `+` — models install through a provider
+  offer inside the modal) in the responsive two-column `CatalogGrid`
+  (`layout="grid"`; the provider modal passes the default `"list"` because the
+  grid's `lg:` breakpoint is viewport-based and would cramp the dialog). The four
+  facet comboboxes — AI provider (self-hides at one lab), Good at, Cost, Memory
+  (`model-facets.tsx`, compact in the strip) — ride the header tools; their state
+  + filtering live in `use-model-facet-state.ts`, shared with `models-browser.tsx`
+  (which keeps the self-contained inline-facets form for the allowlist editor and
+  the provider modal).
   - Comboboxes are the shared `components/shell/filter-combobox.tsx` (Popover +
     cmdk, optional in-dropdown search), also reused by the teams allowed-models
     editor (`components/agent/agent-admin/lab-filter.tsx`) and the Integrations
