@@ -18,6 +18,9 @@ export const AGENT_COLOR_LABEL_KEYS: Record<string, AgentColorLabelKey> = {
   crimson: "shell:sidebar.colorLabels.crimson",
   orange: "shell:sidebar.colorLabels.orange",
   golden: "shell:sidebar.colorLabels.golden",
+  teal: "shell:sidebar.colorLabels.teal",
+  rose: "shell:sidebar.colorLabels.rose",
+  umber: "shell:sidebar.colorLabels.umber",
 };
 
 export type AgentColorLabelKey =
@@ -27,7 +30,10 @@ export type AgentColorLabelKey =
   | "shell:sidebar.colorLabels.purple"
   | "shell:sidebar.colorLabels.crimson"
   | "shell:sidebar.colorLabels.orange"
-  | "shell:sidebar.colorLabels.golden";
+  | "shell:sidebar.colorLabels.golden"
+  | "shell:sidebar.colorLabels.teal"
+  | "shell:sidebar.colorLabels.rose"
+  | "shell:sidebar.colorLabels.umber";
 
 interface AgentSidebarColorMenuProps {
   color?: string;

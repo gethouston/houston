@@ -118,13 +118,13 @@ describe("agent name contrast", () => {
 
   it("pins the measured worst case in each theme", () => {
     const measured = agentNameContrast();
-    // Golden on the light screen and crimson on the dark glass are the two
+    // Rose on the light screen and crimson on the dark glass are the two
     // tightest pairs; if a token edit moves them, these numbers move with it.
-    assert.equal(measured.golden.light.toFixed(2), "4.92");
+    assert.equal(measured.rose.light.toFixed(2), "4.60");
     assert.equal(measured.crimson.dark.toFixed(2), "6.02");
     const worstLight = Math.min(...Object.values(measured).map((r) => r.light));
     const worstDark = Math.min(...Object.values(measured).map((r) => r.dark));
-    assert.equal(worstLight, measured.golden.light);
+    assert.equal(worstLight, measured.rose.light);
     assert.equal(worstDark, measured.crimson.dark);
   });
 
@@ -189,7 +189,7 @@ describe("nameToneClassFor", () => {
 
   it("falls back to ink for an id the class table has not learned", () => {
     assert.equal(
-      nameToneClassFor("teal", { lightOk: true, darkOk: true }),
+      nameToneClassFor("vermilion", { lightOk: true, darkOk: true }),
       AGENT_NAME_FALLBACK_CLASS,
     );
   });

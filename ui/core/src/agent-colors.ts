@@ -7,14 +7,21 @@ export interface AgentColor {
   dark: string;
 }
 
+// Wheel order — neutral first, then green → teal → blue → violet → pink →
+// red → orange → yellow, earth last. This IS the display order of every
+// picker, and neighbours on the wheel sitting side by side is what makes a
+// too-close pair (rose vs crimson) visible at a glance instead of shipping.
 const AGENT_COLOR_IDS = [
   "charcoal",
   "forest",
+  "teal",
   "navy",
   "purple",
+  "rose",
   "crimson",
   "orange",
   "golden",
+  "umber",
 ] as const;
 
 /** Palette hexes come from @houston/design-tokens (the same source that

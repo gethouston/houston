@@ -116,6 +116,12 @@
       "forest-bright": {
         "$value": "#4ade80"
       },
+      "teal": {
+        "$value": "#0f766e"
+      },
+      "teal-bright": {
+        "$value": "#2dd4bf"
+      },
       "navy": {
         "$value": "#1e4d8c"
       },
@@ -127,6 +133,12 @@
       },
       "purple-bright": {
         "$value": "#a78bfa"
+      },
+      "rose": {
+        "$value": "#db2777"
+      },
+      "rose-bright": {
+        "$value": "#f472b6"
       },
       "crimson": {
         "$value": "#a3261a"
@@ -145,6 +157,12 @@
       },
       "golden-bright": {
         "$value": "#fbbf24"
+      },
+      "umber": {
+        "$value": "#78350f"
+      },
+      "umber-bright": {
+        "$value": "#d4a373"
       }
     },
     "filetype": {
