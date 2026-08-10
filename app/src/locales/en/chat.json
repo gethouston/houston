@@ -283,6 +283,7 @@
   "credential": {
     "title": "Add your {{name}} key",
     "subtitle": "Paste it below. It is stored securely and never shown in chat.",
+    "missingBody": "{{name}} isn't set up yet, so there's nowhere to save this key. Choose Skip to continue and it will be set up properly first.",
     "save": "Save key",
     "saving": "Saving...",
     "saved": "Key saved",
