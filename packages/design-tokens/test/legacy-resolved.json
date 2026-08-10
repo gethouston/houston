@@ -48,6 +48,9 @@
     "ht-agent-crimson": "#a3261a",
     "ht-agent-orange": "#b45309",
     "ht-agent-golden": "#a16207",
+    "ht-agent-teal": "#0f766e",
+    "ht-agent-rose": "#db2777",
+    "ht-agent-umber": "#78350f",
     "ht-filetype-pdf": "#c0392b",
     "ht-filetype-doc": "#2158a8",
     "ht-filetype-sheet": "#1b6b3a",
@@ -70,7 +73,9 @@
     "ht-person-name-indigo": "#4f5878",
     "ht-person-initials": "#ffffff",
     "ht-person-overflow": "#e6e8ec",
-    "ht-person-overflow-text": "#555b66"
+    "ht-person-overflow-text": "#555b66",
+    "ht-tab-track": "rgba(13, 13, 13, 0.06)",
+    "ht-tab-active": "#ffffff"
   },
   "dark": {
     "ht-base": "#141416",
@@ -121,6 +126,9 @@
     "ht-agent-crimson": "#f87171",
     "ht-agent-orange": "#fb923c",
     "ht-agent-golden": "#fbbf24",
+    "ht-agent-teal": "#2dd4bf",
+    "ht-agent-rose": "#f472b6",
+    "ht-agent-umber": "#d4a373",
     "ht-filetype-pdf": "#e8776c",
     "ht-filetype-doc": "#6ea8ef",
     "ht-filetype-sheet": "#4fb87b",
@@ -143,6 +151,8 @@
     "ht-person-name-indigo": "#8e97bb",
     "ht-person-initials": "#ffffff",
     "ht-person-overflow": "#4c4c52",
-    "ht-person-overflow-text": "#d4d4d4"
+    "ht-person-overflow-text": "#d4d4d4",
+    "ht-tab-track": "rgba(255, 255, 255, 0.06)",
+    "ht-tab-active": "#383838"
   }
 }

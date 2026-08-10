@@ -113,8 +113,8 @@ test("the default block is the workspace, and a block is a name and its agents",
   // One control, and nothing else. On THIS backend the block is the workspace
   // itself, and nothing in the stack can rename a workspace (the adapter's
   // `renameWorkspace` is synthetic and no host route exists), so it carries no
-  // "..." at all. A host that owns the teams DOES give it a Rename entry —
-  // `agent-teams.spec.ts` holds that half.
+  // "..." at all. A host that owns the teams DOES give it the one
+  // "Change icon & name" entry — `agent-teams.spec.ts` holds that half.
   await expect(defaultHeader(page).getByRole("button")).toHaveCount(1);
   await expect(defaultHeader(page).getByRole("button")).toHaveAttribute(
     "aria-expanded",

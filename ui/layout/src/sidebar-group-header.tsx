@@ -1,12 +1,7 @@
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import type { ReactNode } from "react";
-import type { SidebarLabels } from "./sidebar";
-import { useGroupRename } from "./sidebar-group-rename";
-import {
-  sidebarRowAffordanceGutter,
-  sidebarRowButtonClasses,
-} from "./sidebar-paint";
+import { sidebarRowAffordanceGutter } from "./sidebar-paint";
 import { SidebarRowButton } from "./sidebar-row-button";
 
 export interface SidebarGroupHeaderProps {
@@ -20,7 +15,6 @@ export interface SidebarGroupHeaderProps {
   /** The id of the region this row folds, wired as `aria-controls`. Omitted by
    *  the drag preview, which folds nothing. */
   contentId?: string;
-  labels: Required<SidebarLabels>;
   /**
    * Painted as the selected row. A block carries no destination rows any more,
    * so this row is the only one that can say the open view belongs here —
@@ -30,37 +24,20 @@ export interface SidebarGroupHeaderProps {
   /** The row was activated. Whether that opens the block's screen, folds it, or
    *  both is entirely the host's decision; this component only reports it. */
   onActivate?: () => void;
-  /**
-   * The "..." menu. Absent for a block that owns no affordances — the default
-   * team on a host that does not let its name be changed.
-   *
-   * A render prop rather than a plain node because the menu's Rename entry has
-   * to open the inline rename this component owns. Handing the caller
-   * `beginRename` keeps the session in one place and still leaves the header
-   * knowing nothing about what the menu contains.
-   */
-  menu?: (beginRename: () => void) => ReactNode;
+  /** The "..." menu, as a sibling of the row button. Absent for a block that
+   *  owns no affordances — the menu component itself renders the reserved
+   *  gutter when it has nothing to show, so absence here means the CALLER
+   *  chose to render no menu at all (the drag preview). */
+  menu?: ReactNode;
   dragAttributes?: DraggableAttributes;
   dragListeners?: SyntheticListenerMap;
-  /** Inline rename. Absent means the name is not editable from the rail. */
-  rename?: {
-    /** Ceiling in RUNES; absent means no cap. */
-    maxRunes?: number;
-    onCommit: (newName: string) => void;
-    /** The session ended without committing. Fires EXACTLY once. Absent when
-     *  there is nothing to undo — the default block renames an existing name,
-     *  where a named group's rename may be retiring a never-created draft. */
-  };
   /**
    * Extra DOM attributes on the row's ROOT, not on the toggle button: they
    * identify the BLOCK (`data-sidebar-group-header="<id>"`), which is what
-   * navigation and drag tests address it by, and that identity has to survive
-   * the row swapping into its rename input.
+   * navigation and drag tests address it by.
    */
   dataAttrs?: Record<string, string>;
 }
-
-const NOOP = () => {};
 
 /**
  * A block's header row: ONE button carrying the block's glyph, its name, the
@@ -84,6 +61,11 @@ const NOOP = () => {};
  *   Houston forbids hover-GATED affordances, since a control that exists only
  *   under the cursor is unreachable by touch and invisible to anyone scanning.
  *
+ * A block's NAME is not edited here: name, mark and colour are one identity,
+ * changed together in the host's "change icon & name" surface, which the menu
+ * opens. An inline rename beside a dialog that also renames would be the same
+ * question answered two ways.
+ *
  * The row is also the drag handle, exactly as before. @dnd-kit's pointer sensor
  * has a 4px activation distance, so a click with no movement still activates.
  */
@@ -93,47 +75,13 @@ export function SidebarGroupHeader({
   trailing,
   collapsed,
   contentId,
-  labels,
   active,
   onActivate,
   menu,
   dragAttributes,
   dragListeners,
-  rename,
   dataAttrs,
 }: SidebarGroupHeaderProps) {
-  // Hooks may not be conditional, so a block with no rename affordance still
-  // runs the session with inert callbacks and simply never begins one.
-  const session = useGroupRename({
-    name,
-    maxRunes: rename?.maxRunes,
-    onCommit: rename?.onCommit ?? NOOP,
-    onCancel: NOOP,
-  });
-
-  if (session.renaming) {
-    return (
-      <div className={sidebarRowButtonClasses.root} {...(dataAttrs ?? {})}>
-        <input
-          ref={session.inputRef}
-          value={session.draft}
-          placeholder={labels.newGroupPlaceholder}
-          onChange={(e) => session.setDraft(e.target.value)}
-          onBlur={() => session.end(true)}
-          onKeyDown={(e) => {
-            // Keep every keystroke in the field: the sortable wrapper spreads
-            // @dnd-kit's keyboard activators, whose Space/Enter would otherwise
-            // start a drag mid-type and swallow the character.
-            e.stopPropagation();
-            if (e.key === "Enter") session.end(true);
-            if (e.key === "Escape") session.end(false);
-          }}
-          className={sidebarRowButtonClasses.input}
-        />
-      </div>
-    );
-  }
-
   return (
     <SidebarRowButton
       label={name}
@@ -152,7 +100,7 @@ export function SidebarGroupHeader({
         // a stack of blocks that HAVE one, and a name that gets 28px more room
         // on one row truncates at a different point from every other team's,
         // which reads as a second list.
-        menu?.(session.begin) ?? (
+        menu ?? (
           <span aria-hidden="true" className={sidebarRowAffordanceGutter} />
         )
       }

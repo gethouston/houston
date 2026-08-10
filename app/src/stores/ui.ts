@@ -66,6 +66,8 @@ interface UIState {
   toasts: ToastItem[];
   createAgentDialogOpen: boolean;
   createAgentTeamId: string | null;
+  /** The team whose "Change icon & name" dialog is open, or null for none. */
+  editTeamIdentityId: string | null;
   /** "Your agent is still being created" write-blocked notice (HOU-693). */
   agentWarmingNoticeOpen: boolean;
   /** Callback registered by whichever mission board is on the glass (the
@@ -212,6 +214,7 @@ interface UIState {
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
   setCreateAgentDialogOpen: (open: boolean, teamId?: string | null) => void;
+  setEditTeamIdentityId: (teamId: string | null) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
   /** Claim (`open`) or release the shell detail panel for one surface. */
@@ -269,6 +272,7 @@ const initialUIState = {
   toasts: [],
   createAgentDialogOpen: false,
   createAgentTeamId: null,
+  editTeamIdentityId: null,
   agentWarmingNoticeOpen: false,
   onStartMission: null,
   missionPanelOpen: false,
@@ -390,6 +394,9 @@ export const useUIStore = create<UIState>()(
           createAgentDialogOpen,
           createAgentTeamId: createAgentDialogOpen ? teamId : null,
         }),
+
+      setEditTeamIdentityId: (editTeamIdentityId) =>
+        set({ editTeamIdentityId }),
 
       setAgentWarmingNoticeOpen: (agentWarmingNoticeOpen) =>
         set({ agentWarmingNoticeOpen }),

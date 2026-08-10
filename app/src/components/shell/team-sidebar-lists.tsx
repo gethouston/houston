@@ -2,7 +2,6 @@ import type { SidebarLayout } from "@houston-ai/engine-client";
 import type {
   SidebarDefaultGroupView,
   SidebarGroupAffordances,
-  SidebarGroupIdentity,
   SidebarGroupView,
   SidebarItem,
 } from "@houston-ai/layout";
@@ -37,15 +36,13 @@ export interface BuildTeamSidebarListsArgs extends AgentItemArgs {
    *  the local backend does — passes NO mask, which is the pre-C13 rendering:
    *  every affordance the sidebar wired a callback for. */
   affordancesFor?: (team: TeamView) => SidebarGroupAffordances | undefined;
-  /** The icon-and-colour picker THIS team offers, or `undefined` for a team
-   *  this caller cannot restyle. Asked per team for the same reason the mask
+  /** Open the "change icon & name" dialog for THIS team, or `undefined` for a
+   *  team this caller cannot edit. Asked per team for the same reason the mask
    *  is: a team's identity is its owner's to set, and the next block's owner
-   *  may be someone else. */
-  identityFor?: (team: TeamView) => SidebarGroupIdentity | undefined;
-  /** Rename the DEFAULT team. Wired only where that rename is real (a host that
-   *  owns the teams); absent leaves the block with no "..." menu at all, which
-   *  is what it has always had. */
-  onRenameDefaultTeam?: (teamId: string, newName: string) => void;
+   *  may be someone else. The DEFAULT team is asked the same question — where
+   *  its identity is not editable (the local backend's virtual workspace
+   *  block) this answers `undefined` and the block carries no menu. */
+  onEditTeamFor?: (team: TeamView) => (() => void) | undefined;
 }
 
 /**
@@ -70,8 +67,7 @@ export function buildTeamSidebarLists({
   highlight,
   selectedAgentId,
   affordancesFor,
-  identityFor,
-  onRenameDefaultTeam,
+  onEditTeamFor,
   ...itemArgs
 }: BuildTeamSidebarListsArgs): {
   items: SidebarItem[];
@@ -97,7 +93,7 @@ export function buildTeamSidebarLists({
       // read the same to the library, but only the omission leaves the view
       // model literally as it was before masks existed.
       const affordances = affordancesFor?.(team);
-      const identity = identityFor?.(team);
+      const onEdit = onEditTeamFor?.(team);
       const collapsed = isCollapsed(team);
       return {
         id: team.id,
@@ -124,19 +120,19 @@ export function buildTeamSidebarLists({
         }),
         itemIds: team.agents.map((a) => a.id),
         ...(affordances ? { affordances } : {}),
-        ...(identity ? { identity } : {}),
+        ...(onEdit ? { onEdit } : {}),
       };
     });
 
   const defaultTeam = teams.find((team) => team.isDefault);
   const defaultCollapsed = defaultTeam ? isCollapsed(defaultTeam) : false;
   // The block is asked the same question every other block is asked, so
-  // "may I rename this one?" is answered by ONE gate (`canRenameTeam`) rather
-  // than by a second rule that only the default team reads.
+  // "may I edit this one?" is answered by ONE gate rather than by a second
+  // rule that only the default team reads.
   const defaultAffordances = defaultTeam
     ? affordancesFor?.(defaultTeam)
     : undefined;
-  const defaultIdentity = defaultTeam ? identityFor?.(defaultTeam) : undefined;
+  const defaultOnEdit = defaultTeam ? onEditTeamFor?.(defaultTeam) : undefined;
   const defaultGroup = defaultTeam
     ? {
         name: defaultTeam.name,
@@ -152,13 +148,7 @@ export function buildTeamSidebarLists({
           agentRowLit: holdsSelectedAgent(defaultTeam),
         }),
         ...(defaultAffordances ? { affordances: defaultAffordances } : {}),
-        ...(defaultIdentity ? { identity: defaultIdentity } : {}),
-        ...(onRenameDefaultTeam
-          ? {
-              onRename: (newName: string) =>
-                onRenameDefaultTeam(defaultTeam.id, newName),
-            }
-          : {}),
+        ...(defaultOnEdit ? { onEdit: defaultOnEdit } : {}),
       }
     : undefined;
 

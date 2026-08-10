@@ -65,18 +65,17 @@ export function teamAffordanceMask({
   return (team) =>
     serverBacked
       ? {
-          rename: canRenameTeam(team),
+          // Name, mark and colour are ONE identity behind one menu entry, and
+          // C13 reads all of it as a rename — so the entry reads the rename
+          // gate, which also means the default team gets it (C13 lets its
+          // owner rename that one).
+          edit: canRenameTeam(team),
           delete: canDeleteTeam(team),
           // No session id means no `:userId` to send, so there is no call to
           // make: hide the affordance rather than offer a dead one. The
           // personal-space half of the question lives in `canLeaveTeam`,
           // beside the other two backends it answers for.
           leave: canLeaveTeam(team, personalSpace) && selfId !== null,
-          // Setting a team's mark is a rename by another name: it changes what
-          // the team is CALLED in the eye, not what it holds or who may use it.
-          // So it reads the one gate a rename reads, which also means the
-          // default team gets it (C13 lets its owner rename that one).
-          identity: canRenameTeam(team),
         }
       : undefined;
 }

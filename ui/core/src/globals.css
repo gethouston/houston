@@ -116,6 +116,9 @@
   --color-agent-crimson: var(--ht-agent-crimson);
   --color-agent-orange: var(--ht-agent-orange);
   --color-agent-golden: var(--ht-agent-golden);
+  --color-agent-teal: var(--ht-agent-teal);
+  --color-agent-rose: var(--ht-agent-rose);
+  --color-agent-umber: var(--ht-agent-umber);
   /* File-type identity palette: the ten families a file icon can belong to, one
      muted hue each, themed for both canvases. Identity colour like an agent's
      helmet, never status — the Files list paints the glyph inside its outlined

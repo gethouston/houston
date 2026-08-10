@@ -80,14 +80,17 @@
   "agentTeams": {
     "create": {
       "title": "Criar uma equipe",
-      "nameLabel": "Nome da equipe",
-      "namePlaceholder": "por exemplo, Marketing",
-      "tooLong": "Use menos de {{max}} caracteres.",
       "submit": "Criar equipe",
       "newAgent": "Novo agente",
       "members": "Membros, opcional",
       "membersSelected_one": "{{count}} membro selecionado",
       "membersSelected_other": "{{count}} membros selecionados"
+    },
+    "form": {
+      "iconAndName": "Ícone e nome",
+      "nameLabel": "Nome da equipe",
+      "namePlaceholder": "por exemplo, Marketing",
+      "tooLong": "Use menos de {{max}} caracteres."
     },
     "errors": {
       "default_team": {

@@ -83,6 +83,21 @@ const AGENT_NAME_TONE_CLASSES = {
     lightOnly: "text-agent-golden dark:text-ink",
     darkOnly: "text-ink dark:text-agent-golden",
   },
+  teal: {
+    both: "text-agent-teal",
+    lightOnly: "text-agent-teal dark:text-ink",
+    darkOnly: "text-ink dark:text-agent-teal",
+  },
+  rose: {
+    both: "text-agent-rose",
+    lightOnly: "text-agent-rose dark:text-ink",
+    darkOnly: "text-ink dark:text-agent-rose",
+  },
+  umber: {
+    both: "text-agent-umber",
+    lightOnly: "text-agent-umber dark:text-ink",
+    darkOnly: "text-ink dark:text-agent-umber",
+  },
 } as const satisfies Record<string, ToneVariants>;
 
 /** The palette ids this module knows how to colour a name with. */

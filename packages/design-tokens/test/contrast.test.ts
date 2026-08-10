@@ -125,6 +125,9 @@ const AGENT_TONES = [
   "crimson",
   "orange",
   "golden",
+  "teal",
+  "rose",
+  "umber",
 ] as const;
 
 describe.each([

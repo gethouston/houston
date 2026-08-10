@@ -120,7 +120,6 @@ export interface SidebarProps {
   /** The trailing DEFAULT block's header was activated. Its own callback
    *  because that block is not a stored group and has no id to hand back. */
   onActivateDefault?: () => void;
-  onRenameGroup?: (groupId: string, newName: string) => void;
   onDeleteGroup?: (groupId: string) => void;
   /**
    * Leave a group: the caller's own membership, not the group. Its menu entry
@@ -128,20 +127,6 @@ export interface SidebarProps {
    * be explicitly `true` on top of this callback.
    */
   onLeaveGroup?: (groupId: string) => void;
-  /**
-   * A group's inline rename ended WITHOUT committing (Escape, or leaving the
-   * field with nothing typed or nothing changed). A host that creates the group
-   * only once a name is typed keeps the not-yet-real group as a local draft
-   * row; this is the only signal that tells an abandoned name from a pending
-   * one, so without it the draft never goes away.
-   */
-  /**
-   * Ceiling on a group's inline-rename field, in RUNES (see `rune-clamp.ts` for
-   * why runes and not `maxLength`). ABSENT means no cap; the field clamps rather
-   * than refusing, so pasting is never blocked.
-   */
-  groupNameMaxRunes?: number;
-  /** A group id to open directly in inline-rename (e.g. a just-created one). */
   /**
    * Reorder an item WITHIN its own container, before `beforeItemId` (null =
    * append to the end of that section). `groupId` is always the container the

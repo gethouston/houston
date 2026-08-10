@@ -10,12 +10,10 @@ import type { SpecimenProp } from "../../../src/specimen";
 export const GROUP_LABELS: Required<SidebarLabels> = {
   addItem: "Add item",
   collapseSidebar: "Collapse sidebar",
-  createGroup: "New group",
-  renameGroup: "Rename group",
+  editGroup: "Change icon & name",
   deleteGroup: "Delete group",
   leaveGroup: "Leave group",
   groupMenu: "Group options",
-  newGroupPlaceholder: "Group name",
 };
 
 /** `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`. */
@@ -52,28 +50,8 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
   },
   {
     name: "menu",
-    type: "(beginRename: () => void) => ReactNode",
-    note: "The ⋯ menu, rendered as the toggle's SIBLING because a button may not nest inside a button. A render prop so its Rename entry can open the inline rename the header owns. Absent for a block with no affordances (the default team).",
-  },
-  {
-    name: "rename",
-    type: "{ maxRunes?, onCommit }",
-    note: "Inline rename. Absent means the name is not editable from the rail.",
-  },
-  {
-    name: "rename.maxRunes",
-    type: "number",
-    note: "Ceiling on the field, counted in RUNES (code points), because a maxLength attribute counts UTF-16 units and would halve a name of emoji. Absent means no cap; the field clamps rather than refusing, so pasting is never blocked.",
-  },
-  {
-    name: "rename.onCommit",
-    type: "(newName: string) => void",
-    note: "Commits a changed, non-empty name on Enter or blur.",
-  },
-  {
-    name: "labels",
-    type: "Required<SidebarLabels>",
-    note: "The whole bag. AppSidebar merges defaults before passing it down.",
+    type: "ReactNode",
+    note: "The ⋯ menu, rendered as the toggle's SIBLING because a button may not nest inside a button. Its one identity entry opens the host's 'Change icon & name' dialog; nothing is edited inline in the rail. Absent only when the caller renders no menu at all (the drag preview).",
   },
   {
     name: "dragAttributes / dragListeners",
@@ -83,6 +61,6 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
   {
     name: "dataAttrs",
     type: "Record<string, string>",
-    note: "Extra attributes on the row's ROOT, not the toggle: they identify the BLOCK, and that identity has to survive the row swapping into its rename input.",
+    note: "Extra attributes on the row's ROOT, not the toggle: they identify the BLOCK, which is what navigation and drag tests address it by.",
   },
 ];

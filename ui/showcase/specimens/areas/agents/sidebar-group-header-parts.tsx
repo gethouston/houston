@@ -2,7 +2,6 @@ import { SidebarGroupHeader, SidebarRowButton } from "@houston-ai/layout";
 import type { ReactNode } from "react";
 import { useId, useState } from "react";
 
-import { GROUP_LABELS } from "./sidebar-group-header-api";
 import { TeamGlyph, TeamMenu } from "./sidebar-group-header-chrome";
 
 /** Team blocks live on the rail, at the rail's width. */
@@ -47,14 +46,13 @@ export function LiveTeam({
   owns = false,
   menu = true,
 }: LiveTeamProps) {
-  const [label, setLabel] = useState(name);
   const [collapsed, setCollapsed] = useState(startCollapsed);
   const contentId = useId();
 
   return (
     <div className="flex flex-col">
       <SidebarGroupHeader
-        name={label}
+        name={name}
         icon={<TeamGlyph />}
         trailing={
           collapsed ? (
@@ -65,24 +63,9 @@ export function LiveTeam({
         }
         collapsed={collapsed}
         contentId={contentId}
-        labels={GROUP_LABELS}
         active={owns}
         onActivate={() => setCollapsed((on) => !on)}
-        menu={
-          menu
-            ? (beginRename) => <TeamMenu beginRename={beginRename} />
-            : undefined
-        }
-        rename={
-          // Renaming rides on the menu that offers it: a block with no menu is
-          // a block with no way in, and the default team is exactly that.
-          menu
-            ? {
-                maxRunes: 24,
-                onCommit: setLabel,
-              }
-            : undefined
-        }
+        menu={menu ? <TeamMenu /> : undefined}
       />
       <div id={contentId} className="flex flex-col">
         {!collapsed &&

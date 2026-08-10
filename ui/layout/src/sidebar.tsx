@@ -38,10 +38,8 @@ export function AppSidebar({
   defaultGroup,
   onActivateGroup,
   onActivateDefault,
-  onRenameGroup,
   onDeleteGroup,
   onLeaveGroup,
-  groupNameMaxRunes,
   onMoveItem,
   onMoveGroup,
   footer,
@@ -72,10 +70,8 @@ export function AppSidebar({
             defaultGroup={defaultGroup}
             onActivateGroup={onActivateGroup}
             onActivateDefault={onActivateDefault}
-            onRenameGroup={onRenameGroup}
             onDeleteGroup={onDeleteGroup}
             onLeaveGroup={onLeaveGroup}
-            groupNameMaxRunes={groupNameMaxRunes}
             onMoveItem={onMoveItem}
             onMoveGroup={onMoveGroup}
             onAdd={onAdd}

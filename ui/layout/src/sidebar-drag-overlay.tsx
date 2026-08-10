@@ -55,7 +55,6 @@ export function SidebarDragOverlay({
             name={activeGroup.name}
             icon={activeGroup.icon}
             collapsed={activeGroup.collapsed}
-            labels={rowCtx.labels}
           />
         </div>
       ) : null}

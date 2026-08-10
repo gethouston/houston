@@ -8,6 +8,7 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { CreateAgentTeamDialog } from "./create-agent-team-dialog";
+import { EditTeamIdentityDialog } from "./edit-team-identity-dialog";
 import { SidebarDialogs } from "./sidebar-dialogs";
 import { MobileSidebarSheet } from "./sidebar-mobile";
 import { SidebarRail, type SidebarRailModel } from "./sidebar-rail";
@@ -145,6 +146,11 @@ export function Sidebar({ children }: { children: ReactNode }) {
         onOpenChange={setCreateTeamOpen}
         serverBacked={serverBacked}
         sidebar={sidebar}
+      />
+      <EditTeamIdentityDialog
+        teams={teams}
+        renameGroup={teamActions.renameGroup}
+        setIdentity={teamActions.setIdentity}
       />
       <div className="flex h-full flex-1 min-w-0">
         {/* Mobile: the same AppSidebar element, hosted in a drawer; the

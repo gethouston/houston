@@ -29,12 +29,12 @@ export function TeamGlyph() {
  * The "..." menu, rendered as the toggle's SIBLING because a button may not
  * nest inside a button.
  *
- * It arrives through a render prop for one reason: Rename has to open the
- * inline rename the header itself owns, so the header hands `beginRename` out
- * and the menu hands it back. One rename session, in one place, with the header
+ * Its one identity entry stands for opening the host's "Change icon & name"
+ * dialog — nothing is edited inline in the rail, so the menu is a plain node
+ * the caller composes, with the header
  * still ignorant of what the menu contains.
  */
-export function TeamMenu({ beginRename }: { beginRename: () => void }) {
+export function TeamMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -47,9 +47,7 @@ export function TeamMenu({ beginRename }: { beginRename: () => void }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom">
-        <DropdownMenuItem onSelect={beginRename}>
-          {GROUP_LABELS.renameGroup}
-        </DropdownMenuItem>
+        <DropdownMenuItem>{GROUP_LABELS.editGroup}</DropdownMenuItem>
         <DropdownMenuItem className="text-danger focus:text-danger">
           {GROUP_LABELS.deleteGroup}
         </DropdownMenuItem>

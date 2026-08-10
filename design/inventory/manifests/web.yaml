@@ -274,10 +274,10 @@ components:
     ref: "@houston-ai/layout AppSidebar -> SidebarNavList (SidebarBand per labelled run, SidebarNavItem per row, one sidebarBandInset), built by app/src/components/shell/sidebar-nav-sections.tsx with the Workspace gates from useSurfaceGates() and the inbox count from useMentionInbox; the footer Settings row is app/src/components/shell/sidebar-footer.tsx"
   team-identity-picker:
     status: implemented
-    ref: "@houston-ai/layout SidebarGroupIdentityMenu + SidebarGroupGlyph (sidebar-group-identity.tsx / sidebar-group-glyphs.tsx, both props-only), composed in app/src/components/shell/team-identity.ts from AGENT_COLORS and rendered by app/src/components/shell/team-glyph.tsx; the write is useSetAgentTeamIdentity (optimistic) or sidebar.setGroupIdentity off-capability"
+    ref: "app/src/components/shell/team-identity-popover.tsx (swatch row + icon search + glyph grid over @houston-ai/layout SidebarGroupGlyph) inside the shared team-identity-name-row.tsx, rendered by create-agent-team-dialog.tsx and edit-team-identity-dialog.tsx (the rail menu's one Change icon & name door), composed in app/src/components/shell/team-identity.ts from AGENT_COLORS and rendered by app/src/components/shell/team-glyph.tsx; the write is useSetAgentTeamIdentity (optimistic) or sidebar.setGroupIdentity off-capability"
   sidebar-teams-band:
     status: implemented
-    ref: "@houston-ai/layout AppSidebar (SidebarBand + SidebarAddRow, both over SidebarRowButton), with SidebarCreateMenu wearing sidebarRowAffordanceClasses and passed as sectionAction from app/src/components/shell/sidebar-rail.tsx"
+    ref: "@houston-ai/layout AppSidebar (SidebarBand + SidebarAddRow, both over SidebarRowButton), with app/src/components/shell/sidebar-create-dialog.tsx wearing sidebarRowAffordanceClasses and passed as sectionAction from app/src/components/shell/sidebar-rail.tsx (a modal of create-choice-tile.tsx squares)"
   team-screen:
     status: implemented
     ref: "app/src/components/team-view/ (TeamView switching TeamMissionControl over @houston-ai/board MissionBoard, TeamRoutines over @houston-ai/routines RoutinesGrid, TeamFiles over the shared AgentFilesSurface, TeamSettings), with AgentReadsFailed naming any agent whose read failed"

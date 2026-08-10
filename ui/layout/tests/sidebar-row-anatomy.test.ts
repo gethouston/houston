@@ -502,18 +502,15 @@ describe("sidebar row anatomy", () => {
     );
   });
 
-  it("keeps ONE rename field, now that only a TEAM can be renamed here", () => {
-    // The agent row lost its rename with its menu, so the block header is the
-    // only row that swaps for a field. The class stays shared and stays here:
-    // it is row anatomy, and a second input would be a second set of paddings
-    // to keep in step the moment anything else earns an inline edit.
-    ok(includes(sidebarRowButtonClasses.input, "bg-input"));
-    ok(includes(sidebarRowButtonClasses.input, "flex-1"));
-    ok(
-      source("sidebar-group-header.tsx").includes(
-        "sidebarRowButtonClasses.input",
-      ),
-      "the block header must use the shared rename field",
+  it("keeps NO inline edit in the rail: identity is edited in ONE dialog", () => {
+    // A block's name, mark and colour are one identity, changed together in
+    // the host's "change icon & name" dialog (the menu's one entry). An inline
+    // rename beside that dialog would be the same question answered two ways,
+    // so no rail row swaps into a text field.
+    strictEqual(
+      source("sidebar-group-header.tsx").includes("<input"),
+      false,
+      "a block header is not renamed from the rail",
     );
     strictEqual(
       source("sidebar-item-row.tsx").includes("input"),

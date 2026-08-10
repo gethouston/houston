@@ -8,10 +8,9 @@ import { AppSidebar } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import type { Workspace } from "../../lib/types";
-import { TEAM_NAME_MAX_RUNES } from "../team-view/team-members-model";
 import { SidebarInviteInbox } from "./pending-invites";
 import { buildSidebarLabels, SidebarWorkspaceHeader } from "./sidebar-chrome";
-import { SidebarCreateMenu } from "./sidebar-create-menu";
+import { SidebarCreateDialog } from "./sidebar-create-dialog";
 import { SidebarFooter } from "./sidebar-footer";
 import type { ServerTeamActions } from "./use-server-team-actions";
 import { tourAnchor } from "./workspace-tour-steps.ts";
@@ -126,12 +125,13 @@ export function SidebarRail({
       activeNavId={activeNavId}
       sectionLabel={t("shell:sidebar.yourTeams")}
       // ONE control on the band: everything a user can ADD to this rail. The
-      // menu itself decides whether there is a choice to make, and collapses
+      // dialog itself decides whether there is a choice to make, and collapses
       // to a plain button when there is only one thing to create.
       sectionAction={
-        <SidebarCreateMenu
+        <SidebarCreateDialog
           labels={{
-            menu: t("shell:sidebar.createMenu"),
+            title: t("shell:sidebar.createDialog"),
+            close: t("common:actions.close"),
             newAgent: t("shell:sidebar.addAgent"),
             newTeam: t("shell:sidebar.newTeam"),
           }}
@@ -144,12 +144,8 @@ export function SidebarRail({
       items={items}
       groups={groups}
       defaultGroup={defaultGroup}
-      // The gateway's own ceiling, counted in RUNES like the gateway counts it,
-      // so the inline rename cannot compose a name the write would refuse.
-      groupNameMaxRunes={TEAM_NAME_MAX_RUNES}
       onActivateGroup={onActivateGroup}
       onActivateDefault={onActivateDefault}
-      onRenameGroup={teamActions.renameGroup}
       onDeleteGroup={teamActions.deleteGroup}
       onLeaveGroup={teamActions.leaveGroup}
       // A drag reorders an agent inside its OWN team and nothing more: moving

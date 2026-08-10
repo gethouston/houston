@@ -25,32 +25,10 @@ export interface SidebarGroupSwatch {
 }
 
 export interface SidebarGroupIdentityLabels {
-  /** The menu entry that opens the picker, e.g. "Change icon & color". */
+  /** Names the picker's trigger, e.g. "Change icon & name". */
   trigger: string;
   /** Accessible group name for the glyph grid. */
   icons: string;
   /** Accessible group name for the swatch row. */
   colors: string;
-  /** The reset affordance ("Default"). */
-  none: string;
-}
-
-/**
- * A group's LOOK, as one object: what it is currently wearing, what it may
- * wear, and the one callback that changes it.
- *
- * One prop rather than six because a mark and a tint are a PAIR — the picker
- * previews the chosen colour on the whole glyph grid, so it cannot be handed
- * one without the other and stay honest about what a click will produce.
- */
-export interface SidebarGroupIdentity {
-  /** The chosen glyph NAME, absent = none chosen. */
-  icon?: string;
-  /** The chosen swatch id (matches `colors[].id`), absent = none chosen. */
-  colorId?: string;
-  glyphs: readonly SidebarGroupGlyphChoice[];
-  colors: readonly SidebarGroupSwatch[];
-  labels: SidebarGroupIdentityLabels;
-  /** `null` on a field CLEARS it; an omitted field is left untouched. */
-  onChange: (patch: { icon?: string | null; colorId?: string | null }) => void;
 }
