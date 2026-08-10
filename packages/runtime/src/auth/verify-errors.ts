@@ -6,6 +6,19 @@
 export const VERIFY_TIMEOUT_MS = 20_000;
 
 /**
+ * `ProviderError` kinds that prove the credential was ACCEPTED by the
+ * provider: a garbage key can't be rate-limited, out of credit, gated off a
+ * model, or over a context window. Shared by the main verify flow and the
+ * qwen region prober (`qwen-verify.ts`).
+ */
+export const PROVES_AUTH: ReadonlySet<string> = new Set([
+  "rate_limited",
+  "quota_exhausted",
+  "model_unavailable",
+  "context_overflow",
+]);
+
+/**
  * Human-readable text for an exception the verify request RAISED (vs a resolved
  * errored reply). An abort/timeout DOMException reads like a bug ("The
  * operation was aborted due to timeout"), so name what actually happened —

@@ -5,6 +5,7 @@ import {
   OPENAI_COMPATIBLE,
 } from "../ai/openai-compatible";
 import { providerDefaultModel, safeGetModel } from "../ai/providers";
+import { QWEN_PROVIDER_ID, resolveQwenModel } from "../ai/qwen-dashscope";
 
 type Settings = { activeProvider?: string; models?: Record<string, string> };
 
@@ -41,5 +42,10 @@ export function resolveTurnModel(
   }
   const modelId =
     override || settings.models?.[provider] || providerDefaultModel(provider);
+  // The qwen extension provider's endpoint is REGION-scoped per verified key,
+  // so its model must carry THIS turn's hydrated region file — same
+  // per-dataDir rule as the custom endpoint above (qwen-dashscope, HOU-1077).
+  if (provider === QWEN_PROVIDER_ID)
+    return resolveQwenModel(modelId, !!override, dataDir);
   return safeGetModel(provider, modelId, !!override);
 }

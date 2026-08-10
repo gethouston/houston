@@ -180,6 +180,12 @@ const INSUFFICIENT_BALANCE_PATTERNS = [
   "credit balance is too low",
   // "You have run out of credits" phrasing (various gateways).
   "out of credits",
+  // Alibaba Model Studio (DashScope): `{"code":"AllocationQuota.FreeTierOnly",
+  // "message":"The free quota has been exhausted. To continue accessing the
+  // model on a paid basis, please complete your payment information …"}` —
+  // the key is valid; the account must add billing. Verbatim from a live
+  // dashscope-us response (HOU-1077).
+  "allocationquota",
   // NVIDIA NIM: "Cloud credits expired - Please contact NVIDIA representatives".
   "credits expired",
   // Google Cloud's billing-delinquency denial: 403 `"Lightning dunning

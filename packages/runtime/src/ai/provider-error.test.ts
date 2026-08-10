@@ -861,6 +861,21 @@ test("a body-less 410 from another provider stays unknown", () => {
   expect(err.kind).toBe("unknown");
 });
 
+test("Alibaba DashScope free-tier exhaustion → quota_exhausted, never a rate-limit countdown", () => {
+  // Verbatim dashscope-us body for a VALID key whose free quota ran out
+  // (HOU-1077): the fix is adding payment info, so the "pay or switch" card
+  // is the honest one. Without the AllocationQuota pattern the bare word
+  // "quota" tripped the rate-limit branch (a wait-it-out countdown that can
+  // never end).
+  const err = classifyProviderError({
+    provider: "qwen",
+    model: "qwen3.7-max",
+    message:
+      '{"error":{"message":"The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the \\"use free tier only\\" mode in the management console if already completed).","type":"AllocationQuota.FreeTierOnly","param":null,"code":"AllocationQuota.FreeTierOnly"}}',
+  });
+  expect(err.kind).toBe("quota_exhausted");
+});
+
 test("Qwen Token Plan 401 'Invalid API-key provided' → unauthenticated / invalid_api_key", () => {
   // Verbatim token-plan.ap-southeast-1.maas.aliyuncs.com body (HOU-1077). The
   // endpoint only accepts a DEDICATED Token Plan key — a regular Model Studio
