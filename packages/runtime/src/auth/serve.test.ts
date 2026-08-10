@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessDigest } from "@houston/protocol/access-digest";
 import { expect, test } from "vitest";
+import { piApiKeyProviderIds } from "../ai/pi-catalog";
 import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
 import {
@@ -105,8 +106,48 @@ test("concurrent syncServedCredential calls share one in-flight sync (no auth.js
     expect(c).toEqual([]);
     // Three concurrent callers, but only ONE batch of per-provider probes ran —
     // EVERY provider, anthropic included (the host decides whether to serve it;
-    // routes/credential.ts answers a marked 404 off the managed cloud).
-    expect(calls).toBe(PROVIDERS.length);
+    // routes/credential.ts answers a marked 404 off the managed cloud), plus
+    // every uncurated pi api-key provider (PRODUCT-1213).
+    const curated = new Set<string>(PROVIDERS.map((p) => p.id));
+    expect(calls).toBe(
+      PROVIDERS.length +
+        piApiKeyProviderIds().filter((id) => !curated.has(id)).length,
+    );
+  });
+});
+
+test("an uncurated pi api-key provider (cerebras) is probed and re-hydrated from the central store", async () => {
+  // PRODUCT-1213: connect accepts a pasted key for ANY pi api-key provider and
+  // the gateway stores it durably, but a recycled pod rebuilds auth.json only
+  // from this sync. Probing just the curated catalog stranded e.g. a cerebras
+  // key centrally — the pod read disconnected after every roll with no logout.
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider === "cerebras") {
+      return new Response(
+        JSON.stringify({
+          provider: "cerebras",
+          kind: "api_key",
+          access: "csk-served",
+          expires: 0,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    expect(await syncServedCredential()).toEqual(["cerebras"]);
+    const auth = JSON.parse(
+      readFileSync(join(config.dataDir, "auth.json"), "utf8"),
+    ) as Record<string, { type: string; key?: string }>;
+    expect(auth.cerebras).toEqual({ type: "api_key", key: "csk-served" });
+    // Serve-applied provenance: a later authoritative central sign-out may
+    // remove exactly this entry.
+    expect(
+      readServedProvidersAt(join(config.dataDir, "served-providers.json")),
+    ).toContain("cerebras");
   });
 });
 
