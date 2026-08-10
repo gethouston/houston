@@ -84,14 +84,16 @@ describe("a member with nothing connected can serve themselves", () => {
     );
   });
 
-  it("the hub says whose accounts these are, in a team space only", () => {
-    // A member opening the hub must not read these rows as the team's shared
-    // connections — there are none. One heading carries that, and only where
-    // there is more than one person in the space to confuse it with.
+  it("the hub never labels its rows as anyone else's accounts", () => {
+    // The "Your accounts" note was removed (Aug 2026): the surface itself is
+    // the statement — a member sees only their own connections and a live
+    // connect on everything else. What must stay true is that no copy sends
+    // them to an admin or offers a team account.
     const view = read("../src/components/ai-hub/ai-hub-view.tsx");
-    ok(view.includes("isTeamWorkspace"), "the note is gated on a team space");
-    ok(view.includes('t("accounts.title")'), "and renders the heading");
-    ok(view.includes("<h2"), "as a real heading, not body text");
+    ok(
+      !view.includes("accounts.title"),
+      "the retired note must not quietly return",
+    );
   });
 });
 

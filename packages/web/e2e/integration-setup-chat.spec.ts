@@ -38,18 +38,15 @@ async function armCustomIntegrations(
 }
 
 /**
- * Navigate to the Integrations page and land on the custom-integrations
- * surface through its header lozenge. The catalog can be absent while the
- * custom provider remains available, but both modes use the same navigation.
+ * Navigate to the unified Integrations page. The catalog can be absent while
+ * the custom provider and its header action remain available.
  */
 async function openCustomIntegrations(page: Page): Promise<void> {
   await page.goto("/");
   await page.locator('[data-tour-target="nav-integrations"]').click();
-  const lozenge = page.getByRole("button", { name: "Custom integrations" });
-  await lozenge.click();
-  // The page's ONE heading is the identity lozenge ("Integrations"); the
-  // Custom tab announces itself as the current page, not as a second h1.
-  await expect(lozenge).toHaveAttribute("aria-current", "page");
+  await expect(
+    page.getByRole("button", { name: "Integrations", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 }
 
 async function startSetupChat(page: Page): Promise<void> {
@@ -79,9 +76,9 @@ test("composio-absent: Add custom integration opens the embedded chat, agent spe
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 
   // No board navigation: still on the Integrations page next to the chat —
-  // the Custom lozenge still announces itself as the current page.
+  // the identity lozenge still announces the current page.
   await expect(
-    page.getByRole("button", { name: "Custom integrations" }),
+    page.getByRole("button", { name: "Integrations", exact: true }),
   ).toHaveAttribute("aria-current", "page");
 });
 
@@ -123,7 +120,6 @@ test("a draft chat survives a reload as a Continue banner that resumes the same 
   // host is not — the cross-agent scan finds it and offers to continue.
   await page.reload();
   await page.locator('[data-tour-target="nav-integrations"]').click();
-  await page.getByRole("button", { name: "Custom integrations" }).click();
   await expect(
     page.getByText("You are setting up a custom integration in chat"),
   ).toBeVisible({ timeout: 10_000 });

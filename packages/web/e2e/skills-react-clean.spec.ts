@@ -37,7 +37,14 @@ test("skills surfaces render without React integrity errors", async ({
   // The global Skills page, via the sidebar nav anchor (disambiguates it from
   // the agent's own Skills tab).
   await page.locator('[data-tour-target="nav-skills"]').click();
-  await expect(page.getByRole("tab", { name: "Custom skills" })).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  await page.getByRole("button", { name: "New skill" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: "Create with AI" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Add manually" }),
+  ).toBeVisible();
 
   const react = errors.filter(
     (e) =>

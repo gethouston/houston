@@ -155,8 +155,10 @@
   },
   "global": {
     "pageTitle": "Skills",
-    "pageSubtitle": "Enseña skills reutilizables a tus agentes y elige quién sabe qué.",
+    "headerLabel": "Secciones de skills",
     "newSkill": "Nueva skill",
+    "createWithAi": "Crear con IA",
+    "addManually": "Añadir manualmente",
     "alreadyHasIt": "Ya la tiene",
     "noAgentsTitle": "Aún no hay agentes",
     "noAgentsDescription": "Primero crea un agente. Las skills viven con tus agentes, y esta página las administra en todos ellos.",

@@ -10,9 +10,8 @@ import { expect, test } from "./support/fixtures";
  * key-free `custom` provider, and the page must render the Custom
  * integrations section instead of going dark with "not available in this
  * setup" (the regression this spec pins). The ready-mode case checks the
- * custom integration surfaces behind the page-level Custom integrations mode
- * (its own Installed list — never mixed into the Composio strip since the
- * mode split), and that the pending → enter-key flow works.
+ * custom integrations in the shared Installed list, and that the pending →
+ * enter-key flow works.
  */
 
 async function armCapabilities(
@@ -80,27 +79,14 @@ test("a composio-absent host still renders the Custom integrations section", asy
   await armCustomIntegrations(request, []);
   await openIntegrationsPage(page);
 
-  // The custom section is alive in the header lozenge, with its add action.
-  await page.getByRole("button", { name: "Custom integrations" }).click();
+  // Custom setup stays available in the unified header.
   await expect(
     page.getByRole("button", { name: "Add custom integration" }),
   ).toBeVisible();
 
-  // The catalog's absence is scoped to the CATALOG lozenge's own body — one
-  // source on screen at a time, so the note lives where the catalog would be,
-  // and it is never a page blackout.
-  await page
-    .getByLabel("Integration sections")
-    .getByRole("button", { name: "Integrations", exact: true })
-    .click();
-  await expect(
-    page.getByText("The app catalog isn't available in this setup", {
-      exact: false,
-    }),
-  ).toBeVisible();
   await expect(
     page.getByText("Integrations are not available in this setup"),
-  ).not.toBeVisible();
+  ).toBeVisible();
 });
 
 test("ready mode lists a pending custom integration and the enter-key flow activates it", async ({
@@ -112,14 +98,20 @@ test("ready mode lists a pending custom integration and the enter-key flow activ
   await armCustomIntegrations(request, [ACME_PENDING]);
   await openIntegrationsPage(page);
 
-  // The Custom integrations mode carries the row (name + its API/MCP badge
-  // + status) in ITS Installed section — the Composio strip never mixes
-  // custom rows in (the mode split shows one source at a time).
-  await page.getByRole("button", { name: "Custom integrations" }).click();
+  // The unified Installed section carries the custom row after catalog apps.
   await expect(
     page.getByRole("button", { name: "Acme CRM API" }),
   ).toBeVisible();
   await expect(page.getByText("Needs an API key")).toBeVisible();
+
+  // Custom is pinned in the shared category filter. It keeps only custom
+  // Installed rows and removes the non-browsable Available section entirely.
+  await page.getByRole("button", { name: "Filter by category" }).click();
+  await page.getByRole("option", { name: "Custom", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Available" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Acme CRM API" }),
+  ).toBeVisible();
 
   // Enter the key: the secure dialog collects it, the definition flips active.
   await page.getByRole("button", { name: "Enter key" }).click();
@@ -153,7 +145,6 @@ test("a custom row opens the detail card: metadata, action count, and remove (HO
   await openIntegrationsPage(page);
 
   // The row's body is the open affordance for the detail card.
-  await page.getByRole("button", { name: "Custom integrations" }).click();
   await page.getByRole("button", { name: "Acme Live API" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Acme Live")).toBeVisible();
@@ -190,7 +181,6 @@ test("a pending integration's detail card leads with Enter key and opens the sec
   await armCustomIntegrations(request, [ACME_PENDING]);
   await openIntegrationsPage(page);
 
-  await page.getByRole("button", { name: "Custom integrations" }).click();
   await page.getByRole("button", { name: "Acme CRM API" }).click();
   const dialog = page.getByRole("dialog");
   await expect(

@@ -3,7 +3,7 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   catalogCategorySlugs,
@@ -29,6 +29,7 @@ export function CatalogControls({
   onQueryChange,
   category,
   onCategoryChange,
+  addCustom,
   variant,
 }: {
   catalog: IntegrationToolkit[];
@@ -39,21 +40,27 @@ export function CatalogControls({
   category: string;
   onCategoryChange: (value: string) => void;
   variant: "strip" | "row";
+  addCustom?: ReactNode;
 }) {
   const { t } = useTranslation("integrations");
   const categoryOptions = useMemo(() => {
     const connected = new Set(connections.map((c) => c.toolkit));
-    return catalogCategorySlugs({ catalog, connected }).map((slug) => ({
-      value: slug,
-      label:
-        slug === UNCATEGORIZED ? t("home.otherCategory") : categoryLabel(slug),
-    }));
+    return [
+      { value: "custom", label: t("home.customCategory") },
+      ...catalogCategorySlugs({ catalog, connected }).map((slug) => ({
+        value: slug,
+        label:
+          slug === UNCATEGORIZED
+            ? t("home.otherCategory")
+            : categoryLabel(slug),
+      })),
+    ];
   }, [catalog, connections, t]);
 
   const inStrip = variant === "strip";
   return (
     <div className={inStrip ? "flex gap-2" : "mb-8 flex gap-2 pt-2"}>
-      <HeaderSearch query={query} inStrip={inStrip}>
+      <HeaderSearch inStrip={inStrip}>
         <CatalogSearchField
           value={query}
           onChange={onQueryChange}
@@ -73,6 +80,7 @@ export function CatalogControls({
         searchable
         className={inStrip ? "h-8" : undefined}
       />
+      {addCustom}
     </div>
   );
 }

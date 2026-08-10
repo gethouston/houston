@@ -4,7 +4,7 @@
  * stays a layout and this set of derivations lives in one place.
  *
  * The user's own providers ride the strip; only the ones we CONFIRMED are not
- * connected browse in the tab, so the tab's `+` connect is never offered for an
+ * connected browse under Available, so its `+` is never offered for an
  * account that may already be signed in (HOU-979). A provider whose probe came
  * back unconfirmable rides the strip with its own checking dot. Until the first
  * status probe resolves everything counts as available (the pane holds a skeleton
@@ -14,6 +14,8 @@
 import { useMemo } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import type { ProviderConnections } from "../../hooks/use-provider-connections";
+import type { HubCatalog } from "../../lib/ai-hub/catalog-types";
+import { searchProvidersWithOffers } from "../../lib/ai-hub/search-groups";
 import { newEngineActive } from "../../lib/engine";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
@@ -21,7 +23,6 @@ import {
   getConnectProviders,
   type ProviderInfo,
 } from "../../lib/providers";
-import { searchProviders } from "../provider-browser/provider-filtering";
 import {
   groupProviders,
   providerOwnedSide,
@@ -42,6 +43,7 @@ export interface HubProviders {
 
 export function useHubProviders(
   connections: ProviderConnections,
+  catalog: HubCatalog | null | undefined,
   query: string,
 ): HubProviders {
   const { capabilities } = useCapabilities();
@@ -67,14 +69,27 @@ export function useHubProviders(
   const owned = useMemo(() => providerOwnedSide(groups), [groups]);
 
   const searching = query.trim() !== "";
-  const connectedMatches = useMemo(
-    () => searchProviders(owned, query),
-    [owned, query],
+  const searchMatches = useMemo(
+    () =>
+      searchProvidersWithOffers(connectProviders, catalog?.models ?? [], query),
+    [connectProviders, catalog, query],
   );
-  const availableMatches = useMemo(
-    () => searchProviders(available, query),
-    [available, query],
+  const matchedProviderIds = useMemo(
+    () => new Set(searchMatches.map((provider) => provider.id)),
+    [searchMatches],
+  );
+  const connectedMatches = owned.filter((provider) =>
+    matchedProviderIds.has(provider.id),
+  );
+  const availableMatches = available.filter((provider) =>
+    matchedProviderIds.has(provider.id),
   );
 
-  return { available, owned, connectedMatches, availableMatches, searching };
+  return {
+    available,
+    owned,
+    connectedMatches,
+    availableMatches,
+    searching,
+  };
 }

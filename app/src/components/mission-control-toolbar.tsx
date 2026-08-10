@@ -70,7 +70,7 @@ export function MissionControlToolbar({
   const strip = variant === "strip";
 
   const searchField = onSearchChange && (
-    <HeaderSearch query={search} inStrip={strip}>
+    <HeaderSearch inStrip={strip}>
       <CatalogSearchField
         value={search}
         busy={isSearchingText}

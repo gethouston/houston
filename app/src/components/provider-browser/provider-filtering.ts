@@ -7,6 +7,7 @@
  * `node --test` (`app/tests/provider-grouping.test.ts`).
  */
 
+import { searchProviderNames } from "../../lib/ai-hub/search-groups.ts";
 import { FEATURED_PROVIDER_IDS } from "../../lib/provider-overrides.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 import { providerBilling } from "./provider-grouping.ts";
@@ -92,14 +93,7 @@ export function searchProviders(
   providers: readonly ProviderInfo[],
   query: string,
 ): ProviderInfo[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [...providers];
-  return providers.filter(
-    (p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q) ||
-      p.subtitle.toLowerCase().includes(q),
-  );
+  return searchProviderNames(providers, query);
 }
 
 /**

@@ -1,29 +1,30 @@
 import {
-  Button,
-  CatalogSearchField,
-  CatalogShell,
+  CATALOG_PLANE_MAX_W,
+  cn,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   Spinner,
 } from "@houston-ai/core";
-import { Plus } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { PageContainer, PageHero } from "../shell/page-shell";
+import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
+import { PageContainer } from "../shell/page-shell";
 import { type ManagedSkillRow, ManageSkillDialog } from "./manage-skill-dialog";
 import { NewSkillDialog } from "./new-skill-dialog";
+import { SKILLS_HEADER_THRESHOLDS, SkillsHeader } from "./skills-header";
+import { SkillsReady } from "./skills-ready";
 import { useGlobalChatFlow } from "./use-global-chat-flow";
 import { useGlobalInstallFlow } from "./use-global-install-flow";
-import { useGlobalSkillTabs } from "./use-global-skill-tabs";
 import { useSharedSkills } from "./use-shared-skills";
 import { useSharedSkillsActions } from "./use-shared-skills-actions";
 import { useSkillsViewActions } from "./use-skills-view-actions";
+import { useStoreTabContent } from "./use-store-tab-content";
 import { useWorkspaceSkills } from "./use-workspace-skills";
 import { useWorkspaceSkillRows } from "./workspace-skill-rows";
 
@@ -33,12 +34,9 @@ const SKILL_STORE_SIZE_LABEL = "9000+";
 
 /**
  * The top-level Skills page (sidebar "Skills", HOU-792): one place to see and
- * manage skills across every agent in the workspace. On deployments that
- * serve the workspace-shared store (`capabilities.sharedSkills`, ADR 0003)
- * a skill lives ONCE in the store, agents enable it via their manifest, and
- * an agent's modified copy shadows it as an override. Everywhere else the
- * copy-based HOU-792 model stays: per-agent lists aggregated, installs and
- * edits fanned out through the agent-scoped routes. "New skill" opens the
+ * manage skills across every agent in the workspace. A shared deployment
+ * stores a skill once and agents enable it; elsewhere installs and edits fan
+ * out through agent-scoped routes. "New skill" opens the
  * guided create chat in the shell's right-hand panel (the Routines split)
  * while this page stays on the left.
  */
@@ -77,7 +75,6 @@ export function SkillsView() {
   );
 
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState("store");
   const [managing, setManaging] = useState<ManagedSkillRow | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -115,70 +112,51 @@ export function SkillsView() {
     query,
     setManaging,
   );
-  const tabs = useGlobalSkillTabs({
+  const storeTab = useStoreTabContent({
     browsePath: agents[0]?.folderPath,
     query,
     onQueryChange: setQuery,
     onInstall: install.handleInstallCommunity,
     installedSkillNames,
-    custom: {
-      onCreateWithAi: chat.startCreate,
-      onAddClick: () => setCreating(true),
-    },
   });
 
   return (
-    <div className="h-full overflow-y-auto [scrollbar-gutter:stable]">
-      <PageContainer className="flex flex-col gap-6 py-10">
-        <PageHero
-          title={t("global.pageTitle")}
-          subtitle={t("global.pageSubtitle")}
-          trailing={
-            agents.length > 0 ? (
-              <Button type="button" onClick={chat.startCreate}>
-                <Plus className="size-4" />
-                {t("global.newSkill")}
-              </Button>
-            ) : undefined
-          }
-        />
-        {agents.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{t("global.noAgentsTitle")}</EmptyTitle>
-              <EmptyDescription>
-                {t("global.noAgentsDescription")}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : loading && rows.length === 0 ? (
-          <div className="flex items-center gap-2 text-sm text-ink-muted">
-            <Spinner className="size-3.5" />
-            {t("grid.loading")}
-          </div>
-        ) : (
-          <CatalogShell
-            controls={
-              <CatalogSearchField
-                value={query}
-                onChange={setQuery}
-                label={t("grid.searchSkills")}
-              />
-            }
-            installedTitle={t("grid.yourSkillsHeading")}
-            installedCount={installedCount}
-            installed={installed}
-            availableTitle={t("grid.availableHeading")}
-            // The store-size label belongs to the Store tab only.
-            availableCount={
-              tab === "store" ? SKILL_STORE_SIZE_LABEL : undefined
-            }
-            tabs={tabs}
-            value={tab}
-            onValueChange={setTab}
-          />
-        )}
-      </PageContainer>
+    <PageHeaderToolsProvider thresholds={SKILLS_HEADER_THRESHOLDS}>
+      <div className="flex h-full flex-col">
+        <SkillsHeader />
+        <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+          <PageContainer width="wide" className="pt-6 pb-10">
+            <div className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}>
+              {agents.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>{t("global.noAgentsTitle")}</EmptyTitle>
+                    <EmptyDescription>
+                      {t("global.noAgentsDescription")}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : loading && rows.length === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-ink-muted">
+                  <Spinner className="size-3.5" />
+                  {t("grid.loading")}
+                </div>
+              ) : (
+                <SkillsReady
+                  query={query}
+                  onQueryChange={setQuery}
+                  onCreateWithAi={chat.startCreate}
+                  onAddManually={() => setCreating(true)}
+                  installed={installed}
+                  installedCount={installedCount}
+                  storeTab={storeTab}
+                  storeSizeLabel={SKILL_STORE_SIZE_LABEL}
+                />
+              )}
+            </div>
+          </PageContainer>
+        </div>
+      </div>
       {chat.node}
       {install.dialogNode}
       <ManageSkillDialog
@@ -210,6 +188,6 @@ export function SkillsView() {
           sharedMode ? sharedActions.createShared : actions.createForAgents
         }
       />
-    </div>
+    </PageHeaderToolsProvider>
   );
 }

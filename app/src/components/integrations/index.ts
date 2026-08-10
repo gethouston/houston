@@ -52,7 +52,7 @@ export {
   type CustomSelection,
   useCustomSelection,
 } from "./custom-integration-dialogs";
-export { CustomIntegrationsSection } from "./custom-integrations-section";
+export { CustomIntegrationRow } from "./custom-integration-row";
 export { IntegrationBadges } from "./integration-badges";
 export { IntegrationChips } from "./integration-chips";
 export { IntegrationDisconnectDialog } from "./integration-disconnect-dialog";
@@ -82,6 +82,12 @@ export {
   useConnectedApps,
 } from "./use-connected-apps";
 export { useConnectionSelection } from "./use-connection-selection";
+export {
+  AddCustomButton,
+  type CustomIntegrationsSurface,
+  CustomSurfaceSupport,
+  useCustomIntegrationsSurface,
+} from "./use-custom-integrations-surface";
 export {
   type IntegrationsGate,
   useIntegrationsGate,

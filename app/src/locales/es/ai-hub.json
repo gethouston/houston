@@ -1,12 +1,8 @@
 {
-  "hero": {
-    "title": "Modelos de IA",
-    "subtitle": "Usa tu suscripción de ChatGPT, Claude o Copilot, o conecta {{models}}+ modelos de cada gran laboratorio con tus propias claves.",
-    "subtitleFew": "Usa tu suscripción de ChatGPT, Claude o Copilot, o conecta modelos de cada gran laboratorio con tus propias claves."
-  },
-  "tabs": {
-    "providers": "Proveedores",
-    "models": "Modelos"
+  "header": {
+    "label": "Proveedores y modelos de IA",
+    "title": "Proveedores de IA",
+    "models": "Modelos de IA"
   },
   "sections": {
     "connected": "Conectados",
@@ -29,10 +25,6 @@
     "cancel": "Cancelar",
     "models_one": "{{count}} modelo",
     "models_other": "{{count}} modelos"
-  },
-  "accounts": {
-    "title": "Tus cuentas",
-    "description": "Cada agente de este espacio de equipo usa la cuenta de IA de quien le escribe, así que las cuentas que conectas aquí son las tuyas."
   },
   "directory": {
     "search": "Busca {{count}}+ modelos",

@@ -35,11 +35,3 @@ export function headerCollapsesTabs(mode: HeaderMode): boolean {
  * whose height follows its contents is not a frame.
  */
 export const HEADER_HEIGHT = "h-12";
-
-/**
- * A compact search stays grown while focused or holding a query, so blurring
- * it never hides the query that produced the current results.
- */
-export function searchFieldGrown(focused: boolean, query: string): boolean {
-  return focused || query.length > 0;
-}

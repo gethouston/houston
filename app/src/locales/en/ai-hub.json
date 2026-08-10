@@ -1,12 +1,8 @@
 {
-  "hero": {
-    "title": "AI Models",
-    "subtitle": "Use your ChatGPT, Claude, or Copilot subscription, or connect {{models}}+ models from every major lab with your own keys.",
-    "subtitleFew": "Use your ChatGPT, Claude, or Copilot subscription, or connect models from every major lab with your own keys."
-  },
-  "tabs": {
-    "providers": "Providers",
-    "models": "Models"
+  "header": {
+    "label": "AI providers and models",
+    "title": "AI Providers",
+    "models": "AI Models"
   },
   "sections": {
     "connected": "Connected",
@@ -29,10 +25,6 @@
     "cancel": "Cancel",
     "models_one": "{{count}} model",
     "models_other": "{{count}} models"
-  },
-  "accounts": {
-    "title": "Your accounts",
-    "description": "Every agent in this team space runs on the AI account of whoever messages it, so the accounts you connect here are your own."
   },
   "directory": {
     "search": "Search {{count}}+ models",

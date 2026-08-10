@@ -5,17 +5,17 @@ import { expect, test } from "./support/fixtures";
 /**
  * The AI models hub, end to end against the fake host — now in the shared
  * catalog-shell grammar (the same layout as the Integrations page): a
- * consolidated "Connected" strip of provider CARDS OUTSIDE the tabs
- * (the fake host seeds Claude/Anthropic connected), then the Providers /
- * Models tabs with count chips. Each connected card also carries that account's
+ * consolidated "Connected" strip repeated over both provider and model modes
+ * (the fake host seeds Claude/Anthropic connected). Each connected card carries
+ * that account's
  * LIVE usage (plan chip + rate-limit meters) — there is no separate usage
  * screen (HOU-789). A strip card or a provider row opens the provider MODAL from
  * anywhere on the card, meters included (it embeds the same model card browser
- * as the Models tab); the ghost `+` on a row is the direct connect affordance
+ * as the model directory); the ghost `+` on a row is the direct connect affordance
  * and the one part of the row that is not that target. Flow:
  * sidebar nav → strip row opens the provider modal → Escape closes →
- * Providers tab shows the connectable rows with their `+` → Models tab →
- * facet filters + search → a card opens the model MODAL ("Get it through"
+ * Available shows connectable rows with their `+` → AI Models keeps the query
+ * and adds four header facets → a row opens the model MODAL ("Get it through"
  * offers) → Escape closes. OAuth is never driven (no credentials in the
  * harness); we assert presence + the modal open/close flow only.
  */
@@ -27,15 +27,17 @@ test("opens the AI hub, browses providers and models via modals", async ({
   // The sidebar carries the top-level item. Opening it lands on the hub.
   await page.getByRole("button", { name: "AI models" }).click();
 
-  await expect(page.getByRole("tab", { name: "Providers" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: /Models/ })).toBeVisible();
-  // Only the two browse tabs live here now — the org model ceiling moved to the
-  // Admin page, so the old "Workspace policy" tab is gone.
-  await expect(page.getByRole("tab", { name: "Workspace policy" })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("button", { name: "AI Providers", exact: true }),
+  ).toBeVisible();
+  const allModels = page.getByRole("button", {
+    name: "AI Models",
+    exact: true,
+  });
+  await expect(allModels).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Available" })).toBeVisible();
 
-  // The consolidated Connected strip sits OUTSIDE the tabs: the seeded
+  // The consolidated Connected strip sits above Available: the seeded
   // Anthropic connection is a row (name + its subscription subtitle), not a row
   // in the browse grid.
   await expect(page.getByRole("heading", { name: "Connected" })).toBeVisible();
@@ -68,27 +70,29 @@ test("opens the AI hub, browses providers and models via modals", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
 
-  // The Providers tab browses only the NOT-connected providers as flat rows,
+  // Available browses only the NOT-connected providers as flat rows,
   // each with a ghost `+` connect affordance at its right edge.
   await expect(
     page.getByRole("button", { name: /^Connect / }).first(),
   ).toBeVisible();
 
-  // Switch to the Models directory: the ONE page-level search (shared across
-  // both tabs) plus the facet comboboxes (the "Good at" facet always shows)
-  // above the catalog-grammar row grid.
-  await page.getByRole("tab", { name: /Models/ }).click();
+  // The ONE page-level query survives the switch into the model directory.
   const search = page.getByPlaceholder("Search AI models and providers");
   await expect(search).toBeVisible();
-  await expect(page.getByRole("button", { name: "Good at" })).toBeVisible();
   await search.fill("claude");
+  await allModels.click();
+  await expect(search).toHaveValue("claude");
+  await expect(page.getByRole("heading", { name: "Connected" })).toBeVisible();
+  for (const facet of ["AI provider", "Good at", "Cost", "Memory"]) {
+    await expect(page.getByRole("button", { name: facet })).toBeVisible();
+  }
 
   // A model row (name + lab, whole row is the button) opens the model MODAL:
   // its specs + the "Get it through" list of providers that offer it. Scope to
-  // the Models tabpanel so the shared search's now-filtered Connected strip
-  // (Anthropic also matches "claude") can't shadow the model row.
+  // the Available section so the filtered Connected strip cannot shadow it.
   await page
-    .getByRole("tabpanel")
+    .getByRole("heading", { name: "Available" })
+    .locator("..")
     .getByRole("button", { name: /Claude/i })
     .first()
     .click();

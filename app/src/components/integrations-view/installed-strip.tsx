@@ -5,38 +5,37 @@ import {
   CatalogShowMore,
   StatusDot,
 } from "@houston-ai/core";
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type {
+  CustomIntegrationView,
+  IntegrationConnection,
+} from "@houston-ai/engine-client";
 import { ChevronRight } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type InstalledRow,
   installedPreview,
 } from "../../lib/installed-preview";
-import { AppLogo } from "../integrations";
+import {
+  AppLogo,
+  CustomIntegrationRow,
+  type CustomSelection,
+} from "../integrations";
 
 /** One installed item, flattened to the props {@link CatalogRow} needs so the
  *  preview cap can slice the list in display order. */
 interface InstalledItem {
   key: string;
-  icon: ReactNode;
-  title: string;
-  description: string;
-  /** The presence-style status dot left of the name ("● Asana"), so connected /
-   *  pending / error reads without opening the row. */
-  statusDot: ReactNode;
-  onClick: () => void;
+  row: ReactNode;
 }
 
 /**
  * The Composio "Installed" section: the user's active catalog connections as
  * the SAME flat rows the browse catalog uses ({@link CatalogRow}: brand art
  * via {@link AppLogo}, name + one-line description, a quiet trailing
- * chevron). Custom integrations never appear here — since the mode split
- * (HOU-980 review) they live behind their own page-level mode with their own
- * installed list. The parent hands us already-filtered rows, so this
- * component stays a pure renderer; a row opens that connection's detail
- * modal.
+ * chevron). Custom integrations follow the active catalog rows in the SAME
+ * grid, preserving their key, sign-in, detail, and remove actions. The parent
+ * hands us already-filtered rows, so this component stays a pure renderer.
  *
  * At rest the section caps to {@link CATALOG_INSTALLED_PREVIEW_CAP} rows behind
  * a quiet "Show all N" expander, so a well-stocked section never buries the
@@ -48,11 +47,17 @@ interface InstalledItem {
  */
 export function InstalledStrip({
   active,
+  custom,
   onOpen,
+  customSelection,
+  onCustomSignIn,
   searching = false,
 }: {
   active: readonly InstalledRow[];
+  custom: readonly CustomIntegrationView[];
   onOpen: (connection: IntegrationConnection) => void;
+  customSelection: CustomSelection;
+  onCustomSignIn: (slug: string) => void;
   /** True while the surface's shared query or category is narrowing the rows:
    *  show every match uncapped. At rest (the default) the section caps to a
    *  preview. */
@@ -74,18 +79,37 @@ export function InstalledStrip({
   const items: InstalledItem[] = [
     ...active.map((row) => ({
       key: row.connection.connectionId,
-      icon: <AppLogo display={row.app} size="lg" className="rounded-lg" />,
-      title: row.app.name,
-      description:
-        row.accounts && row.accounts.length > 1
-          ? accountsSummary(row.accounts)
-          : row.app.description,
-      // Every catalog row here IS active — both callers keep pending and
-      // errored connections in the catalog (on the app's own row, wearing its
-      // status), so the dot is green by construction rather than by a status
-      // lookup that could never resolve to anything else.
-      statusDot: <StatusDot status="active" srLabel={t("status.active")} />,
-      onClick: () => onOpen(row.connection),
+      row: (
+        <CatalogRow
+          icon={<AppLogo display={row.app} size="lg" className="rounded-lg" />}
+          title={row.app.name}
+          description={
+            row.accounts && row.accounts.length > 1
+              ? accountsSummary(row.accounts)
+              : row.app.description
+          }
+          onClick={() => onOpen(row.connection)}
+          statusDot={<StatusDot status="active" srLabel={t("status.active")} />}
+          trailing={
+            <ChevronRight
+              aria-hidden
+              className="size-4 shrink-0 text-ink-muted"
+            />
+          }
+        />
+      ),
+    })),
+    ...custom.map((integration) => ({
+      key: `custom:${integration.slug}`,
+      row: (
+        <CustomIntegrationRow
+          integration={integration}
+          onOpen={(item) => customSelection.openDetail(item.slug)}
+          onEnterKey={(item) => customSelection.openKey(item.slug)}
+          onSignIn={(item) => onCustomSignIn(item.slug)}
+          onRemove={(item) => customSelection.openRemove(item.slug)}
+        />
+      ),
     })),
   ];
 
@@ -99,20 +123,7 @@ export function InstalledStrip({
     <div>
       <CatalogGrid>
         {visible.map((item) => (
-          <CatalogRow
-            key={item.key}
-            icon={item.icon}
-            title={item.title}
-            description={item.description}
-            onClick={item.onClick}
-            statusDot={item.statusDot}
-            trailing={
-              <ChevronRight
-                aria-hidden
-                className="size-4 shrink-0 text-ink-muted"
-              />
-            }
-          />
+          <Fragment key={item.key}>{item.row}</Fragment>
         ))}
       </CatalogGrid>
       {showExpander && (
