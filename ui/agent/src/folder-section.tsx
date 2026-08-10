@@ -25,6 +25,7 @@ import {
   NAME_CELL_INNER,
   NAME_TEXT,
   ROW_CLASS,
+  ROW_MARK,
   ROW_TILE_GLYPH,
 } from "./files-list-chrome";
 import { DisclosureChevron, RowIndent } from "./files-list-indent";
@@ -32,7 +33,7 @@ import { folderChildCount } from "./filter";
 import { FolderEmptyRow } from "./folder-empty-row";
 import { formatModified, formatModifiedFull } from "./format-modified";
 import { RenameInput, useInlineRename } from "./inline-rename";
-import { internalDragPayload } from "./internal-file-drag";
+import { internalDragPayload, internalDragTypes } from "./internal-file-drag";
 import { KebabButton } from "./kebab-button";
 import { ListRows } from "./list-rows";
 import type { FolderNode } from "./tree";
@@ -46,7 +47,7 @@ export function FolderSection({
   const [open, setOpen] = useState(true);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const { isOver, folderHandlers } = useFolderDropTarget();
+  const { isOver, folderHandlers } = useFolderDropTarget(rows.dragScope);
   const { onDragActive, onDelete, onDownloadFolder, onMove, onRename } = rows;
 
   useEffect(() => {
@@ -86,13 +87,19 @@ export function FolderSection({
             INTERNAL_DRAG_TYPE,
             internalDragPayload(node.path, rows.dragScope),
           );
+          e.dataTransfer.setData(internalDragTypes(rows.dragScope)[1], "");
           e.dataTransfer.effectAllowed = "move";
           setDragging(true);
         }}
-        onDragEnd={() => setDragging(false)}
+        onDragEnd={() => {
+          setDragging(false);
+        }}
         onClick={() => !rename.renaming && setOpen(!open)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !rename.renaming) setOpen(!open);
+          if ((e.key === "Enter" || e.key === " ") && !rename.renaming) {
+            e.preventDefault();
+            setOpen(!open);
+          }
           if (e.key === "Escape" && rename.renaming) rename.cancel();
         }}
         onContextMenu={(e) => {
@@ -108,23 +115,21 @@ export function FolderSection({
         )}
         style={{
           display: "grid",
-          gridTemplateColumns: colGrid(!!rows.selection),
+          gridTemplateColumns: colGrid(),
         }}
         {...folderHandlers}
       >
-        {/* A folder is not part of the file selection: deleting one is a
-            heavier act with its own confirm. The gutter still holds its place
-            so the icons of both row kinds line up. */}
-        {rows.selection && <span />}
         <div className="flex h-full min-w-0 items-center">
           {/* The chevron sits OUTSIDE the name wrapper on purpose: a file row
               at this depth pads past exactly this chevron + gap to line its
-              tile up with this glyph. Inside the wrapper, folder rows would
-              start 24px left of every file's and the tree would staircase. */}
+              mark up with this glyph. Inside the wrapper, folder rows would
+              start 20px left of every file's and the tree would staircase. */}
           <RowIndent depth={depth} />
-          <DisclosureChevron open={open} className="mr-2" />
+          <DisclosureChevron open={open} className="mr-1" />
           <div className={NAME_CELL_INNER}>
-            <FolderGlyph small className={ROW_TILE_GLYPH} />
+            <span aria-hidden className={ROW_MARK}>
+              <FolderGlyph small className={ROW_TILE_GLYPH} />
+            </span>
             {rename.renaming ? (
               <RenameInput rename={rename} className="-ml-1" />
             ) : (
@@ -181,11 +186,7 @@ export function FolderSection({
         (node.children.length > 0 ? (
           <ListRows nodes={node.children} depth={depth + 1} {...rows} />
         ) : (
-          <FolderEmptyRow
-            depth={depth + 1}
-            label={rows.emptyFolderLabel}
-            selectable={!!rows.selection}
-          />
+          <FolderEmptyRow depth={depth + 1} label={rows.emptyFolderLabel} />
         ))}
     </>
   );

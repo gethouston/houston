@@ -22,10 +22,10 @@ test("Files is one list with agent accordions and one shared column band", async
   await expect(page.getByRole("button", { name: "Modified" })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Size" })).toHaveCount(1);
   await expect(
-    page.getByRole("button", { name: "Expand Houston files" }),
+    page.getByRole("row", { name: "Expand Houston files" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Expand Kai files" }),
+    page.getByRole("row", { name: "Expand Kai files" }),
   ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Folder path" }),
@@ -37,7 +37,7 @@ test("one agent auto-expands and folders fold in place", async ({ page }) => {
   await openFiles(page);
 
   await expect(
-    page.getByRole("button", { name: "Collapse Houston files" }),
+    page.getByRole("row", { name: "Collapse Houston files" }),
   ).toBeVisible();
   // The list is the whole workspace: folders start OPEN (Library-list
   // grammar), so the folder's contents are on screen from the first paint…
@@ -49,6 +49,47 @@ test("one agent auto-expands and folders fold in place", async ({ page }) => {
   await expect(row(page, "Q3 report.pdf")).toBeVisible();
   await row(page, "Docs").press("Enter");
   await expect(row(page, "sales.csv")).toBeVisible();
+});
+
+test("file checkboxes live in the tree and select-all swaps into its header slot", async ({
+  page,
+}) => {
+  await openFiles(page);
+
+  const agentRow = page.getByRole("row", { name: "Collapse Houston files" });
+  const rootCheckbox = row(page, "Q3 report.pdf").getByRole("checkbox");
+  const childCheckbox = row(page, "sales.csv").getByRole("checkbox");
+  await expect(agentRow.getByRole("checkbox")).toHaveCount(0);
+  await expect(rootCheckbox).toBeVisible();
+  await expect(childCheckbox).toBeVisible();
+
+  const agentBox = await agentRow.boundingBox();
+  const rootBox = await rootCheckbox.boundingBox();
+  const childBox = await childCheckbox.boundingBox();
+  expect(agentBox).not.toBeNull();
+  expect(rootBox).not.toBeNull();
+  expect(childBox).not.toBeNull();
+  expect(rootBox?.x).toBeGreaterThan(agentBox?.x ?? 0);
+  expect(childBox?.x).toBeGreaterThan(rootBox?.x ?? 0);
+
+  await rootCheckbox.check();
+  const selectAll = page.getByRole("checkbox", { name: "Select all" });
+  await expect(selectAll).toBeVisible();
+  const selectAllBox = await selectAll.boundingBox();
+  expect(selectAllBox).not.toBeNull();
+  expect(selectAllBox?.x).toBeGreaterThan(agentBox?.x ?? 0);
+  expect(selectAllBox?.x).toBeLessThan(rootBox?.x ?? Number.POSITIVE_INFINITY);
+
+  await selectAll.check();
+  await expect(rootCheckbox).toBeChecked();
+  await expect(childCheckbox).toBeChecked();
+  // Not uncheck(): clearing the selection UNMOUNTS the selection bar, and
+  // uncheck's post-click verification races that unmount. Click, then assert
+  // the outcome — rows cleared, the bar (and its select-all) gone.
+  await selectAll.click();
+  await expect(rootCheckbox).not.toBeChecked();
+  await expect(childCheckbox).not.toBeChecked();
+  await expect(selectAll).toHaveCount(0);
 });
 
 test("multiple agents stay open and search filters only expanded sections", async ({
@@ -71,8 +112,8 @@ test("multiple agents stay open and search filters only expanded sections", asyn
   });
   await openFiles(page);
 
-  await page.getByRole("button", { name: "Expand Houston files" }).click();
-  await page.getByRole("button", { name: "Expand Research Bot files" }).click();
+  await page.getByRole("row", { name: "Expand Houston files" }).click();
+  await page.getByRole("row", { name: "Expand Research Bot files" }).click();
   await expect(row(page, "Q3 report.pdf")).toBeVisible();
   await expect(row(page, "research.md")).toBeVisible();
 
@@ -97,7 +138,7 @@ test("New asks for an agent when the team has multiple agents", async ({
   await page.keyboard.press("ArrowRight");
   await page.getByRole("menuitem", { name: "New folder" }).press("Enter");
   await expect(
-    page.getByRole("button", { name: "Collapse Kai files" }),
+    page.getByRole("row", { name: "Collapse Kai files" }),
   ).toBeVisible();
   await expect(page.getByPlaceholder("untitled folder")).toBeVisible();
 });

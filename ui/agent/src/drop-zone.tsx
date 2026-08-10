@@ -9,12 +9,13 @@ import {
 } from "@houston-ai/core";
 import { useCallback, useRef, useState } from "react";
 import {
+  dragAllowsScope,
+  INTERNAL_DRAG_TYPE,
   parseInternalDragPayload,
   resolveInternalMoveTarget,
 } from "./internal-file-drag";
 
-/** MIME type used for internal file moves. */
-export const INTERNAL_DRAG_TYPE = "application/x-houston-file";
+export { INTERNAL_DRAG_TYPE } from "./internal-file-drag";
 
 function hasDragData(e: React.DragEvent) {
   return (
@@ -50,11 +51,18 @@ export function useDropZone({
   const [isDragging, setIsDragging] = useState(false);
   const counter = useRef(0);
 
-  const onDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    counter.current++;
-    if (hasDragData(e)) setIsDragging(true);
-  }, []);
+  const onDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      counter.current++;
+      if (
+        hasDragData(e) &&
+        dragAllowsScope(Array.from(e.dataTransfer.types), dragScope)
+      )
+        setIsDragging(true);
+    },
+    [dragScope],
+  );
 
   const onDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -113,15 +121,22 @@ export function useDropZone({
 }
 
 /** Folder-level highlight only — does NOT handle the drop (container does). */
-export function useFolderDropTarget() {
+export function useFolderDropTarget(dragScope?: string) {
   const [isOver, setIsOver] = useState(false);
   const counter = useRef(0);
 
-  const onDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    counter.current++;
-    if (hasDragData(e)) setIsOver(true);
-  }, []);
+  const onDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      counter.current++;
+      if (
+        hasDragData(e) &&
+        dragAllowsScope(Array.from(e.dataTransfer.types), dragScope)
+      )
+        setIsOver(true);
+    },
+    [dragScope],
+  );
 
   const onDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();

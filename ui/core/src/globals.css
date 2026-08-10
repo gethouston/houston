@@ -404,6 +404,21 @@ body {
   .files-selection-bar-in { animation: none; }
 }
 
+/* The Files loading skeleton's entrance, once its 150ms mount delay (see
+   files-skeleton.tsx) has decided a read is genuinely slow: opacity only, no
+   base opacity and no fill-mode, so reduced-motion (or any dropped animation)
+   still lands on a fully visible skeleton. */
+@keyframes files-skeleton-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.files-skeleton-in {
+  animation: files-skeleton-in 150ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .files-skeleton-in { animation: none; }
+}
+
 /* A sidebar disclosure opening: the "Your teams" section, and every team block
    under it. Entrance only, transform + opacity only, 200ms on the entrance
    curve — the rail must feel like it unfolded, never like it waited.

@@ -1,3 +1,24 @@
+export const INTERNAL_DRAG_TYPE = "application/x-houston-file";
+
+function scopeType(scope?: string): string {
+  return `application/x-houston-file-scope;${encodeURIComponent(scope ?? "")}`.toLowerCase();
+}
+
+export function internalDragTypes(scope?: string): string[] {
+  return [INTERNAL_DRAG_TYPE, scopeType(scope)];
+}
+
+export function dragAllowsScope(
+  types: readonly string[],
+  scope?: string,
+): boolean {
+  const normalized = types.map((type) => type.toLowerCase());
+  return (
+    !normalized.includes(INTERNAL_DRAG_TYPE.toLowerCase()) ||
+    normalized.includes(scopeType(scope))
+  );
+}
+
 export function internalDragPayload(path: string, scope?: string): string {
   return JSON.stringify({ path, scope });
 }

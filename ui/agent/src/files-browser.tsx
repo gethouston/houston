@@ -1,5 +1,6 @@
 /** List-only file tree for one filesystem boundary. */
 
+import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { BgContextMenu } from "./bg-context-menu";
 import type { FileMenuLabels } from "./file-menu";
@@ -10,9 +11,10 @@ import {
   toSelectionLabels,
 } from "./files-browser-labels";
 import { FilesEmptyFolder } from "./files-empty-folder";
-import { FILES_CONTENT_COLUMN } from "./files-list-chrome";
+import { FILES_CONTENT_COLUMN, LIST_INSET } from "./files-list-chrome";
 import { FilesSearchEmpty } from "./files-search-empty";
 import { buildFilesSelection } from "./files-selection";
+import { FolderEmptyRow } from "./folder-empty-row";
 import type { FileEntry, LoadFilePreview } from "./types";
 import { useFilesBrowser } from "./use-files-browser";
 import type { SortDirection, SortKey } from "./utils";
@@ -102,6 +104,19 @@ export function FilesBrowser(props: FilesBrowserProps) {
               clearLabel={labels.searchClear}
               onClear={() => browser.setQuery("")}
             />
+          ) : props.inFrame ? (
+            <div className={cn("flex flex-col", LIST_INSET)}>
+              <FolderEmptyRow
+                depth={props.depth ?? 0}
+                label={labels.emptyFolder}
+                onUpload={browser.uploadHere}
+                uploadLabel={labels.emptyFolderUploadCta}
+                onNewFolder={
+                  props.onCreateFolder ? browser.startCreatingFolder : undefined
+                }
+                newFolderLabel={labels.emptyFolderNewFolderCta}
+              />
+            </div>
           ) : (
             <FilesEmptyFolder
               message={labels.emptyFolder}

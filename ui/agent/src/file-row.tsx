@@ -1,6 +1,6 @@
 /**
  * Library-style file row (list view): a single click opens the file, the
- * gutter checkbox is the ONLY way to select it, and the kebab or a right-click
+ * tree checkbox is the ONLY way to select it, and the kebab or a right-click
  * carries everything else (rename, download, delete). Draggable for moves.
  * Selecting and opening are deliberately different gestures now — a click that
  * both highlighted and did nothing else was a dead click.
@@ -23,12 +23,13 @@ import {
   NAME_TEXT,
   ROW_CHECKED,
   ROW_CLASS,
+  TRIANGLE_AREA,
 } from "./files-list-chrome";
 import { RowIndent } from "./files-list-indent";
 import type { FilesSelection } from "./files-selection";
 import { formatModified, formatModifiedFull } from "./format-modified";
 import { RenameInput, useInlineRename } from "./inline-rename";
-import { internalDragPayload } from "./internal-file-drag";
+import { internalDragPayload, internalDragTypes } from "./internal-file-drag";
 import { KebabButton } from "./kebab-button";
 import type { FileEntry, LoadFilePreview } from "./types";
 import { formatSize } from "./utils";
@@ -91,10 +92,13 @@ export function FileRow({
             INTERNAL_DRAG_TYPE,
             internalDragPayload(file.path, dragScope),
           );
+          e.dataTransfer.setData(internalDragTypes(dragScope)[1], "");
           e.dataTransfer.effectAllowed = "move";
           setDragging(true);
         }}
-        onDragEnd={() => setDragging(false)}
+        onDragEnd={() => {
+          setDragging(false);
+        }}
         onClick={() => !rename.renaming && onOpen?.(file)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !rename.renaming) {
@@ -115,20 +119,23 @@ export function FileRow({
         )}
         style={{
           display: "grid",
-          gridTemplateColumns: colGrid(!!selection),
+          gridTemplateColumns: colGrid(),
         }}
       >
-        {selection && (
-          <span className="flex h-full items-center justify-center">
-            <FilesCheckbox
-              checked={checked}
-              label={selection.labels.selectRow}
-              onToggle={() => selection.toggle(file.path)}
-            />
-          </span>
-        )}
         <div className="flex h-full min-w-0 items-center">
-          <RowIndent depth={depth} chevron />
+          <RowIndent depth={depth} />
+          <span
+            className="flex h-full shrink-0 items-center justify-center"
+            style={{ width: TRIANGLE_AREA }}
+          >
+            {selection && (
+              <FilesCheckbox
+                checked={checked}
+                label={selection.labels.selectRow}
+                onToggle={() => selection.toggle(file.path)}
+              />
+            )}
+          </span>
           <div className={NAME_CELL_INNER}>
             <FileRowIcon file={file} loadPreview={loadPreview} />
             {rename.renaming ? (

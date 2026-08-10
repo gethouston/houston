@@ -513,24 +513,16 @@ the row edge; the page hero is the shared `PageHeader` with a rounded
 `bg-input` search field (`border-line-input`, magnifier glyph) in its
 `trailing` slot. Two-column row grids collapse to one under `lg`. Shipped
 surfaces: the Integrations personal page (`integrations-view/`, see
-`knowledge-base/integrations.md` §3) and the **Files** surface (`AgentFilesSurface`,
-mounted by a team's Files section) — the old
-nested `rounded-xl border` "file manager window" frame (bordered toolbar,
-zebra list with decorative filler stripes, bottom status bar whose 11px
-footer links held Upload / Open in File Manager) was flattened onto the
-canvas: `FilesBrowser` (`ui/agent/src/files-browser.tsx`) renders a
-shrink-0 header (`files-header.tsx`: one 36px toolbar band — a `max-w-md`
-search field, the single filled `New ▾` pill that owns every way of adding
-something, then icon-only download-all/reveal, sort and the view tabs —
-plus grid-only breadcrumbs) over a full-bleed scroll/drop body using the
-pane's FULL width through `FILES_CONTENT_COLUMN` (`w-full px-6`). The LIST
-view is the purest form of the language: no rules anywhere (not under the
-column headers, not between rows), 52px `rounded-xl` rows transparent at
-rest that paint `hover:bg-hover` under the pointer and `bg-chip-subtle`
-when checked, `text-sm font-medium` names over `text-xs` `ink-muted`
-metadata right-aligned into one packed block. Breadcrumbs stay
-grid-view-only on purpose: the list view is a hierarchical tree always
-rooted at the workspace, so a path crumb there would misstate its scope.
+`knowledge-base/integrations.md` §3) and the **Files** surface (a team's
+Files section, `knowledge-base/files-ui.md`) — the purest form of the
+language: one flat Finder-style tree with each agent as a folder row
+(agent-tinted folder glyph + avatar badge), no rules anywhere (not under
+the column headers, not between rows) and no icon boxes (bare type-tinted
+glyphs), 40px `rounded-lg` rows transparent at rest that paint
+`hover:bg-hover` under the pointer and `bg-chip-subtle` when checked,
+`text-sm font-medium` names over `text-xs` `ink-muted` metadata
+right-aligned into one packed block, and the selection checkbox living in
+the tree's chevron slot at each row's depth rather than in a gutter.
 Apply this language when refactoring further pages instead of inventing
 new row chrome.
 

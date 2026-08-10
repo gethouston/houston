@@ -46,6 +46,8 @@ import { useAgentFileDownloads } from "./agent-files-downloads";
  * the one component that assembles them.
  */
 export interface AgentFiles {
+  /** Raw query data preserves "never read" as undefined for lazy team rows. */
+  entries?: FileEntry[];
   /** Everything `FilesBrowser` needs. Spread it. */
   browserProps: FilesBrowserProps;
   actions: {
@@ -181,5 +183,13 @@ export function useAgentFiles(
     void refetch();
   }, [refetch]);
 
-  return { browserProps, actions, overlays, error, refetch: retry, isFetching };
+  return {
+    entries: files,
+    browserProps,
+    actions,
+    overlays,
+    error,
+    refetch: retry,
+    isFetching,
+  };
 }

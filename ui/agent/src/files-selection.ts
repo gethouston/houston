@@ -1,14 +1,14 @@
 /**
  * The list view's multi-selection contract. Selecting is a CHECKBOX act here,
  * never a click: a click on a row opens the file, so the only way into a
- * selection is the gutter checkbox on the left of every file row. Folders are
+ * selection is the checkbox in every file row's tree slot. Folders are
  * deliberately not selectable — deleting a folder is a heavier act than
  * deleting a batch of files and stays on its own menu.
  *
  * One object carries the whole capability down FilesBrowser → FilesBody →
  * FilesListView → the rows, and its very PRESENCE is the feature switch: the
  * browser builds it only when the consumer passed `onDeleteMany`, so a browser
- * with nothing to do with a selection renders no checkbox column at all.
+ * with nothing to do with a selection renders empty tree slots.
  * No React here.
  */
 import type { FolderNode } from "./tree";
@@ -68,7 +68,7 @@ export interface FilesSelectionSource {
 
 /**
  * Assemble the capability object, or return undefined when there is no bulk
- * handler to serve — which is exactly how the checkbox column switches off.
+ * handler to serve — which is exactly how the row checkboxes switch off.
  * "Select all" spans the rows the search currently leaves on screen, never the
  * ones it pruned away.
  */
