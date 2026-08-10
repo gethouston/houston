@@ -32,7 +32,6 @@ export function FilesListView({
   depth?: number;
 }) {
   const { selection } = rows;
-  const selectable = !!selection;
 
   return (
     <div className={cn("flex flex-col", LIST_INSET)}>
@@ -45,7 +44,6 @@ export function FilesListView({
             onConfirm={onCreateFolder}
             onCancel={onCancelCreateFolder}
             placeholder={newFolderPlaceholder}
-            selectable={selectable}
           />
         )}
         <ListRows {...rows} nodes={tree.children} depth={depth} />

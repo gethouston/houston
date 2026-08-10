@@ -1,30 +1,51 @@
 /**
- * Loading placeholders for the Files body. Each mirrors its real layout
- * one-for-one — the grid's chip row over its hero cards, the list's rows with
- * their checkbox gutter, indent and column template — so nothing shifts when
- * the listing arrives. Both header slots are drawn by spacing alone, exactly
- * like the real ones: no underline.
+ * Loading placeholders for the Files body, mirroring the real row layout
+ * one-for-one (in-tree checkbox slot, depth indent, column template). The real
+ * list owns no header row, so the placeholders begin where its rows begin.
+ *
+ * The skeleton MOUNTS NOTHING for its first 150ms: a local read lands well
+ * inside that window, so expanding a section goes straight from closed to the
+ * real listing with no placeholder flashing tall and collapsing. Only a
+ * genuinely slow read (cloud, cold cache) ever shows the skeleton, fading in
+ * via `.files-skeleton-in`.
  */
 import { cn, Skeleton } from "@houston-ai/core";
+import { useEffect, useState } from "react";
 import {
   ACTIONS_CELL,
   colGrid,
-  HEADER_ROW,
   LIST_INSET,
   META_CELL,
   NAME_CELL_INNER,
   ROW_CLASS,
   ROW_TILE,
+  TRIANGLE_AREA,
 } from "./files-list-chrome";
 import { RowIndent } from "./files-list-indent";
 
-/** Stable keys: the placeholder count is fixed, so no index-derived keys. */
-const ROW_KEYS = ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"];
+/** Stable keys: the placeholder count is fixed, so no index-derived keys.
+ *  THREE rows, deliberately few: inside the accordion the skeleton is a guess
+ *  about a section it has never read, and a tall guess that collapses onto a
+ *  two-file listing reads as a glitch. */
+const ROW_KEYS = ["r1", "r2", "r3"];
 
-export function FilesListSkeleton({ selectable }: { selectable?: boolean }) {
+const SKELETON_DELAY_MS = 150;
+
+export function FilesListSkeleton({
+  selectable,
+  depth = 0,
+}: {
+  selectable?: boolean;
+  depth?: number;
+}) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setShow(true), SKELETON_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!show) return null;
   return (
-    <div className={cn("flex flex-col", LIST_INSET)}>
-      <div className={HEADER_ROW} />
+    <div className={cn("files-skeleton-in flex flex-col", LIST_INSET)}>
       <div className="shrink-0">
         {ROW_KEYS.map((key) => (
           <div
@@ -36,16 +57,17 @@ export function FilesListSkeleton({ selectable }: { selectable?: boolean }) {
             className={cn(ROW_CLASS, "hover:bg-transparent")}
             style={{
               display: "grid",
-              gridTemplateColumns: colGrid(!!selectable),
+              gridTemplateColumns: colGrid(),
             }}
           >
-            {selectable && (
-              <span className="flex h-full items-center justify-center">
-                <Skeleton className="size-4 rounded-[5px]" />
-              </span>
-            )}
             <div className="flex h-full min-w-0 items-center">
-              <RowIndent depth={0} chevron />
+              <RowIndent depth={depth} />
+              <span
+                className="flex h-full shrink-0 items-center justify-center"
+                style={{ width: TRIANGLE_AREA }}
+              >
+                {selectable && <Skeleton className="size-3.5 rounded-[5px]" />}
+              </span>
               <div className={NAME_CELL_INNER}>
                 <Skeleton className={cn("shrink-0", ROW_TILE)} />
                 <Skeleton className="h-3 w-40" />

@@ -125,6 +125,8 @@
     "emptyFolder": "Esta pasta está vazia",
     "itemSingular": "item",
     "itemPlural": "itens",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} itens",
     "menuButton": "Mais ações",
     "expandAgent": "Expandir arquivos de {{name}}",
     "collapseAgent": "Recolher arquivos de {{name}}",

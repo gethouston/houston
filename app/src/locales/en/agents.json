@@ -125,6 +125,8 @@
     "emptyFolder": "This folder is empty",
     "itemSingular": "item",
     "itemPlural": "items",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
     "menuButton": "More actions",
     "expandAgent": "Expand {{name}} files",
     "collapseAgent": "Collapse {{name}} files",

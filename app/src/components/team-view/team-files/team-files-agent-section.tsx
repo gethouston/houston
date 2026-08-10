@@ -1,11 +1,14 @@
 import {
   FilesAgentRow,
   FilesBrowser,
+  KEBAB_BUTTON_CLASS,
   type SortDirection,
   type SortKey,
 } from "@houston-ai/agent";
 import {
+  agentNameToneClass,
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -13,8 +16,8 @@ import {
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
-import { Download, FolderOpen, MoreHorizontal } from "lucide-react";
-import { useEffect } from "react";
+import { Download, EllipsisVertical, FolderOpen } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { agentReadFailures } from "../../../lib/agent-read-failures";
 import type { Agent } from "../../../lib/types";
@@ -60,6 +63,14 @@ export function TeamFilesAgentSection({
     : files.actions.downloadAll
       ? { label: t("files.downloadAll"), run: files.actions.downloadAll }
       : null;
+  const count = useMemo(
+    () =>
+      files.entries?.reduce(
+        (total, entry) => total + (entry.path.includes("/") ? 0 : 1),
+        0,
+      ),
+    [files.entries],
+  );
 
   return (
     <FilesBrowser
@@ -78,11 +89,15 @@ export function TeamFilesAgentSection({
           avatar={
             <HoustonAvatar
               color={resolveAgentColor(agent.color)}
-              diameter={28}
+              diameter={10}
             />
+          }
+          countLabel={
+            count === undefined ? undefined : t("files.itemCount", { count })
           }
           expanded={expanded}
           onToggle={onToggle}
+          folderClassName={agentNameToneClass(agent.color)}
           expandLabel={t("files.expandAgent", { name: agent.name })}
           collapseLabel={t("files.collapseAgent", { name: agent.name })}
           actions={
@@ -93,8 +108,10 @@ export function TeamFilesAgentSection({
                     variant="ghost"
                     size="icon"
                     aria-label={t("files.menuButton")}
+                    onClick={(event) => event.stopPropagation()}
+                    className={cn("size-auto", KEBAB_BUTTON_CLASS)}
                   >
-                    <MoreHorizontal aria-hidden className="size-4" />
+                    <EllipsisVertical aria-hidden className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

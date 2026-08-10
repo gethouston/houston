@@ -64,10 +64,7 @@ test("About me is a rail row of its own, owning the whole window", async ({
   // No invite empty state on a standing-context page: the editor is already
   // open, and the greyed suggestion — which names the PERSON, not the
   // company — is the invitation.
-  await expect(screen(page).getByRole("textbox")).toHaveAttribute(
-    "placeholder",
-    /I'm Juan/,
-  );
+  await expect(screen(page).getByText(/I'm Juan/)).toBeVisible();
 
   // Nothing sits above a top-level screen, so it offers no way back — a bar
   // naming the Inbox would be the old door leaking through.
@@ -86,15 +83,18 @@ test("Company context is a section of Admin, editing the workspace's half", asyn
   await openAdminSection(page, "Company context");
 
   // The WORKSPACE slot: the editor is already open (no invite empty state),
-  // and its greyed suggestion is a short 3-part example of company context.
+  // and its greyed suggestion is a short 3-part example RENDERED as real
+  // headings (the overlay is aria-hidden decoration, so it is asserted as
+  // text, never by role): the words appear, the "##" syntax never does.
   const editor = screen(page).getByRole("textbox");
-  await expect(editor).toHaveAttribute("placeholder", /## Who we are/);
-  await expect(editor).toHaveAttribute("placeholder", /## How we communicate/);
+  await expect(screen(page).getByText("Who we are")).toBeVisible();
+  await expect(screen(page).getByText("How we communicate")).toBeVisible();
+  await expect(screen(page).getByText("## Who we are")).toHaveCount(0);
 
   // And only that half. The person's context is not duplicated inside Admin —
   // it is theirs, not the admin's, which is the whole reason the two split.
   await expect(editor).toHaveCount(1);
-  await expect(editor).not.toHaveAttribute("placeholder", /I'm Juan/);
+  await expect(screen(page).getByText(/I'm Juan/)).toHaveCount(0);
 
   // The identity lozenge ("Admin") stands for this very section, so it is
   // the current one — and the section titles ITSELF: a level-2 hero naming

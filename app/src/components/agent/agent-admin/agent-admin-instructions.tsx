@@ -29,6 +29,9 @@ export function AgentAdminInstructions({
         </div>
       ) : (
         <ContextEditorBox
+          // Compact until this screen's own refactor: its column is page-
+          // scrolled with no bounded height, so fill mode has nothing to fill.
+          layout={{ rows: 12 }}
           content={instructions}
           readOnly={readOnly}
           onSave={(c) =>

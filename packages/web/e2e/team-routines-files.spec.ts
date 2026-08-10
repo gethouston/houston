@@ -380,10 +380,10 @@ test("Files keeps multiple agent trees in one accordion list", async ({
 
   // A multi-agent team starts collapsed and reads no filesystem yet.
   await expect(
-    screen(page).getByRole("button", { name: "Expand Houston files" }),
+    screen(page).getByRole("row", { name: "Expand Houston files" }),
   ).toBeVisible();
   await expect(
-    screen(page).getByRole("button", { name: "Expand Kai files" }),
+    screen(page).getByRole("row", { name: "Expand Kai files" }),
   ).toBeVisible();
   await expect(screen(page).getByText("Name", { exact: true })).toBeVisible();
   await expect(
@@ -397,12 +397,16 @@ test("Files keeps multiple agent trees in one accordion list", async ({
     screen(page).getByRole("button", { name: "List view" }),
   ).toHaveCount(0);
   await expect(screen(page).getByText("Q3 report.pdf")).toHaveCount(0);
-  await screen(page)
-    .getByRole("button", { name: "Expand Houston files" })
-    .click();
-  await screen(page).getByRole("button", { name: "Expand Kai files" }).click();
+  await screen(page).getByRole("row", { name: "Expand Houston files" }).click();
+  await screen(page).getByRole("row", { name: "Expand Kai files" }).click();
   await expect(screen(page).getByText("Q3 report.pdf")).toBeVisible();
   await expect(screen(page).getByText("This folder is empty")).toBeVisible();
+  await expect(
+    screen(page).getByRole("button", { name: "Upload files" }),
+  ).toBeVisible();
+  await expect(
+    screen(page).getByRole("button", { name: "New folder" }),
+  ).toBeVisible();
   await expect(
     screen(page).getByRole("navigation", { name: "Folder path" }),
   ).toHaveCount(0);
@@ -430,11 +434,11 @@ test("Files ignores the rail pin, and drilled-agent actions still work", async (
   await rail(page).getByText("Kai", { exact: true }).click();
   await openTeamSection(page, "Files");
   await expect(
-    screen(page).getByRole("button", { name: "Expand Kai files" }),
+    screen(page).getByRole("row", { name: "Expand Kai files" }),
   ).toBeVisible();
   await expect(screen(page).getByText("brief.md")).toHaveCount(0);
   await expect(screen(page).getByText("Q3 report.pdf")).toHaveCount(0);
-  await screen(page).getByRole("button", { name: "Expand Kai files" }).click();
+  await screen(page).getByRole("row", { name: "Expand Kai files" }).click();
   await expect(screen(page).getByText("brief.md")).toBeVisible();
 
   // New names the target agent before exposing its actions.

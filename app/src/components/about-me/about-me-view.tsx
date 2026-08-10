@@ -30,8 +30,12 @@ export function AboutMeView() {
   const editor = useContextSlot("user");
 
   return (
-    <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      <PageContainer className="py-10">
+    // The page column is exactly the viewport (h-full below), so the pinned
+    // document card ends at its fixed gap and its own text scrolls inside
+    // it; the outer scroller only engages as a fallback when a short window
+    // cannot hold even the card's minimum height.
+    <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+      <PageContainer className="flex h-full min-h-0 flex-col pt-10">
         <ContextEditorPage
           title={t("aboutMe.title")}
           subtitle={t("aboutMe.subtitle")}

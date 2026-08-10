@@ -3,8 +3,8 @@
  * transparent over a styled box, which is what keeps it keyboard-reachable and
  * focusable while the box carries Houston's fill — the same construction the
  * board's cards use. Unlike the board's, this one is ALWAYS visible: the list
- * has a permanent gutter for it, and hover only strengthens its border. There
- * is no hover-only affordance here.
+ * uses the in-tree chevron slot for it, and hover only strengthens its border.
+ * There is no hover-only affordance here.
  */
 import { cn } from "@houston-ai/core";
 import { Check, Minus } from "lucide-react";
@@ -32,7 +32,7 @@ export function FilesCheckbox({
   return (
     <span
       className={cn(
-        "relative flex size-4 shrink-0 items-center justify-center rounded-[5px] border transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus",
+        "relative flex size-3.5 shrink-0 items-center justify-center rounded-[5px] border transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus",
         checked || indeterminate
           ? "border-action bg-action text-action-text"
           : "border-ink-muted/40 text-transparent group-hover/row:border-ink",
@@ -51,7 +51,7 @@ export function FilesCheckbox({
         }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        className="absolute inset-0 size-full cursor-pointer opacity-0"
+        className="absolute top-1/2 left-1/2 size-6 -translate-x-1/2 -translate-y-1/2 cursor-pointer opacity-0"
       />
       {indeterminate ? (
         <Minus

@@ -3,9 +3,9 @@ import { expect, type Page } from "@playwright/test";
 /**
  * Create an agent through the real dialog and return to a usable shell.
  *
- * The create dialog (`create-workspace-dialog.tsx`) offers two square choice
- * tiles — "From the store" (navigates to the Agent Store page) and "Create
- * new" (the from-scratch naming step, PRODUCT-1171). On create success the dialog
+ * The create dialog (`create-workspace-dialog.tsx`) offers two cards — "From
+ * the store" (navigates to the Agent Store page) and "Create new"
+ * (the from-scratch naming step, PRODUCT-1171). On create success the dialog
  * fires the agent's self-setup mission in the normal shell
  * (`startAgentSetupMission`), switches to the board view, auto-opens the chat
  * panel on that mission (`setActivityPanelId(conversationId, { forceOpen:
@@ -18,6 +18,7 @@ import { expect, type Page } from "@playwright/test";
  */
 export async function createAgent(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name: "New agent" }).click();
+  // The card's label as the chooser ships it (`shell:newAgent.createCard`).
   const scratch = page.getByRole("button", { name: "Create new", exact: true });
   await scratch.waitFor({ state: "visible" });
   await scratch.click();

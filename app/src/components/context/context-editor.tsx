@@ -1,9 +1,13 @@
 import { cn, Spinner } from "@houston-ai/core";
-import { type ComponentProps, useEffect, useState } from "react";
+import { Check } from "lucide-react";
+import type { ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { PageHero } from "../shell/page-shell";
+import type { ContextEditorLayout } from "./context-editor-model";
+import { MarkdownEditor } from "./markdown-editor";
+import { useContextEditorSave } from "./use-context-editor-save";
 
-type SaveState = "idle" | "saving" | "saved";
+export type { ContextEditorLayout } from "./context-editor-model";
 
 /**
  * THE standing-prose editor, everywhere the product asks for one: About me,
@@ -11,23 +15,26 @@ type SaveState = "idle" | "saving" | "saved";
  * context — and whatever context surface appears next. One grammar, held by
  * this file so no surface can drift:
  *
- * - **Always open.** No invite empty state: the greyed suggestion inside the
- *   box is the invitation, and it disappears the moment the user types.
- * - **Saves on blur, says so quietly.** The slim right-aligned "Saving…/
- *   Saved" line above the box; a save fires only when the text actually
- *   changed, so tabbing through a page writes nothing.
- * - **Explains itself ONCE.** The title + one-line explanation live in the
- *   heading ({@link ContextEditorPage}'s hero, or a card's own header); the
- *   box never carries a second description.
+ * - **Always open.** No invite empty state: the greyed rendered example in
+ *   the box is the invitation, gone the moment the user types.
+ * - **Saves on blur, says so quietly.** The "Saving…/Saved" status sits in
+ *   the toolbar's right seat; a save fires only when the text actually
+ *   changed (`use-context-editor-save` owns the machine and its queue).
+ * - **Explains itself ONCE.** The title + explanation live in the heading
+ *   ({@link ContextEditorPage}'s hero, or a card's own header); the box
+ *   never carries a second description.
  * - **Read-only is the same face, locked.** Someone who may not edit still
  *   reads what the agents are told; the text stays legible, never hidden.
+ * - **Never corrupts.** A document the rich schema can't represent (tables,
+ *   raw HTML — agents write these files too) opens in the plain-text
+ *   fallback instead of round-tripping lossily.
  */
 export function ContextEditorBox({
   content,
   onSave,
   placeholder,
+  layout,
   readOnly = false,
-  minRows = 12,
   ariaLabel,
   dataTestId,
 }: {
@@ -35,80 +42,51 @@ export function ContextEditorBox({
   onSave: (content: string) => Promise<unknown>;
   /** The greyed suggestion text — a short example of what belongs here. */
   placeholder: string;
+  layout: ContextEditorLayout;
   readOnly?: boolean;
-  /** Empty-box height; a card in a longer page wants fewer rows than a page. */
-  minRows?: number;
   /** Accessible name when no visible heading labels the box directly. */
   ariaLabel?: string;
   dataTestId?: string;
 }) {
   const { t } = useTranslation("context");
-  const [value, setValue] = useState(content);
-  const [state, setState] = useState<SaveState>("idle");
+  const save = useContextEditorSave({ content, onSave, readOnly });
 
-  // Re-seed from the store whenever it changes under us: another window's
-  // save, or our own landing back through the query cache.
-  useEffect(() => {
-    setValue(content);
-  }, [content]);
-
-  const handleBlur = async () => {
-    if (readOnly || value === content) return;
-    setState("saving");
-    try {
-      await onSave(value);
-      setState("saved");
-      window.setTimeout(() => setState("idle"), 2000);
-    } catch {
-      // The data layer owns the toast (`lib/tauri.ts` `call()` /
-      // `surfaceEngineError` on every save path) — the box only recovers so
-      // "Saving…" never sticks, and the unsaved text stays in the field for
-      // the user to retry.
-      setState("idle");
-    }
-  };
+  // Seated on the toolbar's right edge, clear of the text — a fixed seat, so
+  // its appearing and fading never moves the document by a pixel.
+  const status = (
+    <span
+      className={cn(
+        "flex items-center gap-1 text-xs tabular-nums transition-opacity duration-200",
+        save.state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
+      )}
+      aria-live="polite"
+    >
+      {save.state === "saved" && <Check aria-hidden className="size-4" />}
+      {save.state === "saving"
+        ? t("editor.saving")
+        : save.state === "saved"
+          ? t("editor.saved")
+          : ""}
+    </span>
+  );
 
   return (
-    <div className="w-full">
-      {/* The save state keeps a reserved right-edge seat, so the box never
-          shifts when it appears. */}
-      <div className="mb-1 flex items-baseline justify-end">
-        <span
-          className={cn(
-            "text-xs tabular-nums transition-opacity duration-200",
-            state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
-          )}
-          aria-live="polite"
-        >
-          {state === "saving"
-            ? t("editor.saving")
-            : state === "saved"
-              ? t("editor.saved")
-              : ""}
-        </span>
-      </div>
-      <section className="rounded-xl bg-chip p-3">
-        <textarea
-          aria-label={ariaLabel}
-          data-testid={dataTestId}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={handleBlur}
-          readOnly={readOnly}
-          // A locked box must not invite writing: the greyed suggestion IS
-          // the write invitation, so the read-only face drops it.
-          placeholder={readOnly ? undefined : placeholder}
-          rows={Math.max(minRows, value.split("\n").length + 2)}
-          className={cn(
-            "w-full px-4 py-3 text-sm text-ink leading-relaxed",
-            "placeholder:text-ink-muted/60",
-            "bg-input border border-ink/[0.04] rounded-lg",
-            "outline-none resize-none",
-            "focus-visible:ring-2 focus-visible:ring-focus",
-            readOnly && "cursor-default text-ink-muted",
-          )}
-        />
-      </section>
+    // The editor is its own document card — no second frame around it. In
+    // fill mode this box just hands its granted height down.
+    <div className={cn("w-full", layout === "fill" && "h-full min-h-0")}>
+      <MarkdownEditor
+        ariaLabel={ariaLabel}
+        dataTestId={dataTestId}
+        content={save.value}
+        plain={save.plainDoc}
+        layout={layout}
+        onChange={save.handleChange}
+        onBlur={save.handleBlur}
+        onFocusChange={save.handleFocusChange}
+        readOnly={readOnly}
+        placeholder={placeholder}
+        statusSlot={status}
+      />
     </div>
   );
 }
@@ -131,20 +109,25 @@ export function ContextEditorPage({
   subtitle: string;
   level?: 1 | 2;
   ready?: boolean;
-} & ComponentProps<typeof ContextEditorBox>) {
+} & Omit<ComponentProps<typeof ContextEditorBox>, "layout">) {
   return (
-    <div className="w-full pb-12">
+    // A pinned page: hero on top, the document card taking every remaining
+    // pixel, and `pb-6` as THE fixed gap to the window's bottom edge — a
+    // longer document scrolls inside the card instead of growing the page.
+    <div className="flex h-full min-h-0 w-full flex-col pb-6">
       <PageHero
         level={level}
         title={title}
         subtitle={subtitle}
-        className="mb-3"
+        className="mb-3 shrink-0"
       />
       {ready ? (
         // The hero visually titles the box but is not programmatically
         // associated with it, so the title doubles as the accessible name
         // unless the caller passes a more specific one.
-        <ContextEditorBox ariaLabel={title} {...box} />
+        <div className="min-h-0 flex-1">
+          <ContextEditorBox layout="fill" ariaLabel={title} {...box} />
+        </div>
       ) : (
         <div className="flex items-center justify-center py-16">
           <Spinner className="h-5 w-5" />

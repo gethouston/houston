@@ -25,13 +25,14 @@ import { parseColor } from "../build/color.mjs";
  *   bubble surface (person)     light: chip over background
  *                               dark:  chip over background over base
  *
- *   icon tile (file types)      both:  --ht-input, opaque in either theme
+ *   file-type glyph surfaces    both:  input, page, checked-row fill
  *
  * Values are read from the generated CSS (the same artifact the app ships), so
  * a token edit that regresses contrast fails here rather than in someone's eyes.
  */
 
 const CONTRAST_FLOOR = 4.5;
+const NON_TEXT_CONTRAST_FLOOR = 3;
 
 const cssPath = fileURLToPath(
   new URL("../dist/css/tokens.css", import.meta.url),
@@ -103,6 +104,12 @@ function bubbleSurface(theme: Theme): Rgba {
   return over(token(theme, "ht-chip"), nameSurface(theme));
 }
 
+function fileTypeSurface(theme: Theme, name: string): Rgba {
+  return name === "ht-background"
+    ? nameSurface(theme)
+    : over(token(theme, name), nameSurface(theme));
+}
+
 const PERSON_TONES = ["slate", "sage", "mauve", "taupe", "indigo"] as const;
 const FILETYPE_FAMILIES = [
   "pdf",
@@ -160,15 +167,33 @@ describe.each([
       // The Files icon tile is filled with --ht-input in both themes, and the
       // glyph is the only thing inside it: a tint that fails here is a file
       // type the user cannot read at a glance.
+      const surface = fileTypeSurface(theme, "ht-input");
       const ratio = contrastRatio(
-        token(theme, `ht-filetype-${family}`),
-        token(theme, "ht-input"),
+        over(token(theme, `ht-filetype-${family}`), surface),
+        surface,
       );
       expect(
         ratio,
         `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the icon tile, below the ${CONTRAST_FLOOR}:1 floor`,
       ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
     });
+
+    for (const [surfaceName, tokenName] of [
+      ["page", "ht-background"],
+      ["checked row", "ht-chip-subtle"],
+    ] as const) {
+      it(`file-type tint "${family}" clears ${NON_TEXT_CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
+        const surface = fileTypeSurface(theme, tokenName);
+        const ratio = contrastRatio(
+          over(token(theme, `ht-filetype-${family}`), surface),
+          surface,
+        );
+        expect(
+          ratio,
+          `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${NON_TEXT_CONTRAST_FLOOR}:1 non-text floor`,
+        ).toBeGreaterThanOrEqual(NON_TEXT_CONTRAST_FLOOR);
+      });
+    }
   }
 
   for (const tone of AGENT_TONES) {

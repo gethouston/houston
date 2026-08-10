@@ -15,6 +15,16 @@
     "subtitle": "What every agent knows about you before it starts."
   },
   "editor": {
+    "toolbar": {
+      "label": "Formatting",
+      "heading": "Heading",
+      "subheading": "Subheading",
+      "bold": "Bold",
+      "italic": "Italic",
+      "bulletList": "Bulleted list",
+      "numberedList": "Numbered list",
+      "quote": "Quote"
+    },
     "saving": "Saving…",
     "saved": "Saved",
     "user": {
