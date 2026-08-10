@@ -5,6 +5,7 @@ import {
 } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openPalette } from "./support/palette";
 import { litRows, rail, screen } from "./support/team-nav";
 import { startGuidedTour } from "./support/tour-nav";
 
@@ -74,9 +75,7 @@ test("the command palette's agent jump opens that agent's team board", async ({
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  await page.keyboard.press("ControlOrMeta+KeyK");
-  const search = page.getByPlaceholder("Search agents, tasks, actions...");
-  await expect(search).toBeVisible();
+  const search = await openPalette(page);
   await search.fill("Houston");
   await page.getByRole("option", { name: "Houston", exact: true }).click();
 
@@ -99,8 +98,8 @@ test("the palette's recent missions open the mission's chat on that team board",
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  await page.keyboard.press("ControlOrMeta+KeyK");
-  await page.getByPlaceholder("Search agents, tasks, actions...").fill("Tokyo");
+  const search = await openPalette(page);
+  await search.fill("Tokyo");
   await page.getByRole("option", { name: /Plan a trip to Tokyo/ }).click();
 
   // The published target (`activityPanelId`) has exactly one consumer now — the
@@ -166,9 +165,7 @@ test("a team the user holds no membership in is drawn, and the palette jumps int
       .filter({ hasText: SEED_AGENT_NAME }),
   ).toHaveCount(1);
 
-  await page.keyboard.press("ControlOrMeta+KeyK");
-  const search = page.getByPlaceholder("Search agents, tasks, actions...");
-  await expect(search).toBeVisible();
+  const search = await openPalette(page);
   await search.fill(SEED_AGENT_NAME);
   await page
     .getByRole("option", { name: SEED_AGENT_NAME, exact: true })
