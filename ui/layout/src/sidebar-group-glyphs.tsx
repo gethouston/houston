@@ -1,5 +1,7 @@
 /**
- * The group mark set: 56 SOLID silhouettes, from Ionicons (Sharp weight).
+ * The group mark set: 251 SOLID silhouettes, from Ionicons (Sharp weight),
+ * curated for the teams people actually make (sales, HR, marketing, ops,
+ * finance, support — knowledge work first, dev iconography a minority).
  *
  * SOLID and not stroked, because a group's mark sits at 14px beside a 13px
  * label. At that size a 2px outline is mostly hole: the shape reads as a grey
@@ -44,7 +46,7 @@ import { SIDEBAR_GROUP_GLYPHS } from "./sidebar-group-glyph-paths";
 
 export { SIDEBAR_GROUP_GLYPHS } from "./sidebar-group-glyph-paths";
 
-/** One of the 56 marks a group may wear. */
+/** One of the 251 marks a group may wear. */
 export type SidebarGroupGlyphName = keyof typeof SIDEBAR_GROUP_GLYPHS;
 
 /**
