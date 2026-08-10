@@ -7,7 +7,7 @@ import {
   AgentInstalls,
   IntegrationLogos,
 } from "./agent-card";
-import { agentTone } from "./agent-tile";
+import { agentTone, agentToneBackground } from "./agent-tile";
 
 const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
 
@@ -21,9 +21,9 @@ const defaults: Pick<AgentCardLabels, "newAgent" | "installs"> = {
  * photo fills the field, because a featured agent is an endorsement of the
  * person behind it — and under it the agent's name, two lines of what it
  * does, the integrations it uses, and the quiet baseline the regular card
- * ends on. A creator without a photo hands the field to the agent's tone and
- * mark. Same overlay-link grammar as the regular card: the whole card is the
- * way in, nothing else competes.
+ * ends on. A creator without a photo hands the field to the agent's own
+ * picture, or failing that its tone and mark. Same overlay-link grammar as
+ * the regular card: the whole card is the way in, nothing else competes.
  */
 export function FeaturedAgentCard({
   agent,
@@ -54,12 +54,16 @@ export function FeaturedAgentCard({
             alt=""
             className="size-full object-cover"
           />
+        ) : agent.icon?.kind === "url" ? (
+          <img
+            src={agent.icon.value}
+            alt=""
+            className="size-full object-cover"
+          />
         ) : (
           <span
             className="grid size-full place-items-center text-white/90"
-            style={{
-              background: `linear-gradient(145deg, color-mix(in oklab, ${tone} 88%, white 12%), ${tone} 55%, color-mix(in oklab, ${tone} 82%, black 18%))`,
-            }}
+            style={{ background: agentToneBackground(tone) }}
           >
             {agent.icon?.kind === "emoji" ? (
               <span className="text-6xl">{agent.icon.value}</span>

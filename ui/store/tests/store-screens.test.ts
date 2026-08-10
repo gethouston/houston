@@ -88,12 +88,62 @@ describe("StoreHomeScreen", () => {
       splitFeaturedAgents(rows, { ...base, query: "writer" }).featured.length,
       0,
     );
-    // ...and one installed agent alone is not a featured row.
+    // ...and one installed agent alone is not a featured row...
     assert.equal(
       splitFeaturedAgents([{ ...agent, installsCount: 0 }, rows[1]], base)
         .featured.length,
       0,
     );
+    // ...and the creators view never features.
+    assert.equal(
+      splitFeaturedAgents(rows, { ...base, view: "creators" as const }).featured
+        .length,
+      0,
+    );
+  });
+
+  it("features only where the host opted in — never on a server page", () => {
+    const rows = {
+      agents: [
+        agent,
+        { ...agent, id: "two", name: "Writer", installsCount: 9 },
+      ],
+      creators: [],
+      categories: [],
+    };
+    const shared = {
+      rows,
+      agentHref: () => "/agent",
+      creatorHref: () => "/creator",
+    };
+    const site = renderToStaticMarkup(
+      React.createElement(StoreHomeScreen, shared),
+    );
+    assert.doesNotMatch(site, />Featured agents</);
+    const app = renderToStaticMarkup(
+      React.createElement(StoreHomeScreen, { ...shared, featured: true }),
+    );
+    assert.match(app, />Featured agents</);
+  });
+
+  it("keeps pagination reachable when the featured pair absorbs every result", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(StoreHomeScreen, {
+        rows: {
+          agents: [
+            agent,
+            { ...agent, id: "two", name: "Writer", installsCount: 9 },
+          ],
+          creators: [],
+          categories: [],
+        },
+        featured: true,
+        agentHref: () => "/agent",
+        creatorHref: () => "/creator",
+        pagination: React.createElement("nav", null, "NEXT-PAGE"),
+      }),
+    );
+    assert.match(html, />NEXT-PAGE</);
   });
 
   it("owns agent filtering and sorting", () => {

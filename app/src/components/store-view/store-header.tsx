@@ -12,16 +12,18 @@ import {
 export type StorePane = "browse" | "my-agents";
 
 /**
- * Browse is the limiting case: its tools ride the strip. The left cluster is
- * ~210px (Agent Store 130 + Profile 75 + their 2px gap); the strip-variant
- * controls are ~556px (search 224 + category 150 + view 110 + sort 48 + three
- * 8px gaps); the frame's px-5 is 40px and the zone gap 12. `210 + 556 + 40 +
- * 12 = 818`, rounded UP to 840. No compact middle mode: the controls have no
- * shorter honest form, so below this they stack. The drilled panes render no
- * tools, so the threshold changes nothing for them — a chip plus one lozenge
- * simply truncates.
+ * Browse is the limiting case: its tools ride the strip. Budgeted in the
+ * WIDEST locale (Spanish), as the admin header does: the left cluster is
+ * ~250px (Tienda de agentes ~175 + Perfil ~72 + their 2px gap); the
+ * strip-variant controls are ~610px (search 224 + category pill capped at
+ * max-w-36 → ~192 + Creadores ~120 + sort 48 + three 8px gaps); the frame's
+ * px-5 is 40px and the zone gap 12. `250 + 610 + 40 + 12 = 912`, rounded UP
+ * to 920. No compact middle mode: the controls have no shorter honest form,
+ * so below this they stack. The drilled panes render no tools, so the
+ * threshold changes nothing for them — a chip plus one lozenge simply
+ * truncates.
  */
-export const STORE_HEADER_THRESHOLDS: HeaderThresholds = { oneRowMin: 840 };
+export const STORE_HEADER_THRESHOLDS: HeaderThresholds = { oneRowMin: 920 };
 
 /**
  * The store strip on both levels, one navigation grammar with the rest of the

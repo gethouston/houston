@@ -51,7 +51,7 @@ export function AgentCard({
 }) {
   const labels = { ...defaults, ...provided };
   return (
-    <div className="group relative flex flex-col rounded-[20px] bg-chip-subtle p-6 ring-1 ring-transparent transition-all duration-150 hover:bg-chip hover:ring-line">
+    <div className="group relative flex h-full flex-col rounded-[20px] bg-chip-subtle p-6 ring-1 ring-transparent transition-all duration-150 hover:bg-chip hover:ring-line">
       <LinkComponent
         href={href}
         aria-label={agent.name}

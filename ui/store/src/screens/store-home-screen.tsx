@@ -37,6 +37,13 @@ export interface StoreHomeScreenProps {
    * `CatalogControls`. Absent, the screen is the site's self-contained page.
    */
   state?: StoreHomeState;
+  /**
+   * Lead the unfiltered agents view with the featured pair. An explicit
+   * host opt-in, NOT inferred: a server-paginated surface (the website) must
+   * not present page N's two biggest rows as curated picks, and only the
+   * surface knows whether it is on the one true first page.
+   */
+  featured?: boolean;
   initialState?: Partial<StoreHomeState>;
   onStateChange?: (state: StoreHomeState) => void;
   agentHref: (agent: StoreHomeRows["agents"][number]) => string;

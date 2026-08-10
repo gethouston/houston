@@ -55,7 +55,7 @@ export function CreatorProfileScreen({
   loading?: boolean;
   failed?: boolean;
   onRetry?: () => void;
-  /** The surface's install action for the cards' visible Try button. */
+  /** The surface's install action for the cards' `+` install affordance. */
   onTryAgent?: (agent: OwnedAgentRow) => void;
   owner?: CreatorProfileOwner;
 }) {

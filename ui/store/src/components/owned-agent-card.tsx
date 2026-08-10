@@ -113,7 +113,7 @@ export function OwnedAgentCard({
         ? labels.visibilityUnlisted
         : null;
   return (
-    <div className="relative">
+    <div className="h-full">
       <AgentCard
         agent={agent}
         href={href}

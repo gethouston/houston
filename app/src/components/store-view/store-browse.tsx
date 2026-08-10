@@ -140,6 +140,7 @@ export function StoreBrowse({
         }}
         rows={rows}
         state={state}
+        featured
         agentHref={(agent) => `agent:${agent.id}`}
         creatorHref={(creator) => `creator:${creator.handle}`}
         LinkComponent={LinkComponent}
@@ -152,6 +153,7 @@ export function StoreBrowse({
           empty: t("empty"),
           loadFailed: t("loadFailed"),
           retry: t("retry"),
+          creators: t("browse.creators"),
           featuredAgents: t("browse.featuredAgents"),
           allAgents: t("browse.allAgents"),
           agentCard: agentCardLabels(t),

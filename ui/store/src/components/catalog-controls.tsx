@@ -165,9 +165,15 @@ function Menu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label={ariaLabel} className={pill}>
-          {trigger}
           {typeof trigger === "string" ? (
-            <ChevronDown className="size-4 text-ink-muted" />
+            // A category name is user/vocabulary text ("Atención al cliente");
+            // the pill caps and truncates it instead of pushing the strip wide.
+            <span className="max-w-36 truncate">{trigger}</span>
+          ) : (
+            trigger
+          )}
+          {typeof trigger === "string" ? (
+            <ChevronDown className="size-4 shrink-0 text-ink-muted" />
           ) : null}
         </button>
       </DropdownMenuTrigger>
