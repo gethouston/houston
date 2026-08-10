@@ -54,13 +54,8 @@
     "tooLong": "El nombre del agente puede tener máximo {{max}} caracteres"
   },
   "instructions": {
-    "emptyTitle": "Aún no hay instrucciones",
-    "emptyDescription": "Dile a tu agente cómo debe pensar y actuar.",
-    "writeButton": "Escribir instrucciones",
     "helper": "Cómo debe pensar y actuar este agente.",
-    "placeholder": "Escribe las instrucciones para tu agente…",
-    "saving": "Guardando…",
-    "saved": "Guardado"
+    "placeholder": "Escribe las instrucciones para tu agente…"
   },
   "learnings": {
     "emptyTitle": "Aún no hay aprendizajes",

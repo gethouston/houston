@@ -260,13 +260,12 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   await armMemberWorkspace(page);
   await openShell(page);
 
-  // Their own agent: the editable face — the job description offers its write
-  // affordance, which `AgentDetail` hides for a non-manager.
+  // Their own agent: the editable face. The standing-prose editor is always
+  // open (no invite empty state), so editable-vs-locked is the box itself.
   await openJobDescription(page, "Payroll Bot");
-  await expect(page.getByText("No instructions yet")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Write instructions" }),
-  ).toBeVisible();
+    page.getByPlaceholder("Write instructions for your agent…"),
+  ).toBeEditable();
 
   // Back to the team, then into an agent of the SAME team they only use: the
   // page is reachable (it is honest — they can see what the agent is told) and
@@ -282,8 +281,7 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   await page.keyboard.press("Escape");
   await expect(picker).toHaveCount(0);
   await openJobDescription(page, "Payroll Helper");
-  await expect(page.getByText("No instructions yet")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Write instructions" }),
-  ).toHaveCount(0);
+    page.getByPlaceholder("Write instructions for your agent…"),
+  ).not.toBeEditable();
 });

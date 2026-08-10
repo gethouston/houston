@@ -40,7 +40,14 @@ export function aboutMeRow(page: Page): Locator {
   return railRow(page, "About me");
 }
 
-/** Open the Admin (Organization) dashboard from the rail, on its index. */
+/**
+ * Open the Admin (Organization) dashboard from the rail, ALWAYS on its home:
+ * the rail door pins the landing section, so the kept-alive screen never
+ * resumes on a leftover one. Home is Company context, standing behind the
+ * header's identity lozenge — which wears the rail row's glyph and name
+ * ("Admin") and carries the screen's `<h1>`; the section titles itself in its
+ * body instead.
+ */
 export async function openAdmin(page: Page): Promise<void> {
   await adminRow(page).click();
   await expect(
@@ -60,52 +67,76 @@ export async function openAboutMe(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-/** The rows of the Admin index, as it labels them (`teams:org.tabs.*`). */
+/** The sections of the Admin header cluster, as it labels them (`teams:org.tabs.*`). */
 export type AdminSection =
   | "People"
   | "Billing"
   | "Analytics"
   | "Company context";
 
+/** Section name -> the `data-admin-section-tab` value its lozenge carries. */
+export const ADMIN_SECTION_TAB_IDS: Readonly<Record<AdminSection, string>> = {
+  "Company context": "companyContext",
+  People: "people",
+  Billing: "billing",
+  Analytics: "analytics",
+};
+
 /**
- * Open Admin and drill into one of its sections.
+ * Open Admin on one of its sections.
  *
- * The index rows are `SettingsRow` buttons whose accessible name is the title
- * followed by the row's description and value ("People Invite teammates, set
- * roles, remove members. 2 members"), so the row is matched on its title as a
- * PREFIX. The detail screen's `<h1>` carries the same words, which is what the
- * wait lands on — an assertion made before it could read the index instead.
+ * The sections are lozenges in the header cluster (the shared grammar with the
+ * team screen), addressed by their `data-admin-section-tab` id so the helper
+ * survives label changes. `aria-current="page"` is the landing assertion: the
+ * header swaps the section body under it, and there is no per-section `<h1>`
+ * to wait on anymore.
  */
 export async function openAdminSection(
   page: Page,
   name: AdminSection,
 ): Promise<void> {
   await openAdmin(page);
-  await screen(page)
-    .getByRole("button", { name: new RegExp(`^${name}`) })
-    .click();
-  await expect(
-    screen(page).getByRole("heading", { name, level: 1, exact: true }),
-  ).toBeVisible();
+  const tab = screen(page).locator(
+    `[data-admin-section-tab='${ADMIN_SECTION_TAB_IDS[name]}']`,
+  );
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-current", "page");
 }
 
-/** The three lenses of Admin > Analytics, as its sub-tabs label them. */
+/** The three lenses of Admin > Analytics, as its lozenges label them. */
 export type AnalyticsLens = "Activity" | "Usage" | "Time worked";
 
+/** Lens name -> the `data-analytics-lens-tab` value its lozenge carries. */
+export const ANALYTICS_LENS_TAB_IDS: Readonly<Record<AnalyticsLens, string>> = {
+  Activity: "activity",
+  Usage: "usage",
+  "Time worked": "timeWorked",
+};
+
+/** One lens lozenge of the drilled-in Analytics header. */
+export function analyticsLensTab(page: Page, lens: AnalyticsLens): Locator {
+  return screen(page).locator(
+    `[data-analytics-lens-tab='${ANALYTICS_LENS_TAB_IDS[lens]}']`,
+  );
+}
+
 /**
- * Open one lens of Admin > Analytics. Only the SELECTED lens is mounted, so
+ * Open one lens of Admin > Analytics. Opening the section drills the header
+ * into the lens cluster (back chip + lozenges); Activity is the identity
+ * lozenge, whose visible words are "Analytics", so lenses are addressed by
+ * their `data-analytics-lens-tab` id. Only the SELECTED lens is mounted, so
  * this is also what makes a lens's data load at all — and "Time worked" only
  * exists where the gateway advertises `computeUsage`, which is why an absent
- * sub-tab (not an absent rail row) is how that gate is observed now.
+ * lozenge (not an absent rail row) is how that gate is observed now.
  */
 export async function openAnalyticsLens(
   page: Page,
   lens: AnalyticsLens,
 ): Promise<void> {
   await openAdminSection(page, "Analytics");
-  const tab = screen(page).getByRole("tab", { name: lens, exact: true });
+  const tab = analyticsLensTab(page, lens);
   await tab.click();
-  await expect(tab).toHaveAttribute("data-state", "active");
+  await expect(tab).toHaveAttribute("aria-current", "page");
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PageContainer, PageHero } from "../shell/page-shell";
+import { PageContainer } from "../shell/page-shell";
 import AnalyticsTab from "./analytics-tab";
 import BillingTab from "./billing-tab";
 import CompanyContextTab from "./company-context-tab";
@@ -18,13 +18,13 @@ const SECTION_COMPONENTS: Record<OrgTabId, (props: OrgTabProps) => ReactNode> =
   };
 
 /**
- * A section's detail body inside the Admin dashboard: the section heading over
- * its content. Every section renders from the shared `{ ctx }` contract (the
- * activity feed and message usage are lenses INSIDE Analytics now, not sections
- * of their own). Extracted from `organization-view.tsx` so the shell stays a
- * thin index/detail switch.
+ * The active section's body under the Admin strip. No heading of its own: the
+ * header's lozenge already names the section (the shared grammar with
+ * Integrations and the team screen), so a hero here would say it twice. Every
+ * section renders from the shared `{ ctx }` contract (the activity feed and
+ * message usage are lenses INSIDE Analytics, not sections of their own).
  */
-export function AdminSectionDetail({
+export function AdminSectionBody({
   active,
   ctx,
   isLoading,
@@ -36,8 +36,7 @@ export function AdminSectionDetail({
   const { t } = useTranslation("teams");
   const Section = SECTION_COMPONENTS[active];
   return (
-    <PageContainer className="pb-10">
-      <PageHero title={t(`org.tabs.${active}`)} className="mb-6" />
+    <PageContainer className="pt-6 pb-10">
       {ctx ? (
         <Section ctx={ctx} />
       ) : (

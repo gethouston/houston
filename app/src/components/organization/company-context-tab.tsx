@@ -1,6 +1,6 @@
-import { Spinner } from "@houston-ai/core";
-import { InstructionsContent } from "../agent/job-description-parts";
-import { useContextSlot, useContextSlotLabels } from "../context/context-slots";
+import { useTranslation } from "react-i18next";
+import { ContextEditorPage } from "../context/context-editor";
+import { useContextSlot } from "../context/context-slots";
 import type { OrgTabProps } from "./organization-view";
 
 /**
@@ -9,30 +9,31 @@ import type { OrgTabProps } from "./organization-view";
  * on the Admin dashboard next to People and Billing rather than on a screen of
  * its own; the per-user half of the same context lives with the user, not here.
  *
+ * This is the section the Admin identity lozenge stands for, so the lozenge
+ * never names it — the page does: `ContextEditorPage` (the ONE standing-prose
+ * editor) with a level-2 hero saying "Company context" and what belongs in
+ * it, over the always-open box whose greyed 3-part example is the invitation.
+ *
  * The wire is unchanged — `useContextSlot("workspace")` reads and writes the
- * same blob it always did. `ready` is false until the agent-backed read lands,
- * so the frame shows a spinner instead of an editor over nothing.
+ * same blob it always did.
  *
  * Takes {@link OrgTabProps} for uniformity with every other section even though
  * it reads nothing off the shared context.
  */
 export default function CompanyContextTab(_props: OrgTabProps) {
+  const { t } = useTranslation("teams");
+  const { t: tContext } = useTranslation("context");
   const editor = useContextSlot("workspace");
-  const labels = useContextSlotLabels("workspace");
-
-  if (!editor.ready) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Spinner className="h-5 w-5" />
-      </div>
-    );
-  }
 
   return (
-    <InstructionsContent
+    <ContextEditorPage
+      level={2}
+      title={t("org.tabs.companyContext")}
+      subtitle={t("org.companyContextHint")}
+      ready={editor.ready}
       content={editor.content}
       onSave={editor.onSave}
-      labels={labels}
+      placeholder={tContext("editor.workspace.placeholder")}
     />
   );
 }

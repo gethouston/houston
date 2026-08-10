@@ -3,10 +3,12 @@ import { describe, it } from "node:test";
 import type { AuditEntry, Capabilities } from "@houston-ai/engine-client";
 import {
   AUDIT_PAGE_SIZE,
+  analyticsLenses,
   canSeeOrganization,
   nextAuditCursor,
   ORG_TAB_IDS,
   orgTabIds,
+  resolveAnalyticsLens,
 } from "../src/components/organization/org-view-model.ts";
 
 const SINGLE_PLAYER: Capabilities = {};
@@ -73,10 +75,11 @@ describe("ORG_TAB_IDS", () => {
   it("is the always-present sections in display order", () => {
     // Activity, Usage and Time worked are no longer sections: they are the
     // three LENSES of one Analytics section, which is why they do not appear
-    // here. Company context is unconditional because the whole Admin view is
-    // already gated on `canSeeOrganization`, which is false in a personal
-    // space, so a second branch for it here would be dead code.
-    strictEqual(ORG_TAB_IDS.join(","), "people,analytics,companyContext");
+    // here. Company context leads because it is the header's identity lozenge
+    // (the landing section), and it is unconditional because the whole Admin
+    // view is already gated on `canSeeOrganization`, which is false in a
+    // personal space, so a second branch for it here would be dead code.
+    strictEqual(ORG_TAB_IDS.join(","), "companyContext,people,analytics");
   });
 });
 
@@ -84,11 +87,37 @@ describe("orgTabIds", () => {
   it("splices billing in after People only when it is in scope", () => {
     strictEqual(
       orgTabIds({ billing: false }).join(","),
-      "people,analytics,companyContext",
+      "companyContext,people,analytics",
     );
     strictEqual(
       orgTabIds({ billing: true }).join(","),
-      "people,billing,analytics,companyContext",
+      "companyContext,people,billing,analytics",
+    );
+  });
+});
+
+describe("analyticsLenses", () => {
+  it("offers Time worked only where the deployment meters compute", () => {
+    strictEqual(
+      analyticsLenses({ ...OWNER, computeUsage: true }).join(","),
+      "activity,usage,timeWorked",
+    );
+    strictEqual(analyticsLenses(OWNER).join(","), "activity,usage");
+    strictEqual(analyticsLenses(null).join(","), "activity,usage");
+  });
+});
+
+describe("resolveAnalyticsLens", () => {
+  it("keeps a lens the deployment offers", () => {
+    strictEqual(resolveAnalyticsLens("usage", ["activity", "usage"]), "usage");
+  });
+
+  it("falls back to the lead lens when the offered set drops it", () => {
+    // Capabilities can resolve (or a space can change) under a selected lens:
+    // Time worked selected, then a host without computeUsage.
+    strictEqual(
+      resolveAnalyticsLens("timeWorked", ["activity", "usage"]),
+      "activity",
     );
   });
 });

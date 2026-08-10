@@ -18,18 +18,10 @@
     "saving": "Guardando…",
     "saved": "Guardado",
     "user": {
-      "emptyTitle": "Cuéntale a todo agente sobre ti",
-      "emptyDescription": "Tu rol, lo que te importa, cómo prefieres trabajar. Se carga en cada chat nuevo de este espacio.",
-      "writeButton": "Escribir contexto del usuario",
-      "helper": "Se carga en cada chat nuevo de este espacio. Los agentes pueden actualizarlo cuando les cuentes algo nuevo.",
       "placeholder": "p. ej. Soy Juan, líder de ventas. Me importa la velocidad del pipeline y prefiero respuestas cortas."
     },
     "workspace": {
-      "emptyTitle": "Cuéntale a todo agente sobre este espacio",
-      "emptyDescription": "La empresa, el producto, los clientes. Se carga en cada chat nuevo de este espacio.",
-      "writeButton": "Escribir contexto del espacio",
-      "helper": "Compartido por todos los agentes de este espacio. Se carga en cada chat nuevo. Los agentes pueden actualizarlo cuando les cuentes algo nuevo.",
-      "placeholder": "p. ej. Acme Corp, fintech B2B, Serie A. Los clientes son CFOs de empresas medianas."
+      "placeholder": "## Quiénes somos\nAcme Corp. Fintech B2B, Serie A, 40 personas.\n\n## Producto y clientes\nSoftware de facturación para CFOs de empresas medianas.\n\n## Cómo nos comunicamos\nCercanos y directos. Frases cortas. Nunca prometemos de más."
     }
   }
 }

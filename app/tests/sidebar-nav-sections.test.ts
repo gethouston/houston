@@ -103,9 +103,15 @@ describe("the rail's Workspace band", () => {
     assert.ok(!ungated.includes("id:"), "no row sits outside a gate");
   });
 
-  it("routes Admin at the promoted top-level view", () => {
+  it("routes Admin at the promoted top-level view, always onto its home", () => {
     assert.ok(NAV.includes("id: ORGANIZATION_VIEW_ID"));
-    assert.ok(NAV.includes("onClick: () => setViewMode(ORGANIZATION_VIEW_ID)"));
+    // The rail rule: the door opens the screen's HOME, never the kept-alive
+    // leftover — so the click pins the landing section before navigating.
+    assert.ok(
+      NAV.includes("useOrgNav.getState().requestTab(DEFAULT_ORG_TAB)"),
+      "pins the landing section",
+    );
+    assert.ok(NAV.includes("setViewMode(ORGANIZATION_VIEW_ID)"));
     assert.ok(!NAV.includes("PERMISSIONS_VIEW_ID"), "no Permissions row");
     assert.ok(!NAV.includes("TIME_WORKED_VIEW_ID"), "no Time worked row");
   });

@@ -18,18 +18,10 @@
     "saving": "Saving…",
     "saved": "Saved",
     "user": {
-      "emptyTitle": "Tell every agent about you",
-      "emptyDescription": "Your role, what you care about, how you like to work. Loaded into every new chat in this workspace.",
-      "writeButton": "Write user context",
-      "helper": "Loaded into each new chat in this workspace. Agents can update this when you tell them something new.",
       "placeholder": "e.g. I'm Juan, head of sales. I care about pipeline velocity and prefer short replies."
     },
     "workspace": {
-      "emptyTitle": "Tell every agent about this workspace",
-      "emptyDescription": "The company, the product, the customers. Loaded into every new chat in this workspace.",
-      "writeButton": "Write workspace context",
-      "helper": "Shared by every agent in this workspace. Loaded into each new chat. Agents can update this when you tell them something new.",
-      "placeholder": "e.g. Acme Corp, B2B fintech, Series A. Customers are CFOs at mid-market companies."
+      "placeholder": "## Who we are\nAcme Corp. B2B fintech, Series A, 40 people.\n\n## Product and customers\nInvoicing software for CFOs at mid-market companies.\n\n## How we communicate\nFriendly and direct. Short sentences. Never overpromise."
     }
   }
 }

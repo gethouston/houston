@@ -1,17 +1,16 @@
 import type { OrgInfo, OrgRole } from "@houston-ai/engine-client";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
 import { canSeeBillingTab } from "../../lib/billing-gates";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { BackBarScreen } from "../shell/back-bar-screen";
-import { AdminIndex } from "./admin-index";
-import { AdminSectionDetail } from "./admin-section-detail";
+import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
+import { ADMIN_HEADER_THRESHOLDS, AdminHeader } from "./admin-header";
+import { AdminSectionBody } from "./admin-section-body";
 import { useOrgNav } from "./org-nav-store";
-import { type OrgTabId, orgTabIds } from "./org-view-model";
+import { DEFAULT_ORG_TAB, type OrgTabId, orgTabIds } from "./org-view-model";
 
 /**
  * The shared context every Organization section receives. `org` is the loaded
@@ -33,16 +32,11 @@ export interface OrgTabProps {
 }
 
 /**
- * The Admin (Organization) dashboard: People, Billing, Analytics, Company
- * context. A shell only: it loads the org, builds the shared `OrgViewContext`,
- * and switches between two screens in the settings-page grammar —
- *
- * - INDEX (`active === null`): a landing of self-describing rows
- *   ({@link AdminIndex}) — People (membership), Billing when in scope, then
- *   Analytics (activity / usage / time worked) and Company context.
- * - DETAIL (`active` set): a back bar + section heading + the section body. That
- *   bar is now the ONLY one on the page: as a TOP-LEVEL view in the rail's
- *   "Workspace" band, Admin owns the whole window and has no level above it.
+ * The Admin (Organization) dashboard: Company context, People, Billing,
+ * Analytics. A shell only: it loads the org, builds the shared
+ * `OrgViewContext`, and swaps sections under the shared header grammar
+ * (`AdminHeader` — the same lozenge cluster Integrations and the team screen
+ * wear), landing on Company context, whose surface the identity lozenge IS.
  *
  * Permission surfaces (who can use which agent, per-agent ceilings) are NOT
  * here: per-agent policy is discovered through each team's Manage agents page,
@@ -57,7 +51,6 @@ export interface OrgTabProps {
  * ALREADY open, not on a mount that never happens again.
  */
 export function OrganizationView() {
-  const { t } = useTranslation("teams");
   const { data: org, isLoading } = useOrg(true);
   const { capabilities } = useCapabilities();
   const current = useWorkspaceStore((s) => s.current);
@@ -65,64 +58,64 @@ export function OrganizationView() {
   const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
 
   // Billing shows only for owner/admin on a team space (C8). Compute the visible
-  // set so a deep link never opens a dead detail screen.
+  // set so a deep link never opens a dead section.
   const showBilling = canSeeBillingTab(
     capabilities,
     current ? isTeamWorkspace(current.id) : false,
   );
   const visibleIds = orgTabIds({ billing: showBilling });
 
-  // `null` = the index; a section id = its detail screen. Sections start on the
-  // index so the admin lands on the scannable overview, not a section body.
-  const [active, setActive] = useState<OrgTabId | null>(null);
+  const [active, setActive] = useState<OrgTabId>(DEFAULT_ORG_TAB);
 
-  // One event per section DETAIL opened (index → detail), keyed like the global
-  // view switches so a single tab_name breakdown covers everything. Landing on
-  // the view at all is the shell's `tab_opened` / `organization`, so this fires
-  // strictly below it and the two never double-count.
-  useEffect(() => {
-    if (active !== null)
-      analytics.track("tab_opened", { tab_name: `org:${active}` });
-  }, [active]);
+  // One event per section OPENED (a lozenge click or a deep link), keyed like
+  // the global view switches so a single tab_name breakdown covers everything.
+  // Landing on the view at all is the shell's `tab_opened` / `organization`, so
+  // this fires strictly below it — never on the initial section — and the two
+  // never double-count.
+  const openSection = useCallback(
+    (next: OrgTabId) => {
+      if (next !== active)
+        analytics.track("tab_opened", { tab_name: `org:${next}` });
+      setActive(next);
+    },
+    [active],
+  );
 
-  // Honor a deep link straight into a section's detail — the C8 team-status
-  // banner is the one caller, and it asks for Billing — then clear it so a later
-  // plain nav to the dashboard opens the index again. (The create-team toast
-  // pins nothing: it wants the index, whose lead card is People.) This is an
-  // effect on the STORE field, not mount-time state, precisely because the
-  // screen is kept alive: it fires on the first mount AND while already open,
-  // the same way `team-settings.tsx` consumes its own one-shot pin.
+  // Honor a deep link straight into a section — the C8 team-status banner is
+  // the one caller, and it asks for Billing — then clear it so a later plain
+  // nav to the dashboard lands on the default section again. This is an effect
+  // on the STORE field, not mount-time state, precisely because the screen is
+  // kept alive: it fires on the first mount AND while already open, the same
+  // way `team-settings.tsx` consumes its own one-shot pin.
   useEffect(() => {
     if (requestedTab === null) return;
-    if (visibleIds.includes(requestedTab)) setActive(requestedTab);
+    if (visibleIds.includes(requestedTab)) openSection(requestedTab);
     clearRequestedTab();
-  }, [requestedTab, visibleIds, clearRequestedTab]);
+  }, [requestedTab, visibleIds, openSection, clearRequestedTab]);
 
   // If the visible set drops the active section (e.g. switching out of a team
-  // space hides Billing), fall back to the index rather than a blank body.
+  // space hides Billing), fall back to the landing section rather than a blank
+  // body.
   useEffect(() => {
-    if (active !== null && !visibleIds.includes(active)) setActive(null);
+    if (!visibleIds.includes(active)) setActive(DEFAULT_ORG_TAB);
   }, [visibleIds, active]);
 
   const ctx: OrgViewContext | null = org
     ? { org, role: org.role, isOwner: org.role === "owner" }
     : null;
 
-  if (active === null) {
-    return (
-      <div className="flex-1 overflow-y-auto pt-10 [scrollbar-gutter:stable]">
-        <AdminIndex
-          visibleIds={visibleIds}
-          memberCount={org?.members?.length}
-          onSelect={setActive}
-        />
-      </div>
-    );
-  }
-
   return (
-    <BackBarScreen backLabel={t("org.title")} onBack={() => setActive(null)}>
-      <AdminSectionDetail active={active} ctx={ctx} isLoading={isLoading} />
-    </BackBarScreen>
+    <PageHeaderToolsProvider thresholds={ADMIN_HEADER_THRESHOLDS}>
+      <div className="flex h-full flex-col">
+        <AdminHeader
+          active={active}
+          visibleIds={visibleIds}
+          onSelect={openSection}
+        />
+        <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+          <AdminSectionBody active={active} ctx={ctx} isLoading={isLoading} />
+        </div>
+      </div>
+    </PageHeaderToolsProvider>
   );
 }
