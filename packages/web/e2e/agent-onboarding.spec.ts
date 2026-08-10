@@ -18,7 +18,7 @@ import { screen } from "./support/team-nav";
  *  close itself and the setup-mission panel to auto-open). */
 async function createFromScratch(page: Page, name: string) {
   await page.getByRole("button", { name: "New agent" }).click();
-  const scratch = page.getByText("Create new agent");
+  const scratch = page.getByRole("button", { name: "Create new", exact: true });
   await scratch.waitFor({ state: "visible" });
   await scratch.click();
   const nameField = page.getByPlaceholder("e.g. Product manager, Sales, Jerry");
