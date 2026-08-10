@@ -1,7 +1,15 @@
 import { cn, Spinner } from "@houston-ai/core";
-import { type ComponentProps, useEffect, useState } from "react";
+import {
+  type ComponentProps,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { PageHero } from "../shell/page-shell";
+import { isDirty, shouldReseed } from "./context-editor-model";
+import { MarkdownEditor } from "./markdown-editor";
 
 type SaveState = "idle" | "saving" | "saved";
 
@@ -16,8 +24,8 @@ type SaveState = "idle" | "saving" | "saved";
  * - **Saves on blur, says so quietly.** The slim right-aligned "Saving…/
  *   Saved" line above the box; a save fires only when the text actually
  *   changed, so tabbing through a page writes nothing.
- * - **Explains itself ONCE.** The title + one-line explanation live in the
- *   heading ({@link ContextEditorPage}'s hero, or a card's own header); the
+ * - **Explains itself ONCE.** The title + explanation live in the heading
+ *   ({@link ContextEditorPage}'s hero, or a card's own header); the
  *   box never carries a second description.
  * - **Read-only is the same face, locked.** Someone who may not edit still
  *   reads what the agents are told; the text stays legible, never hidden.
@@ -45,18 +53,62 @@ export function ContextEditorBox({
   const { t } = useTranslation("context");
   const [value, setValue] = useState(content);
   const [state, setState] = useState<SaveState>("idle");
+  const valueRef = useRef(content);
+  const baselineRef = useRef(content);
+  const focusedRef = useRef(false);
+  const awaitingSeedRef = useRef(true);
+  const contentPropRef = useRef(content);
+  const onSaveRef = useRef(onSave);
+  const readOnlyRef = useRef(readOnly);
 
-  // Re-seed from the store whenever it changes under us: another window's
-  // save, or our own landing back through the query cache.
+  onSaveRef.current = onSave;
+  readOnlyRef.current = readOnly;
   useEffect(() => {
+    if (contentPropRef.current === content) return;
+    contentPropRef.current = content;
+    if (
+      !shouldReseed({
+        focused: focusedRef.current,
+        dirty: isDirty(valueRef.current, baselineRef.current),
+      })
+    ) {
+      return;
+    }
+    awaitingSeedRef.current = true;
+    valueRef.current = content;
     setValue(content);
   }, [content]);
 
+  useEffect(
+    () => () => {
+      if (
+        readOnlyRef.current ||
+        !isDirty(valueRef.current, baselineRef.current)
+      ) {
+        return;
+      }
+      // The data layer surfaces failures; cleanup has no mounted UI to update.
+      onSaveRef.current(valueRef.current).catch(() => {});
+    },
+    [],
+  );
+
+  const handleChange = useCallback((markdown: string) => {
+    valueRef.current = markdown;
+    setValue(markdown);
+    if (awaitingSeedRef.current) {
+      baselineRef.current = markdown;
+      awaitingSeedRef.current = false;
+    }
+  }, []);
+
   const handleBlur = async () => {
-    if (readOnly || value === content) return;
+    const current = valueRef.current;
+    if (readOnly || !isDirty(current, baselineRef.current)) return;
     setState("saving");
     try {
-      await onSave(value);
+      await onSave(current);
+      baselineRef.current = current;
       setState("saved");
       window.setTimeout(() => setState("idle"), 2000);
     } catch {
@@ -88,25 +140,18 @@ export function ContextEditorBox({
         </span>
       </div>
       <section className="rounded-xl bg-chip p-3">
-        <textarea
-          aria-label={ariaLabel}
-          data-testid={dataTestId}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+        <MarkdownEditor
+          ariaLabel={ariaLabel}
+          dataTestId={dataTestId}
+          content={value}
+          onChange={handleChange}
           onBlur={handleBlur}
           readOnly={readOnly}
-          // A locked box must not invite writing: the greyed suggestion IS
-          // the write invitation, so the read-only face drops it.
-          placeholder={readOnly ? undefined : placeholder}
-          rows={Math.max(minRows, value.split("\n").length + 2)}
-          className={cn(
-            "w-full px-4 py-3 text-sm text-ink leading-relaxed",
-            "placeholder:text-ink-muted/60",
-            "bg-input border border-ink/[0.04] rounded-lg",
-            "outline-none resize-none",
-            "focus-visible:ring-2 focus-visible:ring-focus",
-            readOnly && "cursor-default text-ink-muted",
-          )}
+          placeholder={placeholder}
+          minRows={minRows}
+          onFocusChange={(focused) => {
+            focusedRef.current = focused;
+          }}
         />
       </section>
     </div>

@@ -703,10 +703,14 @@ test("a team's shared context is the first card of its settings, and it saves", 
   ).toBeVisible();
 
   const box = screen(page).getByTestId("team-context-input");
-  await expect(box).toHaveValue("We ship on Fridays.");
+  await expect(box).toHaveText("We ship on Fridays.");
 
   // Saves on BLUR, the same idiom the agent's own instructions editor uses.
-  await box.fill("We ship on Fridays. Ask before promising a date.");
+  await box.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await box.pressSequentially(
+    "We ship on Fridays. Ask before promising a date.",
+  );
   await box.blur();
   const patches = () => callsTo(calls, "PATCH", `/v1/org/teams/${OPS_TEAM}`);
   await expect.poll(() => patches().length).toBe(1);
@@ -742,8 +746,9 @@ test("a team's context is READ-ONLY for someone who does not own the team", asyn
 
   await openManageAgents(page, OPS_TEAM);
   const box = screen(page).getByTestId("team-context-input");
-  await expect(box).toHaveValue("We ship on Fridays.");
-  await expect(box).toHaveAttribute("readonly", "");
+  await expect(box).toHaveText("We ship on Fridays.");
+  await expect(box).toHaveAttribute("contenteditable", "false");
+  await expect(box).toHaveAttribute("aria-readonly", "true");
 
   // Read-only all the way down to the wire: a blur writes nothing.
   await box.click();

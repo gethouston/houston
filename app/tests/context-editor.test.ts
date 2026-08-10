@@ -9,7 +9,7 @@ const read = (rel: string) =>
  * The node runner has no DOM, so the ONE standing-context editor's wiring is
  * guarded on its source (the repo's React-test idiom). Each assertion stands
  * for a review finding that shipped once in the consolidated grammar: a save
- * failure that stuck the UI on "Saving…", textareas with no accessible name,
+ * failure that stuck the UI on "Saving…", editors with no accessible name,
  * and design-token violations carried over from the deleted editor.
  */
 describe("context-editor source", () => {
@@ -28,14 +28,22 @@ describe("context-editor source", () => {
   it("derives the box's accessible name from the page title", () => {
     ok(
       src.includes("<ContextEditorBox ariaLabel={title} {...box} />"),
-      "ContextEditorPage names the textarea after its hero",
+      "ContextEditorPage names the editor after its hero",
     );
   });
 
-  it("keeps the read-only face from inviting writing", () => {
+  it("uses MarkdownEditor inside the standing prose box", () => {
     ok(
-      src.includes("placeholder={readOnly ? undefined : placeholder}"),
-      "the greyed suggestion (the write invitation) drops when locked",
+      src.includes("<MarkdownEditor"),
+      "ContextEditorBox delegates its document field to MarkdownEditor",
+    );
+  });
+
+  it("guards background reseeds and flushes dirty content on unmount", () => {
+    ok(src.includes("shouldReseed({"), "prop updates use the reseed guard");
+    ok(
+      src.includes("onSaveRef.current(valueRef.current).catch(() => {})"),
+      "cleanup flushes pending content and contains its rejected promise",
     );
   });
 
@@ -44,7 +52,13 @@ describe("context-editor source", () => {
     // focus is the ring-focus idiom (which the strip's lozenges use too).
     ok(!src.includes("rgba("), "no raw shadow literal");
     ok(!src.includes("text-[11px]"), "no off-scale label size");
-    ok(src.includes("focus-visible:ring-focus"), "focus is the shared ring");
+    const markdown = read("../src/components/context/markdown-editor.tsx");
+    ok(!markdown.includes("rgba("), "no raw rgba literal");
+    ok(!/#(?:[\da-fA-F]{3}){1,2}\b/.test(markdown), "no raw hex literal");
+    ok(
+      markdown.includes("focus-visible]:ring-focus"),
+      "focus is the shared ring",
+    );
   });
 });
 
