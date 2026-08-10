@@ -2,6 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { assertNotPlanMode } from "../live-mode-gate";
 import {
+  type CredentialTargetStatus,
   makeRequestCredentialTool,
   REQUEST_CREDENTIAL_TOOL_NAME,
 } from "./request-credential";
@@ -105,7 +106,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
   const base = opts.baseUrl.replace(/\/$/, "");
 
   async function post<T>(
-    path: "detect" | "add" | "remove",
+    path: "detect" | "add" | "remove" | "status",
     body: unknown,
     signal: AbortSignal | undefined,
   ): Promise<T> {
@@ -255,7 +256,36 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
     },
   });
 
-  return [detect, add, remove, makeRequestCredentialTool()];
+  return [
+    detect,
+    add,
+    remove,
+    makeRequestCredentialTool({
+      // The pre-flight lookup (PRODUCT-1292): resolve the slug on the host
+      // before a secure card is queued. 404 = no such definition (`null`, the
+      // tool refuses with guidance); any other failure relays like the
+      // sibling calls so the model hears the real reason.
+      async status(slug, signal) {
+        const res = await fetch(`${base}/sandbox/integrations/custom/status`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${opts.sandboxToken}`,
+          },
+          body: JSON.stringify({ slug }),
+          signal,
+        });
+        if (res.status === 404) return null;
+        if (!res.ok) {
+          const detail = await res.text().catch(() => "");
+          throw new Error(
+            `custom integration status failed (${res.status}): ${detail.slice(0, 300)}`,
+          );
+        }
+        return (await res.json()) as CredentialTargetStatus;
+      },
+    }),
+  ];
 }
 
 /** The tool names — pi's allowlist needs the names alongside the objects. */

@@ -384,3 +384,42 @@ test("sandbox remove: relays manager.remove by slug; 400 on a missing slug", asy
     server.close();
   }
 });
+
+test("sandbox status: the request_credential pre-flight (PRODUCT-1292) — view for a known slug, 404 not_found for an unknown one, 400 on a missing slug", async () => {
+  const manager = fakeManager();
+  const { server, base } = await startServer({
+    customIntegrations: manager,
+    vault,
+  });
+  try {
+    const sb = vault.sandboxToken("W1", "W1/Assistant");
+    const post = (body: unknown) =>
+      fetch(`${base}/sandbox/integrations/custom/status`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${sb}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+    const known = await post({ slug: "acme" });
+    expect(known.status).toBe(200);
+    expect(await known.json()).toEqual(VIEW);
+
+    // The exact family the users hit: a slug the agent invented (or whose add
+    // failed) has NO definition — the tool must hear a clean not_found instead
+    // of queueing a card whose every save dead-ends.
+    const unknown = await post({ slug: "typeform" });
+    expect(unknown.status).toBe(404);
+    expect(await unknown.json()).toEqual({
+      error: "no custom integration 'typeform'",
+      code: "not_found",
+    });
+
+    const missing = await post({});
+    expect(missing.status).toBe(400);
+  } finally {
+    server.close();
+  }
+});

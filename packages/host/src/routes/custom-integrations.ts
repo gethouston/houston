@@ -155,7 +155,7 @@ export async function handleSandboxCustomIntegrations(
   res: ServerResponse,
 ): Promise<boolean> {
   const m = path.match(
-    /^\/sandbox\/integrations\/custom\/(detect|add|remove)$/,
+    /^\/sandbox\/integrations\/custom\/(detect|add|remove|status)$/,
   );
   if (!m || method !== "POST") return false;
 
@@ -184,6 +184,27 @@ export async function handleSandboxCustomIntegrations(
         return true;
       }
       json(res, 200, await manager.detect(body.url.trim()));
+      return true;
+    }
+    // The pre-flight behind `request_credential` (PRODUCT-1292): the runtime
+    // refuses to queue a secure key card for a slug with no definition — the
+    // card used to render anyway and every save 404ed at this host, a
+    // user-facing dead end the agent never heard about.
+    if (m[1] === "status") {
+      if (typeof body.slug !== "string" || !body.slug.trim()) {
+        json(res, 400, { error: "missing 'slug'" });
+        return true;
+      }
+      const slug = body.slug.trim();
+      const view = (await manager.list()).find((v) => v.slug === slug);
+      if (!view) {
+        json(res, 404, {
+          error: `no custom integration '${slug}'`,
+          code: "not_found",
+        });
+        return true;
+      }
+      json(res, 200, view);
       return true;
     }
     // The agent's cleanup path (PRODUCT-1172 follow-up): switching a service

@@ -283,6 +283,7 @@
   "credential": {
     "title": "Adicione sua chave de {{name}}",
     "subtitle": "Cole abaixo. Ela é armazenada com segurança e nunca aparece no chat.",
+    "missingBody": "{{name}} ainda não está configurado, então não há onde salvar esta chave. Escolha Pular para continuar e configurá-lo direito primeiro.",
     "save": "Salvar chave",
     "saving": "Salvando...",
     "saved": "Chave salva",

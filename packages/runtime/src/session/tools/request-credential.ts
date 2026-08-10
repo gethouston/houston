@@ -30,7 +30,26 @@ const CredentialParams = Type.Object({
 });
 type CredentialParams = Static<typeof CredentialParams>;
 
-export function makeRequestCredentialTool() {
+/** What the pre-flight lookup needs back from the host: the definition's
+ *  compile state (the rest of the view is irrelevant here). `null` = no
+ *  definition with that slug exists. */
+export interface CredentialTargetStatus {
+  state:
+    | { status: "active"; toolCount: number }
+    | { status: "pending" }
+    | { status: "error"; message: string };
+}
+
+export interface RequestCredentialToolOptions {
+  /** Resolve the slug against the host's registered custom integrations
+   *  (the sandbox `status` route). */
+  status: (
+    slug: string,
+    signal: AbortSignal | undefined,
+  ) => Promise<CredentialTargetStatus | null>;
+}
+
+export function makeRequestCredentialTool(opts: RequestCredentialToolOptions) {
   return defineTool({
     name: REQUEST_CREDENTIAL_TOOL_NAME,
     label: "Ask the user for an API key securely",
@@ -39,10 +58,28 @@ export function makeRequestCredentialTool() {
     promptSnippet: "Ask the user to enter a key or sign in via a secure card",
     parameters: CredentialParams,
     executionMode: "sequential",
-    async execute(_id: string, params: CredentialParams) {
+    async execute(
+      _id: string,
+      params: CredentialParams,
+      signal: AbortSignal | undefined,
+    ) {
       const toolkit = params.toolkit.trim().toLowerCase();
       if (!toolkit)
         throw new Error("request_credential needs a non-empty toolkit slug.");
+      // Pre-flight (PRODUCT-1292): a card for a slug the host has no
+      // definition for renders fine but every save 404s — a user-facing dead
+      // end. Refuse HERE, where the model can still correct course.
+      const target = await opts.status(toolkit, signal);
+      if (!target) {
+        throw new Error(
+          `No custom integration '${toolkit}' is set up, so Houston cannot show a secure entry card for it. Use the EXACT slug a custom_integration_add result returned. If this service was never added: when it exists in integration_search, connect it through the normal app connect flow instead; for a custom API or MCP server, run custom_integration_detect and custom_integration_add first, then call request_credential again.`,
+        );
+      }
+      if (target.state.status === "error") {
+        throw new Error(
+          `The custom integration '${toolkit}' is not working (${target.state.message}), so a saved key could not be used. Repair it first with custom_integration_add (replace: true) and a corrected spec, then call request_credential again.`,
+        );
+      }
       const reason = params.reason?.trim();
       recordCredentialRequest({ toolkit, ...(reason ? { reason } : {}) });
       return {

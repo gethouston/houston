@@ -110,6 +110,15 @@ export function ChatCredentialInteractionCard({
 
   const view = list.data?.find((v) => v.slug === toolkit);
   const name = view?.name ?? toolkit;
+  // The step's slug resolves to NO registered integration (PRODUCT-1292): a
+  // key typed here has nowhere to go — every save 404ed while the card looked
+  // perfectly savable. Render the honest dead-end (Skip resumes the agent,
+  // which re-runs the setup) instead of a doomed form. Gated on a SETTLED
+  // list: while the list is loading or refetching (a just-added definition
+  // races the 30s cache) the optimistic fallback form stays, matching the
+  // form's "never block the user on the lookup" contract. `data === null`
+  // (the host doesn't serve the feature) keeps the legacy fallback too.
+  const missing = list.data != null && !list.isFetching && !view;
   // A sign-in (oauth) integration renders the SAME step as a Sign in card:
   // no key form — the button opens the service's own browser sign-in
   // (PRODUCT-1172), and the step completes itself when the grant lands.
@@ -230,6 +239,10 @@ export function ChatCredentialInteractionCard({
               </p>
             )}
           </div>
+        ) : missing ? (
+          <p className="text-balance text-ink text-sm leading-snug">
+            {t("credential.missingBody", { name })}
+          </p>
         ) : (
           <div className="flex flex-col gap-1.5">
             <p className="text-balance text-ink text-sm leading-snug">
@@ -261,7 +274,7 @@ export function ChatCredentialInteractionCard({
               label={t("interaction.skip")}
               onClick={() => onSkip(name, mode)}
             />
-            {oauth ? (
+            {missing ? null : oauth ? (
               <Button
                 className="gap-1.5"
                 disabled={signIn.isPending}

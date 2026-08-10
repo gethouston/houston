@@ -1395,6 +1395,45 @@ test("declines the credential step with a typed instruction and resumes visibly"
 });
 
 /**
+ * A credential step whose slug has NO registered integration (PRODUCT-1292):
+ * the runtime now refuses to queue one, but steps already recorded in existing
+ * chats (and a definition removed mid-step) still reach the card. It must
+ * render the honest dead-end — no key field, no Save (every save 404ed while
+ * the form looked perfectly savable) — and Skip still resumes the agent.
+ */
+test("a credential step for an unknown integration shows the honest dead-end instead of a doomed form", async ({
+  page,
+  request,
+}) => {
+  // The custom list is ARMED (it resolves, with acme_crm only) — the step's
+  // 'typeform' slug is simply not in it, mirroring the field failure.
+  await armCustomIntegration(request);
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [{ kind: "credential", id: "k1", toolkit: "typeform" }],
+      },
+    },
+  });
+
+  await startMission(page, "connect Typeform");
+
+  await expect(
+    page.getByText(/typeform isn't set up yet, so there's nowhere to save/),
+  ).toBeVisible({ timeout: 15_000 });
+  // No key field and no Save CTA — the only ways out are Skip and the
+  // free-text row, both of which resume the agent.
+  await expect(page.getByRole("button", { name: "Save key" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Paste your key")).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Skip/ }).click();
+  await expect(page.getByText(/Skipped adding the typeform key\./)).toBeVisible(
+    { timeout: 15_000 },
+  );
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+});
+
+/**
  * Enter connects a connect step: with focus off the composer, pressing Enter
  * fires the Connect flow (mirroring the pill's return-key glyph). Integrations
  * are armed so the fake host mints a pending connection on connect; activating

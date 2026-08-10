@@ -283,6 +283,7 @@
   "credential": {
     "title": "Agrega tu clave de {{name}}",
     "subtitle": "Pégala abajo. Se guarda de forma segura y nunca se muestra en el chat.",
+    "missingBody": "{{name}} aún no está configurado, así que no hay dónde guardar esta clave. Elige Omitir para continuar y que primero se configure bien.",
     "save": "Guardar clave",
     "saving": "Guardando...",
     "saved": "Clave guardada",
