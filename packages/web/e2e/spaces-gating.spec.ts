@@ -136,8 +136,8 @@ test("team space: inviting a fresh email through Admin > People renders a pendin
   await page.goto("/");
   await switchToSpace(page, TEAM.name);
 
-  // Open Admin (the Organization dashboard) from the rail. It lands on its own
-  // INDEX (grouped cards), so drill into the People row to reach the roster.
+  // Open Admin (the Organization dashboard) from the rail on its People
+  // section — a lozenge in the header cluster — to reach the roster.
   await openAdminSection(page, "People");
 
   // Invite a fresh email → the fake host mints a pending invite (202

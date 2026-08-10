@@ -163,8 +163,9 @@
   },
   "org": {
     "title": "Admin",
-    "subtitle": "Your people, your plan, your numbers, and what every agent knows about the company.",
     "tabs": {
+      "label": "Admin sections",
+      "lensLabel": "Analytics views",
       "people": "People",
       "billing": "Billing",
       "analytics": "Analytics",
@@ -173,21 +174,10 @@
       "usage": "Usage",
       "timeWorked": "Time worked"
     },
+    "companyContextHint": "What all your agents know on every task and routine they run.",
     "agentDetail": {
       "subtitle": "Everything you configure on this agent, and who can use it.",
       "openAgent": "Open agent"
-    },
-    "index": {
-      "rows": {
-        "people": "Invite teammates, set roles, remove members.",
-        "billing": "Seats, plan, and payment.",
-        "analytics": "Activity, usage, and time worked in one place.",
-        "companyContext": "What every agent knows about this company."
-      },
-      "values": {
-        "members_one": "{{count}} member",
-        "members_other": "{{count}} members"
-      }
     },
     "loading": "Loading your workspace...",
     "unavailable": "We couldn't load your workspace."
@@ -506,9 +496,7 @@
     "context": {
       "title": "Team context",
       "explainer": "Every agent in this team knows this.",
-      "placeholder": "What should every agent in this team know? The company, the customers, how you work.",
-      "saving": "Saving…",
-      "saved": "Saved"
+      "placeholder": "What should every agent in this team know? The company, the customers, how you work."
     },
     "missionControl": {
       "empty": {

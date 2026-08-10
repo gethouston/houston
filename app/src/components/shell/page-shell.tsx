@@ -46,7 +46,7 @@ export function PageContainer({
 
 interface PageHeroProps {
   /** The words, or a node when the title carries a mark beside them (a team's
-   *  glyph). It renders inside the one `<h1>` either way, so the typography
+   *  glyph). It renders inside the one heading either way, so the typography
    *  and truncation are the header's, not the caller's. */
   title: ReactNode;
   /** Optional muted one-line subtitle under the title. */
@@ -55,6 +55,12 @@ interface PageHeroProps {
   trailing?: ReactNode;
   /** Extra classes, typically the bottom gap to the content (e.g. `mb-6`). */
   className?: string;
+  /**
+   * Heading level, default 1. Pass 2 when the page's `<h1>` already lives in
+   * its header strip (a lozenge cluster) and this hero titles a section BODY
+   * under it — same typography, honest outline.
+   */
+  level?: 1 | 2;
 }
 
 /**
@@ -67,11 +73,13 @@ export function PageHero({
   subtitle,
   trailing,
   className,
+  level = 1,
 }: PageHeroProps) {
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className={cn("flex items-start justify-between gap-4", className)}>
       <div className="min-w-0">
-        <h1 className="text-2xl font-normal text-ink">{title}</h1>
+        <Heading className="text-2xl font-normal text-ink">{title}</Heading>
         {subtitle ? (
           <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>
         ) : null}

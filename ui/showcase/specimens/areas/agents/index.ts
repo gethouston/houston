@@ -1,7 +1,6 @@
 import type { Specimen } from "../../../src/specimen";
 import { specimen as appSidebar } from "./app-sidebar";
 import { specimen as filesBrowser } from "./files-browser";
-import { specimen as instructionsPanel } from "./instructions-panel";
 import { specimen as sidebarGroupHeader } from "./sidebar-group-header";
 import { specimen as sidebarNavItem } from "./sidebar-nav-item";
 import { specimen as sidebarRowButton } from "./sidebar-row-button";
@@ -36,6 +35,5 @@ export const specimens: readonly Specimen[] = [
   appSidebar,
   tabBar,
   splitView,
-  instructionsPanel,
   filesBrowser,
 ];

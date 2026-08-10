@@ -163,8 +163,9 @@
   },
   "org": {
     "title": "Administración",
-    "subtitle": "Tu gente, tu plan, tus números y lo que cada agente sabe sobre la empresa.",
     "tabs": {
+      "label": "Secciones de administración",
+      "lensLabel": "Vistas de analítica",
       "people": "Personas",
       "billing": "Facturación",
       "analytics": "Analítica",
@@ -173,21 +174,10 @@
       "usage": "Uso",
       "timeWorked": "Tiempo trabajado"
     },
+    "companyContextHint": "Lo que todos tus agentes saben en cada tarea y rutina que ejecutan.",
     "agentDetail": {
       "subtitle": "Todo lo que configuras en este agente y quién puede usarlo.",
       "openAgent": "Abrir agente"
-    },
-    "index": {
-      "rows": {
-        "people": "Invita compañeros, asigna roles y quita miembros.",
-        "billing": "Asientos, plan y pago.",
-        "analytics": "Actividad, uso y tiempo trabajado en un solo lugar.",
-        "companyContext": "Lo que cada agente sabe sobre esta empresa."
-      },
-      "values": {
-        "members_one": "{{count}} miembro",
-        "members_other": "{{count}} miembros"
-      }
     },
     "loading": "Cargando tu espacio de trabajo...",
     "unavailable": "No pudimos cargar tu espacio de trabajo."
@@ -506,9 +496,7 @@
     "context": {
       "title": "Contexto del equipo",
       "explainer": "Todos los agentes de este equipo saben esto.",
-      "placeholder": "¿Qué debería saber cada agente de este equipo? La empresa, los clientes, cómo trabajan.",
-      "saving": "Guardando…",
-      "saved": "Guardado"
+      "placeholder": "¿Qué debería saber cada agente de este equipo? La empresa, los clientes, cómo trabajan."
     },
     "missionControl": {
       "empty": {

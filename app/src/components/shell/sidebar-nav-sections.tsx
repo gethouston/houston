@@ -18,6 +18,8 @@ import {
   ORGANIZATION_VIEW_ID,
 } from "../../lib/top-level-views";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
+import { useOrgNav } from "../organization/org-nav-store.ts";
+import { DEFAULT_ORG_TAB } from "../organization/org-view-model.ts";
 import { SKILLS_VIEW_ID } from "../skills-view/id";
 import { STORE_VIEW_ID } from "../store-view";
 import type { SidebarChromeT } from "./sidebar-chrome";
@@ -100,7 +102,16 @@ export function buildSidebarNavItems(args: {
     id: ORGANIZATION_VIEW_ID,
     label: t("settings:nav.organization"),
     icon: <Building2 className="h-4 w-4" />,
-    onClick: () => setViewMode(ORGANIZATION_VIEW_ID),
+    onClick: () => {
+      // The rail rule: a rail door always opens its screen's HOME, never the
+      // kept-alive leftover (a team row opens its board, the footer's
+      // Settings opens the index via `openSettings(null)`). Admin's home is
+      // its landing section, pinned through the same one-shot store the
+      // Billing deep link uses — which also backs out of a drilled section
+      // like Analytics when the screen is already open.
+      useOrgNav.getState().requestTab(DEFAULT_ORG_TAB);
+      setViewMode(ORGANIZATION_VIEW_ID);
+    },
   };
   const skills: SidebarNavItemEntry = {
     id: SKILLS_VIEW_ID,

@@ -1,8 +1,7 @@
-import { Spinner } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { InstructionsContent } from "../agent/job-description-parts";
-import { useContextSlot, useContextSlotLabels } from "../context/context-slots";
-import { PageContainer, PageHero } from "../shell/page-shell";
+import { ContextEditorPage } from "../context/context-editor";
+import { useContextSlot } from "../context/context-slots";
+import { PageContainer } from "../shell/page-shell";
 
 /**
  * About me: what every agent knows about the PERSON before it starts a turn.
@@ -29,23 +28,18 @@ import { PageContainer, PageHero } from "../shell/page-shell";
 export function AboutMeView() {
   const { t } = useTranslation("context");
   const editor = useContextSlot("user");
-  const labels = useContextSlotLabels("user");
 
   return (
     <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      <PageContainer className="flex flex-col gap-6 py-10">
-        <PageHero title={t("aboutMe.title")} subtitle={t("aboutMe.subtitle")} />
-        {editor.ready ? (
-          <InstructionsContent
-            content={editor.content}
-            onSave={editor.onSave}
-            labels={labels}
-          />
-        ) : (
-          <div className="flex items-center justify-center py-16">
-            <Spinner className="h-5 w-5" />
-          </div>
-        )}
+      <PageContainer className="py-10">
+        <ContextEditorPage
+          title={t("aboutMe.title")}
+          subtitle={t("aboutMe.subtitle")}
+          ready={editor.ready}
+          content={editor.content}
+          onSave={editor.onSave}
+          placeholder={t("editor.user.placeholder")}
+        />
       </PageContainer>
     </div>
   );

@@ -54,13 +54,8 @@
     "tooLong": "Agent names can be at most {{max}} characters"
   },
   "instructions": {
-    "emptyTitle": "No instructions yet",
-    "emptyDescription": "Tell your agent how it should think and act.",
-    "writeButton": "Write instructions",
     "helper": "How this agent should think and act.",
-    "placeholder": "Write instructions for your agent…",
-    "saving": "Saving…",
-    "saved": "Saved"
+    "placeholder": "Write instructions for your agent…"
   },
   "learnings": {
     "emptyTitle": "No learnings yet",

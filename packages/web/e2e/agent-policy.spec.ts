@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openAdmin } from "./support/settings-nav";
+import { openAdminSection } from "./support/settings-nav";
 import {
   expectTeamSections,
   openAgentSettings,
@@ -437,8 +437,7 @@ test("Admin People roster shows a member's gateway display name, email as a seco
   });
 
   await page.goto("/");
-  await openAdmin(page);
-  await page.getByRole("button", { name: /People/ }).click();
+  await openAdminSection(page, "People");
 
   // Bob's display name is the primary label; his email drops to a muted
   // secondary line — the gateway-backed profile lit up the roster row.

@@ -19,8 +19,6 @@ function useContextLabels(): TeamContextEditorLabels {
     title: t("teamView.context.title"),
     explainer: t("teamView.context.explainer"),
     placeholder: t("teamView.context.placeholder"),
-    saving: t("teamView.context.saving"),
-    saved: t("teamView.context.saved"),
   };
 }
 

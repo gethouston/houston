@@ -69,17 +69,18 @@ describe("settings-view source", () => {
 
 /**
  * The promoted screens own the whole window, so neither may wrap itself in a
- * back bar at its top level — the only bar left on each page is the one its own
- * drill-in renders (an Admin section detail; About me has no drill-in at all).
+ * back bar at its top level — and Admin has no drill-in left at all: its
+ * sections are sibling lozenges in one header cluster (the shared grammar
+ * with Integrations and the team screen), so no bar exists anywhere on it.
  */
 describe("the promoted top-level screens", () => {
-  it("Admin takes no back-bar props and frames its index itself", () => {
+  it("Admin takes no back-bar props and frames its body itself", () => {
     const src = read("../src/components/organization/organization-view.tsx");
     ok(src.includes("export function OrganizationView() {"), "no props");
     ok(!src.includes("backLabel={backLabel}"), "no caller-owned back bar");
     ok(
       src.includes("[scrollbar-gutter:stable]"),
-      "its index scroller reserves the gutter",
+      "its section scroller reserves the gutter",
     );
   });
 
@@ -96,12 +97,15 @@ describe("the promoted top-level screens", () => {
     );
   });
 
-  it("keeps Admin's section detail back bar", () => {
+  it("leaves Admin without any back bar — sections are header siblings", () => {
+    // The index/detail split is gone: every section sits behind a lozenge in
+    // `AdminHeader`, so a BackBarScreen anywhere in the view would resurrect
+    // a level that no longer exists.
     ok(
-      read("../src/components/organization/organization-view.tsx").includes(
+      !read("../src/components/organization/organization-view.tsx").includes(
         "BackBarScreen",
       ),
-      "the section detail still returns to the Admin index",
+      "no drill-in bar left on the Admin screen",
     );
   });
 

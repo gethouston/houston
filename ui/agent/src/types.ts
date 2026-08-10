@@ -30,14 +30,3 @@ export type FilePreviewData =
 export type LoadFilePreview = (
   file: FileEntry,
 ) => Promise<FilePreviewData | null>;
-
-// --- Instructions panel ---
-
-export interface InstructionFile {
-  /** File name (e.g., "CLAUDE.md") */
-  name: string;
-  /** Human-readable label shown above the field (e.g., "CLAUDE.md") */
-  label: string;
-  /** Current file content */
-  content: string;
-}

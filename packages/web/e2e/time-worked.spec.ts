@@ -1,7 +1,11 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openAdminSection, openAnalyticsLens } from "./support/settings-nav";
+import {
+  analyticsLensTab,
+  openAdminSection,
+  openAnalyticsLens,
+} from "./support/settings-nav";
 import { screen } from "./support/team-nav";
 
 /**
@@ -14,7 +18,7 @@ import { screen } from "./support/team-nav";
  *
  * The gate did not move, only what it hides: the lens exists solely where the
  * gateway advertises `capabilities.computeUsage` (desktop/self-host never do),
- * and elsewhere the Analytics sub-tab is simply absent — which is also what
+ * and elsewhere its lens lozenge is simply absent — which is also what
  * keeps its query from firing, since only the SELECTED lens is mounted.
  *
  * Reaching it needs Admin, so every test here arms a Teams OWNER on top of the
@@ -81,15 +85,17 @@ test("without the computeUsage capability Analytics offers no Time worked lens",
 
   // A painted screen FIRST, so the absence below cannot pass on an Analytics
   // section that simply has not rendered: the two base lenses are there, and
-  // Activity — the lead one — is the mounted body.
-  const lens = (name: string) =>
-    screen(page).getByRole("tab", { name, exact: true });
-  await expect(lens("Activity")).toHaveAttribute("data-state", "active");
-  await expect(lens("Usage")).toBeVisible();
+  // Activity — the lead one, the drilled-in header's identity lozenge — is
+  // the mounted body.
+  await expect(analyticsLensTab(page, "Activity")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(analyticsLensTab(page, "Usage")).toBeVisible();
 
-  // Not merely empty: the sub-tab is absent, so nothing leads to a lens that
+  // Not merely empty: the lozenge is absent, so nothing leads to a lens that
   // would have nothing to show — and its query never fires.
-  await expect(lens("Time worked")).toHaveCount(0);
+  await expect(analyticsLensTab(page, "Time worked")).toHaveCount(0);
   await expect(screen(page).getByText("Time worked")).toHaveCount(0);
 });
 
@@ -125,7 +131,7 @@ test("with data the lens shows the total, daily bars, and per-agent rows", async
   await page.goto("/");
   await openAnalyticsLens(page, "Time worked");
 
-  // The Analytics sub-tab names the lens, so the body leads with its range
+  // The header's lens lozenge names the lens, so the body leads with its range
   // control rather than a heading of its own — and no "Usage"/"Compute" tab
   // grouping from the old screen survives.
   await expect(

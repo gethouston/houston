@@ -61,13 +61,13 @@ test("About me is a rail row of its own, owning the whole window", async ({
       "What every agent knows about you before it starts.",
     ),
   ).toBeVisible();
-  // The PERSON's slot, not the company's: the empty state names who it is about.
-  await expect(
-    screen(page).getByText("Tell every agent about you"),
-  ).toBeVisible();
-  await expect(
-    screen(page).getByRole("button", { name: "Write user context" }),
-  ).toBeVisible();
+  // No invite empty state on a standing-context page: the editor is already
+  // open, and the greyed suggestion — which names the PERSON, not the
+  // company — is the invitation.
+  await expect(screen(page).getByRole("textbox")).toHaveAttribute(
+    "placeholder",
+    /I'm Juan/,
+  );
 
   // Nothing sits above a top-level screen, so it offers no way back — a bar
   // naming the Inbox would be the old door leaking through.
@@ -85,23 +85,29 @@ test("Company context is a section of Admin, editing the workspace's half", asyn
   await page.goto("/");
   await openAdminSection(page, "Company context");
 
-  // The WORKSPACE slot: the same editor, pointed at the shared half.
-  await expect(
-    screen(page).getByText("Tell every agent about this workspace"),
-  ).toBeVisible();
-  await expect(
-    screen(page).getByRole("button", { name: "Write workspace context" }),
-  ).toBeVisible();
+  // The WORKSPACE slot: the editor is already open (no invite empty state),
+  // and its greyed suggestion is a short 3-part example of company context.
+  const editor = screen(page).getByRole("textbox");
+  await expect(editor).toHaveAttribute("placeholder", /## Who we are/);
+  await expect(editor).toHaveAttribute("placeholder", /## How we communicate/);
 
   // And only that half. The person's context is not duplicated inside Admin —
   // it is theirs, not the admin's, which is the whole reason the two split.
-  await expect(
-    screen(page).getByText("Tell every agent about you"),
-  ).toHaveCount(0);
+  await expect(editor).toHaveCount(1);
+  await expect(editor).not.toHaveAttribute("placeholder", /I'm Juan/);
 
-  // It sits one level under the Admin index, so it DOES carry a back bar —
-  // the mirror of About me's missing one.
+  // The identity lozenge ("Admin") stands for this very section, so it is
+  // the current one — and the section titles ITSELF: a level-2 hero naming
+  // Company context and what belongs in it, since the lozenge doesn't.
   await expect(
     screen(page).getByRole("button", { name: "Admin", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  await expect(
+    screen(page).getByRole("heading", { name: "Company context", level: 2 }),
+  ).toBeVisible();
+  await expect(
+    screen(page).getByText(
+      "What all your agents know on every task and routine they run.",
+    ),
   ).toBeVisible();
 });
