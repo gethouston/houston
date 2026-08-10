@@ -37,6 +37,7 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
     // true, which is a server-teams host talking about a team you joined.
     leaveGroup: t("shell:sidebar.teams.leave"),
     groupMenu: t("shell:sidebar.teams.menu"),
+    groupSettings: t("shell:sidebar.teamSettings"),
   };
 }
 

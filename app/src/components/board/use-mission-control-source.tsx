@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { pendingMissionSurface } from "../../lib/board-surface-nav";
 import { missionMatchesPerson } from "../../lib/mission-people";
 import type { Agent } from "../../lib/types";
@@ -33,6 +33,7 @@ import { usePendingMissionTarget } from "./use-pending-mission-target";
 export function useMissionControlSource(
   agents: Agent[],
   scope?: MissionControlScope,
+  modeToggle?: ReactNode,
 ): BoardSource {
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
@@ -140,6 +141,7 @@ export function useMissionControlSource(
           isSearchingText={missionSearch.isSearchingText}
           onFilterUserIdChange={setFilterUserId}
           onSearchChange={missionSearch.setQuery}
+          modeToggle={modeToggle}
           newMission={{
             agents: newMission.newMissionAgents,
             menuOpen: newMission.menuOpen,

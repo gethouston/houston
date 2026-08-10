@@ -64,20 +64,15 @@ describe("archived is a labelled tab, and the only door", () => {
     isDefault: false,
   });
 
-  it("is a section every caller gets, ordered last before Manage agents", () => {
-    // The archive is the team's WORK in the past tense, never something you
-    // need a role to read: only Settings is gated.
+  it("is a mode of Tasks, never a section", () => {
     const member = visibleTeamSectionsForTeam(
       { multiplayer: true, role: "user" } as never,
       team(),
     );
-    ok(member.includes("archived"));
+    ok(!member.includes("archived" as never));
     ok(!member.includes("settings"));
-    ok(member.indexOf("archived") > member.indexOf("files"));
-    ok(member.at(-1) === "archived");
-
     const admin = visibleTeamSectionsForTeam(null, team());
-    ok(admin.indexOf("archived") === admin.indexOf("settings") - 1);
+    ok(!admin.includes("archived" as never));
   });
 
   it("carries no entry pill and no overflow: the tab IS the entry", () => {
@@ -104,10 +99,8 @@ describe("archived is a labelled tab, and the only door", () => {
     // act changed, from a mode flip to `openTeamView`.
     ok(missionControlSource.includes("useBoardSurfaceOnNav"));
     ok(archivedSectionSource.includes("useBoardSurfaceOnNav"));
-    ok(missionControlSource.includes('openTeamView(team.id, "archived"'));
-    ok(
-      archivedSectionSource.includes('openTeamView(team.id, "mission-control"'),
-    );
+    ok(missionControlSource.includes("setArchived(true)"));
+    ok(archivedSectionSource.includes("onShowActive"));
   });
 
   it("hands a re-activated mission back to the Tasks section", () => {

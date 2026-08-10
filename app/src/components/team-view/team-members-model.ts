@@ -167,7 +167,7 @@ export function teamLeaveUserId(
 /**
  * The gateway's ceiling on a team name: `1..60` RUNES after trimming (C13, and
  * `validName` in the fake host). Written down once here so the input cap and
- * the Save gate below can never drift from each other.
+ * the sidebar rename input can never drift from it.
  */
 export const TEAM_NAME_MAX_RUNES = 60;
 
@@ -183,17 +183,4 @@ export function clampToRunes(value: string, max: number): string {
   if (!(max > 0)) return "";
   const runes = [...value];
   return runes.length <= max ? value : runes.slice(0, max).join("");
-}
-
-/**
- * The name an edited team-name field would commit, or `null` when the write is
- * not worth making: an empty name, one longer than the gateway's ceiling (both
- * answered `400 invalid_name`), or one that only differs from the saved name by
- * whitespace.
- */
-export function teamNameCommit(draft: string, saved: string): string | null {
-  const trimmed = draft.trim();
-  if (trimmed === "" || trimmed === saved.trim()) return null;
-  if ([...trimmed].length > TEAM_NAME_MAX_RUNES) return null;
-  return trimmed;
 }

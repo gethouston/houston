@@ -16,6 +16,7 @@ export interface SidebarLabels {
   leaveGroup?: string;
   /** aria label for the group "..." menu trigger. */
   groupMenu?: string;
+  groupSettings?: string;
 }
 
 export const DEFAULT_SIDEBAR_LABELS: Required<SidebarLabels> = {
@@ -25,4 +26,5 @@ export const DEFAULT_SIDEBAR_LABELS: Required<SidebarLabels> = {
   deleteGroup: "Delete group",
   leaveGroup: "Leave group",
   groupMenu: "Group options",
+  groupSettings: "Group settings",
 };

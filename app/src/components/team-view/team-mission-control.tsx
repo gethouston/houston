@@ -1,10 +1,13 @@
-import { useCallback, useMemo } from "react";
+import { Button } from "@houston-ai/core";
+import { Archive } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
 import type { BoardSurface } from "../../lib/board-surface-nav";
 import type { TeamView } from "../../lib/teams-model";
 import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
 import { useBoardSurfaceOnNav } from "../board/use-board-surface-on-nav";
+import { TeamArchived } from "./team-archived";
 import { TeamMissionEmpty } from "./team-empty";
 import { TeamMissionBoard } from "./team-mission-board";
 import { useTeamBoardScope } from "./use-team-board-scope";
@@ -26,8 +29,8 @@ import { useTeamBoardScope } from "./use-team-board-scope";
  */
 export function TeamMissionControl({ team }: { team: TeamView }) {
   const agents = useAgentStore((s) => s.agents);
-  const openTeamView = useUIStore((s) => s.openTeamView);
-  const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
+  const { t } = useTranslation("teams");
+  const [archived, setArchived] = useState(false);
   // Before the empty-team return: hooks may not run conditionally.
   const scope = useTeamBoardScope(team);
   // The FULL roster's paths, so this is the one shared `all-conversations`
@@ -42,20 +45,35 @@ export function TeamMissionControl({ team }: { team: TeamView }) {
   // the surface is decided from the RAW sweep rows, never from a board's own
   // items, and the owning surface claims it — only the act of "show that
   // surface" changed, from a mode flip to a section change.
-  const show = useCallback(
-    (surface: BoardSurface) => {
-      if (surface === "active") return;
-      openTeamView(team.id, "archived", { agentFilter: teamAgentFilter });
-    },
-    [openTeamView, team.id, teamAgentFilter],
-  );
+  const show = useCallback((surface: BoardSurface) => {
+    if (surface === "active") return;
+    setArchived(true);
+  }, []);
   useBoardSurfaceOnNav({ rows: rawConversations, show });
 
   if (team.agents.length === 0) return <TeamMissionEmpty team={team} />;
 
+  if (archived) {
+    return <TeamArchived team={team} onShowActive={() => setArchived(false)} />;
+  }
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <TeamMissionBoard agents={agents} scope={scope} />
+      <TeamMissionBoard
+        agents={agents}
+        scope={scope}
+        modeToggle={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setArchived(true)}
+            data-tour-target="archivedMissions"
+          >
+            <Archive className="size-4" />
+            {t("teamView.archive.open")}
+          </Button>
+        }
+      />
     </div>
   );
 }

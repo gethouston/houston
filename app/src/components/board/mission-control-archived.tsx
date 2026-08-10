@@ -1,4 +1,5 @@
 import { AIBoard } from "@houston-ai/board";
+import { Button } from "@houston-ai/core";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { pendingMissionSurface } from "../../lib/board-surface-nav";
@@ -57,6 +58,7 @@ export function MissionControlArchived({
   onNewMission: (agent: Agent) => void;
 }) {
   const { t } = useTranslation("board");
+  const { t: tTeams } = useTranslation("teams");
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
   const addToast = useUIStore((s) => s.addToast);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
@@ -128,6 +130,11 @@ export function MissionControlArchived({
             // active board's tools take. The archive's filter is by agent
             // rather than by person, but it sits in the same slot.
             agentFilter={agentFilter}
+            modeToggle={
+              <Button variant="secondary" size="sm" onClick={onShowActive}>
+                {tTeams("teamView.archive.back")}
+              </Button>
+            }
             newMission={{
               agents: scopedAgents,
               menuOpen: newMissionMenuOpen,

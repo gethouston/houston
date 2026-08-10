@@ -17,18 +17,16 @@ import { litRows } from "./support/team-nav";
  *
  * What this spec guards, against the REAL rail:
  *   - the default block is labelled with the WORKSPACE name (the fake host's
- *     seed workspace is `default`) and folds like any other block, while
- *     carrying none of the affordances a stored team has, because it is the
- *     container rather than a group;
+ *     seed workspace is `default`), folds like any other block, and carries
+ *     the local backend's only Team settings door;
  *   - the five arms of the header click: arriving from elsewhere opens the team
  *     and folds every other (an accordion, in ONE stored write); on the team
  *     you are already on it gives a pinned agent back first, then folds, then
  *     unfolds;
  *   - EXACTLY ONE row is ever filled: the block that owns the open view, or one
  *     of its agents when the board is narrowed to that agent;
- *   - an agent row carries NO needs-you count, and a FOLDED block rolls its
- *     members' waiting work up onto its header, so folding a team is the one
- *     place that count still shows in the rail;
+ *   - an agent row carries its needs-you count, and a FOLDED block rolls its
+ *     members' waiting work up onto its header;
  *   - folding the "Your teams" band takes the whole list, and survives a reload.
  *
  * Assertions are deliberately SIDEBAR-side (the row that is lit) rather than
@@ -110,25 +108,26 @@ test("the default block is the workspace, and a block is a name and its agents",
   expect(workspaceName).not.toEqual("");
   await expect(defaultHeader(page)).toHaveCount(1);
   await expect(defaultHeader(page)).toContainText(workspaceName);
-  // One control, and nothing else. On THIS backend the block is the workspace
-  // itself, and nothing in the stack can rename a workspace (the adapter's
-  // `renameWorkspace` is synthetic and no host route exists), so it carries no
-  // "..." at all. A host that owns the teams DOES give it the one
-  // "Change icon & name" entry — `agent-teams.spec.ts` holds that half.
-  await expect(defaultHeader(page).getByRole("button")).toHaveCount(1);
+  // The default block has its navigation button plus the settings menu. It is
+  // the local backend's only door to Team settings.
+  await expect(defaultHeader(page).getByRole("button")).toHaveCount(2);
   await expect(defaultHeader(page).getByRole("button")).toHaveAttribute(
     "aria-expanded",
     "true",
   );
-  await expect(
-    defaultHeader(page).getByRole("button", { name: "Team options" }),
-  ).toHaveCount(0);
+  await defaultHeader(page)
+    .getByRole("button", { name: "Team options" })
+    .click();
+  await expect(page.locator("[data-group-settings]")).toHaveText(
+    "Team settings",
+  );
+  await page.keyboard.press("Escape");
 
   // The rail names TEAMS and nothing else: a team's destinations moved onto its
   // own screen, so no block draws a row for one.
   await expect(rail(page).locator("[data-sidebar-section-row]")).toHaveCount(0);
   await expect(rail(page).getByText("Routines")).toHaveCount(0);
-  await expect(rail(page).getByText("Manage agents")).toHaveCount(0);
+  await expect(rail(page).getByText("Team settings")).toHaveCount(0);
 
   // A named team DOES carry a header menu, which is the affordance the default
   // block is missing.
@@ -171,6 +170,24 @@ test("the rail fills exactly ONE row: the team, or one of its agents", async ({
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await expect(litRows(defaultHeader(page))).toHaveCount(1);
+});
+
+test("an agent manager gets the row menu and Edit agent drills into settings", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
+  await expect(page.getByRole("menu").getByRole("menuitem")).toHaveCount(3);
+  await expect(
+    page.getByRole("menuitem", { name: "Rename agent" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Change color" }),
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "Edit agent" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Houston settings" }),
+  ).toBeVisible();
 });
 
 test("clicking a team you are NOT in opens it and folds every other", async ({
@@ -260,14 +277,12 @@ test("a folded team rolls its agents' waiting work up onto its header", async ({
   // Home is already this first named team and its block starts open.
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-  // Open, NOTHING in the block counts: an agent row shows no needs-you chip at
-  // all any more (a rail says what exists and where you are, not the score),
-  // and the header defers to the rows while they are on screen.
-  await expect(rail(page).getByLabel(/needs? you/i)).toHaveCount(0);
+  // Open, the agent row carries the count and the header defers to it.
+  await expect(rail(page).getByLabel(/needs? you/i)).toHaveCount(1);
+  await expect(rail(page).getByLabel(/needs? you/i)).toHaveText("1");
 
   // Folded, the rows leave the rail and the header says it on their behalf —
-  // the one place the count survives here, because there is nothing left to
-  // read it off.
+  // preserving the signal while the agent row is hidden.
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await expect(work.getByLabel(/needs? you/i)).toHaveCount(1);

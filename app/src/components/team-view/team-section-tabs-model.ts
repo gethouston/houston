@@ -28,9 +28,7 @@ export type TeamSectionTabKey =
    *  list of section names has to name the board too. */
   | "teamView.tabs.missionControl"
   | "teamView.tabs.routines"
-  | "teamView.tabs.files"
-  | "teamView.tabs.archived"
-  | "teamView.tabs.settings";
+  | "teamView.tabs.files";
 
 /** One lozenge: the section it opens, and the `teams` i18n key it reads as. */
 export interface TeamSectionTab {
@@ -39,7 +37,7 @@ export interface TeamSectionTab {
 }
 
 /** Every section EXCEPT the board, which the team's own lozenge stands for. */
-export type LabelledTeamSectionId = Exclude<TeamSectionId, "mission-control">;
+export type LabelledTeamSectionId = "routines" | "files";
 
 /**
  * Section id -> its label key in the `teams` namespace. Exhaustive over the
@@ -55,8 +53,6 @@ export const TEAM_SECTION_TAB_KEYS: Record<
 > = {
   routines: "teamView.tabs.routines",
   files: "teamView.tabs.files",
-  archived: "teamView.tabs.archived",
-  settings: "teamView.tabs.settings",
 };
 
 /**
@@ -67,6 +63,6 @@ export function teamSectionTabs(
   sections: readonly TeamSectionId[],
 ): TeamSectionTab[] {
   return sections
-    .filter((id): id is LabelledTeamSectionId => id !== "mission-control")
+    .filter((id): id is LabelledTeamSectionId => id in TEAM_SECTION_TAB_KEYS)
     .map((id) => ({ id, labelKey: TEAM_SECTION_TAB_KEYS[id] }));
 }

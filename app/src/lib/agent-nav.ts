@@ -17,11 +17,11 @@
 import type { Agent, Capabilities } from "@houston-ai/engine-client";
 import { isAgentManager } from "./agent-access.ts";
 import {
+  canConfigureTeam,
   canSeeTeamSettings,
   type TeamSectionId,
   type TeamView,
   teamOfAgent,
-  visibleTeamSectionsForTeam,
 } from "./teams-model.ts";
 
 /** The things a caller can ask for on one agent. */
@@ -100,7 +100,6 @@ export function canOpenAgentSettings(
    *  org-wide answer, which is never WIDER than the per-team one. */
   team?: TeamView | null,
 ): boolean {
-  if (team)
-    return visibleTeamSectionsForTeam(caps ?? null, team).includes("settings");
+  if (team) return canConfigureTeam(caps ?? null, team);
   return canSeeTeamSettings(caps ?? null) || isAgentManager(caps, agent);
 }

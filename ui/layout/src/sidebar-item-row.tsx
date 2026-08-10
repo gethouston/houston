@@ -41,6 +41,7 @@ export function SidebarItemRow({
       draggable
       onActivate={() => onSelect(item.id)}
       trailing={item.trailing}
+      affordance={item.affordance}
     />
   );
 }

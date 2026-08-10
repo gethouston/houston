@@ -11,6 +11,8 @@ export interface SidebarItem {
   icon?: ReactNode;
   /** Optional right-aligned slot for row badges or status indicators. */
   trailing?: ReactNode;
+  /** Optional control rendered outside the navigation button. */
+  affordance?: ReactNode;
 }
 
 export interface SidebarNavItemEntry {

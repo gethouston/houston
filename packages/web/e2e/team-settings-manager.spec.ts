@@ -12,7 +12,8 @@ import {
 } from "./support/sidebar-layout";
 import {
   openAgentSettingsSection,
-  openTeamSection,
+  openManageAgents,
+  openManagePane,
   rail,
   screen,
   type TeamSection,
@@ -146,7 +147,8 @@ async function openShell(page: Page): Promise<void> {
 
 /** Open one agent's Job description from the Payroll team's settings list. */
 async function openJobDescription(page: Page, name: string): Promise<void> {
-  await openTeamSection(page, "Manage agents");
+  await openManageAgents(page);
+  await openManagePane(page, "agents");
   await screen(page)
     .getByRole("button", { name: `Open ${name}` })
     .click();
@@ -160,19 +162,20 @@ test("a member who manages an agent gets Manage agents on THAT team only", async
   await openShell(page);
 
   // Home is Payroll, the team holding the agent they manage: it offers the
-  // configure tab, so its row is four tabs wide.
-  await expect(sectionTab(page, "Manage agents")).toBeVisible();
-  await expect(sectionTabs(page)).toHaveCount(5);
+  // configure tabs. This is the local backend, so membership does not exist.
+  await rail(page)
+    .locator("[data-sidebar-group-header='payroll']")
+    .getByRole("button", { name: "Group options" })
+    .click();
+  await expect(page.locator("[data-group-settings]")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sectionTabs(page)).toHaveCount(3);
 
   // And the tab goes somewhere: the row can never promise a section the screen
   // refuses to render (both read `visibleTeamSectionsForTeam` for this team).
-  await openTeamSection(page, "Manage agents");
-  await expect(sectionTab(page, "Manage agents")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  await openManageAgents(page);
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Payroll" }),
+    screen(page).getByRole("heading", { level: 1, name: "Payroll settings" }),
   ).toBeVisible();
 
   // The team whose agents they only use offers its WORK and nothing else.
@@ -183,17 +186,20 @@ test("a member who manages an agent gets Manage agents on THAT team only", async
   await expect(sectionTab(page, "Tasks")).toBeVisible();
   await expect(sectionTab(page, "Routines")).toBeVisible();
   await expect(sectionTab(page, "Files")).toBeVisible();
-  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
-  await expect(sectionTabs(page)).toHaveCount(4);
+  await rail(page)
+    .locator("[data-sidebar-group-header='support']")
+    .getByRole("button", { name: "Group options" })
+    .click();
+  await expect(page.locator("[data-group-settings]")).toHaveCount(0);
+  await expect(sectionTabs(page)).toHaveCount(3);
 
   // Nor does the workspace's own team, whose one agent they also only use — the
   // gate is the caller's access on THIS team's agents, nothing about the team.
   await openTeamOfAgent(page, SEED_AGENT_NAME);
-  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
-  await expect(sectionTabs(page)).toHaveCount(4);
+  await expect(sectionTabs(page)).toHaveCount(3);
 });
 
-test("the team's shared context leads its settings and saves into the layout", async ({
+test("the team's shared context tab saves into the layout", async ({
   page,
 }) => {
   // The LOCAL backend of the same card: a named team's context is the stored
@@ -202,7 +208,8 @@ test("the team's shared context leads its settings and saves into the layout", a
   // dialog onto this is gone, so this page is the one door.
   await armMemberWorkspace(page);
   await openShell(page);
-  await openTeamSection(page, "Manage agents");
+  await openManageAgents(page);
+  await openManagePane(page, "context");
 
   await expect(
     screen(page).getByRole("heading", { name: "Team context" }),
@@ -242,7 +249,8 @@ test("Manage agents lists EVERY agent of the team, not just the managed one", as
 }) => {
   await armMemberWorkspace(page);
   await openShell(page);
-  await openTeamSection(page, "Manage agents");
+  await openManageAgents(page);
+  await openManagePane(page, "agents");
 
   // The list is the team, whole. Hiding the agents they merely use would make
   // the team read as smaller than it is.
@@ -278,7 +286,7 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   // Back to the team, then into an agent of the SAME team they only use: the
   // page is reachable (it is honest — they can see what the agent is told) and
   // renders read-only. The gateway is the real enforcer either way.
-  await sectionTab(page, "Tasks").click();
+  await screen(page).locator("[data-agent-settings-back]").click();
   // An EMPTY board auto-opens its composer, and a two-agent team asks who
   // runs it first (use-mc-new-mission). That is the designed landing, not a
   // detour — acknowledge and dismiss it before navigating on.

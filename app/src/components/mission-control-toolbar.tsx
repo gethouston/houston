@@ -41,6 +41,7 @@ interface MissionControlToolbarProps {
    *  same slot the person filter takes on the active board, so both board
    *  sections read left to right as search, filter, primary action. */
   agentFilter?: ReactNode;
+  modeToggle?: ReactNode;
   /** The section's primary action. Both board sections carry it, and both
    *  answer "whose task?" the same way (`board/new-mission-target.ts`). */
   newMission?: {
@@ -63,6 +64,7 @@ export function MissionControlToolbar({
   isSearchingText = false,
   onSearchChange,
   agentFilter,
+  modeToggle,
   newMission,
   collapsed,
 }: MissionControlToolbarProps) {
@@ -95,6 +97,7 @@ export function MissionControlToolbar({
         />
       )}
       {agentFilter}
+      {modeToggle}
       {newMission && <NewMissionButton {...newMission} />}
     </>
   );

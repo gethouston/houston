@@ -19,7 +19,6 @@ const SECTIONS: (TeamSectionId | null)[] = [
   "mission-control",
   "routines",
   "files",
-  "archived",
   "settings",
   null,
 ];

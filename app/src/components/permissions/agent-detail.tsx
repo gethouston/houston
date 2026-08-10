@@ -1,6 +1,6 @@
-import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { Button } from "@houston-ai/core";
 import { UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
@@ -11,8 +11,15 @@ import { useAgentStore } from "../../stores/agents";
 import { agentShareSurface } from "../agent/agent-access-model";
 import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
+import { agentSettingsSections } from "../agent-settings/agent-settings-nav.ts";
 import { AgentSettingsPage } from "../agent-settings/agent-settings-page";
-import { PageContainer, PageHero } from "../shell/page-shell";
+import {
+  advanceAgentSettingsSelection,
+  resolveAgentSettingsSection,
+} from "../agent-settings/agent-settings-selection.ts";
+import { PageHeaderTools } from "../shell/page-header/page-header-tools";
+import { PageContainer } from "../shell/page-shell";
+import { AgentDetailHeader } from "./agent-detail-header";
 
 /**
  * Permissions agent detail: an org owner/admin opens ONE agent on the canonical
@@ -40,10 +47,14 @@ import { PageContainer, PageHero } from "../shell/page-shell";
  */
 export function AgentDetail({
   agent,
-  initialSection = "people",
+  teamName,
+  onBack,
+  initialSection,
   onSectionShown,
 }: {
   agent: Agent;
+  teamName: string;
+  onBack: () => void;
   /** Section to open on first mount (a deep link may land on Apps). */
   initialSection?: AgentSettingsSection;
   /** The section actually on screen, for the caller's analytics. */
@@ -58,6 +69,37 @@ export function AgentDetail({
   // The ONE reading of "am I in a personal space", shared with the rail and the
   // Members card, rather than a second inline derivation off the workspace id.
   const shareSurface = agentShareSurface(capabilities, agent, personalSpace);
+  const sections = useMemo(
+    () => agentSettingsSections(capabilities),
+    [capabilities],
+  );
+  const [selected, setSelected] = useState<AgentSettingsSection>(() =>
+    resolveAgentSettingsSection(sections, initialSection),
+  );
+  const pendingRef = useRef<AgentSettingsSection | undefined>(initialSection);
+  const requestRef = useRef({ agentId: agent.id, section: initialSection });
+  const selectedRef = useRef(selected);
+  const select = useCallback((section: AgentSettingsSection) => {
+    selectedRef.current = section;
+    setSelected(section);
+  }, []);
+
+  useEffect(() => {
+    const request = requestRef.current;
+    if (request.agentId !== agent.id || request.section !== initialSection) {
+      requestRef.current = { agentId: agent.id, section: initialSection };
+      pendingRef.current = initialSection;
+    }
+    const next = advanceAgentSettingsSelection({
+      sections,
+      pending: pendingRef.current,
+      current: selectedRef.current,
+    });
+    pendingRef.current = next.pending;
+    if (next.selected !== selectedRef.current) select(next.selected);
+  }, [agent.id, initialSection, sections, select]);
+
+  useEffect(() => onSectionShown?.(selected), [selected, onSectionShown]);
 
   // Leave the settings page and go where the agent WORKS: its team's Mission
   // Control, filtered to this agent.
@@ -67,51 +109,55 @@ export function AgentDetail({
   };
 
   return (
-    <PageContainer className="pb-10">
-      <div className="mb-8 flex items-start gap-3">
-        <HoustonAvatar color={resolveAgentColor(agent.color)} diameter={40} />
-        <PageHero
-          className="flex-1"
-          title={agent.name}
-          subtitle={t("org.agentDetail.subtitle")}
-          trailing={
-            <div className="flex items-center gap-2">
-              {shareSurface !== "none" && (
+    <div className="flex h-full flex-col">
+      <AgentDetailHeader
+        agent={agent}
+        teamName={teamName}
+        sections={sections}
+        active={selected}
+        onSelect={select}
+        onBack={onBack}
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+        <PageContainer className="pt-6 pb-10">
+          <PageHeaderTools>
+            {() => (
+              <div className="flex items-center gap-2">
+                {shareSurface !== "none" && (
+                  <Button
+                    variant="secondary"
+                    className="rounded-full"
+                    onClick={() => setShareOpen(true)}
+                  >
+                    <UserPlus className="size-4" />
+                    {shareSurface === "view"
+                      ? t("share.viewButton")
+                      : t("share.button")}
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   className="rounded-full"
-                  onClick={() => setShareOpen(true)}
+                  onClick={openAgent}
                 >
-                  <UserPlus className="size-4" />
-                  {shareSurface === "view"
-                    ? t("share.viewButton")
-                    : t("share.button")}
+                  {t("org.agentDetail.openAgent")}
                 </Button>
-              )}
-              <Button
-                variant="secondary"
-                className="rounded-full"
-                onClick={openAgent}
-              >
-                {t("org.agentDetail.openAgent")}
-              </Button>
-            </div>
-          }
-        />
+              </div>
+            )}
+          </PageHeaderTools>
+          <AgentSettingsPage
+            agent={agent}
+            section={selected}
+            readOnly={!canManage}
+          />
+        </PageContainer>
       </div>
-
-      <AgentSettingsPage
-        agent={agent}
-        initialSection={initialSection}
-        readOnly={!canManage}
-        onSectionShown={onSectionShown}
-      />
       <AgentShareSurfaces
         agent={agent}
         surface={shareSurface}
         open={shareOpen}
         onOpenChange={setShareOpen}
       />
-    </PageContainer>
+    </div>
   );
 }

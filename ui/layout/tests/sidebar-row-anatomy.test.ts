@@ -322,19 +322,11 @@ describe("sidebar row anatomy", () => {
     ok(cls.includes("data-[state=open]:"));
   });
 
-  it("gives an AGENT row no menu, and no gutter standing in for one", () => {
-    // An agent is renamed, recoloured, moved and deleted on its team's Manage
-    // agents page. The rail row therefore carries no "..." — and, unlike a
-    // block header, it reserves no empty column either: every agent row lost
-    // the menu together, so none of them truncates at a different point from
-    // its neighbours, and the 28px goes back to the names. The gutter rule is
-    // about a stack of BLOCKS, where one header having a menu and the next not
-    // is the case that reads as two lists.
+  it("gives an AGENT row a host-supplied affordance outside its button", () => {
     const row = source("sidebar-item-row.tsx");
-    strictEqual(row.includes("affordance"), false, "no affordance slot");
+    ok(row.includes("affordance={item.affordance}"));
     strictEqual(row.includes("sidebarRowAffordanceGutter"), false, "no gutter");
-    strictEqual(row.includes("DropdownMenu"), false, "no menu");
-    // And nothing in the library can start a rename or a delete on a row.
+    strictEqual(row.includes("DropdownMenu"), false, "host owns the menu");
     for (const gone of ["onStartRename", "onDeleteItem", "menuContent"]) {
       strictEqual(source("sidebar-row-context.ts").includes(gone), false, gone);
     }

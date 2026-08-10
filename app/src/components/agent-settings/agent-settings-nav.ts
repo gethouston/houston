@@ -23,14 +23,8 @@ export type AgentSettingsSection =
   | "models"
   | "skills";
 
-/** The two rail groups. `context` = what the agent knows; `permissions` = what it and its team may reach. */
+/** The two semantic groups used only to keep hidden deep links nearby. */
 export type AgentSettingsGroupId = "context" | "permissions";
-
-export interface AgentSettingsGroup {
-  id: AgentSettingsGroupId;
-  /** The group's sections, in rail order. Never empty in a rendered rail. */
-  sections: AgentSettingsSection[];
-}
 
 /** The props EVERY section body takes. `readOnly` renders its non-manager face. */
 export interface AgentSectionProps {
@@ -84,21 +78,20 @@ export function agentAccessSections(
  * sections plus Skills, which has no org gate at all (it is the per-agent
  * Skills surface every deployment ships).
  */
-export function agentSettingsGroups(
+export function agentSettingsSections(
   caps: Capabilities | null | undefined,
-): AgentSettingsGroup[] {
-  return [
-    { id: "context", sections: contextSections() },
-    { id: "permissions", sections: [...agentAccessSections(caps), "skills"] },
-  ];
+): AgentSettingsSection[] {
+  return [...contextSections(), ...agentAccessSections(caps), "skills"];
 }
 
-/** Every visible section of a rail, flattened in rail order. */
-export function agentSettingsSections(
-  groups: readonly AgentSettingsGroup[],
-): AgentSettingsSection[] {
-  return groups.flatMap((group) => group.sections);
-}
+export const SECTION_TITLES = {
+  "job-description": "agents:subTabs.instructions",
+  learnings: "agentAdmin.rows.knowledge.title",
+  people: "agentAdmin.rows.people.title",
+  integrations: "agentAdmin.rows.integrations.title",
+  models: "agentAdmin.rows.model.title",
+  skills: "agents:subTabs.skills",
+} as const satisfies Record<AgentSettingsSection, string>;
 
 /**
  * Deep-link from a turn-summary file target (a semantic file update the agent

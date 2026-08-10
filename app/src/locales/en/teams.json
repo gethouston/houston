@@ -130,11 +130,8 @@
     "memberCount_one": "{{count}} member",
     "memberCount_other": "{{count}} members",
     "settings": {
-      "nameLabel": "Team name",
-      "nameSave": "Save",
-      "nameSaving": "Saving…",
       "members": {
-        "title": "Members",
+        "title": "People",
         "subtitle": "The people who joined this team.",
         "empty": "No one has joined this team yet.",
         "error": "We could not load this list. Please try again.",
@@ -477,9 +474,20 @@
       "missionControl": "Tasks",
       "routines": "Routines",
       "files": "Files",
-      "archived": "Archived",
-      "settings": "Manage agents",
       "label": "Team sections"
+    },
+    "manage": {
+      "identity": "{{name}} settings",
+      "agents": "Edit agents",
+      "tabs": {
+        "context": "Team context",
+        "agents": "Agents",
+        "people": "People"
+      }
+    },
+    "archive": {
+      "open": "Archived",
+      "back": "Back to tasks"
     },
     "move": {
       "trigger": "More actions for {{name}}",

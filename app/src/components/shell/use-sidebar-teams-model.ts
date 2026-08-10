@@ -4,15 +4,17 @@ import type {
   SidebarItem,
 } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import { useCallback } from "react";
+import { createElement, useCallback } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useTeams } from "../../hooks/use-teams";
+import { isAgentManager } from "../../lib/agent-access";
 import {
   resolveTeamHighlight,
   sidebarSelectedAgentId,
 } from "../../lib/sidebar-teams";
+import { canConfigureTeam } from "../../lib/team-permissions";
 import {
   type TeamView,
   teamById,
@@ -20,6 +22,7 @@ import {
 } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
+import { AgentRowSidebarMenu } from "./agent-row-sidebar-menu";
 import type { AgentItemArgs } from "./agent-sidebar-items";
 import { canEditTeamIdentity } from "./team-identity";
 import { buildTeamSidebarLists } from "./team-sidebar-lists";
@@ -159,6 +162,17 @@ export function useSidebarTeamsModel(args: {
     layout: sidebar.layout,
     teams,
     selectedAgentId,
+    onOpenSettingsFor: (team) =>
+      canConfigureTeam(capabilities, team)
+        ? () => {
+            useUIStore.getState().openTeamView(team.id, "settings");
+            args.closeMobileSidebar();
+          }
+        : undefined,
+    menuFor: (agent, needsYou) =>
+      isAgentManager(capabilities, agent)
+        ? createElement(AgentRowSidebarMenu, { agent, needsYou })
+        : undefined,
     affordancesFor: teamActions.affordancesFor,
     // The default team is asked the same question every named team is: on a
     // host that owns the teams C13 lets its owner rename it like any other,

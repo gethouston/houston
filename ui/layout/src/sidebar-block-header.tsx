@@ -76,6 +76,7 @@ export function SidebarBlockHeader({
         <SidebarGroupMenu
           affordances={block.affordances}
           labels={ctx.labels}
+          onOpenSettings={block.onOpenSettings}
           onEdit={block.onEdit}
           onDelete={
             group && onDeleteGroup ? () => onDeleteGroup(group.id) : undefined

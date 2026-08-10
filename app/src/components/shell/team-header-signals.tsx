@@ -15,7 +15,7 @@ export interface TeamHeaderSignals {
  * The glyph and the badge a team block's header carries.
  *
  * **Only while it is FOLDED.** Open, the block's agent rows carry their own
- * running ring and their own needs-you chip, and a header repeating them would
+ * running ring and needs-you chip, and a header repeating them would
  * count the same waiting work twice inside one block. Folded, those rows are
  * not on screen at all, and "collapse this team" must never mean "stop telling
  * me my agents need something" — so the header says it on their behalf.

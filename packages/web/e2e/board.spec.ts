@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openTeamSection } from "./support/team-nav";
+import { openArchivedTasks, openTeamSection } from "./support/team-nav";
 
 /**
  * The persisted query mirror's query-key heads, or null while no mirror
@@ -335,7 +335,7 @@ test("archives a Done mission from its card", async ({ page }) => {
 
   // Off the active board, and found again in the archived list.
   await expect(page.getByText("Draft the launch email")).toHaveCount(0);
-  await openTeamSection(page, "Archived");
+  await openArchivedTasks(page);
   await expect(page.getByText("Draft the launch email")).toBeVisible();
 });
 

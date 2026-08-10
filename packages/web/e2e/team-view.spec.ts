@@ -2,7 +2,14 @@ import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { createTeam } from "./support/sidebar-create";
-import { type TeamSection, teamTab } from "./support/team-nav";
+import {
+  openArchivedTasks,
+  openManageAgents,
+  openManagePane,
+  returnToActiveTasks,
+  type TeamSection,
+  teamTab,
+} from "./support/team-nav";
 
 /**
  * The TEAM VIEW and its own chrome. Where `sidebar-teams.spec.ts` asserts what
@@ -214,11 +221,12 @@ test("Manage agents lists the team's agents and drills into the agent settings p
   await openShell(page);
   const workspace = await workspaceName(page);
 
-  await sectionTab(page, "Manage agents").click();
+  await openManageAgents(page);
   // ONE title on the page: row 1's. The section's own page header collapsed
   // into it, so the team's name is never printed twice.
   await expect(teamTitle(page, workspace)).toBeVisible();
   await expect(screen(page).getByRole("heading", { level: 1 })).toHaveCount(1);
+  await openManagePane(page, "agents");
   await expect(
     screen(page).getByRole("button", { name: "Open Kai" }),
   ).toBeVisible();
@@ -227,23 +235,21 @@ test("Manage agents lists the team's agents and drills into the agent settings p
   ).toBeVisible();
 
   // Drilling in lands on the ONE canonical agent settings page — this is its
-  // only door, in every deployment — under a back bar naming the team.
+  // only door, in every deployment — under a back chip naming Team settings.
   await screen(page).getByRole("button", { name: "Open Kai" }).click();
   await expect(
-    page
-      .getByRole("navigation", { name: "Agent settings sections" })
-      .getByRole("button", { name: "People with access" }),
+    screen(page).locator("[data-agent-section-tab='people']"),
   ).toBeVisible();
-  await screen(page)
-    .locator("button:not([data-team-section-tab])")
-    .filter({ hasText: workspace })
-    .click();
+  await expect(
+    screen(page).getByRole("heading", { level: 1, name: "Kai" }),
+  ).toBeVisible();
+  await screen(page).locator("[data-agent-settings-back]").click();
   await expect(
     screen(page).getByRole("button", { name: "Open Kai" }),
   ).toBeVisible();
 });
 
-test("the archive is a TAB, and the tab is both doors", async ({ page }) => {
+test("the archive toggle round-trips inside Tasks", async ({ page }) => {
   await openShell(page);
   const workspace = await workspaceName(page);
 
@@ -253,19 +259,15 @@ test("the archive is a TAB, and the tab is both doors", async ({ page }) => {
   // better than by the old pill-in / back-button-out pair, because one
   // permanently visible LABELLED control is both doors.
   await sectionTab(page, "Tasks").click();
-  await sectionTab(page, "Archived").click();
-  await expect(sectionTab(page, "Archived")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  await openArchivedTasks(page);
   await expect(teamTitle(page, workspace)).toBeVisible();
   await expect(screen(page).getByRole("heading", { level: 2 })).toHaveCount(0);
   await expect(
     screen(page).getByRole("button", { name: "Back to tasks" }),
-  ).toHaveCount(0);
+  ).toBeVisible();
 
   // And back, by the same control.
-  await sectionTab(page, "Tasks").click();
+  await returnToActiveTasks(page);
   await expect(sectionTab(page, "Tasks")).toHaveAttribute(
     "aria-current",
     "page",
@@ -282,7 +284,7 @@ test("a team's archive lets go of the shared panel when the user leaves", async 
   // The archive is not a `MissionBoard`, so it carries its own release of the
   // ONE shell detail panel (HOU-1165's family). Without it the archived chat
   // keeps portaling into that panel after the user has navigated away.
-  await sectionTab(page, "Archived").click();
+  await openArchivedTasks(page);
   await screen(page).getByText("Old expense report").first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
@@ -290,22 +292,20 @@ test("a team's archive lets go of the shared panel when the user leaves", async 
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
-test("a plain member gets Routines and Files, and only loses Manage agents", async ({
+test("a plain member gets work tabs and loses all manager tabs", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, MEMBER_CAPS);
   await openShell(page);
 
-  // Routines and Files show the team's WORK, so they are every member's; only
-  // Manage agents CONFIGURES, so only Manage agents is gated. The tab row IS
-  // the visible-sections list, so a missing tab is the whole gate.
+  // Routines and Files show the team's work, so they are every member's. The
+  // three manager tabs are gated together by the visible-sections list.
   await expect(sectionTab(page, "Routines")).toBeVisible();
   await expect(sectionTab(page, "Files")).toBeVisible();
-  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
-  // Archived is the team's WORK in the past tense, so a member keeps it.
-  await expect(sectionTab(page, "Archived")).toBeVisible();
-  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(4);
+  await expect(page.locator("[data-group-settings]")).toHaveCount(0);
+  await expect(page.locator("[data-agent-menu]")).toHaveCount(0);
+  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(3);
 
   // And the tabs go somewhere: the row can never promise a section the screen
   // will not render (`visibleTeamSectionsForTeam` is the one list both read).
@@ -328,7 +328,7 @@ test("a plain member lands on Tasks, with the team named once", async ({
   await armCapabilities(request, MEMBER_CAPS);
   await openShell(page);
 
-  await expect(sectionTab(page, "Manage agents")).toHaveCount(0);
+  await expect(page.locator("[data-group-settings]")).toHaveCount(0);
   await sectionTab(page, "Tasks").click();
   await expect(sectionTab(page, "Tasks")).toHaveAttribute(
     "aria-current",

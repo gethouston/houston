@@ -3,9 +3,11 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { openAdminSection } from "./support/settings-nav";
 import {
+  agentSectionTab,
   expectTeamSections,
   openAgentSettings,
-  openTeamSection,
+  openManageAgents,
+  openManagePane,
   screen,
 } from "./support/team-nav";
 
@@ -19,9 +21,8 @@ import {
  * page that had to be kept in agreement with the per-team one, for no surface a
  * user could not already reach.
  *
- * The page itself is unchanged and fully agent-centric: a rail with a Context
- * group (Job description, Memory) and a Permissions group (People with access,
- * Apps, AI models, Skills), and the selected section beside it. There is no
+ * The page itself is fully agent-centric: six section lozenges across its
+ * drilled header, and the selected section below. There is no
  * top-level People tab and no per-person lens.
  *
  * This proves the whole shape: the team lists its agents, drilling in shows the
@@ -85,29 +86,20 @@ async function armOrg(request: APIRequestContext): Promise<void> {
  */
 async function openFinance(page: Page): Promise<void> {
   await page.goto("/");
-  await openAgentSettings(page, "Finance Bot");
+  // Straight to People with access: the page itself lands on Job description
+  // (the identity lozenge), but the policy assertions below all live here.
+  await openAgentSettings(page, "Finance Bot", "People with access");
 }
 
-/**
- * One item of the agent settings rail. Scoped to the rail's own landmark: the
- * app sidebar carries same-named entries (Skills, AI Models), so an unscoped
- * lookup would be ambiguous. Substring matching on purpose — a rail item's
- * accessible name also carries its count badge ("People with access 2").
- */
-function railItem(page: Page, name: string) {
-  return page
-    .getByRole("navigation", { name: "Agent settings sections" })
-    .getByRole("button", { name });
-}
-
-test("the team's agent list is the top level, and opening an agent shows the settings rail", async ({
+test("the team's agent list drills into six settings lozenges", async ({
   page,
   request,
 }) => {
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
   await page.goto("/");
-  await openTeamSection(page, "Manage agents");
+  await openManageAgents(page);
+  await openManagePane(page, "agents");
 
   // No top-level People tab — the top level is just the team's agent list.
   await expect(page.getByRole("tab", { name: "Agents" })).toHaveCount(0);
@@ -117,7 +109,7 @@ test("the team's agent list is the top level, and opening an agent shows the set
 
   await screen(page).getByRole("button", { name: "Open Finance Bot" }).click();
 
-  // The rail replaced the three-tab panel: two groups, six sections.
+  // Six top lozenges replace the old grouped rail.
   await expect(page.getByRole("tab", { name: "People" })).toHaveCount(0);
   for (const section of [
     "Job description",
@@ -126,13 +118,12 @@ test("the team's agent list is the top level, and opening an agent shows the set
     "Apps",
     "AI models",
     "Skills",
-  ]) {
-    await expect(railItem(page, section)).toBeVisible();
+  ] as const) {
+    await expect(agentSectionTab(page, section)).toBeVisible();
   }
-  // People opens by default (the drill-in's initial section).
-  await expect(
-    page.getByRole("heading", { name: "Who can use this agent?" }),
-  ).toBeVisible();
+  // The drill-in lands on the FIRST section: the identity lozenge IS the Job
+  // description tab, so the screen opens on who this agent is and what it does.
+  await expect(page.getByLabel("Job description")).toBeVisible();
 });
 
 test("People section: every member has a row, and a Can use -> No access change round-trips", async ({
@@ -143,8 +134,8 @@ test("People section: every member has a row, and a Can use -> No access change 
   await armOrg(request);
   await openFinance(page);
 
-  // People is the default section. The owner is static; Bob has an editable
-  // control showing his current level (Can use).
+  // The owner is static; Bob has an editable control showing his current
+  // level (Can use).
   await expect(page.getByText("you@acme.test")).toBeVisible();
   const bob = page.getByRole("button", {
     name: "Change access for bob@acme.test",
@@ -303,7 +294,7 @@ test("a visible-but-not-manager admin drills into the SAME page, read-only", asy
   await openFinance(page);
 
   // The rail and the People question are there; the controls are not.
-  await expect(railItem(page, "People with access")).toBeVisible();
+  await expect(agentSectionTab(page, "People with access")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Who can use this agent?" }),
   ).toBeVisible();
@@ -325,7 +316,7 @@ test("Apps section: the app ceiling narrows and persists", async ({
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
   await openFinance(page);
-  await railItem(page, "Apps").click();
+  await agentSectionTab(page, "Apps").click();
 
   await expect(
     page.getByRole("heading", { name: "Which apps can this agent use?" }),
@@ -342,7 +333,7 @@ test("Apps section: the app ceiling narrows and persists", async ({
 
   // GET round-trip: a full reload re-reads the agent settings from the host.
   await openFinance(page);
-  await railItem(page, "Apps").click();
+  await agentSectionTab(page, "Apps").click();
   await expect(
     page.getByRole("radio", { name: "Only apps you pick" }),
   ).toBeChecked();
@@ -355,14 +346,14 @@ test("AI models section: the model ceiling editor is present", async ({
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
   await openFinance(page);
-  await railItem(page, "AI models").click();
+  await agentSectionTab(page, "AI models").click();
 
   await expect(
     page.getByRole("heading", { name: "Which AI models can this agent use?" }),
   ).toBeVisible();
 });
 
-test("Context group: the agent's job description and Memory live on the same page", async ({
+test("Job description and Memory live on the same drilled page", async ({
   page,
   request,
 }) => {
@@ -370,14 +361,14 @@ test("Context group: the agent's job description and Memory live on the same pag
   await armOrg(request);
   await openFinance(page);
 
-  await railItem(page, "Job description").click();
-  await expect(railItem(page, "Job description")).toHaveAttribute(
+  await agentSectionTab(page, "Job description").click();
+  await expect(agentSectionTab(page, "Job description")).toHaveAttribute(
     "aria-current",
     "page",
   );
 
-  await railItem(page, "Memory").click();
-  await expect(railItem(page, "Memory")).toHaveAttribute(
+  await agentSectionTab(page, "Memory").click();
+  await expect(agentSectionTab(page, "Memory")).toHaveAttribute(
     "aria-current",
     "page",
   );
@@ -412,7 +403,7 @@ test("a plain member cannot reach the agent settings page at all", async ({
   // lozenge they cannot use would be a dead link, so the strip does not draw
   // one. (The sections are the team screen's own lozenge cluster now; the rail
   // names teams and nothing else.)
-  await expectTeamSections(page, ["Tasks", "Routines", "Files", "Archived"]);
+  await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
 });
 
 test("Admin People roster shows a member's gateway display name, email as a secondary line", async ({

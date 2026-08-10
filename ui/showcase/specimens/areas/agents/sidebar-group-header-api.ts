@@ -14,6 +14,7 @@ export const GROUP_LABELS: Required<SidebarLabels> = {
   deleteGroup: "Delete group",
   leaveGroup: "Leave group",
   groupMenu: "Group options",
+  groupSettings: "Group settings",
 };
 
 /** `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`. */

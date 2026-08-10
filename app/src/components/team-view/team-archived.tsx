@@ -29,10 +29,15 @@ import { useTeamScope } from "./use-team-board-scope";
  * and narrows what it renders through the shared `MissionControlScope`
  * (`useTeamBoardScope`) — never a second key for the team's slice.
  */
-export function TeamArchived({ team }: { team: TeamView }) {
+export function TeamArchived({
+  team,
+  onShowActive,
+}: {
+  team: TeamView;
+  onShowActive: () => void;
+}) {
   const agents = useAgentStore((s) => s.agents);
   const openTeamView = useUIStore((s) => s.openTeamView);
-  const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
   // This section's OWN filter, not the team-wide pin: narrowing a list of
   // finished work must not silently narrow the board the user goes back to
   // (`team-agent-filter-capsule.tsx` says why). It resets with the section,
@@ -52,11 +57,9 @@ export function TeamArchived({ team }: { team: TeamView }) {
   const show = useCallback(
     (surface: BoardSurface) => {
       if (surface === "archived") return;
-      openTeamView(team.id, "mission-control", {
-        agentFilter: teamAgentFilter,
-      });
+      onShowActive();
     },
-    [openTeamView, team.id, teamAgentFilter],
+    [onShowActive],
   );
   useBoardSurfaceOnNav({ rows: rawConversations, show });
 
@@ -69,9 +72,10 @@ export function TeamArchived({ team }: { team: TeamView }) {
     (agent: Agent) => {
       setNewMissionMenuOpen(false);
       openTeamView(team.id, "mission-control", { agentFilter: agent.id });
+      onShowActive();
       setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
     },
-    [openTeamView, team.id],
+    [openTeamView, team.id, onShowActive],
   );
   const requestNewMission = useCallback(
     (open: boolean) => {
@@ -112,11 +116,7 @@ export function TeamArchived({ team }: { team: TeamView }) {
         newMissionMenuOpen={newMissionMenuOpen}
         onNewMissionMenuChange={requestNewMission}
         onNewMission={startNewMissionFor}
-        onShowActive={() =>
-          openTeamView(team.id, "mission-control", {
-            agentFilter: teamAgentFilter,
-          })
-        }
+        onShowActive={onShowActive}
       />
     </div>
   );

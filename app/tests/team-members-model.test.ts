@@ -8,7 +8,6 @@ import {
   type TeamRosterPerson,
   teamLeaveUserId,
   teamMembersView,
-  teamNameCommit,
 } from "../src/components/team-view/team-members-model.ts";
 import type { ServerTeamFacts, TeamView } from "../src/lib/teams-model.ts";
 
@@ -217,50 +216,13 @@ describe("teamLeaveUserId", () => {
   });
 });
 
-describe("teamNameCommit", () => {
-  it("commits a trimmed, changed name", () => {
-    assert.equal(teamNameCommit("  Growth  ", "Sales"), "Growth");
-  });
-
-  it("refuses an empty or whitespace-only name", () => {
-    assert.equal(teamNameCommit("", "Sales"), null);
-    assert.equal(teamNameCommit("   ", "Sales"), null);
-  });
-
-  it("refuses a name that only differs by whitespace", () => {
-    assert.equal(teamNameCommit("  Sales ", "Sales"), null);
-    assert.equal(teamNameCommit("Sales", " Sales "), null);
-  });
-
-  // The gateway's rule is 1..60 RUNES after trimming (`validName` in
-  // packages/fake-host/src/agent-teams-wire.ts, mirroring C13). Save must never
-  // promise a write it would refuse with `invalid_name`.
-  it("commits a name of exactly the 60-rune ceiling", () => {
-    const name = "a".repeat(TEAM_NAME_MAX_RUNES);
-    assert.equal(teamNameCommit(`  ${name}  `, "Sales"), name);
-  });
-
-  it("refuses one rune past the ceiling", () => {
-    assert.equal(teamNameCommit("a".repeat(61), "Sales"), null);
-  });
-
-  // The case a naive `maxLength` / `.length` check gets wrong: 60 emoji are 120
-  // UTF-16 code units but 60 code points, and the gateway ACCEPTS them.
-  it("commits 60 astral runes even though they are 120 UTF-16 units", () => {
-    const name = "🙂".repeat(60);
-    assert.equal(name.length, 120);
-    assert.equal(teamNameCommit(name, "Sales"), name);
-  });
-
-  it("refuses 61 astral runes", () => {
-    assert.equal(teamNameCommit("🙂".repeat(61), "Sales"), null);
-  });
-});
-
 describe("clampToRunes", () => {
   it("leaves a value at or under the ceiling untouched", () => {
     assert.equal(clampToRunes("Sales", 60), "Sales");
-    assert.equal(clampToRunes("a".repeat(60), 60), "a".repeat(60));
+    assert.equal(
+      clampToRunes("a".repeat(TEAM_NAME_MAX_RUNES), TEAM_NAME_MAX_RUNES),
+      "a".repeat(TEAM_NAME_MAX_RUNES),
+    );
     assert.equal(clampToRunes("", 60), "");
   });
 

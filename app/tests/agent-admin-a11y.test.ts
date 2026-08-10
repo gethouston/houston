@@ -23,12 +23,7 @@ describe("Agent Settings a11y", () => {
     ok(src.includes("useRef"), "keeps element refs to focus the checked radio");
   });
 
-  it("the tab renders no <h1>; sections use <h2>", () => {
-    const rail = read(
-      "../src/components/agent-settings/agent-settings-rail.tsx",
-    );
-    ok(!rail.includes("<h1"), "the settings rail renders no page-level h1");
-
+  it("section bodies use <h2> beneath the drilled header", () => {
     // The models editor body (question heading included) lives in the shared
     // ModelsAllowlistEditor; the agent section is a thin wrapper around it.
     const models = read(

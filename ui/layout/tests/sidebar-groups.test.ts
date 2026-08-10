@@ -83,6 +83,7 @@ describe("affordanceAllowed", () => {
   it("allows every group affordance when there is no mask at all", () => {
     assert.equal(affordanceAllowed(undefined, "edit"), true);
     assert.equal(affordanceAllowed(undefined, "delete"), true);
+    assert.equal(affordanceAllowed(undefined, "settings"), true);
   });
 
   it("hides leave unless the mask asks for it explicitly", () => {
@@ -105,6 +106,13 @@ describe("affordanceAllowed", () => {
     assert.equal(affordanceAllowed({ delete: false }, "edit"), true);
   });
 
+  it("treats settings as a veto-style affordance", () => {
+    assert.equal(affordanceAllowed(undefined, "settings"), true);
+    assert.equal(affordanceAllowed({}, "settings"), true);
+    assert.equal(affordanceAllowed({ settings: true }, "settings"), true);
+    assert.equal(affordanceAllowed({ settings: false }, "settings"), false);
+  });
+
   it("treats only false as a veto, so a partial mask retracts nothing else", () => {
     const mask: SidebarGroupAffordances = { delete: false };
     assert.equal(affordanceAllowed(mask, "delete"), false);
@@ -114,14 +122,15 @@ describe("affordanceAllowed", () => {
   it("answers each affordance independently", () => {
     const mask: SidebarGroupAffordances = {
       edit: true,
+      settings: true,
       delete: false,
       leave: true,
     };
     assert.deepEqual(
-      (["edit", "delete", "leave"] as const).map((a) =>
+      (["settings", "edit", "delete", "leave"] as const).map((a) =>
         affordanceAllowed(mask, a),
       ),
-      [true, false, true],
+      [true, true, false, true],
     );
   });
 

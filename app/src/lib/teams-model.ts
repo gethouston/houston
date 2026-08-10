@@ -6,6 +6,7 @@ import type { Agent } from "./types.ts";
 // re-exported here, so `teams-model` stays the ONE door onto a team's rules for
 // every caller: the "may I do this to a team?" gates, and the team's SECTIONS.
 export {
+  canConfigureTeam,
   canDeleteTeam,
   canLeaveTeam,
   canRenameTeam,

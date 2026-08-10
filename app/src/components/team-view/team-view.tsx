@@ -10,7 +10,6 @@ import {
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
-import { TeamArchived } from "./team-archived";
 import { TeamChrome } from "./team-chrome";
 import { TEAM_STRIP_THRESHOLDS } from "./team-chrome-layout";
 import { TeamFiles } from "./team-files";
@@ -27,7 +26,6 @@ const SECTIONS: Record<TeamSectionId, (props: { team: Team }) => ReactNode> = {
   "mission-control": TeamMissionControl,
   routines: TeamRoutines,
   files: TeamFiles,
-  archived: TeamArchived,
   settings: TeamSettings,
 };
 
@@ -76,7 +74,9 @@ export function TeamView() {
     // of the two layouts is up.
     <PageHeaderToolsProvider thresholds={TEAM_STRIP_THRESHOLDS}>
       <div className="flex h-full flex-col overflow-hidden">
-        <TeamChrome team={team} sections={sections} section={section} />
+        {section !== "settings" && (
+          <TeamChrome team={team} sections={sections} section={section} />
+        )}
         {/* `min-h-0` so a section that scrolls (Manage agents) or owns a fixed
             toolbar over a scroller (Tasks, Routines) gets the column's leftover
             height instead of growing the page past the screen. */}

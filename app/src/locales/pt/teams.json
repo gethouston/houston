@@ -130,11 +130,8 @@
     "memberCount_one": "{{count}} membro",
     "memberCount_other": "{{count}} membros",
     "settings": {
-      "nameLabel": "Nome da equipe",
-      "nameSave": "Salvar",
-      "nameSaving": "Salvando…",
       "members": {
-        "title": "Membros",
+        "title": "Pessoas",
         "subtitle": "As pessoas que entraram nesta equipe.",
         "empty": "Ninguém entrou nesta equipe ainda.",
         "error": "Não conseguimos carregar esta lista. Tente de novo.",
@@ -477,9 +474,20 @@
       "missionControl": "Tarefas",
       "routines": "Rotinas",
       "files": "Arquivos",
-      "archived": "Arquivadas",
-      "settings": "Gerenciar agentes",
       "label": "Seções da equipe"
+    },
+    "manage": {
+      "identity": "Configurações de {{name}}",
+      "agents": "Editar agentes",
+      "tabs": {
+        "context": "Contexto da equipe",
+        "agents": "Agentes",
+        "people": "Pessoas"
+      }
+    },
+    "archive": {
+      "open": "Arquivadas",
+      "back": "Voltar para tarefas"
     },
     "move": {
       "trigger": "Mais ações para {{name}}",

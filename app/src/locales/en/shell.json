@@ -1,5 +1,7 @@
 {
   "sidebar": {
+    "teamSettings": "Team settings",
+    "agentMenu": { "editAgent": "Edit agent" },
     "aboutMe": "About me",
     "addAgent": "New agent",
     "agentStore": "Agent Store",

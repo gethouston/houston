@@ -41,7 +41,7 @@ describe("teamSectionTabs", () => {
     const sections = visibleTeamSectionsForTeam(caps(), team());
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      sections.filter((id) => id !== "mission-control"),
+      ["routines", "files"],
     );
     // The board is dropped, never relabelled: the team's lozenge IS that door.
     assert.ok(
@@ -59,20 +59,21 @@ describe("teamSectionTabs", () => {
     );
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "archived"],
+      ["routines", "files"],
     );
   });
 
-  it("gives a team OWNER the Manage agents tab, last", () => {
+  it("gives a team owner all manager tabs in their pinned order", () => {
     const sections = visibleTeamSectionsForTeam(
       caps({ multiplayer: true, role: "user" } as Partial<Capabilities>),
       team({
         server: { joined: true, owner: true, memberCount: 2, sortOrder: 0 },
+        context: "",
       }),
     );
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "archived", "settings"],
+      ["routines", "files"],
     );
   });
 
@@ -80,6 +81,13 @@ describe("teamSectionTabs", () => {
     const keys = Object.values(TEAM_SECTION_TAB_KEYS);
     assert.equal(new Set(keys).size, keys.length);
     for (const key of keys) assert.match(key, /^teamView\.tabs\./);
+  });
+
+  it("never turns settings into a tab", () => {
+    assert.deepEqual(
+      teamSectionTabs(["mission-control", "routines", "files", "settings"]),
+      teamSectionTabs(["mission-control", "routines", "files"]),
+    );
   });
 
   it("draws nothing for an empty section list", () => {

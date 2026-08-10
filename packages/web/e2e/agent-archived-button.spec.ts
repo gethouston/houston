@@ -1,6 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
-import { openTeamSection, screen } from "./support/team-nav";
+import { openArchivedTasks, openTeamSection, screen } from "./support/team-nav";
 
 /**
  * The board's archived-mission control and its reset contract. There is ONE
@@ -32,7 +32,7 @@ test("the Activity archived button swaps to archived missions and back", async (
   await expect(tab).toBeVisible();
   await expect(page.getByText("Quarterly review")).toHaveCount(0);
 
-  await openTeamSection(page, "Archived");
+  await openArchivedTasks(page);
   await expect(page.getByText("Quarterly review")).toBeVisible();
 
   // HOU-1043's rule, satisfied by the shape that replaced its controls: the
@@ -61,7 +61,7 @@ test("a team's sections SWAP, so the archive leaves no rows behind", async ({
   // hooks and holds its rows. An archive still mounted behind Files would keep
   // its sweep warm and its rows in the DOM, where the next spec's
   // `screen`-scoped lookup would find them.
-  await openTeamSection(page, "Archived");
+  await openArchivedTasks(page);
   await expect(screen(page).getByText("Reset me")).toBeVisible();
   await openTeamSection(page, "Files");
   await expect(page.getByText("Reset me")).toHaveCount(0);
@@ -78,7 +78,7 @@ test("leaving the board for another TOP-LEVEL view resets its archived board too
   });
   await page.goto("/");
 
-  await openTeamSection(page, "Archived");
+  await openArchivedTasks(page);
   await expect(screen(page).getByText("Left open")).toBeVisible();
 
   // A genuine TOP-LEVEL navigation and back — the case a section swap cannot
@@ -95,6 +95,6 @@ test("leaving the board for another TOP-LEVEL view resets its archived board too
   // In-view switching is untouched: the reset fires only on the way back onto
   // the glass, never while the user is standing on the screen moving between
   // its tabs.
-  await openTeamSection(page, "Archived");
+  await openArchivedTasks(page);
   await expect(screen(page).getByText("Left open")).toBeVisible();
 });

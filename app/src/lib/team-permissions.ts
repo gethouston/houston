@@ -1,4 +1,5 @@
 import type { Capabilities } from "@houston-ai/engine-client";
+import { isAgentManager } from "./agent-access.ts";
 import { canSeeMembers, isMultiplayer } from "./org-roles.ts";
 import type { TeamView } from "./teams-model.ts";
 
@@ -31,6 +32,17 @@ import type { TeamView } from "./teams-model.ts";
  */
 export function canSeeTeamSettings(caps: Capabilities | null): boolean {
   return !isMultiplayer(caps) || canSeeMembers(caps);
+}
+
+/** Whether the caller may configure this team or at least one agent in it. */
+export function canConfigureTeam(
+  caps: Capabilities | null,
+  team: TeamView,
+): boolean {
+  return (
+    (team.server ? team.server.owner : canSeeTeamSettings(caps)) ||
+    team.agents.some((agent) => isAgentManager(caps, agent))
+  );
 }
 
 /**

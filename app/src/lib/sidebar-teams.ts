@@ -93,6 +93,11 @@ export function teamRowActive(args: {
    *  resolved to one of its members). The block's own fill defers to it. */
   agentRowLit: boolean;
 }): boolean {
+  if (
+    args.highlight.teamId === args.teamId &&
+    args.highlight.section === "settings"
+  )
+    return true;
   if (args.agentRowLit) return false;
   return (
     args.highlight.teamId === args.teamId && args.highlight.section !== null

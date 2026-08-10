@@ -23,14 +23,12 @@ const OWNER_SECTIONS: TeamSectionId[] = [
   "mission-control",
   "routines",
   "files",
-  "archived",
   "settings",
 ];
 const MEMBER_SECTIONS: TeamSectionId[] = [
   "mission-control",
   "routines",
   "files",
-  "archived",
 ];
 
 const openTeam = {
@@ -76,7 +74,7 @@ describe("resolveTeamHighlight", () => {
       "mission-control",
     );
     // A section this caller CAN see is kept, never collapsed to the first one.
-    for (const teamSection of ["routines", "files", "archived"] as const) {
+    for (const teamSection of ["routines", "files"] as const) {
       assert.equal(
         resolveTeamHighlight({ ...openTeam, teamSection }, OWNER_SECTIONS)
           .section,
@@ -104,9 +102,25 @@ describe("teamRowActive", () => {
     // Narrowed to one agent, that agent's row is the more precise answer. Two
     // fills in one block claim the user is in two places at once, which is
     // worse than one answer that is merely coarse.
+    const workHighlight = resolveTeamHighlight(
+      { ...openTeam, teamSection: "files" },
+      OWNER_SECTIONS,
+    );
     assert.equal(
-      teamRowActive({ teamId: "g1", highlight, agentRowLit: true }),
+      teamRowActive({
+        teamId: "g1",
+        highlight: workHighlight,
+        agentRowLit: true,
+      }),
       false,
+    );
+  });
+
+  it("keeps settings on the team header even if an agent row is named", () => {
+    const settings = resolveTeamHighlight(openTeam, OWNER_SECTIONS);
+    assert.equal(
+      teamRowActive({ teamId: "g1", highlight: settings, agentRowLit: true }),
+      true,
     );
   });
 
@@ -262,7 +276,7 @@ describe("sidebarSelectedAgentId", () => {
     // OWN agent; Routines and Archived carry a section-local filter of their
     // own. A lit agent row under any of them would claim a narrowing nothing
     // on screen is doing — and clicking it again would look like a no-op.
-    for (const teamSection of ["files", "routines", "archived"] as const) {
+    for (const teamSection of ["files", "routines"] as const) {
       assert.equal(
         sidebarSelectedAgentId({
           viewMode: TEAM_VIEW_ID,
