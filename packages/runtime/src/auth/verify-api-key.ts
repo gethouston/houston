@@ -1,10 +1,13 @@
 import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { classifyProviderError } from "../ai/provider-error";
 import { modelFor, safeGetModel } from "../ai/providers";
+import { QWEN_PROVIDER_ID } from "../ai/qwen-dashscope";
 import { nvidiaGated, retryNvidiaFallbacks } from "./nvidia-verify";
+import { verifyQwenRegions } from "./qwen-verify";
 import {
   ApiKeyVerifyError,
   noVerdict,
+  PROVES_AUTH,
   raisedMessage,
   rejected,
   VERIFY_TIMEOUT_MS,
@@ -36,18 +39,19 @@ export { ApiKeyVerifyError, raisedMessage } from "./verify-errors";
  *    a visible failure, never a silent "connected".
  */
 
-/** Error kinds that prove the credential was ACCEPTED by the provider. */
-const PROVES_AUTH = new Set([
-  "rate_limited",
-  "quota_exhausted",
-  "model_unavailable",
-  "context_overflow",
-]);
-
 export async function verifyApiKey(
   providerId: string,
   key: string,
 ): Promise<void> {
+  // Qwen keys are REGION-scoped (Alibaba Model Studio international): probe
+  // every region and persist the accepting one (`qwen-verify.ts`, HOU-1077).
+  if (providerId === QWEN_PROVIDER_ID) {
+    await verifyQwenRegions(providerId, (m) =>
+      probeCompletion(providerId, m, key),
+    );
+    return;
+  }
+
   const model = safeGetModel(providerId, modelFor(providerId), false);
   if (!model)
     throw new Error(`${providerId} offers no model to verify the key against`);

@@ -1,6 +1,7 @@
 // `getProviders` is pi-ai's legacy static-catalog read, preserved on `/compat`.
 import { getProviders } from "@earendil-works/pi-ai/compat";
 import { piOAuthProviders } from "./pi-oauth";
+import { QWEN_PROVIDER_ID } from "./qwen-dashscope";
 
 /**
  * The generic api-key-provider predicate, derived from pi-ai's own registries so
@@ -14,8 +15,15 @@ import { piOAuthProviders } from "./pi-oauth";
  * load is deterministic and identical on desktop and inside a cloud pod.
  */
 
-/** Every provider id pi-ai knows — its full baked model registry (~35). */
-const PI_PROVIDER_IDS: ReadonlySet<string> = new Set<string>(getProviders());
+/**
+ * Every provider id pi-ai knows — its full baked model registry (~35) — plus
+ * Houston's own `qwen` extension provider (./qwen-dashscope), which connects
+ * with a pasted key exactly like an uncurated pi provider.
+ */
+const PI_PROVIDER_IDS: ReadonlySet<string> = new Set<string>([
+  ...getProviders(),
+  QWEN_PROVIDER_ID,
+]);
 
 /**
  * pi-ai provider ids that authenticate via an OAuth subscription sign-in

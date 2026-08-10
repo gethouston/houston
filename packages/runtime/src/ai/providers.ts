@@ -30,6 +30,7 @@ import {
   piModelIds,
   piProviderIds,
 } from "./pi-catalog";
+import { QWEN_PROVIDER_ID, qwenModel } from "./qwen-dashscope";
 
 /**
  * Supported providers. The provider id is the SAME string pi-ai uses for its
@@ -450,12 +451,21 @@ export function safeGetModel(
 
   const pp = provider as BuiltinProvider;
   const mp = modelId as Parameters<typeof getModel>[1];
+  // Houston's qwen extension provider resolves from its own catalog — pi's
+  // getModel doesn't know the id (see ./qwen-dashscope). Typed to getModel's
+  // own contract (its declared return is non-optional; the runtime-undefined
+  // case is what the pinned guard below checks) so callers keep the exact
+  // pre-extension signature.
+  const lookup = (id: string): Model<Api> =>
+    (provider === QWEN_PROVIDER_ID
+      ? qwenModel(id)
+      : getModel(pp, id as Parameters<typeof getModel>[1])) as Model<Api>;
   if (pinned) {
     // pi-ai's getModel returns `undefined` (it never throws) for an id the
     // provider doesn't offer. A pinned id is NOT auto-corrected, but it must
     // still be validated here: returning undefined would crash the turn
     // downstream with a raw `Cannot read properties of undefined` TypeError.
-    const m = getModel(pp, mp);
+    const m = lookup(mp);
     if (!m) throw new Error(`${provider} model "${modelId}" is not available`);
     return m;
   }
@@ -468,9 +478,9 @@ export function safeGetModel(
       `[providers] ${provider} model "${modelId}" is not offered; ` +
         `falling back to "${fallback}"`,
     );
-    return getModel(pp, fallback as Parameters<typeof getModel>[1]);
+    return lookup(fallback);
   }
-  return getModel(pp, mp);
+  return lookup(mp);
 }
 
 /**

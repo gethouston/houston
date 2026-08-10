@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { ModelRegistry, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { bindCustomProviderRegistrar } from "../ai/openai-compatible";
+import { ensureQwenRuntimeProvider } from "../ai/qwen-dashscope";
 import { anthropicCredentialCached } from "../backends/claude/credential-status";
 import { config } from "../config";
 import { HoustonAuthStore } from "./credential-store";
@@ -118,6 +119,10 @@ export const modelRuntime = await ModelRuntime.create({
 // is configured (pi 0.82 dispatches strictly by registered provider id).
 // Binding also re-syncs the registration on every later endpoint write.
 bindCustomProviderRegistrar(modelRuntime);
+
+// Houston's qwen (DashScope international) extension provider — pi ships only
+// the Token Plan gateways, so its dispatch registration is Houston's job too.
+ensureQwenRuntimeProvider(modelRuntime);
 
 /** Sync compatibility facade over the runtime (pi's extension-facing API). */
 export const modelRegistry = new ModelRegistry(modelRuntime);
