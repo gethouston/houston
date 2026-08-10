@@ -91,12 +91,16 @@ describe("the promoted top-level screens", () => {
     const src = read("../src/components/about-me/about-me-view.tsx");
     ok(src.includes("export function AboutMeView() {"), "no props");
     ok(!src.includes("BackBarScreen"), "no back bar at a top level");
-    // A pinned editor page: the frame is a height-bounded column and never
-    // scrolls — the document card scrolls inside itself instead.
+    // A pinned editor page: the column is exactly the viewport (the card
+    // scrolls internally); the outer scroller stays only as the short-window
+    // fallback and keeps the shared gutter reservation.
     ok(
-      src.includes('className="min-h-0 flex-1"') &&
-        !src.includes("overflow-y-auto"),
-      "no page scroll around the pinned document card",
+      src.includes("[scrollbar-gutter:stable]"),
+      "the fallback scroller reserves the gutter",
+    );
+    ok(
+      src.includes("flex h-full min-h-0 flex-col"),
+      "the page column hands the viewport height to the pinned card",
     );
   });
 

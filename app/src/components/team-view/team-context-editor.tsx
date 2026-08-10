@@ -47,7 +47,7 @@ export function TeamContextEditor({
         onSave={onSave}
         readOnly={readOnly}
         placeholder={labels.placeholder}
-        minRows={6}
+        layout={{ rows: 6 }}
         ariaLabel={labels.title}
         dataTestId="team-context-input"
       />

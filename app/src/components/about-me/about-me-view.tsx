@@ -30,9 +30,11 @@ export function AboutMeView() {
   const editor = useContextSlot("user");
 
   return (
-    // No page scroll: the editor page pins its document card to a fixed
-    // bottom gap, and a longer document scrolls inside the card.
-    <div className="min-h-0 flex-1">
+    // The page column is exactly the viewport (h-full below), so the pinned
+    // document card ends at its fixed gap and its own text scrolls inside
+    // it; the outer scroller only engages as a fallback when a short window
+    // cannot hold even the card's minimum height.
+    <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
       <PageContainer className="flex h-full min-h-0 flex-col pt-10">
         <ContextEditorPage
           title={t("aboutMe.title")}

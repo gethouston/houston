@@ -77,8 +77,10 @@ export function MarkdownToolbar({
   ] as const;
 
   return (
-    <div
-      role="toolbar"
+    // A labelled fieldset, not role="toolbar": that role promises the
+    // roving-tabindex arrow-key pattern, and seven honest tab stops beat a
+    // half-implemented widget contract.
+    <fieldset
       aria-label={t("editor.toolbar.label")}
       className="flex items-center gap-0.5 border-b border-line px-2 py-1.5"
     >
@@ -90,7 +92,14 @@ export function MarkdownToolbar({
           size="icon-sm"
           aria-label={t(`editor.toolbar.${key}`)}
           aria-pressed={active[key]}
-          className={active[key] ? "bg-chip text-ink" : "text-ink-muted"}
+          // The pressed fill carries its own hover counterpart: the ghost
+          // variant's hover:bg-hover would otherwise outrank it and blank
+          // the active state exactly while the pointer is on it.
+          className={
+            active[key]
+              ? "bg-chip text-ink hover:bg-chip hover:text-ink"
+              : "text-ink-muted"
+          }
           onMouseDown={(event) => event.preventDefault()}
           onClick={run}
         >
@@ -98,6 +107,6 @@ export function MarkdownToolbar({
         </Button>
       ))}
       {trailing ? <div className="ml-auto pr-1.5">{trailing}</div> : null}
-    </div>
+    </fieldset>
   );
 }

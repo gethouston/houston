@@ -717,6 +717,22 @@ test("a team's shared context is the first card of its settings, and it saves", 
   expect(JSON.parse(patches()[0].body ?? "{}")).toEqual({
     context: "We ship on Fridays. Ask before promising a date.",
   });
+
+  // The formatting bar is the feature's whole point for non-technical users:
+  // always visible, and its buttons write MARKDOWN to the wire. Bold the
+  // text through the button (never a `**` typed by hand) and the saved
+  // context carries the markdown marks.
+  await expect(
+    screen(page).getByRole("group", { name: "Formatting" }),
+  ).toBeVisible();
+  await box.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await screen(page).getByRole("button", { name: "Bold", exact: true }).click();
+  await box.blur();
+  await expect.poll(() => patches().length).toBe(2);
+  expect(JSON.parse(patches()[1].body ?? "{}")).toEqual({
+    context: "**We ship on Fridays. Ask before promising a date.**",
+  });
 });
 
 test("a team's context is READ-ONLY for someone who does not own the team", async ({

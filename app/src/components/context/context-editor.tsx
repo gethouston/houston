@@ -1,18 +1,13 @@
 import { cn, Spinner } from "@houston-ai/core";
 import { Check } from "lucide-react";
-import {
-  type ComponentProps,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import type { ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { PageHero } from "../shell/page-shell";
-import { isDirty, shouldReseed } from "./context-editor-model";
+import type { ContextEditorLayout } from "./context-editor-model";
 import { MarkdownEditor } from "./markdown-editor";
+import { useContextEditorSave } from "./use-context-editor-save";
 
-type SaveState = "idle" | "saving" | "saved";
+export type { ContextEditorLayout } from "./context-editor-model";
 
 /**
  * THE standing-prose editor, everywhere the product asks for one: About me,
@@ -20,23 +15,26 @@ type SaveState = "idle" | "saving" | "saved";
  * context — and whatever context surface appears next. One grammar, held by
  * this file so no surface can drift:
  *
- * - **Always open.** No invite empty state: the greyed suggestion inside the
- *   box is the invitation, and it disappears the moment the user types.
+ * - **Always open.** No invite empty state: the greyed rendered example in
+ *   the box is the invitation, gone the moment the user types.
  * - **Saves on blur, says so quietly.** The "Saving…/Saved" status sits in
  *   the toolbar's right seat; a save fires only when the text actually
- *   changed, so tabbing through a page writes nothing.
+ *   changed (`use-context-editor-save` owns the machine and its queue).
  * - **Explains itself ONCE.** The title + explanation live in the heading
- *   ({@link ContextEditorPage}'s hero, or a card's own header); the
- *   box never carries a second description.
+ *   ({@link ContextEditorPage}'s hero, or a card's own header); the box
+ *   never carries a second description.
  * - **Read-only is the same face, locked.** Someone who may not edit still
  *   reads what the agents are told; the text stays legible, never hidden.
+ * - **Never corrupts.** A document the rich schema can't represent (tables,
+ *   raw HTML — agents write these files too) opens in the plain-text
+ *   fallback instead of round-tripping lossily.
  */
 export function ContextEditorBox({
   content,
   onSave,
   placeholder,
+  layout,
   readOnly = false,
-  minRows,
   ariaLabel,
   dataTestId,
 }: {
@@ -44,82 +42,14 @@ export function ContextEditorBox({
   onSave: (content: string) => Promise<unknown>;
   /** The greyed suggestion text — a short example of what belongs here. */
   placeholder: string;
+  layout: ContextEditorLayout;
   readOnly?: boolean;
-  /** Rows floor for a compact card; omitted, the document fills the screen. */
-  minRows?: number;
   /** Accessible name when no visible heading labels the box directly. */
   ariaLabel?: string;
   dataTestId?: string;
 }) {
   const { t } = useTranslation("context");
-  const [value, setValue] = useState(content);
-  const [state, setState] = useState<SaveState>("idle");
-  const valueRef = useRef(content);
-  const baselineRef = useRef(content);
-  const focusedRef = useRef(false);
-  const awaitingSeedRef = useRef(true);
-  const contentPropRef = useRef(content);
-  const onSaveRef = useRef(onSave);
-  const readOnlyRef = useRef(readOnly);
-
-  onSaveRef.current = onSave;
-  readOnlyRef.current = readOnly;
-  useEffect(() => {
-    if (contentPropRef.current === content) return;
-    contentPropRef.current = content;
-    if (
-      !shouldReseed({
-        focused: focusedRef.current,
-        dirty: isDirty(valueRef.current, baselineRef.current),
-      })
-    ) {
-      return;
-    }
-    awaitingSeedRef.current = true;
-    valueRef.current = content;
-    setValue(content);
-  }, [content]);
-
-  useEffect(
-    () => () => {
-      if (
-        readOnlyRef.current ||
-        !isDirty(valueRef.current, baselineRef.current)
-      ) {
-        return;
-      }
-      // The data layer surfaces failures; cleanup has no mounted UI to update.
-      onSaveRef.current(valueRef.current).catch(() => {});
-    },
-    [],
-  );
-
-  const handleChange = useCallback((markdown: string) => {
-    valueRef.current = markdown;
-    setValue(markdown);
-    if (awaitingSeedRef.current) {
-      baselineRef.current = markdown;
-      awaitingSeedRef.current = false;
-    }
-  }, []);
-
-  const handleBlur = async () => {
-    const current = valueRef.current;
-    if (readOnly || !isDirty(current, baselineRef.current)) return;
-    setState("saving");
-    try {
-      await onSave(current);
-      baselineRef.current = current;
-      setState("saved");
-      window.setTimeout(() => setState("idle"), 2000);
-    } catch {
-      // The data layer owns the toast (`lib/tauri.ts` `call()` /
-      // `surfaceEngineError` on every save path) — the box only recovers so
-      // "Saving…" never sticks, and the unsaved text stays in the field for
-      // the user to retry.
-      setState("idle");
-    }
-  };
+  const save = useContextEditorSave({ content, onSave, readOnly });
 
   // Seated on the toolbar's right edge, clear of the text — a fixed seat, so
   // its appearing and fading never moves the document by a pixel.
@@ -127,14 +57,14 @@ export function ContextEditorBox({
     <span
       className={cn(
         "flex items-center gap-1 text-xs tabular-nums transition-opacity duration-200",
-        state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
+        save.state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
       )}
       aria-live="polite"
     >
-      {state === "saved" && <Check aria-hidden className="size-3.5" />}
-      {state === "saving"
+      {save.state === "saved" && <Check aria-hidden className="size-4" />}
+      {save.state === "saving"
         ? t("editor.saving")
-        : state === "saved"
+        : save.state === "saved"
           ? t("editor.saved")
           : ""}
     </span>
@@ -142,21 +72,20 @@ export function ContextEditorBox({
 
   return (
     // The editor is its own document card — no second frame around it. In
-    // full-page mode this box just hands its granted height down.
-    <div className={cn("w-full", minRows === undefined && "h-full min-h-0")}>
+    // fill mode this box just hands its granted height down.
+    <div className={cn("w-full", layout === "fill" && "h-full min-h-0")}>
       <MarkdownEditor
         ariaLabel={ariaLabel}
         dataTestId={dataTestId}
-        content={value}
-        onChange={handleChange}
-        onBlur={handleBlur}
+        content={save.value}
+        plain={save.plainDoc}
+        layout={layout}
+        onChange={save.handleChange}
+        onBlur={save.handleBlur}
+        onFocusChange={save.handleFocusChange}
         readOnly={readOnly}
         placeholder={placeholder}
-        minRows={minRows}
         statusSlot={status}
-        onFocusChange={(focused) => {
-          focusedRef.current = focused;
-        }}
       />
     </div>
   );
@@ -180,7 +109,7 @@ export function ContextEditorPage({
   subtitle: string;
   level?: 1 | 2;
   ready?: boolean;
-} & ComponentProps<typeof ContextEditorBox>) {
+} & Omit<ComponentProps<typeof ContextEditorBox>, "layout">) {
   return (
     // A pinned page: hero on top, the document card taking every remaining
     // pixel, and `pb-6` as THE fixed gap to the window's bottom edge — a
@@ -197,7 +126,7 @@ export function ContextEditorPage({
         // associated with it, so the title doubles as the accessible name
         // unless the caller passes a more specific one.
         <div className="min-h-0 flex-1">
-          <ContextEditorBox ariaLabel={title} {...box} />
+          <ContextEditorBox layout="fill" ariaLabel={title} {...box} />
         </div>
       ) : (
         <div className="flex items-center justify-center py-16">
