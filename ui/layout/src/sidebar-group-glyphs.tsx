@@ -38,8 +38,9 @@
  * KEYS ARE STORED DATA. A group's chosen mark is persisted by NAME (the stored
  * `icon` string, local layout or C13 wire alike), so a key here may be
  * retired but never renamed or repurposed: renaming one silently swaps the mark
- * under every group that picked it. The 24 keys that predate this set are all
- * still here, each on the closest sharp equivalent of the mark it used to name.
+ * under every group that picked it. Every key of every earlier set is still
+ * here — the 56 that predate the 251 expansion included, a handful on legacy
+ * names older than the ionicons-name rule.
  */
 import type { ReactElement } from "react";
 import { SIDEBAR_GROUP_GLYPHS } from "./sidebar-group-glyph-paths";
@@ -50,11 +51,13 @@ export { SIDEBAR_GROUP_GLYPHS } from "./sidebar-group-glyph-paths";
 export type SidebarGroupGlyphName = keyof typeof SIDEBAR_GROUP_GLYPHS;
 
 /**
- * The set in display order — the order the picker's grid lays them out, so the
+ * The set in display order — the order the pickers' grids lay them out, so a
  * grid never has to restate it and two pickers cannot disagree about it. The
- * table is ordered in runs of eight (people and their work, then messages,
- * then tooling, then craft, then trade and care, then nature, then travel), so
- * an eight-column grid reads as seven themed rows rather than as an alphabet.
+ * table is ordered in themed runs (people, communication, commerce, planning,
+ * office, creative, tech, health and food, nature, travel and leisure — the
+ * module split of `sidebar-group-glyph-paths.ts`), so a grid of ANY width
+ * reads as neighbourhoods rather than as an alphabet; column count is each
+ * picker's own (the rail submenu draws 8, the identity popover 14).
  */
 export const SIDEBAR_GROUP_GLYPH_NAMES: readonly SidebarGroupGlyphName[] =
   Object.keys(SIDEBAR_GROUP_GLYPHS) as SidebarGroupGlyphName[];

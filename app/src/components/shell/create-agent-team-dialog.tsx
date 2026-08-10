@@ -15,9 +15,9 @@ import {
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useUIStore } from "../../stores/ui";
 import { AgentShareAddPeople } from "../agent/agent-share-add-people";
-import { TEAM_NAME_MAX_RUNES } from "../team-view/team-members-model";
 import { buildTeamIdentityChoices } from "./team-identity";
 import { TeamIdentityNameRow } from "./team-identity-name-row";
+import { teamNameTooLong } from "./team-identity-save";
 
 export function CreateAgentTeamDialog(props: {
   open: boolean;
@@ -35,7 +35,7 @@ export function CreateAgentTeamDialog(props: {
   const [color, setColor] = useState<string>();
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const trimmed = name.trim();
-  const tooLong = Array.from(trimmed).length > TEAM_NAME_MAX_RUNES;
+  const tooLong = teamNameTooLong(name);
 
   const close = () => {
     props.onOpenChange(false);
@@ -79,13 +79,7 @@ export function CreateAgentTeamDialog(props: {
           onIconChange={setIcon}
           onColorChange={setColor}
           onNameChange={setName}
-          nameInvalid={tooLong}
         />
-        {tooLong && (
-          <p className="text-sm text-danger-text">
-            {t("teams:agentTeams.create.tooLong", { max: TEAM_NAME_MAX_RUNES })}
-          </p>
-        )}
         {props.serverBacked && org?.members && (
           <div>
             <p className="mb-2 text-sm text-ink-muted">

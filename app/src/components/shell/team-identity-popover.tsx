@@ -6,26 +6,17 @@ import {
   ScrollArea,
 } from "@houston-ai/core";
 import { SidebarGroupGlyph } from "@houston-ai/layout";
-import { Check, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TeamIdentityChoices } from "./team-identity";
-
-/**
- * The chip+colour WASH every tinted surface of this picker wears — the same
- * recipe `HoustonAvatar` washes an agent's colour with, so a tinted team
- * button, a hovered glyph cell and an agent avatar speak one grammar. The
- * tint arrives via `--identity-tint`, set inline wherever a wash class is
- * applied (the classes are meaningless without it).
- */
-const WASH =
-  "bg-[color-mix(in_srgb,var(--ht-chip)_82%,var(--identity-tint)_18%)]";
-const WASH_HOVER =
-  "hover:bg-[color-mix(in_srgb,var(--ht-chip)_82%,var(--identity-tint)_18%)]";
-const WASH_STRONG =
-  "bg-[color-mix(in_srgb,var(--ht-chip)_68%,var(--identity-tint)_32%)]";
-const WASH_STRONG_HOVER =
-  "hover:bg-[color-mix(in_srgb,var(--ht-chip)_72%,var(--identity-tint)_28%)]";
+import {
+  ColorSwatch,
+  WASH,
+  WASH_HOVER,
+  WASH_STRONG,
+  WASH_STRONG_HOVER,
+} from "./team-identity-swatch";
 
 /**
  * The team's icon-and-colour picker as a POPOVER on the identity button in the
@@ -53,8 +44,10 @@ export function TeamIdentityPopover({
   icon: string | undefined;
   colorId: string | undefined;
   choices: TeamIdentityChoices;
-  onIconChange: (name: string) => void;
-  onColorChange: (id: string) => void;
+  /** `undefined` = cleared back to the neutral mark (the toggle-off). */
+  onIconChange: (name: string | undefined) => void;
+  /** `undefined` = cleared back to the default ink (the toggle-off). */
+  onColorChange: (id: string | undefined) => void;
 }) {
   const { t } = useTranslation(["shell"]);
   const [query, setQuery] = useState("");
@@ -111,7 +104,11 @@ export function TeamIdentityPopover({
               label={swatch.label}
               value={swatch.value}
               selected={swatch.id === colorId}
-              onClick={() => onColorChange(swatch.id)}
+              // Clicking the SELECTED swatch deselects it: the old "Default"
+              // reset's power without a synthetic gray circle in the palette.
+              onClick={() =>
+                onColorChange(swatch.id === colorId ? undefined : swatch.id)
+              }
             />
           ))}
         </div>
@@ -148,7 +145,9 @@ export function TeamIdentityPopover({
                   aria-pressed={glyph.name === icon}
                   aria-label={glyph.label}
                   title={glyph.label}
-                  onClick={() => onIconChange(glyph.name)}
+                  onClick={() =>
+                    onIconChange(glyph.name === icon ? undefined : glyph.name)
+                  }
                   // A CIRCLE, hover-washed with the chosen colour: the cell
                   // answers the swatch row above it, so hovering a mark
                   // previews the tinted-icon-on-wash pair the trigger will
@@ -179,42 +178,5 @@ export function TeamIdentityPopover({
         </ScrollArea>
       </PopoverContent>
     </Popover>
-  );
-}
-
-/**
- * One circle of the swatch row — the agent palette only, no synthetic
- * "default" entry (a gray no-colour circle would be a colour agents cannot
- * wear). The selected circle carries the check INSIDE it rather than a ring,
- * so one glance finds the current colour without scanning edges.
- */
-function ColorSwatch({
-  label,
-  value,
-  selected,
-  onClick,
-}: {
-  label: string;
-  value: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-full transition-transform duration-100 outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-popover",
-        !selected && "hover:scale-110",
-      )}
-      // A raw colour value never reaches a className: the palette is the
-      // host's, so it arrives as data and is painted inline.
-      style={{ backgroundColor: value }}
-    >
-      {selected && <Check className="size-3.5 text-white" aria-hidden="true" />}
-    </button>
   );
 }

@@ -9,7 +9,6 @@
 export interface SidebarLabels {
   addItem?: string;
   collapseSidebar?: string;
-  createGroup?: string;
   /** The menu's ONE identity entry: opens the host's icon-and-name editor. */
   editGroup?: string;
   deleteGroup?: string;
@@ -22,7 +21,6 @@ export interface SidebarLabels {
 export const DEFAULT_SIDEBAR_LABELS: Required<SidebarLabels> = {
   addItem: "Add item",
   collapseSidebar: "Collapse sidebar",
-  createGroup: "New group",
   editGroup: "Change icon & name",
   deleteGroup: "Delete group",
   leaveGroup: "Leave group",

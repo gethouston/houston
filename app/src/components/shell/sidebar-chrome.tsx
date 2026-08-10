@@ -31,7 +31,6 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
   return {
     addItem: t("shell:sidebar.addAgent"),
     collapseSidebar: t("shell:sidebar.collapse"),
-    createGroup: t("shell:sidebar.newTeam"),
     editGroup: t("shell:sidebar.teams.identity"),
     deleteGroup: t("shell:sidebar.teams.delete"),
     // Only ever rendered for a team whose `affordances.leave` is explicitly

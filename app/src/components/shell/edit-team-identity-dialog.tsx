@@ -10,9 +10,13 @@ import { useTranslation } from "react-i18next";
 import type { TeamView } from "../../lib/teams-model";
 import { teamById } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
-import { TEAM_NAME_MAX_RUNES } from "../team-view/team-members-model";
 import { buildTeamIdentityChoices, teamPaletteColorId } from "./team-identity";
 import { TeamIdentityNameRow } from "./team-identity-name-row";
+import {
+  type TeamIdentityDraft,
+  teamIdentitySaveWrites,
+  teamNameTooLong,
+} from "./team-identity-save";
 
 /**
  * The rail's "Change icon & name" dialog: the ONE menu entry a team's "..."
@@ -45,40 +49,48 @@ export function EditTeamIdentityDialog({
   const team = teamById(teams, teamId);
   const choices = useMemo(() => buildTeamIdentityChoices(t), [t]);
 
+  // The form's SEED is kept beside the draft: the save is a diff against what
+  // the user was shown, never against the live team, whose fields a teammate
+  // may have moved while the dialog was open.
+  const [seeded, setSeeded] = useState<TeamIdentityDraft | null>(null);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<string>();
   const [color, setColor] = useState<string>();
 
   // Seed the form from the team each time the dialog OPENS for one — never
-  // while it is open, so a teammate's concurrent edit cannot yank the fields
-  // out from under the user mid-type.
+  // while it is open, so a concurrent edit cannot yank the fields mid-type.
   const openedTeamId = team?.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-seed on the OPENED TEAM changing, deliberately not on every refetch of its fields
   useEffect(() => {
     if (!team) return;
-    setName(team.name);
-    setIcon(team.icon);
-    setColor(teamPaletteColorId(team.color));
+    const draft: TeamIdentityDraft = {
+      name: team.name,
+      icon: team.icon,
+      colorId: teamPaletteColorId(team.color),
+    };
+    setSeeded(draft);
+    setName(draft.name);
+    setIcon(draft.icon);
+    setColor(draft.colorId);
   }, [openedTeamId]);
 
-  if (!team) return null;
+  if (!team || !seeded) return null;
 
   const trimmed = name.trim();
-  const tooLong = Array.from(trimmed).length > TEAM_NAME_MAX_RUNES;
+  const tooLong = teamNameTooLong(name);
   const close = () => setTeamId(null);
 
   const save = () => {
     if (!trimmed || tooLong) return;
-    if (trimmed !== team.name) renameGroup(team.id, trimmed);
-    // Only what actually CHANGED goes on the wire; an omitted field is "leave
-    // alone" on both backends, so an untouched half stays untouched.
-    const patch: { icon?: string; color?: string } = {
-      ...(icon !== undefined && icon !== team.icon ? { icon } : {}),
-      ...(color !== undefined && color !== teamPaletteColorId(team.color)
-        ? { color }
-        : {}),
-    };
-    if (Object.keys(patch).length > 0) setIdentity(team.id, patch);
+    // The diff rules (what renames, what patches, how a deselect becomes an
+    // explicit null clear) are `teamIdentitySaveWrites`'s, unit-tested there.
+    const writes = teamIdentitySaveWrites(seeded, {
+      name,
+      icon,
+      colorId: color,
+    });
+    if (writes.rename) renameGroup(team.id, writes.rename);
+    if (writes.patch) setIdentity(team.id, writes.patch);
     close();
   };
 
@@ -96,13 +108,7 @@ export function EditTeamIdentityDialog({
           onIconChange={setIcon}
           onColorChange={setColor}
           onNameChange={setName}
-          nameInvalid={tooLong}
         />
-        {tooLong && (
-          <p className="text-sm text-danger-text">
-            {t("teams:agentTeams.create.tooLong", { max: TEAM_NAME_MAX_RUNES })}
-          </p>
-        )}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={close}>
             {t("common:actions.cancel")}

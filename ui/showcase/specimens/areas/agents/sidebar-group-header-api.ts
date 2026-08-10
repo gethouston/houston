@@ -10,7 +10,6 @@ import type { SpecimenProp } from "../../../src/specimen";
 export const GROUP_LABELS: Required<SidebarLabels> = {
   addItem: "Add item",
   collapseSidebar: "Collapse sidebar",
-  createGroup: "New group",
   editGroup: "Change icon & name",
   deleteGroup: "Delete group",
   leaveGroup: "Leave group",
