@@ -169,8 +169,11 @@ Sections:
 
 - **Company context** (`company-context-tab.tsx`) — the workspace half of standing
   context, drawn with the ONE standing-prose editor
-  (`app/src/components/context/context-editor.tsx`: always-open box, saves on blur,
-  the data layer owns the failure toast). The same component draws About me, an
+  (`app/src/components/context/context-editor.tsx` + `markdown-editor.tsx`:
+  Notion-style markdown on TipTap, always-visible formatting bar, markdown
+  strings on the wire, saves on blur through one ordered write queue; documents
+  the schema can't hold — tables, raw HTML — open in a plain-text fallback so
+  agent-written files never corrupt). The same component draws About me, an
   agent's Job description (agent settings), and the team context card.
 - **People** (`members-tab.tsx` / `people-roster.tsx`) — roster + pending invites,
   **membership only**: owner mutates (add/remove/re-role, revoke invite), admin sees
