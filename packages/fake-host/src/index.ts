@@ -21,6 +21,8 @@ export {
   SEED_AGENT_ID,
   SEED_AGENT_NAME,
   SEED_WORKSPACE_ID,
+  WORKTREE_PORT_STRIDE,
+  worktreePortOffset,
 } from "./config";
 export type { FakeHost } from "./server";
 export { startFakeHost } from "./server";
