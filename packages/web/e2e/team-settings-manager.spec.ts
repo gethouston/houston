@@ -212,9 +212,13 @@ test("the team's shared context leads its settings and saves into the layout", a
   ).toBeVisible();
 
   const box = screen(page).getByTestId("team-context-input");
-  await expect(box).toHaveValue("Payroll runs on the 25th.");
+  await expect(box).toHaveText("Payroll runs on the 25th.");
 
-  await box.fill("Payroll runs on the 25th. Never guess an amount.");
+  await box.click();
+  await page.keyboard.press("ControlOrMeta+A");
+  await box.pressSequentially(
+    "Payroll runs on the 25th. Never guess an amount.",
+  );
   await box.blur();
 
   // The write lands on the group the card names, and touches no other group.
@@ -266,10 +270,10 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   await openJobDescription(page, "Payroll Bot");
   const jobBox = () => page.getByLabel("Job description");
   await expect(jobBox()).toBeEditable();
-  await expect(jobBox()).toHaveAttribute(
-    "placeholder",
-    "Write instructions for your agent…",
-  );
+  await expect(jobBox()).toHaveAttribute("contenteditable", "true");
+  await expect(
+    page.getByText("Write instructions for your agent…"),
+  ).toBeVisible();
 
   // Back to the team, then into an agent of the SAME team they only use: the
   // page is reachable (it is honest — they can see what the agent is told) and
@@ -286,6 +290,9 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   await expect(picker).toHaveCount(0);
   await openJobDescription(page, "Payroll Helper");
   await expect(jobBox()).not.toBeEditable();
+  await expect(jobBox()).toHaveAttribute("contenteditable", "false");
   // The locked face drops the write invitation — the user-visible tell.
-  await expect(jobBox()).not.toHaveAttribute("placeholder");
+  await expect(
+    page.getByText("Write instructions for your agent…"),
+  ).toHaveCount(0);
 });

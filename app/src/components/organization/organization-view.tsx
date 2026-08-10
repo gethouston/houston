@@ -131,6 +131,9 @@ export function OrganizationView() {
           lenses={lenses}
           onSelectLens={setLens}
         />
+        {/* One scroller for every section. Company context sizes itself to
+            exactly this height (its card scrolls internally), so the outer
+            scroll only engages as a short-window fallback there. */}
         <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
           <AdminSectionBody
             active={active}
