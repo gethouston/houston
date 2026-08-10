@@ -1,3 +1,4 @@
+import { piApiKeyProviderIds } from "../ai/pi-catalog";
 import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
 import { currentCredentialScope } from "../session/acting-context";
@@ -176,9 +177,20 @@ async function runServedSync(): Promise<string[]> {
   // pod's host serves it (the gateway is the single refresher), while the
   // desktop/self-host host answers a marked 404 so the local keychain flow
   // stays the one credential holder (routes/credential.ts).
+  // EVERY provider a central credential can exist for: the curated catalog PLUS
+  // the uncurated pi api-key providers. Connect deliberately accepts a pasted
+  // key for any pi api-key provider (the host's isApiKeyProvider gate) and the
+  // gateway durably stores it — but a recycled pod rebuilds auth.json ONLY from
+  // this sync, so a provider missing here reads disconnected after every pod
+  // roll even though the org never logged out (PRODUCT-1213: cerebras).
+  const curated = new Set<string>(PROVIDERS.map((p) => p.id));
+  const probeIds = [
+    ...curated,
+    ...piApiKeyProviderIds().filter((id) => !curated.has(id)),
+  ];
   // Probes are independent — run them in parallel so a hydrating route pays one
-  // round-trip, not eleven. The auth.json writes below stay serial.
-  const probes = await Promise.all(PROVIDERS.map((p) => probeProvider(p.id)));
+  // round-trip, not forty. The auth.json writes below stay serial.
+  const probes = await Promise.all(probeIds.map((id) => probeProvider(id)));
   const applied: string[] = [];
   const removed: string[] = [];
   // Provenance gate: an authoritative "not connected" may only remove providers

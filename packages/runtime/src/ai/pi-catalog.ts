@@ -58,6 +58,17 @@ export function isPiOAuthProvider(id: string): boolean {
 }
 
 /**
+ * Every pi provider id a pasted API key can authenticate — pi knows it and
+ * OAuth is not the only way in. This is the runtime mirror of the host's
+ * `isApiKeyProvider` connect gate: whatever connect accepts, the serve sync
+ * must be able to re-hydrate, or an uncurated provider's centrally-stored key
+ * silently reads disconnected after the next pod recycle (PRODUCT-1213).
+ */
+export function piApiKeyProviderIds(): string[] {
+  return piProviderIds().filter((id) => !isPiOAuthProvider(id));
+}
+
+/**
  * The model ids pi lists for a provider, or `[]` when it has no catalog (the
  * open gateways) or isn't a pi builtin. Never throws — a bad id is `[]`.
  */
