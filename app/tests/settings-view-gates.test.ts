@@ -91,9 +91,12 @@ describe("the promoted top-level screens", () => {
     const src = read("../src/components/about-me/about-me-view.tsx");
     ok(src.includes("export function AboutMeView() {"), "no props");
     ok(!src.includes("BackBarScreen"), "no back bar at a top level");
+    // A pinned editor page: the frame is a height-bounded column and never
+    // scrolls — the document card scrolls inside itself instead.
     ok(
-      src.includes("[scrollbar-gutter:stable]"),
-      "its scroller reserves the gutter",
+      src.includes('className="min-h-0 flex-1"') &&
+        !src.includes("overflow-y-auto"),
+      "no page scroll around the pinned document card",
     );
   });
 

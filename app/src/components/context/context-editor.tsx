@@ -1,4 +1,5 @@
 import { cn, Spinner } from "@houston-ai/core";
+import { Check } from "lucide-react";
 import {
   type ComponentProps,
   useCallback,
@@ -21,8 +22,8 @@ type SaveState = "idle" | "saving" | "saved";
  *
  * - **Always open.** No invite empty state: the greyed suggestion inside the
  *   box is the invitation, and it disappears the moment the user types.
- * - **Saves on blur, says so quietly.** The slim right-aligned "Saving…/
- *   Saved" line above the box; a save fires only when the text actually
+ * - **Saves on blur, says so quietly.** The "Saving…/Saved" status sits in
+ *   the toolbar's right seat; a save fires only when the text actually
  *   changed, so tabbing through a page writes nothing.
  * - **Explains itself ONCE.** The title + explanation live in the heading
  *   ({@link ContextEditorPage}'s hero, or a card's own header); the
@@ -35,7 +36,7 @@ export function ContextEditorBox({
   onSave,
   placeholder,
   readOnly = false,
-  minRows = 12,
+  minRows,
   ariaLabel,
   dataTestId,
 }: {
@@ -44,7 +45,7 @@ export function ContextEditorBox({
   /** The greyed suggestion text — a short example of what belongs here. */
   placeholder: string;
   readOnly?: boolean;
-  /** Empty-box height; a card in a longer page wants fewer rows than a page. */
+  /** Rows floor for a compact card; omitted, the document fills the screen. */
   minRows?: number;
   /** Accessible name when no visible heading labels the box directly. */
   ariaLabel?: string;
@@ -120,40 +121,43 @@ export function ContextEditorBox({
     }
   };
 
+  // Seated on the toolbar's right edge, clear of the text — a fixed seat, so
+  // its appearing and fading never moves the document by a pixel.
+  const status = (
+    <span
+      className={cn(
+        "flex items-center gap-1 text-xs tabular-nums transition-opacity duration-200",
+        state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
+      )}
+      aria-live="polite"
+    >
+      {state === "saved" && <Check aria-hidden className="size-3.5" />}
+      {state === "saving"
+        ? t("editor.saving")
+        : state === "saved"
+          ? t("editor.saved")
+          : ""}
+    </span>
+  );
+
   return (
-    <div className="w-full">
-      {/* The save state keeps a reserved right-edge seat, so the box never
-          shifts when it appears. */}
-      <div className="mb-1 flex items-baseline justify-end">
-        <span
-          className={cn(
-            "text-xs tabular-nums transition-opacity duration-200",
-            state === "idle" ? "opacity-0" : "opacity-100 text-ink-muted",
-          )}
-          aria-live="polite"
-        >
-          {state === "saving"
-            ? t("editor.saving")
-            : state === "saved"
-              ? t("editor.saved")
-              : ""}
-        </span>
-      </div>
-      <section className="rounded-xl bg-chip p-3">
-        <MarkdownEditor
-          ariaLabel={ariaLabel}
-          dataTestId={dataTestId}
-          content={value}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          readOnly={readOnly}
-          placeholder={placeholder}
-          minRows={minRows}
-          onFocusChange={(focused) => {
-            focusedRef.current = focused;
-          }}
-        />
-      </section>
+    // The editor is its own document card — no second frame around it. In
+    // full-page mode this box just hands its granted height down.
+    <div className={cn("w-full", minRows === undefined && "h-full min-h-0")}>
+      <MarkdownEditor
+        ariaLabel={ariaLabel}
+        dataTestId={dataTestId}
+        content={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        readOnly={readOnly}
+        placeholder={placeholder}
+        minRows={minRows}
+        statusSlot={status}
+        onFocusChange={(focused) => {
+          focusedRef.current = focused;
+        }}
+      />
     </div>
   );
 }
@@ -178,18 +182,23 @@ export function ContextEditorPage({
   ready?: boolean;
 } & ComponentProps<typeof ContextEditorBox>) {
   return (
-    <div className="w-full pb-12">
+    // A pinned page: hero on top, the document card taking every remaining
+    // pixel, and `pb-6` as THE fixed gap to the window's bottom edge — a
+    // longer document scrolls inside the card instead of growing the page.
+    <div className="flex h-full min-h-0 w-full flex-col pb-6">
       <PageHero
         level={level}
         title={title}
         subtitle={subtitle}
-        className="mb-3"
+        className="mb-3 shrink-0"
       />
       {ready ? (
         // The hero visually titles the box but is not programmatically
         // associated with it, so the title doubles as the accessible name
         // unless the caller passes a more specific one.
-        <ContextEditorBox ariaLabel={title} {...box} />
+        <div className="min-h-0 flex-1">
+          <ContextEditorBox ariaLabel={title} {...box} />
+        </div>
       ) : (
         <div className="flex items-center justify-center py-16">
           <Spinner className="h-5 w-5" />

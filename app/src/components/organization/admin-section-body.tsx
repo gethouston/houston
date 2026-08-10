@@ -59,7 +59,17 @@ export function AdminSectionBody({
 }) {
   const { t } = useTranslation("teams");
   return (
-    <PageContainer className="pt-6 pb-10" data-admin-section-body={active}>
+    <PageContainer
+      // Company context is a pinned page (its editor card owns the bottom
+      // gap), so its container is a height-bounded column with no bottom
+      // padding of its own; every other section pads and scrolls normally.
+      className={
+        active === "companyContext"
+          ? "flex h-full min-h-0 flex-col pt-6"
+          : "pt-6 pb-10"
+      }
+      data-admin-section-body={active}
+    >
       {!ctx ? (
         <p className="py-10 text-sm text-ink-muted">
           {isLoading ? t("org.loading") : t("org.unavailable")}

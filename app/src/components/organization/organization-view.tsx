@@ -131,7 +131,16 @@ export function OrganizationView() {
           lenses={lenses}
           onSelectLens={setLens}
         />
-        <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
+        {/* Company context pins its document card to a fixed bottom gap (the
+            card scrolls inside), so its frame must NOT scroll; every other
+            section scrolls the page as usual. */}
+        <div
+          className={
+            active === "companyContext"
+              ? "min-h-0 flex-1"
+              : "flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+          }
+        >
           <AdminSectionBody
             active={active}
             ctx={ctx}

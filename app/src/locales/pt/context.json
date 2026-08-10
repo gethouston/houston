@@ -15,6 +15,16 @@
     "subtitle": "O que cada agente sabe sobre você antes de começar."
   },
   "editor": {
+    "toolbar": {
+      "label": "Formatação",
+      "heading": "Título",
+      "subheading": "Subtítulo",
+      "bold": "Negrito",
+      "italic": "Itálico",
+      "bulletList": "Lista com marcadores",
+      "numberedList": "Lista numerada",
+      "quote": "Citação"
+    },
     "saving": "Salvando…",
     "saved": "Salvo",
     "user": {

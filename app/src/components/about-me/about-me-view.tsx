@@ -30,8 +30,10 @@ export function AboutMeView() {
   const editor = useContextSlot("user");
 
   return (
-    <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      <PageContainer className="py-10">
+    // No page scroll: the editor page pins its document card to a fixed
+    // bottom gap, and a longer document scrolls inside the card.
+    <div className="min-h-0 flex-1">
+      <PageContainer className="flex h-full min-h-0 flex-col pt-10">
         <ContextEditorPage
           title={t("aboutMe.title")}
           subtitle={t("aboutMe.subtitle")}
