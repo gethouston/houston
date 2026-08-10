@@ -38,6 +38,8 @@ describe("isWysiwygSafe — the corruption guard", () => {
       isWysiwygSafe("| Don't say | Say |\n|---|---|\n| a | b |"),
       false,
     );
+    // GFM also admits headerless pipes with no leading `|`.
+    strictEqual(isWysiwygSafe("Name | Value\n--- | ---\na | 1"), false);
   });
 
   it("refuses frontmatter at the document start, but not a mid-doc rule", () => {

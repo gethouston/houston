@@ -29,10 +29,14 @@ export function shouldReseed({
  * keystroke in a rich editor would corrupt them on save. A document matching
  * any of these opens in the plain-text fallback instead: no rendering, no
  * loss. False positives (a stray `|` in prose) merely fall back to plain
- * editing — the safe direction.
+ * editing — the safe direction. Known limit: the guard screens the SEED, not
+ * pastes — markdown pasted into an open rich doc lands as visible literal
+ * text (degraded, never invisibly lost).
  */
 const WYSIWYG_UNSAFE = [
-  /^\s{0,3}\|.*\|/m, // table row
+  /^\s{0,3}\|.*\|/m, // table row (piped)
+  /^\s{0,3}\|?[\s:]*-{3,}[\s:|-]*\|[\s:|-]*$/m, // table delimiter row
+  /^.*\|.*\n\s{0,3}\|?[\s:]*:?-{3,}/m, // headerless pipe table (Name | Value)
   /<[a-zA-Z][^>\n]*>/, // raw HTML tag
   /^\s*[-*+]\s+\[[ xX]\]/m, // task list item
   /!\[/, // image

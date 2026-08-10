@@ -38,10 +38,13 @@ export function useContextEditorSave({
   const chainRef = useRef<Promise<unknown>>(Promise.resolve());
   const lastQueuedRef = useRef<string | null>(null);
   const savedTimerRef = useRef<number | null>(null);
+  const seedEpochRef = useRef(0);
+  const mountedRef = useRef(true);
 
   onSaveRef.current = onSave;
 
   const applyReseed = useCallback((next: string) => {
+    seedEpochRef.current += 1;
     awaitingSeedRef.current = true;
     valueRef.current = next;
     // The baseline moves WITH the seed, so a blur between the seed and the
@@ -55,11 +58,20 @@ export function useContextEditorSave({
   const enqueueSave = useCallback((next: string) => {
     if (lastQueuedRef.current === next) return;
     lastQueuedRef.current = next;
+    // The user's text is now the newest revision we know: an external update
+    // held from mid-edit is older by definition, and re-applying it later
+    // would regress what was just saved.
+    pendingExternalRef.current = null;
+    // A reseed that lands while this save is in flight owns the baseline;
+    // the epoch check keeps a slow completion from stamping stale text over
+    // it (which would re-save external content as an "edit").
+    const epoch = seedEpochRef.current;
     setState("saving");
     chainRef.current = chainRef.current
       .then(() => onSaveRef.current(next))
       .then(() => {
-        baselineRef.current = next;
+        if (seedEpochRef.current === epoch) baselineRef.current = next;
+        if (!mountedRef.current) return;
         setState("saved");
         if (savedTimerRef.current !== null)
           window.clearTimeout(savedTimerRef.current);
@@ -69,7 +81,7 @@ export function useContextEditorSave({
         // The data layer owns the toast; recover so "Saving…" never sticks,
         // and reset the dedupe key so a re-blur retries the write.
         lastQueuedRef.current = baselineRef.current;
-        setState("idle");
+        if (mountedRef.current) setState("idle");
       });
   }, []);
 
@@ -130,8 +142,10 @@ export function useContextEditorSave({
 
   // Unmount with unsaved text: flush through the same queue. The dedupe key
   // makes this a no-op when the blur save already carried this text.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       if (savedTimerRef.current !== null)
         window.clearTimeout(savedTimerRef.current);
       if (readOnlyRef.current) return;
@@ -142,9 +156,8 @@ export function useContextEditorSave({
       chainRef.current = chainRef.current
         .then(() => onSaveRef.current(valueRef.current))
         .catch(() => {});
-    },
-    [],
-  );
+    };
+  }, []);
 
   return {
     value,
