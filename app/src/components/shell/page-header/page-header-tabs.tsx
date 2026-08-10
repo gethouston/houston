@@ -11,6 +11,10 @@ export interface PageHeaderTabItem<Id extends string> {
 /**
  * Header navigation uses `aria-current`, not tab-panel semantics: these items
  * swap a whole page surface. One heading lozenge carries the screen's h1.
+ *
+ * A SINGLE item renders as a static heading lozenge — no nav landmark, no
+ * button: a page with nothing to switch must not expose a focusable control
+ * that does nothing when activated.
  */
 export function PageHeaderTabs<Id extends string>({
   items,
@@ -23,6 +27,23 @@ export function PageHeaderTabs<Id extends string>({
   label: string;
   onSelect: (id: Id) => void;
 }) {
+  if (items.length === 1) {
+    const [item] = items;
+    const lozenge = (
+      <span {...item.dataAttrs} className={headerLozengeClasses(true)}>
+        {item.label}
+      </span>
+    );
+    return (
+      <div className={headerLozengeTrack()}>
+        {item.heading ? (
+          <h1 className="flex min-w-0">{lozenge}</h1>
+        ) : (
+          <span className="flex">{lozenge}</span>
+        )}
+      </div>
+    );
+  }
   return (
     <nav aria-label={label} className={headerLozengeTrack()}>
       {items.map((item) => {

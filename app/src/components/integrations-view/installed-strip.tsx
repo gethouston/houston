@@ -22,8 +22,8 @@ import {
   type CustomSelection,
 } from "../integrations";
 
-/** One installed item, flattened to the props {@link CatalogRow} needs so the
- *  preview cap can slice the list in display order. */
+/** One installed item, prebuilt as its row node so the preview cap can slice
+ *  catalog and custom rows as ONE list in display order. */
 interface InstalledItem {
   key: string;
   row: ReactNode;

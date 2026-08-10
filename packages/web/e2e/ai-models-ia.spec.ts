@@ -90,10 +90,14 @@ test("Teams owner: the AI hub has AI Providers and AI Models lozenges", async ({
   await page.goto("/");
   await page.locator('[data-tour-target="nav-ai-hub"]').click();
 
+  // Scoped to the header nav: the sidebar row shares the "AI Models" name.
+  const headerNav = page.getByRole("navigation", {
+    name: "AI providers and models",
+  });
   await expect(
-    page.getByRole("button", { name: "AI Providers", exact: true }),
+    headerNav.getByRole("button", { name: "AI Providers", exact: true }),
   ).toBeVisible();
-  const allModels = page.getByRole("button", {
+  const allModels = headerNav.getByRole("button", {
     name: "AI Models",
     exact: true,
   });
@@ -196,7 +200,9 @@ test("personal space: the hub renders NO account note at all", async ({
   // failed render.
   await expect(page.getByRole("heading", { name: "Available" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "AI Models", exact: true }),
+    page
+      .getByRole("navigation", { name: "AI providers and models" })
+      .getByRole("button", { name: "AI Models", exact: true }),
   ).toBeVisible();
 });
 

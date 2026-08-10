@@ -65,4 +65,24 @@ describe("searchProvidersWithOffers", () => {
     const result = searchProvidersWithOffers(providers, models, "   ");
     deepStrictEqual(result, providers);
   });
+
+  it("resolves a merged provider through its gateway ids", () => {
+    // The merged OpenCode card fronts several gateway providers; a model
+    // offered under any of those ids must surface the card even though the
+    // card's own id appears in no offer.
+    const merged = {
+      ...provider("opencode", "OpenCode"),
+      gatewayIds: ["opencode-openrouter", "opencode-direct"],
+    } as ProviderInfo;
+    const gatewayModels = [model("kimi-k2", "Kimi K2", ["opencode-direct"])];
+    const result = searchProvidersWithOffers(
+      [merged, providers[2]],
+      gatewayModels,
+      "kimi",
+    );
+    deepStrictEqual(
+      result.map((item) => item.id),
+      ["opencode"],
+    );
+  });
 });

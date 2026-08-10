@@ -45,8 +45,8 @@ async function openCustomIntegrations(page: Page): Promise<void> {
   await page.goto("/");
   await page.locator('[data-tour-target="nav-integrations"]').click();
   await expect(
-    page.getByRole("button", { name: "Integrations", exact: true }),
-  ).toHaveAttribute("aria-current", "page");
+    page.getByRole("heading", { name: "Integrations", exact: true }),
+  ).toBeVisible();
 }
 
 async function startSetupChat(page: Page): Promise<void> {
@@ -78,8 +78,8 @@ test("composio-absent: Add custom integration opens the embedded chat, agent spe
   // No board navigation: still on the Integrations page next to the chat —
   // the identity lozenge still announces the current page.
   await expect(
-    page.getByRole("button", { name: "Integrations", exact: true }),
-  ).toHaveAttribute("aria-current", "page");
+    page.getByRole("heading", { name: "Integrations", exact: true }),
+  ).toBeVisible();
 });
 
 test("a multi-agent workspace interposes ONLY the agent picker before the chat", async ({

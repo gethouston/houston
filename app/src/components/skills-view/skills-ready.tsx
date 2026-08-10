@@ -44,7 +44,7 @@ export function SkillsReady({
         installed={installed}
         availableTitle={t("grid.availableHeading")}
         availableCount={storeSizeLabel}
-        tabs={[{ value: "store", label: "", content: storeTab }]}
+        tabs={[{ value: "store", label: t("tabs.store"), content: storeTab }]}
       />
     </>
   );

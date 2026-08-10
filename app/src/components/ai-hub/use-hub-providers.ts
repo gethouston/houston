@@ -29,8 +29,6 @@ import {
 } from "../provider-browser/provider-grouping";
 
 export interface HubProviders {
-  /** Confirmed-not-connected providers: the browse tab's catalog. */
-  available: ProviderInfo[];
   /** The user's own side (connected + still checking): the Connected strip. */
   owned: ProviderInfo[];
   /** `owned` narrowed by the page query. */
@@ -78,15 +76,18 @@ export function useHubProviders(
     () => new Set(searchMatches.map((provider) => provider.id)),
     [searchMatches],
   );
-  const connectedMatches = owned.filter((provider) =>
-    matchedProviderIds.has(provider.id),
+  // Memoized so identity holds across renders: several consumers key their own
+  // memos (featured ordering, usage matching) on these arrays.
+  const connectedMatches = useMemo(
+    () => owned.filter((provider) => matchedProviderIds.has(provider.id)),
+    [owned, matchedProviderIds],
   );
-  const availableMatches = available.filter((provider) =>
-    matchedProviderIds.has(provider.id),
+  const availableMatches = useMemo(
+    () => available.filter((provider) => matchedProviderIds.has(provider.id)),
+    [available, matchedProviderIds],
   );
 
   return {
-    available,
     owned,
     connectedMatches,
     availableMatches,

@@ -18,19 +18,18 @@ import { INTEGRATION_PROVIDER } from "./model";
 
 /**
  * The boot/auth gate both integrations surfaces render behind. The non-ready
- * kinds describe the COMPOSIO catalog only; `customAvailable` says whether the
- * key-free custom provider (HOU-550) is served regardless — an install with no
- * Composio key, or a signed-out desktop, can still add and use custom
- * integrations, so the global page must not go dark on those states.
+ * kinds describe the COMPOSIO catalog only — whether custom integrations are
+ * served is the custom LIST's own truth (`useCustomIntegrationsSurface`:
+ * resolved array = yes, `null` = unsupported host), which is what keeps the
+ * page useful on an install with no Composio key or a signed-out desktop.
  */
 export type IntegrationsGate =
   | { kind: "loading" }
-  | { kind: "unavailable"; customAvailable: boolean }
+  | { kind: "unavailable" }
   | {
       kind: "signin";
       signIn: () => void;
       signingIn: boolean;
-      customAvailable: boolean;
     }
   | {
       kind: "ready";
@@ -142,25 +141,18 @@ export function useIntegrationsGate(): IntegrationsGate {
     }
   }, [qc]);
 
-  // The key-free custom provider is served independently of Composio: its
-  // presence keeps the custom section alive through every degraded state.
-  const customAvailable = !!status.data?.find(
-    (p) => p.provider === "custom" && p.ready,
-  );
-
   if (status.isLoading || capabilitiesLoading || sessionSyncPending)
     return { kind: "loading" };
-  if (!composio) return { kind: "unavailable", customAvailable };
+  if (!composio) return { kind: "unavailable" };
   if (!composio.ready) {
     if (isIdentityConfigured()) {
       return {
         kind: "signin",
         signIn: () => void signIn(),
         signingIn,
-        customAvailable,
       };
     }
-    return { kind: "unavailable", customAvailable };
+    return { kind: "unavailable" };
   }
   return {
     kind: "ready",

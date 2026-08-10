@@ -8,7 +8,10 @@ import {
 } from "@houston-ai/core";
 import { ChevronDown, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { HeaderSearch } from "../shell/page-header/header-search";
+import {
+  HeaderToolsRow,
+  headerSearchFieldClass,
+} from "../shell/page-header/header-tools-row";
 
 /** Search and creation move together between the fixed strip and body row. */
 export function SkillsControls({
@@ -28,22 +31,18 @@ export function SkillsControls({
   const inStrip = variant === "strip";
 
   return (
-    <div
-      className={
-        inStrip
-          ? "flex items-center gap-2"
-          : "mb-8 flex items-center gap-2 pt-2"
-      }
-    >
-      <HeaderSearch inStrip={inStrip}>
+    <HeaderToolsRow
+      inStrip={inStrip}
+      search={
         <CatalogSearchField
           value={query}
           onChange={onQueryChange}
           label={t("grid.searchSkills")}
           clearLabel={t("grid.clearSearch")}
-          className={inStrip ? "[&_input]:h-8" : "w-full"}
+          className={headerSearchFieldClass(inStrip)}
         />
-      </HeaderSearch>
+      }
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button type="button" className={inStrip ? "h-8" : undefined}>
@@ -61,6 +60,6 @@ export function SkillsControls({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </HeaderToolsRow>
   );
 }

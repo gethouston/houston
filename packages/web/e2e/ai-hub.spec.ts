@@ -27,10 +27,14 @@ test("opens the AI hub, browses providers and models via modals", async ({
   // The sidebar carries the top-level item. Opening it lands on the hub.
   await page.getByRole("button", { name: "AI models" }).click();
 
+  // Scoped to the header nav: the sidebar row shares the "AI Models" name.
+  const headerNav = page.getByRole("navigation", {
+    name: "AI providers and models",
+  });
   await expect(
-    page.getByRole("button", { name: "AI Providers", exact: true }),
+    headerNav.getByRole("button", { name: "AI Providers", exact: true }),
   ).toBeVisible();
-  const allModels = page.getByRole("button", {
+  const allModels = headerNav.getByRole("button", {
     name: "AI Models",
     exact: true,
   });
@@ -84,7 +88,10 @@ test("opens the AI hub, browses providers and models via modals", async ({
   await expect(search).toHaveValue("claude");
   await expect(page.getByRole("heading", { name: "Connected" })).toBeVisible();
   for (const facet of ["AI provider", "Good at", "Cost", "Memory"]) {
-    await expect(page.getByRole("button", { name: facet })).toBeVisible();
+    // exact: the "AI provider" facet's name is a prefix of the lozenge's.
+    await expect(
+      page.getByRole("button", { name: facet, exact: true }),
+    ).toBeVisible();
   }
 
   // A model row (name + lab, whole row is the button) opens the model MODAL:

@@ -110,6 +110,7 @@
     "description": "Conecte uma API ou servidor MCP que não está no catálogo de aplicativos.",
     "empty": "Você ainda não tem integrações personalizadas. Adicione uma para conectar uma ferramenta que não está no catálogo.",
     "noResults": "Nenhuma integração personalizada corresponde à sua busca.",
+    "catalogUnavailable": "O catálogo de aplicativos não está disponível nesta configuração, mas você ainda pode adicionar integrações personalizadas.",
     "addButton": "Adicionar integração personalizada",
     "loadError": "Não conseguimos carregar suas integrações personalizadas.",
     "retry": "Tentar novamente",

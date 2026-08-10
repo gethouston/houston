@@ -84,9 +84,17 @@ test("a composio-absent host still renders the Custom integrations section", asy
     page.getByRole("button", { name: "Add custom integration" }),
   ).toBeVisible();
 
+  // The catalog line explains the gap without denying the working surface
+  // below it; the flat "not available" verdict is reserved for hosts where
+  // NOTHING works.
+  await expect(
+    page.getByText(
+      "The app catalog isn't available in this setup, but you can still add custom integrations.",
+    ),
+  ).toBeVisible();
   await expect(
     page.getByText("Integrations are not available in this setup"),
-  ).toBeVisible();
+  ).toHaveCount(0);
 });
 
 test("ready mode lists a pending custom integration and the enter-key flow activates it", async ({

@@ -11,7 +11,10 @@ import {
   UNCATEGORIZED,
 } from "../integrations";
 import { FilterCombobox } from "../shell/filter-combobox";
-import { HeaderSearch } from "../shell/page-header/header-search";
+import {
+  HeaderToolsRow,
+  headerSearchFieldClass,
+} from "../shell/page-header/header-tools-row";
 
 /**
  * The catalog surface's ONE controls row — the shared search field + the house
@@ -29,6 +32,7 @@ export function CatalogControls({
   onQueryChange,
   category,
   onCategoryChange,
+  customAvailable,
   addCustom,
   variant,
 }: {
@@ -40,35 +44,47 @@ export function CatalogControls({
   category: string;
   onCategoryChange: (value: string) => void;
   variant: "strip" | "row";
+  /** Whether the host serves custom integrations (gates the pinned entry). */
+  customAvailable: boolean;
   addCustom?: ReactNode;
 }) {
   const { t } = useTranslation("integrations");
   const categoryOptions = useMemo(() => {
     const connected = new Set(connections.map((c) => c.toolkit));
     return [
-      { value: "custom", label: t("home.customCategory") },
-      ...catalogCategorySlugs({ catalog, connected }).map((slug) => ({
-        value: slug,
-        label:
-          slug === UNCATEGORIZED
-            ? t("home.otherCategory")
-            : categoryLabel(slug),
-      })),
+      // Pinned only where the host serves custom integrations — offering the
+      // slice on a host that cannot hold custom rows is a guaranteed dead end.
+      ...(customAvailable
+        ? [{ value: "custom", label: t("home.customCategory") }]
+        : []),
+      ...catalogCategorySlugs({ catalog, connected })
+        // A remote catalog category slugged "custom" would duplicate the
+        // pinned entry and hijack its filter branch; the sentinel owns the id.
+        .filter((slug) => slug !== "custom")
+        .map((slug) => ({
+          value: slug,
+          label:
+            slug === UNCATEGORIZED
+              ? t("home.otherCategory")
+              : categoryLabel(slug),
+        })),
     ];
-  }, [catalog, connections, t]);
+  }, [catalog, connections, customAvailable, t]);
 
   const inStrip = variant === "strip";
   return (
-    <div className={inStrip ? "flex gap-2" : "mb-8 flex gap-2 pt-2"}>
-      <HeaderSearch inStrip={inStrip}>
+    <HeaderToolsRow
+      inStrip={inStrip}
+      search={
         <CatalogSearchField
           value={query}
           onChange={onQueryChange}
           label={t("home.searchPlaceholder")}
           clearLabel={t("home.clearSearch")}
-          className={inStrip ? "[&_input]:h-8" : "w-full"}
+          className={headerSearchFieldClass(inStrip)}
         />
-      </HeaderSearch>
+      }
+    >
       <FilterCombobox
         options={categoryOptions}
         value={category}
@@ -81,6 +97,6 @@ export function CatalogControls({
         className={inStrip ? "h-8" : undefined}
       />
       {addCustom}
-    </div>
+    </HeaderToolsRow>
   );
 }

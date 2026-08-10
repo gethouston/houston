@@ -70,6 +70,7 @@ export function IntegrationsReady({
             category={category}
             onCategoryChange={setCategory}
             variant={inStrip ? "strip" : "row"}
+            customAvailable={Array.isArray(custom.items)}
             addCustom={
               Array.isArray(custom.items) ? (
                 <AddCustomButton surface={custom} compact={inStrip} />
@@ -129,15 +130,15 @@ export function IntegrationsReady({
         }
       />
 
+      {/* Only a RESOLVED list may claim emptiness — while it loads or after a
+          failed read (CustomSurfaceSupport's loud error above), saying "none
+          yet" would contradict the truth. */}
       {category === "custom" &&
+        Array.isArray(custom.items) &&
         shown.custom.length === 0 &&
         !apps.isLoading && (
           <p className="text-sm text-ink-muted">
-            {t(
-              Array.isArray(custom.items) && custom.items.length > 0
-                ? "custom.noResults"
-                : "custom.empty",
-            )}
+            {t(custom.items.length > 0 ? "custom.noResults" : "custom.empty")}
           </p>
         )}
 

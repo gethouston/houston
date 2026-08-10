@@ -1,4 +1,5 @@
 import { CATALOG_PLANE_MAX_W, CatalogGrid, cn } from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 import {
   AddCustomButton,
   CustomIntegrationRow,
@@ -24,6 +25,7 @@ import { useCatalogSurface } from "./use-catalog-surface";
 
 /** The global personal Integrations surface, with identity outside every gate. */
 export function IntegrationsView() {
+  const { t } = useTranslation("integrations");
   const gate = useIntegrationsGate();
   const apps = useConnectedApps();
   const custom = useCustomIntegrationsSurface();
@@ -69,6 +71,13 @@ export function IntegrationsView() {
                       onSignIn={gate.signIn}
                       signingIn={gate.signingIn}
                     />
+                  ) : Array.isArray(custom.items) ? (
+                    // The catalog is off but custom integrations WORK right
+                    // below — a flat "not available" over a working surface
+                    // would be a lie (self-host without a Composio key).
+                    <p className="text-sm text-ink-muted">
+                      {t("custom.catalogUnavailable")}
+                    </p>
                   ) : (
                     <UnavailableState />
                   )}
