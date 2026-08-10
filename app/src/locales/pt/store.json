@@ -1,5 +1,9 @@
 {
   "title": "Loja de agentes",
+  "header": {
+    "profile": "Perfil",
+    "tabsLabel": "Páginas da Loja de agentes"
+  },
   "subtitle": "Agentes prontos para usar, criados pela comunidade Houston. Instale um e deixe do seu jeito.",
   "searchPlaceholder": "Buscar agentes",
   "clearSearch": "Limpar busca",
@@ -30,7 +34,6 @@
     "learnings_other": "Vem com {{count}} aprendizados de uso real"
   },
   "browse": {
-    "heroTitle": "Contrate seu próximo colega de equipe",
     "searchPlaceholder": "Buscar agentes e criadores",
     "allCategories": "Todas as categorias",
     "agents": "Agentes",
@@ -40,11 +43,11 @@
     "alphabetical": "Ordem alfabética",
     "publish": "Publicar um agente",
     "sortRecent": "Recentes",
-    "sortInstalls": "Mais instalados"
+    "sortInstalls": "Mais instalados",
+    "featuredAgents": "Agentes em destaque",
+    "allAgents": "Todos os agentes"
   },
   "shared": {
-    "skill": "habilidade",
-    "skills": "habilidades",
     "newAgent": "Novo",
     "installs": "instalações",
     "creatorFallbackBio": "Criador na Loja de agentes",
@@ -53,10 +56,6 @@
     "tryNow": "Experimente agora"
   },
   "installFailed": "O Houston não conseguiu buscar esse agente na loja. Tente de novo em instantes.",
-  "tabs": {
-    "browse": "Explorar",
-    "myAgents": "Meus agentes"
-  },
   "allIntegrations": "Todas as integrações",
   "report": {
     "open": "Denunciar",
@@ -183,11 +182,6 @@
     "empty": "Ainda não há instalações neste período.",
     "loadFailed": "Não foi possível carregar suas estatísticas. Tente de novo.",
     "barLabel": "{{day}}: {{count}}"
-  },
-  "nav": {
-    "toLight": "Mudar para modo claro",
-    "toDark": "Mudar para modo escuro",
-    "signIn": "Entrar"
   },
   "me": {
     "signedOutTitle": "Seus agentes",

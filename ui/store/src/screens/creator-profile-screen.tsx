@@ -94,7 +94,6 @@ export function CreatorProfileScreen({
                 agents={agents}
                 owner={owner}
                 agentHref={agentHref}
-                onTryAgent={onTryAgent}
                 agentCardLabels={agentCardLabels}
                 LinkComponent={LinkComponent}
               />

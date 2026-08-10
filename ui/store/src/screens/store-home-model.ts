@@ -55,6 +55,32 @@ export function filterStoreAgents(
   );
 }
 
+/**
+ * The unfiltered agents view leads with a featured pair above the full grid.
+ * The catalog carries no curation flag, so "featured" is what the numbers
+ * already say: the two most-installed agents, and only when two have installs
+ * to show — one featured card in a two-wide row reads as a gap, not a
+ * feature. Any query, category, or the creators view collapses back to the
+ * plain grid, and the grid never repeats what the featured row already shows.
+ */
+export function splitFeaturedAgents(
+  agents: StoreAgentRow[],
+  state: StoreHomeState,
+): { featured: StoreAgentRow[]; rest: StoreAgentRow[] } {
+  const all = filterStoreAgents(agents, state);
+  if (state.query || state.category) return { featured: [], rest: all };
+  const featured = all
+    .toSorted((a, b) => b.installsCount - a.installsCount)
+    .slice(0, 2)
+    .filter((agent) => agent.installsCount > 0);
+  if (featured.length < 2) return { featured: [], rest: all };
+  const featuredIds = new Set(featured.map((agent) => agent.id));
+  return {
+    featured,
+    rest: all.filter((agent) => !featuredIds.has(agent.id)),
+  };
+}
+
 export function filterStoreCreators(
   creators: CreatorDirectoryRow[],
   query: string,

@@ -1,6 +1,7 @@
 import type { AgentCardLabels } from "../components/agent-card";
 import { CatalogEmpty, FilteredEmpty } from "../components/catalog-empty";
 import type { CreatorCardLabels } from "../components/creator-card";
+import { FeaturedAgentCard } from "../components/featured-agent-card";
 import { AgentGrid, CreatorGrid } from "../components/grids";
 import type { StoreLinkComponent } from "../types";
 import type { StoreHomeRows, StoreHomeState } from "./store-home-model";
@@ -27,11 +28,14 @@ export function StoreHomeResults({
   labels: {
     creators: string;
     empty: string;
+    featuredAgents: string;
+    allAgents: string;
     agentCard?: Partial<AgentCardLabels>;
     creatorCard?: Partial<CreatorCardLabels>;
   };
 }) {
-  const agents = filterStoreAgents(rows.agents, state);
+  const { featured, rest } = splitFeaturedAgents(rows.agents, state);
+  const agents = featured.length ? [...featured, ...rest] : rest;
   const creators = filterStoreCreators(rows.creators, state.query);
   const filtered = Boolean(state.query || state.category);
   if (
@@ -59,10 +63,33 @@ export function StoreHomeResults({
   }
   return (
     <div className="flex w-full flex-col gap-14">
-      {agents.length ? (
-        <section className="flex flex-col gap-10">
+      {featured.length ? (
+        <section className="flex flex-col gap-5">
+          <h2 className="font-display text-xl font-semibold tracking-tight">
+            {labels.featuredAgents}
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {featured.map((agent) => (
+              <FeaturedAgentCard
+                key={agent.id}
+                agent={agent}
+                href={agentHref(agent)}
+                LinkComponent={LinkComponent}
+                labels={labels.agentCard}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {rest.length ? (
+        <section className="flex flex-col gap-5">
+          {featured.length ? (
+            <h2 className="font-display text-xl font-semibold tracking-tight">
+              {labels.allAgents}
+            </h2>
+          ) : null}
           <AgentGrid
-            agents={agents}
+            agents={rest}
             agentHref={agentHref}
             LinkComponent={LinkComponent}
             onTry={onTryAgent}
@@ -88,4 +115,4 @@ export function StoreHomeResults({
   );
 }
 
-import { filterStoreAgents, filterStoreCreators } from "./store-home-model";
+import { filterStoreCreators, splitFeaturedAgents } from "./store-home-model";

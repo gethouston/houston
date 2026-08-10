@@ -8,6 +8,7 @@ import {
   filterStoreAgents,
   STORE_HOME_HERO_CLASS,
   StoreHomeScreen,
+  splitFeaturedAgents,
 } from "../src/index.ts";
 import type { StoreAgentRow } from "../src/types.ts";
 
@@ -42,6 +43,57 @@ describe("StoreHomeScreen", () => {
     ]) {
       assert.ok(STORE_HOME_HERO_CLASS.includes(token));
     }
+  });
+
+  it("renders results only in controlled mode — the host owns the chrome", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(StoreHomeScreen, {
+        rows: { agents: [agent], creators: [], categories: [] },
+        state: {
+          query: "",
+          view: "agents" as const,
+          sort: "installs" as const,
+        },
+        agentHref: () => "/agent",
+        creatorHref: () => "/creator",
+      }),
+    );
+    assert.doesNotMatch(html, />Hire your next teammate</);
+    assert.doesNotMatch(html, /Search agents and creators/);
+    assert.match(html, />Researcher</);
+  });
+
+  it("leads the unfiltered view with the two most-installed as featured", () => {
+    const base = {
+      query: "",
+      view: "agents" as const,
+      sort: "installs" as const,
+    };
+    const rows = [
+      agent,
+      { ...agent, id: "two", name: "Writer", installsCount: 9 },
+      { ...agent, id: "three", name: "Planner", installsCount: 4 },
+    ];
+    const split = splitFeaturedAgents(rows, base);
+    assert.deepEqual(
+      split.featured.map((item) => item.id),
+      ["two", "three"],
+    );
+    assert.deepEqual(
+      split.rest.map((item) => item.id),
+      ["one"],
+    );
+    // A search collapses back to the plain grid...
+    assert.equal(
+      splitFeaturedAgents(rows, { ...base, query: "writer" }).featured.length,
+      0,
+    );
+    // ...and one installed agent alone is not a featured row.
+    assert.equal(
+      splitFeaturedAgents([{ ...agent, installsCount: 0 }, rows[1]], base)
+        .featured.length,
+      0,
+    );
   });
 
   it("owns agent filtering and sorting", () => {

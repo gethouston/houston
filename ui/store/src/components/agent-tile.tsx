@@ -25,17 +25,16 @@ export function agentTone(
   return `var(--ht-agent-${TONES[Math.abs(hash) % TONES.length]})`;
 }
 
+const TILE_SIZE = { sm: "size-11", md: "size-14", lg: "size-24" } as const;
+
 export function AgentTile({
   agent,
   size = "md",
 }: {
   agent: StoreAgentRow;
-  size?: "md" | "lg";
+  size?: "sm" | "md" | "lg";
 }) {
-  const tileClass = cn(
-    "shrink-0 rounded-full object-cover",
-    size === "lg" ? "size-24" : "size-14",
-  );
+  const tileClass = cn("shrink-0 rounded-full object-cover", TILE_SIZE[size]);
   if (agent.icon?.kind === "url") {
     return <img src={agent.icon.value} alt="" className={tileClass} />;
   }
@@ -48,11 +47,18 @@ export function AgentTile({
       }}
     >
       {agent.icon?.kind === "emoji" ? (
-        <span className={size === "lg" ? "text-4xl" : "text-2xl"}>
+        <span
+          className={
+            size === "lg" ? "text-4xl" : size === "sm" ? "text-xl" : "text-2xl"
+          }
+        >
           {agent.icon.value}
         </span>
       ) : (
-        <HoustonHelmet color="currentColor" size={size === "lg" ? 38 : 28} />
+        <HoustonHelmet
+          color="currentColor"
+          size={size === "lg" ? 38 : size === "sm" ? 22 : 28}
+        />
       )}
     </span>
   );
