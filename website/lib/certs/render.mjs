@@ -4,6 +4,7 @@ import { loadCertificates } from "./fetch.mjs";
 import { uncoveredCharacters } from "./font-coverage.mjs";
 import {
   itemDigest,
+  pruneStaleImages,
   readImageManifest,
   rendererFingerprint,
   writeImageManifest,
@@ -103,11 +104,16 @@ export async function renderAllCertificates(outputDir) {
   await Promise.all(
     Array.from({ length: Math.min(CONCURRENCY, items.length) }, worker),
   );
+  const pruned = await pruneStaleImages(
+    dir,
+    new Set(items.map((item) => item.code)),
+  );
   await writeImageManifest(fresh);
 
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(
-    `[certificates] ${counts.rendered} rendered, ${counts.skipped} cached, ${counts.failed} failed in ${seconds}s.`,
+    `[certificates] ${counts.rendered} rendered, ${counts.skipped} cached, ` +
+      `${counts.failed} failed, ${pruned} stale pruned in ${seconds}s.`,
   );
 }
 
