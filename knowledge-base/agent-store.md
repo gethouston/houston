@@ -106,12 +106,21 @@ no client writes them.
 The store is browsable INSIDE the app (`app/src/components/store-view/`,
 view id `agent-store` in `TOP_LEVEL_VIEWS`): a sidebar + command-palette
 destination that renders the **same shared screens as the website** —
-`StoreHomeScreen` / `AgentDetailScreen` / `CreatorProfileScreen` / `StoreNav`
+`StoreHomeScreen` / `AgentDetailScreen` / `CreatorProfileScreen`
 from `@houston-ai/store`. It does NOT use ui/core's `Catalog*` family
 (`CatalogRow`/`CatalogGrid`/`CatalogSearchField` belong to the skills and
-integrations catalogs); search, category chips, agents-vs-creators view, sort,
-and the loading/empty/error states all live inside `StoreHomeScreen` and its
-`store-home-model.ts` (client-side filtering over the fetched rows).
+integrations catalogs); filtering and the loading/empty/error states live in
+`StoreHomeScreen` and its `store-home-model.ts` (client-side filtering over
+the fetched rows). In-app, `StoreHomeScreen` runs in **controlled mode**
+(`state` prop): the host owns the browse state and the screen renders results
+only, so the app shows no marketing hero; the website stays uncontrolled with
+its hero and inline toolbar. The `featured` prop is an explicit host opt-in
+the APP alone sets: the unfiltered agents view leads with the two
+most-installed as `FeaturedAgentCard`s (hero: creator photo → agent icon
+image → tone field) above the All-agents grid; server-paginated surfaces must
+not opt in. `AgentCard` carries ONE corner affordance — the `+` install, or
+whatever rides its `action` slot (the owner grid puts its pencil menu
+there).
 Reads go straight to the gateway's anonymous CORS-open endpoints via
 `ui/engine-client/src/store-catalog.ts` — no account, no engine round-trip;
 base resolution mirrors the publish adapter (`__HOUSTON_STORE__` →
@@ -122,8 +131,13 @@ base resolution mirrors the publish adapter (`__HOUSTON_STORE__` →
 pick exactly ONE of Browse, agent detail, creator profile, or My agents, and
 everything else is **unmounted**. Leaving Browse therefore drops its search /
 category / scroll state — coming back remounts the screen on whatever the
-TanStack cache holds. `StoreNav` is the constant chrome (brand link → Browse,
-account avatar → My agents). Three one-shot UI-store flags drive
+TanStack cache holds. The chrome is the app's PageHeader
+(`store-header.tsx`): top level is `(Agent Store)(Profile)` tabs; a drilled
+creator or agent shows a back chip plus ONE chevron-segmented place lozenge
+(`@handle › Agent`; clicking it goes up one segment). Browse search, category,
+view and sort ride the header strip via `PageHeaderTools`, stacking below the
+threshold (budgeted in Spanish, the widest locale). Three one-shot UI-store
+flags drive
 cross-navigation: `storeFocusSlug` (fetch the agent, open its detail pane),
 `storeOwnerTab` (jump to My agents, set by `manage-publication`'s "manage all
 my agents"), and `storeCreatorHandle` (creator profile).
