@@ -61,12 +61,28 @@ export async function handleSandboxCredentialRevoked(
     return true;
   }
 
-  const removed = await deps.credentials.removeIfAccess(
-    claim.workspaceId,
-    provider,
-    accessSha256,
-    { scope, actingAs },
-  );
+  let removed: boolean;
+  try {
+    removed = await deps.credentials.removeIfAccess(
+      claim.workspaceId,
+      provider,
+      accessSha256,
+      { scope, actingAs },
+    );
+  } catch (err) {
+    // A store/gateway hiccup: answer a clean 502 so the reporting runtime
+    // retries on its next serve sync (quietly — served-key-guard dedupes its
+    // own error) instead of the unhandled-throw 500 that turned every retry
+    // into fresh Sentry noise (HOUSTON-APP-567).
+    console.warn(
+      `[sandbox/credential] revoked-token report for ${provider} could not reach the store:`,
+      err instanceof Error ? err.message : err,
+    );
+    json(res, 502, {
+      error: "credential store unavailable; report not applied",
+    });
+    return true;
+  }
   // Both outcomes are success. `removed:false` means the report was superseded
   // — the workspace reconnected, or a sibling runtime reported the same dead
   // token first — and the reporter's own retry/backoff must not treat that as

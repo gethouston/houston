@@ -1,3 +1,4 @@
+import { deadGoogleApiKey } from "@houston/protocol/google-key";
 import type { WorkspaceId } from "../domain/types";
 import {
   type CredentialActing,
@@ -173,6 +174,19 @@ export class RemoteCredentialStore implements CredentialStore {
   ): Promise<CachedCredential | null> {
     const local = await this.fallback?.get(workspaceId, provider);
     if (!local) return null;
+    if (deadStoredApiKey(local)) {
+      // A legacy pre-verification row (HOU-1107) still on this pod's disk.
+      // Adopting it would resurrect the central row the serve guard just
+      // reported dead — the workspace-wide whack-a-mole behind Sentry
+      // HOUSTON-APP-567, where every waking pod re-seeded the row its siblings
+      // had deleted. Drop the file entry instead: the provider honestly reads
+      // not-connected until the user pastes a real (live-verified) key.
+      console.warn(
+        `[credentials] refusing to adopt the legacy ${provider} credential — an OAuth-type token, not an API key; removing it`,
+      );
+      await this.fallback?.remove(workspaceId, provider);
+      return null;
+    }
 
     await this.putRemote(provider, local, { ifAbsent: true });
     return await this.fetchRemote(provider);
@@ -214,6 +228,12 @@ export class RemoteCredentialStore implements CredentialStore {
     cred: WorkspaceCredential,
     opts: { ifAbsent?: boolean; acting?: CredentialActing } = {},
   ): Promise<void> {
+    // Last exit toward the central store: nothing in this process may seed the
+    // gateway with a key the serve guard would immediately refuse and delete.
+    if (deadStoredApiKey(cred))
+      throw new Error(
+        `refusing to store a ${provider} credential that is not an API key (an OAuth-type token can never authenticate)`,
+      );
     const res = await this.fetchImpl(this.url(provider), {
       method: "PUT",
       headers: this.authHeaders(
@@ -288,4 +308,14 @@ export function scopeKeyOf(
   provider: string,
 ): string {
   return `${credentialScopeKey(acting)}|${provider}`;
+}
+
+/** The stored-shape view of the shared dead-google-key predicate: a stored row
+ *  tags its kind explicitly or via the expiresAt=0 sentinel (isApiKeyCredential). */
+function deadStoredApiKey(cred: WorkspaceCredential): boolean {
+  return deadGoogleApiKey({
+    provider: cred.provider,
+    kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
+    access: cred.accessToken,
+  });
 }

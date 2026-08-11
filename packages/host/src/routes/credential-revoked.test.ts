@@ -161,3 +161,29 @@ test("an unauthenticated report never reaches the store", async () => {
   expect(status).toBe(401);
   expect(reports).toEqual([]);
 });
+
+test("a store failure answers a clean 502, never an unhandled throw", async () => {
+  // A gateway blip during the delete must come back as a retriable status: the
+  // reporting runtime retries on its next serve sync (quietly), instead of the
+  // route-level 500 that fed the per-sync error loop (HOUSTON-APP-567).
+  const credentials: CredentialStore = {
+    get: async () => null,
+    put: async () => {},
+    remove: async () => {},
+    removeIfAccess: async () => {
+      throw new Error("credential gateway DELETE google failed (503)");
+    },
+  };
+
+  const { handled, status, body } = await post(credentials, {
+    provider: "google",
+    accessSha256: "d".repeat(64),
+    scope: "team",
+  });
+
+  expect(handled).toBe(true);
+  expect(status).toBe(502);
+  expect(body).toEqual({
+    error: "credential store unavailable; report not applied",
+  });
+});

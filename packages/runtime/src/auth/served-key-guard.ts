@@ -1,4 +1,7 @@
 import { accessDigest } from "@houston/protocol/access-digest";
+// The SUBPATH import is load-bearing: the barrel pulls the zod-heavy wire
+// modules into serve's import chain, which the runtime's hot paths never need.
+import { deadGoogleApiKey } from "@houston/protocol/google-key";
 import { config } from "../config";
 import { currentCredentialScope } from "../session/acting-context";
 import type { ServedCredential } from "./auth-file";
@@ -33,17 +36,22 @@ import type { ServedCredential } from "./auth-file";
  * not this crisp.
  */
 export function servedApiKeyIsDead(cred: ServedCredential): boolean {
-  return (
-    cred.provider === "google" &&
-    cred.kind === "api_key" &&
-    !cred.access.startsWith("AIza")
-  );
+  return deadGoogleApiKey(cred);
 }
 
-/** One report per (scope, provider, token) per pod lifetime — the serve sync
- *  runs on every turn and hydrating route, and the store's delete is already
- *  idempotent, so repeats are pure noise. */
-const reported = new Set<string>();
+/** Keys whose dead-row report was DELIVERED (2xx). Never retried: the serve
+ *  sync runs on every turn and hydrating route, and the store's delete is
+ *  already idempotent, so repeats are pure noise. */
+const delivered = new Set<string>();
+/** Keys with a report currently in flight — the serve sync is single-flight
+ *  per scope, but the fire-and-forget report can outlive the sync it rode on. */
+const pending = new Set<string>();
+/** Keys already announced at ERROR level — the single Sentry event per
+ *  (scope, provider, token) per pod lifetime. A FAILED report retries on the
+ *  next sync, but retries log as warnings: a control plane that keeps refusing
+ *  the delete must not turn one dead row into one error event per turn
+ *  (Sentry HOUSTON-APP-567). */
+const announced = new Set<string>();
 
 /**
  * Tell the control plane the served key is dead so it stops serving it —
@@ -64,11 +72,18 @@ async function report(cred: ServedCredential): Promise<void> {
   const { key, actingAs } = currentCredentialScope();
   const digest = accessDigest(cred.access);
   const dedupe = `${key}:${cred.provider}:${digest}`;
-  if (reported.has(dedupe)) return;
-  reported.add(dedupe);
-  console.error(
-    `[serve] served ${cred.provider} credential is not an API key (an OAuth-type token that can never authenticate) — refusing it and reporting the dead central row`,
-  );
+  if (delivered.has(dedupe) || pending.has(dedupe)) return;
+  pending.add(dedupe);
+  if (announced.has(dedupe)) {
+    console.warn(
+      `[serve] still refusing the dead ${cred.provider} credential — retrying the dead-row report`,
+    );
+  } else {
+    announced.add(dedupe);
+    console.error(
+      `[serve] served ${cred.provider} credential is not an API key (an OAuth-type token that can never authenticate) — refusing it and reporting the dead central row`,
+    );
+  }
   try {
     const res = await fetch(
       `${config.controlPlaneUrl}/sandbox/credential/revoked`,
@@ -89,17 +104,19 @@ async function report(cred: ServedCredential): Promise<void> {
     );
     if (!res.ok) {
       // Let a later sync retry against a control plane that answers.
-      reported.delete(dedupe);
       console.warn(
         `[serve] dead-key report for ${cred.provider} failed: ${res.status}`,
       );
+      return;
     }
+    delivered.add(dedupe);
   } catch (err) {
-    reported.delete(dedupe);
     console.warn(
       `[serve] dead-key report for ${cred.provider} failed:`,
       err instanceof Error ? err.message : err,
     );
+  } finally {
+    pending.delete(dedupe);
   }
 }
 
@@ -108,5 +125,7 @@ const REPORT_TIMEOUT_MS = 10_000;
 
 /** Test-only: clear the per-pod report dedupe. */
 export function resetDeadKeyReportsForTest(): void {
-  reported.clear();
+  delivered.clear();
+  pending.clear();
+  announced.clear();
 }

@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessDigest } from "@houston/protocol/access-digest";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { piApiKeyProviderIds } from "../ai/pi-catalog";
 import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
@@ -728,6 +728,89 @@ test("a served google 'api key' that is an OAuth token is refused, removed, and 
     expect(await syncServedCredential()).toEqual([]);
     expect(reports.length).toBe(1);
   });
+});
+
+test("a failed dead-row report logs ONE error, retries quietly, and stops once delivered", async () => {
+  resetDeadKeyReportsForTest();
+  const reports: number[] = [];
+  let reportStatus = 500;
+  const waiters: Array<{ n: number; resolve: () => void }> = [];
+  const reportSeen = (n: number) =>
+    new Promise<void>((resolve) => {
+      if (reports.length >= n) return resolve();
+      waiters.push({ n, resolve });
+    });
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/sandbox/credential/revoked") {
+      reports.push(reportStatus);
+      for (const w of waiters.filter((w) => reports.length >= w.n)) {
+        waiters.splice(waiters.indexOf(w), 1);
+        w.resolve();
+      }
+      return new Response(JSON.stringify({ ok: true, removed: true }), {
+        status: reportStatus,
+      });
+    }
+    if (url.searchParams.get("provider") === "google") {
+      return new Response(
+        JSON.stringify({
+          provider: "google",
+          kind: "api_key",
+          access: "ya29.a0DeadToken",
+          expires: Number.MAX_SAFE_INTEGER,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  // Let a fire-and-forget report fully settle (its finally clears the
+  // in-flight marker in microtasks after the fetch handler resolved).
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    await withServeMode(fetchImpl, async () => {
+      // Sync 1: refuse + report; the control plane answers 500.
+      await syncServedCredential();
+      await reportSeen(1);
+      await settle();
+      // Sync 2: the failed report is RETRIED — but without a second error.
+      await syncServedCredential();
+      await reportSeen(2);
+      await settle();
+      // Control plane recovers; sync 3's retry is delivered.
+      reportStatus = 200;
+      await syncServedCredential();
+      await reportSeen(3);
+      await settle();
+      // Sync 4: delivered reports are never repeated.
+      await syncServedCredential();
+      await settle();
+      expect(reports).toEqual([500, 500, 200]);
+      const refusals = errors.mock.calls.filter((c) =>
+        String(c[0]).includes("refusing it and reporting"),
+      );
+      // The single Sentry event per pod lifetime (HOUSTON-APP-567): a control
+      // plane that keeps failing the delete must not add one error per sync.
+      expect(refusals.length).toBe(1);
+      expect(
+        warns.mock.calls.some((c) =>
+          String(c[0]).includes("dead-key report for google failed"),
+        ),
+      ).toBe(true);
+      expect(
+        warns.mock.calls.some((c) =>
+          String(c[0]).includes("retrying the dead-row report"),
+        ),
+      ).toBe(true);
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+  }
 });
 
 test("a served google key with the real AIza shape is applied normally", async () => {
