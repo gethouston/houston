@@ -103,6 +103,8 @@ export interface PiTurnRequest {
    * echoed on the `user` frame. Absent when the message mentions nobody.
    */
   mentions?: ChatMessage["mentions"];
+  /** Mutable diagnostic marks, present only when turn timings are enabled. */
+  timings?: Record<string, number>;
 }
 
 export async function runPiTurn(
@@ -120,7 +122,11 @@ export async function runPiTurn(
     turnId,
     displayText,
     mentions,
+    timings,
   } = turn;
+  const mark = (name: string) => {
+    if (timings) timings[name] = performance.now();
+  };
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
@@ -154,10 +160,12 @@ export async function runPiTurn(
       authPath: join(dataDir, "auth.json"),
       modelsPath: join(dataDir, "models.json"),
     });
+    mark("t_modelruntime");
     registerCustomProviderIfConfigured(modelRuntime, dataDir);
     // The qwen (DashScope) extension provider needs the same per-turn
     // registration the long-lived runtime gets at boot (auth/storage.ts).
-    ensureQwenRuntimeProvider(modelRuntime);
+    ensureQwenRuntimeProvider(modelRuntime, dataDir);
+    mark("t_providers_registered");
 
     const toolSelection = buildToolSelection({
       codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
@@ -184,6 +192,7 @@ export async function runPiTurn(
       : null;
 
     const model = resolveTurnModel(dataDir, provider, pin?.model);
+    mark("t_model_resolved");
     // Ground-truth diagnostic: provider + model + the model's actual API base URL
     // (opencode.ai/zen/go/v1 = OpenCode Go, openai/chatgpt = Codex). Unambiguous,
     // unlike asking the model itself.
@@ -227,6 +236,7 @@ export async function runPiTurn(
         ...(sandbox ? [sandbox] : []),
       ],
     });
+    mark("t_backend_built");
     const session = await backend.createSession({
       conversationId,
       model,
@@ -239,6 +249,7 @@ export async function runPiTurn(
       // simply drops it.
       ...(mode ? { mode } : {}),
     });
+    mark("t_session_created");
 
     // Snapshot the hydrated workspace so the turn's created/modified files can
     // be surfaced as a `file_changes` frame. The per-turn root is exclusive to
@@ -252,8 +263,15 @@ export async function runPiTurn(
         err instanceof Error ? err.message : String(err),
       );
     }
+    mark("t_snapshot");
 
     const unsub = session.subscribe((wire: WireEvent) => {
+      if (
+        timings &&
+        timings.t_first_token === undefined &&
+        (wire.type === "text" || wire.type === "thinking")
+      )
+        mark("t_first_token");
       if (wire.type === "text") assistantText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
       else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
@@ -270,7 +288,9 @@ export async function runPiTurn(
     // records into it. Read after prompt() resolves, returned on the outcome.
     const interaction = newInteractionHolder();
     try {
+      mark("t_prompt_start");
       await runWithInteractionCapture(interaction, () => session.prompt(text));
+      mark("t_prompt_end");
     } finally {
       signal?.removeEventListener("abort", onAbort);
       unsub();

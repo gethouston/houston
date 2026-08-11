@@ -75,19 +75,27 @@ async function executeTurn(
   turn: TurnRequest,
   req: IncomingMessage,
   res: ServerResponse,
+  timings?: Record<string, number>,
 ) {
   const root = await mkdtemp(join(tmpdir(), "houston-turn-"));
+  if (timings) timings.t_tmpdir = performance.now();
   const abort = new AbortController();
   req.on("close", () => abort.abort());
   try {
     const manifest = await hydrate(deps.store, turn.gcsPrefix, root);
+    if (timings) {
+      timings.t_hydrated = performance.now();
+      timings.hydrated_objects = manifest.size;
+    }
     await mkdir(join(root, "workspace"), { recursive: true });
     await mkdir(join(root, "data"), { recursive: true });
     if (turn.credential) {
       applyServedCredential(join(root, "data", "auth.json"), turn.credential);
     }
+    if (timings) timings.t_cred_written = performance.now();
 
     const sse = openSSE(res);
+    if (timings) timings.t_sse_open = performance.now();
     // The turn's wire identity: minted HERE (the per-turn server owns the whole
     // turn) so the frames runPiTurn emits and the terminal frame sent after
     // sync-back all carry one id — the host relay re-broadcasts them verbatim.
@@ -123,6 +131,7 @@ async function executeTurn(
         turnId,
         displayText: turn.displayText,
         mentions: turn.mentions,
+        timings,
       });
     }
 
@@ -137,6 +146,15 @@ async function executeTurn(
           ? `${outcome.error}; sync failed: ${m}`
           : `workspace sync failed: ${m}`,
       };
+    }
+    if (timings) {
+      timings.t_synced = performance.now();
+      timings.t_terminal = performance.now();
+      sse.send({
+        type: "timings",
+        data: timings,
+        turnId,
+      } as unknown as WireFrame);
     }
 
     if (outcome.error)
@@ -178,7 +196,11 @@ export function createTurnServer(deps: TurnServerDeps): Server {
           error: err instanceof Error ? err.message : String(err),
         });
       }
-      await executeTurn(deps, turn, req, res);
+      const timings =
+        process.env.HOUSTON_TURN_TIMINGS === "1"
+          ? { t0_request: performance.now() }
+          : undefined;
+      await executeTurn(deps, turn, req, res, timings);
     })().catch((err) => {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[turn] unhandled:", message);

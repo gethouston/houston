@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx src/main.ts",
     "spike": "tsx spike/phase0.ts",
+    "spike:claim": "tsx spike/claim-path.ts",
     "test": "vitest run --testTimeout=30000",
     "typecheck": "tsgo -p tsconfig.json"
   },

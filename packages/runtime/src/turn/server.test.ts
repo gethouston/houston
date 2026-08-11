@@ -202,6 +202,38 @@ test("every frame of a turn — including the server's terminal — carries ONE 
   expect([...ids][0]).toMatch(/^[0-9a-f-]{36}$/);
 });
 
+test("timings are opt-in and arrive immediately before the terminal frame", async () => {
+  const previous = process.env.HOUSTON_TURN_TIMINGS;
+  process.env.HOUSTON_TURN_TIMINGS = "1";
+  try {
+    seed("workspace/notes.txt", "hello-from-gcs");
+    const raw = await (await post(turnBody())).text();
+    const frames = raw
+      .split("\n\n")
+      .map((block) =>
+        block.split("\n").find((line) => line.startsWith("data: ")),
+      )
+      .filter((line): line is string => !!line)
+      .map(
+        (line) =>
+          JSON.parse(line.slice(6)) as {
+            type: string;
+            data: Record<string, number>;
+          },
+      );
+    expect(frames.at(-2)?.type).toBe("timings");
+    expect(frames.at(-1)?.type).toBe("done");
+    expect(frames.at(-2)?.data.t0_request).toBeTypeOf("number");
+    expect(frames.at(-2)?.data.t_synced).toBeGreaterThanOrEqual(
+      frames.at(-2)?.data.t0_request ?? Number.POSITIVE_INFINITY,
+    );
+    expect(frames.at(-2)?.data.hydrated_objects).toBeGreaterThan(0);
+  } finally {
+    if (previous === undefined) delete process.env.HOUSTON_TURN_TIMINGS;
+    else process.env.HOUSTON_TURN_TIMINGS = previous;
+  }
+});
+
 test("health endpoint reports turn mode", async () => {
   const r = await fetch(`${base}/health`);
   expect(((await r.json()) as { mode: string }).mode).toBe("turn");
