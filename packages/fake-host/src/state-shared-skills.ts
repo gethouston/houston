@@ -32,6 +32,14 @@ function scalar(frontmatter: string, key: string): string | null {
   }
 }
 
+/** Best-effort frontmatter scalar straight off a full SKILL.md — the same
+ *  parsing the shared store uses, exported for the per-agent store so a saved
+ *  file's `title:` lands in both lists the way the real host's re-parse does. */
+export function frontmatterScalar(content: string, key: string): string | null {
+  const match = content.match(FRONTMATTER);
+  return match ? scalar(match[1] ?? "", key) : null;
+}
+
 function summary(
   slug: string,
   content: string,

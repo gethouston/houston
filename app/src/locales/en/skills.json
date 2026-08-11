@@ -117,7 +117,8 @@
     "deleteTitle": "Delete \"{{name}}\"?",
     "deleteDescription": "This removes the skill from your agent. You can reinstall it later.",
     "instructionsPlaceholder": "Instructions for this skill...",
-    "integrations": "Works with"
+    "integrations": "Works with",
+    "rename": "Rename skill"
   },
   "categories": {
     "Advisory": "Advisory",

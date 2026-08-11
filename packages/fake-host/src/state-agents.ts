@@ -4,6 +4,7 @@
  */
 
 import { SEED_WORKSPACE_ID } from "./config";
+import { writeSkillFile } from "./state-skills";
 import {
   ACTIVITY_PATH,
   type CpAgent,
@@ -13,6 +14,8 @@ import {
   fileKey,
   state,
 } from "./state-store";
+
+const SKILL_FILE = /^\.agents\/skills\/([^/]+)\/SKILL\.md$/;
 
 // ---- agents ----
 export function listAgents(): CpAgent[] {
@@ -119,4 +122,8 @@ export function writeAgentFile(
   state.files.set(fileKey(agentId, relPath), content);
   // The real file watcher fires ActivityChanged when the board file is written.
   if (relPath === ACTIVITY_PATH) emitDomain("ActivityChanged", agentId);
+  // ...and classifies a SKILL.md write as SkillsChanged: the Skills dialogs'
+  // fan-out save is a plain file write, so the list must re-serve it.
+  const skillSlug = relPath.match(SKILL_FILE)?.[1];
+  if (skillSlug) writeSkillFile(agentId, skillSlug, content);
 }

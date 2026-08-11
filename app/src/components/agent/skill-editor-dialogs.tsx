@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import { skillIntegrationSlugs } from "../../lib/skill-integrations";
+import { withSkillTitle } from "../../lib/skill-title";
 import type { SkillSummary } from "../../lib/types";
 import { IntegrationBadges } from "../integrations";
 
@@ -83,7 +84,11 @@ export function SkillEditorDialogs({
           />
         }
         editor={editorState}
-        onSave={onSaveEditing}
+        onSave={(content, rename) =>
+          onSaveEditing(
+            rename === undefined ? content : withSkillTitle(content, rename),
+          )
+        }
         onDelete={
           readOnly || !editingSkill
             ? undefined

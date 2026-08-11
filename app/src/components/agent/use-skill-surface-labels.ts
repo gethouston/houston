@@ -22,6 +22,7 @@ export function useSkillSurfaceLabels() {
     delete: t("common:actions.delete"),
     editorPlaceholder: t("skills:detail.instructionsPlaceholder"),
     loadFailed: t("skills:detail.loadFailed"),
+    rename: t("skills:detail.rename"),
   };
 
   const deleteConfirm = {

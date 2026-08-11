@@ -8,6 +8,7 @@
  */
 
 import type { SkillDetail, SkillSummary } from "@houston/protocol";
+import { frontmatterScalar } from "./state-shared-skills";
 import { emitDomain } from "./state-store";
 
 type SkillRow = SkillSummary & { content: string };
@@ -80,6 +81,15 @@ export function installSkills(agentId: string, names: string[]): string[] {
   return names;
 }
 
+/** Mirror the real host: summary fields are re-parsed from the saved file's
+ *  frontmatter, so a header rename's `title:` write shows up in the list. */
+function refresh(skill: SkillRow, content: string): void {
+  skill.content = content;
+  skill.title = frontmatterScalar(content, "title");
+  const description = frontmatterScalar(content, "description");
+  if (description !== null) skill.description = description;
+}
+
 export function saveSkill(
   agentId: string,
   slug: string,
@@ -87,9 +97,24 @@ export function saveSkill(
 ): boolean {
   const skill = agentSkills(agentId).get(slug);
   if (!skill) return false;
-  skill.content = content;
+  refresh(skill, content);
   emitDomain("SkillsChanged", agentId);
   return true;
+}
+
+/** The real host's file watcher: a direct `.agents/skills/<slug>/SKILL.md`
+ *  write (the Skills dialogs' fan-out save) lands in the skill list too,
+ *  upserting a newly assigned holder's copy. */
+export function writeSkillFile(
+  agentId: string,
+  slug: string,
+  content: string,
+): void {
+  const skills = agentSkills(agentId);
+  const skill = skills.get(slug) ?? row(slug, "", content);
+  refresh(skill, content);
+  skills.set(slug, skill);
+  emitDomain("SkillsChanged", agentId);
 }
 
 export function deleteSkill(agentId: string, slug: string): boolean {

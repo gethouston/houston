@@ -3,16 +3,19 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
 } from "@houston-ai/core";
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { InstalledSkillEditorState } from "./installed-skill-editor-model";
 import {
   DEFAULT_SKILL_EDIT_MODAL_LABELS,
   type SkillEditModalLabels,
 } from "./skill-edit-modal-labels";
 import { NonReadyBody, ReadyEditBody } from "./skill-edit-modal-parts";
+import {
+  EditableSkillTitle,
+  skillRenameEscapeGuard,
+} from "./skill-title-editor";
 
 export interface SkillEditModalProps {
   open: boolean;
@@ -30,7 +33,9 @@ export interface SkillEditModalProps {
    */
   integrationsSlot?: ReactNode;
   editor: InstalledSkillEditorState;
-  onSave: (content: string) => Promise<void>;
+  /** `rename` is the header pencil's committed display name, riding the same
+   *  save (the caller writes it into the frontmatter `title:`). */
+  onSave: (content: string, rename?: string) => Promise<void>;
   /** Open the delete confirm (the strip has no per-tile delete affordance, so
    *  the destructive action lives here). Omit to hide the button. */
   onDelete?: () => void;
@@ -61,15 +66,29 @@ export function SkillEditModal({
 }: SkillEditModalProps) {
   const l = { ...DEFAULT_SKILL_EDIT_MODAL_LABELS, ...labels };
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
+  // The header pencil's uncommitted rename; saved alongside the content draft,
+  // dropped whenever the modal closes or shows a different skill.
+  const [rename, setRename] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open and displayName are intentional change-triggers — a pending rename must die when the modal closes or shows a different skill; the effect body deliberately reads none of it.
+  useEffect(() => {
+    setRename(null);
+  }, [open, displayName]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent
+        className="sm:max-w-2xl"
+        onEscapeKeyDown={skillRenameEscapeGuard}
+      >
         {/* min-w-0: DialogContent is a grid; without it this item's min-content
             width (a long nowrap line) blows the track past the dialog's
             max-width and drags the textarea with it. */}
         <DialogHeader className="min-w-0">
-          <DialogTitle className="truncate">{displayName}</DialogTitle>
+          <EditableSkillTitle
+            title={rename ?? displayName}
+            onRename={editor.status === "ready" ? setRename : undefined}
+            renameLabel={l.rename}
+          />
           {description && (
             <DialogDescription className="line-clamp-2">
               {description}
@@ -81,6 +100,7 @@ export function SkillEditModal({
         {editor.status === "ready" ? (
           <ReadyEditBody
             initial={editor.content}
+            rename={rename}
             onSave={onSave}
             onCancel={close}
             onDelete={onDelete}
