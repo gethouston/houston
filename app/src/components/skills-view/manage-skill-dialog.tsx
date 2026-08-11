@@ -3,13 +3,15 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
   Skeleton,
 } from "@houston-ai/core";
+import { EditableSkillTitle, skillRenameEscapeGuard } from "@houston-ai/skills";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import { queryKeys } from "../../lib/query-keys";
+import { withSkillTitle } from "../../lib/skill-title";
 import { tauriSharedSkills, tauriSkills } from "../../lib/tauri";
 import type { SharedSkillRow } from "../../lib/workspace-shared-skills";
 import { ManageSkillBody } from "./manage-skill-body";
@@ -74,6 +76,14 @@ export function ManageSkillDialog({
     onDeleteEverywhere,
     onClose,
   });
+  // The header pencil's uncommitted rename (PRODUCT-1018): saved into the
+  // frontmatter `title:` when Save changes runs; the slug never moves.
+  const [rename, setRename] = useState<string | null>(null);
+  const slug = row?.slug;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: slug is the intentional change-trigger — a pending rename must die with the row it was typed for; the effect body deliberately reads none of it.
+  useEffect(() => {
+    setRename(null);
+  }, [slug]);
 
   if (!row) return null;
   const overriddenBy = isShared ? (row.overriddenBy ?? []) : [];
@@ -82,11 +92,16 @@ export function ManageSkillDialog({
   return (
     <>
       <Dialog open onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent
+          className="sm:max-w-2xl"
+          onEscapeKeyDown={skillRenameEscapeGuard}
+        >
           <DialogHeader className="min-w-0">
-            <DialogTitle className="truncate">
-              {skillDisplayTitle(row.summary)}
-            </DialogTitle>
+            <EditableSkillTitle
+              title={rename ?? skillDisplayTitle(row.summary)}
+              onRename={detail ? setRename : undefined}
+              renameLabel={t("skills:detail.rename")}
+            />
             {row.summary.description && (
               <DialogDescription className="line-clamp-2">
                 {row.summary.description}
@@ -124,7 +139,17 @@ export function ManageSkillDialog({
                     }
                   : undefined
               }
-              onSave={flow.save}
+              forceDirty={rename !== null}
+              onSave={(draft) =>
+                flow.save({
+                  content:
+                    rename !== null
+                      ? withSkillTitle(draft.content, rename)
+                      : draft.content,
+                  contentDirty: draft.contentDirty || rename !== null,
+                  afterIds: draft.afterIds,
+                })
+              }
               onDeleteEverywhere={
                 isShared && onDisableForAgent
                   ? () =>

@@ -21,6 +21,7 @@ export function ManageSkillBody({
   overrides,
   onEnableAll,
   onPromote,
+  forceDirty = false,
   onSave,
   onDeleteEverywhere,
   deleteLabel,
@@ -52,6 +53,9 @@ export function ManageSkillBody({
   /** Move this per-agent skill into the workspace store ("Share to
    *  workspace") — offered on local rows when the deployment has a store. */
   onPromote?: () => Promise<void>;
+  /** Unsaved work living OUTSIDE this body — the dialog header's pending
+   *  rename — so Save lights up even when the draft here is untouched. */
+  forceDirty?: boolean;
   onSave: (draft: {
     content: string;
     contentDirty: boolean;
@@ -76,7 +80,7 @@ export function ManageSkillBody({
     assignment === "editable" &&
     (selected.size !== assignedIds.size ||
       [...selected].some((id) => !assignedIds.has(id)));
-  const dirty = contentDirty || assignmentDirty;
+  const dirty = contentDirty || assignmentDirty || forceDirty;
   // Copy-based rows: unassigning everyone IS deletion — that path goes through
   // the explicit Delete button, so an empty selection can't ride an
   // innocuous-looking Save. Store-backed rows keep the skill either way.

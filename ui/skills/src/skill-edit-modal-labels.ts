@@ -11,6 +11,8 @@ export interface SkillEditModalLabels {
   delete?: string;
   editorPlaceholder?: string;
   loadFailed?: string;
+  /** The header pencil's accessible label (and the rename input's). */
+  rename?: string;
 }
 
 export const DEFAULT_SKILL_EDIT_MODAL_LABELS: Required<SkillEditModalLabels> = {
@@ -20,4 +22,5 @@ export const DEFAULT_SKILL_EDIT_MODAL_LABELS: Required<SkillEditModalLabels> = {
   delete: "Delete skill",
   editorPlaceholder: "Instructions for this skill...",
   loadFailed: "Couldn't load this skill's instructions.",
+  rename: "Rename skill",
 };

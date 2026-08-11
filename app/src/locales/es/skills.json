@@ -117,7 +117,8 @@
     "deleteTitle": "¿Eliminar \"{{name}}\"?",
     "deleteDescription": "Esto elimina el skill de tu agente. Puedes reinstalarlo después.",
     "instructionsPlaceholder": "Instrucciones para este skill...",
-    "integrations": "Funciona con"
+    "integrations": "Funciona con",
+    "rename": "Renombrar skill"
   },
   "categories": {
     "Advisory": "Asesoría",

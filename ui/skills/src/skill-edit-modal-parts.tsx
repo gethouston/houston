@@ -59,30 +59,34 @@ export function NonReadyBody({
 /** The seeded textarea + a footer whose Save commits the draft. */
 export function ReadyEditBody({
   initial,
+  rename,
   onSave,
   onCancel,
   onDelete,
   labels: l,
 }: {
   initial: string;
-  onSave: (content: string) => Promise<void>;
+  /** The header pencil's committed display name (null = untouched). A pending
+   *  rename is unsaved work, so it lights Save and rides it. */
+  rename: string | null;
+  onSave: (content: string, rename?: string) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => void;
   labels: Labels;
 }) {
   const [draft, setDraft] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const dirty = draft !== initial;
+  const dirty = draft !== initial || rename !== null;
 
   const handleSave = useCallback(async () => {
     if (!dirty || saving) return;
     setSaving(true);
     try {
-      await onSave(draft);
+      await onSave(draft, rename ?? undefined);
     } finally {
       setSaving(false);
     }
-  }, [dirty, saving, onSave, draft]);
+  }, [dirty, saving, onSave, draft, rename]);
 
   return (
     <>

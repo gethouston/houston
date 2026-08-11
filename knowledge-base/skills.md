@@ -337,6 +337,24 @@ surface hosting the chat, which matters most on macOS, where a bare refocus
 consumes the nav (`shouldNavigateOnAppActivation`,
 `app/tests/notification-nav.test.ts`).
 
+**Renaming a skill = the header pencil (PRODUCT-1018).** Both detail dialogs
+(`ManageSkillDialog` and the `SkillEditModal` fallback) render their title
+through `EditableSkillTitle` (`ui/skills/src/skill-title-editor.tsx`): a
+pencil at the end of the name swaps in an inline input — Enter or blur
+commits, Escape cancels. Radix hears Escape on a document-level CAPTURE
+listener, so the input can't stop it itself: each hosting `DialogContent`
+passes `skillRenameEscapeGuard` as `onEscapeKeyDown`, else cancelling a
+rename closes the whole dialog. The committed name is a pending rename that
+rides the existing **Save changes** write: `withSkillTitle`
+(`app/src/lib/skill-title.ts`, node-tested) rewrites the frontmatter `title:`
+in the saved SKILL.md, and every surface re-renders it via
+`skillDisplayTitle`. The directory slug NEVER moves — display drifts freely,
+identity doesn't (see "Skill identity = directory slug"). The fake host
+mirrors the real watcher for this: a `.agents/skills/<slug>/SKILL.md` write
+upserts the skill row and re-parses `title:` from the frontmatter
+(`packages/fake-host/src/state-skills.ts` `writeSkillFile`/`refresh`), pinned
+by the rename e2e in `packages/web/e2e/skills-agent-dialog.spec.ts`.
+
 **The manage dialog is the skill's one detail surface on BOTH pages.** A row
 click in the agent's Skills section opens the SAME manage dialog the global
 page uses (`agent-skill-manage-dialog.tsx` wraps it: lazy cross-agent

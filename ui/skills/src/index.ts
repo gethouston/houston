@@ -74,6 +74,11 @@ export { SkillPreviewModal } from "./skill-preview-modal";
 export type { SkillPreviewSheetLabels } from "./skill-preview-modal-labels";
 export type { SkillRowProps } from "./skill-row";
 export { SkillRow } from "./skill-row";
+export type { EditableSkillTitleProps } from "./skill-title-editor";
+export {
+  EditableSkillTitle,
+  skillRenameEscapeGuard,
+} from "./skill-title-editor";
 export type { SkillsGridProps } from "./skills-grid";
 export { SkillsGrid } from "./skills-grid";
 export type { SkillsGridLabels } from "./skills-grid-labels";
