@@ -5,6 +5,7 @@ import { openAdminSection } from "./support/settings-nav";
 import {
   agentSectionTab,
   expectTeamSections,
+  openAgentScreen,
   openAgentSettings,
 } from "./support/team-nav";
 
@@ -252,12 +253,14 @@ test("People section: switching to everyone is confirm-gated when it drops a Man
   ).toContainText("Can use");
 });
 
-test("a visible-but-not-manager admin drills into the SAME page, read-only", async ({
+test("a visible-but-not-manager admin is offered no settings door at all", async ({
   page,
   request,
 }) => {
-  // Previously a dead-end note. An admin who can see the agent but does not
-  // manage it now reads every section, with no dead affordances.
+  // The settings page has ONE face and it is the manager's. An admin who can
+  // see the agent but does not manage it gets the agent's WORK and no
+  // configure door: a read-only rendering of an editing surface is a page full
+  // of controls that refuse, so the lozenge that opens it is simply not drawn.
   await armCapabilities(request, {
     multiplayer: true,
     teams: true,
@@ -279,28 +282,16 @@ test("a visible-but-not-manager admin drills into the SAME page, read-only", asy
       ],
     },
   });
-  await openFinance(page);
+  await page.goto("/");
+  await openAgentScreen(page, "Finance Bot");
 
-  // The rail and People hero are there; the controls are not.
-  await expect(agentSectionTab(page, "Settings")).toHaveCount(0);
-  await expect(agentSectionTab(page, "People")).toBeVisible();
+  // Their agent screen carries the work sections and stops there.
+  await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
+  // And with no door, none of the page behind it is reachable or rendered.
+  await expect(agentSectionTab(page, "People")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Allowed People" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Pick whether everyone on your team can use this agent, or only the people you choose.",
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Someone who manages this agent can change who has access."),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Change access for bob@acme.test" }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole("radio", { name: "Only specific people" }),
-  ).toBeDisabled();
 });
 
 test("Apps section: the app ceiling narrows and persists", async ({

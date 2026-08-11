@@ -1,5 +1,9 @@
 import { expect, test } from "./support/fixtures";
-import { expectTeamSectionSelected, screen } from "./support/team-nav";
+import {
+  expectTeamSectionSelected,
+  expectTeamSections,
+  screen,
+} from "./support/team-nav";
 
 test("a narrow team header routes sections through the compact switcher", async ({
   page,
@@ -12,14 +16,21 @@ test("a narrow team header routes sections through the compact switcher", async 
   await expect(switcher).toBeVisible();
   await expect(activeScreen.locator("[data-team-section-tab]")).toHaveCount(0);
 
-  await switcher.click();
-  const sections = page.getByRole("menuitemcheckbox");
-  await expect(sections).toHaveCount(5);
-  await expect(
-    page.locator("[data-team-section-tab='mission-control']"),
-  ).toHaveAttribute("aria-checked", "true");
+  // The menu carries the team's WHOLE section set — the board included, named
+  // outright, because inside a list of names "the team's lozenge stands for it"
+  // stops being legible.
+  await expectTeamSections(page, [
+    "Tasks",
+    "Routines",
+    "Files",
+    "Team Settings",
+  ]);
+  await expectTeamSectionSelected(page, "Tasks");
 
-  await page.locator("[data-team-section-tab='routines']").click();
+  await switcher.click();
+  await page
+    .locator("[role='menuitemcheckbox'][data-team-section-tab='routines']")
+    .click();
   await expectTeamSectionSelected(page, "Routines");
   await expect(switcher).toBeVisible();
 });

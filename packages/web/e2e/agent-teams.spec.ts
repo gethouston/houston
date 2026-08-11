@@ -19,9 +19,9 @@ import {
   expectTeamSections,
   openAgentSettings,
   openTeamSettings,
+  openTeamSettingsSection,
   rail,
   screen,
-  teamSettingsTab,
 } from "./support/team-nav";
 
 /**
@@ -73,6 +73,15 @@ const MEMBER_CAPS = {
   agentTeams: true,
   role: "user",
 };
+
+/**
+ * The ACTIVE SPACE's display name, which is what the gateway mints its default
+ * team with — and therefore the name a default team is "untouched" while it
+ * still wears. The web shell names its single space "Personal"
+ * (`engine-adapter/synthetic.ts`), so that is the seed to arm a default team
+ * with when a spec needs the untouched one.
+ */
+const SPACE_NAME = "Personal";
 
 /** The caller the fake host serves (`SELF_USER_ID`). */
 const SELF = "u-self";
@@ -158,16 +167,37 @@ const HOUSTON: AgentSeed = { id: SEED_AGENT_ID, name: SEED_AGENT_NAME };
 async function openShell(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
+  await dismissPanel(page);
+}
+
+/** Open ONE AGENT's own screen by clicking its rail row. Its sections are the
+ *  agent's, not the team's — the team's own screen is {@link openTeam}. */
+async function openAgentOf(page: Page, agentName: string): Promise<void> {
+  await rail(page).getByText(agentName, { exact: true }).click();
+  await dismissPanel(page);
+}
+
+/** Open a TEAM's own screen by clicking its block header in the rail. */
+async function openTeam(page: Page, header: Locator): Promise<void> {
+  await header.getByRole("button").first().click();
+  await dismissPanel(page);
+}
+
+/** A team whose board is empty opens the new-task composer beside it; close it
+ *  so the strip keeps the width its one-row layout needs. */
+async function dismissPanel(page: Page): Promise<void> {
   const closePanel = page.getByRole("button", { name: "Close panel" });
   if (await closePanel.isVisible()) await closePanel.click();
 }
 
-/** Open a team by clicking one of its agents in the rail, which pins that agent
- *  and opens ITS team's Tasks board. */
-async function openTeamOfAgent(page: Page, agentName: string): Promise<void> {
-  await rail(page).getByText(agentName, { exact: true }).click();
-  const closePanel = page.getByRole("button", { name: "Close panel" });
-  if (await closePanel.isVisible()) await closePanel.click();
+/** The drilled Team Settings level names the team it configures on its BACK
+ *  CHIP — the way out wears the destination's name — while the h1 stays on the
+ *  first section lozenge. So "whose settings am I in?" is a question about the
+ *  chip. */
+async function expectTeamSettingsOf(page: Page, team: string): Promise<void> {
+  await expect(screen(page).locator("[data-team-settings-back]")).toContainText(
+    team,
+  );
 }
 
 /** One team's block header, by server team id. */
@@ -187,8 +217,9 @@ async function renameBlock(
   header: Locator,
   name: string,
 ): Promise<void> {
-  await header.getByRole("button").click();
+  await openTeam(page, header);
   await openTeamSettings(page);
+  await openTeamSettingsSection(page, "Settings");
   await page.getByTestId("team-settings-identity").click();
   const dialog = page.getByRole("dialog", { name: "Change icon & name" });
   const input = dialog.getByRole("textbox", { name: "Team name" });
@@ -542,18 +573,16 @@ test("Members names the team's people, and its owner toggle writes", async ({
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openTeamOfAgent(page, "Ops Bot");
+  await openTeam(page, groupHeader(page, OPS_TEAM));
   await openTeamSettings(page);
+  // A shared space has nowhere to move a team TO, so the row is absent from the
+  // one tab that would carry it.
+  await openTeamSettingsSection(page, "Settings");
   await expect(
     screen(page).getByTestId("team-settings-move-to-organization"),
   ).toHaveCount(0);
-  await teamSettingsTab(page, "People").click();
-  await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: "Operations",
-    }),
-  ).toBeVisible();
+  await openTeamSettingsSection(page, "People");
+  await expectTeamSettingsOf(page, "Operations");
 
   // The card names PEOPLE, resolved through the org roster, not raw ids. The
   // heading carries the team's size, hence the prefix match.
@@ -611,12 +640,10 @@ test("the default team's member list is read-only and says why", async ({
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openTeamOfAgent(page, SEED_AGENT_NAME);
+  await openTeam(page, defaultHeader(page));
   await openTeamSettings(page);
-  await teamSettingsTab(page, "People").click();
-  await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Acme" }),
-  ).toBeVisible();
+  await openTeamSettingsSection(page, "People");
+  await expectTeamSettingsOf(page, "Acme");
   await expect(
     screen(page).getByRole("heading", { name: /^People/ }),
   ).toBeVisible();
@@ -668,14 +695,9 @@ test("a team's shared context tab saves", async ({ page }) => {
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openTeamOfAgent(page, "Ops Bot");
+  await openTeam(page, groupHeader(page, OPS_TEAM));
   await openTeamSettings(page);
-  await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: "Operations",
-    }),
-  ).toBeVisible();
+  await expectTeamSettingsOf(page, "Operations");
 
   const card = screen(page).getByRole("heading", { name: "Team context" });
   await expect(card).toBeVisible();
@@ -741,7 +763,7 @@ test("a team's context is READ-ONLY for someone who does not own the team", asyn
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openTeamOfAgent(page, SEED_AGENT_NAME);
+  await openTeam(page, groupHeader(page, OPS_TEAM));
   await openTeamSettings(page);
   const box = screen(page).getByTestId("team-context-input");
   await expect(box).toHaveText("We ship on Fridays.");
@@ -763,10 +785,14 @@ test("the untouched default team displays New Team and renames through Team Sett
   // `400 default_team` to a delete, and everyone is in it so there is nothing
   // to leave. The team's shared context is not here either: it lives on the
   // team's focused agent screen now, on every backend.
+  //
+  // UNTOUCHED means still wearing the name the gateway minted it with, which is
+  // the space's own — so the seed is armed as exactly that, and the rail shows
+  // the placeholder identity instead of a name nobody chose.
   await armServerTeams(page, {
     caps: OWNER_CAPS,
     agents: [HOUSTON],
-    teams: [{ id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 }],
+    teams: [{ id: ACME_TEAM, name: SPACE_NAME, isDefault: true, sortOrder: 0 }],
   });
   const calls = recordGatewayCalls(page);
   await openShell(page);
@@ -798,7 +824,7 @@ test("a caller who does not own the default team gets no rail menu", async ({
     caps: MEMBER_CAPS,
     members: [{ ...ADA, role: "user" }],
     agents: [{ ...HOUSTON, access: "user" }],
-    teams: [{ id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 }],
+    teams: [{ id: ACME_TEAM, name: SPACE_NAME, isDefault: true, sortOrder: 0 }],
   });
   await openShell(page);
 
@@ -842,8 +868,9 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   await expect(groupHeader(page, OPS_TEAM)).toBeVisible();
   await expect(blockRows(page, OPS_TEAM)).toContainText("Ops Bot");
 
-  await groupHeader(page, OPS_TEAM).getByRole("button").click();
+  await openTeam(page, groupHeader(page, OPS_TEAM));
   await openTeamSettings(page);
+  await openTeamSettingsSection(page, "Settings");
   await expect(page.getByTestId("team-settings-identity")).toBeVisible();
   await expect(page.getByTestId("team-settings-delete")).toBeVisible();
   await expect(page.getByTestId("team-settings-leave")).toHaveCount(0);
@@ -868,21 +895,23 @@ test("a personal space groups its agents into teams, and offers nothing about pe
 
   // The team keeps its identity title. Personal spaces expose an invitation
   // empty state on People, and Context remains independently usable.
-  await openTeamOfAgent(page, "Ops Bot");
-  await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Ops Bot" }),
-  ).toBeVisible();
+  await openAgentOf(page, "Ops Bot");
+  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
+    "Ops Bot",
+  );
   await expect(screen(page).getByLabel("Team name")).toHaveCount(0);
+  await openTeam(page, groupHeader(page, OPS_TEAM));
   await openTeamSettings(page);
-  await teamSettingsTab(page, "People").click();
+  await openTeamSettingsSection(page, "People");
   await expect(
-    screen(page).getByRole("heading", { name: "Invite people" }),
+    screen(page).getByText("Create an organization to invite people"),
   ).toBeVisible();
   await expect(
     screen(page).getByRole("button", { name: "Create organization" }),
   ).toBeVisible();
-  await openTeamSettings(page);
+  await openTeamSettingsSection(page, "Context");
   await expect(screen(page).getByTestId("team-context-input")).toBeVisible();
+  await openTeamSettingsSection(page, "Settings");
   await expect(
     screen(page).getByTestId("team-settings-move-to-organization"),
   ).toBeVisible();
@@ -897,7 +926,7 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   // control that the gateway would refuse.
   await openAgentSettings(page, "Ops Bot", "People");
   await expect(
-    screen(page).getByRole("heading", { name: "Invite people" }),
+    screen(page).getByText("Create an organization to invite people"),
   ).toBeVisible();
   await expect(
     screen(page).getByRole("button", { name: "Create organization" }),
@@ -949,7 +978,7 @@ test("a joined member gets agent settings only for an agent they manage", async 
   // On this backend the gate is the SERVER's answer for THIS team, not the
   // caller's org role: a member who owns no team and manages no agent has
   // nothing to administer anywhere.
-  await openTeamOfAgent(page, "Ops Bot");
+  await openAgentOf(page, "Ops Bot");
   await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
 
   // Give them ONE agent of that team to manage and the door comes back — on
@@ -961,11 +990,11 @@ test("a joined member gets agent settings only for an agent they manage", async 
   await expect(page.getByText("Your teams")).toBeVisible();
 
   // The default team, whose one agent they only USE, still offers three.
-  await openTeamOfAgent(page, SEED_AGENT_NAME);
+  await openAgentOf(page, SEED_AGENT_NAME);
   await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
 
   // The focused agent screen adds its settings lozenge for that agent only.
-  await openTeamOfAgent(page, "Ops Bot");
+  await openAgentOf(page, "Ops Bot");
   await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(4);
   await expect(
     screen(page).locator("[data-team-section-tab='settings']"),

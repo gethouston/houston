@@ -16,9 +16,10 @@ import { useTeamBoardScope } from "./use-team-board-scope";
  * A team's Tasks section: the team's active board, or the honest empty state
  * when the team holds no agents.
  *
- * The ARCHIVE is no longer one of this section's modes — it is its own tab
- * (`team-archived.tsx`), so this component holds no surface state at all and
- * the board below it never has to say which of two things it is.
+ * The ARCHIVE is a MODE of this section (`team-archived.tsx`), reached by the
+ * board toolbar's "Archived" button and left by the archive's own "Back to
+ * tasks". The flag lives here, above both boards, so exactly one of them is
+ * mounted and neither has to say which of two things it is.
  *
  * The FULL workspace roster goes to the board (so it reads the single warm
  * `all-conversations` query, per the one-sweep rule) and the shared

@@ -94,7 +94,7 @@ test("spaces host, personal space: Admin shows the create-organization People fa
   ).toBeVisible();
   await page.getByRole("button", { name: "Create organization" }).click();
   await expect(
-    page.getByRole("heading", { name: "Create a team" }),
+    page.getByRole("heading", { name: "Create an organization" }),
   ).toBeVisible();
 });
 
@@ -111,7 +111,7 @@ test("regression: a non-spaces Teams host still shows Admin on the personal work
   await expect(adminRow(page)).toBeVisible();
 });
 
-test("spaces host: switching to a team space reveals Admin", async ({
+test("spaces host: switching to a team space turns Admin's People face into the roster", async ({
   page,
   request,
 }) => {
@@ -120,16 +120,28 @@ test("spaces host: switching to a team space reveals Admin", async ({
   await page.goto("/");
   await railPainted(page);
 
-  // Personal on boot: the surface is hidden.
-  await expect(adminRow(page)).toHaveCount(0);
+  // Admin is a standing row in BOTH kinds of space — it is where a personal
+  // space is offered the way out of being alone, so hiding it there would hide
+  // the invitation itself. What the switch changes is the FACE behind it.
+  await expect(adminRow(page)).toBeVisible();
+  await openAdminSection(page, "People");
+  await expect(
+    page.getByText("To invite other people, create an organization."),
+  ).toBeVisible();
 
   // Switch into the team space through the real switcher UI. The rail rebuilds
   // in place — a space switch lands the user on their agent home, and the gate,
   // not where the switch leaves the view, is what this asserts.
   await switchToSpace(page, TEAM.name);
 
-  // The active space is now a team → Admin appears.
+  // A team space has people, so People is the real roster with its invite
+  // field, and the create-organization face is gone.
   await expect(adminRow(page)).toBeVisible();
+  await openAdminSection(page, "People");
+  await expect(page.locator("#org-add-email")).toBeVisible();
+  await expect(
+    page.getByText("To invite other people, create an organization."),
+  ).toHaveCount(0);
 });
 
 test("team space: inviting a fresh email through Admin > People renders a pending invite", async ({

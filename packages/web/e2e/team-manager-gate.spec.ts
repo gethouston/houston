@@ -11,6 +11,7 @@ import {
   seedSidebarLayout,
 } from "./support/sidebar-layout";
 import {
+  expectTeamSections,
   openAgentScreen,
   openAgentSettings,
   openTeamSettings,
@@ -236,22 +237,19 @@ test("the member EDITS the agent they manage, and the one they only use offers n
     page.getByText("Write instructions for your agent…"),
   ).toBeVisible();
 
-  // Back to the team, then onto an agent of the SAME team they only USE.
+  // The back chip returns to the agent it configures — its own screen, board
+  // and all. An empty board auto-opens the composer beside it, already
+  // addressed to that agent, and it takes the room the lozenge strip needs.
   await screen(page).locator("[data-agent-settings-back]").click();
-  // An EMPTY board auto-opens its composer, and a two-agent team asks who
-  // runs it first (use-mc-new-mission). That is the designed landing, not a
-  // detour — acknowledge and dismiss it before navigating on.
-  const picker = page.getByRole("dialog", {
-    name: "Which agent should run this?",
-  });
-  await expect(picker).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(picker).toHaveCount(0);
+  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
+    "Payroll Bot",
+  );
+  await page.getByRole("button", { name: "Close panel" }).click();
 
   // Configuring an agent is its MANAGER's job, so this agent's screen offers
   // its work and no settings door: no lozenge to click, and therefore no
   // page — the surface does not exist for them rather than existing locked.
   await openAgentScreen(page, "Payroll Helper");
   await expect(sectionTab(page, "Team Settings")).toHaveCount(0);
-  await expect(sectionTabs(page)).toHaveCount(3);
+  await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
 });

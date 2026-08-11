@@ -22,15 +22,6 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * becoming the accidental default for every desktop flow.
  */
 
-/**
- * Literal text, safe to drop inside a `RegExp`. Agent names are caller-supplied
- * product data: a "Q3 P&L (draft)" or "houston.ai bot" would otherwise turn its
- * `.`/`(`/`+` into pattern syntax and match the wrong row, or throw outright.
- */
-function escapeRegExp(literal: string): string {
-  return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /** The rail. Section rows and agent rows both live here. */
 export function rail(page: Page): Locator {
   return page.locator("[data-tour-target='agents']");
@@ -131,9 +122,43 @@ export function teamSettingsTab(page: Page, tab: TeamSettingsTab): Locator {
   );
 }
 
+/** The compact replacement for the Team Settings lozenge cluster. */
+function teamSettingsSwitcher(page: Page): Locator {
+  return screen(page).locator("[data-team-settings-switcher]");
+}
+
+/**
+ * Open the drilled Team Settings level.
+ *
+ * Arrival is "one of the two navigation surfaces is drawn", never the Context
+ * lozenge alone: the drilled strip collapses into its switcher exactly as the
+ * team strip does, and it collapses OFTEN here — a team whose board is empty
+ * opens the composer panel beside it, which is enough to cross the threshold.
+ */
 export async function openTeamSettings(page: Page): Promise<void> {
   await openTeamSection(page, "Team Settings");
-  await expect(teamSettingsTab(page, "Context")).toBeVisible();
+  await expect(
+    teamSettingsTab(page, "Context").or(teamSettingsSwitcher(page)).first(),
+    "the Team Settings navigation should become available",
+  ).toBeVisible();
+}
+
+/** Pick a tab of the OPEN Team Settings level, in either layout. */
+export async function openTeamSettingsSection(
+  page: Page,
+  tab: TeamSettingsTab,
+): Promise<void> {
+  const lozenge = teamSettingsTab(page, tab);
+  if (await lozenge.isVisible()) {
+    await lozenge.click();
+    return;
+  }
+  await teamSettingsSwitcher(page).click();
+  await page
+    .locator(
+      `[role='menuitemcheckbox'][data-team-settings-tab='${TEAM_SETTINGS_TAB_IDS[tab]}']`,
+    )
+    .click();
 }
 
 export async function openArchivedTasks(page: Page): Promise<void> {
@@ -328,20 +353,36 @@ export function agentSectionTab(
 }
 
 /**
+ * ONE agent's row in the rail.
+ *
+ * By the row's `title`, not its accessible name: a row that is carrying work
+ * ("2 issues need you") folds that count into the button's name, so an exact
+ * name match finds the quiet agents and misses the busy ones — precisely the
+ * ones a spec arms on purpose. The title is the agent's name and nothing else.
+ */
+export function agentRow(page: Page, agentName: string): Locator {
+  return rail(page).locator(
+    `[data-sidebar-item] button[title="${agentName.replace(/"/g, '\\"')}"]`,
+  );
+}
+
+/**
  * Open one agent's focused screen through its rail row.
+ *
+ * The arrival check reads the screen's IDENTITY rather than a heading by
+ * accessible name: below `TEAM_STRIP_ONE_ROW_MIN` the lozenge cluster collapses
+ * into a switcher whose h1 is named for the menu, and the agent's own name
+ * survives only as the trigger's content. An empty board opens the composer
+ * panel on its own, so the narrow layout is the NORMAL one here, not an edge.
  */
 export async function openAgentScreen(
   page: Page,
   agentName: string,
 ): Promise<void> {
-  await rail(page)
-    .getByRole("button", {
-      name: new RegExp(`^${escapeRegExp(agentName)}$`),
-    })
-    .click();
-  await expect(
-    screen(page).getByRole("heading", { name: agentName }),
-  ).toBeVisible();
+  await agentRow(page, agentName).click();
+  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
+    agentName,
+  );
 }
 
 /** Open one focused agent's settings, optionally drilled to a section. */
@@ -351,16 +392,36 @@ export async function openAgentSettings(
   section: AgentSettingsSection = "Job description",
 ): Promise<void> {
   await openAgentScreen(page, agentName);
-  await screen(page).locator("[data-team-section-tab='settings']").click();
+  // The agent screen wears the same strip as the team screen, so its Settings
+  // lozenge collapses into the same switcher: go through whichever is drawn.
+  if (!(await clickVisibleTeamSection(page, "Team Settings"))) {
+    throw new Error(`Cannot open ${agentName}'s settings`);
+  }
   if (section !== "Job description") {
     await openAgentSettingsSection(page, section);
   }
 }
 
-/** Pick a section on an already-open agent settings page. */
-async function openAgentSettingsSection(
+/**
+ * Pick a section on an already-open agent settings page.
+ *
+ * The drilled strip collapses too — its cluster becomes
+ * `[data-agent-section-switcher]` — so a section is reached through whichever
+ * form the width allows.
+ */
+export async function openAgentSettingsSection(
   page: Page,
   section: AgentSettingsSection,
 ): Promise<void> {
-  await agentSectionTab(page, section).click();
+  const tab = agentSectionTab(page, section);
+  if (await tab.isVisible()) {
+    await tab.click();
+    return;
+  }
+  await screen(page).locator("[data-agent-section-switcher]").click();
+  await page
+    .locator(
+      `[role='menuitemcheckbox'][data-agent-section-tab='${AGENT_SECTION_IDS[section]}']`,
+    )
+    .click();
 }

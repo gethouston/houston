@@ -92,6 +92,15 @@ function teamTitle(page: Page, name: string): Locator {
   return screen(page).getByRole("heading", { level: 1, name, exact: true });
 }
 
+/** The DEFAULT team's block header in the rail: a team's one hit target, and
+ *  the way back out of one of its agents. */
+function teamHeaderRow(page: Page): Locator {
+  return rail(page)
+    .locator("[data-sidebar-default-header]")
+    .getByRole("button")
+    .first();
+}
+
 /** The team's lozenge: the board's door, and the pin's undo. */
 function homeLozenge(page: Page): Locator {
   return teamTab(page, "Tasks");
@@ -206,35 +215,37 @@ test("an agent row opens its own screen and managers can enter and leave Agent s
   );
 });
 
-test("an agent row filters the board, and the team's lozenge undoes it", async ({
+test("an agent row opens that agent's own board, and the team's row widens back", async ({
   page,
   request,
 }) => {
   await addKai(request);
   await openShell(page);
 
-  // Clicking an agent opens ITS team's board pre-filtered to it. The store
-  // pins the agent's ID; the board filters on its folder path.
+  // Clicking an agent opens the AGENT's own screen, whose board carries its
+  // work alone. The store pins the agent's ID; the board filters on its folder
+  // path.
   await rail(page).getByText("Kai", { exact: true }).click();
   await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
-  // The team's lozenge grows a second segment naming the pinned agent, so the
-  // heading itself becomes "<team> <agent>".
+  // Its identity lozenge IS the screen's home, so it names the agent and takes
+  // the current mark; the rail says the same thing on the agent's own row.
   await expect(homeLozenge(page)).toContainText("Kai");
-  await expect(teamTitle(page, "New Team Kai")).toBeVisible();
+  await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
   await expect(litAgentRow(page, "Kai")).toHaveCount(1);
   await expect(litAgentRow(page, "Houston")).toHaveCount(0);
 
-  // Arm 2 of the home lozenge's grammar: already on the board and narrowed, so
-  // the click widens back to the whole team rather than navigating.
-  await homeLozenge(page).click();
+  // The TEAM's name is its "all agents" row, and it is the way back out of one
+  // agent: the whole team's board, unnarrowed, named for the team alone.
+  await teamHeaderRow(page).click();
   await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(litAgentRow(page, "Kai")).toHaveCount(0);
   await expect(homeLozenge(page)).not.toContainText("Kai");
   await expect(teamTitle(page, "New Team")).toBeVisible();
 
-  // Arm 3: on the whole team's own board, the same click does nothing at all.
+  // On the whole team's own board the home lozenge is where the user already
+  // is, so clicking it does nothing at all.
   await homeLozenge(page).click();
   await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
   await expect(teamTitle(page, "New Team")).toBeVisible();
@@ -259,10 +270,13 @@ test("an agent row opens its focused screen and settings page", async ({
     screen(page).locator("[data-agent-settings-back]"),
   ).toContainText("Kai");
   await expect(
-    screen(page).getByRole("heading", { name: "Job description" }),
+    screen(page).getByRole("heading", { level: 1, name: "Job description" }),
   ).toBeVisible();
+  // ...and the chip goes back to the agent's own screen.
   await screen(page).locator("[data-agent-settings-back]").click();
-  await expect(screen(page).getByRole("button", { name: "Kai" })).toBeVisible();
+  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
+    "Kai",
+  );
 });
 
 test("the archive toggle round-trips inside Tasks", async ({ page }) => {

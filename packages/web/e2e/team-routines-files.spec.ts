@@ -26,6 +26,15 @@ function rail(page: Page): Locator {
   return page.locator("[data-tour-target='agents']");
 }
 
+/** The DEFAULT team's block header: a team's one hit target in the rail, and
+ *  the way back out of one of its agents. */
+function teamHeaderRow(page: Page): Locator {
+  return rail(page)
+    .locator("[data-sidebar-default-header]")
+    .getByRole("button")
+    .first();
+}
+
 /** The content column, so lookups never catch the rail's same-named rows. */
 function screen(page: Page): Locator {
   // The screen ON THE GLASS: several kept-alive screens sit in the DOM at
@@ -175,10 +184,16 @@ test("the Routines dropdown narrows the list to one agent, and drops the owner c
   await openSection(page, "Routines");
   await expect(routineRows(page)).toHaveCount(2);
 
-  // The team-wide pin does NOT ride into this section any more. Pinning Kai in
-  // the rail narrows the BOARD; coming back to Routines still shows the whole
-  // team, because a tab always opens its section team-wide.
+  // An agent's OWN screen carries its own Routines, and only those: a rail
+  // click opens the agent, not a narrowed team.
   await rail(page).getByText("Kai", { exact: true }).click();
+  await openTeamSection(page, "Routines");
+  await expect(routineRows(page)).toHaveCount(1);
+  await expect(screen(page).getByText("Payroll run")).toBeVisible();
+
+  // The team's own row is the way back, and its Routines is the whole team
+  // again: a section always opens team-wide on the TEAM's screen.
+  await teamHeaderRow(page).click();
   await openTeamSection(page, "Routines");
   await expect(routineRows(page)).toHaveCount(2);
   await expect(
@@ -430,8 +445,17 @@ test("Files ignores the rail pin, and drilled-agent actions still work", async (
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // Arriving via an agent row pins the board, but Files stays team-wide.
+  // An agent's OWN screen scopes Files to that agent, and a lone agent's
+  // folder opens immediately — there is nothing to choose between.
   await rail(page).getByText("Kai", { exact: true }).click();
+  await openTeamSection(page, "Files");
+  await expect(screen(page).getByText("brief.md")).toBeVisible();
+  await expect(
+    screen(page).getByRole("row", { name: /Houston files/ }),
+  ).toHaveCount(0);
+
+  // The TEAM's Files is every agent as a folder, all of them shut.
+  await teamHeaderRow(page).click();
   await openTeamSection(page, "Files");
   await expect(
     screen(page).getByRole("row", { name: "Expand Kai files" }),

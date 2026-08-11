@@ -188,7 +188,10 @@ test("Change color & name stages both halves in one dialog", async ({
   await expect(
     dialog.getByRole("textbox", { name: "Change color & name" }),
   ).toHaveValue("Houston");
-  await expect(dialog.getByRole("radio").first()).toBeVisible();
+  // The colour half is a swatch palette of toggles, and exactly one of them is
+  // pressed: the agent's current colour, staged beside its name.
+  const palette = dialog.getByRole("group", { name: "Change color" });
+  await expect(palette.getByRole("button", { pressed: true })).toHaveCount(1);
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toBeHidden();
 });

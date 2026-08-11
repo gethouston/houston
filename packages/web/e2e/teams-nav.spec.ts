@@ -131,20 +131,25 @@ test("a team the user holds no membership in is drawn, and the palette jumps int
     .getByRole("option", { name: SEED_AGENT_NAME, exact: true })
     .click();
 
-  // The board on the glass is DESIGN's, carrying the agent's missions. The
-  // team's own lozenge is the screen's heading AND the jump's destination, and
-  // the jump PINNED an agent — so the heading is both names, in order.
-  await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: `Design ${SEED_AGENT_NAME}`,
-      exact: true,
-    }),
-  ).toBeVisible();
-  // ...and not HOME (the first team, "Acme"), which is where the joined-ness
-  // guard used to dump every one of these jumps.
-  await expect(
-    screen(page).getByRole("heading", { level: 1, name: /^Acme/ }),
-  ).toHaveCount(0);
+  // The screen on the glass is the AGENT's own, carrying its missions...
+  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
+    SEED_AGENT_NAME,
+  );
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+
+  // ...opened INSIDE Design, which is the whole point: the lit row is the one
+  // in Design's block, not a copy of the agent under home (the first team,
+  // "Acme"), which is where the joined-ness guard used to dump every one of
+  // these jumps.
+  await expect(
+    rail(page)
+      .locator('[data-sidebar-drop-section="team-design"]')
+      .locator("[data-sidebar-item]")
+      .locator("[aria-current='page']"),
+  ).toHaveCount(1);
+  await expect(
+    rail(page)
+      .locator("[data-sidebar-default-header]")
+      .locator("[aria-current='page']"),
+  ).toHaveCount(0);
 });
