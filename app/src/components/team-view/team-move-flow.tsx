@@ -11,6 +11,7 @@ import {
   finishTeamMove,
   isTeamMoveDismissable,
   type TeamMoveSource,
+  teamMoveFailureCopy,
 } from "../../lib/move-team";
 import {
   addInviteEmails,
@@ -40,6 +41,12 @@ export function TeamMoveFlow({
     [],
   );
   const [sending, setSending] = useState(false);
+  // The failing agent's index is how many actually made it: the run stops
+  // there, so the copy must not imply the rest are already in the new team.
+  const moveFailure =
+    state.step === "moveFailed"
+      ? teamMoveFailureCopy(state.index, source.agents.length)
+      : null;
   const create = async (name: string) => {
     try {
       const team = await flow.createOrg.mutateAsync(name);
@@ -139,20 +146,31 @@ export function TeamMoveFlow({
         {["cleanupSource", "switching", "recreate", "placing"].includes(
           state.step,
         ) && <BusyStep heading={t(`moveTeam.${state.step}`)} />}
-        {state.step === "moveFailed" && (
+        {state.step === "moveFailed" && moveFailure && (
           <TeamMoveFailure
-            body={t("moveTeam.moveFailed", {
-              count: source.agents.length,
-            })}
+            body={
+              moveFailure.key === "moveFailedFirst"
+                ? t("moveTeam.moveFailedFirst", { count: moveFailure.count })
+                : t("moveTeam.moveFailedNext", {
+                    moved: moveFailure.moved,
+                    total: moveFailure.total,
+                  })
+            }
             onRetry={flow.moveAgents}
             onClose={() => onOpenChange(false)}
           />
         )}
         {state.step === "postscriptFailed" && (
           <TeamMoveFailure
-            body={t("moveTeam.postscriptFailed", {
-              count: source.agents.length,
-            })}
+            body={
+              // A team with no agents skips straight to the postscript, so
+              // there is no count to report: the whole move is the subject.
+              source.agents.length === 0
+                ? t("moveTeam.postscriptFailedEmpty")
+                : t("moveTeam.postscriptFailed", {
+                    count: source.agents.length,
+                  })
+            }
             onRetry={flow.retryPostscript}
             onClose={() => onOpenChange(false)}
           />

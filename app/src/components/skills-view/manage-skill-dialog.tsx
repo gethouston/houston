@@ -18,6 +18,7 @@ import { ManageSkillBody } from "./manage-skill-body";
 import { ManageSkillConfirms } from "./manage-skill-confirms";
 import type { ManageSkillDialogProps } from "./manage-skill-dialog-props";
 import { useManageSkillSave } from "./use-manage-skill-save";
+import { useMissingSkillDismiss } from "./use-missing-skill-dismiss";
 
 export type {
   ManagedSkillRow,
@@ -84,6 +85,7 @@ export function ManageSkillDialog({
   useEffect(() => {
     setRename(null);
   }, [slug]);
+  useMissingSkillDismiss({ row, error, isShared, shared, onClose });
 
   if (!row) return null;
   const overriddenBy = isShared ? (row.overriddenBy ?? []) : [];

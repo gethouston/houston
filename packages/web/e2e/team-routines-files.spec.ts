@@ -427,7 +427,7 @@ test("Files keeps multiple agent trees in one accordion list", async ({
   ).toHaveCount(0);
 });
 
-test("Files ignores the rail pin, and drilled-agent actions still work", async ({
+test("Files follows the pinned agent, and the team's own Files names each agent", async ({
   page,
   request,
 }) => {

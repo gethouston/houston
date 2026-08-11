@@ -88,6 +88,30 @@ export function teamAgentMoveFailed(
   };
 }
 
+/**
+ * What the failure face may honestly claim, as the copy key it needs and that
+ * key's variables.
+ *
+ * Agents move ONE AT A TIME and the run stops at the first refusal, so the
+ * failing agent's index IS the number that made it: everything from there on
+ * was never attempted. "One of them could not move" would tell the user the
+ * rest are already in the new team, and they would go looking for them there.
+ *
+ * `moveFailedFirst` counts the whole team, because nothing moved and the only
+ * number worth saying is how big the job still is. `moveFailedNext` needs no
+ * plural: it is only reachable with at least one agent moved and one refused.
+ */
+export function teamMoveFailureCopy(
+  moved: number,
+  total: number,
+):
+  | { key: "moveFailedFirst"; count: number }
+  | { key: "moveFailedNext"; moved: number; total: number } {
+  return moved <= 0
+    ? { key: "moveFailedFirst", count: total }
+    : { key: "moveFailedNext", moved, total };
+}
+
 export function postscriptDone(
   state: TeamMoveState,
   source: TeamMoveSource,

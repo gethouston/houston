@@ -312,9 +312,9 @@ describe("visibleTeamSettingsSections", () => {
   const FULL = ["context", "agents", "people", "settings"] as const;
 
   it("offers nothing to a caller who cannot configure this team", () => {
-    // The drilled level is owner-only, and a persisted focus flag (or authority
-    // revoked while the view is open) must not render it: an empty list is the
-    // view's instruction to fall back to the team's base sections.
+    // The drilled level is owner-only, and authority revoked while the view is
+    // open must not keep rendering it: an empty list is the view's instruction
+    // to fall back to the team's base sections.
     assert.deepEqual(
       visibleTeamSettingsSections(
         MEMBER,

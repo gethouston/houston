@@ -109,6 +109,7 @@
   "detail": {
     "saveChanges": "Salvar alterações",
     "loadFailed": "Não foi possível carregar as instruções deste skill.",
+    "unavailableToast": "Esse skill não existe mais.",
     "instructionsPlaceholder": "Instruções para este skill...",
     "integrations": "Funciona com",
     "rename": "Renomear skill"

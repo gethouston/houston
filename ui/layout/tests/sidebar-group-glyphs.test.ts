@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseSymbols } from "../../../scripts/generate-team-icons.mjs";
 import {
   matchesSidebarGroupGlyph,
+  SIDEBAR_GROUP_GLYPH_CONCEPT_VOCABULARY,
   sidebarGroupGlyphConcepts,
 } from "../src/sidebar-group-glyph-search.ts";
 import { SIDEBAR_GROUP_GLYPH_TAGS } from "../src/sidebar-group-glyph-tags.ts";
@@ -42,6 +43,32 @@ describe("team icon generation", () => {
           '<symbol id="Bad" viewBox="0 0 16 16"><path onclick="alert(1)" d="M0 0"/></symbol>',
         ),
       /Symbol "Bad": attribute "onclick" is not allowed/,
+    );
+  });
+
+  it("reads a namespaced name whole, so it cannot pass as an allowed one", () => {
+    // `xlink:href` is how a drawing element loads and runs remote markup, and
+    // an attribute scanner that stops at the colon would judge "href" instead.
+    assert.throws(
+      () =>
+        parseSymbols(
+          '<symbol id="Bad" viewBox="0 0 16 16"><path xlink:href="https://evil.test/x.svg" d="M0 0"/></symbol>',
+        ),
+      /Symbol "Bad": attribute "xlink:href" is not allowed/,
+    );
+    assert.throws(
+      () =>
+        parseSymbols(
+          '<symbol id="Bad" viewBox="0 0 16 16"><path xml:space="preserve" d="M0 0"/></symbol>',
+        ),
+      /Symbol "Bad": attribute "xml:space" is not allowed/,
+    );
+    assert.throws(
+      () =>
+        parseSymbols(
+          '<symbol id="Bad" viewBox="0 0 16 16"><svg:script>alert(1)</svg:script></symbol>',
+        ),
+      /Symbol "Bad": <svg:script> is not a drawing element/,
     );
   });
 
@@ -167,12 +194,28 @@ describe("team icon search", () => {
   it("draws every concept from ONE closed vocabulary", () => {
     // The app translates that vocabulary key by key: a concept outside it
     // would search as an untranslated English word in a Spanish picker.
-    const vocabulary = new Set(Object.values(SIDEBAR_GROUP_GLYPH_TAGS).flat());
     for (const name of SIDEBAR_GROUP_GLYPH_NAMES) {
       for (const concept of sidebarGroupGlyphConcepts(name)) {
-        assert.ok(vocabulary.has(concept), `${name}: ${concept}`);
+        assert.ok(
+          SIDEBAR_GROUP_GLYPH_CONCEPT_VOCABULARY.has(concept),
+          `${name}: ${concept}`,
+        );
       }
     }
+  });
+
+  it("spends the whole vocabulary: no word waits for a translation nobody reads", () => {
+    // A word here but on no mark would still be a key the app must translate,
+    // in three locales, for a search that can never surface anything.
+    const offered = new Set(
+      SIDEBAR_GROUP_GLYPH_NAMES.flatMap((name) =>
+        sidebarGroupGlyphConcepts(name),
+      ),
+    );
+    const unused = [...SIDEBAR_GROUP_GLYPH_CONCEPT_VOCABULARY].filter(
+      (word) => !offered.has(word),
+    );
+    assert.deepEqual(unused, []);
   });
 
   it("gives every icon at least two non-name tags", () => {

@@ -171,9 +171,17 @@ async function openShell(page: Page): Promise<void> {
 }
 
 /** Open ONE AGENT's own screen by clicking its rail row. Its sections are the
- *  agent's, not the team's — the team's own screen is {@link openTeam}. */
+ *  agent's, not the team's — the team's own screen is {@link openTeam}.
+ *
+ *  Arrival is read off the screen's IDENTITY, the way `openAgentScreen` does
+ *  it: without the wait, the very next assertion can still be looking at the
+ *  team screen this click is leaving, and a section count would pass for the
+ *  wrong screen. */
 async function openAgentOf(page: Page, agentName: string): Promise<void> {
   await rail(page).getByText(agentName, { exact: true }).click();
+  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
+    agentName,
+  );
   await dismissPanel(page);
 }
 
@@ -195,7 +203,10 @@ async function dismissPanel(page: Page): Promise<void> {
  *  first section lozenge. So "whose settings am I in?" is a question about the
  *  chip. */
 async function expectTeamSettingsOf(page: Page, team: string): Promise<void> {
-  await expect(screen(page).locator("[data-team-settings-back]")).toContainText(
+  // EXACT: the chip's only text is the destination's name (its chevron and
+  // glyph are aria-hidden marks), so "contains Operations" would also pass for
+  // a chip pointing at "Operations Archive".
+  await expect(screen(page).locator("[data-team-settings-back]")).toHaveText(
     team,
   );
 }
@@ -994,10 +1005,16 @@ test("a joined member gets agent settings only for an agent they manage", async 
   await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
 
   // The focused agent screen adds its settings lozenge for that agent only.
+  // Counted INSIDE the agent screen: four lozenges on the team screen would be
+  // a different claim entirely, and the bare count cannot tell them apart.
   await openAgentOf(page, "Ops Bot");
-  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(4);
   await expect(
-    screen(page).locator("[data-team-section-tab='settings']"),
+    screen(page).locator("[data-agent-screen] [data-team-section-tab]"),
+  ).toHaveCount(4);
+  await expect(
+    screen(page).locator(
+      "[data-agent-screen] [data-team-section-tab='settings']",
+    ),
   ).toBeVisible();
   await openAgentSettings(page, "Ops Bot");
   await expect(

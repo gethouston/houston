@@ -232,6 +232,11 @@ test("an agent row opens that agent's own board, and the team's row widens back"
   // the current mark; the rail says the same thing on the agent's own row.
   await expect(homeLozenge(page)).toContainText("Kai");
   await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
+  // It names the agent ALONE. The heading is the lozenge, so an exact-name
+  // match is the assertion that the team's name did not come along for the
+  // ride: "Kai" appearing inside "New Team Kai" would satisfy the line above.
+  await expect(teamTitle(page, "Kai")).toBeVisible();
+  await expect(teamTitle(page, "New Team")).toHaveCount(0);
   await expect(litAgentRow(page, "Kai")).toHaveCount(1);
   await expect(litAgentRow(page, "Houston")).toHaveCount(0);
 

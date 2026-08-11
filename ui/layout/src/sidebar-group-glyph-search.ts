@@ -41,10 +41,61 @@ export function matchesSidebarGroupGlyph(
   ].some((term) => fold(term).includes(needle));
 }
 
-/** Every word the curated tags use, across the whole mark set. */
-const TAG_VOCABULARY: ReadonlySet<string> = new Set(
-  Object.values(SIDEBAR_GROUP_GLYPH_TAGS).flat(),
-);
+/**
+ * Name words that are concepts in their own right, which no curated tag says.
+ *
+ * A mark's NAME sometimes carries a word its LABEL does not: `search` is
+ * labelled "Magnifier", `music-tape` is "Cassette tape", `present` is "Gift".
+ * The matcher reads names in English always, so those words are free handles
+ * for an English reader, and a Spanish or Portuguese one has nothing to type:
+ * a localized label can only carry what the English label already said.
+ * Listing the word here gives the consumer a key to translate, which is what
+ * makes "buscar" find the magnifier.
+ *
+ * They live here rather than in the generator's tag rules because a rule
+ * assigns its words to every mark its PATTERN matches: `ball` on the sports
+ * rule would tag the joystick and the dice, and the rules' order also decides
+ * which shelf a mark lands on. This set names marks one word at a time and
+ * moves nothing.
+ *
+ * A word the mark's own English label already says stays OUT: the localized
+ * labels translate that same label, so the concept is reachable already.
+ */
+const NAME_WORD_CONCEPTS: readonly string[] = [
+  "air",
+  "ball",
+  "flat",
+  "hear",
+  "key",
+  "line",
+  "moving",
+  "music",
+  "notified",
+  "present",
+  "recycle",
+  "routing",
+  "search",
+  "small",
+  "smile",
+  "staircase",
+  "starred",
+  "tee",
+];
+
+/**
+ * Every English word a consumer is asked to translate: the curated tags plus
+ * the name words that carry a concept of their own.
+ *
+ * Exported because it is the CLOSED set {@link sidebarGroupGlyphConcepts} draws
+ * from, and both this package's tests and the app's locale check pin it. A
+ * concept outside it would search as an untranslated English word in a Spanish
+ * picker.
+ */
+export const SIDEBAR_GROUP_GLYPH_CONCEPT_VOCABULARY: ReadonlySet<string> =
+  new Set([
+    ...Object.values(SIDEBAR_GROUP_GLYPH_TAGS).flat(),
+    ...NAME_WORD_CONCEPTS,
+  ]);
 
 /**
  * The English words that DESCRIBE a mark, for a consumer that means to
@@ -57,9 +108,10 @@ const TAG_VOCABULARY: ReadonlySet<string> = new Set(
  * help, but a Spanish reader typing "dinero" would miss the mark the whole set
  * is named after unless the concept it is named for is translated too.
  *
- * Name words the vocabulary does not know ("stack") are left out: the consumer
- * translates from a fixed vocabulary, and inventing keys for the leftovers of
- * 233 slugs would ask for translations of words no one curated as a concept.
+ * Name words the vocabulary does not know ("stack", "airplane") are left out:
+ * each is a word the mark's own English label already says, so the localized
+ * labels carry its translation and a key here would ask for the same word
+ * twice.
  */
 export function sidebarGroupGlyphConcepts(
   name: SidebarGroupGlyphName,
@@ -67,7 +119,9 @@ export function sidebarGroupGlyphConcepts(
   return [
     ...new Set([
       ...SIDEBAR_GROUP_GLYPH_TAGS[name],
-      ...name.split("-").filter((word) => TAG_VOCABULARY.has(word)),
+      ...name
+        .split("-")
+        .filter((word) => SIDEBAR_GROUP_GLYPH_CONCEPT_VOCABULARY.has(word)),
     ]),
   ];
 }

@@ -295,26 +295,42 @@ async function clickVisibleTeamSection(
  * Note the one asymmetry, which is the home lozenge's grammar and not a quirk
  * of this helper: asking for "Tasks" while already on a PINNED board clears
  * the pin instead of navigating, because there is nowhere to navigate to.
+ *
+ * The rail is a way back only from a TOP-LEVEL view (the Agent Store, the
+ * Skills page), where no screen on the glass carries sections at all and the
+ * caller is asking to return to a team. It is NEVER a way to recover a section
+ * a section-bearing screen failed to offer: clicking a team's row THERE would
+ * walk a focused AGENT's screen back to its team's, and the spec that asked
+ * for that agent's Files would assert against the whole team's and pass. That
+ * case throws, so a spec fails where the navigation actually broke.
  */
 export async function openTeamSection(
   page: Page,
   section: TeamSection,
 ): Promise<void> {
-  const teamRow = currentTeamRow(page);
+  // Every screen that carries sections carries the home lozenge, in one mode
+  // or the other — team screen and focused agent screen alike.
+  const sectioned = teamTab(page, "Tasks").or(teamSectionSwitcher(page));
   // `.first()` on every or-chain wait: more than one surface being visible at
   // once (tab cluster on screen AND the team's rail row) is the NORMAL state,
   // and a bare or-chain trips strict mode exactly then. These waits ask "has
   // at least one navigation surface arrived", not "is there exactly one".
   await expect(
-    teamTab(page, section).or(teamSectionSwitcher(page)).or(teamRow).first(),
+    sectioned.or(currentTeamRow(page)).first(),
     `a team navigation surface for "${section}" should become available`,
   ).toBeVisible();
 
   if (await clickVisibleTeamSection(page, section)) return;
 
-  await teamRow.getByRole("button").first().click();
+  if (await sectioned.first().isVisible()) {
+    throw new Error(
+      `Cannot open team section "${section}": the screen on the glass carries sections, but neither that section's lozenge nor the compact switcher was clickable. Coming back through the rail would silently swap a focused agent's screen for its team's.`,
+    );
+  }
+
+  await currentTeamRow(page).getByRole("button").first().click();
   await expect(
-    teamTab(page, section).or(teamSectionSwitcher(page)).first(),
+    sectioned.first(),
     `the team section controls should appear after returning to the team`,
   ).toBeVisible();
 

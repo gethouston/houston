@@ -9,7 +9,8 @@
  * there is NO typed `.kind` on this error (`HoustonEngineError.kind` reads
  * `body.error.details.kind`, which the host never sets). We therefore key off
  * the HTTP status. This classifier is only ever applied to the load-skill call
- * (see `tauriSkills.load` and `useOrgSkillDefault`), and a skill GET has exactly
+ * (see `tauriSkills.load`, `useOrgSkillDefault` and `useMissingSkillDismiss`),
+ * and a skill GET has exactly
  * one 404 path — the skill is gone — so the status is unambiguous in context. A
  * typed `kind` is still tolerated so the classifier keeps working if the host's
  * error envelope is ever upgraded to carry one (as the legacy Rust engine did
@@ -17,9 +18,9 @@
  *
  * A missing skill is an expected, explainable state, NOT a Houston bug:
  * `tauriSkills.load` tags it so it skips the red "we have a problem" bug toast +
- * Sentry report (HOU-515 / HOU-441), while `useSkillSurface` surfaces it inline
- * (a calm info toast, clears the stale selection, and refetches the list so the
- * dead card vanishes).
+ * Sentry report (HOU-515 / HOU-441), while `useMissingSkillDismiss` surfaces it
+ * where the user is (a calm info toast, the manage dialog closed, and the
+ * skills list refetched so the dead row vanishes with it).
  */
 export const MISSING_SKILL_KIND = "skill_not_found";
 

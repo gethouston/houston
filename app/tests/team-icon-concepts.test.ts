@@ -39,6 +39,13 @@ function conceptsOf(
     .sidebar.teamIconConcepts;
 }
 
+function labelsOf(
+  bundle: (typeof LOCALES)[keyof typeof LOCALES],
+): Record<string, string> {
+  return (bundle as { sidebar: { teamIcons: Record<string, string> } }).sidebar
+    .teamIcons;
+}
+
 describe("team icon concepts", () => {
   for (const [lang, bundle] of Object.entries(LOCALES)) {
     const concepts = conceptsOf(bundle);
@@ -64,6 +71,50 @@ describe("team icon concepts", () => {
   it("en keeps each tag as itself, so the source stays the source", () => {
     for (const tag of VOCABULARY) {
       strictEqual(conceptsOf(en)[tag], tag);
+    }
+  });
+
+  // The other half of the same promise, and the one that rots silently: the
+  // matcher reads every mark's NAME in English, always, so each word of each
+  // name is a handle an English reader gets for free. That word reaches a
+  // Spanish or Portuguese reader only two ways. Either it is a CONCEPT, and
+  // the block above proves it is translated; or the mark's own English LABEL
+  // already says it, and the es/pt labels carry its translation because they
+  // translate that same label ("airplane" is labelled Airplane, hence Avión).
+  // A name word that is neither is English-only: `music-tape` is labelled
+  // "Cassette tape", and nothing in "Casete" answers "música". Adding a mark
+  // whose slug says more than its label fails here until the word is curated
+  // into `NAME_WORD_CONCEPTS` and translated.
+  it("leaves no name word reachable in English alone", () => {
+    // Both sides are English here, so lowercasing is the whole normalization
+    // the matcher's fold would do.
+    const says = (label: string, word: string) =>
+      label.toLowerCase().includes(word);
+    const orphans = NAMES.flatMap((name) =>
+      name
+        .split("-")
+        .filter(
+          (word) =>
+            !VOCABULARY.includes(word) && !says(labelsOf(en)[name], word),
+        )
+        .map((word) => `${name}: "${word}"`),
+    );
+    strictEqual(
+      orphans.join(", "),
+      "",
+      "name words with no es/pt equivalent, in neither the concepts nor the label",
+    );
+  });
+
+  it("gives every mark a label in all three locales", () => {
+    for (const [lang, bundle] of Object.entries(LOCALES)) {
+      const labels = labelsOf(bundle);
+      for (const name of NAMES) {
+        ok(
+          typeof labels[name] === "string" && labels[name].trim().length > 0,
+          `${lang}: sidebar.teamIcons.${name} is missing`,
+        );
+      }
     }
   });
 

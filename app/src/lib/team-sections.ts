@@ -66,9 +66,11 @@ export function visibleTeamSectionsForTeam(
 /**
  * The drilled Team Settings level: the tabs BEHIND the Settings door, for the
  * caller standing at it. It re-asks the door's own gate rather than trusting
- * the request that opened it, so a persisted focus flag or authority lost while
- * the view is open cannot render an owner-only surface that the gateway would
- * refuse on save. An EMPTY list is that refusal, and it is what sends the view
+ * the request that opened it, because authority can be LOST while the view is
+ * open: a role change or a team handed to someone else lands as a capabilities
+ * refetch under a drilled level that was legitimate when it opened. Trusting
+ * the request would keep an owner-only surface on screen that the gateway
+ * refuses on save. An EMPTY list is that refusal, and it is what sends the view
  * back to the team's base sections.
  *
  * People is a tab wherever there are people to show: a roster on a shared

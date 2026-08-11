@@ -26,9 +26,10 @@ import { usePendingMissionTarget } from "./use-pending-mission-target";
  * `all-conversations` query on it. A team's archive narrows what it RENDERS
  * through `scope` instead (the one-sweep rule, `useTeamBoardScope`).
  *
- * It says nothing about WHERE it is: the Archived TAB is lit for exactly as
- * long as this is on screen, so a title, a qualifier or a trail crumb here
- * would be the third thing on one screen saying the same word.
+ * It says nothing about WHERE it is: the archive is a MODE of Tasks, entered
+ * from the active board's "Archived" button and left by the "Back to tasks"
+ * button this screen's own toolbar carries, so a title, a qualifier or a trail
+ * crumb here would be the third thing on one screen saying the same word.
  */
 export function MissionControlArchived({
   agents,

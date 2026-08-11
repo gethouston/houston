@@ -194,8 +194,7 @@
         "title": "Ainda não há pessoas",
         "body": "Convide sua equipe pela página de Administração para gerenciar o acesso delas aqui."
       }
-    },
-    "agentsHeading": "Agentes"
+    }
   },
   "share": {
     "title": "Compartilhar {{name}}",
@@ -326,16 +325,6 @@
     "messages_one": "{{count}} mensagem",
     "messages_other": "{{count}} mensagens"
   },
-  "agentsTab": {
-    "managedBy": "Gerenciado por {{names}}",
-    "access": {
-      "everyone": "Toda a sua equipe",
-      "people_one": "{{count}} pessoa",
-      "people_other": "{{count}} pessoas",
-      "you": "Você pode usar"
-    },
-    "open": "Abrir {{name}}"
-  },
   "createTeam": {
     "trigger": "Criar organização",
     "title": "Criar uma organização",
@@ -429,10 +418,12 @@
     "switching": "Mudando para a organização",
     "recreate": "Recriando a equipe",
     "placing": "Colocando os agentes na equipe",
-    "moveFailed_one": "Não foi possível mover o agente.",
-    "moveFailed_other": "Não foi possível mover um dos {{count}} agentes.",
+    "moveFailedFirst_one": "Não foi possível mover o agente.",
+    "moveFailedFirst_other": "Nenhum dos {{count}} agentes foi movido. O primeiro não pôde ser movido.",
+    "moveFailedNext": "{{moved}} de {{total}} agentes foram movidos. O próximo não pôde ser movido.",
     "postscriptFailed_one": "O agente foi movido, mas a configuração não terminou.",
     "postscriptFailed_other": "Todos os {{count}} agentes foram movidos, mas a configuração não terminou.",
+    "postscriptFailedEmpty": "A equipe não pôde terminar de se mover.",
     "retry": "Tentar novamente",
     "close": "Fechar"
   },

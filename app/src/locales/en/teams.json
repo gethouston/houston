@@ -194,8 +194,7 @@
         "title": "No people yet",
         "body": "Invite teammates from the Admin page to manage their access here."
       }
-    },
-    "agentsHeading": "Agents"
+    }
   },
   "share": {
     "title": "Share {{name}}",
@@ -326,16 +325,6 @@
     "messages_one": "{{count}} message",
     "messages_other": "{{count}} messages"
   },
-  "agentsTab": {
-    "managedBy": "Managed by {{names}}",
-    "access": {
-      "everyone": "Everyone on your team",
-      "people_one": "{{count}} person",
-      "people_other": "{{count}} people",
-      "you": "You can use this"
-    },
-    "open": "Open {{name}}"
-  },
   "createTeam": {
     "trigger": "Create organization",
     "title": "Create an organization",
@@ -429,10 +418,12 @@
     "switching": "Switching to the organization",
     "recreate": "Recreating the team",
     "placing": "Putting agents in their team",
-    "moveFailed_one": "The agent could not move.",
-    "moveFailed_other": "One of the {{count}} agents could not move.",
+    "moveFailedFirst_one": "The agent could not move.",
+    "moveFailedFirst_other": "None of the {{count}} agents moved. The first one could not move.",
+    "moveFailedNext": "{{moved}} of {{total}} agents moved. The next agent could not move.",
     "postscriptFailed_one": "The agent moved, but setup did not finish.",
     "postscriptFailed_other": "All {{count}} agents moved, but setup did not finish.",
+    "postscriptFailedEmpty": "The team could not finish moving.",
     "retry": "Try again",
     "close": "Close"
   },

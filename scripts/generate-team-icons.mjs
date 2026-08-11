@@ -32,13 +32,21 @@ const ALLOWED_ATTRIBUTES = new Set(
   ),
 );
 
+/**
+ * Both name patterns admit `:` so a NAMESPACED name is captured whole and put
+ * to the allowlist as it is written. Stopping at the colon would read
+ * `xlink:href` as `href` and `<svg:script>` as `svg`, judging a name the
+ * document never used: `xlink:href` is a live script vector in an SVG that
+ * ships through `dangerouslySetInnerHTML`. Nothing on either allowlist has a
+ * colon, so every namespaced name is rejected, which is the fail-closed answer.
+ */
 function assertDrawingOnly(id, body) {
-  for (const [, element] of body.matchAll(/<\/?([a-zA-Z][\w-]*)/g)) {
+  for (const [, element] of body.matchAll(/<\/?([a-zA-Z][\w:-]*)/g)) {
     if (!ALLOWED_ELEMENTS.has(element)) {
       throw new Error(`Symbol "${id}": <${element}> is not a drawing element`);
     }
   }
-  for (const [, attribute] of body.matchAll(/\s([a-zA-Z][\w-]*)\s*=/g)) {
+  for (const [, attribute] of body.matchAll(/\s([a-zA-Z][\w:-]*)\s*=/g)) {
     if (!ALLOWED_ATTRIBUTES.has(attribute)) {
       throw new Error(
         `Symbol "${id}": attribute "${attribute}" is not allowed`,
