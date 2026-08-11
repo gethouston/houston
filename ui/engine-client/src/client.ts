@@ -923,7 +923,7 @@ export class HoustonClient {
     // Read-only POST → replay-safe. ONE request sweeps every agent server-side,
     // so the answer is all-or-nothing: it either throws or is complete. Only a
     // client-side fan-out (the hosted adapter) can come back partial, hence the
-    // always-empty `failedAgentPaths`.
+    // always-empty `failedAgents`.
     const conversations = await this.request<ConversationEntry[]>(
       "POST",
       "/conversations/list-all",
@@ -932,7 +932,7 @@ export class HoustonClient {
       undefined,
       true,
     );
-    return { conversations, failedAgentPaths: [] };
+    return { conversations, failedAgents: [] };
   }
 
   // ---------- skills ----------

@@ -64,7 +64,7 @@ test("a complete sweep reports no failures", async () => {
 
   const result = await client().listAllConversations(["maya", "kai"]);
 
-  expect(result.failedAgentPaths).toEqual([]);
+  expect(result.failedAgents).toEqual([]);
   expect(result.conversations.map((c) => c.title)).toEqual([
     "Plan a trip to Tokyo",
     "Draft the launch email",
@@ -82,8 +82,15 @@ test("one unreachable agent no longer blanks the whole board", async () => {
   expect(result.conversations.map((c) => c.title)).toEqual([
     "Plan a trip to Tokyo",
   ]);
-  // Named, never silently dropped — this is what the query layer recovers from.
-  expect(result.failedAgentPaths).toEqual(["kai"]);
+  // Named, never silently dropped — this is what the query layer recovers
+  // from. The REASON travels too, so the surface layer can tell a waking
+  // pod's 503 from a real failure (HOUSTON-APP-538) instead of reporting
+  // every partial sweep blind.
+  expect(result.failedAgents.map((f) => f.agentPath)).toEqual(["kai"]);
+  const reason = result.failedAgents[0].reason as Error & { status?: number };
+  expect(reason.name).toBe("HoustonEngineError");
+  expect(reason.status).toBe(500);
+  expect(reason.message).toBe("agent unreachable (engine error 500)");
 });
 
 test("the healthy agents' rows survive regardless of fan-out order", async () => {
@@ -96,7 +103,7 @@ test("the healthy agents' rows survive regardless of fan-out order", async () =>
   const result = await client().listAllConversations(["maya", "kai", "rex"]);
 
   expect(result.conversations.map((c) => c.id)).toEqual(["b1", "c1"]);
-  expect(result.failedAgentPaths).toEqual(["maya"]);
+  expect(result.failedAgents.map((f) => f.agentPath)).toEqual(["maya"]);
 });
 
 test("a sweep where EVERY agent failed is a failure, not an empty board", async () => {
@@ -112,6 +119,6 @@ test("an empty roster sweeps to an empty, COMPLETE answer", async () => {
 
   await expect(client().listAllConversations([])).resolves.toEqual({
     conversations: [],
-    failedAgentPaths: [],
+    failedAgents: [],
   });
 });

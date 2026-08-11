@@ -37,15 +37,15 @@ export function useAllConversations(agentPaths: string[]) {
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const { items, failedAgentPaths } = await sweepWithRetry(agentPaths);
+      const { items, failedAgents } = await sweepWithRetry(agentPaths);
       // A partial sweep must never present itself as the whole board: the
       // agents that did not answer keep their last-known missions (HOU-981).
       const merged = mergePartialSweep(
         items,
         previousRows(queryClient, queryKey),
-        failedAgentPaths,
+        failedAgents.map((f) => f.agentPath),
       );
-      recoverFromSweep(failedAgentPaths, roster, queryClient);
+      recoverFromSweep(failedAgents, roster, queryClient);
       return merged;
     },
     enabled: agentPaths.length > 0,
