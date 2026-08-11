@@ -55,6 +55,14 @@ export interface ConnectRunDeps {
   setNotice: (toolkit: string, notice: ConnectNotice | null) => void;
   /** Refresh the connections query once the flow settles. */
   invalidate: () => Promise<void>;
+  /**
+   * Pull the app window back over the browser the user just finished the
+   * OAuth (or hosted API-key entry) in — the same snap-back a provider
+   * sign-in does (PRODUCT-1298). Called only when the connection LANDS: a
+   * failure leaves the user on the provider's error page, and a timeout means
+   * they walked away long ago — yanking focus then would be focus-stealing.
+   */
+  focus: () => Promise<void>;
   /** Toast the outcome (success / neutral / error). Never called for a cancel. */
   announce: (toolkit: string, outcome: PollOutcome) => void;
   /** Free the slug so it can be connected again. */
@@ -153,6 +161,14 @@ async function settle(
   const settled = outcome !== "cancelled";
   if (settled) deps.setNotice(toolkit, noticeFor(outcome));
   deps.setStep(toolkit, null);
+  if (outcome === "active") {
+    // Fire-and-forget with its own report: focus is a nicety that must never
+    // delay the dwell/refresh, and a broken focus must not read as a broken
+    // settle — but it is never silent either.
+    void deps
+      .focus()
+      .catch((err) => deps.report("integrations.connectFlow.focus", err));
+  }
   try {
     if (settled) deps.announce(toolkit, outcome);
     if (outcome === "active") await deps.sleep(CONNECT_SUCCESS_DWELL_MS);

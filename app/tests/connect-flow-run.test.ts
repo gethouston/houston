@@ -55,6 +55,10 @@ function harness(
       events.push("invalidate");
       return Promise.resolve();
     },
+    focus: () => {
+      events.push("focus");
+      return Promise.resolve();
+    },
     announce: (toolkit, outcome) => events.push(`toast:${toolkit}=${outcome}`),
     release: (toolkit) => events.push(`release:${toolkit}`),
     report: (command) => events.push(`report:${command}`),
@@ -107,6 +111,9 @@ describe("runConnectFlow — outcomes", () => {
       // that ended carrying no outcome as a cancel and retires its origin.
       "notice:slack=connected",
       "step:slack=null",
+      // The snap-back (PRODUCT-1298): the user just finished the OAuth in the
+      // browser, so the app surfaces itself the moment the connection lands.
+      "focus",
       "toast:slack=active",
       `sleep:${CONNECT_SUCCESS_DWELL_MS}`,
       "invalidate",
@@ -143,6 +150,30 @@ describe("runConnectFlow — outcomes", () => {
       false,
       "walking away from an OAuth is normal behavior, not a failure",
     );
+  });
+
+  it("the snap-back is success-only: no focus on failure, timeout, or cancel", async () => {
+    // A failure leaves the user reading the provider's error page and a
+    // timeout means they walked away — pulling the window to the front in
+    // either case would be focus-stealing, not a hand-back.
+    for (const status of ["error", "pending"] as const) {
+      const { deps, events } = harness({ statuses: [status] });
+      await runConnectFlow("slack", deps);
+      strictEqual(events.includes("focus"), false, `no focus for ${status}`);
+    }
+    const cancelled = harness({ statuses: ["pending"] });
+    cancelled.entry.cancelled = true;
+    await runConnectFlow("slack", cancelled.deps);
+    strictEqual(cancelled.events.includes("focus"), false);
+  });
+
+  it("a rejecting focus is reported, never breaks the settle", async () => {
+    const { deps, events } = harness({
+      focus: () => Promise.reject(new Error("window is gone")),
+    });
+    strictEqual(await runConnectFlow("slack", deps), "active");
+    strictEqual(events.includes("invalidate"), true, "the refresh still runs");
+    strictEqual(events.includes("report:integrations.connectFlow.focus"), true);
   });
 
   it("maps every settled outcome to the notice its row shows", () => {

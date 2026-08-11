@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { logAndReportError } from "../../lib/error-report";
+import { osFocusWindow } from "../../lib/os-bridge";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import { isToolkitOauthUnavailableError } from "../../lib/toolkit-oauth-unavailable";
@@ -168,6 +169,9 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
           qc.invalidateQueries({
             queryKey: queryKeys.integrationConnections(INTEGRATION_PROVIDER),
           }),
+        // The user finished the app's sign-in in their browser — surface
+        // Houston over it (no-op on web, where there is no OS window to raise).
+        focus: () => osFocusWindow(),
         announce,
         release: (slug) => endFlow(connectFlowRegistry, slug),
         wait: (ms) => waker.wait(ms),

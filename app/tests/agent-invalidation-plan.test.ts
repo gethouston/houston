@@ -171,6 +171,22 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
     ok(invalidates(plan, queryKeys.customIntegrations()));
     ok(invalidates(plan, ["integration-connections"]));
   });
+
+  // PRODUCT-1298: the change event is the landing of a browser OAuth ONLY when
+  // the hook consumed a fresh return marker — an in-app add or an agent's own
+  // mid-turn change must never pull the window to the front.
+  it("CustomIntegrationsChanged focuses only on a consumed OAuth return", () => {
+    const returned = planInvalidation(
+      { type: "CustomIntegrationsChanged" },
+      { customOAuthReturn: true },
+    );
+    strictEqual(returned.focusWindow, true);
+    const unrelated = planInvalidation(
+      { type: "CustomIntegrationsChanged" },
+      {},
+    );
+    strictEqual(unrelated.focusWindow, undefined);
+  });
 });
 
 /**
