@@ -536,3 +536,98 @@ test("a cache key never embeds the acting token itself", async () => {
   // Isolation is unchanged: distinct unreadable tokens keep distinct scopes.
   expect(new Set(keys).size).toBe(unreadable.length);
 });
+
+// --- Dead google "API keys" (HOU-1107 / Sentry HOUSTON-APP-567) ---
+
+const GOOGLE_PATH = `${BASE}/v1/pod/credentials/${ORG}/${AGENT}/google`;
+
+test("a legacy dead google key is never adopted — dropped from the fallback instead", async () => {
+  // The resurrection loop behind HOUSTON-APP-567: the serve guard deletes the
+  // central row, then the next 404-adoption re-seeds it from a pod's disk.
+  const removed: string[] = [];
+  const fallback: CredentialStore = {
+    get: async () => ({
+      workspaceId: "ws_1",
+      provider: "google",
+      kind: "api_key",
+      accessToken: "ya29.a0LegacyOAuthToken",
+      refreshToken: "",
+      expiresAt: 0,
+    }),
+    put: async () => {},
+    remove: async (_ws, provider) => {
+      removed.push(provider);
+    },
+    removeIfAccess: async () => false,
+  };
+  const { calls, fetchImpl } = fakeFetch((call) => {
+    expect(call.url).toBe(GOOGLE_PATH);
+    return json({ error: "org not connected" }, 404);
+  });
+
+  expect(await store(fetchImpl, fallback).get("ws_1", "google")).toBeNull();
+
+  // One GET, no PUT: the dead row never reaches the gateway again.
+  expect(calls.map((c) => c.init?.method ?? "GET")).toEqual(["GET"]);
+  expect(removed).toEqual(["google"]);
+});
+
+test("put refuses a google credential that is not an API key", async () => {
+  const { calls, fetchImpl } = fakeFetch(() => json({ ok: true }));
+  await expect(
+    store(fetchImpl).put({
+      workspaceId: "ws_1",
+      provider: "google",
+      kind: "api_key",
+      accessToken: "eyJhbGciOiJSUzI1NiJ9.payload.sig",
+      refreshToken: "",
+      expiresAt: 0,
+    }),
+  ).rejects.toThrow(/not an API key/);
+  expect(calls).toHaveLength(0);
+});
+
+test("a real AIza google key still adopts and stores normally", async () => {
+  const fallback: CredentialStore = {
+    get: async () => ({
+      workspaceId: "ws_1",
+      provider: "google",
+      kind: "api_key",
+      accessToken: "AIzaSyRealKey",
+      refreshToken: "",
+      expiresAt: 0,
+    }),
+    put: async () => {},
+    remove: async () => {
+      throw new Error("must not remove a live key");
+    },
+    removeIfAccess: async () => false,
+  };
+  const { calls, fetchImpl } = fakeFetch((call, index) => {
+    if (index === 0) return json({ error: "org not connected" }, 404);
+    if (index === 1) {
+      expect(call.init?.method).toBe("PUT");
+      expect(requestBody(call)).toMatchObject({
+        kind: "api_key",
+        access: "AIzaSyRealKey",
+      });
+      return json({ ok: true });
+    }
+    return json(
+      gatewayCredential({
+        provider: "google",
+        kind: "api_key",
+        access: "AIzaSyRealKey",
+        expires: 0,
+      }),
+    );
+  });
+
+  const got = await store(fetchImpl, fallback).get("ws_1", "google");
+  expect(got?.accessToken).toBe("AIzaSyRealKey");
+  expect(calls.map((c) => c.init?.method ?? "GET")).toEqual([
+    "GET",
+    "PUT",
+    "GET",
+  ]);
+});

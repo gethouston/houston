@@ -1,3 +1,4 @@
+import { deadGoogleApiKey } from "@houston/protocol/google-key";
 import type { CaptureResult, CredentialStore, RuntimeEndpoint } from "../ports";
 import { scrubRuntimeRefreshToken } from "./scrub-refresh";
 
@@ -59,6 +60,24 @@ export async function captureRuntimeCredential(args: {
       return { ok: false, status: 400, error: "agent is not connected yet" };
     if (!credential.provider || !credential.key)
       return { ok: false, status: 400, error: "agent is not connected yet" };
+    if (
+      deadGoogleApiKey({
+        provider: credential.provider,
+        kind: "api_key",
+        access: credential.key,
+      })
+    ) {
+      // A legacy pre-verification runtime entry (HOU-1107). Capturing it would
+      // seed the central store with a key every serve immediately refuses
+      // (Sentry HOUSTON-APP-567) — reject it so the connect flow shows the
+      // paste-a-key card instead of a false "connected".
+      return {
+        ok: false,
+        status: 400,
+        error:
+          "the stored google credential is an OAuth-type token, not an API key — reconnect google by pasting a Gemini API key",
+      };
+    }
     await credentials.put(
       {
         workspaceId,
