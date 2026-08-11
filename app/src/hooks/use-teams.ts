@@ -1,11 +1,14 @@
 import { useMemo } from "react";
-import { hasAgentTeams } from "../lib/org-roles.ts";
+import { hasAgentTeams, isPersonalSpace } from "../lib/org-roles.ts";
+import { personalDefaultTeamSeed } from "../lib/server-teams-model.ts";
+import { isTeamWorkspace } from "../lib/space-id.ts";
 import { resolveTeamsForBackend } from "../lib/teams-backend.ts";
 import type { TeamView } from "../lib/teams-model.ts";
 import { useAgentStore } from "../stores/agents.ts";
 import { useWorkspaceStore } from "../stores/workspaces.ts";
 import { useAgentTeams } from "./queries/use-agent-teams.ts";
 import { useCapabilities } from "./use-capabilities.ts";
+import { useSession } from "./use-session.ts";
 import { useSidebarLayoutValue } from "./use-sidebar-layout.ts";
 
 /**
@@ -36,15 +39,33 @@ export function useTeams(): TeamView[] {
   const serverBacked = hasAgentTeams(capabilities);
   const { teams: serverTeams } = useAgentTeams(serverBacked);
   const workspaceName = workspace?.name;
+  // The gateway mints a personal space's default team from the CALLER's
+  // identity, not the space's display name, so the seed to compare against
+  // branches on the space kind.
+  const { data: session } = useSession();
+  const defaultTeamSeedName = isPersonalSpace(
+    capabilities,
+    isTeamWorkspace(workspace?.id ?? ""),
+  )
+    ? personalDefaultTeamSeed(session)
+    : workspaceName;
   return useMemo(
     () =>
       resolveTeamsForBackend({
         agents,
+        defaultTeamSeedName,
         layout,
         serverBacked,
         serverTeams,
         workspaceName,
       }),
-    [agents, layout, serverBacked, serverTeams, workspaceName],
+    [
+      agents,
+      defaultTeamSeedName,
+      layout,
+      serverBacked,
+      serverTeams,
+      workspaceName,
+    ],
   );
 }

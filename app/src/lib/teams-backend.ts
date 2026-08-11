@@ -27,6 +27,11 @@ export interface TeamsBackendInput {
   /** The default team's name on the LOCAL backend, where the client names it.
    *  Unused server-backed: the server names its own default team. */
   workspaceName: string | undefined;
+  /** SERVER-backed only: the name the gateway MINTED the default team with —
+   *  the org's name in a team space, `personalDefaultTeamSeed` in a personal
+   *  one. A default team still wearing it is displayed with the "New Team"
+   *  placeholder identity. `undefined` compares equal to nothing. */
+  defaultTeamSeedName: string | undefined;
 }
 
 /**
@@ -42,11 +47,18 @@ export interface TeamsBackendInput {
  * first-load-only state.
  */
 export function resolveTeamsForBackend(input: TeamsBackendInput): TeamView[] {
-  const { agents, layout, serverBacked, serverTeams, workspaceName } = input;
+  const {
+    agents,
+    defaultTeamSeedName,
+    layout,
+    serverBacked,
+    serverTeams,
+    workspaceName,
+  } = input;
   if (serverBacked) {
     return serverTeams === undefined
       ? []
-      : resolveServerTeams(serverTeams, agents, layout, workspaceName);
+      : resolveServerTeams(serverTeams, agents, layout, defaultTeamSeedName);
   }
   return workspaceName === undefined
     ? []

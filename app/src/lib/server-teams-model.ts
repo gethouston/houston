@@ -87,7 +87,7 @@ export function resolveServerTeams(
   serverTeams: readonly AgentTeam[],
   agents: readonly Agent[],
   layout: SidebarLayout,
-  workspaceName?: string,
+  defaultSeedName?: string,
 ): TeamView[] {
   const byId = new Map(agents.map((a) => [a.id, a] as const));
   const claimed = new Set<string>();
@@ -107,7 +107,7 @@ export function resolveServerTeams(
       name: team.name,
       agents: orderByOverlay(members, overlayOrderFor(layout, team.id)),
       isDefault: team.isDefault,
-      ...(team.isDefault && team.name === workspaceName
+      ...(team.isDefault && team.name === defaultSeedName
         ? { usesDefaultIdentity: true as const }
         : {}),
       ...(team.icon === undefined ? {} : { icon: team.icon }),
@@ -130,6 +130,31 @@ export function resolveServerTeams(
     fallback.agents = [...fallback.agents, ...leftovers];
   }
   return teams;
+}
+
+/** The gateway's team-name cap, in RUNES (cloud `MaxAgentTeamNameRunes`). */
+const MAX_TEAM_NAME_RUNES = 60;
+
+/**
+ * The name the gateway MINTS a personal space's default team with: the caller's
+ * email local-part (before the first `@`, trimmed), else their user id, cut to
+ * {@link MAX_TEAM_NAME_RUNES}. Byte-compatible with the gateway's
+ * `PersonalOrgName` + `DefaultAgentTeamName` (cloud `internal/store`), which is
+ * the whole point: matching it is how the client recognizes an UNTOUCHED
+ * personal default team and gives it the "New Team" placeholder identity. In a
+ * team space the seed is the org's own name, which the workspace row carries.
+ */
+export function personalDefaultTeamSeed(
+  session: { uid: string; email: string } | null | undefined,
+): string | undefined {
+  if (!session) return undefined;
+  const at = session.email.indexOf("@");
+  const local = (at >= 0 ? session.email.slice(0, at) : session.email).trim();
+  const name = local !== "" ? local : session.uid;
+  const runes = [...name];
+  return runes.length <= MAX_TEAM_NAME_RUNES
+    ? name
+    : runes.slice(0, MAX_TEAM_NAME_RUNES).join("");
 }
 
 /**

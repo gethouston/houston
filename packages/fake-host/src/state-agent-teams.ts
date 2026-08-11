@@ -14,7 +14,13 @@
  */
 
 import type { FakeAgentTeam, FakeAgentTeamMember } from "./state-store";
-import { emitDomain, FAKE_ORG_NAME, SELF_USER_ID, state } from "./state-store";
+import {
+  emitDomain,
+  FAKE_ORG_NAME,
+  FAKE_PERSONAL_TEAM_NAME,
+  SELF_USER_ID,
+  state,
+} from "./state-store";
 
 /** One armed team (`POST /__test__/agent-teams`), before normalization. */
 export interface AgentTeamSeed {
@@ -85,7 +91,9 @@ export function ensureDefaultAgentTeam(): FakeAgentTeam {
   if (existing) return existing;
   const team: FakeAgentTeam = {
     id: "team-default",
-    name: FAKE_ORG_NAME,
+    // A personal space's default team is minted from the CALLER, not the org —
+    // the seed the client's untouched-default detection compares against.
+    name: state.personalSpace ? FAKE_PERSONAL_TEAM_NAME : FAKE_ORG_NAME,
     isDefault: true,
     sortOrder: 0,
   };
