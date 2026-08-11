@@ -70,16 +70,35 @@ const NODE_PROCESS_WARNING = /^\(node:\d+\)/;
 /**
  * The stable line `logProviderError` (runtime `ai/provider-error-log.ts`)
  * emits for every classified provider failure. Provider and kind are enough to
- * name a family; anything finer (model, the verbatim text) is unbounded
- * cardinality and stays in the message.
+ * name a family; `cause` (present on unauthenticated errors) tells a revoked
+ * token from a bad pasted key. Anything finer (model, the verbatim text) is
+ * unbounded cardinality and stays in the message.
  */
-const PROVIDER_ERROR_LINE = /^\[provider_error\] provider=(\S+) .*?kind=(\S+)/;
+const PROVIDER_ERROR_LINE =
+  /^\[provider_error\] provider=(\S+) .*?kind=(\S+)(?: cause=(\S+))?/;
 
-function providerErrorFingerprint(
-  message: string,
-): { fingerprint: string[] } | null {
+function providerErrorMeta(message: string): {
+  fingerprint: string[];
+  tags: Record<string, string>;
+} | null {
   const m = PROVIDER_ERROR_LINE.exec(message);
-  return m ? { fingerprint: ["provider_error", m[1] ?? "", m[2] ?? ""] } : null;
+  if (!m) return null;
+  const provider = m[1] ?? "";
+  const kind = m[2] ?? "";
+  return {
+    // The fingerprint stays (provider, kind) — cause is deliberately NOT in
+    // it, so existing issues (56F, 56K, …) keep accumulating instead of
+    // re-splitting on deploy. Cause-level slicing happens via the tag.
+    fingerprint: ["provider_error", provider, kind],
+    // Tags, unlike fingerprints, are searchable dashboard-wide: they make
+    // `provider_error_kind:unauthenticated` one query across every provider's
+    // issue (PRODUCT-1302) where the fingerprint alone cannot.
+    tags: {
+      provider,
+      provider_error_kind: kind,
+      ...(m[3] ? { provider_error_cause: m[3] } : {}),
+    },
+  };
 }
 
 /**
@@ -237,8 +256,9 @@ export function createEngineSentry(
               // (Codex WebSocket drops, Gemini 503s, billing denials, …)
               // collapsed into ONE Sentry issue titled by whichever message
               // came first (HOU-1156). Fingerprint those lines by
-              // (provider, kind) so each family is its own countable issue.
-              ...(providerErrorFingerprint(message) ?? {}),
+              // (provider, kind) so each family is its own countable issue,
+              // and tag them so the dashboard can filter across families.
+              ...(providerErrorMeta(message) ?? {}),
               threads: {
                 values: [
                   {

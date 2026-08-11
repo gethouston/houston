@@ -104,10 +104,11 @@ describe("createEngineSentry", () => {
     expect(frames[frames.length - 1]?.filename).toMatch(/client\.test\.ts$/);
   });
 
-  it("captureLog: [provider_error] lines fingerprint by (provider, kind)", async () => {
-    // Without this, every provider_error line groups on the identical
-    // synthetic thread stack at the log helper and Sentry shows ONE issue for
-    // every family (HOU-1156).
+  it("captureLog: [provider_error] lines fingerprint by (provider, kind) and tag the family", async () => {
+    // Without the fingerprint, every provider_error line groups on the
+    // identical synthetic thread stack at the log helper and Sentry shows ONE
+    // issue for every family (HOU-1156). Without the tags, the dashboard
+    // cannot filter "all disconnect events" across providers (PRODUCT-1302).
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", [
       "[provider_error] provider=openai-codex model=gpt-5.5 status=? kind=unknown :: WebSocket closed 1006",
@@ -121,8 +122,37 @@ describe("createEngineSentry", () => {
       "openai-codex",
       "unknown",
     ]);
-    // Everything else keeps default grouping.
+    expect(events[0]?.tags).toMatchObject({
+      provider: "openai-codex",
+      provider_error_kind: "unknown",
+    });
+    expect(events[0]?.tags?.provider_error_cause).toBeUndefined();
+    // Everything else keeps default grouping and gains no provider tags.
     expect(events[1]?.fingerprint).toBeUndefined();
+    expect(events[1]?.tags?.provider).toBeUndefined();
+  });
+
+  it("captureLog: an unauthenticated provider_error line tags its cause but keeps the (provider, kind) fingerprint", async () => {
+    // `cause` must NOT join the fingerprint — that would re-split every
+    // existing per-family issue on deploy. It rides as a tag only, so
+    // `provider_error_cause:token_revoked` is a dashboard query.
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", [
+      "[provider_error] provider=anthropic model=claude-fable-5 status=401 kind=unauthenticated cause=token_revoked :: OAuth access token has been revoked",
+    ]);
+    await sentry.flush();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.fingerprint).toEqual([
+      "provider_error",
+      "anthropic",
+      "unauthenticated",
+    ]);
+    expect(events[0]?.tags).toMatchObject({
+      provider: "anthropic",
+      provider_error_kind: "unauthenticated",
+      provider_error_cause: "token_revoked",
+    });
   });
 
   it("captureLog: Node process warnings via console.error stay breadcrumbs", async () => {
