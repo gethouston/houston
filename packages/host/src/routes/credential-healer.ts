@@ -1,3 +1,7 @@
+import {
+  type RevocationTombstones,
+  sharedRevocationTombstones,
+} from "../credentials/revocation-tombstones";
 import { credentialScopeKey } from "../credentials/scope-key";
 
 const HEAL_COOLDOWN_MS = 5 * 60_000;
@@ -23,9 +27,22 @@ export class CredentialServeHealer {
   constructor(
     private readonly heal: CredentialHeal,
     private readonly now: () => number = Date.now,
+    private readonly revocations: RevocationTombstones = sharedRevocationTombstones,
   ) {}
 
   attempt(args: Parameters<CredentialHeal>[0]): Promise<boolean> {
+    // A serve miss caused by a provider REVOKING the credential must not be
+    // healed by re-uploading the pod's copy of that same dead family
+    // (HOUSTON-APP-530); the user has to reconnect, which clears the tombstone.
+    if (
+      this.revocations.active({
+        workspaceId: args.workspaceId,
+        provider: args.provider,
+        actingAs: args.actingAs,
+      })
+    ) {
+      return Promise.resolve(false);
+    }
     const key = `${args.workspaceId}:${credentialScopeKey({ actingAs: args.actingAs })}:${args.provider}`;
     const existing = this.inFlight.get(key);
     if (existing) return existing;

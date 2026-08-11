@@ -49,6 +49,22 @@ export function reportRevokedServedToken(err: ProviderError): void {
 }
 
 /**
+ * One report per (scope, provider, token) per pod lifetime — mirroring
+ * served-key-guard.ts. The delete is idempotent, so repeats are pure noise;
+ * worse, a control plane whose DELETE→GET path lags (HOUSTON-APP-530: bursts
+ * of confirmed removals 15–30s apart from ONE pod) can re-serve the token this
+ * pod already reported dead, and each re-serve burns a turn on a doomed 401
+ * and re-fires the report. Reporting the same digest once stops this pod from
+ * amplifying that; a failed report un-marks so a later turn retries.
+ */
+const reported = new Set<string>();
+
+/** Test-only: clear the per-pod report dedupe. */
+export function resetRevokedReportsForTest(): void {
+  reported.clear();
+}
+
+/**
  * Message markers that CONFIRM a server-side revocation — the ONLY texts allowed
  * to trigger the workspace-wide delete.
  *
@@ -121,6 +137,16 @@ async function reportRevoked(err: ProviderError): Promise<void> {
   // scope) reads as the team row — the only thing it could have been.
   const scope = servedScopeFor(provider) ?? "team";
 
+  const digest = accessDigest(cred.access);
+  const dedupe = `${key}:${provider}:${digest}`;
+  if (reported.has(dedupe)) {
+    console.log(
+      `[serve] suppressed a duplicate revoked-token report for ${provider} (already reported this token)`,
+    );
+    return;
+  }
+  reported.add(dedupe);
+
   try {
     const res = await fetch(
       `${config.controlPlaneUrl}/sandbox/credential/revoked`,
@@ -134,7 +160,7 @@ async function reportRevoked(err: ProviderError): Promise<void> {
           provider,
           // The token is named, never shipped: the control plane holds its own
           // copy and compares digests.
-          accessSha256: accessDigest(cred.access),
+          accessSha256: digest,
           scope,
           // The scope alone says "a member's row", not WHOSE: the gateway keys
           // personal credentials by (org, user, provider) and answers 400
@@ -146,6 +172,8 @@ async function reportRevoked(err: ProviderError): Promise<void> {
       },
     );
     if (!res.ok) {
+      // Let a later turn retry against a control plane that answers.
+      reported.delete(dedupe);
       console.warn(
         `[serve] revoked-token report for ${provider} failed: ${res.status}`,
       );
@@ -162,6 +190,7 @@ async function reportRevoked(err: ProviderError): Promise<void> {
       }`,
     );
   } catch (reportErr) {
+    reported.delete(dedupe);
     console.warn(
       `[serve] revoked-token report for ${provider} failed:`,
       reportErr instanceof Error ? reportErr.message : reportErr,

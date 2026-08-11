@@ -3,6 +3,7 @@ import type {
   ActivityUpdate,
   AllConversationsResult,
   ConversationEntry,
+  FailedAgentRead,
   NewActivity,
 } from "../../../../../ui/engine-client/src/types";
 import * as activities from "../activities";
@@ -95,29 +96,25 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
         agentPaths.map((p) => this.listConversations(p)),
       );
       const conversations: ConversationEntry[] = [];
-      const failedAgentPaths: string[] = [];
-      let firstReason: unknown;
+      const failedAgents: FailedAgentRead[] = [];
       settled.forEach((outcome, i) => {
         if (outcome.status === "fulfilled") {
           conversations.push(...outcome.value);
           return;
         }
-        failedAgentPaths.push(agentPaths[i]);
-        if (firstReason === undefined) firstReason = outcome.reason;
         // Never a silent drop: the agent is named in the log, and the caller
-        // gets it in `failedAgentPaths` to surface + recover from.
+        // gets it — WITH the reason, so the surface layer can tell a waking
+        // pod's 503 from a real failure — in `failedAgents`.
+        failedAgents.push({ agentPath: agentPaths[i], reason: outcome.reason });
         console.warn(
           `[activities] conversations read failed for ${agentPaths[i]}: ${String(
             outcome.reason,
           )}`,
         );
       });
-      if (
-        agentPaths.length > 0 &&
-        failedAgentPaths.length === agentPaths.length
-      )
-        throw firstReason;
-      return { conversations, failedAgentPaths };
+      if (agentPaths.length > 0 && failedAgents.length === agentPaths.length)
+        throw failedAgents[0].reason;
+      return { conversations, failedAgents };
     }
   }
   return Activities;

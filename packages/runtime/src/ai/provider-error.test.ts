@@ -606,6 +606,68 @@ test("other observed close codes classify the same way", () => {
   }
 });
 
+// Envoy's canonical no-upstream-response body: a proxy on the pod↔provider
+// path answers for an upstream whose connection died before response headers —
+// flattened by the Codex path to the bare body, no status (HOUSTON-APP-4Y9's
+// verbatim report; 670 Sentry events across 151 users read as `unknown`).
+// Transient, and Envoy already retried ("retried and the latest reset
+// reason…"); like the WebSocket break above, every production event comes from
+// a cloud engine pod, so provider_internal (Retry card) — never the report-bug
+// `unknown`, never check-your-connection.
+test("envoy 'upstream connect error … connection termination' → provider_internal, not unknown (HOUSTON-APP-4Y9)", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.6-terra",
+    message:
+      "upstream connect error or disconnect/reset before headers. reset reason: connection termination",
+  });
+  expect(err).toEqual({
+    kind: "provider_internal",
+    provider: "openai-codex",
+    http_status: null,
+    message:
+      "upstream connect error or disconnect/reset before headers. reset reason: connection termination",
+  });
+});
+
+test("envoy's retried variant ('… retried and the latest reset reason: connection timeout') classifies the same way", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    message:
+      "upstream connect error or disconnect/reset before headers. retried and the latest reset reason: connection timeout",
+  });
+  expect(err.kind).toBe("provider_internal");
+});
+
+test("envoy 'Upstream idle timeout exceeded' → provider_internal, not unknown", () => {
+  // Same proxy, different failure: the upstream stopped responding mid-request
+  // and Envoy gave up. Seen via openrouter in the same Sentry bucket.
+  const err = classifyProviderError({
+    provider: "openrouter",
+    model: "openrouter/free",
+    message: "Upstream idle timeout exceeded",
+  });
+  expect(err).toEqual({
+    kind: "provider_internal",
+    provider: "openrouter",
+    http_status: null,
+    message: "Upstream idle timeout exceeded",
+  });
+});
+
+test("envoy body arriving WITH its usual 503 keeps the status on the card", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.6-terra",
+    message:
+      "upstream connect error or disconnect/reset before headers. reset reason: connection termination",
+    status: 503,
+  });
+  expect(err.kind).toBe("provider_internal");
+  if (err.kind === "provider_internal") expect(err.http_status).toBe(503);
+});
+
 // OpenAI's generic server-side failure — "An error occurred while processing
 // your request. You can retry your request, or …" — arrives via the Codex path
 // as "Codex error: <body>" with no HTTP status anywhere in the string, so the

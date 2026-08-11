@@ -870,9 +870,17 @@ export const tauriSharedSkills = {
 };
 
 export const tauriSkillsManifest = {
-  get: (agentPath: string) =>
-    call<SkillsManifest>("get_skills_manifest", () =>
-      getEngine().getSkillsManifest(agentPath),
+  /** Passive roster-driven queries pass `{ silence: isAgentGoneError }`: a 404
+   *  here means the roster is stale (agent deleted/unshared elsewhere, or a
+   *  space-switch refetch raced `loadAgents`) — an expected state the surfaces
+   *  handle by hiding + healing the roster, not a Houston bug (HOUSTON-APP-544).
+   *  User-initiated reads keep the default loud surfacing. */
+  get: (agentPath: string, options?: EngineCallOptions) =>
+    call<SkillsManifest>(
+      "get_skills_manifest",
+      () => getEngine().getSkillsManifest(agentPath),
+      undefined,
+      options,
     ),
   set: (agentPath: string, manifest: SkillsManifest) => {
     blockWriteWhileWarming(agentPath);
@@ -1127,13 +1135,14 @@ export interface RawConversation {
 
 /**
  * One cross-agent conversation sweep: the rows every agent that answered
- * returned, plus the agents whose read failed. A non-empty `failedAgentPaths`
- * means the rows are INCOMPLETE and must not be treated as the whole truth
- * (see lib/all-conversations-recovery.ts).
+ * returned, plus the agents whose read failed — each carrying the error it
+ * failed WITH, so the recovery layer can classify the surface. A non-empty
+ * `failedAgents` means the rows are INCOMPLETE and must not be treated as the
+ * whole truth (see lib/all-conversations-recovery.ts).
  */
 export interface AllConversationsSweep {
   items: RawConversation[];
-  failedAgentPaths: string[];
+  failedAgents: import("@houston-ai/engine-client").FailedAgentRead[];
 }
 
 export const tauriConversations = {
@@ -1158,7 +1167,7 @@ export const tauriConversations = {
     if (reachable.length === 0)
       return Promise.resolve<AllConversationsSweep>({
         items: [],
-        failedAgentPaths: [],
+        failedAgents: [],
       });
     // A sweep where SOME agents failed resolves (partial) rather than throwing,
     // so `call()` raises no toast for it — the query layer owns that surface
@@ -1167,11 +1176,11 @@ export const tauriConversations = {
     return call<AllConversationsSweep>(
       "list_all_conversations",
       async () => {
-        const { conversations, failedAgentPaths } =
+        const { conversations, failedAgents } =
           await getEngine().listAllConversations(reachable);
         return {
           items: conversations.map(conversationToRaw),
-          failedAgentPaths,
+          failedAgents,
         };
       },
       undefined,

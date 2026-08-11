@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 import { RemoteCredentialStore, scopeKeyOf } from "./remote-store";
+import { RevocationTombstones } from "./revocation-tombstones";
 
 type FetchCall = { url: string; init?: RequestInit };
 
@@ -37,7 +38,11 @@ function fakeFetch(
   return { calls, fetchImpl };
 }
 
-function store(fetchImpl: typeof fetch, fallback?: CredentialStore) {
+function store(
+  fetchImpl: typeof fetch,
+  fallback?: CredentialStore,
+  revocations?: RevocationTombstones,
+) {
   return new RemoteCredentialStore({
     baseUrl: `${BASE}/`,
     orgSlug: ORG,
@@ -45,6 +50,7 @@ function store(fetchImpl: typeof fetch, fallback?: CredentialStore) {
     podToken: "pod-token",
     fallback,
     fetchImpl,
+    revocations: revocations ?? new RevocationTombstones(),
   });
 }
 
@@ -143,6 +149,43 @@ test("404 adopts a legacy fallback credential with insert-only PUT, then re-gets
   ]);
   expect(got?.accessToken).toBe("AT-winner");
   expect(got?.refreshToken).toBe("");
+});
+
+test("404 never adopts the fallback while a revocation tombstone is active (HOUSTON-APP-530)", async () => {
+  const legacy: WorkspaceCredential = {
+    workspaceId: "ws_1",
+    provider: "openai-codex",
+    kind: "oauth",
+    accessToken: "AT-legacy",
+    refreshToken: "RT-legacy",
+    expiresAt: 123,
+  };
+  const fallback: CredentialStore = {
+    get: async () => legacy,
+    put: async () => {},
+    remove: async () => {},
+    removeIfAccess: async () => false,
+  };
+  const { calls, fetchImpl } = fakeFetch(() =>
+    json({ error: "org not connected" }, 404),
+  );
+  const revocations = new RevocationTombstones();
+  // The gateway row is absent BECAUSE the provider revoked the credential;
+  // the legacy file copy is the same dead family and must stay un-adopted.
+  revocations.mark({
+    workspaceId: "ws_1",
+    provider: "openai-codex",
+    scope: "team",
+  });
+
+  const got = await store(fetchImpl, fallback, revocations).get(
+    "ws_1",
+    "openai-codex",
+  );
+
+  expect(got).toBeNull();
+  // One GET, no insert-only PUT: the dead credential was not resurrected.
+  expect(calls.map((c) => c.init?.method ?? "GET")).toEqual(["GET"]);
 });
 
 test("transport errors throw and are not cached", async () => {

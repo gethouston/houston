@@ -702,6 +702,14 @@ Therefore `loadSkills` (via `parseSkillMd`) reports each skill's **directory slu
 
 Genuinely missing skills still happen (deleted, never installed, a stale selection). The host answers `404 { error: "skill not found" }`, surfaced by `@houston-ai/engine-client` as a `HoustonEngineError` with `status: 404` (the host emits a bare-string body here, so there is **no** typed `.kind`). That 404 is an expected, explainable state, **not** a Houston bug: `tauriSkills.load` passes `{ silence: isMissingSkillError }` (`app/src/lib/missing-skill.ts`) so the error skips the red bug toast + Sentry report, and `useSkillSurface` surfaces it inline (a friendly info toast, collapses the open row, refetches the list so the dead row vanishes).
 
+### The agent itself can be gone (stale roster, HOUSTON-APP-544)
+
+The same idea one level up: the shared-skills **manifest** queries (`use-agent-shared-skills`, `use-shared-skills`) fan out per agent from the local roster, and when that roster is stale — the agent was deleted or unshared on another device, or a space switch's cache reset (`lib/space-cache.ts`) refired queries built from the previous space's roster under the new `x-houston-org` before `loadAgents` re-resolved — the gateway/host answers `404 { error: "agent not found" }` (`packages/host/src/routes/agent-authz.ts`). Handling (`app/src/lib/agent-gone.ts`):
+
+- **Gate**: the manifest queries only run once the roster has settled for the current space (`agentRosterSettled` — `loaded && !loading`, the same HOU-979 gate the provider probe uses), which closes the space-switch window where a refetch storm was guaranteed to 404.
+- **Silence**: the query reads pass `{ silence: isAgentGoneError }` — a stale-roster 404 is expected lifecycle, not a red bug toast + Sentry report. Only these passive roster-driven reads are silenced; user-initiated manifest reads/writes keep the default loud surfacing, and 5xx keeps its designed loud path (`cp/transient-retry.ts`).
+- **Heal**: on an observed agent-gone error, `useStaleRosterHeal` silently reloads the current workspace's roster (deduped, cannot loop) so the ghost agent disappears from the rail on its own — the honest surface for a deleted agent.
+
 ## Files of interest
 
 | What | Where |
@@ -715,6 +723,7 @@ Genuinely missing skills still happen (deleted, never installed, a stale selecti
 | Install composition | [`packages/domain/src/skill-install.ts`](../packages/domain/src/skill-install.ts) — `composeInstalledSkillMd`, frontmatter-preserving |
 | Shared-skills manifest (ADR 0003) | [`packages/domain/src/skills-manifest.ts`](../packages/domain/src/skills-manifest.ts) — `.houston/skills-manifest/skills-manifest.json` |
 | Missing-skill classifier | [`app/src/lib/missing-skill.ts`](../app/src/lib/missing-skill.ts) — `isMissingSkillError` (404) keeps it off the bug-toast/Sentry path |
+| Agent-gone classifier + roster gate/heal | [`app/src/lib/agent-gone.ts`](../app/src/lib/agent-gone.ts) + [`app/src/hooks/use-stale-roster-heal.ts`](../app/src/hooks/use-stale-roster-heal.ts) — stale-roster `404 agent not found` on manifest reads: gated, silenced, self-healing (HOUSTON-APP-544) |
 | Skills surface hook | [`app/src/components/agent/use-skill-surface.ts`](../app/src/components/agent/use-skill-surface.ts) — inline "Skill unavailable" handling |
 | Error-kind union (client) | [`ui/skills/src/skill-error-kinds.ts`](../ui/skills/src/skill-error-kinds.ts) |
 | TS wire types | [`ui/engine-client/src/types.ts`](../ui/engine-client/src/types.ts) |
