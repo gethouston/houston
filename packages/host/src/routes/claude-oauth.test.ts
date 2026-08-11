@@ -78,7 +78,10 @@ interface Fixture {
 }
 
 /** Boot a host over HTTP whose only principal is `owner`, with one agent. */
-async function boot(owner = "alice"): Promise<Fixture> {
+async function boot(
+  owner = "alice",
+  opts: { gatewayFronted?: boolean } = {},
+): Promise<Fixture> {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const credentials = new MemoryCredentialStore();
   // Per-fixture ledger so tests never share the process-wide singleton.
@@ -95,7 +98,11 @@ async function boot(owner = "alice"): Promise<Fixture> {
     forwardActingHeader: true,
     revocations,
   });
-  const deps: AgentRouteDeps = { store, channels: { gke: channel } };
+  const deps: AgentRouteDeps = {
+    store,
+    channels: { gke: channel },
+    ...(opts.gatewayFronted ? { gatewayFronted: true } : {}),
+  };
 
   const s = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
@@ -138,6 +145,7 @@ function push(
   body: unknown,
   user = "alice",
   query = "",
+  headers: Record<string, string> = {},
 ) {
   return fetch(
     `${base}/agents/${encodeURIComponent(agentId)}/credential/claude-oauth${query}`,
@@ -146,6 +154,7 @@ function push(
       headers: {
         Authorization: `Bearer ${user}`,
         "Content-Type": "application/json",
+        ...headers,
       },
       body: typeof body === "string" ? body : JSON.stringify(body),
     },
@@ -170,6 +179,53 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
 
       // Runtime received the CLI envelope verbatim.
       expect(lastPush).toEqual(VALID);
+    } finally {
+      fx.close();
+    }
+  });
+
+  test("attributed connect (acting-as): 200, central store write, runtime NOT touched", async () => {
+    // The gateway mints acting-as on EVERY proxied dispatch (cloud #208,
+    // personal spaces included). The runtime's HOU-976 scope guard refuses to
+    // materialize an attributed credential into the pod-shared claude-login
+    // dir — correctly — so the channel must not even try: the central store
+    // put IS the connect (served access-only per turn). Treating the refusal
+    // as a push failure was the Aug-2026 reconnect loop (HOUSTON-APP-56F):
+    // the desktop saw a 502 for a connect that had SUCCEEDED centrally.
+    const fx = await boot("alice", { gatewayFronted: true });
+    try {
+      const res = await push(fx.base, fx.agent.id, VALID, "alice", "", {
+        "x-houston-acting-as": "acting-v1.payload.sig",
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+
+      // Central store got the full credential, on the ACTING scope's row (the
+      // real gateway maps whose row it is; the memory store keys verbatim)…
+      const cred = await fx.credentials.get(fx.workspace.id, "anthropic", {
+        actingAs: "acting-v1.payload.sig",
+      });
+      expect(cred?.accessToken).toBe("sk-ant-oat-ACCESS-SECRET");
+      expect(cred?.refreshToken).toBe("sk-ant-ort-REFRESH-SECRET");
+
+      // …and the runtime's materialize endpoint was never called.
+      expect(lastPush).toBeNull();
+    } finally {
+      fx.close();
+    }
+  });
+
+  test("attributed connect succeeds even when the runtime would reject", async () => {
+    // Same arm, runtime broken: the skip means the connect no longer depends
+    // on the runtime accepting anything.
+    accept = false;
+    const fx = await boot("alice", { gatewayFronted: true });
+    try {
+      const res = await push(fx.base, fx.agent.id, VALID, "alice", "", {
+        "x-houston-acting-as": "acting-v1.payload.sig",
+      });
+      expect(res.status).toBe(200);
+      expect(lastPush).toBeNull();
     } finally {
       fx.close();
     }
@@ -353,6 +409,56 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
         expect(
           await fx.credentials.get(fx.workspace.id, "anthropic"),
         ).toBeNull();
+        expect(lastPush).toBeNull();
+      } finally {
+        fx.close();
+      }
+    });
+
+    // The #1293 attributed early-return SKIPS the materialize hop — the clear
+    // must have already happened by then, or every CLOUD reconnect (all of
+    // them are attributed) would strand a live tombstone: automatic recovery
+    // blocked for a TTL and the "refilled AND revoked AGAIN" escalation primed
+    // to fire on the fresh credential. Two different acting tokens carry the
+    // same sub, proving the tombstone keys off the USER, not the token.
+    test("an ATTRIBUTED overwrite clears personal+team tombstones without materializing", async () => {
+      // base64url({"sub":"alice-sub"})
+      const payload = "eyJzdWIiOiJhbGljZS1zdWIifQ";
+      const fx = await boot("alice", { gatewayFronted: true });
+      try {
+        fx.revocations.mark({
+          workspaceId: fx.workspace.id,
+          provider: "anthropic",
+          scope: "personal",
+          actingAs: `acting-v1.${payload}.sig-of-report`,
+        });
+        fx.revocations.mark({
+          workspaceId: fx.workspace.id,
+          provider: "anthropic",
+          scope: "team",
+        });
+
+        const res = await push(fx.base, fx.agent.id, VALID, "alice", "", {
+          "x-houston-acting-as": `acting-v1.${payload}.sig-of-connect`,
+        });
+        expect(res.status).toBe(200);
+
+        // Cleared for the member AND the shared key…
+        expect(
+          fx.revocations.active({
+            workspaceId: fx.workspace.id,
+            provider: "anthropic",
+            actingAs: `acting-v1.${payload}.sig-of-a-later-turn`,
+          }),
+        ).toBe(false);
+        expect(
+          fx.revocations.active({
+            workspaceId: fx.workspace.id,
+            provider: "anthropic",
+          }),
+        ).toBe(false);
+
+        // …and the attributed connect still never touched the runtime.
         expect(lastPush).toBeNull();
       } finally {
         fx.close();

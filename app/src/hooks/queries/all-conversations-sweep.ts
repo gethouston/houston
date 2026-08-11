@@ -8,15 +8,25 @@
  * place, at module scope.
  */
 
+import type { FailedAgentRead } from "@houston-ai/engine-client";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   NO_SWEEP_RECOVERY,
+  type PartialSweepSurface,
   planSweepAttempt,
   type SweepRecoveryState,
   stepSweepRecovery,
 } from "../../lib/all-conversations-recovery";
-import { showErrorToast } from "../../lib/error-toast";
+import {
+  showConnectivityErrorToast,
+  showEngineWakingToast,
+  showErrorToast,
+} from "../../lib/error-toast";
 import i18n from "../../lib/i18n";
+import {
+  partialSweepToastKind,
+  representativeSweepFailure,
+} from "../../lib/partial-sweep-surface";
 import { queryKeys } from "../../lib/query-keys";
 import { surfaceEngineError, tauriConversations } from "../../lib/tauri";
 import { isTransientEngineError } from "../../lib/transient-error";
@@ -52,31 +62,23 @@ export function retargetSweepRecovery(roster: string): void {
 
 /**
  * React to a settled sweep: a COMPLETE one clears the run; an incomplete one
- * surfaces itself and schedules its own re-sweep. The decision (what to toast,
- * when to retry) is the pure `stepSweepRecovery`; this only executes it.
+ * surfaces itself and schedules its own re-sweep. The decision (when to
+ * surface, when to retry) is the pure `stepSweepRecovery`, and WHAT the
+ * surface is comes from the failed reads' own errors
+ * (`lib/partial-sweep-surface.ts`); this only executes both.
  */
 export function recoverFromSweep(
-  failedAgentPaths: string[],
+  failedAgents: FailedAgentRead[],
   roster: string,
   queryClient: QueryClient,
 ): void {
   const { state, decision } = stepSweepRecovery(
     sweepRecovery,
     roster,
-    failedAgentPaths.length,
+    failedAgents.length,
   );
   sweepRecovery = state;
-  if (decision.toast) {
-    // The beta no-silent-failures path: the branded toast + auto-report, with
-    // authored copy instead of the raw diagnostic (which the adapter already
-    // logged per agent, and which rides the Sentry report).
-    showErrorToast(
-      "list_all_conversations_partial",
-      `missions unread for ${failedAgentPaths.length} agent(s): ${failedAgentPaths.join(", ")}`,
-      undefined,
-      { userMessage: i18n.t("dashboard:errors.partialMissionLoad") },
-    );
-  }
+  if (decision.surface) surfacePartialSweep(decision.surface, failedAgents);
   // Nothing else would revisit this hole inside the freshness window, so an
   // incomplete sweep schedules its own bounded re-sweep. A sweep that came back
   // complete cancels the pending one instead: the hole is filled.
@@ -89,6 +91,59 @@ export function recoverFromSweep(
     });
   }, decision.retryInMs);
 }
+
+/**
+ * Tell someone the sweep was incomplete, in the register the failures earn
+ * (HOUSTON-APP-538): an asleep pod still waking / a device that dropped
+ * offline get their quiet informational toasts (no Sentry — the re-sweep
+ * already scheduled above heals the hole once the pod is up), everything else
+ * — and ANY failure still standing at escalation — the real error report. The
+ * per-agent reasons ride the diagnostic line so the log and the report say
+ * WHY, not just who.
+ */
+function surfacePartialSweep(
+  surface: PartialSweepSurface,
+  failedAgents: FailedAgentRead[],
+): void {
+  const reason = representativeSweepFailure(failedAgents.map((f) => f.reason));
+  const named = failedAgents
+    .map((f) => `${f.agentPath} (${describeReason(f.reason)})`)
+    .join(", ");
+  switch (partialSweepToastKind(surface, reason)) {
+    case "waking":
+      showEngineWakingToast(
+        "list_all_conversations_partial",
+        `missions unread for ${failedAgents.length} waking agent(s): ${named}`,
+      );
+      return;
+    case "connectivity":
+      showConnectivityErrorToast(
+        "list_all_conversations_partial",
+        `missions unread for ${failedAgents.length} agent(s) while offline: ${named}`,
+      );
+      return;
+    case "error":
+      // The beta no-silent-failures path: log + analytics + Sentry capture,
+      // with authored copy as the burst key and the REAL error for grouping.
+      // The escalated shape gets its own source tag: "an agent's pod never
+      // came up through a whole recovery run" is a different bug than "an
+      // agent's read failed outright".
+      showErrorToast(
+        surface === "escalate"
+          ? "list_all_conversations_stuck"
+          : "list_all_conversations_partial",
+        surface === "escalate"
+          ? `missions still unread after re-sweeps for ${failedAgents.length} agent(s): ${named}`
+          : `missions unread for ${failedAgents.length} agent(s): ${named}`,
+        reason,
+        { userMessage: i18n.t("dashboard:errors.partialMissionLoad") },
+      );
+      return;
+  }
+}
+
+const describeReason = (reason: unknown): string =>
+  reason instanceof Error ? reason.message : String(reason);
 
 /**
  * Run the sweep, retrying an outright failure a bounded number of times.

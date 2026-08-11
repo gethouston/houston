@@ -1133,13 +1133,26 @@ export interface ConversationEntry {
  * cache). So the sweep reports WHICH agents it could not read, and the caller
  * decides how to recover (HOU-981).
  *
- * `failedAgentPaths` empty = a complete, trustworthy answer.
+ * `failedAgents` empty = a complete, trustworthy answer.
  */
 export interface AllConversationsResult {
   /** Rows from every agent that answered, flattened. */
   conversations: ConversationEntry[];
-  /** Agent paths whose read failed in THIS sweep. Non-empty = partial. */
-  failedAgentPaths: string[];
+  /** Agents whose read failed in THIS sweep. Non-empty = partial. */
+  failedAgents: FailedAgentRead[];
+}
+
+/**
+ * One agent the sweep could not read, WITH the error its read threw. The
+ * reason travels so the surface layer can classify the failure — a waking
+ * pod's "engine unavailable" 503 is an expected state with its own quiet
+ * surface, while a real failure must reach crash reporting — instead of
+ * reporting every partial sweep blind (HOUSTON-APP-538).
+ */
+export interface FailedAgentRead {
+  agentPath: string;
+  /** What the read threw, verbatim. */
+  reason: unknown;
 }
 
 // ---------- Skills ----------

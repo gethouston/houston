@@ -17,7 +17,6 @@ import { useCapabilities } from "../hooks/use-capabilities";
 import { getConversationStatus } from "../hooks/use-conversation-vm";
 import { useWarmingConversations } from "../hooks/use-warming-conversations";
 import { latestCachedAllConversations } from "../lib/all-conversations-cache";
-import { sweepIsAuthoritative } from "../lib/all-conversations-recovery";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
@@ -32,6 +31,7 @@ import { isMultiplayer } from "../lib/org-roles";
 import { perfSpans } from "../lib/perf-spans";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
+import { sweepIsAuthoritative } from "../lib/sweep-authoritative";
 import {
   type HistoryLoadOptions,
   type RawConversation,
