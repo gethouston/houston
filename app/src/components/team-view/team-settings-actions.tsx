@@ -1,10 +1,11 @@
-import { LogOut, Palette, Trash2 } from "lucide-react";
+import { Building2, LogOut, Palette, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
-import { hasAgentTeams } from "../../lib/org-roles";
+import { hasAgentTeams, hasSpaces } from "../../lib/org-roles";
 import {
   canDeleteTeam,
   canLeaveTeam,
@@ -15,6 +16,7 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { SettingsCard, SettingsRow } from "../settings/settings-row";
 import { useServerTeamActions } from "../shell/use-server-team-actions";
 import { useSidebarOverlayLayout } from "../shell/use-sidebar-overlay-layout";
+import { TeamMoveFlow } from "./team-move-flow";
 
 export function TeamSettingsActions({ team }: { team: TeamView }) {
   const { t } = useTranslation("teams");
@@ -34,6 +36,7 @@ export function TeamSettingsActions({ team }: { team: TeamView }) {
   });
   const setEditTeamIdentityId = useUIStore((s) => s.setEditTeamIdentityId);
   const mayLeave = canLeaveTeam(team, personalSpace) && actions.leaveGroup;
+  const [moveOpen, setMoveOpen] = useState(false);
   return (
     <SettingsCard>
       <SettingsRow
@@ -43,6 +46,18 @@ export function TeamSettingsActions({ team }: { team: TeamView }) {
         testId="team-settings-identity"
         onClick={() => setEditTeamIdentityId(team.id)}
       />
+      {personalSpace && hasSpaces(capabilities) && (
+        <SettingsRow
+          icon={Building2}
+          title={t("teamView.settingsActions.moveToOrganization")}
+          description={t(
+            "teamView.settingsActions.moveToOrganizationDescription",
+          )}
+          chevron={false}
+          testId="team-settings-move-to-organization"
+          onClick={() => setMoveOpen(true)}
+        />
+      )}
       {mayLeave && (
         <SettingsRow
           icon={LogOut}
@@ -63,6 +78,22 @@ export function TeamSettingsActions({ team }: { team: TeamView }) {
           onClick={() => actions.deleteGroup(team.id)}
         />
       )}
+      <TeamMoveFlow
+        source={{
+          id: team.id,
+          name: team.name,
+          icon: team.icon,
+          color: team.color,
+          context: team.context,
+          isDefault: team.isDefault,
+          agents: team.agents.map((agent) => ({
+            id: agent.id,
+            name: agent.name,
+          })),
+        }}
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+      />
     </SettingsCard>
   );
 }

@@ -426,6 +426,29 @@
     "done": "{{agent}} terminou de ser movido para {{team}}.",
     "failed": "{{agent}} não conseguiu terminar de ser movido para {{team}}. O Houston vai tentar de novo na próxima vez que abrir."
   },
+  "moveTeam": {
+    "title": "Mover {{team}} para uma organização",
+    "confirm": {
+      "body_one": "Mover {{team}} e seu {{count}} agente para {{destination}}?",
+      "body_other": "Mover {{team}} e seus {{count}} agentes para {{destination}}?",
+      "downtime": "Os agentes ficam pausados durante a mudança.",
+      "move": "Mover equipe"
+    },
+    "moving": "Movendo {{name}} ({{index}} de {{total}})",
+    "movingBody": "Os agentes são movidos um de cada vez. Mantenha esta janela aberta.",
+    "cleanupSource": "Limpando a equipe pessoal",
+    "switching": "Mudando para a organização",
+    "recreate": "Recriando a equipe",
+    "placing": "Colocando os agentes na equipe",
+    "moveFailed": "{{moved}} de {{total}} agentes foram movidos. Não foi possível mover o próximo agente.",
+    "postscriptFailed": "Todos os {{total}} agentes foram movidos, mas a configuração não terminou.",
+    "retry": "Tentar novamente",
+    "close": "Fechar"
+  },
+  "moveTeamResume": {
+    "done": "{{team}} terminou de ser movida para a organização.",
+    "failed": "{{team}} moveu seus agentes, mas a configuração não terminou. O Houston vai tentar novamente na próxima vez que abrir."
+  },
   "billing": {
     "unavailable": "Não foi possível carregar a cobrança desta equipe.",
     "status": {
@@ -504,6 +527,8 @@
     },
     "settingsActions": {
       "identity": "Alterar ícone e nome",
+      "moveToOrganization": "Mover para uma organização",
+      "moveToOrganizationDescription": "Mova esta equipe e seus agentes para uma organização para que outras pessoas possam trabalhar com eles.",
       "leave": "Sair da equipe",
       "delete": "Excluir equipe"
     },

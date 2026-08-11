@@ -21,7 +21,7 @@ export interface PendingAgentMove {
   /** Target team space (16-hex slug), the `to` of the re-POST. */
   teamSlug: string;
   teamName: string;
-  /** The last known move ticket; a resume polls it before re-POSTing. */
+  /** The last known ticket. Empty means the durable record preceded the POST. */
   moveId: string;
   /** Epoch ms when the move was accepted. */
   startedAt: number;

@@ -426,6 +426,29 @@
     "done": "{{agent}} finished moving to {{team}}.",
     "failed": "{{agent}} could not finish moving to {{team}}. Houston will try again the next time it starts."
   },
+  "moveTeam": {
+    "title": "Move {{team}} to an organization",
+    "confirm": {
+      "body_one": "Move {{team}} and its {{count}} agent to {{destination}}?",
+      "body_other": "Move {{team}} and its {{count}} agents to {{destination}}?",
+      "downtime": "Agents pause while they move.",
+      "move": "Move team"
+    },
+    "moving": "Moving {{name}} ({{index}} of {{total}})",
+    "movingBody": "Agents move one at a time. Please keep this window open.",
+    "cleanupSource": "Cleaning up the personal team",
+    "switching": "Switching to the organization",
+    "recreate": "Recreating the team",
+    "placing": "Putting agents in their team",
+    "moveFailed": "{{moved}} of {{total}} agents moved. The next agent could not move.",
+    "postscriptFailed": "All {{total}} agents moved, but setup did not finish.",
+    "retry": "Try again",
+    "close": "Close"
+  },
+  "moveTeamResume": {
+    "done": "{{team}} finished moving to its organization.",
+    "failed": "{{team}} moved its agents, but setup could not finish. Houston will try again the next time it starts."
+  },
   "billing": {
     "unavailable": "We couldn't load billing for this team.",
     "status": {
@@ -504,6 +527,8 @@
     },
     "settingsActions": {
       "identity": "Change icon & name",
+      "moveToOrganization": "Move to an organization",
+      "moveToOrganizationDescription": "Move this team and its agents into an organization so people can work with them.",
       "leave": "Leave team",
       "delete": "Delete team"
     },

@@ -103,6 +103,15 @@ describe("resumePendingMove", () => {
     deepStrictEqual(w.posts, ["abcdef0123456789"]);
   });
 
+  it("POSTs first when persistence deliberately preceded the first POST", async () => {
+    const w = wire({ statuses: { "op-new": [{ status: "done" }] } });
+    deepStrictEqual(
+      await resumePendingMove({ ...PENDING, moveId: "" }, w, instant),
+      { outcome: "done" },
+    );
+    deepStrictEqual(w.posts, ["abcdef0123456789"]);
+  });
+
   it("yields inProgress when a fresh move already owns the agent", async () => {
     const w = wire({
       statuses: { "op-old": [{ status: "failed" }] },

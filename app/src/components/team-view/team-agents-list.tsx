@@ -6,6 +6,7 @@ import {
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
+import { SidebarRowCaret } from "@houston-ai/layout";
 import { useQueries } from "@tanstack/react-query";
 import {
   Blocks,
@@ -28,7 +29,11 @@ import {
   type AgentSettingsSection,
   SECTION_TITLES,
 } from "../agent-settings/agent-settings-nav";
-import { SettingsCard, SettingsRow } from "../settings/settings-row";
+import {
+  SettingsCard,
+  SettingsGroupTitle,
+  SettingsRow,
+} from "../settings/settings-row";
 import { agentPolicyChips } from "./agent-policy-chips-model";
 import { ceilingPolicyValue, peoplePolicyValue } from "./agent-policy-values";
 import { useAgentSettingsNav } from "./agent-settings-nav-store";
@@ -71,11 +76,12 @@ export function TeamAgentsList({ team }: { team: TeamView }) {
     });
   };
   return (
+    // No wrapper card: each agent is a settings GROUP (title outside, card of
+    // rows below), the way the Settings index composes its groups.
     <Accordion
-      type="single"
-      collapsible
-      defaultValue={team.agents[0]?.id}
-      className="rounded-xl border border-line bg-card px-4"
+      type="multiple"
+      defaultValue={team.agents[0] ? [team.agents[0].id] : []}
+      className="flex flex-col gap-6"
     >
       {team.agents.map((agent, index) => {
         const chips = agentPolicyChips(agent, members, settings.data[index]);
@@ -93,17 +99,27 @@ export function TeamAgentsList({ team }: { team: TeamView }) {
             }
           : {};
         return (
-          <AccordionItem key={agent.id} value={agent.id}>
-            <AccordionTrigger data-testid={`team-agent-${agent.id}`}>
-              <span className="flex items-center gap-3">
+          <AccordionItem key={agent.id} value={agent.id} className="border-0">
+            <SettingsGroupTitle className="!mb-0">
+              <AccordionTrigger
+                data-testid={`team-agent-${agent.id}`}
+                indicator="none"
+                // `group/acc` drives the triangle: Radix stamps data-state on
+                // this trigger, and the caret's own prop cannot see it.
+                className="group/acc min-w-0 cursor-pointer items-center justify-start gap-2 py-0 font-inherit hover:no-underline"
+              >
                 <HoustonAvatar
                   color={resolveAgentColor(agent.color)}
                   diameter={28}
                 />
-                {agent.name}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent>
+                <span className="min-w-0 truncate">{agent.name}</span>
+                <SidebarRowCaret
+                  expanded={false}
+                  className="group-data-[state=open]/acc:rotate-90"
+                />
+              </AccordionTrigger>
+            </SettingsGroupTitle>
+            <AccordionContent className="pt-3 pb-0">
               <SettingsCard>
                 {ROWS.map(([section, icon]) => (
                   <SettingsRow

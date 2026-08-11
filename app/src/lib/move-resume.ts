@@ -57,13 +57,15 @@ export async function resumePendingMove(
 
   // Phase 1: the recorded ticket. `done` means the server finished after the
   // client vanished — nothing to redo. `moving` means it is still running.
-  let status: AgentMoveStatus;
-  try {
-    status = await wire.moveStatus(pending.agentId, pending.moveId);
-  } catch (err) {
-    return { outcome: "rejected", code: shareErrorCode(err) };
+  let status: AgentMoveStatus = { status: "failed", error: "move not found" };
+  if (pending.moveId) {
+    try {
+      status = await wire.moveStatus(pending.agentId, pending.moveId);
+    } catch (err) {
+      return { outcome: "rejected", code: shareErrorCode(err) };
+    }
   }
-  if (status.status === "moving") {
+  if (pending.moveId && status.status === "moving") {
     const settled = await pollToTerminal(
       pending.agentId,
       pending.moveId,

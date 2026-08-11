@@ -36,6 +36,7 @@ import { useScreenPrefetch } from "./hooks/use-screen-prefetch";
 import { SessionUnavailableError, useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { useSpacesLiveRefresh } from "./hooks/use-spaces-live-refresh";
+import { useTeamMoveResume } from "./hooks/use-team-move-resume";
 import { analytics } from "./lib/analytics";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 import { newEngineActive } from "./lib/engine";
@@ -138,6 +139,7 @@ export default function App() {
   // (HOU-817): the gateway keeps the agent locked until the move finishes.
   // Gated on a signed-in session — every move call is authenticated.
   useMoveResume(Boolean(session));
+  useTeamMoveResume(Boolean(session));
 
   // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
   // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding

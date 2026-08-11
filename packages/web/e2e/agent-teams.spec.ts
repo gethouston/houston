@@ -549,6 +549,9 @@ test("Members names the team's people, and its owner toggle writes", async ({
 
   await openTeamOfAgent(page, "Ops Bot");
   await openTeamSettings(page);
+  await expect(
+    screen(page).getByTestId("team-settings-move-to-organization"),
+  ).toHaveCount(0);
   await teamSettingsTab(page, "People").click();
   await expect(
     screen(page).getByRole("heading", {
@@ -907,6 +910,9 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   ).toBeVisible();
   await openTeamSettings(page);
   await expect(screen(page).getByTestId("team-context-input")).toBeVisible();
+  await expect(
+    screen(page).getByTestId("team-settings-move-to-organization"),
+  ).toBeVisible();
   await expect(
     screen(page).getByRole("button", { name: "Leave team" }),
   ).toHaveCount(0);
