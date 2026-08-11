@@ -402,7 +402,10 @@ export class ProxyChannel implements RuntimeChannel {
    * refresh — the control plane is the single refresher from here on) AND push
    * it into the standing runtime, which writes the SDK's own
    * `<CLAUDE_CONFIG_DIR>/.credentials.json` (immediate connect signal) and
-   * warms the connected probe so status flips at once.
+   * warms the connected probe so status flips at once. The runtime push is
+   * SKIPPED for an attributed (acting-as) connect — the shared file is team
+   * material the runtime would refuse anyway (HOU-976), and the central store
+   * put alone is the whole connect on that arm (served access-only per turn).
    *
    * From the next serve sync onward, a MANAGED pod rides the per-turn
    * access-only path like every provider (serve.ts + routes/credential.ts):
@@ -469,6 +472,22 @@ export class ProxyChannel implements RuntimeChannel {
       // write between the probe above and this put still cannot be clobbered.
       { ifAbsent: opts?.ifAbsent, actingAs: ctx.actingAs },
     );
+    if (ctx.actingAs) {
+      // An ATTRIBUTED connect (the gateway minted acting-as for it — every
+      // proxied dispatch since cloud #208, personal spaces included) must not
+      // touch the pod-shared claude-login dir: the runtime's HOU-976 scope
+      // guard refuses the materialize, correctly, because that file is
+      // pod-wide and a second self-refreshing holder would fork the family's
+      // rotator (trap #4). Treating that refusal as a push failure was the
+      // Aug-2026 reconnect loop: the central store put above had SUCCEEDED,
+      // yet the 502 sent the desktop into retry + paste fallback, and the
+      // serial re-mints got the fresh families revoked at Anthropic
+      // (HOUSTON-APP-56F). The store put IS the connect here — the pod serves
+      // the credential access-only per turn (`CLAUDE_CODE_OAUTH_TOKEN`
+      // outranks the file inside the SDK), and the runtime's serve sync flips
+      // the scoped status connected on the next poll.
+      return;
+    }
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/auth/anthropic/oauth-credential`,
