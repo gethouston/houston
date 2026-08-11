@@ -870,9 +870,17 @@ export const tauriSharedSkills = {
 };
 
 export const tauriSkillsManifest = {
-  get: (agentPath: string) =>
-    call<SkillsManifest>("get_skills_manifest", () =>
-      getEngine().getSkillsManifest(agentPath),
+  /** Passive roster-driven queries pass `{ silence: isAgentGoneError }`: a 404
+   *  here means the roster is stale (agent deleted/unshared elsewhere, or a
+   *  space-switch refetch raced `loadAgents`) — an expected state the surfaces
+   *  handle by hiding + healing the roster, not a Houston bug (HOUSTON-APP-544).
+   *  User-initiated reads keep the default loud surfacing. */
+  get: (agentPath: string, options?: EngineCallOptions) =>
+    call<SkillsManifest>(
+      "get_skills_manifest",
+      () => getEngine().getSkillsManifest(agentPath),
+      undefined,
+      options,
     ),
   set: (agentPath: string, manifest: SkillsManifest) => {
     blockWriteWhileWarming(agentPath);
