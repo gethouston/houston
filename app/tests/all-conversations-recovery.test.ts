@@ -8,8 +8,8 @@ import {
   planSweepAttempt,
   SWEEP_ATTEMPT_DELAYS_MS,
   stepSweepRecovery,
-  sweepIsAuthoritative,
 } from "../src/lib/all-conversations-recovery.ts";
+import { sweepIsAuthoritative } from "../src/lib/sweep-authoritative.ts";
 
 const A = "Houston/Maya";
 const B = "Houston/Kai";
@@ -68,33 +68,44 @@ describe("mergePartialSweep", () => {
 
 describe("planPartialSweep", () => {
   it("does nothing when the sweep was complete", () => {
-    deepStrictEqual(planPartialSweep(0, 0), { toast: false });
-    deepStrictEqual(planPartialSweep(0, 2), { toast: false });
+    deepStrictEqual(planPartialSweep(0, 0), {});
+    deepStrictEqual(planPartialSweep(0, 2), {});
   });
 
   it("surfaces the first incomplete sweep and schedules a re-sweep", () => {
     deepStrictEqual(planPartialSweep(1, 0), {
-      toast: true,
+      surface: "notice",
       retryInMs: PARTIAL_SWEEP_RETRY_DELAYS_MS[0],
     });
   });
 
-  it("keeps retrying on a widening backoff without re-toasting", () => {
-    strictEqual(planPartialSweep(1, 1).toast, false);
-    strictEqual(
-      planPartialSweep(1, 1).retryInMs,
-      PARTIAL_SWEEP_RETRY_DELAYS_MS[1],
-    );
-    strictEqual(
-      planPartialSweep(1, 2).retryInMs,
-      PARTIAL_SWEEP_RETRY_DELAYS_MS[2],
+  it("keeps retrying on a widening backoff without re-surfacing", () => {
+    deepStrictEqual(planPartialSweep(1, 1), {
+      retryInMs: PARTIAL_SWEEP_RETRY_DELAYS_MS[1],
+    });
+    deepStrictEqual(planPartialSweep(1, 2), {
+      retryInMs: PARTIAL_SWEEP_RETRY_DELAYS_MS[2],
+    });
+  });
+
+  it("gives up past the last delay AND escalates — the hole outliving the whole run is the bug report we want", () => {
+    deepStrictEqual(planPartialSweep(1, PARTIAL_SWEEP_RETRY_DELAYS_MS.length), {
+      surface: "escalate",
+    });
+  });
+
+  it("stays quiet past the escalation — one report per run, while the cache keeps painting", () => {
+    deepStrictEqual(
+      planPartialSweep(1, PARTIAL_SWEEP_RETRY_DELAYS_MS.length + 1),
+      {},
     );
   });
 
-  it("gives up past the last delay — a broken agent must not keep the fleet awake", () => {
-    const decision = planPartialSweep(1, PARTIAL_SWEEP_RETRY_DELAYS_MS.length);
-    strictEqual(decision.retryInMs, undefined);
-    strictEqual(decision.toast, false);
+  it("escalates exactly once across a saturated run", () => {
+    const escalations = Array.from({ length: 10 }, (_, run) =>
+      planPartialSweep(1, run),
+    ).filter((d) => d.surface === "escalate");
+    strictEqual(escalations.length, 1);
   });
 });
 
@@ -112,11 +123,11 @@ describe("stepSweepRecovery", () => {
 
   it("counts consecutive partial sweeps for one roster", () => {
     const first = stepSweepRecovery(NO_SWEEP_RECOVERY, R1, 1);
-    strictEqual(first.decision.toast, true);
+    strictEqual(first.decision.surface, "notice");
     strictEqual(first.state.run, 1);
 
     const second = stepSweepRecovery(first.state, R1, 1);
-    strictEqual(second.decision.toast, false);
+    strictEqual(second.decision.surface, undefined);
     strictEqual(second.decision.retryInMs, PARTIAL_SWEEP_RETRY_DELAYS_MS[1]);
     strictEqual(second.state.run, 2);
   });
@@ -125,12 +136,12 @@ describe("stepSweepRecovery", () => {
     const partial = stepSweepRecovery(NO_SWEEP_RECOVERY, R1, 2);
     const clean = stepSweepRecovery(partial.state, R1, 0);
 
-    deepStrictEqual(clean.decision, { toast: false });
+    deepStrictEqual(clean.decision, {});
     strictEqual(clean.state.run, 0);
   });
 
   it("starts the new roster from scratch — a space switch is not a retry", () => {
-    // Saturate R1: past the last delay it neither toasts nor re-sweeps.
+    // Saturate R1: past the last delay it neither surfaces nor re-sweeps.
     let state = NO_SWEEP_RECOVERY;
     for (let i = 0; i <= PARTIAL_SWEEP_RETRY_DELAYS_MS.length; i += 1) {
       state = stepSweepRecovery(state, R1, 1).state;
@@ -141,7 +152,7 @@ describe("stepSweepRecovery", () => {
 
     strictEqual(switched.state.roster, R2);
     deepStrictEqual(switched.decision, {
-      toast: true,
+      surface: "notice",
       retryInMs: PARTIAL_SWEEP_RETRY_DELAYS_MS[0],
     });
   });

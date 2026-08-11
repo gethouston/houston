@@ -4,7 +4,7 @@
  * The hosted sweep fans out one read per agent. Any single agent can fail on
  * its own — a pod that never woke, a gateway blip — while the rest answer. The
  * adapter now keeps the agents that answered and reports the ones that didn't
- * (`AllConversationsResult.failedAgentPaths`) instead of rejecting the whole
+ * (`AllConversationsResult.failedAgents`) instead of rejecting the whole
  * board. That leaves the query layer four obligations, all handled here:
  *
  *  1. **Don't lose the failed agents' missions.** A partial sweep must not
@@ -24,10 +24,12 @@
  *     times.
  *  4. **Don't call a non-answer an answer.** The board's "you have no missions"
  *     verdict waits for a settled, non-placeholder success
- *     ({@link sweepIsAuthoritative}).
+ *     (`sweepIsAuthoritative`, lib/sweep-authoritative.ts).
  *
  * Pure and dependency-free so it unit-tests under node:test; the wiring lives
- * in hooks/queries/use-conversations.ts.
+ * in hooks/queries/use-conversations.ts, and HOW an incomplete sweep is told
+ * to the user (waking pod vs offline vs real failure) is the sibling policy in
+ * lib/partial-sweep-surface.ts.
  */
 
 /** The minimum a merged/failed row needs: which agent it belongs to. */
@@ -64,9 +66,19 @@ export function mergePartialSweep<T extends AgentScopedRow>(
  */
 export const PARTIAL_SWEEP_RETRY_DELAYS_MS = [5_000, 20_000, 60_000];
 
+export type PartialSweepSurface =
+  /** First partial sweep of a run: tell the user once, CLASSIFIED — a waking
+   *  pod or an offline drop gets its quiet informational surface, anything
+   *  else the real error report. */
+  | "notice"
+  /** The bounded re-sweeps are exhausted and the hole is still open. Whatever
+   *  the reason looked like, a pod that never came up through the whole run is
+   *  the bug report we want — always the error surface. */
+  | "escalate";
+
 export interface PartialSweepDecision {
-  /** Tell the user this sweep was incomplete. */
-  toast: boolean;
+  /** How (and whether) to tell anyone this sweep was incomplete. */
+  surface?: PartialSweepSurface;
   /** Re-sweep after this many ms; `undefined` = stop retrying. */
   retryInMs?: number;
 }
@@ -75,18 +87,23 @@ export interface PartialSweepDecision {
  * What to do after a sweep, given how many agents it could not read and how
  * many consecutive partial sweeps preceded it.
  *
- * The toast fires only on the FIRST partial sweep of a run: the user needs to
- * know their board is incomplete, not a toast per retry.
+ * The notice fires only on the FIRST partial sweep of a run (the user needs to
+ * know their board is incomplete, not a surface per retry); the escalation
+ * fires exactly once, when the retry schedule runs out with the hole still
+ * open. Runs past that stay quiet: the failure was reported, the carried
+ * forward rows keep painting, and the next complete sweep resets the run.
  */
 export function planPartialSweep(
   failedCount: number,
   consecutivePartialSweeps: number,
 ): PartialSweepDecision {
-  if (failedCount <= 0) return { toast: false };
-  return {
-    toast: consecutivePartialSweeps === 0,
-    retryInMs: PARTIAL_SWEEP_RETRY_DELAYS_MS[consecutivePartialSweeps],
-  };
+  if (failedCount <= 0) return {};
+  if (consecutivePartialSweeps === 0)
+    return { surface: "notice", retryInMs: PARTIAL_SWEEP_RETRY_DELAYS_MS[0] };
+  if (consecutivePartialSweeps === PARTIAL_SWEEP_RETRY_DELAYS_MS.length)
+    return { surface: "escalate" };
+  const retryInMs = PARTIAL_SWEEP_RETRY_DELAYS_MS[consecutivePartialSweeps];
+  return retryInMs === undefined ? {} : { retryInMs };
 }
 
 /**
@@ -129,7 +146,7 @@ export function stepSweepRecovery(
 ): SweepRecoveryStep {
   const run = previous.roster === roster ? previous.run : 0;
   if (failedCount <= 0) {
-    return { state: { roster, run: 0 }, decision: { toast: false } };
+    return { state: { roster, run: 0 }, decision: {} };
   }
   return {
     state: { roster, run: run + 1 },
@@ -171,21 +188,4 @@ export function planSweepAttempt(
   return retryInMs === undefined
     ? { surface: true }
     : { retryInMs, surface: false };
-}
-
-/**
- * Whether the sweep's current result is an ANSWER — the board's `isLoaded`.
- *
- * TanStack reports `status: "success"` the moment placeholder data is handed
- * out, before any fetch settles. Rows must (and do) paint from that placeholder
- * immediately; what must NOT run on it is any verdict about the board being
- * empty. A user whose disk-restored roster variant happened to be `[]` got the
- * new-mission composer auto-opened over an empty board while the real sweep
- * painted underneath it.
- */
-export function sweepIsAuthoritative(query: {
-  isSuccess: boolean;
-  isPlaceholderData: boolean;
-}): boolean {
-  return query.isSuccess && !query.isPlaceholderData;
 }
