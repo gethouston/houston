@@ -101,7 +101,11 @@ export function useInAppOnboarding() {
 
   const finish = () => {
     email.cleanup();
-    // Terminal: the setup never re-enters on the next boot.
+    // Terminal: the setup never re-enters on the next boot, and the funnel
+    // gets its closing event.
+    analytics.track("onboarding_completed", {
+      source: firstRun ? "in_app" : "in_app_replay",
+    });
     void clearPending();
     void markCompleted();
     setActive(false);
