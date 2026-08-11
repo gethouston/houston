@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import {
   currentCredentialScope,
   isPersonalScope,
@@ -164,6 +164,42 @@ export function resetAnthropicCredentialCache(value = false): void {
   lastProbeAt = 0;
   unknownBackoffUntil = 0;
   inFlight = null;
+}
+
+/**
+ * Drop the materialized shared-dir credential after the CENTRAL store
+ * authoritatively disconnected anthropic (a serve probe answered
+ * not-connected). On a serve-mode pod that file only ever comes from a central
+ * push (`credentials-file.ts`), so once the central row is gone any surviving
+ * copy is a ghost: the served env token vanished with auth.json, the SDK falls
+ * back to this file, and every turn burns a 401 on the dead family with no
+ * reporter left to heal it — the served manifest no longer lists anthropic, so
+ * `reportRevokedServedToken` no-ops on its provenance gate and the storm
+ * sustains until the file's token expires (PRODUCT-1307 / HOUSTON-APP-4YA).
+ *
+ * A personal scope never owns the shared dir (HOU-976) and must not delete the
+ * team's credential on its own disconnect. The cache reset (and its forced
+ * re-probe) happens only when a file was actually removed, so the per-turn
+ * not-connected sync of an ordinary disconnected pod stays free of subprocess
+ * churn.
+ */
+export function clearGhostClaudeCredential(): void {
+  if (isPersonalScope(currentCredentialScope().key)) return;
+  const path = claudeCredentialsFile();
+  if (!existsSync(path)) return;
+  try {
+    rmSync(path, { force: true });
+  } catch (err) {
+    console.warn(
+      `[claude] could not remove the ghost materialized credential at ${path}:`,
+      err instanceof Error ? err.message : err,
+    );
+    return;
+  }
+  console.log(
+    "[claude] removed ghost materialized credential: the central store no longer holds an anthropic credential for this workspace",
+  );
+  resetAnthropicCredentialCache(false);
 }
 
 /**

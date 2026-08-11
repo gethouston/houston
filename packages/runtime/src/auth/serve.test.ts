@@ -1,11 +1,22 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { accessDigest } from "@houston/protocol/access-digest";
 import { expect, test, vi } from "vitest";
 import { piApiKeyProviderIds } from "../ai/pi-catalog";
 import { PROVIDERS } from "../ai/providers";
+import {
+  claudeCredentialsFile,
+  claudeLoginConfigDir,
+} from "../backends/claude/paths";
 import { config } from "../config";
+import { runWithActingContext } from "../session/acting-context";
 import {
   applyServedCredential,
   type PiCred,
@@ -186,6 +197,114 @@ test("a served anthropic credential lands in auth.json as an access-only oauth e
       refresh: "",
       expires: 1_900_000_000_000,
     });
+  });
+});
+
+/**
+ * PRODUCT-1307 / Sentry HOUSTON-APP-4YA: the materialized
+ * `<CLAUDE_CONFIG_DIR>/.credentials.json` is a SECOND copy of the anthropic
+ * credential, and the Claude Agent SDK falls back to it the moment the served
+ * env token disappears. When the central row is deleted (the HOU-952 revoked
+ * heal, a real disconnect), leaving that file behind re-runs every turn on the
+ * dead token family — with the served manifest emptied, no reporter can act,
+ * and the storm only ends when the file's token expires. An authoritative
+ * not-connected must therefore take the ghost file down with the auth.json
+ * entry.
+ */
+function withTempHoustonHome(body: () => Promise<void>): Promise<void> {
+  const prev = process.env.HOUSTON_HOME;
+  process.env.HOUSTON_HOME = mkdtempSync(join(tmpdir(), "houston-home-"));
+  return body().finally(() => {
+    if (prev === undefined) delete process.env.HOUSTON_HOME;
+    else process.env.HOUSTON_HOME = prev;
+  });
+}
+
+/** A materialized SDK credential file, as a central push writes it. */
+function writeMaterializedClaudeCredential(): string {
+  mkdirSync(claudeLoginConfigDir(), { recursive: true });
+  const file = claudeCredentialsFile();
+  writeFileSync(
+    file,
+    JSON.stringify({
+      claudeAiOauth: {
+        accessToken: "sk-ant-oat01-dead",
+        refreshToken: "",
+        expiresAt: 9_000_000_000_000,
+        scopes: ["user:inference"],
+        subscriptionType: "max",
+      },
+    }),
+  );
+  return file;
+}
+
+/** Serves anthropic while `connected()` holds, authoritative 404 after. */
+const anthropicServeFetch = (connected: () => boolean) =>
+  (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider === "anthropic" && connected()) {
+      return new Response(
+        JSON.stringify({
+          provider: "anthropic",
+          kind: "oauth",
+          access: "sk-ant-oat01-served",
+          expires: 1_900_000_000_000,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+
+test("an authoritative anthropic disconnect clears the ghost materialized SDK credential", async () => {
+  await withTempHoustonHome(async () => {
+    const file = writeMaterializedClaudeCredential();
+    let connected = true;
+    await withServeMode(
+      anthropicServeFetch(() => connected),
+      async () => {
+        expect(await syncServedCredential()).toEqual(["anthropic"]);
+        // While centrally connected the file is legitimate — it stays.
+        expect(existsSync(file)).toBe(true);
+        connected = false;
+        await syncServedCredential();
+        // The central row is gone: the auth.json entry AND the ghost go together.
+        const auth = JSON.parse(
+          readFileSync(join(config.dataDir, "auth.json"), "utf8"),
+        ) as Record<string, unknown>;
+        expect(auth.anthropic).toBeUndefined();
+        expect(existsSync(file)).toBe(false);
+      },
+    );
+  });
+});
+
+test("a personal scope's anthropic disconnect leaves the pod-shared SDK credential file alone", async () => {
+  // The shared login dir is the TEAM's credential (HOU-976): a member whose
+  // personal row disconnects must not take the workspace's file with it.
+  const actingToken = (sub: string) =>
+    `acting-v1.${Buffer.from(
+      JSON.stringify({ sub, agent: "acme", exp: 9_000_000_000 }),
+    ).toString("base64url")}.sig`;
+  await withTempHoustonHome(async () => {
+    const file = writeMaterializedClaudeCredential();
+    let connected = true;
+    await withServeMode(
+      anthropicServeFetch(() => connected),
+      async () => {
+        await runWithActingContext(
+          { actingAs: actingToken("sub-alice") },
+          async () => {
+            expect(await syncServedCredential()).toEqual(["anthropic"]);
+            connected = false;
+            await syncServedCredential();
+          },
+        );
+        expect(existsSync(file)).toBe(true);
+      },
+    );
   });
 });
 

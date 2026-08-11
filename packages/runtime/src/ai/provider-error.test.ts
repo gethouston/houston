@@ -422,6 +422,12 @@ test("extractHttpStatus reads parenthesized, leading, and labelled forms", () =>
   expect(extractHttpStatus("OpenAI API error (429): boom")).toBe(429);
   expect(extractHttpStatus('401 {"type":"error"}')).toBe(401);
   expect(extractHttpStatus("request failed with status 503")).toBe(503);
+  // The Claude Agent SDK's canonical failure text (PRODUCT-1307).
+  expect(
+    extractHttpStatus(
+      "Failed to authenticate. API Error: 401 OAuth access token has been revoked.",
+    ),
+  ).toBe(401);
   // A 3-digit number that is not a plausible HTTP status is ignored.
   expect(extractHttpStatus("used 700 tokens")).toBeNull();
   expect(extractHttpStatus("no status here")).toBeNull();
