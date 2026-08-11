@@ -120,26 +120,20 @@ splits Mac vs Windows. In wizard order:
 
 1. `install_created`
 2. `onboarding_language_selected {locale}`
-3. `onboarding_agreement_accepted`
-4. `user_signed_in {provider}`
-5. `onboarding_segment_screen_viewed` → `onboarding_segment_selected` →
-   `onboarding_segment_continued` (`app/src/components/onboarding/segment-screen.tsx`;
-   the `continued` event also sets the `onboarding_segment` person property)
-6. `onboarding_started {source}`
-7. `onboarding_step_viewed {step}` — one per onboarding screen reached, ref-guarded so
-   Back / re-render don't refire
+3. `user_signed_in {provider}`
+4. `onboarding_agreement_accepted`
+5. survey events (`app/src/components/onboarding/survey-analytics.ts`):
+   `onboarding_{segment,industry,goal}_screen_viewed` → `*_selected` →
+   `*_continued` (the `continued` events set the person properties)
+6. `onboarding_started {source: in_app | in_app_replay}`
+7. `onboarding_step_viewed {step}` — one per setup step reached, ref-guarded so
+   re-renders don't refire
 8. `ai_provider_connected {provider}`
-9. `integration_connected {integration_slug}` — filtered to `gmail`/`outlook`, the
-   Gmail/Outlook-connected step
-10. `first_message_sent`
-11. `first_email_sent {provider}` — **the conversion** (the agent sent the first real
-    email); fires strictly before `onboarding_completed`
-12. terminal: `onboarding_completed` (normal finish) or
-    `onboarding_skipped {step, provider, model, source}` — `source: "conversation"` =
-    the failure-gated skip inside the email mission; `source: "escape_hatch"` = the
-    global bottom-of-screen "Skip onboarding" ghost button, rendered on every step
-    ONCE the assistant is provisioned (never earlier, because `onboarding_completed`
-    is permanent and a pre-agent skip would strand the user in an empty shell)
+9. `integration_connected {integration_slug}`
+10. `agent_created {config_id}`
+11. `first_message_sent`
+12. `first_email_sent {provider}` — the agent sent the first real email
+13. terminal: `onboarding_completed {source: in_app | in_app_replay}`
 
 - **`install_created` must precede every onboarding step.** It fires from
   `<StartupEffects>` at the top of the tree (above the language/disclaimer gates), NOT
