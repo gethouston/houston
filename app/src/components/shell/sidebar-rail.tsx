@@ -146,8 +146,6 @@ export function SidebarRail({
       defaultGroup={defaultGroup}
       onActivateGroup={onActivateGroup}
       onActivateDefault={onActivateDefault}
-      onDeleteGroup={teamActions.deleteGroup}
-      onLeaveGroup={teamActions.leaveGroup}
       // A drag reorders an agent inside its OWN team and nothing more: moving
       // an agent between teams is a named action on the team screen.
       onMoveItem={teamActions.moveItem}

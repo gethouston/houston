@@ -1,7 +1,11 @@
 import { Button } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { TeamSectionId, TeamView } from "../../lib/teams-model";
+import {
+  type TeamSectionId,
+  type TeamView,
+  teamDisplayName,
+} from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { DrilledHeader } from "../shell/page-header/drilled-header";
 import { TeamGlyph } from "../shell/team-glyph";
@@ -28,7 +32,7 @@ export function TeamSettingsHeader(props: {
   }));
   return (
     <DrilledHeader<TeamSettingsSection>
-      backLabel={props.team.name}
+      backLabel={teamDisplayName(props.team, t("teamView.defaultName"))}
       backIcon={<TeamGlyph team={props.team} className="size-4" />}
       backDataAttrs={{ "data-team-settings-back": "" }}
       items={items}

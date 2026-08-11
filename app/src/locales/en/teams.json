@@ -509,6 +509,7 @@
     }
   },
   "teamView": {
+    "defaultName": "New Team",
     "tabs": {
       "missionControl": "Tasks",
       "routines": "Routines",
@@ -530,7 +531,8 @@
       "moveToOrganization": "Move to an organization",
       "moveToOrganizationDescription": "Move this team and its agents into an organization so people can work with them.",
       "leave": "Leave team",
-      "delete": "Delete team"
+      "delete": "Delete team",
+      "onlyTeamDeleteDescription": "This is your only team, so it can't be deleted."
     },
     "agentTabs": {
       "settings": "Agent settings"

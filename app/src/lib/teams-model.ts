@@ -1,10 +1,8 @@
 import type { SidebarLayout } from "@houston-ai/engine-client";
 import { resolveSidebarSections } from "./agent-order.ts";
+import { canDeleteTeam as mayDeleteTeam } from "./team-permissions.ts";
 import type { Agent } from "./types.ts";
 
-// Two families live in their own modules (the 200-line rule) and are
-// re-exported here, so `teams-model` stays the ONE door onto a team's rules for
-// every caller: the "may I do this to a team?" gates, and the team's SECTIONS.
 export {
   canConfigureTeam,
   canConfigureTeamsByRole,
@@ -27,8 +25,8 @@ export {
 export const TEAM_VIEW_ID = "team";
 
 /**
- * The virtual default team: the workspace itself, wearing the workspace's
- * name. It is not stored anywhere — agents outside every sidebar group belong
+ * The virtual default team: the workspace itself. It is not stored anywhere —
+ * agents outside every sidebar group belong
  * to it, exactly as they belong to `ungroupedOrder` on the wire.
  */
 export const DEFAULT_TEAM_ID = "team:default";
@@ -59,6 +57,10 @@ export interface TeamView {
   /** Members in drag order (the same order the sections derive from). */
   agents: Agent[];
   isDefault: boolean;
+  /** Display-only marker for an untouched default identity. Renderers replace
+   *  the stored/seed name with their localized "New Team" label and use the
+   *  default rocket/charcoal glyph. The real name remains available for writes. */
+  usesDefaultIdentity?: true;
   /** The team's glyph NAME, from the CLIENT's own vocabulary
    *  (`shell:sidebar.teamIcons.*`), never an image and never a list the gateway
    *  curates: it validates SHAPE only. ABSENT when unset, which tells the rail
@@ -89,7 +91,7 @@ export interface TeamView {
 /**
  * Derive the sidebar's teams from the stored layout. Named groups become
  * teams in display order; the trailing default team is the workspace itself
- * (its name = the workspace name) and holds every ungrouped agent — so every
+ * and holds every ungrouped agent — so every
  * agent belongs to exactly one team without any stored-layout migration.
  * The default team renders even when empty: it is the workspace's home team.
  *
@@ -120,8 +122,28 @@ export function resolveTeams(
       name: workspaceName,
       agents: ungrouped,
       isDefault: true,
+      usesDefaultIdentity: true,
     },
   ];
+}
+
+/** Localized display name without replacing the real name used by writes. */
+export function teamDisplayName(team: TeamView, newTeamLabel: string): string {
+  return team.usesDefaultIdentity ? newTeamLabel : team.name;
+}
+
+export type TeamDeletePresentation =
+  | "disabled-only-team"
+  | "enabled"
+  | "hidden";
+
+/** Settings keeps the sole team's Delete row visible but unavailable. */
+export function teamDeletePresentation(
+  teams: readonly TeamView[],
+  team: TeamView,
+): TeamDeletePresentation {
+  if (teams.length === 1) return "disabled-only-team";
+  return mayDeleteTeam(team) ? "enabled" : "hidden";
 }
 
 /** The team with this id, `null` for an unknown id or no id at all. */

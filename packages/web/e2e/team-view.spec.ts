@@ -110,13 +110,6 @@ function litAgentRow(page: Page, name: string): Locator {
     .locator("[aria-current='page']");
 }
 
-/** The name the default team wears: the workspace's own, read off the switcher. */
-async function workspaceName(page: Page): Promise<string> {
-  return (
-    await page.locator("[data-tour-target='spaceSwitcher']").innerText()
-  ).trim();
-}
-
 async function openShell(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
@@ -128,13 +121,12 @@ test("a team's Tasks tab opens that team's board, named once and scoped", async 
 }) => {
   await addKai(request);
   await openShell(page);
-  const workspace = await workspaceName(page);
 
   // The strip names the team ONCE, inside its own lozenge, and says nothing
   // else while no agent is pinned. There is no "Tasks" label anywhere: the
   // team's lozenge IS the board's door. No second heading either.
   await sectionTab(page, "Tasks").click();
-  await expect(teamTitle(page, workspace)).toBeVisible();
+  await expect(teamTitle(page, "New Team")).toBeVisible();
   await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
   await expect(screen(page).getByText("Tasks", { exact: true })).toHaveCount(0);
   await expect(screen(page).getByText("All agents")).toHaveCount(0);
@@ -228,9 +220,8 @@ test("an agent row filters the board, and the team's lozenge undoes it", async (
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
   // The team's lozenge grows a second segment naming the pinned agent, so the
   // heading itself becomes "<team> <agent>".
-  const workspace = await workspaceName(page);
   await expect(homeLozenge(page)).toContainText("Kai");
-  await expect(teamTitle(page, `${workspace} Kai`)).toBeVisible();
+  await expect(teamTitle(page, "New Team Kai")).toBeVisible();
   await expect(litAgentRow(page, "Kai")).toHaveCount(1);
   await expect(litAgentRow(page, "Houston")).toHaveCount(0);
 
@@ -241,12 +232,12 @@ test("an agent row filters the board, and the team's lozenge undoes it", async (
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(litAgentRow(page, "Kai")).toHaveCount(0);
   await expect(homeLozenge(page)).not.toContainText("Kai");
-  await expect(teamTitle(page, workspace)).toBeVisible();
+  await expect(teamTitle(page, "New Team")).toBeVisible();
 
   // Arm 3: on the whole team's own board, the same click does nothing at all.
   await homeLozenge(page).click();
   await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
-  await expect(teamTitle(page, workspace)).toBeVisible();
+  await expect(teamTitle(page, "New Team")).toBeVisible();
 });
 
 test("an agent row opens its focused screen and settings page", async ({
@@ -256,10 +247,9 @@ test("an agent row opens its focused screen and settings page", async ({
   await armCapabilities(request, OWNER_CAPS);
   await addKai(request);
   await openShell(page);
-  const workspace = await workspaceName(page);
 
   await openAgentScreen(page, "Kai");
-  await expect(teamTitle(page, workspace)).toHaveCount(0);
+  await expect(teamTitle(page, "New Team")).toHaveCount(0);
   await openAgentSettings(page, "Kai");
   await expect(
     screen(page).locator("[data-agent-section-tab='people']"),
@@ -277,7 +267,6 @@ test("an agent row opens its focused screen and settings page", async ({
 
 test("the archive toggle round-trips inside Tasks", async ({ page }) => {
   await openShell(page);
-  const workspace = await workspaceName(page);
 
   // The archive stopped being a mode the board swapped into. It is a section,
   // so the lit tab is the only thing that has to say where you are: no title,
@@ -286,7 +275,7 @@ test("the archive toggle round-trips inside Tasks", async ({ page }) => {
   // permanently visible LABELLED control is both doors.
   await sectionTab(page, "Tasks").click();
   await openArchivedTasks(page);
-  await expect(teamTitle(page, workspace)).toBeVisible();
+  await expect(teamTitle(page, "New Team")).toBeVisible();
   await expect(screen(page).getByRole("heading", { level: 2 })).toHaveCount(0);
   await expect(
     screen(page).getByRole("button", { name: "Back to tasks" }),
@@ -357,7 +346,7 @@ test("a plain member lands on Tasks, with the team named once", async ({
     "aria-current",
     "page",
   );
-  await expect(teamTitle(page, await workspaceName(page))).toBeVisible();
+  await expect(teamTitle(page, "New Team")).toBeVisible();
   // No agent pinned, so the crumb is the team and nothing else.
   await expect(screen(page).getByText("All agents")).toHaveCount(0);
 });

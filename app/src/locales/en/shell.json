@@ -39,13 +39,10 @@
     "settings": "Settings",
     "skills": "Skills",
     "teams": {
-      "newDefault": "New team",
-      "delete": "Delete team",
-      "leave": "Leave team",
-      "menu": "Team options",
       "identity": "Change icon & name",
       "identityIcons": "Icons",
       "identityColors": "Colors",
+      "identityIconLabel": "{{name}} icon",
       "identitySearch": "Search icons…",
       "identitySearchEmpty": "No icons found"
     },

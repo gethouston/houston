@@ -117,7 +117,6 @@ export const sidebarRowAffordanceClasses = `relative ${sidebarRowEndMargin} flex
  * It is the same width as {@link sidebarRowAffordanceClasses} and nothing else
  * — `relative` included, for the same painting-order reason.
  */
-export const sidebarRowAffordanceGutter = `relative ${sidebarRowEndMargin} size-6 shrink-0`;
 
 /**
  * The one piece of agent-row anatomy the shared row does NOT own: the badge an

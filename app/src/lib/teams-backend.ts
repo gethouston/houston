@@ -46,7 +46,7 @@ export function resolveTeamsForBackend(input: TeamsBackendInput): TeamView[] {
   if (serverBacked) {
     return serverTeams === undefined
       ? []
-      : resolveServerTeams(serverTeams, agents, layout);
+      : resolveServerTeams(serverTeams, agents, layout, workspaceName);
   }
   return workspaceName === undefined
     ? []

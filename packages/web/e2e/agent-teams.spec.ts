@@ -181,20 +181,15 @@ function defaultHeader(page: Page): Locator {
   return rail(page).locator("[data-sidebar-default-header]");
 }
 
-/** Open a block header's "..." menu. */
-async function openBlockMenu(header: Locator): Promise<void> {
-  await header.getByRole("button", { name: "Team options" }).click();
-}
-
-/** Rename a block through its header menu's ONE identity entry: the
- *  "Change icon & name" dialog every team (and the create flow) shares. */
+/** Rename a block through Team Settings and its shared identity dialog. */
 async function renameBlock(
   page: Page,
   header: Locator,
   name: string,
 ): Promise<void> {
-  await openBlockMenu(header);
-  await page.getByRole("menuitem", { name: "Change icon & name" }).click();
+  await header.getByRole("button").click();
+  await openTeamSettings(page);
+  await page.getByTestId("team-settings-identity").click();
   const dialog = page.getByRole("dialog", { name: "Change icon & name" });
   const input = dialog.getByRole("textbox", { name: "Team name" });
   await input.waitFor({ state: "visible" });
@@ -759,7 +754,7 @@ test("a team's context is READ-ONLY for someone who does not own the team", asyn
   expect(callsTo(calls, "PATCH", `/v1/org/teams/${OPS_TEAM}`)).toHaveLength(0);
 });
 
-test("the default team renames from the rail, and that is the ONLY thing its menu offers", async ({
+test("the untouched default team displays New Team and renames through Team Settings", async ({
   page,
 }) => {
   // Server-backed the trailing block is not a virtual container any more: it is
@@ -777,14 +772,10 @@ test("the default team renames from the rail, and that is the ONLY thing its men
   await openShell(page);
 
   const header = defaultHeader(page);
-  await expect(header).toContainText("Acme");
-  await openBlockMenu(header);
+  await expect(header).toContainText("New Team");
   await expect(
-    page.getByRole("menuitem", { name: "Change icon & name" }),
-  ).toBeVisible();
-  for (const gone of ["Delete team", "Leave team"])
-    await expect(page.getByRole("menuitem", { name: gone })).toHaveCount(0);
-  await page.keyboard.press("Escape");
+    header.getByRole("button", { name: "Team options" }),
+  ).toHaveCount(0);
 
   // The rename is a WRITE against the default team's own id, not a local edit
   // of a label: the block used to have no door onto it at all.
@@ -797,7 +788,7 @@ test("the default team renames from the rail, and that is the ONLY thing its men
   await expect(header).toContainText("Acme Studio");
 });
 
-test("a caller who does not own the default team gets no menu on it", async ({
+test("a caller who does not own the default team gets no rail menu", async ({
   page,
 }) => {
   // Renaming is a team-owner power (C13), and the default block reads the same
@@ -811,7 +802,7 @@ test("a caller who does not own the default team gets no menu on it", async ({
   });
   await openShell(page);
 
-  await expect(defaultHeader(page)).toContainText("Acme");
+  await expect(defaultHeader(page)).toContainText("New Team");
   await expect(
     defaultHeader(page).getByRole("button", { name: "Team options" }),
   ).toHaveCount(0);
@@ -851,29 +842,11 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   await expect(groupHeader(page, OPS_TEAM)).toBeVisible();
   await expect(blockRows(page, OPS_TEAM)).toContainText("Ops Bot");
 
-  // The team's own menu keeps what acts on the TEAM and drops the one entry
-  // that acts on a membership. Leaving is impossible here — the creator's owner
-  // row cannot be removed and `POST …/leave` answers `403 personal_space` — so
-  // offering it would be a dead end dressed as a choice.
-  await openBlockMenu(groupHeader(page, OPS_TEAM));
-  await expect(
-    page.getByRole("menuitem", { name: "Change icon & name" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "Delete team" }),
-  ).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Leave team" })).toHaveCount(
-    0,
-  );
-  await page.keyboard.press("Escape");
-
-  // The default team is renamable here too: a personal space's default team is
-  // still a real team, and its one human owns it.
-  await openBlockMenu(defaultHeader(page));
-  await expect(
-    page.getByRole("menuitem", { name: "Change icon & name" }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await groupHeader(page, OPS_TEAM).getByRole("button").click();
+  await openTeamSettings(page);
+  await expect(page.getByTestId("team-settings-identity")).toBeVisible();
+  await expect(page.getByTestId("team-settings-delete")).toBeVisible();
+  await expect(page.getByTestId("team-settings-leave")).toHaveCount(0);
 
   // Creating one works exactly as it does in a shared space: the gateway takes
   // it, and it lands in the rail.

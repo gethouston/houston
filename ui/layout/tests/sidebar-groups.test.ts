@@ -1,9 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  affordanceAllowed,
   computeSidebarSections,
-  type SidebarGroupAffordances,
   type SidebarGroupView,
 } from "../src/sidebar-groups.ts";
 
@@ -76,59 +74,5 @@ describe("computeSidebarSections", () => {
     assert.deepEqual(ids(sections[1].items), ["b"]);
     // "a" is grouped, so it must not fall back into the default section.
     assert.deepEqual(ids(sections[2].items), []);
-  });
-});
-
-describe("affordanceAllowed", () => {
-  it("allows every group affordance when there is no mask at all", () => {
-    assert.equal(affordanceAllowed(undefined, "edit"), true);
-    assert.equal(affordanceAllowed(undefined, "delete"), true);
-  });
-
-  it("hides leave unless the mask asks for it explicitly", () => {
-    assert.equal(affordanceAllowed(undefined, "leave"), false);
-    assert.equal(affordanceAllowed({}, "leave"), false);
-    assert.equal(affordanceAllowed({ leave: false }, "leave"), false);
-    assert.equal(affordanceAllowed({ leave: true }, "leave"), true);
-  });
-
-  it("treats edit as a VETO, like delete and unlike leave", () => {
-    // Editing a block's identity edits the BLOCK, not the caller's standing in
-    // it, so it follows the same rule as delete: an absent mask allows it and
-    // only an explicit false takes it away. Were it opt-in like `leave`, every
-    // host that already ships a mask would silently lose the entry.
-    assert.equal(affordanceAllowed(undefined, "edit"), true);
-    assert.equal(affordanceAllowed({}, "edit"), true);
-    assert.equal(affordanceAllowed({ edit: true }, "edit"), true);
-    assert.equal(affordanceAllowed({ edit: false }, "edit"), false);
-    // And describing some OTHER affordance never retracts it.
-    assert.equal(affordanceAllowed({ delete: false }, "edit"), true);
-  });
-
-  it("treats only false as a veto, so a partial mask retracts nothing else", () => {
-    const mask: SidebarGroupAffordances = { delete: false };
-    assert.equal(affordanceAllowed(mask, "delete"), false);
-    assert.equal(affordanceAllowed(mask, "edit"), true);
-  });
-
-  it("answers each affordance independently", () => {
-    const mask: SidebarGroupAffordances = {
-      edit: true,
-      delete: false,
-      leave: true,
-    };
-    assert.deepEqual(
-      (["edit", "delete", "leave"] as const).map((a) =>
-        affordanceAllowed(mask, a),
-      ),
-      [true, false, true],
-    );
-  });
-
-  // The mask is read for the DEFAULT block too, which carries no id and only
-  // ever offers its icon-and-name edit. One rule, both block kinds.
-  it("reads a default block's mask by exactly the same rule", () => {
-    assert.equal(affordanceAllowed({ edit: true }, "edit"), true);
-    assert.equal(affordanceAllowed({ edit: false }, "edit"), false);
   });
 });

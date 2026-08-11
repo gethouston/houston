@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import type { TeamView } from "../../lib/teams-model";
+import { type TeamView, teamDisplayName } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { TeamGlyph } from "../shell/team-glyph";
 import { moveTargetTeams } from "../team-view/move-agent-model";
@@ -42,7 +42,9 @@ export function AgentMovePickerDialog({
               onClick={() => onSelect(team)}
             >
               <TeamGlyph team={team} className="size-4 shrink-0" />
-              <span className="truncate">{team.name}</span>
+              <span className="truncate">
+                {teamDisplayName(team, t("teamView.defaultName"))}
+              </span>
             </Button>
           ))}
         </div>
@@ -69,11 +71,11 @@ export function AgentMoveDialog({
       onOpenChange={onOpenChange}
       title={t("teamView.move.confirmTitle", {
         agent: agent.name,
-        team: team?.name ?? "",
+        team: team ? teamDisplayName(team, t("teamView.defaultName")) : "",
       })}
       description={t("teamView.move.confirmBody", {
         agent: agent.name,
-        team: team?.name ?? "",
+        team: team ? teamDisplayName(team, t("teamView.defaultName")) : "",
       })}
       confirmLabel={t("teamView.move.confirm")}
       cancelLabel={t("teamView.move.cancel")}

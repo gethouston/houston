@@ -26,7 +26,7 @@ function SidebarGroupHeaderSpecimen() {
         </SpecimenRow>
         <SpecimenRow label="Default team — no menu, no drag handle">
           <Rail>
-            <LiveTeam name="Julian's workspace" menu={false} />
+            <LiveTeam name="Julian's workspace" />
           </Rail>
         </SpecimenRow>
         <SpecimenRow label="Monochrome glyph — colour belongs to the avatars below">

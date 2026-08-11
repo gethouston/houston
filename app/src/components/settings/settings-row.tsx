@@ -60,14 +60,15 @@ interface RowTextProps {
   title: string;
   description?: string;
   destructive?: boolean;
+  disabled?: boolean;
 }
 
-function RowText({ title, description, destructive }: RowTextProps) {
+function RowText({ title, description, destructive, disabled }: RowTextProps) {
   return (
     <span className="min-w-0 flex-1">
       <span
         className={`block truncate text-sm font-medium ${
-          destructive ? "text-danger" : "text-ink"
+          destructive && !disabled ? "text-danger" : "text-ink"
         }`}
       >
         {title}
@@ -89,6 +90,7 @@ interface SettingsRowProps {
   /** Right-aligned current value, e.g. "2 members". */
   value?: string;
   destructive?: boolean;
+  disabled?: boolean;
   /** Stable `data-testid` for rows the UI tests navigate by (label-independent). */
   testId?: string;
   /** Set false for ACTION rows that resolve in place instead of drilling into
@@ -105,6 +107,7 @@ export function SettingsRow({
   ariaLabel,
   value,
   destructive,
+  disabled = false,
   testId,
   chevron = true,
   onClick,
@@ -113,15 +116,18 @@ export function SettingsRow({
     <button
       type="button"
       aria-label={ariaLabel}
-      onClick={onClick}
+      aria-disabled={disabled}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
       data-testid={testId}
-      className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-chip/60"
+      className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors enabled:hover:bg-chip/60 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <Leading icon={icon} destructive={destructive} />
+      <Leading icon={icon} destructive={destructive && !disabled} />
       <RowText
         title={title}
         description={description}
         destructive={destructive}
+        disabled={disabled}
       />
       {value && (
         <span className="shrink-0 text-sm text-ink-muted">{value}</span>

@@ -96,23 +96,14 @@ function storedLayout(page: Page): Promise<SeedSidebarLayout> {
   return readSidebarLayout(page.request);
 }
 
-test("the default block is the workspace, and a block is a name and its agents", async ({
+test("the default block is New Team, and block headers have no options menu", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
 
-  // The trailing block wears the WORKSPACE's name, not an anonymous label —
-  // read off the switcher rather than hard-coded, since that identity is the
-  // actual invariant ("the default team is the workspace").
-  const workspaceName = (
-    await page.locator("[data-tour-target='spaceSwitcher']").innerText()
-  ).trim();
-  expect(workspaceName).not.toEqual("");
   await expect(defaultHeader(page)).toHaveCount(1);
-  await expect(defaultHeader(page)).toContainText(workspaceName);
-  // The local default block has no actions, so it reserves the shared gutter
-  // without rendering an empty menu trigger.
+  await expect(defaultHeader(page)).toContainText("New Team");
   await expect(defaultHeader(page).getByRole("button")).toHaveCount(1);
   await expect(defaultHeader(page).getByRole("button")).toHaveAttribute(
     "aria-expanded",
@@ -127,13 +118,11 @@ test("the default block is the workspace, and a block is a name and its agents",
   await expect(rail(page).locator("[data-sidebar-section-row]")).toHaveCount(0);
   await expect(rail(page).getByText("Routines")).toHaveCount(0);
 
-  // A named team DOES carry a header menu, which is the affordance the default
-  // block is missing.
   await createTeam(page, "Work");
   const named = rail(page).locator("[data-sidebar-group-header]");
   await expect(named).toHaveCount(1);
   await expect(named.getByRole("button", { name: "Team options" })).toHaveCount(
-    1,
+    0,
   );
 });
 

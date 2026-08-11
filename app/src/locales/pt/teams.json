@@ -509,6 +509,7 @@
     }
   },
   "teamView": {
+    "defaultName": "Novo time",
     "tabs": {
       "missionControl": "Tarefas",
       "routines": "Rotinas",
@@ -530,7 +531,8 @@
       "moveToOrganization": "Mover para uma organização",
       "moveToOrganizationDescription": "Mova esta equipe e seus agentes para uma organização para que outras pessoas possam trabalhar com eles.",
       "leave": "Sair da equipe",
-      "delete": "Excluir equipe"
+      "delete": "Excluir equipe",
+      "onlyTeamDeleteDescription": "Este é seu único time, então ele não pode ser excluído."
     },
     "agentTabs": {
       "settings": "Configurações do agente"

@@ -12,7 +12,6 @@ import {
 import {
   sidebarCollapsedItemClasses,
   sidebarRowAffordanceClasses,
-  sidebarRowAffordanceGutter,
   sidebarRowButtonClasses,
   sidebarRowFill,
   sidebarRowState,
@@ -332,25 +331,12 @@ describe("sidebar row anatomy", () => {
     }
   });
 
-  it("reserves the affordance column even for a BLOCK with no menu", () => {
-    // Every block header truncates its name at the same point, so a header
-    // with nothing in its "..." must still spend the 28px. The HEADER's `??`
-    // spacer only fires when it is handed no menu render-prop at all — and the
-    // default block is always handed one now, so the empty menu has to reserve
-    // the column itself or the block silently gets a wider name than the teams
-    // above it, which reads as a second list.
-    const menu = source("sidebar-group-menu.tsx");
-    ok(menu.includes("sidebarRowAffordanceGutter"));
+  it("renders block headers without a menu affordance column", () => {
     strictEqual(
-      /return null/.test(menu),
+      source("sidebar-group-header.tsx").includes("affordance="),
       false,
-      "an empty group menu must reserve the gutter, not render nothing",
     );
-    // And the header keeps its own fallback for the one caller that passes no
-    // menu at all (the drag preview).
-    ok(
-      source("sidebar-group-header.tsx").includes("sidebarRowAffordanceGutter"),
-    );
+    strictEqual(source("sidebar-block-header.tsx").includes("menu="), false);
   });
 
   it("gives the row a visible focus ring, ON the pill it is outlining", () => {
@@ -441,7 +427,6 @@ describe("sidebar row anatomy", () => {
     // margins — puts them 2px inside it.
     ok(includes(sidebarRowButtonClasses.button, "pr-2"));
     ok(includes(sidebarRowAffordanceClasses, "mr-2"));
-    ok(includes(sidebarRowAffordanceGutter, "mr-2"));
   });
 
   it("rotates the disclosure mark on a transform-only transition", () => {

@@ -167,6 +167,23 @@ describe("resolveServerTeams", () => {
     assert.equal(teams[0]?.color, "#5E6AD2");
   });
 
+  it("marks only an untouched server default whose name matches the workspace", () => {
+    const untouched = resolveServerTeams(
+      [serverTeam({ id: "t-def", name: "Acme", isDefault: true })],
+      [],
+      layout(),
+      "Acme",
+    );
+    const renamed = resolveServerTeams(
+      [serverTeam({ id: "t-def", name: "Launch", isDefault: true })],
+      [],
+      layout(),
+      "Acme",
+    );
+    assert.equal(untouched[0]?.usesDefaultIdentity, true);
+    assert.equal(renamed[0]?.usesDefaultIdentity, undefined);
+  });
+
   it("rule 5: an unset icon or color stays ABSENT, not undefined-valued", () => {
     // Absent is what tells the rail to draw its own default, and it is also how
     // the gateway spells "unset" — a key carrying `undefined` would answer

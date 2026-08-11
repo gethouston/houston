@@ -8,7 +8,7 @@ import {
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
-import type { TeamView } from "../../lib/teams-model";
+import { type TeamView, teamDisplayName } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -87,7 +87,9 @@ export function TeamMissionEmpty({ team }: { team: TeamView }) {
       body={
         team.isDefault
           ? t("teamView.missionControl.empty.workspaceBody")
-          : t("teamView.missionControl.empty.teamBody", { name: team.name })
+          : t("teamView.missionControl.empty.teamBody", {
+              name: teamDisplayName(team, t("teamView.defaultName")),
+            })
       }
       createLabel={t("teamView.missionControl.empty.createAgent")}
     />
@@ -108,7 +110,9 @@ export function TeamRoutinesEmpty({ team }: { team: TeamView }) {
       body={
         team.isDefault
           ? t("teamView.routines.empty.workspaceBody")
-          : t("teamView.routines.empty.teamBody", { name: team.name })
+          : t("teamView.routines.empty.teamBody", {
+              name: teamDisplayName(team, t("teamView.defaultName")),
+            })
       }
       createLabel={t("teamView.routines.empty.createAgent")}
     />
@@ -129,7 +133,9 @@ export function TeamFilesEmpty({ team }: { team: TeamView }) {
       body={
         team.isDefault
           ? t("teamView.files.empty.workspaceBody")
-          : t("teamView.files.empty.teamBody", { name: team.name })
+          : t("teamView.files.empty.teamBody", {
+              name: teamDisplayName(team, t("teamView.defaultName")),
+            })
       }
       createLabel={t("teamView.files.empty.createAgent")}
     />

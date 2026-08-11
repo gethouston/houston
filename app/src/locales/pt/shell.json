@@ -39,13 +39,10 @@
     "settings": "Configurações",
     "skills": "Skills",
     "teams": {
-      "newDefault": "Nova equipe",
-      "delete": "Excluir equipe",
-      "leave": "Sair da equipe",
-      "menu": "Opções da equipe",
       "identity": "Alterar ícone e nome",
       "identityIcons": "Ícones",
       "identityColors": "Cores",
+      "identityIconLabel": "Ícone {{name}}",
       "identitySearch": "Pesquisar ícones…",
       "identitySearchEmpty": "Nenhum ícone encontrado"
     },

@@ -9,6 +9,7 @@ import {
   sectionHonorsAgentPin,
   type TeamSectionId,
   type TeamView,
+  teamDisplayName,
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { PageHeader } from "../shell/page-header/page-header";
@@ -82,7 +83,9 @@ export function TeamChrome({
   const identity = (
     <>
       <TeamGlyph team={team} className="size-4 shrink-0" />
-      <span className="min-w-0 truncate">{team.name}</span>
+      <span className="min-w-0 truncate">
+        {teamDisplayName(team, t("teamView.defaultName"))}
+      </span>
       {pinnedAgent && (
         <>
           <ChevronRight aria-hidden className="size-3.5 shrink-0 opacity-60" />

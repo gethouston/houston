@@ -509,6 +509,7 @@
     }
   },
   "teamView": {
+    "defaultName": "Nuevo equipo",
     "tabs": {
       "missionControl": "Tareas",
       "routines": "Rutinas",
@@ -530,7 +531,8 @@
       "moveToOrganization": "Mover a una organización",
       "moveToOrganizationDescription": "Mueve este equipo y sus agentes a una organización para que otras personas puedan trabajar con ellos.",
       "leave": "Salir del equipo",
-      "delete": "Eliminar equipo"
+      "delete": "Eliminar equipo",
+      "onlyTeamDeleteDescription": "Este es tu único equipo, así que no se puede eliminar."
     },
     "agentTabs": {
       "settings": "Configuración del agente"

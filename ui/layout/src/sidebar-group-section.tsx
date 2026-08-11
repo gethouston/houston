@@ -28,9 +28,6 @@ export interface SidebarGroupSectionProps {
   /** The DEFAULT block's header was activated. Its own callback because that
    *  block is not a stored group and has no id to hand back. */
   onActivateDefault?: () => void;
-  onDeleteGroup?: (groupId: string) => void;
-  /** Leave the group (the caller's membership, not the group). */
-  onLeaveGroup?: (groupId: string) => void;
 }
 
 /**
@@ -64,8 +61,6 @@ export function SidebarGroupSection({
   addItemDataAttrs,
   onActivateGroup,
   onActivateDefault,
-  onDeleteGroup,
-  onLeaveGroup,
 }: SidebarGroupSectionProps) {
   const { group, groupId, items } = section;
   const contentId = useId();
@@ -117,15 +112,12 @@ export function SidebarGroupSection({
           <SidebarBlockHeader
             block={block}
             group={group}
-            ctx={ctx}
             contentId={contentId}
             dragAttributes={group ? header.attributes : undefined}
             dragListeners={group ? header.listeners : undefined}
             collapsed={collapsed}
             onActivateGroup={onActivateGroup}
             onActivateDefault={onActivateDefault}
-            onDeleteGroup={onDeleteGroup}
-            onLeaveGroup={onLeaveGroup}
           />
         )}
 

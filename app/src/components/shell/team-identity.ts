@@ -43,7 +43,12 @@ export function buildTeamIdentityChoices(
   return {
     glyphs: SIDEBAR_GROUP_GLYPH_NAMES.map((name) => ({
       name,
-      label: t(`shell:sidebar.teamIcons.${name}`),
+      label: t("shell:sidebar.teams.identityIconLabel", {
+        name: name
+          .split("-")
+          .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
+          .join(" "),
+      }),
     })),
     colors: AGENT_COLORS.map((entry) => ({
       id: entry.id,
@@ -57,6 +62,8 @@ export function buildTeamIdentityChoices(
       trigger: t("shell:sidebar.teams.identity"),
       icons: t("shell:sidebar.teams.identityIcons"),
       colors: t("shell:sidebar.teams.identityColors"),
+      search: t("shell:sidebar.teams.identitySearch"),
+      emptySearch: t("shell:sidebar.teams.identitySearchEmpty"),
     },
   };
 }

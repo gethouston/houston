@@ -1,5 +1,3 @@
-import type { SidebarLabels } from "@houston-ai/layout";
-
 import type { SpecimenProp } from "../../../src/specimen";
 
 /**
@@ -7,15 +5,6 @@ import type { SpecimenProp } from "../../../src/specimen";
  * overrides over its own defaults before handing them down, so a standalone
  * specimen has to supply the whole bag. These are `DEFAULT_LABELS` verbatim.
  */
-export const GROUP_LABELS: Required<SidebarLabels> = {
-  addItem: "Add item",
-  collapseSidebar: "Collapse sidebar",
-  editGroup: "Change icon & name",
-  deleteGroup: "Delete group",
-  leaveGroup: "Leave group",
-  groupMenu: "Group options",
-};
-
 /** `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`. */
 export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
   {
@@ -47,11 +36,6 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
     name: "onActivate",
     type: "() => void",
     note: "The whole row is ONE hit target — glyph, name, triangle and badge in a single button, so a keyboard user reaches it in one stop and a screen reader is told it discloses something. What activating it DOES is the host's: it may open the block's screen, fold the block, or both. The triangle states the fold and takes no clicks of its own; a second control on the row would promise an outcome it does not own.",
-  },
-  {
-    name: "menu",
-    type: "ReactNode",
-    note: "The ⋯ menu, rendered as the toggle's SIBLING because a button may not nest inside a button. Its one identity entry opens the host's 'Change icon & name' dialog; nothing is edited inline in the rail. Absent only when the caller renders no menu at all (the drag preview).",
   },
   {
     name: "dragAttributes / dragListeners",

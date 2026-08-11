@@ -1,4 +1,3 @@
-import type { SidebarGroupAffordances } from "@houston-ai/layout";
 import { useSetAgentTeamIdentity } from "../../hooks/queries";
 import {
   useDeleteAgentTeam,
@@ -8,7 +7,6 @@ import {
 import { useSession } from "../../hooks/use-session";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
 import type { TeamView } from "../../lib/teams-model";
-import { teamAffordanceMask } from "./team-sidebar-model";
 import { type TeamDragWrites, useTeamDragWrites } from "./use-team-drag-writes";
 
 export interface UseServerTeamActionsArgs {
@@ -33,9 +31,6 @@ export interface UseServerTeamActionsArgs {
 export interface ServerTeamActions extends TeamDragWrites {
   /** Whether the rail offers "New team" at all. */
   canCreateTeam: boolean;
-  /** This team's header-menu mask, or `undefined` off-capability (no mask at
-   *  all, which is exactly the pre-C13 rendering). */
-  affordancesFor: (team: TeamView) => SidebarGroupAffordances | undefined;
   renameGroup: (groupId: string, newName: string) => void;
   /** Set or clear a team's icon/colour. `null` CLEARS. Branches ONCE on the
    *  backend, like every other action here. */
@@ -87,11 +82,6 @@ export function useServerTeamActions({
     // On a server host creating a team is not an admin power: teams are how a
     // space organizes itself, and any member may add one.
     canCreateTeam: serverBacked || canCreateAgents,
-    affordancesFor: teamAffordanceMask({
-      serverBacked,
-      personalSpace,
-      selfId,
-    }),
     renameGroup: (groupId, newName) => {
       if (serverBacked)
         update.mutate({ teamId: groupId, patch: { name: newName } });

@@ -5,10 +5,12 @@ import {
   PopoverTrigger,
   ScrollArea,
 } from "@houston-ai/core";
-import { SidebarGroupGlyph } from "@houston-ai/layout";
+import {
+  matchesSidebarGroupGlyph,
+  SidebarGroupGlyph,
+} from "@houston-ai/layout";
 import { Users } from "lucide-react";
-import { type CSSProperties, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { type CSSProperties, useRef, useState } from "react";
 import type { TeamIdentityChoices } from "./team-identity";
 import {
   ColorSwatch,
@@ -49,15 +51,16 @@ export function TeamIdentityPopover({
   /** `undefined` = cleared back to the default ink (the toggle-off). */
   onColorChange: (id: string | undefined) => void;
 }) {
-  const { t } = useTranslation(["shell"]);
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const tint = choices.colors.find((c) => c.id === colorId)?.value;
   const tintVar = tint
     ? ({ "--identity-tint": tint } as CSSProperties)
     : undefined;
-  const needle = query.trim().toLocaleLowerCase();
-  const shown = needle
-    ? choices.glyphs.filter((g) => g.label.toLocaleLowerCase().includes(needle))
+  const shown = query.trim()
+    ? choices.glyphs.filter((glyph) =>
+        matchesSidebarGroupGlyph(glyph.name, query),
+      )
     : choices.glyphs;
 
   return (
@@ -66,6 +69,7 @@ export function TeamIdentityPopover({
       onOpenChange={(open) => {
         // A reopened picker starts from the whole vocabulary, not last search.
         if (!open) setQuery("");
+        else requestAnimationFrame(() => searchRef.current?.focus());
       }}
     >
       <PopoverTrigger
@@ -116,10 +120,11 @@ export function TeamIdentityPopover({
             below already frame it, and a boxed input INSIDE a popover would
             nest two field chromes. */}
         <input
+          ref={searchRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("shell:sidebar.teams.identitySearch")}
-          aria-label={t("shell:sidebar.teams.identitySearch")}
+          placeholder={choices.labels.search}
+          aria-label={choices.labels.search}
           className="w-full border-b border-line bg-transparent px-3 py-2.5 text-base text-ink outline-none placeholder:text-ink-muted"
         />
         {/* The tint rides on the grid, not on each cell: one inherited ink for
@@ -172,7 +177,7 @@ export function TeamIdentityPopover({
             </div>
           ) : (
             <p className="px-1 py-2 text-sm text-ink-muted">
-              {t("shell:sidebar.teams.identitySearchEmpty")}
+              {choices.labels.emptySearch}
             </p>
           )}
         </ScrollArea>

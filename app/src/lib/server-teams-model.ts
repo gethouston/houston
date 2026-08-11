@@ -87,6 +87,7 @@ export function resolveServerTeams(
   serverTeams: readonly AgentTeam[],
   agents: readonly Agent[],
   layout: SidebarLayout,
+  workspaceName?: string,
 ): TeamView[] {
   const byId = new Map(agents.map((a) => [a.id, a] as const));
   const claimed = new Set<string>();
@@ -106,6 +107,9 @@ export function resolveServerTeams(
       name: team.name,
       agents: orderByOverlay(members, overlayOrderFor(layout, team.id)),
       isDefault: team.isDefault,
+      ...(team.isDefault && team.name === workspaceName
+        ? { usesDefaultIdentity: true as const }
+        : {}),
       ...(team.icon === undefined ? {} : { icon: team.icon }),
       ...(team.color === undefined ? {} : { color: team.color }),
       ...(team.context === undefined ? {} : { context: team.context }),

@@ -17,6 +17,8 @@ import {
   TEAM_VIEW_ID,
   type TeamView,
   teamById,
+  teamDeletePresentation,
+  teamDisplayName,
   teamOfAgent,
   teamPeopleFace,
   visibleAgentSections,
@@ -96,8 +98,15 @@ describe("resolveTeams", () => {
       name: "Acme",
       agents: [],
       isDefault: true,
+      usesDefaultIdentity: true,
     });
     assert.deepEqual(resolveTeams([], layout([]), "Solo")[0]?.agents, []);
+  });
+
+  it("marks the local default for a localized display name without replacing its real name", () => {
+    const team = resolveTeams([], layout([]), "Acme")[0];
+    assert.equal(team?.name, "Acme");
+    assert.equal(team && teamDisplayName(team, "New Team"), "New Team");
   });
 
   it("every agent belongs to exactly one team (first group wins, stale ids dropped)", () => {
@@ -176,6 +185,33 @@ describe("resolveTeams", () => {
     // The in-flight window of a server-teams read, and a caller with no
     // workspace. The callers answer it with the Inbox, never with a guess.
     assert.equal(homeTeam([]), null);
+  });
+});
+
+describe("teamDeletePresentation", () => {
+  const local = (isDefault = false): TeamView => ({
+    id: isDefault ? DEFAULT_TEAM_ID : "team-1",
+    name: "Team",
+    agents: [],
+    isDefault,
+  });
+
+  it("keeps Delete visible but disabled for the only team", () => {
+    const team = local(true);
+    assert.equal(teamDeletePresentation([team], team), "disabled-only-team");
+  });
+
+  it("enables an allowed team and hides a disallowed team when siblings exist", () => {
+    const deletable = local();
+    const defaultTeam = local(true);
+    assert.equal(
+      teamDeletePresentation([deletable, defaultTeam], deletable),
+      "enabled",
+    );
+    assert.equal(
+      teamDeletePresentation([deletable, defaultTeam], defaultTeam),
+      "hidden",
+    );
   });
 });
 

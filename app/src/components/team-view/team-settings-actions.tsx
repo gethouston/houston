@@ -7,9 +7,10 @@ import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
 import { hasAgentTeams, hasSpaces } from "../../lib/org-roles";
 import {
-  canDeleteTeam,
   canLeaveTeam,
   type TeamView,
+  teamDeletePresentation,
+  teamDisplayName,
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -36,6 +37,8 @@ export function TeamSettingsActions({ team }: { team: TeamView }) {
   });
   const setEditTeamIdentityId = useUIStore((s) => s.setEditTeamIdentityId);
   const mayLeave = canLeaveTeam(team, personalSpace) && actions.leaveGroup;
+  const deletePresentation = teamDeletePresentation(teams, team);
+  const onlyTeam = deletePresentation === "disabled-only-team";
   const [moveOpen, setMoveOpen] = useState(false);
   return (
     <SettingsCard>
@@ -68,10 +71,16 @@ export function TeamSettingsActions({ team }: { team: TeamView }) {
           onClick={() => actions.leaveGroup?.(team.id)}
         />
       )}
-      {canDeleteTeam(team) && (
+      {deletePresentation !== "hidden" && (
         <SettingsRow
           icon={Trash2}
           title={t("teamView.settingsActions.delete")}
+          description={
+            onlyTeam
+              ? t("teamView.settingsActions.onlyTeamDeleteDescription")
+              : undefined
+          }
+          disabled={onlyTeam}
           destructive
           chevron={false}
           testId="team-settings-delete"
@@ -81,7 +90,7 @@ export function TeamSettingsActions({ team }: { team: TeamView }) {
       <TeamMoveFlow
         source={{
           id: team.id,
-          name: team.name,
+          name: teamDisplayName(team, t("teamView.defaultName")),
           icon: team.icon,
           color: team.color,
           context: team.context,

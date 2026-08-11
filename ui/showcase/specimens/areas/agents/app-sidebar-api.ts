@@ -64,16 +64,6 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
     note: "The block's header was activated — ONE hit target carrying the glyph, the name, the disclosure triangle and the rollup badge. The library does NOT decide what that means: a host may open the block's screen, fold the block, or both, and `collapsed` on the view model stays the single controlled truth about the fold. The triangle is an indicator, never a second control.",
   },
   {
-    name: "onRenameGroup / onDeleteGroup / onEditGroupContext",
-    type: "(groupId: string, …) => void",
-    note: "Each one supplied adds its entry to the group's ⋯ menu, subject to that group's `affordances`. A block left with no entries renders no trigger at all.",
-  },
-  {
-    name: "onLeaveGroup",
-    type: "(groupId: string) => void",
-    note: "Gives up the caller's membership rather than editing the group, so its entry sits last, behind a separator. Needs `affordances.leave === true` on top of this callback.",
-  },
-  {
     name: "groupNameMaxRunes",
     type: "number",
     note: "Ceiling on a group's rename field, in RUNES, because maxLength counts UTF-16 units and would halve a name of emoji. The field clamps rather than refusing, so pasting is never blocked.",
