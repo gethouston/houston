@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { RevocationTombstones } from "../credentials/revocation-tombstones";
 import {
   type CredentialHeal,
   CredentialServeHealer,
@@ -100,6 +101,31 @@ test("one member's cooldown never mutes another member's heal", async () => {
     actingAs("member-b"),
     actingAs("member-a"),
   ]);
+});
+
+test("a heal is refused while the provider's revocation tombstone is active (HOUSTON-APP-530)", async () => {
+  const { seen, heal } = recorder();
+  let now = 1_700_000_000_000;
+  const revocations = new RevocationTombstones(() => now);
+  const healer = new CredentialServeHealer(heal, () => now, revocations);
+  const args = {
+    workspaceId: "ws",
+    agentId: "ws/agent",
+    provider: "anthropic",
+  };
+
+  // The serve miss exists BECAUSE the provider revoked the credential; healing
+  // would re-upload the pod's copy of the same dead family.
+  revocations.mark({ workspaceId: "ws", provider: "anthropic", scope: "team" });
+  expect(await healer.attempt(args)).toBe(false);
+  expect(seen).toEqual([]);
+
+  // A fresh user-driven connect clears the tombstone; healing resumes — and
+  // the refusal above must not have spent the cooldown.
+  revocations.clear({ workspaceId: "ws", provider: "anthropic" });
+  now += 1_000;
+  expect(await healer.attempt(args)).toBe(true);
+  expect(seen).toEqual([undefined]);
 });
 
 test("no acting identity keeps the single shared slot (desktop, self-host)", async () => {

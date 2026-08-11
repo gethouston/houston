@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { parseClaudeOAuthEnvelope } from "@houston/protocol";
+import { RevokedRefillBlockedError } from "../credentials/revocation-tombstones";
 import type { Agent, UserId, WorkspaceRuntime } from "../domain/types";
 import {
   ApiKeyRejectedError,
@@ -153,7 +154,9 @@ export async function handleSetupRuntime(
       });
       json(res, 200, { ok: true });
     } catch (err) {
-      json(res, 502, {
+      // 409, not 502: the fill was refused on purpose (the credential was
+      // just provider-revoked — HOUSTON-APP-530), not lost to a broken hop.
+      json(res, err instanceof RevokedRefillBlockedError ? 409 : 502, {
         error: err instanceof Error ? err.message : String(err),
       });
     }

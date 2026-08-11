@@ -1,4 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import {
+  type RevocationTombstones,
+  sharedRevocationTombstones,
+} from "../credentials/revocation-tombstones";
 import type { CredentialStore, CredentialVault } from "../ports";
 import { bearer, json, readJson } from "./http";
 
@@ -22,7 +26,12 @@ import { bearer, json, readJson } from "./http";
  * Returns true when the request was handled.
  */
 export async function handleSandboxCredentialRevoked(
-  deps: { vault: CredentialVault; credentials: CredentialStore },
+  deps: {
+    vault: CredentialVault;
+    credentials: CredentialStore;
+    /** Injectable for tests; defaults to the process-wide ledger. */
+    revocations?: RevocationTombstones;
+  },
   method: string,
   path: string,
   url: URL,
@@ -70,12 +79,35 @@ export async function handleSandboxCredentialRevoked(
   // Both outcomes are success. `removed:false` means the report was superseded
   // — the workspace reconnected, or a sibling runtime reported the same dead
   // token first — and the reporter's own retry/backoff must not treat that as
-  // an error to escalate.
-  console[removed ? "error" : "info"](
-    `[sandbox/credential] revoked-token report for ${provider}: ${
-      removed ? "credential disconnected" : "superseded, left in place"
-    }`,
-  );
+  // an error to escalate. A confirmed removal is the pipeline WORKING (the
+  // user gets the reconnect card), so it logs info, not error — Sentry
+  // HOUSTON-APP-530 was this line at error level, one event per expected
+  // disconnect. The tombstone it leaves behind is what blocks automatic
+  // refills of the dead credential (revocation-tombstones.ts); a SECOND
+  // confirmed removal inside the tombstone window means something refilled a
+  // revoked credential past those guards — the one outcome that IS a defect,
+  // and the only one that still logs at error level.
+  if (removed) {
+    const refilled = (deps.revocations ?? sharedRevocationTombstones).mark({
+      workspaceId: claim.workspaceId,
+      provider,
+      scope,
+      actingAs,
+    });
+    if (refilled) {
+      console.error(
+        `[sandbox/credential] revoked ${provider} credential was refilled and revoked AGAIN within the tombstone window — an automatic push is resurrecting a dead credential`,
+      );
+    } else {
+      console.info(
+        `[sandbox/credential] revoked-token report for ${provider}: credential disconnected`,
+      );
+    }
+  } else {
+    console.info(
+      `[sandbox/credential] revoked-token report for ${provider}: superseded, left in place`,
+    );
+  }
   json(res, 200, { ok: true, removed });
   return true;
 }

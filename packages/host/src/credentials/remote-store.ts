@@ -10,6 +10,10 @@ import {
   type GatewayCredential,
   isNotConnected404,
 } from "./gateway-wire";
+import {
+  type RevocationTombstones,
+  sharedRevocationTombstones,
+} from "./revocation-tombstones";
 import { credentialScopeKey } from "./scope-key";
 
 const CACHE_TTL_MS = 15_000;
@@ -22,6 +26,8 @@ export interface RemoteCredentialStoreOptions {
   podToken: string;
   fallback?: CredentialStore;
   fetchImpl?: typeof fetch;
+  /** Injectable for tests; defaults to the process-wide ledger. */
+  revocations?: RevocationTombstones;
 }
 
 /** The gateway positively identified the stored credential as unusable. */
@@ -43,6 +49,7 @@ export class RemoteCredentialStore implements CredentialStore {
   private readonly podToken: string;
   private readonly fallback?: CredentialStore;
   private readonly fetchImpl: typeof fetch;
+  private readonly revocations: RevocationTombstones;
   private readonly cache = new Map<
     string,
     { until: number; value: CachedCredential | null }
@@ -55,6 +62,7 @@ export class RemoteCredentialStore implements CredentialStore {
     this.podToken = opts.podToken;
     this.fallback = opts.fallback;
     this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.revocations = opts.revocations ?? sharedRevocationTombstones;
   }
 
   async get(
@@ -171,6 +179,12 @@ export class RemoteCredentialStore implements CredentialStore {
     workspaceId: WorkspaceId,
     provider: string,
   ): Promise<CachedCredential | null> {
+    // A gateway row deleted because the PROVIDER revoked the credential must
+    // not be refilled from the legacy local file — that copy is the same dead
+    // family, and re-adopting it re-fails the next turn into another revoked
+    // report (HOUSTON-APP-530). removeIfAccess clears this pod's fallback, but
+    // a sibling pod's file (or a remove that raced) can still hold the entry.
+    if (this.revocations.active({ workspaceId, provider })) return null;
     const local = await this.fallback?.get(workspaceId, provider);
     if (!local) return null;
 

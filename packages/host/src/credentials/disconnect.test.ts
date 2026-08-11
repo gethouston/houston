@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 import { disconnectRejectedCredential } from "./disconnect";
 import { RemoteCredentialDeadError } from "./remote-store";
+import { RevocationTombstones } from "./revocation-tombstones";
 
 /**
  * Compare-and-delete: the token endpoint's rejection condemns exactly ONE
@@ -28,12 +29,16 @@ function store(over: Partial<CredentialStore> = {}): CredentialStore {
   };
 }
 
-const disconnect = (credentials: CredentialStore) =>
+const disconnect = (
+  credentials: CredentialStore,
+  revocations = new RevocationTombstones(),
+) =>
   disconnectRejectedCredential({
     credentials,
     workspaceId: "w1",
     rejected,
     reason: "invalid_grant",
+    revocations,
   });
 
 test("a matching credential is dropped and the caller told it is gone", async () => {
@@ -51,6 +56,25 @@ test("a matching credential is dropped and the caller told it is gone", async ()
   );
   expect(result).toBeNull();
   expect(removals).toHaveLength(1);
+});
+
+test("a dropped credential leaves a tombstone so automatic refills stay refused", async () => {
+  // The rejected-refresh drop is as terminal as a provider revocation: an
+  // if_absent snapshot push / fallback adoption / heal that refills the row
+  // would loop invalid_grant → disconnect forever (HOU-855, HOUSTON-APP-530).
+  const revocations = new RevocationTombstones();
+  await disconnect(store({ removeIfAccess: async () => true }), revocations);
+  expect(
+    revocations.active({ workspaceId: "w1", provider: "openai-codex" }),
+  ).toBe(true);
+});
+
+test("a superseded rejection leaves no tombstone — the live credential keeps serving", async () => {
+  const revocations = new RevocationTombstones();
+  await disconnect(store({ removeIfAccess: async () => false }), revocations);
+  expect(
+    revocations.active({ workspaceId: "w1", provider: "openai-codex" }),
+  ).toBe(false);
 });
 
 test("a genuinely superseding credential is handed back to be served", async () => {

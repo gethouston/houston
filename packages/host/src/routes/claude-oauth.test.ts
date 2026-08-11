@@ -9,6 +9,7 @@ import {
   test,
 } from "vitest";
 import { ProxyChannel } from "../channel/proxy";
+import { RevocationTombstones } from "../credentials/revocation-tombstones";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import { FakeLauncher } from "../launcher/fake";
@@ -73,6 +74,7 @@ interface Fixture {
   credentials: MemoryCredentialStore;
   workspace: Workspace;
   agent: Agent;
+  revocations: RevocationTombstones;
 }
 
 /** Boot a host over HTTP whose only principal is `owner`, with one agent. */
@@ -82,6 +84,8 @@ async function boot(
 ): Promise<Fixture> {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const credentials = new MemoryCredentialStore();
+  // Per-fixture ledger so tests never share the process-wide singleton.
+  const revocations = new RevocationTombstones();
   const workspace = await store.getOrCreatePersonalWorkspace(owner);
   const agent = await store.createAgent({
     workspaceId: workspace.id,
@@ -92,6 +96,7 @@ async function boot(
     proxy: { forward },
     credentials,
     forwardActingHeader: true,
+    revocations,
   });
   const deps: AgentRouteDeps = {
     store,
@@ -130,6 +135,7 @@ async function boot(
     credentials,
     workspace,
     agent,
+    revocations,
   };
 }
 
@@ -373,6 +379,122 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
         expect(res.status).toBe(200);
         const cred = await fx.credentials.get(fx.workspace.id, "anthropic");
         expect(cred?.refreshToken).toBe("sk-ant-ort-REFRESH-SECRET");
+      } finally {
+        fx.close();
+      }
+    });
+
+    // HOUSTON-APP-530: the row being ABSENT is not proof it is fillable — a
+    // provider-revoked credential was just deleted by the runtime's report,
+    // and old pre-HOU-950 clients loop this fill-only push every 15-30s,
+    // resurrecting the dead family into another failed turn + revoked report.
+    test("after a provider revocation the fill is refused with 409, nothing written", async () => {
+      const fx = await boot();
+      try {
+        fx.revocations.mark({
+          workspaceId: fx.workspace.id,
+          provider: "anthropic",
+          scope: "team",
+        });
+
+        const res = await push(
+          fx.base,
+          fx.agent.id,
+          STALE,
+          "alice",
+          "?if_absent=1",
+        );
+
+        expect(res.status).toBe(409);
+        expect(
+          await fx.credentials.get(fx.workspace.id, "anthropic"),
+        ).toBeNull();
+        expect(lastPush).toBeNull();
+      } finally {
+        fx.close();
+      }
+    });
+
+    // The #1293 attributed early-return SKIPS the materialize hop — the clear
+    // must have already happened by then, or every CLOUD reconnect (all of
+    // them are attributed) would strand a live tombstone: automatic recovery
+    // blocked for a TTL and the "refilled AND revoked AGAIN" escalation primed
+    // to fire on the fresh credential. Two different acting tokens carry the
+    // same sub, proving the tombstone keys off the USER, not the token.
+    test("an ATTRIBUTED overwrite clears personal+team tombstones without materializing", async () => {
+      // base64url({"sub":"alice-sub"})
+      const payload = "eyJzdWIiOiJhbGljZS1zdWIifQ";
+      const fx = await boot("alice", { gatewayFronted: true });
+      try {
+        fx.revocations.mark({
+          workspaceId: fx.workspace.id,
+          provider: "anthropic",
+          scope: "personal",
+          actingAs: `acting-v1.${payload}.sig-of-report`,
+        });
+        fx.revocations.mark({
+          workspaceId: fx.workspace.id,
+          provider: "anthropic",
+          scope: "team",
+        });
+
+        const res = await push(fx.base, fx.agent.id, VALID, "alice", "", {
+          "x-houston-acting-as": `acting-v1.${payload}.sig-of-connect`,
+        });
+        expect(res.status).toBe(200);
+
+        // Cleared for the member AND the shared key…
+        expect(
+          fx.revocations.active({
+            workspaceId: fx.workspace.id,
+            provider: "anthropic",
+            actingAs: `acting-v1.${payload}.sig-of-a-later-turn`,
+          }),
+        ).toBe(false);
+        expect(
+          fx.revocations.active({
+            workspaceId: fx.workspace.id,
+            provider: "anthropic",
+          }),
+        ).toBe(false);
+
+        // …and the attributed connect still never touched the runtime.
+        expect(lastPush).toBeNull();
+      } finally {
+        fx.close();
+      }
+    });
+
+    test("a fresh overwrite push clears the tombstone; fills work again after", async () => {
+      const fx = await boot();
+      try {
+        fx.revocations.mark({
+          workspaceId: fx.workspace.id,
+          provider: "anthropic",
+          scope: "team",
+        });
+
+        // The user signs in again for real: never blocked, and it lifts the
+        // tombstone so automatic serving/fills resume.
+        const fresh = await push(fx.base, fx.agent.id, VALID);
+        expect(fresh.status).toBe(200);
+        expect(
+          fx.revocations.active({
+            workspaceId: fx.workspace.id,
+            provider: "anthropic",
+          }),
+        ).toBe(false);
+
+        // With the row cleared (e.g. sign-out), a fill-only push works again.
+        await fx.credentials.remove(fx.workspace.id, "anthropic");
+        const refill = await push(
+          fx.base,
+          fx.agent.id,
+          STALE,
+          "alice",
+          "?if_absent=1",
+        );
+        expect(refill.status).toBe(200);
       } finally {
         fx.close();
       }

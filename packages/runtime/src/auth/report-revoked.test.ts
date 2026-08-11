@@ -7,7 +7,10 @@ import { afterEach, expect, test } from "vitest";
 import { config } from "../config";
 import { runWithActingContext } from "../session/acting-context";
 import { authPathIn, servedProvidersPathIn } from "./auth-file";
-import { reportRevokedServedToken } from "./report-revoked";
+import {
+  reportRevokedServedToken,
+  resetRevokedReportsForTest,
+} from "./report-revoked";
 import { recordServedScope, resetServedScopes } from "./served-scope";
 
 /**
@@ -104,7 +107,10 @@ function actingToken(sub: string): string {
 
 const alice = { actingAs: actingToken("sub-alice") };
 
-afterEach(() => resetServedScopes());
+afterEach(() => {
+  resetServedScopes();
+  resetRevokedReportsForTest();
+});
 
 const revoked: ProviderError = {
   kind: "unauthenticated",
@@ -301,6 +307,79 @@ test("does NOT report an api_key credential", async () => {
     () => reportRevokedServedToken(revoked),
   );
   expect(captured).toBeNull();
+});
+
+test("the same dead token is reported once per pod lifetime (HOUSTON-APP-530)", async () => {
+  // A control plane whose DELETE→GET path lags can re-serve a token this pod
+  // already reported dead; re-reporting it re-fires the confirmed delete and
+  // its Sentry trail once per failed turn. Once is enough — the delete is
+  // idempotent, and the reconnect card is already up.
+  const prevFetch = globalThis.fetch;
+  const prevUrl = config.controlPlaneUrl;
+  const prevTok = config.sandboxToken;
+  const prevDataDir = config.dataDir;
+  config.controlPlaneUrl = "http://control-plane.test";
+  config.sandboxToken = "sbx-token";
+  config.dataDir = mkdtempSync(join(tmpdir(), "houston-revoked-dedupe-"));
+  let reports = 0;
+  globalThis.fetch = (async () => {
+    reports += 1;
+    return new Response(JSON.stringify({ ok: true, removed: true }), {
+      status: 200,
+    });
+  }) as unknown as typeof globalThis.fetch;
+  try {
+    servedAnthropic(config.dataDir, "same-dead-token");
+    reportRevokedServedToken(revoked);
+    await new Promise((r) => setTimeout(r, 10));
+    reportRevokedServedToken(revoked);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(reports).toBe(1);
+
+    // A DIFFERENT token (the workspace reconnected, then that one died too)
+    // is a new fact and reports again.
+    servedAnthropic(config.dataDir, "next-dead-token");
+    reportRevokedServedToken(revoked);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(reports).toBe(2);
+  } finally {
+    globalThis.fetch = prevFetch;
+    config.controlPlaneUrl = prevUrl;
+    config.sandboxToken = prevTok;
+    config.dataDir = prevDataDir;
+  }
+});
+
+test("a failed report is not deduped — the next turn retries", async () => {
+  const prevFetch = globalThis.fetch;
+  const prevUrl = config.controlPlaneUrl;
+  const prevTok = config.sandboxToken;
+  const prevDataDir = config.dataDir;
+  config.controlPlaneUrl = "http://control-plane.test";
+  config.sandboxToken = "sbx-token";
+  config.dataDir = mkdtempSync(join(tmpdir(), "houston-revoked-retry-"));
+  let reports = 0;
+  globalThis.fetch = (async () => {
+    reports += 1;
+    if (reports === 1) throw new Error("gateway unreachable");
+    return new Response(JSON.stringify({ ok: true, removed: true }), {
+      status: 200,
+    });
+  }) as unknown as typeof globalThis.fetch;
+  try {
+    servedAnthropic(config.dataDir, "retry-dead-token");
+    reportRevokedServedToken(revoked);
+    await new Promise((r) => setTimeout(r, 10));
+    reportRevokedServedToken(revoked);
+    await new Promise((r) => setTimeout(r, 10));
+    // The failed attempt un-marked itself; the second turn's report went out.
+    expect(reports).toBe(2);
+  } finally {
+    globalThis.fetch = prevFetch;
+    config.controlPlaneUrl = prevUrl;
+    config.sandboxToken = prevTok;
+    config.dataDir = prevDataDir;
+  }
 });
 
 test("a failing control plane never throws into the caller", async () => {

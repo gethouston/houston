@@ -16,6 +16,7 @@ import {
   actingAuthorFromHeader,
   actingSubFromHeader,
 } from "../auth/acting";
+import { RevokedRefillBlockedError } from "../credentials/revocation-tombstones";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import {
@@ -591,7 +592,9 @@ export async function handleAgents(
       );
       json(res, 200, { ok: true });
     } catch (err) {
-      json(res, 502, {
+      // 409, not 502: the fill was refused on purpose (the credential was
+      // just provider-revoked — HOUSTON-APP-530), not lost to a broken hop.
+      json(res, err instanceof RevokedRefillBlockedError ? 409 : 502, {
         error: err instanceof Error ? err.message : String(err),
       });
     }
