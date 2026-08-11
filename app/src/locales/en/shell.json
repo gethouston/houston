@@ -393,14 +393,6 @@
     "reassurance": "Your agents keep working in the background, and your chats and settings are saved. You'll pick up right where you left off.",
     "updateNowAction": "Update now"
   },
-  "updateRequired": {
-    "cardLabel": "Houston update required",
-    "title": "Update required",
-    "description": "Houston {{minVersion}} or newer is required to keep using Houston Cloud. You're on v{{currentVersion}}.",
-    "descriptionNoVersion": "A newer version of Houston is required to keep using Houston Cloud. You're on v{{currentVersion}}.",
-    "downloadAction": "Download the update",
-    "checkAction": "Check for updates"
-  },
   "naming": {
     "dialogTitle": "Name your Agent",
     "newAgentFallback": "New Agent",

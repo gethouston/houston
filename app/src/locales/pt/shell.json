@@ -393,14 +393,6 @@
     "reassurance": "Seus agentes continuam trabalhando em segundo plano e seus chats e configurações ficam salvos. Você vai retomar de onde parou.",
     "updateNowAction": "Atualizar agora"
   },
-  "updateRequired": {
-    "cardLabel": "Atualização do Houston obrigatória",
-    "title": "Atualização obrigatória",
-    "description": "É necessário o Houston {{minVersion}} ou mais recente para continuar usando o Houston Cloud. Você está na v{{currentVersion}}.",
-    "descriptionNoVersion": "É necessária uma versão mais recente do Houston para continuar usando o Houston Cloud. Você está na v{{currentVersion}}.",
-    "downloadAction": "Baixar a atualização",
-    "checkAction": "Buscar atualizações"
-  },
   "naming": {
     "dialogTitle": "Dê um nome ao seu agente",
     "newAgentFallback": "Novo agente",

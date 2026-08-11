@@ -23,25 +23,18 @@
  *     Absent ⇒ the gateway resolves the caller's personal space, which is what
  *     404'd every org-scoped `/agents/:slug/migration/*` call from a team.
  *     A USER-scoped route opts out per request ({@link GatewayRequestInit}).
- *  4. BUILD IDENTITY + UPDATE FLOOR — `X-Houston-App-Version: <semver>+<channel>`
- *     on every request, and a gateway `426 Upgrade Required` forwarded to the
- *     desktop shell's blocking-update sink. Both ride the window globals
- *     `app/src/lib/update-floor.ts` installs (desktop only: a browser tab must
- *     never send the header, which would force a CORS preflight every target
- *     would have to allow).
+ *  4. BUILD IDENTITY — `X-Houston-App-Version: <semver>+<channel>` on every
+ *     request, riding the window global `app/src/lib/app-version.ts` installs
+ *     (desktop only: a browser tab must never send the header, which would
+ *     force a CORS preflight every target would have to allow). Nothing
+ *     server-side acts on it since the version floor was retired
+ *     (PRODUCT-1144); it remains for log/debug attribution.
  *
  * Dependency-injected end to end so `app/tests` drives it with no window and no
  * network.
  */
 
 import { refreshGatewayBearer } from "./gateway-refresh.ts";
-
-/** What a gateway version-floor violation tells the app. Either field may be
- *  unknown: a 426 body can omit them. */
-export interface UpgradeRequiredSignal {
-  minVersion: string | null;
-  updateUrl: string | null;
-}
 
 export interface GatewayRequestInit extends RequestInit {
   /**
@@ -75,9 +68,6 @@ export interface GatewayFetchDeps {
   /** The `X-Houston-App-Version` value, or null to send no header. Defaults to
    *  the desktop-installed global. */
   appVersion?: () => string | null;
-  /** Where a 426 goes. Defaults to the desktop-installed global; absent on the
-   *  web, where the 426 just surfaces as the caller's own error. */
-  onUpgradeRequired?: (signal: UpgradeRequiredSignal) => void;
 }
 
 function installedAppVersion(): string | null {
@@ -91,39 +81,6 @@ function installedAppVersion(): string | null {
 function installedActiveOrg(): string | null {
   if (typeof window === "undefined") return null;
   return window.__HOUSTON_ACTIVE_ORG__ ?? null;
-}
-
-function installedUpgradeSink():
-  | ((signal: UpgradeRequiredSignal) => void)
-  | undefined {
-  if (typeof window === "undefined") return undefined;
-  return window.__HOUSTON_UPDATE_REQUIRED__;
-}
-
-/** Forward a 426 to the blocking-update screen and hand the response back
- *  untouched. Parsing is fire-and-forget on a CLONE: the caller's own body read
- *  must not be consumed here. */
-function noteUpgradeRequired(deps: GatewayFetchDeps, res: Response): Response {
-  if (res.status !== 426) return res;
-  const notify = deps.onUpgradeRequired ?? installedUpgradeSink();
-  if (!notify) return res;
-  void res
-    .clone()
-    .json()
-    .catch(() => null)
-    .then((body: unknown) => {
-      const b = body as { minVersion?: unknown; updateUrl?: unknown } | null;
-      notify({
-        minVersion:
-          typeof b?.minVersion === "string" && b.minVersion
-            ? b.minVersion
-            : null,
-        // `updateUrl` may be empty by contract — normalize that to null.
-        updateUrl:
-          typeof b?.updateUrl === "string" && b.updateUrl ? b.updateUrl : null,
-      });
-    });
-  return res;
 }
 
 /**
@@ -157,15 +114,15 @@ export async function gatewayFetch(
     deps.token() || (await refreshGatewayBearer(() => deps.refresh()));
   if (!bearer) return null;
   const res = await send(bearer);
-  if (res.status !== 401) return noteUpgradeRequired(deps, res);
+  if (res.status !== 401) return res;
   const fresh = await refreshGatewayBearer(() => deps.refresh());
-  return noteUpgradeRequired(deps, fresh ? await send(fresh) : res);
+  return fresh ? await send(fresh) : res;
 }
 
 /** The live-globals deps (`lib/engine.ts` owns the engine target, the session
  *  refresher and the active-space pin; the last is picked up by the defaults
- *  above, along with the build identity and the 426 sink). Null = no gateway
- *  configured, which is every non-hosted deployment. */
+ *  above, along with the build identity). Null = no gateway configured, which
+ *  is every non-hosted deployment. */
 export function liveGatewayDeps(): GatewayFetchDeps | null {
   const cfg = typeof window !== "undefined" ? window.__HOUSTON_ENGINE__ : null;
   if (!cfg?.baseUrl) return null;

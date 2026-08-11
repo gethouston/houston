@@ -7,7 +7,6 @@ import {
   UPDATE_CHECK_INTERVAL_MS,
 } from "../lib/update-force";
 import { useUpdateMachine } from "./use-update-machine";
-import { useUpdateRequired } from "./use-update-required";
 
 export type {
   InstallSource,
@@ -24,9 +23,6 @@ export type {
  * - found by the launch check → install immediately (blocking overlay),
  * - found mid-session → the countdown dialog installs it when the timer runs
  *   out unless the user updates sooner.
- *
- * The hosted gateway's hard version floor (`required`) rides beside this and
- * takes precedence in the UI.
  */
 export function useUpdateChecker() {
   const { status, runCheck, installAndRelaunch, relaunchInstalledApp } =
@@ -38,13 +34,11 @@ export function useUpdateChecker() {
     return runCheck();
   }, [runCheck]);
 
-  const required = useUpdateRequired(check);
-
   // The forced presentation, latched on the first transition into
   // "available" and kept for the rest of the run (the process relaunches to
-  // clear it). PROD-only: in dev the only way runCheck fires is the 426 kick,
-  // and auto-installing the shipped build over a dev bundle would be hostile —
-  // the UpdateRequired screen already covers that path with a manual button.
+  // clear it). PROD-only: runCheck never fires in dev (the check effect below
+  // is PROD-gated), and auto-installing the shipped build over a dev bundle
+  // would be hostile — belt and suspenders.
   const [forcedMode, setForcedMode] = useState<ForcedUpdateMode | null>(null);
   const forcedModeRef = useRef<ForcedUpdateMode | null>(null);
   useEffect(() => {
@@ -89,7 +83,6 @@ export function useUpdateChecker() {
 
   return {
     status,
-    required,
     forcedMode,
     installAndRelaunch,
     relaunchInstalledApp,

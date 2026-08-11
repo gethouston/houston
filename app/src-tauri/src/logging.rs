@@ -18,9 +18,8 @@ static GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 ///     Exception: `tauri_plugin_updater` ERRORs stay breadcrumbs — the plugin
 ///     logs one on every failed background update poll (machine offline,
 ///     GitHub down, transient non-2xx from the release manifest), and the
-///     frontend already owns that failure (5-min poll retry, update-floor
-///     fallback URL, install-error card), so a standalone Sentry event per
-///     poll is noise.
+///     frontend already owns that failure (5-min poll retry, install-error
+///     card), so a standalone Sentry event per poll is noise.
 ///
 /// Result: when a Rust panic or explicit `tracing::error!` lands in Sentry,
 /// the last ~100 INFO/WARN log lines auto-attach as breadcrumbs — the
