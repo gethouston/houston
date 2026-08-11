@@ -18,6 +18,8 @@ import {
   type TeamView,
   teamById,
   teamDeletePresentation,
+  teamDisplayColor,
+  teamDisplayIcon,
   teamDisplayName,
   teamOfAgent,
   teamPeopleFace,
@@ -107,6 +109,19 @@ describe("resolveTeams", () => {
     const team = resolveTeams([], layout([]), "Acme")[0];
     assert.equal(team?.name, "Acme");
     assert.equal(team && teamDisplayName(team, "New Team"), "New Team");
+  });
+
+  it("displays the charcoal rocket on an untouched default identity, stored identity wins", () => {
+    const untouched = resolveTeams([], layout([]), "Acme")[0] as TeamView;
+    assert.equal(teamDisplayIcon(untouched), "rocket");
+    assert.equal(teamDisplayColor(untouched), "charcoal");
+    const themed: TeamView = { ...untouched, icon: "bank", color: "ocean" };
+    assert.equal(teamDisplayIcon(themed), "bank");
+    assert.equal(teamDisplayColor(themed), "ocean");
+    const named: TeamView = { ...untouched };
+    delete named.usesDefaultIdentity;
+    assert.equal(teamDisplayIcon(named), undefined);
+    assert.equal(teamDisplayColor(named), undefined);
   });
 
   it("every agent belongs to exactly one team (first group wins, stale ids dropped)", () => {

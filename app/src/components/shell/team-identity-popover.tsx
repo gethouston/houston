@@ -91,7 +91,11 @@ export function TeamIdentityPopover({
           <Users className="size-5 text-ink-muted" aria-hidden="true" />
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      {/* Fixed width = the full 14-column grid's own (14 x 1.75rem cells +
+          13 x 0.5rem gaps + horizontal p-3). The grid's fr columns would let a
+          filtered or empty search SHRINK the popover, and the swatch row's
+          justify-between would collapse its gaps with it. */}
+      <PopoverContent align="start" className="w-[32.5rem] p-0">
         {/* `justify-between`, not a packed run: the swatches share the row's
             full width evenly, edge to edge, like the mark grid below them. */}
         {/* biome-ignore lint/a11y/useSemanticElements: a run of toggle buttons,

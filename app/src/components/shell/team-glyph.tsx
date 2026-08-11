@@ -2,7 +2,11 @@ import { resolveAgentColor } from "@houston-ai/core";
 import { isSidebarGroupGlyph, SidebarGroupGlyph } from "@houston-ai/layout";
 import { Users } from "lucide-react";
 import type { ReactElement } from "react";
-import type { TeamView } from "../../lib/teams-model";
+import {
+  type TeamView,
+  teamDisplayColor,
+  teamDisplayIcon,
+} from "../../lib/teams-model";
 
 /**
  * The mark a team wears, everywhere a team is drawn: its block header in the
@@ -35,9 +39,8 @@ export function TeamGlyph({
   /** Defaults to the rail's own 14px box; Team Settings asks for 20px. */
   className?: string;
 }): ReactElement {
-  const icon = team.icon ?? (team.usesDefaultIdentity ? "rocket" : undefined);
-  const color =
-    team.color ?? (team.usesDefaultIdentity ? "charcoal" : undefined);
+  const icon = teamDisplayIcon(team);
+  const color = teamDisplayColor(team);
   const mark =
     icon && isSidebarGroupGlyph(icon) ? (
       <SidebarGroupGlyph name={icon} className={className} />

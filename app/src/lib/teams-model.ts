@@ -132,6 +132,22 @@ export function teamDisplayName(team: TeamView, newTeamLabel: string): string {
   return team.usesDefaultIdentity ? newTeamLabel : team.name;
 }
 
+/**
+ * The mark a team DISPLAYS: its stored icon, or the placeholder rocket while
+ * it wears the untouched default identity. The one rule `TeamGlyph` draws and
+ * the identity dialog seeds from, so the picker always opens showing exactly
+ * the pair the rail is wearing.
+ */
+export function teamDisplayIcon(team: TeamView): string | undefined {
+  return team.icon ?? (team.usesDefaultIdentity ? "rocket" : undefined);
+}
+
+/** The colour a team DISPLAYS — stored, or the placeholder charcoal. The twin
+ *  of {@link teamDisplayIcon}, split only because callers store them apart. */
+export function teamDisplayColor(team: TeamView): string | undefined {
+  return team.color ?? (team.usesDefaultIdentity ? "charcoal" : undefined);
+}
+
 export type TeamDeletePresentation =
   | "disabled-only-team"
   | "enabled"
