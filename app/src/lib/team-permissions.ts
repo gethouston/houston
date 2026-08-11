@@ -5,7 +5,7 @@ import type { TeamView } from "./teams-model.ts";
 
 /**
  * "May I do this to a team?" — every authority gate the rail's group menu and
- * Team Settings read (C13). Split out of `teams-model.ts` for the file-size
+ * team configuration surfaces read (C13). Split out of `teams-model.ts` for the file-size
  * rule and re-exported from it, so callers keep importing them from the one
  * team model.
  *
@@ -20,8 +20,7 @@ import type { TeamView } from "./teams-model.ts";
  */
 
 /**
- * Whether the caller may open Team Settings ANYWHERE — the ORG-WIDE half of the
- * gate, and the only one here that predates C13 (it reads caps, not a team).
+ * The org-wide half of the team-configuration gate.
  * Single-player: always (the solo user is the team's owner). Multiplayer: org
  * owner/admin, who are implicit owners of every team.
  *
@@ -30,7 +29,7 @@ import type { TeamView } from "./teams-model.ts";
  * which on a server-teams host replaces this half with the server's own
  * per-team `owner`.
  */
-export function canSeeTeamSettings(caps: Capabilities | null): boolean {
+export function canConfigureTeamsByRole(caps: Capabilities | null): boolean {
   return !isMultiplayer(caps) || canSeeMembers(caps);
 }
 
@@ -40,7 +39,7 @@ export function canConfigureTeam(
   team: TeamView,
 ): boolean {
   return (
-    (team.server ? team.server.owner : canSeeTeamSettings(caps)) ||
+    (team.server ? team.server.owner : canConfigureTeamsByRole(caps)) ||
     team.agents.some((agent) => isAgentManager(caps, agent))
   );
 }
@@ -50,8 +49,7 @@ export function canConfigureTeam(
  * group, which the virtual default team is not (it wears the workspace's name).
  * On a server host it is a team-owner power, and the default team IS renamable
  * there: its name is the space's own. Two doors offer it — Team Settings' name
- * field and the default block's own rail menu — and both read THIS gate, so a
- * caller who may not rename it sees neither.
+ * field and the rail identity menu both read this gate.
  */
 export function canRenameTeam(team: TeamView): boolean {
   return team.server ? team.server.owner : !team.isDefault;

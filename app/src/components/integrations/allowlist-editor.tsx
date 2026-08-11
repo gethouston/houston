@@ -1,54 +1,24 @@
 import { Switch } from "@houston-ai/core";
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { useId, useMemo, useState } from "react";
 import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import {
   type AccessMode,
   ceilingMode,
 } from "../agent/agent-admin/agent-admin-row-values.ts";
+import type { AllowlistEditorProps } from "./allowlist-editor-types";
 import { AppCatalogGrid } from "./app-catalog-grid";
 import { appDisplay } from "./app-display";
 import { AppRow } from "./app-row";
 import { categoryListView, toolkitsInCategory } from "./browse-model";
 
-/** i18n copy for {@link AllowlistEditor}; the consumer passes translated strings. */
-export interface AllowlistEditorCopy {
-  question: string;
-  policyHelper: string;
-  anyLabel: string;
-  anyDesc: string;
-  pickedLabel: string;
-  pickedDesc: string;
-  allowedHeading: string;
-  addHeading: string;
-  allowedEmpty: string;
-  allowedEmptyCategory: string;
-  /** aria-label for a per-app allow toggle. */
-  allowApp: (name: string) => string;
-  /** Shown under the question when readOnly (e.g. "Only the owner can change this"). */
-  readOnlyNote?: string;
-}
-
-export interface AllowlistEditorProps {
-  /** The selectable universe of toolkits (already narrowed to any higher ceiling). */
-  universe: IntegrationToolkit[];
-  /** Current ceiling: null = any app allowed, else the explicit set. */
-  allowedToolkits: string[] | null;
-  /** Seed used when switching to "Only apps you pick" (filtered to `universe`). */
-  seedToolkits: string[];
-  /** A write is in flight (disables controls). */
-  saving: boolean;
-  /** Read-only viewer (e.g. a non-owner admin): controls disabled, "Add apps" catalog hidden, `readOnlyNote` shown. */
-  readOnly?: boolean;
-  onSave: (next: string[] | null) => void;
-  copy: AllowlistEditorCopy;
-  /** Per-toolkit impact line (slug -> preformatted, i18n'd, e.g. "Used by 3 agents"), shown on allowed rows INSTEAD of the app blurb; consumer counts + translates (this stays i18n-agnostic). Absent entry = no meta. */
-  rowMeta?: ReadonlyMap<string, string>;
-}
+export type {
+  AllowlistEditorCopy,
+  AllowlistEditorProps,
+} from "./allowlist-editor-types";
 
 /**
  * Presentational, i18n-agnostic editor for an integration allowlist ceiling
- * (Teams v2): an always-visible {@link AccessChoice} ("Any app" saves `null`,
+ * (Teams v2): an always-visible {@link AccessChoice} (allow all saves `null`,
  * "Only apps you pick" saves an explicit set) over the shared
  * {@link AppCatalogGrid} with a per-app allow Switch. Writes are instant; "Only
  * apps you pick" seeds from `seedToolkits` (filtered to `universe`) so it never
@@ -64,8 +34,11 @@ export function AllowlistEditor({
   onSave,
   copy,
   rowMeta,
+  labelledBy,
+  showIntro = true,
 }: AllowlistEditorProps) {
-  const headingId = useId();
+  const generatedHeadingId = useId();
+  const headingId = labelledBy ?? generatedHeadingId;
   // View-only category filter shared by the allowed list + "Add apps" catalog.
   const [category, setCategory] = useState("all");
 
@@ -109,10 +82,14 @@ export function AllowlistEditor({
 
   return (
     <div>
-      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
-        {copy.question}
-      </h2>
-      <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
+      {showIntro && (
+        <>
+          <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
+            {copy.question}
+          </h2>
+          <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
+        </>
+      )}
 
       {readOnly && copy.readOnlyNote && (
         <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>

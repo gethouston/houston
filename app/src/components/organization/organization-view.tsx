@@ -4,6 +4,7 @@ import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
 import { canSeeBillingTab } from "../../lib/billing-gates";
+import { isPersonalSpace } from "../../lib/org-roles";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
@@ -11,13 +12,10 @@ import { ADMIN_HEADER_THRESHOLDS, AdminHeader } from "./admin-header";
 import { AdminSectionBody } from "./admin-section-body";
 import { useOrgNav } from "./org-nav-store";
 import {
-  type AnalyticsLens,
-  analyticsLenses,
-  DEFAULT_ANALYTICS_LENS,
+  canSeeTimeWorked,
   DEFAULT_ORG_TAB,
   type OrgTabId,
   orgTabIds,
-  resolveAnalyticsLens,
 } from "./org-view-model";
 
 /**
@@ -32,6 +30,7 @@ export interface OrgViewContext {
   org: OrgInfo;
   role: OrgRole;
   isOwner: boolean;
+  isPersonal: boolean;
 }
 
 /** Props for every Organization section: the shared context, nothing else. */
@@ -40,14 +39,14 @@ export interface OrgTabProps {
 }
 
 /**
- * The Admin (Organization) dashboard: Company context, People, Billing,
- * Analytics. A shell only: it loads the org, builds the shared
+ * The Admin dashboard: Company context, People, Billing, Activity, Usage, and
+ * Time worked. A shell only: it loads the org, builds the shared
  * `OrgViewContext`, and swaps sections under the shared header grammar
  * (`AdminHeader` — the same lozenge cluster Integrations and the team screen
  * wear), landing on Company context, whose surface the identity lozenge IS.
  *
  * Permission surfaces (who can use which agent, per-agent ceilings) are NOT
- * here: per-agent policy is discovered through each team's Manage agents page,
+ * here: per-agent policy is discovered through each team's focused agent screen,
  * in the team view's settings section. Mounted ONLY when `canSeeOrganization`
  * (multiplayer owner/admin, and on a Spaces host a TEAM active space — never the
  * personal one): the rail hides the row, the kept-alive screen is not even
@@ -71,17 +70,13 @@ export function OrganizationView() {
     capabilities,
     current ? isTeamWorkspace(current.id) : false,
   );
-  const visibleIds = orgTabIds({ billing: showBilling });
+  const activeSpaceIsTeam = current ? isTeamWorkspace(current.id) : false;
+  const visibleIds = orgTabIds({
+    billing: showBilling,
+    timeWorked: canSeeTimeWorked(capabilities),
+  });
 
   const [active, setActive] = useState<OrgTabId>(DEFAULT_ORG_TAB);
-
-  // The Analytics lens, owned HERE beside the section it narrows — the drilled
-  // header and the section body both draw it, exactly as they draw `active`.
-  // Kept-alive screen state, so leaving and returning lands on the lens you
-  // left; the rail's home pin resets the SECTION, deliberately not the lens.
-  const [lens, setLens] = useState<AnalyticsLens>(DEFAULT_ANALYTICS_LENS);
-  const lenses = analyticsLenses(capabilities);
-  const activeLens = resolveAnalyticsLens(lens, lenses);
 
   // One event per section OPENED (a lozenge click or a deep link), keyed like
   // the global view switches so a single tab_name breakdown covers everything.
@@ -101,7 +96,7 @@ export function OrganizationView() {
   // Billing, and the rail's Admin row pins the landing section on every click
   // — then clear it. This is an effect on the STORE field, not mount-time
   // state, precisely because the screen is kept alive: it fires on the first
-  // mount AND while already open, the same way `team-settings.tsx` consumes
+  // mount AND while already open, the same way agent settings consumes
   // its own one-shot pin.
   useEffect(() => {
     if (requestedTab === null) return;
@@ -117,7 +112,12 @@ export function OrganizationView() {
   }, [visibleIds, active]);
 
   const ctx: OrgViewContext | null = org
-    ? { org, role: org.role, isOwner: org.role === "owner" }
+    ? {
+        org,
+        role: org.role,
+        isOwner: org.role === "owner",
+        isPersonal: isPersonalSpace(capabilities, activeSpaceIsTeam),
+      }
     : null;
 
   return (
@@ -127,20 +127,12 @@ export function OrganizationView() {
           active={active}
           visibleIds={visibleIds}
           onSelect={openSection}
-          lens={activeLens}
-          lenses={lenses}
-          onSelectLens={setLens}
         />
         {/* One scroller for every section. Company context sizes itself to
             exactly this height (its card scrolls internally), so the outer
             scroll only engages as a short-window fallback there. */}
         <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-          <AdminSectionBody
-            active={active}
-            ctx={ctx}
-            isLoading={isLoading}
-            lens={activeLens}
-          />
+          <AdminSectionBody active={active} ctx={ctx} isLoading={isLoading} />
         </div>
       </div>
     </PageHeaderToolsProvider>

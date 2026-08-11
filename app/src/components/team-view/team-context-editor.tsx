@@ -1,5 +1,4 @@
-import { CatalogSectionHeader } from "@houston-ai/core";
-import { ContextEditorBox } from "../context/context-editor";
+import { ContextEditorPage } from "../context/context-editor";
 
 export interface TeamContextEditorLabels {
   title: string;
@@ -8,20 +7,20 @@ export interface TeamContextEditorLabels {
 }
 
 /**
- * The team's shared context, as the first card of its Manage agents page: what
+ * The team's shared context, as the agent settings screen's own pane: what
  * every agent of this team is told before it starts a turn.
  *
- * The editor is the ONE standing-prose box (`ContextEditorBox` — always open,
- * saves on blur, says so quietly), under a card-scale header rather than a
- * page hero: this is a card among the page's other cards, not a page of its
- * own, so it wears its siblings' `CatalogSectionHeader` and keeps the shared
- * explain-ONCE rule with its own one-line explainer.
+ * Drawn as the ONE standing-context PAGE ({@link ContextEditorPage}: hero +
+ * pinned document card, the same surface About me and Admin's Company context
+ * wear). The hero is `level` 2 because the screen's `<h1>` is the header's
+ * identity lozenge, and the card takes the pane's remaining height so a long
+ * context scrolls inside it.
  *
  * Presentational and props-only: WHERE the content is stored (the sidebar
  * group, the layout's default-team field, the gateway) is
- * `team-context-model.ts`'s question
- * and the wired branches in `team-context-card.tsx` answer it. This file never
- * learns which backend it is drawing.
+ * `team-context-model.ts`'s question and the wired branches in
+ * `team-context-card.tsx` answer it. This file never learns which backend it
+ * is drawing.
  *
  * The read-only face is the whole card, unlocked-looking but locked: someone who
  * may not edit the team still needs to know what its agents are being told, so
@@ -39,18 +38,15 @@ export function TeamContextEditor({
   readOnly?: boolean;
 }) {
   return (
-    <section className="mb-10">
-      <CatalogSectionHeader title={labels.title} />
-      <p className="mt-1 text-sm text-ink-muted">{labels.explainer}</p>
-      <ContextEditorBox
-        content={content}
-        onSave={onSave}
-        readOnly={readOnly}
-        placeholder={labels.placeholder}
-        layout={{ rows: 6 }}
-        ariaLabel={labels.title}
-        dataTestId="team-context-input"
-      />
-    </section>
+    <ContextEditorPage
+      level={2}
+      title={labels.title}
+      subtitle={labels.explainer}
+      content={content}
+      onSave={onSave}
+      readOnly={readOnly}
+      placeholder={labels.placeholder}
+      dataTestId="team-context-input"
+    />
   );
 }

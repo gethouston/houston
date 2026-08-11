@@ -14,7 +14,6 @@ import type { SidebarItem } from "./sidebar-props";
  * retract the ones you did not mention.
  */
 export interface SidebarGroupAffordances {
-  settings?: boolean;
   /** The ONE "change icon & name" door: a block's name, mark and colour are a
    *  single identity, edited in a single surface the host opens. A veto like
    *  `delete`: absent leaves the decision to whether the host wired
@@ -77,7 +76,6 @@ export interface SidebarGroupView {
    * dialog there.
    */
   onEdit?: () => void;
-  onOpenSettings?: () => void;
 }
 
 /**
@@ -123,7 +121,6 @@ export interface SidebarDefaultGroupView {
    *  the block carries no "..." menu at all — an affordance that silently does
    *  nothing is worse than no affordance. */
   onEdit?: () => void;
-  onOpenSettings?: () => void;
   /** Which header-menu affordances this block offers. Absent ⇒ all of the ones
    *  the host wired up; see {@link SidebarGroupAffordances}. Only `edit` is
    *  ever read here — it is the block's one possible entry. */

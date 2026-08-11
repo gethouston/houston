@@ -22,10 +22,18 @@ import { teamFilterAgentId, teamFilterPath } from "./team-agent-filter-model";
  * `teamFilterAgentId` are the two pure directions, so the sidebar row and a
  * board's own filter menu are the same act.
  */
-export function useTeamBoardScope(team: TeamView): MissionControlScope {
+export function useTeamBoardScope(
+  team: TeamView,
+  agentFocusId?: string,
+): MissionControlScope {
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
   const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
-  return useTeamScope(team, teamAgentFilter, setTeamAgentFilter);
+  const keepFocus = useCallback(() => undefined, []);
+  return useTeamScope(
+    team,
+    agentFocusId ?? teamAgentFilter,
+    agentFocusId ? keepFocus : setTeamAgentFilter,
+  );
 }
 
 /**

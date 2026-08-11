@@ -33,7 +33,13 @@ import { useTeamRoutinesData } from "./use-team-routines-data";
  * rather than dropped, because a short list that looks complete is the failure
  * mode of a merged one.
  */
-export function TeamRoutines({ team }: { team: TeamView }) {
+export function TeamRoutines({
+  team,
+  agentFocusId,
+}: {
+  team: TeamView;
+  agentFocusId?: string;
+}) {
   const { t } = useTranslation(["teams", "routines"]);
   const labels = useRoutineLabels();
   const tz = useTimezonePreference();
@@ -42,7 +48,8 @@ export function TeamRoutines({ team }: { team: TeamView }) {
   // (`team-agent-filter-capsule.tsx` says why). It resets with the section,
   // which remounts per team because `TeamView` keys it on the team id — so a
   // tab click always opens Routines team-wide.
-  const [filterAgentId, setFilterAgentId] = useState<string | null>(null);
+  const [localFilterAgentId, setFilterAgentId] = useState<string | null>(null);
+  const filterAgentId = agentFocusId ?? localFilterAgentId;
 
   // Memoized because it is the dependency every read below memoizes on — a
   // fresh array per render would rebuild the merged list and re-arm the
@@ -121,11 +128,13 @@ export function TeamRoutines({ team }: { team: TeamView }) {
                 variant={oneRow ? "strip" : "row"}
                 count={count}
                 agentFilter={
-                  <TeamAgentFilterCapsule
-                    agents={team.agents}
-                    selectedAgentId={filterAgentId}
-                    onSelect={setFilterAgentId}
-                  />
+                  agentFocusId ? undefined : (
+                    <TeamAgentFilterCapsule
+                      agents={team.agents}
+                      selectedAgentId={filterAgentId}
+                      onSelect={setFilterAgentId}
+                    />
+                  )
                 }
                 createButton={listEmpty ? undefined : createButton}
               />

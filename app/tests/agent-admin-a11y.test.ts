@@ -23,25 +23,34 @@ describe("Agent Settings a11y", () => {
     ok(src.includes("useRef"), "keeps element refs to focus the checked radio");
   });
 
-  it("section bodies use <h2> beneath the drilled header", () => {
-    // The models editor body (question heading included) lives in the shared
-    // ModelsAllowlistEditor; the agent section is a thin wrapper around it.
-    const models = read(
-      "../src/components/agent/agent-admin/agent-models-section.tsx",
+  it("section bodies use PageHero level 2 beneath the drilled header", () => {
+    const sections = read(
+      "../src/components/agent-settings/agent-settings-section.tsx",
     );
-    ok(!models.includes("<h1"), "models section renders no page-level h1");
-    const modelsEditor = read(
-      "../src/components/ai-hub/models-allowlist-editor.tsx",
+    const people = read(
+      "../src/components/agent-settings/agent-settings-people-hero.tsx",
     );
-    ok(!modelsEditor.includes("<h1"), "models editor title is not an h1");
-    ok(modelsEditor.includes("<h2"), "models editor title is an h2");
-
-    // The editor body (question heading included) lives in the shared
-    // AllowlistEditor; the agent section is a thin wrapper around it.
-    const allowlist = read(
-      "../src/components/integrations/allowlist-editor.tsx",
+    const peopleSection = read(
+      "../src/components/agent-settings/agent-settings-people.tsx",
     );
-    ok(!allowlist.includes("<h1"), "allowlist section title is not an h1");
-    ok(allowlist.includes("<h2"), "allowlist section title is an h2");
+    const learnings = read(
+      "../src/components/agent/agent-admin/agent-admin-knowledge.tsx",
+    );
+    const skills = read(
+      "../src/components/agent/agent-admin/agent-admin-skills.tsx",
+    );
+    ok(sections.includes("<PageHero"), "shared sections use PageHero");
+    ok(sections.includes("level={2}"), "shared hero is an h2");
+    ok(people.includes("<PageHero"), "People uses PageHero");
+    ok(learnings.includes("<PageHero"), "Learnings uses PageHero");
+    ok(skills.includes("<PageHero"), "Skills uses PageHero");
+    ok(
+      people.includes("titleId={titleId}"),
+      "People hero exposes its title id",
+    );
+    ok(
+      peopleSection.includes("titleId={headingId}"),
+      "People hero names its radios",
+    );
   });
 });

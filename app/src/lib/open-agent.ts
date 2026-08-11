@@ -10,7 +10,7 @@
  */
 
 import type { AgentSettingsSection } from "../components/agent-settings/agent-settings-nav.ts";
-import { useTeamSettingsNav } from "../components/team-view/team-settings-nav-store.ts";
+import { useAgentSettingsNav } from "../components/team-view/agent-settings-nav-store.ts";
 import { useUIStore } from "../stores/ui.ts";
 import { agentDestination } from "./agent-nav.ts";
 import { currentTeams } from "./current-teams.ts";
@@ -33,6 +33,7 @@ export function openAgentBoard(agentId: string): void {
   }
   useUIStore.getState().openTeamView(dest.teamId, dest.section, {
     agentFilter: dest.agentFilter,
+    agentFocus: dest.agentFocus,
   });
 }
 
@@ -56,6 +57,7 @@ export function openAgentSection(
   }
   useUIStore.getState().openTeamView(dest.teamId, dest.section, {
     agentFilter: dest.agentFilter,
+    agentFocus: dest.agentFocus,
   });
 }
 
@@ -82,7 +84,7 @@ export function openAgentSettings(
     // EARLIER call would survive this failure and fire the next time the user
     // opened Team Settings by hand, drilling them into an agent they never
     // asked for.
-    useTeamSettingsNav.getState().clearRequested();
+    useAgentSettingsNav.getState().clearRequested();
     ui.addToast({
       title: i18n.t("teams:teamView.settings.navUnavailable"),
       description: i18n.t("teams:teamView.settings.navUnavailableBody"),
@@ -90,6 +92,9 @@ export function openAgentSettings(
     });
     return;
   }
-  useTeamSettingsNav.getState().requestAgentDetail(agentId, section);
-  ui.openTeamView(dest.teamId, dest.section);
+  useAgentSettingsNav.getState().requestAgentDetail(agentId, section);
+  ui.openTeamView(dest.teamId, dest.section, {
+    agentFilter: dest.agentFilter,
+    agentFocus: dest.agentFocus,
+  });
 }

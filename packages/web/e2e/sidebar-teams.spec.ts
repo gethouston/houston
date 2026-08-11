@@ -16,9 +16,8 @@ import { litRows } from "./support/team-nav";
  * rail per team.
  *
  * What this spec guards, against the REAL rail:
- *   - the default block is labelled with the WORKSPACE name (the fake host's
- *     seed workspace is `default`), folds like any other block, and carries
- *     the local backend's only Team settings door;
+ *   - the default block is labelled with the workspace name, folds like any
+ *     other block, and carries no empty menu on the local backend;
  *   - the five arms of the header click: arriving from elsewhere opens the team
  *     and folds every other (an accordion, in ONE stored write); on the team
  *     you are already on it gives a pinned agent back first, then folds, then
@@ -108,26 +107,21 @@ test("the default block is the workspace, and a block is a name and its agents",
   expect(workspaceName).not.toEqual("");
   await expect(defaultHeader(page)).toHaveCount(1);
   await expect(defaultHeader(page)).toContainText(workspaceName);
-  // The default block has its navigation button plus the settings menu. It is
-  // the local backend's only door to Team settings.
-  await expect(defaultHeader(page).getByRole("button")).toHaveCount(2);
+  // The local default block has no actions, so it reserves the shared gutter
+  // without rendering an empty menu trigger.
+  await expect(defaultHeader(page).getByRole("button")).toHaveCount(1);
   await expect(defaultHeader(page).getByRole("button")).toHaveAttribute(
     "aria-expanded",
     "true",
   );
-  await defaultHeader(page)
-    .getByRole("button", { name: "Team options" })
-    .click();
-  await expect(page.locator("[data-group-settings]")).toHaveText(
-    "Team settings",
-  );
-  await page.keyboard.press("Escape");
+  await expect(
+    defaultHeader(page).getByRole("button", { name: "Team options" }),
+  ).toHaveCount(0);
 
   // The rail names TEAMS and nothing else: a team's destinations moved onto its
   // own screen, so no block draws a row for one.
   await expect(rail(page).locator("[data-sidebar-section-row]")).toHaveCount(0);
   await expect(rail(page).getByText("Routines")).toHaveCount(0);
-  await expect(rail(page).getByText("Team settings")).toHaveCount(0);
 
   // A named team DOES carry a header menu, which is the affordance the default
   // block is missing.
@@ -172,22 +166,45 @@ test("the rail fills exactly ONE row: the team, or one of its agents", async ({
   await expect(litRows(defaultHeader(page))).toHaveCount(1);
 });
 
-test("an agent manager gets the row menu and Edit agent drills into settings", async ({
+test("an agent manager gets the row menu and Configure drills into settings", async ({
+  page,
+}) => {
+  await seedWorkTeam(page);
+  await page.goto("/");
+  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
+  await expect(page.getByRole("menu").getByRole("menuitem")).toHaveCount(4);
+  await expect(
+    page.getByRole("menuitem", { name: "Change color & name" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Move to team" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "Delete agent" }),
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "Configure" }).click();
+  // The drilled screen: identity rides the back chip, the first lens is the h1.
+  await expect(page.locator("[data-agent-settings-back]")).toContainText(
+    "Houston",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Job description" }),
+  ).toBeVisible();
+});
+
+test("Change color & name stages both halves in one dialog", async ({
   page,
 }) => {
   await page.goto("/");
   await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
-  await expect(page.getByRole("menu").getByRole("menuitem")).toHaveCount(3);
+  await page.getByRole("menuitem", { name: "Change color & name" }).click();
+  const dialog = page.getByRole("dialog");
   await expect(
-    page.getByRole("menuitem", { name: "Rename agent" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "Change color" }),
-  ).toBeVisible();
-  await page.getByRole("menuitem", { name: "Edit agent" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Houston settings" }),
-  ).toBeVisible();
+    dialog.getByRole("textbox", { name: "Change color & name" }),
+  ).toHaveValue("Houston");
+  await expect(dialog.getByRole("radio").first()).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toBeHidden();
 });
 
 test("clicking a team you are NOT in opens it and folds every other", async ({

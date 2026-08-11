@@ -385,11 +385,20 @@ export const tauriAgents = {
  * ceilings plus the caller's effective access; `set` (agent-manager only)
  * replaces the agent ceiling (`null` = all allowed, `[]` = none). Both route
  * through `call()` so failures surface as toasts with a Report-bug affordance.
+ * Roster fan-outs use `getQuiet`: each failed card has its own neutral face,
+ * and a toast per agent would turn one gateway fault into a storm.
  */
 export const tauriAgentSettings = {
   get: (agentSlugOrId: string) =>
     call("get_agent_settings", () =>
       getEngine().getAgentSettings(agentSlugOrId),
+    ),
+  getQuiet: (agentSlugOrId: string) =>
+    call(
+      "get_agent_settings",
+      () => getEngine().getAgentSettings(agentSlugOrId),
+      undefined,
+      { surface: false },
     ),
   set: (
     agentSlugOrId: string,

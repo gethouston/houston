@@ -2,10 +2,14 @@ import { Skeleton } from "@houston-ai/core";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useSession } from "../../hooks/use-session";
 import type { Agent } from "../../lib/types";
+import { agentShareSurface } from "../agent/agent-access-model";
 import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import type { AccessMode } from "../agent/agent-admin/agent-admin-row-values.ts";
+import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import { useShareAgent } from "../agent/use-share-agent";
 import {
   agentAccessMode,
@@ -20,6 +24,7 @@ import {
   type PeopleConfirmKind,
 } from "./agent-people-confirm.tsx";
 import { AgentPeopleTab } from "./agent-people-tab.tsx";
+import { AgentSettingsPeopleHero } from "./agent-settings-people-hero.tsx";
 
 /** Mirrors the final layout (control pill, its hint line, three rows) so the roster never jumps in. */
 function PeopleSkeleton() {
@@ -80,6 +85,14 @@ export function AgentSettingsPeople({
   const members = org.data?.members ?? [];
   const share = useShareAgent("agent_settings_people");
   const [confirm, setConfirm] = useState<PeopleConfirmKind | null>(null);
+  const { capabilities } = useCapabilities();
+  const personalSpace = usePersonalSpace();
+  const [shareOpen, setShareOpen] = useState(false);
+  // The agent's ONE Share affordance: it invites people, so it lives on the
+  // People section. "view" is deliberately not offered — this pane already
+  // lists who has access, so the read-only dialog would say it twice.
+  const shareSurface = agentShareSurface(capabilities, agent, personalSpace);
+  const showShare = shareSurface === "manage" || shareSurface === "inviteTeam";
 
   const mode = agentAccessMode(agent);
   const roster = { agent, members, selfId };
@@ -108,12 +121,11 @@ export function AgentSettingsPeople({
 
   return (
     <div className="w-full">
-      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
-        {t("agentSettings.people.question")}
-      </h2>
-      <p className="mb-4 text-sm text-ink-muted">
-        {t("agentSettings.people.helper")}
-      </p>
+      <AgentSettingsPeopleHero
+        titleId={headingId}
+        showShare={showShare}
+        onShare={() => setShareOpen(true)}
+      />
 
       {org.isLoading ? (
         <PeopleSkeleton />
@@ -158,6 +170,12 @@ export function AgentSettingsPeople({
         </>
       )}
 
+      <AgentShareSurfaces
+        agent={agent}
+        surface={shareSurface}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
       <AgentPeopleConfirm
         kind={confirm}
         count={peopleCount}

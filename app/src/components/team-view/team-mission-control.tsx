@@ -27,12 +27,18 @@ import { useTeamBoardScope } from "./use-team-board-scope";
  * Mounted with the team's id as its key, so switching teams starts a clean
  * board instead of carrying the previous team's selection across.
  */
-export function TeamMissionControl({ team }: { team: TeamView }) {
+export function TeamMissionControl({
+  team,
+  agentFocusId,
+}: {
+  team: TeamView;
+  agentFocusId?: string;
+}) {
   const agents = useAgentStore((s) => s.agents);
   const { t } = useTranslation("teams");
   const [archived, setArchived] = useState(false);
   // Before the empty-team return: hooks may not run conditionally.
-  const scope = useTeamBoardScope(team);
+  const scope = useTeamBoardScope(team, agentFocusId);
   // The FULL roster's paths, so this is the one shared `all-conversations`
   // query every Mission Control surface already reads — the same key, no
   // second fan-out (the one-sweep rule). It is read here rather than inside

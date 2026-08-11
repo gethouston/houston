@@ -26,7 +26,7 @@ import { teamSectionTabs } from "./team-section-tabs-model";
  *
  * **Wide, one row, two zones:**
  *
- *     (glyph Marketing › (helmet) Kai)(Routines)(Files)(Archived)(Manage agents)      [search][Everyone ▾][New task]
+ *     (glyph Marketing › (helmet) Kai)(Routines)(Files)(Archived)(focused agent screen)      [search][Everyone ▾][New task]
  *      \\_________________________ left cluster _________________________/             \\________ right, the section's ________/
  *
  * **The team IS the first lozenge.** There is no separate breadcrumb and no
@@ -73,7 +73,7 @@ export function TeamChrome({
 
   // Through the RULE, never the store directly: the pin persists everywhere,
   // but the lozenge may only show it where the section is actually narrowed by
-  // it. Files starts at every agent and Manage agents lists the whole team, so
+  // it. Files starts at every agent and focused agent screens the whole team, so
   // on both the lozenge is just the team.
   const pinnedAgent = sectionHonorsAgentPin(section)
     ? teamPinnedAgent(team.agents, teamAgentFilter)

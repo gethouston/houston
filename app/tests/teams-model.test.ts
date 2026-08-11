@@ -4,10 +4,10 @@ import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
 import {
   blockedTeamView,
   canConfigureTeam,
+  canConfigureTeamsByRole,
   canDeleteTeam,
   canLeaveTeam,
   canRenameTeam,
-  canSeeTeamSettings,
   DEFAULT_TEAM_ID,
   homeTeam,
   resolveTeamSection,
@@ -18,6 +18,8 @@ import {
   type TeamView,
   teamById,
   teamOfAgent,
+  teamPeopleFace,
+  visibleAgentSections,
   visibleTeamSectionsForTeam,
 } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
@@ -176,32 +178,32 @@ describe("resolveTeams", () => {
   });
 });
 
-describe("canSeeTeamSettings", () => {
+describe("canConfigureTeamsByRole", () => {
   it("single-player always sees Team Settings", () => {
-    assert.equal(canSeeTeamSettings(null), true);
-    assert.equal(canSeeTeamSettings(caps({})), true);
+    assert.equal(canConfigureTeamsByRole(null), true);
+    assert.equal(canConfigureTeamsByRole(caps({})), true);
   });
 
   it("multiplayer gates on owner/admin and denies plain members", () => {
     assert.equal(
-      canSeeTeamSettings(caps({ multiplayer: true, role: "owner" })),
+      canConfigureTeamsByRole(caps({ multiplayer: true, role: "owner" })),
       true,
     );
     assert.equal(
-      canSeeTeamSettings(caps({ multiplayer: true, role: "admin" })),
+      canConfigureTeamsByRole(caps({ multiplayer: true, role: "admin" })),
       true,
     );
     assert.equal(
-      canSeeTeamSettings(caps({ multiplayer: true, role: "user" })),
+      canConfigureTeamsByRole(caps({ multiplayer: true, role: "user" })),
       false,
     );
-    assert.equal(canSeeTeamSettings(caps({ multiplayer: true })), false);
+    assert.equal(canConfigureTeamsByRole(caps({ multiplayer: true })), false);
   });
 });
 
 describe("visibleTeamSectionsForTeam", () => {
   const WORK = ["mission-control", "routines", "files"] as const;
-  const MANAGER = [...WORK, "settings"] as const;
+  const MANAGER = [...WORK, "context"] as const;
   const MEMBER = caps({ multiplayer: true, role: "user" });
 
   it("gives a plain member exactly the three work sections", () => {
@@ -224,6 +226,21 @@ describe("visibleTeamSectionsForTeam", () => {
     );
   });
 
+  it("adds People only when the resolved face is actionable", () => {
+    const managedTeam = team([agent("a", "manager")], {
+      server: facts(),
+      context: "",
+    });
+    assert.deepEqual(
+      visibleTeamSectionsForTeam(MEMBER, managedTeam, "roster"),
+      [...MANAGER, "people"],
+    );
+    assert.deepEqual(
+      visibleTeamSectionsForTeam(MEMBER, managedTeam, "hidden"),
+      [...MANAGER],
+    );
+  });
+
   it("keeps the same manager section in a personal space", () => {
     assert.deepEqual(
       visibleTeamSectionsForTeam(
@@ -240,13 +257,43 @@ describe("visibleTeamSectionsForTeam", () => {
     ]);
   });
 
-  it("server team settings does not depend on a context field", () => {
+  it("hides context when a server team does not serve the field", () => {
     assert.deepEqual(
       visibleTeamSectionsForTeam(
         MEMBER,
         team([], { server: facts({ owner: true }) }),
       ),
-      [...MANAGER],
+      [...WORK],
+    );
+  });
+});
+
+describe("visibleAgentSections", () => {
+  const WORK = ["mission-control", "routines", "files"] as const;
+
+  it("adds settings only for this agent's manager", () => {
+    const member = caps({ multiplayer: true, role: "user" });
+    assert.deepEqual(visibleAgentSections(member, agent("a", "user")), [
+      ...WORK,
+    ]);
+    assert.deepEqual(visibleAgentSections(member, agent("a", "manager")), [
+      ...WORK,
+      "settings",
+    ]);
+  });
+});
+
+describe("teamPeopleFace", () => {
+  it("covers roster, invite, and hidden deployments", () => {
+    assert.equal(
+      teamPeopleFace(team([], { server: facts() }), false, true),
+      "roster",
+    );
+    assert.equal(teamPeopleFace(team([]), true, true), "invite");
+    assert.equal(teamPeopleFace(team([]), false, false), "hidden");
+    assert.equal(
+      teamPeopleFace(team([], { server: facts() }), true, true),
+      "invite",
     );
   });
 });
@@ -285,7 +332,7 @@ describe("resolveTeamSection", () => {
   );
 
   it("keeps a section the caller can see", () => {
-    assert.equal(resolveTeamSection(admin, "settings"), "settings");
+    assert.equal(resolveTeamSection(admin, "context"), "context");
     assert.equal(
       resolveTeamSection(admin, "mission-control"),
       "mission-control",
@@ -311,7 +358,7 @@ describe("sectionHonorsAgentPin", () => {
     // Two surfaces read this to decide whether to CLAIM a narrowing — the rail
     // fills an agent row, the team's lozenge grows its second segment. On any
     // of these, both would assert something nothing on screen is doing.
-    //  - Manage agents lists the whole team whatever the pin says;
+    //  - focused agent screens the whole team whatever the pin says;
     //  - Files resolves its OWN agent (falling back to the team's first, never
     //    writing back);
     //  - Routines and Archived carry a SECTION-LOCAL filter instead, so a tab

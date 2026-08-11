@@ -18,6 +18,7 @@ export interface TeamHighlight {
   teamId: string | null;
   section: TeamSectionId | null;
   agentId: string | null;
+  agentFocus?: true;
 }
 
 const NO_HIGHLIGHT: TeamHighlight = {
@@ -54,6 +55,7 @@ export function resolveTeamHighlight(
     activeTeamId: string | null;
     teamSection: TeamSectionId | null;
     teamAgentFilter: string | null;
+    teamAgentFocus: boolean;
   },
   sections: readonly TeamSectionId[],
 ): TeamHighlight {
@@ -63,6 +65,7 @@ export function resolveTeamHighlight(
     teamId: ui.activeTeamId,
     section: resolveTeamSection(sections, ui.teamSection),
     agentId: ui.teamAgentFilter,
+    ...(ui.teamAgentFocus ? { agentFocus: true as const } : {}),
   };
 }
 
@@ -78,8 +81,8 @@ export function resolveTeamHighlight(
  *
  * So the header lights whenever the open view belongs to this team AND no agent
  * row inside it is lit. That covers the folded block (its agent rows are not
- * drawn), Team Settings (which lists the whole team and honors no pin), a pin
- * naming an agent this team no longer holds, and the plain unfiltered board —
+ * drawn), a pin naming an agent this team no longer holds, and the plain
+ * unfiltered board,
  * every case where nothing narrower is on screen to speak for the block.
  *
  * `section === null` is false: `resolveTeamHighlight` returns it off a team
@@ -93,11 +96,6 @@ export function teamRowActive(args: {
    *  resolved to one of its members). The block's own fill defers to it. */
   agentRowLit: boolean;
 }): boolean {
-  if (
-    args.highlight.teamId === args.teamId &&
-    args.highlight.section === "settings"
-  )
-    return true;
   if (args.agentRowLit) return false;
   return (
     args.highlight.teamId === args.teamId && args.highlight.section !== null
@@ -110,16 +108,13 @@ export function teamRowActive(args: {
  * the row the user clicked stays lit) — under two conditions, both of which are
  * "the fill must describe something that is actually happening":
  *
- * - the OPEN SECTION has to honor the pin (`sectionHonorsAgentPin`). Team
- *   Settings ignores it and lists the whole team, so a lit row there would
- *   claim a narrowing nothing on screen is doing;
+ * - the open section has to honor the pin, unless agent focus is active;
  * - the agent has to still be a member of the open team. Drag it into another
  *   team and every section drops the filter and shows everything
  *   (`teamPinnedAgent` / `teamFilterPath` / `resolveFilterPath`); a row left lit
  *   in its new block would point at a filter nothing is applying.
  *
- * Off a team view, nothing: an agent has no screen of its own since the per-agent
- * tab shell was deleted, so every other `viewMode` is a top-level view no agent
+ * Off a team view, nothing: every other `viewMode` is a top-level view no agent
  * row belongs to.
  *
  * A COLLAPSED open team fills no agent row either, for the plainest reason
@@ -142,6 +137,10 @@ export function sidebarSelectedAgentId(args: {
   if (args.viewMode !== TEAM_VIEW_ID) return null;
   if (args.collapsed === true) return null;
   const { agentId, section } = args.highlight;
-  if (agentId === null || !sectionHonorsAgentPin(section)) return null;
+  if (
+    agentId === null ||
+    (!args.highlight.agentFocus && !sectionHonorsAgentPin(section))
+  )
+    return null;
   return args.activeTeam?.agents.some((a) => a.id === agentId) ? agentId : null;
 }

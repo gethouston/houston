@@ -10,14 +10,15 @@ import { usePersonalSpace } from "../../hooks/use-personal-space";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useTeams } from "../../hooks/use-teams";
 import { isAgentManager } from "../../lib/agent-access";
+import { hasSpaces } from "../../lib/org-roles";
 import {
   resolveTeamHighlight,
   sidebarSelectedAgentId,
 } from "../../lib/sidebar-teams";
-import { canConfigureTeam } from "../../lib/team-permissions";
 import {
   type TeamView,
   teamById,
+  teamPeopleFace,
   visibleTeamSectionsForTeam,
 } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
@@ -81,6 +82,7 @@ export function useSidebarTeamsModel(args: {
   const activeTeamId = useUIStore((s) => s.activeTeamId);
   const teamSection = useUIStore((s) => s.teamSection);
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
+  const teamAgentFocus = useUIStore((s) => s.teamAgentFocus);
 
   // Every agent lives in exactly one team: a named sidebar group, or the
   // trailing default team, which IS the workspace (virtual — nothing about the
@@ -108,12 +110,23 @@ export function useSidebarTeamsModel(args: {
   // per team here, and the highlight resolves against the ACTIVE team's own —
   // never another team's, which would light the wrong block or none at all.
   const sectionsForTeam = useCallback(
-    (team: TeamView) => visibleTeamSectionsForTeam(capabilities, team),
-    [capabilities],
+    (team: TeamView) =>
+      visibleTeamSectionsForTeam(
+        capabilities,
+        team,
+        teamPeopleFace(team, personalSpace, hasSpaces(capabilities)),
+      ),
+    [capabilities, personalSpace],
   );
   const activeTeam = teamById(teams, activeTeamId);
   const highlight = resolveTeamHighlight(
-    { viewMode, activeTeamId, teamSection, teamAgentFilter },
+    {
+      viewMode,
+      activeTeamId,
+      teamSection,
+      teamAgentFilter,
+      teamAgentFocus,
+    },
     activeTeam ? sectionsForTeam(activeTeam) : [],
   );
   const collapsedLookup = teamCollapsedLookup(sidebar.layout);
@@ -162,13 +175,6 @@ export function useSidebarTeamsModel(args: {
     layout: sidebar.layout,
     teams,
     selectedAgentId,
-    onOpenSettingsFor: (team) =>
-      canConfigureTeam(capabilities, team)
-        ? () => {
-            useUIStore.getState().openTeamView(team.id, "settings");
-            args.closeMobileSidebar();
-          }
-        : undefined,
     menuFor: (agent, needsYou) =>
       isAgentManager(capabilities, agent)
         ? createElement(AgentRowSidebarMenu, { agent, needsYou })

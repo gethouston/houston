@@ -15,6 +15,8 @@ interface AgentAllowlistSectionProps {
   readOnly?: boolean;
   /** Persist the next ceiling: `null` = allow all, else the explicit set. */
   onSave: (next: string[] | null) => void;
+  labelledBy?: string;
+  showIntro?: boolean;
 }
 
 /**
@@ -32,6 +34,8 @@ export function AgentAllowlistSection({
   saving,
   readOnly = false,
   onSave,
+  labelledBy,
+  showIntro,
 }: AgentAllowlistSectionProps) {
   const { t } = useTranslation("teams");
 
@@ -43,6 +47,8 @@ export function AgentAllowlistSection({
       saving={saving}
       readOnly={readOnly}
       onSave={onSave}
+      labelledBy={labelledBy}
+      showIntro={showIntro}
       copy={{
         question: t("integrations.allowlist.question"),
         policyHelper: t("integrations.allowlist.policyHelper"),

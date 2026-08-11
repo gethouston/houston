@@ -19,7 +19,7 @@ export interface SidebarCollapsedItemProps {
  * reveals a flyout to the right on hover OR keyboard focus. The flyout reuses
  * the full {@link SidebarItemRow}, so the name and the row's one behaviour
  * (select) are exactly what expanded mode shows — no duplicated logic. There is
- * nothing else to show: an agent is edited on its team's Manage agents page.
+ * nothing else to show: an agent is edited on its focused agent screen.
  */
 export function SidebarCollapsedItem({
   item,

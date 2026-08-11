@@ -30,6 +30,7 @@ export function LearningsContent({
   onUpdate,
   layout = "full",
   readOnly = false,
+  showHelper = true,
 }: {
   entries: LearningEntry[];
   onAdd: (text: string) => Promise<unknown>;
@@ -42,6 +43,8 @@ export function LearningsContent({
    * affordance and renders each card read-only. The gateway 403s writes.
    */
   readOnly?: boolean;
+  /** False when the mounting page hero already carries this helper copy. */
+  showHelper?: boolean;
 }) {
   const { t } = useTranslation("agents");
   const [drafts, setDrafts] = useState<string[]>([]);
@@ -71,7 +74,7 @@ export function LearningsContent({
     await onRemove(idx);
   };
 
-  if (layout === "full" && entries.length === 0 && drafts.length === 0) {
+  if (entries.length === 0 && drafts.length === 0) {
     return (
       <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
         <EmptyHeader>
@@ -94,10 +97,12 @@ export function LearningsContent({
         layout === "full" ? "max-w-3xl mx-auto w-full px-6 pb-12 pt-2" : ""
       }
     >
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <p className="text-xs text-ink-muted max-w-md">
-          {t("learnings.helper")}
-        </p>
+      <div className="flex items-center justify-end gap-4 mb-4">
+        {showHelper && (
+          <p className="mr-auto text-xs text-ink-muted max-w-md">
+            {t("learnings.helper")}
+          </p>
+        )}
         {!readOnly && (
           <Button size="sm" onClick={addDraft} className="shrink-0">
             <Plus className="size-3.5" />

@@ -27,7 +27,8 @@ import { AgentAllowlistSection } from "../agent-integrations/agent-allowlist-sec
 export function AgentAdminIntegrations({
   agent,
   readOnly = false,
-}: AgentSectionProps) {
+  labelledBy,
+}: AgentSectionProps & { labelledBy?: string }) {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;
@@ -52,6 +53,8 @@ export function AgentAdminIntegrations({
           connectedToolkits={(connections.data ?? []).map((c) => c.toolkit)}
           saving={settingsMutation.isPending}
           readOnly={readOnly}
+          labelledBy={labelledBy}
+          showIntro={labelledBy === undefined}
           onSave={(next) => settingsMutation.mutate(next)}
         />
       ) : settingsQuery.isLoading ? (

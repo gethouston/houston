@@ -34,7 +34,8 @@ import { AgentModelsSection } from "./agent-models-section.tsx";
 export function AgentAdminModel({
   agent,
   readOnly = false,
-}: AgentSectionProps) {
+  labelledBy,
+}: AgentSectionProps & { labelledBy?: string }) {
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;
   const settingsQuery = useAgentSettings(agent.id, teams);
@@ -55,6 +56,8 @@ export function AgentAdminModel({
           models={catalog.models}
           saving={save.isPending}
           readOnly={readOnly}
+          labelledBy={labelledBy}
+          showIntro={labelledBy === undefined}
           onSave={(next) => save.mutate(next)}
         />
       ) : (

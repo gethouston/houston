@@ -28,13 +28,21 @@ export interface SidebarRowDisclosure {
  * which is what lets a plain 90-degree rotation about the box centre keep the
  * mark optically still while it turns.
  */
-function SidebarRowCaret({ expanded }: { expanded: boolean }) {
+export function SidebarRowCaret({
+  expanded,
+  className,
+}: {
+  expanded: boolean;
+  /** Extra classes for hosts wearing the mark outside the rail (the shared
+   *  size/ink/rotation grammar stays; only the surface-specific ink varies). */
+  className?: string;
+}) {
   return (
     <svg
       viewBox="0 0 16 16"
       aria-hidden="true"
       focusable="false"
-      className={cn(c.caret, expanded && "rotate-90")}
+      className={cn(c.caret, expanded && "rotate-90", className)}
     >
       <path d="M5.5 4.5 L10.5 8 L5.5 11.5 Z" />
     </svg>

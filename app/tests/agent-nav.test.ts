@@ -36,6 +36,7 @@ describe("agentDestination", () => {
       teamId: "grp-ops",
       section: "mission-control",
       agentFilter: "a1",
+      agentFocus: true,
     });
   });
 
@@ -45,21 +46,24 @@ describe("agentDestination", () => {
       teamId: DEFAULT_TEAM_ID,
       section: "routines",
       agentFilter: "a2",
+      agentFocus: true,
     });
     deepStrictEqual(agentDestination(teams, "a2", "files"), {
       view: "team",
       teamId: DEFAULT_TEAM_ID,
       section: "files",
       agentFilter: "a2",
+      agentFocus: true,
     });
   });
 
-  it("drops the pin for Team Settings, which lists the whole team", () => {
+  it("keeps agent focus for the agent settings door", () => {
     deepStrictEqual(agentDestination(teams, "a1", "settings"), {
       view: "team",
       teamId: "grp-ops",
       section: "settings",
-      agentFilter: null,
+      agentFilter: "a1",
+      agentFocus: true,
     });
   });
 
@@ -89,11 +93,10 @@ describe("canOpenAgentSettings", () => {
     strictEqual(canOpenAgentSettings(undefined, bare), true);
   });
 
-  it("is open to the org owner/admin for any agent (they own every team)", () => {
-    for (const agent of [managed, used, bare]) {
-      strictEqual(canOpenAgentSettings(caps("owner"), agent), true);
-      strictEqual(canOpenAgentSettings(caps("admin"), agent), true);
-    }
+  it("uses the effective per-agent manager gate for every org role", () => {
+    strictEqual(canOpenAgentSettings(caps("owner"), used), true);
+    strictEqual(canOpenAgentSettings(caps("admin"), managed), true);
+    strictEqual(canOpenAgentSettings(caps("admin"), used), false);
   });
 
   it("is open to a member who MANAGES the agent, and closed when they only use it", () => {
@@ -103,62 +106,5 @@ describe("canOpenAgentSettings", () => {
     strictEqual(canOpenAgentSettings(caps("user"), managed), true);
     strictEqual(canOpenAgentSettings(caps("user"), used), false);
     strictEqual(canOpenAgentSettings(caps("user"), bare), false);
-  });
-
-  /** A server team holding exactly one agent this caller only USES. */
-  const serverTeam = (owner: boolean): TeamView => ({
-    id: "s1",
-    name: "Sales",
-    agents: [{ ...agent("a1"), access: "user" }],
-    isDefault: false,
-    server: { joined: true, owner, memberCount: 3, sortOrder: 0 },
-  });
-
-  it("with a team in hand it asks THAT team's question, so a server team owner gets in", () => {
-    // On a server-teams host an explicit team owner configures the team's
-    // agents without being an org admin, even though they manage NOTHING and
-    // their org role is a plain `user`. Only the per-team gate knows that, so
-    // a caller that drops the team argument hides the affordance from them.
-    strictEqual(
-      canOpenAgentSettings(caps("user"), used, serverTeam(true)),
-      true,
-    );
-    strictEqual(canOpenAgentSettings(caps("user"), used), false);
-  });
-
-  it("closes for a plain member of a team they do not own and manage nothing in", () => {
-    // The mirror of the case above: same caller, same agent, `owner: false`
-    // and no managed agent anywhere in the team -> no Settings section, so no
-    // configure affordance.
-    strictEqual(
-      canOpenAgentSettings(caps("user"), used, serverTeam(false)),
-      false,
-    );
-  });
-
-  it("a passed team can also CLOSE the door the org-wide answer left open", () => {
-    strictEqual(
-      canOpenAgentSettings(caps("admin"), used, serverTeam(false)),
-      false,
-    );
-  });
-
-  it("null/undefined for the team falls back to the org-wide answer", () => {
-    strictEqual(canOpenAgentSettings(caps("user"), managed, null), true);
-    strictEqual(canOpenAgentSettings(caps("user"), used, undefined), false);
-    strictEqual(canOpenAgentSettings(caps("owner"), used, null), true);
-  });
-
-  it("a LOCAL team (no server facts) answers exactly as the org-wide gate", () => {
-    // The capability-off path must stay byte-identical.
-    const local: TeamView = {
-      id: "grp-ops",
-      name: "Ops",
-      agents: [],
-      isDefault: false,
-    };
-    strictEqual(canOpenAgentSettings(caps("user"), used, local), false);
-    strictEqual(canOpenAgentSettings(caps("owner"), used, local), true);
-    strictEqual(canOpenAgentSettings(caps("admin"), used, local), true);
   });
 });

@@ -23,6 +23,13 @@ const OWNER_SECTIONS: TeamSectionId[] = [
   "mission-control",
   "routines",
   "files",
+  "context",
+  "people",
+];
+const AGENT_SECTIONS: TeamSectionId[] = [
+  "mission-control",
+  "routines",
+  "files",
   "settings",
 ];
 const MEMBER_SECTIONS: TeamSectionId[] = [
@@ -36,13 +43,14 @@ const openTeam = {
   activeTeamId: "g1",
   teamSection: "settings" as const,
   teamAgentFilter: "a1",
+  teamAgentFocus: false,
 };
 
 describe("resolveTeamHighlight", () => {
   it("reads the open team, section and agent filter off a team view", () => {
     assert.deepEqual(resolveTeamHighlight(openTeam, OWNER_SECTIONS), {
       teamId: "g1",
-      section: "settings",
+      section: "mission-control",
       agentId: "a1",
     });
   });
@@ -116,20 +124,13 @@ describe("teamRowActive", () => {
     );
   });
 
-  it("keeps settings on the team header even if an agent row is named", () => {
-    const settings = resolveTeamHighlight(openTeam, OWNER_SECTIONS);
-    assert.equal(
-      teamRowActive({ teamId: "g1", highlight: settings, agentRowLit: true }),
-      true,
-    );
-  });
-
   it("lights the row whichever section of that team is open behind it", () => {
     for (const teamSection of [
       "mission-control",
       "routines",
       "files",
-      "settings",
+      "context",
+      "people",
     ] as const) {
       assert.equal(
         teamRowActive({
@@ -203,7 +204,8 @@ describe("the rail fills exactly ONE row", () => {
     "mission-control",
     "routines",
     "files",
-    "settings",
+    "context",
+    "people",
   ] as const) {
     for (const teamAgentFilter of ["a1", "gone", null]) {
       for (const collapsed of [true, false]) {
@@ -243,6 +245,25 @@ describe("sidebarSelectedAgentId", () => {
     OWNER_SECTIONS,
   );
 
+  it("keeps a focused agent lit on settings while the team header steps aside", () => {
+    const focused = resolveTeamHighlight(
+      { ...openTeam, teamAgentFocus: true },
+      AGENT_SECTIONS,
+    );
+    assert.equal(
+      sidebarSelectedAgentId({
+        viewMode: TEAM_VIEW_ID,
+        highlight: focused,
+        activeTeam: team("g1", ["a1"]),
+      }),
+      "a1",
+    );
+    assert.equal(
+      teamRowActive({ teamId: "g1", highlight: focused, agentRowLit: true }),
+      false,
+    );
+  });
+
   it("selects the team view's agent filter", () => {
     assert.equal(
       sidebarSelectedAgentId({
@@ -272,10 +293,8 @@ describe("sidebarSelectedAgentId", () => {
   });
 
   it("fills NO row under any section that does not narrow by the pin", () => {
-    // Settings lists the whole team whatever the pin says; Files resolves its
-    // OWN agent; Routines and Archived carry a section-local filter of their
-    // own. A lit agent row under any of them would claim a narrowing nothing
-    // on screen is doing — and clicking it again would look like a no-op.
+    // Files and Routines have focused-agent surfaces of their own. Without
+    // focus, a lit row would claim a narrowing nothing on screen is doing.
     for (const teamSection of ["files", "routines"] as const) {
       assert.equal(
         sidebarSelectedAgentId({
@@ -290,13 +309,15 @@ describe("sidebarSelectedAgentId", () => {
         teamSection,
       );
     }
+    // A stale team-level Settings value resolves to Mission Control, so its
+    // existing board pin becomes meaningful again.
     assert.equal(
       sidebarSelectedAgentId({
         viewMode: TEAM_VIEW_ID,
         highlight: resolveTeamHighlight(openTeam, OWNER_SECTIONS),
         activeTeam: team("g1", ["a1", "a2"]),
       }),
-      null,
+      "a1",
     );
     // And the pin is NOT lost: it lights again the moment the board is back on
     // screen (the rail carries it across destinations).

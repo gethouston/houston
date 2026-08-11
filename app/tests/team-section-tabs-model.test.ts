@@ -41,7 +41,7 @@ describe("teamSectionTabs", () => {
     const sections = visibleTeamSectionsForTeam(caps(), team());
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files"],
+      ["routines", "files", "context"],
     );
     // The board is dropped, never relabelled: the team's lozenge IS that door.
     assert.ok(
@@ -49,7 +49,7 @@ describe("teamSectionTabs", () => {
     );
   });
 
-  it("gives a member the WORK tabs and no Manage agents", () => {
+  it("gives a member the WORK tabs and no focused agent screen", () => {
     // Multiplayer, plain user, managing nothing: the configure section is not
     // theirs, so the row must not draw the last tab. Archived is WORK, so they
     // keep it.
@@ -73,7 +73,7 @@ describe("teamSectionTabs", () => {
     );
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files"],
+      ["routines", "files", "context"],
     );
   });
 

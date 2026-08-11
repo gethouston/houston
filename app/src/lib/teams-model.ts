@@ -7,15 +7,18 @@ import type { Agent } from "./types.ts";
 // every caller: the "may I do this to a team?" gates, and the team's SECTIONS.
 export {
   canConfigureTeam,
+  canConfigureTeamsByRole,
   canDeleteTeam,
   canLeaveTeam,
   canRenameTeam,
-  canSeeTeamSettings,
 } from "./team-permissions.ts";
 export {
   resolveTeamSection,
   sectionHonorsAgentPin,
+  type TeamPeopleFace,
   type TeamSectionId,
+  teamPeopleFace,
+  visibleAgentSections,
   visibleTeamSectionsForTeam,
 } from "./team-sections.ts";
 

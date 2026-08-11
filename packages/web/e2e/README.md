@@ -49,7 +49,7 @@ e2e/
                     # Analytics lenses, About me) and Settings
     team-nav.ts     # the rail (top-level rows + the Inbox) + the screen ON THE
                     # GLASS; open a team's section, and an agent's settings page
-                    # through it ("Manage agents", the ONE door onto agent policy)
+                    # through it ("focused agent screen", the ONE door onto agent policy)
     tour-nav.ts     # arm the guided tour from the footer's help control
     sidebar-create.ts # the rail band's ONE "+" menu: new agent / new team
     global-setup.ts # warms the vite dev server once before the suite (see CI below)
@@ -150,7 +150,7 @@ capability, never on the data) and with `/__test__/org` `{ agents, members }`,
 because a team is only as real as the fleet and roster behind it. That is the
 whole setup for `agent-teams.spec.ts`: the rail listing only the teams the caller
 is in, creating a team with the TYPED name, a drag that writes
-`PUT /v1/agents/:slug/team` and rolls back on a refusal, and Manage agents'
+`PUT /v1/agents/:slug/team` and rolls back on a refusal, and focused agent screen'
 Members card. Browsing and JOINING other teams is dead product: a member only
 ever sees the teams they are part of, people are added through the Members card,
 and the rail's "+" is New agent · New team. `personalSpace: true` arms the space
@@ -160,7 +160,7 @@ the client, no Members card, because the gateway refuses the member writes with
 `403 personal_space`. With the capability off
 the client runs the pre-C13 local `sidebar_layout` backend unchanged, which is
 what `sidebar-teams.spec.ts` / `sidebar-dnd.spec.ts` /
-`team-settings-manager.spec.ts` already guard.
+`team-manager-gate.spec.ts` already guards.
 
 The seeded catalog (`SEED_TOOLKIT_SLUGS`, exported for specs) holds 15 A-Z apps,
 enough that a tight allowlist blocks past the locked preview cap (8) so the

@@ -97,7 +97,7 @@ describe("teamAffordanceMask", () => {
     // ONE identity entry: name, mark and colour are edited together in the
     // "Change icon & name" dialog, so the mask carries a single `edit` gate.
     // No context entry among them on EITHER backend any more: a team's shared
-    // context is the first card of its Manage agents page, one door onto it.
+    // context is the first card of its focused agent screen, one door onto it.
     const owned = mask({ serverBacked: true })(
       team("t1", false, { owner: true }),
     );

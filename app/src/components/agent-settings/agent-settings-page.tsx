@@ -21,7 +21,16 @@ export function AgentSettingsPage({
   readOnly?: boolean;
 }) {
   return (
-    <div data-agent-section-body={section}>
+    <div
+      data-agent-section-body={section}
+      // Job description pins its document card to the window's bottom gap, so
+      // its chain must pass height down; every other section page-scrolls.
+      className={
+        section === "job-description"
+          ? "flex h-full min-h-0 flex-col"
+          : undefined
+      }
+    >
       <AgentSettingsSectionView
         agent={agent}
         section={section}

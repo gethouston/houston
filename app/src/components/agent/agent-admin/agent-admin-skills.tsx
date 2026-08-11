@@ -1,6 +1,8 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { mergeSharedIntoAgentSkills } from "../../../lib/agent-shared-skills";
 import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
+import { PageHero } from "../../shell/page-shell";
 import { SkillsContent } from "../skills-content";
 import { useAgentSharedSkills } from "../use-agent-shared-skills";
 import { useSkillSurface } from "../use-skill-surface";
@@ -26,6 +28,7 @@ export function AgentAdminSkills({
   agent,
   readOnly = false,
 }: AgentSectionProps) {
+  const { t } = useTranslation("agents");
   const surface = useSkillSurface(agent.folderPath);
   const shared = useAgentSharedSkills(agent.folderPath);
   const { editModalLabels, deleteConfirm } = useSkillSurfaceLabels();
@@ -45,7 +48,13 @@ export function AgentAdminSkills({
   );
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-6 pb-12 pt-6 flex-1 flex flex-col">
+    <div className="max-w-3xl mx-auto w-full px-6 pb-12 pt-2 flex-1 flex flex-col">
+      <PageHero
+        level={2}
+        className="mb-6"
+        title={t("subTabs.skills")}
+        subtitle={t("configure.skills.description")}
+      />
       <SkillsContent
         agent={agent}
         skills={merged.skills}

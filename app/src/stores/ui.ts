@@ -58,6 +58,8 @@ interface UIState {
    * agent row in the sidebar; `null` = all of the team's agents).
    */
   teamAgentFilter: string | null;
+  /** Whether the kept-alive team screen is presenting one agent's surfaces. */
+  teamAgentFocus: boolean;
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
   claudeAvailable: boolean | null;
@@ -197,7 +199,7 @@ interface UIState {
   openTeamView: (
     teamId: string,
     section: TeamSectionId,
-    opts?: { agentFilter?: string | null },
+    opts?: { agentFilter?: string | null; agentFocus?: boolean },
   ) => void;
   setTeamAgentFilter: (agentId: string | null) => void;
   setSettingsSection: (section: SettingsSectionId | null) => void;
@@ -309,6 +311,7 @@ const initialUIState = {
   activeTeamId: null,
   teamSection: null,
   teamAgentFilter: null,
+  teamAgentFocus: false,
 } satisfies Partial<UIState>;
 
 let toastCounter = 0;
@@ -322,13 +325,16 @@ export const useUIStore = create<UIState>()(
       ...initialUIState,
 
       setViewMode: (viewMode) => set({ viewMode }),
-      openTeamView: (activeTeamId, teamSection, opts) =>
+      openTeamView: (activeTeamId, teamSection, opts) => {
+        const teamAgentFilter = opts?.agentFilter ?? null;
         set({
           viewMode: TEAM_VIEW_ID,
           activeTeamId,
           teamSection,
-          teamAgentFilter: opts?.agentFilter ?? null,
-        }),
+          teamAgentFilter,
+          teamAgentFocus: opts?.agentFocus === true && teamAgentFilter !== null,
+        });
+      },
       setTeamAgentFilter: (teamAgentFilter) => set({ teamAgentFilter }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
       openSettings: (settingsSection) =>

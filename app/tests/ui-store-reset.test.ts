@@ -15,7 +15,10 @@ describe("useUIStore.reset", () => {
     s.setActivityPanelId("activity-42", { forceOpen: true });
     s.setShareAgentId("agent-a");
     s.setPaletteOpen(true);
-    s.openTeamView("team:default", "routines", { agentFilter: "agent-a" });
+    s.openTeamView("team:default", "routines", {
+      agentFilter: "agent-a",
+      agentFocus: true,
+    });
     s.setPendingRoutineChat({ agentId: "agent-a", activityId: "act-1" });
 
     useUIStore.getState().reset();
@@ -32,6 +35,7 @@ describe("useUIStore.reset", () => {
     strictEqual(next.activeTeamId, null);
     strictEqual(next.teamSection, null);
     strictEqual(next.teamAgentFilter, null);
+    strictEqual(next.teamAgentFocus, false);
     strictEqual(next.pendingRoutineChat, null);
   });
 
@@ -61,5 +65,21 @@ describe("useUIStore.reset", () => {
     useUIStore.getState().reset();
 
     strictEqual(useUIStore.getState().pendingRoutineChat, null);
+  });
+});
+
+describe("useUIStore.openTeamView", () => {
+  it("normalizes focus without a filter and clears omitted options", () => {
+    const store = useUIStore.getState();
+    store.openTeamView("g1", "files", { agentFocus: true });
+    strictEqual(useUIStore.getState().teamAgentFocus, false);
+    store.openTeamView("g1", "files", {
+      agentFilter: "a1",
+      agentFocus: true,
+    });
+    strictEqual(useUIStore.getState().teamAgentFocus, true);
+    store.openTeamView("g1", "mission-control");
+    strictEqual(useUIStore.getState().teamAgentFilter, null);
+    strictEqual(useUIStore.getState().teamAgentFocus, false);
   });
 });

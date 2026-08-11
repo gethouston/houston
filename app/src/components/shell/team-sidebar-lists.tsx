@@ -45,7 +45,6 @@ export interface BuildTeamSidebarListsArgs extends AgentItemArgs {
    *  its identity is not editable (the local backend's virtual workspace
    *  block) this answers `undefined` and the block carries no menu. */
   onEditTeamFor?: (team: TeamView) => (() => void) | undefined;
-  onOpenSettingsFor?: (team: TeamView) => (() => void) | undefined;
   menuFor?: (agent: Agent, needsYou: NeedsYouSignal | null) => ReactNode;
 }
 
@@ -72,7 +71,6 @@ export function buildTeamSidebarLists({
   selectedAgentId,
   affordancesFor,
   onEditTeamFor,
-  onOpenSettingsFor,
   menuFor,
   ...itemArgs
 }: BuildTeamSidebarListsArgs): {
@@ -101,7 +99,6 @@ export function buildTeamSidebarLists({
       // model literally as it was before masks existed.
       const affordances = affordancesFor?.(team);
       const onEdit = onEditTeamFor?.(team);
-      const onOpenSettings = onOpenSettingsFor?.(team);
       const collapsed = isCollapsed(team);
       return {
         id: team.id,
@@ -127,7 +124,6 @@ export function buildTeamSidebarLists({
           agentRowLit: holdsSelectedAgent(team),
         }),
         itemIds: team.agents.map((a) => a.id),
-        ...(onOpenSettings ? { onOpenSettings } : {}),
         ...(affordances ? { affordances } : {}),
         ...(onEdit ? { onEdit } : {}),
       };
@@ -142,9 +138,6 @@ export function buildTeamSidebarLists({
     ? affordancesFor?.(defaultTeam)
     : undefined;
   const defaultOnEdit = defaultTeam ? onEditTeamFor?.(defaultTeam) : undefined;
-  const defaultOnOpenSettings = defaultTeam
-    ? onOpenSettingsFor?.(defaultTeam)
-    : undefined;
   const defaultGroup = defaultTeam
     ? {
         name: defaultTeam.name,
@@ -159,9 +152,6 @@ export function buildTeamSidebarLists({
           highlight,
           agentRowLit: holdsSelectedAgent(defaultTeam),
         }),
-        ...(defaultOnOpenSettings
-          ? { onOpenSettings: defaultOnOpenSettings }
-          : {}),
         ...(defaultAffordances ? { affordances: defaultAffordances } : {}),
         ...(defaultOnEdit ? { onEdit: defaultOnEdit } : {}),
       }

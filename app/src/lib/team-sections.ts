@@ -1,6 +1,8 @@
 import type { Capabilities } from "@houston-ai/engine-client";
+import { isAgentManager } from "./agent-access.ts";
 import { canConfigureTeam } from "./team-permissions.ts";
 import type { TeamView } from "./teams-model.ts";
+import type { Agent } from "./types.ts";
 
 /**
  * A team's SECTIONS: what a team block offers, which of them a caller may
@@ -16,7 +18,21 @@ export type TeamSectionId =
   | "mission-control"
   | "routines"
   | "files"
-  | "settings";
+  | "settings"
+  | "context"
+  | "people";
+
+export type TeamPeopleFace = "roster" | "invite" | "hidden";
+
+export function teamPeopleFace(
+  team: TeamView,
+  personalSpace: boolean,
+  spacesHost: boolean,
+): TeamPeopleFace {
+  if (team.server !== undefined && !personalSpace) return "roster";
+  if (personalSpace && spacesHost) return "invite";
+  return "hidden";
+}
 
 /**
  * The sections THIS team offers this caller, in render order. The ONE list the
@@ -25,45 +41,50 @@ export type TeamSectionId =
  * TEAM, not per caller: the same person may configure one team and only use the
  * next, so the rail asks it again for every block it draws.
  *
- * Mission Control, Routines and Files are every member's: they are the team's
- * WORK, and a member who may use the team's agents may see what those agents do
- * on their own and what they keep. The board's archive is a MODE of Mission
- * Control (a toolbar toggle), not a section. Settings is the one section that
- * CONFIGURES rather than shows — the drilled "Manage agents" screen holding the
- * team's shared context, its agents and its members, reached from the rail's
- * manager row rather than a tab. It goes to anyone who may configure SOMETHING
- * in this team (`canConfigureTeam`): the org owner/admin (implicit owner of
- * every team) or a member who manages at least one of THIS team's agents. It is
- * also the only door to the agent settings page, so gating it org-wide would
- * take every configure surface away from an agent's own manager.
+ * Mission Control, Routines and Files are every member's work. Context and
+ * People are team-level configuration tabs. Settings is absent because it is
+ * an agent-only section offered by `visibleAgentSections` while focused.
  *
  * On a SERVER-teams host the client-derived org-role half of that gate is
  * REPLACED by the server's own `owner` for this team: it already folds in the
  * org owner/admin and adds the explicit team owner, who configures their team
- * without being an org admin. The agent-manager clause is untouched, so a
- * member who manages one of the team's agents still gets in.
+ * without being an org admin.
  */
 export function visibleTeamSectionsForTeam(
   caps: Capabilities | null,
   team: TeamView,
+  peopleFace: TeamPeopleFace = "hidden",
+): TeamSectionId[] {
+  const manager = canConfigureTeam(caps, team);
+  return [
+    "mission-control",
+    "routines",
+    "files",
+    ...(manager && (team.server === undefined || team.context !== undefined)
+      ? (["context"] as const)
+      : []),
+    ...(manager && peopleFace !== "hidden" ? (["people"] as const) : []),
+  ];
+}
+
+export function visibleAgentSections(
+  caps: Capabilities | null,
+  agent: Pick<Agent, "access">,
 ): TeamSectionId[] {
   return [
     "mission-control",
     "routines",
     "files",
-    ...(canConfigureTeam(caps, team) ? (["settings"] as const) : []),
+    ...(isAgentManager(caps, agent) ? (["settings"] as const) : []),
   ];
 }
 
 /**
  * Whether a section actually narrows to the shared agent pin.
  *
- * The answer is now ONE section: the team's BOARD. The pin is what the rail
- * sets by clicking an agent, and the board is the only surface that shows what
- * that click means. Every other section either resolves its own agent (Files),
- * lists the whole team regardless (Manage agents), or carries a filter of its
- * OWN that belongs to the section rather than to the team (Routines, Archived
- * — a plain `useState` per mount, deliberately not this pin).
+ * The answer is one section: the team's board. Agent focus is tracked
+ * separately, so its Routines, Files, and Settings screens can keep the rail
+ * agent selected without claiming that the board pin narrows them.
  *
  * That is why the rule is worth having at all: two surfaces read it to decide
  * whether to CLAIM a narrowing — the rail fills an agent row, and the team's

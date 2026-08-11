@@ -1,25 +1,19 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import {
-  analyticsLensTab,
-  openAdminSection,
-  openAnalyticsLens,
-} from "./support/settings-nav";
+import { openAdminSection } from "./support/settings-nav";
 import { screen } from "./support/team-nav";
 
 /**
  * Time worked — hosted-cloud analytics of how long each agent's engine actually
- * ran per day. It is a LENS inside **Admin > Analytics** now, beside the
- * activity feed and the usage bars it was always read against; the standalone
+ * ran per day. It is a first-level Admin section beside Activity and Usage; the standalone
  * rail screen is gone, because it held nothing else (per-AI-account usage moved
  * onto the AI Models hub's Connected rows, HOU-789) and a screen of one section
  * is a section.
  *
- * The gate did not move, only what it hides: the lens exists solely where the
+ * The section exists solely where the
  * gateway advertises `capabilities.computeUsage` (desktop/self-host never do),
- * and elsewhere its lens lozenge is simply absent — which is also what
- * keeps its query from firing, since only the SELECTED lens is mounted.
+ * and elsewhere its lozenge is absent, which also keeps its query from firing.
  *
  * Reaching it needs Admin, so every test here arms a Teams OWNER on top of the
  * compute capability. The data comes from `GET /v1/org/compute-usage`, armed via
@@ -53,7 +47,7 @@ function row(
 
 /**
  * Arm the deployment: a Teams owner (so Admin exists in the rail at all) plus
- * the compute capability, which is what decides whether the Time worked lens is
+ * the compute capability, which decides whether the Time worked section is
  * offered. `seed: null` is the desktop/self-host shape — no capability, no data.
  */
 async function armComputeUsage(
@@ -73,35 +67,34 @@ async function armComputeUsage(
   });
 }
 
-// ── 1. Desktop/self-host guard: no capability, no lens, no fetch ───────────
+// ── 1. Desktop/self-host guard: no capability, no section, no fetch ────────
 
-test("without the computeUsage capability Analytics offers no Time worked lens", async ({
+test("without the computeUsage capability Admin offers no Time worked section", async ({
   page,
   request,
 }) => {
   await armComputeUsage(request, null);
   await page.goto("/");
-  await openAdminSection(page, "Analytics");
+  await openAdminSection(page, "Activity");
 
-  // A painted screen FIRST, so the absence below cannot pass on an Analytics
-  // section that simply has not rendered: the two base lenses are there, and
-  // Activity — the lead one, the drilled-in header's identity lozenge — is
-  // the mounted body.
-  await expect(analyticsLensTab(page, "Activity")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-  await expect(analyticsLensTab(page, "Usage")).toBeVisible();
+  // A painted Activity section first makes the Time worked absence meaningful.
+  await expect(
+    screen(page).locator("[data-admin-section-tab='activity']"),
+  ).toHaveAttribute("aria-current", "page");
+  await expect(
+    screen(page).locator("[data-admin-section-tab='usage']"),
+  ).toBeVisible();
 
-  // Not merely empty: the lozenge is absent, so nothing leads to a lens that
-  // would have nothing to show — and its query never fires.
-  await expect(analyticsLensTab(page, "Time worked")).toHaveCount(0);
+  // The lozenge is absent, so its query never fires.
+  await expect(
+    screen(page).locator("[data-admin-section-tab='timeWorked']"),
+  ).toHaveCount(0);
   await expect(screen(page).getByText("Time worked")).toHaveCount(0);
 });
 
 // ── 2. Armed + seeded: summary, bars, per-agent rows ────────────────────────
 
-test("with data the lens shows the total, daily bars, and per-agent rows", async ({
+test("with data the section shows the total, daily bars, and per-agent rows", async ({
   page,
   request,
 }) => {
@@ -129,9 +122,9 @@ test("with data the lens shows the total, daily bars, and per-agent rows", async
     awakeNow: ["houston-assistant"],
   });
   await page.goto("/");
-  await openAnalyticsLens(page, "Time worked");
+  await openAdminSection(page, "Time worked");
 
-  // The header's lens lozenge names the lens, so the body leads with its range
+  // The header lozenge names the section, so the body leads with its range
   // control rather than a heading of its own — and no "Usage"/"Compute" tab
   // grouping from the old screen survives.
   await expect(
@@ -155,7 +148,7 @@ test("with data the lens shows the total, daily bars, and per-agent rows", async
   ).toHaveCount(7);
 
   // Per-agent rows: the seed agent resolves to its display name (3h 05m across
-  // 13 messages). The lens carries only this list, so nothing to scope further.
+  // 13 messages). The section carries only this list, so nothing to scope further.
   const houston = screen(page)
     .getByRole("listitem")
     .filter({ hasText: "Houston" });
@@ -163,7 +156,7 @@ test("with data the lens shows the total, daily bars, and per-agent rows", async
   await expect(houston).toContainText("13 messages");
   // No liveness badge: pod up/idle state is infrastructure the user never sees.
   await expect(houston.getByText("Online")).toHaveCount(0);
-  // Nothing outside the sidebar roster exists on the lens — no deleted
+  // Nothing outside the sidebar roster exists in the section, no deleted
   // agents, no "Removed agent" placeholder, no raw wire ids.
   await expect(screen(page).getByText("Sales bot")).toHaveCount(0);
   await expect(screen(page).getByText("Removed agent")).toHaveCount(0);
@@ -187,7 +180,7 @@ test("switching the range changes the bar count without a new fetch", async ({
     awakeNow: [],
   });
   await page.goto("/");
-  await openAnalyticsLens(page, "Time worked");
+  await openAdminSection(page, "Time worked");
 
   const bars = screen(page).getByRole("img", { name: /: worked / });
   await expect(bars).toHaveCount(7);
@@ -208,7 +201,7 @@ test("an agent with no usage rows appears immediately at zero", async ({
   // pod to report anything.
   await armComputeUsage(request, { rows: [], awakeNow: [] });
   await page.goto("/");
-  await openAnalyticsLens(page, "Time worked");
+  await openAdminSection(page, "Time worked");
 
   const houston = screen(page)
     .getByRole("listitem")

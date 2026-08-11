@@ -6,20 +6,12 @@ import {
   agentSectionTab,
   expectTeamSections,
   openAgentSettings,
-  openManageAgents,
-  openManagePane,
-  screen,
 } from "./support/team-nav";
 
 /**
  * Agent POLICY: who may use an agent, and what the agent itself may reach.
  *
- * It is discovered through the TEAM that owns the agent — the team's "Manage
- * agents" section, then the agent's row — and there is exactly ONE such door,
- * in every deployment. The top-level Permissions screen that used to list every
- * agent in the space is gone: it was a second, org-shaped route onto this same
- * page that had to be kept in agreement with the per-team one, for no surface a
- * user could not already reach.
+ * It is discovered through the focused agent screen.
  *
  * The page itself is fully agent-centric: six section lozenges across its
  * drilled header, and the selected section below. There is no
@@ -31,7 +23,7 @@ import {
  * `PUT /v1/agents/:slug/assignments`, and an Apps ceiling narrow persists via
  * `PUT /v1/agents/:slug/settings` — each verified with a full reload so the
  * write reached the gateway, not just the client cache. A plain member gets no
- * "Manage agents" row at all, so the whole configure surface is out of reach for
+ * "Agent settings" lozenge at all, so the whole configure surface is out of reach for
  * them rather than half-shown.
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
@@ -78,7 +70,7 @@ async function armOrg(request: APIRequestContext): Promise<void> {
 
 /**
  * Boot and open the armed agent's canonical settings page through the ONE door:
- * its team's "Manage agents" section, then its row. `armOrg` replaces the
+ * its team's focused agent screen, then its row. `armOrg` replaces the
  * roster, so the team holds Finance Bot rather than the seed agent.
  *
  * Called again mid-test on purpose: every round-trip assertion below re-runs it
@@ -88,7 +80,7 @@ async function openFinance(page: Page): Promise<void> {
   await page.goto("/");
   // Straight to People with access: the page itself lands on Job description
   // (the identity lozenge), but the policy assertions below all live here.
-  await openAgentSettings(page, "Finance Bot", "People with access");
+  await openAgentSettings(page, "Finance Bot", "People");
 }
 
 test("the team's agent list drills into six settings lozenges", async ({
@@ -98,26 +90,21 @@ test("the team's agent list drills into six settings lozenges", async ({
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
   await page.goto("/");
-  await openManageAgents(page);
-  await openManagePane(page, "agents");
-
-  // No top-level People tab — the top level is just the team's agent list.
-  await expect(page.getByRole("tab", { name: "Agents" })).toHaveCount(0);
+  await openAgentSettings(page, "Finance Bot", "Integrations");
   await expect(
-    screen(page).getByRole("button", { name: "Open Finance Bot" }),
+    page.locator('[data-agent-section-body="integrations"]'),
   ).toBeVisible();
-
-  await screen(page).getByRole("button", { name: "Open Finance Bot" }).click();
+  await openAgentSettings(page, "Finance Bot");
 
   // Six top lozenges replace the old grouped rail.
   await expect(page.getByRole("tab", { name: "People" })).toHaveCount(0);
   for (const section of [
     "Job description",
-    "Memory",
-    "People with access",
-    "Apps",
-    "AI models",
     "Skills",
+    "Learnings",
+    "People",
+    "Integrations",
+    "AI Models",
   ] as const) {
     await expect(agentSectionTab(page, section)).toBeVisible();
   }
@@ -293,10 +280,15 @@ test("a visible-but-not-manager admin drills into the SAME page, read-only", asy
   });
   await openFinance(page);
 
-  // The rail and the People question are there; the controls are not.
-  await expect(agentSectionTab(page, "People with access")).toBeVisible();
+  // The rail and People hero are there; the controls are not.
+  await expect(agentSectionTab(page, "People")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Who can use this agent?" }),
+    page.getByRole("heading", { name: "Allowed People" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Pick whether everyone on your team can use this agent, or only the people you choose.",
+    ),
   ).toBeVisible();
   await expect(
     page.getByText("Someone who manages this agent can change who has access."),
@@ -316,26 +308,31 @@ test("Apps section: the app ceiling narrows and persists", async ({
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
   await openFinance(page);
-  await agentSectionTab(page, "Apps").click();
+  await agentSectionTab(page, "Integrations").click();
 
   await expect(
-    page.getByRole("heading", { name: "Which apps can this agent use?" }),
+    page.getByRole("heading", { name: "Allowed Integrations" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Which integrations can this agent use?"),
   ).toBeVisible();
 
-  // Starts unrestricted (null): "Any app" is the checked mode.
-  await expect(page.getByRole("radio", { name: "Any app" })).toBeChecked();
+  // Starts unrestricted (null): the allow-all option is checked.
+  await expect(
+    page.getByRole("radio", { name: "Allow all integrations" }),
+  ).toBeChecked();
 
   // Restrict it -> a PUT /v1/agents/:slug/settings persists the ceiling.
-  await page.getByRole("radio", { name: "Only apps you pick" }).click();
+  await page.getByRole("radio", { name: "Only integrations you pick" }).click();
   await expect(
-    page.getByRole("radio", { name: "Only apps you pick" }),
+    page.getByRole("radio", { name: "Only integrations you pick" }),
   ).toBeChecked();
 
   // GET round-trip: a full reload re-reads the agent settings from the host.
   await openFinance(page);
-  await agentSectionTab(page, "Apps").click();
+  await agentSectionTab(page, "Integrations").click();
   await expect(
-    page.getByRole("radio", { name: "Only apps you pick" }),
+    page.getByRole("radio", { name: "Only integrations you pick" }),
   ).toBeChecked();
 });
 
@@ -346,10 +343,13 @@ test("AI models section: the model ceiling editor is present", async ({
   await armCapabilities(request, OWNER_CAPS);
   await armOrg(request);
   await openFinance(page);
-  await agentSectionTab(page, "AI models").click();
+  await agentSectionTab(page, "AI Models").click();
 
   await expect(
-    page.getByRole("heading", { name: "Which AI models can this agent use?" }),
+    page.getByRole("heading", { name: "Allowed AI Models" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Which AI models can this agent use?"),
   ).toBeVisible();
 });
 
@@ -367,8 +367,8 @@ test("Job description and Memory live on the same drilled page", async ({
     "page",
   );
 
-  await agentSectionTab(page, "Memory").click();
-  await expect(agentSectionTab(page, "Memory")).toHaveAttribute(
+  await agentSectionTab(page, "Learnings").click();
+  await expect(agentSectionTab(page, "Learnings")).toHaveAttribute(
     "aria-current",
     "page",
   );
@@ -398,7 +398,7 @@ test("a plain member cannot reach the agent settings page at all", async ({
 
   // The team's WORK is theirs — Tasks, Routines, Files — but the one section
   // that CONFIGURES is not, and the agent settings page has no other door:
-  // `visibleTeamSectionsForTeam` withholds "Manage agents", and there is no
+  // `visibleTeamSectionsForTeam` withholds "focused agent screen", and there is no
   // top-level Permissions screen to reach the page around it any more. A
   // lozenge they cannot use would be a dead link, so the strip does not draw
   // one. (The sections are the team screen's own lozenge cluster now; the rail

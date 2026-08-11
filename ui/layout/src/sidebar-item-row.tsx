@@ -17,7 +17,7 @@ export interface SidebarItemRowProps {
  * a block reads as one ladder instead of a header with a foreign list under it.
  *
  * **It carries no "..." menu, and cannot be renamed or deleted from here.** An
- * agent is edited where it is configured — its team's Manage agents page — and
+ * agent is edited where it is configured — its focused agent screen — and
  * nowhere else. A rail row that could rename, recolour or delete an agent was a
  * second door onto settings that had to be kept in agreement with the first, on
  * the one surface with the least room to explain what it was about to do.

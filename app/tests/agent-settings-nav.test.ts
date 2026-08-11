@@ -26,19 +26,19 @@ const TEAMS = caps({ multiplayer: true, teams: true });
 const LEGACY_MULTIPLAYER = caps({ multiplayer: true, teams: false });
 
 describe("agentSettingsSections", () => {
-  it("orders context first, then multiplayer access, then Skills", () => {
+  it("orders job description, skills, learnings, then multiplayer access", () => {
     deepStrictEqual(agentSettingsSections(TEAMS), [
       "job-description",
+      "skills",
       "learnings",
       "people",
       "integrations",
       "models",
-      "skills",
     ]);
     deepStrictEqual(agentSettingsSections(caps()), [
       "job-description",
-      "learnings",
       "skills",
+      "learnings",
     ]);
   });
 
@@ -61,12 +61,14 @@ describe("agent settings selection", () => {
       resolveAgentSettingsSection(agentSettingsSections(TEAMS), "integrations"),
       "integrations",
     );
+    // Skills leads the permissions group now, so a hidden access deep link
+    // lands there rather than on People.
     strictEqual(
       resolveAgentSettingsSection(
         agentSettingsSections(LEGACY_MULTIPLAYER),
         "integrations",
       ),
-      "people",
+      "skills",
     );
     strictEqual(
       resolveAgentSettingsSection(agentSettingsSections(caps()), "people"),

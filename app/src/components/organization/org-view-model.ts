@@ -9,13 +9,18 @@ import { showComputeSection } from "../time-worked/compute-usage-model.ts";
  */
 
 /**
- * The four sections of the Admin (Organization) dashboard. Analytics is the one
- * measurement section (activity feed, message usage, time worked as its lenses);
- * Company context is the workspace half of the standing context every agent
+ * The sections of the Admin dashboard. Company context is the workspace half
+ * of the standing context every agent
  * starts a turn with. Per-agent policy is NOT here: it is reached through each
- * team's Manage agents page.
+ * team's focused agent screen.
  */
-export type OrgTabId = "people" | "billing" | "analytics" | "companyContext";
+export type OrgTabId =
+  | "companyContext"
+  | "people"
+  | "billing"
+  | "activity"
+  | "usage"
+  | "timeWorked";
 
 /**
  * The section the dashboard lands on: what the header's Admin identity
@@ -33,14 +38,15 @@ export const DEFAULT_ORG_TAB: OrgTabId = "companyContext";
 export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "companyContext",
   "people",
-  "analytics",
+  "activity",
+  "usage",
 ] as const;
 
 /**
  * The dashboard's tab ids in display order, written out literally so the order
  * reads off the source: Company context (the identity lozenge and landing
  * section), then People, then Billing when `canSeeBillingTab` (in
- * `lib/billing-gates`) holds, then Analytics. Pure so the tab set is
+ * `lib/billing-gates`) holds, then Activity, Usage, and gated Time worked. Pure so the tab set is
  * unit-tested without React; the view maps each id to its component + `t()`
  * label.
  *
@@ -49,12 +55,17 @@ export const ORG_TAB_IDS: readonly OrgTabId[] = [
  * space (`isPersonalSpace`), so "org spaces only" is already enforced one level
  * up and a second branch here would be dead code.
  */
-export function orgTabIds(gates: { billing: boolean }): readonly OrgTabId[] {
+export function orgTabIds(gates: {
+  billing: boolean;
+  timeWorked: boolean;
+}): readonly OrgTabId[] {
   return [
     "companyContext",
     "people",
     ...(gates.billing ? (["billing"] as const) : []),
-    "analytics",
+    "activity",
+    "usage",
+    ...(gates.timeWorked ? (["timeWorked"] as const) : []),
   ];
 }
 
@@ -80,44 +91,14 @@ export function canSeeOrganization(
   caps: Capabilities | null | undefined,
   activeSpaceIsTeam: boolean,
 ): boolean {
-  if (isPersonalSpace(caps, activeSpaceIsTeam)) return false;
+  if (isPersonalSpace(caps, activeSpaceIsTeam)) return true;
   return canSeeMembers(caps);
 }
 
-/**
- * The three questions Analytics answers — its LENSES, one level under the
- * section. Activity is the lead lens: the one the section opens on, and the
- * one its identity lozenge stands for on the drilled-in header.
- */
-export type AnalyticsLens = "activity" | "usage" | "timeWorked";
-
-/** The lead lens — what Analytics shows on arrival. */
-export const DEFAULT_ANALYTICS_LENS: AnalyticsLens = "activity";
-
-/**
- * The lenses this deployment offers, in display order. Time worked exists only
- * where the deployment meters compute (`capabilities.computeUsage`): omitting
- * the lens is what keeps `ComputeSection`'s query from firing elsewhere, and
- * it means the lens can never open empty.
- */
-export function analyticsLenses(
+export function canSeeTimeWorked(
   caps: Capabilities | null | undefined,
-): readonly AnalyticsLens[] {
-  return showComputeSection(caps)
-    ? ["activity", "usage", "timeWorked"]
-    : ["activity", "usage"];
-}
-
-/**
- * The lens actually on screen. Capabilities can resolve (or a space can
- * change) under a selected lens; fall back to the lead lens rather than
- * render nothing.
- */
-export function resolveAnalyticsLens(
-  lens: AnalyticsLens,
-  lenses: readonly AnalyticsLens[],
-): AnalyticsLens {
-  return lenses.includes(lens) ? lens : DEFAULT_ANALYTICS_LENS;
+): boolean {
+  return showComputeSection(caps);
 }
 
 /** How many audit entries one page pulls (contract §5: host clamps to ≤ 200). */

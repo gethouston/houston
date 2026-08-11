@@ -57,10 +57,10 @@ export interface SectionFold {
  *
  * Two rows this band used to carry are gone. **Permissions** listed the space's
  * agents so an admin could open one's settings page, which is what every team's
- * "Manage agents" section already does, per team, in every deployment — one
+ * focused agent screen already does, per team, in every deployment — one
  * door onto agent policy, discovered through the team that owns the agent,
- * instead of two that had to be kept in agreement. **Time worked** is a lens
- * inside Admin > Analytics now, beside the activity feed and the usage bars it
+ * instead of two that had to be kept in agreement. **Time worked** is a section
+ * inside Admin, beside the activity feed and the usage bars it
  * was always read against.
  *
  * **"Guide me" is not here either**: it never pointed at a screen, so a
@@ -108,7 +108,7 @@ export function buildSidebarNavItems(args: {
       // Settings opens the index via `openSettings(null)`). Admin's home is
       // its landing section, pinned through the same one-shot store the
       // Billing deep link uses — which also backs out of a drilled section
-      // like Analytics when the screen is already open.
+      // like Billing when the screen is already open.
       useOrgNav.getState().requestTab(DEFAULT_ORG_TAB);
       setViewMode(ORGANIZATION_VIEW_ID);
     },

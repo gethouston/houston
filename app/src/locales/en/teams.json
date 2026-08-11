@@ -3,16 +3,16 @@
     "title": "Agent settings",
     "rows": {
       "knowledge": {
-        "title": "Memory"
+        "title": "Learnings"
       },
       "model": {
-        "title": "AI models"
+        "title": "AI Models"
       },
       "people": {
-        "title": "People with access"
+        "title": "People"
       },
       "integrations": {
-        "title": "Apps"
+        "title": "Integrations"
       }
     },
     "values": {
@@ -26,7 +26,7 @@
     "models": {
       "question": "Which AI models can this agent use?",
       "policyHelper": "You decide which models this agent can run on. People with access pick their own model from the ones you allow.",
-      "anyLabel": "Any model",
+      "anyLabel": "Allow all models",
       "anyDesc": "People with access can run this agent on any available model.",
       "pickedLabel": "Only models you pick",
       "pickedDesc": "People with access can only use the models you allow below.",
@@ -46,6 +46,11 @@
     },
     "integrations": {
       "unavailable": "Integration limits are not available here."
+    },
+    "heroes": {
+      "people": "Allowed People",
+      "integrations": "Allowed Integrations",
+      "models": "Allowed AI Models"
     }
   },
   "agentSettings": {
@@ -55,7 +60,6 @@
       "permissions": "Permissions"
     },
     "people": {
-      "question": "Who can use this agent?",
       "helper": "Pick whether everyone on your team can use this agent, or only the people you choose.",
       "anyLabel": "Everyone on your team",
       "anyDesc": "Every teammate can use this agent, including people who join later.",
@@ -147,28 +151,26 @@
   },
   "integrations": {
     "allowlist": {
-      "question": "Which apps can this agent use?",
-      "policyHelper": "You decide which apps this agent is allowed to use. People with access still connect their own accounts for each app you allow.",
-      "anyLabel": "Any app",
-      "anyDesc": "People with access can connect this agent to any of 1000+ apps.",
-      "pickedLabel": "Only apps you pick",
-      "pickedDesc": "People with access can only use the apps you allow below.",
+      "question": "Which integrations can this agent use?",
+      "policyHelper": "You decide which integrations this agent is allowed to use. People with access still connect their own accounts for each integration you allow.",
+      "anyLabel": "Allow all integrations",
+      "anyDesc": "People with access can connect this agent to any of 1000+ integrations.",
+      "pickedLabel": "Only integrations you pick",
+      "pickedDesc": "People with access can only use the integrations you allow below.",
       "allowApp": "Allow {{name}}",
-      "allowedHeading": "Allowed apps",
-      "allowedEmpty": "No apps picked yet. Add apps below.",
-      "allowedEmptyCategory": "No allowed apps in this category yet.",
-      "addHeading": "Add apps",
-      "readOnlyNote": "Someone who manages this agent can change which apps it can use."
+      "allowedHeading": "Allowed integrations",
+      "allowedEmpty": "No integrations picked yet. Add integrations below.",
+      "allowedEmptyCategory": "No allowed integrations in this category yet.",
+      "addHeading": "Add integrations",
+      "readOnlyNote": "Someone who manages this agent can change which integrations it can use."
     }
   },
   "org": {
     "title": "Admin",
     "tabs": {
       "label": "Admin sections",
-      "lensLabel": "Analytics views",
       "people": "People",
       "billing": "Billing",
-      "analytics": "Analytics",
       "companyContext": "Company context",
       "activity": "Activity",
       "usage": "Usage",
@@ -200,7 +202,6 @@
     "title": "Share {{name}}",
     "subtitle": "Choose who can use this agent.",
     "button": "Share",
-    "viewButton": "Who has access",
     "viewTitle": "Who has access to {{name}}",
     "viewSubtitle": "These people can use this shared agent.",
     "sectionTitle": "Share this agent",
@@ -236,6 +237,11 @@
     }
   },
   "people": {
+    "createOrganization": {
+      "title": "Create an organization to invite people",
+      "body": "To invite other people, create an organization.",
+      "cta": "Create organization"
+    },
     "adminNotice": "You can view your team. Only the owner can add or remove people.",
     "add": {
       "title": "Add someone",
@@ -474,13 +480,17 @@
       "missionControl": "Tasks",
       "routines": "Routines",
       "files": "Files",
+      "context": "Context",
+      "people": "People",
       "label": "Team sections"
+    },
+    "agentTabs": {
+      "settings": "Agent settings"
     },
     "manage": {
       "identity": "{{name}} settings",
-      "agents": "Edit agents",
       "tabs": {
-        "context": "Team context",
+        "context": "Context",
         "agents": "Agents",
         "people": "People"
       }
@@ -498,10 +508,6 @@
       "cancel": "Cancel"
     },
     "agentMenu": {
-      "rename": "Rename agent",
-      "renameTitle": "Rename {{name}}",
-      "renameLabel": "Agent name",
-      "renameConfirm": "Save",
       "delete": "Delete agent"
     },
     "context": {
@@ -515,7 +521,7 @@
         "workspaceBody": "Create your first agent and its tasks will show up here.",
         "createAgent": "Create agent",
         "teamTitle": "No agents in this team yet",
-        "teamBody": "Create an agent here or move one into {{name}} from another team's Manage agents page."
+        "teamBody": "Create an agent here or use an agent's sidebar menu to move it into {{name}}."
       }
     },
     "routines": {
@@ -525,7 +531,7 @@
         "workspaceBody": "Create your first agent and everything it does on its own will show up here.",
         "createAgent": "Create agent",
         "teamTitle": "No agents in this team yet",
-        "teamBody": "Create an agent here or move one into {{name}} from another team's Manage agents page."
+        "teamBody": "Create an agent here or use an agent's sidebar menu to move it into {{name}}."
       },
       "noRoutines": {
         "title": "Nothing runs on its own yet",
@@ -546,17 +552,10 @@
         "workspaceBody": "Create your first agent and the files it keeps will show up here.",
         "createAgent": "Create agent",
         "teamTitle": "No agents in this team yet",
-        "teamBody": "Create an agent here or move one into {{name}} from another team's Manage agents page."
+        "teamBody": "Create an agent here or use an agent's sidebar menu to move it into {{name}}."
       }
     },
     "settings": {
-      "subtitle": "The agents in this team. Open one to manage who can use it and what it can use.",
-      "empty": {
-        "workspaceTitle": "No agents yet",
-        "workspaceBody": "Create one and it will show up here.",
-        "teamTitle": "No agents in this team yet",
-        "teamBody": "Create an agent here or move one from another team's Manage agents page."
-      },
       "navUnavailable": "We couldn't open this agent's settings yet",
       "navUnavailableBody": "This agent's team is still loading. Wait a moment and try again. If it keeps happening, report it as a bug."
     }

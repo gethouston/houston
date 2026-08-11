@@ -16,15 +16,15 @@ import {
 } from "./support/sidebar-layout";
 import {
   expectTeamSections,
-  manageTab,
-  openManagePane,
+  openAgentSettings,
+  openTeamSection,
   rail,
   screen,
 } from "./support/team-nav";
 
 /**
  * SERVER-BACKED agent teams (C13), driven against the real rail and the real
- * "Manage agents" screen.
+ * focused agent screen.
  *
  * A team stops being one user's sidebar grouping the moment the gateway
  * advertises `agentTeams`: it is a named group of agents AND people inside a
@@ -40,7 +40,7 @@ import {
  *   - creating a team broadcasts the name the user TYPED, never a placeholder;
  *   - moving an agent between teams is a write, so it can be refused, and a
  *     refusal must undo itself visibly and explain itself calmly;
- *   - "Manage agents" grows the two surfaces a shared team has and a private
+ *   - "focused agent screen" grows the two surfaces a shared team has and a private
  *     grouping does not: its people, and a per-team configure gate that no
  *     longer follows the caller's org role.
  *
@@ -166,22 +166,6 @@ async function openTeamOfAgent(page: Page, agentName: string): Promise<void> {
   await rail(page).getByText(agentName, { exact: true }).click();
   const closePanel = page.getByRole("button", { name: "Close panel" });
   if (await closePanel.isVisible()) await closePanel.click();
-}
-
-/** Open a team's Manage agents: its block header in the rail (the rail names
- *  TEAMS), then the tab on the team's own screen (the screen names its
- *  SECTIONS). A team with no agents is reachable only this way. */
-async function openManageAgents(page: Page, teamId?: string): Promise<void> {
-  const namedHeader = teamId ? groupHeader(page, teamId) : null;
-  const header = namedHeader
-    ? (await namedHeader.count()) > 0
-      ? namedHeader
-      : defaultHeader(page)
-    : rail(page).locator(
-        "[data-sidebar-group-header]:has([aria-current='page']), [data-sidebar-default-header]:has([aria-current='page'])",
-      );
-  await openBlockMenu(header);
-  await page.locator("[data-group-settings]").click();
 }
 
 /** One team's block header, by server team id. */
@@ -423,15 +407,9 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
   await openShell(page);
   await expect(blockAgentRows(page, OPS_TEAM)).toHaveCount(0);
 
-  // The EXPLICIT action that replaced cross-team drag: an agent's row in its
-  // team's Manage agents list carries the full agent menu, and "Move to team"
-  // opens a submenu of the OTHER teams plus a confirmation that says the
-  // consequence before anything is sent.
-  await openManageAgents(page);
-  await openManagePane(page, "agents");
-  await screen(page)
-    .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
-    .click();
+  // The sidebar's agent menu owns placement actions. "Move to team" opens a
+  // submenu of the OTHER teams plus a confirmation before anything is sent.
+  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
   await page.getByRole("menuitem", { name: "Move to team" }).hover();
   await page.getByRole("menuitem", { name: "Operations" }).click();
   const confirm = page.getByRole("alertdialog");
@@ -467,9 +445,7 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
     });
   });
 
-  await screen(page)
-    .getByRole("button", { name: "More actions for Ops Bot" })
-    .click();
+  await page.locator(`[data-agent-menu="${OPS_AGENT}"]`).click();
   await page.getByRole("menuitem", { name: "Move to team" }).hover();
   await page.getByRole("menuitem", { name: "Operations" }).click();
   await page
@@ -514,11 +490,7 @@ test("Move to team never offers the team the agent is already in", async ({
     ],
   });
   await openShell(page);
-  await openManageAgents(page);
-  await openManagePane(page, "agents");
-  await screen(page)
-    .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
-    .click();
+  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
   await page.getByRole("menuitem", { name: "Move to team" }).hover();
   await expect(
     page.getByRole("menuitem", { name: "Operations" }),
@@ -526,29 +498,20 @@ test("Move to team never offers the team the agent is already in", async ({
   await expect(page.getByRole("menuitem", { name: "Acme" })).toHaveCount(0);
 });
 
-test("an agent's row carries the whole agent menu, not just the move", async ({
-  page,
-}) => {
-  // The rail's agent rows dropped their "..." menu — a navigation row is no
-  // place for a destructive act — so the roster took it over whole.
+test("the sidebar carries the whole agent menu", async ({ page }) => {
+  // Identity, configuration, placement, and deletion live in one sidebar menu.
   await armServerTeams(page, {
     caps: OWNER_CAPS,
     agents: [HOUSTON],
     teams: [{ id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 }],
   });
   await openShell(page);
-  await openManageAgents(page);
-  await openManagePane(page, "agents");
-  await screen(page)
-    .getByRole("button", { name: `More actions for ${SEED_AGENT_NAME}` })
-    .click();
+  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
 
   await expect(
-    page.getByRole("menuitem", { name: "Rename agent" }),
+    page.getByRole("menuitem", { name: "Change color & name" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "Change color" }),
-  ).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Configure" })).toBeVisible();
   await expect(
     page.getByRole("menuitem", { name: "Delete agent" }),
   ).toBeVisible();
@@ -580,12 +543,12 @@ test("Members names the team's people, and its owner toggle writes", async ({
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openManageAgents(page, OPS_TEAM);
-  await openManagePane(page, "people");
+  await openTeamOfAgent(page, "Ops Bot");
+  await openTeamSection(page, "People");
   await expect(
     screen(page).getByRole("heading", {
       level: 1,
-      name: "Operations settings",
+      name: "Operations",
     }),
   ).toBeVisible();
 
@@ -645,10 +608,10 @@ test("the default team's member list is read-only and says why", async ({
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openManageAgents(page, ACME_TEAM);
-  await openManagePane(page, "people");
+  await openTeamOfAgent(page, SEED_AGENT_NAME);
+  await openTeamSection(page, "People");
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Acme settings" }),
+    screen(page).getByRole("heading", { level: 1, name: "Acme" }),
   ).toBeVisible();
   await expect(
     screen(page).getByRole("heading", { name: /^People/ }),
@@ -701,12 +664,12 @@ test("a team's shared context tab saves", async ({ page }) => {
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openManageAgents(page, OPS_TEAM);
-  await openManagePane(page, "context");
+  await openTeamOfAgent(page, "Ops Bot");
+  await openTeamSection(page, "Context");
   await expect(
     screen(page).getByRole("heading", {
       level: 1,
-      name: "Operations settings",
+      name: "Operations",
     }),
   ).toBeVisible();
 
@@ -774,8 +737,8 @@ test("a team's context is READ-ONLY for someone who does not own the team", asyn
   const calls = recordGatewayCalls(page);
   await openShell(page);
 
-  await openManageAgents(page, OPS_TEAM);
-  await openManagePane(page, "context");
+  await openTeamOfAgent(page, SEED_AGENT_NAME);
+  await openTeamSection(page, "Context");
   const box = screen(page).getByTestId("team-context-input");
   await expect(box).toHaveText("We ship on Fridays.");
   await expect(box).toHaveAttribute("contenteditable", "false");
@@ -795,7 +758,7 @@ test("the default team renames from the rail, and that is the ONLY thing its men
   // it where they read it. Everything else stays off — the wire answers
   // `400 default_team` to a delete, and everyone is in it so there is nothing
   // to leave. The team's shared context is not here either: it lives on the
-  // team's Manage agents page now, on every backend.
+  // team's focused agent screen now, on every backend.
   await armServerTeams(page, {
     caps: OWNER_CAPS,
     agents: [HOUSTON],
@@ -921,20 +884,21 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   ).toBeVisible();
   await page.keyboard.press("Escape");
 
-  // Manage agents keeps the agents. Team renaming remains in the rail, and a
-  // personal space has no Members tab.
-  await openManageAgents(page, OPS_TEAM);
+  // The team keeps its identity title. Personal spaces expose an invitation
+  // empty state on People, and Context remains independently usable.
+  await openTeamOfAgent(page, "Ops Bot");
   await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: "Operations settings",
-    }),
+    screen(page).getByRole("heading", { level: 1, name: "Ops Bot" }),
   ).toBeVisible();
   await expect(screen(page).getByLabel("Team name")).toHaveCount(0);
-  await openManagePane(page, "agents");
-  await expect(screen(page).getByText("Ops Bot")).toBeVisible();
-  await expect(manageTab(page, "people")).toHaveCount(0);
-  await openManagePane(page, "context");
+  await openTeamSection(page, "People");
+  await expect(
+    screen(page).getByRole("heading", { name: "Invite people" }),
+  ).toBeVisible();
+  await expect(
+    screen(page).getByRole("button", { name: "Create organization" }),
+  ).toBeVisible();
+  await openTeamSection(page, "Context");
   await expect(screen(page).getByTestId("team-context-input")).toBeVisible();
   await expect(
     screen(page).getByRole("button", { name: "Leave team" }),
@@ -943,7 +907,7 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   expect(calls.filter((c) => c.path.endsWith("/members"))).toHaveLength(0);
 });
 
-test("a joined member who manages nothing gets no Manage agents row; managing one agent gives it back", async ({
+test("a joined member gets agent settings only for an agent they manage", async ({
   page,
 }) => {
   const fleet = (access: "manager" | "user"): AgentSeed[] => [
@@ -991,16 +955,17 @@ test("a joined member who manages nothing gets no Manage agents row; managing on
   await openTeamOfAgent(page, SEED_AGENT_NAME);
   await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
 
-  // And the tab goes somewhere: the row can never promise a section the screen
-  // refuses to render (both read `visibleTeamSectionsForTeam` for this team).
+  // The focused agent screen adds its settings lozenge for that agent only.
   await openTeamOfAgent(page, "Ops Bot");
-  await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
-  await openManageAgents(page, OPS_TEAM);
+  await expectTeamSections(page, [
+    "Tasks",
+    "Routines",
+    "Files",
+    "Agent settings",
+  ]);
+  await openAgentSettings(page, "Ops Bot");
   await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: "Operations settings",
-    }),
+    screen(page).locator("[data-agent-section-tab]").first(),
   ).toBeVisible();
 });
 

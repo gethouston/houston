@@ -5,8 +5,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
  *
  * The per-agent tab strip is gone: an agent's WORK is a section of its team
  * (Tasks / Routines / Files, reached from the TEAM SCREEN's own tab row) and an
- * agent's CONFIGURATION is the canonical settings page, reached through the
- * team's "Manage agents" tab — the ONE door onto it, in every deployment.
+ * agent's CONFIGURATION is reached from the focused agent screen.
  * These helpers are the one place those two paths are spelled out, so a spec
  * says what it wants ("open Files", "open this agent's Skills") instead of
  * re-deriving the route.
@@ -107,48 +106,23 @@ export function litRows(rows: Locator): Locator {
  * the chrome. Specs still ASK for "Tasks", because that is what the section is
  * called; the map below is the one place that knows it is drawn as the team.
  */
-export type TeamSection = "Tasks" | "Routines" | "Files";
+export type TeamSection =
+  | "Tasks"
+  | "Routines"
+  | "Files"
+  | "Context"
+  | "People"
+  | "Agent settings";
 
 /** Section name -> the `data-team-section-tab` value its lozenge carries. */
 export const TEAM_SECTION_TAB_IDS: Readonly<Record<TeamSection, string>> = {
   Tasks: "mission-control",
   Routines: "routines",
   Files: "files",
+  Context: "context",
+  People: "people",
+  "Agent settings": "settings",
 };
-
-export async function openManageAgents(
-  page: Page,
-  teamId?: string,
-): Promise<void> {
-  const namedHeader = teamId
-    ? rail(page).locator(`[data-sidebar-group-header='${teamId}']`)
-    : null;
-  const header = namedHeader
-    ? (await namedHeader.count()) > 0
-      ? namedHeader
-      : rail(page).locator("[data-sidebar-default-header]")
-    : rail(page).locator(
-        "[data-sidebar-group-header]:has([aria-current='page']), [data-sidebar-default-header]:has([aria-current='page'])",
-      );
-  await header.getByRole("button", { name: "Group options" }).click();
-  await page.locator("[data-group-settings]").click();
-}
-
-export type ManagePane = "agents" | "context" | "people";
-
-export function manageTab(page: Page, pane: ManagePane): Locator {
-  return screen(page).locator(`[data-manage-tab='${pane}']`);
-}
-
-export async function openManagePane(
-  page: Page,
-  pane: ManagePane,
-): Promise<void> {
-  await manageTab(page, pane).click();
-  await expect(
-    screen(page).locator(`[data-manage-pane='${pane}']`),
-  ).toBeVisible();
-}
 
 export async function openArchivedTasks(page: Page): Promise<void> {
   await screen(page).getByRole("button", { name: "Archived" }).click();
@@ -315,18 +289,18 @@ export async function openTeamSection(
 /** The labels of the agent settings lozenges. */
 export type AgentSettingsSection =
   | "Job description"
-  | "Memory"
-  | "People with access"
-  | "Apps"
-  | "AI models"
+  | "Learnings"
+  | "People"
+  | "Integrations"
+  | "AI Models"
   | "Skills";
 
 const AGENT_SECTION_IDS: Readonly<Record<AgentSettingsSection, string>> = {
   "Job description": "job-description",
-  Memory: "learnings",
-  "People with access": "people",
-  Apps: "integrations",
-  "AI models": "models",
+  Learnings: "learnings",
+  People: "people",
+  Integrations: "integrations",
+  "AI Models": "models",
   Skills: "skills",
 };
 
@@ -340,23 +314,33 @@ export function agentSectionTab(
 }
 
 /**
- * Open ONE agent's settings page: the team's Team settings screen, then the
- * agent's row. `section` picks a top lozenge once the page is up; omit it to
- * land on the page's default (the first section, Job description).
+ * Open one agent's focused screen through its rail row.
  */
+export async function openAgentScreen(
+  page: Page,
+  agentName: string,
+): Promise<void> {
+  await rail(page)
+    .getByRole("button", {
+      name: new RegExp(`^${escapeRegExp(agentName)}$`),
+    })
+    .click();
+  await expect(
+    screen(page).getByRole("heading", { name: agentName }),
+  ).toBeVisible();
+}
+
+/** Open one focused agent's settings, optionally drilled to a section. */
 export async function openAgentSettings(
   page: Page,
   agentName: string,
-  section?: AgentSettingsSection,
+  section: AgentSettingsSection = "Job description",
 ): Promise<void> {
-  await openManageAgents(page);
-  // The screen lands on Team context; the agent rows live on the Agents pane.
-  await openManagePane(page, "agents");
-  await screen(page)
-    .getByRole("button", { name: new RegExp(escapeRegExp(agentName)) })
-    .first()
-    .click();
-  if (section) await openAgentSettingsSection(page, section);
+  await openAgentScreen(page, agentName);
+  await openTeamSection(page, "Agent settings");
+  if (section !== "Job description") {
+    await openAgentSettingsSection(page, section);
+  }
 }
 
 /** Pick a section on an already-open agent settings page. */

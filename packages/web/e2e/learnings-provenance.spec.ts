@@ -18,7 +18,7 @@ import { openAgentSettings } from "./support/team-nav";
 /** The agent settings page → its Memory section. */
 async function openMemory(page: Page) {
   await page.goto("/");
-  await openAgentSettings(page, "Houston", "Memory");
+  await openAgentSettings(page, "Houston", "Learnings");
 }
 
 // NOTE: no test title here may END in the word "from" — `check:boundaries`

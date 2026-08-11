@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
  * never drift between them. It also keeps each level to exactly one back
  * affordance: a screen nested inside another renders its own bar only for its
  * own depth. (Admin has no drill-in anymore: its sections are header-cluster
- * siblings, and its drilled Analytics level uses the header's own
+ * siblings, and drilled inner levels use the header's own
  * `PageHeaderBackChip`, not this bar.)
  *
  * `onBack` returns to the level above (the Settings index, the team's agent

@@ -3,9 +3,9 @@ import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { createTeam } from "./support/sidebar-create";
 import {
+  openAgentScreen,
+  openAgentSettings,
   openArchivedTasks,
-  openManageAgents,
-  openManagePane,
   returnToActiveTasks,
   type TeamSection,
   teamTab,
@@ -27,7 +27,7 @@ import {
  *   - the team-wide pin is the BOARD's alone: the rail sets it, the board
  *     shows it, the team's lozenge names it — and no other section reads it
  *     (Routines and Archived carry filters of their own);
- *   - Manage agents lists the team's agents and drills into the canonical agent
+ *   - focused agent screens the team's agents and drills into the canonical agent
  *     settings page, and a plain member never gets the tab at all.
  */
 
@@ -164,7 +164,7 @@ test("the lozenge cluster is the only section switch, and it lights the open one
   // the screen, and the cluster IS `visibleTeamSectionsForTeam` for this team
   // — the team's own lozenge standing in for the board.
   await expect(rail(page).locator("[data-sidebar-section-row]")).toHaveCount(0);
-  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(5);
+  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(4);
 
   // The lozenge that is open says so, and exactly one does.
   await sectionTab(page, "Routines").click();
@@ -175,6 +175,40 @@ test("the lozenge cluster is the only section switch, and it lights the open one
   await expect(
     screen(page).locator("[data-team-section-tab][aria-current='page']"),
   ).toHaveCount(1);
+});
+
+test("an agent row opens its own screen and managers can enter and leave Agent settings", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, MEMBER_CAPS);
+  await openShell(page);
+  await rail(page).getByText("Houston", { exact: true }).click();
+  await expect(screen(page).locator("[data-agent-screen]")).toBeVisible();
+  await expect(
+    screen(page).getByRole("heading", {
+      level: 1,
+      name: "Houston",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(3);
+
+  await armCapabilities(request, OWNER_CAPS);
+  await page.reload();
+  await rail(page).getByText("Houston", { exact: true }).click();
+  await expect(sectionTab(page, "Agent settings")).toBeVisible();
+  await sectionTab(page, "Agent settings").click();
+  await expect(screen(page).locator("[data-agent-section-tab]")).toHaveCount(6);
+  await expect(
+    screen(page).locator("[data-agent-settings-back]"),
+  ).toContainText("Houston");
+  await screen(page).locator("[data-agent-settings-back]").click();
+  await expect(screen(page).locator("[data-agent-screen]")).toBeVisible();
+  await expect(sectionTab(page, "Tasks")).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
 test("an agent row filters the board, and the team's lozenge undoes it", async ({
@@ -212,7 +246,7 @@ test("an agent row filters the board, and the team's lozenge undoes it", async (
   await expect(teamTitle(page, workspace)).toBeVisible();
 });
 
-test("Manage agents lists the team's agents and drills into the agent settings page", async ({
+test("an agent row opens its focused screen and settings page", async ({
   page,
   request,
 }) => {
@@ -221,32 +255,21 @@ test("Manage agents lists the team's agents and drills into the agent settings p
   await openShell(page);
   const workspace = await workspaceName(page);
 
-  await openManageAgents(page);
-  // ONE title on the page: row 1's. The section's own page header collapsed
-  // into it, so the team's name is never printed twice.
-  await expect(teamTitle(page, workspace)).toBeVisible();
-  await expect(screen(page).getByRole("heading", { level: 1 })).toHaveCount(1);
-  await openManagePane(page, "agents");
-  await expect(
-    screen(page).getByRole("button", { name: "Open Kai" }),
-  ).toBeVisible();
-  await expect(
-    screen(page).getByRole("button", { name: "Open Houston" }),
-  ).toBeVisible();
-
-  // Drilling in lands on the ONE canonical agent settings page — this is its
-  // only door, in every deployment — under a back chip naming Team settings.
-  await screen(page).getByRole("button", { name: "Open Kai" }).click();
+  await openAgentScreen(page, "Kai");
+  await expect(teamTitle(page, workspace)).toHaveCount(0);
+  await openAgentSettings(page, "Kai");
   await expect(
     screen(page).locator("[data-agent-section-tab='people']"),
   ).toBeVisible();
+  // Identity lives on the back chip now; the first lens carries the heading.
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Kai" }),
+    screen(page).locator("[data-agent-settings-back]"),
+  ).toContainText("Kai");
+  await expect(
+    screen(page).getByRole("heading", { name: "Job description" }),
   ).toBeVisible();
   await screen(page).locator("[data-agent-settings-back]").click();
-  await expect(
-    screen(page).getByRole("button", { name: "Open Kai" }),
-  ).toBeVisible();
+  await expect(screen(page).getByRole("button", { name: "Kai" })).toBeVisible();
 });
 
 test("the archive toggle round-trips inside Tasks", async ({ page }) => {
@@ -303,7 +326,6 @@ test("a plain member gets work tabs and loses all manager tabs", async ({
   // three manager tabs are gated together by the visible-sections list.
   await expect(sectionTab(page, "Routines")).toBeVisible();
   await expect(sectionTab(page, "Files")).toBeVisible();
-  await expect(page.locator("[data-group-settings]")).toHaveCount(0);
   await expect(page.locator("[data-agent-menu]")).toHaveCount(0);
   await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(3);
 
@@ -328,7 +350,6 @@ test("a plain member lands on Tasks, with the team named once", async ({
   await armCapabilities(request, MEMBER_CAPS);
   await openShell(page);
 
-  await expect(page.locator("[data-group-settings]")).toHaveCount(0);
   await sectionTab(page, "Tasks").click();
   await expect(sectionTab(page, "Tasks")).toHaveAttribute(
     "aria-current",

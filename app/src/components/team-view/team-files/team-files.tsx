@@ -13,9 +13,17 @@ import { initialExpandedAgents, toggleExpandedAgent } from "./team-files-model";
 import { type TeamFileActions, TeamFilesToolbar } from "./team-files-toolbar";
 
 /** One flat team list. Agent accordions are filesystem boundaries, not doors. */
-export function TeamFiles({ team }: { team: TeamView }) {
+export function TeamFiles({
+  team,
+  agentFocusId,
+}: {
+  team: TeamView;
+  agentFocusId?: string;
+}) {
   const { t: agentT } = useTranslation("agents");
-  const agents = team.agents;
+  const agents = agentFocusId
+    ? team.agents.filter((agent) => agent.id === agentFocusId)
+    : team.agents;
   const [expanded, setExpanded] = useState(() => initialExpandedAgents(agents));
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{

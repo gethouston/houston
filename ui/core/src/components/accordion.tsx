@@ -26,20 +26,31 @@ function AccordionItem({
 function AccordionTrigger({
   className,
   children,
+  indicator = "chevron",
   ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
+}: React.ComponentProps<typeof AccordionPrimitive.Trigger> & {
+  /** "none" for triggers that draw their OWN state mark (e.g. a disclosure
+   *  triangle beside the label) instead of the trailing chevron. */
+  indicator?: "chevron" | "none";
+}) {
   return (
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-focus focus-visible:ring-[3px] focus-visible:ring-focus/50 disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180",
+          "flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-focus focus-visible:ring-[3px] focus-visible:ring-focus/50 disabled:pointer-events-none disabled:opacity-50",
+          // The rotate rule targets ANY direct svg child, so it must ride with
+          // the built-in chevron: a host drawing its own state mark (a
+          // disclosure triangle) owns that mark's rotation itself.
+          indicator === "chevron" && "[&[data-state=open]>svg]:rotate-180",
           className,
         )}
         {...props}
       >
         {children}
-        <ChevronDownIcon className="pointer-events-none size-4 shrink-0 translate-y-0.5 text-ink-muted transition-transform duration-200" />
+        {indicator === "chevron" && (
+          <ChevronDownIcon className="pointer-events-none size-4 shrink-0 translate-y-0.5 text-ink-muted transition-transform duration-200" />
+        )}
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   );

@@ -48,9 +48,9 @@ export const SECTION_GROUP: Record<AgentSettingsSection, AgentSettingsGroupId> =
   };
 
 /**
- * The Context sections: the agent's job description and its learnings
- * ("Memory"). Unconditional — every agent has both, and a non-manager reads
- * them read-only.
+ * The Context sections: the agent's job description and its learnings.
+ * Unconditional — every agent has both, and a non-manager reads them
+ * read-only.
  */
 export function contextSections(): AgentSettingsSection[] {
   return ["job-description", "learnings"];
@@ -74,14 +74,20 @@ export function agentAccessSections(
 }
 
 /**
- * The full settings-page rail, group by group: Context, then the access
- * sections plus Skills, which has no org gate at all (it is the per-agent
- * Skills surface every deployment ships).
+ * The full settings-page cluster: what the agent IS (job description), what it
+ * can DO (skills), what it has LEARNED, then who may reach it (the access
+ * sections). Skills has no org gate at all (it is the per-agent Skills surface
+ * every deployment ships).
  */
 export function agentSettingsSections(
   caps: Capabilities | null | undefined,
 ): AgentSettingsSection[] {
-  return [...contextSections(), ...agentAccessSections(caps), "skills"];
+  return [
+    "job-description",
+    "skills",
+    "learnings",
+    ...agentAccessSections(caps),
+  ];
 }
 
 export const SECTION_TITLES = {

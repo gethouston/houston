@@ -17,8 +17,6 @@
 import type { Agent, Capabilities } from "@houston-ai/engine-client";
 import { isAgentManager } from "./agent-access.ts";
 import {
-  canConfigureTeam,
-  canSeeTeamSettings,
   type TeamSectionId,
   type TeamView,
   teamOfAgent,
@@ -42,6 +40,7 @@ type AgentDestination =
       section: TeamSectionId;
       /** The agent pin the team sections narrow by (`null` = the whole team). */
       agentFilter: string | null;
+      agentFocus: true;
     }
   | { view: "none" };
 
@@ -60,7 +59,7 @@ const TARGET_SECTION: Record<AgentNavTarget, TeamSectionId> = {
  * that narrow by it (Mission Control, Routines, Files). Team SETTINGS lists the
  * whole team whatever the pin says (`sectionHonorsAgentPin`), so it carries no
  * filter; the agent it should DRILL INTO travels separately, as the one-shot
- * request `TeamSettings` consumes.
+ * request the focused agent screen pane consumes.
  */
 export function agentDestination(
   teams: TeamView[],
@@ -73,7 +72,8 @@ export function agentDestination(
     view: "team",
     teamId: team.id,
     section: TARGET_SECTION[target],
-    agentFilter: target === "settings" ? null : agentId,
+    agentFilter: agentId,
+    agentFocus: true,
   };
 }
 
@@ -94,12 +94,6 @@ export function agentDestination(
 export function canOpenAgentSettings(
   caps: Capabilities | null | undefined,
   agent: Pick<Agent, "access">,
-  /** The agent's team, when the caller has it. On a server-teams host an
-   *  explicit team owner may configure a team's agents without being an org
-   *  admin, which only `visibleTeamSectionsForTeam` knows. Omitted -> the
-   *  org-wide answer, which is never WIDER than the per-team one. */
-  team?: TeamView | null,
 ): boolean {
-  if (team) return canConfigureTeam(caps ?? null, team);
-  return canSeeTeamSettings(caps ?? null) || isAgentManager(caps, agent);
+  return isAgentManager(caps, agent);
 }

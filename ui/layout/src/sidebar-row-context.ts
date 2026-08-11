@@ -5,7 +5,7 @@ import type { SidebarLabels } from "./sidebar";
  * what a click does, and the host's words.
  *
  * There is no rename / delete / menu plumbing here any more. An agent is edited
- * on its team's Manage agents page, so the rail neither offers those actions
+ * on its focused agent screen, so the rail neither offers those actions
  * nor carries the state for them — no editing id, no draft value, no per-row
  * key handler. Renaming a TEAM is untouched: that lives on the block header,
  * which owns its own inline-edit session.

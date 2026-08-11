@@ -1,7 +1,10 @@
 {
   "sidebar": {
-    "teamSettings": "Team settings",
-    "agentMenu": { "editAgent": "Edit agent" },
+    "agentMenu": {
+      "identity": "Change color & name",
+      "identityTitle": "Change color & name for {{name}}",
+      "configure": "Configure"
+    },
     "aboutMe": "About me",
     "addAgent": "New agent",
     "agentStore": "Agent Store",

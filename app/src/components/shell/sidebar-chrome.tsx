@@ -22,7 +22,7 @@ export type SidebarChromeT = TFunction<
 /**
  * Localized `AppSidebar` labels (team actions, and the words the list itself
  * uses). An agent row has no actions to name any more: it is renamed,
- * recoloured, moved and deleted on its team's Manage agents page. The
+ * recoloured, moved and deleted on its focused agent screen. The
  * trailing block is named after the workspace and passed as `defaultGroup`, so
  * there is no anonymous "ungrouped" header to label — the library dropped that
  * branch and its untranslated string with it.
@@ -37,7 +37,6 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
     // true, which is a server-teams host talking about a team you joined.
     leaveGroup: t("shell:sidebar.teams.leave"),
     groupMenu: t("shell:sidebar.teams.menu"),
-    groupSettings: t("shell:sidebar.teamSettings"),
   };
 }
 

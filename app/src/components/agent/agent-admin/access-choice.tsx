@@ -23,8 +23,8 @@ interface AccessChoiceProps {
 
 /**
  * Accessible two-option choice (radio semantics) for "Any X" vs "Only X you
- * pick", rendered as a segmented control: a pill track with a single elevated
- * thumb that slides (framer-motion shared layout) to the selected segment, and
+ * pick", rendered as a segmented control: a pill track with a primary thumb
+ * that slides (framer-motion shared layout) to the selected segment, and
  * the selected option's description cross-fading below. Keeps full radio
  * semantics: a labelled `role="radiogroup"` of `role="radio"` segments with
  * `aria-checked`, a roving tabindex + arrow-key navigation, and a focus-visible
@@ -105,7 +105,7 @@ export function AccessChoice({
                 <motion.span
                   layoutId={thumbId}
                   aria-hidden
-                  className="absolute inset-0 rounded-full bg-input shadow-sm"
+                  className="absolute inset-0 rounded-full bg-action"
                   transition={
                     reduce
                       ? { duration: 0 }
@@ -115,7 +115,7 @@ export function AccessChoice({
               )}
               <span
                 className={`relative z-10 block truncate ${
-                  checked ? "text-ink" : "text-ink-muted"
+                  checked ? "text-action-text" : "text-ink-muted"
                 }`}
               >
                 {opt.label}

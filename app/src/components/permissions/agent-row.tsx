@@ -11,7 +11,7 @@ interface PermissionsAgentRowProps {
   /** Accessible label for the open action (already translated). */
   openLabel: string;
   /** An interactive right-edge control of the row's own (today: "Move to
-   *  team", on a team's Manage agents page). It is a SIBLING of the row
+   *  team", on the focused agent screen). It is a SIBLING of the row
    *  button, never nested in it, so its clicks are its own and never also open
    *  the agent. Absent everywhere else, which is why the row stays one target
    *  wherever it has nothing else to offer. */

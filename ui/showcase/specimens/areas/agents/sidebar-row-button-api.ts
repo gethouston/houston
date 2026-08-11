@@ -26,7 +26,7 @@ export const SIDEBAR_ROW_CONSUMERS: readonly {
   },
   {
     who: "SidebarItemRow",
-    what: "An agent. Child depth, the avatar in the glyph box, at most one quiet mark in the trailing slot, drag cursor from the sortable wrapper. NO affordance: an agent is renamed, recoloured, moved and deleted on the Manage agents page of its team, so the row has no menu and reserves no column for one.",
+    what: "An agent. Child depth, the avatar in the glyph box, at most one quiet mark in the trailing slot, drag cursor from the sortable wrapper. NO affordance: an agent is renamed, recoloured, moved and deleted on the focused agent screen, so the row has no menu and reserves no column for one.",
   },
   {
     who: "SidebarAddRow",

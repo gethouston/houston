@@ -15,46 +15,17 @@ import {
   toggleModel,
 } from "../agent/agent-admin/model-allowlist.ts";
 import type { ProviderValue } from "./facets.ts";
+import type { ModelsAllowlistEditorProps } from "./models-allowlist-editor-types";
 
-/** i18n copy for {@link ModelsAllowlistEditor}; the consumer passes translated strings. */
-export interface ModelsAllowlistEditorCopy {
-  question: string;
-  policyHelper: string;
-  anyLabel: string;
-  anyDesc: string;
-  pickedLabel: string;
-  pickedDesc: string;
-  allowedHeading: string;
-  addHeading: string;
-  allowedEmpty: string;
-  allowedEmptyLab: string;
-  searchModels: string;
-  clearSearch: string;
-  noModels: string;
-  /** aria-label for a per-model allow toggle. */
-  allowModel: (name: string) => string;
-  /** Shown under the question when readOnly (e.g. "Only the owner can change this"). */
-  readOnlyNote?: string;
-}
-
-export interface ModelsAllowlistEditorProps {
-  /** The selectable universe of models (already narrowed to any higher ceiling). */
-  models: CatalogModel[];
-  /** Current ceiling: `null` = any model allowed, else the explicit id set. */
-  allowedModels: string[] | null;
-  /** A write is in flight (disables controls). */
-  saving: boolean;
-  /** Read-only viewer (e.g. a non-owner admin): controls disabled, "Add models" list hidden, `readOnlyNote` shown. */
-  readOnly?: boolean;
-  /** Persist the next ceiling: `null` = allow all, else the explicit set. */
-  onSave: (next: string[] | null) => void;
-  copy: ModelsAllowlistEditorCopy;
-}
+export type {
+  ModelsAllowlistEditorCopy,
+  ModelsAllowlistEditorProps,
+} from "./models-allowlist-editor-types";
 
 /**
  * Presentational, i18n-agnostic editor for an AI-model allowlist ceiling
  * (Teams v2), the model-side twin of {@link AllowlistEditor}. An always-visible
- * {@link AccessChoice} ("Any model" saves `null`, "Only models you pick" saves an
+ * {@link AccessChoice} (allow all saves `null`, "Only models you pick" saves an
  * explicit set) over the AI-hub catalog's visual language: one {@link ModelAllowRow}
  * per {@link CatalogModel} (brand mark + name + lab + allow Switch). Selection is
  * over provider-native offer ids — toggling a model flips ALL its offers at once
@@ -70,8 +41,11 @@ export function ModelsAllowlistEditor({
   readOnly,
   onSave,
   copy,
+  labelledBy,
+  showIntro = true,
 }: ModelsAllowlistEditorProps) {
-  const headingId = useId();
+  const generatedHeadingId = useId();
+  const headingId = labelledBy ?? generatedHeadingId;
   const [search, setSearch] = useState("");
   // View-only lab filter (never touches saved data); composes with the search.
   const [lab, setLab] = useState<ProviderValue>("all");
@@ -122,10 +96,14 @@ export function ModelsAllowlistEditor({
 
   return (
     <div>
-      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
-        {copy.question}
-      </h2>
-      <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
+      {showIntro && (
+        <>
+          <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
+            {copy.question}
+          </h2>
+          <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
+        </>
+      )}
 
       {readOnly && copy.readOnlyNote && (
         <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>

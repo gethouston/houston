@@ -11,9 +11,8 @@ import {
   seedSidebarLayout,
 } from "./support/sidebar-layout";
 import {
-  openAgentSettingsSection,
-  openManageAgents,
-  openManagePane,
+  openAgentSettings,
+  openTeamSection,
   rail,
   screen,
   type TeamSection,
@@ -23,15 +22,11 @@ import {
 /**
  * A plain org MEMBER who nonetheless MANAGES an agent.
  *
- * Manage agents is the only door to the canonical agent settings page, so
- * gating it on the org role alone took every configure surface — job
- * description, Skills, People, the ceilings, Share — away from the very person
- * the gateway lets configure that agent. The section is therefore decided PER
- * TEAM (`visibleTeamSectionsForTeam`): the org owner/admin always, plus anyone
- * who manages at least one of THIS team's agents.
+ * Agent configuration belongs to the focused agent screen and is gated per
+ * agent. Team configuration belongs to that team's Context and People tabs.
  *
  * This proves the whole rule from the rail down:
- *   - the team holding the agent they manage offers Manage agents;
+ *   - the team holding the agent they manage offers focused agent screen;
  *   - the team whose agents they only USE does not, and neither does the
  *     workspace's own — the rail and the screen read one list per team, so a
  *     row is never a dead link;
@@ -57,7 +52,7 @@ const SUPPORT_TEAM = "grp-support";
  * `isAgentManager` reads: Payroll Bot is theirs to manage, every other agent is
  * only theirs to use. The seeded agent stays in the fleet as the workspace's own
  * team's one agent, so that block is a real team with a real member rather than
- * an empty placeholder — which is what makes its missing Manage agents row mean
+ * an empty placeholder — which is what makes its missing focused agent screen row mean
  * something.
  */
 const AGENTS = [
@@ -147,15 +142,10 @@ async function openShell(page: Page): Promise<void> {
 
 /** Open one agent's Job description from the Payroll team's settings list. */
 async function openJobDescription(page: Page, name: string): Promise<void> {
-  await openManageAgents(page);
-  await openManagePane(page, "agents");
-  await screen(page)
-    .getByRole("button", { name: `Open ${name}` })
-    .click();
-  await openAgentSettingsSection(page, "Job description");
+  await openAgentSettings(page, name);
 }
 
-test("a member who manages an agent gets Manage agents on THAT team only", async ({
+test("a member who manages an agent gets Context on that team only", async ({
   page,
 }) => {
   await armMemberWorkspace(page);
@@ -163,19 +153,10 @@ test("a member who manages an agent gets Manage agents on THAT team only", async
 
   // Home is Payroll, the team holding the agent they manage: it offers the
   // configure tabs. This is the local backend, so membership does not exist.
-  await rail(page)
-    .locator("[data-sidebar-group-header='payroll']")
-    .getByRole("button", { name: "Group options" })
-    .click();
-  await expect(page.locator("[data-group-settings]")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(sectionTabs(page)).toHaveCount(3);
-
-  // And the tab goes somewhere: the row can never promise a section the screen
-  // refuses to render (both read `visibleTeamSectionsForTeam` for this team).
-  await openManageAgents(page);
+  await expect(sectionTab(page, "Context")).toBeVisible();
+  await openTeamSection(page, "Context");
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Payroll settings" }),
+    screen(page).getByRole("heading", { name: "Team context" }),
   ).toBeVisible();
 
   // The team whose agents they only use offers its WORK and nothing else.
@@ -186,11 +167,6 @@ test("a member who manages an agent gets Manage agents on THAT team only", async
   await expect(sectionTab(page, "Tasks")).toBeVisible();
   await expect(sectionTab(page, "Routines")).toBeVisible();
   await expect(sectionTab(page, "Files")).toBeVisible();
-  await rail(page)
-    .locator("[data-sidebar-group-header='support']")
-    .getByRole("button", { name: "Group options" })
-    .click();
-  await expect(page.locator("[data-group-settings]")).toHaveCount(0);
   await expect(sectionTabs(page)).toHaveCount(3);
 
   // Nor does the workspace's own team, whose one agent they also only use — the
@@ -208,8 +184,7 @@ test("the team's shared context tab saves into the layout", async ({
   // dialog onto this is gone, so this page is the one door.
   await armMemberWorkspace(page);
   await openShell(page);
-  await openManageAgents(page);
-  await openManagePane(page, "context");
+  await openTeamSection(page, "Context");
 
   await expect(
     screen(page).getByRole("heading", { name: "Team context" }),
@@ -242,28 +217,6 @@ test("the team's shared context tab saves into the layout", async ({
   const support = stored.groups.find((g) => g.id === SUPPORT_TEAM);
   expect(support).toBeDefined();
   expect(support).not.toHaveProperty("context");
-});
-
-test("Manage agents lists EVERY agent of the team, not just the managed one", async ({
-  page,
-}) => {
-  await armMemberWorkspace(page);
-  await openShell(page);
-  await openManageAgents(page);
-  await openManagePane(page, "agents");
-
-  // The list is the team, whole. Hiding the agents they merely use would make
-  // the team read as smaller than it is.
-  await expect(
-    screen(page).getByRole("button", { name: "Open Payroll Bot" }),
-  ).toBeVisible();
-  await expect(
-    screen(page).getByRole("button", { name: "Open Payroll Helper" }),
-  ).toBeVisible();
-  // The other team's agent is not in it.
-  await expect(
-    screen(page).getByRole("button", { name: "Open Support Bot" }),
-  ).toHaveCount(0);
 });
 
 test("the member EDITS the agent they manage and reads the other one read-only", async ({

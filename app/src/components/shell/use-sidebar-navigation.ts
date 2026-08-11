@@ -54,7 +54,7 @@ export function useSidebarNavigation(args: {
     openTeamView(
       teamOfAgent(teams, agentId)?.id ?? DEFAULT_TEAM_ID,
       "mission-control",
-      { agentFilter: agent.id },
+      { agentFilter: agent.id, agentFocus: true },
     );
     closeMobileSidebar();
   };

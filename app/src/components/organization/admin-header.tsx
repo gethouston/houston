@@ -8,22 +8,14 @@ import {
 import { PageHeaderSwitcher } from "../shell/page-header/page-header-switcher";
 import { PageHeaderTabs } from "../shell/page-header/page-header-tabs";
 import { usePageHeaderMode } from "../shell/page-header/page-header-tools";
-import { AdminAnalyticsHeader } from "./admin-analytics-header";
-import {
-  type AnalyticsLens,
-  DEFAULT_ORG_TAB,
-  type OrgTabId,
-} from "./org-view-model";
+import { DEFAULT_ORG_TAB, type OrgTabId } from "./org-view-model";
 
 /**
  * The widest forms are Spanish. Dashboard level: identity "Administración"
  * ~141px (glyph 16 + 6 gap + text + px-3), Personas ~84, Facturación ~99,
  * Analítica ~86, plus 3 × 2px gaps and the track's 4px padding ≈ 420, plus
- * the strip's 40px `px-5` = 460, rounded UP to 480. The drilled Analytics
- * level (back chip ~141 + the lens cluster ~285 + the 8px gap + padding)
- * lands just under the same line, so ONE threshold serves both levels. There
- * is no right-zone tools cluster on either, so no compact form exists —
- * below the line each level collapses into its switcher.
+ * the strip's 40px `px-5` = 460, rounded UP to 480. There is no right-zone
+ * tools cluster, so below the line it collapses into its switcher.
  */
 export const ADMIN_HEADER_THRESHOLDS: HeaderThresholds = {
   oneRowMin: 480,
@@ -39,46 +31,26 @@ export const ADMIN_HEADER_THRESHOLDS: HeaderThresholds = {
  * section: the standing knowledge every agent starts a turn with is what
  * Admin looks like when you arrive. (The body says so itself: that section
  * opens on its own titled hero, so the lozenge doesn't have to name it.) The
- * other sections (People, Billing when in scope, Analytics) follow as plain
+ * other sections follow as plain
  * lozenges.
  *
  * Narrow: the cluster collapses into the identity switcher, whose menu names
  * every section — Company context included, because inside a list of section
  * names "the identity lozenge stands for it" stops being legible.
  *
- * Analytics is the one section with a level of its own: opening it swaps this
- * strip for the drilled-in `AdminAnalyticsHeader` (back chip + the lens
- * cluster), so the header never stacks two tab rows.
  */
 export function AdminHeader({
   active,
   visibleIds,
   onSelect,
-  lens,
-  lenses,
-  onSelectLens,
 }: {
   active: OrgTabId;
   /** The sections visible for this caller + space, from `orgTabIds`. */
   visibleIds: readonly OrgTabId[];
   onSelect: (id: OrgTabId) => void;
-  /** The Analytics lens state, owned by the view beside `active`. */
-  lens: AnalyticsLens;
-  lenses: readonly AnalyticsLens[];
-  onSelectLens: (lens: AnalyticsLens) => void;
 }) {
   const { t } = useTranslation("teams");
   const collapsed = headerCollapsesTabs(usePageHeaderMode());
-
-  if (active === "analytics")
-    return (
-      <AdminAnalyticsHeader
-        lens={lens}
-        lenses={lenses}
-        onSelectLens={onSelectLens}
-        onBack={() => onSelect(DEFAULT_ORG_TAB)}
-      />
-    );
 
   const identity = (
     <>

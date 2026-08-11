@@ -2,6 +2,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@houston-ai/core";
 import { sidebarRowAffordanceClasses } from "@houston-ai/layout";
@@ -10,13 +11,24 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentActions } from "../../hooks/use-agent-actions";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useTeams } from "../../hooks/use-teams";
 import { openAgentSettings } from "../../lib/open-agent";
 import { hasAgentTeams } from "../../lib/org-roles";
+import { type TeamView, teamOfAgent } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { AgentRenameDialog } from "../team-view/agent-rename-dialog";
-import { AgentSidebarColorMenu } from "./agent-sidebar-color-menu";
+import {
+  AgentDeleteDialog,
+  AgentDeleteMenuItem,
+} from "../agent-actions/agent-delete-action";
+import {
+  AgentMoveDialog,
+  AgentMoveMenuItem,
+} from "../agent-actions/agent-move-action";
+import { useAgentIdentitySave } from "../agent-actions/use-agent-identity-save";
+import { useMoveAgentTeam } from "../team-view/use-move-agent-team";
+import { AgentIdentityDialog } from "./agent-identity-dialog";
 import type { NeedsYouSignal } from "./agent-sidebar-items";
 import { NeedsYouChip } from "./agent-sidebar-status";
 import { useSidebarOverlayLayout } from "./use-sidebar-overlay-layout";
@@ -34,6 +46,8 @@ export function AgentRowSidebarMenu({
   const { capabilities } = useCapabilities();
   const agents = useAgentStore((state) => state.agents);
   const workspaceId = useWorkspaceStore((state) => state.current?.id);
+  const teams = useTeams();
+  const currentTeam = teamOfAgent(teams, agent.id);
   const sidebar = useSidebarOverlayLayout(
     workspaceId,
     hasAgentTeams(capabilities),
@@ -45,7 +59,10 @@ export function AgentRowSidebarMenu({
     remapAgentId: sidebar.remapAgentId,
   });
   const [menuOpen, setMenuOpen] = useState(false);
-  const [renaming, setRenaming] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [pendingTeam, setPendingTeam] = useState<TeamView | null>(null);
+  const moveAgent = useMoveAgentTeam();
 
   // Radix restores focus when the menu closes. Open the dialog after that
   // tick, or focus restoration can immediately dismiss it.
@@ -53,6 +70,10 @@ export function AgentRowSidebarMenu({
     setMenuOpen(false);
     setTimeout(run, 0);
   };
+
+  // The ONE identity save path (sequenced rename-then-colour), shared with
+  // the Agents pane's Color & Name row.
+  const saveIdentity = useAgentIdentitySave(agent, t);
 
   return (
     <>
@@ -86,29 +107,55 @@ export function AgentRowSidebarMenu({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              onSelect={() => afterMenuCloses(() => setRenaming(true))}
+              onSelect={() => afterMenuCloses(() => setIdentityOpen(true))}
             >
-              {t("teams:teamView.agentMenu.rename")}
+              {t("shell:sidebar.agentMenu.identity")}
             </DropdownMenuItem>
-            <AgentSidebarColorMenu
-              color={agent.color}
-              onChange={(color) => void actions.changeColor(agent.id, color)}
-            />
             <DropdownMenuItem
               onSelect={() => {
                 openAgentSettings(agent.id);
               }}
             >
-              {t("shell:sidebar.agentMenu.editAgent")}
+              {t("shell:sidebar.agentMenu.configure")}
             </DropdownMenuItem>
+            {currentTeam && (
+              <AgentMoveMenuItem
+                teams={teams}
+                currentTeamId={currentTeam.id}
+                onSelect={(team) => afterMenuCloses(() => setPendingTeam(team))}
+              />
+            )}
+            <DropdownMenuSeparator />
+            <AgentDeleteMenuItem
+              onSelect={() => afterMenuCloses(() => setDeleting(true))}
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       </span>
-      <AgentRenameDialog
+      <AgentIdentityDialog
         agent={agent}
-        open={renaming}
-        onOpenChange={setRenaming}
-        onRename={(name) => void actions.rename(agent.id, name)}
+        open={identityOpen}
+        onOpenChange={setIdentityOpen}
+        onSave={(patch) => void saveIdentity(patch)}
+      />
+      <AgentMoveDialog
+        agent={agent}
+        team={pendingTeam}
+        onOpenChange={(open) => {
+          if (!open) setPendingTeam(null);
+        }}
+        onConfirm={() => {
+          if (pendingTeam) moveAgent(agent.id, pendingTeam);
+          setPendingTeam(null);
+        }}
+      />
+      <AgentDeleteDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        onConfirm={() => {
+          setDeleting(false);
+          void actions.remove(agent.id);
+        }}
       />
     </>
   );

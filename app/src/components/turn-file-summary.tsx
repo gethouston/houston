@@ -2,12 +2,10 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
-import { useTeams } from "../hooks/use-teams";
 import { canOpenAgentSettings } from "../lib/agent-nav";
 import { genericErrorDescription } from "../lib/error-report";
 import { openAgentSettings } from "../lib/open-agent";
 import { tauriSystem } from "../lib/tauri";
-import { teamOfAgent } from "../lib/teams-model";
 import {
   groupTurnSummaryItems,
   type SemanticUpdateKind,
@@ -35,10 +33,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const agent = useAgentStore((s) =>
     s.agents.find((candidate) => candidate.folderPath === agentPath),
   );
-  const teams = useTeams();
-  const semanticIsLink =
-    !!agent &&
-    canOpenAgentSettings(capabilities, agent, teamOfAgent(teams, agent.id));
+  const semanticIsLink = !!agent && canOpenAgentSettings(capabilities, agent);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
 
   const openSemantic = useCallback(

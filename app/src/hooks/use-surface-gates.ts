@@ -8,9 +8,8 @@ import { useCapabilities } from "./use-capabilities.ts";
 export interface SurfaceGates {
   /**
    * Admin, the lead row of the rail's "Workspace" band. Multiplayer owner/admin
-   * only, and on a C8 Spaces host only while the ACTIVE space is a team (a
-   * personal space has single-player semantics: non-invitable, no roster, no
-   * policy).
+   * only on a non-spaces multiplayer host. A C8 Spaces personal space also
+   * shows Admin because its sole caller owns that space.
    */
   showOrganization: boolean;
   /**

@@ -60,7 +60,7 @@ export type {
   SidebarRowDepth,
   SidebarRowDisclosure,
 } from "./sidebar-row-button";
-export { SidebarRowButton } from "./sidebar-row-button";
+export { SidebarRowButton, SidebarRowCaret } from "./sidebar-row-button";
 export type {
   SidebarBaseRowContext,
   SidebarRowContext,

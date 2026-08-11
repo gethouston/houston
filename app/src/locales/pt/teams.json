@@ -3,16 +3,16 @@
     "title": "Configurações do agente",
     "rows": {
       "knowledge": {
-        "title": "Memória"
+        "title": "Aprendizados"
       },
       "model": {
         "title": "Modelos de IA"
       },
       "people": {
-        "title": "Pessoas com acesso"
+        "title": "Pessoas"
       },
       "integrations": {
-        "title": "Apps"
+        "title": "Integrações"
       }
     },
     "values": {
@@ -26,7 +26,7 @@
     "models": {
       "question": "Quais modelos de IA este agente pode usar?",
       "policyHelper": "Você decide com quais modelos este agente pode ser executado. Pessoas com acesso escolhem o próprio modelo entre os que você permitir.",
-      "anyLabel": "Qualquer modelo",
+      "anyLabel": "Permitir todos os modelos",
       "anyDesc": "Pessoas com acesso podem executar este agente com qualquer modelo disponível.",
       "pickedLabel": "Apenas os modelos que você escolher",
       "pickedDesc": "Pessoas com acesso só podem usar os modelos que você permitir abaixo.",
@@ -46,6 +46,11 @@
     },
     "integrations": {
       "unavailable": "Os limites de integrações não estão disponíveis aqui."
+    },
+    "heroes": {
+      "people": "Pessoas permitidas",
+      "integrations": "Integrações permitidas",
+      "models": "Modelos de IA permitidos"
     }
   },
   "agentSettings": {
@@ -55,7 +60,6 @@
       "permissions": "Permissões"
     },
     "people": {
-      "question": "Quem pode usar este agente?",
       "helper": "Escolha se toda a sua equipe pode usar este agente ou apenas as pessoas que você escolher.",
       "anyLabel": "Toda a sua equipe",
       "anyDesc": "Qualquer pessoa da equipe pode usar este agente, incluindo quem entrar depois.",
@@ -147,28 +151,26 @@
   },
   "integrations": {
     "allowlist": {
-      "question": "Quais apps este agente pode usar?",
-      "policyHelper": "Você decide quais apps este agente tem permissão para usar. Pessoas com acesso continuam conectando as próprias contas para cada app que você permitir.",
-      "anyLabel": "Qualquer app",
-      "anyDesc": "Pessoas com acesso podem conectar este agente a mais de 1000 apps.",
-      "pickedLabel": "Apenas os apps que você escolher",
-      "pickedDesc": "Pessoas com acesso só podem usar os apps que você permitir abaixo.",
+      "question": "Quais integrações este agente pode usar?",
+      "policyHelper": "Você decide quais integrações este agente pode usar. As pessoas com acesso ainda conectam as próprias contas para cada integração que você permitir.",
+      "anyLabel": "Permitir todas as integrações",
+      "anyDesc": "As pessoas com acesso podem conectar este agente a qualquer uma de mais de 1000 integrações.",
+      "pickedLabel": "Somente integrações que você escolher",
+      "pickedDesc": "As pessoas com acesso só podem usar as integrações que você permitir abaixo.",
       "allowApp": "Permitir {{name}}",
-      "allowedHeading": "Apps permitidos",
-      "allowedEmpty": "Você ainda não escolheu apps. Adicione apps abaixo.",
-      "allowedEmptyCategory": "Ainda não há apps permitidos nesta categoria.",
-      "addHeading": "Adicionar apps",
-      "readOnlyNote": "Alguém que gerencia este agente pode alterar quais apps ele pode usar."
+      "allowedHeading": "Integrações permitidas",
+      "allowedEmpty": "Nenhuma integração escolhida ainda. Adicione integrações abaixo.",
+      "allowedEmptyCategory": "Ainda não há integrações permitidas nesta categoria.",
+      "addHeading": "Adicionar integrações",
+      "readOnlyNote": "Alguém que gerencia este agente pode mudar quais integrações ele pode usar."
     }
   },
   "org": {
     "title": "Administração",
     "tabs": {
       "label": "Seções de administração",
-      "lensLabel": "Visualizações de análises",
       "people": "Pessoas",
       "billing": "Cobrança",
-      "analytics": "Análises",
       "companyContext": "Contexto da empresa",
       "activity": "Atividade",
       "usage": "Uso",
@@ -200,7 +202,6 @@
     "title": "Compartilhar {{name}}",
     "subtitle": "Escolha quem pode usar este agente.",
     "button": "Compartilhar",
-    "viewButton": "Quem tem acesso",
     "viewTitle": "Quem tem acesso a {{name}}",
     "viewSubtitle": "Estas pessoas podem usar este agente compartilhado.",
     "sectionTitle": "Compartilhar este agente",
@@ -236,6 +237,11 @@
     }
   },
   "people": {
+    "createOrganization": {
+      "title": "Crie uma organização para convidar pessoas",
+      "body": "Para convidar outras pessoas, crie uma organização.",
+      "cta": "Criar organização"
+    },
     "adminNotice": "Você pode ver sua equipe. Apenas o proprietário pode adicionar ou remover pessoas.",
     "add": {
       "title": "Adicionar alguém",
@@ -474,13 +480,17 @@
       "missionControl": "Tarefas",
       "routines": "Rotinas",
       "files": "Arquivos",
+      "context": "Contexto",
+      "people": "Pessoas",
       "label": "Seções da equipe"
+    },
+    "agentTabs": {
+      "settings": "Configurações do agente"
     },
     "manage": {
       "identity": "Configurações de {{name}}",
-      "agents": "Editar agentes",
       "tabs": {
-        "context": "Contexto da equipe",
+        "context": "Contexto",
         "agents": "Agentes",
         "people": "Pessoas"
       }
@@ -498,10 +508,6 @@
       "cancel": "Cancelar"
     },
     "agentMenu": {
-      "rename": "Renomear agente",
-      "renameTitle": "Renomear {{name}}",
-      "renameLabel": "Nome do agente",
-      "renameConfirm": "Salvar",
       "delete": "Excluir agente"
     },
     "context": {
@@ -515,7 +521,7 @@
         "workspaceBody": "Crie seu primeiro agente e as tarefas dele aparecerão aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou mova um para {{name}} pela página Gerenciar agentes de outra equipe."
+        "teamBody": "Crie um agente aqui ou use o menu lateral de um agente para movê-lo para {{name}}."
       }
     },
     "routines": {
@@ -525,7 +531,7 @@
         "workspaceBody": "Crie seu primeiro agente e tudo o que ele fizer sozinho aparecerá aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou mova um para {{name}} pela página Gerenciar agentes de outra equipe."
+        "teamBody": "Crie um agente aqui ou use o menu lateral de um agente para movê-lo para {{name}}."
       },
       "noRoutines": {
         "title": "Ainda não há nada rodando sozinho",
@@ -546,17 +552,10 @@
         "workspaceBody": "Crie seu primeiro agente e os arquivos que ele guardar aparecerão aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou mova um para {{name}} pela página Gerenciar agentes de outra equipe."
+        "teamBody": "Crie um agente aqui ou use o menu lateral de um agente para movê-lo para {{name}}."
       }
     },
     "settings": {
-      "subtitle": "Os agentes desta equipe. Abra um para gerenciar quem pode usá-lo e o que ele pode usar.",
-      "empty": {
-        "workspaceTitle": "Ainda não há agentes",
-        "workspaceBody": "Crie um e ele aparecerá aqui.",
-        "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou mova um pela página Gerenciar agentes de outra equipe."
-      },
       "navUnavailable": "Ainda não conseguimos abrir as configurações deste agente",
       "navUnavailableBody": "A equipe deste agente ainda está carregando. Espere um momento e tente de novo. Se continuar acontecendo, reporte como um erro."
     }

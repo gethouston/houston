@@ -1,25 +1,25 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { PageContainer } from "../shell/page-shell";
-import AnalyticsTab from "./analytics-tab";
+import { ComputeSection } from "../time-worked/compute-section";
+import ActivityTab from "./activity-tab";
 import BillingTab from "./billing-tab";
 import CompanyContextTab from "./company-context-tab";
 import MembersTab from "./members-tab";
-import type { AnalyticsLens, OrgTabId } from "./org-view-model";
+import type { OrgTabId } from "./org-view-model";
 import type { OrgTabProps, OrgViewContext } from "./organization-view";
+import UsageTab from "./usage-tab";
 
-/**
- * Each Organization section renders from the shared `{ ctx }` contract —
- * except Analytics, which also takes the resolved lens and is therefore
- * rendered by name below, not from this record.
- */
+/** Each context-backed Organization section renders from the shared contract. */
 const SECTION_COMPONENTS: Record<
-  Exclude<OrgTabId, "analytics">,
+  Exclude<OrgTabId, "timeWorked">,
   (props: OrgTabProps) => ReactNode
 > = {
   people: MembersTab,
   billing: BillingTab,
   companyContext: CompanyContextTab,
+  activity: ActivityTab,
+  usage: UsageTab,
 };
 
 /** Mounts the record's component AS a component, so its hooks stay its own. */
@@ -27,7 +27,7 @@ function PlainSection({
   active,
   ctx,
 }: {
-  active: Exclude<OrgTabId, "analytics">;
+  active: Exclude<OrgTabId, "timeWorked">;
   ctx: OrgViewContext;
 }) {
   const Section = SECTION_COMPONENTS[active];
@@ -38,9 +38,8 @@ function PlainSection({
  * The active section's body under the Admin strip. No heading of its own: the
  * header's lozenge already names the section (the shared grammar with
  * Integrations and the team screen), so a hero here would say it twice. Every
- * section renders from the shared `{ ctx }` contract; Analytics alone also
- * takes the resolved lens (the activity feed and message usage are lenses
- * INSIDE it, not sections of their own).
+ * context-backed section renders from the shared `{ ctx }` contract. Time
+ * worked has no need for organization context and renders directly.
  *
  * `data-admin-section-body` names the MOUNTED section for the e2e helpers:
  * the header lozenge repaints synchronously on click, so the attribute is
@@ -50,12 +49,10 @@ export function AdminSectionBody({
   active,
   ctx,
   isLoading,
-  lens,
 }: {
   active: OrgTabId;
   ctx: OrgViewContext | null;
   isLoading: boolean;
-  lens: AnalyticsLens;
 }) {
   const { t } = useTranslation("teams");
   return (
@@ -74,8 +71,8 @@ export function AdminSectionBody({
         <p className="py-10 text-sm text-ink-muted">
           {isLoading ? t("org.loading") : t("org.unavailable")}
         </p>
-      ) : active === "analytics" ? (
-        <AnalyticsTab ctx={ctx} lens={lens} />
+      ) : active === "timeWorked" ? (
+        <ComputeSection />
       ) : (
         <PlainSection active={active} ctx={ctx} />
       )}

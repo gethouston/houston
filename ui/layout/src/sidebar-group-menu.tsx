@@ -26,7 +26,6 @@ export interface SidebarGroupMenuProps {
    *  all of it — the host owns the surface it opens, which is what keeps the
    *  create form and the edit form the same component over there. */
   onEdit?: () => void;
-  onOpenSettings?: () => void;
   onDelete?: () => void;
   onLeave?: () => void;
 }
@@ -54,19 +53,16 @@ export function SidebarGroupMenu({
   affordances,
   labels,
   onEdit,
-  onOpenSettings,
   onDelete,
   onLeave,
 }: SidebarGroupMenuProps) {
   const [open, setOpen] = useState(false);
 
   const showEdit = !!onEdit && affordanceAllowed(affordances, "edit");
-  const showSettings =
-    !!onOpenSettings && affordanceAllowed(affordances, "settings");
   const showDelete = !!onDelete && affordanceAllowed(affordances, "delete");
   const showLeave = !!onLeave && affordanceAllowed(affordances, "leave");
   // Everything that edits the GROUP, as opposed to the caller's standing in it.
-  const showGroupItems = showSettings || showEdit || showDelete;
+  const showGroupItems = showEdit || showDelete;
   if (!showGroupItems && !showLeave)
     return <span aria-hidden="true" className={sidebarRowAffordanceGutter} />;
 
@@ -82,14 +78,6 @@ export function SidebarGroupMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom">
-        {showSettings && (
-          <DropdownMenuItem
-            data-group-settings
-            onSelect={() => onOpenSettings?.()}
-          >
-            {labels.groupSettings}
-          </DropdownMenuItem>
-        )}
         {showEdit && (
           <DropdownMenuItem onSelect={() => onEdit?.()}>
             {labels.editGroup}
