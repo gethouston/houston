@@ -12,7 +12,7 @@ import {
 } from "./support/sidebar-layout";
 import {
   openAgentSettings,
-  openTeamSection,
+  openTeamSettings,
   rail,
   screen,
   type TeamSection,
@@ -145,7 +145,7 @@ async function openJobDescription(page: Page, name: string): Promise<void> {
   await openAgentSettings(page, name);
 }
 
-test("a member who manages an agent gets Context on that team only", async ({
+test("a member who manages an agent gets Team Settings on that team only", async ({
   page,
 }) => {
   await armMemberWorkspace(page);
@@ -153,8 +153,8 @@ test("a member who manages an agent gets Context on that team only", async ({
 
   // Home is Payroll, the team holding the agent they manage: it offers the
   // configure tabs. This is the local backend, so membership does not exist.
-  await expect(sectionTab(page, "Context")).toBeVisible();
-  await openTeamSection(page, "Context");
+  await expect(sectionTab(page, "Team Settings")).toBeVisible();
+  await openTeamSettings(page);
   await expect(
     screen(page).getByRole("heading", { name: "Team context" }),
   ).toBeVisible();
@@ -184,7 +184,7 @@ test("the team's shared context tab saves into the layout", async ({
   // dialog onto this is gone, so this page is the one door.
   await armMemberWorkspace(page);
   await openShell(page);
-  await openTeamSection(page, "Context");
+  await openTeamSettings(page);
 
   await expect(
     screen(page).getByRole("heading", { name: "Team context" }),

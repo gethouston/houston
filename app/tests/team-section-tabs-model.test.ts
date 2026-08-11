@@ -41,7 +41,7 @@ describe("teamSectionTabs", () => {
     const sections = visibleTeamSectionsForTeam(caps(), team());
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "context"],
+      ["routines", "files", "settings"],
     );
     // The board is dropped, never relabelled: the team's lozenge IS that door.
     assert.ok(
@@ -73,7 +73,7 @@ describe("teamSectionTabs", () => {
     );
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "context"],
+      ["routines", "files", "settings"],
     );
   });
 
@@ -83,10 +83,10 @@ describe("teamSectionTabs", () => {
     for (const key of keys) assert.match(key, /^teamView\.tabs\./);
   });
 
-  it("never turns settings into a tab", () => {
-    assert.deepEqual(
-      teamSectionTabs(["mission-control", "routines", "files", "settings"]),
-      teamSectionTabs(["mission-control", "routines", "files"]),
+  it("turns settings into the manager-only door", () => {
+    assert.equal(
+      teamSectionTabs(["mission-control", "settings"])[0]?.id,
+      "settings",
     );
   });
 

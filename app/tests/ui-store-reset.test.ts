@@ -78,8 +78,18 @@ describe("useUIStore.openTeamView", () => {
       agentFocus: true,
     });
     strictEqual(useUIStore.getState().teamAgentFocus, true);
+    store.openTeamView("g1", "context", { teamSettingsFocus: true });
+    strictEqual(useUIStore.getState().teamSettingsFocus, true);
+    store.openTeamView("g1", "settings", {
+      agentFilter: "a1",
+      agentFocus: true,
+      teamSettingsFocus: true,
+    });
+    strictEqual(useUIStore.getState().teamAgentFocus, true);
+    strictEqual(useUIStore.getState().teamSettingsFocus, false);
     store.openTeamView("g1", "mission-control");
     strictEqual(useUIStore.getState().teamAgentFilter, null);
     strictEqual(useUIStore.getState().teamAgentFocus, false);
+    strictEqual(useUIStore.getState().teamSettingsFocus, false);
   });
 });

@@ -1,9 +1,10 @@
 import {
+  Button,
   ConfirmDialog,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { TeamView } from "../../lib/teams-model";
@@ -11,37 +12,42 @@ import type { Agent } from "../../lib/types";
 import { TeamGlyph } from "../shell/team-glyph";
 import { moveTargetTeams } from "../team-view/move-agent-model";
 
-export function AgentMoveMenuItem({
+export function AgentMovePickerDialog({
+  open,
+  onOpenChange,
   teams,
   currentTeamId,
   onSelect,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   teams: readonly TeamView[];
   currentTeamId: string;
   onSelect: (team: TeamView) => void;
 }) {
   const { t } = useTranslation("teams");
   const targets = moveTargetTeams(teams, currentTeamId);
-  if (targets.length === 0) return null;
-
   return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        {t("teamView.move.action")}
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent>
-        {targets.map((team) => (
-          <DropdownMenuItem
-            key={team.id}
-            className="gap-2"
-            onSelect={() => onSelect(team)}
-          >
-            <TeamGlyph team={team} className="size-4 shrink-0" />
-            <span className="truncate">{team.name}</span>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("agentSettings.manage.chooseTeam")}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-2 pt-2">
+          {targets.map((team) => (
+            <Button
+              key={team.id}
+              variant="outline"
+              className="justify-start gap-2"
+              onClick={() => onSelect(team)}
+            >
+              <TeamGlyph team={team} className="size-4 shrink-0" />
+              <span className="truncate">{team.name}</span>
+            </Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

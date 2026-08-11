@@ -23,8 +23,7 @@ const OWNER_SECTIONS: TeamSectionId[] = [
   "mission-control",
   "routines",
   "files",
-  "context",
-  "people",
+  "settings",
 ];
 const AGENT_SECTIONS: TeamSectionId[] = [
   "mission-control",
@@ -44,13 +43,14 @@ const openTeam = {
   teamSection: "settings" as const,
   teamAgentFilter: "a1",
   teamAgentFocus: false,
+  teamSettingsFocus: false,
 };
 
 describe("resolveTeamHighlight", () => {
   it("reads the open team, section and agent filter off a team view", () => {
     assert.deepEqual(resolveTeamHighlight(openTeam, OWNER_SECTIONS), {
       teamId: "g1",
-      section: "mission-control",
+      section: "settings",
       agentId: "a1",
     });
   });
@@ -309,15 +309,14 @@ describe("sidebarSelectedAgentId", () => {
         teamSection,
       );
     }
-    // A stale team-level Settings value resolves to Mission Control, so its
-    // existing board pin becomes meaningful again.
+    // The team-level Settings door does not apply the board pin.
     assert.equal(
       sidebarSelectedAgentId({
         viewMode: TEAM_VIEW_ID,
         highlight: resolveTeamHighlight(openTeam, OWNER_SECTIONS),
         activeTeam: team("g1", ["a1", "a2"]),
       }),
-      "a1",
+      null,
     );
     // And the pin is NOT lost: it lights again the moment the board is back on
     // screen (the rail carries it across destinations).

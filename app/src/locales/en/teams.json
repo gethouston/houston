@@ -55,6 +55,16 @@
   },
   "agentSettings": {
     "railLabel": "Agent settings sections",
+    "manage": {
+      "sectionTitle": "Settings",
+      "identity": "Change color & name",
+      "identityTitle": "Change color & name for {{name}}",
+      "moveTeam": "Move to another team",
+      "chooseTeam": "Choose a team",
+      "moveOrganization": "Move to another organization",
+      "moveOrganizationDescription": "Move this agent into an organization so a team can work with it.",
+      "delete": "Delete agent"
+    },
     "groups": {
       "context": "Context",
       "permissions": "Permissions"
@@ -480,9 +490,22 @@
       "missionControl": "Tasks",
       "routines": "Routines",
       "files": "Files",
+      "settings": "Team Settings",
       "context": "Context",
       "people": "People",
       "label": "Team sections"
+    },
+    "settingsTabs": {
+      "context": "Context",
+      "agents": "Agents",
+      "people": "People",
+      "settings": "Settings",
+      "label": "Team settings sections"
+    },
+    "settingsActions": {
+      "identity": "Change icon & name",
+      "leave": "Leave team",
+      "delete": "Delete team"
     },
     "agentTabs": {
       "settings": "Agent settings"
@@ -500,8 +523,6 @@
       "back": "Back to tasks"
     },
     "move": {
-      "trigger": "More actions for {{name}}",
-      "action": "Move to team",
       "confirmTitle": "Move {{agent}} to {{team}}?",
       "confirmBody": "{{agent}} moves to {{team}}. People who can see that team will see this agent in it.",
       "confirm": "Move agent",
@@ -521,7 +542,7 @@
         "workspaceBody": "Create your first agent and its tasks will show up here.",
         "createAgent": "Create agent",
         "teamTitle": "No agents in this team yet",
-        "teamBody": "Create an agent here or use an agent's sidebar menu to move it into {{name}}."
+        "teamBody": "Create an agent here or use the agent's Settings section to move it into {{name}}."
       }
     },
     "routines": {
@@ -531,7 +552,7 @@
         "workspaceBody": "Create your first agent and everything it does on its own will show up here.",
         "createAgent": "Create agent",
         "teamTitle": "No agents in this team yet",
-        "teamBody": "Create an agent here or use an agent's sidebar menu to move it into {{name}}."
+        "teamBody": "Create an agent here or use the agent's Settings section to move it into {{name}}."
       },
       "noRoutines": {
         "title": "Nothing runs on its own yet",
@@ -552,12 +573,23 @@
         "workspaceBody": "Create your first agent and the files it keeps will show up here.",
         "createAgent": "Create agent",
         "teamTitle": "No agents in this team yet",
-        "teamBody": "Create an agent here or use an agent's sidebar menu to move it into {{name}}."
+        "teamBody": "Create an agent here or use the agent's Settings section to move it into {{name}}."
       }
     },
     "settings": {
       "navUnavailable": "We couldn't open this agent's settings yet",
-      "navUnavailableBody": "This agent's team is still loading. Wait a moment and try again. If it keeps happening, report it as a bug."
+      "navUnavailableBody": "This agent's team is still loading. Wait a moment and try again. If it keeps happening, report it as a bug.",
+      "policy": {
+        "everyone": "Everyone",
+        "people_one": "{{count}} person",
+        "people_other": "{{count}} people",
+        "integrationsAllowed_one": "{{count}} allowed",
+        "integrationsAllowed_other": "{{count}} allowed",
+        "modelsAllowed_one": "{{count}} allowed",
+        "modelsAllowed_other": "{{count}} allowed",
+        "allIntegrations": "All integrations allowed",
+        "allModels": "All models allowed"
+      }
     }
   }
 }

@@ -13,15 +13,9 @@ describe("buildAgentSidebarItems needs-you signal", () => {
     assert.match(source, /needsYouLabel\(summary\.needsYouCount\)/);
   });
 
-  it("hands the signal to the manager menu, which owns the right edge", () => {
-    assert.match(source, /menuFor\?\.\(agent, needsYou\)/);
-  });
-
-  it("falls back to the trailing chip only when the row has no menu", () => {
-    assert.match(
-      source,
-      /\? \{ affordance \}\n\s+: needsYou\n\s+\? \{\n\s+trailing:/,
-    );
+  it("always renders the signal in the row's plain trailing slot", () => {
+    assert.doesNotMatch(source, /menuFor|affordance/);
+    assert.match(source, /needsYou\n\s+\? \{\n\s+trailing:/);
     assert.match(source, /count=\{needsYou\.count\}/);
   });
 });

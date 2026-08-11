@@ -5,7 +5,6 @@ import type {
   SidebarGroupView,
   SidebarItem,
 } from "@houston-ai/layout";
-import type { ReactNode } from "react";
 import { flatSidebarOrder } from "../../lib/agent-order";
 import type { TeamHighlight } from "../../lib/sidebar-teams";
 import { teamRowActive } from "../../lib/sidebar-teams";
@@ -14,7 +13,6 @@ import type { Agent } from "../../lib/types";
 import {
   type AgentItemArgs,
   buildAgentSidebarItems,
-  type NeedsYouSignal,
 } from "./agent-sidebar-items";
 import { teamHeaderSignals } from "./team-header-signals";
 import { teamCollapsedLookup } from "./team-sidebar-model";
@@ -45,7 +43,6 @@ export interface BuildTeamSidebarListsArgs extends AgentItemArgs {
    *  its identity is not editable (the local backend's virtual workspace
    *  block) this answers `undefined` and the block carries no menu. */
   onEditTeamFor?: (team: TeamView) => (() => void) | undefined;
-  menuFor?: (agent: Agent, needsYou: NeedsYouSignal | null) => ReactNode;
 }
 
 /**
@@ -71,7 +68,6 @@ export function buildTeamSidebarLists({
   selectedAgentId,
   affordancesFor,
   onEditTeamFor,
-  menuFor,
   ...itemArgs
 }: BuildTeamSidebarListsArgs): {
   items: SidebarItem[];
@@ -86,7 +82,6 @@ export function buildTeamSidebarLists({
 
   const items = buildAgentSidebarItems({
     agents: flatSidebarOrder(agents, layout),
-    menuFor,
     ...itemArgs,
   });
   const headerSignals = teamHeaderSignals(itemArgs);

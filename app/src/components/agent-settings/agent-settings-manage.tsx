@@ -1,0 +1,133 @@
+import { Building2, Palette, Trash2, UsersRound } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useAgentActions } from "../../hooks/use-agent-actions";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
+import { useTeams } from "../../hooks/use-teams";
+import { hasAgentTeams, hasSpaces } from "../../lib/org-roles";
+import { type TeamView, teamOfAgent } from "../../lib/teams-model";
+import type { Agent } from "../../lib/types";
+import { useAgentStore } from "../../stores/agents";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
+import { AgentDeleteDialog } from "../agent-actions/agent-delete-action";
+import { AgentIdentityDialog } from "../agent-actions/agent-identity-dialog";
+import {
+  AgentMoveDialog,
+  AgentMovePickerDialog,
+} from "../agent-actions/agent-move-action";
+import { useAgentIdentitySave } from "../agent-actions/use-agent-identity-save";
+import { SettingsCard, SettingsRow } from "../settings/settings-row";
+import { useSidebarOverlayLayout } from "../shell/use-sidebar-overlay-layout";
+import { moveTargetTeams } from "../team-view/move-agent-model";
+import { useMoveAgentTeam } from "../team-view/use-move-agent-team";
+
+export function AgentSettingsManage({ agent }: { agent: Agent }) {
+  const { t } = useTranslation(["shell", "teams", "agents"]);
+  const { capabilities } = useCapabilities();
+  const personalSpace = usePersonalSpace();
+  const teams = useTeams();
+  const currentTeam = teamOfAgent(teams, agent.id);
+  const targets = currentTeam ? moveTargetTeams(teams, currentTeam.id) : [];
+  const workspaceId = useWorkspaceStore((state) => state.current?.id);
+  const agents = useAgentStore((state) => state.agents);
+  const sidebar = useSidebarOverlayLayout(
+    workspaceId,
+    hasAgentTeams(capabilities),
+  );
+  const actions = useAgentActions({
+    t,
+    workspaceId,
+    agentNamesById: agents,
+    remapAgentId: sidebar.remapAgentId,
+  });
+  const saveIdentity = useAgentIdentitySave(agent, t);
+  const moveAgent = useMoveAgentTeam();
+  const [identityOpen, setIdentityOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [pendingTeam, setPendingTeam] = useState<TeamView | null>(null);
+  const [organizationOpen, setOrganizationOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  return (
+    <>
+      <SettingsCard>
+        <SettingsRow
+          icon={Palette}
+          title={t("teams:agentSettings.manage.identity")}
+          chevron={false}
+          onClick={() => setIdentityOpen(true)}
+        />
+        {currentTeam && targets.length > 0 && (
+          <SettingsRow
+            icon={UsersRound}
+            title={t("teams:agentSettings.manage.moveTeam")}
+            onClick={() => setMoveOpen(true)}
+          />
+        )}
+        {personalSpace && hasSpaces(capabilities) && (
+          <SettingsRow
+            icon={Building2}
+            title={t("teams:agentSettings.manage.moveOrganization")}
+            description={t(
+              "teams:agentSettings.manage.moveOrganizationDescription",
+            )}
+            onClick={() => setOrganizationOpen(true)}
+          />
+        )}
+        <SettingsRow
+          icon={Trash2}
+          title={t("teams:agentSettings.manage.delete")}
+          destructive
+          chevron={false}
+          onClick={() => setDeleting(true)}
+        />
+      </SettingsCard>
+
+      <AgentIdentityDialog
+        agent={agent}
+        open={identityOpen}
+        onOpenChange={setIdentityOpen}
+        onSave={(patch) => void saveIdentity(patch)}
+      />
+      {currentTeam && (
+        <AgentMovePickerDialog
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          teams={teams}
+          currentTeamId={currentTeam.id}
+          onSelect={(team) => {
+            setMoveOpen(false);
+            setPendingTeam(team);
+          }}
+        />
+      )}
+      <AgentMoveDialog
+        agent={agent}
+        team={pendingTeam}
+        onOpenChange={(open) => {
+          if (!open) setPendingTeam(null);
+        }}
+        onConfirm={() => {
+          if (pendingTeam) moveAgent(agent.id, pendingTeam);
+          setPendingTeam(null);
+        }}
+      />
+      <AgentShareSurfaces
+        agent={agent}
+        surface="inviteTeam"
+        open={organizationOpen}
+        onOpenChange={setOrganizationOpen}
+      />
+      <AgentDeleteDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        onConfirm={() => {
+          setDeleting(false);
+          void actions.remove(agent.id);
+        }}
+      />
+    </>
+  );
+}

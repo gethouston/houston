@@ -49,8 +49,8 @@ export function AgentDetail({
   const { capabilities } = useCapabilities();
   const canManage = isAgentManager(capabilities, agent);
   const sections = useMemo(
-    () => agentSettingsSections(capabilities),
-    [capabilities],
+    () => agentSettingsSections(capabilities, { manager: canManage }),
+    [capabilities, canManage],
   );
   const [selected, setSelected] = useState<AgentSettingsSection>(() =>
     resolveAgentSettingsSection(sections, initialSection),

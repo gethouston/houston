@@ -197,9 +197,12 @@ test("an agent row opens its own screen and managers can enter and leave Agent s
   await armCapabilities(request, OWNER_CAPS);
   await page.reload();
   await rail(page).getByText("Houston", { exact: true }).click();
-  await expect(sectionTab(page, "Agent settings")).toBeVisible();
-  await sectionTab(page, "Agent settings").click();
-  await expect(screen(page).locator("[data-agent-section-tab]")).toHaveCount(6);
+  const agentSettings = screen(page).locator(
+    "[data-team-section-tab='settings']",
+  );
+  await expect(agentSettings).toBeVisible();
+  await agentSettings.click();
+  await expect(screen(page).locator("[data-agent-section-tab]")).toHaveCount(7);
   await expect(
     screen(page).locator("[data-agent-settings-back]"),
   ).toContainText("Houston");
@@ -326,7 +329,6 @@ test("a plain member gets work tabs and loses all manager tabs", async ({
   // three manager tabs are gated together by the visible-sections list.
   await expect(sectionTab(page, "Routines")).toBeVisible();
   await expect(sectionTab(page, "Files")).toBeVisible();
-  await expect(page.locator("[data-agent-menu]")).toHaveCount(0);
   await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(3);
 
   // And the tabs go somewhere: the row can never promise a section the screen

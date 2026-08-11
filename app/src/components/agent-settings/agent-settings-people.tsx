@@ -5,12 +5,14 @@ import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useSession } from "../../hooks/use-session";
+import { hasSpaces } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
 import { agentShareSurface } from "../agent/agent-access-model";
 import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import type { AccessMode } from "../agent/agent-admin/agent-admin-row-values.ts";
 import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import { useShareAgent } from "../agent/use-share-agent";
+import { CreateOrganizationInviteEmpty } from "../organization/create-organization-invite-empty";
 import {
   agentAccessMode,
   agentPeopleCount,
@@ -92,7 +94,8 @@ export function AgentSettingsPeople({
   // People section. "view" is deliberately not offered — this pane already
   // lists who has access, so the read-only dialog would say it twice.
   const shareSurface = agentShareSurface(capabilities, agent, personalSpace);
-  const showShare = shareSurface === "manage" || shareSurface === "inviteTeam";
+  const personalSpacesHost = personalSpace && hasSpaces(capabilities);
+  const showShare = shareSurface === "manage" && !personalSpacesHost;
 
   const mode = agentAccessMode(agent);
   const roster = { agent, members, selfId };
@@ -118,6 +121,19 @@ export function AgentSettingsPeople({
     }
     setConfirm(gate === "selfLockout" ? "selfLockout" : "everyone");
   };
+
+  if (personalSpacesHost) {
+    return (
+      <div className="w-full">
+        <AgentSettingsPeopleHero
+          titleId={headingId}
+          showShare={false}
+          onShare={() => undefined}
+        />
+        <CreateOrganizationInviteEmpty />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

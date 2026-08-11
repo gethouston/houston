@@ -55,6 +55,16 @@
   },
   "agentSettings": {
     "railLabel": "Seções das configurações do agente",
+    "manage": {
+      "sectionTitle": "Configurações",
+      "identity": "Alterar cor e nome",
+      "identityTitle": "Alterar cor e nome de {{name}}",
+      "moveTeam": "Mover para outra equipe",
+      "chooseTeam": "Escolher uma equipe",
+      "moveOrganization": "Mover para outra organização",
+      "moveOrganizationDescription": "Mova este agente para uma organização para que uma equipe possa trabalhar com ele.",
+      "delete": "Excluir agente"
+    },
     "groups": {
       "context": "Contexto",
       "permissions": "Permissões"
@@ -480,9 +490,22 @@
       "missionControl": "Tarefas",
       "routines": "Rotinas",
       "files": "Arquivos",
+      "settings": "Configurações da equipe",
       "context": "Contexto",
       "people": "Pessoas",
       "label": "Seções da equipe"
+    },
+    "settingsTabs": {
+      "context": "Contexto",
+      "agents": "Agentes",
+      "people": "Pessoas",
+      "settings": "Configurações",
+      "label": "Seções de configurações da equipe"
+    },
+    "settingsActions": {
+      "identity": "Alterar ícone e nome",
+      "leave": "Sair da equipe",
+      "delete": "Excluir equipe"
     },
     "agentTabs": {
       "settings": "Configurações do agente"
@@ -500,8 +523,6 @@
       "back": "Voltar para tarefas"
     },
     "move": {
-      "trigger": "Mais ações para {{name}}",
-      "action": "Mover para uma equipe",
       "confirmTitle": "Mover {{agent}} para {{team}}?",
       "confirmBody": "{{agent}} passa para {{team}}. As pessoas que podem ver essa equipe verão este agente nela.",
       "confirm": "Mover agente",
@@ -521,7 +542,7 @@
         "workspaceBody": "Crie seu primeiro agente e as tarefas dele aparecerão aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou use o menu lateral de um agente para movê-lo para {{name}}."
+        "teamBody": "Crie um agente aqui ou use a seção Configurações do agente para movê-lo para {{name}}."
       }
     },
     "routines": {
@@ -531,7 +552,7 @@
         "workspaceBody": "Crie seu primeiro agente e tudo o que ele fizer sozinho aparecerá aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou use o menu lateral de um agente para movê-lo para {{name}}."
+        "teamBody": "Crie um agente aqui ou use a seção Configurações do agente para movê-lo para {{name}}."
       },
       "noRoutines": {
         "title": "Ainda não há nada rodando sozinho",
@@ -552,12 +573,23 @@
         "workspaceBody": "Crie seu primeiro agente e os arquivos que ele guardar aparecerão aqui.",
         "createAgent": "Criar agente",
         "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou use o menu lateral de um agente para movê-lo para {{name}}."
+        "teamBody": "Crie um agente aqui ou use a seção Configurações do agente para movê-lo para {{name}}."
       }
     },
     "settings": {
       "navUnavailable": "Ainda não conseguimos abrir as configurações deste agente",
-      "navUnavailableBody": "A equipe deste agente ainda está carregando. Espere um momento e tente de novo. Se continuar acontecendo, reporte como um erro."
+      "navUnavailableBody": "A equipe deste agente ainda está carregando. Espere um momento e tente de novo. Se continuar acontecendo, reporte como um erro.",
+      "policy": {
+        "everyone": "Todos",
+        "people_one": "{{count}} pessoa",
+        "people_other": "{{count}} pessoas",
+        "integrationsAllowed_one": "{{count}} permitida",
+        "integrationsAllowed_other": "{{count}} permitidas",
+        "modelsAllowed_one": "{{count}} permitido",
+        "modelsAllowed_other": "{{count}} permitidos",
+        "allIntegrations": "Todas as integrações permitidas",
+        "allModels": "Todos os modelos permitidos"
+      }
     }
   }
 }

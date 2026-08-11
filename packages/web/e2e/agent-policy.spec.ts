@@ -13,7 +13,7 @@ import {
  *
  * It is discovered through the focused agent screen.
  *
- * The page itself is fully agent-centric: six section lozenges across its
+ * The page itself is fully agent-centric: seven section lozenges across its
  * drilled header, and the selected section below. There is no
  * top-level People tab and no per-person lens.
  *
@@ -83,7 +83,7 @@ async function openFinance(page: Page): Promise<void> {
   await openAgentSettings(page, "Finance Bot", "People");
 }
 
-test("the team's agent list drills into six settings lozenges", async ({
+test("the team's agent list drills into seven settings lozenges", async ({
   page,
   request,
 }) => {
@@ -96,7 +96,7 @@ test("the team's agent list drills into six settings lozenges", async ({
   ).toBeVisible();
   await openAgentSettings(page, "Finance Bot");
 
-  // Six top lozenges replace the old grouped rail.
+  // Seven top lozenges replace the old grouped rail.
   await expect(page.getByRole("tab", { name: "People" })).toHaveCount(0);
   for (const section of [
     "Job description",
@@ -105,6 +105,7 @@ test("the team's agent list drills into six settings lozenges", async ({
     "People",
     "Integrations",
     "AI Models",
+    "Settings",
   ] as const) {
     await expect(agentSectionTab(page, section)).toBeVisible();
   }
@@ -281,6 +282,7 @@ test("a visible-but-not-manager admin drills into the SAME page, read-only", asy
   await openFinance(page);
 
   // The rail and People hero are there; the controls are not.
+  await expect(agentSectionTab(page, "Settings")).toHaveCount(0);
   await expect(agentSectionTab(page, "People")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Allowed People" }),

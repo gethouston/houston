@@ -20,6 +20,7 @@ export {
   teamPeopleFace,
   visibleAgentSections,
   visibleTeamSectionsForTeam,
+  visibleTeamSettingsSections,
 } from "./team-sections.ts";
 
 /** The `viewMode` value the team view renders under (see `stores/ui.ts`). */

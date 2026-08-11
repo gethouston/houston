@@ -128,6 +128,10 @@ export function TeamChrome({
   ];
 
   const select = (next: TeamSectionId) => {
+    if (next === "settings") {
+      openTeamView(team.id, "context", { teamSettingsFocus: true });
+      return;
+    }
     if (next !== "mission-control") {
       openTeamView(team.id, next, { agentFilter: teamAgentFilter });
       return;

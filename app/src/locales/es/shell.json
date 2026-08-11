@@ -1,10 +1,5 @@
 {
   "sidebar": {
-    "agentMenu": {
-      "identity": "Cambiar color y nombre",
-      "identityTitle": "Cambiar color y nombre de {{name}}",
-      "configure": "Configurar"
-    },
     "aboutMe": "Sobre mí",
     "addAgent": "Nuevo agente",
     "agentStore": "Tienda de agentes",

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
@@ -9,6 +10,7 @@ import {
   teamPeopleFace,
   visibleAgentSections,
   visibleTeamSectionsForTeam,
+  visibleTeamSettingsSections,
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
@@ -21,6 +23,8 @@ import { TeamFiles } from "./team-files";
 import { TeamMissionControl } from "./team-mission-control";
 import { TeamPeoplePane } from "./team-people-pane";
 import { TeamRoutines } from "./team-routines";
+import { TeamSettingsHeader } from "./team-settings-header";
+import { TeamSettingsPane } from "./team-settings-pane";
 
 export function TeamView() {
   const teams = useTeams();
@@ -28,6 +32,7 @@ export function TeamView() {
   const requestedSection = useUIStore((s) => s.teamSection);
   const agentFilter = useUIStore((s) => s.teamAgentFilter);
   const requestedFocus = useUIStore((s) => s.teamAgentFocus);
+  const requestedTeamSettingsFocus = useUIStore((s) => s.teamSettingsFocus);
   const openTeamView = useUIStore((s) => s.openTeamView);
   const { capabilities } = useCapabilities();
   const personalSpace = usePersonalSpace();
@@ -37,6 +42,8 @@ export function TeamView() {
       ? (team.agents.find((item) => item.id === agentFilter) ?? null)
       : null;
   const focused = agent !== null;
+  const settingsFocused = requestedTeamSettingsFocus && !focused;
+  const { canCreate } = useCanCreateAgents();
   useEffect(() => {
     if (requestedFocus && team && agent === null) {
       openTeamView(team.id, requestedSection ?? "mission-control");
@@ -50,10 +57,18 @@ export function TeamView() {
   );
   const sections = focused
     ? visibleAgentSections(capabilities, agent)
-    : visibleTeamSectionsForTeam(capabilities, team, peopleFace);
+    : settingsFocused
+      ? visibleTeamSettingsSections(team, peopleFace)
+      : visibleTeamSectionsForTeam(capabilities, team, peopleFace);
   const section = resolveTeamSection(sections, requestedSection);
 
-  const body = focused ? (
+  const body = settingsFocused ? (
+    <TeamSettingsPane
+      team={team}
+      section={section}
+      peopleFace={peopleFace === "roster" ? "roster" : "invite"}
+    />
+  ) : focused ? (
     section === "settings" ? (
       <AgentSettingsPane team={team} agent={agent} />
     ) : section === "routines" ? (
@@ -78,7 +93,14 @@ export function TeamView() {
   return (
     <PageHeaderToolsProvider thresholds={TEAM_STRIP_THRESHOLDS}>
       <div className="flex h-full flex-col overflow-hidden">
-        {focused ? (
+        {settingsFocused ? (
+          <TeamSettingsHeader
+            team={team}
+            sections={sections}
+            active={section}
+            canCreateAgent={canCreate}
+          />
+        ) : focused ? (
           section !== "settings" && (
             <AgentChrome
               team={team}

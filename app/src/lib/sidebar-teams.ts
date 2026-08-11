@@ -19,6 +19,7 @@ export interface TeamHighlight {
   section: TeamSectionId | null;
   agentId: string | null;
   agentFocus?: true;
+  teamSettingsFocus?: true;
 }
 
 const NO_HIGHLIGHT: TeamHighlight = {
@@ -56,6 +57,7 @@ export function resolveTeamHighlight(
     teamSection: TeamSectionId | null;
     teamAgentFilter: string | null;
     teamAgentFocus: boolean;
+    teamSettingsFocus: boolean;
   },
   sections: readonly TeamSectionId[],
 ): TeamHighlight {
@@ -66,6 +68,7 @@ export function resolveTeamHighlight(
     section: resolveTeamSection(sections, ui.teamSection),
     agentId: ui.teamAgentFilter,
     ...(ui.teamAgentFocus ? { agentFocus: true as const } : {}),
+    ...(ui.teamSettingsFocus ? { teamSettingsFocus: true as const } : {}),
   };
 }
 

@@ -19,6 +19,7 @@ export type TeamSectionId =
   | "routines"
   | "files"
   | "settings"
+  | "agents"
   | "context"
   | "people";
 
@@ -41,9 +42,8 @@ export function teamPeopleFace(
  * TEAM, not per caller: the same person may configure one team and only use the
  * next, so the rail asks it again for every block it draws.
  *
- * Mission Control, Routines and Files are every member's work. Context and
- * People are team-level configuration tabs. Settings is absent because it is
- * an agent-only section offered by `visibleAgentSections` while focused.
+ * Mission Control, Routines and Files are every member's work. Settings is a
+ * manager-only door into the team's configuration level.
  *
  * On a SERVER-teams host the client-derived org-role half of that gate is
  * REPLACED by the server's own `owner` for this team: it already folds in the
@@ -53,18 +53,24 @@ export function teamPeopleFace(
 export function visibleTeamSectionsForTeam(
   caps: Capabilities | null,
   team: TeamView,
-  peopleFace: TeamPeopleFace = "hidden",
+  _peopleFace: TeamPeopleFace = "hidden",
 ): TeamSectionId[] {
   const manager = canConfigureTeam(caps, team);
   return [
     "mission-control",
     "routines",
     "files",
-    ...(manager && (team.server === undefined || team.context !== undefined)
-      ? (["context"] as const)
-      : []),
-    ...(manager && peopleFace !== "hidden" ? (["people"] as const) : []),
+    ...(manager ? (["settings"] as const) : []),
   ];
+}
+
+/** The drilled Team Settings level. People is deliberately present for every
+ * manager; its body chooses roster or invite from the deployment face. */
+export function visibleTeamSettingsSections(
+  _team: TeamView,
+  _peopleFace: TeamPeopleFace,
+): TeamSectionId[] {
+  return ["context", "agents", "people", "settings"];
 }
 
 export function visibleAgentSections(

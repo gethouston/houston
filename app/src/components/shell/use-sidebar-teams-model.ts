@@ -4,12 +4,11 @@ import type {
   SidebarItem,
 } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import { createElement, useCallback } from "react";
+import { useCallback } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useTeams } from "../../hooks/use-teams";
-import { isAgentManager } from "../../lib/agent-access";
 import { hasSpaces } from "../../lib/org-roles";
 import {
   resolveTeamHighlight,
@@ -23,7 +22,6 @@ import {
 } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
-import { AgentRowSidebarMenu } from "./agent-row-sidebar-menu";
 import type { AgentItemArgs } from "./agent-sidebar-items";
 import { canEditTeamIdentity } from "./team-identity";
 import { buildTeamSidebarLists } from "./team-sidebar-lists";
@@ -83,6 +81,7 @@ export function useSidebarTeamsModel(args: {
   const teamSection = useUIStore((s) => s.teamSection);
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
   const teamAgentFocus = useUIStore((s) => s.teamAgentFocus);
+  const teamSettingsFocus = useUIStore((s) => s.teamSettingsFocus);
 
   // Every agent lives in exactly one team: a named sidebar group, or the
   // trailing default team, which IS the workspace (virtual — nothing about the
@@ -126,6 +125,7 @@ export function useSidebarTeamsModel(args: {
       teamSection,
       teamAgentFilter,
       teamAgentFocus,
+      teamSettingsFocus,
     },
     activeTeam ? sectionsForTeam(activeTeam) : [],
   );
@@ -175,10 +175,6 @@ export function useSidebarTeamsModel(args: {
     layout: sidebar.layout,
     teams,
     selectedAgentId,
-    menuFor: (agent, needsYou) =>
-      isAgentManager(capabilities, agent)
-        ? createElement(AgentRowSidebarMenu, { agent, needsYou })
-        : undefined,
     affordancesFor: teamActions.affordancesFor,
     // The default team is asked the same question every named team is: on a
     // host that owns the teams C13 lets its owner rename it like any other,

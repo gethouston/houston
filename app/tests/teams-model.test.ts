@@ -21,6 +21,7 @@ import {
   teamPeopleFace,
   visibleAgentSections,
   visibleTeamSectionsForTeam,
+  visibleTeamSettingsSections,
 } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 
@@ -203,7 +204,7 @@ describe("canConfigureTeamsByRole", () => {
 
 describe("visibleTeamSectionsForTeam", () => {
   const WORK = ["mission-control", "routines", "files"] as const;
-  const MANAGER = [...WORK, "context"] as const;
+  const MANAGER = [...WORK, "settings"] as const;
   const MEMBER = caps({ multiplayer: true, role: "user" });
 
   it("gives a plain member exactly the three work sections", () => {
@@ -226,14 +227,14 @@ describe("visibleTeamSectionsForTeam", () => {
     );
   });
 
-  it("adds People only when the resolved face is actionable", () => {
+  it("keeps configuration behind one manager door for every people face", () => {
     const managedTeam = team([agent("a", "manager")], {
       server: facts(),
       context: "",
     });
     assert.deepEqual(
       visibleTeamSectionsForTeam(MEMBER, managedTeam, "roster"),
-      [...MANAGER, "people"],
+      [...MANAGER],
     );
     assert.deepEqual(
       visibleTeamSectionsForTeam(MEMBER, managedTeam, "hidden"),
@@ -257,13 +258,26 @@ describe("visibleTeamSectionsForTeam", () => {
     ]);
   });
 
-  it("hides context when a server team does not serve the field", () => {
+  it("keeps the settings door when a server team does not serve context", () => {
     assert.deepEqual(
       visibleTeamSectionsForTeam(
         MEMBER,
         team([], { server: facts({ owner: true }) }),
       ),
-      [...WORK],
+      [...MANAGER],
+    );
+  });
+
+  it("builds the drilled set and keeps People for invite faces", () => {
+    assert.deepEqual(visibleTeamSettingsSections(team([]), "hidden"), [
+      "context",
+      "agents",
+      "people",
+      "settings",
+    ]);
+    assert.deepEqual(
+      visibleTeamSettingsSections(team([], { server: facts() }), "invite"),
+      ["context", "agents", "people", "settings"],
     );
   });
 });
@@ -332,7 +346,7 @@ describe("resolveTeamSection", () => {
   );
 
   it("keeps a section the caller can see", () => {
-    assert.equal(resolveTeamSection(admin, "context"), "context");
+    assert.equal(resolveTeamSection(admin, "settings"), "settings");
     assert.equal(
       resolveTeamSection(admin, "mission-control"),
       "mission-control",

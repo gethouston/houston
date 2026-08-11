@@ -106,23 +106,35 @@ export function litRows(rows: Locator): Locator {
  * the chrome. Specs still ASK for "Tasks", because that is what the section is
  * called; the map below is the one place that knows it is drawn as the team.
  */
-export type TeamSection =
-  | "Tasks"
-  | "Routines"
-  | "Files"
-  | "Context"
-  | "People"
-  | "Agent settings";
+export type TeamSection = "Tasks" | "Routines" | "Files" | "Team Settings";
 
 /** Section name -> the `data-team-section-tab` value its lozenge carries. */
 export const TEAM_SECTION_TAB_IDS: Readonly<Record<TeamSection, string>> = {
   Tasks: "mission-control",
   Routines: "routines",
   Files: "files",
-  Context: "context",
-  People: "people",
-  "Agent settings": "settings",
+  "Team Settings": "settings",
 };
+
+export type TeamSettingsTab = "Context" | "Agents" | "People" | "Settings";
+
+const TEAM_SETTINGS_TAB_IDS: Readonly<Record<TeamSettingsTab, string>> = {
+  Context: "context",
+  Agents: "agents",
+  People: "people",
+  Settings: "settings",
+};
+
+export function teamSettingsTab(page: Page, tab: TeamSettingsTab): Locator {
+  return screen(page).locator(
+    `[data-team-settings-tab='${TEAM_SETTINGS_TAB_IDS[tab]}']`,
+  );
+}
+
+export async function openTeamSettings(page: Page): Promise<void> {
+  await openTeamSection(page, "Team Settings");
+  await expect(teamSettingsTab(page, "Context")).toBeVisible();
+}
 
 export async function openArchivedTasks(page: Page): Promise<void> {
   await screen(page).getByRole("button", { name: "Archived" }).click();
@@ -293,7 +305,8 @@ export type AgentSettingsSection =
   | "People"
   | "Integrations"
   | "AI Models"
-  | "Skills";
+  | "Skills"
+  | "Settings";
 
 const AGENT_SECTION_IDS: Readonly<Record<AgentSettingsSection, string>> = {
   "Job description": "job-description",
@@ -302,6 +315,7 @@ const AGENT_SECTION_IDS: Readonly<Record<AgentSettingsSection, string>> = {
   Integrations: "integrations",
   "AI Models": "models",
   Skills: "skills",
+  Settings: "manage",
 };
 
 export function agentSectionTab(
@@ -337,7 +351,7 @@ export async function openAgentSettings(
   section: AgentSettingsSection = "Job description",
 ): Promise<void> {
   await openAgentScreen(page, agentName);
-  await openTeamSection(page, "Agent settings");
+  await screen(page).locator("[data-team-section-tab='settings']").click();
   if (section !== "Job description") {
     await openAgentSettingsSection(page, section);
   }

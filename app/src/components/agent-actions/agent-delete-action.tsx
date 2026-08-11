@@ -1,14 +1,5 @@
-import { ConfirmDialog, DropdownMenuItem } from "@houston-ai/core";
+import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-
-export function AgentDeleteMenuItem({ onSelect }: { onSelect: () => void }) {
-  const { t } = useTranslation("teams");
-  return (
-    <DropdownMenuItem variant="destructive" onSelect={onSelect}>
-      {t("teamView.agentMenu.delete")}
-    </DropdownMenuItem>
-  );
-}
 
 export function AgentDeleteDialog({
   open,

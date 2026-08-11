@@ -27,7 +27,25 @@ const LEGACY_MULTIPLAYER = caps({ multiplayer: true, teams: false });
 
 describe("agentSettingsSections", () => {
   it("orders job description, skills, learnings, then multiplayer access", () => {
-    deepStrictEqual(agentSettingsSections(TEAMS), [
+    deepStrictEqual(agentSettingsSections(TEAMS, { manager: true }), [
+      "job-description",
+      "skills",
+      "learnings",
+      "people",
+      "integrations",
+      "models",
+      "manage",
+    ]);
+    deepStrictEqual(agentSettingsSections(caps(), { manager: true }), [
+      "job-description",
+      "skills",
+      "learnings",
+      "manage",
+    ]);
+  });
+
+  it("keeps Settings last and hides it from non-managers", () => {
+    deepStrictEqual(agentSettingsSections(TEAMS, { manager: false }), [
       "job-description",
       "skills",
       "learnings",
@@ -35,11 +53,10 @@ describe("agentSettingsSections", () => {
       "integrations",
       "models",
     ]);
-    deepStrictEqual(agentSettingsSections(caps()), [
-      "job-description",
-      "skills",
-      "learnings",
-    ]);
+    strictEqual(
+      agentSettingsSections(TEAMS, { manager: true }).at(-1),
+      "manage",
+    );
   });
 
   it("keeps only People on legacy multiplayer", () => {
@@ -58,27 +75,33 @@ describe("targetToSection", () => {
 describe("agent settings selection", () => {
   it("keeps visible requests and falls back within their semantic group", () => {
     strictEqual(
-      resolveAgentSettingsSection(agentSettingsSections(TEAMS), "integrations"),
+      resolveAgentSettingsSection(
+        agentSettingsSections(TEAMS, { manager: true }),
+        "integrations",
+      ),
       "integrations",
     );
     // Skills leads the permissions group now, so a hidden access deep link
     // lands there rather than on People.
     strictEqual(
       resolveAgentSettingsSection(
-        agentSettingsSections(LEGACY_MULTIPLAYER),
+        agentSettingsSections(LEGACY_MULTIPLAYER, { manager: true }),
         "integrations",
       ),
       "skills",
     );
     strictEqual(
-      resolveAgentSettingsSection(agentSettingsSections(caps()), "people"),
+      resolveAgentSettingsSection(
+        agentSettingsSections(caps(), { manager: true }),
+        "people",
+      ),
       "skills",
     );
   });
 
   it("retains a hidden deep link until capabilities expose it", () => {
     const waiting = advanceAgentSettingsSelection({
-      sections: agentSettingsSections(null),
+      sections: agentSettingsSections(null, { manager: true }),
       pending: "integrations",
       current: "job-description",
     });
@@ -88,7 +111,7 @@ describe("agent settings selection", () => {
     });
     deepStrictEqual(
       advanceAgentSettingsSelection({
-        sections: agentSettingsSections(TEAMS),
+        sections: agentSettingsSections(TEAMS, { manager: true }),
         pending: waiting.pending,
         current: waiting.selected,
       }),

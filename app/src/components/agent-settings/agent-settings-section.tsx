@@ -6,6 +6,7 @@ import { AgentAdminKnowledge } from "../agent/agent-admin/agent-admin-knowledge"
 import { AgentAdminModel } from "../agent/agent-admin/agent-admin-model";
 import { AgentAdminSkills } from "../agent/agent-admin/agent-admin-skills";
 import { PageHero } from "../shell/page-shell";
+import { AgentSettingsManage } from "./agent-settings-manage.tsx";
 import type {
   AgentSectionProps,
   AgentSettingsSection,
@@ -116,5 +117,11 @@ export function AgentSettingsSectionView({
       );
     case "skills":
       return <AgentAdminSkills agent={agent} readOnly={readOnly} />;
+    case "manage":
+      return (
+        <AccessColumn>
+          <AgentSettingsManage agent={agent} />
+        </AccessColumn>
+      );
   }
 }

@@ -15,11 +15,13 @@ import {
   type SeedSidebarLayout,
 } from "./support/sidebar-layout";
 import {
+  agentSectionTab,
   expectTeamSections,
   openAgentSettings,
-  openTeamSection,
+  openTeamSettings,
   rail,
   screen,
+  teamSettingsTab,
 } from "./support/team-nav";
 
 /**
@@ -407,11 +409,12 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
   await openShell(page);
   await expect(blockAgentRows(page, OPS_TEAM)).toHaveCount(0);
 
-  // The sidebar's agent menu owns placement actions. "Move to team" opens a
-  // submenu of the OTHER teams plus a confirmation before anything is sent.
-  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
-  await page.getByRole("menuitem", { name: "Move to team" }).hover();
-  await page.getByRole("menuitem", { name: "Operations" }).click();
+  // Settings owns placement actions. The row opens a picker of the OTHER teams
+  // plus a confirmation before anything is sent.
+  await openAgentSettings(page, SEED_AGENT_NAME);
+  await agentSectionTab(page, "Settings").click();
+  await page.getByRole("button", { name: "Move to another team" }).click();
+  await page.getByRole("button", { name: "Operations" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText(
     `${SEED_AGENT_NAME} moves to Operations. People who can see that team will see this agent in it.`,
@@ -445,9 +448,10 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
     });
   });
 
-  await page.locator(`[data-agent-menu="${OPS_AGENT}"]`).click();
-  await page.getByRole("menuitem", { name: "Move to team" }).hover();
-  await page.getByRole("menuitem", { name: "Operations" }).click();
+  await openAgentSettings(page, "Ops Bot");
+  await agentSectionTab(page, "Settings").click();
+  await page.getByRole("button", { name: "Move to another team" }).click();
+  await page.getByRole("button", { name: "Operations" }).click();
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "Move agent" })
@@ -490,35 +494,35 @@ test("Move to team never offers the team the agent is already in", async ({
     ],
   });
   await openShell(page);
-  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
-  await page.getByRole("menuitem", { name: "Move to team" }).hover();
-  await expect(
-    page.getByRole("menuitem", { name: "Operations" }),
-  ).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Acme" })).toHaveCount(0);
+  await openAgentSettings(page, SEED_AGENT_NAME);
+  await agentSectionTab(page, "Settings").click();
+  await page.getByRole("button", { name: "Move to another team" }).click();
+  await expect(page.getByRole("button", { name: "Operations" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Acme" })).toHaveCount(0);
 });
 
-test("the sidebar carries the whole agent menu", async ({ page }) => {
-  // Identity, configuration, placement, and deletion live in one sidebar menu.
+test("agent Settings hides Move when there is no other team", async ({
+  page,
+}) => {
   await armServerTeams(page, {
     caps: OWNER_CAPS,
     agents: [HOUSTON],
     teams: [{ id: ACME_TEAM, name: "Acme", isDefault: true, sortOrder: 0 }],
   });
   await openShell(page);
-  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
+  await openAgentSettings(page, SEED_AGENT_NAME);
+  await agentSectionTab(page, "Settings").click();
 
   await expect(
-    page.getByRole("menuitem", { name: "Change color & name" }),
+    page.getByRole("button", { name: "Change color & name" }),
   ).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Configure" })).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "Delete agent" }),
+    page.getByRole("button", { name: "Delete agent" }),
   ).toBeVisible();
   // One team in the workspace, so there is nowhere to move to and the entry
   // is absent rather than opening on "no other teams".
   await expect(
-    page.getByRole("menuitem", { name: "Move to team" }),
+    page.getByRole("button", { name: "Move to another team" }),
   ).toHaveCount(0);
 });
 
@@ -544,7 +548,8 @@ test("Members names the team's people, and its owner toggle writes", async ({
   await openShell(page);
 
   await openTeamOfAgent(page, "Ops Bot");
-  await openTeamSection(page, "People");
+  await openTeamSettings(page);
+  await teamSettingsTab(page, "People").click();
   await expect(
     screen(page).getByRole("heading", {
       level: 1,
@@ -609,7 +614,8 @@ test("the default team's member list is read-only and says why", async ({
   await openShell(page);
 
   await openTeamOfAgent(page, SEED_AGENT_NAME);
-  await openTeamSection(page, "People");
+  await openTeamSettings(page);
+  await teamSettingsTab(page, "People").click();
   await expect(
     screen(page).getByRole("heading", { level: 1, name: "Acme" }),
   ).toBeVisible();
@@ -665,7 +671,7 @@ test("a team's shared context tab saves", async ({ page }) => {
   await openShell(page);
 
   await openTeamOfAgent(page, "Ops Bot");
-  await openTeamSection(page, "Context");
+  await openTeamSettings(page);
   await expect(
     screen(page).getByRole("heading", {
       level: 1,
@@ -738,7 +744,7 @@ test("a team's context is READ-ONLY for someone who does not own the team", asyn
   await openShell(page);
 
   await openTeamOfAgent(page, SEED_AGENT_NAME);
-  await openTeamSection(page, "Context");
+  await openTeamSettings(page);
   const box = screen(page).getByTestId("team-context-input");
   await expect(box).toHaveText("We ship on Fridays.");
   await expect(box).toHaveAttribute("contenteditable", "false");
@@ -891,20 +897,44 @@ test("a personal space groups its agents into teams, and offers nothing about pe
     screen(page).getByRole("heading", { level: 1, name: "Ops Bot" }),
   ).toBeVisible();
   await expect(screen(page).getByLabel("Team name")).toHaveCount(0);
-  await openTeamSection(page, "People");
+  await openTeamSettings(page);
+  await teamSettingsTab(page, "People").click();
   await expect(
     screen(page).getByRole("heading", { name: "Invite people" }),
   ).toBeVisible();
   await expect(
     screen(page).getByRole("button", { name: "Create organization" }),
   ).toBeVisible();
-  await openTeamSection(page, "Context");
+  await openTeamSettings(page);
   await expect(screen(page).getByTestId("team-context-input")).toBeVisible();
   await expect(
     screen(page).getByRole("button", { name: "Leave team" }),
   ).toHaveCount(0);
   // The card never mounts, so its read is never fired either.
   expect(calls.filter((c) => c.path.endsWith("/members"))).toHaveLength(0);
+
+  // The agent's People section uses the same honest personal-space face. It
+  // offers one create-organization CTA and no duplicate Share door or access
+  // control that the gateway would refuse.
+  await openAgentSettings(page, "Ops Bot", "People");
+  await expect(
+    screen(page).getByRole("heading", { name: "Invite people" }),
+  ).toBeVisible();
+  await expect(
+    screen(page).getByRole("button", { name: "Create organization" }),
+  ).toBeVisible();
+  await expect(
+    screen(page).getByRole("radio", { name: "Everyone on your team" }),
+  ).toHaveCount(0);
+  await expect(screen(page).getByRole("button", { name: "Share" })).toHaveCount(
+    0,
+  );
+  await agentSectionTab(page, "Settings").click();
+  await expect(
+    screen(page).getByRole("button", {
+      name: /Move to another organization/,
+    }),
+  ).toBeVisible();
 });
 
 test("a joined member gets agent settings only for an agent they manage", async ({
@@ -957,12 +987,10 @@ test("a joined member gets agent settings only for an agent they manage", async 
 
   // The focused agent screen adds its settings lozenge for that agent only.
   await openTeamOfAgent(page, "Ops Bot");
-  await expectTeamSections(page, [
-    "Tasks",
-    "Routines",
-    "Files",
-    "Agent settings",
-  ]);
+  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(4);
+  await expect(
+    screen(page).locator("[data-team-section-tab='settings']"),
+  ).toBeVisible();
   await openAgentSettings(page, "Ops Bot");
   await expect(
     screen(page).locator("[data-agent-section-tab]").first(),

@@ -7,7 +7,11 @@ import {
   type SeedSidebarLayout,
   seedSidebarLayout,
 } from "./support/sidebar-layout";
-import { litRows } from "./support/team-nav";
+import {
+  agentSectionTab,
+  litRows,
+  openAgentSettings,
+} from "./support/team-nav";
 
 /**
  * The sidebar is a list of TEAMS. Every block — a named team and the trailing
@@ -166,29 +170,21 @@ test("the rail fills exactly ONE row: the team, or one of its agents", async ({
   await expect(litRows(defaultHeader(page))).toHaveCount(1);
 });
 
-test("an agent manager gets the row menu and Configure drills into settings", async ({
+test("an agent manager gets the Settings section with the agent actions", async ({
   page,
 }) => {
   await seedWorkTeam(page);
   await page.goto("/");
-  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
-  await expect(page.getByRole("menu").getByRole("menuitem")).toHaveCount(4);
+  await openAgentSettings(page, "Houston");
+  await agentSectionTab(page, "Settings").click();
   await expect(
-    page.getByRole("menuitem", { name: "Change color & name" }),
+    page.getByRole("button", { name: "Change color & name" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "Move to team" }),
+    page.getByRole("button", { name: "Move to another team" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "Delete agent" }),
-  ).toBeVisible();
-  await page.getByRole("menuitem", { name: "Configure" }).click();
-  // The drilled screen: identity rides the back chip, the first lens is the h1.
-  await expect(page.locator("[data-agent-settings-back]")).toContainText(
-    "Houston",
-  );
-  await expect(
-    page.getByRole("heading", { name: "Job description" }),
+    page.getByRole("button", { name: "Delete agent" }),
   ).toBeVisible();
 });
 
@@ -196,8 +192,9 @@ test("Change color & name stages both halves in one dialog", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.locator(`[data-agent-menu="${SEED_AGENT_ID}"]`).click();
-  await page.getByRole("menuitem", { name: "Change color & name" }).click();
+  await openAgentSettings(page, "Houston");
+  await agentSectionTab(page, "Settings").click();
+  await page.getByRole("button", { name: "Change color & name" }).click();
   const dialog = page.getByRole("dialog");
   await expect(
     dialog.getByRole("textbox", { name: "Change color & name" }),
