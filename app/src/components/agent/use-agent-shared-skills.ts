@@ -1,12 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useStaleRosterHeal } from "../../hooks/use-stale-roster-heal";
+import { agentRosterSettled, isAgentGoneError } from "../../lib/agent-gone";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
 import { queryKeys } from "../../lib/query-keys";
 import { sharedSkillsAvailable } from "../../lib/shared-skills-availability";
 import { tauriSharedSkills, tauriSkillsManifest } from "../../lib/tauri";
 import type { SkillSummary } from "../../lib/types";
+import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
 /**
@@ -47,14 +50,24 @@ export function useAgentSharedSkills(agentPath: string): {
   });
   // The manifest is agent-local and independent of the store, so it loads in
   // PARALLEL with the store query — gating it on the store's answer would
-  // serialize two round trips for every configured deployment.
+  // serialize two round trips for every configured deployment. It IS gated on
+  // the roster having settled for the current space: a space switch wipes the
+  // cache and would refire this query for the PREVIOUS space's agent under the
+  // new org — a guaranteed `404 agent not found` (HOUSTON-APP-544). A genuine
+  // 404 (agent deleted/unshared elsewhere) is silenced — an expected stale-
+  // roster state, surfaced by the heal below — never a red bug toast.
+  const rosterSettled = useAgentStore(agentRosterSettled);
   const manifest = useQuery({
     queryKey: queryKeys.skillsManifest(agentPath),
-    queryFn: () => tauriSkillsManifest.get(agentPath),
-    enabled: advertised,
+    queryFn: () =>
+      tauriSkillsManifest.get(agentPath, { silence: isAgentGoneError }),
+    enabled: advertised && rosterSettled,
     staleTime: Number.POSITIVE_INFINITY,
     refetchOnWindowFocus: false,
   });
+  // Inline surfacing for the silenced 404: reload the roster so the ghost
+  // agent (and this whole surface with it) disappears on its own.
+  useStaleRosterHeal(isAgentGoneError(manifest.error));
 
   // The gateway advertises `capabilities.sharedSkills` unconditionally, even
   // where no skill store is actually bound — so the store's own answer is the
