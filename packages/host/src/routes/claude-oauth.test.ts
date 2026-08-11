@@ -76,7 +76,10 @@ interface Fixture {
 }
 
 /** Boot a host over HTTP whose only principal is `owner`, with one agent. */
-async function boot(owner = "alice"): Promise<Fixture> {
+async function boot(
+  owner = "alice",
+  opts: { gatewayFronted?: boolean } = {},
+): Promise<Fixture> {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const credentials = new MemoryCredentialStore();
   const workspace = await store.getOrCreatePersonalWorkspace(owner);
@@ -90,7 +93,11 @@ async function boot(owner = "alice"): Promise<Fixture> {
     credentials,
     forwardActingHeader: true,
   });
-  const deps: AgentRouteDeps = { store, channels: { gke: channel } };
+  const deps: AgentRouteDeps = {
+    store,
+    channels: { gke: channel },
+    ...(opts.gatewayFronted ? { gatewayFronted: true } : {}),
+  };
 
   const s = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
@@ -132,6 +139,7 @@ function push(
   body: unknown,
   user = "alice",
   query = "",
+  headers: Record<string, string> = {},
 ) {
   return fetch(
     `${base}/agents/${encodeURIComponent(agentId)}/credential/claude-oauth${query}`,
@@ -140,6 +148,7 @@ function push(
       headers: {
         Authorization: `Bearer ${user}`,
         "Content-Type": "application/json",
+        ...headers,
       },
       body: typeof body === "string" ? body : JSON.stringify(body),
     },
@@ -164,6 +173,53 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
 
       // Runtime received the CLI envelope verbatim.
       expect(lastPush).toEqual(VALID);
+    } finally {
+      fx.close();
+    }
+  });
+
+  test("attributed connect (acting-as): 200, central store write, runtime NOT touched", async () => {
+    // The gateway mints acting-as on EVERY proxied dispatch (cloud #208,
+    // personal spaces included). The runtime's HOU-976 scope guard refuses to
+    // materialize an attributed credential into the pod-shared claude-login
+    // dir — correctly — so the channel must not even try: the central store
+    // put IS the connect (served access-only per turn). Treating the refusal
+    // as a push failure was the Aug-2026 reconnect loop (HOUSTON-APP-56F):
+    // the desktop saw a 502 for a connect that had SUCCEEDED centrally.
+    const fx = await boot("alice", { gatewayFronted: true });
+    try {
+      const res = await push(fx.base, fx.agent.id, VALID, "alice", "", {
+        "x-houston-acting-as": "acting-v1.payload.sig",
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+
+      // Central store got the full credential, on the ACTING scope's row (the
+      // real gateway maps whose row it is; the memory store keys verbatim)…
+      const cred = await fx.credentials.get(fx.workspace.id, "anthropic", {
+        actingAs: "acting-v1.payload.sig",
+      });
+      expect(cred?.accessToken).toBe("sk-ant-oat-ACCESS-SECRET");
+      expect(cred?.refreshToken).toBe("sk-ant-ort-REFRESH-SECRET");
+
+      // …and the runtime's materialize endpoint was never called.
+      expect(lastPush).toBeNull();
+    } finally {
+      fx.close();
+    }
+  });
+
+  test("attributed connect succeeds even when the runtime would reject", async () => {
+    // Same arm, runtime broken: the skip means the connect no longer depends
+    // on the runtime accepting anything.
+    accept = false;
+    const fx = await boot("alice", { gatewayFronted: true });
+    try {
+      const res = await push(fx.base, fx.agent.id, VALID, "alice", "", {
+        "x-houston-acting-as": "acting-v1.payload.sig",
+      });
+      expect(res.status).toBe(200);
+      expect(lastPush).toBeNull();
     } finally {
       fx.close();
     }
