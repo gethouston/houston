@@ -2,10 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 
 import type { FeedItem } from "@houston-ai/chat";
-import {
-  feedShowsTurnError,
-  shouldOfferSkip,
-} from "../src/components/onboarding/missions/email-skip.ts";
+import { feedShowsTurnError } from "../src/components/onboarding/missions/email-skip.ts";
 
 describe("feedShowsTurnError (HOU-555 onboarding escape hatch)", () => {
   it("an empty feed has no error", () => {
@@ -43,23 +40,5 @@ describe("feedShowsTurnError (HOU-555 onboarding escape hatch)", () => {
       ]),
       true,
     );
-  });
-});
-
-describe("shouldOfferSkip (HOU-555 onboarding escape hatch)", () => {
-  it("hidden while the mission runs normally — mid-conversation has no skip", () => {
-    strictEqual(shouldOfferSkip({ hasError: false, setupDone: false }), false);
-  });
-
-  it("appears when something failed", () => {
-    strictEqual(shouldOfferSkip({ hasError: true, setupDone: false }), true);
-  });
-
-  it("hidden on the happy path (completion marker seen)", () => {
-    strictEqual(shouldOfferSkip({ hasError: false, setupDone: true }), false);
-  });
-
-  it("hidden even after an error once the mission completed anyway", () => {
-    strictEqual(shouldOfferSkip({ hasError: true, setupDone: true }), false);
   });
 });

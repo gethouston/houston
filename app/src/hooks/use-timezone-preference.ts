@@ -18,17 +18,15 @@ export function detectTimezone(): string {
  * the browser-detected zone. Returns the effective IANA zone. Never overwrites
  * an existing value.
  *
- * Shared by the Routines hook (below) and the onboarding create path
- * (`use-create-assistant`). The hook only mounts on the Routines section, so a
- * user who never opens it would otherwise never have a zone seeded — and the cloud
+ * The single seeding guard behind the hook's load path (below), so a user who
+ * never opens the Routines section still has a zone — without one the cloud
  * scheduler would fire their routines in the pod's UTC instead of their local
- * time. Both callers seed through this one guard.
+ * time.
  *
- * A persist failure propagates (the tauri wrapper already surfaced a toast). The
- * detected value is attached so a caller that wants an in-memory fallback (the
- * hook) can still render; the onboarding caller just logs and moves on.
+ * A persist failure propagates (the tauri wrapper already surfaced a toast), so
+ * the load path can fall back to the detected value in memory and still render.
  */
-export async function seedTimezoneIfUnset(): Promise<string> {
+async function seedTimezoneIfUnset(): Promise<string> {
   const stored = await tauriPreferences.get(TIMEZONE_KEY);
   const existing = stored?.trim() ? stored : null;
   if (existing) return existing;

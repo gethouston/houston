@@ -150,20 +150,6 @@ describe("workspace-shell analytics", () => {
       "organization not skipped",
     );
   });
-
-  it("makes the Settings tour step ONE promise, for every caller", () => {
-    // The team-shaped variant promised admin, permissions and time worked
-    // "live here". Admin is a rail row of its own, Time worked is a lens inside
-    // it and Permissions is gone, so the second body had nothing true left to
-    // say and the gate that chose it went with it.
-    const tour = read("../src/components/shell/workspace-tour.ts");
-    ok(!tour.includes("showOrganization"), "no org gate left in the tour");
-    ok(!tour.includes("bodyTeam"), "no second body");
-    ok(
-      tour.includes('t("shell:uiTour.steps.settings.body")'),
-      "one body, for everyone",
-    );
-  });
 });
 
 describe("use-surface-gates", () => {

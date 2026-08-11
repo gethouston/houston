@@ -16,21 +16,34 @@ interface PrepareEmailSetupArgs {
   emailToolkitLabel: string;
 }
 
+/**
+ * Remove the temporary onboarding directive from the agent's CLAUDE.md.
+ * Idempotent. Resolves `true` when the file no longer carries the section
+ * (including "never did"), `false` when the strip could not be performed —
+ * the CALLER decides how loudly that surfaces (a directive that outlives the
+ * tutorial keeps steering every later mission).
+ */
+export async function stripEmailMissionSetup(
+  agentPath: string,
+): Promise<boolean> {
+  try {
+    const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
+    const stripped = stripSetupSection(current);
+    if (stripped !== current) {
+      await tauriAgent.writeFile(agentPath, "CLAUDE.md", stripped);
+    }
+    return true;
+  } catch (error) {
+    logger.warn(`[email-setup] could not strip setup section: ${error}`);
+    return false;
+  }
+}
+
 /** Removes the temporary onboarding directive when the email mission leaves. */
 export function useEmailSetupCleanup(agentPath: string) {
   useEffect(() => {
     return () => {
-      void (async () => {
-        try {
-          const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
-          const stripped = stripSetupSection(current);
-          if (stripped !== current) {
-            await tauriAgent.writeFile(agentPath, "CLAUDE.md", stripped);
-          }
-        } catch (error) {
-          logger.warn(`[email-setup] could not strip setup section: ${error}`);
-        }
-      })();
+      void stripEmailMissionSetup(agentPath);
     };
   }, [agentPath]);
 }

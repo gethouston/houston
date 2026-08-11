@@ -129,13 +129,16 @@ interface UIState {
    *  a card is selected; fired by Escape when the composer is not
    *  focused (the first Escape blurs the composer, the second closes). */
   onPanelClose: (() => void) | null;
-  /** Pin the first-run tutorial UI in front of the workspace shell. Set true
-   * while the orchestrator is mid-flight, cleared on graduation or skip. */
-  tutorialActive: boolean;
-  /** Render the post-tutorial UI tour overlay over the workspace shell.
-   * Set when the user completes M3 Try and clicks "Tutorial complete";
-   * cleared when the user dismisses the final tour step. */
-  uiTourActive: boolean;
+  /** Render the in-app onboarding overlay over the workspace shell. Armed on
+   * the first-run "onboarding" route and by "Guide me" in the sidebar footer;
+   * cleared when the user finishes (or, for now, continues past) the flow. */
+  inAppOnboardingActive: boolean;
+  /** The running in-app onboarding was armed by the FIRST-RUN route (vs a
+   * "Guide me" replay): first-run-only side effects key on this. */
+  inAppOnboardingFirstRun: boolean;
+  /** The in-app onboarding PREWROTE the new-task composer draft (the guided
+   * email first task): user edits to it are ignored while set. */
+  tutorialComposerLock: boolean;
   /** Agent id queued for the "Export a copy" wizard, or null. */
   shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
@@ -234,8 +237,9 @@ interface UIState {
   ) => void;
   setOnBoardOpen: (cb: (() => void) | null) => void;
   setOnPanelClose: (cb: (() => void) | null) => void;
-  setTutorialActive: (active: boolean) => void;
-  setUiTourActive: (active: boolean) => void;
+  setInAppOnboardingActive: (active: boolean) => void;
+  setInAppOnboardingFirstRun: (firstRun: boolean) => void;
+  setTutorialComposerLock: (locked: boolean) => void;
   setShareAgentId: (agentId: string | null) => void;
   setImportFromFriendOpen: (open: boolean) => void;
   setImportSeedPreview: (preview: PortableUploadPreviewResponse | null) => void;
@@ -286,8 +290,9 @@ const initialUIState = {
   onBoardNavigate: null,
   onBoardOpen: null,
   onPanelClose: null,
-  tutorialActive: false,
-  uiTourActive: false,
+  inAppOnboardingActive: false,
+  inAppOnboardingFirstRun: false,
+  tutorialComposerLock: false,
   shareAgentId: null,
   importFromFriendOpen: false,
   importSeedPreview: null,
@@ -429,8 +434,12 @@ export const useUIStore = create<UIState>()(
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
       setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
       setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
-      setTutorialActive: (tutorialActive) => set({ tutorialActive }),
-      setUiTourActive: (uiTourActive) => set({ uiTourActive }),
+      setInAppOnboardingActive: (inAppOnboardingActive) =>
+        set({ inAppOnboardingActive }),
+      setInAppOnboardingFirstRun: (inAppOnboardingFirstRun) =>
+        set({ inAppOnboardingFirstRun }),
+      setTutorialComposerLock: (tutorialComposerLock) =>
+        set({ tutorialComposerLock }),
       setShareAgentId: (shareAgentId) => set({ shareAgentId }),
       setImportFromFriendOpen: (importFromFriendOpen) =>
         set({ importFromFriendOpen }),

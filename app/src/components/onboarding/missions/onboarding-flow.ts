@@ -6,7 +6,6 @@ import type {
 // can import this pure helper directly, matching the repo's tested-module
 // convention. The target only imports erased package types, so it loads clean.
 import { INTEGRATION_PROVIDER } from "../../integrations/model.ts";
-import type { OnboardingStep } from "../tutorial-copy";
 
 /**
  * Pure routing + matching helpers for the first-run flow, extracted so the
@@ -100,29 +99,6 @@ export function integrationsAvailable(
   capabilities: Capabilities | null | undefined,
 ): boolean {
   return capabilities?.integrations?.includes(INTEGRATION_PROVIDER) ?? false;
-}
-
-/**
- * Where "Continue" on the AI-connected screen goes (the assistant is already
- * provisioned silently by then): into the email detour when integrations are
- * available, straight to the finish line otherwise.
- */
-export function stepAfterAgentCreated(
-  capabilities: Capabilities | null | undefined,
-): OnboardingStep {
-  return integrationsAvailable(capabilities) ? "connectEmail" : "finished";
-}
-
-/**
- * Whether the finish screen offers the "Invite your team" growth card. Only on
- * a deployment that serves C8 Spaces (self-serve team creation) — desktop /
- * self-host / legacy hosts have no team to create, so the card would dead-end.
- * A cosmetic feature-detect; the gateway is the sole enforcer.
- */
-export function shouldOfferTeamInvite(
-  capabilities: Capabilities | null | undefined,
-): boolean {
-  return capabilities?.spaces === true;
 }
 
 /**

@@ -1,77 +1,238 @@
+import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
-import { startGuidedTour } from "./support/tour-nav";
+import { startInAppOnboarding } from "./support/tour-nav";
 
-test("Guide me tour places replay before the final closing step", async ({
+/**
+ * The in-app onboarding overlay (in-app-onboarding.tsx): the guided setup that
+ * runs OVER the workspace shell. "Guide me" (the help control in the rail's
+ * footer) is its in-shell entry point; a first-run boot arms the same overlay
+ * after the survey (onboarding-survey.spec.ts covers that seam).
+ */
+
+test("Guide me opens the onboarding welcome with Continue as the only action", async ({
   page,
 }) => {
   await page.goto("/");
-  // The tour is armed from "Guide me", the first item behind the help control
-  // in the rail's FOOTER: being walked through the app is not a destination, so
-  // it no longer spends a row among them. Walked the way a user reaches it.
-  await startGuidedTour(page);
+  await startInAppOnboarding(page);
 
-  const dialog = page
-    .getByRole("dialog")
-    .filter({ has: page.getByText(/^Tour \d+ of \d+$/) });
-  const title = dialog.getByRole("heading", { level: 2 });
+  const dialog = page.getByRole("dialog", { name: "Welcome to Houston!" });
   await expect(dialog).toBeVisible();
 
-  for (let guard = 0; guard < 20; guard++) {
-    if ((await title.textContent()) === "Replay the tour") break;
-    await dialog.getByRole("button", { name: "Next" }).click();
-  }
-
-  await expect(title).toHaveText("Replay the tour");
-  await expect(dialog.getByRole("button", { name: "Next" })).toBeVisible();
-
-  // And it points at the control that actually replays it. The `appTour` anchor
-  // moved off the deleted rail row onto the footer's help trigger, so the step
-  // spotlights a "?" beside the gear — not a destination the rail no longer has.
-  await expect(page.locator('[data-tour-target="appTour"]')).toHaveAttribute(
-    "aria-label",
-    "Help",
-  );
-
-  const counter = await dialog.getByText(/^Tour \d+ of \d+$/).textContent();
-  const match = /^Tour (\d+) of (\d+)$/.exec(counter ?? "");
-  expect(Number(match?.[1])).toBe(Number(match?.[2]) - 1);
-
-  await dialog.getByRole("button", { name: "Next" }).click();
-  await expect(title).toHaveText("Now go build something amazing");
+  // The welcome beat deliberately offers ONE action — no skip, no back.
+  await expect(dialog.getByRole("button")).toHaveCount(1);
   await expect(
-    dialog.getByRole("button", { name: "I'll do something amazing" }),
+    dialog.getByRole("button", { name: "Start setup" }),
   ).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Next" })).toHaveCount(0);
+
+  // The shell stays rendered behind the card (the overlay's own scrim and
+  // blockers do the isolating; the shell is deliberately not inert).
+  await expect(page.locator("main[data-tour-target='main']")).toBeVisible();
 });
 
-test("the tour walks the app-level destinations starting at the Inbox", async ({
+test("an already-connected user still walks every step and gets acknowledged", async ({
   page,
 }) => {
   await page.goto("/");
-  await startGuidedTour(page);
+  await startInAppOnboarding(page);
 
-  const dialog = page
-    .getByRole("dialog")
-    .filter({ has: page.getByText(/^Tour \d+ of \d+$/) });
-  const title = dialog.getByRole("heading", { level: 2 });
-  await expect(dialog).toBeVisible();
+  // Every user walks EVERY step — the tutorial teaches where things live, so
+  // nothing is skipped for being already done.
+  await page.getByRole("button", { name: "Start setup" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Connect your AI" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Show me" }).click();
 
-  const titles: string[] = [];
-  for (let guard = 0; guard < 20; guard++) {
-    const current = (await title.textContent()) ?? "";
-    titles.push(current);
-    if (current === "Replay the tour") break;
-    await dialog.getByRole("button", { name: "Next" }).click();
-  }
+  await expect(
+    page.getByRole("dialog", { name: "Click AI Models" }),
+  ).toBeVisible();
+  await page.locator("[data-tour-target='nav-ai-hub']").click();
+  await expect(
+    page.getByRole("heading", { name: "AI Providers" }),
+  ).toBeVisible();
 
-  // There is no global Mission Control to walk through any more, so the step
-  // that spotlighted its nav row is gone outright…
-  expect(titles).not.toContain("Tasks");
-  // …and the Inbox — the one screen that belongs to no team — leads the
-  // app-level destinations, immediately before the integrations step.
-  const inbox = titles.indexOf("Inbox");
-  expect(inbox).toBeGreaterThan(-1);
-  expect(titles[inbox + 1]).toBe("Connect your apps");
-  // Which puts it AFTER the team's own steps: the tour teaches a team first.
-  expect(titles.indexOf("Files")).toBeLessThan(inbox);
+  // The seeded workspace already has Claude connected: the instruction still
+  // stands (the step teaches where things live), with an addendum under a
+  // hairline acknowledging the existing connection and offering to skip.
+  const chip = page.getByRole("dialog", {
+    name: "Pick the AI you already use.",
+  });
+  await expect(chip).toBeVisible();
+  await expect(
+    chip.getByText("You already have an AI connected."),
+  ).toBeVisible();
+  await chip.getByRole("button", { name: "Skip step" }).click();
+
+  // No integrations on the default deployment → straight to the agent
+  // sequence. The seeded agent triggers the addendum skip here too.
+  await expect(
+    page.getByRole("dialog", { name: "Create your first agent" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Show me" }).click();
+  const agentChip = page.getByRole("dialog", { name: "Click New agent" });
+  await expect(agentChip).toBeVisible();
+  await expect(agentChip.getByText("You already have an agent.")).toBeVisible();
+  await agentChip.getByRole("button", { name: "Skip step" }).click();
+
+  // The first-task sequence: the REAL New task button, then the REAL
+  // composer in the panel the user's own click opened.
+  await expect(
+    page.getByRole("dialog", { name: "Give it work" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Show me" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Click New task" }),
+  ).toBeVisible();
+  await page
+    .locator("[data-screen-active='true'] [data-tour-target='newMission']")
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Tell it what you need." }),
+  ).toBeVisible();
+  await page
+    .getByPlaceholder("What should the agent work on?")
+    .fill("Plan my week");
+  await page.getByPlaceholder("What should the agent work on?").press("Enter");
+
+  // The send is the goal — the finale celebrates and hands the shell back.
+  const finale = page.getByRole("dialog", { name: "Task sent!" });
+  await expect(finale).toBeVisible();
+  await finale.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // The shell is interactive again: the help control opens its menu.
+  await page.locator('[data-tour-target="appTour"]').click();
+  await expect(
+    page.getByRole("menuitem", { name: "Guide me", exact: true }),
+  ).toBeVisible();
+});
+
+test("with integrations served, the flow continues into the apps sequence", async ({
+  page,
+  request,
+}) => {
+  // The integrations sequence exists only where the host serves Composio;
+  // the default e2e capabilities don't, so arm them first.
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+
+  await page.goto("/");
+  await startInAppOnboarding(page);
+  await page.getByRole("button", { name: "Start setup" }).click();
+  await page.getByRole("button", { name: "Show me" }).click();
+  await page.locator("[data-tour-target='nav-ai-hub']").click();
+  // Seeded Claude connection → the AI step's addendum skip hands off to the
+  // integrations intro instead of ending the flow.
+  await page
+    .getByRole("dialog", { name: "Pick the AI you already use." })
+    .getByRole("button", { name: "Skip step" })
+    .click();
+
+  await expect(
+    page.getByRole("dialog", { name: "Connect your apps" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Show me" }).click();
+
+  await expect(
+    page.getByRole("dialog", { name: "Click Integrations" }),
+  ).toBeVisible();
+  await page.locator("[data-tour-target='nav-integrations']").click();
+
+  // The REAL Integrations view opened; the fake host seeds one active gmail
+  // connection, so the connect step shows its addendum and skips onward into
+  // the agent sequence (walked end to end in the test above).
+  const chip = page.getByRole("dialog", { name: "Connect your email." });
+  await expect(chip).toBeVisible();
+  await expect(
+    chip.getByText("You already have an app connected."),
+  ).toBeVisible();
+  await chip.getByRole("button", { name: "Skip step" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Create your first agent" }),
+  ).toBeVisible();
+});
+
+test("creating an agent in the tutorial: coached dialog, locked email task, inbox finale", async ({
+  page,
+  request,
+}) => {
+  // Email mode needs the connections query live (composio capability) — the
+  // seeded gmail connection then arms the guided email first task.
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { integrations: ["composio"] },
+  });
+
+  await page.goto("/");
+  await startInAppOnboarding(page);
+  await page.getByRole("button", { name: "Start setup" }).click();
+  await page.getByRole("button", { name: "Show me" }).click();
+  await page.locator("[data-tour-target='nav-ai-hub']").click();
+  await page
+    .getByRole("dialog", { name: "Pick the AI you already use." })
+    .getByRole("button", { name: "Skip step" })
+    .click();
+  await page.getByRole("button", { name: "Show me" }).click();
+  await page.locator("[data-tour-target='nav-integrations']").click();
+  await page
+    .getByRole("dialog", { name: "Connect your email." })
+    .getByRole("button", { name: "Skip step" })
+    .click();
+
+  // The agent sequence — this time creating for REAL through the dialog,
+  // coached inside it: pick "Create new", then name it.
+  await page.getByRole("button", { name: "Show me" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Click New agent" }),
+  ).toBeVisible();
+  await page.locator("[data-tour-target='newAgent']").first().click();
+  // In-dialog chips live outside the modal's a11y subtree (Radix marks the
+  // rest of the page aria-hidden), so address them by text, not role.
+  await expect(page.getByText("Click Create new")).toBeVisible();
+  await page.getByRole("button", { name: "Create new", exact: true }).click();
+  await expect(
+    page.getByText("Pick a color and give it a name."),
+  ).toBeVisible();
+  await page
+    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
+    .fill("Mailer");
+  await page.getByRole("button", { name: "Create Agent" }).click();
+
+  // Created → celebration. The tutorial suppressed the auto setup mission,
+  // so no chat panel opened on its own.
+  const created = page.getByRole("dialog", { name: "Agent created!" });
+  await expect(created).toBeVisible();
+  await created.getByRole("button", { name: "Continue" }).click();
+
+  // The guided email first task: prewritten, locked, just send. Script the
+  // agent's reply to carry the completion marker BEFORE the send.
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-reply`, {
+    data: { text: "Sent! Check your inbox.\n[TUTORIAL_COMPLETE]" },
+  });
+  await page.getByRole("button", { name: "Show me" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Click New task" }),
+  ).toBeVisible();
+  await page
+    .locator("[data-screen-active='true'] [data-tour-target='newMission']")
+    .click();
+  // The just-created agent is pinned on its board (agentFilter), so the
+  // New-task click composes directly, no agent menu.
+  await expect(
+    page.getByRole("dialog", { name: "Just press send." }),
+  ).toBeVisible();
+  // The composer is prewritten and locked; the hole narrows to the send
+  // button alone — the click goes through it.
+  const composer = page.getByPlaceholder("What should the agent work on?");
+  await expect(composer).toHaveValue("Send me a hello email");
+  await page
+    .locator('[data-testid="mission-panel"] button[type="submit"]')
+    .click();
+
+  // The working beat holds until the agent's reply carries the marker, then
+  // the finale sends the user to their inbox.
+  const finale = page.getByRole("dialog", { name: "Check your inbox!" });
+  await expect(finale).toBeVisible();
+  await finale.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

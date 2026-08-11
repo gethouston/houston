@@ -22,7 +22,7 @@ import {
  *     and "Not now" is remembered.
  */
 
-const CONNECT_STEP = "Connect your AI";
+const WELCOME_STEP = "Welcome to Houston!";
 const JOB_QUESTION = "What best describes your work?";
 const INDUSTRY_QUESTION = "What industry do you work in?";
 const GOAL_QUESTION = "What would you love to automate?";
@@ -58,17 +58,41 @@ test("first run walks the three questions and never asks again", async ({
   ).toBeVisible();
   await answerGoalStep(page, "Triage my inbox every morning.");
 
-  // The survey hands off to the create-your-assistant flow, which opens
-  // directly on its connect step (the welcome/intro screen was removed).
-  await expect(page.getByRole("heading", { name: CONNECT_STEP })).toBeVisible();
+  // The survey hands off to the IN-APP onboarding: the shell mounts with the
+  // welcome overlay armed over it (in-app-onboarding.tsx).
+  await expect(page.getByRole("heading", { name: WELCOME_STEP })).toBeVisible();
 
-  // Answered is answered: a reload lands back on the connect step, with no
+  // Answered is answered: a reload lands back on the welcome overlay, with no
   // question of the three re-asked.
   await page.reload();
-  await expect(page.getByRole("heading", { name: CONNECT_STEP })).toBeVisible();
+  await expect(page.getByRole("heading", { name: WELCOME_STEP })).toBeVisible();
   for (const question of [JOB_QUESTION, INDUSTRY_QUESTION, GOAL_QUESTION]) {
     await expect(page.getByRole("heading", { name: question })).toHaveCount(0);
   }
+});
+
+test('"Something else" opens a required field that captures the answer', async ({
+  page,
+  request,
+}) => {
+  await resetToFirstRun(request);
+  await page.goto("/");
+
+  // The pick alone is not an answer: the field appears and holds Continue.
+  await page.getByRole("button", { name: "Something else" }).click();
+  const field = page.getByPlaceholder("Tell us in a few words");
+  await expect(field).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+
+  await field.fill("Chef");
+  await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(
+    page.getByRole("heading", { name: "What industry do you work in?" }),
+  ).toBeVisible();
+
+  // A named pick shows no field.
+  await expect(page.getByPlaceholder("Tell us in a few words")).toHaveCount(0);
 });
 
 test("an answer whose push failed rides along on the next one", async ({

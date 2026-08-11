@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { StorageUnavailableScreen } from "./components/auth/storage-unavailable-screen";
 import { CloudMigrationGate } from "./components/onboarding/cloud-migration/cloud-migration-gate";
+import { ArmInAppOnboarding } from "./components/onboarding/in-app-onboarding";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import {
   isFirstRun,
   onboardingRoute,
 } from "./components/onboarding/missions/onboarding-flow";
-import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { OnboardingSurveyScreen } from "./components/onboarding/survey-screen";
 import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
+import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
 import { WorkspaceLoading } from "./components/shell/workspace-loading";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
@@ -230,7 +231,6 @@ export default function App() {
   const bootedRef = useRef(false);
   const toasts = useUIStore((s) => s.toasts);
   const dismissToast = useUIStore((s) => s.dismissToast);
-  const tutorialActive = useUIStore((s) => s.tutorialActive);
   // A plain org `user` can't create agents (the create-your-assistant
   // onboarding would 403 at `POST /agents`), so they skip that funnel and land
   // straight in the shell on their assigned agents (or an empty state without a
@@ -337,26 +337,16 @@ export default function App() {
     return <SignInScreen />;
   }
 
-  // First-run tutorial. Held in front of the shell while the orchestrator is
-  // mid-flight, even after the workspace and agent have been created (M2+).
-  // Checked BEFORE the loading splash on purpose: the tutorial runs before the
-  // first load has ever settled, and letting the splash win here would unmount
-  // the orchestrator, fire its cleanup, and clear `tutorialActive` — kicking
-  // the user out of the tutorial.
-  if (tutorialActive) {
-    return (
-      <PersonalAssistantOnboarding
-        toasts={mappedToasts}
-        onDismissToast={dismissToast}
-      />
-    );
-  }
+  // Everything below the auth gates renders behind the agreement gate: the
+  // setup order is language (main.tsx) → sign-in (above) → agreement → survey.
+  // The gate self-skips once accepted, and entirely on cloud web (HOU-1014).
 
   // On the v3 control plane the first-run gate below reads the AGENT count, so
   // the splash must also cover boot's async gap between workspaces resolving
   // and the first `loadAgents` call — `agents: []` in that gap is "not loaded
   // yet", not "fresh install" (an existing user must never flash into
-  // onboarding, which would pin them there via `tutorialActive`). The v3
+  // onboarding, which arms the setup overlay and marks `onboarding_pending`
+  // so it would come back on the next boot too). The v3
   // adapter always reports one synthetic workspace, so `loadAgents` is
   // guaranteed to run and settle `loaded`. The legacy Rust wire gates on
   // workspaces alone and skips this wait (zero-workspace first runs never load
@@ -397,8 +387,9 @@ export default function App() {
   //
   // The login fallback rides alongside the shell so a sign-in launched from a
   // surface without its own login handler (the in-chat reconnect card) still
-  // opens the browser / dialog. Onboarding + tutorial mount their own handler
-  // (the login mission), so they don't need it. The migration-reconnect branch
+  // opens the browser / dialog. It rides the same branch as the setup overlay,
+  // which guides the user through the shell's own AI Hub. The
+  // migration-reconnect branch
   // is the CO-LOCATED upgrade moment (workspaces migrated in place, no
   // provider connected) — see useMigrationReconnect for its trigger.
 
@@ -447,66 +438,55 @@ export default function App() {
   );
 
   return (
-    <CloudMigrationGate>
-      {firstRunRoute === "segment" ? (
-        survey.loading ? (
-          <WorkspaceLoading />
-        ) : (
+    <DisclaimerGate>
+      <CloudMigrationGate>
+        {firstRunRoute === "segment" ? (
+          survey.loading ? (
+            <WorkspaceLoading />
+          ) : (
+            // The three questions are mandatory: the first-run survey renders
+            // no skip affordance (profile_completion keeps its "Not now").
+            <OnboardingSurveyScreen
+              mode="first_run"
+              survey={survey}
+              onComplete={() => setFirstRunSurveyDone(true)}
+            />
+          )
+        ) : firstRunRoute === "app" && migrationReconnect.show ? (
+          <>
+            <ProviderLoginFallback />
+            <ClaudeBrowserLogin />
+            <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
+          </>
+        ) : showSurveyPrompt ? (
           <OnboardingSurveyScreen
-            mode="first_run"
+            mode="profile_completion"
             survey={survey}
-            onComplete={() => setFirstRunSurveyDone(true)}
+            onComplete={() => setCompletionPromptClosed(true)}
             onDismiss={() => {
-              // Terminal escape hatch, mirroring the orchestrator's
-              // skipOnboarding. The survey mounts BEFORE the orchestrator, so
-              // no pending flag or tutorialActive exists yet: marking completed
-              // is the whole teardown, and it flips this route to the shell
-              // synchronously (query cache set first). Deliberately saves NO
-              // answer.
-              //
-              // Declining onboarding declines the completion prompt with it.
-              // Skipping AFTER answering the job question leaves a segmented
-              // record with gaps, which is exactly what `needsCompletionPrompt`
-              // fires on — without this the survey would re-mount as the
-              // in-app prompt in the very same render, and "Skip onboarding"
-              // would visibly do nothing.
-              analytics.track("onboarding_skipped", {
-                step: "segment",
-                source: "escape_hatch",
-              });
               void survey.dismissCompletionPrompt();
-              void markCompleted();
+              setCompletionPromptClosed(true);
             }}
           />
-        )
-      ) : firstRunRoute === "onboarding" ? (
-        <PersonalAssistantOnboarding
-          toasts={mappedToasts}
-          onDismissToast={dismissToast}
-        />
-      ) : migrationReconnect.show ? (
-        <>
-          <ProviderLoginFallback />
-          <ClaudeBrowserLogin />
-          <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
-        </>
-      ) : showSurveyPrompt ? (
-        <OnboardingSurveyScreen
-          mode="profile_completion"
-          survey={survey}
-          onComplete={() => setCompletionPromptClosed(true)}
-          onDismiss={() => {
-            void survey.dismissCompletionPrompt();
-            setCompletionPromptClosed(true);
-          }}
-        />
-      ) : (
-        <>
-          <ProviderLoginFallback />
-          <ClaudeBrowserLogin />
-          <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
-        </>
-      )}
-    </CloudMigrationGate>
+        ) : (
+          // Route "app" AND the first-run "onboarding" route: the setup runs IN
+          // the app, as the in-app onboarding overlay armed over the shell.
+          // ONE branch for both
+          // on purpose — connecting the AI provisions the assistant mid-flow,
+          // which flips `firstRun` and would otherwise remount the shell (and
+          // reset the overlay) at that instant. The arm rides AFTER the shell
+          // so the element positions match across the flip.
+          <>
+            <ProviderLoginFallback />
+            <ClaudeBrowserLogin />
+            <WorkspaceShell
+              toasts={mappedToasts}
+              onDismissToast={dismissToast}
+            />
+            {firstRunRoute === "onboarding" && <ArmInAppOnboarding />}
+          </>
+        )}
+      </CloudMigrationGate>
+    </DisclaimerGate>
   );
 }

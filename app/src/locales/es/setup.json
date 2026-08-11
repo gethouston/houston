@@ -1,4 +1,97 @@
 {
+  "inApp": {
+    "welcomeTitle": "¡Te damos la bienvenida a Houston!",
+    "welcomeBody": "Antes de empezar, configura lo esencial. <emph>Houston no puede funcionar sin esto.</emph> Toma 3 minutos.",
+    "continue": "Continuar",
+    "steps": {
+      "connectAiIntro": {
+        "title": "Conecta tu IA",
+        "body": "Tus agentes necesitan una IA para trabajar. Te muestro dónde conectarla.",
+        "cta": "Muéstrame"
+      },
+      "openAiHub": {
+        "title": "Haz clic en Modelos de IA"
+      },
+      "connectAi": {
+        "title": "Elige la IA que ya usas.",
+        "hint": "Tus agentes funcionarán con ella",
+        "already": "Ya tienes una IA conectada."
+      },
+      "integrationsIntro": {
+        "title": "Conecta tus apps",
+        "body": "Tus agentes actúan a través de tus apps, como el correo y el calendario. Te muestro dónde.",
+        "cta": "Muéstrame"
+      },
+      "openIntegrations": {
+        "title": "Haz clic en Integraciones"
+      },
+      "connectIntegration": {
+        "title": "Conecta tu correo.",
+        "hint": "O cualquier app que uses a diario",
+        "already": "Ya tienes una app conectada."
+      },
+      "integrationConnected": {
+        "title": "¡App conectada!",
+        "body": "Así de fácil. Tus agentes pueden acceder a más de 1000 apps de esta forma."
+      },
+      "createAgentIntro": {
+        "title": "Crea tu primer agente",
+        "body": "Los agentes son compañeros que te quitan trabajo de encima. Te muestro dónde crear uno.",
+        "cta": "Muéstrame"
+      },
+      "createAgent": {
+        "title": "Haz clic en Nuevo agente",
+        "hint": "Ponle el nombre que quieras",
+        "already": "Ya tienes un agente."
+      },
+      "agentCreated": {
+        "title": "¡Agente creado!",
+        "body": "Se está configurando solo ahora mismo. Ya puedes hablar con él."
+      },
+      "sendMissionIntro": {
+        "title": "Dale trabajo",
+        "body": "Pides con tus palabras y tu agente se pone a trabajar. Te muestro dónde.",
+        "cta": "Muéstrame"
+      },
+      "sendMission": {
+        "title": "Haz clic en Nueva tarea",
+        "hint": "Así le das trabajo a los agentes",
+        "typeTitle": "Dile qué necesitas.",
+        "typeHint": "Con tus palabras, y envíalo",
+        "emailHint": "Su primera tarea ya está escrita",
+        "sendTitle": "Solo presiona enviar.",
+        "sendHint": "Escribimos la primera tarea de tu agente por ti"
+      },
+      "missionSent": {
+        "title": "¡Tarea enviada!",
+        "body": "Tu agente ya está en ello. Ese es el ciclo completo: tú pides, él trabaja.",
+        "cta": "Listo"
+      },
+      "createAgentDialog": {
+        "pickTitle": "Haz clic en Crear nuevo",
+        "nameTitle": "Elige un color y ponle un nombre.",
+        "nameHint": "Luego haz clic en Crear agente"
+      },
+      "emailSending": {
+        "title": "Mira a tu agente trabajar.",
+        "hint": "Te está enviando un correo ahora mismo",
+        "stuck": "¿Algo salió mal? Tu tarea se envió, puedes terminar la configuración."
+      },
+      "emailSent": {
+        "title": "¡Revisa tu correo!",
+        "body": "Tu agente te acaba de enviar un correo real. Así trabaja para ti, de verdad."
+      }
+    },
+    "skipStep": "Omitir paso",
+    "welcomeCta": "Empezar configuración",
+    "checklist": {
+      "ai": "Conecta tu IA",
+      "apps": "Conecta tus apps",
+      "agent": "Crea tu agente",
+      "task": "Envíale su primera tarea"
+    },
+    "stripFailed": "No pudimos quitar la nota de configuración de tu agente. Pídele que elimine la sección de configuración de Houston de sus instrucciones."
+  },
   "name": {
     "title": "Nombra tu espacio de trabajo",
     "description": "Los espacios de trabajo mantienen tus agentes organizados: uno personal, uno de trabajo, etc.",
@@ -18,7 +111,7 @@
   },
   "onboardingSegment": {
     "title": "¿Cuál describe mejor tu trabajo?",
-    "subtitle": "Personaliza Houston para tu trabajo.",
+    "subtitle": "Tus respuestas personalizan tu configuración.",
     "options": {
       "marketing": "Marketing",
       "product": "Producto",
@@ -66,29 +159,17 @@
     },
     "progress": {
       "label": "Paso {{current}} de {{total}}"
-    }
+    },
+    "otherPlaceholder": "Cuéntanos en pocas palabras"
   },
   "tutorial": {
-    "brand": "Houston",
     "nav": {
-      "back": "Atrás",
-      "continue": "Continuar",
-      "skipOnboarding": "Omitir la configuración"
+      "back": "Atrás"
     },
     "errors": {
-      "setupFailed": "No pudimos terminar de configurar tu espacio de trabajo. Inténtalo de nuevo.",
-      "title": "La configuración no se completó",
-      "body": "Algo salió mal al crear tu asistente. Inténtalo de nuevo o vuelve y elige otra IA.",
-      "retry": "Reintentar"
-    },
-    "toolkits": {
-      "gmail": "Gmail",
-      "googlecalendar": "Google Calendar",
-      "outlook": "Outlook",
-      "outlook_calendar": "Outlook Calendar"
+      "setupFailed": "No pudimos terminar de configurar tu espacio de trabajo. Inténtalo de nuevo."
     },
     "defaults": {
-      "workspaceName": "Personal",
       "assistantName": "Asistente personal",
       "focus": "Ayúdame a estar organizado, preparar mi día, redactar mensajes, proteger tiempo de enfoque y dar seguimiento a pendientes.",
       "approvalRule": "Pregunta antes de enviar mensajes, crear eventos de calendario o cambiar algo en las apps conectadas."
@@ -102,57 +183,17 @@
         "description": "Reúne todo lo que necesitas antes de tu próxima reunión: quién participa, qué hablaron la última vez y cualquier cosa urgente, a partir de tu bandeja de entrada y una búsqueda rápida en la web, y te lo entrega antes de que empiece."
       }
     },
-    "milestones": {
-      "ai": "Conecta tu IA",
-      "email": "Conecta tu correo",
-      "send": "Prueba tu asistente"
-    },
     "missions": {
-      "connect": {
-        "title": "Conecta tu IA",
-        "body": "Elige la IA que ya pagas e inicia sesión. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura."
-      },
       "email": {
-        "title": "Mira a tu agente en acción",
         "offer": {
           "option": "Envíame un correo de saludo"
-        },
-        "chip": "Envía un correo por mí",
-        "placeholder": "Responde a tu agente...",
-        "body": "Tu agente te enviará un correo real, para que lo veas funcionar.",
-        "skip": "Omitir por ahora",
-        "skipHint": "¿Algo salió mal? Puedes continuar en Houston e intentarlo más tarde."
+        }
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",
         "body": "Tu agente ya puede pensar. Estás un paso más cerca.",
         "cta": "Continuar"
-      },
-      "connectEmail": {
-        "title": "Dale a tu agente acceso a tu correo",
-        "body": "Elige tu correo para que tu agente pueda enviar por ti. Lo conectas una vez, de forma segura.",
-        "connect": "Conectar",
-        "connecting": "Conectando...",
-        "cancel": "Cancelar",
-        "connected": "Conectado",
-        "preparing": "Preparando a tu asistente..."
-      },
-      "emailConnected": {
-        "title": "¡Correo conectado!",
-        "body": "Así de fácil es conectar una app, y tu agente puede acceder a más de 1000 así.",
-        "cta": "Continuar"
-      },
-      "finished": {
-        "title": "¡Revisa tu correo!",
-        "body": "Tu asistente personal acaba de demostrar que puede actuar por ti, de verdad.",
-        "readyTitle": "¡Ya está todo listo!",
-        "readyBody": "Tu asistente personal está listo para ponerse a trabajar por ti.",
-        "tagline": "Ahora ve y haz lo imposible.",
-        "cta": "Empieza a construir",
-        "inviteTeam": "Invita a tu equipo",
-        "inviteTeamBody": "Mira quién trabaja en cada tarea. Crea un equipo y comparte tus agentes."
       }
-    },
-    "stepCounter": "Paso {{current}} de {{total}}"
+    }
   }
 }

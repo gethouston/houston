@@ -25,16 +25,24 @@ export function CreateChoiceTile({
   icon: Icon,
   title,
   onClick,
+  dataAttrs,
+  disabled,
 }: {
   icon: ChoiceTileIcon;
   title: string;
   onClick: () => void;
+  /** Optional stable data attributes (e.g. a tutorial anchor). */
+  dataAttrs?: Record<`data-${string}`, string>;
+  /** Dim + inert (the in-app onboarding narrows the choice to one tile). */
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      {...dataAttrs}
       onClick={onClick}
-      className="ht-hairline group flex aspect-square flex-col items-center justify-center gap-3 rounded-xl bg-chip-solid px-4 text-center text-ink outline-none transition-[background-color,transform] duration-200 hover:bg-chip-solid-hover active:scale-[0.97] focus-visible:ring-[3px] focus-visible:ring-focus/50"
+      disabled={disabled}
+      className="ht-hairline group flex aspect-square flex-col items-center justify-center gap-3 rounded-xl bg-chip-solid px-4 text-center text-ink outline-none transition-[background-color,transform] duration-200 hover:bg-chip-solid-hover active:scale-[0.97] focus-visible:ring-[3px] focus-visible:ring-focus/50 disabled:pointer-events-none disabled:opacity-40"
     >
       <Icon
         className="size-6 text-ink-muted transition-colors duration-200 group-hover:text-ink"

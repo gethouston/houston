@@ -183,14 +183,19 @@ describe("survey screen wiring", () => {
     assert.match(footer, /disabled=\{!canContinue \|\| saving\}/);
   });
 
-  it("keeps the first-run escape hatch below the card", () => {
-    assert.match(screen, /<SkipOnboardingButton onSkip=\{onDismiss\} \/>/);
+  it("renders no first-run escape hatch — the questions are mandatory", () => {
+    // The dismiss affordance is wired only in the FRAMED (profile_completion)
+    // mode; a first-run mounting passes none, so the screen has no way out.
+    assert.match(
+      screen,
+      /onDismiss=\{framed \? \(onDismiss \?\? null\) : null\}/,
+    );
   });
 
   it("offers no per-question skip on the goal step", () => {
     // A link one reflex click from the answer we were asking for got taken
-    // without a decision. The deliberate exits are the global escape hatch and
-    // "Not now"; the goal step's only way forward is a valid answer.
+    // without a decision. The deliberate exit is "Not now" on the completion
+    // prompt; the goal step's only way forward is a valid answer.
     const flow = read("../src/components/onboarding/use-survey-flow.ts");
     assert.doesNotMatch(footer, /onSkipQuestion|goal\.skip/);
     assert.doesNotMatch(screen, /onSkipQuestion|skipGoal/);

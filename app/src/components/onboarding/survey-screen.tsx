@@ -1,10 +1,12 @@
 import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { OnboardingSurveyState } from "../../hooks/use-onboarding-survey";
-import { ONBOARDING_GOAL_MAX_LENGTH } from "../../lib/onboarding-survey";
+import {
+  ONBOARDING_GOAL_MAX_LENGTH,
+  ONBOARDING_OTHER_MAX_LENGTH,
+} from "../../lib/onboarding-survey";
 import { FirstRunScreen } from "./first-run-screen";
 import { SetupCard } from "./setup-card";
-import { SkipOnboardingButton } from "./skip-onboarding-button";
 import { SurveyAnswer } from "./survey-answer";
 import { useSurveyCopy } from "./survey-copy";
 import { SurveyFooter } from "./survey-footer";
@@ -20,9 +22,9 @@ interface OnboardingSurveyScreenProps {
   /** Every question in this mounting's plan has been answered. */
   onComplete: () => void;
   /**
-   * The user declined the survey: the support escape hatch in `first_run`,
-   * "Not now" in `profile_completion`. The caller owns what declining means
-   * (terminal teardown vs. dismissing the prompt).
+   * "Not now" in `profile_completion` — the prompt is dismissible. The
+   * first-run survey is deliberately NOT: the three questions are mandatory,
+   * so `first_run` renders no decline affordance and ignores this.
    */
   onDismiss?: () => void;
 }
@@ -57,7 +59,9 @@ export function OnboardingSurveyScreen({
   // user to fix an answer that is perfectly fine.
   const invalid = flow.goalTooLong
     ? t("onboardingSurvey.goal.tooLong", { max: ONBOARDING_GOAL_MAX_LENGTH })
-    : null;
+    : flow.otherTooLong
+      ? t("onboardingSurvey.goal.tooLong", { max: ONBOARDING_OTHER_MAX_LENGTH })
+      : null;
 
   if (!flow.step) return null;
 
@@ -91,8 +95,10 @@ export function OnboardingSurveyScreen({
             segment={flow.segment}
             industry={flow.industry}
             goal={flow.goal}
+            otherText={flow.otherText}
             onSegment={flow.chooseSegment}
             onIndustry={flow.chooseIndustry}
+            onOther={flow.writeOther}
             onGoal={flow.writeGoal}
             disabled={flow.saving}
             errorId={invalid ? PROBLEM_ID : null}
@@ -119,9 +125,6 @@ export function OnboardingSurveyScreen({
           />
         </div>
       </SetupCard>
-      {mode === "first_run" && onDismiss && (
-        <SkipOnboardingButton onSkip={onDismiss} />
-      )}
     </FirstRunScreen>
   );
 }

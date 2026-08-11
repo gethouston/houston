@@ -300,26 +300,13 @@ there). There is no Join: a member is shown only the teams they are already in.
 Keyboard ownership, the shared panel, and where a published mission-nav lands →
 **`board-shell.md`**.
 
-### The guided tour
+### Guide me
 
-Three files, mounted by `workspace-shell.tsx` behind `uiTourActive`:
-`workspace-tour-overlay.tsx` (what renders), `workspace-tour.ts` (the step list),
-`workspace-tour-steps.ts` (the anchor vocabulary + gates). It walks the ONE path the
-product has — your teams in the rail → a team's Mission Control → starting a mission →
-what the team runs on its own → the app-level destinations.
+- "Guide me" (the sidebar footer's help control) replays the in-app setup
+  (`onboarding/in-app-onboarding.tsx`). The `data-tour-target` anchors survive as the
+  shell's landmark vocabulary (`workspace-tour-steps.ts`); tutorial-only anchors live
+  in `onboarding/tutorial-targets.ts`.
 
-- **Typed step targets.** A step names an anchor from a closed union and builds its
-  selector from it, never a hand-written string, so a renamed `data-tour-target` is a
-  compile error instead of a spotlight that silently finds nothing. A team's section rows
-  are addressed by a composed `teamId:section` selector.
-- **Every step OPENS its destination on enter**, so the spotlight sits over the real
-  surface rather than over the trigger.
-- **A step whose anchor cannot render is dropped**, not stalled. The gate is exhaustive
-  over the anchor union, so a new anchor cannot ship without declaring whether it lives in
-  the sidebar rail — which is not always on screen (auto-collapsed narrow, drawer on
-  mobile).
-- `packages/web/e2e/teams-nav.spec.ts` walks the whole tour and asserts it ends on the
-  team's Routines section with the seeded routine visible.
 
 ## Sections
 

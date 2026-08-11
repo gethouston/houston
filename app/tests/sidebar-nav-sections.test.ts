@@ -77,7 +77,6 @@ describe("the rail's unlabelled run", () => {
     assert.ok(!NAV.includes("startTour"));
     assert.ok(!NAV.includes("active: false"));
     assert.ok(!VIEWS.includes("guide-me"), "no view claims that id either");
-    assert.ok(!HOOK.includes("setUiTourActive"));
   });
 });
 
@@ -180,15 +179,16 @@ describe("Settings left the nav for the footer", () => {
 });
 
 describe("the Guide me composition", () => {
-  it("goes home BEFORE arming the tour", () => {
-    // The overlay measures its first target the moment it mounts and every
-    // anchor lives in the workspace shell, so arming first spotlights nothing.
+  it("goes home BEFORE arming the in-app onboarding", () => {
+    // The onboarding operates over the workspace shell, so the store is left
+    // first — arming against Settings would overlay the wrong surface.
     // The composition moved to the footer with the affordance itself.
     const start = FOOTER.indexOf("onGuideMe={() => {");
     assert.ok(start >= 0, "the footer composes onGuideMe");
     const body = FOOTER.slice(start);
     assert.ok(
-      body.indexOf("openHome();") < body.indexOf("setUiTourActive(true);"),
+      body.indexOf("openHome();") <
+        body.indexOf("setInAppOnboardingActive(true);"),
     );
   });
 

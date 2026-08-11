@@ -103,6 +103,10 @@ export function useMcNewMission({
     setOpenerReady(true);
   }, []);
   const onAutoOpenEmpty = useCallback(() => {
+    // The in-app onboarding teaches the New task CLICK; an empty board
+    // auto-opening the composer would perform the lesson's step by itself
+    // (and read as "a task started on its own").
+    if (useUIStore.getState().inAppOnboardingActive) return;
     if (visibleAgents.length === 1)
       handlePickAgent(visibleAgents[0], { focusComposer: false });
     else if (visibleAgents.length > 1) setAgentPickerOpen(true);

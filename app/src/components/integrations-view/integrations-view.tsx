@@ -11,6 +11,7 @@ import {
   useCustomIntegrationsSurface,
   useIntegrationsGate,
 } from "../integrations";
+import { tutorialAnchor } from "../onboarding/tutorial-targets.ts";
 import {
   PageHeaderTools,
   PageHeaderToolsProvider,
@@ -46,7 +47,10 @@ export function IntegrationsView() {
                 cells) and centers in the wide page — headings and rows keep
                 one shared left edge, and the page's margin absorbs the rest,
                 split evenly, instead of piling up right of the grid. */}
-            <div className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}>
+            <div
+              {...tutorialAnchor("integrationsCatalog")}
+              className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}
+            >
               {gate.kind === "ready" ? (
                 <IntegrationsReady
                   reconnectNotice={gate.reconnectNotice}

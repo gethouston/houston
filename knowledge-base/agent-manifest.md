@@ -203,97 +203,29 @@ no separate screens. "The agent creates itself."
   `lib/agent-welcome.ts` ONLY so boards from older builds still render their
   derived greeting.
 
-## Default Personal assistant + first-run onboarding
+## First-run setup (in-app)
 
-A separate flow from the self-setup mission above — the assistant it seeds does NOT
-run one. Every newly-created workspace gets a `Personal assistant` from the
-built-in `personal-assistant` config; users never create it manually.
+- Setup order: language gate → sign-in → agreement (`DisclaimerGate` renders inside
+  App, after auth; cloud web skips it) → mandatory 3-question survey (job / industry /
+  automation goal; "Something else" opens a required free-text field, stored as
+  `segmentOther`/`industryOther` in the survey record; the gateway mirror carries the
+  four original fields only).
+- The setup itself runs IN the app: the shell opens with the overlay from
+  `app/src/components/onboarding/in-app-onboarding.tsx`. Center cards narrate
+  (Houston logo + live setup checklist); `TutorialSpotlight` cuts a click-through
+  hole over the real control; steps advance on app state via the pure machine
+  `in-app-onboarding-flow.ts` (unit-tested).
+- Sequences: connect AI (AI hub) → connect apps (Integrations; only when composio is
+  served) → create an agent through the real New-agent dialog (coached in-dialog; the
+  store tile is disabled; the auto setup-mission is suppressed on first-run armings
+  only) → a prewritten locked "Send me a hello email" first task (CLAUDE.md directive
+  from `tutorial-system-prompt.ts`, stripped on every exit) → finale on the agent's
+  real send (completion marker), confetti at each milestone.
+- Already-done steps show an addendum + Skip step; there is no other escape — the
+  setup is mandatory (Julian's rule). Resume: first-run arming stamps
+  `onboarding_pending`, every finish clears it and marks `onboarding_completed`.
+  "Guide me" (sidebar help) replays the setup without first-run side effects.
 
-Driven by `app/src/components/onboarding/personal-assistant-onboarding.tsx`. **No
-welcome/intro screen, no naming/color step, no Try/Skill/Routine missions** —
-onboarding opens DIRECTLY on the connect step. Houston ships ONE great default
-assistant (fixed name/color from `tutorial.defaults`); the payoff is the seeded
-routine + skill, demoed by the UI tour.
-
-Screen state machine (`OnboardingStep` in `tutorial-copy.ts`; milestone labels in
-`tutorial.milestones`):
-
-1. **connect** — connect your AI (`missions/connect-ai.tsx`) via the shared
-   `<ProviderBrowser>` with `curated` set (only `FEATURED_PROVIDER_IDS`, split
-   Subscription / API-key, plus a "see all providers" chip; a search query bypasses
-   curation). Handles every auth type. On connect it fires `ai_provider_connected`
-   (ref-guarded, once per install), kicks off **silent** workspace + assistant
-   provisioning (`useCreateAssistant`), and advances.
-2. **aiConnected** — a `SetupProgress` success beat; continue → `connectEmail` when
-   integrations are available, else `finished` (`stepAfterAgentCreated`).
-3. **connectEmail** (`missions/connect-email.tsx`) — two one-click brand rows
-   (Gmail, Outlook). Tapping a row kicks off its OAuth immediately (no
-   select-then-Connect), its chevron becomes a spinner (the other row disables),
-   the in-flight row turns into a CANCEL control on hover
-   (`useConnectFlow().cancel`), and it auto-advances the moment the toolkit lands
-   active. If the background create hasn't landed it shows a "preparing" spinner;
-   if the create **failed or hung** (20s timeout) it renders a recoverable error
-   card (Try again re-fires the stored provider/model create; Back returns to the
-   AI picker) instead of an infinite spinner. A soft "skip email" → `finished`.
-   The old free-text "Another provider" row fed raw slugs to Composio and mostly
-   failed — removed; the skip hint points at Integrations.
-4. **emailConnected** — success beat, fires `integration_connected`.
-5. **emailChat** (`missions/email.tsx`) — the assistant sends one real email so the
-   user watches it act. Completing marks `emailSent`.
-6. **finished** (`missions/finished.tsx`) — one celebratory screen with a
-   `SuccessCheck` and exactly ONE **"Start building"** CTA (no secondary escape).
-   Copy is honest via `variant`: `"sent"` only on the path that really sent an
-   email, `"ready"` otherwise. The CTA arms the UI tour and clears `tutorialActive`.
-
-- **The tour's completion/skip callback calls `openAgentSection(agentId,
-  "routines")`** (`components/shell/workspace-tour-overlay.tsx:80`) so the
-  freshly-seeded Morning briefing is visible. There is no Routines *tab* — that
-  lands on the agent's TEAM Routines section.
-- **Capability-aware step math.** On a no-integrations deployment the email steps
-  never render, so they vanish from both the "Step N of M" counter and the
-  milestone plan: `integrationsAvailable(capabilities)` drives visible milestones
-  and `stepPosition(screen, { emailSteps })` (`app/src/lib/setup-steps.ts`) computes
-  the counter, so the sole connect step never lies "Step 1 of 3".
-- **Durable resume.** The assistant is created silently the instant the AI connects,
-  so the agent-count first-run signal flips `false` forever after that point and a
-  mid-flow quit would permanently skip setup. The `onboarding_pending` engine
-  preference (`app/src/hooks/use-onboarding-pending.ts`) is the resume contract: set
-  on mount, cleared in every terminal path (`finishOnboarding`, the stuck-escape
-  `skipOnboarding`); `App.tsx` re-enters onboarding while it is set.
-- **Never re-onboard a real user.** The zero-agent signal can't tell a fresh install
-  from an emptied workspace or a just-finished cloud migration, so the durable
-  `onboarding_completed` engine preference
-  (`app/src/hooks/use-onboarding-completed.ts` — upgrade-only, uid-keyed
-  localStorage mirror + try/catch fallback, because a pod-pref blip must never
-  re-onboard anyone) records "this install has onboarded". Set in both terminal
-  paths, on cloud-migration outcome `"done"` (`"skipped"` deliberately not — a
-  declining zero-agent user still needs onboarding), and backfilled on boot for
-  anyone with ≥1 agent. Routing is the pure `onboardingRoute()`
-  (`onboarding-flow.ts`, unit-tested): `"segment"` / `"onboarding"` only on an
-  uncompleted first run or an `onboarding_pending` resume; a completed zero-agent
-  user lands in `WorkspaceShell`'s empty state.
-
-**Onboarding survey (3 questions).** The `"segment"` route renders
-`OnboardingSurveyScreen`: job, industry, then a free-text automation goal.
-Answers live in the uid-scoped `houston_onboarding_survey` account preference,
-reconcile between the local mirror and engine, and sync best-effort to
-`PUT /v1/me/onboarding`. Existing segment answers are absorbed, and users
-missing newer answers receive one dismissible profile-completion prompt.
-
-**The default assistant ships seeded.** Creation writes real capability into the
-new agent's tree via `personal-assistant-seeds.ts`
-(`buildPersonalAssistantSeeds` → `create(..., seeds)`):
-
-- A **Morning-briefing routine** (`.houston/routines/routines.json`, schedule
-  `0 7 * * 1-5`, `suppress_when_silent: true`) — reads whatever calendar/inbox is
-  connected and stays silent (`ROUTINE_OK`) when nothing is.
-- A **meeting-prep skill** (`.agents/skills/meeting-prep/SKILL.md`).
-- Both are locale-aware: short user-facing bits flow through `t()` and mirror
-  across en/es/pt, while long-form model instructions stay English but carry an
-  explicit "write your OUTPUT in <language>" line from the active locale.
-  `buildAssistantInstructions` tells the agent these two ship ready-made.
-- The timezone preference is seeded during creation too
-  (`app/src/hooks/use-timezone-preference.ts`), so the cron fires in the user's zone.
 
 ## Routines are created chat-first
 

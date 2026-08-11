@@ -10,6 +10,7 @@ import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
 import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
 import type { ProviderInfo } from "../../lib/providers";
+import { tutorialAnchor } from "../onboarding/tutorial-targets.ts";
 import {
   filterByQuickFilter,
   type ProviderQuickFilter,
@@ -105,7 +106,10 @@ export function AiHubView() {
           )}
         >
           <PageContainer width="wide" className="pt-6 pb-10">
-            <div className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}>
+            <div
+              {...tutorialAnchor("aiHubProviders")}
+              className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}
+            >
               {!catalog || !tabs ? (
                 <HubSkeleton loading={isLoading} />
               ) : (

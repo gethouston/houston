@@ -28,9 +28,11 @@ export {
 export {
   createOnboardingSurveyPreference,
   isValidAutomationGoal,
+  isValidOtherText,
   liftLegacySegmentPreference,
   markGatewaySynced,
   ONBOARDING_GOAL_MAX_LENGTH,
+  ONBOARDING_OTHER_MAX_LENGTH,
   ONBOARDING_SURVEY_PREF_KEY,
   ONBOARDING_SURVEY_VERSION,
   type OnboardingSurveyPreference,
@@ -40,11 +42,17 @@ export {
   serializeOnboardingSurveyPreference,
 } from "./onboarding-survey-record.ts";
 
-/** The fields the gateway stores — the ANSWERS. */
+/** The answer fields (the gateway mirrors the four original ones; the two
+ *  "other" labels live in the account preference — see onboarding-sync.ts). */
 type AnswerPatch = Partial<
   Pick<
     OnboardingSurveyPreference,
-    "segment" | "industry" | "automationGoal" | "goalSkipped"
+    | "segment"
+    | "segmentOther"
+    | "industry"
+    | "industryOther"
+    | "automationGoal"
+    | "goalSkipped"
   >
 >;
 
@@ -82,15 +90,26 @@ function reviseLocalState(
 export function applySegment(
   preference: OnboardingSurveyPreference,
   segment: OnboardingSegmentChoice,
+  other: string | null = null,
 ): OnboardingSurveyPreference {
-  return reviseAnswer(preference, { segment });
+  // The free text belongs to "Something else" alone: a named pick clears it,
+  // so a back-and-forth re-pick can never strand a stale label.
+  return reviseAnswer(preference, {
+    segment,
+    segmentOther: segment === "something_else" ? (other?.trim() ?? null) : null,
+  });
 }
 
 export function applyIndustry(
   preference: OnboardingSurveyPreference,
   industry: OnboardingIndustryChoice,
+  other: string | null = null,
 ): OnboardingSurveyPreference {
-  return reviseAnswer(preference, { industry });
+  return reviseAnswer(preference, {
+    industry,
+    industryOther:
+      industry === "something_else" ? (other?.trim() ?? null) : null,
+  });
 }
 
 export function applyGoal(
