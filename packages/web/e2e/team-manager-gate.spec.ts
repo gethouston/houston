@@ -11,6 +11,7 @@ import {
   seedSidebarLayout,
 } from "./support/sidebar-layout";
 import {
+  openAgentScreen,
   openAgentSettings,
   openTeamSettings,
   rail,
@@ -30,8 +31,8 @@ import {
  *   - the team whose agents they only USE does not, and neither does the
  *     workspace's own — the rail and the screen read one list per team, so a
  *     row is never a dead link;
- *   - drilling in, they get the EDITABLE face on the agent they manage and the
- *     read-only face on the other agent of the same team.
+ *   - drilling in, they configure the agent they MANAGE, while the agent of the
+ *     same team they only use offers no settings door at all.
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` and `/__test__/org`. The two teams are stored sidebar
@@ -219,15 +220,14 @@ test("the team's shared context tab saves into the layout", async ({
   expect(support).not.toHaveProperty("context");
 });
 
-test("the member EDITS the agent they manage and reads the other one read-only", async ({
+test("the member EDITS the agent they manage, and the one they only use offers no settings at all", async ({
   page,
 }) => {
   await armMemberWorkspace(page);
   await openShell(page);
 
   // Their own agent: the editable face. The standing-prose editor is always
-  // open (no invite empty state), so editable-vs-locked is the box itself —
-  // and only the editable face carries the greyed write invitation.
+  // open (no invite empty state), so the greyed write invitation is the tell.
   await openJobDescription(page, "Payroll Bot");
   const jobBox = () => page.getByLabel("Job description");
   await expect(jobBox()).toBeEditable();
@@ -236,9 +236,7 @@ test("the member EDITS the agent they manage and reads the other one read-only",
     page.getByText("Write instructions for your agent…"),
   ).toBeVisible();
 
-  // Back to the team, then into an agent of the SAME team they only use: the
-  // page is reachable (it is honest — they can see what the agent is told) and
-  // renders read-only. The gateway is the real enforcer either way.
+  // Back to the team, then onto an agent of the SAME team they only USE.
   await screen(page).locator("[data-agent-settings-back]").click();
   // An EMPTY board auto-opens its composer, and a two-agent team asks who
   // runs it first (use-mc-new-mission). That is the designed landing, not a
@@ -249,11 +247,11 @@ test("the member EDITS the agent they manage and reads the other one read-only",
   await expect(picker).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(picker).toHaveCount(0);
-  await openJobDescription(page, "Payroll Helper");
-  await expect(jobBox()).not.toBeEditable();
-  await expect(jobBox()).toHaveAttribute("contenteditable", "false");
-  // The locked face drops the write invitation — the user-visible tell.
-  await expect(
-    page.getByText("Write instructions for your agent…"),
-  ).toHaveCount(0);
+
+  // Configuring an agent is its MANAGER's job, so this agent's screen offers
+  // its work and no settings door: no lozenge to click, and therefore no
+  // page — the surface does not exist for them rather than existing locked.
+  await openAgentScreen(page, "Payroll Helper");
+  await expect(sectionTab(page, "Team Settings")).toHaveCount(0);
+  await expect(sectionTabs(page)).toHaveCount(3);
 });

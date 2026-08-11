@@ -41,14 +41,12 @@ export function buildTeamIdentityChoices(
   t: TFunction<["shell"]>,
 ): TeamIdentityChoices {
   return {
+    // Each mark is NAMED in the user's language, from its own key: an icon's
+    // name is copy, not a slug title-cased at runtime, so a Spanish reader
+    // hears "Billete de dólar" and can search for it.
     glyphs: SIDEBAR_GROUP_GLYPH_NAMES.map((name) => ({
       name,
-      label: t("shell:sidebar.teams.identityIconLabel", {
-        name: name
-          .split("-")
-          .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
-          .join(" "),
-      }),
+      label: t(`shell:sidebar.teamIcons.${name}`),
     })),
     colors: AGENT_COLORS.map((entry) => ({
       id: entry.id,

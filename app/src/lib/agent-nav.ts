@@ -80,16 +80,12 @@ export function agentDestination(
 /**
  * Whether this caller can reach THIS agent's settings page at all.
  *
- * The page has two doors — Team Settings and, for a multiplayer owner/admin,
- * Settings > Permissions — but programmatic navigation always takes the Team
- * Settings one, so its gate is that section's gate. The Permissions door's own
- * gate is strictly narrower, so nothing this admits is unreachable.
- * The section is per team (`visibleTeamSectionsForTeam`), which makes this
- * per agent: the org owner/admin reaches every agent, and a member reaches the
- * agents they MANAGE, because managing one is exactly what opens their team's
- * Settings row. A caller who fails it must not be shown a "configure this"
- * affordance: it would resolve to a section the rail does not draw and read as
- * a dead link.
+ * Configuring an agent is a manager's job and the page has ONE door: the
+ * agent's own Settings section, drawn only for its managers
+ * (`visibleAgentSections`). This is that same gate, asked before an affordance
+ * is offered — a caller who fails it must not be shown a "configure this" link,
+ * because the request would resolve to a section nothing draws and read as a
+ * dead link.
  */
 export function canOpenAgentSettings(
   caps: Capabilities | null | undefined,

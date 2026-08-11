@@ -47,15 +47,16 @@ export function canPersonBeManager(role: OrgRole): boolean {
 }
 
 /**
- * What the People tab renders, given the resolved rows and whether the viewer may
- * edit. Kept pure so the (small) degradation rule is unit-tested in isolation:
+ * What the People tab renders, given the resolved rows and whether its levels
+ * are editable. Kept pure so the (small) degradation rule is unit-tested in
+ * isolation:
  *
- * - `roster` — one or more rows to show (the whole team, or the read-only lens).
- * - `viewerOnly` — a read-only viewer whose roster came back EMPTY. The gateway
- *   only serves the member list to owner/admin, so a plain member (org role
- *   `user`) sees no roster; rather than a misleading "no people" empty state we
- *   show an honest line: they can use the agent, and a manager controls access.
- * - `empty` — an editable context (a manager) with genuinely no members yet.
+ * - `roster` — one or more rows to show (the editable list, or the static one).
+ * - `viewerOnly` — static levels and an EMPTY roster. The gateway only serves
+ *   the member list to owner/admin, so a manager who is a plain org member
+ *   (role `user`) sees none; rather than a misleading "no people" empty state
+ *   we show an honest line about who reaches the agent.
+ * - `empty` — an editable roster with genuinely no members yet.
  */
 export type AgentPeopleView = "roster" | "viewerOnly" | "empty";
 

@@ -8,13 +8,9 @@ import { ContextEditorPage } from "../../context/context-editor";
  * ({@link ContextEditorPage}: hero + pinned document card) — the same surface
  * About me and Admin's Company context wear, so every standing-prose editor in
  * the product is one component. `level={2}`: the drilled header's identity
- * lozenge already carries the screen's `<h1>`. Read-only for non-managers:
- * the same face, locked, so they still read what the agent is told.
+ * lozenge already carries the screen's `<h1>`.
  */
-export function AgentAdminInstructions({
-  agent,
-  readOnly = false,
-}: AgentSectionProps) {
+export function AgentAdminInstructions({ agent }: AgentSectionProps) {
   const { t } = useTranslation("agents");
   const path = agent.folderPath;
   const { data: instructions } = useInstructions(path);
@@ -26,7 +22,6 @@ export function AgentAdminInstructions({
       subtitle={t("instructions.helper")}
       ready={instructions !== undefined}
       content={instructions ?? ""}
-      readOnly={readOnly}
       onSave={(c) =>
         saveInstructions.mutateAsync({ name: "CLAUDE.md", content: c })
       }

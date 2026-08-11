@@ -10,7 +10,7 @@ export function AgentDeleteDialog({
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
-  const { t } = useTranslation(["shell", "teams"]);
+  const { t } = useTranslation(["shell", "teams", "common"]);
   return (
     <ConfirmDialog
       open={open}
@@ -18,7 +18,7 @@ export function AgentDeleteDialog({
       title={t("shell:agentDelete.title")}
       description={t("shell:agentDelete.description")}
       confirmLabel={t("teams:teamView.agentMenu.delete")}
-      cancelLabel={t("teams:teamView.move.cancel")}
+      cancelLabel={t("common:actions.cancel")}
       variant="destructive"
       onConfirm={onConfirm}
     />

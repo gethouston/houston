@@ -16,11 +16,8 @@ import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.
 import { PageHero } from "../../shell/page-shell";
 import { LearningsContent } from "../learnings-content";
 
-/** Memory (learnings) section. Read-only for non-managers. */
-export function AgentAdminKnowledge({
-  agent,
-  readOnly = false,
-}: AgentSectionProps) {
+/** Memory (learnings) section. */
+export function AgentAdminKnowledge({ agent }: AgentSectionProps) {
   const { t } = useTranslation(["teams", "agents"]);
   const path = agent.folderPath;
   const { data } = useLearnings(path);
@@ -65,7 +62,6 @@ export function AgentAdminKnowledge({
         layout="section"
         showHelper={false}
         entries={rows}
-        readOnly={readOnly}
         onAdd={(text) => addLearning.mutateAsync(text)}
         onRemove={(index) => removeLearning.mutateAsync(index)}
         onUpdate={(id, text) => updateLearning.mutateAsync({ id, text })}

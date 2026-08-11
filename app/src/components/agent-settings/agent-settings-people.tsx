@@ -71,14 +71,7 @@ function PeopleSkeleton() {
  * to expand, "Only specific people" would write the empty set and mean the
  * opposite of its label.
  */
-export function AgentSettingsPeople({
-  agent,
-  readOnly = false,
-}: {
-  agent: Agent;
-  /** View-only: the choice is disabled and the roster renders without controls. */
-  readOnly?: boolean;
-}) {
+export function AgentSettingsPeople({ agent }: { agent: Agent }) {
   const { t } = useTranslation("teams");
   const headingId = useId();
   const { data: session } = useSession();
@@ -151,7 +144,7 @@ export function AgentSettingsPeople({
             <AccessChoice
               labelledBy={headingId}
               value={mode}
-              disabled={readOnly || share.isPending}
+              disabled={share.isPending}
               onChange={handleChoice}
               options={[
                 {
@@ -173,13 +166,11 @@ export function AgentSettingsPeople({
               agent={agent}
               members={members}
               share={share}
-              readOnly={readOnly || mode === "any"}
+              readOnly={mode === "any"}
               note={
-                readOnly
-                  ? t("permissions.agentPeople.readOnlyHint")
-                  : mode === "any"
-                    ? t("agentSettings.people.everyoneNote")
-                    : undefined
+                mode === "any"
+                  ? t("agentSettings.people.everyoneNote")
+                  : undefined
               }
             />
           </div>

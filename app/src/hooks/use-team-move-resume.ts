@@ -1,21 +1,28 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine, newEngineActive } from "../lib/engine";
-import { readPendingMoves } from "../lib/pending-move";
+import i18n from "../lib/i18n";
+import { resumePendingMove } from "../lib/move-resume";
+import type { TeamMoveStage, TeamMoveState } from "../lib/move-team";
+import {
+  clearPendingMove,
+  readPendingMoves,
+  recordPendingMove,
+  updatePendingMoveId,
+} from "../lib/pending-move";
 import {
   claimTeamMove,
   clearPendingTeamMove,
+  type PendingTeamMove,
   readPendingTeamMoves,
   releaseTeamMove,
   updatePendingTeamMove,
 } from "../lib/pending-team-move";
 import { shareErrorCode } from "../lib/share-via-team";
 import { orgSlugFromWorkspaceId } from "../lib/space-id";
-import { tauriAgentTeams } from "../lib/tauri";
-import {
-  completeTeamMovePostscript,
-  teamMoveAgentsSettled,
-} from "../lib/team-move-resume";
+import { tauriAgentTeams, tauriOrg } from "../lib/tauri";
+import { drivePendingTeamMove } from "../lib/team-move-resume";
+import { runTeamMovePostscript } from "../lib/team-move-stage";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -30,71 +37,141 @@ export function useTeamMoveResume(enabled: boolean): void {
     if (pendingTeams.length === 0) return;
     ran.current = true;
     let cancelled = false;
+    const toast = (kind: "done" | "failed", team: string) => {
+      useUIStore.getState().addToast({
+        title: t(`moveTeamResume.${kind}`, { team }),
+        variant: kind === "done" ? "success" : "error",
+      });
+    };
     void (async () => {
-      const caps = await getEngine().capabilities();
-      if (!caps.spaces) return;
-      for (const pending of pendingTeams) {
-        while (
-          !cancelled &&
-          !teamMoveAgentsSettled(
-            pending,
-            readPendingMoves().map((move) => move.agentId),
-          )
-        ) {
-          await new Promise((resolve) => setTimeout(resolve, 1_500));
-        }
-        if (cancelled || !claimTeamMove(pending.sourceTeam.id)) continue;
-        try {
-          await completeTeamMovePostscript(
-            pending,
-            {
-              deleteSource: (id) => tauriAgentTeams.remove(id),
-              switchTarget: async (slug) => {
-                await useWorkspaceStore.getState().loadWorkspaces();
-                const workspace = useWorkspaceStore
-                  .getState()
-                  .workspaces.find(
-                    (item) => orgSlugFromWorkspaceId(item.id) === slug,
-                  );
-                if (!workspace) throw new Error("target workspace not found");
-                useWorkspaceStore.getState().setCurrent(workspace);
-                await useAgentStore.getState().loadAgents(workspace.id);
-              },
-              listTargetTeams: () => tauriAgentTeams.list(),
-              createTargetTeam: (input) => tauriAgentTeams.create(input),
-              updateTargetTeam: (id, patch) =>
-                tauriAgentTeams.update(id, patch),
-              placeAgent: (agentId, teamId) =>
-                tauriAgentTeams.setAgentTeam(agentId, teamId),
-            },
-            {
-              isMissingSource: (error) =>
-                shareErrorCode(error) === "team_not_found",
-              onTeamCreated: (id) =>
+      try {
+        const caps = await getEngine().capabilities();
+        if (!caps.spaces) return;
+        for (const pending of pendingTeams) {
+          if (cancelled || !claimTeamMove(pending.sourceTeam.id)) continue;
+          try {
+            const result = await drivePendingTeamMove(pending, {
+              readAgentMove: (id) =>
+                readPendingMoves().find((move) => move.agentId === id),
+              recordAgentMove: recordPendingMove,
+              updateAgentMoveId: updatePendingMoveId,
+              clearAgentMove: clearPendingMove,
+              markAgentMoved: (id) =>
                 updatePendingTeamMove(pending.sourceTeam.id, {
-                  createdTeamId: id,
+                  movedAgentIds: [
+                    ...(readPendingTeamMoves().find(
+                      (item) => item.sourceTeam.id === pending.sourceTeam.id,
+                    )?.movedAgentIds ?? []),
+                    id,
+                  ],
                 }),
-            },
-          );
-          clearPendingTeamMove(pending.sourceTeam.id);
-          useUIStore.getState().addToast({
-            title: t("moveTeamResume.done", { team: pending.sourceTeam.name }),
-            variant: "success",
-          });
-        } catch {
-          useUIStore.getState().addToast({
-            title: t("moveTeamResume.failed", {
-              team: pending.sourceTeam.name,
-            }),
-            variant: "error",
-          });
-        } finally {
-          releaseTeamMove(pending.sourceTeam.id);
+              resumeAgentMove: (move, options) =>
+                resumePendingMove(
+                  move,
+                  {
+                    moveAgent: (id, to) =>
+                      tauriOrg.moveAgent(id, to, { toast: false }),
+                    moveStatus: (id, moveId) =>
+                      tauriOrg.moveStatus(id, moveId, { toast: false }),
+                  },
+                  options,
+                ),
+              runPostscript: () => driveTeamMovePostscript(pending),
+            });
+            if (result.outcome !== "done") throw new Error("agent move failed");
+          } catch (error) {
+            if (!(error instanceof TeamMovePostscriptError))
+              toast("failed", pending.sourceTeam.name);
+          } finally {
+            releaseTeamMove(pending.sourceTeam.id);
+          }
         }
+      } catch {
+        toast("failed", pendingTeams[0]?.sourceTeam.name ?? "");
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [enabled, t]);
+}
+
+export async function driveTeamMovePostscript(
+  pending: PendingTeamMove,
+  onProgress: (state: TeamMoveState) => void = () => {},
+): Promise<void> {
+  try {
+    await runTeamMovePostscript(
+      pending,
+      postscriptWire(pending),
+      (state, createdTeamId) => {
+        const stage = postscriptStage(state);
+        updatePendingTeamMove(pending.sourceTeam.id, {
+          ...(createdTeamId ? { createdTeamId } : {}),
+          ...(stage ? { postscriptStage: stage } : {}),
+        });
+        onProgress(state);
+      },
+    );
+    clearPendingTeamMove(pending.sourceTeam.id);
+    toastPostscript("done", pending.sourceTeam.name);
+  } catch (error) {
+    toastPostscript("failed", pending.sourceTeam.name);
+    throw new TeamMovePostscriptError(error);
+  } finally {
+    releaseTeamMove(pending.sourceTeam.id);
+  }
+}
+
+export class TeamMovePostscriptError extends Error {
+  readonly cause: unknown;
+  constructor(cause: unknown) {
+    super("team move postscript failed");
+    this.cause = cause;
+  }
+}
+
+function postscriptStage(state: TeamMoveState): TeamMoveStage | undefined {
+  return ["cleanupSource", "switching", "recreate", "placing"].includes(
+    state.step,
+  )
+    ? (state.step as TeamMoveStage)
+    : undefined;
+}
+
+function postscriptWire(pending: PendingTeamMove) {
+  return {
+    deleteSource: (id: string) => tauriAgentTeams.remove(id),
+    switchTarget: switchTargetWorkspace,
+    listTargetTeams: () => tauriAgentTeams.list(),
+    createTargetTeam: (input: {
+      name: string;
+      icon?: string;
+      color?: string;
+    }) => tauriAgentTeams.create(input),
+    updateTargetTeam: (id: string, patch: { context: string }) =>
+      tauriAgentTeams.update(id, patch),
+    placeAgent: (agentId: string, teamId: string) =>
+      tauriAgentTeams.setAgentTeam(agentId, teamId),
+    isMissingSource: (error: unknown) =>
+      shareErrorCode(error) === "team_not_found",
+    preferredTeamId: pending.createdTeamId,
+  };
+}
+
+function toastPostscript(kind: "done" | "failed", team: string): void {
+  useUIStore.getState().addToast({
+    title: i18n.t(`teams:moveTeamResume.${kind}`, { team }),
+    variant: kind === "done" ? "success" : "error",
+  });
+}
+
+async function switchTargetWorkspace(slug: string): Promise<void> {
+  await useWorkspaceStore.getState().loadWorkspaces();
+  const workspace = useWorkspaceStore
+    .getState()
+    .workspaces.find((item) => orgSlugFromWorkspaceId(item.id) === slug);
+  if (!workspace) throw new Error("target workspace not found");
+  useWorkspaceStore.getState().setCurrent(workspace);
+  await useAgentStore.getState().loadAgents(workspace.id);
 }

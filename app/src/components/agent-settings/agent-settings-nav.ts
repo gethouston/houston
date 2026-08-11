@@ -27,10 +27,9 @@ export type AgentSettingsSection =
 /** The two semantic groups used only to keep hidden deep links nearby. */
 export type AgentSettingsGroupId = "context" | "permissions";
 
-/** The props EVERY section body takes. `readOnly` renders its non-manager face. */
+/** The props EVERY section body takes. */
 export interface AgentSectionProps {
   agent: Agent;
-  readOnly?: boolean;
 }
 
 /**
@@ -51,8 +50,7 @@ export const SECTION_GROUP: Record<AgentSettingsSection, AgentSettingsGroupId> =
 
 /**
  * The Context sections: the agent's job description and its learnings.
- * Unconditional — every agent has both, and a non-manager reads them
- * read-only.
+ * Unconditional — every agent has both.
  */
 export function contextSections(): AgentSettingsSection[] {
   return ["job-description", "learnings"];
@@ -78,19 +76,22 @@ export function agentAccessSections(
 /**
  * The full settings-page cluster: what the agent IS (job description), what it
  * can DO (skills), what it has LEARNED, then who may reach it (the access
- * sections). Skills has no org gate at all (it is the per-agent Skills surface
- * every deployment ships).
+ * sections) and how it is managed. Skills has no org gate at all (it is the
+ * per-agent Skills surface every deployment ships).
+ *
+ * There is no per-caller gate here, because the PAGE carries it: its one door
+ * is the agent's own Settings section, which only an agent-manager is offered
+ * (`visibleAgentSections`). Everyone who reads this list manages the agent.
  */
 export function agentSettingsSections(
   caps: Capabilities | null | undefined,
-  options: { manager: boolean },
 ): AgentSettingsSection[] {
   return [
     "job-description",
     "skills",
     "learnings",
     ...agentAccessSections(caps),
-    ...(options.manager ? (["manage"] as const) : []),
+    "manage",
   ];
 }
 

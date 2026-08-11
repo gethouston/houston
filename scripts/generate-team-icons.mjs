@@ -3,6 +3,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { TAG_RULES, tagsFor } from "./team-icon-tags.mjs";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -16,96 +17,51 @@ export function kebabCase(value) {
     .toLowerCase();
 }
 
+/**
+ * The only markup a team icon may be made of. Everything the emitted bodies
+ * reach is `dangerouslySetInnerHTML`, so a `<script>`, a `<foreignObject>` or
+ * an `on*` handler slipped into a future source file would run in the app.
+ * Anything outside these two lists stops the build instead.
+ */
+const ALLOWED_ELEMENTS = new Set(
+  "path circle ellipse rect line polyline polygon g".split(" "),
+);
+const ALLOWED_ATTRIBUTES = new Set(
+  "d cx cy r rx ry x y x1 y1 x2 y2 width height points fill-rule clip-rule transform opacity fill-opacity".split(
+    " ",
+  ),
+);
+
+function assertDrawingOnly(id, body) {
+  for (const [, element] of body.matchAll(/<\/?([a-zA-Z][\w-]*)/g)) {
+    if (!ALLOWED_ELEMENTS.has(element)) {
+      throw new Error(`Symbol "${id}": <${element}> is not a drawing element`);
+    }
+  }
+  for (const [, attribute] of body.matchAll(/\s([a-zA-Z][\w-]*)\s*=/g)) {
+    if (!ALLOWED_ATTRIBUTES.has(attribute)) {
+      throw new Error(
+        `Symbol "${id}": attribute "${attribute}" is not allowed`,
+      );
+    }
+  }
+}
+
 export function parseSymbols(source) {
   return [
     ...source.matchAll(
       /<symbol\s+id="([^"]+)"\s+viewBox="([^"]+)">([\s\S]*?)<\/symbol>/g,
     ),
-  ].map(([, id, viewBox, rawBody]) => ({
-    key: kebabCase(id),
-    viewBox,
-    body: rawBody
+  ].map(([, id, viewBox, rawBody]) => {
+    const body = rawBody
       .replace(/\sfill=("[^"]*"|'[^']*')/g, "")
       .replace(/></g, ">\n<")
-      .trim(),
-  }));
-}
-
-const TAG_RULES = [
-  [
-    "money finance accounting payment banking business",
-    /bank|dollar|euro|money|spreadsheet|calculator|chart|graph|dashboard|report|shop|cart|briefcase|project|rank/,
-  ],
-  [
-    "people team community collaboration identity",
-    /user|subgroup|conversation|face|anonymous|accessibility|car-pool|locker-room|shrug|heart|tee-shirt|thumbs|union/,
-  ],
-  [
-    "communication message contact social support",
-    /chat|email|phone|megaphone|mic|speaker|sound|subscribe|notified|resolved|hear|question-mark/,
-  ],
-  [
-    "time schedule deadline planning calendar",
-    /alarm|clock|hourglass|stopwatch|watch|air-tag/,
-  ],
-  [
-    "travel transport vehicle journey logistics",
-    /airplane|car|bus|bike|ship|taxi|train|tram|truck|routing|direction|compass|pin|world|africa|america|asia|australia|europe|garage|traffic|moving-staircase|anchor|astronaut|flag|rocket|sign|binocular/,
-  ],
-  ["food meal restaurant kitchen", /burger|coffee|biscuit|pizza|ramen|basket/],
-  [
-    "health medical wellness care science",
-    /bandage|bones|chemist|cross|dna|dumbbell|health|mask|pill|safety|brain|foot-print|heart|hear/,
-  ],
-  [
-    "nature outdoors environment weather",
-    /flower|leaf|palm|tree|mountain|sun|moon|storm|wind|fire|feather|recycle|umbrella|surfer|dino/,
-  ],
-  [
-    "tech devices software development computing",
-    /ai|automation|battery|bug|chip|computer|connected|database|desktop|hack|mobile|modem|network|robot|server|tablet|terminal|electric-plug|click-button|bolt|cloud|cube|pointer|search/,
-  ],
-  [
-    "documents writing notes content knowledge",
-    /document|writing|write|book|bookmark|note|page|policy|signature|text|education|floppy|image/,
-  ],
-  [
-    "charts data analytics metrics insights",
-    /chart|graph|scatter|spreadsheet|dashboard|diagram|radar|speedometer|report|process/,
-  ],
-  [
-    "sports games fitness recreation competition",
-    /football|basketball|bowling|golf|joystick|poker|runner|soccer|stadium|tennis|ping-pong|jersey|dumbbell|dice/,
-  ],
-  [
-    "tools building construction maintenance work",
-    /brick|brush|bucket|cone|construction|crane|design-tools|eraser|factory|gears|ladder|paint|scissors|wall|wrench|extinguisher|magnet|flashlight|trash/,
-  ],
-  [
-    "security privacy protection access safety",
-    /shield|lock|face-id|anonymous|policy|alert|skull|hack|safety|judge/,
-  ],
-  [
-    "ai intelligence automation assistant future",
-    /(^|-)ai($|-)|robot|brain|automation|magic-wand|crystal-ball|astronaut|rocket/,
-  ],
-  [
-    "creative design art media ideas",
-    /camera|image|paint|brush|music|video|view-finder|magic|crystal|light-bulb|asterisk|circle|empty-circle|exclamation-mark|starred/,
-  ],
-  [
-    "home place facilities operations",
-    /home|bed|garage|factory|tower|spaces|wall|cloth|box|present|crown/,
-  ],
-];
-
-export function tagsFor(key) {
-  const tags = [];
-  for (const [words, pattern] of TAG_RULES) {
-    if (pattern.test(key)) tags.push(...words.split(" "));
-  }
-  if (tags.length < 2) tags.push("general", "symbol");
-  return [...new Set(tags)].filter((tag) => !key.split("-").includes(tag));
+      .trim();
+    // Checked on what actually SHIPS, after the fill strip, so the allowlist
+    // judges the exact markup the app will render.
+    assertDrawingOnly(id, body);
+    return { key: kebabCase(id), viewBox, body };
+  });
 }
 
 function dataModule(entries, index) {
@@ -162,12 +118,15 @@ if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const sourcePath = process.argv[2];
-  if (!sourcePath) {
-    throw new Error(
-      "Usage: node scripts/generate-team-icons.mjs <team-icons.svg>",
-    );
+  // The committed asset by default, so `pnpm generate:team-icons` regenerates
+  // exactly what is in the tree; an argument overrides it with a new source.
+  const sourcePath =
+    process.argv[2] ?? path.join(repoRoot, "ui/layout/icons/team-icons.svg");
+  try {
+    const icons = await generate(sourcePath);
+    process.stdout.write(`Generated ${icons.length} team icons.\n`);
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : error}\n`);
+    process.exit(1);
   }
-  const icons = await generate(sourcePath);
-  process.stdout.write(`Generated ${icons.length} team icons.\n`);
 }

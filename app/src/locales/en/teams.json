@@ -440,8 +440,10 @@
     "switching": "Switching to the organization",
     "recreate": "Recreating the team",
     "placing": "Putting agents in their team",
-    "moveFailed": "{{moved}} of {{total}} agents moved. The next agent could not move.",
-    "postscriptFailed": "All {{total}} agents moved, but setup did not finish.",
+    "moveFailed_one": "The agent could not move.",
+    "moveFailed_other": "One of the {{count}} agents could not move.",
+    "postscriptFailed_one": "The agent moved, but setup did not finish.",
+    "postscriptFailed_other": "All {{count}} agents moved, but setup did not finish.",
     "retry": "Try again",
     "close": "Close"
   },

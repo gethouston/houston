@@ -53,7 +53,6 @@ export function teamPeopleFace(
 export function visibleTeamSectionsForTeam(
   caps: Capabilities | null,
   team: TeamView,
-  _peopleFace: TeamPeopleFace = "hidden",
 ): TeamSectionId[] {
   const manager = canConfigureTeam(caps, team);
   return [
@@ -64,13 +63,31 @@ export function visibleTeamSectionsForTeam(
   ];
 }
 
-/** The drilled Team Settings level. People is deliberately present for every
- * manager; its body chooses roster or invite from the deployment face. */
+/**
+ * The drilled Team Settings level: the tabs BEHIND the Settings door, for the
+ * caller standing at it. It re-asks the door's own gate rather than trusting
+ * the request that opened it, so a persisted focus flag or authority lost while
+ * the view is open cannot render an owner-only surface that the gateway would
+ * refuse on save. An EMPTY list is that refusal, and it is what sends the view
+ * back to the team's base sections.
+ *
+ * People is a tab wherever there are people to show: a roster on a shared
+ * space, an invitation in a personal one. Where the deployment has no
+ * organizations at all (`hidden`) it is absent, because the only thing it could
+ * offer is a door out of the product the caller chose.
+ */
 export function visibleTeamSettingsSections(
-  _team: TeamView,
-  _peopleFace: TeamPeopleFace,
+  caps: Capabilities | null,
+  team: TeamView,
+  peopleFace: TeamPeopleFace,
 ): TeamSectionId[] {
-  return ["context", "agents", "people", "settings"];
+  if (!canConfigureTeam(caps, team)) return [];
+  return [
+    "context",
+    "agents",
+    ...(peopleFace === "hidden" ? [] : (["people"] as const)),
+    "settings",
+  ];
 }
 
 export function visibleAgentSections(

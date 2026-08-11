@@ -9,7 +9,6 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import type { UseSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useTeams } from "../../hooks/use-teams";
-import { hasSpaces } from "../../lib/org-roles";
 import {
   resolveTeamHighlight,
   sidebarSelectedAgentId,
@@ -17,7 +16,6 @@ import {
 import {
   type TeamView,
   teamById,
-  teamPeopleFace,
   visibleTeamSectionsForTeam,
 } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
@@ -108,13 +106,8 @@ export function useSidebarTeamsModel(args: {
   // per team here, and the highlight resolves against the ACTIVE team's own —
   // never another team's, which would light the wrong block or none at all.
   const sectionsForTeam = useCallback(
-    (team: TeamView) =>
-      visibleTeamSectionsForTeam(
-        capabilities,
-        team,
-        teamPeopleFace(team, personalSpace, hasSpaces(capabilities)),
-      ),
-    [capabilities, personalSpace],
+    (team: TeamView) => visibleTeamSectionsForTeam(capabilities, team),
+    [capabilities],
   );
   const activeTeam = teamById(teams, activeTeamId);
   const highlight = resolveTeamHighlight(

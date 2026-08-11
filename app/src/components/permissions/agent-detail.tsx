@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { isAgentManager } from "../../lib/agent-access";
 import type { Agent } from "../../lib/types";
 import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
 import { agentSettingsSections } from "../agent-settings/agent-settings-nav.ts";
@@ -19,11 +18,10 @@ import { AgentDetailHeader } from "./agent-detail-header";
  * The whole product is agent-centric: pick an agent, then manage who reaches it
  * and what it may reach.
  *
- * Manager authority decides the FACE, not access: an admin who can see this
- * agent but doesn't manage it gets the page `readOnly` — every section renders
- * its non-manager face — rather than a dead-end note. {@link isAgentManager}: owner → any org agent; admin → only
- * agents where their effective `access === "manager"`. The gateway is the real
- * enforcer either way.
+ * Configuring an agent is a MANAGER's job and the page has one door — the
+ * agent's own Settings section, which only its managers are offered
+ * (`visibleAgentSections`). So everyone standing here manages this agent, and
+ * every section renders its editable face. The gateway is the real enforcer.
  *
  * The `agent` is resolved live from the store by the shell (by id, not a
  * snapshot), so a share mutation that reloads the store shows fresh data here.
@@ -47,10 +45,9 @@ export function AgentDetail({
   onSectionShown?: (section: AgentSettingsSection) => void;
 }) {
   const { capabilities } = useCapabilities();
-  const canManage = isAgentManager(capabilities, agent);
   const sections = useMemo(
-    () => agentSettingsSections(capabilities, { manager: canManage }),
-    [capabilities, canManage],
+    () => agentSettingsSections(capabilities),
+    [capabilities],
   );
   const [selected, setSelected] = useState<AgentSettingsSection>(() =>
     resolveAgentSettingsSection(sections, initialSection),
@@ -101,11 +98,7 @@ export function AgentDetail({
               : "pt-6 pb-10"
           }
         >
-          <AgentSettingsPage
-            agent={agent}
-            section={selected}
-            readOnly={!canManage}
-          />
+          <AgentSettingsPage agent={agent} section={selected} />
         </PageContainer>
       </div>
     </div>

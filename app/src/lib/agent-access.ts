@@ -45,11 +45,9 @@ export function isAgentManager(
  * sites so their intent reads clearly (matrix v2: configure-scope is
  * agent-manager only, and the gateway 403s any write from anyone else).
  *
- * Editing is a narrower question than REACHING the page. The configure page is
- * reachable by the org owner/admin and by an agent-MANAGER (`canOpenAgentSettings`
- * / `visibleTeamSectionsForTeam`): a manager edits, and anyone else who can
- * reach it gets `AgentDetail`'s read-only face. A plain member who manages no
- * agent of the team gets no Team Settings section at all, so for them the page
+ * Editing and REACHING the page are one question: the configure page's only
+ * door is the agent's own Settings section, offered to its managers alone
+ * (`canOpenAgentSettings` / `visibleAgentSections`). For everyone else the page
  * does not exist rather than existing read-only.
  */
 export const canEditAgentConfig = isAgentManager;

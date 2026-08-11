@@ -57,9 +57,11 @@ export function TeamIdentityPopover({
   const tintVar = tint
     ? ({ "--identity-tint": tint } as CSSProperties)
     : undefined;
+  // The mark's LOCALIZED name rides along with the English key words and
+  // concepts the library knows: an es reader types "dinero", not "money".
   const shown = query.trim()
     ? choices.glyphs.filter((glyph) =>
-        matchesSidebarGroupGlyph(glyph.name, query),
+        matchesSidebarGroupGlyph(glyph.name, query, glyph.label),
       )
     : choices.glyphs;
 

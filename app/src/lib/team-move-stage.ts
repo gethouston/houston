@@ -4,6 +4,7 @@ import {
   type TeamMoveSource,
   type TeamMoveState,
 } from "./move-team.ts";
+import type { PendingTeamMove } from "./pending-team-move.ts";
 import { reconcileTeamByName } from "./team-move-resume.ts";
 
 export interface TeamMoveStageWire {
@@ -21,6 +22,7 @@ export interface TeamMoveStageWire {
   ): Promise<unknown>;
   placeAgent(agentId: string, teamId: string): Promise<void>;
   isMissingSource(error: unknown): boolean;
+  preferredTeamId?: string;
 }
 
 export async function runTeamMoveStage(
@@ -41,10 +43,10 @@ export async function runTeamMoveStage(
     return { state: postscriptDone(state, source) };
   }
   if (state.step === "recreate") {
-    const existing = reconcileTeamByName(
-      await wire.listTargetTeams(),
-      source.name,
-    );
+    const teams = await wire.listTargetTeams();
+    const existing =
+      teams.find((team) => team.id === wire.preferredTeamId) ??
+      reconcileTeamByName(teams, source.name);
     const team =
       existing ??
       (await wire.createTargetTeam({
@@ -68,4 +70,31 @@ export async function runTeamMoveStage(
     return { state: postscriptDone(state, source) };
   }
   return { state };
+}
+
+export async function runTeamMovePostscript(
+  pending: PendingTeamMove,
+  wire: TeamMoveStageWire,
+  onProgress: (state: TeamMoveState, createdTeamId?: string) => void,
+): Promise<void> {
+  let state: TeamMoveState = {
+    step:
+      pending.postscriptStage ??
+      (pending.sourceTeam.isDefault ? "switching" : "cleanupSource"),
+    target: { slug: pending.targetSlug, name: pending.targetName },
+    ...(pending.createdTeamId ? { teamId: pending.createdTeamId } : {}),
+  };
+  while (state.step !== "invite") {
+    onProgress(state);
+    const result = await runTeamMoveStage(
+      state,
+      {
+        ...pending.sourceTeam,
+        agents: pending.agentIds.map((id) => ({ id, name: id })),
+      },
+      wire,
+    );
+    state = result.state;
+    onProgress(state, result.createdTeamId);
+  }
 }

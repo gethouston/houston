@@ -440,8 +440,10 @@
     "switching": "Cambiando a la organización",
     "recreate": "Recreando el equipo",
     "placing": "Colocando los agentes en su equipo",
-    "moveFailed": "Se movieron {{moved}} de {{total}} agentes. No se pudo mover el siguiente agente.",
-    "postscriptFailed": "Se movieron los {{total}} agentes, pero la configuración no terminó.",
+    "moveFailed_one": "No se pudo mover el agente.",
+    "moveFailed_other": "No se pudo mover uno de los {{count}} agentes.",
+    "postscriptFailed_one": "El agente se movió, pero la configuración no terminó.",
+    "postscriptFailed_other": "Se movieron los {{count}} agentes, pero la configuración no terminó.",
     "retry": "Intentar de nuevo",
     "close": "Cerrar"
   },

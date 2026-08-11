@@ -30,6 +30,7 @@ const MOVE: PendingTeamMove = {
   targetSlug: "abcdef0123456789",
   targetName: "Acme",
   agentIds: ["a", "b"],
+  movedAgentIds: [],
   startedAt: 10,
 };
 
@@ -52,5 +53,20 @@ describe("pending team moves", () => {
     releaseTeamMove("design");
     strictEqual(claimTeamMove("design"), true);
     releaseTeamMove("design");
+  });
+  it("normalizes legacy records with no moved-agent checkpoint", () => {
+    const target = storage();
+    const { movedAgentIds: _, ...legacy } = MOVE;
+    target.setItem("houston.pendingTeamMoves", JSON.stringify([legacy]));
+    deepStrictEqual(readPendingTeamMoves(target), [
+      { ...legacy, movedAgentIds: [] },
+    ]);
+  });
+  it("appends moved agents without losing existing checkpoints", () => {
+    const target = storage();
+    recordPendingTeamMove(MOVE, target);
+    updatePendingTeamMove("design", { movedAgentIds: ["a"] }, target);
+    updatePendingTeamMove("design", { movedAgentIds: ["a", "b"] }, target);
+    deepStrictEqual(readPendingTeamMoves(target)[0].movedAgentIds, ["a", "b"]);
   });
 });

@@ -19,15 +19,8 @@ import { useSkillSurfaceLabels } from "../use-skill-surface-labels";
  * save writes the ONE workspace copy and its danger action is "Disable for
  * this agent" (a reversible manifest write). A row's setup chat (HOU-791)
  * stays reachable via the dialog's Edit in chat.
- *
- * `readOnly` (a non-manager reading the agent settings page) drops the
- * discovery tabs and the write affordances via {@link SkillsContent}'s own
- * mode, leaving the installed strip.
  */
-export function AgentAdminSkills({
-  agent,
-  readOnly = false,
-}: AgentSectionProps) {
+export function AgentAdminSkills({ agent }: AgentSectionProps) {
   const { t } = useTranslation("agents");
   const surface = useSkillSurface(agent.folderPath);
   const shared = useAgentSharedSkills(agent.folderPath);
@@ -59,7 +52,6 @@ export function AgentAdminSkills({
         agent={agent}
         skills={merged.skills}
         loading={surface.skillsLoading}
-        readOnly={readOnly}
         editingSkillName={surface.editingSkillName}
         editorState={surface.editorState}
         onEditSkill={surface.openEditSkill}

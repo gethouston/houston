@@ -112,6 +112,16 @@ describe("resumePendingMove", () => {
     deepStrictEqual(w.posts, ["abcdef0123456789"]);
   });
 
+  it("reports an accepted ticket before its first poll", async () => {
+    const accepted: string[] = [];
+    const w = wire({ statuses: { "op-new": [{ status: "done" }] } });
+    await resumePendingMove({ ...PENDING, moveId: "" }, w, {
+      ...instant,
+      onMoveAccepted: (moveId) => void accepted.push(moveId),
+    });
+    deepStrictEqual(accepted, ["op-new"]);
+  });
+
   it("yields inProgress when a fresh move already owns the agent", async () => {
     const w = wire({
       statuses: { "op-old": [{ status: "failed" }] },

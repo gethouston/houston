@@ -4,7 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTeamMoveFlow } from "../../hooks/use-team-move-flow";
 import {
@@ -40,24 +40,6 @@ export function TeamMoveFlow({
     [],
   );
   const [sending, setSending] = useState(false);
-  const runningStage = useRef<string | null>(null);
-
-  useEffect(() => {
-    const active = [
-      "cleanupSource",
-      "switching",
-      "recreate",
-      "placing",
-    ].includes(state.step);
-    if (!active) {
-      runningStage.current = null;
-      return;
-    }
-    if (runningStage.current === state.step) return;
-    runningStage.current = state.step;
-    void flow.runPostscript();
-  }, [state.step, flow.runPostscript]);
-
   const create = async (name: string) => {
     try {
       const team = await flow.createOrg.mutateAsync(name);
@@ -160,8 +142,7 @@ export function TeamMoveFlow({
         {state.step === "moveFailed" && (
           <TeamMoveFailure
             body={t("moveTeam.moveFailed", {
-              moved: state.index,
-              total: source.agents.length,
+              count: source.agents.length,
             })}
             onRetry={flow.moveAgents}
             onClose={() => onOpenChange(false)}
@@ -170,8 +151,7 @@ export function TeamMoveFlow({
         {state.step === "postscriptFailed" && (
           <TeamMoveFailure
             body={t("moveTeam.postscriptFailed", {
-              moved: source.agents.length,
-              total: source.agents.length,
+              count: source.agents.length,
             })}
             onRetry={() => setState(flow.retryTeamMove(state))}
             onClose={() => onOpenChange(false)}
@@ -189,7 +169,6 @@ export function TeamMoveFlow({
             onSend={send}
             onDone={() => {
               setState(finishTeamMove);
-              flow.clearTeamRecord();
               onOpenChange(false);
             }}
           />

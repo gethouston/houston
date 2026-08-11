@@ -278,21 +278,6 @@ describe("visibleTeamSectionsForTeam", () => {
     );
   });
 
-  it("keeps configuration behind one manager door for every people face", () => {
-    const managedTeam = team([agent("a", "manager")], {
-      server: facts(),
-      context: "",
-    });
-    assert.deepEqual(
-      visibleTeamSectionsForTeam(MEMBER, managedTeam, "roster"),
-      [...MANAGER],
-    );
-    assert.deepEqual(
-      visibleTeamSectionsForTeam(MEMBER, managedTeam, "hidden"),
-      [...MANAGER],
-    );
-  });
-
   it("keeps the same manager section in a personal space", () => {
     assert.deepEqual(
       visibleTeamSectionsForTeam(
@@ -318,17 +303,51 @@ describe("visibleTeamSectionsForTeam", () => {
       [...MANAGER],
     );
   });
+});
 
-  it("builds the drilled set and keeps People for invite faces", () => {
-    assert.deepEqual(visibleTeamSettingsSections(team([]), "hidden"), [
+describe("visibleTeamSettingsSections", () => {
+  const MEMBER = caps({ multiplayer: true, role: "user" });
+  const FULL = ["context", "agents", "people", "settings"] as const;
+
+  it("offers nothing to a caller who cannot configure this team", () => {
+    // The drilled level is owner-only, and a persisted focus flag (or authority
+    // revoked while the view is open) must not render it: an empty list is the
+    // view's instruction to fall back to the team's base sections.
+    assert.deepEqual(
+      visibleTeamSettingsSections(
+        MEMBER,
+        team([agent("a", "user")], { server: facts() }),
+        "roster",
+      ),
+      [],
+    );
+    assert.deepEqual(
+      visibleTeamSettingsSections(MEMBER, team([agent("a", "user")]), "hidden"),
+      [],
+    );
+  });
+
+  it("omits People where the deployment has no organizations", () => {
+    // A hidden people face (desktop / self-host: no spaces) has no roster and
+    // nobody to invite, so the tab would offer only "Create an organization".
+    assert.deepEqual(visibleTeamSettingsSections(null, team([]), "hidden"), [
       "context",
       "agents",
-      "people",
       "settings",
     ]);
+  });
+
+  it("keeps People for the roster and invite faces", () => {
+    assert.deepEqual(visibleTeamSettingsSections(null, team([]), "invite"), [
+      ...FULL,
+    ]);
     assert.deepEqual(
-      visibleTeamSettingsSections(team([], { server: facts() }), "invite"),
-      ["context", "agents", "people", "settings"],
+      visibleTeamSettingsSections(
+        MEMBER,
+        team([], { server: facts({ owner: true }) }),
+        "roster",
+      ),
+      [...FULL],
     );
   });
 });
@@ -345,6 +364,28 @@ describe("visibleAgentSections", () => {
       ...WORK,
       "settings",
     ]);
+  });
+
+  it("never lands a non-manager on the agent settings page", () => {
+    // Why the settings page has no read-only face: the ONE door into it is this
+    // section, and a request for it from someone who does not manage the agent
+    // resolves to the board instead. Anything the page rendered for a
+    // non-manager would be unreachable.
+    const member = caps({ multiplayer: true, role: "user" });
+    assert.equal(
+      resolveTeamSection(
+        visibleAgentSections(member, agent("a", "user")),
+        "settings",
+      ),
+      "mission-control",
+    );
+    assert.equal(
+      resolveTeamSection(
+        visibleAgentSections(member, agent("a", "manager")),
+        "settings",
+      ),
+      "settings",
+    );
   });
 });
 

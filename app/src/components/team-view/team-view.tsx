@@ -42,32 +42,41 @@ export function TeamView() {
       ? (team.agents.find((item) => item.id === agentFilter) ?? null)
       : null;
   const focused = agent !== null;
-  const settingsFocused = requestedTeamSettingsFocus && !focused;
+  const peopleFace = team
+    ? teamPeopleFace(team, personalSpace, hasSpaces(capabilities))
+    : "hidden";
+  // The drilled level is re-gated on every render, never trusted from the store:
+  // an empty list means this caller may not configure this team, so the view
+  // owes them the team's base sections instead of an owner-only surface.
+  const settingsSections = team
+    ? visibleTeamSettingsSections(capabilities, team, peopleFace)
+    : [];
+  const settingsRequested = requestedTeamSettingsFocus && !focused;
+  const settingsFocused = settingsRequested && settingsSections.length > 0;
+  const settingsRefused = settingsRequested && settingsSections.length === 0;
   const { canCreate } = useCanCreateAgents();
   useEffect(() => {
     if (requestedFocus && team && agent === null) {
       openTeamView(team.id, requestedSection ?? "mission-control");
     }
   }, [agent, openTeamView, requestedFocus, requestedSection, team]);
+  // Refused: land on the team's home section, not the one that was asked for.
+  // Every section reachable from inside Team Settings lives only in there, so
+  // carrying the request over would leave the store naming a section the base
+  // level does not have.
+  useEffect(() => {
+    if (settingsRefused && team) openTeamView(team.id, "mission-control");
+  }, [openTeamView, settingsRefused, team]);
   if (team === null) return null;
-  const peopleFace = teamPeopleFace(
-    team,
-    personalSpace,
-    hasSpaces(capabilities),
-  );
   const sections = focused
     ? visibleAgentSections(capabilities, agent)
     : settingsFocused
-      ? visibleTeamSettingsSections(team, peopleFace)
-      : visibleTeamSectionsForTeam(capabilities, team, peopleFace);
+      ? settingsSections
+      : visibleTeamSectionsForTeam(capabilities, team);
   const section = resolveTeamSection(sections, requestedSection);
 
   const body = settingsFocused ? (
-    <TeamSettingsPane
-      team={team}
-      section={section}
-      peopleFace={peopleFace === "roster" ? "roster" : "invite"}
-    />
+    <TeamSettingsPane team={team} section={section} peopleFace={peopleFace} />
   ) : focused ? (
     section === "settings" ? (
       <AgentSettingsPane team={team} agent={agent} />

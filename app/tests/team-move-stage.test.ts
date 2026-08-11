@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import type { AgentTeam } from "@houston-ai/engine-client";
 import type { TeamMoveSource, TeamMoveState } from "../src/lib/move-team.ts";
 import {
+  runTeamMovePostscript,
   runTeamMoveStage,
   type TeamMoveStageWire,
 } from "../src/lib/team-move-stage.ts";
@@ -48,6 +49,35 @@ function wire(fail?: string) {
 }
 
 describe("dialog postscript stages", () => {
+  it("drives the entire postscript without mounted-stage re-entry", async () => {
+    const target = wire();
+    const states: string[] = [];
+    await runTeamMovePostscript(
+      {
+        sourceTeam: {
+          id: SOURCE.id,
+          name: SOURCE.name,
+          context: SOURCE.context,
+          isDefault: SOURCE.isDefault,
+        },
+        targetSlug: TARGET.slug,
+        targetName: TARGET.name,
+        agentIds: ["a"],
+        movedAgentIds: ["a"],
+        startedAt: 1,
+      },
+      target.value,
+      (state) => void states.push(state.step),
+    );
+    deepStrictEqual(target.calls, [
+      "cleanupSource",
+      "switching",
+      "recreate",
+      "context",
+      "placing",
+    ]);
+    strictEqual(states.at(-1), "invite");
+  });
   it("advances each stage and preserves the reconciled id for placement", async () => {
     const cleanup = await runTeamMoveStage(
       { step: "cleanupSource", target: TARGET },

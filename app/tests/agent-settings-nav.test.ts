@@ -27,7 +27,7 @@ const LEGACY_MULTIPLAYER = caps({ multiplayer: true, teams: false });
 
 describe("agentSettingsSections", () => {
   it("orders job description, skills, learnings, then multiplayer access", () => {
-    deepStrictEqual(agentSettingsSections(TEAMS, { manager: true }), [
+    deepStrictEqual(agentSettingsSections(TEAMS), [
       "job-description",
       "skills",
       "learnings",
@@ -36,7 +36,7 @@ describe("agentSettingsSections", () => {
       "models",
       "manage",
     ]);
-    deepStrictEqual(agentSettingsSections(caps(), { manager: true }), [
+    deepStrictEqual(agentSettingsSections(caps()), [
       "job-description",
       "skills",
       "learnings",
@@ -44,19 +44,11 @@ describe("agentSettingsSections", () => {
     ]);
   });
 
-  it("keeps Settings last and hides it from non-managers", () => {
-    deepStrictEqual(agentSettingsSections(TEAMS, { manager: false }), [
-      "job-description",
-      "skills",
-      "learnings",
-      "people",
-      "integrations",
-      "models",
-    ]);
-    strictEqual(
-      agentSettingsSections(TEAMS, { manager: true }).at(-1),
-      "manage",
-    );
+  it("keeps Settings last, for the managers who are the page's only audience", () => {
+    // The page's one door is the agent's own Settings section, drawn for its
+    // managers alone, so there is no per-caller gate left in this list.
+    strictEqual(agentSettingsSections(TEAMS).at(-1), "manage");
+    strictEqual(agentSettingsSections(null).at(-1), "manage");
   });
 
   it("keeps only People on legacy multiplayer", () => {
@@ -75,33 +67,27 @@ describe("targetToSection", () => {
 describe("agent settings selection", () => {
   it("keeps visible requests and falls back within their semantic group", () => {
     strictEqual(
-      resolveAgentSettingsSection(
-        agentSettingsSections(TEAMS, { manager: true }),
-        "integrations",
-      ),
+      resolveAgentSettingsSection(agentSettingsSections(TEAMS), "integrations"),
       "integrations",
     );
     // Skills leads the permissions group now, so a hidden access deep link
     // lands there rather than on People.
     strictEqual(
       resolveAgentSettingsSection(
-        agentSettingsSections(LEGACY_MULTIPLAYER, { manager: true }),
+        agentSettingsSections(LEGACY_MULTIPLAYER),
         "integrations",
       ),
       "skills",
     );
     strictEqual(
-      resolveAgentSettingsSection(
-        agentSettingsSections(caps(), { manager: true }),
-        "people",
-      ),
+      resolveAgentSettingsSection(agentSettingsSections(caps()), "people"),
       "skills",
     );
   });
 
   it("retains a hidden deep link until capabilities expose it", () => {
     const waiting = advanceAgentSettingsSelection({
-      sections: agentSettingsSections(null, { manager: true }),
+      sections: agentSettingsSections(null),
       pending: "integrations",
       current: "job-description",
     });
@@ -111,7 +97,7 @@ describe("agent settings selection", () => {
     });
     deepStrictEqual(
       advanceAgentSettingsSelection({
-        sections: agentSettingsSections(TEAMS, { manager: true }),
+        sections: agentSettingsSections(TEAMS),
         pending: waiting.pending,
         current: waiting.selected,
       }),

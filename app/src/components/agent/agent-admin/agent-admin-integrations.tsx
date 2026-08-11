@@ -19,14 +19,9 @@ import { AgentAllowlistSection } from "../agent-integrations/agent-allowlist-sec
  * with the agent settings ceiling + org ceiling, the catalog, and the caller's
  * connections. Feature-detected on the `teams` capability; a host without it
  * shows a graceful note.
- *
- * `readOnly` (a non-manager viewing the agent's Settings access row) disables every
- * control and hides the "Add apps" catalog via the shared editor's own mode, so
- * a member sees the app ceiling without a dead affordance.
  */
 export function AgentAdminIntegrations({
   agent,
-  readOnly = false,
   labelledBy,
 }: AgentSectionProps & { labelledBy?: string }) {
   const { t } = useTranslation("teams");
@@ -52,7 +47,6 @@ export function AgentAdminIntegrations({
           catalog={catalog.data ?? []}
           connectedToolkits={(connections.data ?? []).map((c) => c.toolkit)}
           saving={settingsMutation.isPending}
-          readOnly={readOnly}
           labelledBy={labelledBy}
           showIntro={labelledBy === undefined}
           onSave={(next) => settingsMutation.mutate(next)}

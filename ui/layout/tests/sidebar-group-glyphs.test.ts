@@ -25,6 +25,23 @@ describe("team icon generation", () => {
     });
   });
 
+  it("refuses markup outside the drawing allowlist", () => {
+    assert.throws(
+      () =>
+        parseSymbols(
+          '<symbol id="Bad" viewBox="0 0 16 16"><script>alert(1)</script></symbol>',
+        ),
+      /Symbol "Bad": <script> is not a drawing element/,
+    );
+    assert.throws(
+      () =>
+        parseSymbols(
+          '<symbol id="Bad" viewBox="0 0 16 16"><path onclick="alert(1)" d="M0 0"/></symbol>',
+        ),
+      /Symbol "Bad": attribute "onclick" is not allowed/,
+    );
+  });
+
   it("ships all generated source icons on their 16px viewBox", () => {
     assert.equal(SIDEBAR_GROUP_GLYPH_NAMES.length, 233);
     for (const glyph of Object.values(SIDEBAR_GROUP_GLYPHS)) {
@@ -69,6 +86,25 @@ describe("team icon search", () => {
     assert.equal(matchesSidebarGroupGlyph("users", "TEAM"), true);
     assert.equal(matchesSidebarGroupGlyph("bank", "MoNeY"), true);
     assert.equal(matchesSidebarGroupGlyph("rocket", "money"), false);
+  });
+
+  it("matches a caller's localized name, accents ignored either way", () => {
+    assert.equal(
+      matchesSidebarGroupGlyph("dollar-bill", "dolar", "Billete de dólar"),
+      true,
+    );
+    assert.equal(
+      matchesSidebarGroupGlyph("dollar-bill", "dólar", "Billete de dolar"),
+      true,
+    );
+    assert.equal(
+      matchesSidebarGroupGlyph("dollar-bill", "BILLETE", "Billete de dólar"),
+      true,
+    );
+    assert.equal(
+      matchesSidebarGroupGlyph("rocket", "billete", "Cohete"),
+      false,
+    );
   });
 
   it("makes money surface the complete requested finance set", () => {

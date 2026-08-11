@@ -1,3 +1,5 @@
+import type { TeamMoveStage } from "./move-team";
+
 export interface PendingTeamMove {
   sourceTeam: {
     id: string;
@@ -10,7 +12,9 @@ export interface PendingTeamMove {
   targetSlug: string;
   targetName: string;
   agentIds: string[];
+  movedAgentIds: string[];
   createdTeamId?: string;
+  postscriptStage?: TeamMoveStage;
   startedAt: number;
 }
 
@@ -19,7 +23,9 @@ type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const defaultStorage = (): StorageLike | null =>
   typeof localStorage === "undefined" ? null : localStorage;
 
-function valid(v: unknown): v is PendingTeamMove {
+function valid(v: unknown): v is Omit<PendingTeamMove, "movedAgentIds"> & {
+  movedAgentIds?: string[];
+} {
   const m = v as PendingTeamMove | null;
   return (
     typeof m?.sourceTeam?.id === "string" &&
@@ -29,6 +35,9 @@ function valid(v: unknown): v is PendingTeamMove {
     typeof m.targetName === "string" &&
     Array.isArray(m.agentIds) &&
     m.agentIds.every((id) => typeof id === "string") &&
+    (m.movedAgentIds === undefined ||
+      (Array.isArray(m.movedAgentIds) &&
+        m.movedAgentIds.every((id) => typeof id === "string"))) &&
     typeof m.startedAt === "number"
   );
 }
@@ -40,7 +49,11 @@ export function readPendingTeamMoves(
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(valid) : [];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter(valid)
+          .map((move) => ({ ...move, movedAgentIds: move.movedAgentIds ?? [] }))
+      : [];
   } catch {
     return [];
   }
@@ -71,7 +84,9 @@ export function clearPendingTeamMove(
 
 export function updatePendingTeamMove(
   sourceTeamId: string,
-  patch: Partial<Pick<PendingTeamMove, "createdTeamId">>,
+  patch: Partial<
+    Pick<PendingTeamMove, "createdTeamId" | "movedAgentIds" | "postscriptStage">
+  >,
   storage: StorageLike | null = defaultStorage(),
 ): void {
   if (!storage) return;

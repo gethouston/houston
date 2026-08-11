@@ -39,6 +39,7 @@ export interface ResumeOptions {
   pollIntervalMs?: number;
   budgetMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  onMoveAccepted?: (moveId: string) => void;
 }
 
 const defaultSleep = (ms: number) =>
@@ -82,6 +83,7 @@ export async function resumePendingMove(
   let start: AgentMoveStart;
   try {
     start = await wire.moveAgent(pending.agentId, pending.teamSlug);
+    options.onMoveAccepted?.(start.moveId);
   } catch (err) {
     const code = shareErrorCode(err);
     return code === "move_in_progress"

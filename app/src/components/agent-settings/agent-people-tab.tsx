@@ -37,13 +37,12 @@ import { AgentPersonRow } from "./agent-person-row.tsx";
  * assignment write disables both, and two overlapping set-replaces can never
  * race each other into a lost update.
  *
- * `readOnly` renders the roster with static level labels and NO controls — the
- * face shown to a viewer who can't manage the agent, and also the face of
- * "Everyone on your team" mode, where per-person levels are not the agent's
- * state to edit. The gateway only serves the roster to owner/admin, so a plain
- * member's `members` arrives empty; there the roster degrades to an honest
- * viewer line (`viewerOnly`) rather than a misleading empty state. The gateway
- * is the real enforcer.
+ * `readOnly` renders the roster with static level labels and NO controls: the
+ * face of "Everyone on your team" mode, where per-person levels are not the
+ * agent's state to edit. The gateway only serves the roster to owner/admin, so
+ * a manager who is a plain org member gets an empty `members`; there the roster
+ * degrades to an honest viewer line (`viewerOnly`) rather than a misleading
+ * empty state. The gateway is the real enforcer.
  */
 export function AgentPeopleTab({
   agent,
@@ -56,7 +55,7 @@ export function AgentPeopleTab({
   members: OrgMember[];
   /** The section's single assignment mutation (see {@link ShareAgentMutation}). */
   share: ShareAgentMutation;
-  /** View-only: static rows, no controls, and the plain-member viewer line. */
+  /** View-only ("Everyone" mode): static rows, no controls, viewer line. */
   readOnly?: boolean;
   /** Muted line above the roster explaining why it is static, when it is. */
   note?: string;

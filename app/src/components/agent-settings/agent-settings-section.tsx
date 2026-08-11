@@ -67,22 +67,21 @@ function FillColumn({ children }: { children: ReactNode }) {
 export function AgentSettingsSectionView({
   agent,
   section,
-  readOnly = false,
 }: AgentSectionProps & { section: AgentSettingsSection }) {
   const { t } = useTranslation("teams");
   switch (section) {
     case "job-description":
       return (
         <FillColumn>
-          <AgentAdminInstructions agent={agent} readOnly={readOnly} />
+          <AgentAdminInstructions agent={agent} />
         </FillColumn>
       );
     case "learnings":
-      return <AgentAdminKnowledge agent={agent} readOnly={readOnly} />;
+      return <AgentAdminKnowledge agent={agent} />;
     case "people":
       return (
         <AccessColumn>
-          <AgentSettingsPeople agent={agent} readOnly={readOnly} />
+          <AgentSettingsPeople agent={agent} />
         </AccessColumn>
       );
     case "integrations":
@@ -92,11 +91,7 @@ export function AgentSettingsSectionView({
           subtitle={t("integrations.allowlist.question")}
         >
           {(titleId) => (
-            <AgentAdminIntegrations
-              agent={agent}
-              readOnly={readOnly}
-              labelledBy={titleId}
-            />
+            <AgentAdminIntegrations agent={agent} labelledBy={titleId} />
           )}
         </HeroAccessColumn>
       );
@@ -106,17 +101,11 @@ export function AgentSettingsSectionView({
           title={t("agentAdmin.heroes.models")}
           subtitle={t("agentAdmin.models.question")}
         >
-          {(titleId) => (
-            <AgentAdminModel
-              agent={agent}
-              readOnly={readOnly}
-              labelledBy={titleId}
-            />
-          )}
+          {(titleId) => <AgentAdminModel agent={agent} labelledBy={titleId} />}
         </HeroAccessColumn>
       );
     case "skills":
-      return <AgentAdminSkills agent={agent} readOnly={readOnly} />;
+      return <AgentAdminSkills agent={agent} />;
     case "manage":
       return (
         <AccessColumn>

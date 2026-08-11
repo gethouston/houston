@@ -20,23 +20,16 @@ import {
 } from "../lib/pending-move";
 import {
   claimTeamMove,
-  clearPendingTeamMove,
+  readPendingTeamMoves,
   recordPendingTeamMove,
   releaseTeamMove,
   updatePendingTeamMove,
 } from "../lib/pending-team-move";
-import {
-  classifyMoveError,
-  MOVE_POLL_TIMEOUT_MS,
-  shareErrorCode,
-} from "../lib/share-via-team";
-import { orgSlugFromWorkspaceId } from "../lib/space-id";
-import { tauriAgentTeams, tauriOrg } from "../lib/tauri";
-import { runTeamMoveStage } from "../lib/team-move-stage";
-import { useAgentStore } from "../stores/agents";
-import { useWorkspaceStore } from "../stores/workspaces";
+import { classifyMoveError, MOVE_POLL_TIMEOUT_MS } from "../lib/share-via-team";
+import { tauriOrg } from "../lib/tauri";
 import { useAddMember, useOrgs } from "./queries";
 import { useCreateTeam } from "./queries/use-orgs";
+import { driveTeamMovePostscript } from "./use-team-move-resume";
 
 export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
   const [state, setState] = useState<TeamMoveState>(initialTeamMoveState);
@@ -49,33 +42,7 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
       setState(initialTeamMoveState());
       releaseTeamMove(source.id);
     }
-    return () => releaseTeamMove(source.id);
   }, [open, source.id]);
-
-  const switchTarget = async (slug: string) => {
-    await useWorkspaceStore.getState().loadWorkspaces();
-    const ws = useWorkspaceStore
-      .getState()
-      .workspaces.find((item) => orgSlugFromWorkspaceId(item.id) === slug);
-    if (!ws) throw new Error("target workspace not found");
-    useWorkspaceStore.getState().setCurrent(ws);
-    await useAgentStore.getState().loadAgents(ws.id);
-  };
-
-  const postscriptWire = {
-    deleteSource: (id: string) => tauriAgentTeams.remove(id),
-    switchTarget,
-    listTargetTeams: () => tauriAgentTeams.list(),
-    createTargetTeam: (input: {
-      name: string;
-      icon?: string;
-      color?: string;
-    }) => tauriAgentTeams.create(input),
-    updateTargetTeam: (id: string, patch: { context: string }) =>
-      tauriAgentTeams.update(id, patch),
-    placeAgent: (agentId: string, teamId: string) =>
-      tauriAgentTeams.setAgentTeam(agentId, teamId),
-  };
 
   const moveAgents = async () => {
     const target = "target" in state ? state.target : null;
@@ -94,6 +61,9 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
       targetSlug: target.slug,
       targetName: target.name,
       agentIds: source.agents.map((agent) => agent.id),
+      movedAgentIds: source.agents
+        .slice(0, startIndex)
+        .map((agent) => agent.id),
       startedAt: Date.now(),
     });
     setState(startTeamAgents);
@@ -102,6 +72,7 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
         step: source.isDefault ? "switching" : "cleanupSource",
         target,
       });
+      void runPostscript(target);
       return;
     }
     for (let index = startIndex; index < source.agents.length; index += 1) {
@@ -116,7 +87,7 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
         startedAt: Date.now(),
       });
       claimMove(agent.id);
-      const pending = {
+      let pending = {
         agentId: agent.id,
         agentName: agent.name,
         teamSlug: target.slug,
@@ -125,7 +96,12 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
         startedAt: Date.now(),
       };
       let result = await resumePendingMove(pending, {
-        moveAgent: (id, to) => tauriOrg.moveAgent(id, to, { toast: false }),
+        moveAgent: async (id, to) => {
+          const start = await tauriOrg.moveAgent(id, to, { toast: false });
+          updatePendingMoveId(id, start.moveId);
+          pending = { ...pending, moveId: start.moveId };
+          return start;
+        },
         moveStatus: (id, moveId) =>
           tauriOrg.moveStatus(id, moveId, { toast: false }),
       });
@@ -133,7 +109,12 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
       while (result.outcome === "inProgress" && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 1_500));
         result = await resumePendingMove(pending, {
-          moveAgent: (id, to) => tauriOrg.moveAgent(id, to, { toast: false }),
+          moveAgent: async (id, to) => {
+            const start = await tauriOrg.moveAgent(id, to, { toast: false });
+            updatePendingMoveId(id, start.moveId);
+            pending = { ...pending, moveId: start.moveId };
+            return start;
+          },
           moveStatus: (id, moveId) =>
             tauriOrg.moveStatus(id, moveId, { toast: false }),
         });
@@ -157,23 +138,24 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
         return;
       }
       clearPendingMove(agent.id);
+      updatePendingTeamMove(source.id, {
+        movedAgentIds: source.agents.slice(0, index + 1).map((item) => item.id),
+      });
       setState((current) => agentMoveDone(current, source));
     }
+    void runPostscript(target);
   };
 
-  const runPostscript = async () => {
-    if (!("target" in state)) return;
+  const runPostscript = async (
+    target = "target" in state ? state.target : null,
+  ) => {
+    if (!target) return;
+    const pending = readPendingTeamMoves().find(
+      (item) => item.sourceTeam.id === source.id,
+    );
+    if (!pending) return;
     try {
-      const result = await runTeamMoveStage(state, source, {
-        ...postscriptWire,
-        isMissingSource: (error) => shareErrorCode(error) === "team_not_found",
-      });
-      if (result.createdTeamId) {
-        updatePendingTeamMove(source.id, {
-          createdTeamId: result.createdTeamId,
-        });
-      }
-      setState(result.state);
+      await driveTeamMovePostscript(pending, setState);
     } catch {
       setState(teamPostscriptFailed);
     }
@@ -186,9 +168,7 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
     createOrg,
     addMember,
     moveAgents,
-    runPostscript,
     confirmTeamMove,
     retryTeamMove,
-    clearTeamRecord: () => clearPendingTeamMove(source.id),
   };
 }
