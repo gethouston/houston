@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { planInvalidation } from "../lib/agent-invalidation-plan";
+import { consumeCustomOAuthReturn } from "../lib/custom-oauth-return";
 import { onEngineRestarted } from "../lib/engine";
 import { subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
@@ -76,6 +77,12 @@ export function useAgentInvalidation() {
       // query the board's face stack is derived from).
       const plan = planInvalidation(p, {
         workspaceId: useWorkspaceStore.getState().current?.id,
+        // Consumed (one-shot) ONLY for the event type it gates, so an
+        // unrelated event can never burn a pending OAuth's return marker.
+        customOAuthReturn:
+          p.type === "CustomIntegrationsChanged"
+            ? consumeCustomOAuthReturn()
+            : false,
       });
       for (const queryKey of plan.invalidate) {
         qc.invalidateQueries({ queryKey });

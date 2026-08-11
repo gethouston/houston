@@ -26,6 +26,14 @@ export interface InvalidationPlan {
 export interface InvalidationContext {
   /** The currently-open workspace id, or undefined if none. */
   workspaceId?: string;
+  /**
+   * True when this `CustomIntegrationsChanged` event is the landing of a
+   * browser OAuth the user started from this window (the hook consumes the
+   * one-shot marker in `custom-oauth-return.ts`). Gates the focus snap-back:
+   * the same event also fires for in-app adds and agent-initiated changes,
+   * which must never pull the window to the front.
+   */
+  customOAuthReturn?: boolean;
 }
 
 const empty = (): InvalidationPlan => ({
@@ -163,6 +171,9 @@ export function planInvalidation(
     case "CustomIntegrationsChanged":
       plan.invalidate.push(queryKeys.customIntegrations());
       plan.invalidate.push(["integration-connections"]);
+      // The landing of a browser sign-in the user started here: surface the
+      // app over the browser, exactly like a provider login (PRODUCT-1298).
+      if (ctx.customOAuthReturn) plan.focusWindow = true;
       break;
     // The global event stream came back after a drop (HOU-981). The feed has no
     // replay cursor, so every change that happened while it was down — a

@@ -5,6 +5,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
 import { analytics } from "../../lib/analytics";
+import { markCustomOAuthStarted } from "../../lib/custom-oauth-return";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
@@ -134,6 +135,9 @@ export function useStartCustomOAuth(agentId?: string) {
       await tauriSystem.openUrl(authorizeUrl);
     },
     onSuccess: (_data, slug) => {
+      // Arm the return gate: the sign-in's `CustomIntegrationsChanged` landing
+      // may pull the app back over the browser (PRODUCT-1298).
+      markCustomOAuthStarted();
       analytics.track("custom_integration_oauth_started", {
         integration_slug: slug,
       });
