@@ -1,6 +1,6 @@
+import { appVersionHeader } from "../app-version";
 import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
 import { refreshLiveToken } from "../session-refresh";
-import { appVersionHeader, noteUpgradeRequired } from "../update-floor";
 import { transientRetryFetch } from "./transient-retry";
 
 /**
@@ -96,11 +96,11 @@ export function gatewayAuthFetch(
       // the bearer. Absent → the gateway resolves the personal org.
       const org = getOrg?.();
       if (org) headers.set("x-houston-org", org);
-      // App-update floor: identify the build (`<semver>+<channel>`) on every
-      // gateway request so the gateway can enforce a per-channel minimum
-      // version. Read live off the desktop-installed global — absent (web,
-      // tests) means no header; the gateway fails open on a missing header
-      // and the local sidecar ignores it.
+      // Build identity: `<semver>+<channel>` on every gateway request, for
+      // log/debug attribution (nothing server-side acts on it — the version
+      // floor was retired, PRODUCT-1144). Read live off the desktop-installed
+      // global — absent (web, tests) means no header, which keeps web fetches
+      // preflight-free; every receiving host ignores it.
       const appVersion = appVersionHeader();
       if (appVersion) headers.set("X-Houston-App-Version", appVersion);
       return fetch(input, { ...init, headers });
@@ -111,16 +111,13 @@ export function gatewayAuthFetch(
     if (!bearer && inControlPlaneMode()) {
       const fresh = await refreshLiveToken();
       if (!fresh) return signedOutResponse();
-      return noteUpgradeRequired(await send(fresh));
+      return send(fresh);
     }
-    // Every returned response passes noteUpgradeRequired: a gateway that
-    // enforces the version floor answers ANY request with 426, and the desktop
-    // shell must learn about it from whichever call happens to hit it first.
     const res = await send(bearer);
-    if (res.status !== 401) return noteUpgradeRequired(res);
+    if (res.status !== 401) return res;
     const fresh = await refreshLiveToken();
     if (!fresh) return res;
-    return noteUpgradeRequired(await send(fresh));
+    return send(fresh);
   };
 }
 

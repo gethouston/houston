@@ -1,15 +1,15 @@
 /** Engine client bootstrap for the Houston desktop app. */
 
 import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
+import {
+  appUpdateChannel,
+  currentAppVersion,
+  installAppVersionBridge,
+} from "./app-version";
 import { pullEngineHandshakeWithRetry } from "./engine-handshake";
 import { isLoopbackHostUrl, resolveEngine } from "./engine-mode";
 import { installEngineLifecycleListeners } from "./engine-tauri-events";
 import { osIsTauri } from "./os-bridge";
-import {
-  appUpdateChannel,
-  currentAppVersion,
-  installUpdateFloorBridge,
-} from "./update-floor";
 
 declare global {
   interface Window {
@@ -108,11 +108,11 @@ if (typeof window !== "undefined") {
 // the same env flags RESOLVED above is built from: a baked hosted gateway ⇒
 // `cloud`, everything else (sidecar, dev, external host) ⇒ `local`.
 // Tauri-gated, not just window-gated: the WEB bundle loads this module too
-// (the app-tree is shared), but the floor is a desktop-only contract — a
+// (the app-tree is shared), but the header is a desktop-only identity — a
 // browser tab must never identify as an app build, and the header would turn
 // every fetch into a CORS preflight the target has to allow.
 if (typeof window !== "undefined" && osIsTauri()) {
-  installUpdateFloorBridge({
+  installAppVersionBridge({
     version: currentAppVersion(),
     channel: appUpdateChannel(_env),
   });

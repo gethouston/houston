@@ -186,8 +186,6 @@ export type AnalyticsEventName =
   | "update_offered"
   | "update_forced"
   | "update_accepted"
-  // Gateway app-update floor tripped → blocking update screen shown
-  | "update_required"
   // Reliability
   | "session_completed"
   | "session_failed"
@@ -222,8 +220,6 @@ type AnalyticsProperty =
   | "file_kind"
   | "from_version"
   | "to_version"
-  // The gateway's enforced app-version floor (update_required)
-  | "min_version"
   // Onboarding funnel
   | "locale"
   | "detected_locale"
@@ -294,7 +290,6 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "file_kind",
   "from_version",
   "to_version",
-  "min_version",
   "locale",
   "detected_locale",
   "step",

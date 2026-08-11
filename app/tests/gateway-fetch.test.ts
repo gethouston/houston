@@ -4,7 +4,6 @@ import {
   type GatewayFetchDeps,
   gatewayFetch,
   liveGatewayDeps,
-  type UpgradeRequiredSignal,
 } from "../src/lib/gateway-fetch.ts";
 
 interface Sent {
@@ -47,8 +46,7 @@ function deps(
   };
 }
 
-/** The 426 forward is fire-and-forget (it must not consume the caller's body),
- *  so give its body read a turn before asserting. */
+/** Give queued microtasks/timers a turn before asserting. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("gatewayFetch", () => {
@@ -82,47 +80,6 @@ describe("gatewayFetch", () => {
       "/v1/me",
     );
     strictEqual(sent[0].appVersion, null);
-  });
-
-  it("forwards a 426 to the update-required sink and returns it unchanged", async () => {
-    const sent: Sent[] = [];
-    const signals: UpgradeRequiredSignal[] = [];
-    const res = await gatewayFetch(
-      deps(
-        [
-          new Response(
-            JSON.stringify({
-              error: "upgrade_required",
-              minVersion: "0.6.0",
-              updateUrl: "https://gethouston.ai/download",
-            }),
-            { status: 426, headers: { "Content-Type": "application/json" } },
-          ),
-        ],
-        sent,
-        { onUpgradeRequired: (s) => signals.push(s) },
-      ),
-      "/v1/me/onboarding",
-    );
-    strictEqual(res?.status, 426);
-    await settle();
-    deepStrictEqual(signals, [
-      { minVersion: "0.6.0", updateUrl: "https://gethouston.ai/download" },
-    ]);
-    // The caller's own body is still readable — the sink parsed a clone.
-    ok(await res?.json());
-  });
-
-  it("normalizes a 426 body that names neither field", async () => {
-    const signals: UpgradeRequiredSignal[] = [];
-    await gatewayFetch(
-      deps([new Response("nope", { status: 426 })], [], {
-        onUpgradeRequired: (s) => signals.push(s),
-      }),
-      "/v1/me",
-    );
-    await settle();
-    deepStrictEqual(signals, [{ minVersion: null, updateUrl: null }]);
   });
 
   it("refreshes once and replays on a 401", async () => {
@@ -222,32 +179,6 @@ describe("gatewayFetch", () => {
     );
     strictEqual(res?.status, 401);
     strictEqual(sent.length, 2);
-  });
-
-  it("forwards a 426 raised by the REPLAY, not just the first attempt", async () => {
-    // The version floor can bite either attempt; the desktop's blocking-update
-    // screen must learn about it from whichever one hits it.
-    const signals: UpgradeRequiredSignal[] = [];
-    const res = await gatewayFetch(
-      deps(
-        [
-          new Response(null, { status: 401 }),
-          new Response(JSON.stringify({ minVersion: "0.6.0" }), {
-            status: 426,
-            headers: { "Content-Type": "application/json" },
-          }),
-        ],
-        [],
-        {
-          refresh: async () => "fresh",
-          onUpgradeRequired: (s) => signals.push(s),
-        },
-      ),
-      "/v1/me/onboarding",
-    );
-    strictEqual(res?.status, 426);
-    await settle();
-    deepStrictEqual(signals, [{ minVersion: "0.6.0", updateUrl: null }]);
   });
 
   it("carries the caller's headers and body into the replay", async () => {
