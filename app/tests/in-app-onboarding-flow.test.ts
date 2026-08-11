@@ -98,6 +98,19 @@ test("the dialog step follows the dialog: open coaches inside, closed returns", 
   }
 });
 
+test("emailSending falls back to the sent finale if email mode drops", () => {
+  // Priming failed after the send: emailMode false, no marker will come.
+  assert.deepEqual(
+    inAppOnboardingAdvance("emailSending", signals({ emailMode: false })),
+    { kind: "celebrate", step: "missionSent" },
+  );
+  // Still armed and no marker yet: keep watching.
+  assert.deepEqual(
+    inAppOnboardingAdvance("emailSending", signals({ emailMode: true })),
+    { kind: "stay" },
+  );
+});
+
 test("the email variant holds at send and celebrates on the actual send", () => {
   assert.deepEqual(
     inAppOnboardingAdvance(
@@ -106,11 +119,15 @@ test("the email variant holds at send and celebrates on the actual send", () => 
     ),
     { kind: "goto", step: "emailSending" },
   );
-  assert.deepEqual(inAppOnboardingAdvance("emailSending", signals()), {
-    kind: "stay",
-  });
   assert.deepEqual(
-    inAppOnboardingAdvance("emailSending", signals({ emailSent: true })),
+    inAppOnboardingAdvance("emailSending", signals({ emailMode: true })),
+    { kind: "stay" },
+  );
+  assert.deepEqual(
+    inAppOnboardingAdvance(
+      "emailSending",
+      signals({ emailMode: true, emailSent: true }),
+    ),
     { kind: "celebrate", step: "emailSent" },
   );
 });

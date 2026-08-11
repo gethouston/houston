@@ -1,5 +1,4 @@
 import { expect, test } from "./support/fixtures";
-import { completeSurvey, resetToFirstRun } from "./support/onboarding";
 
 /**
  * NVIDIA's connect dialog ships a step-by-step key guide (HOU-890): a working
@@ -9,24 +8,20 @@ import { completeSurvey, resetToFirstRun } from "./support/onboarding";
  * renders for NVIDIA and that the generic api-key dialog stays guide-free
  * (OpenRouter shows none).
  *
- * Reaching first-run: onboarding shows when the v3 host reports ZERO agents,
- * so we delete the seeded agent over the API before boot (same entry as
- * onboarding-connect.spec.ts).
+ * Reached through the AI hub — the one standing connect surface (first-run's
+ * in-app setup routes through the same hub, so this covers both).
  */
 test("NVIDIA connect dialog shows the NGC Personal Key guide", async ({
   page,
-  request,
 }) => {
-  await resetToFirstRun(request);
-
   await page.goto("/");
-  await completeSurvey(page);
+  await page.locator("[data-tour-target='nav-ai-hub']").click();
   await expect(
-    page.getByRole("heading", { name: "Connect your AI" }),
+    page.getByRole("heading", { name: "AI Providers" }),
   ).toBeVisible();
 
   // NVIDIA is not featured — search surfaces it from the full catalog.
-  const search = page.getByPlaceholder("Search providers");
+  const search = page.getByPlaceholder("Search AI models and providers");
   await search.fill("nvidia");
   await page.getByRole("button", { name: "Connect NVIDIA" }).click();
 

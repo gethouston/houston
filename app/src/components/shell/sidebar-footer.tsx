@@ -90,6 +90,7 @@ export function SidebarFooter(props: { collapsed: boolean }) {
              * mounts against the already-restored shell.
              */
             openHome();
+            useUIStore.getState().setInAppOnboardingFirstRun(false);
             setInAppOnboardingActive(true);
           }}
           onReportProblem={() => {

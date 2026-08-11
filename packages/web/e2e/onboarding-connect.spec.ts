@@ -8,11 +8,6 @@ import { completeSurvey, resetToFirstRun } from "./support/onboarding";
  * — the user clicks the real sidebar row, lands on the real AI hub, and
  * connects there. Advancement is app state (viewMode, the shared provider
  * status probe), never a Next button.
- *
- * The old separate-screen connect step (ConnectAiMission + the curated
- * ProviderBrowser) is unreachable from first-run now; its curated-mode
- * regression coverage retires with the surface when the legacy orchestrator
- * is deleted.
  */
 test("first-run tutorial walks the user to the AI hub through the real sidebar", async ({
   page,

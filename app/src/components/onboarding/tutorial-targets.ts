@@ -1,12 +1,11 @@
 /**
  * The closed vocabulary of `data-tutorial-target` anchors the in-app
- * onboarding spotlights — same discipline as the guided tour's
- * `data-tour-target` set (`../shell/workspace-tour-steps.ts`), but a separate
- * attribute and union on purpose: the tour pins an invariant that EVERY tour
- * target has a tour step (`tests/workspace-tour-steps.test.ts`), and tutorial
- * anchors are not tour steps. The tutorial may also spotlight existing tour
- * anchors (e.g. the sidebar's `nav-ai-hub` row) via `tourSelector` — this set
- * holds only the anchors the tutorial ALONE needs.
+ * onboarding spotlights — same discipline as the shell's `data-tour-target`
+ * set (`../shell/workspace-tour-steps.ts`), but a separate attribute and union
+ * on purpose: those name the shell's own durable landmarks (rail rows, the
+ * main region, New task), while these are anchors that exist ONLY so a
+ * tutorial step has something to point at. A step may spotlight either — the
+ * shell's via `tourSelector`, these via `tutorialSelector`.
  */
 export const TUTORIAL_TARGETS = [
   // The AI hub's catalog plane (`ai-hub-view.tsx`) — the connect step

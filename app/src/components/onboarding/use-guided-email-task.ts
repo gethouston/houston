@@ -1,32 +1,38 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
-import { logger } from "../../lib/logger";
-import { tauriAgent } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { newConversationDraftKey, useDraftStore } from "../../stores/drafts";
 import { useUIStore } from "../../stores/ui";
 import { missionControlDraftScope } from "../board/mission-control-scope";
-import { prepareEmailMissionSetup } from "./missions/email-mission-setup";
-import { stripSetupSection } from "./tutorial-system-prompt";
+import {
+  prepareEmailMissionSetup,
+  stripEmailMissionSetup,
+} from "./missions/email-mission-setup";
 
 /**
  * The guided email first task: the tutorial PREWRITES the agent's first
  * mission ("Send me a hello email") into the new-conversation composer draft
- * (locked by `use-board-drafts.ts` while the tutorial runs) and primes the
+ * (locked by `use-board-drafts.ts` via `tutorialComposerLock`) and primes the
  * agent with the legacy email-mission directive (a temporary CLAUDE.md
  * section: send ONE real email to the user's own address, then emit the
- * completion marker `use-in-app-onboarding.ts` watches for).
+ * completion marker the flow watches for).
  *
- * Arms only when the tutorial created the agent AND an email toolkit is
- * connected; otherwise the send step stays the free-text variant. Every
- * terminal path calls {@link cleanup} so neither the draft nor the CLAUDE.md
- * section outlives the tutorial.
+ * `armed` flips true only once the priming WRITE has landed — a send that
+ * beats it degrades to the plain first-task finale instead of waiting for a
+ * marker the agent was never told to emit. The lock and draft are released
+ * the moment the send happens ({@link onSent}); the directive is stripped on
+ * completion, on every terminal path, and on unmount, with a visible toast
+ * when a strip fails (a directive that outlives the tutorial keeps steering
+ * later missions).
  */
 export function useGuidedEmailTask() {
   const { t } = useTranslation("setup");
   const addToast = useUIStore((s) => s.addToast);
   const [agentPath, setAgentPath] = useState<string | null>(null);
+  const [status, setStatus] = useState<"unarmed" | "arming" | "armed">(
+    "unarmed",
+  );
   const [toolkit, setToolkit] = useState<{
     toolkit: string;
     label: string;
@@ -49,24 +55,42 @@ export function useGuidedEmailTask() {
   };
   const setLock = (locked: boolean) =>
     useUIStore.getState().setTutorialComposerLock(locked);
-
-  const stripDirective = (path: string) => {
-    void (async () => {
-      try {
-        const current = await tauriAgent.readFile(path, "CLAUDE.md");
-        const stripped = stripSetupSection(current);
-        if (stripped !== current) {
-          await tauriAgent.writeFile(path, "CLAUDE.md", stripped);
-        }
-      } catch (error) {
-        logger.warn(`[in-app-onboarding] setup-section strip failed: ${error}`);
-      }
-    })();
+  const releaseComposer = () => {
+    setLock(false);
+    writeDrafts("");
   };
 
+  const strip = (path: string) => {
+    void stripEmailMissionSetup(path).then((ok) => {
+      if (ok) return;
+      addToast({
+        title: t("tutorial.errors.setupFailed"),
+        description: t("inApp.stripFailed"),
+        variant: "error",
+      });
+    });
+  };
+
+  // Unmount is a terminal path too (the overlay can go away with the section
+  // still applied — e.g. an abnormal dismissal): never leave it behind.
+  const liveRef = useRef({ agentPath, armedOrArming: status !== "unarmed" });
+  liveRef.current = { agentPath, armedOrArming: status !== "unarmed" };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: unmount-only cleanup reading the latest state through a ref.
+  useEffect(() => {
+    return () => {
+      const live = liveRef.current;
+      setLock(false);
+      if (live.agentPath && live.armedOrArming) {
+        void stripEmailMissionSetup(live.agentPath);
+      }
+    };
+  }, []);
+
   return {
-    /** The email variant is live for the send step. */
-    armed: toolkit !== null,
+    /** The email variant is live: the priming write LANDED. */
+    armed: status === "armed",
+    /** The tutorial-created agent's path (null when creation was skipped). */
+    agentPath,
     /** Call at the agent-created celebration: the store's current agent IS
      *  the one the dialog just adopted. */
     captureCreatedAgent: () => {
@@ -74,49 +98,57 @@ export function useGuidedEmailTask() {
       if (created) setAgentPath(created.folderPath);
     },
     /** Call on entering the send step. No toolkit or no tutorial-created
-     *  agent → stays unarmed (free-text variant). A failed priming write
-     *  reverts to unarmed with a visible toast — never a silent divergence
-     *  between what the chip promises and what the agent was told. */
+     *  agent → stays unarmed (free-text variant). The draft prefills and
+     *  locks immediately; `armed` waits for the CLAUDE.md write, and a
+     *  failed write reverts everything with a visible toast. */
     arm: (args: {
       toolkit: { toolkit: string; label: string } | null;
       draftText: string;
     }) => {
       if (!agentPath || !args.toolkit) {
+        setStatus("unarmed");
         setToolkit(null);
         return;
       }
       const picked = args.toolkit;
+      const path = agentPath;
       setToolkit(picked);
+      setStatus("arming");
       setLock(true);
       writeDrafts(args.draftText);
       void prepareEmailMissionSetup({
-        agentPath,
+        agentPath: path,
         emailToolkit: picked.toolkit,
         emailToolkitLabel: picked.label,
-      }).catch((error) => {
-        setToolkit(null);
-        setLock(false);
-        writeDrafts("");
-        addToast({
-          title: t("tutorial.errors.setupFailed"),
-          description: String(error),
-          variant: "error",
+      })
+        .then(() => setStatus("armed"))
+        .catch((error) => {
+          setStatus("unarmed");
+          setToolkit(null);
+          releaseComposer();
+          addToast({
+            title: t("tutorial.errors.setupFailed"),
+            description: String(error),
+            variant: "error",
+          });
         });
-      });
     },
-    /** The agent confirmed the send: funnel event + teardown. */
+    /** The send happened (either finale path): the composer is the user's
+     *  again — the lock's whole job is over. */
+    onSent: releaseComposer,
+    /** The agent confirmed the send: funnel event + directive teardown. */
     completed: () => {
       if (toolkit)
         analytics.track("first_email_sent", { provider: toolkit.toolkit });
-      setLock(false);
-      writeDrafts("");
-      if (agentPath) stripDirective(agentPath);
+      releaseComposer();
+      if (agentPath) strip(agentPath);
+      setStatus("unarmed");
     },
-    /** Terminal teardown for every exit path (finish, escape hatch). */
+    /** Terminal teardown for every exit path. */
     cleanup: () => {
-      setLock(false);
-      if (toolkit) writeDrafts("");
-      if (agentPath) stripDirective(agentPath);
+      releaseComposer();
+      if (agentPath && status !== "unarmed") strip(agentPath);
+      setStatus("unarmed");
     },
   };
 }

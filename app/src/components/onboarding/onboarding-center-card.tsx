@@ -39,9 +39,9 @@ export function OnboardingCenterCard({
       // Light veil on purpose — the user must SEE the app they are about to
       // be guided through. z-40: above shell chrome (≤ z-30), below the z-50
       // dialog/toast layer.
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-6 duration-200 animate-in fade-in-0"
+      className="ht-tutorial-scrim fixed inset-0 z-40 flex items-center justify-center p-6 duration-200 animate-in fade-in-0"
     >
-      <div className="flex w-full max-w-md flex-col items-center rounded-2xl border border-ink/5 bg-input p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.18)] duration-200 ease-out animate-in fade-in-0 zoom-in-95">
+      <div className="ht-tutorial-card-shadow flex w-full max-w-md flex-col items-center rounded-2xl border border-ink/5 bg-input p-8 text-center duration-200 ease-out animate-in fade-in-0 zoom-in-95">
         <HoustonLogo size={40} />
         <h1 className="mt-4 text-2xl font-normal text-balance text-ink">
           {title}

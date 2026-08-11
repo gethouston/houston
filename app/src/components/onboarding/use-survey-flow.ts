@@ -6,6 +6,7 @@ import {
   isOnboardingSegment,
   isValidAutomationGoal,
   isValidOtherText,
+  ONBOARDING_OTHER_MAX_LENGTH,
   type OnboardingIndustry,
   type OnboardingSegment,
 } from "../../lib/onboarding-survey";
@@ -108,6 +109,10 @@ export function useSurveyFlow(
 
   // "Something else" is an answer only WITH its label: the pick alone reads
   // as dodging the question this survey deliberately requires.
+  const activeOther = plan[index] === "industry" ? industryOther : segmentOther;
+  const otherTooLong =
+    activeOther.trim().length > 0 &&
+    [...activeOther.trim()].length > ONBOARDING_OTHER_MAX_LENGTH;
   const segmentReady =
     segment !== null &&
     (segment !== "something_else" || isValidOtherText(segmentOther));
@@ -121,6 +126,7 @@ export function useSurveyFlow(
     index,
     segment,
     otherText: step === "industry" ? industryOther : segmentOther,
+    otherTooLong,
     industry,
     goal,
     saving,

@@ -20,7 +20,6 @@ import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
 import { topLevelScreenViews } from "./top-level-screen-views";
 import { useWorkspaceViewGuards } from "./use-workspace-view-guards";
-import { WorkspaceTourOverlay } from "./workspace-tour-overlay";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 interface WorkspaceShellProps {
@@ -46,7 +45,6 @@ export function WorkspaceShell({
 }: WorkspaceShellProps) {
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
-  const uiTourActive = useUIStore((s) => s.uiTourActive);
   const inAppOnboardingActive = useUIStore((s) => s.inAppOnboardingActive);
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
@@ -69,20 +67,15 @@ export function WorkspaceShell({
 
   return (
     <DetailPanelProvider value={panelContainer}>
-      <div
-        className={cn(
-          // Transparent so the window background reads up through the content.
-          // Column layout: a seamless overlay title-bar strip on top, then the
-          // sidebar + content row below it.
-          // h-dvh (not h-screen) so mobile browser chrome (the collapsing URL
-          // bar) never pushes the composer below the visible viewport.
-          "flex h-dvh flex-col bg-transparent text-ink",
-          // The guided tour is passive, so it inerts the whole shell. The
-          // in-app onboarding is the opposite — the user must click the real
-          // controls — so its overlay does its own selective blocking.
-          uiTourActive && "pointer-events-none [&_*]:select-none",
-        )}
-      >
+      {/* Transparent so the window background reads up through the content.
+          Column layout: a seamless overlay title-bar strip on top, then the
+          sidebar + content row below it.
+          h-dvh (not h-screen) so mobile browser chrome (the collapsing URL
+          bar) never pushes the composer below the visible viewport.
+          The shell stays fully interactive under the in-app onboarding: the
+          user must click the real controls, so that overlay does its own
+          selective blocking. */}
+      <div className="flex h-dvh flex-col bg-transparent text-ink">
         {/* Seamless title bar (macOS titleBarStyle: Overlay). The strip is
             transparent, so it's the window-background colour in both themes —
             the traffic lights float over the app's own background with no
@@ -144,7 +137,6 @@ export function WorkspaceShell({
         <ShortcutCheatsheet />
         <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
       </div>
-      {uiTourActive && <WorkspaceTourOverlay />}
       {inAppOnboardingActive && <InAppOnboarding />}
     </DetailPanelProvider>
   );

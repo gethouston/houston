@@ -46,17 +46,15 @@ export function useStoreInstallDeepLink(): void {
 
   // "Shell is live" — the workspace shell (which mounts the import wizard) is
   // the rendered branch, so seeding it will actually open something: a
-  // workspace is resolved, agents have loaded with at least one present (a
-  // zero-agent user is still in first-run onboarding, not the shell), and the
-  // tutorial is not held in front. Until then the pending slug simply waits.
+  // workspace is resolved, and agents have loaded with at least one present (a
+  // zero-agent user is still on the first-run survey, not the shell). Until
+  // then the pending slug simply waits.
   const workspaceReady = useWorkspaceStore(
     (s) => !s.loading && Boolean(s.current),
   );
   const agentsLoaded = useAgentStore((s) => s.loaded);
   const hasAgents = useAgentStore((s) => s.agents.length > 0);
-  const tutorialActive = useUIStore((s) => s.tutorialActive);
-  const shellLive =
-    workspaceReady && agentsLoaded && hasAgents && !tutorialActive;
+  const shellLive = workspaceReady && agentsLoaded && hasAgents;
 
   // ── Ingress: register the listeners + drain the cold-start / web sources ──
   // Delegated to `subscribeStoreDeepLinks`, which classifies each raw URL / web

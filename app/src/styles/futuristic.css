@@ -105,12 +105,35 @@
 }
 
 /* ---- In-app onboarding click cues --------------------------------------
-   (tutorial-spotlight.tsx)
+   (tutorial-spotlight.tsx, onboarding-center-card.tsx)
 
-   The two cues that say "here, CLICK" on a spotlighted control: a sonar
-   ping radiating off the ring, and a cursor glyph tapping at the target.
-   Effect values live here untokenized on purpose, same rule as the aurora
-   in canvas.css. */
+   The cues that say "here, CLICK" on a spotlighted control — a sonar ping
+   radiating off the ring, a cursor glyph tapping at the target — plus the
+   veil and elevation the guided setup floats on. Effect values live here
+   untokenized on purpose, same rule as the aurora in canvas.css. */
+
+/* The spotlight's veil: a giant spread shadow paints everything OUTSIDE the
+   element dark, leaving its box as the lit hole. Light on purpose — the user
+   must still see the app they are being guided through. */
+.ht-tutorial-veil-cutout {
+  box-shadow: 0 0 0 9999px rgba(13, 13, 13, 0.35);
+}
+
+/* The same veil with no hole in it, for the beats that dim the whole app:
+   a step whose anchor has not rendered yet, and the centered narration card. */
+.ht-tutorial-scrim {
+  background: rgba(13, 13, 13, 0.35);
+}
+
+/* The lift that separates a floating guide surface from the dimmed app. */
+.ht-tutorial-card-shadow {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* Keeps the white cursor glyph legible over a light control under the veil. */
+.ht-tutorial-cursor-shadow {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
 
 /* Radiates outward from the spotlight ring and fades — "look HERE". */
 .ht-tutorial-ping {

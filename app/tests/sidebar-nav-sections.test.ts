@@ -77,7 +77,6 @@ describe("the rail's unlabelled run", () => {
     assert.ok(!NAV.includes("startTour"));
     assert.ok(!NAV.includes("active: false"));
     assert.ok(!VIEWS.includes("guide-me"), "no view claims that id either");
-    assert.ok(!HOOK.includes("setUiTourActive"));
   });
 });
 

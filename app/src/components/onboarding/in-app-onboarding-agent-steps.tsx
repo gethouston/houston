@@ -134,12 +134,17 @@ export function InAppOnboardingAgentSteps({
         />
       );
     case "emailSending":
-      // Watch-only: the agent is working, nothing to click.
+      // Watch-only: the agent is working, nothing to click. If it errors or
+      // takes too long, the addendum offers the way onward (the task WAS
+      // sent) — a watch beat must never be a dead end.
       return (
         <TutorialSpotlight
           selector='[data-testid="mission-panel"]'
           title={t("inApp.steps.emailSending.title")}
           hint={t("inApp.steps.emailSending.hint")}
+          aside={o.emailStuck ? t("inApp.steps.emailSending.stuck") : undefined}
+          asideCta={o.emailStuck ? t("inApp.skipStep") : undefined}
+          onAsideCta={o.emailStuck ? o.abandonEmailWait : undefined}
           showCues={false}
         />
       );

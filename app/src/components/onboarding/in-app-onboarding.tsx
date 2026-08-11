@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { useOnboardingPending } from "../../hooks/use-onboarding-pending";
 import { useUIStore } from "../../stores/ui";
 import { tourSelector } from "../shell/workspace-tour-steps.ts";
 import { InAppOnboardingAgentSteps } from "./in-app-onboarding-agent-steps";
@@ -149,12 +150,20 @@ export function InAppOnboarding() {
 /**
  * Arms the overlay from render-land (App.tsx's first-run "onboarding" route
  * renders the shell with this beside it). Arm-only: clearing is the flow's
- * own act, so a re-render never yanks a live overlay away.
+ * own act, so a re-render never yanks a live overlay away. First-run arming
+ * also stamps the durable `onboarding_pending` resume flag: creating the
+ * agent flips the zero-agent first-run signal, so this flag is what brings a
+ * quit-mid-setup user back into the flow on the next boot (cleared by every
+ * finish).
  */
 export function ArmInAppOnboarding() {
   const setActive = useUIStore((s) => s.setInAppOnboardingActive);
+  const setFirstRun = useUIStore((s) => s.setInAppOnboardingFirstRun);
+  const { markPending } = useOnboardingPending();
   useEffect(() => {
+    setFirstRun(true);
     setActive(true);
-  }, [setActive]);
+    void markPending();
+  }, [setActive, setFirstRun, markPending]);
   return null;
 }

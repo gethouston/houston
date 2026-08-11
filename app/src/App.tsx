@@ -10,7 +10,6 @@ import {
   isFirstRun,
   onboardingRoute,
 } from "./components/onboarding/missions/onboarding-flow";
-import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { OnboardingSurveyScreen } from "./components/onboarding/survey-screen";
 import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
@@ -232,7 +231,6 @@ export default function App() {
   const bootedRef = useRef(false);
   const toasts = useUIStore((s) => s.toasts);
   const dismissToast = useUIStore((s) => s.dismissToast);
-  const tutorialActive = useUIStore((s) => s.tutorialActive);
   // A plain org `user` can't create agents (the create-your-assistant
   // onboarding would 403 at `POST /agents`), so they skip that funnel and land
   // straight in the shell on their assigned agents (or an empty state without a
@@ -343,28 +341,12 @@ export default function App() {
   // setup order is language (main.tsx) → sign-in (above) → agreement → survey.
   // The gate self-skips once accepted, and entirely on cloud web (HOU-1014).
 
-  // First-run tutorial. Held in front of the shell while the orchestrator is
-  // mid-flight, even after the workspace and agent have been created (M2+).
-  // Checked BEFORE the loading splash on purpose: the tutorial runs before the
-  // first load has ever settled, and letting the splash win here would unmount
-  // the orchestrator, fire its cleanup, and clear `tutorialActive` — kicking
-  // the user out of the tutorial.
-  if (tutorialActive) {
-    return (
-      <DisclaimerGate>
-        <PersonalAssistantOnboarding
-          toasts={mappedToasts}
-          onDismissToast={dismissToast}
-        />
-      </DisclaimerGate>
-    );
-  }
-
   // On the v3 control plane the first-run gate below reads the AGENT count, so
   // the splash must also cover boot's async gap between workspaces resolving
   // and the first `loadAgents` call — `agents: []` in that gap is "not loaded
   // yet", not "fresh install" (an existing user must never flash into
-  // onboarding, which would pin them there via `tutorialActive`). The v3
+  // onboarding, which arms the setup overlay and marks `onboarding_pending`
+  // so it would come back on the next boot too). The v3
   // adapter always reports one synthetic workspace, so `loadAgents` is
   // guaranteed to run and settle `loaded`. The legacy Rust wire gates on
   // workspaces alone and skips this wait (zero-workspace first runs never load
@@ -405,8 +387,9 @@ export default function App() {
   //
   // The login fallback rides alongside the shell so a sign-in launched from a
   // surface without its own login handler (the in-chat reconnect card) still
-  // opens the browser / dialog. Onboarding + tutorial mount their own handler
-  // (the login mission), so they don't need it. The migration-reconnect branch
+  // opens the browser / dialog. It rides the same branch as the setup overlay,
+  // which guides the user through the shell's own AI Hub. The
+  // migration-reconnect branch
   // is the CO-LOCATED upgrade moment (workspaces migrated in place, no
   // provider connected) — see useMigrationReconnect for its trigger.
 
@@ -487,9 +470,8 @@ export default function App() {
           />
         ) : (
           // Route "app" AND the first-run "onboarding" route: the setup runs IN
-          // the app now, as the in-app onboarding overlay armed over the shell
-          // (the old separate-screen PersonalAssistantOnboarding is superseded
-          // and absorbed into it iteration by iteration). ONE branch for both
+          // the app, as the in-app onboarding overlay armed over the shell.
+          // ONE branch for both
           // on purpose — connecting the AI provisions the assistant mid-flow,
           // which flips `firstRun` and would otherwise remount the shell (and
           // reset the overlay) at that instant. The arm rides AFTER the shell

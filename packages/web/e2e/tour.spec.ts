@@ -24,7 +24,8 @@ test("Guide me opens the onboarding welcome with Continue as the only action", a
     dialog.getByRole("button", { name: "Start setup" }),
   ).toBeVisible();
 
-  // The shell behind it is inert while the overlay runs.
+  // The shell stays rendered behind the card (the overlay's own scrim and
+  // blockers do the isolating; the shell is deliberately not inert).
   await expect(page.locator("main[data-tour-target='main']")).toBeVisible();
 });
 
@@ -215,11 +216,8 @@ test("creating an agent in the tutorial: coached dialog, locked email task, inbo
   await page
     .locator("[data-screen-active='true'] [data-tour-target='newMission']")
     .click();
-  // Two agents exist now — the board asks which one; pick the new agent.
-  const agentChoice = page.getByRole("menuitem", { name: "Mailer" });
-  if (await agentChoice.isVisible().catch(() => false)) {
-    await agentChoice.click();
-  }
+  // The just-created agent is pinned on its board (agentFilter), so the
+  // New-task click composes directly, no agent menu.
   await expect(
     page.getByRole("dialog", { name: "Just press send." }),
   ).toBeVisible();

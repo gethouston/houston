@@ -9,8 +9,6 @@ import {
   isFirstRun,
   isToolkitConnected,
   onboardingRoute,
-  shouldOfferTeamInvite,
-  stepAfterAgentCreated,
 } from "../src/components/onboarding/missions/onboarding-flow.ts";
 
 /** A minimal capabilities object with the integrations set under test. */
@@ -31,19 +29,6 @@ const conn = (
   toolkit: string,
   status: IntegrationConnection["status"],
 ): IntegrationConnection => ({ toolkit, connectionId: "ca_1", status });
-
-describe("shouldOfferTeamInvite (finish-screen growth card)", () => {
-  it("only on a spaces host", () => {
-    strictEqual(shouldOfferTeamInvite({ ...caps([]), spaces: true }), true);
-    strictEqual(shouldOfferTeamInvite({ ...caps([]), spaces: false }), false);
-  });
-
-  it("hidden when spaces is absent (legacy / desktop / self-host)", () => {
-    strictEqual(shouldOfferTeamInvite(caps([])), false);
-    strictEqual(shouldOfferTeamInvite(null), false);
-    strictEqual(shouldOfferTeamInvite(undefined), false);
-  });
-});
 
 describe("isFirstRun (per-wire first-run signal)", () => {
   it("legacy Rust wire: zero workspaces = first run, agents irrelevant", () => {
@@ -89,17 +74,6 @@ describe("integrationsAvailable (HOU-653 engine gating)", () => {
     // we must never route into a step the host can't serve.
     strictEqual(integrationsAvailable(null), false);
     strictEqual(integrationsAvailable(undefined), false);
-  });
-});
-
-describe("stepAfterAgentCreated", () => {
-  it("routes into the email detour when integrations are available", () => {
-    strictEqual(stepAfterAgentCreated(caps(["composio"])), "connectEmail");
-  });
-
-  it("routes straight to finish when integrations are unavailable", () => {
-    strictEqual(stepAfterAgentCreated(caps([])), "finished");
-    strictEqual(stepAfterAgentCreated(null), "finished");
   });
 });
 

@@ -139,8 +139,12 @@ export function inAppOnboardingAdvance(
         ? { kind: "goto", step: "emailSending" }
         : { kind: "celebrate", step: "missionSent" };
     case "emailSending":
-      return signals.emailSent
-        ? { kind: "celebrate", step: "emailSent" }
-        : { kind: "stay" };
+      if (signals.emailSent) return { kind: "celebrate", step: "emailSent" };
+      // The email arming can fail AFTER the send (the priming write raced
+      // it): emailMode drops, the marker can never arrive — fall back to the
+      // plain sent finale instead of waiting forever.
+      return signals.emailMode
+        ? { kind: "stay" }
+        : { kind: "celebrate", step: "missionSent" };
   }
 }

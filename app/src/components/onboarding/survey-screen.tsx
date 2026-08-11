@@ -1,7 +1,10 @@
 import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { OnboardingSurveyState } from "../../hooks/use-onboarding-survey";
-import { ONBOARDING_GOAL_MAX_LENGTH } from "../../lib/onboarding-survey";
+import {
+  ONBOARDING_GOAL_MAX_LENGTH,
+  ONBOARDING_OTHER_MAX_LENGTH,
+} from "../../lib/onboarding-survey";
 import { FirstRunScreen } from "./first-run-screen";
 import { SetupCard } from "./setup-card";
 import { SurveyAnswer } from "./survey-answer";
@@ -56,7 +59,9 @@ export function OnboardingSurveyScreen({
   // user to fix an answer that is perfectly fine.
   const invalid = flow.goalTooLong
     ? t("onboardingSurvey.goal.tooLong", { max: ONBOARDING_GOAL_MAX_LENGTH })
-    : null;
+    : flow.otherTooLong
+      ? t("onboardingSurvey.goal.tooLong", { max: ONBOARDING_OTHER_MAX_LENGTH })
+      : null;
 
   if (!flow.step) return null;
 

@@ -13,6 +13,8 @@ export interface SurveyFlow {
   segment: OnboardingSegment | null;
   /** The "Something else" free text for the on-screen closed question. */
   otherText: string;
+  /** That free text is past the accepted length (shown, never truncated). */
+  otherTooLong: boolean;
   industry: OnboardingIndustry | null;
   goal: string;
   saving: boolean;

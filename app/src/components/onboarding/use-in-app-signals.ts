@@ -49,6 +49,10 @@ export function useInAppOnboardingSignals() {
   const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const conversations = useAllConversations(agentPaths);
   const missionRows = conversations.data ?? EMPTY_ROWS;
+  // Settled = real data for the CURRENT roster key, no refetch in flight; an
+  // in-flight sweep must never seed a baseline (it reads as zero missions).
+  const missionRowsSettled =
+    conversations.data !== undefined && !conversations.isFetching;
 
   // The email toolkit the guided first task can run through, if one is
   // connected — same order preference the legacy email mission offered.
@@ -71,6 +75,7 @@ export function useInAppOnboardingSignals() {
     canCreateAgents,
     agentCount: agents.length,
     missionRows,
+    missionRowsSettled,
     missionCount: missionRows.length,
     emailToolkit,
   };

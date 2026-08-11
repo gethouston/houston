@@ -74,7 +74,8 @@
       },
       "emailSending": {
         "title": "Mira a tu agente trabajar.",
-        "hint": "Te está enviando un correo ahora mismo"
+        "hint": "Te está enviando un correo ahora mismo",
+        "stuck": "¿Algo salió mal? Tu tarea se envió, puedes terminar la configuración."
       },
       "emailSent": {
         "title": "¡Revisa tu correo!",
@@ -88,7 +89,8 @@
       "apps": "Conecta tus apps",
       "agent": "Crea tu agente",
       "task": "Envíale su primera tarea"
-    }
+    },
+    "stripFailed": "No pudimos quitar la nota de configuración de tu agente. Pídele que elimine la sección de configuración de Houston de sus instrucciones."
   },
   "name": {
     "title": "Nombra tu espacio de trabajo",
@@ -161,26 +163,13 @@
     "otherPlaceholder": "Cuéntanos en pocas palabras"
   },
   "tutorial": {
-    "brand": "Houston",
     "nav": {
-      "back": "Atrás",
-      "continue": "Continuar",
-      "skipOnboarding": "Omitir la configuración"
+      "back": "Atrás"
     },
     "errors": {
-      "setupFailed": "No pudimos terminar de configurar tu espacio de trabajo. Inténtalo de nuevo.",
-      "title": "La configuración no se completó",
-      "body": "Algo salió mal al crear tu asistente. Inténtalo de nuevo o vuelve y elige otra IA.",
-      "retry": "Reintentar"
-    },
-    "toolkits": {
-      "gmail": "Gmail",
-      "googlecalendar": "Google Calendar",
-      "outlook": "Outlook",
-      "outlook_calendar": "Outlook Calendar"
+      "setupFailed": "No pudimos terminar de configurar tu espacio de trabajo. Inténtalo de nuevo."
     },
     "defaults": {
-      "workspaceName": "Personal",
       "assistantName": "Asistente personal",
       "focus": "Ayúdame a estar organizado, preparar mi día, redactar mensajes, proteger tiempo de enfoque y dar seguimiento a pendientes.",
       "approvalRule": "Pregunta antes de enviar mensajes, crear eventos de calendario o cambiar algo en las apps conectadas."
@@ -194,57 +183,17 @@
         "description": "Reúne todo lo que necesitas antes de tu próxima reunión: quién participa, qué hablaron la última vez y cualquier cosa urgente, a partir de tu bandeja de entrada y una búsqueda rápida en la web, y te lo entrega antes de que empiece."
       }
     },
-    "milestones": {
-      "ai": "Conecta tu IA",
-      "email": "Conecta tu correo",
-      "send": "Prueba tu asistente"
-    },
     "missions": {
-      "connect": {
-        "title": "Conecta tu IA",
-        "body": "Elige la IA que ya pagas e inicia sesión. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura."
-      },
       "email": {
-        "title": "Mira a tu agente en acción",
         "offer": {
           "option": "Envíame un correo de saludo"
-        },
-        "chip": "Envía un correo por mí",
-        "placeholder": "Responde a tu agente...",
-        "body": "Tu agente te enviará un correo real, para que lo veas funcionar.",
-        "skip": "Omitir por ahora",
-        "skipHint": "¿Algo salió mal? Puedes continuar en Houston e intentarlo más tarde."
+        }
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",
         "body": "Tu agente ya puede pensar. Estás un paso más cerca.",
         "cta": "Continuar"
-      },
-      "connectEmail": {
-        "title": "Dale a tu agente acceso a tu correo",
-        "body": "Elige tu correo para que tu agente pueda enviar por ti. Lo conectas una vez, de forma segura.",
-        "connect": "Conectar",
-        "connecting": "Conectando...",
-        "cancel": "Cancelar",
-        "connected": "Conectado",
-        "preparing": "Preparando a tu asistente..."
-      },
-      "emailConnected": {
-        "title": "¡Correo conectado!",
-        "body": "Así de fácil es conectar una app, y tu agente puede acceder a más de 1000 así.",
-        "cta": "Continuar"
-      },
-      "finished": {
-        "title": "¡Revisa tu correo!",
-        "body": "Tu asistente personal acaba de demostrar que puede actuar por ti, de verdad.",
-        "readyTitle": "¡Ya está todo listo!",
-        "readyBody": "Tu asistente personal está listo para ponerse a trabajar por ti.",
-        "tagline": "Ahora ve y haz lo imposible.",
-        "cta": "Empieza a construir",
-        "inviteTeam": "Invita a tu equipo",
-        "inviteTeamBody": "Mira quién trabaja en cada tarea. Crea un equipo y comparte tus agentes."
       }
-    },
-    "stepCounter": "Paso {{current}} de {{total}}"
+    }
   }
 }

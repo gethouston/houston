@@ -32,15 +32,15 @@ export interface OnboardingPendingState {
  * The assistant is provisioned SILENTLY the instant the AI connects, so once
  * that happens the agent-count first-run signal (`isFirstRun`) reports `false`
  * forever — quitting mid-flow would permanently skip the rest of setup. This
- * durable flag closes that gap: the orchestrator sets it on mount and clears it
- * on finish or skip, and App.tsx shows onboarding while it's set. Absent flag
- * (every existing, fully-onboarded user) reads as not-pending, so their
- * behavior is unchanged.
+ * durable flag closes that gap: arming the in-app setup on a first-run boot
+ * sets it (`ArmInAppOnboarding`) and every finish clears it, and App.tsx routes
+ * into onboarding while it's set. Absent flag (every existing, fully-onboarded
+ * user) reads as not-pending, so their behavior is unchanged.
  *
- * Re-entry is safe by construction: the flow re-enters at `intro`, creation is
- * idempotent (`ensureWorkspaceWithAssistant` reuses the existing workspace +
- * agent), the connect step auto-advances for an already-connected provider, and
- * the connectEmail step hands off on re-picking a connected toolkit.
+ * Re-entry is safe by construction: the flow re-enters at its welcome beat and
+ * every step is a spotlight over the real control, so an already-connected
+ * provider, an existing agent and a connected toolkit each render their
+ * already-done addendum instead of asking for the work twice.
  */
 export function useOnboardingPending(): OnboardingPendingState {
   const qc = useQueryClient();
@@ -69,12 +69,12 @@ export function useOnboardingPending(): OnboardingPendingState {
   // effect re-firing on mutation status churn.
   //
   // Both writers flip the query cache SYNCHRONOUSLY before the persisted write:
-  // `finishOnboarding` drops `tutorialActive` in the same event handler, and
-  // App.tsx re-renders on that store update before any mutation microtask runs.
-  // If the cache still said `true` in that render, App would remount the
-  // orchestrator via its `onboardingPending` branch, whose mount effect re-pins
-  // the tutorial and re-marks the flag — restarting onboarding from the first
-  // step on every finish. The `onSuccess` write is kept as the settled value.
+  // the setup's `finish` drops `inAppOnboardingActive` in the same event
+  // handler, and App.tsx re-renders on that store update before any mutation
+  // microtask runs. If the cache still said `true` in that render, App would
+  // re-arm the setup via its `onboardingPending` branch, whose mount effect
+  // re-marks the flag — restarting onboarding from the first step on every
+  // finish. The `onSuccess` write is kept as the settled value.
   const markPending = useCallback(async () => {
     qc.setQueryData<boolean>(queryKey, true);
     await mutateAsync(true);

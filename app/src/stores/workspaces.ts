@@ -47,10 +47,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   workspaces: [],
   current: null,
   // Start "not settled" so App.tsx renders the loading splash on first paint
-  // instead of the tutorial. Returning users with an existing workspace would
-  // otherwise briefly fall through the `workspaces.length === 0` gate and mount
-  // the onboarding orchestrator before `loadWorkspaces()` resolves, which then
-  // pinned `tutorialActive=true` and trapped them in the tutorial. The splash
+  // instead of a first-run route. Returning users with an existing workspace
+  // would otherwise briefly fall through the `workspaces.length === 0` gate
+  // and enter the setup flow before `loadWorkspaces()` resolves, which marks
+  // `onboarding_pending` and holds them there. The splash
   // reads `loaded` (never-loaded-yet), NOT `loading`: a retry or a refresh must
   // not swap the whole app for the splash and remount the shell under the user.
   loading: true,
