@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+import { RevocationTombstones } from "../credentials/revocation-tombstones";
 import type {
   CredentialActing,
   CredentialStore,
@@ -73,10 +74,15 @@ function mockRes(): {
   return { res, out };
 }
 
-const post = (credentials: CredentialStore, body: unknown, token = "sbx") => {
+const post = (
+  credentials: CredentialStore,
+  body: unknown,
+  token = "sbx",
+  revocations = new RevocationTombstones(),
+) => {
   const { res, out } = mockRes();
   return handleSandboxCredentialRevoked(
-    { vault, credentials },
+    { vault, credentials, revocations },
     "POST",
     "/sandbox/credential/revoked",
     new URL("http://x/sandbox/credential/revoked"),
@@ -160,4 +166,68 @@ test("an unauthenticated report never reaches the store", async () => {
 
   expect(status).toBe(401);
   expect(reports).toEqual([]);
+});
+
+test("a confirmed removal tombstones the credential and logs info, not error (HOUSTON-APP-530)", async () => {
+  const { credentials } = capturingStore(true);
+  const revocations = new RevocationTombstones();
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+  try {
+    await post(
+      credentials,
+      { provider: "anthropic", accessSha256: "a".repeat(64) },
+      "sbx",
+      revocations,
+    );
+
+    // The expected disconnect pipeline working is NOT a Sentry error — that
+    // error-level line was the whole HOUSTON-APP-530 flood.
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.stringContaining("credential disconnected"),
+    );
+    expect(
+      revocations.active({ workspaceId: "w1", provider: "anthropic" }),
+    ).toBe(true);
+  } finally {
+    errorSpy.mockRestore();
+    infoSpy.mockRestore();
+  }
+});
+
+test("a second confirmed removal inside the window escalates: something refilled a dead credential", async () => {
+  const { credentials } = capturingStore(true);
+  const revocations = new RevocationTombstones();
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+  try {
+    const body = { provider: "anthropic", accessSha256: "a".repeat(64) };
+    await post(credentials, body, "sbx", revocations);
+    await post(credentials, body, "sbx", revocations);
+
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("refilled and revoked AGAIN"),
+    );
+  } finally {
+    errorSpy.mockRestore();
+    infoSpy.mockRestore();
+  }
+});
+
+test("a superseded report leaves no tombstone — the live credential keeps serving", async () => {
+  const { credentials } = capturingStore(false);
+  const revocations = new RevocationTombstones();
+
+  await post(
+    credentials,
+    { provider: "anthropic", accessSha256: "a".repeat(64) },
+    "sbx",
+    revocations,
+  );
+
+  expect(revocations.active({ workspaceId: "w1", provider: "anthropic" })).toBe(
+    false,
+  );
 });

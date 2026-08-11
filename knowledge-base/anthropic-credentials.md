@@ -170,6 +170,34 @@ way the coalescer's cached result for that key is forgotten, and a failure of th
 re-read itself degrades to "absent" rather than escaping as a 500 in place of the
 404 the runtime knows how to act on.
 
+### A provider-revoked credential must STAY deleted — the revocation tombstone
+
+The revoked-token report deleting the central row is only half the job; Sentry
+HOUSTON-APP-530 (734 events / 380 users in two weeks) was the other half:
+everything that put the dead credential BACK. Old pre-HOU-950 desktop builds
+still loop the cached-snapshot reconcile (`?if_absent=1` claude-oauth push) on a
+15–30s cadence, and the pod itself could refill via the legacy-fallback adoption
+(`credentials/remote-store.ts`) or the serve healer. Every refill of a revoked
+family fails the next turn, which reports, which deletes, which invites the next
+refill — one turn burned and one Sentry error per cycle, forever.
+
+`credentials/revocation-tombstones.ts` breaks the cycle: a CONFIRMED removal
+(`removed:true` on `/sandbox/credential/revoked`) tombstones that
+(workspace, scope, provider) for 15 minutes, and every AUTOMATIC refill path
+consults it — the `ifAbsent` claude-oauth fill answers 409, fallback adoption
+and the healer skip. Deliberately scope-blunt, not digest-scoped: a cached
+snapshot of the revoked family carries a DIFFERENT access token than the one
+the report named (the gateway rotated the family since), so a digest tombstone
+would block nothing. USER-driven connects are never blocked and CLEAR the
+tombstone (overwrite claude-oauth push, verified api-key/setup-token paste,
+device-code capture); the TTL bounds any clear-site we missed. Logging split
+accordingly: a confirmed removal is the pipeline WORKING (the user gets the
+reconnect card) and logs info; the error-level line — the only one Sentry
+should page on — is a SECOND confirmed removal inside the tombstone window,
+which means something (a stale client, a path that bypasses the pod host)
+resurrected a dead credential past the guards. The ledger is per-pod-process
+and in-memory: a pod restart forgives it, costing at most one extra cycle.
+
 ## The six traps (each was a live bug, or a guarded near-miss)
 
 1. **`USER` must reach the SDK subprocess.** The CLI names its Keychain

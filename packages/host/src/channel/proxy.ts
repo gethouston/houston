@@ -1,6 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
 import {
+  type RevocationTombstones,
+  RevokedRefillBlockedError,
+  sharedRevocationTombstones,
+} from "../credentials/revocation-tombstones";
+import {
   ApiKeyRejectedError,
   type CaptureResult,
   type ChannelCtx,
@@ -61,8 +66,14 @@ export class ProxyChannel implements RuntimeChannel {
       forwardActingHeader: boolean;
       /** Managed pod shared-cache freshness gate, invoked only for turn starts. */
       beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
+      /** Injectable for tests; defaults to the process-wide ledger. */
+      revocations?: RevocationTombstones;
     },
   ) {}
+
+  private get revocations(): RevocationTombstones {
+    return this.opts.revocations ?? sharedRevocationTombstones;
+  }
 
   async dispatch(
     ctx: ChannelCtx,
@@ -318,7 +329,7 @@ export class ProxyChannel implements RuntimeChannel {
     ctx: ChannelCtx,
     provider?: string,
   ): Promise<CaptureResult> {
-    return captureRuntimeCredential({
+    const result = await captureRuntimeCredential({
       endpoint: await this.opts.launcher.ensureAwake(ctx.agent),
       credentials: this.opts.credentials,
       workspaceId: ctx.agent.workspaceId,
@@ -327,6 +338,16 @@ export class ProxyChannel implements RuntimeChannel {
       // runtime auth file, stored on their row, scrubbed from their file.
       actingAs: ctx.actingAs,
     });
+    // A user-driven device-code connect supersedes any provider revocation of
+    // the previous credential — automatic serving may resume immediately.
+    if (result.ok) {
+      this.revocations.clear({
+        workspaceId: ctx.agent.workspaceId,
+        provider: result.provider,
+        actingAs: ctx.actingAs,
+      });
+    }
+    return result;
   }
 
   /**
@@ -392,6 +413,13 @@ export class ProxyChannel implements RuntimeChannel {
       },
       { actingAs: ctx.actingAs },
     );
+    // A verified pasted key (incl. the anthropic setup token) is a fresh
+    // user-driven connect: it supersedes any provider revocation.
+    this.revocations.clear({
+      workspaceId: ctx.agent.workspaceId,
+      provider,
+      actingAs: ctx.actingAs,
+    });
   }
 
   /**
@@ -430,6 +458,26 @@ export class ProxyChannel implements RuntimeChannel {
       // means done: the pod serves the live credential. A probe failure
       // throws — the reconcile logs it and retries next session; guessing
       // "absent" here and materializing a stale file is never worth it.
+      //
+      // ABSENT is not automatically fillable either (HOUSTON-APP-530): when
+      // the row is absent because the provider REVOKED it (the runtime's
+      // revoked-token report deleted it minutes ago), a cached snapshot of
+      // that same family is exactly the poison above — old clients pre-HOU-950
+      // loop this push on a 15–30s cadence, re-revoking the fill every cycle.
+      // Refuse while the tombstone is live; a real sign-in pushes WITHOUT
+      // ifAbsent and is never blocked.
+      if (
+        this.revocations.active({
+          workspaceId: ctx.agent.workspaceId,
+          provider: "anthropic",
+          actingAs: ctx.actingAs,
+        })
+      ) {
+        console.warn(
+          "[credential] refused an if_absent claude-oauth fill: the anthropic credential was just provider-revoked (tombstone active)",
+        );
+        throw new RevokedRefillBlockedError("anthropic");
+      }
       const existing = await this.opts.credentials.get(
         ctx.agent.workspaceId,
         "anthropic",
@@ -469,6 +517,15 @@ export class ProxyChannel implements RuntimeChannel {
       // write between the probe above and this put still cannot be clobbered.
       { ifAbsent: opts?.ifAbsent, actingAs: ctx.actingAs },
     );
+    // A stored OVERWRITE push is a fresh user-driven sign-in: it supersedes
+    // any provider revocation, so automatic serving may resume immediately.
+    if (!opts?.ifAbsent) {
+      this.revocations.clear({
+        workspaceId: ctx.agent.workspaceId,
+        provider: "anthropic",
+        actingAs: ctx.actingAs,
+      });
+    }
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/auth/anthropic/oauth-credential`,

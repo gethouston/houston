@@ -6,6 +6,10 @@ import type {
   WorkspaceCredential,
 } from "../ports";
 import { sharedCredentialRefresher } from "./refresh-coalescer";
+import {
+  type RevocationTombstones,
+  sharedRevocationTombstones,
+} from "./revocation-tombstones";
 
 /**
  * What the control plane does when the OAuth server rejects a refresh TOKEN
@@ -31,6 +35,8 @@ export async function disconnectRejectedCredential(args: {
   acting?: CredentialActing;
   /** The rejection's message, for the disconnect log line. */
   reason: string;
+  /** Injectable for tests; defaults to the process-wide ledger. */
+  revocations?: RevocationTombstones;
 }): Promise<WorkspaceCredential | null> {
   const { credentials, workspaceId, rejected, acting } = args;
   // The digest names the DEAD token. The caller hands us the credential IT
@@ -50,6 +56,18 @@ export async function disconnectRejectedCredential(args: {
   // re-read rather than refreshed again with the token just rejected.
   sharedCredentialRefresher.forget(workspaceId, rejected.provider, acting);
   if (dropped) {
+    // A rejected refresh token is as terminal as a provider revocation, and
+    // the same automatic refills (an if_absent snapshot push, fallback
+    // adoption, the healer) would loop it: fill → next serve refreshes with
+    // the superseded token → invalid_grant → disconnect → fill again
+    // (HOU-855's poison cycle, HOUSTON-APP-530's volume). Tombstone it so
+    // only a real reconnect brings the provider back.
+    (args.revocations ?? sharedRevocationTombstones).mark({
+      workspaceId,
+      provider: rejected.provider,
+      scope: rejected.scope === "personal" ? "personal" : "team",
+      actingAs: acting?.actingAs,
+    });
     console.error(
       `[credential-disconnect] refresh token rejected for ${rejected.provider}, disconnecting:`,
       args.reason,
