@@ -527,6 +527,22 @@ function isServerError(lower: string, status: number | null): boolean {
     // a genuinely dead local network fails the NEXT attempt with fetch/ECONN
     // errors that still route to network_unreachable below.
     lower.includes("websocket closed") ||
+    // Envoy's canonical no-upstream-response body — "upstream connect error or
+    // disconnect/reset before headers. reset reason: connection termination"
+    // (also "… retried and the latest reset reason: connection timeout") — from
+    // a proxy on the pod↔provider path when the upstream connection died before
+    // any response headers arrived. Envoy normally sends it as a 503, but the
+    // Codex path flattens it to the bare body with no status, so the 5xx
+    // short-circuit never sees it. Transient and already past Envoy's own
+    // retries ("retried and the latest…"); retry is the remedy, and like the
+    // WebSocket break above it originates on cloud engine pods where the
+    // network_unreachable card would blame the wrong network
+    // (HOUSTON-APP-4Y9: 670 events / 151 users read as `unknown`).
+    lower.includes("upstream connect error") ||
+    // Envoy's idle-timeout body — "Upstream idle timeout exceeded" — the same
+    // proxy giving up on an upstream that stopped responding mid-request (seen
+    // via openrouter in the same Sentry bucket). Same transient verdict.
+    lower.includes("upstream idle timeout") ||
     // OpenAI's generic server-side failure body — "An error occurred while
     // processing your request. You can retry your request, or contact us
     // through our help center at help.openai.com if the error persists.
