@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resumePendingMove } from "../lib/move-resume";
 import {
   agentMoveDone,
@@ -36,6 +36,18 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
   const orgs = useOrgs(open);
   const createOrg = useCreateTeam();
   const addMember = useAddMember();
+  // Whether the dialog's inline faces are still on screen. The shared driver
+  // owns the toast surface, but a MOUNTED dialog renders the same outcome
+  // inline (the invite step, the failure face), and two surfaces for one
+  // event is noise; unmounted (the space switch tore the view down), the
+  // toast is the only surface left and must fire.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -155,10 +167,21 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
     );
     if (!pending) return;
     try {
-      await driveTeamMovePostscript(pending, setState);
+      await driveTeamMovePostscript(pending, setState, {
+        suppressToasts: () => mounted.current,
+      });
     } catch {
       setState(teamPostscriptFailed);
     }
+  };
+
+  /** The postscript-failure face's Retry: show the resumed busy stage AND
+   *  re-drive. The durable record carries `postscriptStage`, so the driver
+   *  picks up exactly where the failure left it; a state change alone would
+   *  leave the dialog on a busy face nothing is behind. */
+  const retryPostscript = () => {
+    setState(retryTeamMove);
+    void runPostscript();
   };
 
   return {
@@ -168,6 +191,7 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
     createOrg,
     addMember,
     moveAgents,
+    retryPostscript,
     confirmTeamMove,
     retryTeamMove,
   };

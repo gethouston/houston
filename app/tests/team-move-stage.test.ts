@@ -78,6 +78,33 @@ describe("dialog postscript stages", () => {
     ]);
     strictEqual(states.at(-1), "invite");
   });
+
+  it("resumes from the recorded stage with the created team preserved", async () => {
+    // What the failure face's Retry rests on: the record carries the stage the
+    // failure interrupted, so a re-drive redoes only what never completed and
+    // places into the ALREADY-created team instead of reconciling by name.
+    const target = wire();
+    await runTeamMovePostscript(
+      {
+        sourceTeam: {
+          id: SOURCE.id,
+          name: SOURCE.name,
+          context: SOURCE.context,
+          isDefault: SOURCE.isDefault,
+        },
+        targetSlug: TARGET.slug,
+        targetName: TARGET.name,
+        agentIds: ["a"],
+        movedAgentIds: ["a"],
+        createdTeamId: TEAM.id,
+        postscriptStage: "placing",
+        startedAt: 1,
+      },
+      target.value,
+      () => {},
+    );
+    deepStrictEqual(target.calls, ["placing"]);
+  });
   it("advances each stage and preserves the reconciled id for placement", async () => {
     const cleanup = await runTeamMoveStage(
       { step: "cleanupSource", target: TARGET },

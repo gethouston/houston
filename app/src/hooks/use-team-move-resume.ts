@@ -99,7 +99,19 @@ export function useTeamMoveResume(enabled: boolean): void {
 export async function driveTeamMovePostscript(
   pending: PendingTeamMove,
   onProgress: (state: TeamMoveState) => void = () => {},
+  options: {
+    /** Asked AT COMPLETION time: a MOUNTED dialog renders the same outcome
+     *  inline (invite step / failure face), so the driver's toast would be a
+     *  second surface for one event. Unmounted mid-drive (the space switch
+     *  tears the view down), the toast is the only surface and fires. */
+    suppressToasts?: () => boolean;
+  } = {},
 ): Promise<void> {
+  const toast = (kind: "done" | "failed") => {
+    if (!options.suppressToasts?.()) {
+      toastPostscript(kind, pending.sourceTeam.name);
+    }
+  };
   try {
     await runTeamMovePostscript(
       pending,
@@ -114,9 +126,9 @@ export async function driveTeamMovePostscript(
       },
     );
     clearPendingTeamMove(pending.sourceTeam.id);
-    toastPostscript("done", pending.sourceTeam.name);
+    toast("done");
   } catch (error) {
-    toastPostscript("failed", pending.sourceTeam.name);
+    toast("failed");
     throw new TeamMovePostscriptError(error);
   } finally {
     releaseTeamMove(pending.sourceTeam.id);

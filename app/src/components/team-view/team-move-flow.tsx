@@ -153,7 +153,7 @@ export function TeamMoveFlow({
             body={t("moveTeam.postscriptFailed", {
               count: source.agents.length,
             })}
-            onRetry={() => setState(flow.retryTeamMove(state))}
+            onRetry={flow.retryPostscript}
             onClose={() => onOpenChange(false)}
           />
         )}
