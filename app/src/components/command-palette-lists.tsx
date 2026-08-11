@@ -17,7 +17,8 @@ import {
 import { Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { RawConversation } from "../lib/tauri";
-import { type TeamView, teamDisplayName } from "../lib/teams-model";
+import { teamDisplayName } from "../lib/team-display";
+import type { TeamView } from "../lib/teams-model";
 import type { Agent } from "../lib/types";
 import { missionCardAgentName } from "./board/mission-card-agent";
 

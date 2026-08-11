@@ -5,13 +5,12 @@ import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
-import { hasAgentTeams, hasSpaces } from "../../lib/org-roles";
+import { hasAgentTeams } from "../../lib/org-roles";
 import {
-  canLeaveTeam,
-  type TeamView,
   teamDeletePresentation,
   teamDisplayName,
-} from "../../lib/teams-model";
+} from "../../lib/team-display";
+import { canLeaveTeam, type TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { SettingsCard, SettingsRow } from "../settings/settings-row";
@@ -49,7 +48,7 @@ export function TeamSettingsActions({ team }: { team: TeamView }) {
         testId="team-settings-identity"
         onClick={() => setEditTeamIdentityId(team.id)}
       />
-      {personalSpace && hasSpaces(capabilities) && (
+      {personalSpace && (
         <SettingsRow
           icon={Building2}
           title={t("teamView.settingsActions.moveToOrganization")}

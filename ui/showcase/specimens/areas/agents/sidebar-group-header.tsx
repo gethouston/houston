@@ -13,18 +13,18 @@ function SidebarGroupHeaderSpecimen() {
   return (
     <SpecimenPage
       title="SidebarGroupHeader"
-      intro="The head of a team block: one button carrying the team's glyph, its name, the disclosure triangle and its rollup badge, with the ⋯ menu beside it."
+      intro="The head of a team block: one button carrying the team's glyph, its name, the disclosure triangle and its rollup badge."
     >
       <SpecimenSection
         title="Anatomy"
-        note="One button, not three. The triangle, the glyph and the name used to be separate controls sharing a single job, which gave a keyboard user three stops to reach one disclosure and a screen reader no aria-expanded at all. Now the row IS the single hit target, and the menu sits beside it because a button may not nest inside a button. The triangle is an indicator, not a control: what activating the row does is the host's rule, so a triangle claiming to be the fold button would promise an outcome it does not own. The row wears the same 28px box and the same pill as the member rows under it, so a team reads as the head of its ladder rather than as chrome above one — its glyph simply sits 12px to their left."
+        note="One button, not three. The glyph, the name and the triangle are a single hit target, so a keyboard user reaches the disclosure in one stop and a screen reader is told what the row folds. The triangle is an indicator, not a control: what activating the row does is the host's rule, so a triangle claiming to be the fold button would promise an outcome it does not own. The row wears the same 28px box and the same pill as the member rows under it, so a team reads as the head of its ladder rather than as chrome above one — its glyph simply sits 12px to their left."
       >
         <SpecimenRow label="Named team — click the row to fold it">
           <Rail>
             <LiveTeam name="Mornings" owns />
           </Rail>
         </SpecimenRow>
-        <SpecimenRow label="Default team — no menu, no drag handle">
+        <SpecimenRow label="Default team — the block every agent falls back into">
           <Rail>
             <LiveTeam name="Julian's workspace" />
           </Rail>
@@ -38,7 +38,7 @@ function SidebarGroupHeaderSpecimen() {
 
       <SpecimenSection
         title="States"
-        note="Folding hides EVERYTHING under the header. The hole that leaves is answered by the header itself: it wears the selected pill whenever the block owns the open view, and its trailing slot rolls up what the hidden rows were signalling, so folding a team never means losing sight of it. Rename swaps the row for an input that commits on Enter or blur and abandons on Escape, reporting every abandonment exactly once, which is how a team that does not exist yet knows to disappear."
+        note="Folding hides EVERYTHING under the header. The hole that leaves is answered by the header itself: it wears the selected pill whenever the block owns the open view, and its trailing slot rolls up what the hidden rows were signalling, so folding a team never means losing sight of it. A team's name and mark are changed in the host's own dialog, never on this row — the header has exactly two states, folded and open."
       >
         <SpecimenRow label="Expanded and collapsed — fold either one">
           <Rail>
@@ -69,8 +69,6 @@ function SidebarGroupHeaderSpecimen() {
           "text-ink",
           "text-ink-muted",
           "bg-input",
-          "border-line",
-          "text-danger",
           "ring-focus",
         ]}
       />

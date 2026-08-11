@@ -11,8 +11,6 @@ interface AgentAllowlistSectionProps {
   connectedToolkits: string[];
   /** A write is in flight (disables the toggles). */
   saving: boolean;
-  /** View-only viewer (a non-manager): controls disabled, "Add apps" hidden. */
-  readOnly?: boolean;
   /** Persist the next ceiling: `null` = allow all, else the explicit set. */
   onSave: (next: string[] | null) => void;
   labelledBy?: string;
@@ -32,7 +30,6 @@ export function AgentAllowlistSection({
   catalog,
   connectedToolkits,
   saving,
-  readOnly = false,
   onSave,
   labelledBy,
   showIntro,
@@ -45,14 +42,12 @@ export function AgentAllowlistSection({
       allowedToolkits={allowedToolkits}
       seedToolkits={connectedToolkits}
       saving={saving}
-      readOnly={readOnly}
       onSave={onSave}
       labelledBy={labelledBy}
       showIntro={showIntro}
       copy={{
         question: t("integrations.allowlist.question"),
         policyHelper: t("integrations.allowlist.policyHelper"),
-        readOnlyNote: t("integrations.allowlist.readOnlyNote"),
         anyLabel: t("integrations.allowlist.anyLabel"),
         anyDesc: t("integrations.allowlist.anyDesc"),
         pickedLabel: t("integrations.allowlist.pickedLabel"),

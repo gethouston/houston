@@ -16,6 +16,7 @@ import { AGENT_NAME_MAX_LENGTH } from "../../lib/agent-name";
 import type { Agent } from "../../lib/types";
 import { AGENT_COLOR_LABEL_KEYS } from "../shell/agent-sidebar-color-menu";
 import { ColorSwatch } from "../shell/team-identity-swatch";
+import type { AgentIdentityPatch } from "./use-agent-identity-save";
 
 export function AgentIdentityDialog({
   agent,
@@ -26,7 +27,7 @@ export function AgentIdentityDialog({
   agent: Agent;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (patch: { name?: string; colorId?: string }) => void;
+  onSave: (patch: AgentIdentityPatch) => void;
 }) {
   const { t } = useTranslation(["teams", "shell", "common"]);
   const [name, setName] = useState(agent.name);

@@ -2,11 +2,8 @@ import { resolveAgentColor } from "@houston-ai/core";
 import { isSidebarGroupGlyph, SidebarGroupGlyph } from "@houston-ai/layout";
 import { Users } from "lucide-react";
 import type { ReactElement } from "react";
-import {
-  type TeamView,
-  teamDisplayColor,
-  teamDisplayIcon,
-} from "../../lib/teams-model";
+import { teamDisplayColor, teamDisplayIcon } from "../../lib/team-display";
+import type { TeamView } from "../../lib/teams-model";
 
 /**
  * The mark a team wears, everywhere a team is drawn: its block header in the

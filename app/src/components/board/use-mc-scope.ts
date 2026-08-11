@@ -1,5 +1,5 @@
 import type { KanbanItem } from "@houston-ai/board";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Agent } from "../../lib/types";
 import {
   agentsInScope,
@@ -23,12 +23,11 @@ export interface MissionControlScope {
    *  are not a matter of which cards show — today the new-mission draft scope
    *  (`missionControlDraftScope`). The global board omits it. */
   teamId?: string;
-  /** Controlled agent filter: a folder path, or `null` for every agent in
-   *  scope. Pair it with {@link onFilterPathChange}; the filter is local
-   *  (uncontrolled) whenever the callback is absent. */
+  /** The agent filter this board renders under: a folder path, or `null` for
+   *  every agent in scope. Always owned by the surface that holds the pin (the
+   *  team strip's breadcrumb, the archive's own dropdown), which is why the
+   *  scope carries no setter: a board renders the filter, it never writes it. */
   filterPath?: string | null;
-  /** Receives `null` for "all agents", else the picked agent's folder path. */
-  onFilterPathChange?: (path: string | null) => void;
 }
 
 export interface McScope {
@@ -42,7 +41,6 @@ export interface McScope {
   visibleAgents: Agent[];
   /** The applied filter, `""` for "every agent in scope". */
   filterPath: string;
-  setFilterPath: (path: string) => void;
 }
 
 /**
@@ -57,21 +55,10 @@ export function useMcScope(
   scope?: MissionControlScope,
 ): McScope {
   const scopePaths = scope?.scopePaths;
-  const onFilterPathChange = scope?.onFilterPathChange;
-  const controlledFilterPath = scope?.filterPath;
-
-  const [localFilterPath, setLocalFilterPath] = useState("");
-  const filterPath = resolveFilterPath(
-    onFilterPathChange ? (controlledFilterPath ?? "") : localFilterPath,
-    scopePaths,
-  );
-  const setFilterPath = useCallback(
-    (path: string) => {
-      if (onFilterPathChange) onFilterPathChange(path || null);
-      else setLocalFilterPath(path);
-    },
-    [onFilterPathChange],
-  );
+  // Read-only: nothing on a board changes the filter any more (the team strip's
+  // breadcrumb and the archive's dropdown write their own source directly), so
+  // the applied filter is exactly what the scope says, narrowed to the scope.
+  const filterPath = resolveFilterPath(scope?.filterPath ?? "", scopePaths);
 
   const scopedAgents = useMemo(
     () => agentsInScope(agents, scopePaths),
@@ -101,6 +88,5 @@ export function useMcScope(
     agentFilteredItems,
     visibleAgents,
     filterPath,
-    setFilterPath,
   };
 }

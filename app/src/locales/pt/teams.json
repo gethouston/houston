@@ -41,8 +41,7 @@
       "allowedHeading": "Modelos permitidos",
       "allowedEmpty": "Você ainda não escolheu modelos. Adicione modelos abaixo.",
       "allowedEmptyLab": "Você ainda não escolheu modelos deste laboratório.",
-      "addHeading": "Adicionar modelos",
-      "readOnlyNote": "Alguém que gerencia este agente pode alterar quais modelos ele pode usar."
+      "addHeading": "Adicionar modelos"
     },
     "integrations": {
       "unavailable": "Os limites de integrações não estão disponíveis aqui."
@@ -64,10 +63,6 @@
       "moveOrganization": "Mover para outra organização",
       "moveOrganizationDescription": "Mova este agente para uma organização para que uma equipe possa trabalhar com ele.",
       "delete": "Excluir agente"
-    },
-    "groups": {
-      "context": "Contexto",
-      "permissions": "Permissões"
     },
     "people": {
       "helper": "Escolha se toda a sua equipe pode usar este agente ou apenas as pessoas que você escolher.",
@@ -171,8 +166,7 @@
       "allowedHeading": "Integrações permitidas",
       "allowedEmpty": "Nenhuma integração escolhida ainda. Adicione integrações abaixo.",
       "allowedEmptyCategory": "Ainda não há integrações permitidas nesta categoria.",
-      "addHeading": "Adicionar integrações",
-      "readOnlyNote": "Alguém que gerencia este agente pode mudar quais integrações ele pode usar."
+      "addHeading": "Adicionar integrações"
     }
   },
   "org": {
@@ -187,10 +181,6 @@
       "timeWorked": "Tempo trabalhado"
     },
     "companyContextHint": "O que todos os seus agentes sabem em cada tarefa e rotina que executam.",
-    "agentDetail": {
-      "subtitle": "Tudo o que você configura neste agente e quem pode usá-lo.",
-      "openAgent": "Abrir agente"
-    },
     "loading": "Carregando seu espaço de trabalho...",
     "unavailable": "Não foi possível carregar seu espaço de trabalho."
   },
@@ -199,7 +189,6 @@
       "none": "Sem acesso",
       "noneHint": "Não pode usar este agente.",
       "changeAccess": "Alterar acesso de {{name}}",
-      "readOnlyHint": "Alguém que gerencia este agente pode alterar quem tem acesso.",
       "viewerOnly": "Você pode usar este agente. Alguém que o gerencia pode alterar quem tem acesso.",
       "empty": {
         "title": "Ainda não há pessoas",
@@ -511,7 +500,7 @@
     }
   },
   "teamView": {
-    "defaultName": "Novo time",
+    "defaultName": "Nova equipe",
     "tabs": {
       "missionControl": "Tarefas",
       "routines": "Rotinas",
@@ -534,18 +523,10 @@
       "moveToOrganizationDescription": "Mova esta equipe e seus agentes para uma organização para que outras pessoas possam trabalhar com eles.",
       "leave": "Sair da equipe",
       "delete": "Excluir equipe",
-      "onlyTeamDeleteDescription": "Este é seu único time, então ele não pode ser excluído."
+      "onlyTeamDeleteDescription": "Esta é sua única equipe, então ela não pode ser excluída."
     },
     "agentTabs": {
       "settings": "Configurações do agente"
-    },
-    "manage": {
-      "identity": "Configurações de {{name}}",
-      "tabs": {
-        "context": "Contexto",
-        "agents": "Agentes",
-        "people": "Pessoas"
-      }
     },
     "archive": {
       "open": "Arquivadas",
@@ -617,7 +598,8 @@
         "modelsAllowed_one": "{{count}} permitido",
         "modelsAllowed_other": "{{count}} permitidos",
         "allIntegrations": "Todas as integrações permitidas",
-        "allModels": "Todos os modelos permitidos"
+        "allModels": "Todos os modelos permitidos",
+        "unavailable": "Não foi possível carregar"
       }
     }
   }

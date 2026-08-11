@@ -1,8 +1,8 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import type { TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import type { MissionControlScope } from "../board/use-mc-scope";
-import { teamFilterAgentId, teamFilterPath } from "./team-agent-filter-model";
+import { teamFilterPath } from "./team-agent-filter-model";
 
 /**
  * The `MissionControlScope` a team's boards share: its ACTIVE board and its
@@ -18,22 +18,15 @@ import { teamFilterAgentId, teamFilterPath } from "./team-agent-filter-model";
  *
  * It also owns the id-to-path translation: the store pins an agent **id** (the
  * sidebar sets it by clicking a row) while a board filters on a **folder
- * path** (the key every mission card carries). `teamFilterPath` /
- * `teamFilterAgentId` are the two pure directions, so the sidebar row and a
- * board's own filter menu are the same act.
+ * path** (the key every mission card carries). `teamFilterPath` is that one
+ * direction, so the sidebar row and what the board shows are the same act.
  */
 export function useTeamBoardScope(
   team: TeamView,
   agentFocusId?: string,
 ): MissionControlScope {
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
-  const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
-  const keepFocus = useCallback(() => undefined, []);
-  return useTeamScope(
-    team,
-    agentFocusId ?? teamAgentFilter,
-    agentFocusId ? keepFocus : setTeamAgentFilter,
-  );
+  return useTeamScope(team, agentFocusId ?? teamAgentFilter);
 }
 
 /**
@@ -48,17 +41,11 @@ export function useTeamBoardScope(
 export function useTeamScope(
   team: TeamView,
   filterAgentId: string | null,
-  onFilterAgentId: (agentId: string | null) => void,
 ): MissionControlScope {
   const teamAgents = team.agents;
   const scopePaths = useMemo(
     () => teamAgents.map((a) => a.folderPath),
     [teamAgents],
-  );
-  const onFilterPathChange = useCallback(
-    (path: string | null) =>
-      onFilterAgentId(teamFilterAgentId(teamAgents, path)),
-    [teamAgents, onFilterAgentId],
   );
 
   return useMemo(
@@ -66,8 +53,7 @@ export function useTeamScope(
       scopePaths,
       teamId: team.id,
       filterPath: teamFilterPath(teamAgents, filterAgentId),
-      onFilterPathChange,
     }),
-    [scopePaths, team.id, teamAgents, filterAgentId, onFilterPathChange],
+    [scopePaths, team.id, teamAgents, filterAgentId],
   );
 }

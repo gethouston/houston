@@ -12,7 +12,6 @@ export interface AllowlistEditorCopy {
   allowedEmpty: string;
   allowedEmptyCategory: string;
   allowApp: (name: string) => string;
-  readOnlyNote?: string;
 }
 
 export interface AllowlistEditorProps {
@@ -20,7 +19,6 @@ export interface AllowlistEditorProps {
   allowedToolkits: string[] | null;
   seedToolkits: string[];
   saving: boolean;
-  readOnly?: boolean;
   onSave: (next: string[] | null) => void;
   copy: AllowlistEditorCopy;
   rowMeta?: ReadonlyMap<string, string>;

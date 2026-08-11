@@ -89,11 +89,9 @@ export {
 } from "./use-routines";
 export {
   useCreateSkill,
-  useDeleteSkill,
   useInstallCommunitySkill,
   useInstallSkillFromRepo,
   useListSkillsFromRepo,
-  useSaveSkill,
   useSkillDetail,
   useSkills,
 } from "./use-skills";

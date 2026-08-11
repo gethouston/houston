@@ -1,73 +1,27 @@
-import {
-  deriveInstalledSkillEditorState,
-  type RepoSkill,
-} from "@houston-ai/skills";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import type { RepoSkill } from "@houston-ai/skills";
+import { useCallback, useMemo } from "react";
 import {
   useCreateSkill,
-  useDeleteSkill,
   useInstallSkillFromRepo,
   useListSkillsFromRepo,
-  useSaveSkill,
-  useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
 import { analytics } from "../../lib/analytics";
-import { isMissingSkillError } from "../../lib/missing-skill";
-import { queryKeys } from "../../lib/query-keys";
-import { useUIStore } from "../../stores/ui";
 import { useCommunitySkillHandlers } from "./use-community-skill-handlers";
 
+/**
+ * What an agent's Skills section needs from the host: the installed list, and
+ * the three ways a skill arrives (community search + install, a GitHub repo,
+ * from scratch).
+ *
+ * Editing and deleting are NOT here. A skill's row opens the manage dialog
+ * (`AgentSkillManageDialog`), which resolves the slug itself — a local copy is
+ * written in place, a workspace-store skill's save writes the one shared copy —
+ * so the content mutations live with that dialog's own actions.
+ */
 export function useSkillSurface(agentPath: string) {
-  const { t } = useTranslation("skills");
-  const queryClient = useQueryClient();
-  const addToast = useUIStore((s) => s.addToast);
   const { data: summaries, isLoading: skillsLoading } = useSkills(agentPath);
 
-  // The one installed skill whose edit modal is open, if any. Only one at a
-  // time — opening another swaps it.
-  const [editingSkillName, setEditingSkillName] = useState<string | null>(null);
-  // Render-time reset on agent switch — a useEffect would race the
-  // auto-toast in `call()` because the stale-name fetch starts first.
-  const [prevAgentPath, setPrevAgentPath] = useState(agentPath);
-  if (agentPath !== prevAgentPath) {
-    setPrevAgentPath(agentPath);
-    setEditingSkillName(null);
-  }
-
-  const { data: skillDetail, error: skillDetailError } = useSkillDetail(
-    agentPath,
-    editingSkillName ?? undefined,
-  );
-
-  // A missing-skill 404 (renamed, deleted, never installed) is expected, not a
-  // bug: `tauriSkills.load` keeps it off the red toast / Sentry path, so surface
-  // it plainly here — a friendly note, close the modal, refetch the list so the
-  // dead row vanishes. Any OTHER load error stays in the modal's error state
-  // below. (HOU-515 / HOU-441)
-  const missingSkill =
-    !!editingSkillName && isMissingSkillError(skillDetailError);
-  useEffect(() => {
-    if (!missingSkill) return;
-    addToast({
-      title: t("detail.unavailableToast.title"),
-      description: t("detail.unavailableToast.description"),
-      variant: "info",
-    });
-    setEditingSkillName(null);
-    queryClient.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-  }, [missingSkill, agentPath, addToast, queryClient, t]);
-
-  const editorState = deriveInstalledSkillEditorState({
-    expanded: editingSkillName != null,
-    content: skillDetail?.content,
-    hasError: !!skillDetailError && !isMissingSkillError(skillDetailError),
-  });
-
-  const saveSkill = useSaveSkill(agentPath);
-  const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);
   const listFromRepo = useListSkillsFromRepo(agentPath);
   const installFromRepo = useInstallSkillFromRepo(agentPath);
@@ -82,33 +36,6 @@ export function useSkillSurface(agentPath: string) {
   const installedSkillNames = useMemo<Set<string>>(
     () => new Set((summaries ?? []).map((s) => s.name.toLowerCase())),
     [summaries],
-  );
-
-  const openEditSkill = useCallback((name: string) => {
-    setEditingSkillName(name);
-  }, []);
-
-  const closeEditSkill = useCallback(() => {
-    setEditingSkillName(null);
-  }, []);
-
-  const handleSaveEditing = useCallback(
-    async (content: string) => {
-      if (!editingSkillName) return;
-      await saveSkill.mutateAsync({ name: editingSkillName, content });
-      analytics.track("skill_edited", { skill_slug: editingSkillName });
-      setEditingSkillName(null);
-    },
-    [editingSkillName, saveSkill],
-  );
-
-  const handleSkillDelete = useCallback(
-    async (name: string) => {
-      await deleteSkill.mutateAsync(name);
-      analytics.track("skill_deleted", { skill_slug: name });
-      setEditingSkillName((prev) => (prev === name ? null : prev));
-    },
-    [deleteSkill],
   );
 
   const handleListFromRepo = useCallback(
@@ -144,12 +71,6 @@ export function useSkillSurface(agentPath: string) {
   return {
     skills: summaries ?? [],
     skillsLoading,
-    editingSkillName,
-    editorState,
-    openEditSkill,
-    closeEditSkill,
-    handleSaveEditing,
-    handleSkillDelete,
     handleSearch,
     handleInstallCommunity,
     handlePreview,

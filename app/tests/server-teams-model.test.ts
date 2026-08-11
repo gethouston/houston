@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
 import {
-  normalizeTeamOverlay,
   personalDefaultTeamSeed,
   resolveServerTeams,
 } from "../src/lib/server-teams-model.ts";
@@ -11,6 +10,7 @@ import {
   moveItemOp,
   toggleGroupCollapsedOp,
 } from "../src/lib/sidebar-layout-ops.ts";
+import { normalizeTeamOverlay } from "../src/lib/team-overlay.ts";
 import type { TeamView } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 

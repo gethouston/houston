@@ -9,8 +9,8 @@ import type {
 export interface SidebarBlockHeaderProps {
   /** The block being headed: a named group, or the default block. */
   block: SidebarGroupView | SidebarDefaultGroupView;
-  /** Present only for a NAMED group. Its absence is what withholds every
-   *  affordance the default block does not have. */
+  /** Present only for a NAMED group. Its absence is what routes the row to the
+   *  default block's callback and identity. */
   group?: SidebarGroupView | null;
   contentId: string;
   collapsed: boolean;
@@ -25,13 +25,14 @@ export interface SidebarBlockHeaderProps {
  * Renders either kind of block through the same header row.
  *
  * The whole difference between a named team and the default block lives here,
- * in one branch on `group`: a named team can be edited, deleted, left and
- * dragged; the default block stands for the container every agent falls back
- * into, so it can be none of those EXCEPT edited — a host that owns the teams
- * (and only such a host) names and restyles the container itself, through the
- * same one "change icon & name" door every team has (`block.onEdit`).
+ * in one branch on `group`. A named team hands its id back when the row is
+ * activated and is addressable in the DOM by it. The default block stands for
+ * the container every agent falls back into: it is not a stored group, so it
+ * has no id to hand back and answers through `onActivateDefault` instead.
  *
- * That entry is not decided here. The menu is ALWAYS constructed and handed
+ * Everything a user can see is identical between them on purpose — the same
+ * glyph column, the same disclosure, the same pill. Whether the host happens to
+ * store a block is not a fact the rail should make anyone read off a row.
  */
 export function SidebarBlockHeader({
   block,

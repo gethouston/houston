@@ -694,12 +694,6 @@ export const tauriSkills = {
       getEngine().deleteSkill(agentPath, name),
     );
   },
-  save: (agentPath: string, name: string, content: string) => {
-    blockWriteWhileWarming(agentPath);
-    return call<void>("save_skill", () =>
-      getEngine().saveSkill(name, { workspacePath: agentPath, content }),
-    );
-  },
   listFromRepo: (agentPath: string, source: string) =>
     call<RepoSkill[]>(
       "list_skills_from_repo",

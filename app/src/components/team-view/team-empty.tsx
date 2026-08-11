@@ -8,7 +8,8 @@ import {
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
-import { type TeamView, teamDisplayName } from "../../lib/teams-model";
+import { teamDisplayName } from "../../lib/team-display";
+import type { TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 
 /**

@@ -8,12 +8,11 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  type TeamView,
-  teamById,
   teamDisplayColor,
   teamDisplayIcon,
   teamDisplayName,
-} from "../../lib/teams-model";
+} from "../../lib/team-display";
+import { type TeamView, teamById } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { buildTeamIdentityChoices, teamPaletteColorId } from "./team-identity";
 import { TeamIdentityNameRow } from "./team-identity-name-row";

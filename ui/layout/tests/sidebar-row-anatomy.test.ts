@@ -321,11 +321,19 @@ describe("sidebar row anatomy", () => {
     ok(cls.includes("data-[state=open]:"));
   });
 
-  it("gives an AGENT row a host-supplied affordance outside its button", () => {
+  it("gives an AGENT row NO control beside its button", () => {
+    // An agent is renamed, recoloured, moved and deleted on its focused agent
+    // screen. The row neither renders a control for any of that nor reserves a
+    // column for one, so the agent's name gets the rail's full width.
     const row = source("sidebar-item-row.tsx");
-    ok(row.includes("affordance={item.affordance}"));
+    strictEqual(/affordance=/.test(row), false, "no affordance slot");
     strictEqual(row.includes("sidebarRowAffordanceGutter"), false, "no gutter");
     strictEqual(row.includes("DropdownMenu"), false, "host owns the menu");
+    strictEqual(
+      source("sidebar-props.ts").includes("affordance"),
+      false,
+      "SidebarItem has no affordance for a host to fill",
+    );
     for (const gone of ["onStartRename", "onDeleteItem", "menuContent"]) {
       strictEqual(source("sidebar-row-context.ts").includes(gone), false, gone);
     }

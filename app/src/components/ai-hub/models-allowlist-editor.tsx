@@ -30,15 +30,13 @@ export type {
  * per {@link CatalogModel} (brand mark + name + lab + allow Switch). Selection is
  * over provider-native offer ids — toggling a model flips ALL its offers at once
  * (see {@link toggleModel}) — so a member can pick that model from any provider
- * connected. Writes are instant; `readOnly` disables every control and hides the
- * "Add models" list. All copy is passed in; both the per-agent and org ceilings
- * consume this so they never drift.
+ * connected. Writes are instant. All copy is passed in; both the per-agent and
+ * org ceilings consume this so they never drift.
  */
 export function ModelsAllowlistEditor({
   models,
   allowedModels,
   saving,
-  readOnly,
   onSave,
   copy,
   labelledBy,
@@ -88,7 +86,7 @@ export function ModelsAllowlistEditor({
       key={model.key}
       model={model}
       checked={modelChecked(model, allowedSet)}
-      disabled={saving || !!readOnly}
+      disabled={saving}
       allowLabel={copy.allowModel(model.name)}
       onToggle={() => toggle(model)}
     />
@@ -105,14 +103,10 @@ export function ModelsAllowlistEditor({
         </>
       )}
 
-      {readOnly && copy.readOnlyNote && (
-        <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>
-      )}
-
       <AccessChoice
         labelledBy={headingId}
         value={ceilingMode(allowedModels)}
-        disabled={saving || readOnly}
+        disabled={saving}
         onChange={onChoice}
         options={[
           { value: "any", label: copy.anyLabel, description: copy.anyDesc },
@@ -143,32 +137,30 @@ export function ModelsAllowlistEditor({
             )}
           </section>
 
-          {!readOnly && (
-            <section>
-              <h3 className="mb-3 text-sm font-medium text-ink">
-                {copy.addHeading}
-              </h3>
-              <div className="mb-3 flex items-center gap-2">
-                <CatalogSearchField
-                  className="flex-1"
-                  value={search}
-                  onChange={setSearch}
-                  label={copy.searchModels}
-                  clearLabel={copy.clearSearch}
-                />
-                <LabFilter models={models} value={lab} onChange={setLab} />
+          <section>
+            <h3 className="mb-3 text-sm font-medium text-ink">
+              {copy.addHeading}
+            </h3>
+            <div className="mb-3 flex items-center gap-2">
+              <CatalogSearchField
+                className="flex-1"
+                value={search}
+                onChange={setSearch}
+                label={copy.searchModels}
+                clearLabel={copy.clearSearch}
+              />
+              <LabFilter models={models} value={lab} onChange={setLab} />
+            </div>
+            {results.length === 0 ? (
+              <p className="py-4 text-center text-sm text-ink-muted">
+                {copy.noModels}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {results.map(renderModel)}
               </div>
-              {results.length === 0 ? (
-                <p className="py-4 text-center text-sm text-ink-muted">
-                  {copy.noModels}
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {results.map(renderModel)}
-                </div>
-              )}
-            </section>
-          )}
+            )}
+          </section>
         </div>
       )}
     </div>

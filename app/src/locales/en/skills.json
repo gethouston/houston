@@ -107,15 +107,8 @@
     }
   },
   "detail": {
-    "unavailableToast": {
-      "title": "Skill unavailable",
-      "description": "This skill is no longer available. It may have been renamed or removed."
-    },
     "saveChanges": "Save changes",
-    "savingChanges": "Saving...",
     "loadFailed": "Couldn't load this skill's instructions.",
-    "deleteTitle": "Delete \"{{name}}\"?",
-    "deleteDescription": "This removes the skill from your agent. You can reinstall it later.",
     "instructionsPlaceholder": "Instructions for this skill...",
     "integrations": "Works with",
     "rename": "Rename skill"

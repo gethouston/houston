@@ -18,7 +18,12 @@ export function ceilingPolicyValue(
   value: CeilingPolicyChip,
   ceiling: "integrations" | "models",
 ): string | undefined {
+  // Nothing to say YET stays blank; nothing we could READ says so. The two
+  // must never wear the same face: a row that quietly failed would otherwise
+  // look like a row still arriving, forever.
   if (value.kind === "pending") return undefined;
+  if (value.kind === "unavailable")
+    return t("teams:teamView.settings.policy.unavailable");
   // "All integrations allowed", never a bare "All": the value has to survive
   // being read on its own, one row away from its sibling. The counted halves
   // are per-ceiling too, so es/pt can agree in gender with their noun.

@@ -21,7 +21,7 @@ function AppSidebarSpecimen() {
       >
         <SpecimenSection
           title="Variants"
-          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Add an `icon` to a group and `defaultGroup` for the trailing block, and each block becomes a team: one header row, then its agents. Every example below is live; rename, delete, fold and drag them."
+          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Add an `icon` to a group and `defaultGroup` for the trailing block, and each block becomes a team: one header row, then its agents. Every example below is live; select, fold and drag them."
         >
           <SpecimenRow label="Flat list">
             <SidebarStage>
@@ -47,7 +47,7 @@ function AppSidebarSpecimen() {
 
         <SpecimenSection
           title="Anatomy"
-          note="A team block is ONE ladder, not a header with a list under it: the team row and every agent row share one fixed height, one glyph column and one type size, with hierarchy carried by an indent inside the row so the inset pills line up in a single column down the left edge. The team row itself is one hit target — glyph, name, triangle and rollup badge together — with the ⋯ menu beside it. Its glyph is monochrome on purpose: the identity colour in that column belongs to the agent avatars one indent to the right."
+          note="A team block is ONE ladder, not a header with a list under it: the team row and every agent row share one fixed height, one glyph column and one type size, with hierarchy carried by an indent inside the row so the inset pills line up in a single column down the left edge. The team row itself is one hit target — glyph, name, triangle and rollup badge together — and nothing sits beside it. Its glyph is monochrome on purpose: the identity colour in that column belongs to the agent avatars one indent to the right."
         >
           <SpecimenRow label="Expanded team, collapsed team, default block">
             <SidebarStage>
@@ -63,7 +63,7 @@ function AppSidebarSpecimen() {
 
         <SpecimenSection
           title="States"
-          note="Selection is one paint for every kind of row: a team header and an agent row wear the same pill, so “where am I” reads the same whichever is open. Folding a team hides everything under it — its header keeps the pill and picks up a rollup badge, so the rail never goes dark on the question. Renaming is inline and belongs to TEAMS: open a block's ⋯ menu, pick Rename, and the header swaps for a focused input that commits on Enter or blur. Agent rows carry no menu at all."
+          note="Selection is one paint for every kind of row: a team header and an agent row wear the same pill, so “where am I” reads the same whichever is open. Folding a team hides everything under it — its header keeps the pill and picks up a rollup badge, so the rail never goes dark on the question. Rows carry no menu at all: a team's name and mark are changed in the host's own dialog, and an agent is renamed, recoloured, moved and deleted on its focused agent screen, so the rail keeps one door onto each and its full width for names."
         >
           <SpecimenRow label="Selected, running, needs-you, unread">
             <SidebarStage>

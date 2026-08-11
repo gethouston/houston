@@ -15,11 +15,11 @@ export interface SidebarSortableRowProps {
 /**
  * One agent row made sortable via @dnd-kit. The WHOLE row is the drag handle
  * (pointer/touch `listeners` on the wrapper); with the pointer sensor's distance
- * activation a plain click still selects and the menu / inline-rename still
- * work. We deliberately do NOT spread @dnd-kit's `attributes` here — they put
- * `role="button"` + a tabindex on the wrapper, which turns the row into a
- * button whose accessible name swallows the nested "menu" button (a nested-
- * interactive a11y violation, and it makes `getByRole("button", …)` ambiguous).
+ * activation a plain click still selects. We deliberately do NOT spread
+ * @dnd-kit's `attributes` here — they put `role="button"` + a tabindex on the
+ * wrapper, which turns the row into a button whose accessible name swallows the
+ * real one nested inside it (a nested-interactive a11y violation, and it makes
+ * `getByRole("button", …)` ambiguous).
  * Rows drag by pointer/touch; ⌘[ / ⌘] already covers keyboard navigation.
  * While this row is the one being dragged it dims to a placeholder — the lifted
  * copy that follows the cursor is rendered once in the parent's {@link DragOverlay}.

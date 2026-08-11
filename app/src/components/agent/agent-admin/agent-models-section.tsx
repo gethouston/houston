@@ -9,8 +9,6 @@ interface AgentModelsSectionProps {
   models: CatalogModel[];
   /** A write is in flight (disables the controls). */
   saving: boolean;
-  /** View-only viewer (a non-manager): controls disabled, "Add models" hidden. */
-  readOnly?: boolean;
   /** Persist the next ceiling: `null` = allow all, else the explicit set. */
   onSave: (next: string[] | null) => void;
   labelledBy?: string;
@@ -30,7 +28,6 @@ export function AgentModelsSection({
   allowedModels,
   models,
   saving,
-  readOnly = false,
   onSave,
   labelledBy,
   showIntro,
@@ -42,14 +39,12 @@ export function AgentModelsSection({
       models={models}
       allowedModels={allowedModels}
       saving={saving}
-      readOnly={readOnly}
       onSave={onSave}
       labelledBy={labelledBy}
       showIntro={showIntro}
       copy={{
         question: t("agentAdmin.models.question"),
         policyHelper: t("agentAdmin.models.policyHelper"),
-        readOnlyNote: t("agentAdmin.models.readOnlyNote"),
         anyLabel: t("agentAdmin.models.anyLabel"),
         anyDesc: t("agentAdmin.models.anyDesc"),
         pickedLabel: t("agentAdmin.models.pickedLabel"),

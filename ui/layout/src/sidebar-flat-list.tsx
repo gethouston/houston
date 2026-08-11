@@ -12,24 +12,26 @@ export interface SidebarFlatListProps {
   collapsed: boolean;
   ctx: SidebarBaseRowContext;
   onAdd?: () => void;
+  /** Names the "add item" button, on the collapsed rail its only name. */
+  addItemLabel?: string;
   addItemDataAttrs?: Record<string, string>;
 }
 
 /**
- * The ungrouped item list: the collapsed icon rail or the expanded flat list.
- * This is the current (pre-grouping) rendering, unchanged — used whenever
- * `groups` is absent, and always in the collapsed rail. Both branches reuse
- * the shared row components and end with the "add item" affordance.
+ * The ungrouped item list: the collapsed icon rail, or the expanded flat list.
+ * It renders whenever `groups` is absent, and always on the collapsed rail
+ * (grouping is an expanded-rail idea). Both branches reuse the shared row
+ * components; the icon rail closes with the "add item" button, and the expanded
+ * flat list is rows and nothing else.
  */
 export function SidebarFlatList({
   items,
   collapsed,
   ctx,
   onAdd,
+  addItemLabel,
   addItemDataAttrs,
 }: SidebarFlatListProps) {
-  const { labels: l } = ctx;
-
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-1 pb-2">
@@ -46,7 +48,7 @@ export function SidebarFlatList({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label={l.addItem}
+                aria-label={addItemLabel}
                 onClick={onAdd}
                 className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 {...(addItemDataAttrs ?? {})}
@@ -55,7 +57,7 @@ export function SidebarFlatList({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>
-              {l.addItem}
+              {addItemLabel}
             </TooltipContent>
           </Tooltip>
         )}

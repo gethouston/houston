@@ -110,15 +110,6 @@ export const sidebarRowButtonClasses = {
 export const sidebarRowAffordanceClasses = `relative ${sidebarRowEndMargin} flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted/60 transition-[background-color,color] duration-100 hover:bg-hover hover:text-ink focus-visible:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus data-[state=open]:bg-hover data-[state=open]:text-ink`;
 
 /**
- * The affordance column, EMPTY. A block header that owns no menu still reserves
- * it, because it stands in a stack of blocks that do: without it, that block's
- * label gets 28px more room than every other block's, so a long team name
- * truncates at a different point on one row of the rail than on all the others.
- * It is the same width as {@link sidebarRowAffordanceClasses} and nothing else
- * — `relative` included, for the same painting-order reason.
- */
-
-/**
  * The one piece of agent-row anatomy the shared row does NOT own: the badge an
  * agent wears in the COLLAPSED icon rail, which is a different anatomy (a 36px
  * square with a corner badge), not a narrower version of this one.

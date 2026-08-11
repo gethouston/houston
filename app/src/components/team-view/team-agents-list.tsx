@@ -84,7 +84,13 @@ export function TeamAgentsList({ team }: { team: TeamView }) {
       className="flex flex-col gap-6"
     >
       {team.agents.map((agent, index) => {
-        const chips = agentPolicyChips(agent, members, settings.data[index]);
+        // The read's ERROR travels with its data: a roster-wide fan-out stays
+        // quiet (one toast per cold agent would bury the screen), so the row
+        // itself is where a failed read has to show.
+        const chips = agentPolicyChips(agent, members, {
+          data: settings.data[index],
+          error: settings.errors[index],
+        });
         const values: Partial<
           Record<AgentSettingsSection, string | undefined>
         > = showPolicy

@@ -13,9 +13,13 @@ const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
 const toolbarSource = read("../src/components/mission-control-toolbar.tsx");
-const archivedSource = read(
-  "../src/components/board/mission-control-archived.tsx",
-);
+// The archived view is two files: the wiring (`mission-control-archived.tsx`)
+// and the board it renders (`archived-mission-board.tsx`). Every assertion
+// about the SURFACE reads both, so moving a line between them can never make
+// one of these checks vacuously pass.
+const archivedSource =
+  read("../src/components/board/mission-control-archived.tsx") +
+  read("../src/components/board/archived-mission-board.tsx");
 const archivedSectionSource = read(
   "../src/components/team-view/team-archived.tsx",
 );

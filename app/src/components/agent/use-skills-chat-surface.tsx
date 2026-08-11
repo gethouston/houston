@@ -11,8 +11,7 @@ import { useSkillSetupView } from "./use-skill-setup-view";
  * (`useSkillChatSetup`) and the selection machine (`useSkillSetupView`) into
  * what {@link SkillsContent} renders — the inline chat pane for the open
  * selection, the row-click handler that opens a skill's chat, and the Custom
- * tab's create/draft affordances. Disabled (null chat, rows fall back to the
- * manual edit modal) in read-only mode.
+ * tab's create/draft affordances.
  */
 export function useSkillsChatSurface(opts: {
   agent: Agent;
@@ -20,15 +19,12 @@ export function useSkillsChatSurface(opts: {
   /** Whether the skills list is still loading — gates the ghost-skill
    *  deselect so an in-flight (empty) list never closes an open chat. */
   loading: boolean;
-  readOnly: boolean;
-  /** Opens the manual markdown edit modal (the read-only fallback, and the
-   *  chat header's "Edit manually" escape hatch). */
+  /** The chat header's "Edit manually" escape hatch: opens the skill's own
+   *  detail surface instead of the conversation. */
   onEditSkill: (name: string) => void;
 }): {
   /** The open chat pane, or null when nothing is selected. */
   chatNode: ReactNode | null;
-  /** Row click: the skill's chat (writable) or the manual modal (read-only). */
-  openRow: (name: string) => void;
   /** Open a skill's chat WITHOUT the re-click toggle — the manage dialog's
    *  "Edit in chat" must land on the chat even when it is already open. */
   openChatFor: (name: string) => void;
@@ -38,7 +34,7 @@ export function useSkillsChatSurface(opts: {
   discardDraft: (activityId: string) => void;
   startCreate: () => void;
 } {
-  const { agent, skills, loading, readOnly, onEditSkill } = opts;
+  const { agent, skills, loading, onEditSkill } = opts;
   const chatSetup = useSkillChatSetup(agent, skills);
   const view = useSkillSetupView(agent, skills, chatSetup);
   const { selected, deselect } = view;
@@ -54,18 +50,6 @@ export function useSkillsChatSurface(opts: {
   useEffect(() => {
     if (!loading && selected?.kind === "skill" && !selectedSkill) deselect();
   }, [loading, selected, selectedSkill, deselect]);
-
-  if (readOnly) {
-    return {
-      chatNode: null,
-      openRow: onEditSkill,
-      openChatFor: () => {},
-      drafts: [],
-      resumeDraft: () => {},
-      discardDraft: () => {},
-      startCreate: () => {},
-    };
-  }
 
   let chatNode: ReactNode | null = null;
   if (selected?.kind === "skill" && selectedSkill) {
@@ -97,7 +81,6 @@ export function useSkillsChatSurface(opts: {
 
   return {
     chatNode,
-    openRow: view.openSkillChat,
     openChatFor: (name: string) => {
       // openSkillChat toggles a re-click closed; skip the call when this
       // skill's chat is already the open one so the intent "go to the chat"

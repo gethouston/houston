@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
 import {
+  teamDeletePresentation,
+  teamDisplayColor,
+  teamDisplayIcon,
+  teamDisplayName,
+} from "../src/lib/team-display.ts";
+import {
   blockedTeamView,
   canConfigureTeam,
   canConfigureTeamsByRole,
@@ -17,10 +23,6 @@ import {
   TEAM_VIEW_ID,
   type TeamView,
   teamById,
-  teamDeletePresentation,
-  teamDisplayColor,
-  teamDisplayIcon,
-  teamDisplayName,
   teamOfAgent,
   teamPeopleFace,
   visibleAgentSections,

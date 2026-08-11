@@ -6,12 +6,11 @@ import { PageHero } from "../../shell/page-shell";
 import { SkillsContent } from "../skills-content";
 import { useAgentSharedSkills } from "../use-agent-shared-skills";
 import { useSkillSurface } from "../use-skill-surface";
-import { useSkillSurfaceLabels } from "../use-skill-surface-labels";
 
 /**
  * Skills section: the catalog-grammar Skills surface (installed-tile strip +
  * Store / Custom skills tabs), reusing {@link useSkillSurface} for
- * install/search and edit/delete. On shared-store deployments (ADR 0003) the
+ * install/search. On shared-store deployments (ADR 0003) the
  * strip also shows the workspace skills this agent's manifest enables — the
  * agent HAS them at runtime, so hiding them here made every enable look like
  * a no-op. Every strip row opens the per-agent manage dialog, which resolves
@@ -24,7 +23,6 @@ export function AgentAdminSkills({ agent }: AgentSectionProps) {
   const { t } = useTranslation("agents");
   const surface = useSkillSurface(agent.folderPath);
   const shared = useAgentSharedSkills(agent.folderPath);
-  const { editModalLabels, deleteConfirm } = useSkillSurfaceLabels();
 
   const merged = useMemo(
     () =>
@@ -52,14 +50,6 @@ export function AgentAdminSkills({ agent }: AgentSectionProps) {
         agent={agent}
         skills={merged.skills}
         loading={surface.skillsLoading}
-        editingSkillName={surface.editingSkillName}
-        editorState={surface.editorState}
-        onEditSkill={surface.openEditSkill}
-        onCloseEdit={surface.closeEditSkill}
-        onSaveEditing={surface.handleSaveEditing}
-        onDeleteSkill={surface.handleSkillDelete}
-        editModalLabels={editModalLabels}
-        deleteConfirm={deleteConfirm}
         onSearch={surface.handleSearch}
         onInstallCommunity={surface.handleInstallCommunity}
         onPreviewCommunity={surface.handlePreview}

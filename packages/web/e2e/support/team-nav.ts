@@ -358,7 +358,7 @@ export async function openAgentSettings(
 }
 
 /** Pick a section on an already-open agent settings page. */
-export async function openAgentSettingsSection(
+async function openAgentSettingsSection(
   page: Page,
   section: AgentSettingsSection,
 ): Promise<void> {

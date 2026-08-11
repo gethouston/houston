@@ -7,7 +7,8 @@ import type {
 import { flatSidebarOrder } from "../../lib/agent-order";
 import type { TeamHighlight } from "../../lib/sidebar-teams";
 import { teamRowActive } from "../../lib/sidebar-teams";
-import { type TeamView, teamDisplayName } from "../../lib/teams-model";
+import { teamDisplayName } from "../../lib/team-display";
+import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import {
   type AgentItemArgs,

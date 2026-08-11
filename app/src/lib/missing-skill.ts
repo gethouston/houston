@@ -9,7 +9,7 @@
  * there is NO typed `.kind` on this error (`HoustonEngineError.kind` reads
  * `body.error.details.kind`, which the host never sets). We therefore key off
  * the HTTP status. This classifier is only ever applied to the load-skill call
- * (see `tauriSkills.load` and `useSkillSurface`), and a skill GET has exactly
+ * (see `tauriSkills.load` and `useOrgSkillDefault`), and a skill GET has exactly
  * one 404 path — the skill is gone — so the status is unambiguous in context. A
  * typed `kind` is still tolerated so the classifier keeps working if the host's
  * error envelope is ever upgraded to carry one (as the legacy Rust engine did

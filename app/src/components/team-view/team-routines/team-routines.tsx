@@ -1,10 +1,7 @@
 import { cn } from "@houston-ai/core";
-import { RoutinesGrid } from "@houston-ai/routines";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useRoutineLabels } from "../../../hooks/use-routine-labels";
 import { useTimezonePreference } from "../../../hooks/use-timezone-preference";
-import { allAgentReadsFailed } from "../../../lib/agent-read-failures";
 import type { TeamView } from "../../../lib/teams-model";
 import { useRoutineLeadingIcon } from "../../agent/routine-leading-icon";
 import { AgentReadsFailed } from "../../agent-reads-failed";
@@ -12,11 +9,10 @@ import { PageHeaderTools } from "../../shell/page-header/page-header-tools";
 import { teamScopedAgents } from "../team-agent-choice";
 import { TeamAgentFilterCapsule } from "../team-agent-filter-capsule";
 import { TeamRoutinesEmpty } from "../team-empty";
-import { TeamRoutineOwnerChip } from "./team-routine-owner-chip";
 import { TeamRoutinesCreateButton } from "./team-routines-create-button";
 import { TeamRoutinesFooter } from "./team-routines-footer";
+import { TeamRoutinesGrid } from "./team-routines-grid";
 import { TeamRoutinesHeader } from "./team-routines-header";
-import { useTeamGridLabels } from "./use-team-grid-labels";
 import { useTeamRoutineActions } from "./use-team-routine-actions";
 import { useTeamRoutineHost } from "./use-team-routine-host";
 import { useTeamRoutinesData } from "./use-team-routines-data";
@@ -41,7 +37,6 @@ export function TeamRoutines({
   agentFocusId?: string;
 }) {
   const { t } = useTranslation(["teams", "routines"]);
-  const labels = useRoutineLabels();
   const tz = useTimezonePreference();
   // This section's OWN filter, not the team-wide pin: narrowing this list must
   // not silently narrow the board the user goes back to
@@ -76,10 +71,6 @@ export function TeamRoutines({
   // One owner in view (a one-agent team, or the dropdown narrowed to one): the
   // chip would repeat the same name down the whole list, so it drops.
   const oneOwner = scoped.length <= 1;
-  // Nothing answered at all. An empty list is then not evidence of an empty
-  // team, so the grid must not claim one.
-  const unreadable = allAgentReadsFailed(data.failures);
-  const gridLabels = useTeamGridLabels({ oneOwner, unreadable });
 
   // Hooks may not run conditionally, so both honest non-list states come after
   // every hook above.
@@ -107,11 +98,6 @@ export function TeamRoutines({
   const createButton = (
     <TeamRoutinesCreateButton onClick={host.startNewRoutine} />
   );
-
-  const ownerChipFor = (key: string) => {
-    const agent = data.list.ownerOf[key] ?? data.drafts.ownerOf[key];
-    return agent ? <TeamRoutineOwnerChip agent={agent} /> : null;
-  };
 
   return (
     <div className="flex h-full min-h-0">
@@ -151,49 +137,15 @@ export function TeamRoutines({
             />
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <RoutinesGrid
-              routines={data.list.routines}
-              lastRuns={data.list.lastRuns}
-              // Routines being built in chat are rows too: without them a routine
-              // half-started from here would vanish from the list the moment its
-              // chat lost focus.
-              draftActivities={data.drafts.drafts}
-              accountTimezone={tz.timezone}
-              loading={data.loading}
-              selectedRoutineId={host.selectedRoutineKey}
-              selectedDraftId={host.selectedDraftKey}
-              onOpenChat={host.openRoutineChat}
-              onToggle={actions.onToggle}
-              onScheduleChange={actions.onScheduleChange}
-              onDeleteRoutine={actions.onDeleteRoutine}
-              onRunNow={actions.onRunNow}
-              onStopRun={actions.onStopRun}
-              onResumeDraft={host.resumeDraft}
-              onDiscardDraft={actions.onDiscardDraft}
-              leadingIcon={leadingIcon}
-              // Keyed by the merged list's row keys, like every other map here:
-              // without them every event routine's chip would say "verifying"
-              // forever, a claim this surface could never settle.
-              triggerStatuses={data.triggers.triggerStatuses}
-              triggerSummaries={data.triggers.triggerSummaries}
-              onReconnectTrigger={data.triggers.onReconnectTrigger}
-              ownerChip={
-                oneOwner ? undefined : (routine) => ownerChipFor(routine.id)
-              }
-              draftOwnerChip={
-                oneOwner ? undefined : (draft) => ownerChipFor(draft.id)
-              }
-              labels={gridLabels}
-              rowLabels={labels.rowLabels}
-              scheduleLabels={labels.schedule}
-              scheduleSummaryLabels={labels.schedule.summary}
-              triggerLabels={labels.trigger}
-              nextFireLabels={labels.nextFire}
-              locale={labels.locale}
-              emptyAction={unreadable ? undefined : createButton}
-            />
-          </div>
+          <TeamRoutinesGrid
+            data={data}
+            actions={actions}
+            host={host}
+            accountTimezone={tz.timezone}
+            oneOwner={oneOwner}
+            leadingIcon={leadingIcon}
+            createButton={createButton}
+          />
 
           {/* The zone every schedule above is read in, and the one place to
             change it. Drops with the list: an empty state has no schedules. */}

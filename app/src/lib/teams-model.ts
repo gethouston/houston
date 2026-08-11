@@ -1,6 +1,5 @@
 import type { SidebarLayout } from "@houston-ai/engine-client";
 import { resolveSidebarSections } from "./agent-order.ts";
-import { canDeleteTeam as mayDeleteTeam } from "./team-permissions.ts";
 import type { Agent } from "./types.ts";
 
 export {
@@ -125,41 +124,6 @@ export function resolveTeams(
       usesDefaultIdentity: true,
     },
   ];
-}
-
-/** Localized display name without replacing the real name used by writes. */
-export function teamDisplayName(team: TeamView, newTeamLabel: string): string {
-  return team.usesDefaultIdentity ? newTeamLabel : team.name;
-}
-
-/**
- * The mark a team DISPLAYS: its stored icon, or the placeholder rocket while
- * it wears the untouched default identity. The one rule `TeamGlyph` draws and
- * the identity dialog seeds from, so the picker always opens showing exactly
- * the pair the rail is wearing.
- */
-export function teamDisplayIcon(team: TeamView): string | undefined {
-  return team.icon ?? (team.usesDefaultIdentity ? "rocket" : undefined);
-}
-
-/** The colour a team DISPLAYS — stored, or the placeholder charcoal. The twin
- *  of {@link teamDisplayIcon}, split only because callers store them apart. */
-export function teamDisplayColor(team: TeamView): string | undefined {
-  return team.color ?? (team.usesDefaultIdentity ? "charcoal" : undefined);
-}
-
-export type TeamDeletePresentation =
-  | "disabled-only-team"
-  | "enabled"
-  | "hidden";
-
-/** Settings keeps the sole team's Delete row visible but unavailable. */
-export function teamDeletePresentation(
-  teams: readonly TeamView[],
-  team: TeamView,
-): TeamDeletePresentation {
-  if (teams.length === 1) return "disabled-only-team";
-  return mayDeleteTeam(team) ? "enabled" : "hidden";
 }
 
 /** The team with this id, `null` for an unknown id or no id at all. */

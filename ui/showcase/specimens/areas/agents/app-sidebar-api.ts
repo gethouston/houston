@@ -34,11 +34,6 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
     note: "Paints the block's HEADER as the selected row. Controlled. A block carries no destination rows, so its header is the only row that can say the open view belongs here — folded or open alike.",
   },
   {
-    name: "groups[].affordances",
-    type: "{ rename?, delete?, context?, leave? }",
-    note: "Per-group menu mask. Absent, or a field left out, means the callback alone decides; only false takes an entry away. `leave` is the exception: it must be an explicit true.",
-  },
-  {
     name: "defaultGroup",
     type: "{ name, icon?, trailing?, collapsed?, active? }",
     note: "Turns the trailing default block (the agents in no group) into a labelled team: the workspace's own. It folds exactly like a named one — a block that folded everywhere except here would be the one row in the rail that answers a click differently. What it does not get is what the container itself lacks: no ⋯ menu, no rename, no delete, no drag handle.",
@@ -62,11 +57,6 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
     name: "onActivateGroup",
     type: "(groupId: string) => void",
     note: "The block's header was activated — ONE hit target carrying the glyph, the name, the disclosure triangle and the rollup badge. The library does NOT decide what that means: a host may open the block's screen, fold the block, or both, and `collapsed` on the view model stays the single controlled truth about the fold. The triangle is an indicator, never a second control.",
-  },
-  {
-    name: "groupNameMaxRunes",
-    type: "number",
-    note: "Ceiling on a group's rename field, in RUNES, because maxLength counts UTF-16 units and would halve a name of emoji. The field clamps rather than refusing, so pasting is never blocked.",
   },
   {
     name: "onAdd",
@@ -131,7 +121,7 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "labels",
     type: "SidebarLabels",
-    note: "Every string the rail owns (add, rename, delete, group menu, empty-group hint). English defaults.",
+    note: "The two strings the rail renders itself: `addItem` (the add-agent row, and its tooltip on the icon rail) and `collapseSidebar` (the collapse button). English defaults, so a host that passes nothing still gets readable words. Everything else on the rail is a name or a node the host composed.",
   },
   {
     name: "addItemDataAttrs",

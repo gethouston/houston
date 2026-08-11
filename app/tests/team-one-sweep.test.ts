@@ -75,9 +75,16 @@ describe("one sweep, whatever the scope", () => {
     );
     // Its own filter SOURCE, the same scope shape: the one-sweep rule is
     // about the paths and the query key, and neither moved.
+    assert.match(teamArchived, /useTeamScope\(team, filterAgentId\)/);
+    // That source is the section's OWN state, never the team-wide pin:
+    // narrowing finished work must not narrow the board the user goes back to.
     assert.match(
       teamArchived,
-      /useTeamScope\(team, filterAgentId, setFilterAgentId\)/,
+      /const \[filterAgentId, setFilterAgentId\] = useState<string \| null>\(null\)/,
+    );
+    assert.ok(
+      !teamArchived.includes("teamAgentFilter"),
+      "the archive's filter is its own, never the team-wide pin",
     );
   });
 

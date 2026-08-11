@@ -5,7 +5,7 @@ import { useAgentActions } from "../../hooks/use-agent-actions";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
-import { hasAgentTeams, hasSpaces } from "../../lib/org-roles";
+import { hasAgentTeams } from "../../lib/org-roles";
 import { type TeamView, teamOfAgent } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -17,7 +17,10 @@ import {
   AgentMoveDialog,
   AgentMovePickerDialog,
 } from "../agent-actions/agent-move-action";
-import { useAgentIdentitySave } from "../agent-actions/use-agent-identity-save";
+import {
+  type AgentIdentityPatch,
+  useAgentIdentitySave,
+} from "../agent-actions/use-agent-identity-save";
 import { SettingsCard, SettingsRow } from "../settings/settings-row";
 import { useSidebarOverlayLayout } from "../shell/use-sidebar-overlay-layout";
 import { moveTargetTeams } from "../team-view/move-agent-model";
@@ -50,6 +53,26 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
   const [organizationOpen, setOrganizationOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Both writes reject AFTER `call()` has toasted the failure and reported it
+  // to Sentry, so there is exactly one user-visible surface already. Awaiting
+  // them here is what stops that rejection from escaping the handler unhandled;
+  // the catch adds no second surface and hides nothing.
+  const saveIdentityHandled = async (patch: AgentIdentityPatch) => {
+    try {
+      await saveIdentity(patch);
+    } catch {
+      // Already toasted + reported by `call()`.
+    }
+  };
+  const deleteAgentHandled = async () => {
+    setDeleting(false);
+    try {
+      await actions.remove(agent.id);
+    } catch {
+      // Already toasted + reported by `call()`.
+    }
+  };
+
   return (
     <>
       <SettingsCard>
@@ -66,7 +89,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
             onClick={() => setMoveOpen(true)}
           />
         )}
-        {personalSpace && hasSpaces(capabilities) && (
+        {personalSpace && (
           <SettingsRow
             icon={Building2}
             title={t("teams:agentSettings.manage.moveOrganization")}
@@ -89,7 +112,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
         agent={agent}
         open={identityOpen}
         onOpenChange={setIdentityOpen}
-        onSave={(patch) => void saveIdentity(patch)}
+        onSave={saveIdentityHandled}
       />
       {currentTeam && (
         <AgentMovePickerDialog
@@ -123,10 +146,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
       <AgentDeleteDialog
         open={deleting}
         onOpenChange={setDeleting}
-        onConfirm={() => {
-          setDeleting(false);
-          void actions.remove(agent.id);
-        }}
+        onConfirm={deleteAgentHandled}
       />
     </>
   );

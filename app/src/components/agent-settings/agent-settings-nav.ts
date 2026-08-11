@@ -25,7 +25,7 @@ export type AgentSettingsSection =
   | "manage";
 
 /** The two semantic groups used only to keep hidden deep links nearby. */
-export type AgentSettingsGroupId = "context" | "permissions";
+type AgentSettingsGroupId = "context" | "permissions";
 
 /** The props EVERY section body takes. */
 export interface AgentSectionProps {
@@ -47,14 +47,6 @@ export const SECTION_GROUP: Record<AgentSettingsSection, AgentSettingsGroupId> =
     skills: "permissions",
     manage: "permissions",
   };
-
-/**
- * The Context sections: the agent's job description and its learnings.
- * Unconditional — every agent has both.
- */
-export function contextSections(): AgentSettingsSection[] {
-  return ["job-description", "learnings"];
-}
 
 /**
  * The ACCESS sections: who may use the agent, plus the app + model ceilings.

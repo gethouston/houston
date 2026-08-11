@@ -1,11 +1,13 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
 /**
- * The header takes `Required<SidebarLabels>` — `AppSidebar` merges the caller's
- * overrides over its own defaults before handing them down, so a standalone
- * specimen has to supply the whole bag. These are `DEFAULT_LABELS` verbatim.
+ * `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`.
+ *
+ * The header renders no words of its own: every string on the row arrives as a
+ * prop (`name`) or as a node the host composed (`icon`, `trailing`), which is
+ * what keeps this component out of the i18n runtime and lets a specimen mount
+ * it standalone with nothing but literals.
  */
-/** `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`. */
 export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
   {
     name: "name",
@@ -16,6 +18,11 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
     name: "icon",
     type: "ReactNode",
     note: "The block's mark, in the shared glyph column. The box is reserved either way, so a block with no icon still puts its name on the same optical column as its neighbours.",
+  },
+  {
+    name: "trailing",
+    type: "ReactNode",
+    note: "A badge INSIDE the row, right-aligned: the block's rollup of what its rows are signalling. A folded block hides them, so this is the slot that speaks on their behalf. The library counts nothing — the host composes the node, and by passing none says the block adds nothing.",
   },
   {
     name: "collapsed",

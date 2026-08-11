@@ -1,4 +1,5 @@
 import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
+import { orderByOverlay, overlayOrderFor } from "./team-overlay.ts";
 import type { TeamView } from "./teams-model.ts";
 import type { Agent } from "./types.ts";
 
@@ -11,7 +12,8 @@ import type { Agent } from "./types.ts";
  * the overlay is a preference, never a source of truth.
  *
  * Six rules: five in {@link resolveServerTeams} and the write-side
- * {@link normalizeTeamOverlay}. There is no longer a joined/other SPLIT among
+ * `normalizeTeamOverlay` (`team-overlay.ts`, which owns both halves of the
+ * overlay). There is no longer a joined/other SPLIT among
  * them — the visibility filter moved SERVER-side, so a caller is served only
  * the teams they are part of and the client has nothing left to partition.
  *
@@ -22,33 +24,11 @@ import type { Agent } from "./types.ts";
  * difference is what keeps the off-capability path byte-identical.
  */
 
-/** The overlay's `agentIds` for one team, defensively read (the layout is
- *  user-persisted JSON and may predate every team it names). */
-function overlayOrderFor(layout: SidebarLayout, teamId: string): string[] {
-  const groups = Array.isArray(layout?.groups) ? layout.groups : [];
-  const group = groups.find((g) => g?.id === teamId);
-  return Array.isArray(group?.agentIds) ? group.agentIds : [];
-}
-
-/**
- * RULE 3, applied to one team: members the overlay names come first in the
- * overlay's order, then every remaining member in server order. Mirrors
- * `agent-order.ts`'s `orderBy` (the local backend's identical rule) over a
- * different membership source: here the roster is the server's, so an overlay
- * id this team no longer holds is simply absent from `members` and drops out.
- */
-function orderByOverlay(members: Agent[], order: readonly string[]): Agent[] {
-  const rank = new Map(order.map((id, i) => [id, i] as const));
-  const known = members
-    .filter((a) => rank.has(a.id))
-    .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
-  return [...known, ...members.filter((a) => !rank.has(a.id))];
-}
-
 /**
  * Merge the server's teams with the local agent store and the ordering overlay
  * into the `TeamView[]` the rail and the team screen render. Five rules here,
- * in the order they apply (rule 6 is the write-side {@link normalizeTeamOverlay}):
+ * in the order they apply (rule 6 is the write-side `normalizeTeamOverlay`, in
+ * `team-overlay.ts`):
  *
  * 1. SERVER ORDER WINS. Teams come out in the server's array order (the gateway
  *    already sorts by `(sortOrder, createdAt, id)`); the overlay never reorders
@@ -155,56 +135,4 @@ export function personalDefaultTeamSeed(
   return runes.length <= MAX_TEAM_NAME_RUNES
     ? name
     : runes.slice(0, MAX_TEAM_NAME_RUNES).join("");
-}
-
-/**
- * RULE 6. What gets PERSISTED after an overlay write. It may only ADJUST the
- * rows that describe a LIVE server team, and it must carry every other stored
- * group through UNTOUCHED, in place.
- *
- * For a live team the adjustment is two things: the agent ids are narrowed to
- * the ones the server actually put in that team (so a stale drag order decays
- * on the next write instead of accumulating), and a BLANK name is filled in
- * from the server's own. A row upserted by a first collapse or a first drop is
- * born nameless (`blankOverlayGroup`) because the server names its teams — and
- * that is exactly the value the rail would render if the capability ever went
- * away. `collapsed`, `context` and `ungroupedOrder` are never rewritten: they
- * are inert here (only `id`, `collapsed` and `agentIds` are read on this
- * backend), so churning them would only lose a preference.
- *
- * A group whose id is NOT a live team is somebody's LOCAL grouping, and this
- * function has nothing to check it against. Deleting it looks reasonable until
- * you count the hosts where it fires: an `agentTeams` PERSONAL space serves
- * exactly ONE team, so every group the user built before the capability
- * appeared is "not live", and a single drag or collapse used to persist their
- * names, shared context and membership away for good. The promise this backend
- * makes is that local groups stop DRAWING blocks, not that they stop existing:
- * they sit in the overlay and come back if the capability goes away. A team
- * someone else deleted therefore keeps its (inert, invisible) row, which costs
- * a few bytes of a per-user preference and cannot cost anyone their work.
- *
- * Normalizing on WRITE (not on read) is deliberate: a read-side pass would
- * touch the user's drag order during any window where the teams read is empty
- * or in flight.
- */
-export function normalizeTeamOverlay(
-  layout: SidebarLayout,
-  serverTeams: readonly AgentTeam[],
-): SidebarLayout {
-  const live = new Map(serverTeams.map((t) => [t.id, t] as const));
-  const groups = Array.isArray(layout?.groups) ? layout.groups : [];
-  return {
-    ...layout,
-    groups: groups.map((group) => {
-      const team = live.get(group?.id);
-      if (team === undefined) return group;
-      const roster = new Set(team.agentSlugs);
-      const agentIds = Array.isArray(group?.agentIds) ? group.agentIds : [];
-      return {
-        ...group,
-        name: group.name === "" ? team.name : group.name,
-        agentIds: agentIds.filter((id) => roster.has(id)),
-      };
-    }),
-  };
 }

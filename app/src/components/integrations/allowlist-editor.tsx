@@ -22,15 +22,13 @@ export type {
  * "Only apps you pick" saves an explicit set) over the shared
  * {@link AppCatalogGrid} with a per-app allow Switch. Writes are instant; "Only
  * apps you pick" seeds from `seedToolkits` (filtered to `universe`) so it never
- * cuts off in-use apps. `readOnly` disables every control and hides the "Add
- * apps" catalog; all copy is passed in.
+ * cuts off in-use apps; all copy is passed in.
  */
 export function AllowlistEditor({
   universe,
   allowedToolkits,
   seedToolkits,
   saving,
-  readOnly,
   onSave,
   copy,
   rowMeta,
@@ -91,13 +89,10 @@ export function AllowlistEditor({
         </>
       )}
 
-      {readOnly && copy.readOnlyNote && (
-        <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>
-      )}
       <AccessChoice
         labelledBy={headingId}
         value={ceilingMode(allowedToolkits)}
-        disabled={saving || readOnly}
+        disabled={saving}
         onChange={onChoice}
         options={[
           {
@@ -139,7 +134,7 @@ export function AllowlistEditor({
                         <Switch
                           aria-label={copy.allowApp(display.name)}
                           checked
-                          disabled={saving || readOnly}
+                          disabled={saving}
                           onCheckedChange={() => toggle(tk.slug)}
                         />
                       }
@@ -150,29 +145,27 @@ export function AllowlistEditor({
             )}
           </section>
 
-          {!readOnly && (
-            <section>
-              <h3 className="mb-3 text-sm font-medium text-ink">
-                {copy.addHeading}
-              </h3>
-              <AppCatalogGrid
-                catalog={universe}
-                category={category}
-                onCategoryChange={setCategory}
-                excludeToolkits={allowedSet}
-                renderRow={(display, tk) => ({
-                  trailing: (
-                    <Switch
-                      aria-label={copy.allowApp(display.name)}
-                      checked={allowedSet.has(tk.slug)}
-                      disabled={saving}
-                      onCheckedChange={() => toggle(tk.slug)}
-                    />
-                  ),
-                })}
-              />
-            </section>
-          )}
+          <section>
+            <h3 className="mb-3 text-sm font-medium text-ink">
+              {copy.addHeading}
+            </h3>
+            <AppCatalogGrid
+              catalog={universe}
+              category={category}
+              onCategoryChange={setCategory}
+              excludeToolkits={allowedSet}
+              renderRow={(display, tk) => ({
+                trailing: (
+                  <Switch
+                    aria-label={copy.allowApp(display.name)}
+                    checked={allowedSet.has(tk.slug)}
+                    disabled={saving}
+                    onCheckedChange={() => toggle(tk.slug)}
+                  />
+                ),
+              })}
+            />
+          </section>
         </div>
       )}
     </div>

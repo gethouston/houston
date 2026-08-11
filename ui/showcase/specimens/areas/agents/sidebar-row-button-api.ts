@@ -22,7 +22,7 @@ export const SIDEBAR_ROW_CONSUMERS: readonly {
   },
   {
     who: "SidebarGroupHeader",
-    what: 'A team block\'s header. Block depth, a disclosure, the rollup badge in the trailing slot, the drag handle, the "..." menu as affordance, and active whenever the block owns the open view. Swaps itself for the rename field.',
+    what: "A team block's header. Block depth, a disclosure, the rollup badge in the trailing slot, the drag handle, and active whenever the block owns the open view. ONE hit target, with nothing beside it: a team's name and mark are changed in the host's own dialog.",
   },
   {
     who: "SidebarItemRow",
@@ -84,7 +84,7 @@ export const SIDEBAR_ROW_BUTTON_PROPS: readonly SpecimenProp[] = [
   {
     name: "affordance",
     type: "ReactNode",
-    note: 'Right-aligned OUTSIDE the button: a "..." menu trigger, a "+". A sibling and not a child, because a button may not nest inside a button — which is also why it survives the row swapping into an input. Wear `sidebarRowAffordanceClasses`.',
+    note: 'Right-aligned OUTSIDE the button: a "..." menu trigger, a "+". A sibling and not a child, because a button may not nest inside a button. Wear `sidebarRowAffordanceClasses`.',
   },
   {
     name: "draggable / dragAttributes / dragListeners",
@@ -94,7 +94,7 @@ export const SIDEBAR_ROW_BUTTON_PROPS: readonly SpecimenProp[] = [
   {
     name: "dataAttrs",
     type: "Record<string, string>",
-    note: "Attributes on the row's ROOT rather than its button: they identify the ROW (test ids, tour anchors), and that identity has to survive the row swapping into its rename input.",
+    note: "Attributes on the row's ROOT rather than its button: they identify the ROW (test ids, tour anchors), which is what navigation and drag tests address it by.",
   },
   {
     name: "title",

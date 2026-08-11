@@ -7,7 +7,8 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { type TeamView, teamDisplayName } from "../../lib/teams-model";
+import { teamDisplayName } from "../../lib/team-display";
+import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { TeamGlyph } from "../shell/team-glyph";
 import { moveTargetTeams } from "../team-view/move-agent-model";

@@ -3,7 +3,10 @@ import { describe, it } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parseSymbols } from "../../../scripts/generate-team-icons.mjs";
-import { matchesSidebarGroupGlyph } from "../src/sidebar-group-glyph-search.ts";
+import {
+  matchesSidebarGroupGlyph,
+  sidebarGroupGlyphConcepts,
+} from "../src/sidebar-group-glyph-search.ts";
 import { SIDEBAR_GROUP_GLYPH_TAGS } from "../src/sidebar-group-glyph-tags.ts";
 import {
   isSidebarGroupGlyph,
@@ -119,6 +122,56 @@ describe("team icon search", () => {
       "money-stack",
     ] as const) {
       assert.ok(matches.includes(name), name);
+    }
+  });
+
+  it("searches EVERY extra haystack, not just the first", () => {
+    // The picker passes two: the mark's localized name and its localized
+    // concepts (this package's English tags, translated app-side). A matcher
+    // that only read the first would silently drop the concept vocabulary.
+    const label = "Cohete";
+    const concepts = "espacio lanzamiento futuro";
+    assert.equal(
+      matchesSidebarGroupGlyph("rocket", "lanzamiento", label, concepts),
+      true,
+    );
+    assert.equal(matchesSidebarGroupGlyph("rocket", "cohete", label, ""), true);
+    assert.equal(
+      matchesSidebarGroupGlyph("rocket", "dinero", label, concepts),
+      false,
+    );
+  });
+
+  it("offers a mark's concepts for translation, name words included", () => {
+    // The generator drops a word from a mark's tags when the NAME already
+    // carries it, so tags alone would leave a translator no way to say the one
+    // concept the mark is named after.
+    assert.equal(
+      SIDEBAR_GROUP_GLYPH_TAGS["money-stack"].includes("money"),
+      false,
+    );
+    assert.ok(sidebarGroupGlyphConcepts("money-stack").includes("money"));
+    // "stack" is nobody's curated concept, so there is nothing to translate.
+    assert.equal(
+      sidebarGroupGlyphConcepts("money-stack").includes("stack"),
+      false,
+    );
+    // Never the same word twice: the consumer translates this list key by key,
+    // and a repeat would pay for the same lookup again.
+    const home = sidebarGroupGlyphConcepts("home");
+    assert.equal(home.length, new Set(home).size);
+    // "home" is the mark's name AND a tag other marks carry, so it is offered.
+    assert.ok(home.includes("home"));
+  });
+
+  it("draws every concept from ONE closed vocabulary", () => {
+    // The app translates that vocabulary key by key: a concept outside it
+    // would search as an untranslated English word in a Spanish picker.
+    const vocabulary = new Set(Object.values(SIDEBAR_GROUP_GLYPH_TAGS).flat());
+    for (const name of SIDEBAR_GROUP_GLYPH_NAMES) {
+      for (const concept of sidebarGroupGlyphConcepts(name)) {
+        assert.ok(vocabulary.has(concept), `${name}: ${concept}`);
+      }
     }
   });
 

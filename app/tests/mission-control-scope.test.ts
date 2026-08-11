@@ -130,3 +130,49 @@ describe("mission control source draft scope wiring", () => {
     assert.ok(!source.includes('draftScope: "mission-control"'));
   });
 });
+
+/**
+ * The agent filter is READ-ONLY on a board. The surfaces that change it (the
+ * team strip's breadcrumb, the archive's own dropdown) write their own source
+ * directly, so a board that also offered a setter would be a second, silent
+ * way to move a pin the rail believes it owns.
+ */
+describe("the board applies the agent filter it is given", () => {
+  const mcScope = readFileSync(
+    new URL("../src/components/board/use-mc-scope.ts", import.meta.url),
+    "utf8",
+  );
+  const teamBoardScope = readFileSync(
+    new URL(
+      "../src/components/team-view/use-team-board-scope.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  it("exposes no filter setter and keeps no filter state of its own", () => {
+    assert.ok(!mcScope.includes("setFilterPath"));
+    assert.ok(!mcScope.includes("useState"));
+    // Nor a write-back callback: the scope is the filter a board RENDERS.
+    assert.ok(!mcScope.includes("onFilterPathChange"));
+    assert.ok(!teamBoardScope.includes("onFilterPathChange"));
+  });
+
+  it("applies the scope's filter verbatim, narrowed to the scope", () => {
+    assert.match(
+      mcScope,
+      /resolveFilterPath\(scope\?\.filterPath \?\? "", scopePaths\)/,
+    );
+  });
+
+  it("lets a focus argument override the team-wide pin it falls back to", () => {
+    assert.ok(!teamBoardScope.includes("keepFocus"));
+    assert.match(
+      teamBoardScope,
+      /useTeamScope\(\s*team,\s*agentFocusId \?\? teamAgentFilter,?\s*\)/,
+    );
+    // The pin is READ here and written by the rail, so the board hook has no
+    // business holding the store's setter.
+    assert.ok(!teamBoardScope.includes("setTeamAgentFilter"));
+  });
+});

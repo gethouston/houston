@@ -15,14 +15,12 @@ export interface ModelsAllowlistEditorCopy {
   clearSearch: string;
   noModels: string;
   allowModel: (name: string) => string;
-  readOnlyNote?: string;
 }
 
 export interface ModelsAllowlistEditorProps {
   models: CatalogModel[];
   allowedModels: string[] | null;
   saving: boolean;
-  readOnly?: boolean;
   onSave: (next: string[] | null) => void;
   copy: ModelsAllowlistEditorCopy;
   /** Visible heading id supplied by a mounting page hero. */

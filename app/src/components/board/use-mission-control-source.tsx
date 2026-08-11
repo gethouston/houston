@@ -59,11 +59,9 @@ export function useMissionControlSource(
     mc.selectedId,
   );
 
-  // No `setFilterPath` any more: the scope is a breadcrumb in row 1 of the
-  // team strip, which reads and writes the same `teamAgentFilter` pin
-  // directly. `filterPath` is still READ, for the auto-open key. The scope's
-  // `onFilterPathChange` still has to exist, because its presence is what
-  // makes `filterPath` CONTROLLED rather than local to this hook.
+  // The board never WRITES the filter: the scope is a breadcrumb in row 1 of
+  // the team strip, which reads and writes the same `teamAgentFilter` pin
+  // directly. `filterPath` is still READ, for the auto-open key.
   const { scopedAgents, paths, agentFilteredItems, visibleAgents, filterPath } =
     useMcScope(agents, mc.items, scope);
 

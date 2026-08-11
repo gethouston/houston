@@ -79,8 +79,7 @@ export interface SidebarRowButtonProps {
   trailing?: ReactNode;
   /**
    * Right-aligned OUTSIDE the button: a "..." menu trigger, a "+". A sibling
-   * and not a child because a button may not nest inside a button, which is
-   * also why it survives the row swapping into an input.
+   * and not a child because a button may not nest inside a button.
    */
   affordance?: ReactNode;
   /**
@@ -119,10 +118,8 @@ export interface SidebarRowButtonProps {
  * simultaneously the active row, standing in for the destination row it is
  * hiding.
  *
- * What it deliberately does NOT own: the icon-only collapsed rail (a different
- * anatomy with flyouts, not a narrower version of this one) and inline rename
- * (the consumer swaps the whole row for an input, because a text field is not a
- * state of a button).
+ * What it deliberately does NOT own: the icon-only collapsed rail, which is a
+ * different anatomy with flyouts rather than a narrower version of this one.
  */
 export function SidebarRowButton({
   label,

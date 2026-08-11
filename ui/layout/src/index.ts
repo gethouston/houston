@@ -23,7 +23,10 @@ export { SidebarDragOverlay } from "./sidebar-drag-overlay";
 export type { SidebarFlatListProps } from "./sidebar-flat-list";
 export { SidebarFlatList } from "./sidebar-flat-list";
 export { sidebarBandInset } from "./sidebar-geometry";
-export { matchesSidebarGroupGlyph } from "./sidebar-group-glyph-search";
+export {
+  matchesSidebarGroupGlyph,
+  sidebarGroupGlyphConcepts,
+} from "./sidebar-group-glyph-search";
 export { SIDEBAR_GROUP_GLYPH_TAGS } from "./sidebar-group-glyph-tags";
 export type { SidebarGroupGlyphName } from "./sidebar-group-glyphs";
 export {

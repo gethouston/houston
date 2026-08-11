@@ -1,11 +1,8 @@
 import { Button } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  type TeamSectionId,
-  type TeamView,
-  teamDisplayName,
-} from "../../lib/teams-model";
+import { teamDisplayName } from "../../lib/team-display";
+import type { TeamSectionId, TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { DrilledHeader } from "../shell/page-header/drilled-header";
 import { TeamGlyph } from "../shell/team-glyph";

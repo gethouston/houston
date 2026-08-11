@@ -41,8 +41,7 @@
       "allowedHeading": "Allowed models",
       "allowedEmpty": "No models picked yet. Add models below.",
       "allowedEmptyLab": "No models picked from this lab yet.",
-      "addHeading": "Add models",
-      "readOnlyNote": "Someone who manages this agent can change which models it can use."
+      "addHeading": "Add models"
     },
     "integrations": {
       "unavailable": "Integration limits are not available here."
@@ -64,10 +63,6 @@
       "moveOrganization": "Move to another organization",
       "moveOrganizationDescription": "Move this agent into an organization so a team can work with it.",
       "delete": "Delete agent"
-    },
-    "groups": {
-      "context": "Context",
-      "permissions": "Permissions"
     },
     "people": {
       "helper": "Pick whether everyone on your team can use this agent, or only the people you choose.",
@@ -171,8 +166,7 @@
       "allowedHeading": "Allowed integrations",
       "allowedEmpty": "No integrations picked yet. Add integrations below.",
       "allowedEmptyCategory": "No allowed integrations in this category yet.",
-      "addHeading": "Add integrations",
-      "readOnlyNote": "Someone who manages this agent can change which integrations it can use."
+      "addHeading": "Add integrations"
     }
   },
   "org": {
@@ -187,10 +181,6 @@
       "timeWorked": "Time worked"
     },
     "companyContextHint": "What all your agents know on every task and routine they run.",
-    "agentDetail": {
-      "subtitle": "Everything you configure on this agent, and who can use it.",
-      "openAgent": "Open agent"
-    },
     "loading": "Loading your workspace...",
     "unavailable": "We couldn't load your workspace."
   },
@@ -199,7 +189,6 @@
       "none": "No access",
       "noneHint": "Cannot use this agent.",
       "changeAccess": "Change access for {{name}}",
-      "readOnlyHint": "Someone who manages this agent can change who has access.",
       "viewerOnly": "You can use this agent. Someone who manages it can change who has access.",
       "empty": {
         "title": "No people yet",
@@ -539,14 +528,6 @@
     "agentTabs": {
       "settings": "Agent settings"
     },
-    "manage": {
-      "identity": "{{name}} settings",
-      "tabs": {
-        "context": "Context",
-        "agents": "Agents",
-        "people": "People"
-      }
-    },
     "archive": {
       "open": "Archived",
       "back": "Back to tasks"
@@ -617,7 +598,8 @@
         "modelsAllowed_one": "{{count}} allowed",
         "modelsAllowed_other": "{{count}} allowed",
         "allIntegrations": "All integrations allowed",
-        "allModels": "All models allowed"
+        "allModels": "All models allowed",
+        "unavailable": "Couldn't load"
       }
     }
   }

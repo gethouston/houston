@@ -1,6 +1,7 @@
 import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { teamDisplayName } from "../../lib/team-display";
 import {
   teamHomeLozengeActive,
   teamHomeLozengeClick,
@@ -9,7 +10,6 @@ import {
   sectionHonorsAgentPin,
   type TeamSectionId,
   type TeamView,
-  teamDisplayName,
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { PageHeader } from "../shell/page-header/page-header";
