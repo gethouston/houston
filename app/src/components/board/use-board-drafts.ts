@@ -5,6 +5,7 @@ import {
   newConversationDraftKey,
   useDraftStore,
 } from "../../stores/drafts";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * Composer draft persistence for the board, shared by both views. Exposes the
@@ -25,6 +26,17 @@ export function useBoardDrafts(newConversationScope?: string | null) {
   );
   const onDraftChange = useCallback(
     (sessionKey: string, text: string) => {
+      // In-app onboarding's guided email task: the first task is PREWRITTEN
+      // and locked — the tutorial owns the new-conversation draft, so user
+      // edits (and the board's own post-send clear) are ignored; the tutorial
+      // clears the draft itself when its send step resolves
+      // (use-guided-email-task.ts).
+      if (
+        sessionKey === NEW_CONVERSATION_KEY &&
+        useUIStore.getState().tutorialComposerLock
+      ) {
+        return;
+      }
       useDraftStore
         .getState()
         .setDraftText(

@@ -4,6 +4,8 @@ import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-report";
+import { isIdentityConfigured } from "../../lib/identity";
+import { osIsTauri } from "../../lib/os-bridge";
 import { FirstRunScreen } from "../onboarding/first-run-screen";
 import { SetupCard } from "../onboarding/setup-card";
 
@@ -15,13 +17,19 @@ interface Section {
 /**
  * Agreement step. Renders `children` once the user has accepted the current
  * disclaimer version; otherwise it shows the agreement on the shared
- * `SetupCard` as step 2 of the setup flow (the language pick runs before, in the
- * LanguageGate), on the calm grey {@link FirstRunScreen} background so it reads
- * as the same continuous flow. Copy lives in `locales/<lang>/legal.json`.
+ * `SetupCard`, on the calm grey {@link FirstRunScreen} background so it reads
+ * as the same continuous setup flow. It mounts inside App AFTER the sign-in
+ * gate — the setup order is language, sign-in, agreement, survey — so on
+ * identity builds the acceptance write is authenticated. Copy lives in
+ * `locales/<lang>/legal.json`.
  */
 export function DisclaimerGate({ children }: { children: ReactNode }) {
   const { isAccepted, isLoading, accept } = useLegalAcceptance();
   const { clearLocale } = useLocalePreference();
+
+  // Cloud web (Firebase identity baked into the browser build): the agreement
+  // is a desktop/self-host concept (HOU-1014) — render children untouched.
+  if (!osIsTauri() && isIdentityConfigured()) return <>{children}</>;
 
   if (isLoading) {
     return (

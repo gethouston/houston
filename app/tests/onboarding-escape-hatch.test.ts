@@ -26,25 +26,13 @@ describe("onboarding skip escape hatch", () => {
     assert.match(button, /tutorial\.nav\.skipOnboarding/);
   });
 
-  it("shows the same escape hatch on the first-run survey", () => {
-    // The survey mounts BEFORE the orchestrator (App-level route), so it
-    // carries its own SkipOnboardingButton; App.tsx supplies the terminal
-    // handler (analytics + markCompleted — no pending flag exists yet). Only
-    // the first-run mounting gets it; the in-app prompt declines with
-    // "Not now" instead, which dismisses the prompt rather than onboarding.
-    assert.match(survey, /mode === "first_run" && onDismiss/);
-    assert.match(survey, /<SkipOnboardingButton onSkip=\{onDismiss\} \/>/);
-    assert.match(app, /step: "segment",\s*source: "escape_hatch"/);
-  });
-
-  it("declines the completion prompt along with onboarding", () => {
-    // Skipping AFTER answering the job question leaves a segmented record with
-    // gaps, which is exactly what the in-app completion prompt fires on: it
-    // would re-mount the survey in the same render and make Skip look broken.
-    assert.match(
-      app,
-      /void survey\.dismissCompletionPrompt\(\);\s*void markCompleted\(\);/,
-    );
+  it("offers NO escape hatch on the first-run survey — the questions are mandatory", () => {
+    // The three questions are deliberately unskippable (Julian, Aug 2026):
+    // the first-run mounting renders no SkipOnboardingButton and App.tsx
+    // passes no dismiss handler. The in-app completion prompt keeps its
+    // "Not now" — that dismisses the PROMPT, not onboarding.
+    assert.doesNotMatch(survey, /SkipOnboardingButton/);
+    assert.doesNotMatch(app, /step: "segment",\s*source: "escape_hatch"/);
   });
 
   it("mounts the survey hook exactly once, at App level", () => {

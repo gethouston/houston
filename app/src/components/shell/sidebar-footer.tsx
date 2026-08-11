@@ -44,7 +44,9 @@ export function SidebarFooter(props: { collapsed: boolean }) {
   const viewMode = useUIStore((s) => s.viewMode);
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
-  const setUiTourActive = useUIStore((s) => s.setUiTourActive);
+  const setInAppOnboardingActive = useUIStore(
+    (s) => s.setInAppOnboardingActive,
+  );
   return (
     <div className="flex flex-col">
       <div
@@ -81,16 +83,14 @@ export function SidebarFooter(props: { collapsed: boolean }) {
           onGuideMe={() => {
             setMobileSidebarOpen(false);
             /*
-             * Leave the store BEFORE arming the tour: every anchor it
-             * spotlights lives in the workspace shell, and the overlay measures
-             * its first target the moment it mounts. `openHome()` is a
-             * synchronous Zustand set like the arming below, so the tour still
-             * mounts against the already-restored shell. It lands on home, the
-             * first team's Mission Control (the Inbox when no team has
-             * resolved), which is where the tour starts.
+             * "Guide me" (re)starts the in-app onboarding — the guided setup
+             * that runs over the shell. Leave the store BEFORE arming it: the
+             * flow operates over the workspace shell, and `openHome()` is a
+             * synchronous Zustand set like the arming below, so the overlay
+             * mounts against the already-restored shell.
              */
             openHome();
-            setUiTourActive(true);
+            setInAppOnboardingActive(true);
           }}
           onReportProblem={() => {
             // The one bug-report surface, reached from the place a user is

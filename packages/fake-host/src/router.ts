@@ -10,7 +10,7 @@
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
 import type { ChatMessage, PendingInteraction } from "@houston/protocol";
 import type { ProviderUsage } from "@houston/runtime-client";
-import { setNextInteraction, setReplyDelay } from "./chat";
+import { setNextInteraction, setNextReplyText, setReplyDelay } from "./chat";
 import {
   clearChatStreams,
   dropChatStreams,
@@ -88,6 +88,13 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/__test__/chat-config" && method === "POST") {
     const body = await parseBody(req);
     setReplyDelay(Number(body?.replyDelayMs ?? 15));
+    return json({ ok: true });
+  }
+  // Arm the NEXT scripted turn to reply with this exact text instead of the
+  // echo — how a spec makes "the agent said X" happen. One-shot.
+  if (path === "/__test__/chat-reply" && method === "POST") {
+    const body = await parseBody(req);
+    setNextReplyText(typeof body?.text === "string" ? body.text : null);
     return json({ ok: true });
   }
   // Arm the NEXT scripted turn to end on a pending interaction: its `done`

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { StorageUnavailableScreen } from "./components/auth/storage-unavailable-screen";
 import { CloudMigrationGate } from "./components/onboarding/cloud-migration/cloud-migration-gate";
+import { ArmInAppOnboarding } from "./components/onboarding/in-app-onboarding";
 import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import {
   isFirstRun,
@@ -12,6 +13,7 @@ import {
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { OnboardingSurveyScreen } from "./components/onboarding/survey-screen";
 import { ClaudeBrowserLogin } from "./components/shell/claude-browser-login";
+import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { ProviderLoginFallback } from "./components/shell/provider-login-fallback";
 import { WorkspaceLoading } from "./components/shell/workspace-loading";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
@@ -337,6 +339,10 @@ export default function App() {
     return <SignInScreen />;
   }
 
+  // Everything below the auth gates renders behind the agreement gate: the
+  // setup order is language (main.tsx) → sign-in (above) → agreement → survey.
+  // The gate self-skips once accepted, and entirely on cloud web (HOU-1014).
+
   // First-run tutorial. Held in front of the shell while the orchestrator is
   // mid-flight, even after the workspace and agent have been created (M2+).
   // Checked BEFORE the loading splash on purpose: the tutorial runs before the
@@ -345,10 +351,12 @@ export default function App() {
   // the user out of the tutorial.
   if (tutorialActive) {
     return (
-      <PersonalAssistantOnboarding
-        toasts={mappedToasts}
-        onDismissToast={dismissToast}
-      />
+      <DisclaimerGate>
+        <PersonalAssistantOnboarding
+          toasts={mappedToasts}
+          onDismissToast={dismissToast}
+        />
+      </DisclaimerGate>
     );
   }
 
@@ -447,66 +455,56 @@ export default function App() {
   );
 
   return (
-    <CloudMigrationGate>
-      {firstRunRoute === "segment" ? (
-        survey.loading ? (
-          <WorkspaceLoading />
-        ) : (
+    <DisclaimerGate>
+      <CloudMigrationGate>
+        {firstRunRoute === "segment" ? (
+          survey.loading ? (
+            <WorkspaceLoading />
+          ) : (
+            // The three questions are mandatory: the first-run survey renders
+            // no skip affordance (profile_completion keeps its "Not now").
+            <OnboardingSurveyScreen
+              mode="first_run"
+              survey={survey}
+              onComplete={() => setFirstRunSurveyDone(true)}
+            />
+          )
+        ) : firstRunRoute === "app" && migrationReconnect.show ? (
+          <>
+            <ProviderLoginFallback />
+            <ClaudeBrowserLogin />
+            <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
+          </>
+        ) : showSurveyPrompt ? (
           <OnboardingSurveyScreen
-            mode="first_run"
+            mode="profile_completion"
             survey={survey}
-            onComplete={() => setFirstRunSurveyDone(true)}
+            onComplete={() => setCompletionPromptClosed(true)}
             onDismiss={() => {
-              // Terminal escape hatch, mirroring the orchestrator's
-              // skipOnboarding. The survey mounts BEFORE the orchestrator, so
-              // no pending flag or tutorialActive exists yet: marking completed
-              // is the whole teardown, and it flips this route to the shell
-              // synchronously (query cache set first). Deliberately saves NO
-              // answer.
-              //
-              // Declining onboarding declines the completion prompt with it.
-              // Skipping AFTER answering the job question leaves a segmented
-              // record with gaps, which is exactly what `needsCompletionPrompt`
-              // fires on — without this the survey would re-mount as the
-              // in-app prompt in the very same render, and "Skip onboarding"
-              // would visibly do nothing.
-              analytics.track("onboarding_skipped", {
-                step: "segment",
-                source: "escape_hatch",
-              });
               void survey.dismissCompletionPrompt();
-              void markCompleted();
+              setCompletionPromptClosed(true);
             }}
           />
-        )
-      ) : firstRunRoute === "onboarding" ? (
-        <PersonalAssistantOnboarding
-          toasts={mappedToasts}
-          onDismissToast={dismissToast}
-        />
-      ) : migrationReconnect.show ? (
-        <>
-          <ProviderLoginFallback />
-          <ClaudeBrowserLogin />
-          <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />
-        </>
-      ) : showSurveyPrompt ? (
-        <OnboardingSurveyScreen
-          mode="profile_completion"
-          survey={survey}
-          onComplete={() => setCompletionPromptClosed(true)}
-          onDismiss={() => {
-            void survey.dismissCompletionPrompt();
-            setCompletionPromptClosed(true);
-          }}
-        />
-      ) : (
-        <>
-          <ProviderLoginFallback />
-          <ClaudeBrowserLogin />
-          <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />
-        </>
-      )}
-    </CloudMigrationGate>
+        ) : (
+          // Route "app" AND the first-run "onboarding" route: the setup runs IN
+          // the app now, as the in-app onboarding overlay armed over the shell
+          // (the old separate-screen PersonalAssistantOnboarding is superseded
+          // and absorbed into it iteration by iteration). ONE branch for both
+          // on purpose — connecting the AI provisions the assistant mid-flow,
+          // which flips `firstRun` and would otherwise remount the shell (and
+          // reset the overlay) at that instant. The arm rides AFTER the shell
+          // so the element positions match across the flip.
+          <>
+            <ProviderLoginFallback />
+            <ClaudeBrowserLogin />
+            <WorkspaceShell
+              toasts={mappedToasts}
+              onDismissToast={dismissToast}
+            />
+            {firstRunRoute === "onboarding" && <ArmInAppOnboarding />}
+          </>
+        )}
+      </CloudMigrationGate>
+    </DisclaimerGate>
   );
 }

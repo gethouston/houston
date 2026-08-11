@@ -1,0 +1,97 @@
+import { Button, cn } from "@houston-ai/core";
+import { Check } from "lucide-react";
+import type { ReactNode } from "react";
+import { HoustonLogo } from "../shell/experience-card";
+
+/** A labeled row of the setup checklist (state from `in-app-setup-checklist`). */
+export interface LabeledChecklistItem {
+  id: string;
+  label: string;
+  state: "done" | "current" | "todo";
+}
+
+/**
+ * The in-app onboarding's WHAT position: a centered, calm card narrating the
+ * step ahead (or just completed), over a light scrim that keeps the app
+ * clearly visible behind it. One primary action — plus the setup checklist,
+ * so every beat reads as a REQUIRED setup visibly completing, never a
+ * skippable tour. The HOW position is `tutorial-spotlight.tsx`.
+ */
+export function OnboardingCenterCard({
+  title,
+  body,
+  cta,
+  onNext,
+  checklist,
+}: {
+  title: string;
+  /** A node so callers can emphasize within translated copy (`<Trans>`). */
+  body: ReactNode;
+  cta: string;
+  onNext: () => void;
+  checklist?: LabeledChecklistItem[];
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      // Light veil on purpose — the user must SEE the app they are about to
+      // be guided through. z-40: above shell chrome (≤ z-30), below the z-50
+      // dialog/toast layer.
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-6 duration-200 animate-in fade-in-0"
+    >
+      <div className="flex w-full max-w-md flex-col items-center rounded-2xl border border-ink/5 bg-input p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.18)] duration-200 ease-out animate-in fade-in-0 zoom-in-95">
+        <HoustonLogo size={40} />
+        <h1 className="mt-4 text-2xl font-normal text-balance text-ink">
+          {title}
+        </h1>
+        <p className="mt-2 text-base text-balance text-ink-muted">{body}</p>
+        {checklist && checklist.length > 0 && (
+          <ul className="mt-7 w-full max-w-sm space-y-1 text-left">
+            {checklist.map((item) => (
+              <li
+                key={item.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2",
+                  // The item being worked on wears the highlight — the list
+                  // itself says where we are, so titles don't have to.
+                  item.state === "current" && "bg-chip",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                    item.state === "done"
+                      ? "bg-action text-action-text"
+                      : "border-[1.5px] border-line-input",
+                  )}
+                >
+                  {item.state === "done" && <Check className="h-3.5 w-3.5" />}
+                </span>
+                <span
+                  className={cn(
+                    "text-[15px]",
+                    item.state === "done" && "text-ink-muted",
+                    item.state === "current" && "font-medium text-ink",
+                    item.state === "todo" && "text-ink-muted",
+                  )}
+                >
+                  {item.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button
+          autoFocus
+          size="lg"
+          className="mt-8 rounded-full active:scale-[0.96]"
+          onClick={onNext}
+        >
+          {cta}
+        </Button>
+      </div>
+    </div>
+  );
+}

@@ -1,4 +1,95 @@
 {
+  "inApp": {
+    "welcomeTitle": "Welcome to Houston!",
+    "welcomeBody": "Before you start, set up the essentials below. <emph>Houston can't work without them.</emph> It takes 3 minutes.",
+    "continue": "Continue",
+    "steps": {
+      "connectAiIntro": {
+        "title": "Connect your AI",
+        "body": "Your agents need an AI to work. I'll show you where to connect it.",
+        "cta": "Show me"
+      },
+      "openAiHub": {
+        "title": "Click AI Models"
+      },
+      "connectAi": {
+        "title": "Pick the AI you already use.",
+        "hint": "Your agents will run on it",
+        "already": "You already have an AI connected."
+      },
+      "integrationsIntro": {
+        "title": "Connect your apps",
+        "body": "Your agents act through your apps, like email and calendar. I'll show you where.",
+        "cta": "Show me"
+      },
+      "openIntegrations": {
+        "title": "Click Integrations"
+      },
+      "connectIntegration": {
+        "title": "Connect your email.",
+        "hint": "Or any app you use every day",
+        "already": "You already have an app connected."
+      },
+      "integrationConnected": {
+        "title": "App connected!",
+        "body": "That's how easy it is. Your agents can reach 1000+ apps this way."
+      },
+      "createAgentIntro": {
+        "title": "Create your first agent",
+        "body": "Agents are teammates that take work off your plate. I'll show you where to create one.",
+        "cta": "Show me"
+      },
+      "createAgent": {
+        "title": "Click New agent",
+        "hint": "Give it a name you like",
+        "already": "You already have an agent."
+      },
+      "agentCreated": {
+        "title": "Agent created!",
+        "body": "It's getting itself set up right now. You can talk to it already."
+      },
+      "sendMissionIntro": {
+        "title": "Give it work",
+        "body": "You ask in plain words, and your agent gets to it. I'll show you where.",
+        "cta": "Show me"
+      },
+      "sendMission": {
+        "title": "Click New task",
+        "hint": "That's how you give agents work",
+        "typeTitle": "Tell it what you need.",
+        "typeHint": "In your own words, then send",
+        "emailHint": "Its first task is already written",
+        "sendTitle": "Just press send.",
+        "sendHint": "We wrote your agent's first task for you"
+      },
+      "missionSent": {
+        "title": "Task sent!",
+        "body": "Your agent is on it. That's the whole loop: you ask, it works.",
+        "cta": "Done"
+      },
+      "createAgentDialog": {
+        "pickTitle": "Click Create new",
+        "nameTitle": "Pick a color and give it a name.",
+        "nameHint": "Then click Create Agent"
+      },
+      "emailSending": {
+        "title": "Watch your agent work.",
+        "hint": "It's emailing you right now"
+      },
+      "emailSent": {
+        "title": "Check your inbox!",
+        "body": "Your agent just sent you a real email. That's it working for you, for real."
+      }
+    },
+    "skipStep": "Skip step",
+    "welcomeCta": "Start setup",
+    "checklist": {
+      "ai": "Connect your AI",
+      "apps": "Connect your apps",
+      "agent": "Create your agent",
+      "task": "Send its first task"
+    }
+  },
   "name": {
     "title": "Name your workspace",
     "description": "Workspaces keep your agents organized, one for personal, one for work, etc.",
@@ -18,7 +109,7 @@
   },
   "onboardingSegment": {
     "title": "What best describes your work?",
-    "subtitle": "Help us tailor Houston.",
+    "subtitle": "Your answers personalize your setup.",
     "options": {
       "marketing": "Marketing",
       "product": "Product",
@@ -66,7 +157,8 @@
     },
     "progress": {
       "label": "Step {{current}} of {{total}}"
-    }
+    },
+    "otherPlaceholder": "Tell us in a few words"
   },
   "tutorial": {
     "brand": "Houston",

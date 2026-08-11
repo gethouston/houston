@@ -1,4 +1,4 @@
-import { Textarea } from "@houston-ai/core";
+import { Input, Textarea } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type {
   OnboardingIndustry,
@@ -26,8 +26,10 @@ export function SurveyAnswer({
   segment,
   industry,
   goal,
+  otherText,
   onSegment,
   onIndustry,
+  onOther,
   onGoal,
   disabled,
   errorId,
@@ -37,8 +39,11 @@ export function SurveyAnswer({
   segment: OnboardingSegment | null;
   industry: OnboardingIndustry | null;
   goal: string;
+  /** The "Something else" free text for the on-screen closed question. */
+  otherText: string;
   onSegment: (id: OnboardingSegment) => void;
   onIndustry: (id: OnboardingIndustry) => void;
+  onOther: (value: string) => void;
   onGoal: (value: string) => void;
   disabled: boolean;
   /** The id of the live problem message, or null when there is none: it marks
@@ -47,25 +52,45 @@ export function SurveyAnswer({
 }) {
   const { t } = useTranslation("setup");
 
+  // "Something else" is a door, not an answer: picking it opens a field that
+  // captures what it stands for (Continue holds until it is filled).
+  const otherField = (
+    <Input
+      autoFocus
+      value={otherText}
+      onChange={(e) => onOther(e.target.value)}
+      disabled={disabled}
+      placeholder={t("onboardingSurvey.otherPlaceholder")}
+      aria-label={t("onboardingSurvey.otherPlaceholder")}
+      className="mt-4 w-full max-w-sm rounded-full text-center text-base md:text-base"
+    />
+  );
+
   if (step === "segment") {
     return (
-      <SurveyPillGrid
-        options={copy.segmentOptions}
-        selected={segment}
-        onSelect={onSegment}
-        disabled={disabled}
-      />
+      <div className="flex w-full flex-col items-center">
+        <SurveyPillGrid
+          options={copy.segmentOptions}
+          selected={segment}
+          onSelect={onSegment}
+          disabled={disabled}
+        />
+        {segment === "something_else" && otherField}
+      </div>
     );
   }
 
   if (step === "industry") {
     return (
-      <SurveyPillGrid
-        options={copy.industryOptions}
-        selected={industry}
-        onSelect={onIndustry}
-        disabled={disabled}
-      />
+      <div className="flex w-full flex-col items-center">
+        <SurveyPillGrid
+          options={copy.industryOptions}
+          selected={industry}
+          onSelect={onIndustry}
+          disabled={disabled}
+        />
+        {industry === "something_else" && otherField}
+      </div>
     );
   }
 

@@ -7,6 +7,7 @@ import { isMac } from "../../lib/platform";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { CommandPalette } from "../command-palette";
+import { InAppOnboarding } from "../onboarding/in-app-onboarding";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
@@ -46,6 +47,7 @@ export function WorkspaceShell({
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
   const uiTourActive = useUIStore((s) => s.uiTourActive);
+  const inAppOnboardingActive = useUIStore((s) => s.inAppOnboardingActive);
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
   );
@@ -75,6 +77,9 @@ export function WorkspaceShell({
           // h-dvh (not h-screen) so mobile browser chrome (the collapsing URL
           // bar) never pushes the composer below the visible viewport.
           "flex h-dvh flex-col bg-transparent text-ink",
+          // The guided tour is passive, so it inerts the whole shell. The
+          // in-app onboarding is the opposite — the user must click the real
+          // controls — so its overlay does its own selective blocking.
           uiTourActive && "pointer-events-none [&_*]:select-none",
         )}
       >
@@ -140,6 +145,7 @@ export function WorkspaceShell({
         <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
       </div>
       {uiTourActive && <WorkspaceTourOverlay />}
+      {inAppOnboardingActive && <InAppOnboarding />}
     </DetailPanelProvider>
   );
 }

@@ -178,17 +178,21 @@ export function CreateAgentDialog() {
     // Auto-start the agent's self-setup mission in the normal shell: it
     // introduces itself and interviews the user, persisting what they say into
     // instructions / Skills / Routines. Fire-and-forget so it runs regardless
-    // of what happens to the dialog next.
-    void startAgentSetupMission(
-      {
-        id: created.id,
-        name: created.name,
-        color: created.color,
-        folderPath: agentPath,
-      },
-      kickoffPin,
-      "created",
-    );
+    // of what happens to the dialog next. NOT during the in-app onboarding:
+    // there the user's own guided New-task send must be the agent's FIRST
+    // mission, so the tutorial-created agent starts quiet.
+    if (!useUIStore.getState().inAppOnboardingActive) {
+      void startAgentSetupMission(
+        {
+          id: created.id,
+          name: created.name,
+          color: created.color,
+          folderPath: agentPath,
+        },
+        kickoffPin,
+        "created",
+      );
+    }
     handleClose();
   };
 

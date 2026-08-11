@@ -14,11 +14,17 @@ export const ONBOARDING_SURVEY_VERSION = 2;
  *  gateway counts (Go runes). Counting UTF-16 units instead would refuse an
  *  emoji answer the server accepts. */
 export const ONBOARDING_GOAL_MAX_LENGTH = 2000;
+/** Max length of a "Something else" free-text answer, in code points. */
+export const ONBOARDING_OTHER_MAX_LENGTH = 200;
 
 export interface OnboardingSurveyPreference {
   version: typeof ONBOARDING_SURVEY_VERSION;
   segment: OnboardingSegmentChoice | null;
+  /** What "Something else" stands for, in the user's words — captured with the
+   *  pick, null for every named segment. */
+  segmentOther: string | null;
   industry: OnboardingIndustryChoice | null;
+  industryOther: string | null;
   automationGoal: string | null;
   goalSkipped: boolean;
   completionPromptDismissed: boolean;
@@ -33,6 +39,19 @@ export function isValidAutomationGoal(value: unknown): value is string {
   // gateway and two UTF-16 units here, and the two counts must agree.
   const length = [...value.trim()].length;
   return length > 0 && length <= ONBOARDING_GOAL_MAX_LENGTH;
+}
+
+export function isValidOtherText(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const length = [...value.trim()].length;
+  return length > 0 && length <= ONBOARDING_OTHER_MAX_LENGTH;
+}
+
+/** The "other" fields parse LENIENTLY (absent or malformed → null): records
+ *  written before the fields existed must keep parsing, and a mangled label
+ *  is not worth re-asking three answered questions for. */
+function otherTextOrNull(value: unknown): string | null {
+  return isValidOtherText(value) ? value.trim() : null;
 }
 
 function isIsoTimestamp(value: unknown): value is string {
@@ -78,7 +97,9 @@ export function parseOnboardingSurveyPreference(
   return {
     version: ONBOARDING_SURVEY_VERSION,
     segment: record.segment,
+    segmentOther: otherTextOrNull(record.segmentOther),
     industry: record.industry,
+    industryOther: otherTextOrNull(record.industryOther),
     automationGoal: record.automationGoal?.trim() ?? null,
     goalSkipped: record.goalSkipped,
     completionPromptDismissed: record.completionPromptDismissed,
@@ -97,7 +118,9 @@ export function createOnboardingSurveyPreference(): OnboardingSurveyPreference {
   return {
     version: ONBOARDING_SURVEY_VERSION,
     segment: null,
+    segmentOther: null,
     industry: null,
+    industryOther: null,
     automationGoal: null,
     goalSkipped: false,
     completionPromptDismissed: false,
@@ -118,7 +141,9 @@ export function sameSurveyAnswers(
 ): boolean {
   return (
     a.segment === b.segment &&
+    a.segmentOther === b.segmentOther &&
     a.industry === b.industry &&
+    a.industryOther === b.industryOther &&
     a.automationGoal === b.automationGoal &&
     a.goalSkipped === b.goalSkipped
   );

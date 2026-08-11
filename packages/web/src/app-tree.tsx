@@ -10,14 +10,13 @@
  *
  * Boot order matches the desktop entry:
  *   QueryClientProvider > ErrorBoundary > TooltipProvider > EngineGate >
- *   I18nextProvider > LanguageGate > DisclaimerGate > App
+ *   I18nextProvider > LanguageGate > App (sign-in, then the agreement gate)
  * EXCEPT on the cloud web build (identity configured), where the first-run
  * language/agreement gates are skipped: sign-in is the first screen, and the
  * account's stored locale applies after auth (see AppTree below, HOU-1014).
  */
 
 import { AgentFilePreviewHost } from "@houston/app/components/agent-file-preview-host";
-import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
@@ -216,9 +215,9 @@ export default function AppTree() {
                     {app}
                   </>
                 ) : (
-                  <LanguageGate>
-                    <DisclaimerGate>{app}</DisclaimerGate>
-                  </LanguageGate>
+                  // The agreement gate (DisclaimerGate) renders inside App,
+                  // after sign-in — mirrors app/src/main.tsx.
+                  <LanguageGate>{app}</LanguageGate>
                 )}
               </I18nextProvider>
             </QueryPersistenceProvider>

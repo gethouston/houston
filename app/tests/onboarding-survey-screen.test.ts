@@ -183,8 +183,8 @@ describe("survey screen wiring", () => {
     assert.match(footer, /disabled=\{!canContinue \|\| saving\}/);
   });
 
-  it("keeps the first-run escape hatch below the card", () => {
-    assert.match(screen, /<SkipOnboardingButton onSkip=\{onDismiss\} \/>/);
+  it("renders no first-run escape hatch — the questions are mandatory", () => {
+    assert.doesNotMatch(screen, /SkipOnboardingButton/);
   });
 
   it("offers no per-question skip on the goal step", () => {

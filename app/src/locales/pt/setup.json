@@ -1,4 +1,95 @@
 {
+  "inApp": {
+    "welcomeTitle": "Boas-vindas ao Houston!",
+    "welcomeBody": "Antes de começar, configure o essencial. <emph>O Houston não funciona sem isso.</emph> Leva 3 minutos.",
+    "continue": "Continuar",
+    "steps": {
+      "connectAiIntro": {
+        "title": "Conecte sua IA",
+        "body": "Seus agentes precisam de uma IA para trabalhar. Vou mostrar onde conectá-la.",
+        "cta": "Me mostre"
+      },
+      "openAiHub": {
+        "title": "Clique em Modelos de IA"
+      },
+      "connectAi": {
+        "title": "Escolha a IA que você já usa.",
+        "hint": "Seus agentes vão funcionar com ela",
+        "already": "Você já tem uma IA conectada."
+      },
+      "integrationsIntro": {
+        "title": "Conecte seus apps",
+        "body": "Seus agentes agem através dos seus apps, como e-mail e calendário. Vou mostrar onde.",
+        "cta": "Me mostre"
+      },
+      "openIntegrations": {
+        "title": "Clique em Integrações"
+      },
+      "connectIntegration": {
+        "title": "Conecte seu e-mail.",
+        "hint": "Ou qualquer app que você usa todo dia",
+        "already": "Você já tem um app conectado."
+      },
+      "integrationConnected": {
+        "title": "App conectado!",
+        "body": "Fácil assim. Seus agentes podem acessar mais de 1000 apps desse jeito."
+      },
+      "createAgentIntro": {
+        "title": "Crie seu primeiro agente",
+        "body": "Agentes são colegas que tiram trabalho das suas mãos. Vou mostrar onde criar um.",
+        "cta": "Me mostre"
+      },
+      "createAgent": {
+        "title": "Clique em Novo agente",
+        "hint": "Dê o nome que você quiser",
+        "already": "Você já tem um agente."
+      },
+      "agentCreated": {
+        "title": "Agente criado!",
+        "body": "Ele está se configurando sozinho agora. Você já pode falar com ele."
+      },
+      "sendMissionIntro": {
+        "title": "Dê trabalho a ele",
+        "body": "Você pede com suas palavras e seu agente começa a trabalhar. Vou mostrar onde.",
+        "cta": "Me mostre"
+      },
+      "sendMission": {
+        "title": "Clique em Nova tarefa",
+        "hint": "É assim que você dá trabalho aos agentes",
+        "typeTitle": "Diga o que você precisa.",
+        "typeHint": "Com suas palavras, e envie",
+        "emailHint": "A primeira tarefa dele já está escrita",
+        "sendTitle": "É só apertar enviar.",
+        "sendHint": "Escrevemos a primeira tarefa do seu agente por você"
+      },
+      "missionSent": {
+        "title": "Tarefa enviada!",
+        "body": "Seu agente já está nisso. Esse é o ciclo completo: você pede, ele trabalha.",
+        "cta": "Pronto"
+      },
+      "createAgentDialog": {
+        "pickTitle": "Clique em Criar novo",
+        "nameTitle": "Escolha uma cor e dê um nome.",
+        "nameHint": "Depois clique em Criar agente"
+      },
+      "emailSending": {
+        "title": "Veja seu agente trabalhar.",
+        "hint": "Ele está enviando um e-mail para você agora"
+      },
+      "emailSent": {
+        "title": "Confira seu e-mail!",
+        "body": "Seu agente acabou de enviar um e-mail de verdade para você. É assim que ele trabalha por você."
+      }
+    },
+    "skipStep": "Pular etapa",
+    "welcomeCta": "Começar configuração",
+    "checklist": {
+      "ai": "Conecte sua IA",
+      "apps": "Conecte seus apps",
+      "agent": "Crie seu agente",
+      "task": "Envie a primeira tarefa"
+    }
+  },
   "name": {
     "title": "Dê um nome ao seu espaço de trabalho",
     "description": "Espaços de trabalho mantêm seus agentes organizados: um pessoal, um do trabalho, etc.",
@@ -18,7 +109,7 @@
   },
   "onboardingSegment": {
     "title": "Qual descreve melhor o seu trabalho?",
-    "subtitle": "Personalize o Houston agora.",
+    "subtitle": "Suas respostas personalizam sua configuração.",
     "options": {
       "marketing": "Marketing",
       "product": "Produto",
@@ -66,7 +157,8 @@
     },
     "progress": {
       "label": "Etapa {{current}} de {{total}}"
-    }
+    },
+    "otherPlaceholder": "Conte em poucas palavras"
   },
   "tutorial": {
     "brand": "Houston",

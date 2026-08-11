@@ -5,37 +5,13 @@ import {
   isOnboardingIndustry,
   isOnboardingSegment,
   isValidAutomationGoal,
+  isValidOtherText,
   type OnboardingIndustry,
   type OnboardingSegment,
 } from "../../lib/onboarding-survey";
 import { createSurveyAnalytics } from "./survey-analytics";
-import {
-  type OnboardingSurveyMode,
-  type OnboardingSurveyStep,
-  surveyStepPlan,
-} from "./survey-steps";
-
-export interface SurveyFlow {
-  /** The question on screen; `undefined` once the plan is exhausted. */
-  step: OnboardingSurveyStep | undefined;
-  plan: readonly OnboardingSurveyStep[];
-  index: number;
-  segment: OnboardingSegment | null;
-  industry: OnboardingIndustry | null;
-  goal: string;
-  saving: boolean;
-  error: string | null;
-  /** The typed goal is past the accepted length — a validation state the
-   *  screen shows, never a silent drop on save. */
-  goalTooLong: boolean;
-  canContinue: boolean;
-  canGoBack: boolean;
-  chooseSegment: (id: OnboardingSegment) => void;
-  chooseIndustry: (id: OnboardingIndustry) => void;
-  writeGoal: (value: string) => void;
-  submit: () => void;
-  back: () => void;
-}
+import type { SurveyFlow } from "./survey-flow-types";
+import { type OnboardingSurveyMode, surveyStepPlan } from "./survey-steps";
 
 /**
  * The survey's state machine: which question is showing, what has been picked,
@@ -70,6 +46,14 @@ export function useSurveyFlow(
     answers && isOnboardingIndustry(answers.industry) ? answers.industry : null,
   );
   const [goal, setGoal] = useState(() => answers?.automationGoal ?? "");
+  // One free-text label per closed question, kept apart so Back preserves
+  // both. Seeded from the record for a re-opened survey.
+  const [segmentOther, setSegmentOther] = useState(
+    () => answers?.segmentOther ?? "",
+  );
+  const [industryOther, setIndustryOther] = useState(
+    () => answers?.industryOther ?? "",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,11 +106,21 @@ export function useSurveyFlow(
     }
   };
 
+  // "Something else" is an answer only WITH its label: the pick alone reads
+  // as dodging the question this survey deliberately requires.
+  const segmentReady =
+    segment !== null &&
+    (segment !== "something_else" || isValidOtherText(segmentOther));
+  const industryReady =
+    industry !== null &&
+    (industry !== "something_else" || isValidOtherText(industryOther));
+
   return {
     step,
     plan,
     index,
     segment,
+    otherText: step === "industry" ? industryOther : segmentOther,
     industry,
     goal,
     saving,
@@ -134,9 +128,9 @@ export function useSurveyFlow(
     goalTooLong,
     canContinue:
       step === "segment"
-        ? segment !== null
+        ? segmentReady
         : step === "industry"
-          ? industry !== null
+          ? industryReady
           : goalValid,
     canGoBack: index > 0,
     chooseSegment: (id) => {
@@ -152,19 +146,27 @@ export function useSurveyFlow(
     // Editing clears a previous SAVE failure, exactly as picking a pill does:
     // it belongs to the attempt the user has now moved on from, and leaving it
     // up would stack it under a live validation problem.
+    writeOther: (value) => {
+      if (step === "industry") setIndustryOther(value);
+      else setSegmentOther(value);
+      setError(null);
+    },
     writeGoal: (value) => {
       setGoal(value);
       setError(null);
     },
     submit: () => {
-      if (step === "segment" && segment) {
+      if (step === "segment" && segment && segmentReady) {
+        const other = segment === "something_else" ? segmentOther.trim() : null;
         void save(
-          () => survey.saveSegment(segment),
+          () => survey.saveSegment(segment, other),
           () => track.segmentContinued(segment),
         );
-      } else if (step === "industry" && industry) {
+      } else if (step === "industry" && industry && industryReady) {
+        const other =
+          industry === "something_else" ? industryOther.trim() : null;
         void save(
-          () => survey.saveIndustry(industry),
+          () => survey.saveIndustry(industry, other),
           () => track.industryContinued(industry),
         );
       } else if (step === "goal" && goalValid) {

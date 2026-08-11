@@ -7,7 +7,6 @@ import { IdentityKeyedApp } from "./identity-keyed-app";
 import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
 import { AgentFilePreviewHost } from "./components/agent-file-preview-host";
-import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { QueryPersistenceProvider } from "./components/shell/query-persistence-provider";
@@ -115,8 +114,9 @@ class ErrorBoundary extends Component<
 }
 
 /**
- * Install-lifecycle + theme bootstrap, mounted ABOVE the language/disclaimer
- * gates. Emits `install_created` and runs `posthog.identify(install_id)` BEFORE
+ * Install-lifecycle + theme bootstrap, mounted ABOVE the language gate (and
+ * the agreement gate inside App). Emits `install_created` and runs
+ * `posthog.identify(install_id)` BEFORE
  * any `onboarding_*` event so the sequential acquisition→activation funnel
  * (keyed on `install_created` as step 1) doesn't break at step 2. The gates
  * short-circuit `<App/>` on a fresh install, so analytics.init() can't live in
@@ -166,13 +166,13 @@ createRoot(rootElement).render(
             <EngineGate>
               <QueryPersistenceProvider>
                 <LanguageGate>
-                  <DisclaimerGate>
-                    <IdentityKeyedApp />
-                    {/* Global workspace-file preview (chat file clicks) — a
-                        sibling of App so it overlays every screen, onboarding
-                        included. Mirrored in packages/web/src/app-tree.tsx. */}
-                    <AgentFilePreviewHost />
-                  </DisclaimerGate>
+                  {/* The agreement gate (DisclaimerGate) renders inside App,
+                      AFTER sign-in: language → sign-in → agreement → survey. */}
+                  <IdentityKeyedApp />
+                  {/* Global workspace-file preview (chat file clicks) — a
+                      sibling of App so it overlays every screen, onboarding
+                      included. Mirrored in packages/web/src/app-tree.tsx. */}
+                  <AgentFilePreviewHost />
                 </LanguageGate>
               </QueryPersistenceProvider>
             </EngineGate>

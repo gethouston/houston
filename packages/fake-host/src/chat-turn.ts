@@ -44,13 +44,30 @@ export function setNextInteraction(pi: PendingInteraction | null): void {
   nextInteraction = pi;
 }
 
-/** Reset the per-delta delay + armed interaction (test reset). */
+/**
+ * Arm the NEXT scripted turn to reply with this exact text instead of the
+ * echo — how a spec makes "the agent said X" happen (e.g. the in-app
+ * onboarding's email-sent completion marker). One-shot: consumed by the next
+ * turn. `null` disarms.
+ */
+let nextReplyText: string | null = null;
+export function setNextReplyText(text: string | null): void {
+  nextReplyText = text;
+}
+
+/** Reset the per-delta delay + armed one-shots (test reset). */
 export function resetReplyDelay(): void {
   replyDelayMs = DEFAULT_REPLY_DELAY_MS;
   nextInteraction = null;
+  nextReplyText = null;
 }
 
 function cannedReply(userText: string): string {
+  if (nextReplyText !== null) {
+    const reply = nextReplyText;
+    nextReplyText = null;
+    return reply;
+  }
   if (/markdown/i.test(userText)) return MARKDOWN_SHOWCASE;
   return `Roger that. You said: "${userText}"`;
 }

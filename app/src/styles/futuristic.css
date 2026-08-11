@@ -103,3 +103,59 @@
     opacity: 0;
   }
 }
+
+/* ---- In-app onboarding click cues --------------------------------------
+   (tutorial-spotlight.tsx)
+
+   The two cues that say "here, CLICK" on a spotlighted control: a sonar
+   ping radiating off the ring, and a cursor glyph tapping at the target.
+   Effect values live here untokenized on purpose, same rule as the aurora
+   in canvas.css. */
+
+/* Radiates outward from the spotlight ring and fades — "look HERE". */
+.ht-tutorial-ping {
+  animation: ht-tutorial-ping 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes ht-tutorial-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  75%,
+  100% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+
+/* A small cursor glyph pressing at the target's corner — "and CLICK". */
+.ht-tutorial-cursor {
+  animation: ht-tutorial-cursor 1.6s ease-in-out infinite;
+}
+
+@keyframes ht-tutorial-cursor {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  35% {
+    transform: translate(-3px, -3px) scale(1);
+  }
+  50% {
+    transform: translate(0, 0) scale(0.88);
+  }
+  65% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ht-tutorial-ping,
+  .ht-tutorial-cursor {
+    animation: none;
+  }
+  .ht-tutorial-ping {
+    opacity: 0;
+  }
+}

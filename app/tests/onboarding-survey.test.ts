@@ -231,7 +231,9 @@ describe("onboarding survey updates", () => {
       {
         version: ONBOARDING_SURVEY_VERSION,
         segment: null,
+        segmentOther: null,
         industry: null,
+        industryOther: null,
         automationGoal: null,
         goalSkipped: false,
         completionPromptDismissed: false,
@@ -296,7 +298,9 @@ describe("onboarding survey legacy lift", () => {
     deepStrictEqual(liftLegacySegmentPreference(legacy), {
       version: ONBOARDING_SURVEY_VERSION,
       segment: "operations",
+      segmentOther: null,
       industry: null,
+      industryOther: null,
       automationGoal: null,
       goalSkipped: false,
       completionPromptDismissed: false,

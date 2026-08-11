@@ -7,7 +7,6 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { openPalette } from "./support/palette";
 import { litRows, rail, screen } from "./support/team-nav";
-import { startGuidedTour } from "./support/tour-nav";
 
 /**
  * The destination map, driven end to end.
@@ -29,45 +28,6 @@ import { startGuidedTour } from "./support/tour-nav";
 function teamRow(page: Page) {
   return rail(page).locator("[data-sidebar-default-header]");
 }
-
-test("the guided tour ends on the team's Routines, where the seeded routine is", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
-
-  // The tour's one entry point: "Guide me", behind the help control in the
-  // rail's footer. It lands the user on home before arming, so every anchor the
-  // overlay spotlights is on screen.
-  await startGuidedTour(page);
-
-  // Walk the whole thing. Every step OPENS its destination and spotlights a
-  // real anchor, so a step whose surface or anchor moved (the team section rows
-  // are addressed by a composed `teamId:section` selector) stalls the counter
-  // here instead of shipping as a dead spotlight.
-  const total = Number(
-    /Tour 1 of (\d+)/.exec(
-      (await page.getByText(/Tour 1 of/).textContent()) ?? "",
-    )?.[1],
-  );
-  expect(total).toBeGreaterThan(5);
-  for (let step = 1; step < total; step++) {
-    await expect(page.getByText(`Tour ${step} of ${total}`)).toBeVisible();
-    await page.getByRole("button", { name: "Next" }).click();
-  }
-  await expect(page.getByText(`Tour ${total} of ${total}`)).toBeVisible();
-
-  // Finishing ends it on the onboarding payoff: the team's Routines section,
-  // not an agent tab, which no longer exists.
-  await page.getByRole("button", { name: "I'll do something amazing" }).click();
-  await expect(page.getByText(/Tour \d+ of/)).toHaveCount(0);
-
-  // The rail says which TEAM is open; the screen says which of its sections.
-  await expect(litRows(teamRow(page))).toHaveCount(1);
-  await expect(
-    screen(page).getByRole("button", { name: "New routine" }).first(),
-  ).toBeVisible();
-});
 
 test("the command palette's agent jump opens that agent's team board", async ({
   page,

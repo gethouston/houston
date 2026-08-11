@@ -1,6 +1,7 @@
 import { Plus, Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
+import { tutorialAnchor } from "../onboarding/tutorial-targets.ts";
 import { STORE_VIEW_ID } from "../store-view";
 import { CreateChoiceTile } from "./create-choice-tile";
 
@@ -21,12 +22,17 @@ export function AgentPickerStep({ onCreateBlank }: AgentPickerStepProps) {
   const { t } = useTranslation("shell");
   const setCreateOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  // The in-app onboarding teaches ONE path: while it runs, "Create new" is
+  // the only live tile — the store detour would drop the user out of the
+  // dialog mid-lesson.
+  const tutorialActive = useUIStore((s) => s.inAppOnboardingActive);
 
   return (
     <div className="grid grid-cols-2 gap-3 px-6 pb-6 pt-1">
       <CreateChoiceTile
         icon={Store}
         title={t("newAgent.storeCard")}
+        disabled={tutorialActive}
         onClick={() => {
           setCreateOpen(false);
           setViewMode(STORE_VIEW_ID);
@@ -36,6 +42,7 @@ export function AgentPickerStep({ onCreateBlank }: AgentPickerStepProps) {
         icon={Plus}
         title={t("newAgent.createCard")}
         onClick={onCreateBlank}
+        dataAttrs={tutorialAnchor("createAgentBlankTile")}
       />
     </div>
   );

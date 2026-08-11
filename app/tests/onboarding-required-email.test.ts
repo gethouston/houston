@@ -61,13 +61,12 @@ describe("required onboarding role selection", () => {
     const locales = ["en", "es", "pt"] as const;
 
     // The role question itself stays required: no in-card helper or
-    // per-question skip copy. NO question carries a skip of its own any more,
-    // the free-text goal included; the only exit is the global
-    // bottom-of-screen SkipOnboardingButton escape hatch, which leaves ALL of
-    // onboarding (covered in onboarding-escape-hatch.test.ts).
+    // per-question skip copy. NO question carries a skip of its own, the
+    // free-text goal included — and the survey as a whole is mandatory too
+    // (no global escape hatch; covered in onboarding-escape-hatch.test.ts).
     assert.doesNotMatch(copy, /onboardingSegment\.(?:helper|skip)/);
     assert.doesNotMatch(screen, /onSkipQuestion|skipGoal/);
-    assert.match(screen, /<SkipOnboardingButton onSkip=\{onDismiss\} \/>/);
+    assert.doesNotMatch(screen, /SkipOnboardingButton/);
 
     for (const locale of locales) {
       const setup = JSON.parse(read(`../src/locales/${locale}/setup.json`)) as {

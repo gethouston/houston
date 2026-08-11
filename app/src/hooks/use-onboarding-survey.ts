@@ -44,8 +44,14 @@ export interface OnboardingSurveyState {
   industryAnswered: boolean;
   goalAnswered: boolean;
   needsCompletionPrompt: boolean;
-  saveSegment: (segment: OnboardingSegmentChoice) => Promise<void>;
-  saveIndustry: (industry: OnboardingIndustryChoice) => Promise<void>;
+  saveSegment: (
+    segment: OnboardingSegmentChoice,
+    other?: string | null,
+  ) => Promise<void>;
+  saveIndustry: (
+    industry: OnboardingIndustryChoice,
+    other?: string | null,
+  ) => Promise<void>;
   /** `null` records the skip. A goal outside the accepted length throws — the
    *  UI blocks it long before this, and a caller bug must not vanish. */
   saveGoal: (text: string | null) => Promise<void>;
@@ -110,14 +116,14 @@ export function useOnboardingSurvey(): OnboardingSurveyState {
   );
 
   const saveSegment = useCallback(
-    (segment: OnboardingSegmentChoice) =>
-      save((p) => applySegment(p, segment), true),
+    (segment: OnboardingSegmentChoice, other: string | null = null) =>
+      save((p) => applySegment(p, segment, other), true),
     [save],
   );
 
   const saveIndustry = useCallback(
-    (industry: OnboardingIndustryChoice) =>
-      save((p) => applyIndustry(p, industry), true),
+    (industry: OnboardingIndustryChoice, other: string | null = null) =>
+      save((p) => applyIndustry(p, industry, other), true),
     [save],
   );
 
