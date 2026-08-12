@@ -621,3 +621,113 @@ test("an expiring anthropic credential whose refresh fails degrades to marked 40
   expect(r.out.status).toBe(404);
   expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
 });
+
+test("a short-but-live anthropic token is served, not refused (deploy-order independence)", async () => {
+  // Until every gateway rolls the 10-minute ServeSkew, a healthy token can
+  // arrive with 5-6 minutes left. The marked 404 is an authoritative
+  // disconnect (the runtime deletes its served entry AND the ghost file,
+  // PRODUCT-1323) — refusing a live token would flap anthropic org-wide once
+  // per token lifetime. The stale refusal keys on the DEFAULT margin; the
+  // 6-minute margin only drives the refresh attempt above it.
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "anthropic",
+    accessToken: "sk-ant-oat01-shortlive",
+    refreshToken: "", // access-only: the gateway is the only refresher
+    expiresAt: Date.now() + 5.5 * 60 * 1000,
+    kind: "oauth",
+  });
+  const r = mockRes();
+  expect(
+    await call(credentials, "anthropic", r, { gatewayFronted: true }),
+  ).toBe(true);
+  expect(r.out.status).toBe(200);
+  expect(r.out.body.access).toBe("sk-ant-oat01-shortlive");
+});
+
+test("a token below pi's five-minute validity floor is refreshed at serve time (PRODUCT-1317)", async () => {
+  // pi refreshes any stored OAuth entry within 5 minutes of expiry, and a
+  // served entry has refresh:"" — so a token served with less than the floor
+  // is born inside pi's refresh window. The old 2-minute default skew served
+  // exactly such tokens; the serve margin must stay above pi's floor.
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "AT-four-minutes",
+    refreshToken: "rt.live",
+    expiresAt: Date.now() + 4 * 60_000, // fine for the old skew, inside pi's window
+  });
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        access_token: "AT-rotated",
+        refresh_token: "rt.rotated",
+        expires_in: 3600,
+      }),
+      { status: 200 },
+    )) as typeof fetch;
+  try {
+    const r = mockRes();
+    expect(await call(credentials, "openai-codex", r)).toBe(true);
+    expect(r.out.status).toBe(200);
+    expect(r.out.body.access).toBe("AT-rotated");
+    // The served token clears pi's floor with room to spare.
+    expect(r.out.body.expires).toBeGreaterThan(Date.now() + 30 * 60_000);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("a healthy long-lived token is served as-is, no token-endpoint call", async () => {
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "AT-healthy",
+    refreshToken: "rt.live",
+    expiresAt: FRESH_EXPIRES,
+  });
+  const realFetch = globalThis.fetch;
+  let exchanges = 0;
+  globalThis.fetch = (async () => {
+    exchanges++;
+    throw new Error("no refresh expected");
+  }) as typeof fetch;
+  try {
+    const r = mockRes();
+    expect(await call(credentials, "openai-codex", r)).toBe(true);
+    expect(r.out.status).toBe(200);
+    expect(r.out.body.access).toBe("AT-healthy");
+    expect(exchanges).toBe(0);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("an anthropic token below pi's floor is still served while live (guard owns the window)", async () => {
+  // A 4-minute anthropic token sits inside pi's 5-minute refresh window — but
+  // the RUNTIME's empty-refresh guard (PRODUCT-1317) is what keeps pi from
+  // POSTing an empty refresh for it, and the token still runs the in-flight
+  // turn. Refusing it here would be an authoritative marked 404: the runtime
+  // deletes its served entry and the ghost file (PRODUCT-1323) — an org-wide
+  // anthropic flap whenever a gateway couldn't refresh in time. Only a token
+  // past the DEFAULT stale margin is refused (see the stale tests above).
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "anthropic",
+    accessToken: "sk-ant-oat01-four-minutes",
+    refreshToken: "",
+    expiresAt: Date.now() + 4 * 60_000,
+    kind: "oauth",
+  });
+  const r = mockRes();
+  expect(
+    await call(credentials, "anthropic", r, { gatewayFronted: true }),
+  ).toBe(true);
+  expect(r.out.status).toBe(200);
+  expect(r.out.body.access).toBe("sk-ant-oat01-four-minutes");
+});
