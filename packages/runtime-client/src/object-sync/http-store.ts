@@ -1,27 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir, rename, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-import {
-  isObjectMetadata,
-  type ObjectMetadata,
-  parseObjectManifest,
-} from "./object-manifest";
-import { type ObjectStore, ObjectTooLargeError } from "./object-store";
+import { objectStoreResponseError } from "./http-store-errors";
+import { uploadFile } from "./http-store-upload";
+import { type ObjectMetadata, parseObjectManifest } from "./object-manifest";
+import type { ObjectStore, WriteOptions, WriteResult } from "./object-store";
 import { type FetchRetryOptions, fetchWithRetry } from "./retry";
 
-/**
- * Files at or above this size PUT as a stream from disk instead of a single
- * in-heap Buffer — an agent-rendered multi-GiB video must never materialize in
- * the host process's memory (the pod's limit is a fraction of that). Below it,
- * the buffered path stays: the delta sync's bread and butter is many small
- * files, where one read beats stream setup and keeps the body trivially
- * reusable across retries.
- */
-export const STREAM_UPLOAD_THRESHOLD_BYTES = 16 * 1024 * 1024;
+export { STREAM_UPLOAD_THRESHOLD_BYTES } from "./http-store-upload";
 
 export interface HttpObjectStoreOptions {
   /** Full agent-scoped base URL ending in `/v1/pod/store/<org>/<agent>`. */
@@ -32,19 +22,20 @@ export interface HttpObjectStoreOptions {
   fetchImpl?: typeof fetch;
   /** One delay per retry of a transient failure; override to speed up tests. */
   retryDelaysMs?: number[];
+  /** Stable for this engine boot and sent only after a fencing token is seen. */
+  bootId?: string;
+  /** Mutable lease token shared by every agent-prefix request in this boot. */
+  fence?: { token?: string };
 }
 
-/**
- * Agent-scoped remote object adapter for managed engine pods. The gateway owns
- * tenancy and authorization; this adapter preserves agent-relative keys and
- * makes downloads atomic so a failed hydration cannot leave a partial cache.
- */
 export class HttpObjectStore implements ObjectStore {
   private readonly baseUrl: string;
   private readonly token: string;
   private readonly agentSlug: string | undefined;
   private readonly fetchImpl: typeof fetch;
   private readonly retryDelaysMs: number[] | undefined;
+  private readonly bootId: string | undefined;
+  private readonly fence: { token?: string } | undefined;
 
   constructor(opts: HttpObjectStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
@@ -52,6 +43,13 @@ export class HttpObjectStore implements ObjectStore {
     this.agentSlug = opts.agentSlug;
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.retryDelaysMs = opts.retryDelaysMs;
+    this.bootId = opts.bootId;
+    this.fence = opts.fence;
+    if (Boolean(this.bootId) !== Boolean(this.fence)) {
+      throw new Error(
+        "object store bootId and fence must be configured together",
+      );
+    }
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -63,7 +61,8 @@ export class HttpObjectStore implements ObjectStore {
     const res = await this.fetch(`${this.baseUrl}/manifest${query}`, {
       headers: this.authHeaders(),
     });
-    if (!res.ok) throw await this.responseError(res, "GET", "manifest");
+    this.captureFence(res);
+    if (!res.ok) throw await objectStoreResponseError(res, "GET", "manifest");
     return parseObjectManifest(
       await res.json(),
       "object store GET manifest",
@@ -74,7 +73,8 @@ export class HttpObjectStore implements ObjectStore {
     const res = await this.fetch(this.objectUrl(key), {
       headers: this.authHeaders(),
     });
-    if (!res.ok) throw await this.responseError(res, "GET", key);
+    this.captureFence(res);
+    if (!res.ok) throw await objectStoreResponseError(res, "GET", key);
     if (!res.body) {
       throw new Error(`object store GET ${key} returned no response body`);
     }
@@ -93,59 +93,66 @@ export class HttpObjectStore implements ObjectStore {
     }
   }
 
-  async upload(srcFile: string, key: string): Promise<void> {
-    const { size } = await stat(srcFile);
+  async upload(
+    srcFile: string,
+    key: string,
+    opts?: WriteOptions,
+    // biome-ignore lint/suspicious/noConfusingVoidType: ObjectStore preserves void-returning adapters.
+  ): Promise<WriteResult | void> {
     const url = this.objectUrl(key);
-    // Large files stream from disk per attempt (a consumed stream cannot be
-    // re-sent, so the retry layer opens a fresh one). No content-length header:
-    // a stream body goes chunked, and the store's GCS writer already picks its
-    // default resumable chunking for unsized bodies — exactly right for files
-    // this size. The gateway's MaxBytesReader still enforces the object cap.
-    const res =
-      size >= STREAM_UPLOAD_THRESHOLD_BYTES
-        ? await this.fetch(
-            url,
-            {
-              method: "PUT",
-              headers: this.authHeaders(),
-              duplex: "half",
-            } as RequestInit,
-            {
-              body: () =>
-                Readable.toWeb(createReadStream(srcFile)) as ReadableStream,
-            },
-          )
-        : await this.fetch(url, {
-            method: "PUT",
-            headers: this.authHeaders(),
-            body: await readFile(srcFile),
-          });
-    if (!res.ok) throw await this.responseError(res, "PUT", key);
+    const headers = this.writeHeaders(opts);
+    // A guarded write is not safe to replay after a lost response: the first
+    // attempt may have committed, making the retry fail its own generation.
+    const retryable = !this.guardedWrite(opts);
+    const res = await uploadFile(
+      this.fetch.bind(this),
+      url,
+      srcFile,
+      headers,
+      retryable,
+    );
+    this.captureFence(res);
+    if (!res.ok) throw await objectStoreResponseError(res, "PUT", key);
     const body: unknown = await res.json();
-    if (!isObjectMetadata(body)) {
+    const metadata = parseObjectManifest(
+      { objects: [body] },
+      `object store PUT ${key}`,
+    )[0];
+    if (!metadata) {
       throw new Error(`object store PUT ${key} returned a malformed body`);
     }
+    const generation =
+      metadata.generation ??
+      res.headers.get("X-Houston-Generation") ??
+      undefined;
+    return generation === undefined ? undefined : { generation };
   }
 
-  async delete(key: string): Promise<void> {
-    const res = await this.fetch(this.objectUrl(key), {
-      method: "DELETE",
-      headers: this.authHeaders(),
-    });
+  async delete(key: string, opts?: WriteOptions): Promise<void> {
+    // As with PUT, a guarded DELETE may have committed despite a lost response.
+    const res = await this.fetch(
+      this.objectUrl(key),
+      {
+        method: "DELETE",
+        headers: this.writeHeaders(opts),
+      },
+      { retryable: !this.guardedWrite(opts) },
+    );
+    this.captureFence(res);
     if (!res.ok && res.status !== 404) {
-      throw await this.responseError(res, "DELETE", key);
+      throw await objectStoreResponseError(res, "DELETE", key);
     }
   }
 
   /**
-   * All four operations are safe to re-issue: GETs are read-only and PUT /
-   * DELETE of a single object are idempotent, so transient gateway failures
-   * retry here instead of failing readiness-gating hydration or sync-back.
+   * GETs and unguarded writes are safe to re-issue. Guarded writes explicitly
+   * disable retries at their call sites because a lost success cannot be
+   * distinguished from a failed attempt without violating the precondition.
    */
   private fetch(
     url: string,
     init?: RequestInit,
-    extra?: Pick<FetchRetryOptions, "body">,
+    extra?: Pick<FetchRetryOptions, "body" | "retryable">,
   ): Promise<Response> {
     return fetchWithRetry(this.fetchImpl, url, init, {
       delaysMs: this.retryDelaysMs,
@@ -167,19 +174,26 @@ export class HttpObjectStore implements ObjectStore {
       : { Authorization: `Bearer ${this.token}` };
   }
 
-  private async responseError(
-    res: Response,
-    method: string,
-    key: string,
-  ): Promise<Error> {
-    const body = await res.text();
-    const message = `object store ${method} ${key} failed (${res.status})${
-      body ? `: ${body.slice(0, 200)}` : ""
-    }`;
-    // 413 is the gateway's per-object cap (GW_BLOB_MAX_OBJECT_MB) — a
-    // deterministic verdict on these bytes, typed so syncBack can skip the
-    // object instead of aborting the whole pass on it forever.
-    if (res.status === 413) return new ObjectTooLargeError(key, message);
-    return new Error(message);
+  private writeHeaders(opts?: WriteOptions): Record<string, string> {
+    const headers = this.authHeaders();
+    if (opts?.ifGenerationMatch !== undefined) {
+      headers["X-Houston-If-Generation-Match"] = opts.ifGenerationMatch;
+    }
+    if (this.fence?.token !== undefined && this.bootId !== undefined) {
+      headers["X-Houston-Fencing-Token"] = this.fence.token;
+      headers["X-Houston-Boot-Id"] = this.bootId;
+    }
+    return headers;
+  }
+
+  private guardedWrite(opts?: WriteOptions): boolean {
+    return (
+      opts?.ifGenerationMatch !== undefined || this.fence?.token !== undefined
+    );
+  }
+
+  private captureFence(res: Response): void {
+    const token = res.headers.get("X-Houston-Fencing-Token");
+    if (token !== null && this.fence) this.fence.token = token;
   }
 }

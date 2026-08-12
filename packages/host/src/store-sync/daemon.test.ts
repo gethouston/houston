@@ -11,6 +11,7 @@ import {
   LocalDirStore,
   type ObjectStore,
   ObjectTooLargeError,
+  StoreFencedError,
 } from "@houston/runtime-client/object-sync";
 import { expect, test, vi } from "vitest";
 import { StoreSyncDaemon } from "./daemon";
@@ -330,4 +331,55 @@ test("an over-cap file logs an err-less breadcrumb once and never blocks other f
   expect(skips).toHaveLength(1);
   expect(skips[0]?.err).toBeUndefined();
   expect(logs.some((l) => l.message.includes("sync failed"))).toBe(false);
+});
+
+test("a fencing loss latches once, halts scheduling, and skips the final drain", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-fenced-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-fenced-local-"));
+  mkdirSync(join(remoteRoot, "workspace"), { recursive: true });
+  writeFileSync(join(remoteRoot, "workspace", "notes.txt"), "remote");
+  const inner = new LocalDirStore(remoteRoot);
+  let uploads = 0;
+  const fencedStore: ObjectStore = {
+    list: (prefix) => inner.list(prefix),
+    manifest: async () => [
+      {
+        key: "workspace/notes.txt",
+        size: 6,
+        md5: "md5",
+        updated: "2026-08-12T00:00:00Z",
+        generation: "1",
+      },
+    ],
+    download: (key, dest) => inner.download(key, dest),
+    upload: async (_source, key) => {
+      uploads += 1;
+      throw new StoreFencedError(key, "lease lost");
+    },
+    delete: (key, opts) => inner.delete(key, opts),
+  };
+  const logs: Array<{ err?: unknown; message: string }> = [];
+  const daemon = new StoreSyncDaemon({
+    store: fencedStore,
+    rootDir: localRoot,
+    quietMs: 5,
+    intervalMs: 20,
+    log: (message, err) => logs.push({ message, err }),
+  });
+  await daemon.hydrate();
+  daemon.start();
+  writeFileSync(join(localRoot, "workspace", "notes.txt"), "local edit");
+
+  await eventually(() => expect(daemon.fenced).toBe(true));
+  expect(uploads).toBe(1);
+  writeFileSync(join(localRoot, "workspace", "notes.txt"), "later edit");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await daemon.stop();
+
+  expect(uploads).toBe(1);
+  const fencingLogs = logs.filter((entry) =>
+    entry.message.includes("write fencing lost"),
+  );
+  expect(fencingLogs).toHaveLength(1);
+  expect(fencingLogs[0]?.err).toBeInstanceOf(StoreFencedError);
 });

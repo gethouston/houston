@@ -137,7 +137,7 @@ export class SharedMirrorController {
           mode,
           onConflict: (key) =>
             this.options.log(
-              `[shared-mirror] local edit won concurrent change for ${key}`,
+              `[shared-mirror] concurrent change blocked local edit for ${key}`,
             ),
         });
         this.state = result.state;

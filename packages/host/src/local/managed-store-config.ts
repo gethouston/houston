@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { HttpObjectStore } from "@houston/runtime-client/object-sync";
 
@@ -33,11 +34,15 @@ export async function managedStoreConfig(
 
   const root = `${url.replace(/\/+$/, "")}/v1/pod/store/${encodeURIComponent(orgSlug)}`;
   const hydrateMaxMb = optionalPositiveNumber("HOUSTON_HYDRATE_MAX_MB");
+  const bootId = randomUUID();
+  const fence: { token?: string } = {};
   return {
     storeSync: {
       store: new HttpObjectStore({
         baseUrl: `${root}/${encodeURIComponent(agentSlug)}`,
         token: hostToken,
+        bootId,
+        fence,
       }),
       quietMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_QUIET_MS"),
       intervalMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_INTERVAL_MS"),

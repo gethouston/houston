@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { managedStoreConfig } from "./managed-store-config";
 
@@ -34,4 +37,66 @@ test("shared pod-store config uses the org route and binds requests to the agent
     },
   );
   expect(config.sharedMirror.mirrorDir).toBe("/data/shared-mirror");
+});
+
+test("agent store shares a boot id and fencing holder while shared writes do not", async () => {
+  vi.stubEnv("HOUSTON_STORE_URL", "https://store.test");
+  vi.stubEnv("HOUSTON_ORG_SLUG", "acme");
+  vi.stubEnv("HOUSTON_AGENT_SLUG", "writer");
+  const requests: Array<{ headers: Headers; url: string }> = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    requests.push({ headers: new Headers(init?.headers), url });
+    if (url.endsWith("/manifest")) {
+      return Response.json(
+        { objects: [] },
+        { headers: { "X-Houston-Fencing-Token": "77" } },
+      );
+    }
+    return Response.json({
+      key: "notes.txt",
+      size: 5,
+      md5: "md5",
+      updated: "2026-08-12T00:00:00Z",
+    });
+  });
+  const config = await managedStoreConfig(
+    "pod-token",
+    "/data",
+    async (message) => {
+      throw new Error(message);
+    },
+  );
+  if (!config) throw new Error("expected managed store config");
+  const dir = mkdtempSync(join(tmpdir(), "managed-store-config-"));
+  const source = join(dir, "notes.txt");
+  writeFileSync(source, "notes");
+
+  await config.storeSync.store.manifest?.();
+  await config.storeSync.store.upload(source, "notes.txt");
+  await config.storeSync.store.upload(source, "notes.txt");
+  await config.sharedMirror.store.manifest();
+  await config.sharedMirror.store.upload(source, "notes.txt");
+
+  const agentWrites = requests.filter(({ url }) =>
+    url.includes("/acme/writer/objects/"),
+  );
+  const bootId = agentWrites[0]?.headers.get("x-houston-boot-id");
+  expect(bootId).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+  );
+  expect(
+    agentWrites.map(({ headers }) => ({
+      bootId: headers.get("x-houston-boot-id"),
+      fencingToken: headers.get("x-houston-fencing-token"),
+    })),
+  ).toEqual([
+    { bootId, fencingToken: "77" },
+    { bootId, fencingToken: "77" },
+  ]);
+  const sharedWrite = requests.find(({ url }) =>
+    url.includes("/acme/shared/objects/"),
+  );
+  expect(sharedWrite?.headers.get("x-houston-fencing-token")).toBeNull();
+  expect(sharedWrite?.headers.get("x-houston-boot-id")).toBeNull();
 });

@@ -15,8 +15,13 @@ export type {
   ManifestObjectStore,
   ObjectMetadata,
 } from "./object-manifest";
-export type { ObjectStore } from "./object-store";
-export { LocalDirStore, ObjectTooLargeError } from "./object-store";
+export type { ObjectStore, WriteOptions, WriteResult } from "./object-store";
+export {
+  LocalDirStore,
+  ObjectTooLargeError,
+  StoreConflictError,
+  StoreFencedError,
+} from "./object-store";
 export type {
   SharedMirrorFamily,
   SharedMirrorResult,

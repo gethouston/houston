@@ -13,6 +13,8 @@ const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 export const DEFAULT_RETRY_DELAYS_MS = [500, 2000];
 
 export interface FetchRetryOptions {
+  /** Disable all retries when replaying a write could miss a precondition. */
+  retryable?: boolean;
   /** Override to shrink delays (or drop retries) in tests. */
   delaysMs?: number[];
   /** Injectable so tests can observe waits without real timers. */
@@ -35,7 +37,8 @@ export async function fetchWithRetry(
   init: RequestInit | undefined,
   opts: FetchRetryOptions = {},
 ): Promise<Response> {
-  const delays = opts.delaysMs ?? DEFAULT_RETRY_DELAYS_MS;
+  const delays =
+    opts.retryable === false ? [] : (opts.delaysMs ?? DEFAULT_RETRY_DELAYS_MS);
   const sleep = opts.sleep ?? realSleep;
   for (let attempt = 0; ; attempt += 1) {
     const lastAttempt = attempt >= delays.length;
