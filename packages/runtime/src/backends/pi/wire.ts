@@ -10,6 +10,7 @@ import { logProviderError } from "../../ai/provider-error-log";
 import { canonicalPinProvider } from "../../ai/providers";
 import { noteAuthFailure } from "../../auth/credential-health";
 import { reportRevokedServedToken } from "../../auth/report-revoked";
+import { currentUsedTokenDigest } from "../../auth/used-token";
 
 /**
  * Normalize pi's per-message `Usage` into our provider-agnostic `TokenUsage`.
@@ -233,7 +234,15 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         if (classified.kind === "unauthenticated") {
           noteAuthFailure(canonicalPinProvider(classified.provider));
           // A REVOKED served token is invisible to the control plane (HOU-952).
-          reportRevokedServedToken(classified);
+          // Named by the digest of the token the failed request actually ran
+          // on — recorded at pi's request-time credential read, inside this
+          // same turn subtree (auth/used-token.ts, PRODUCT-1319). Keyed by
+          // `classified.provider` (= pi's `msg.provider`), the same id pi read
+          // the credential under.
+          reportRevokedServedToken(
+            classified,
+            currentUsedTokenDigest(classified.provider),
+          );
         }
         return { type: "provider_error", data: classified };
       }

@@ -182,6 +182,18 @@ freely; add to the report's list almost never. Same asymmetry drives the host's
 terminal refresh codes — `knowledge-base/anthropic-credentials.md` → "What may
 sign a user out".
 
+The report names the token by digest, and the digest is the token the FAILED
+turn actually ran on — captured at request/spawn preparation
+(`packages/runtime/src/auth/used-token.ts`: the credential store records at
+pi's request-time `read()`, the Claude backend at subprocess spawn, the
+per-turn runtime seeds from its hydrated auth.json) and threaded to
+`reportRevokedServedToken` as an explicit parameter. NEVER re-derive it from
+auth.json at report time: a serve sync or user reconnect between the 401 and
+the report swaps in a healthy token, and the gateway's compare-and-delete would
+then destroy the fresh credential (PRODUCT-1319). An UNKNOWN used token skips
+the report entirely — a missed report costs a retry on the next failed turn, a
+mis-aimed one signs the workspace out of a working credential.
+
 ## Two auth cards, two copy sets, kept deliberately distinct
 
 The inline `UnauthenticatedCard` and the store-driven `ProviderReconnectCard`

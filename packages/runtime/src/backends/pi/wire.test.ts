@@ -4,12 +4,23 @@ import type {
   UserMessage,
 } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import {
   authFailureActive,
   resetAuthFailures,
 } from "../../auth/credential-health";
+import { reportRevokedServedToken } from "../../auth/report-revoked";
+import {
+  newUsedTokenCapture,
+  runWithUsedTokenCapture,
+} from "../../auth/used-token";
 import { createWireTranslator, normalizeUsage, toWire } from "./wire";
+
+// The reporter is a workspace-wide DELETE trigger; here only its arguments are
+// under test (its own gates live in report-revoked.test.ts).
+vi.mock("../../auth/report-revoked", () => ({
+  reportRevokedServedToken: vi.fn(),
+}));
 
 /** A valid pi `Usage` for fixtures; `cost` is required by the type. */
 function usage(partial: Partial<Usage>): Usage {
@@ -174,6 +185,50 @@ test("toWire maps an errored turn_end to a typed provider_error frame", () => {
         "OpenAI API error (401): Your session has ended. Please log in again. (app_session_terminated)",
     },
   });
+});
+
+test("toWire reports an auth failure under the digest of the token the TURN ran on (PRODUCT-1319)", () => {
+  // The turn's used-token capture — filled by the credential store at pi's
+  // request-time read, inside this same async subtree — is what names the
+  // failed token. Re-reading auth.json at report time would digest whatever a
+  // re-serve stored since, aiming the gateway's compare-and-delete at a fresh,
+  // healthy credential.
+  vi.mocked(reportRevokedServedToken).mockClear();
+  const capture = newUsedTokenCapture();
+  capture.record("openai-codex", "the-token-that-401d");
+  runWithUsedTokenCapture(capture, () => {
+    toWire(
+      turnEnd(
+        failedAssistantMessage(
+          "error",
+          "OpenAI API error (401): Your session has ended. Please log in again. (app_session_terminated)",
+          { provider: "openai-codex", model: "gpt-5.1-codex" },
+        ),
+      ),
+    );
+  });
+  expect(reportRevokedServedToken).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ kind: "unauthenticated" }),
+    capture.digestFor("openai-codex"),
+  );
+
+  // Outside a turn's capture the used token is unknown — said so explicitly,
+  // and the reporter's unknown-token gate skips.
+  vi.mocked(reportRevokedServedToken).mockClear();
+  toWire(
+    turnEnd(
+      failedAssistantMessage(
+        "error",
+        "OpenAI API error (401): Your session has ended. Please log in again. (app_session_terminated)",
+        { provider: "openai-codex", model: "gpt-5.1-codex" },
+      ),
+    ),
+  );
+  expect(reportRevokedServedToken).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ kind: "unauthenticated" }),
+    undefined,
+  );
+  resetAuthFailures();
 });
 
 test("toWire marks raw openai auth failures against openai-codex", () => {

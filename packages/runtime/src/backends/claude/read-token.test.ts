@@ -1,4 +1,5 @@
 import type { Credential } from "@earendil-works/pi-ai";
+import { accessDigest } from "@houston/protocol/access-digest";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { HoustonAuthStore } from "../../auth/credential-store";
 import { readAnthropicToken } from "./read-token";
@@ -52,7 +53,10 @@ test("an unrecognized token prefix returns undefined AND logs the reason", () =>
 test("a served oauth credential maps its ACCESS token to an oauth-token", () => {
   // The connect-once serve path (managed cloud) writes pi's oauth variant with
   // a short-TTL access token and refresh="" — the SDK consumes the access
-  // token via CLAUDE_CODE_OAUTH_TOKEN exactly like a setup token.
+  // token via CLAUDE_CODE_OAUTH_TOKEN exactly like a setup token. It also
+  // carries the access token's digest, captured HERE (spawn preparation) so a
+  // revoked-token report can name the token the failed turn actually ran on
+  // instead of whatever a re-serve stored since (PRODUCT-1319).
   const token = readAnthropicToken(
     store({
       type: "oauth",
@@ -61,7 +65,23 @@ test("a served oauth credential maps its ACCESS token to an oauth-token", () => 
       expires: Date.now() + 60 * 60 * 1000,
     }),
   );
-  expect(token).toEqual({ kind: "oauth-token", value: "sk-ant-oat01-served" });
+  expect(token).toEqual({
+    kind: "oauth-token",
+    value: "sk-ant-oat01-served",
+    accessDigest: accessDigest("sk-ant-oat01-served"),
+  });
+});
+
+test("a PASTED token (api_key-typed entry) carries NO access digest", () => {
+  // Only OAUTH-typed store entries feed the revoked-token report (the
+  // reporter's oauth gate, enforced at capture) — a pasted setup token stored
+  // as api_key must stay digest-less even though it maps to an oauth-token env
+  // var.
+  const token = readAnthropicToken(
+    store({ type: "api_key", key: "sk-ant-oat01-pasted" }),
+  );
+  expect(token?.kind).toBe("oauth-token");
+  expect(token?.accessDigest).toBeUndefined();
 });
 
 test("an EXPIRED served oauth token is refused (falls back to the config dir)", () => {
@@ -85,7 +105,11 @@ test("an oauth entry with NO recorded expiry (expires=0) is served as-is", () =>
   const token = readAnthropicToken(
     store({ type: "oauth", access: "sk-ant-oat01-x", refresh: "", expires: 0 }),
   );
-  expect(token).toEqual({ kind: "oauth-token", value: "sk-ant-oat01-x" });
+  expect(token).toEqual({
+    kind: "oauth-token",
+    value: "sk-ant-oat01-x",
+    accessDigest: accessDigest("sk-ant-oat01-x"),
+  });
 });
 
 test("an oauth credential with an empty access token returns undefined AND logs", () => {

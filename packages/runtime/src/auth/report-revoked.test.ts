@@ -17,6 +17,11 @@ import { recordServedScope, resetServedScopes } from "./served-scope";
  * The reporter is a DELETE trigger for a workspace-wide credential, so the
  * gating is the safety-critical part: every test here is about what must NOT
  * produce a report (HOU-952).
+ *
+ * The digest argument is the caller's capture of the token the FAILED turn ran
+ * on (auth/used-token.ts, PRODUCT-1319) — the reporter never derives it from
+ * auth.json, whose content at report time may already be a healthy
+ * replacement.
  */
 
 type Captured = { url: string; body: Record<string, unknown> } | null;
@@ -122,7 +127,7 @@ const revoked: ProviderError = {
 test("reports a revoked served token, naming it by digest only", async () => {
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir, "the-revoked-token"),
-    () => reportRevokedServedToken(revoked),
+    () => reportRevokedServedToken(revoked, accessDigest("the-revoked-token")),
   );
 
   expect(captured?.url).toBe(
@@ -134,6 +139,58 @@ test("reports a revoked served token, naming it by digest only", async () => {
   expect(JSON.stringify(captured?.body)).not.toContain("the-revoked-token");
 });
 
+/**
+ * PRODUCT-1319 — the bug this parameter exists to fix. The failed turn ran on
+ * token A; a serve sync (or the user's reconnect) stored healthy token B
+ * between the 401 and the report. Re-reading auth.json here digested B, and
+ * the gateway's compare-and-delete then destroyed the FRESH credential,
+ * potentially feeding a reconnect loop. The report must name A.
+ */
+test("names the token the FAILED turn ran on, not the healthier one stored since", async () => {
+  const captured = await withServeMode(
+    // A re-serve already replaced the dead token in auth.json…
+    (dir) => servedAnthropic(dir, "fresh-healthy-token"),
+    // …but the turn that 401'd ran on the old one, and says so.
+    () => reportRevokedServedToken(revoked, accessDigest("the-dead-token")),
+  );
+
+  expect(captured?.body.accessSha256).toBe(accessDigest("the-dead-token"));
+  expect(captured?.body.accessSha256).not.toBe(
+    accessDigest("fresh-healthy-token"),
+  );
+});
+
+test("an UNKNOWN at-failure token never reports — even with a token stored", async () => {
+  // The caller could not capture what the failed turn ran on (it threw before
+  // any request resolved a credential). Falling back to the file would aim the
+  // delete at an unverified target — possibly a fresh reconnect — so the safe
+  // move is to skip: a missed report costs a retry on the next failed turn, a
+  // false one signs the workspace out of a working credential (PRODUCT-1319).
+  const captured = await withServeMode(
+    (dir) => servedAnthropic(dir, "fresh-healthy-token"),
+    () => reportRevokedServedToken(revoked, undefined),
+  );
+  expect(captured).toBeNull();
+});
+
+test("still reports when the local entry is already gone (row may live centrally)", async () => {
+  // A local disconnect can race the report; the central store may still hold
+  // (and keep serving) the dead row. The failed token is known and confirmed
+  // revoked, and the gateway's compare-and-delete no-ops unless its row
+  // matches — so the report goes out.
+  const captured = await withServeMode(
+    (dir) => {
+      writeFileSync(join(dir, "auth.json"), JSON.stringify({}));
+      writeFileSync(
+        join(dir, "served-providers.json"),
+        JSON.stringify(["anthropic"]),
+      );
+    },
+    () => reportRevokedServedToken(revoked, accessDigest("the-dead-token")),
+  );
+  expect(captured?.body.accessSha256).toBe(accessDigest("the-dead-token"));
+});
+
 test("a member's report names the acting identity, not just the scope", async () => {
   // Without the acting token the gateway cannot tell WHICH member's row a
   // personal digest-delete targets, so it answers 400 and the dead token
@@ -143,7 +200,7 @@ test("a member's report names the acting identity, not just the scope", async ()
     () =>
       runWithActingContext(alice, () => {
         recordServedScope("anthropic", "personal");
-        reportRevokedServedToken(revoked);
+        reportRevokedServedToken(revoked, accessDigest("alice-revoked-token"));
       }),
   );
 
@@ -157,7 +214,7 @@ test("a team report carries no acting identity at all", async () => {
   // it was, so an older control plane sees no new field.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
-    () => reportRevokedServedToken(revoked),
+    () => reportRevokedServedToken(revoked, accessDigest("served-access")),
   );
 
   expect(captured?.body.scope).toBe("team");
@@ -170,10 +227,13 @@ test("does NOT report a non-terminal auth failure", async () => {
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
     () =>
-      reportRevokedServedToken({
-        ...revoked,
-        cause: "invalid_api_key",
-      } as ProviderError),
+      reportRevokedServedToken(
+        {
+          ...revoked,
+          cause: "invalid_api_key",
+        } as ProviderError,
+        accessDigest("served-access"),
+      ),
   );
   expect(captured).toBeNull();
 });
@@ -195,7 +255,11 @@ test.each([
   // failed turn, so the destructive half needs a machine-emitted marker.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
-    () => reportRevokedServedToken({ ...revoked, message }),
+    () =>
+      reportRevokedServedToken(
+        { ...revoked, message },
+        accessDigest("served-access"),
+      ),
   );
   expect(captured).toBeNull();
 });
@@ -213,7 +277,11 @@ test.each([
   // "access revoked", "token_revoked") survive neither.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
-    () => reportRevokedServedToken({ ...revoked, message }),
+    () =>
+      reportRevokedServedToken(
+        { ...revoked, message },
+        accessDigest("served-access"),
+      ),
   );
   expect(captured).toBeNull();
 });
@@ -231,7 +299,11 @@ test.each([
   // catching after anchoring.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir, "the-revoked-token"),
-    () => reportRevokedServedToken({ ...revoked, message }),
+    () =>
+      reportRevokedServedToken(
+        { ...revoked, message },
+        accessDigest("the-revoked-token"),
+      ),
   );
   expect(captured?.body.accessSha256).toBe(accessDigest("the-revoked-token"));
 });
@@ -249,11 +321,14 @@ test.each([
   const captured = await withServeMode(
     (dir) => servedOauth(dir, "openai-codex", "codex-revoked-token"),
     () =>
-      reportRevokedServedToken({
-        ...revoked,
-        provider: "openai-codex",
-        message,
-      }),
+      reportRevokedServedToken(
+        {
+          ...revoked,
+          provider: "openai-codex",
+          message,
+        },
+        accessDigest("codex-revoked-token"),
+      ),
   );
 
   expect(captured?.url).toBe(
@@ -276,7 +351,7 @@ test("does NOT report a credential this runtime owns locally", async () => {
       );
       writeFileSync(join(dir, "served-providers.json"), JSON.stringify([]));
     },
-    () => reportRevokedServedToken(revoked),
+    () => reportRevokedServedToken(revoked, accessDigest("local-tok")),
   );
   expect(captured).toBeNull();
 });
@@ -284,15 +359,19 @@ test("does NOT report a credential this runtime owns locally", async () => {
 test("does NOT report when serve mode is off", async () => {
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
-    () => reportRevokedServedToken(revoked),
+    () => reportRevokedServedToken(revoked, accessDigest("served-access")),
     { serveMode: false },
   );
   expect(captured).toBeNull();
 });
 
-test("does NOT report an api_key credential", async () => {
+test("an api_key credential records no used token, so no report can fire", async () => {
   // An api_key has no revocation semantics worth acting on here; treating one
-  // as revoked would delete a key the user still wants.
+  // as revoked would delete a key the user still wants. The oauth-only gate is
+  // enforced at CAPTURE — every digest source (the credential store's
+  // request-time read, the Claude spawn env, the per-turn hydrated read)
+  // digests OAuth access tokens only — so an api_key turn reaches the reporter
+  // with `undefined` and skips.
   const captured = await withServeMode(
     (dir) => {
       writeFileSync(
@@ -304,7 +383,7 @@ test("does NOT report an api_key credential", async () => {
         JSON.stringify(["anthropic"]),
       );
     },
-    () => reportRevokedServedToken(revoked),
+    () => reportRevokedServedToken(revoked, undefined),
   );
   expect(captured).toBeNull();
 });
@@ -330,16 +409,16 @@ test("the same dead token is reported once per pod lifetime (HOUSTON-APP-530)", 
   }) as unknown as typeof globalThis.fetch;
   try {
     servedAnthropic(config.dataDir, "same-dead-token");
-    reportRevokedServedToken(revoked);
+    reportRevokedServedToken(revoked, accessDigest("same-dead-token"));
     await new Promise((r) => setTimeout(r, 10));
-    reportRevokedServedToken(revoked);
+    reportRevokedServedToken(revoked, accessDigest("same-dead-token"));
     await new Promise((r) => setTimeout(r, 10));
     expect(reports).toBe(1);
 
     // A DIFFERENT token (the workspace reconnected, then that one died too)
     // is a new fact and reports again.
     servedAnthropic(config.dataDir, "next-dead-token");
-    reportRevokedServedToken(revoked);
+    reportRevokedServedToken(revoked, accessDigest("next-dead-token"));
     await new Promise((r) => setTimeout(r, 10));
     expect(reports).toBe(2);
   } finally {
@@ -368,9 +447,9 @@ test("a failed report is not deduped — the next turn retries", async () => {
   }) as unknown as typeof globalThis.fetch;
   try {
     servedAnthropic(config.dataDir, "retry-dead-token");
-    reportRevokedServedToken(revoked);
+    reportRevokedServedToken(revoked, accessDigest("retry-dead-token"));
     await new Promise((r) => setTimeout(r, 10));
-    reportRevokedServedToken(revoked);
+    reportRevokedServedToken(revoked, accessDigest("retry-dead-token"));
     await new Promise((r) => setTimeout(r, 10));
     // The failed attempt un-marked itself; the second turn's report went out.
     expect(reports).toBe(2);
@@ -397,7 +476,9 @@ test("a failing control plane never throws into the caller", async () => {
   }) as unknown as typeof globalThis.fetch;
   try {
     servedAnthropic(config.dataDir);
-    expect(() => reportRevokedServedToken(revoked)).not.toThrow();
+    expect(() =>
+      reportRevokedServedToken(revoked, accessDigest("served-access")),
+    ).not.toThrow();
     await new Promise((r) => setTimeout(r, 10));
   } finally {
     globalThis.fetch = prevFetch;

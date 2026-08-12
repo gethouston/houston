@@ -195,12 +195,47 @@ test("classifyText reports an unauthenticated failure like the enum path does", 
     provider: "anthropic",
     cause: "token_revoked",
   });
-  expect(reportRevokedServedToken).toHaveBeenCalledExactlyOnceWith(classified);
+  // No spawn-token digest was captured → the reporter is told so (undefined)
+  // and its unknown-token gate skips, rather than digesting a re-read of
+  // auth.json that may already hold a healthy replacement (PRODUCT-1319).
+  expect(reportRevokedServedToken).toHaveBeenCalledExactlyOnceWith(
+    classified,
+    undefined,
+  );
 });
 
 test("classifyText does not report non-auth failures", () => {
   classifyText("Internal Server Error", "m", 500);
   expect(reportRevokedServedToken).not.toHaveBeenCalled();
+});
+
+/**
+ * PRODUCT-1319: the report must name the token the failed turn RAN ON — the
+ * digest captured at spawn preparation (the subprocess env token) — so both
+ * seams thread it through to the reporter verbatim.
+ */
+test("both seams hand the spawn-time token digest to the reporter", () => {
+  const viaText = classifyText(
+    "401 OAuth access token has been revoked",
+    null,
+    null,
+    "digest-of-the-spawn-token",
+  );
+  expect(reportRevokedServedToken).toHaveBeenCalledWith(
+    viaText,
+    "digest-of-the-spawn-token",
+  );
+
+  vi.mocked(reportRevokedServedToken).mockClear();
+  const viaEnum = mapSdkError("authentication_failed", {
+    message: "401 OAuth access token has been revoked",
+    model: null,
+    usedAccessDigest: "digest-of-the-spawn-token",
+  });
+  expect(reportRevokedServedToken).toHaveBeenCalledExactlyOnceWith(
+    viaEnum,
+    "digest-of-the-spawn-token",
+  );
 });
 
 test("the verbatim provider text is logged once it is reduced to a card", () => {

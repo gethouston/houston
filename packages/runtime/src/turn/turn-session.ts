@@ -15,8 +15,13 @@ import { registerCustomProviderIfConfigured } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
 import { ensureQwenRuntimeProvider } from "../ai/qwen-dashscope";
+import { readAuthFile } from "../auth/auth-file";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
+import {
+  newUsedTokenCapture,
+  runWithUsedTokenCapture,
+} from "../auth/used-token";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
 import {
@@ -144,6 +149,18 @@ export async function runPiTurn(
   // the client like any other) and is persisted on the assistant message so the
   // inline card survives a reload of this cloud conversation.
   let providerError: ProviderError | undefined;
+  /**
+   * WHICH access token this turn ran on, for the revoked-token report
+   * (auth/used-token.ts, PRODUCT-1319). This path's `ModelRuntime` uses pi's
+   * OWN file-backed store (not `HoustonAuthStore`), so nothing records at
+   * request time — instead the capture is SEEDED from the hydrated per-request
+   * auth.json below. That read is exact here: the root is a throwaway copy
+   * exclusive to this request, and its served entries are access-only (Gate
+   * #2, no refresh token), so no re-serve or refresh can rotate the token
+   * between the seed and a failure. Held outside the try so the catch can
+   * still name the failed token.
+   */
+  const usedTokens = newUsedTokenCapture();
   try {
     // Per-turn model/auth runtime over the hydrated throwaway data dir. The
     // default file-backed credential store reads the hydrated auth.json; the
@@ -184,6 +201,12 @@ export async function runPiTurn(
       : null;
 
     const model = resolveTurnModel(dataDir, provider, pin?.model);
+    // Seed the used-token capture with the credential this turn will run on
+    // (see the declaration above). OAuth access only — an api_key has no
+    // revocation semantics the report may act on.
+    const turnCred = readAuthFile(join(dataDir, "auth.json"))[provider];
+    if (turnCred?.type === "oauth" && turnCred.access)
+      usedTokens.record(provider, turnCred.access);
     // Ground-truth diagnostic: provider + model + the model's actual API base URL
     // (opencode.ai/zen/go/v1 = OpenCode Go, openai/chatgpt = Codex). Unambiguous,
     // unlike asking the model itself.
@@ -270,7 +293,11 @@ export async function runPiTurn(
     // records into it. Read after prompt() resolves, returned on the outcome.
     const interaction = newInteractionHolder();
     try {
-      await runWithInteractionCapture(interaction, () => session.prompt(text));
+      // The used-token capture spans the prompt so the streamed error path
+      // (pi/wire.ts) reads THIS turn's seeded token when it reports.
+      await runWithInteractionCapture(interaction, () =>
+        runWithUsedTokenCapture(usedTokens, () => session.prompt(text)),
+      );
     } finally {
       signal?.removeEventListener("abort", onAbort);
       unsub();
@@ -364,7 +391,10 @@ export async function runPiTurn(
       if (thrown.kind === "unauthenticated") {
         noteAuthFailure(thrown.provider);
         // A REVOKED served token is invisible to the control plane (HOU-952).
-        reportRevokedServedToken(thrown);
+        // Named by the seeded at-failure token; a throw before the seed (a
+        // bad model resolution) recorded nothing and the reporter skips
+        // (PRODUCT-1319).
+        reportRevokedServedToken(thrown, usedTokens.digestFor(thrown.provider));
       }
       if (thrown.kind !== "unknown") {
         appendAssistantMessageAt(

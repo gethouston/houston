@@ -8,6 +8,7 @@ import {
   readServedProvidersAt,
   servedProvidersPathIn,
 } from "./auth-file";
+import { revocationConfirmed } from "./revocation-markers";
 import { servedScopeFor } from "./served-scope";
 
 /**
@@ -32,20 +33,38 @@ import { servedScopeFor } from "./served-scope";
  *     cause is the one that means "this token is dead forever" (see
  *     protocol/provider-error.ts).
  *  2. The provider's own words must CONFIRM the revocation, not merely read
- *     like one (`REVOCATION_CONFIRMED_PATTERNS`).
+ *     like one (`revocation-markers.ts`).
  *  3. Serve mode, and the provider must be in the SERVED manifest. A credential
  *     this runtime owns locally (a desktop keychain login) is none of the
  *     control plane's business, and reporting it would ask the store to delete
  *     a row that never backed this turn.
  *  4. OAuth only. An api_key has no revocation semantics worth acting on here,
  *     and treating one as revoked would delete a key the user still wants.
+ *     Enforced at CAPTURE: every `usedAccessDigest` source (the credential
+ *     store's request-time read, the Claude spawn env, the per-turn hydrated
+ *     read) digests OAuth access tokens only.
+ *
+ * `usedAccessDigest` is the digest of the token the FAILED turn actually ran
+ * on, captured at request/spawn preparation (auth/used-token.ts, PRODUCT-1319).
+ * The report names exactly that token — never whatever auth.json holds at
+ * report time: a serve sync or user reconnect between the 401 and this report
+ * swaps in a healthy replacement, and digesting the file then aimed the
+ * gateway's compare-and-delete at the FRESH credential. Undefined means the
+ * caller could not know the used token (the turn threw before any request
+ * resolved a credential) — then the report is SKIPPED: deleting an unverified
+ * target risks destroying a working credential workspace-wide, while a missed
+ * report only costs the pre-HOU-952 status quo (a retry on the next failed
+ * turn, or a manual reconnect).
  *
  * Fire-and-forget and never throws: this runs inside error handling for a turn
  * that has already failed, and a reporting hiccup must not replace the real
  * provider error the user needs to see.
  */
-export function reportRevokedServedToken(err: ProviderError): void {
-  void reportRevoked(err).catch(() => {});
+export function reportRevokedServedToken(
+  err: ProviderError,
+  usedAccessDigest: string | undefined,
+): void {
+  void reportRevoked(err, usedAccessDigest).catch(() => {});
 }
 
 /**
@@ -64,52 +83,10 @@ export function resetRevokedReportsForTest(): void {
   reported.clear();
 }
 
-/**
- * Message markers that CONFIRM a server-side revocation — the ONLY texts allowed
- * to trigger the workspace-wide delete.
- *
- * `token_revoked` is deliberately generous on the CARD side: both classifiers
- * (`ai/provider-error.ts` and `backends/claude/errors.ts`) also map loose
- * phrasings — "your session has ended", "please log in again" — to it, because
- * "your access was revoked, sign in again" is the right thing to SAY about any
- * terminal-looking 401. It is not the right thing to DO: providers reach for
- * that copy for transient auth blips too, and one such turn would otherwise
- * delete the credential for every runtime in the workspace.
- *
- * So presentation and destruction are split here, and the destructive half
- * takes only unambiguous, machine-emitted revocation markers:
- *  - `token_revoked` — the structured code providers return for it.
- *  - `has been revoked` / `access revoked` — the provider stating it outright in
- *    prose ("401 OAuth access token has been revoked"). ANCHORED phrases, never
- *    the bare word: "revoked" alone also matches a NEGATION ("the scope was not
- *    revoked") and unrelated fields ("revoked_scopes": []), each of which would
- *    delete a live credential for the whole workspace. Neither anchored phrase
- *    survives a negation — "has not been revoked" does not contain "has been
- *    revoked".
- *  - `app_session_terminated` — ChatGPT/Codex's structured code for a login
- *    session killed server-side (it rides ALONG with the loose prose above,
- *    which is exactly why the code, not the prose, is the signal).
- *  - `refresh_token_invalidated` — OpenAI's code for the same thing on the token
- *    endpoint; the host treats it as terminal too (`credentials/oauth-token-exchange.ts`).
- *
- * Prose like "session terminated" is deliberately NOT here: the harm is
- * lopsided. A missed report costs the user a manual reconnect (the pre-HOU-952
- * status quo); a false one destroys a working credential workspace-wide.
- */
-const REVOCATION_CONFIRMED_PATTERNS = [
-  "token_revoked",
-  "has been revoked",
-  "access revoked",
-  "app_session_terminated",
-  "refresh_token_invalidated",
-];
-
-function revocationConfirmed(message: string): boolean {
-  const lower = message.toLowerCase();
-  return REVOCATION_CONFIRMED_PATTERNS.some((p) => lower.includes(p));
-}
-
-async function reportRevoked(err: ProviderError): Promise<void> {
+async function reportRevoked(
+  err: ProviderError,
+  usedAccessDigest: string | undefined,
+): Promise<void> {
   if (err.kind !== "unauthenticated" || err.cause !== "token_revoked") return;
   if (!revocationConfirmed(err.message)) return;
   // Serve mode, read straight off config rather than through serve.ts's
@@ -131,13 +108,37 @@ async function reportRevoked(err: ProviderError): Promise<void> {
   );
   if (!served.includes(provider)) return;
 
-  const cred = readAuthFile(authPathIn(config.dataDir, key))[provider];
-  if (cred?.type !== "oauth" || !cred.access) return;
+  // The digest must name the token that PRODUCED the 401 (PRODUCT-1319) —
+  // threaded in by the caller from the turn's capture, never re-read from
+  // auth.json here: the file is mutable, and a re-serve or reconnect between
+  // the 401 and this report replaces the dead token with a healthy one whose
+  // deletion would sign the workspace out of a working credential. Unknown →
+  // skip (see reportRevokedServedToken); falling back to the file would risk
+  // exactly that deletion whenever a fresher token is already stored.
+  if (!usedAccessDigest) {
+    console.log(
+      `[serve] skipped the revoked-token report for ${provider}: the failed turn's token is unknown`,
+    );
+    return;
+  }
+  const digest = usedAccessDigest;
+  // Diagnostic only — the decision above never depends on the file. When the
+  // stored token already rotated past the failed one, say so: the gateway's
+  // compare-and-delete will no-op on the rotated row, which is the safety this
+  // parameter exists to guarantee.
+  const stored = readAuthFile(authPathIn(config.dataDir, key))[provider];
+  if (
+    stored?.type === "oauth" &&
+    stored.access &&
+    accessDigest(stored.access) !== digest
+  ) {
+    console.log(
+      `[serve] stored ${provider} token differs from the one the failed turn ran on; reporting the failed token's digest`,
+    );
+  }
   // WHICH row the gateway served us. Unknown (a pre-HOU-976 gateway sends no
   // scope) reads as the team row — the only thing it could have been.
   const scope = servedScopeFor(provider) ?? "team";
-
-  const digest = accessDigest(cred.access);
   const dedupe = `${key}:${provider}:${digest}`;
   if (reported.has(dedupe)) {
     console.log(

@@ -20,10 +20,18 @@ import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
 import { buildToolPolicy, makeCanUseTool } from "./tool-policy";
 
-/** A resolved Anthropic credential: an OAuth token or a pasted API key. */
+/**
+ * A resolved Anthropic credential: an OAuth token or a pasted API key.
+ * `accessDigest` is set ONLY when the value came from an OAUTH-typed store
+ * entry's access token (read-token.ts): it is what a revoked-token report
+ * names, captured at spawn preparation because the SDK subprocess env is built
+ * once per session — re-reading auth.json at failure time would digest
+ * whatever a re-serve stored since, not the token the failed turn ran on
+ * (PRODUCT-1319).
+ */
 export type ClaudeToken =
-  | { kind: "oauth-token"; value: string }
-  | { kind: "api-key"; value: string };
+  | { kind: "oauth-token"; value: string; accessDigest?: string }
+  | { kind: "api-key"; value: string; accessDigest?: string };
 
 /** Everything the Claude backend needs to open a session. */
 export interface ClaudeBackendDeps {
@@ -178,6 +186,9 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         sessionsStore,
         model: toSdkModel(opts.model.id),
         thinkingLevel: opts.thinkingLevel,
+        // WHICH token the subprocess env carries, for the revoked-token
+        // report — every turn on this session runs on it (PRODUCT-1319).
+        usedAccessDigest: token?.accessDigest,
       });
     },
   };

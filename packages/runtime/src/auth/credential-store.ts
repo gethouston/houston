@@ -14,6 +14,7 @@ import {
   readAuthFile,
   writeAuthFile,
 } from "./auth-file";
+import { recordUsedToken } from "./used-token";
 
 /**
  * Houston's credential store: pi-ai's `CredentialStore` contract over
@@ -141,7 +142,17 @@ export class HoustonAuthStore implements CredentialStore {
   // ---- pi-ai CredentialStore ----
 
   async read(providerId: string): Promise<Credential | undefined> {
-    return this.get(providerId);
+    const cred = this.get(providerId);
+    // pi calls this inside `prepareRequest` on every `stream()`, i.e. at
+    // request preparation inside the turn's async subtree — the one moment the
+    // token a request runs on is knowable. Record its digest into the turn's
+    // capture so a later revoked-token report names the token that actually
+    // produced the failure, not whatever a re-serve stored since
+    // (auth/used-token.ts, PRODUCT-1319). OAuth access only — an api_key has
+    // no revocation semantics the report may act on. No-op outside a turn.
+    if (cred?.type === "oauth" && cred.access)
+      recordUsedToken(providerId, cred.access);
+    return cred;
   }
 
   async list(): Promise<readonly CredentialInfo[]> {
@@ -164,7 +175,14 @@ export class HoustonAuthStore implements CredentialStore {
       const next = await fn(state.cache[providerId]);
       // Contract: `undefined` leaves the entry unchanged (NOT a delete).
       if (next !== undefined) this.setIn(state, providerId, next);
-      return state.cache[providerId];
+      const settled = state.cache[providerId];
+      // A mid-turn OAuth refresh runs through here: subsequent requests use
+      // the ROTATED token, so the turn's used-token capture must follow it —
+      // else a 401 on the new token would be reported under the old digest
+      // (auth/used-token.ts, PRODUCT-1319). No-op outside a turn.
+      if (settled?.type === "oauth" && settled.access)
+        recordUsedToken(providerId, settled.access);
+      return settled;
     };
     // Chain regardless of the previous op's outcome; rejections from `fn`
     // still propagate to THIS caller below.

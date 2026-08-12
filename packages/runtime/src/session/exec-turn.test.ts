@@ -539,8 +539,41 @@ test("an auth throw marks the RESOLVED provider unusable and reports it revoked"
 
   // Symmetry with the clean path's clearAuthFailure(model.provider).
   expect(noteAuthFailure).toHaveBeenCalledWith("openai-codex");
+  // The throw happened BEFORE any request read a credential, so the used
+  // token is unknown — passed as such, and the reporter's unknown-token gate
+  // skips rather than deleting an unverified target (PRODUCT-1319).
   expect(reportRevokedServedToken).toHaveBeenCalledWith(
     expect.objectContaining({ provider: "openai-codex" }),
+    undefined,
+  );
+});
+
+/**
+ * PRODUCT-1319: a throw AFTER the turn's requests ran (e.g. pi rejecting the
+ * prompt once the provider confirmed a revocation) must report the token those
+ * requests actually used — recorded into the turn's capture by the credential
+ * store at request time, and still readable from the catch after the prompt's
+ * async subtree unwound.
+ */
+test("an auth throw after a request reports the digest of the token the turn ran on", async () => {
+  const { recordUsedToken } = await import("../auth/used-token");
+  const { accessDigest } = await import("@houston/protocol/access-digest");
+  const id = "exec-throw-used-token";
+  const conv = fakeConv(() => {
+    // Stands in for the credential store's request-time read, which runs
+    // inside prompt() — i.e. inside the turn's used-token capture.
+    recordUsedToken("openai", "the-token-that-401d");
+    throw new Error("401 OAuth access token has been revoked");
+  });
+
+  await execTurn(conv, id, "turn-1", "hey", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  expect(reportRevokedServedToken).toHaveBeenCalledWith(
+    expect.objectContaining({ provider: "openai", kind: "unauthenticated" }),
+    accessDigest("the-token-that-401d"),
   );
 });
 
