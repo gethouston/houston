@@ -1,5 +1,6 @@
 import { piApiKeyProviderIds } from "../ai/pi-catalog";
 import { PROVIDERS } from "../ai/providers";
+import { clearGhostClaudeCredential } from "../backends/claude/credential-status";
 import { config } from "../config";
 import { currentCredentialScope } from "../session/acting-context";
 import {
@@ -245,6 +246,12 @@ async function runServedSync(): Promise<string[]> {
           removed.push(probe.id);
         manifest.delete(probe.id);
         manifestDirty = true;
+        // Anthropic keeps a SECOND copy of its credential: the materialized
+        // `.credentials.json` the Claude Agent SDK falls back to once the
+        // served env token is gone. Left behind, that ghost re-runs every turn
+        // on the dead family — the exact storm the HOU-952 heal was meant to
+        // end (PRODUCT-1307).
+        if (probe.id === "anthropic") clearGhostClaudeCredential();
       }
     } else {
       // Dedup lives in serve-log.ts: every turn and hydrating route re-probes,

@@ -144,8 +144,16 @@ export function classifyText(
     status,
   });
   logProviderError(classified, { model, status });
-  if (classified.kind === "unauthenticated")
+  if (classified.kind === "unauthenticated") {
     noteAuthFailure(classified.provider);
+    // A REVOKED served token is invisible to the control plane (HOU-952).
+    // Every seam that classifies here — result `subtype !== "success"`,
+    // thrown/iterator failures — must report it like the enum path above and
+    // pi/wire.ts do, or a revocation surfacing on this seam never heals
+    // centrally and the workspace keeps serving the dead token
+    // (PRODUCT-1307). The reporter's own gates keep this safe.
+    reportRevokedServedToken(classified);
+  }
   return classified;
 }
 

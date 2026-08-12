@@ -662,7 +662,14 @@ export function extractHttpStatus(message: string): number | null {
     const n = Number(lead[1]);
     if (n >= 100 && n <= 599) return n;
   }
-  const labelled = message.match(/(?:status|http)[^\d]{0,4}(\d{3})\b/i);
+  // "api error" is the Claude Agent SDK's canonical failure text ("API Error:
+  // 401 OAuth access token has been revoked"). Without it a revoked-token
+  // failure surfacing on the SDK's thrown/result seams (message only, no
+  // status field) missed the auth branch entirely and rendered the generic
+  // unknown card instead of reconnect (PRODUCT-1307).
+  const labelled = message.match(
+    /(?:status|http|api error)[^\d]{0,4}(\d{3})\b/i,
+  );
   if (labelled) {
     const n = Number(labelled[1]);
     if (n >= 100 && n <= 599) return n;

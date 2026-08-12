@@ -1,10 +1,16 @@
 import { beforeEach, expect, test, vi } from "vitest";
+import { reportRevokedServedToken } from "../../auth/report-revoked";
 import { classifyText, mapSdkError } from "./errors";
+
+vi.mock("../../auth/report-revoked", () => ({
+  reportRevokedServedToken: vi.fn(),
+}));
 
 let consoleError: ReturnType<typeof vi.spyOn>;
 let consoleWarn: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  vi.mocked(reportRevokedServedToken).mockClear();
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
   consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -167,6 +173,34 @@ test("classifyText passes provider + status through the shared classifier", () =
     http_status: 500,
     message: "Internal Server Error",
   });
+});
+
+/**
+ * PRODUCT-1307: a revocation is only healed centrally if the seam that
+ * classified it also reports it. The enum path always did; the text path —
+ * result `subtype !== "success"` and thrown/iterator failures — classified,
+ * logged, and stayed silent, so a revocation surfacing there kept the dead
+ * credential served to the whole workspace (Sentry HOUSTON-APP-4YA storms).
+ * The reporter's own gates (confirmed marker, serve mode, served manifest,
+ * oauth) remain the safety; the seam's job is just to always speak up.
+ */
+test("classifyText reports an unauthenticated failure like the enum path does", () => {
+  const classified = classifyText(
+    "Failed to authenticate. API Error: 401 OAuth access token has been revoked.",
+    null,
+    null,
+  );
+  expect(classified).toMatchObject({
+    kind: "unauthenticated",
+    provider: "anthropic",
+    cause: "token_revoked",
+  });
+  expect(reportRevokedServedToken).toHaveBeenCalledExactlyOnceWith(classified);
+});
+
+test("classifyText does not report non-auth failures", () => {
+  classifyText("Internal Server Error", "m", 500);
+  expect(reportRevokedServedToken).not.toHaveBeenCalled();
 });
 
 test("the verbatim provider text is logged once it is reduced to a card", () => {
