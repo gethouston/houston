@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import { FakeLauncher } from "../launcher/fake";
@@ -383,20 +383,27 @@ describe("captureCredential scrub coupling (ProxyChannel)", () => {
     expect(await credentials.get(ws.id, "openai-codex")).not.toBeNull();
   });
 
-  test("reports capture failure when refresh scrubbing persistently fails", async () => {
-    const { channel } = makeProxyFixture();
+  test("persistent scrub failure settles as success, loudly (PRODUCT-1318)", async () => {
+    // The central PUT landed — the connect worked. Failing the capture made the
+    // client replay the whole tombstone-clearing PUT while the leftover refresh
+    // token silently kept the pod a second rotator of the family. The runtime's
+    // serve-sync self-heal finishes the scrub; capture settles and logs.
+    const { channel, credentials } = makeProxyFixture();
     proxyConnected = true;
     proxyScrubFailuresRemaining = 3;
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const result = await channel.captureCredential(ctx, "openai-codex");
 
-    const result = await channel.captureCredential(ctx, "openai-codex");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.status).toBe(502);
-      expect(result.error).toContain("could not be scrubbed");
-      expect(result.detail).toContain("scrub unavailable");
+      expect(result).toEqual({ ok: true, provider: "openai-codex" });
+      expect(proxyScrubCalls).toBe(3); // bounded retries all spent
+      expect(await credentials.get(ws.id, "openai-codex")).not.toBeNull();
+      expect(
+        errors.mock.calls.some((c) => String(c[0]).includes("PRODUCT-1318")),
+      ).toBe(true);
+    } finally {
+      errors.mockRestore();
     }
-    expect(proxyScrubCalls).toBe(3);
   });
 });
 

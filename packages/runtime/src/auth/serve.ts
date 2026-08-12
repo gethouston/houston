@@ -9,10 +9,11 @@ import {
   readServedProvidersAt,
   removeServedCredentialAt,
   type ServedCredential,
-  scrubRefreshTokensAt,
+  scrubRefreshTokenAt,
   servedProvidersPathIn,
   writeServedProvidersAt,
 } from "./auth-file";
+import { scrubSettledCaptureAt } from "./capture-settlement";
 import { logServeProbeFailure, noteServeProbeOk } from "./serve-log";
 import { reportDeadServedApiKey, servedApiKeyIsDead } from "./served-key-guard";
 import { forgetServedScope, recordServedScope } from "./served-scope";
@@ -32,8 +33,10 @@ import { authStorage } from "./storage";
  * full credential (access + refresh) locally. Serve sync must not overwrite that
  * refresh-bearing entry with an older central access token while capture is in
  * progress. The control plane captures it into the central store immediately
- * afterwards and then calls POST /auth/scrub-refresh, which rewrites every entry
- * with refresh=""; normal serving resumes after that scrub.
+ * afterwards and then calls POST /auth/scrub-refresh?provider=<id>, which
+ * rewrites THAT provider's entry with refresh="" (PRODUCT-1320); normal serving
+ * resumes after that scrub. A lost scrub is self-healed by the sync itself
+ * (capture-settlement.ts, PRODUCT-1318).
  *
  * Best-effort on sync: a transient control-plane blip leaves the existing
  * (still-valid) auth.json in place; a missing connection surfaces downstream as
@@ -66,11 +69,32 @@ export function serveModeOn(): boolean {
   return !!config.controlPlaneUrl && !!config.sandboxToken;
 }
 
-/** Config-bound scrub used by POST /auth/scrub-refresh. */
-export function scrubRefreshTokens(): string[] {
-  const scrubbed = scrubRefreshTokensAt(authPathFor());
-  if (scrubbed.length) authStorage.reload();
-  return scrubbed;
+/**
+ * Config-bound scrub used by POST /auth/scrub-refresh. Provider-scoped
+ * (PRODUCT-1320): the host calls this for exactly the provider whose capture
+ * just landed centrally, so a concurrent second provider's freshly-written
+ * refresh token (mid-capture, not yet exported) survives untouched.
+ *
+ * This is also the moment the provider becomes serve-owned, so it is recorded
+ * in the served-providers manifest HERE — at capture time, not at first serve.
+ * The host only ever calls this route right after a successful central PUT, so
+ * manifest membership is honest, and a later authoritative central 404 can
+ * remove the local copy (the CRED-09 gap: capture-then-sign-out before any
+ * serve ran left an unowned entry behind). This cannot confuse the mid-capture
+ * guard: that guard keys on the ENTRY's refresh token (hasRefreshToken), never
+ * on the manifest, and removeServedCredentialAt independently refuses
+ * refresh-bearing entries.
+ */
+export function scrubRefreshTokens(provider: string): string[] {
+  const scrubbed = scrubRefreshTokenAt(authPathFor(), provider);
+  const manifestPath = servedManifestPathFor();
+  const manifest = new Set(readServedProvidersAt(manifestPath));
+  if (!manifest.has(provider)) {
+    manifest.add(provider);
+    writeServedProvidersAt(manifestPath, [...manifest]);
+  }
+  if (scrubbed) authStorage.reload();
+  return scrubbed ? [provider] : [];
 }
 
 /**
@@ -220,6 +244,17 @@ async function runServedSync(): Promise<string[]> {
       continue;
     }
     if (probe.state === "served") {
+      // PRODUCT-1318 self-heal: a refresh-bearing local entry whose ACCESS the
+      // central store is serving back means the capture PUT landed but its
+      // scrub was lost — finish the scrub now (a different access is a real
+      // mid-capture login and is left alone; see capture-settlement.ts).
+      // Without this, the leftover refresh token kept the pod rotating the
+      // family alongside the gateway forever.
+      if (scrubSettledCaptureAt(authPathFor(), probe.cred)) {
+        console.error(
+          `[serve] PRODUCT-1318: scrubbed a leftover ${probe.id} refresh token — its capture landed centrally but the capture-time scrub never did`,
+        );
+      }
       const didApply = applyServedCredential(authPathFor(), probe.cred);
       // WHOSE credential this was, remembered for the provider-error stamp and
       // the /providers row. Recorded on the gateway's ANSWER, not on the write:

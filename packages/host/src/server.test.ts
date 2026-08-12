@@ -339,7 +339,12 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
   }
 });
 
-test("a failed scrub surfaces as an error (credential still stored)", async () => {
+test("a failed scrub settles the capture as success and logs PRODUCT-1318 (credential stored)", async () => {
+  // The central PUT landed, so the connect WORKED — failing the route here made
+  // the client replay the whole tombstone-clearing PUT while the leftover
+  // refresh token quietly kept the pod a second rotator. The runtime's serve
+  // sync self-heals the scrub; the route settles and the error log is the
+  // loud surface (PRODUCT-1318).
   const fakeRuntime = await startTestFetchServer((req) => {
     const u = new URL(req.url);
     if (u.pathname === "/auth/export") {
@@ -365,15 +370,21 @@ test("a failed scrub surfaces as an error (credential still stored)", async () =
     }),
   };
   const { base: b, close } = await startServer(deps);
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   try {
     const r = await fetch(`${b}/agents/${aliceSalesId}/credential/capture`, {
       method: "POST",
       headers: auth("alice"),
     });
-    expect(r.status).toBe(502); // never silent: the user sees the real reason
-    const body = (await r.json()) as { error: string };
-    expect(body.error).toContain("refresh token");
+    expect(r.status).toBe(200);
+    const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+    const stored = await credentials.get(aliceWs.id, "openai-codex");
+    expect(stored?.refreshToken).toBe("RT2");
+    expect(
+      errors.mock.calls.some((c) => String(c[0]).includes("PRODUCT-1318")),
+    ).toBe(true);
   } finally {
+    errors.mockRestore();
     await close();
     await fakeRuntime.stop();
   }

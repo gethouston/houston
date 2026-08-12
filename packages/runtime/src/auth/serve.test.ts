@@ -22,11 +22,11 @@ import {
   type PiCred,
   readServedProvidersAt,
   removeServedCredentialAt,
-  scrubRefreshTokensAt,
+  scrubRefreshTokenAt,
   writeServedProvidersAt,
 } from "./auth-file";
 import { selectExportCredential } from "./export";
-import { syncServedCredential } from "./serve";
+import { scrubRefreshTokens, syncServedCredential } from "./serve";
 import { resetDeadKeyReportsForTest } from "./served-key-guard";
 
 /** The host's authoritative "not connected" 404 (see routes/credential.ts). */
@@ -473,6 +473,143 @@ test("a serve marks the provider in the manifest, so a later sign-out removes it
   });
 });
 
+/** Serves one openai-codex OAuth credential with the given access token. */
+const codexServeFetch = (access: string) =>
+  (async (input: RequestInfo | URL) => {
+    if (
+      new URL(String(input)).searchParams.get("provider") === "openai-codex"
+    ) {
+      return new Response(
+        JSON.stringify({
+          provider: "openai-codex",
+          kind: "oauth",
+          access,
+          expires: 1_900_000_000_000,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+
+test("serve sync self-heals a lost capture scrub when central serves the SAME access (PRODUCT-1318)", async () => {
+  // The capture PUT landed centrally but the post-capture scrub failed all its
+  // retries. The leftover refresh-bearing entry used to be permanent: apply
+  // skipped it (mid-capture guard), removal refused it, and this pod silently
+  // kept rotating the family alongside the gateway — two rotators, mutual
+  // invalid_grant, org-wide sign-out. Central serving the very access token the
+  // local entry holds PROVES the capture landed, so the sync finishes the scrub.
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    await withServeMode(codexServeFetch("AT-captured"), async () => {
+      const path = join(config.dataDir, "auth.json");
+      const manifestPath = join(config.dataDir, "served-providers.json");
+      writeFileSync(
+        path,
+        JSON.stringify({
+          "openai-codex": {
+            type: "oauth",
+            access: "AT-captured",
+            refresh: "RT-leftover",
+            expires: 1,
+          },
+        }),
+      );
+
+      expect(await syncServedCredential()).toEqual(["openai-codex"]);
+      expect(readAuth(path)["openai-codex"]).toEqual({
+        type: "oauth",
+        access: "AT-captured",
+        refresh: "",
+        expires: 1_900_000_000_000,
+      });
+      // Serve-owned again: a later authoritative sign-out can remove it.
+      expect(readServedProvidersAt(manifestPath)).toEqual(["openai-codex"]);
+      // Loud, not silent: a heal firing means a capture-time scrub was lost.
+      expect(
+        errors.mock.calls.some((c) => String(c[0]).includes("PRODUCT-1318")),
+      ).toBe(true);
+    });
+  } finally {
+    errors.mockRestore();
+  }
+});
+
+test("serve sync leaves a REAL mid-capture login alone (different access)", async () => {
+  // A fresh device-code login between the previous credential's serve and its
+  // own capture: the local refresh-bearing entry carries a DIFFERENT access
+  // than the central row, so the capture has NOT landed — scrubbing here would
+  // destroy the only copy of the new refresh token before /auth/export ships it.
+  await withServeMode(codexServeFetch("AT-old-central"), async () => {
+    const path = join(config.dataDir, "auth.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        "openai-codex": {
+          type: "oauth",
+          access: "AT-fresh-login",
+          refresh: "RT-fresh-login",
+          expires: 1,
+        },
+      }),
+    );
+
+    expect(await syncServedCredential()).toEqual([]); // apply still skips it
+    expect(readAuth(path)["openai-codex"]).toEqual({
+      type: "oauth",
+      access: "AT-fresh-login",
+      refresh: "RT-fresh-login",
+      expires: 1,
+    });
+  });
+});
+
+test("scrubRefreshTokens(provider) marks the provider serve-owned at capture time (CRED-09)", async () => {
+  // The scrub route only fires after a successful central PUT, so THIS is the
+  // moment the provider becomes serve-owned — not its first serve. Without it,
+  // a capture followed by a sign-out before any serve ran left an entry no
+  // authoritative 404 could ever remove.
+  const fetchImpl = (async () =>
+    notConnected404()) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    const path = join(config.dataDir, "auth.json");
+    const manifestPath = join(config.dataDir, "served-providers.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        "openai-codex": {
+          type: "oauth",
+          access: "AT-cap",
+          refresh: "RT-cap",
+          expires: 1,
+        },
+        "github-copilot": {
+          type: "oauth",
+          access: "AT-other",
+          refresh: "RT-other",
+          expires: 2,
+        },
+      }),
+    );
+
+    expect(scrubRefreshTokens("openai-codex")).toEqual(["openai-codex"]);
+    expect(readAuth(path)["openai-codex"]?.refresh).toBe("");
+    // Provider-scoped: the concurrent connect's refresh survives (PRODUCT-1320).
+    expect(readAuth(path)["github-copilot"]?.refresh).toBe("RT-other");
+    expect(readServedProvidersAt(manifestPath)).toEqual(["openai-codex"]);
+    // A retried scrub (already clean) still reports settled ownership.
+    expect(scrubRefreshTokens("openai-codex")).toEqual([]);
+    expect(readServedProvidersAt(manifestPath)).toEqual(["openai-codex"]);
+
+    // The org signs out before this provider was ever served: the authoritative
+    // 404 can now remove the local copy because capture marked ownership.
+    expect(await syncServedCredential()).toEqual([]);
+    expect(readAuth(path)["openai-codex"]).toBeUndefined();
+    expect(readServedProvidersAt(manifestPath)).toEqual([]);
+  });
+});
+
 test("selectExportCredential without a provider falls back to the first OAuth credential", () => {
   const auth: Record<string, PiCred> = {
     "openai-codex": oauth("AT-codex", "RT-codex"),
@@ -594,7 +731,12 @@ test("a served credential replaces an existing refresh-less entry", () => {
   expect(codex.access).toBe("AT-new");
 });
 
-test("scrub rewrites every refresh-bearing entry and reports the providers", () => {
+test("the scrub is provider-scoped: a concurrent connect's refresh token survives (PRODUCT-1320)", () => {
+  // Two OAuth connects interleave: codex's capture lands and scrubs while
+  // copilot's own login just wrote its refresh token, BEFORE copilot's capture
+  // exported it. The old whole-file scrub erased copilot's refresh here —
+  // copilot's capture then found nothing to export and the credential ended
+  // access-only centrally, dying at first expiry.
   const path = freshAuthPath();
   writeFileSync(
     path,
@@ -602,25 +744,31 @@ test("scrub rewrites every refresh-bearing entry and reports the providers", () 
       "openai-codex": {
         type: "oauth",
         access: "A1",
-        refresh: "RT-1",
+        refresh: "RT-codex",
         expires: 1,
       },
-      anthropic: { type: "oauth", access: "A2", refresh: "RT-2", expires: 2 },
+      "github-copilot": {
+        type: "oauth",
+        access: "A2",
+        refresh: "RT-copilot",
+        expires: 2,
+      },
     }),
   );
-  expect(scrubRefreshTokensAt(path).sort()).toEqual([
-    "anthropic",
-    "openai-codex",
-  ]);
+  expect(scrubRefreshTokenAt(path, "openai-codex")).toBe(true);
   const auth = readAuth(path);
   const codex = auth["openai-codex"];
   if (!codex) throw new Error("expected openai-codex entry in auth file");
-  const anthropic = auth.anthropic;
-  if (!anthropic) throw new Error("expected anthropic entry in auth file");
+  const copilot = auth["github-copilot"];
+  if (!copilot) throw new Error("expected github-copilot entry in auth file");
   expect(codex.refresh).toBe("");
-  expect(anthropic.refresh).toBe("");
   // Access tokens survive the scrub — the agent keeps working this turn.
   expect(codex.access).toBe("A1");
+  // The mid-capture neighbor is untouched: its own capture can still export.
+  expect(copilot.refresh).toBe("RT-copilot");
+  // ...and copilot's later scrub settles it too.
+  expect(scrubRefreshTokenAt(path, "github-copilot")).toBe(true);
+  expect(readAuth(path)["github-copilot"]?.refresh).toBe("");
 });
 
 test("an API-key served credential is written as pi's api_key variant (no refresh/expiry)", () => {
@@ -655,21 +803,22 @@ test("scrub leaves api_key entries untouched (nothing to scrub)", () => {
       opencode: { type: "api_key", key: "sk-opencode" },
     }),
   );
-  expect(scrubRefreshTokensAt(path)).toEqual(["openai-codex"]);
+  expect(scrubRefreshTokenAt(path, "openai-codex")).toBe(true);
+  expect(scrubRefreshTokenAt(path, "opencode")).toBe(false);
   const auth = readAuth(path);
   expect(auth.opencode).toEqual({ type: "api_key", key: "sk-opencode" });
 });
 
 test("scrub is idempotent and a missing auth.json is a no-op", () => {
   const path = freshAuthPath();
-  expect(scrubRefreshTokensAt(path)).toEqual([]); // no file
+  expect(scrubRefreshTokenAt(path, "openai-codex")).toBe(false); // no file
   writeFileSync(
     path,
     JSON.stringify({
       "openai-codex": { type: "oauth", access: "A", refresh: "", expires: 1 },
     }),
   );
-  expect(scrubRefreshTokensAt(path)).toEqual([]); // already clean
+  expect(scrubRefreshTokenAt(path, "openai-codex")).toBe(false); // already clean
 });
 
 test("removeServedCredentialAt removes only served-owned credentials for the requested provider", () => {
@@ -758,9 +907,9 @@ test("scrub leaves api-key entries untouched (no refresh token to strip)", () =>
       "amazon-bedrock": { type: "api_key", key: "bedrock-KEEP" },
     }),
   );
-  // Only the OAuth provider is scrubbed; the api-key entries are reported as
-  // unchanged and survive verbatim.
-  expect(scrubRefreshTokensAt(path)).toEqual(["openai-codex"]);
+  // Only the captured OAuth provider is scrubbed; the api-key entries are
+  // reported as unchanged and survive verbatim.
+  expect(scrubRefreshTokenAt(path, "openai-codex")).toBe(true);
   const auth = JSON.parse(readFileSync(path, "utf8")) as Record<
     string,
     { type?: string; key?: string; refresh?: string }

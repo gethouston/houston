@@ -7,7 +7,7 @@ import {
   runAnthropicSetupTokenLogin,
   storeAnthropicToken,
 } from "./anthropic-setup-token";
-import { type PiCred, scrubRefreshTokensAt } from "./auth-file";
+import { type PiCred, scrubRefreshTokenAt } from "./auth-file";
 
 test("isAnthropicToken accepts setup tokens and console keys, rejects junk", () => {
   expect(isAnthropicToken("sk-ant-oat01-abc123")).toBe(true); // setup token
@@ -72,14 +72,15 @@ test("Gate #2 scrub leaves the anthropic api_key entry intact", () => {
     },
   };
   writeFileSync(path, JSON.stringify(auth));
-  const scrubbed = scrubRefreshTokensAt(path);
+  // The codex connect's provider-scoped scrub (PRODUCT-1320) — and even a
+  // direct scrub aimed at anthropic — leaves the api_key entry intact: it
+  // carries no refresh token, so the stored setup token survives verbatim.
+  expect(scrubRefreshTokenAt(path, "anthropic")).toBe(false);
+  expect(scrubRefreshTokenAt(path, "openai-codex")).toBe(true);
   const after = JSON.parse(readFileSync(path, "utf8")) as Record<
     string,
     PiCred
   >;
-  // The api_key anthropic entry carries no refresh token, so scrub never touches
-  // it — the stored setup token survives the per-connect scrub verbatim.
-  expect(scrubbed).toEqual(["openai-codex"]);
   expect(after.anthropic).toEqual({
     type: "api_key",
     key: "sk-ant-oat01-live",

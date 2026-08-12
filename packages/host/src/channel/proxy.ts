@@ -322,8 +322,11 @@ export class ProxyChannel implements RuntimeChannel {
   /**
    * Connect-once capture: pull the credential out of the agent's runtime, store
    * it for the WHOLE workspace, then scrub the runtime's refresh token (Gate #2).
-   * A scrub failure is security-relevant and surfaces — the connection itself
-   * succeeded; reconnecting retries capture + scrub.
+   * A scrub failure after the store landed settles as success (the connect
+   * worked) — it is logged loudly and the runtime's serve sync finishes the
+   * scrub (PRODUCT-1318). This path is the USER-initiated connect, so its full
+   * PUT deliberately supersedes tombstones; automatic re-pushes (the serve
+   * healer) pass ifAbsent instead.
    */
   async captureCredential(
     ctx: ChannelCtx,

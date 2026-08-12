@@ -209,21 +209,25 @@ export function applyServedCredential(
 }
 
 /**
- * Rewrite every OAuth auth.json entry at `path` with refresh="". Idempotent.
- * API-key entries carry no refresh token, so they are left untouched. Returns
- * the providers that were actually scrubbed.
+ * Rewrite ONE provider's OAuth entry at `path` with refresh="". Idempotent; a
+ * missing file, an absent entry, an api_key entry (no refresh token to strip)
+ * and an already-scrubbed entry are all no-ops. Returns whether anything was
+ * actually scrubbed.
+ *
+ * Provider-scoped by design (PRODUCT-1320): capture is per-provider, and the
+ * old whole-file scrub let provider A's post-capture scrub erase provider B's
+ * refresh token in the window between B's own device-code login and B's
+ * capture export — B ended up access-only centrally and died at first expiry.
+ * There is deliberately NO full-scrub form: every caller knows exactly which
+ * provider it just captured.
  */
-export function scrubRefreshTokensAt(path: string): string[] {
+export function scrubRefreshTokenAt(path: string, provider: string): boolean {
   const auth = readAuthFile(path);
-  const scrubbed: string[] = [];
-  for (const [provider, cred] of Object.entries(auth)) {
-    if (cred?.type === "oauth" && cred.refresh) {
-      auth[provider] = { ...cred, refresh: "" };
-      scrubbed.push(provider);
-    }
-  }
-  if (scrubbed.length) writeAuthFile(path, auth);
-  return scrubbed;
+  const cred = auth[provider];
+  if (cred?.type !== "oauth" || !cred.refresh) return false;
+  auth[provider] = { ...cred, refresh: "" };
+  writeAuthFile(path, auth);
+  return true;
 }
 
 /**

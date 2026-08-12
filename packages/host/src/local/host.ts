@@ -374,6 +374,13 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
             requireRefresh: true,
             // The member whose serve missed — their runtime file, their row.
             actingAs,
+            // AUTOMATIC re-push (no user behind it): fill-only, per the store's
+            // maintenance contract. A plain PUT is reserved for a real user
+            // (re)connect because it clears the gateway's revocation tombstone
+            // (cloud #230) — the healer re-exporting a pod's leftover copy
+            // after a recycle was the one resurrection path that survived
+            // (PRODUCT-1318).
+            ifAbsent: true,
           });
           return result.ok;
         },
