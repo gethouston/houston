@@ -15,12 +15,24 @@ import { tauriAgentSettings } from "../../lib/tauri";
  * needed here — feature detection is the `teams` flag, not a swallowed error.
  */
 export function useAgentSettings(agentId: string, enabled: boolean) {
-  return useQuery({
+  return useQuery(agentSettingsQueryOptions(agentId, enabled));
+}
+
+/** Shared cache contract for editors and roster-wide policy overviews. */
+export function agentSettingsQueryOptions(
+  agentId: string,
+  enabled: boolean,
+  quiet = false,
+) {
+  return {
     queryKey: queryKeys.agentSettings(agentId),
-    queryFn: () => tauriAgentSettings.get(agentId),
+    queryFn: () =>
+      quiet
+        ? tauriAgentSettings.getQuiet(agentId)
+        : tauriAgentSettings.get(agentId),
     enabled,
     staleTime: 30_000,
-  });
+  };
 }
 
 /**

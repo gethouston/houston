@@ -14,6 +14,7 @@
     "check:fix": "biome check --write --error-on-warnings",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:parity": "node scripts/check-parity.mjs",
+    "generate:team-icons": "node scripts/generate-team-icons.mjs && biome format --write ui/layout/src/sidebar-group-glyph-data-*.ts ui/layout/src/sidebar-group-glyph-tags.ts",
     "prepare": "husky || true",
     "test": "pnpm -r --if-present --no-bail test",
     "start": "node scripts/dev/wrong-entry.mjs start",

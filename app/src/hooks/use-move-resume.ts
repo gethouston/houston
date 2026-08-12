@@ -67,17 +67,24 @@ export function useMoveResume(enabled: boolean): void {
           // errors are still logged + captured to Sentry; only the expected
           // C8 business states (incl. `move_in_progress`, a normal resume
           // answer when a fresh move owns the agent) skip capture too.
-          const result = await resumePendingMove(pending, {
-            moveStatus: (agentId, moveId) =>
-              tauriOrg.moveStatus(agentId, moveId, { toast: false }),
-            moveAgent: (agentId, toSlug) =>
-              tauriOrg.moveAgent(agentId, toSlug, {
-                toast: false,
-                silence: (err) =>
-                  isExpectedShareError(err) ||
-                  shareErrorCode(err) === "move_in_progress",
-              }),
-          });
+          const result = await resumePendingMove(
+            pending,
+            {
+              moveStatus: (agentId, moveId) =>
+                tauriOrg.moveStatus(agentId, moveId, { toast: false }),
+              moveAgent: (agentId, toSlug) =>
+                tauriOrg.moveAgent(agentId, toSlug, {
+                  toast: false,
+                  silence: (err) =>
+                    isExpectedShareError(err) ||
+                    shareErrorCode(err) === "move_in_progress",
+                }),
+            },
+            {
+              onMoveAccepted: (moveId) =>
+                updatePendingMoveId(pending.agentId, moveId),
+            },
+          );
           if (result.outcome === "done") {
             clearPendingMove(pending.agentId);
             addToast({

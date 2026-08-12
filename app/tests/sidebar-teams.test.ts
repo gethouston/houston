@@ -23,14 +23,18 @@ const OWNER_SECTIONS: TeamSectionId[] = [
   "mission-control",
   "routines",
   "files",
-  "archived",
+  "settings",
+];
+const AGENT_SECTIONS: TeamSectionId[] = [
+  "mission-control",
+  "routines",
+  "files",
   "settings",
 ];
 const MEMBER_SECTIONS: TeamSectionId[] = [
   "mission-control",
   "routines",
   "files",
-  "archived",
 ];
 
 const openTeam = {
@@ -38,6 +42,8 @@ const openTeam = {
   activeTeamId: "g1",
   teamSection: "settings" as const,
   teamAgentFilter: "a1",
+  teamAgentFocus: false,
+  teamSettingsFocus: false,
 };
 
 describe("resolveTeamHighlight", () => {
@@ -76,7 +82,7 @@ describe("resolveTeamHighlight", () => {
       "mission-control",
     );
     // A section this caller CAN see is kept, never collapsed to the first one.
-    for (const teamSection of ["routines", "files", "archived"] as const) {
+    for (const teamSection of ["routines", "files"] as const) {
       assert.equal(
         resolveTeamHighlight({ ...openTeam, teamSection }, OWNER_SECTIONS)
           .section,
@@ -104,8 +110,16 @@ describe("teamRowActive", () => {
     // Narrowed to one agent, that agent's row is the more precise answer. Two
     // fills in one block claim the user is in two places at once, which is
     // worse than one answer that is merely coarse.
+    const workHighlight = resolveTeamHighlight(
+      { ...openTeam, teamSection: "files" },
+      OWNER_SECTIONS,
+    );
     assert.equal(
-      teamRowActive({ teamId: "g1", highlight, agentRowLit: true }),
+      teamRowActive({
+        teamId: "g1",
+        highlight: workHighlight,
+        agentRowLit: true,
+      }),
       false,
     );
   });
@@ -115,7 +129,8 @@ describe("teamRowActive", () => {
       "mission-control",
       "routines",
       "files",
-      "settings",
+      "context",
+      "people",
     ] as const) {
       assert.equal(
         teamRowActive({
@@ -189,7 +204,8 @@ describe("the rail fills exactly ONE row", () => {
     "mission-control",
     "routines",
     "files",
-    "settings",
+    "context",
+    "people",
   ] as const) {
     for (const teamAgentFilter of ["a1", "gone", null]) {
       for (const collapsed of [true, false]) {
@@ -229,6 +245,25 @@ describe("sidebarSelectedAgentId", () => {
     OWNER_SECTIONS,
   );
 
+  it("keeps a focused agent lit on settings while the team header steps aside", () => {
+    const focused = resolveTeamHighlight(
+      { ...openTeam, teamAgentFocus: true },
+      AGENT_SECTIONS,
+    );
+    assert.equal(
+      sidebarSelectedAgentId({
+        viewMode: TEAM_VIEW_ID,
+        highlight: focused,
+        activeTeam: team("g1", ["a1"]),
+      }),
+      "a1",
+    );
+    assert.equal(
+      teamRowActive({ teamId: "g1", highlight: focused, agentRowLit: true }),
+      false,
+    );
+  });
+
   it("selects the team view's agent filter", () => {
     assert.equal(
       sidebarSelectedAgentId({
@@ -258,11 +293,9 @@ describe("sidebarSelectedAgentId", () => {
   });
 
   it("fills NO row under any section that does not narrow by the pin", () => {
-    // Settings lists the whole team whatever the pin says; Files resolves its
-    // OWN agent; Routines and Archived carry a section-local filter of their
-    // own. A lit agent row under any of them would claim a narrowing nothing
-    // on screen is doing — and clicking it again would look like a no-op.
-    for (const teamSection of ["files", "routines", "archived"] as const) {
+    // Files and Routines have focused-agent surfaces of their own. Without
+    // focus, a lit row would claim a narrowing nothing on screen is doing.
+    for (const teamSection of ["files", "routines"] as const) {
       assert.equal(
         sidebarSelectedAgentId({
           viewMode: TEAM_VIEW_ID,
@@ -276,6 +309,7 @@ describe("sidebarSelectedAgentId", () => {
         teamSection,
       );
     }
+    // The team-level Settings door does not apply the board pin.
     assert.equal(
       sidebarSelectedAgentId({
         viewMode: TEAM_VIEW_ID,

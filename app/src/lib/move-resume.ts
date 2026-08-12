@@ -39,6 +39,7 @@ export interface ResumeOptions {
   pollIntervalMs?: number;
   budgetMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  onMoveAccepted?: (moveId: string) => void;
 }
 
 const defaultSleep = (ms: number) =>
@@ -57,13 +58,15 @@ export async function resumePendingMove(
 
   // Phase 1: the recorded ticket. `done` means the server finished after the
   // client vanished — nothing to redo. `moving` means it is still running.
-  let status: AgentMoveStatus;
-  try {
-    status = await wire.moveStatus(pending.agentId, pending.moveId);
-  } catch (err) {
-    return { outcome: "rejected", code: shareErrorCode(err) };
+  let status: AgentMoveStatus = { status: "failed", error: "move not found" };
+  if (pending.moveId) {
+    try {
+      status = await wire.moveStatus(pending.agentId, pending.moveId);
+    } catch (err) {
+      return { outcome: "rejected", code: shareErrorCode(err) };
+    }
   }
-  if (status.status === "moving") {
+  if (pending.moveId && status.status === "moving") {
     const settled = await pollToTerminal(
       pending.agentId,
       pending.moveId,
@@ -80,6 +83,7 @@ export async function resumePendingMove(
   let start: AgentMoveStart;
   try {
     start = await wire.moveAgent(pending.agentId, pending.teamSlug);
+    options.onMoveAccepted?.(start.moveId);
   } catch (err) {
     const code = shareErrorCode(err);
     return code === "move_in_progress"

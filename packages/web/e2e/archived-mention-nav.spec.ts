@@ -124,7 +124,7 @@ test("an @mention on an archived mission opens it ON THE ARCHIVE, with its histo
   // has since the agent tab shell went away) — and on its ARCHIVE, which is the
   // only surface that can render a task with this status. The Archived lozenge
   // is both the route and the selected-state proof.
-  await expectTeamSectionSelected(page, "Archived");
+  await expectTeamSectionSelected(page, "Tasks");
   await expect(screen(page).getByText(MISSION_TITLE).first()).toBeVisible();
 
   // The mission is SELECTED, not merely listed: its transcript is on screen.

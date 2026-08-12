@@ -23,6 +23,11 @@ export { SidebarDragOverlay } from "./sidebar-drag-overlay";
 export type { SidebarFlatListProps } from "./sidebar-flat-list";
 export { SidebarFlatList } from "./sidebar-flat-list";
 export { sidebarBandInset } from "./sidebar-geometry";
+export {
+  matchesSidebarGroupGlyph,
+  sidebarGroupGlyphConcepts,
+} from "./sidebar-group-glyph-search";
+export { SIDEBAR_GROUP_GLYPH_TAGS } from "./sidebar-group-glyph-tags";
 export type { SidebarGroupGlyphName } from "./sidebar-group-glyphs";
 export {
   isSidebarGroupGlyph,
@@ -43,7 +48,6 @@ export type { SidebarGroupedListProps } from "./sidebar-grouped-list";
 export { SidebarGroupedList } from "./sidebar-grouped-list";
 export type {
   SidebarDefaultGroupView,
-  SidebarGroupAffordances,
   SidebarGroupView,
   SidebarSection,
 } from "./sidebar-groups";
@@ -60,7 +64,7 @@ export type {
   SidebarRowDepth,
   SidebarRowDisclosure,
 } from "./sidebar-row-button";
-export { SidebarRowButton } from "./sidebar-row-button";
+export { SidebarRowButton, SidebarRowCaret } from "./sidebar-row-button";
 export type {
   SidebarBaseRowContext,
   SidebarRowContext,

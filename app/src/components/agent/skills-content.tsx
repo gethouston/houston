@@ -17,34 +17,22 @@ const SKILL_STORE_SIZE_LABEL = "9000+";
  * Integrations surfaces, minus a page header — the surface that mounts this
  * one, the agent settings rail's Skills section, carries that):
  * ONE search field on top drives everything, over the consolidated **Your
- * skills** strip of installed-skill tiles (a tile opens the edit modal, whose
- * footer carries the delete), then the **Available** discovery area via
+ * skills** strip of installed-skill tiles (a tile opens the manage dialog,
+ * which carries the content editor and the delete), then the **Available**
+ * discovery area via
  * {@link CatalogShell} — the **Store** tab (the skills.sh marketplace, its
  * category picker kept) and **Custom skills** (an empty state for now: the
  * explanation + the Add CTA opening the GitHub / From-scratch dialog). The one
  * query filters the strip AND the store; a strip with no matches is dropped.
- * Read-only mode (managed agent, non-manager) drops the tabs entirely and keeps
- * just the strip.
  *
  * HOU-791: a skill's primary surface is its persistent setup CHAT (the same
  * experience a routine's setup chat gives) — a row click opens it inline in
- * place of the catalog, `useSkillsChatSurface` owns the lifecycle, and the
- * raw-markdown modal stays reachable via the chat header's "Edit manually"
- * (and stays the row behavior in read-only mode).
+ * place of the catalog and `useSkillsChatSurface` owns the lifecycle.
  */
 export function SkillsContent({
   agent,
   skills,
   loading,
-  readOnly = false,
-  editingSkillName,
-  editorState,
-  onEditSkill,
-  onCloseEdit,
-  onSaveEditing,
-  onDeleteSkill,
-  editModalLabels,
-  deleteConfirm,
   onSearch,
   onInstallCommunity,
   onPreviewCommunity,
@@ -58,40 +46,35 @@ export function SkillsContent({
   const [tab, setTab] = useState("store");
   const [dialogOpen, setDialogOpen] = useState(false);
   // The open skill's MANAGE dialog (HOU-792) — the same content + agents +
-  // Edit-in-chat dialog the global page opens. Writable surfaces only; the
-  // raw edit modal stays the read-only fallback.
+  // Edit-in-chat dialog the global page opens.
   const [managingSlug, setManagingSlug] = useState<string | null>(null);
   // The ONE page search: it filters the installed strip AND drives the Store.
   const [query, setQuery] = useState("");
   // The chat layer (HOU-791): the manage dialog's "Edit in chat" opens the
   // skill's setup chat in the shell's right panel; the chat header's
-  // Edit-manually comes back to the manage dialog (read-only mode falls back
-  // to the raw modal instead).
+  // Edit-manually comes back to the manage dialog.
   const chat = useSkillsChatSurface({
     agent,
     skills,
     loading,
-    readOnly,
-    onEditSkill: readOnly ? onEditSkill : setManagingSlug,
+    onEditSkill: setManagingSlug,
   });
-  // A row click opens the manage dialog (read-only: the raw modal) — the
-  // dialog itself resolves whether the slug is this agent's copy or a
-  // workspace-store skill the manifest enables.
+  // A row click opens the manage dialog — the dialog itself resolves whether
+  // the slug is this agent's copy or a workspace-store skill the manifest
+  // enables.
   const { sorted, installedCount, installed } = useInstalledSkillsStrip(
     skills,
-    readOnly ? onEditSkill : setManagingSlug,
+    setManagingSlug,
     query,
   );
-  const editingSkill = sorted.find((s) => s.name === editingSkillName) ?? null;
-  const addDialogProps =
-    !readOnly && onCreateFromScratch
-      ? {
-          onListFromRepo,
-          onInstallFromRepo,
-          onCreateFromScratch,
-          installedSkillNames,
-        }
-      : null;
+  const addDialogProps = onCreateFromScratch
+    ? {
+        onListFromRepo,
+        onInstallFromRepo,
+        onCreateFromScratch,
+        installedSkillNames,
+      }
+    : null;
   const tabs = useSkillDiscoveryTabs({
     showCustom: addDialogProps !== null,
     agent,
@@ -105,23 +88,21 @@ export function SkillsContent({
     onDiscardDraft: chat.discardDraft,
     query,
     onQueryChange: setQuery,
-    // Read-only mode never offers the Store either: no community callbacks.
-    onSearch: readOnly ? undefined : onSearch,
-    onInstallCommunity:
-      readOnly || !onInstallCommunity
-        ? undefined
-        : async (skill, signal) => {
-            const result = await onInstallCommunity(skill, signal);
-            if (!signal?.aborted) setQuery("");
-            return result;
-          },
+    onSearch,
+    onInstallCommunity: onInstallCommunity
+      ? async (skill, signal) => {
+          const result = await onInstallCommunity(skill, signal);
+          if (!signal?.aborted) setQuery("");
+          return result;
+        }
+      : undefined,
     onPreviewCommunity,
     installedSkillNames,
   });
 
-  // Read-only surfaces render zero tabs, so an active search that matches no
-  // installed skill would leave nothing at all under the search box — a blank
-  // void. This note keeps the search field anchored to a visible result.
+  // A surface with zero tabs (no create flow, no store) would leave nothing at
+  // all under the search box when the query matches no installed skill — a
+  // blank void. This note keeps the search field anchored to a visible result.
   const noInstalledMatches =
     tabs.length === 0 && query.trim() !== "" && installedCount === 0;
 
@@ -141,7 +122,7 @@ export function SkillsContent({
           left while the conversation runs beside it. The chat node itself is
           a portal (plus a hidden board mount), so both render together. The
           dialogs stay mounted — the chat header's Edit-manually opens the
-          modal over the chat. */}
+          manage dialog over the chat. */}
       {chat.chatNode}
       <CatalogShell
         controls={
@@ -172,7 +153,6 @@ export function SkillsContent({
       )}
       <SkillsContentDialogs
         agent={agent}
-        readOnly={readOnly}
         addDialogProps={addDialogProps}
         dialogLabels={dialogLabels}
         dialogOpen={dialogOpen}
@@ -182,16 +162,6 @@ export function SkillsContent({
         onEditInChat={(slug) => {
           setManagingSlug(null);
           chat.openChatFor(slug);
-        }}
-        editor={{
-          editingSkill,
-          editorState,
-          readOnly,
-          onCloseEdit,
-          onSaveEditing,
-          onDeleteSkill,
-          editModalLabels,
-          deleteConfirm,
         }}
       />
     </>

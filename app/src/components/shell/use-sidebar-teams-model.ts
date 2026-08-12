@@ -21,7 +21,6 @@ import {
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import type { AgentItemArgs } from "./agent-sidebar-items";
-import { canEditTeamIdentity } from "./team-identity";
 import { buildTeamSidebarLists } from "./team-sidebar-lists";
 import { teamCollapsedLookup } from "./team-sidebar-model";
 import {
@@ -78,6 +77,8 @@ export function useSidebarTeamsModel(args: {
   const activeTeamId = useUIStore((s) => s.activeTeamId);
   const teamSection = useUIStore((s) => s.teamSection);
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
+  const teamAgentFocus = useUIStore((s) => s.teamAgentFocus);
+  const teamSettingsFocus = useUIStore((s) => s.teamSettingsFocus);
 
   // Every agent lives in exactly one team: a named sidebar group, or the
   // trailing default team, which IS the workspace (virtual — nothing about the
@@ -110,22 +111,17 @@ export function useSidebarTeamsModel(args: {
   );
   const activeTeam = teamById(teams, activeTeamId);
   const highlight = resolveTeamHighlight(
-    { viewMode, activeTeamId, teamSection, teamAgentFilter },
+    {
+      viewMode,
+      activeTeamId,
+      teamSection,
+      teamAgentFilter,
+      teamAgentFocus,
+      teamSettingsFocus,
+    },
     activeTeam ? sectionsForTeam(activeTeam) : [],
   );
   const collapsedLookup = teamCollapsedLookup(sidebar.layout);
-  // The menu's one identity entry: opens the shared "Change icon & name"
-  // dialog (the same form the create-team dialog renders). Who may edit which
-  // team is `team-identity.ts`'s to decide.
-  const setEditTeamIdentityId = useUIStore((s) => s.setEditTeamIdentityId);
-  const onEditTeamFor = useCallback(
-    (team: TeamView) =>
-      canEditTeamIdentity(team, serverBacked)
-        ? () => setEditTeamIdentityId(team.id)
-        : undefined,
-    [serverBacked, setEditTeamIdentityId],
-  );
-
   // The rail fills EXACTLY ONE row, so the agent answer is resolved FIRST and
   // every block header is handed it: a block whose own agent is lit leaves its
   // header unfilled (`teamRowActive`). A folded block draws no agent rows, so
@@ -159,12 +155,7 @@ export function useSidebarTeamsModel(args: {
     layout: sidebar.layout,
     teams,
     selectedAgentId,
-    affordancesFor: teamActions.affordancesFor,
-    // The default team is asked the same question every named team is: on a
-    // host that owns the teams C13 lets its owner rename it like any other,
-    // and locally it is the workspace itself, whose identity nothing in the
-    // stack can change — `canEditTeamIdentity` answers both.
-    onEditTeamFor,
+    newTeamLabel: t("teams:teamView.defaultName"),
     highlight,
     summaries: args.summaries,
     runningLabel: (count) => t("shell:sidebar.runningCount", { count }),

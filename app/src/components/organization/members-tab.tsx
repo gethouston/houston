@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../hooks/use-session";
+import { CreateOrganizationInviteEmpty } from "./create-organization-invite-empty";
 import type { OrgTabProps } from "./organization-view";
 import { PeopleAddRow } from "./people-add-row";
 import { PendingInvites } from "./people-invites";
@@ -22,6 +23,8 @@ export default function MembersTab({ ctx }: OrgTabProps) {
   const canManage = ctx.isOwner;
   const members = ctx.org.members ?? [];
   const invites = ctx.org.invites ?? [];
+
+  if (ctx.isPersonal) return <CreateOrganizationInviteEmpty />;
 
   return (
     <div className="flex flex-col gap-8 py-6">

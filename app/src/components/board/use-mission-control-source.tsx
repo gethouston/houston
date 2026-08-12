@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { pendingMissionSurface } from "../../lib/board-surface-nav";
 import { missionMatchesPerson } from "../../lib/mission-people";
 import type { Agent } from "../../lib/types";
@@ -33,6 +33,7 @@ import { usePendingMissionTarget } from "./use-pending-mission-target";
 export function useMissionControlSource(
   agents: Agent[],
   scope?: MissionControlScope,
+  modeToggle?: ReactNode,
 ): BoardSource {
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
@@ -58,11 +59,9 @@ export function useMissionControlSource(
     mc.selectedId,
   );
 
-  // No `setFilterPath` any more: the scope is a breadcrumb in row 1 of the
-  // team strip, which reads and writes the same `teamAgentFilter` pin
-  // directly. `filterPath` is still READ, for the auto-open key. The scope's
-  // `onFilterPathChange` still has to exist, because its presence is what
-  // makes `filterPath` CONTROLLED rather than local to this hook.
+  // The board never WRITES the filter: the scope is a breadcrumb in row 1 of
+  // the team strip, which reads and writes the same `teamAgentFilter` pin
+  // directly. `filterPath` is still READ, for the auto-open key.
   const { scopedAgents, paths, agentFilteredItems, visibleAgents, filterPath } =
     useMcScope(agents, mc.items, scope);
 
@@ -140,6 +139,7 @@ export function useMissionControlSource(
           isSearchingText={missionSearch.isSearchingText}
           onFilterUserIdChange={setFilterUserId}
           onSearchChange={missionSearch.setQuery}
+          modeToggle={modeToggle}
           newMission={{
             agents: newMission.newMissionAgents,
             menuOpen: newMission.menuOpen,

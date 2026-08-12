@@ -1,86 +1,64 @@
 # Agent settings — the ONE per-agent configuration surface
 
-`app/src/components/agent-settings/` is the single home for "configure THIS agent". It is
-now the ONLY place an agent is configured: the per-agent **Context** / **Admin** tabs are
-gone with the rest of the agent tab shell, so nothing else names these sections, renders a
-rail, or switches these bodies. One section union, one gating model, one rail component,
-one section switch.
+`app/src/components/agent-settings/` is the single home for "configure THIS agent",
+so nothing else names these sections or switches these bodies. One section union, one
+gating model, one section switch.
 
-## The two doors
+## The one door
 
-**Two doors, one page:** **Team Settings → the agent's row** (every deployment, and single
-player's only door) and **Settings > Permissions → the agent's row** (multiplayer
-owner/admin only). Programmatic navigation always takes the Team Settings door
-(`openAgentSettings`, gated on `canOpenAgentSettings`).
-
-Both mount the SAME `AgentDetail` (`app/src/components/permissions/agent-detail.tsx`), which
-is the page plus its header:
-
-| Door | Where | Who |
-| --- | --- | --- |
-| **Team Settings → the agent's row** | `team-view/team-settings.tsx` | everyone the team's own section list lets in (`visibleTeamSectionsForTeam`) — **single player included**, where it is the ONLY door |
-| **Settings > Permissions → the agent's row** | `permissions/permissions-view.tsx` | multiplayer owner/admin only (the section lives inside the `showOrganization` block) |
-
-So the page's real gate is `canOpenAgentSettings(caps, agent)` (`lib/agent-nav.ts`) =
-`canSeeTeamSettings(caps) || isAgentManager(caps, agent)`. It takes the AGENT because Team
-Settings is a per-team door: single player always; multiplayer the org owner/admin for any
-agent, plus a plain member for the agents they MANAGE (managing one is exactly what opens
-that team's Settings row). Every "configure this agent" affordance must make that check
-before rendering, or it offers a link that resolves back to Mission Control.
+Agent settings are **manager-only** and have ONE door: the **Agent settings** lozenge on
+the agent's OWN screen (click the agent in the rail, then the door —
+`visibleAgentSections` adds `"settings"` for `isAgentManager(caps, agent)` only).
+`AgentDetail` (`app/src/components/permissions/agent-detail.tsx`) is the page plus its
+header: a back chip wearing the agent's avatar + name (returns to the agent's board) over
+plain lozenges — Job description (first, carries the heading) | Skills | Learnings |
+People | Integrations | AI Models | Settings. The gate is
+`canOpenAgentSettings(caps, agent)` (`lib/agent-nav.ts`) = `isAgentManager`; a non-manager
+has no door and no read-only face — for them the page does not exist.
 `openAgentSettings(agentId, section?)` (`lib/open-agent.ts`) is the one way to perform the
-navigation.
+navigation, and it refuses out loud (a toast) rather than falling back.
 
-Reaching the page is NOT the same as editing it. `isAgentManager` decides the FACE:
-`AgentDetail` passes `readOnly` to `AgentSettingsPage`, so an admin (or a manager-member on
-another agent of the same team) reads every section instead of hitting a dead end. A plain
-member who manages nothing in the team gets no Settings section at all — for them the page
-does not exist rather than existing read-only.
-
-**The one-shot deep link.** Team Settings owns its drill-in as local state, so a caller from
-OUTSIDE the team view (a turn summary's "the agent updated its job description" link) calls
-`useTeamSettingsNav.getState().requestAgentDetail(agentId, section?)`
-(`app/src/components/team-view/team-settings-nav-store.ts` — two flat fields,
+**The one-shot deep link.** A caller from OUTSIDE the agent screen (a turn summary's "the
+agent updated its job description" link, a Team Settings agent row) calls
+`useAgentSettingsNav.getState().requestAgentDetail(agentId, section?)`
+(`app/src/components/team-view/agent-settings-nav-store.ts` — two flat fields,
 `requestedAgentId` / `requestedSection`, plus `clearRequested()`) right before
-`openTeamView(team, "settings")`. The view consumes it on mount AND while already open, then
-clears it, so a later plain click on the Settings row lands back on the agent list. It is the
-ONLY such pin: the Permissions door once had an identically-shaped twin
-(`permissions/permissions-nav-store.ts`), written only by the blocked-app "Enable it in
-Permissions" CTA, and it was deleted with that CTA and the locked-row surface. The
-Permissions door is now reached by clicking the agent's row, nothing else.
+`openTeamView(team, "settings", { agentFilter, agentFocus: true })`. The view consumes it
+on mount AND while already open, then clears it, so a later plain click lands on the
+default section.
 
-**The header carries the agent's Share affordance.** `AgentShareSurfaces` — the people sheet
-in a team space, the read-only "who has access" list for a member, and the C8
-share-via-team flow in a personal space — used to hang off the per-agent header, which no
-longer exists. `AgentDetail` is where an agent is addressed now, so the Share button lives in
-its `PageHeader` `trailing` slot beside "Open agent" (which leaves for the agent's team board
-via `openAgentBoard`). `agentShareSurface(caps, agent, isPersonalSpace)` decides which of the
-three, or `"none"`.
-
-Related: `teams.md` (the Permissions screen, roles, the Share dialog, the allowlist
-ceilings), `teams-ui.md` (Team Settings, the section that hosts the other door),
-`agent-manifest.md` → *Where an agent's surfaces live* (the full destination map).
+**People owns the Share affordance.** The People section's hero carries the Share button
+(`agent-settings-people-hero.tsx`); `agentShareSurface(caps, agent, isPersonalSpace)`
+decides which face — the people sheet in a team space, or the C8 share-via-team flow in a
+personal one.
 
 ## The section model — `agent-settings-nav.ts`
 
 ```ts
 type AgentSettingsSection =
-  | "job-description" | "learnings"          // group "context"
-  | "people" | "integrations" | "models" | "skills";  // group "permissions"
+  | "job-description" | "skills" | "learnings"
+  | "people" | "integrations" | "models"
+  | "manage";
 ```
 
-`SECTION_GROUP` maps each section to its group, independent of any host's capabilities.
-
-Builders (pure, caps-only — no agent-shaped predicate exists in these gates):
+`SECTION_GROUP` maps each section to `"context"` / `"permissions"`, read only by the
+deep-link fallback so a hidden section lands on its own group's first item.
 
 | builder | returns |
 | --- | --- |
-| `contextSections()` | `[job-description, learnings]`, unconditional |
 | `agentAccessSections(caps)` | `[]` outside multiplayer · `[people]` on legacy multiplayer · `[people, integrations, models]` with `caps.teams` |
-| `agentSettingsGroups(caps)` | the settings PAGE rail: Context group + Permissions group (`agentAccessSections` + `skills`, which has no org gate). The ONLY rail builder |
-| `agentSettingsSections(groups)` | the flat rail order |
-| `targetToSection(target)` | turn-summary file target → Context section |
+| `agentSettingsSections(caps)` | the page order: `job-description, skills, learnings, ...access, manage`. No per-caller gate — the DOOR carries it (`visibleAgentSections` offers Settings to agent-managers only), so everyone who reads this list manages the agent |
+| `SECTION_TITLES` | the short lozenge titles; the access sections' HERO titles are `teams:agentAdmin.heroes.*` ("Allowed People/Integrations/AI Models") |
+| `targetToSection(target)` | turn-summary file target → section |
 
-`AgentSectionProps` (`{ agent, readOnly? }`) is the contract every section BODY honors.
+`AgentSectionProps` (`{ agent }`) is the contract every section BODY honors.
+
+The **manage** section (`agent-settings-manage.tsx`) is the agent's
+settings-inside-settings: Change color & name (one staged dialog,
+`agent-actions/agent-identity-dialog.tsx` + `use-agent-identity-save.ts`, which SEQUENCES
+rename before color because a rename moves the folder-derived agent id), Move to another
+team, Move to another organization (personal spaces, reusing the share-via-team flow),
+Delete agent.
 
 Unit test: `app/tests/agent-settings-nav.test.ts`.
 
@@ -97,51 +75,31 @@ Unit test: `app/tests/agent-settings-nav.test.ts`.
   does not yet show Apps, and never re-applied. Once honored it is retired, so a later caps
   reload never yanks the user off a section they picked by hand.
 
-## The page — `agent-settings-page.tsx`
+## The page — `agent-detail.tsx` + `agent-settings-page.tsx`
 
-`{ agent, initialSection?, readOnly?, onSectionShown? }`. Master-detail: the grouped rail on
-the left, the selected section on the right. One section is always selected, so the page has
-no back navigation; the caller owns the way out. It carries NO authority — `readOnly` is the
-caller's decision and the gateway is the sole enforcer.
-
-`onSectionShown` reports the section ACTUALLY on screen (never the raw request), which is
-what Permissions tracks as `tab_opened` / `permissions:<section>`.
-
-## The rail — `agent-settings-rail.tsx`
-
-One component for every surface. Group titles render only when there is more than one group
-— the page always passes two, so both are labelled (`agentSettings.groups.*`); the
-single-group case survives for a rail that ever needs one flat unlabelled list. Selected
-rows use the sidebar row language (`bg-hover` fill +
-`aria-current`), no hover-only affordance, `px-3 py-4` inset.
-
-`aria-label` = `agentSettings.railLabel` ("Agent settings sections") — the handle e2e specs
-scope rail lookups to, because the app sidebar carries same-named entries (Skills, AI models).
-
-Badges: learnings count, and the People count from `agentPeopleCount` (the RESOLVED roster).
-The raw `assignments` array is not the count: the everyone sentinel is `[]` (no badge at all)
-and an explicit roster omits the always-present org owner.
-
-Section titles reuse existing copy — `agents:subTabs.*` for job description + Skills,
-`teams:agentAdmin.rows.*` for the rest.
+`AgentDetail` renders the header (`agent-detail-header.tsx`: the avatar+name back chip
+over the section lozenges, `[data-agent-section-tab]`) and `AgentSettingsPage`
+(`{ agent, initialSection?, onSectionShown? }`) renders the selected section. One section
+is always selected; the caller owns the way out (the back chip). The page carries NO
+authority — the door is manager-only and the gateway is the sole enforcer.
 
 ## The switch — `agent-settings-section.tsx`
 
-`AgentSettingsSectionView({ agent, section, readOnly })`. Every branch COMPOSES the existing
-section component, so no two surfaces can drift:
+`AgentSettingsSectionView({ agent, section })`. Every branch COMPOSES the existing section
+component, so no two surfaces can drift:
 
 | section | body |
 | --- | --- |
-| `job-description` | `AgentAdminInstructions` |
-| `learnings` | `AgentAdminKnowledge` |
-| `people` | `AgentSettingsPeople` (in `AccessColumn`) |
-| `integrations` | `AgentAdminIntegrations` (in `AccessColumn`) |
-| `models` | `AgentAdminModel` (in `AccessColumn`) |
+| `job-description` | `AgentAdminInstructions` (in `FillColumn`; the lozenge carries the page heading) |
 | `skills` | `AgentAdminSkills` |
+| `learnings` | `AgentAdminKnowledge` |
+| `people` | `AgentSettingsPeople` (its own hero with the Share button trailing; personal spaces render the create-organization invite face) |
+| `integrations` / `models` | `AgentAdminIntegrations` / `AgentAdminModel` in `HeroAccessColumn` (`PageHero` with the `teams:agentAdmin.heroes.*` "Allowed ..." titles) |
+| `manage` | `AgentSettingsManage` (see the section model above) |
 
-The bodies still live in `components/agent/agent-admin/`. `AccessColumn` gives the flush
-access bodies the same `max-w-3xl px-6 pt-2` column the self-padded bodies bring, so nothing
-shifts as the rail switches sections.
+The access bodies still live in `components/agent/agent-admin/`. `AccessColumn` /
+`FillColumn` keep every body on the same `max-w-3xl` column so nothing shifts as sections
+switch.
 
 ## People — the team-wide choice + the roster
 
@@ -193,18 +151,6 @@ controls in its "any" mode.
 (never a duplicate `aria-label`), so a screen reader announces it once. `AccessChoice` takes
 `labelledBy`, and all three of its callers (people, apps, models) pass their heading id.
 
-## Read-only
-
-`readOnly` renders every section's non-manager face: People rows drop to static level labels
-(plus `permissions.agentPeople.readOnlyHint`), the Integrations + AI Models editors disable
-their controls and hide their "Add" lists, and Skills drops the discovery tabs. Nothing is
-hover-gated.
-
-One caller decides it for both doors: `AgentDetail` passes `!isAgentManager(caps, agent)`, so
-an admin who can SEE an agent but doesn't manage it reads the whole page instead of hitting a
-dead-end note. The gateway is the enforcer either way — `readOnly` only avoids a dead
-control.
-
 ## Analytics
 
 `useShareAgent(source)` takes its `source` from the caller (`"share_dialog"` |
@@ -222,10 +168,9 @@ sentinel does not.
 - `app/tests/agent-access-diff.test.ts` — what counts as sharing.
 - `app/tests/agent-admin-a11y.test.ts` — the rail renders no `<h1>`; `AccessChoice` moves
   focus with selection.
-- `packages/web/e2e/permissions.spec.ts` — the rail's six sections, both choice directions
-  and their confirms, the static everyone-mode roster, the read-only drill-in, plus BOTH
-  doors: the Settings > Permissions list and the Team Settings route
-  (`openAgentSettings(page, agent)` in `e2e/support/team-nav.ts`, which clicks the Team
-  Settings row then the agent's row), including that a plain member cannot reach the page at
-  all. (The self-lockout branch is unit-only: identity is off in the chromium project, so
-  nothing ever resolves as "self".)
+- `packages/web/e2e/agent-policy.spec.ts` — the drilled page's lozenges, both choice
+  directions and their confirms, the static everyone-mode roster, and that a non-manager
+  has no settings door at all (`openAgentSettings(page, agent, section?)` in
+  `e2e/support/team-nav.ts` walks the agent screen's door). (The self-lockout branch is
+  unit-only: identity is off in the chromium project, so nothing ever resolves as
+  "self".)

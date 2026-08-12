@@ -2,11 +2,17 @@ import { Skeleton } from "@houston-ai/core";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useSession } from "../../hooks/use-session";
+import { hasSpaces } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
+import { agentShareSurface } from "../agent/agent-access-model";
 import { AccessChoice } from "../agent/agent-admin/access-choice.tsx";
 import type { AccessMode } from "../agent/agent-admin/agent-admin-row-values.ts";
+import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import { useShareAgent } from "../agent/use-share-agent";
+import { CreateOrganizationInviteEmpty } from "../organization/create-organization-invite-empty";
 import {
   agentAccessMode,
   agentPeopleCount,
@@ -20,6 +26,7 @@ import {
   type PeopleConfirmKind,
 } from "./agent-people-confirm.tsx";
 import { AgentPeopleTab } from "./agent-people-tab.tsx";
+import { AgentSettingsPeopleHero } from "./agent-settings-people-hero.tsx";
 
 /** Mirrors the final layout (control pill, its hint line, three rows) so the roster never jumps in. */
 function PeopleSkeleton() {
@@ -64,14 +71,7 @@ function PeopleSkeleton() {
  * to expand, "Only specific people" would write the empty set and mean the
  * opposite of its label.
  */
-export function AgentSettingsPeople({
-  agent,
-  readOnly = false,
-}: {
-  agent: Agent;
-  /** View-only: the choice is disabled and the roster renders without controls. */
-  readOnly?: boolean;
-}) {
+export function AgentSettingsPeople({ agent }: { agent: Agent }) {
   const { t } = useTranslation("teams");
   const headingId = useId();
   const { data: session } = useSession();
@@ -80,6 +80,15 @@ export function AgentSettingsPeople({
   const members = org.data?.members ?? [];
   const share = useShareAgent("agent_settings_people");
   const [confirm, setConfirm] = useState<PeopleConfirmKind | null>(null);
+  const { capabilities } = useCapabilities();
+  const personalSpace = usePersonalSpace();
+  const [shareOpen, setShareOpen] = useState(false);
+  // The agent's ONE Share affordance: it invites people, so it lives on the
+  // People section. "view" is deliberately not offered — this pane already
+  // lists who has access, so the read-only dialog would say it twice.
+  const shareSurface = agentShareSurface(capabilities, agent, personalSpace);
+  const personalSpacesHost = personalSpace && hasSpaces(capabilities);
+  const showShare = shareSurface === "manage" && !personalSpacesHost;
 
   const mode = agentAccessMode(agent);
   const roster = { agent, members, selfId };
@@ -106,14 +115,26 @@ export function AgentSettingsPeople({
     setConfirm(gate === "selfLockout" ? "selfLockout" : "everyone");
   };
 
+  if (personalSpacesHost) {
+    return (
+      <div className="w-full">
+        <AgentSettingsPeopleHero
+          titleId={headingId}
+          showShare={false}
+          onShare={() => undefined}
+        />
+        <CreateOrganizationInviteEmpty />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
-      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
-        {t("agentSettings.people.question")}
-      </h2>
-      <p className="mb-4 text-sm text-ink-muted">
-        {t("agentSettings.people.helper")}
-      </p>
+      <AgentSettingsPeopleHero
+        titleId={headingId}
+        showShare={showShare}
+        onShare={() => setShareOpen(true)}
+      />
 
       {org.isLoading ? (
         <PeopleSkeleton />
@@ -123,7 +144,7 @@ export function AgentSettingsPeople({
             <AccessChoice
               labelledBy={headingId}
               value={mode}
-              disabled={readOnly || share.isPending}
+              disabled={share.isPending}
               onChange={handleChoice}
               options={[
                 {
@@ -145,19 +166,23 @@ export function AgentSettingsPeople({
               agent={agent}
               members={members}
               share={share}
-              readOnly={readOnly || mode === "any"}
+              readOnly={mode === "any"}
               note={
-                readOnly
-                  ? t("permissions.agentPeople.readOnlyHint")
-                  : mode === "any"
-                    ? t("agentSettings.people.everyoneNote")
-                    : undefined
+                mode === "any"
+                  ? t("agentSettings.people.everyoneNote")
+                  : undefined
               }
             />
           </div>
         </>
       )}
 
+      <AgentShareSurfaces
+        agent={agent}
+        surface={shareSurface}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
       <AgentPeopleConfirm
         kind={confirm}
         count={peopleCount}

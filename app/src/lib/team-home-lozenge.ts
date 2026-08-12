@@ -25,7 +25,7 @@ import type { TeamSectionId } from "./teams-model.ts";
  */
 export type TeamHomeLozengeClick =
   /**
-   * Somewhere else in this team (Routines, Files, Archived, Manage agents):
+   * Somewhere else in this team (Routines, Files, Archived, focused agent screen):
    * go to the board. The agent pin RIDES ALONG, like every other tab click —
    * someone looking at Kai's routines means Kai's tasks when they click here.
    */

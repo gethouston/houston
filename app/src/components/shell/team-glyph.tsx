@@ -2,6 +2,7 @@ import { resolveAgentColor } from "@houston-ai/core";
 import { isSidebarGroupGlyph, SidebarGroupGlyph } from "@houston-ai/layout";
 import { Users } from "lucide-react";
 import type { ReactElement } from "react";
+import { teamDisplayColor, teamDisplayIcon } from "../../lib/team-display";
 import type { TeamView } from "../../lib/teams-model";
 
 /**
@@ -35,12 +36,15 @@ export function TeamGlyph({
   /** Defaults to the rail's own 14px box; Team Settings asks for 20px. */
   className?: string;
 }): ReactElement {
-  const mark = isSidebarGroupGlyph(team.icon) ? (
-    <SidebarGroupGlyph name={team.icon} className={className} />
-  ) : (
-    <Users className={className} />
-  );
-  if (!team.color) return mark;
+  const icon = teamDisplayIcon(team);
+  const color = teamDisplayColor(team);
+  const mark =
+    icon && isSidebarGroupGlyph(icon) ? (
+      <SidebarGroupGlyph name={icon} className={className} />
+    ) : (
+      <Users className={className} />
+    );
+  if (!color) return mark;
   // Through an inline style custom-property value, never a class name: the
   // stored value is user-pickable and may be a raw `#rrggbb` a server host
   // holds, which no Tailwind class can express. `resolveAgentColor` maps a
@@ -48,7 +52,7 @@ export function TeamGlyph({
   // recolours on a theme flip with no re-render) and passes a hex through
   // verbatim. Exactly how an agent avatar wears its colour.
   return (
-    <span className="flex" style={{ color: resolveAgentColor(team.color) }}>
+    <span className="flex" style={{ color: resolveAgentColor(color) }}>
       {mark}
     </span>
   );

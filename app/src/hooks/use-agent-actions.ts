@@ -15,7 +15,7 @@ type AgentActionsT = TFunction<["agents"]>;
  * agent row's "..." menu. That menu is gone — an agent row in the rail is a
  * destination now, not a thing you administer from the sidebar — so the same
  * three handlers moved here, to `hooks/`, and are driven from the one surface
- * that is ABOUT administering agents: a team's Manage agents list.
+ * that is ABOUT administering agents: a team's focused agent screen.
  *
  * Lifted rather than rewritten on purpose. The rename rules in particular
  * (validate before the PATCH, catch the 409 race, name the conflict in the
@@ -55,7 +55,10 @@ export function useAgentActions(args: {
       return;
     }
     try {
-      await renameAgentWithFollowUp({
+      // Hand the caller the renamed agent: the id is folder-derived, so a
+      // follow-up write (the identity dialog's colour half) must target the
+      // NEW id, not the one that just stopped existing.
+      return await renameAgentWithFollowUp({
         workspaceId,
         agentId,
         name: newName,

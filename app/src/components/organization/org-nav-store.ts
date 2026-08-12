@@ -17,7 +17,7 @@ import type { OrgTabId } from "./org-view-model.ts";
  * Admin is a KEPT-ALIVE top-level screen, so it does not remount per
  * navigation: the view consumes the pin from an effect on this field, which
  * fires on the first mount AND while the screen is already open (the same shape
- * `team-view/team-settings-nav-store.ts` uses). A pin nothing consumes — the
+ * `team-view/agent-settings-nav-store.ts` uses). A pin nothing consumes — the
  * gates hide Admin, so the screen is never mounted — cannot mislead either:
  * both callers sit beside the same gates that mount the screen.
  *

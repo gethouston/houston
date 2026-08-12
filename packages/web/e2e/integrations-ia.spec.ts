@@ -8,7 +8,7 @@ import { adminRow } from "./support/settings-nav";
  * Each concept now has exactly one home:
  *  - POLICY (who can use each agent + what each agent may use — org/agent app
  *    and model ceilings) → the ONE canonical agent settings page, reached
- *    through the team that owns the agent ("Manage agents").
+ *    through the team that owns the agent ("focused agent screen").
  *    Covered by `agent-policy.spec.ts`; it is NOT the global Integrations page,
  *    which is always the personal catalog now;
  *  - CATALOG + ACCOUNTS (the caller's personal connected apps) → the global
@@ -21,7 +21,7 @@ import { adminRow } from "./support/settings-nav";
  *
  * The per-agent Integrations TAB is GONE with the agent tab shell: connections
  * are the caller's, not an agent's (Composio platform mode), so the global page
- * is the one catalog, and the agent's app CEILING is the "Apps" section of its
+ * is the one catalog, and the agent's app CEILING is the "Integrations" section of its
  * settings page (`agent-policy.spec.ts`).
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's

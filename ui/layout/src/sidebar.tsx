@@ -38,8 +38,6 @@ export function AppSidebar({
   defaultGroup,
   onActivateGroup,
   onActivateDefault,
-  onDeleteGroup,
-  onLeaveGroup,
   onMoveItem,
   onMoveGroup,
   footer,
@@ -54,7 +52,7 @@ export function AppSidebar({
   // only exists when `!collapsed`, so the icon rail can never inherit a hidden
   // list — it renders `list` bare, with every row reachable.
 
-  const baseRowCtx: SidebarBaseRowContext = { selectedId, onSelect, labels: l };
+  const baseRowCtx: SidebarBaseRowContext = { selectedId, onSelect };
 
   /* The rail's one list, on the SHARED band inset so its rows sit on the nav
      bands' left edge. Its own const because the band wraps it when there is a
@@ -70,8 +68,6 @@ export function AppSidebar({
             defaultGroup={defaultGroup}
             onActivateGroup={onActivateGroup}
             onActivateDefault={onActivateDefault}
-            onDeleteGroup={onDeleteGroup}
-            onLeaveGroup={onLeaveGroup}
             onMoveItem={onMoveItem}
             onMoveGroup={onMoveGroup}
             onAdd={onAdd}
@@ -87,6 +83,7 @@ export function AppSidebar({
           collapsed={collapsed}
           ctx={baseRowCtx}
           onAdd={onAdd}
+          addItemLabel={l.addItem}
           addItemDataAttrs={addItemDataAttrs}
         />
       )}

@@ -9,7 +9,7 @@ import { openAgentSettings } from "./support/team-nav";
  * `integrations-ia.spec.ts`. Each concept has one home:
  *  - POLICY (the allowed-models ceiling) is PER AGENT only → the agent settings
  *    page's AI models section, reached through the team that owns the agent
- *    ("Manage agents", the one door). The old workspace-wide
+ *    ("focused agent screen", the one door). The old workspace-wide
  *    "Defaults for every agent" model ceiling was removed as overengineering.
  *    The AI Models hub has provider and model-directory header lozenges.
  *  - ACCOUNTS (HOU-976) are per PERSON and only per person: a team space has no
@@ -231,11 +231,14 @@ test("a per-agent model ceiling offers the full catalog (no org narrowing)", asy
     },
   });
   await page.goto("/");
-  await openAgentSettings(page, "Finance Bot", "AI models");
+  await openAgentSettings(page, "Finance Bot", "AI Models");
 
-  // The per-agent card shows the model ceiling question, starting unrestricted.
+  // The per-agent card shows the model ceiling hero, starting unrestricted.
   await expect(
-    page.getByRole("heading", { name: "Which AI models can this agent use?" }),
+    page.getByRole("heading", { name: "Allowed AI Models" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Which AI models can this agent use?"),
   ).toBeVisible();
 
   // Restrict the agent's model ceiling, revealing the "Add models" list, then
@@ -269,7 +272,7 @@ test("account usage renders on the hub's Connected row and nowhere else", async 
 
   // And no usage screen competes with it anywhere. The rail's "Workspace" band
   // carries Admin and nothing usage-shaped at all: Time worked is a LENS inside
-  // Admin > Analytics now, never a destination of its own, and it rides
+  // Admin > Time worked, never a destination of its own, and it rides
   // `capabilities.computeUsage`, which the fake host does not advertise here.
   // The owner/admin spend roll-up lives INSIDE Admin, one level down.
   await expect(adminRow(page)).toBeVisible();

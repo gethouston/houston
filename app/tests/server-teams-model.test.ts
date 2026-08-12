@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
 import {
-  normalizeTeamOverlay,
+  personalDefaultTeamSeed,
   resolveServerTeams,
 } from "../src/lib/server-teams-model.ts";
 import {
@@ -10,6 +10,7 @@ import {
   moveItemOp,
   toggleGroupCollapsedOp,
 } from "../src/lib/sidebar-layout-ops.ts";
+import { normalizeTeamOverlay } from "../src/lib/team-overlay.ts";
 import type { TeamView } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 
@@ -165,6 +166,47 @@ describe("resolveServerTeams", () => {
     );
     assert.equal(teams[0]?.icon, "rocket");
     assert.equal(teams[0]?.color, "#5E6AD2");
+  });
+
+  it("marks only an untouched server default whose name matches the workspace", () => {
+    const untouched = resolveServerTeams(
+      [serverTeam({ id: "t-def", name: "Acme", isDefault: true })],
+      [],
+      layout(),
+      "Acme",
+    );
+    const renamed = resolveServerTeams(
+      [serverTeam({ id: "t-def", name: "Launch", isDefault: true })],
+      [],
+      layout(),
+      "Acme",
+    );
+    assert.equal(untouched[0]?.usesDefaultIdentity, true);
+    assert.equal(renamed[0]?.usesDefaultIdentity, undefined);
+  });
+
+  it("marks a personal default still wearing the seed the gateway minted", () => {
+    // In a personal space the gateway mints the default team from the CALLER's
+    // email local-part, never from the client's synthetic "Personal" workspace
+    // name — the seed the caller passes is `personalDefaultTeamSeed`.
+    const seed = personalDefaultTeamSeed({
+      uid: "u-1",
+      email: "hello@gethouston.ai",
+    });
+    const untouched = resolveServerTeams(
+      [serverTeam({ id: "t-def", name: "hello", isDefault: true })],
+      [],
+      layout(),
+      seed,
+    );
+    const renamed = resolveServerTeams(
+      [serverTeam({ id: "t-def", name: "Mission HQ", isDefault: true })],
+      [],
+      layout(),
+      seed,
+    );
+    assert.equal(untouched[0]?.usesDefaultIdentity, true);
+    assert.equal(renamed[0]?.usesDefaultIdentity, undefined);
   });
 
   it("rule 5: an unset icon or color stays ABSENT, not undefined-valued", () => {
@@ -351,5 +393,45 @@ describe("normalizeTeamOverlay", () => {
 
   it("rule 6: an empty server list leaves every stored group exactly as it was", () => {
     assert.deepEqual(normalizeTeamOverlay(stored, []).groups, stored.groups);
+  });
+});
+
+// Byte-compatible with the gateway's `PersonalOrgName` + `DefaultAgentTeamName`
+// (cloud `internal/store`): email local-part, trimmed, else the user id, capped
+// at 60 RUNES.
+describe("personalDefaultTeamSeed", () => {
+  it("uses the email local-part", () => {
+    assert.equal(
+      personalDefaultTeamSeed({ uid: "u-1", email: "hello@gethouston.ai" }),
+      "hello",
+    );
+  });
+
+  it("falls back to the uid when the local-part is empty", () => {
+    assert.equal(personalDefaultTeamSeed({ uid: "u-1", email: "" }), "u-1");
+    assert.equal(
+      personalDefaultTeamSeed({ uid: "u-1", email: "  @x.test" }),
+      "u-1",
+    );
+  });
+
+  it("treats an email-less string as the whole local-part", () => {
+    assert.equal(
+      personalDefaultTeamSeed({ uid: "u-1", email: "solo" }),
+      "solo",
+    );
+  });
+
+  it("caps at 60 runes, not bytes", () => {
+    const seed = personalDefaultTeamSeed({
+      uid: "u-1",
+      email: `${"é".repeat(70)}@x.test`,
+    });
+    assert.equal(seed, "é".repeat(60));
+  });
+
+  it("answers undefined signed out", () => {
+    assert.equal(personalDefaultTeamSeed(null), undefined);
+    assert.equal(personalDefaultTeamSeed(undefined), undefined);
   });
 });

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useActivity,
   useAddLearning,
@@ -12,13 +13,12 @@ import {
   resolveLearningProvenance,
 } from "../../../lib/learning-provenance";
 import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
+import { PageHero } from "../../shell/page-shell";
 import { LearningsContent } from "../learnings-content";
 
-/** Memory (learnings) section. Read-only for non-managers. */
-export function AgentAdminKnowledge({
-  agent,
-  readOnly = false,
-}: AgentSectionProps) {
+/** Memory (learnings) section. */
+export function AgentAdminKnowledge({ agent }: AgentSectionProps) {
+  const { t } = useTranslation(["teams", "agents"]);
   const path = agent.folderPath;
   const { data } = useLearnings(path);
   const addLearning = useAddLearning(path);
@@ -51,12 +51,21 @@ export function AgentAdminKnowledge({
   );
 
   return (
-    <LearningsContent
-      entries={rows}
-      readOnly={readOnly}
-      onAdd={(text) => addLearning.mutateAsync(text)}
-      onRemove={(index) => removeLearning.mutateAsync(index)}
-      onUpdate={(id, text) => updateLearning.mutateAsync({ id, text })}
-    />
+    <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-12">
+      <PageHero
+        level={2}
+        className="mb-6"
+        title={t("teams:agentAdmin.rows.knowledge.title")}
+        subtitle={t("agents:learnings.helper")}
+      />
+      <LearningsContent
+        layout="section"
+        showHelper={false}
+        entries={rows}
+        onAdd={(text) => addLearning.mutateAsync(text)}
+        onRemove={(index) => removeLearning.mutateAsync(index)}
+        onUpdate={(id, text) => updateLearning.mutateAsync({ id, text })}
+      />
+    </div>
   );
 }

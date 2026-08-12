@@ -23,8 +23,8 @@ import { navRow, screen } from "./support/team-nav";
  *    and the help control in the footer;
  * 2. the two rows that band used to carry are GONE from the rail entirely.
  *    **Permissions** listed the space's agents to reach one's settings page,
- *    which every team's "Manage agents" section already does per team, in every
- *    deployment; **Time worked** is a lens inside Admin > Analytics. Both are
+ *    which every team's focused agent screen already does per team, in every
+ *    deployment; **Time worked** is a capability-gated Admin section. Both are
  *    asserted absent by their old names, so resurrecting either fails here;
  * 3. Settings holds ONLY settings: the general group everybody sees, plus
  *    Danger. The guided tour, the Context editors, Time worked, Admin and
@@ -50,8 +50,8 @@ import { navRow, screen } from "./support/team-nav";
  * band exists: Admin rides the org role, Skills rides space ownership.
  *
  * `computeUsage` is on deliberately even though nothing in this spec opens
- * Analytics: this is exactly the deployment that used to carry a Time worked
- * ROW, so it is the one that makes the row's absence below mean something.
+ * Time worked: this deployment advertises the compute capability, so it is the
+ * one that makes the standalone row's absence below mean something.
  */
 const OWNER_CAPS = {
   multiplayer: true,
@@ -168,7 +168,7 @@ test("Settings holds only settings, under one heading", async ({
   // The five headings that named things which are no longer settings. Each died
   // with its rows: the tour is armed from the footer's help control, the
   // person's context editor is the About me rail row and the company's is a
-  // section of Admin, Time worked is a lens inside Admin > Analytics, Admin
+  // section of Admin, Time worked is another Admin section, Admin
   // itself is a rail screen, and the help-shaped rows merged into General rather
   // than keeping a group of their own.
   for (const heading of ["Help", "Context", "Support", "Workspace", "Team"]) {

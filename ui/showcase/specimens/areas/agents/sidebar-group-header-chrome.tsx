@@ -1,18 +1,8 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@houston-ai/core";
-import { sidebarRowAffordanceClasses } from "@houston-ai/layout";
-import { MoreHorizontal, Users } from "lucide-react";
-
-import { GROUP_LABELS } from "./sidebar-group-header-api";
+import { Users } from "lucide-react";
 
 /**
  * What the HOST puts on a team's header row, as opposed to what the header
- * itself draws: the team's mark and the "..." menu. Both are props, which is
+ * itself draws: the team's mark. It is a prop, which is
  * how the library stays generic about what a block actually is.
  */
 
@@ -23,39 +13,4 @@ import { GROUP_LABELS } from "./sidebar-group-header-api";
  */
 export function TeamGlyph() {
   return <Users className="size-4" />;
-}
-
-/**
- * The "..." menu, rendered as the toggle's SIBLING because a button may not
- * nest inside a button.
- *
- * Its one identity entry stands for opening the host's "Change icon & name"
- * dialog — nothing is edited inline in the rail, so the menu is a plain node
- * the caller composes, with the header
- * still ignorant of what the menu contains.
- */
-export function TeamMenu() {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={GROUP_LABELS.groupMenu}
-          className={sidebarRowAffordanceClasses}
-        >
-          <MoreHorizontal className="size-3.5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="bottom">
-        <DropdownMenuItem>{GROUP_LABELS.editGroup}</DropdownMenuItem>
-        <DropdownMenuItem className="text-danger focus:text-danger">
-          {GROUP_LABELS.deleteGroup}
-        </DropdownMenuItem>
-        {/* Leaving acts on YOU, not on the team, so it sits below the rule that
-            closes off the team's own actions. */}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>{GROUP_LABELS.leaveGroup}</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 }

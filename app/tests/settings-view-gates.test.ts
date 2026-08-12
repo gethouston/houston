@@ -118,7 +118,7 @@ describe("the promoted top-level screens", () => {
 
   it("leaves no trace of the deleted Permissions screen", () => {
     // Agent policy is discovered through the team that owns the agent, so the
-    // grid the screen framed lives on inside a team's Manage agents section
+    // grid the screen framed lives on inside a team's focused agent screen
     // while the screen, its id and its barrel are gone.
     const views = read("../src/lib/top-level-views.ts");
     ok(!views.includes("PERMISSIONS_VIEW_ID"), "no view id");

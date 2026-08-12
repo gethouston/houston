@@ -1,4 +1,5 @@
 import { deepStrictEqual, ok } from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { buildAgentActivitySummaries } from "../src/components/shell/agent-activity-summary-model.ts";
 import { buildAttachmentPrompt } from "../src/lib/attachment-message.ts";
@@ -508,5 +509,52 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
+  });
+});
+
+/**
+ * The agent's Skills section has exactly ONE writable door: the per-agent
+ * manage dialog (HOU-792). The raw `SkillEditModal` chain that used to sit
+ * beside it is gone — nothing opened it any more, so a second, invisible way
+ * to rewrite a skill's markdown lingered behind a state no caller could set.
+ *
+ * Pinned on the source because the claim is about which surfaces EXIST, which
+ * no render of a reachable surface can show.
+ */
+describe("the agent Skills section's one writable door", () => {
+  const read = (p: string) =>
+    readFileSync(new URL(`../src/components/${p}`, import.meta.url), "utf8");
+  const content = read("agent/skills-content.tsx");
+  const dialogs = read("agent/skills-content-dialogs.tsx");
+  const surface = read("agent/use-skill-surface.ts");
+  const props = read("agent/skills-content-props.ts");
+
+  it("routes every writable path to the manage dialog", () => {
+    // A strip row, the Custom tab's workspace row, and the setup chat's
+    // "Edit manually" all open the same slug-resolving dialog.
+    ok(/useInstalledSkillsStrip\(\s*skills,\s*setManagingSlug,/.test(content));
+    ok(content.includes("onManageSkill: setManagingSlug"));
+    ok(content.includes("onEditSkill: setManagingSlug"));
+    ok(dialogs.includes("<AgentSkillManageDialog"));
+  });
+
+  it("keeps no raw-markdown editor beside it", () => {
+    for (const [name, src] of [
+      ["skills-content", content],
+      ["skills-content-dialogs", dialogs],
+      ["skills-content-props", props],
+      ["use-skill-surface", surface],
+    ] as const) {
+      ok(!src.includes("SkillEditModal"), `${name} must not mount the modal`);
+      ok(!src.includes("editingSkill"), `${name} must keep no editing state`);
+    }
+  });
+
+  it("leaves the content mutations to that dialog's own actions", () => {
+    // `useSkillSurface` reads the list and installs; saving and deleting a
+    // skill belong to `useSkillsViewActions` behind the manage dialog.
+    ok(!surface.includes("useSaveSkill"));
+    ok(!surface.includes("useDeleteSkill"));
+    ok(surface.includes("useSkills("));
   });
 });

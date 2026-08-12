@@ -17,11 +17,11 @@ export interface SidebarItemRowProps {
  * a block reads as one ladder instead of a header with a foreign list under it.
  *
  * **It carries no "..." menu, and cannot be renamed or deleted from here.** An
- * agent is edited where it is configured — its team's Manage agents page — and
- * nowhere else. A rail row that could rename, recolour or delete an agent was a
- * second door onto settings that had to be kept in agreement with the first, on
- * the one surface with the least room to explain what it was about to do.
- * Losing it also hands every agent name back the 28px the menu was reserving.
+ * agent is edited where it is configured — its focused agent screen — and
+ * nowhere else, so the rail keeps ONE door onto settings instead of a second
+ * one on the surface with the least room to explain what it is about to do.
+ * The row reserves no column beside the button either: the full width of the
+ * rail belongs to the agent's name.
  *
  * The one thing it still adds over a plain row: it is a drag handle. The
  * listeners live on the sortable wrapper, so the row only has to wear the

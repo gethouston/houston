@@ -12,7 +12,6 @@ import {
 import {
   sidebarCollapsedItemClasses,
   sidebarRowAffordanceClasses,
-  sidebarRowAffordanceGutter,
   sidebarRowButtonClasses,
   sidebarRowFill,
   sidebarRowState,
@@ -322,43 +321,30 @@ describe("sidebar row anatomy", () => {
     ok(cls.includes("data-[state=open]:"));
   });
 
-  it("gives an AGENT row no menu, and no gutter standing in for one", () => {
-    // An agent is renamed, recoloured, moved and deleted on its team's Manage
-    // agents page. The rail row therefore carries no "..." — and, unlike a
-    // block header, it reserves no empty column either: every agent row lost
-    // the menu together, so none of them truncates at a different point from
-    // its neighbours, and the 28px goes back to the names. The gutter rule is
-    // about a stack of BLOCKS, where one header having a menu and the next not
-    // is the case that reads as two lists.
+  it("gives an AGENT row NO control beside its button", () => {
+    // An agent is renamed, recoloured, moved and deleted on its focused agent
+    // screen. The row neither renders a control for any of that nor reserves a
+    // column for one, so the agent's name gets the rail's full width.
     const row = source("sidebar-item-row.tsx");
-    strictEqual(row.includes("affordance"), false, "no affordance slot");
+    strictEqual(/affordance=/.test(row), false, "no affordance slot");
     strictEqual(row.includes("sidebarRowAffordanceGutter"), false, "no gutter");
-    strictEqual(row.includes("DropdownMenu"), false, "no menu");
-    // And nothing in the library can start a rename or a delete on a row.
+    strictEqual(row.includes("DropdownMenu"), false, "host owns the menu");
+    strictEqual(
+      source("sidebar-props.ts").includes("affordance"),
+      false,
+      "SidebarItem has no affordance for a host to fill",
+    );
     for (const gone of ["onStartRename", "onDeleteItem", "menuContent"]) {
       strictEqual(source("sidebar-row-context.ts").includes(gone), false, gone);
     }
   });
 
-  it("reserves the affordance column even for a BLOCK with no menu", () => {
-    // Every block header truncates its name at the same point, so a header
-    // with nothing in its "..." must still spend the 28px. The HEADER's `??`
-    // spacer only fires when it is handed no menu render-prop at all — and the
-    // default block is always handed one now, so the empty menu has to reserve
-    // the column itself or the block silently gets a wider name than the teams
-    // above it, which reads as a second list.
-    const menu = source("sidebar-group-menu.tsx");
-    ok(menu.includes("sidebarRowAffordanceGutter"));
+  it("renders block headers without a menu affordance column", () => {
     strictEqual(
-      /return null/.test(menu),
+      source("sidebar-group-header.tsx").includes("affordance="),
       false,
-      "an empty group menu must reserve the gutter, not render nothing",
     );
-    // And the header keeps its own fallback for the one caller that passes no
-    // menu at all (the drag preview).
-    ok(
-      source("sidebar-group-header.tsx").includes("sidebarRowAffordanceGutter"),
-    );
+    strictEqual(source("sidebar-block-header.tsx").includes("menu="), false);
   });
 
   it("gives the row a visible focus ring, ON the pill it is outlining", () => {
@@ -449,7 +435,6 @@ describe("sidebar row anatomy", () => {
     // margins — puts them 2px inside it.
     ok(includes(sidebarRowButtonClasses.button, "pr-2"));
     ok(includes(sidebarRowAffordanceClasses, "mr-2"));
-    ok(includes(sidebarRowAffordanceGutter, "mr-2"));
   });
 
   it("rotates the disclosure mark on a transform-only transition", () => {

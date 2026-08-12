@@ -19,7 +19,17 @@ const missionControlArchived = read(
 const teamMissionBoard = read(
   "../src/components/team-view/team-mission-board.tsx",
 );
-const teamAgentsList = read("../src/components/team-view/team-agents-list.tsx");
+const teamView = read("../src/components/team-view/team-view.tsx");
+const teamContextPane = read(
+  "../src/components/team-view/team-context-pane.tsx",
+);
+const teamPeoplePane = read("../src/components/team-view/team-people-pane.tsx");
+const createOrganizationInviteEmpty = read(
+  "../src/components/organization/create-organization-invite-empty.tsx",
+);
+const agentSettingsPane = read(
+  "../src/components/team-view/agent-settings-pane.tsx",
+);
 // The archive is its OWN section now, not a mode of the Tasks one.
 const teamArchived = read("../src/components/team-view/team-archived.tsx");
 
@@ -65,9 +75,16 @@ describe("one sweep, whatever the scope", () => {
     );
     // Its own filter SOURCE, the same scope shape: the one-sweep rule is
     // about the paths and the query key, and neither moved.
+    assert.match(teamArchived, /useTeamScope\(team, filterAgentId\)/);
+    // That source is the section's OWN state, never the team-wide pin:
+    // narrowing finished work must not narrow the board the user goes back to.
     assert.match(
       teamArchived,
-      /useTeamScope\(team, filterAgentId, setFilterAgentId\)/,
+      /const \[filterAgentId, setFilterAgentId\] = useState<string \| null>\(null\)/,
+    );
+    assert.ok(
+      !teamArchived.includes("teamAgentFilter"),
+      "the archive's filter is its own, never the team-wide pin",
     );
   });
 
@@ -81,7 +98,7 @@ describe("one sweep, whatever the scope", () => {
       /<TeamMissionBoard[\s\S]*?scope=\{scope\}/,
     );
     // The BOARD is the one surface still keyed on the team-wide pin.
-    assert.match(teamMissionControl, /useTeamBoardScope\(team\)/);
+    assert.match(teamMissionControl, /useTeamBoardScope\(team, agentFocusId\)/);
     // The scope now belongs to the hook, not to the active board alone.
     assert.ok(
       !teamMissionBoard.includes("scopePaths"),
@@ -175,29 +192,20 @@ describe("a team's archive names nothing: the lit tab already did", () => {
   });
 });
 
-describe("one agent grid, ONE door", () => {
-  it("has the team's agent list delegate its populated case to the shared grid", () => {
-    // There used to be two doors onto this grid: a team's settings section and
-    // the top-level Permissions screen. Permissions is deleted, so a team's
-    // Manage agents section is the only one, and the grid stays shared because
-    // an agent's settings page is still reached from it.
-    assert.match(teamAgentsList, /<PermissionsAgentGrid/);
-    assert.ok(
-      !teamAgentsList.includes("<CatalogSectionHeader"),
-      "the section header belongs to the shared grid",
-    );
-    assert.ok(
-      !teamAgentsList.includes("<PermissionsAgentRow"),
-      "the rows belong to the shared grid",
-    );
+describe("team and focused-agent composition", () => {
+  it("routes team configuration to Context and People panes", () => {
+    assert.match(teamView, /<TeamContextPane team=\{team\}/);
+    assert.match(teamView, /<TeamPeoplePane team=\{team\} face=\{peopleFace\}/);
+    assert.match(teamContextPane, /<TeamContextCard team=\{team\}/);
+    assert.match(teamPeoplePane, /<TeamMembersCard team=\{team\}/);
+    assert.match(teamPeoplePane, /<CreateOrganizationInviteEmpty \/>/);
+    assert.match(createOrganizationInviteEmpty, /<EmptyTitle>/);
   });
 
-  it("gives the team's empty state a designed title and body", () => {
-    assert.match(teamAgentsList, /<EmptyTitle>/);
-    assert.match(teamAgentsList, /<EmptyDescription>/);
-    assert.ok(
-      !teamAgentsList.includes('<p className="text-sm text-ink-muted">'),
-      "a bare paragraph is not a designed state",
-    );
+  it("routes focused settings directly to AgentDetail", () => {
+    assert.match(teamView, /<AgentSettingsPane team=\{team\} agent=\{agent\}/);
+    assert.match(agentSettingsPane, /<AgentDetail/);
+    assert.match(agentSettingsPane, /agentFilter: agent\.id/);
+    assert.match(agentSettingsPane, /agentFocus: true/);
   });
 });

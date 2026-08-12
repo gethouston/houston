@@ -141,6 +141,16 @@ export const SELF_USER_ID = "u-self";
 export const FAKE_ORG_NAME = "Acme";
 
 /**
+ * What the gateway mints a PERSONAL space's default team from: the caller's
+ * email local-part (`PersonalOrgName` + `DefaultAgentTeamName` in the cloud
+ * store). The e2e viewer signs in as `you@acme.test`, so its personal seed is
+ * "you" — which is what lets the client's untouched-default detection
+ * (`personalDefaultTeamSeed`) fire against this fake exactly as it does against
+ * the real gateway.
+ */
+export const FAKE_PERSONAL_TEAM_NAME = "you";
+
+/**
  * One C13 agent team as the fake STORES it: the durable columns only. The three
  * fields the client actually renders (`joined`, `owner`, `memberCount`) plus
  * `agentSlugs` are the CALLER's effective values, resolved per read in

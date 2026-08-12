@@ -7,8 +7,12 @@ import {
 } from "@houston-ai/core";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { TeamView } from "../../lib/teams-model";
-import { teamById } from "../../lib/teams-model";
+import {
+  teamDisplayColor,
+  teamDisplayIcon,
+  teamDisplayName,
+} from "../../lib/team-display";
+import { type TeamView, teamById } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { buildTeamIdentityChoices, teamPaletteColorId } from "./team-identity";
 import { TeamIdentityNameRow } from "./team-identity-name-row";
@@ -63,10 +67,15 @@ export function EditTeamIdentityDialog({
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-seed on the OPENED TEAM changing, deliberately not on every refetch of its fields
   useEffect(() => {
     if (!team) return;
+    // Seed from the DISPLAY identity, not the stored fields: an untouched
+    // default team wears "New Team" + the charcoal rocket, and the dialog must
+    // open showing exactly that pair. The save is a diff against this seed, so
+    // leaving the placeholders alone writes nothing and the placeholder rule
+    // stays live.
     const draft: TeamIdentityDraft = {
-      name: team.name,
-      icon: team.icon,
-      colorId: teamPaletteColorId(team.color),
+      name: teamDisplayName(team, t("teams:teamView.defaultName")),
+      icon: teamDisplayIcon(team),
+      colorId: teamPaletteColorId(teamDisplayColor(team)),
     };
     setSeeded(draft);
     setName(draft.name);

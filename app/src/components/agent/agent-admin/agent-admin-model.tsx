@@ -26,15 +26,12 @@ import { AgentModelsSection } from "./agent-models-section.tsx";
  * The Access group is multiplayer-only, so single-player never reaches here:
  * single-player has no ceiling and its sole user sets the model in the composer.
  *
- * `readOnly` (a non-manager viewing the agent's Settings access row) disables every
- * control and hides the "Add models" list via the shared editor's own mode, so a
- * member sees the model ceiling without a dead affordance. The gateway is the
- * real enforcer.
+ * The gateway is the real enforcer of the ceiling this editor writes.
  */
 export function AgentAdminModel({
   agent,
-  readOnly = false,
-}: AgentSectionProps) {
+  labelledBy,
+}: AgentSectionProps & { labelledBy?: string }) {
   const { capabilities } = useCapabilities();
   const teams = capabilities?.teams === true;
   const settingsQuery = useAgentSettings(agent.id, teams);
@@ -54,7 +51,8 @@ export function AgentAdminModel({
           allowedModels={settings.allowedModels}
           models={catalog.models}
           saving={save.isPending}
-          readOnly={readOnly}
+          labelledBy={labelledBy}
+          showIntro={labelledBy === undefined}
           onSave={(next) => save.mutate(next)}
         />
       ) : (

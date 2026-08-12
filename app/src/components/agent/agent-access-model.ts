@@ -114,10 +114,14 @@ export function currentAssignments(
 
 /**
  * Is this agent shared org-wide? A present-but-empty assignee set is the
- * "everyone in the org" sentinel (`Agent.assignedUserIds`), honored by the
- * sibling org-agents-model. Single-player agents (no assignee fields) are NOT
- * org-wide. Ignoring this sentinel makes an org-wide agent read as owner-only
- * and silently narrows the team's access on the first edit.
+ * "everyone in the org" sentinel (`Agent.assignedUserIds`), which is also what
+ * `tauriAgents.setAssignments` writes for "Everyone on your team". Every reader
+ * of the sentinel comes through here: {@link buildSharePeople} expands it into
+ * the roster, the People choice maps it to "any" (`agent-people-choice.ts`) and
+ * the settings chips render it as the team (`agent-policy-chips-model.ts`).
+ * Single-player agents (no assignee fields) are NOT org-wide. Ignoring this
+ * sentinel makes an org-wide agent read as owner-only and silently narrows the
+ * team's access on the first edit.
  */
 export function isSharedWithEveryone(
   agent: Pick<Agent, "assignments" | "assignedUserIds">,

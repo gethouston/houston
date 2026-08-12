@@ -15,63 +15,35 @@ import {
   toggleModel,
 } from "../agent/agent-admin/model-allowlist.ts";
 import type { ProviderValue } from "./facets.ts";
+import type { ModelsAllowlistEditorProps } from "./models-allowlist-editor-types";
 
-/** i18n copy for {@link ModelsAllowlistEditor}; the consumer passes translated strings. */
-export interface ModelsAllowlistEditorCopy {
-  question: string;
-  policyHelper: string;
-  anyLabel: string;
-  anyDesc: string;
-  pickedLabel: string;
-  pickedDesc: string;
-  allowedHeading: string;
-  addHeading: string;
-  allowedEmpty: string;
-  allowedEmptyLab: string;
-  searchModels: string;
-  clearSearch: string;
-  noModels: string;
-  /** aria-label for a per-model allow toggle. */
-  allowModel: (name: string) => string;
-  /** Shown under the question when readOnly (e.g. "Only the owner can change this"). */
-  readOnlyNote?: string;
-}
-
-export interface ModelsAllowlistEditorProps {
-  /** The selectable universe of models (already narrowed to any higher ceiling). */
-  models: CatalogModel[];
-  /** Current ceiling: `null` = any model allowed, else the explicit id set. */
-  allowedModels: string[] | null;
-  /** A write is in flight (disables controls). */
-  saving: boolean;
-  /** Read-only viewer (e.g. a non-owner admin): controls disabled, "Add models" list hidden, `readOnlyNote` shown. */
-  readOnly?: boolean;
-  /** Persist the next ceiling: `null` = allow all, else the explicit set. */
-  onSave: (next: string[] | null) => void;
-  copy: ModelsAllowlistEditorCopy;
-}
+export type {
+  ModelsAllowlistEditorCopy,
+  ModelsAllowlistEditorProps,
+} from "./models-allowlist-editor-types";
 
 /**
  * Presentational, i18n-agnostic editor for an AI-model allowlist ceiling
  * (Teams v2), the model-side twin of {@link AllowlistEditor}. An always-visible
- * {@link AccessChoice} ("Any model" saves `null`, "Only models you pick" saves an
+ * {@link AccessChoice} (allow all saves `null`, "Only models you pick" saves an
  * explicit set) over the AI-hub catalog's visual language: one {@link ModelAllowRow}
  * per {@link CatalogModel} (brand mark + name + lab + allow Switch). Selection is
  * over provider-native offer ids — toggling a model flips ALL its offers at once
  * (see {@link toggleModel}) — so a member can pick that model from any provider
- * connected. Writes are instant; `readOnly` disables every control and hides the
- * "Add models" list. All copy is passed in; both the per-agent and org ceilings
- * consume this so they never drift.
+ * connected. Writes are instant. All copy is passed in; both the per-agent and
+ * org ceilings consume this so they never drift.
  */
 export function ModelsAllowlistEditor({
   models,
   allowedModels,
   saving,
-  readOnly,
   onSave,
   copy,
+  labelledBy,
+  showIntro = true,
 }: ModelsAllowlistEditorProps) {
-  const headingId = useId();
+  const generatedHeadingId = useId();
+  const headingId = labelledBy ?? generatedHeadingId;
   const [search, setSearch] = useState("");
   // View-only lab filter (never touches saved data); composes with the search.
   const [lab, setLab] = useState<ProviderValue>("all");
@@ -114,7 +86,7 @@ export function ModelsAllowlistEditor({
       key={model.key}
       model={model}
       checked={modelChecked(model, allowedSet)}
-      disabled={saving || !!readOnly}
+      disabled={saving}
       allowLabel={copy.allowModel(model.name)}
       onToggle={() => toggle(model)}
     />
@@ -122,19 +94,19 @@ export function ModelsAllowlistEditor({
 
   return (
     <div>
-      <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
-        {copy.question}
-      </h2>
-      <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
-
-      {readOnly && copy.readOnlyNote && (
-        <p className="mb-4 text-sm text-ink-muted">{copy.readOnlyNote}</p>
+      {showIntro && (
+        <>
+          <h2 id={headingId} className="mb-1 text-lg font-medium text-ink">
+            {copy.question}
+          </h2>
+          <p className="mb-4 text-sm text-ink-muted">{copy.policyHelper}</p>
+        </>
       )}
 
       <AccessChoice
         labelledBy={headingId}
         value={ceilingMode(allowedModels)}
-        disabled={saving || readOnly}
+        disabled={saving}
         onChange={onChoice}
         options={[
           { value: "any", label: copy.anyLabel, description: copy.anyDesc },
@@ -165,32 +137,30 @@ export function ModelsAllowlistEditor({
             )}
           </section>
 
-          {!readOnly && (
-            <section>
-              <h3 className="mb-3 text-sm font-medium text-ink">
-                {copy.addHeading}
-              </h3>
-              <div className="mb-3 flex items-center gap-2">
-                <CatalogSearchField
-                  className="flex-1"
-                  value={search}
-                  onChange={setSearch}
-                  label={copy.searchModels}
-                  clearLabel={copy.clearSearch}
-                />
-                <LabFilter models={models} value={lab} onChange={setLab} />
+          <section>
+            <h3 className="mb-3 text-sm font-medium text-ink">
+              {copy.addHeading}
+            </h3>
+            <div className="mb-3 flex items-center gap-2">
+              <CatalogSearchField
+                className="flex-1"
+                value={search}
+                onChange={setSearch}
+                label={copy.searchModels}
+                clearLabel={copy.clearSearch}
+              />
+              <LabFilter models={models} value={lab} onChange={setLab} />
+            </div>
+            {results.length === 0 ? (
+              <p className="py-4 text-center text-sm text-ink-muted">
+                {copy.noModels}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {results.map(renderModel)}
               </div>
-              {results.length === 0 ? (
-                <p className="py-4 text-center text-sm text-ink-muted">
-                  {copy.noModels}
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {results.map(renderModel)}
-                </div>
-              )}
-            </section>
-          )}
+            )}
+          </section>
         </div>
       )}
     </div>

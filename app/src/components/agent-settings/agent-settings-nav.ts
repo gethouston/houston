@@ -21,21 +21,15 @@ export type AgentSettingsSection =
   | "people"
   | "integrations"
   | "models"
-  | "skills";
+  | "skills"
+  | "manage";
 
-/** The two rail groups. `context` = what the agent knows; `permissions` = what it and its team may reach. */
-export type AgentSettingsGroupId = "context" | "permissions";
+/** The two semantic groups used only to keep hidden deep links nearby. */
+type AgentSettingsGroupId = "context" | "permissions";
 
-export interface AgentSettingsGroup {
-  id: AgentSettingsGroupId;
-  /** The group's sections, in rail order. Never empty in a rendered rail. */
-  sections: AgentSettingsSection[];
-}
-
-/** The props EVERY section body takes. `readOnly` renders its non-manager face. */
+/** The props EVERY section body takes. */
 export interface AgentSectionProps {
   agent: Agent;
-  readOnly?: boolean;
 }
 
 /**
@@ -51,16 +45,8 @@ export const SECTION_GROUP: Record<AgentSettingsSection, AgentSettingsGroupId> =
     integrations: "permissions",
     models: "permissions",
     skills: "permissions",
+    manage: "permissions",
   };
-
-/**
- * The Context sections: the agent's job description and its learnings
- * ("Memory"). Unconditional — every agent has both, and a non-manager reads
- * them read-only.
- */
-export function contextSections(): AgentSettingsSection[] {
-  return ["job-description", "learnings"];
-}
 
 /**
  * The ACCESS sections: who may use the agent, plus the app + model ceilings.
@@ -80,25 +66,36 @@ export function agentAccessSections(
 }
 
 /**
- * The full settings-page rail, group by group: Context, then the access
- * sections plus Skills, which has no org gate at all (it is the per-agent
- * Skills surface every deployment ships).
+ * The full settings-page cluster: what the agent IS (job description), what it
+ * can DO (skills), what it has LEARNED, then who may reach it (the access
+ * sections) and how it is managed. Skills has no org gate at all (it is the
+ * per-agent Skills surface every deployment ships).
+ *
+ * There is no per-caller gate here, because the PAGE carries it: its one door
+ * is the agent's own Settings section, which only an agent-manager is offered
+ * (`visibleAgentSections`). Everyone who reads this list manages the agent.
  */
-export function agentSettingsGroups(
+export function agentSettingsSections(
   caps: Capabilities | null | undefined,
-): AgentSettingsGroup[] {
+): AgentSettingsSection[] {
   return [
-    { id: "context", sections: contextSections() },
-    { id: "permissions", sections: [...agentAccessSections(caps), "skills"] },
+    "job-description",
+    "skills",
+    "learnings",
+    ...agentAccessSections(caps),
+    "manage",
   ];
 }
 
-/** Every visible section of a rail, flattened in rail order. */
-export function agentSettingsSections(
-  groups: readonly AgentSettingsGroup[],
-): AgentSettingsSection[] {
-  return groups.flatMap((group) => group.sections);
-}
+export const SECTION_TITLES = {
+  "job-description": "agents:subTabs.instructions",
+  learnings: "agentAdmin.rows.knowledge.title",
+  people: "agentAdmin.rows.people.title",
+  integrations: "agentAdmin.rows.integrations.title",
+  models: "agentAdmin.rows.model.title",
+  skills: "agents:subTabs.skills",
+  manage: "agentSettings.manage.sectionTitle",
+} as const satisfies Record<AgentSettingsSection, string>;
 
 /**
  * Deep-link from a turn-summary file target (a semantic file update the agent

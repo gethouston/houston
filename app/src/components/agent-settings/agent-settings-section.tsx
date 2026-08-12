@@ -1,9 +1,12 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
+import { useTranslation } from "react-i18next";
 import { AgentAdminInstructions } from "../agent/agent-admin/agent-admin-instructions";
 import { AgentAdminIntegrations } from "../agent/agent-admin/agent-admin-integrations";
 import { AgentAdminKnowledge } from "../agent/agent-admin/agent-admin-knowledge";
 import { AgentAdminModel } from "../agent/agent-admin/agent-admin-model";
 import { AgentAdminSkills } from "../agent/agent-admin/agent-admin-skills";
+import { PageHero } from "../shell/page-shell";
+import { AgentSettingsManage } from "./agent-settings-manage.tsx";
 import type {
   AgentSectionProps,
   AgentSettingsSection,
@@ -22,6 +25,40 @@ function AccessColumn({ children }: { children: ReactNode }) {
   );
 }
 
+function HeroAccessColumn({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: (titleId: string) => ReactNode;
+}) {
+  const titleId = useId();
+  return (
+    <AccessColumn>
+      <PageHero
+        level={2}
+        titleId={titleId}
+        className="mb-4"
+        title={title}
+        subtitle={subtitle}
+      />
+      {children(titleId)}
+    </AccessColumn>
+  );
+}
+
+/** The same column, height-bounded: for a body that PINS a document card to
+ *  the window's bottom gap (job description) instead of page-scrolling. */
+function FillColumn({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col px-6 pt-2">
+      {children}
+    </div>
+  );
+}
+
 /**
  * The ONE section switch: renders the section the rail selected into the right
  * pane. Every branch COMPOSES the existing section component rather than
@@ -30,36 +67,50 @@ function AccessColumn({ children }: { children: ReactNode }) {
 export function AgentSettingsSectionView({
   agent,
   section,
-  readOnly = false,
 }: AgentSectionProps & { section: AgentSettingsSection }) {
+  const { t } = useTranslation("teams");
   switch (section) {
     case "job-description":
       return (
-        <AccessColumn>
-          <AgentAdminInstructions agent={agent} readOnly={readOnly} />
-        </AccessColumn>
+        <FillColumn>
+          <AgentAdminInstructions agent={agent} />
+        </FillColumn>
       );
     case "learnings":
-      return <AgentAdminKnowledge agent={agent} readOnly={readOnly} />;
+      return <AgentAdminKnowledge agent={agent} />;
     case "people":
       return (
         <AccessColumn>
-          <AgentSettingsPeople agent={agent} readOnly={readOnly} />
+          <AgentSettingsPeople agent={agent} />
         </AccessColumn>
       );
     case "integrations":
       return (
-        <AccessColumn>
-          <AgentAdminIntegrations agent={agent} readOnly={readOnly} />
-        </AccessColumn>
+        <HeroAccessColumn
+          title={t("agentAdmin.heroes.integrations")}
+          subtitle={t("integrations.allowlist.question")}
+        >
+          {(titleId) => (
+            <AgentAdminIntegrations agent={agent} labelledBy={titleId} />
+          )}
+        </HeroAccessColumn>
       );
     case "models":
       return (
-        <AccessColumn>
-          <AgentAdminModel agent={agent} readOnly={readOnly} />
-        </AccessColumn>
+        <HeroAccessColumn
+          title={t("agentAdmin.heroes.models")}
+          subtitle={t("agentAdmin.models.question")}
+        >
+          {(titleId) => <AgentAdminModel agent={agent} labelledBy={titleId} />}
+        </HeroAccessColumn>
       );
     case "skills":
-      return <AgentAdminSkills agent={agent} readOnly={readOnly} />;
+      return <AgentAdminSkills agent={agent} />;
+    case "manage":
+      return (
+        <AccessColumn>
+          <AgentSettingsManage agent={agent} />
+        </AccessColumn>
+      );
   }
 }

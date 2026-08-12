@@ -1,22 +1,13 @@
-import type { SidebarLabels } from "@houston-ai/layout";
-
 import type { SpecimenProp } from "../../../src/specimen";
 
 /**
- * The header takes `Required<SidebarLabels>` — `AppSidebar` merges the caller's
- * overrides over its own defaults before handing them down, so a standalone
- * specimen has to supply the whole bag. These are `DEFAULT_LABELS` verbatim.
+ * `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`.
+ *
+ * The header renders no words of its own: every string on the row arrives as a
+ * prop (`name`) or as a node the host composed (`icon`, `trailing`), which is
+ * what keeps this component out of the i18n runtime and lets a specimen mount
+ * it standalone with nothing but literals.
  */
-export const GROUP_LABELS: Required<SidebarLabels> = {
-  addItem: "Add item",
-  collapseSidebar: "Collapse sidebar",
-  editGroup: "Change icon & name",
-  deleteGroup: "Delete group",
-  leaveGroup: "Leave group",
-  groupMenu: "Group options",
-};
-
-/** `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`. */
 export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
   {
     name: "name",
@@ -27,6 +18,11 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
     name: "icon",
     type: "ReactNode",
     note: "The block's mark, in the shared glyph column. The box is reserved either way, so a block with no icon still puts its name on the same optical column as its neighbours.",
+  },
+  {
+    name: "trailing",
+    type: "ReactNode",
+    note: "A badge INSIDE the row, right-aligned: the block's rollup of what its rows are signalling. A folded block hides them, so this is the slot that speaks on their behalf. The library counts nothing — the host composes the node, and by passing none says the block adds nothing.",
   },
   {
     name: "collapsed",
@@ -47,11 +43,6 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
     name: "onActivate",
     type: "() => void",
     note: "The whole row is ONE hit target — glyph, name, triangle and badge in a single button, so a keyboard user reaches it in one stop and a screen reader is told it discloses something. What activating it DOES is the host's: it may open the block's screen, fold the block, or both. The triangle states the fold and takes no clicks of its own; a second control on the row would promise an outcome it does not own.",
-  },
-  {
-    name: "menu",
-    type: "ReactNode",
-    note: "The ⋯ menu, rendered as the toggle's SIBLING because a button may not nest inside a button. Its one identity entry opens the host's 'Change icon & name' dialog; nothing is edited inline in the rail. Absent only when the caller renders no menu at all (the drag preview).",
   },
   {
     name: "dragAttributes / dragListeners",

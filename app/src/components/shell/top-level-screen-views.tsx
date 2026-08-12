@@ -25,9 +25,9 @@ import type { KeepAliveView } from "./keep-alive-views";
  * sections now.
  *
  * Two screens that used to be here are gone. Permissions listed the space's
- * agents to reach one's settings page, which every team's "Manage agents"
+ * agents to reach one's settings page, which every team's "focused agent screen"
  * section already does per team, in every deployment. Time worked is a lens
- * inside Admin > Analytics.
+ * inside Admin.
  *
  * Every team shares the ONE `team` screen for the same reason: it reads the
  * open team and section from the UI store, so the cache survives switching

@@ -2,7 +2,7 @@ import { SidebarGroupHeader, SidebarRowButton } from "@houston-ai/layout";
 import type { ReactNode } from "react";
 import { useId, useState } from "react";
 
-import { TeamGlyph, TeamMenu } from "./sidebar-group-header-chrome";
+import { TeamGlyph } from "./sidebar-group-header-chrome";
 
 /** Team blocks live on the rail, at the rail's width. */
 export function Rail({ children }: { children: ReactNode }) {
@@ -23,9 +23,6 @@ export interface LiveTeamProps {
   startCollapsed?: boolean;
   /** This block owns the open view, so its header wears the pill. */
   owns?: boolean;
-  /** The default block passes none: it has no menu, because it stands for the
-   *  container and the container cannot be renamed, deleted or left. */
-  menu?: boolean;
 }
 
 /**
@@ -44,7 +41,6 @@ export function LiveTeam({
   name,
   startCollapsed = false,
   owns = false,
-  menu = true,
 }: LiveTeamProps) {
   const [collapsed, setCollapsed] = useState(startCollapsed);
   const contentId = useId();
@@ -65,7 +61,6 @@ export function LiveTeam({
         contentId={contentId}
         active={owns}
         onActivate={() => setCollapsed((on) => !on)}
-        menu={menu ? <TeamMenu /> : undefined}
       />
       <div id={contentId} className="flex flex-col">
         {!collapsed &&

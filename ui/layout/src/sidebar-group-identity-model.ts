@@ -7,9 +7,11 @@
  * models in `sidebar-groups.ts`) never pulls a component in to get them.
  */
 
+import type { SidebarGroupGlyphName } from "./sidebar-group-glyphs";
+
 /** One offerable mark. `name` indexes the glyph set; `label` names it aloud. */
 export interface SidebarGroupGlyphChoice {
-  name: string;
+  name: SidebarGroupGlyphName;
   label: string;
 }
 
@@ -31,4 +33,8 @@ export interface SidebarGroupIdentityLabels {
   icons: string;
   /** Accessible group name for the swatch row. */
   colors: string;
+  /** Placeholder and accessible name for icon search. */
+  search: string;
+  /** Honest result shown when a search matches no icon. */
+  emptySearch: string;
 }

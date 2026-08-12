@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { skillChatTurnContext } from "../../lib/skill-chat-prompts";
 import type { Agent } from "../../lib/types";
+import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
 
@@ -62,12 +63,16 @@ export function SkillSetupChat({
   const { t } = useTranslation("skills");
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
 
-  // Mount = panel open, unmount = panel closed. Same contract the Routines
-  // chat keeps, centralized here so both Skills hosts share it.
+  // Mount = panel open, unmount = panel closed — but only while this chat's
+  // HOST SCREEN is on the glass. Both hosts are kept-alive views, so an
+  // ungated claim outlives navigation and holds the shared panel open (and
+  // empty) over whatever screen the user went to; the Routines chat and the
+  // archive both gate exactly like this (HOU-1165's rule).
+  const isActive = useIsActiveView();
   useEffect(() => {
-    setPanelOpen(true);
+    setPanelOpen(isActive);
     return () => setPanelOpen(false);
-  }, [setPanelOpen]);
+  }, [setPanelOpen, isActive]);
 
   // Escape closes the panel (routines parity). Radix menus/dialogs mark their
   // own Escape handled (`defaultPrevented`); a focused composer gets the FIRST
@@ -124,7 +129,9 @@ export function SkillSetupChat({
         </div>
       </div>
     );
-    return panelContainer ? createPortal(surface, panelContainer) : null;
+    return panelContainer && isActive
+      ? createPortal(surface, panelContainer)
+      : null;
   }
 
   const sessionKey = activity.session_key ?? `activity-${activity.id}`;
@@ -147,7 +154,7 @@ export function SkillSetupChat({
         agent={agent}
         activity={activity}
         sessionKey={sessionKey}
-        panelContainer={panelContainer}
+        panelContainer={isActive ? panelContainer : null}
         missionLabel={missionLabel}
         panelActions={editManuallyButton}
         onPanelClose={onClose}

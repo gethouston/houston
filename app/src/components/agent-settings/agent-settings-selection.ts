@@ -1,7 +1,5 @@
 import {
-  type AgentSettingsGroup,
   type AgentSettingsSection,
-  agentSettingsSections,
   SECTION_GROUP,
 } from "./agent-settings-nav.ts";
 
@@ -22,14 +20,14 @@ import {
  * does it fall back to the first item.
  */
 export function resolveAgentSettingsSection(
-  groups: readonly AgentSettingsGroup[],
+  sections: readonly AgentSettingsSection[],
   requested: AgentSettingsSection | undefined,
 ): AgentSettingsSection {
-  const sections = agentSettingsSections(groups);
   if (requested !== undefined) {
     if (sections.includes(requested)) return requested;
-    const group = groups.find((g) => g.id === SECTION_GROUP[requested]);
-    const first = group?.sections[0];
+    const first = sections.find(
+      (section) => SECTION_GROUP[section] === SECTION_GROUP[requested],
+    );
     if (first !== undefined) return first;
   }
   // The Context group is unconditional on the settings page, so its rail is
@@ -50,7 +48,7 @@ export function resolveAgentSettingsSection(
  * never yank the user off the section they navigated to by hand.
  */
 export function advanceAgentSettingsSelection(input: {
-  groups: readonly AgentSettingsGroup[];
+  sections: readonly AgentSettingsSection[];
   /** The deep-link request not yet honored, if any. */
   pending: AgentSettingsSection | undefined;
   /** The section currently on screen. */
@@ -60,14 +58,14 @@ export function advanceAgentSettingsSelection(input: {
   pending: AgentSettingsSection | undefined;
 } {
   if (input.pending !== undefined) {
-    const selected = resolveAgentSettingsSection(input.groups, input.pending);
+    const selected = resolveAgentSettingsSection(input.sections, input.pending);
     return {
       selected,
       pending: selected === input.pending ? undefined : input.pending,
     };
   }
   return {
-    selected: resolveAgentSettingsSection(input.groups, input.current),
+    selected: resolveAgentSettingsSection(input.sections, input.current),
     pending: undefined,
   };
 }

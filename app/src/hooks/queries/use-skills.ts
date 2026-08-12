@@ -54,24 +54,6 @@ export function useCreateSkill(agentPath: string | undefined) {
   });
 }
 
-export function useSaveSkill(agentPath: string | undefined) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ name, content }: { name: string; content: string }) => {
-      if (!agentPath) throw new Error("agentPath is required");
-      return tauriSkills.save(agentPath, name, content);
-    },
-    onSuccess: (_data, { name }) => {
-      if (agentPath) {
-        qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-        qc.invalidateQueries({
-          queryKey: queryKeys.skillDetail(agentPath, name),
-        });
-      }
-    },
-  });
-}
-
 export function useListSkillsFromRepo(agentPath: string | undefined) {
   return useMutation({
     mutationFn: (source: string) => {
@@ -117,20 +99,6 @@ export function useInstallCommunitySkill(agentPath: string | undefined) {
       return tauriSkills.installCommunity(agentPath, source, skillId, signal);
     },
     onSuccess: () => {
-      if (agentPath)
-        qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-    },
-  });
-}
-
-export function useDeleteSkill(agentPath: string | undefined) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (name: string) => {
-      if (!agentPath) throw new Error("agentPath is required");
-      return tauriSkills.delete(agentPath, name);
-    },
-    onSettled: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
     },

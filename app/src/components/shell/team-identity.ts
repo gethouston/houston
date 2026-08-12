@@ -4,24 +4,35 @@ import type {
   SidebarGroupIdentityLabels,
   SidebarGroupSwatch,
 } from "@houston-ai/layout";
-import { SIDEBAR_GROUP_GLYPH_NAMES } from "@houston-ai/layout";
+import {
+  SIDEBAR_GROUP_GLYPH_NAMES,
+  sidebarGroupGlyphConcepts,
+} from "@houston-ai/layout";
 import type { TFunction } from "i18next";
-import { canRenameTeam, type TeamView } from "../../lib/teams-model.ts";
 import { AGENT_COLOR_LABEL_KEYS } from "./agent-sidebar-color-menu.tsx";
 
 /**
  * Everything a team's ICON-AND-NAME editing is made of: the vocabulary the
- * picker offers, the reading of a team's stored colour, and the gate deciding
- * WHOSE identity this caller may edit.
+ * picker offers and the reading of a team's stored colour.
  *
  * Its own module rather than lines inside `use-sidebar-teams-model.ts`, which
  * is at the file-size ceiling and whose job is composing the rail, not deciding
  * what a colour means.
  */
 
+/**
+ * One offerable mark, plus the words a reader might search it BY in their own
+ * language. `@houston-ai/layout` curates each mark's concepts in English and
+ * holds no translations (it is i18n-free by boundary), so the translating
+ * happens here and rides along as one space-joined haystack.
+ */
+export interface TeamIdentityGlyphChoice extends SidebarGroupGlyphChoice {
+  concepts: string;
+}
+
 /** The choices every team's picker offers — the same three for all of them. */
 export interface TeamIdentityChoices {
-  glyphs: SidebarGroupGlyphChoice[];
+  glyphs: TeamIdentityGlyphChoice[];
   colors: SidebarGroupSwatch[];
   labels: SidebarGroupIdentityLabels;
 }
@@ -40,10 +51,29 @@ export interface TeamIdentityChoices {
 export function buildTeamIdentityChoices(
   t: TFunction<["shell"]>,
 ): TeamIdentityChoices {
+  // Each of the ~80 concept words is translated ONCE and shared by every mark
+  // that carries it, rather than re-translated per mark: 233 marks times a
+  // handful of tags each is thousands of lookups for a vocabulary this small.
+  const concept = new Map<string, string>();
+  const conceptsOf = (name: (typeof SIDEBAR_GROUP_GLYPH_NAMES)[number]) =>
+    sidebarGroupGlyphConcepts(name)
+      .map((tag) => {
+        const cached = concept.get(tag);
+        if (cached !== undefined) return cached;
+        const translated = t(`shell:sidebar.teamIconConcepts.${tag}`);
+        concept.set(tag, translated);
+        return translated;
+      })
+      .join(" ");
+
   return {
+    // Each mark is NAMED in the user's language, from its own key: an icon's
+    // name is copy, not a slug title-cased at runtime, so a Spanish reader
+    // hears "Billete de dólar" and can search for it.
     glyphs: SIDEBAR_GROUP_GLYPH_NAMES.map((name) => ({
       name,
       label: t(`shell:sidebar.teamIcons.${name}`),
+      concepts: conceptsOf(name),
     })),
     colors: AGENT_COLORS.map((entry) => ({
       id: entry.id,
@@ -57,6 +87,8 @@ export function buildTeamIdentityChoices(
       trigger: t("shell:sidebar.teams.identity"),
       icons: t("shell:sidebar.teams.identityIcons"),
       colors: t("shell:sidebar.teams.identityColors"),
+      search: t("shell:sidebar.teams.identitySearch"),
+      emptySearch: t("shell:sidebar.teams.identitySearchEmpty"),
     },
   };
 }
@@ -78,23 +110,4 @@ export function teamPaletteColorId(
     (entry) =>
       entry.id === stored || entry.light === stored || entry.dark === stored,
   )?.id;
-}
-
-/**
- * Whether this caller may edit `team`'s identity — its name, mark and colour,
- * which are ONE thing changed in one dialog (a team's mark is a rename by
- * another name).
- *
- * Server host: `canRenameTeam`, so the default team is included (C13 reads its
- * identity as a rename, not a structural change). LOCAL backend: named groups
- * only, because the default team is VIRTUAL there — it IS the workspace, with
- * no stored group row to hold an icon or a colour and nothing in the stack that
- * can change a workspace's identity.
- */
-export function canEditTeamIdentity(
-  team: TeamView,
-  /** `hasAgentTeams(capabilities)` — the host owns the teams (C13). */
-  serverBacked: boolean,
-): boolean {
-  return serverBacked ? canRenameTeam(team) : !team.isDefault;
 }

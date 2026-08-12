@@ -2,7 +2,7 @@ import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { useTeamSettingsNav } from "../src/components/team-view/team-settings-nav-store.ts";
+import { useAgentSettingsNav } from "../src/components/team-view/agent-settings-nav-store.ts";
 
 /**
  * The two dishonest fallbacks in `lib/open-agent.ts`, and the one-shot it used
@@ -98,18 +98,18 @@ describe("openAgentSettings's failure path", () => {
   });
 });
 
-describe("useTeamSettingsNav.clearRequested", () => {
+describe("useAgentSettingsNav.clearRequested", () => {
   it("really drops a pending agent + section request", () => {
     // The primitive the failure path above depends on, executed rather than
     // read: a half-clear (agent dropped, section kept) would still mis-drill.
-    const nav = useTeamSettingsNav.getState();
+    const nav = useAgentSettingsNav.getState();
     nav.requestAgentDetail("agent-1", "skills");
-    strictEqual(useTeamSettingsNav.getState().requestedAgentId, "agent-1");
+    strictEqual(useAgentSettingsNav.getState().requestedAgentId, "agent-1");
 
-    useTeamSettingsNav.getState().clearRequested();
+    useAgentSettingsNav.getState().clearRequested();
 
-    strictEqual(useTeamSettingsNav.getState().requestedAgentId, null);
-    strictEqual(useTeamSettingsNav.getState().requestedSection, null);
+    strictEqual(useAgentSettingsNav.getState().requestedAgentId, null);
+    strictEqual(useAgentSettingsNav.getState().requestedSection, null);
   });
 });
 

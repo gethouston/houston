@@ -101,21 +101,12 @@ describe("context-editor source", () => {
   });
 });
 
-describe("the Analytics lens is view state, not a module singleton", () => {
-  it("threads lens/lenses as props from the view that owns the section", () => {
+describe("Admin analytics sections", () => {
+  it("keeps Activity, Usage, and Time worked at the top tab level", () => {
     const view = read("../src/components/organization/organization-view.tsx");
-    ok(view.includes("useState<AnalyticsLens>"), "the view owns the lens");
-    ok(
-      view.includes("resolveAnalyticsLens(lens, lenses)"),
-      "the view resolves the visible lens once for header AND body",
-    );
-    const header = read(
-      "../src/components/organization/admin-analytics-header.tsx",
-    );
-    ok(!header.includes("zustand"), "the drilled header is stateless");
-    ok(
-      !header.includes("useCapabilities"),
-      "the lens set arrives resolved, not re-derived",
-    );
+    const body = read("../src/components/organization/admin-section-body.tsx");
+    ok(view.includes("canSeeTimeWorked(capabilities)"));
+    ok(body.includes("activity: ActivityTab"));
+    ok(body.includes("usage: UsageTab"));
   });
 });

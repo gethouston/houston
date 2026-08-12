@@ -5,7 +5,7 @@ import {
   type UseSidebarLayout,
   useSidebarLayout,
 } from "../../hooks/use-sidebar-layout";
-import { normalizeTeamOverlay } from "../../lib/server-teams-model";
+import { normalizeTeamOverlay } from "../../lib/team-overlay";
 
 /**
  * The workspace's sidebar layout, with the server-teams overlay rule applied.

@@ -17,6 +17,7 @@ import {
 import { Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { RawConversation } from "../lib/tauri";
+import { teamDisplayName } from "../lib/team-display";
 import type { TeamView } from "../lib/teams-model";
 import type { Agent } from "../lib/types";
 import { missionCardAgentName } from "./board/mission-card-agent";
@@ -43,22 +44,25 @@ export function PaletteTeams({
   teams: TeamView[];
   onSelect: (teamId: string) => void;
 }) {
-  const { t } = useTranslation("shell");
+  const { t } = useTranslation(["shell", "teams"]);
   if (teams.length === 0) return null;
   return (
     <>
       <CommandSeparator />
       <CommandGroup heading={t("palette.groups.teams")}>
-        {teams.map((team) => (
-          <CommandItem
-            key={team.id}
-            value={`team ${team.name}`}
-            onSelect={() => onSelect(team.id)}
-          >
-            <Users />
-            <span>{team.name}</span>
-          </CommandItem>
-        ))}
+        {teams.map((team) => {
+          const name = teamDisplayName(team, t("teams:teamView.defaultName"));
+          return (
+            <CommandItem
+              key={team.id}
+              value={`team ${name}`}
+              onSelect={() => onSelect(team.id)}
+            >
+              <Users />
+              <span>{name}</span>
+            </CommandItem>
+          );
+        })}
       </CommandGroup>
     </>
   );

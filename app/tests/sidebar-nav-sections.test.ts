@@ -84,8 +84,8 @@ describe("the rail's Workspace band", () => {
   const workspace = navSection("workspace");
 
   it("is Admin and Skills, each on its own gate, and nothing else", () => {
-    // Permissions is gone (a team's Manage agents section is the one door onto
-    // agent policy) and Time worked is a lens inside Admin > Analytics, so the
+    // Permissions is gone (a team's focused agent screen is the one door onto
+    // agent policy) and Time worked is a section inside Admin, so the
     // band is down to the two rows that are still their own screen.
     assert.deepEqual(gatedRuns(workspace), [
       ["showOrganization", "organization"],

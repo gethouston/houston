@@ -2,11 +2,18 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
 import {
+  teamDeletePresentation,
+  teamDisplayColor,
+  teamDisplayIcon,
+  teamDisplayName,
+} from "../src/lib/team-display.ts";
+import {
   blockedTeamView,
+  canConfigureTeam,
+  canConfigureTeamsByRole,
   canDeleteTeam,
   canLeaveTeam,
   canRenameTeam,
-  canSeeTeamSettings,
   DEFAULT_TEAM_ID,
   homeTeam,
   resolveTeamSection,
@@ -17,7 +24,10 @@ import {
   type TeamView,
   teamById,
   teamOfAgent,
+  teamPeopleFace,
+  visibleAgentSections,
   visibleTeamSectionsForTeam,
+  visibleTeamSettingsSections,
 } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 
@@ -92,8 +102,28 @@ describe("resolveTeams", () => {
       name: "Acme",
       agents: [],
       isDefault: true,
+      usesDefaultIdentity: true,
     });
     assert.deepEqual(resolveTeams([], layout([]), "Solo")[0]?.agents, []);
+  });
+
+  it("marks the local default for a localized display name without replacing its real name", () => {
+    const team = resolveTeams([], layout([]), "Acme")[0];
+    assert.equal(team?.name, "Acme");
+    assert.equal(team && teamDisplayName(team, "New Team"), "New Team");
+  });
+
+  it("displays the charcoal rocket on an untouched default identity, stored identity wins", () => {
+    const untouched = resolveTeams([], layout([]), "Acme")[0] as TeamView;
+    assert.equal(teamDisplayIcon(untouched), "rocket");
+    assert.equal(teamDisplayColor(untouched), "charcoal");
+    const themed: TeamView = { ...untouched, icon: "bank", color: "ocean" };
+    assert.equal(teamDisplayIcon(themed), "bank");
+    assert.equal(teamDisplayColor(themed), "ocean");
+    const named: TeamView = { ...untouched };
+    delete named.usesDefaultIdentity;
+    assert.equal(teamDisplayIcon(named), undefined);
+    assert.equal(teamDisplayColor(named), undefined);
   });
 
   it("every agent belongs to exactly one team (first group wins, stale ids dropped)", () => {
@@ -175,141 +205,230 @@ describe("resolveTeams", () => {
   });
 });
 
-describe("canSeeTeamSettings", () => {
+describe("teamDeletePresentation", () => {
+  const local = (isDefault = false): TeamView => ({
+    id: isDefault ? DEFAULT_TEAM_ID : "team-1",
+    name: "Team",
+    agents: [],
+    isDefault,
+  });
+
+  it("keeps Delete visible but disabled for the only team", () => {
+    const team = local(true);
+    assert.equal(teamDeletePresentation([team], team), "disabled-only-team");
+  });
+
+  it("enables an allowed team and hides a disallowed team when siblings exist", () => {
+    const deletable = local();
+    const defaultTeam = local(true);
+    assert.equal(
+      teamDeletePresentation([deletable, defaultTeam], deletable),
+      "enabled",
+    );
+    assert.equal(
+      teamDeletePresentation([deletable, defaultTeam], defaultTeam),
+      "hidden",
+    );
+  });
+});
+
+describe("canConfigureTeamsByRole", () => {
   it("single-player always sees Team Settings", () => {
-    assert.equal(canSeeTeamSettings(null), true);
-    assert.equal(canSeeTeamSettings(caps({})), true);
+    assert.equal(canConfigureTeamsByRole(null), true);
+    assert.equal(canConfigureTeamsByRole(caps({})), true);
   });
 
   it("multiplayer gates on owner/admin and denies plain members", () => {
     assert.equal(
-      canSeeTeamSettings(caps({ multiplayer: true, role: "owner" })),
+      canConfigureTeamsByRole(caps({ multiplayer: true, role: "owner" })),
       true,
     );
     assert.equal(
-      canSeeTeamSettings(caps({ multiplayer: true, role: "admin" })),
+      canConfigureTeamsByRole(caps({ multiplayer: true, role: "admin" })),
       true,
     );
     assert.equal(
-      canSeeTeamSettings(caps({ multiplayer: true, role: "user" })),
+      canConfigureTeamsByRole(caps({ multiplayer: true, role: "user" })),
       false,
     );
-    assert.equal(canSeeTeamSettings(caps({ multiplayer: true })), false);
+    assert.equal(canConfigureTeamsByRole(caps({ multiplayer: true })), false);
   });
 });
 
 describe("visibleTeamSectionsForTeam", () => {
-  // ARCHIVED is the team's work in the past tense, so it belongs to the WORK
-  // run and goes to everyone: only Settings CONFIGURES, and only Settings is
-  // gated.
-  const WORK = ["mission-control", "routines", "files", "archived"] as const;
-  const ALL = [...WORK, "settings"] as const;
+  const WORK = ["mission-control", "routines", "files"] as const;
+  const MANAGER = [...WORK, "settings"] as const;
   const MEMBER = caps({ multiplayer: true, role: "user" });
 
-  it("gives the team's WORK to everyone, in a stable order, Settings last", () => {
-    assert.deepEqual(
-      visibleTeamSectionsForTeam(MEMBER, team([agent("a", "user")])),
-      [...WORK],
-    );
-    assert.deepEqual(
-      visibleTeamSectionsForTeam(MEMBER, team([agent("a", "manager")])),
-      [...ALL],
-    );
-  });
-
-  it("single-player always gets Team Settings, on any team", () => {
-    assert.deepEqual(visibleTeamSectionsForTeam(null, team([agent("a")])), [
-      ...ALL,
-    ]);
-    assert.deepEqual(visibleTeamSectionsForTeam(caps({}), team([])), [...ALL]);
-  });
-
-  it("the org owner/admin gets Team Settings on every team, even an empty one", () => {
-    for (const role of ["owner", "admin"] as const) {
-      const c = caps({ multiplayer: true, role });
-      assert.deepEqual(
-        visibleTeamSectionsForTeam(c, team([agent("a", "user")])),
-        [...ALL],
-        role,
-      );
-      assert.deepEqual(visibleTeamSectionsForTeam(c, team([])), [...ALL], role);
-    }
-  });
-
-  it("a member who MANAGES one of this team's agents gets Team Settings", () => {
-    // The bug this rule fixes: a `role:"user"` holding `access:"manager"` on an
-    // agent lost every configure surface, because Team Settings is the ONE door
-    // to the agent settings page and it was gated org-wide.
-    const sections = visibleTeamSectionsForTeam(
-      MEMBER,
-      team([agent("a", "user"), agent("b", "manager")]),
-    );
-    assert.equal(sections.includes("settings"), true);
-  });
-
-  it("the same member gets NO Team Settings on a team they only use", () => {
-    for (const agents of [
-      [] as Agent[],
-      [agent("a", "user")],
-      [agent("a", "user"), agent("b", "user")],
-      // No `access` at all: a stale/partial wire row must never widen power.
-      [agent("a")],
-    ]) {
-      const sections = visibleTeamSectionsForTeam(MEMBER, team(agents));
-      assert.deepEqual(sections, [...WORK], JSON.stringify(agents));
-    }
-  });
-
-  it("is decided PER TEAM: the same caller differs team to team", () => {
-    const managed = team([agent("a", "manager")], { id: "g1" });
-    const used = team([agent("b", "user")], { id: "g2" });
-    assert.equal(
-      visibleTeamSectionsForTeam(MEMBER, managed).includes("settings"),
-      true,
-    );
-    assert.equal(
-      visibleTeamSectionsForTeam(MEMBER, used).includes("settings"),
-      false,
-    );
-  });
-
-  it("holds for the default team too (the workspace's own)", () => {
-    const def = team([agent("a", "manager")], {
-      id: DEFAULT_TEAM_ID,
-      isDefault: true,
-    });
-    assert.deepEqual(visibleTeamSectionsForTeam(MEMBER, def), [...ALL]);
-  });
-
-  it("on a SERVER team the org-role half is replaced by the server's owner flag", () => {
-    // An explicit team owner configures their team without being an org admin.
+  it("gives a plain member exactly the three work sections", () => {
     assert.deepEqual(
       visibleTeamSectionsForTeam(
         MEMBER,
-        team([agent("a", "user")], { server: facts({ owner: true }) }),
-      ),
-      [...ALL],
-    );
-    // And the reverse: the server's `owner: false` wins over the client's
-    // org-role guess. A real admin never gets that row (the gateway marks them
-    // owner of every team) -- which is exactly why the client must not re-derive.
-    assert.deepEqual(
-      visibleTeamSectionsForTeam(
-        caps({ multiplayer: true, role: "admin" }),
-        team([agent("a", "user")], { server: facts({ owner: false }) }),
+        team([agent("a", "user")], { server: facts(), context: "" }),
       ),
       [...WORK],
     );
   });
 
-  it("the agent-manager clause survives the server switch", () => {
-    const sections = visibleTeamSectionsForTeam(
-      MEMBER,
-      team([agent("a", "user"), agent("b", "manager")], {
-        server: facts({ owner: false }),
-      }),
+  it("an agent manager gets every applicable manager section", () => {
+    assert.deepEqual(
+      visibleTeamSectionsForTeam(
+        MEMBER,
+        team([agent("a", "manager")], { server: facts(), context: "" }),
+      ),
+      [...MANAGER],
     );
-    assert.equal(sections.includes("settings"), true);
+  });
+
+  it("keeps the same manager section in a personal space", () => {
+    assert.deepEqual(
+      visibleTeamSectionsForTeam(
+        MEMBER,
+        team([], { server: facts({ owner: true }), context: "" }),
+      ),
+      [...MANAGER],
+    );
+  });
+
+  it("local backend gets the manager section", () => {
+    assert.deepEqual(visibleTeamSectionsForTeam(null, team([agent("a")])), [
+      ...MANAGER,
+    ]);
+  });
+
+  it("keeps the settings door when a server team does not serve context", () => {
+    assert.deepEqual(
+      visibleTeamSectionsForTeam(
+        MEMBER,
+        team([], { server: facts({ owner: true }) }),
+      ),
+      [...MANAGER],
+    );
+  });
+});
+
+describe("visibleTeamSettingsSections", () => {
+  const MEMBER = caps({ multiplayer: true, role: "user" });
+  const FULL = ["context", "agents", "people", "settings"] as const;
+
+  it("offers nothing to a caller who cannot configure this team", () => {
+    // The drilled level is owner-only, and authority revoked while the view is
+    // open must not keep rendering it: an empty list is the view's instruction
+    // to fall back to the team's base sections.
+    assert.deepEqual(
+      visibleTeamSettingsSections(
+        MEMBER,
+        team([agent("a", "user")], { server: facts() }),
+        "roster",
+      ),
+      [],
+    );
+    assert.deepEqual(
+      visibleTeamSettingsSections(MEMBER, team([agent("a", "user")]), "hidden"),
+      [],
+    );
+  });
+
+  it("omits People where the deployment has no organizations", () => {
+    // A hidden people face (desktop / self-host: no spaces) has no roster and
+    // nobody to invite, so the tab would offer only "Create an organization".
+    assert.deepEqual(visibleTeamSettingsSections(null, team([]), "hidden"), [
+      "context",
+      "agents",
+      "settings",
+    ]);
+  });
+
+  it("keeps People for the roster and invite faces", () => {
+    assert.deepEqual(visibleTeamSettingsSections(null, team([]), "invite"), [
+      ...FULL,
+    ]);
+    assert.deepEqual(
+      visibleTeamSettingsSections(
+        MEMBER,
+        team([], { server: facts({ owner: true }) }),
+        "roster",
+      ),
+      [...FULL],
+    );
+  });
+});
+
+describe("visibleAgentSections", () => {
+  const WORK = ["mission-control", "routines", "files"] as const;
+
+  it("adds settings only for this agent's manager", () => {
+    const member = caps({ multiplayer: true, role: "user" });
+    assert.deepEqual(visibleAgentSections(member, agent("a", "user")), [
+      ...WORK,
+    ]);
+    assert.deepEqual(visibleAgentSections(member, agent("a", "manager")), [
+      ...WORK,
+      "settings",
+    ]);
+  });
+
+  it("never lands a non-manager on the agent settings page", () => {
+    // Why the settings page has no read-only face: the ONE door into it is this
+    // section, and a request for it from someone who does not manage the agent
+    // resolves to the board instead. Anything the page rendered for a
+    // non-manager would be unreachable.
+    const member = caps({ multiplayer: true, role: "user" });
+    assert.equal(
+      resolveTeamSection(
+        visibleAgentSections(member, agent("a", "user")),
+        "settings",
+      ),
+      "mission-control",
+    );
+    assert.equal(
+      resolveTeamSection(
+        visibleAgentSections(member, agent("a", "manager")),
+        "settings",
+      ),
+      "settings",
+    );
+  });
+});
+
+describe("teamPeopleFace", () => {
+  it("covers roster, invite, and hidden deployments", () => {
+    assert.equal(
+      teamPeopleFace(team([], { server: facts() }), false, true),
+      "roster",
+    );
+    assert.equal(teamPeopleFace(team([]), true, true), "invite");
+    assert.equal(teamPeopleFace(team([]), false, false), "hidden");
+    assert.equal(
+      teamPeopleFace(team([], { server: facts() }), true, true),
+      "invite",
+    );
+  });
+});
+
+describe("canConfigureTeam", () => {
+  const MEMBER = caps({ multiplayer: true, role: "user" });
+
+  it("allows a server team owner", () => {
+    assert.equal(
+      canConfigureTeam(MEMBER, team([], { server: facts({ owner: true }) })),
+      true,
+    );
+  });
+
+  it("allows a manager of one of the team's agents", () => {
+    assert.equal(canConfigureTeam(MEMBER, team([agent("a", "manager")])), true);
+  });
+
+  it("denies a plain member", () => {
+    assert.equal(canConfigureTeam(MEMBER, team([agent("a", "user")])), false);
+  });
+
+  it("allows a local-backend org admin", () => {
+    assert.equal(
+      canConfigureTeam(caps({ multiplayer: true, role: "admin" }), team([])),
+      true,
+    );
   });
 });
 
@@ -347,17 +466,12 @@ describe("sectionHonorsAgentPin", () => {
     // Two surfaces read this to decide whether to CLAIM a narrowing — the rail
     // fills an agent row, the team's lozenge grows its second segment. On any
     // of these, both would assert something nothing on screen is doing.
-    //  - Manage agents lists the whole team whatever the pin says;
+    //  - focused agent screens the whole team whatever the pin says;
     //  - Files resolves its OWN agent (falling back to the team's first, never
     //    writing back);
     //  - Routines and Archived carry a SECTION-LOCAL filter instead, so a tab
     //    click opens them team-wide and narrowing one narrows nothing else.
-    for (const section of [
-      "routines",
-      "files",
-      "archived",
-      "settings",
-    ] as const) {
+    for (const section of ["routines", "files", "settings"] as const) {
       assert.equal(sectionHonorsAgentPin(section), false, section);
     }
   });

@@ -1,13 +1,13 @@
 import type { SidebarLayout } from "@houston-ai/engine-client";
 import type {
   SidebarDefaultGroupView,
-  SidebarGroupAffordances,
   SidebarGroupView,
   SidebarItem,
 } from "@houston-ai/layout";
 import { flatSidebarOrder } from "../../lib/agent-order";
 import type { TeamHighlight } from "../../lib/sidebar-teams";
 import { teamRowActive } from "../../lib/sidebar-teams";
+import { teamDisplayName } from "../../lib/team-display";
 import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import {
@@ -30,19 +30,7 @@ export interface BuildTeamSidebarListsArgs extends AgentItemArgs {
    * handed down rather than re-derived per block.
    */
   selectedAgentId: string | null;
-  /** Which header-menu affordances THIS team offers (rename / delete / shared
-   *  context / leave). Asked per team, because a server-owned team may be the
-   *  caller's to rename while the next one is not. Returning `undefined` — as
-   *  the local backend does — passes NO mask, which is the pre-C13 rendering:
-   *  every affordance the sidebar wired a callback for. */
-  affordancesFor?: (team: TeamView) => SidebarGroupAffordances | undefined;
-  /** Open the "change icon & name" dialog for THIS team, or `undefined` for a
-   *  team this caller cannot edit. Asked per team for the same reason the mask
-   *  is: a team's identity is its owner's to set, and the next block's owner
-   *  may be someone else. The DEFAULT team is asked the same question — where
-   *  its identity is not editable (the local backend's virtual workspace
-   *  block) this answers `undefined` and the block carries no menu. */
-  onEditTeamFor?: (team: TeamView) => (() => void) | undefined;
+  newTeamLabel: string;
 }
 
 /**
@@ -66,8 +54,7 @@ export function buildTeamSidebarLists({
   teams,
   highlight,
   selectedAgentId,
-  affordancesFor,
-  onEditTeamFor,
+  newTeamLabel,
   ...itemArgs
 }: BuildTeamSidebarListsArgs): {
   items: SidebarItem[];
@@ -92,12 +79,10 @@ export function buildTeamSidebarLists({
       // Spread rather than assign: an absent mask and a mask of `undefined`
       // read the same to the library, but only the omission leaves the view
       // model literally as it was before masks existed.
-      const affordances = affordancesFor?.(team);
-      const onEdit = onEditTeamFor?.(team);
       const collapsed = isCollapsed(team);
       return {
         id: team.id,
-        name: team.name,
+        name: teamDisplayName(team, newTeamLabel),
         collapsed,
         // Every block wears the same COMPONENT, the default team included: a
         // block IS a team whether or not it is a stored group, and a second
@@ -119,8 +104,6 @@ export function buildTeamSidebarLists({
           agentRowLit: holdsSelectedAgent(team),
         }),
         itemIds: team.agents.map((a) => a.id),
-        ...(affordances ? { affordances } : {}),
-        ...(onEdit ? { onEdit } : {}),
       };
     });
 
@@ -129,13 +112,9 @@ export function buildTeamSidebarLists({
   // The block is asked the same question every other block is asked, so
   // "may I edit this one?" is answered by ONE gate rather than by a second
   // rule that only the default team reads.
-  const defaultAffordances = defaultTeam
-    ? affordancesFor?.(defaultTeam)
-    : undefined;
-  const defaultOnEdit = defaultTeam ? onEditTeamFor?.(defaultTeam) : undefined;
   const defaultGroup = defaultTeam
     ? {
-        name: defaultTeam.name,
+        name: teamDisplayName(defaultTeam, newTeamLabel),
         // The default block folds like any other: a block that folded
         // everywhere except here would make it the one row in the rail that
         // answers a click differently.
@@ -147,8 +126,6 @@ export function buildTeamSidebarLists({
           highlight,
           agentRowLit: holdsSelectedAgent(defaultTeam),
         }),
-        ...(defaultAffordances ? { affordances: defaultAffordances } : {}),
-        ...(defaultOnEdit ? { onEdit: defaultOnEdit } : {}),
       }
     : undefined;
 

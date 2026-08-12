@@ -3,16 +3,16 @@
     "title": "Configuración del agente",
     "rows": {
       "knowledge": {
-        "title": "Memoria"
+        "title": "Aprendizajes"
       },
       "model": {
         "title": "Modelos de IA"
       },
       "people": {
-        "title": "Personas con acceso"
+        "title": "Personas"
       },
       "integrations": {
-        "title": "Apps"
+        "title": "Integraciones"
       }
     },
     "values": {
@@ -26,7 +26,7 @@
     "models": {
       "question": "¿Qué modelos de IA puede usar este agente?",
       "policyHelper": "Tú decides con qué modelos puede ejecutarse este agente. Las personas con acceso eligen su propio modelo entre los que permitas.",
-      "anyLabel": "Cualquier modelo",
+      "anyLabel": "Permitir todos los modelos",
       "anyDesc": "Las personas con acceso pueden ejecutar este agente con cualquier modelo disponible.",
       "pickedLabel": "Solo los modelos que elijas",
       "pickedDesc": "Las personas con acceso solo pueden usar los modelos que permitas abajo.",
@@ -41,21 +41,30 @@
       "allowedHeading": "Modelos permitidos",
       "allowedEmpty": "Aún no eliges modelos. Agrega modelos abajo.",
       "allowedEmptyLab": "Aún no eliges modelos de este laboratorio.",
-      "addHeading": "Agregar modelos",
-      "readOnlyNote": "Alguien que administre este agente puede cambiar qué modelos puede usar."
+      "addHeading": "Agregar modelos"
     },
     "integrations": {
       "unavailable": "Los límites de integraciones no están disponibles aquí."
+    },
+    "heroes": {
+      "people": "Personas permitidas",
+      "integrations": "Integraciones permitidas",
+      "models": "Modelos de IA permitidos"
     }
   },
   "agentSettings": {
     "railLabel": "Secciones de la configuración del agente",
-    "groups": {
-      "context": "Contexto",
-      "permissions": "Permisos"
+    "manage": {
+      "sectionTitle": "Configuración",
+      "identity": "Cambiar color y nombre",
+      "identityTitle": "Cambiar color y nombre de {{name}}",
+      "moveTeam": "Mover a otro equipo",
+      "chooseTeam": "Elegir un equipo",
+      "moveOrganization": "Mover a otra organización",
+      "moveOrganizationDescription": "Mueve este agente a una organización para que un equipo pueda trabajar con él.",
+      "delete": "Eliminar agente"
     },
     "people": {
-      "question": "¿Quién puede usar este agente?",
       "helper": "Elige si todo tu equipo puede usar este agente o solo las personas que tú elijas.",
       "anyLabel": "Todo tu equipo",
       "anyDesc": "Cualquier persona del equipo puede usar este agente, incluidas las que se sumen después.",
@@ -130,11 +139,8 @@
     "memberCount_one": "{{count}} miembro",
     "memberCount_other": "{{count}} miembros",
     "settings": {
-      "nameLabel": "Nombre del equipo",
-      "nameSave": "Guardar",
-      "nameSaving": "Guardando…",
       "members": {
-        "title": "Miembros",
+        "title": "Personas",
         "subtitle": "Las personas que se unieron a este equipo.",
         "empty": "Todavía nadie se unió a este equipo.",
         "error": "No pudimos cargar esta lista. Vuelve a intentarlo.",
@@ -150,38 +156,31 @@
   },
   "integrations": {
     "allowlist": {
-      "question": "¿Qué apps puede usar este agente?",
-      "policyHelper": "Tú decides qué apps tiene permitido usar este agente. Las personas con acceso siguen conectando sus propias cuentas para cada app que permitas.",
-      "anyLabel": "Cualquier app",
-      "anyDesc": "Las personas con acceso pueden conectar este agente a más de 1000 apps.",
-      "pickedLabel": "Solo las apps que elijas",
-      "pickedDesc": "Las personas con acceso solo pueden usar las apps que permitas abajo.",
+      "question": "¿Qué integraciones puede usar este agente?",
+      "policyHelper": "Tú decides qué integraciones puede usar este agente. Las personas con acceso igual conectan sus propias cuentas para cada integración que permitas.",
+      "anyLabel": "Permitir todas las integraciones",
+      "anyDesc": "Las personas con acceso pueden conectar este agente a cualquiera de más de 1000 integraciones.",
+      "pickedLabel": "Solo integraciones que elijas",
+      "pickedDesc": "Las personas con acceso solo pueden usar las integraciones que permitas abajo.",
       "allowApp": "Permitir {{name}}",
-      "allowedHeading": "Aplicaciones permitidas",
-      "allowedEmpty": "Aún no eliges apps. Agrega apps abajo.",
-      "allowedEmptyCategory": "Aún no hay apps permitidas en esta categoría.",
-      "addHeading": "Agregar aplicaciones",
-      "readOnlyNote": "Alguien que administre este agente puede cambiar qué aplicaciones puede usar."
+      "allowedHeading": "Integraciones permitidas",
+      "allowedEmpty": "Aún no elegiste integraciones. Agrega integraciones abajo.",
+      "allowedEmptyCategory": "Aún no hay integraciones permitidas en esta categoría.",
+      "addHeading": "Agregar integraciones"
     }
   },
   "org": {
     "title": "Administración",
     "tabs": {
       "label": "Secciones de administración",
-      "lensLabel": "Vistas de analítica",
       "people": "Personas",
       "billing": "Facturación",
-      "analytics": "Analítica",
       "companyContext": "Contexto de la empresa",
       "activity": "Actividad",
       "usage": "Uso",
       "timeWorked": "Tiempo trabajado"
     },
     "companyContextHint": "Lo que todos tus agentes saben en cada tarea y rutina que ejecutan.",
-    "agentDetail": {
-      "subtitle": "Todo lo que configuras en este agente y quién puede usarlo.",
-      "openAgent": "Abrir agente"
-    },
     "loading": "Cargando tu espacio de trabajo...",
     "unavailable": "No pudimos cargar tu espacio de trabajo."
   },
@@ -190,20 +189,17 @@
       "none": "Sin acceso",
       "noneHint": "No puede usar este agente.",
       "changeAccess": "Cambiar acceso de {{name}}",
-      "readOnlyHint": "Alguien que administre este agente puede cambiar quién tiene acceso.",
       "viewerOnly": "Puedes usar este agente. Alguien que lo administre puede cambiar quién tiene acceso.",
       "empty": {
         "title": "Aún no hay personas",
         "body": "Invita a tu equipo desde la página de Administración para gestionar su acceso aquí."
       }
-    },
-    "agentsHeading": "Agentes"
+    }
   },
   "share": {
     "title": "Compartir {{name}}",
     "subtitle": "Elige quién puede usar este agente.",
     "button": "Compartir",
-    "viewButton": "Quién tiene acceso",
     "viewTitle": "Quién tiene acceso a {{name}}",
     "viewSubtitle": "Estas personas pueden usar este agente compartido.",
     "sectionTitle": "Compartir este agente",
@@ -239,6 +235,11 @@
     }
   },
   "people": {
+    "createOrganization": {
+      "title": "Crea una organización para invitar personas",
+      "body": "Para invitar a otras personas, crea una organización.",
+      "cta": "Crear organización"
+    },
     "adminNotice": "Puedes ver a tu equipo. Solo el propietario puede agregar o quitar personas.",
     "add": {
       "title": "Agregar a alguien",
@@ -324,16 +325,6 @@
     "messages_one": "{{count}} mensaje",
     "messages_other": "{{count}} mensajes"
   },
-  "agentsTab": {
-    "managedBy": "Gestionado por {{names}}",
-    "access": {
-      "everyone": "Todo tu equipo",
-      "people_one": "{{count}} persona",
-      "people_other": "{{count}} personas",
-      "you": "Puedes usarlo"
-    },
-    "open": "Abrir {{name}}"
-  },
   "createTeam": {
     "trigger": "Crear organización",
     "title": "Crear una organización",
@@ -413,6 +404,33 @@
     "done": "{{agent}} terminó de moverse a {{team}}.",
     "failed": "{{agent}} no pudo terminar de moverse a {{team}}. Houston lo intentará de nuevo la próxima vez que inicie."
   },
+  "moveTeam": {
+    "title": "Mover {{team}} a una organización",
+    "confirm": {
+      "body_one": "¿Mover {{team}} y su {{count}} agente a {{destination}}?",
+      "body_other": "¿Mover {{team}} y sus {{count}} agentes a {{destination}}?",
+      "downtime": "Los agentes se pausan mientras se mueven.",
+      "move": "Mover equipo"
+    },
+    "moving": "Moviendo {{name}} ({{index}} de {{total}})",
+    "movingBody": "Los agentes se mueven uno a la vez. Mantén esta ventana abierta.",
+    "cleanupSource": "Limpiando el equipo personal",
+    "switching": "Cambiando a la organización",
+    "recreate": "Recreando el equipo",
+    "placing": "Colocando los agentes en su equipo",
+    "moveFailedFirst_one": "No se pudo mover el agente.",
+    "moveFailedFirst_other": "No se movió ninguno de los {{count}} agentes. El primero no se pudo mover.",
+    "moveFailedNext": "Se movieron {{moved}} de {{total}} agentes. El siguiente no se pudo mover.",
+    "postscriptFailed_one": "El agente se movió, pero la configuración no terminó.",
+    "postscriptFailed_other": "Se movieron los {{count}} agentes, pero la configuración no terminó.",
+    "postscriptFailedEmpty": "El equipo no pudo terminar de moverse.",
+    "retry": "Intentar de nuevo",
+    "close": "Cerrar"
+  },
+  "moveTeamResume": {
+    "done": "{{team}} terminó de moverse a su organización.",
+    "failed": "{{team}} movió sus agentes, pero la configuración no terminó. Houston lo intentará de nuevo la próxima vez que se inicie."
+  },
   "billing": {
     "unavailable": "No pudimos cargar la facturación de este equipo.",
     "status": {
@@ -473,27 +491,45 @@
     }
   },
   "teamView": {
+    "defaultName": "Nuevo equipo",
     "tabs": {
       "missionControl": "Tareas",
       "routines": "Rutinas",
       "files": "Archivos",
-      "archived": "Archivadas",
-      "settings": "Gestionar agentes",
+      "settings": "Configuración del equipo",
+      "context": "Contexto",
+      "people": "Personas",
       "label": "Secciones del equipo"
     },
+    "settingsTabs": {
+      "context": "Contexto",
+      "agents": "Agentes",
+      "people": "Personas",
+      "settings": "Configuración",
+      "label": "Secciones de configuración del equipo"
+    },
+    "settingsActions": {
+      "identity": "Cambiar icono y nombre",
+      "moveToOrganization": "Mover a una organización",
+      "moveToOrganizationDescription": "Mueve este equipo y sus agentes a una organización para que otras personas puedan trabajar con ellos.",
+      "leave": "Salir del equipo",
+      "delete": "Eliminar equipo",
+      "onlyTeamDeleteDescription": "Este es tu único equipo, así que no se puede eliminar."
+    },
+    "agentTabs": {
+      "settings": "Configuración del agente"
+    },
+    "archive": {
+      "open": "Archivadas",
+      "back": "Volver a tareas"
+    },
     "move": {
-      "trigger": "Más acciones para {{name}}",
-      "action": "Mover a un equipo",
       "confirmTitle": "¿Mover {{agent}} a {{team}}?",
       "confirmBody": "{{agent}} pasa a {{team}}. Las personas que pueden ver ese equipo verán este agente ahí.",
       "confirm": "Mover agente",
       "cancel": "Cancelar"
     },
     "agentMenu": {
-      "rename": "Cambiar nombre",
-      "renameTitle": "Cambiar el nombre de {{name}}",
-      "renameLabel": "Nombre del agente",
-      "renameConfirm": "Guardar",
       "delete": "Eliminar agente"
     },
     "context": {
@@ -507,7 +543,7 @@
         "workspaceBody": "Crea tu primer agente y sus tareas aparecerán aquí.",
         "createAgent": "Crear agente",
         "teamTitle": "Este equipo aún no tiene agentes",
-        "teamBody": "Crea un agente aquí o mueve uno a {{name}} desde la página Gestionar agentes de otro equipo."
+        "teamBody": "Crea un agente aquí o usa la sección Configuración del agente para moverlo a {{name}}."
       }
     },
     "routines": {
@@ -517,7 +553,7 @@
         "workspaceBody": "Crea tu primer agente y todo lo que haga por su cuenta aparecerá aquí.",
         "createAgent": "Crear agente",
         "teamTitle": "Este equipo aún no tiene agentes",
-        "teamBody": "Crea un agente aquí o mueve uno a {{name}} desde la página Gestionar agentes de otro equipo."
+        "teamBody": "Crea un agente aquí o usa la sección Configuración del agente para moverlo a {{name}}."
       },
       "noRoutines": {
         "title": "Todavía nada funciona solo",
@@ -538,19 +574,24 @@
         "workspaceBody": "Crea tu primer agente y los archivos que guarde aparecerán aquí.",
         "createAgent": "Crear agente",
         "teamTitle": "Este equipo aún no tiene agentes",
-        "teamBody": "Crea un agente aquí o mueve uno a {{name}} desde la página Gestionar agentes de otro equipo."
+        "teamBody": "Crea un agente aquí o usa la sección Configuración del agente para moverlo a {{name}}."
       }
     },
     "settings": {
-      "subtitle": "Los agentes de este equipo. Abre uno para gestionar quién puede usarlo y qué puede usar.",
-      "empty": {
-        "workspaceTitle": "Aún no hay agentes",
-        "workspaceBody": "Crea uno y aparecerá aquí.",
-        "teamTitle": "Este equipo aún no tiene agentes",
-        "teamBody": "Crea un agente aquí o mueve uno desde la página Gestionar agentes de otro equipo."
-      },
       "navUnavailable": "Todavía no pudimos abrir la configuración de este agente",
-      "navUnavailableBody": "El equipo de este agente todavía se está cargando. Espera un momento y vuelve a intentarlo. Si sigue pasando, repórtalo como un error."
+      "navUnavailableBody": "El equipo de este agente todavía se está cargando. Espera un momento y vuelve a intentarlo. Si sigue pasando, repórtalo como un error.",
+      "policy": {
+        "everyone": "Todos",
+        "people_one": "{{count}} persona",
+        "people_other": "{{count}} personas",
+        "integrationsAllowed_one": "{{count}} permitida",
+        "integrationsAllowed_other": "{{count}} permitidas",
+        "modelsAllowed_one": "{{count}} permitido",
+        "modelsAllowed_other": "{{count}} permitidos",
+        "allIntegrations": "Todas las integraciones permitidas",
+        "allModels": "Todos los modelos permitidos",
+        "unavailable": "No se pudo cargar"
+      }
     }
   }
 }

@@ -120,13 +120,6 @@ export interface SidebarProps {
   /** The trailing DEFAULT block's header was activated. Its own callback
    *  because that block is not a stored group and has no id to hand back. */
   onActivateDefault?: () => void;
-  onDeleteGroup?: (groupId: string) => void;
-  /**
-   * Leave a group: the caller's own membership, not the group. Its menu entry
-   * sits last, behind a separator, and needs the group's `affordances.leave` to
-   * be explicitly `true` on top of this callback.
-   */
-  onLeaveGroup?: (groupId: string) => void;
   /**
    * Reorder an item WITHIN its own container, before `beforeItemId` (null =
    * append to the end of that section). `groupId` is always the container the

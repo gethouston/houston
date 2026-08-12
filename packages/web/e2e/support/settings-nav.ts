@@ -6,9 +6,8 @@ import { screen } from "./team-nav";
  *
  * **Admin is the one top-level screen this helper reaches.** It is the whole of
  * the rail's "Workspace" band that belongs here: Permissions is gone (agent
- * policy is discovered through a team's "Manage agents" section — see
- * `team-nav.ts` `openAgentSettings`) and Time worked is a LENS inside
- * Admin > Analytics rather than a screen. **About me** joins it: an ungated row
+ * policy is discovered through a team's focused agent screen, see
+ * `team-nav.ts` `openAgentSettings`). **About me** joins it: an ungated row
  * in the rail's lead run, so it is addressed the same way.
  *
  * Neither Admin nor About me carries a tour anchor (the tour walks neither), so
@@ -71,7 +70,9 @@ export async function openAboutMe(page: Page): Promise<void> {
 export type AdminSection =
   | "People"
   | "Billing"
-  | "Analytics"
+  | "Activity"
+  | "Usage"
+  | "Time worked"
   | "Company context";
 
 /** Section name -> the `data-admin-section-tab` value its lozenge carries. */
@@ -79,7 +80,9 @@ export const ADMIN_SECTION_TAB_IDS: Readonly<Record<AdminSection, string>> = {
   "Company context": "companyContext",
   People: "people",
   Billing: "billing",
-  Analytics: "analytics",
+  Activity: "activity",
+  Usage: "usage",
+  "Time worked": "timeWorked",
 };
 
 /**
@@ -104,42 +107,6 @@ export async function openAdminSection(
   await expect(
     screen(page).locator(`[data-admin-section-body='${id}']`),
   ).toBeVisible();
-}
-
-/** The three lenses of Admin > Analytics, as its lozenges label them. */
-export type AnalyticsLens = "Activity" | "Usage" | "Time worked";
-
-/** Lens name -> the `data-analytics-lens-tab` value its lozenge carries. */
-export const ANALYTICS_LENS_TAB_IDS: Readonly<Record<AnalyticsLens, string>> = {
-  Activity: "activity",
-  Usage: "usage",
-  "Time worked": "timeWorked",
-};
-
-/** One lens lozenge of the drilled-in Analytics header. */
-export function analyticsLensTab(page: Page, lens: AnalyticsLens): Locator {
-  return screen(page).locator(
-    `[data-analytics-lens-tab='${ANALYTICS_LENS_TAB_IDS[lens]}']`,
-  );
-}
-
-/**
- * Open one lens of Admin > Analytics. Opening the section drills the header
- * into the lens cluster (back chip + lozenges); Activity is the identity
- * lozenge, whose visible words are "Analytics", so lenses are addressed by
- * their `data-analytics-lens-tab` id. Only the SELECTED lens is mounted, so
- * this is also what makes a lens's data load at all — and "Time worked" only
- * exists where the gateway advertises `computeUsage`, which is why an absent
- * lozenge (not an absent rail row) is how that gate is observed now.
- */
-export async function openAnalyticsLens(
-  page: Page,
-  lens: AnalyticsLens,
-): Promise<void> {
-  await openAdminSection(page, "Analytics");
-  const tab = analyticsLensTab(page, lens);
-  await tab.click();
-  await expect(tab).toHaveAttribute("aria-current", "page");
 }
 
 /**

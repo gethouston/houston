@@ -41,7 +41,7 @@ describe("teamSectionTabs", () => {
     const sections = visibleTeamSectionsForTeam(caps(), team());
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      sections.filter((id) => id !== "mission-control"),
+      ["routines", "files", "settings"],
     );
     // The board is dropped, never relabelled: the team's lozenge IS that door.
     assert.ok(
@@ -49,7 +49,7 @@ describe("teamSectionTabs", () => {
     );
   });
 
-  it("gives a member the WORK tabs and no Manage agents", () => {
+  it("gives a member the WORK tabs and no focused agent screen", () => {
     // Multiplayer, plain user, managing nothing: the configure section is not
     // theirs, so the row must not draw the last tab. Archived is WORK, so they
     // keep it.
@@ -59,20 +59,21 @@ describe("teamSectionTabs", () => {
     );
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "archived"],
+      ["routines", "files"],
     );
   });
 
-  it("gives a team OWNER the Manage agents tab, last", () => {
+  it("gives a team owner all manager tabs in their pinned order", () => {
     const sections = visibleTeamSectionsForTeam(
       caps({ multiplayer: true, role: "user" } as Partial<Capabilities>),
       team({
         server: { joined: true, owner: true, memberCount: 2, sortOrder: 0 },
+        context: "",
       }),
     );
     assert.deepEqual(
       teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "archived", "settings"],
+      ["routines", "files", "settings"],
     );
   });
 
@@ -80,6 +81,13 @@ describe("teamSectionTabs", () => {
     const keys = Object.values(TEAM_SECTION_TAB_KEYS);
     assert.equal(new Set(keys).size, keys.length);
     for (const key of keys) assert.match(key, /^teamView\.tabs\./);
+  });
+
+  it("turns settings into the manager-only door", () => {
+    assert.equal(
+      teamSectionTabs(["mission-control", "settings"])[0]?.id,
+      "settings",
+    );
   });
 
   it("draws nothing for an empty section list", () => {

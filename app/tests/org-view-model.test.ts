@@ -3,12 +3,11 @@ import { describe, it } from "node:test";
 import type { AuditEntry, Capabilities } from "@houston-ai/engine-client";
 import {
   AUDIT_PAGE_SIZE,
-  analyticsLenses,
   canSeeOrganization,
+  canSeeTimeWorked,
   nextAuditCursor,
   ORG_TAB_IDS,
   orgTabIds,
-  resolveAnalyticsLens,
 } from "../src/components/organization/org-view-model.ts";
 
 const SINGLE_PLAYER: Capabilities = {};
@@ -56,9 +55,10 @@ describe("canSeeOrganization", () => {
     strictEqual(canSeeOrganization(undefined, true), false);
   });
 
-  it("hides it in the personal space of a Spaces host, even for an owner", () => {
-    strictEqual(canSeeOrganization(SPACES_OWNER, false), false);
-    strictEqual(canSeeOrganization(SPACES_ADMIN, false), false);
+  it("shows it in the personal space of a Spaces host", () => {
+    strictEqual(canSeeOrganization(SPACES_OWNER, false), true);
+    strictEqual(canSeeOrganization(SPACES_ADMIN, false), true);
+    strictEqual(canSeeOrganization(SPACES_MEMBER, false), true);
   });
 
   it("shows it in a team space of a Spaces host for owner/admin", () => {
@@ -73,52 +73,39 @@ describe("canSeeOrganization", () => {
 
 describe("ORG_TAB_IDS", () => {
   it("is the always-present sections in display order", () => {
-    // Activity, Usage and Time worked are no longer sections: they are the
-    // three LENSES of one Analytics section, which is why they do not appear
-    // here. Company context leads because it is the header's identity lozenge
+    // Company context leads because it is the header's identity lozenge
     // (the landing section), and it is unconditional because the whole Admin
     // view is already gated on `canSeeOrganization`, which is false in a
     // personal space, so a second branch for it here would be dead code.
-    strictEqual(ORG_TAB_IDS.join(","), "companyContext,people,analytics");
+    strictEqual(ORG_TAB_IDS.join(","), "companyContext,people,activity,usage");
   });
 });
 
 describe("orgTabIds", () => {
   it("splices billing in after People only when it is in scope", () => {
     strictEqual(
-      orgTabIds({ billing: false }).join(","),
-      "companyContext,people,analytics",
+      orgTabIds({ billing: false, timeWorked: false }).join(","),
+      "companyContext,people,activity,usage",
     );
     strictEqual(
-      orgTabIds({ billing: true }).join(","),
-      "companyContext,people,billing,analytics",
+      orgTabIds({ billing: true, timeWorked: false }).join(","),
+      "companyContext,people,billing,activity,usage",
+    );
+  });
+
+  it("adds Time worked last only when compute usage is in scope", () => {
+    strictEqual(
+      orgTabIds({ billing: false, timeWorked: true }).join(","),
+      "companyContext,people,activity,usage,timeWorked",
     );
   });
 });
 
-describe("analyticsLenses", () => {
+describe("canSeeTimeWorked", () => {
   it("offers Time worked only where the deployment meters compute", () => {
-    strictEqual(
-      analyticsLenses({ ...OWNER, computeUsage: true }).join(","),
-      "activity,usage,timeWorked",
-    );
-    strictEqual(analyticsLenses(OWNER).join(","), "activity,usage");
-    strictEqual(analyticsLenses(null).join(","), "activity,usage");
-  });
-});
-
-describe("resolveAnalyticsLens", () => {
-  it("keeps a lens the deployment offers", () => {
-    strictEqual(resolveAnalyticsLens("usage", ["activity", "usage"]), "usage");
-  });
-
-  it("falls back to the lead lens when the offered set drops it", () => {
-    // Capabilities can resolve (or a space can change) under a selected lens:
-    // Time worked selected, then a host without computeUsage.
-    strictEqual(
-      resolveAnalyticsLens("timeWorked", ["activity", "usage"]),
-      "activity",
-    );
+    strictEqual(canSeeTimeWorked({ ...OWNER, computeUsage: true }), true);
+    strictEqual(canSeeTimeWorked(OWNER), false);
+    strictEqual(canSeeTimeWorked(null), false);
   });
 });
 

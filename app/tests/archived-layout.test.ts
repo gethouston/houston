@@ -13,9 +13,13 @@ const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
 const toolbarSource = read("../src/components/mission-control-toolbar.tsx");
-const archivedSource = read(
-  "../src/components/board/mission-control-archived.tsx",
-);
+// The archived view is two files: the wiring (`mission-control-archived.tsx`)
+// and the board it renders (`archived-mission-board.tsx`). Every assertion
+// about the SURFACE reads both, so moving a line between them can never make
+// one of these checks vacuously pass.
+const archivedSource =
+  read("../src/components/board/mission-control-archived.tsx") +
+  read("../src/components/board/archived-mission-board.tsx");
 const archivedSectionSource = read(
   "../src/components/team-view/team-archived.tsx",
 );
@@ -64,20 +68,15 @@ describe("archived is a labelled tab, and the only door", () => {
     isDefault: false,
   });
 
-  it("is a section every caller gets, ordered last before Manage agents", () => {
-    // The archive is the team's WORK in the past tense, never something you
-    // need a role to read: only Settings is gated.
+  it("is a mode of Tasks, never a section", () => {
     const member = visibleTeamSectionsForTeam(
       { multiplayer: true, role: "user" } as never,
       team(),
     );
-    ok(member.includes("archived"));
+    ok(!member.includes("archived" as never));
     ok(!member.includes("settings"));
-    ok(member.indexOf("archived") > member.indexOf("files"));
-    ok(member.at(-1) === "archived");
-
     const admin = visibleTeamSectionsForTeam(null, team());
-    ok(admin.indexOf("archived") === admin.indexOf("settings") - 1);
+    ok(!admin.includes("archived" as never));
   });
 
   it("carries no entry pill and no overflow: the tab IS the entry", () => {
@@ -104,10 +103,8 @@ describe("archived is a labelled tab, and the only door", () => {
     // act changed, from a mode flip to `openTeamView`.
     ok(missionControlSource.includes("useBoardSurfaceOnNav"));
     ok(archivedSectionSource.includes("useBoardSurfaceOnNav"));
-    ok(missionControlSource.includes('openTeamView(team.id, "archived"'));
-    ok(
-      archivedSectionSource.includes('openTeamView(team.id, "mission-control"'),
-    );
+    ok(missionControlSource.includes("setArchived(true)"));
+    ok(archivedSectionSource.includes("onShowActive"));
   });
 
   it("hands a re-activated mission back to the Tasks section", () => {

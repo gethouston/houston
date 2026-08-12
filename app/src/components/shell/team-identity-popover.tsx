@@ -5,10 +5,12 @@ import {
   PopoverTrigger,
   ScrollArea,
 } from "@houston-ai/core";
-import { SidebarGroupGlyph } from "@houston-ai/layout";
+import {
+  matchesSidebarGroupGlyph,
+  SidebarGroupGlyph,
+} from "@houston-ai/layout";
 import { Users } from "lucide-react";
-import { type CSSProperties, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { type CSSProperties, useRef, useState } from "react";
 import type { TeamIdentityChoices } from "./team-identity";
 import {
   ColorSwatch,
@@ -49,15 +51,25 @@ export function TeamIdentityPopover({
   /** `undefined` = cleared back to the default ink (the toggle-off). */
   onColorChange: (id: string | undefined) => void;
 }) {
-  const { t } = useTranslation(["shell"]);
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const tint = choices.colors.find((c) => c.id === colorId)?.value;
   const tintVar = tint
     ? ({ "--identity-tint": tint } as CSSProperties)
     : undefined;
-  const needle = query.trim().toLocaleLowerCase();
-  const shown = needle
-    ? choices.glyphs.filter((g) => g.label.toLocaleLowerCase().includes(needle))
+  // The mark's LOCALIZED name and its LOCALIZED concepts ride along with the
+  // English key words and tags the library knows, so an es reader finds the
+  // money marks by typing "dinero" and an en reader still finds them by
+  // "money".
+  const shown = query.trim()
+    ? choices.glyphs.filter((glyph) =>
+        matchesSidebarGroupGlyph(
+          glyph.name,
+          query,
+          glyph.label,
+          glyph.concepts,
+        ),
+      )
     : choices.glyphs;
 
   return (
@@ -66,6 +78,7 @@ export function TeamIdentityPopover({
       onOpenChange={(open) => {
         // A reopened picker starts from the whole vocabulary, not last search.
         if (!open) setQuery("");
+        else requestAnimationFrame(() => searchRef.current?.focus());
       }}
     >
       <PopoverTrigger
@@ -87,7 +100,11 @@ export function TeamIdentityPopover({
           <Users className="size-5 text-ink-muted" aria-hidden="true" />
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      {/* Fixed width = the full 14-column grid's own (14 x 1.75rem cells +
+          13 x 0.5rem gaps + horizontal p-3). The grid's fr columns would let a
+          filtered or empty search SHRINK the popover, and the swatch row's
+          justify-between would collapse its gaps with it. */}
+      <PopoverContent align="start" className="w-[32.5rem] p-0">
         {/* `justify-between`, not a packed run: the swatches share the row's
             full width evenly, edge to edge, like the mark grid below them. */}
         {/* biome-ignore lint/a11y/useSemanticElements: a run of toggle buttons,
@@ -116,10 +133,11 @@ export function TeamIdentityPopover({
             below already frame it, and a boxed input INSIDE a popover would
             nest two field chromes. */}
         <input
+          ref={searchRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("shell:sidebar.teams.identitySearch")}
-          aria-label={t("shell:sidebar.teams.identitySearch")}
+          placeholder={choices.labels.search}
+          aria-label={choices.labels.search}
           className="w-full border-b border-line bg-transparent px-3 py-2.5 text-base text-ink outline-none placeholder:text-ink-muted"
         />
         {/* The tint rides on the grid, not on each cell: one inherited ink for
@@ -172,7 +190,7 @@ export function TeamIdentityPopover({
             </div>
           ) : (
             <p className="px-1 py-2 text-sm text-ink-muted">
-              {t("shell:sidebar.teams.identitySearchEmpty")}
+              {choices.labels.emptySearch}
             </p>
           )}
         </ScrollArea>

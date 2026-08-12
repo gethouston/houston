@@ -28,9 +28,6 @@ export interface SidebarGroupSectionProps {
   /** The DEFAULT block's header was activated. Its own callback because that
    *  block is not a stored group and has no id to hand back. */
   onActivateDefault?: () => void;
-  onDeleteGroup?: (groupId: string) => void;
-  /** Leave the group (the caller's membership, not the group). */
-  onLeaveGroup?: (groupId: string) => void;
 }
 
 /**
@@ -49,10 +46,9 @@ export interface SidebarGroupSectionProps {
  * ({@link useSidebarDragState}).
  *
  * The default block renders through the SAME header, so it collapses like any
- * other. What it still does not get is the affordances the container itself
- * lacks: no delete, no leave, no sortable handle. It DOES offer its
- * icon-and-name edit, when the host wires `defaultGroup.onEdit` — see
- * {@link SidebarBlockHeader}.
+ * other. What it does not get is what the container itself lacks: it is not a
+ * stored group, so its header is never a drag handle and it answers with
+ * `onActivateDefault` instead of an id — see {@link SidebarBlockHeader}.
  */
 export function SidebarGroupSection({
   section,
@@ -64,8 +60,6 @@ export function SidebarGroupSection({
   addItemDataAttrs,
   onActivateGroup,
   onActivateDefault,
-  onDeleteGroup,
-  onLeaveGroup,
 }: SidebarGroupSectionProps) {
   const { group, groupId, items } = section;
   const contentId = useId();
@@ -117,15 +111,12 @@ export function SidebarGroupSection({
           <SidebarBlockHeader
             block={block}
             group={group}
-            ctx={ctx}
             contentId={contentId}
             dragAttributes={group ? header.attributes : undefined}
             dragListeners={group ? header.listeners : undefined}
             collapsed={collapsed}
             onActivateGroup={onActivateGroup}
             onActivateDefault={onActivateDefault}
-            onDeleteGroup={onDeleteGroup}
-            onLeaveGroup={onLeaveGroup}
           />
         )}
 

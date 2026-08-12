@@ -177,15 +177,15 @@ effectiveAllowlist = agentCeiling ?? ALL
   `teams:integrations.allowlist.*` copy, the WHOLE catalog as the selectable
   universe, and a connected-apps seed. It is the **sole survivor** of the deleted
   per-agent Integrations tab's directory.
-- **Exactly one mount**: the canonical agent settings page's **Apps** section
+- **Exactly one mount**: the canonical agent settings page's **Integrations** section
   (`AgentAdminIntegrations` → `AgentAllowlistSection`; the AI-models sibling is
-  `AgentAdminModel`). Reached through Team Settings or Settings > Permissions
+  `AgentAdminModel`). Reached through the agent's own settings door
   ([agent-settings.md](agent-settings.md)).
 - The editor's surface is an always-visible two-option choice (`anyLabel` saves
   `null`, `pickedLabel` saves an explicit set; keys `question` / `policyHelper` /
   `anyLabel` / `anyDesc` / `pickedLabel` / `pickedDesc` — `policyHelper` notes that
   members still connect their own accounts) with a per-app allow toggle, not a dense
-  checklist. `readOnly` hides "Add apps" and shows a note.
+  checklist.
 
 ### Where a member sees the ceiling: nowhere
 
@@ -199,10 +199,9 @@ transparency surface ("Turned off in your workspace", the ask-your-admin line, t
 role-aware "Enable it in Permissions" fix) was removed for the same reason; git
 history is its archive, and the concept may return once it has a member-facing home.
 
-**Permissions live in exactly ONE place: Settings > Permissions**
-(`app/src/components/permissions/`, settings section id `"permissions"` — a top-level
-view until HOU-788). People → which agents each member may use; Agents → what each
-agent may use (the app + model allowlist ceilings, mounting the SAME editors).
+**Permissions live in exactly ONE place: the agent's own settings page**
+(`app/src/components/agent-settings/`): who may use the agent (People) and what it may
+use (the integration + model allowlist ceilings).
 Everywhere else in the app shows ZERO permission management, ZERO "which agents use
 this app" displays, and ZERO blocked/locked rows.
 

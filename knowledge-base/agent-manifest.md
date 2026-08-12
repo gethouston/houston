@@ -90,14 +90,13 @@ teams cutover along with `app/src/agents/standard-tabs.ts`, `tab-resolver.ts`,
   the shell's generic viewMode effect skipping `settings` so a deep link can't
   double-count. The one-shot deep-link pin (`useOrgNav`, for Admin) is cleared by
   `settings-nav-pins.ts` when a blocked section falls back to the index.
-- **Configure gating.** The settings page's ONE door is Team Settings, so its gate
-  is per AGENT: `canOpenAgentSettings(caps, agent)` (`lib/agent-nav.ts`) =
-  `canSeeTeamSettings(caps)` `|| isAgentManager(caps, agent)`. Every "configure
-  this agent" affordance must make this check before rendering, so a caller who
-  cannot reach the page is never shown a link. Inside the page `isAgentManager`
-  decides the FACE (editable vs `readOnly`), never access; the gateway 403s any
-  configure-scope write regardless. The agent's **Share** affordance
-  (`AgentShareSurfaces`) lives in that page's header.
+- **Configure gating.** The settings page's ONE door is the Agent settings
+  lozenge on the agent's own screen, manager-only:
+  `canOpenAgentSettings(caps, agent)` (`lib/agent-nav.ts`) =
+  `isAgentManager(caps, agent)`. Every "configure this agent" affordance must
+  make this check before rendering, so a caller who cannot reach the page is
+  never shown a link; the gateway 403s any configure-scope write regardless.
+  The agent's **Share** affordance lives in the People section's hero.
 - Old `tabs` / `defaultTab` fields on installed manifests are ignored by the
   loader; the `agents:tabLabels.*` i18n block was deleted.
 

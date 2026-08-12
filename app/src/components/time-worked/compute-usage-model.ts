@@ -188,9 +188,9 @@ export function durationParts(ms: number): DurationParts {
   };
 }
 
-/** The Time worked LENS exists only where the gateway advertises the endpoint.
- *  Read by Admin > Analytics (`analytics-tab.tsx`), which omits the sub-tab
- *  entirely when this is false, so the lens never opens empty and its query
+/** The Time worked section exists only where the gateway advertises the endpoint.
+ *  Read by the Admin tab model, which omits the tab
+ *  entirely when this is false, so the section never opens empty and its query
  *  never fires off the hosted cloud. */
 export function showComputeSection(
   capabilities: Capabilities | null | undefined,

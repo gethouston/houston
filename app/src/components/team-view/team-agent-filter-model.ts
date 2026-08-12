@@ -4,13 +4,15 @@ import type { Agent } from "../../lib/types.ts";
  * Which agent a team surface is narrowed to, in the two vocabularies the app
  * speaks. They differ on purpose: a filter is CHOSEN by agent (the rail's row,
  * a section's own dropdown), so it is held as an agent id, while a mission
- * board FILTERS on a folder path — the key every mission card carries.
+ * board FILTERS on a folder path — the key every mission card carries. The
+ * translation runs one way only, id to path, because every control that PICKS
+ * the filter picks an agent; a board reads the answer and never writes it.
  *
- * The same two translations serve the store's team-wide pin (the board) and a
+ * The same translation serves the store's team-wide pin (the board) and a
  * section's own local filter (Routines, Archived), because the question is the
  * same shape either way; only who owns the answer differs.
  *
- * Pure and DOM-free so the round trip is unit-tested
+ * Pure and DOM-free so it is unit-tested
  * (`app/tests/team-agent-filter-model.test.ts`).
  */
 
@@ -26,15 +28,6 @@ export function teamFilterPath(
 ): string {
   if (!agentId) return "";
   return agents.find((a) => a.id === agentId)?.folderPath ?? "";
-}
-
-/** The agent id to pin for a folder path picked in the board's filter menu. */
-export function teamFilterAgentId(
-  agents: Agent[],
-  folderPath: string | null,
-): string | null {
-  if (!folderPath) return null;
-  return agents.find((a) => a.folderPath === folderPath)?.id ?? null;
 }
 
 /**

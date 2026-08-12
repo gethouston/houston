@@ -188,85 +188,37 @@ Tests: `org-view-model.test.ts` (section set, billing gate, lens set/resolve),
 
 ---
 
-## Settings > Permissions — the one policy home, fully agent-centric
+## Per-agent policy — fully agent-centric
 
 Pick an agent, then manage who can use it and what it can use. **There is no top-level
 People tab and no per-person lens**, and **no org-wide ceilings** — policy is per agent
-only, and a new agent's effective allowlist is its OWN ceiling (`null` = every app/model,
-the default).
+only, and a new agent's effective allowlist is its OWN ceiling (`null` = every
+integration/model, the default).
 
-- Section id `"permissions"` in `app/src/lib/settings-sections.ts`. Gated by
-  `canSeeOrganization(caps, activeSpaceIsTeam)` — the IDENTICAL gate to Admin, through the
-  same `showOrganization` boolean.
-- The Settings index row (`components/settings/settings-index.tsx`) is a `ShieldCheck`
-  Lucide icon, label `settings:nav.permissions`, in the "Team" group right AFTER Admin
-  (both inside the `showOrganization` block, `data-testid="settings-row-permissions"`).
-  `settings-section-body.tsx` mounts it with `backLabel`/`onBack`.
-- `permissions-view.tsx` is a shell: it loads `useOrg(true)` once (roster + role), owns the
-  drill-in as an `{agentId, section}` pair (id-not-snapshot, so a store reload keeps the
-  detail on the live row), and renders a `PageHeader` ("Permissions") + the agent list
-  (`agents-list.tsx`) DIRECTLY — no top-level tab strip. Both levels use the shared
-  `shell/back-bar-screen.tsx` (`BackBarScreen`). It tracks `tab_opened` /
-  `permissions:<section>` from the settings page's `onSectionShown`, i.e. the section
-  actually ON SCREEN.
-- **This door has no deep link.** Programmatic navigation to an agent's settings goes
-  through the Team Settings door instead — `lib/open-agent.ts` `openAgentSettings` and its
-  one-shot `team-view/team-settings-nav-store.ts` (`agent-settings.md`).
-- The agent list is `app/src/components/permissions/agents-list.tsx`, rendering the shared
-  `PermissionsAgentGrid` (`permissions/agent-grid.tsx`, also worn by Team Settings);
-  helpers `org-agents-model.ts` alongside; `org-roster.ts` + `org-time.ts` stay in
-  `organization/` (cross-dir import).
+### Agent detail — one door, one page
 
-### Agent detail — two doors, one page
+`permissions/agent-detail.tsx` renders the drilled agent page (back chip with the agent's
+avatar + name over the section lozenges) around **`AgentSettingsPage`** — the ONE
+per-agent configuration surface (`app/src/components/agent-settings/`, documented in
+**`agent-settings.md`**).
 
-`permissions/agent-detail.tsx` takes `{ agent, initialSection?, onSectionShown? }` and
-renders a `PageHeader` (agent avatar + name + the agent's **Share** button + "Open agent")
-over **`AgentSettingsPage`** — the ONE per-agent configuration surface
-(`app/src/components/agent-settings/`, documented in **`agent-settings.md`**).
-
-- **Two doors:** **Team Settings → the agent's row** (`team-view/team-settings.tsx`, every
-  deployment and single player's only door) and **Settings > Permissions → the agent's
-  row** (multiplayer owner/admin only). Programmatic navigation always takes the Team
-  Settings door (`openAgentSettings`, gated on `canOpenAgentSettings`).
-- **Manager authority decides the FACE, not access.** `isAgentManager(caps, agent)` false
-  renders the SAME page `readOnly`, so an admin who can see an agent but does not manage it
-  reads every section instead of hitting a dead end. Access sections still need multiplayer
-  (`agentAccessSections`), so single-player/self-host shows Context + Skills and no access
-  rows.
-- **The header carries Share.** `AgentShareSurfaces` lives on this page: the manage sheet
-  in a team space, the read-only "who has access" list for a member, and the C8
-  share-via-team flow in a personal space, picked by
-  `agentShareSurface(caps, agent, isPersonalSpace)`.
-
-**The page's own vocabulary** (`agent-settings/agent-settings-nav.ts`) — the rail has two
-groups and six sections:
-
-- `AgentSettingsGroupId = "context" | "permissions"`, built by `agentSettingsGroups(caps)`.
-- Sections: `job-description | learnings | people | integrations | models | skills`.
-  `SECTION_GROUP` puts job-description + learnings in **Context**; people, integrations,
-  models, skills in **Permissions**.
-- Rail titles are pinned explicitly in `agent-settings-rail.tsx` `SECTION_TITLES` so each
-  key is type-checked and locale-validated: `learnings` → `agentAdmin.rows.knowledge.title`
-  ("Memory"), `people` → `agentAdmin.rows.people.title` ("People with access"),
-  `integrations` → `agentAdmin.rows.integrations.title` (**"Apps"**), `models` →
-  `agentAdmin.rows.model.title` (**"AI models"**); `job-description` and `skills` reuse
-  `agents:subTabs.instructions` / `agents:subTabs.skills`. ("Allowed models" exists only as
-  an in-section sub-heading, `agentAdmin.models.allowedHeading`.) Group titles render only
-  when there is more than one group.
-
-**Read-only rule.** `readOnly` threads to every section: People rows drop to static level
-labels with NO control (`agent-person-row.tsx` `readOnly`, plus a muted
-`permissions.agentPeople.readOnlyHint`); the Integrations + AI Models editors use their own
-`readOnly` mode (controls disabled, the "Add" list hidden, a muted `readOnlyNote`); Skills
-drops its discovery tabs. No hover gating anywhere.
+- **One door, manager-only:** the **Agent settings** lozenge on the agent's own screen
+  (`visibleAgentSections` offers it to `isAgentManager` only). Programmatic navigation is
+  `openAgentSettings` (`lib/open-agent.ts`), gated on the same predicate; there is no
+  read-only face — a non-manager has no door.
+- Access sections still need multiplayer (`agentAccessSections`), so single-player and
+  self-host show Job description + Skills + Learnings + manage and no access rows.
+- **People owns Share.** The People section's hero carries the Share button;
+  `agentShareSurface(caps, agent, isPersonalSpace)` picks the face (people sheet in a team
+  space, share-via-team in a personal one).
+- The section vocabulary, titles and the manage section are `agent-settings.md`'s.
 
 **Roster degradation for a plain member.** The gateway serves `members` only to owner/admin
 (`OrgInfo.members` is absent for org role `user`), so a member's People roster arrives
 empty. Rather than a misleading "no people yet" empty state, it shows the honest viewer
 line `permissions.agentPeople.viewerOnly` ("You can use this agent. Someone who manages it
-can change who has access."). The pure decision is `agentPeopleView(rowCount, readOnly)` in
-`agent-people-model.ts` (`"roster" | "viewerOnly" | "empty"`, unit-tested). An admin who
-isn't the agent's manager still gets the full roster, read-only.
+can change who has access."). The pure decision is `agentPeopleView` in
+`agent-people-model.ts` (`"roster" | "viewerOnly" | "empty"`, unit-tested).
 
 **People section** (`agent-settings/agent-people-tab.tsx`) — WHO can use THIS agent: every
 org member is a row (avatar + email + org-role chip) with a **None / Can use / Manager**
@@ -287,13 +239,12 @@ control (`agent-person-row.tsx`; owner renders static "Owner, always has access"
 - Copy: `share.levels.*` + `share.ownerAccess` / `share.you` / `share.selfNote` +
   `permissions.agentPeople.*`. Unit test `app/tests/agent-people-model.test.ts`.
 
-**Apps section** — the agent's app ceiling (`AgentAdminIntegrations`, heading "Which apps
-can this agent use?"). **AI models section** — the agent's model ceiling
-(`AgentAdminModel`, `ai-accounts.md`). Both editors gate their edit affordances on the
-page's `readOnly`.
+**Integrations section** — the agent's integration ceiling (`AgentAdminIntegrations`,
+hero "Allowed Integrations"). **AI Models section** — the agent's model ceiling
+(`AgentAdminModel`, hero "Allowed AI Models", `ai-accounts.md`).
 
-Tested: e2e `packages/web/e2e/permissions.spec.ts` — the agent list → the settings-page
-drill-in and its six rail items; both directions of the team-wide access choice and their
+Tested: e2e `packages/web/e2e/agent-policy.spec.ts` — the drilled page's lozenges; both
+directions of the team-wide access choice and their
 confirms; the static everyone-mode roster; People Can use→No access round-trip; the Apps
 ceiling round-trip; AI models present; Context group switching; a non-manager admin's
 read-only drill-in; PLUS the SAME page through Team Settings (`openAgentSettings` in
@@ -325,23 +276,17 @@ all. Fake host: `/__test__/org` (multi-member roster + fleet with per-agent
 When the caller is a plain member of a shared agent (`!isAgentManager`):
 
 - **Agent Settings is unreachable** for a caller who fails
-  `canOpenAgentSettings(caps, agent, team?)` (`app/src/lib/agent-nav.ts:92`). With a
-  `team` it delegates to `visibleTeamSectionsForTeam(caps, team).includes("settings")`;
-  omitted or `null`, it falls back to the org-wide
-  `canSeeTeamSettings(caps) || isAgentManager(caps, agent)`, which is never WIDER. The
-  third argument exists because a server-teams explicit team OWNER may configure a team's
-  agents without being an org admin — only the per-team gate knows that (`teams-ui.md`).
-- Team Settings is the door EVERY deployment has (Settings > Permissions is the second,
-  and strictly narrower), so that section's gate IS the page's gate: no affordance may
-  render without making that check first. The section is decided PER TEAM — gating it on
-  the org role alone took every configure surface away from the very person the gateway
+  `canOpenAgentSettings(caps, agent)` (`app/src/lib/agent-nav.ts`) =
+  `isAgentManager(caps, agent)` — the one predicate, per agent, on every backend.
+- The drilled TEAM Settings level is gated separately by `canConfigureTeam` (the team's
+  owner or a manager of at least one of its agents) — per team, because gating it on the
+  org role alone took every configure surface away from the very person the gateway
   lets configure that agent.
-- **A plain member (managing no agent of the team) gets NO Settings row and NO read-only
-  Context.** Intended product behaviour: for them the configure page does not exist rather
-  than existing read-only. Inside the page, `isAgentManager` decides the FACE (`readOnly`),
-  never access.
-- Name / color / delete live on the sidebar agent row, not a "General" section. The rail
-  has exactly the sections `agentSettingsGroups(caps)` yields — **there is no per-agent
+- **A plain member (managing no agent of the team) gets NO Settings door.** Intended
+  product behaviour: for them the configure page does not exist rather than existing
+  read-only.
+- Name / color / move / delete live in the page's own **manage** section
+  (`agent-settings.md`) — **there is no per-agent
   Connect card** (the public-API "Use from other apps" section, `capabilities.apiKeys`,
   C10, was removed in HOU-806 because connecting external apps is a Routines concern). The
   pure `lib/agent-connect-model.ts` outlived it: only its `DEVELOPER_DOCS` links have a
@@ -436,24 +381,20 @@ Methods in `client.ts`: `getOrg`, `getOrgProfiles` (404-degrades to `{}`), `getO
 All Teams copy is the `teams` namespace (`app/src/locales/{en,es,pt}/teams.json`,
 registered in `app/src/lib/i18n.ts`). Top-level keys: `agentAdmin`, `agentSettings`,
 `agentTeams`, `integrations`, `org`, `permissions`, `share`, `people`, `activityTab`,
-`usageTab`, `agentsTab`, `createTeam`, `shareViaTeam`, `moveResume`, `billing`, `degrade`,
-`personalSpace`, `inviteInbox`, `teamView`. (The AI Models hub has its own `aiHub`
+`usageTab`, `createTeam`, `shareViaTeam`, `moveResume`, `moveTeam`, `moveTeamResume`,
+`billing`, `degrade`, `personalSpace`, `inviteInbox`, `teamView`. (The AI Models hub has its own `aiHub`
 namespace.)
 
-- **`agentAdmin.*`** — `title`, `rows` (the rail titles), `values`, `models` (the per-agent
-  model ceiling, incl. `allowedHeading` + `readOnlyNote`), `integrations`. There is no
-  `agentAdmin.groups`, no `agentAdmin.general`, and no `managedAgent` block anywhere.
-- **`agentSettings.*`** backs the per-agent page: `railLabel`,
-  `groups.{context,permissions}`, and
+- **`agentAdmin.*`** — `title`, `rows` (the lozenge titles), `heroes` (the "Allowed
+  People/Integrations/AI Models" section titles), `values`, `models`, `integrations`
+  (copy says "integrations", never "apps").
+- **`agentSettings.*`** backs the per-agent page: `manage.*` (the manage section's rows)
+  and
   `people.{question,helper,anyLabel,anyDesc,pickedLabel,pickedDesc,everyoneNote,confirmEveryone.*,confirmSpecific.*}`
   (the everyone-vs-specific-people choice and its two confirms; the destructive
-  self-lockout confirm reuses `share.selfLockout.*`). Rail titles REUSE
+  self-lockout confirm reuses `share.selfLockout.*`). Lozenge titles REUSE
   `agents:subTabs.*` + `agentAdmin.rows.*` rather than duplicating them.
-- **`permissions.*`** backs Settings > Permissions: `title`, `subtitle`,
-  `agentPeople.{none,noneHint,changeAccess,readOnlyHint,viewerOnly,empty.{title,body}}`.
+- **`permissions.*`** — `agentPeople.{none,noneHint,changeAccess,viewerOnly,empty.{title,body}}`.
 - The agent detail REUSES `share.*` (levels, `ownerAccess`, `you`, `selfNote`,
-  `selfLockout.*`) + `org.agentDetail.*`.
-- Outside the namespace: `settings:nav.{timeWorked,permissions,organization}` +
-  `settings:index.rows.*` + `settings:index.groups.{workspace,team}`. There is no
-  `settings:nav.usage` — Time worked is `settings:nav.timeWorked`.
+  `selfLockout.*`).
 - See `i18n.md`.

@@ -20,7 +20,7 @@
  *
  * There is no top-level Permissions view any more. It listed the space's agents
  * so an admin could open one's settings page, which is exactly what every
- * team's "Manage agents" section already does, per team, in every deployment:
+ * team's focused agent screen already does, per team, in every deployment:
  * agent policy is DISCOVERED through the team that owns the agent. Time worked
  * is gone from here too — it is a lens inside Admin > Analytics now, beside the
  * activity feed and the usage bars it was always read against.

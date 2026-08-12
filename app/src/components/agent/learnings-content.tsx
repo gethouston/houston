@@ -29,19 +29,15 @@ export function LearningsContent({
   onRemove,
   onUpdate,
   layout = "full",
-  readOnly = false,
+  showHelper = true,
 }: {
   entries: LearningEntry[];
   onAdd: (text: string) => Promise<unknown>;
   onRemove: (index: number) => Promise<unknown>;
   onUpdate: (id: string, text: string) => Promise<unknown>;
   layout?: "full" | "section";
-  /**
-   * Managed-agent read-only mode (matrix v2): learnings shape agent behavior, so
-   * a non-manager may read them but not add/edit/delete. Hides the add
-   * affordance and renders each card read-only. The gateway 403s writes.
-   */
-  readOnly?: boolean;
+  /** False when the mounting page hero already carries this helper copy. */
+  showHelper?: boolean;
 }) {
   const { t } = useTranslation("agents");
   const [drafts, setDrafts] = useState<string[]>([]);
@@ -71,19 +67,17 @@ export function LearningsContent({
     await onRemove(idx);
   };
 
-  if (layout === "full" && entries.length === 0 && drafts.length === 0) {
+  if (entries.length === 0 && drafts.length === 0) {
     return (
       <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
         <EmptyHeader>
           <EmptyTitle>{t("learnings.emptyTitle")}</EmptyTitle>
           <EmptyDescription>{t("learnings.emptyDescription")}</EmptyDescription>
         </EmptyHeader>
-        {!readOnly && (
-          <Button onClick={addDraft}>
-            <Plus className="size-4" />
-            {t("learnings.addLearning")}
-          </Button>
-        )}
+        <Button onClick={addDraft}>
+          <Plus className="size-4" />
+          {t("learnings.addLearning")}
+        </Button>
       </div>
     );
   }
@@ -94,35 +88,33 @@ export function LearningsContent({
         layout === "full" ? "max-w-3xl mx-auto w-full px-6 pb-12 pt-2" : ""
       }
     >
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <p className="text-xs text-ink-muted max-w-md">
-          {t("learnings.helper")}
-        </p>
-        {!readOnly && (
-          <Button size="sm" onClick={addDraft} className="shrink-0">
-            <Plus className="size-3.5" />
-            {t("learnings.addLearning")}
-          </Button>
+      <div className="flex items-center justify-end gap-4 mb-4">
+        {showHelper && (
+          <p className="mr-auto text-xs text-ink-muted max-w-md">
+            {t("learnings.helper")}
+          </p>
         )}
+        <Button size="sm" onClick={addDraft} className="shrink-0">
+          <Plus className="size-3.5" />
+          {t("learnings.addLearning")}
+        </Button>
       </div>
 
       <div className="flex flex-col gap-3">
-        {!readOnly &&
-          drafts.map((localId) => (
-            <LearningCard
-              key={localId}
-              initialText=""
-              isDraft
-              onSave={(text) => handleSaveDraft(localId, text)}
-              onCancel={() => removeDraft(localId)}
-            />
-          ))}
+        {drafts.map((localId) => (
+          <LearningCard
+            key={localId}
+            initialText=""
+            isDraft
+            onSave={(text) => handleSaveDraft(localId, text)}
+            onCancel={() => removeDraft(localId)}
+          />
+        ))}
         {entries.map((entry) => (
           <LearningCard
             key={entry.id}
             initialText={entry.text}
             provenance={entry.provenance}
-            readOnly={readOnly}
             onSave={(text) => onUpdate(entry.id, text)}
             onDelete={() => setPendingRemove(entry)}
           />

@@ -1,6 +1,7 @@
 import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { teamDisplayName } from "../../lib/team-display";
 import {
   teamHomeLozengeActive,
   teamHomeLozengeClick,
@@ -26,7 +27,7 @@ import { teamSectionTabs } from "./team-section-tabs-model";
  *
  * **Wide, one row, two zones:**
  *
- *     (glyph Marketing › (helmet) Kai)(Routines)(Files)(Archived)(Manage agents)      [search][Everyone ▾][New task]
+ *     (glyph Marketing › (helmet) Kai)(Routines)(Files)(Archived)(focused agent screen)      [search][Everyone ▾][New task]
  *      \\_________________________ left cluster _________________________/             \\________ right, the section's ________/
  *
  * **The team IS the first lozenge.** There is no separate breadcrumb and no
@@ -73,7 +74,7 @@ export function TeamChrome({
 
   // Through the RULE, never the store directly: the pin persists everywhere,
   // but the lozenge may only show it where the section is actually narrowed by
-  // it. Files starts at every agent and Manage agents lists the whole team, so
+  // it. Files starts at every agent and focused agent screens the whole team, so
   // on both the lozenge is just the team.
   const pinnedAgent = sectionHonorsAgentPin(section)
     ? teamPinnedAgent(team.agents, teamAgentFilter)
@@ -82,7 +83,9 @@ export function TeamChrome({
   const identity = (
     <>
       <TeamGlyph team={team} className="size-4 shrink-0" />
-      <span className="min-w-0 truncate">{team.name}</span>
+      <span className="min-w-0 truncate">
+        {teamDisplayName(team, t("teamView.defaultName"))}
+      </span>
       {pinnedAgent && (
         <>
           <ChevronRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
@@ -128,6 +131,10 @@ export function TeamChrome({
   ];
 
   const select = (next: TeamSectionId) => {
+    if (next === "settings") {
+      openTeamView(team.id, "context", { teamSettingsFocus: true });
+      return;
+    }
     if (next !== "mission-control") {
       openTeamView(team.id, next, { agentFilter: teamAgentFilter });
       return;

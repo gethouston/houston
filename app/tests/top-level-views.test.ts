@@ -55,8 +55,8 @@ describe("isTopLevelView", () => {
     }
     // Retired `viewMode` values an older install may still have pinned: the
     // global usage page, the Permissions screen (agent policy is a team's
-    // Manage agents section now) and the standalone Time worked screen (a lens
-    // inside Admin > Analytics now).
+    // focused agent screen now) and the standalone Time worked screen (a lens
+    // inside Admin).
     for (const retired of ["usage", "permissions", "time-worked"]) {
       strictEqual(isTopLevelView(retired), false, retired);
     }
@@ -250,7 +250,7 @@ describe("blockedTopLevelView", () => {
   });
 
   it("blocks a stale Admin screen when the org gate is off", () => {
-    // A role demotion or a switch back to the personal space hides it, and the
+    // A role demotion on a non-spaces host hides it, and the
     // `viewMode` the user left open must not survive that.
     strictEqual(blockedTopLevelView(ORGANIZATION_VIEW_ID, gates()), true);
     strictEqual(

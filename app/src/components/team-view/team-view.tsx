@@ -1,87 +1,131 @@
-import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
+import { hasSpaces } from "../../lib/org-roles";
 import {
   resolveTeamSection,
-  type TeamView as Team,
-  type TeamSectionId,
   teamById,
+  teamPeopleFace,
+  visibleAgentSections,
   visibleTeamSectionsForTeam,
+  visibleTeamSettingsSections,
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
-import { TeamArchived } from "./team-archived";
+import { AgentChrome } from "./agent-chrome";
+import { AgentSettingsPane } from "./agent-settings-pane";
 import { TeamChrome } from "./team-chrome";
 import { TEAM_STRIP_THRESHOLDS } from "./team-chrome-layout";
+import { TeamContextPane } from "./team-context-pane";
 import { TeamFiles } from "./team-files";
 import { TeamMissionControl } from "./team-mission-control";
+import { TeamPeoplePane } from "./team-people-pane";
 import { TeamRoutines } from "./team-routines";
-import { TeamSettings } from "./team-settings";
+import { TeamSettingsHeader } from "./team-settings-header";
+import { TeamSettingsPane } from "./team-settings-pane";
 
-/**
- * Section id → surface. An exhaustive `Record` rather than a chain of ternaries,
- * so adding a `TeamSectionId` without building its surface is a compile error
- * instead of a pane that silently falls through to Mission Control.
- */
-const SECTIONS: Record<TeamSectionId, (props: { team: Team }) => ReactNode> = {
-  "mission-control": TeamMissionControl,
-  routines: TeamRoutines,
-  files: TeamFiles,
-  archived: TeamArchived,
-  settings: TeamSettings,
-};
-
-/**
- * The team screen: ONE kept-alive top-level view for every team, reading which
- * team and which section are open from the UI store (`openTeamView` sets both
- * together). Rendering one screen rather than one per team is what lets a team
- * be renamed, reordered or deleted without leaving a dead view behind.
- *
- * The sections SWAP rather than hide, so only the surface on screen runs its
- * hooks, starts its reads and claims the shared shell detail panel. Team
- * Settings asked for by someone who may not see it ON THIS TEAM resolves back
- * to Mission Control — one rule, in `resolveTeamSection`, so a stale store can
- * never land on a blank pane. The section list is resolved from the team in
- * hand (`visibleTeamSectionsForTeam`), the SAME call the rail makes for the same
- * team, so the rail can never offer a row this screen refuses to render.
- *
- * ONE frame wraps all four: {@link TeamChrome} names the team and carries the
- * tab row, and the section below it owns its own toolbar. The rail draws no
- * section rows any more, so that tab row is the only way between a team's
- * sections -- which is why it is mounted HERE, above the swap, rather than
- * repeated inside each section.
- *
- * A team id that no longer resolves renders nothing for the single frame it
- * takes the workspace shell's guard (`blockedTeamView`) to send the user back
- * to the dashboard — resolved FIRST, so the section is never asked of a team
- * that is not there and `resolveTeamSection` never sees an empty list.
- */
 export function TeamView() {
   const teams = useTeams();
   const activeTeamId = useUIStore((s) => s.activeTeamId);
-  const teamSection = useUIStore((s) => s.teamSection);
+  const requestedSection = useUIStore((s) => s.teamSection);
+  const agentFilter = useUIStore((s) => s.teamAgentFilter);
+  const requestedFocus = useUIStore((s) => s.teamAgentFocus);
+  const requestedTeamSettingsFocus = useUIStore((s) => s.teamSettingsFocus);
+  const openTeamView = useUIStore((s) => s.openTeamView);
   const { capabilities } = useCapabilities();
-
+  const personalSpace = usePersonalSpace();
   const team = teamById(teams, activeTeamId);
+  const agent =
+    requestedFocus && team
+      ? (team.agents.find((item) => item.id === agentFilter) ?? null)
+      : null;
+  const focused = agent !== null;
+  const peopleFace = team
+    ? teamPeopleFace(team, personalSpace, hasSpaces(capabilities))
+    : "hidden";
+  // The drilled level is re-gated on every render, never trusted from the store:
+  // an empty list means this caller may not configure this team, so the view
+  // owes them the team's base sections instead of an owner-only surface.
+  const settingsSections = team
+    ? visibleTeamSettingsSections(capabilities, team, peopleFace)
+    : [];
+  const settingsRequested = requestedTeamSettingsFocus && !focused;
+  const settingsFocused = settingsRequested && settingsSections.length > 0;
+  const settingsRefused = settingsRequested && settingsSections.length === 0;
+  const { canCreate } = useCanCreateAgents();
+  useEffect(() => {
+    if (requestedFocus && team && agent === null) {
+      openTeamView(team.id, requestedSection ?? "mission-control");
+    }
+  }, [agent, openTeamView, requestedFocus, requestedSection, team]);
+  // Refused: land on the team's home section, not the one that was asked for.
+  // Every section reachable from inside Team Settings lives only in there, so
+  // carrying the request over would leave the store naming a section the base
+  // level does not have.
+  useEffect(() => {
+    if (settingsRefused && team) openTeamView(team.id, "mission-control");
+  }, [openTeamView, settingsRefused, team]);
   if (team === null) return null;
+  const sections = focused
+    ? visibleAgentSections(capabilities, agent)
+    : settingsFocused
+      ? settingsSections
+      : visibleTeamSectionsForTeam(capabilities, team);
+  const section = resolveTeamSection(sections, requestedSection);
 
-  const sections = visibleTeamSectionsForTeam(capabilities, team);
-  const section = resolveTeamSection(sections, teamSection);
-  // Keyed on the team, so switching teams starts every section clean instead of
-  // carrying the previous team's selection, filter or open chat across.
-  const Section = SECTIONS[section];
+  const body = settingsFocused ? (
+    <TeamSettingsPane team={team} section={section} peopleFace={peopleFace} />
+  ) : focused ? (
+    section === "settings" ? (
+      <AgentSettingsPane team={team} agent={agent} />
+    ) : section === "routines" ? (
+      <TeamRoutines team={team} agentFocusId={agent.id} />
+    ) : section === "files" ? (
+      <TeamFiles team={team} agentFocusId={agent.id} />
+    ) : (
+      <TeamMissionControl team={team} agentFocusId={agent.id} />
+    )
+  ) : section === "context" ? (
+    <TeamContextPane team={team} />
+  ) : section === "people" && peopleFace !== "hidden" ? (
+    <TeamPeoplePane team={team} face={peopleFace} />
+  ) : section === "routines" ? (
+    <TeamRoutines team={team} />
+  ) : section === "files" ? (
+    <TeamFiles team={team} />
+  ) : (
+    <TeamMissionControl team={team} />
+  );
+
   return (
-    // The provider wraps BOTH, so the section on screen can fill the strip's
-    // third zone — and so the chrome and the section always agree about which
-    // of the two layouts is up.
     <PageHeaderToolsProvider thresholds={TEAM_STRIP_THRESHOLDS}>
       <div className="flex h-full flex-col overflow-hidden">
-        <TeamChrome team={team} sections={sections} section={section} />
-        {/* `min-h-0` so a section that scrolls (Manage agents) or owns a fixed
-            toolbar over a scroller (Tasks, Routines) gets the column's leftover
-            height instead of growing the page past the screen. */}
-        <div className="min-h-0 flex-1">
-          <Section key={team.id} team={team} />
+        {settingsFocused ? (
+          <TeamSettingsHeader
+            team={team}
+            sections={sections}
+            active={section}
+            canCreateAgent={canCreate}
+          />
+        ) : focused ? (
+          section !== "settings" && (
+            <AgentChrome
+              team={team}
+              agent={agent}
+              sections={sections}
+              section={section}
+            />
+          )
+        ) : (
+          <TeamChrome team={team} sections={sections} section={section} />
+        )}
+        <div
+          className="min-h-0 flex-1"
+          key={`${team.id}:${agent?.id ?? "team"}`}
+        >
+          {body}
         </div>
       </div>
     </PageHeaderToolsProvider>

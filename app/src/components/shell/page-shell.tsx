@@ -61,6 +61,8 @@ interface PageHeroProps {
    * under it — same typography, honest outline.
    */
   level?: 1 | 2;
+  /** Optional id for naming controls associated with this visible heading. */
+  titleId?: string;
 }
 
 /**
@@ -74,12 +76,15 @@ export function PageHero({
   trailing,
   className,
   level = 1,
+  titleId,
 }: PageHeroProps) {
   const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className={cn("flex items-start justify-between gap-4", className)}>
       <div className="min-w-0">
-        <Heading className="text-2xl font-normal text-ink">{title}</Heading>
+        <Heading id={titleId} className="text-2xl font-normal text-ink">
+          {title}
+        </Heading>
         {subtitle ? (
           <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>
         ) : null}

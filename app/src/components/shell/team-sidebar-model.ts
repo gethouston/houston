@@ -1,11 +1,5 @@
 import type { SidebarLayout } from "@houston-ai/engine-client";
-import type { SidebarGroupAffordances } from "@houston-ai/layout";
-import {
-  canDeleteTeam,
-  canLeaveTeam,
-  canRenameTeam,
-  type TeamView,
-} from "../../lib/teams-model.ts";
+import type { TeamView } from "../../lib/teams-model.ts";
 
 /**
  * Whether a team's block is folded shut, for EVERY team the rail draws.
@@ -35,47 +29,4 @@ export function teamCollapsedLookup(
   const defaultCollapsed = layout?.defaultCollapsed ?? false;
   return (team) =>
     team.isDefault ? defaultCollapsed : (byId.get(team.id) ?? false);
-}
-
-/**
- * Which header-menu affordances each team block offers, per team.
- *
- * A pure builder rather than a closure inside `use-server-team-actions.ts`: it
- * reads nothing but its three arguments and the team in hand, it is asked once
- * per block on every render, and keeping it here puts the rail's "may I?"
- * answers beside its other pure team vocabulary — where they can be unit-tested
- * without mounting a sidebar.
- *
- * Off-capability it returns `undefined`, which is NO mask at all: the library
- * reads that as every affordance the host wired a callback for, exactly the
- * pre-C13 rendering. Only the server branch has opinions to state.
- */
-export function teamAffordanceMask({
-  serverBacked,
-  personalSpace,
-  selfId,
-}: {
-  /** `hasAgentTeams(capabilities)` — the host owns the teams (C13). */
-  serverBacked: boolean;
-  /** Whether the ACTIVE space is a personal one (`usePersonalSpace`). */
-  personalSpace: boolean;
-  /** The signed-in user's id, or null when there is no session. */
-  selfId: string | null;
-}): (team: TeamView) => SidebarGroupAffordances | undefined {
-  return (team) =>
-    serverBacked
-      ? {
-          // Name, mark and colour are ONE identity behind one menu entry, and
-          // C13 reads all of it as a rename — so the entry reads the rename
-          // gate, which also means the default team gets it (C13 lets its
-          // owner rename that one).
-          edit: canRenameTeam(team),
-          delete: canDeleteTeam(team),
-          // No session id means no `:userId` to send, so there is no call to
-          // make: hide the affordance rather than offer a dead one. The
-          // personal-space half of the question lives in `canLeaveTeam`,
-          // beside the other two backends it answers for.
-          leave: canLeaveTeam(team, personalSpace) && selfId !== null,
-        }
-      : undefined;
 }

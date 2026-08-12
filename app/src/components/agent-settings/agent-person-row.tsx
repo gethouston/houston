@@ -34,9 +34,10 @@ function levelLabel(level: Row["level"], t: (k: string) => string): string {
  * shows the current level at rest (no hover gating); `onAction` fires the chosen
  * transition and the parent owns the write + self-lockout confirm.
  *
- * `readOnly` (a viewer who can't manage the agent — e.g. the agent's Permissions
- * tab seen by a non-manager) renders the level as a static label with NO control,
- * so everyone sees WHY the agent can or can't be used without a dead affordance.
+ * `readOnly` (the roster under "Everyone on your team", where per-person levels
+ * are not the agent's state) renders the level as a static label with NO
+ * control, so the row still says WHO can use the agent without a dead
+ * affordance.
  */
 export function AgentPersonRow({
   row,

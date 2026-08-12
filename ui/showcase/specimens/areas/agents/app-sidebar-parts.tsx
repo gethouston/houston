@@ -157,9 +157,6 @@ export function LiveSidebar({
         )
       }
       onActivateDefault={() => setDefaultCollapsed((on) => !on)}
-      onDeleteGroup={(id) =>
-        setGroups((all) => all.filter((group) => group.id !== id))
-      }
       onMoveItem={(itemId, dest) => {
         setGroups((all) => moveItemToGroup(all, itemId, dest));
         if (dest.groupId === null) {

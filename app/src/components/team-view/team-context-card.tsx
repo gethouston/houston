@@ -114,7 +114,7 @@ function ServerTeamContext({
 }
 
 /**
- * The FIRST card of a team's Manage agents page: the context every agent in
+ * The FIRST card of the focused agent screen: the context every agent in
  * this team is given before it starts a turn.
  *
  * It leads the page because it is the only thing there that changes how the

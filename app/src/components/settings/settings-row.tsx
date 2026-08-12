@@ -7,13 +7,28 @@ interface SettingsCardProps {
   children: ReactNode;
 }
 
+interface SettingsGroupTitleProps {
+  children: ReactNode;
+  className?: string;
+}
+
+/** The heading grammar shared by every settings-style card group. */
+export function SettingsGroupTitle({
+  children,
+  className = "",
+}: SettingsGroupTitleProps) {
+  return (
+    <h2 className={`mb-3 px-1 text-base font-semibold text-ink ${className}`}>
+      {children}
+    </h2>
+  );
+}
+
 /** A titled group of settings rows, rendered as one hairline-divided card. */
 export function SettingsCard({ title, children }: SettingsCardProps) {
   return (
     <section>
-      {title && (
-        <h2 className="mb-3 px-1 text-base font-semibold text-ink">{title}</h2>
-      )}
+      {title && <SettingsGroupTitle>{title}</SettingsGroupTitle>}
       <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-card">
         {children}
       </div>
@@ -45,14 +60,15 @@ interface RowTextProps {
   title: string;
   description?: string;
   destructive?: boolean;
+  disabled?: boolean;
 }
 
-function RowText({ title, description, destructive }: RowTextProps) {
+function RowText({ title, description, destructive, disabled }: RowTextProps) {
   return (
     <span className="min-w-0 flex-1">
       <span
         className={`block truncate text-sm font-medium ${
-          destructive ? "text-danger" : "text-ink"
+          destructive && !disabled ? "text-danger" : "text-ink"
         }`}
       >
         {title}
@@ -69,10 +85,12 @@ function RowText({ title, description, destructive }: RowTextProps) {
 interface SettingsRowProps {
   icon: LucideIcon;
   title: string;
-  description: string;
+  description?: string;
+  ariaLabel?: string;
   /** Right-aligned current value, e.g. "2 members". */
   value?: string;
   destructive?: boolean;
+  disabled?: boolean;
   /** Stable `data-testid` for rows the UI tests navigate by (label-independent). */
   testId?: string;
   /** Set false for ACTION rows that resolve in place instead of drilling into
@@ -86,8 +104,10 @@ export function SettingsRow({
   icon,
   title,
   description,
+  ariaLabel,
   value,
   destructive,
+  disabled = false,
   testId,
   chevron = true,
   onClick,
@@ -95,15 +115,19 @@ export function SettingsRow({
   return (
     <button
       type="button"
-      onClick={onClick}
+      aria-label={ariaLabel}
+      aria-disabled={disabled}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
       data-testid={testId}
-      className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-chip/60"
+      className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors enabled:hover:bg-chip/60 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <Leading icon={icon} destructive={destructive} />
+      <Leading icon={icon} destructive={destructive && !disabled} />
       <RowText
         title={title}
         description={description}
         destructive={destructive}
+        disabled={disabled}
       />
       {value && (
         <span className="shrink-0 text-sm text-ink-muted">{value}</span>

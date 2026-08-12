@@ -35,13 +35,13 @@ export function useComputeUsage(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.computeUsage(COMPUTE_USAGE_DAYS),
     queryFn: () => tauriOrg.computeUsage(COMPUTE_USAGE_DAYS),
-    // This is the Time worked LENS's own read (Admin > Analytics > Time
+    // This is the Time worked section's own read (Admin > Time
     // worked), and Admin is kept alive: it stays mounted while hidden, on
-    // whichever tab and lens it was left on. Disable the observer off screen so
+    // whichever tab it was left on. Disable the observer off screen so
     // neither its interval nor its focus refetch wakes a pod-held read. Gate on
     // the SCREEN that renders it — gating on any other view id disables the
-    // observer exactly when the lens is on the glass and the fetch never fires.
-    // The lens itself is the second half of the gate: Analytics mounts only the
+    // observer exactly when the section is on the glass and the fetch never fires.
+    // The section itself is the second half of the gate: Admin mounts only the
     // sub-tab the user selected, so no observer exists while Activity or Usage
     // is up.
     enabled: enabled && active,
