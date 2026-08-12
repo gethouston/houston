@@ -320,7 +320,16 @@ export async function openTeamSection(
     `a team navigation surface for "${section}" should become available`,
   ).toBeVisible();
 
-  if (await clickVisibleTeamSection(page, section)) return;
+  // The strip re-modes when its width observer reports, and on a slow CI box
+  // there is a WINDOW where the tab cluster has unmounted and the compact
+  // switcher has not yet arrived — neither control is clickable for a beat.
+  // Retry through that window; only a screen that STILL offers no control
+  // after real patience is a broken navigation worth failing on.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (await clickVisibleTeamSection(page, section)) return;
+    if (!(await sectioned.first().isVisible())) break;
+    await page.waitForTimeout(400);
+  }
 
   if (await sectioned.first().isVisible()) {
     throw new Error(
