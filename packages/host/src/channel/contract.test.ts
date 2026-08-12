@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import { FakeLauncher } from "../launcher/fake";
@@ -194,6 +194,10 @@ let proxyCustomEndpointBody: unknown = null;
 let proxyClaudeOAuthBody: unknown = null;
 /** When set, the fake runtime rejects /auth/:provider/api-key with this reply. */
 let proxyApiKeyRejection: { status: number; body: unknown } | null = null;
+/** DELETE /auth/:provider/api-key rollbacks the fake runtime received. */
+let proxyApiKeyRollbacks: { provider: string; body: unknown }[] = [];
+/** When true, the fake runtime fails the rollback DELETE with a 500. */
+let proxyApiKeyRollbackFails = false;
 let proxyScrubFailuresRemaining = 0;
 let proxyScrubCalls = 0;
 
@@ -252,8 +256,24 @@ beforeAll(async () => {
       }
       return reply(200, { ok: true });
     }
-    // API-key connect pushes the pasted key into the standing runtime.
-    if (path.match(/^\/auth\/[^/]+\/api-key$/)) {
+    // API-key connect pushes the pasted key into the standing runtime; a
+    // failed central PUT rolls it back out with a DELETE (PRODUCT-1321).
+    const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
+    if (apiKeyMatch) {
+      if (req.method === "DELETE") {
+        const chunks: Buffer[] = [];
+        req.on("data", (c) => chunks.push(c as Buffer));
+        req.on("end", () => {
+          proxyApiKeyRollbacks.push({
+            provider: apiKeyMatch[1] ?? "",
+            body: JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"),
+          });
+          if (proxyApiKeyRollbackFails)
+            reply(500, { error: "rollback unavailable" });
+          else reply(200, { ok: true, removed: true });
+        });
+        return;
+      }
       return proxyApiKeyRejection
         ? reply(proxyApiKeyRejection.status, proxyApiKeyRejection.body)
         : reply(200, { ok: true });
@@ -275,6 +295,8 @@ afterAll(() => proxyRuntime.close());
 function makeProxyFixture(): ChannelFixture {
   proxyConnected = false; // each fixture starts disconnected
   proxyApiKeyRejection = null;
+  proxyApiKeyRollbacks = [];
+  proxyApiKeyRollbackFails = false;
   proxyScrubFailuresRemaining = 0;
   proxyScrubCalls = 0;
   const credentials = new MemoryCredentialStore();
@@ -435,6 +457,73 @@ describe("saveApiKeyCredential rejection (ProxyChannel)", () => {
     expect(err).toBeInstanceOf(ApiKeyRejectedError);
     expect((err as ApiKeyRejectedError).reason).toBeUndefined();
     expect((err as ApiKeyRejectedError).message).toBe("nope");
+  });
+});
+
+// PRODUCT-1321: the runtime verifies AND persists the key before the central
+// PUT. If that PUT fails, the runtime is left with a verified key the central
+// store never learned about — absent from served-providers.json, so no
+// authoritative sync can remove it; it works until the pod recycles, then
+// silently vanishes. A failed central PUT must roll the runtime entry back so
+// the failed connect leaves NO local residue.
+describe("saveApiKeyCredential central PUT failure (ProxyChannel)", () => {
+  class CentralPutFailsStore extends MemoryCredentialStore {
+    override async put(): Promise<void> {
+      throw new Error("central store unavailable");
+    }
+  }
+
+  function makeFailingPutFixture() {
+    makeProxyFixture(); // resets the fake runtime's shared state
+    const credentials = new CentralPutFailsStore();
+    const launcher = new FakeLauncher({
+      baseUrl: proxyRuntimeUrl,
+      token: "sbx",
+    });
+    const channel = new ProxyChannel({
+      launcher,
+      proxy: { forward },
+      credentials,
+      forwardActingHeader: false,
+    });
+    return { channel, credentials };
+  }
+
+  test("rolls the runtime key back and rethrows the central failure", async () => {
+    const { channel, credentials } = makeFailingPutFixture();
+    await expect(
+      channel.saveApiKeyCredential(ctx, "openrouter", "sk-or-v1-KEY"),
+    ).rejects.toThrow("central store unavailable");
+    // The runtime received the DELETE for exactly the key it had persisted.
+    expect(proxyApiKeyRollbacks).toEqual([
+      { provider: "openrouter", body: { key: "sk-or-v1-KEY" } },
+    ]);
+    expect(await credentials.get(ws.id, "openrouter")).toBeNull();
+  });
+
+  test("a failing rollback never masks the central failure (logged instead)", async () => {
+    const { channel } = makeFailingPutFixture();
+    proxyApiKeyRollbackFails = true;
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(
+        channel.saveApiKeyCredential(ctx, "openrouter", "sk-or-v1-KEY"),
+      ).rejects.toThrow("central store unavailable");
+      expect(proxyApiKeyRollbacks.length).toBe(1);
+      expect(
+        errors.mock.calls.some((c) =>
+          String(c[0]).includes("could not roll the openrouter key back"),
+        ),
+      ).toBe(true);
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  test("a successful connect never fires a rollback", async () => {
+    const { channel } = makeProxyFixture();
+    await channel.saveApiKeyCredential(ctx, "opencode", "sk-opencode-ok");
+    expect(proxyApiKeyRollbacks).toEqual([]);
   });
 });
 

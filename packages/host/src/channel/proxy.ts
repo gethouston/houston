@@ -369,7 +369,10 @@ export class ProxyChannel implements RuntimeChannel {
    * whole workspace. Order matters: storing before the runtime's verdict left a
    * garbage key "connected" everywhere (the central store is the source of
    * truth every future runtime is served from). The runtime's own store is
-   * written by the push, so status reads connected immediately.
+   * written by the push, so status reads connected immediately. If the central
+   * store then rejects the PUT, the runtime write is rolled back
+   * (`rollbackRuntimeApiKey`) — a failed connect must not leave a working but
+   * unmanifested key behind (PRODUCT-1321).
    */
   async saveApiKeyCredential(
     ctx: ChannelCtx,
@@ -402,17 +405,30 @@ export class ProxyChannel implements RuntimeChannel {
         body?.reason,
       );
     }
-    await this.opts.credentials.put(
-      {
-        workspaceId: ctx.agent.workspaceId,
-        provider,
-        accessToken: apiKey,
-        refreshToken: "",
-        expiresAt: 0,
-        kind: "api_key",
-      },
-      { actingAs: ctx.actingAs },
-    );
+    try {
+      await this.opts.credentials.put(
+        {
+          workspaceId: ctx.agent.workspaceId,
+          provider,
+          accessToken: apiKey,
+          refreshToken: "",
+          expiresAt: 0,
+          kind: "api_key",
+        },
+        { actingAs: ctx.actingAs },
+      );
+    } catch (err) {
+      // The runtime just verified AND persisted this key — but the central
+      // store is the source of truth every future runtime is served from, and
+      // a key it never learned about is absent from the runtime's
+      // served-providers manifest, so no authoritative sync can ever remove
+      // it. Left in place it works until the pod recycles, then silently
+      // vanishes: the "spontaneous disconnect" (PRODUCT-1321). Roll the
+      // runtime entry back so this failed connect leaves NO local residue,
+      // then surface the central failure the user already sees.
+      await this.rollbackRuntimeApiKey(endpoint, provider, apiKey, ctx);
+      throw err;
+    }
     // A verified pasted key (incl. the anthropic setup token) is a fresh
     // user-driven connect: it supersedes any provider revocation.
     this.revocations.clear({
@@ -420,6 +436,42 @@ export class ProxyChannel implements RuntimeChannel {
       provider,
       actingAs: ctx.actingAs,
     });
+  }
+
+  /**
+   * Best-effort undo of the runtime-side key write when the central PUT
+   * failed. The runtime removes the entry only if it still holds THIS exact
+   * key (a concurrent connect's newer key survives). A rollback failure is
+   * logged loudly, never thrown — the caller is already rethrowing the central
+   * failure, which is the error the user acts on; masking it with a rollback
+   * transport error would hide the real reason the connect failed.
+   */
+  private async rollbackRuntimeApiKey(
+    endpoint: RuntimeEndpoint,
+    provider: string,
+    apiKey: string,
+    ctx: ChannelCtx,
+  ): Promise<void> {
+    try {
+      const res = await fetch(
+        `${endpoint.baseUrl}/auth/${encodeURIComponent(provider)}/api-key`,
+        {
+          method: "DELETE",
+          headers: {
+            "content-type": "application/json",
+            Authorization: `Bearer ${endpoint.token}`,
+            ...(ctx.actingAs ? { "x-houston-acting-as": ctx.actingAs } : {}),
+          },
+          body: JSON.stringify({ key: apiKey }),
+        },
+      );
+      if (!res.ok) throw new Error(`runtime ${res.status}`);
+    } catch (err) {
+      console.error(
+        `[credential] could not roll the ${provider} key back out of the runtime after the central store rejected the connect — the runtime keeps an unmanifested key until the next connect or pod recycle:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   /**

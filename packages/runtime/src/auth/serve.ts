@@ -8,13 +8,13 @@ import {
   authPathIn,
   readServedProvidersAt,
   removeServedCredentialAt,
-  type ServedCredential,
   scrubRefreshTokensAt,
   servedProvidersPathIn,
   writeServedProvidersAt,
 } from "./auth-file";
 import { bindEmptyRefreshServeSync } from "./empty-refresh-guard";
 import { logServeProbeFailure, noteServeProbeOk } from "./serve-log";
+import { probeProviders } from "./serve-probe";
 import { reportDeadServedApiKey, servedApiKeyIsDead } from "./served-key-guard";
 import { forgetServedScope, recordServedScope } from "./served-scope";
 import { authStorage } from "./storage";
@@ -50,17 +50,6 @@ const authPathFor = () =>
   authPathIn(config.dataDir, currentCredentialScope().key);
 const servedManifestPathFor = () =>
   servedProvidersPathIn(config.dataDir, currentCredentialScope().key);
-
-/**
- * Marker the host sets on its /sandbox/credential 404: the credential store's
- * own "not connected" answer. Only marked 404s are an authoritative logout —
- * a bare 404 (an old host, a mistyped control-plane URL, a route-level miss)
- * must never delete a working credential.
- */
-const NOT_CONNECTED_HEADER = "x-houston-not-connected";
-
-/** One stalled host/gateway socket must not hang every hydrating route. */
-const SERVE_FETCH_TIMEOUT_MS = 10_000;
 
 /** True when the sandbox is wired to serve a central workspace credential. */
 export function serveModeOn(): boolean {
@@ -134,51 +123,6 @@ bindEmptyRefreshServeSync(() =>
   syncServedCredentialSafe("empty-refresh-guard"),
 );
 
-type ServeProbe =
-  | { id: string; state: "served"; cred: ServedCredential }
-  | { id: string; state: "not-connected" }
-  | { id: string; state: "error"; detail: string };
-
-/** One provider's central lookup. Never throws — an internal serve hiccup for
- *  ONE provider must not strand the others. */
-async function probeProvider(id: string): Promise<ServeProbe> {
-  // WHO this serve is for: the host forwards the acting-as token to the gateway,
-  // which resolves personal-vs-team for THIS provider and reports its verdict
-  // on the body. Absent → the team credential, exactly as before HOU-976.
-  const { actingAs } = currentCredentialScope();
-  try {
-    const res = await fetch(
-      `${config.controlPlaneUrl}/sandbox/credential?provider=${id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${config.sandboxToken}`,
-          ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
-        },
-        signal: AbortSignal.timeout(SERVE_FETCH_TIMEOUT_MS),
-      },
-    );
-    if (res.status === 404 && res.headers.get(NOT_CONNECTED_HEADER) === "1")
-      return { id, state: "not-connected" };
-    if (!res.ok)
-      return {
-        id,
-        state: "error",
-        detail: `${res.status}: ${await res.text().catch(() => "")}`,
-      };
-    return {
-      id,
-      state: "served",
-      cred: (await res.json()) as ServedCredential,
-    };
-  } catch (err) {
-    return {
-      id,
-      state: "error",
-      detail: err instanceof Error ? err.message : String(err),
-    };
-  }
-}
-
 async function runServedSync(): Promise<string[]> {
   if (!serveModeOn()) return [];
   // Anthropic serves through this same per-turn access-only path (Gate #2) —
@@ -201,9 +145,10 @@ async function runServedSync(): Promise<string[]> {
     ...curated,
     ...piApiKeyProviderIds().filter((id) => !curated.has(id)),
   ];
-  // Probes are independent — run them in parallel so a hydrating route pays one
-  // round-trip, not forty. The auth.json writes below stay serial.
-  const probes = await Promise.all(probeIds.map((id) => probeProvider(id)));
+  // Probes are independent — run them concurrently (a small pool, one retry
+  // each; serve-probe.ts) so a hydrating route pays a few round-trips, not
+  // forty sockets at once. The auth.json writes below stay serial.
+  const probes = await probeProviders(probeIds);
   const applied: string[] = [];
   const removed: string[] = [];
   // Provenance gate: an authoritative "not connected" may only remove providers
@@ -251,6 +196,23 @@ async function runServedSync(): Promise<string[]> {
       // Nothing is served for this scope any more, so no stale verdict may be
       // stamped on a later error.
       forgetServedScope(probe.id);
+      // Anthropic keeps a SECOND copy of its credential: the materialized
+      // `.credentials.json` the Claude Agent SDK falls back to once the served
+      // env token is gone. Left behind, that ghost re-runs every turn on the
+      // dead family — the exact storm the HOU-952 heal was meant to end
+      // (PRODUCT-1307). Cleared OUTSIDE the manifest gate (PRODUCT-1323): a
+      // ghost planted while anthropic was never in the served manifest (a
+      // setup pod's non-attributed connect whose row was later removed, a
+      // verify-rejected self-host row) would otherwise never be cleared — and
+      // the provenance gate then blocks the revocation reporter too. The
+      // function is serve-mode-reached-only, personal-scope-guarded, and a
+      // no-op without the file, so an ordinary disconnected pod pays nothing.
+      // EXCEPT on a deployment that never serves anthropic (`notServedHere`,
+      // the desktop/self-host refusal): there the file IS the browser login's
+      // legitimate credential and this answer says nothing about the central
+      // store — deleting it would disconnect a healthy local Claude.
+      if (probe.id === "anthropic" && !probe.notServedHere)
+        clearGhostClaudeCredential();
       if (manifest.has(probe.id)) {
         // A refresh-bearing OAuth entry still survives inside
         // removeServedCredentialAt: that's the device-code connect mid-capture.
@@ -258,12 +220,6 @@ async function runServedSync(): Promise<string[]> {
           removed.push(probe.id);
         manifest.delete(probe.id);
         manifestDirty = true;
-        // Anthropic keeps a SECOND copy of its credential: the materialized
-        // `.credentials.json` the Claude Agent SDK falls back to once the
-        // served env token is gone. Left behind, that ghost re-runs every turn
-        // on the dead family — the exact storm the HOU-952 heal was meant to
-        // end (PRODUCT-1307).
-        if (probe.id === "anthropic") clearGhostClaudeCredential();
       }
     } else {
       // Dedup lives in serve-log.ts: every turn and hydrating route re-probes,
