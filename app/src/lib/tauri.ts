@@ -28,6 +28,7 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
+import { isAgentGoneError } from "./agent-gone";
 import { isAgentNameConflictError } from "./agent-name-conflict";
 import {
   blockWriteWhileWarming,
@@ -57,6 +58,7 @@ import { isMissingSkillError } from "./missing-skill";
 import { isNetworkTransportError } from "./network-transport-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
+import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
 import { isNeedsUpgradeError, isPersonalSpaceError } from "./team-status-model";
 import { isToolkitOauthUnavailableError } from "./toolkit-oauth-unavailable";
@@ -117,6 +119,28 @@ async function call<T>(
     await surfaceError(label, err, context, options);
     throw err;
   }
+}
+
+/**
+ * A passive agent-scoped READ — fired by roster-driven queries and event
+ * refetches, never by a user action. When the local roster is stale (the
+ * agent was deleted/unshared on another device, or a space switch refired
+ * queries built from the previous space's roster), the gateway/host answers
+ * `404 { error: "agent not found" }`, and every such read fanned that into a
+ * red bug toast + Sentry report for a state the user can't act on
+ * (HOUSTON-APP-4W3 and family). Same contract as the skills-manifest queries
+ * (HOUSTON-APP-544): the agent-gone 404 is silenced (`call` still logs it)
+ * and the roster silently reloads so the ghost agent disappears on its own —
+ * the honest surface. Every other failure keeps the default loud path, and
+ * writes never route through here.
+ */
+function passiveAgentRead<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  return call<T>(label, fn, undefined, { silence: isAgentGoneError }).catch(
+    (err) => {
+      healStaleRosterFromError(err);
+      throw err;
+    },
+  );
 }
 
 /**
@@ -600,7 +624,7 @@ export const tauriAgent = {
   readFile: (agentPath: string, relPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve("")
-      : call<string>("read_agent_file", () =>
+      : passiveAgentRead<string>("read_agent_file", () =>
           getEngine().readAgentFile(agentPath, relPath),
         ),
   writeFile: (
@@ -634,7 +658,7 @@ export const tauriSkills = {
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve<SkillSummary[]>([])
-      : call<SkillSummary[]>("list_skills", async () =>
+      : passiveAgentRead<SkillSummary[]>("list_skills", async () =>
           (await getEngine().listSkills(agentPath)).map((s) => ({
             name: s.name,
             title: s.title ?? null,
@@ -1027,7 +1051,7 @@ export const tauriFiles = {
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve<FileEntry[]>([])
-      : call<FileEntry[]>("list_project_files", async () =>
+      : passiveAgentRead<FileEntry[]>("list_project_files", async () =>
           (await getEngine().listProjectFiles(agentPath)).map((f) => ({
             path: f.path,
             name: f.name,
@@ -1152,7 +1176,7 @@ export const tauriConversations = {
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve<RawConversation[]>([])
-      : call<RawConversation[]>("list_conversations", async () =>
+      : passiveAgentRead<RawConversation[]>("list_conversations", async () =>
           (await getEngine().listConversations(agentPath)).map(
             conversationToRaw,
           ),
@@ -1228,7 +1252,9 @@ export const tauriRoutines = {
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve([])
-      : call("list_routines", () => getEngine().listRoutines(agentPath)),
+      : passiveAgentRead("list_routines", () =>
+          getEngine().listRoutines(agentPath),
+        ),
   create: (
     agentPath: string,
     input: EngineNewRoutine,
@@ -1258,7 +1284,7 @@ export const tauriRoutines = {
   listRuns: (agentPath: string, routineId?: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve([])
-      : call("list_routine_runs", () =>
+      : passiveAgentRead("list_routine_runs", () =>
           getEngine().listRoutineRuns(agentPath, routineId),
         ),
   runNow: (agentPath: string, routineId: string) => {

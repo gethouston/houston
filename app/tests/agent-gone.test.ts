@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   agentRosterSettled,
   isAgentGoneError,
+  makeAgentGoneHealTrigger,
   makeRosterHealer,
 } from "../src/lib/agent-gone.ts";
 
@@ -114,5 +115,53 @@ describe("makeRosterHealer", () => {
     // The failed reload must not wedge the healer shut forever.
     assert.equal(await heal("ws-1", true), true);
     assert.equal(attempts, 2);
+  });
+});
+
+describe("makeAgentGoneHealTrigger", () => {
+  const agentGone = Object.assign(
+    new Error("agent not found (engine error 404)"),
+    { status: 404, body: { error: "agent not found" } },
+  );
+
+  it("fires the heal for the current workspace on an agent-gone read", () => {
+    const calls: Array<[string | null, boolean]> = [];
+    const trigger = makeAgentGoneHealTrigger(
+      async (ws, gone) => {
+        calls.push([ws, gone]);
+        return true;
+      },
+      () => "ws-1",
+    );
+    trigger(agentGone);
+    assert.deepEqual(calls, [["ws-1", true]]);
+  });
+
+  it("ignores every other failure — surfacing stays with the caller", () => {
+    let calls = 0;
+    const trigger = makeAgentGoneHealTrigger(
+      async () => {
+        calls += 1;
+        return true;
+      },
+      () => "ws-1",
+    );
+    trigger(Object.assign(new Error("engine unavailable"), { status: 503 }));
+    trigger(new Error("boom"));
+    trigger(undefined);
+    assert.equal(calls, 0);
+  });
+
+  it("passes a missing workspace through as null (healer no-ops)", () => {
+    const calls: Array<string | null> = [];
+    const trigger = makeAgentGoneHealTrigger(
+      async (ws) => {
+        calls.push(ws);
+        return false;
+      },
+      () => null,
+    );
+    trigger(agentGone);
+    assert.deepEqual(calls, [null]);
   });
 });

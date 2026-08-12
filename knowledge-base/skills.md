@@ -728,6 +728,8 @@ The same idea one level up: the shared-skills **manifest** queries (`use-agent-s
 - **Silence**: the query reads pass `{ silence: isAgentGoneError }` — a stale-roster 404 is expected lifecycle, not a red bug toast + Sentry report. Only these passive roster-driven reads are silenced; user-initiated manifest reads/writes keep the default loud surfacing, and 5xx keeps its designed loud path (`cp/transient-retry.ts`).
 - **Heal**: on an observed agent-gone error, `useStaleRosterHeal` silently reloads the current workspace's roster (deduped, cannot loop) so the ghost agent disappears from the rail on its own — the honest surface for a deleted agent.
 
+The same contract covers every other **passive agent-scoped read** (HOUSTON-APP-4W3 family: `read_agent_file` behind the board's activity/config/learnings/instructions queries, `list_skills`, `list_project_files`, `list_conversations`, `list_routines`, `list_routine_runs`) at the engine-call layer: the `passiveAgentRead` wrapper in `app/src/lib/tauri.ts` silences the agent-gone 404 and fires the ONE shared roster healer (`app/src/lib/roster-heal.ts` — one in-flight dedupe shared with `useStaleRosterHeal`). A missing data file is NOT a 404 — the host's agentfile GET answers `200 { content: "" }` (`packages/host/src/routes/agent-file.ts`) — so the status stays unambiguous. Writes never route through the wrapper and keep the loud path.
+
 ## Files of interest
 
 | What | Where |
