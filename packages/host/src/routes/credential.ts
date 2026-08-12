@@ -183,11 +183,18 @@ export async function handleSandboxCredential(
   // keychain credential, so serving an expired access token would shadow a
   // still-working self-refreshing credential. Degrading to the marked 404
   // makes the runtime drop the served entry (provenance-gated) and fall back
-  // to that file path instead. Judged by the same pi-floor margin as above:
-  // the runtime writes a served anthropic entry into auth.json too (access-
-  // only), where pi's usage probes resolve it through the same 5-minute
-  // refresh window (PRODUCT-1317).
-  if (cred.provider === "anthropic" && isExpiring(cred, SERVE_VALIDITY_SKEW_MS))
+  // to that file path instead.
+  //
+  // Deliberately judged by `isExpiring`'s DEFAULT margin, not this route's
+  // 6-minute refresh trigger: the marked 404 is an AUTHORITATIVE disconnect
+  // (the runtime deletes its served entry and, since PRODUCT-1323, the ghost
+  // file). Until every gateway serves with the raised 10-minute ServeSkew, a
+  // healthy token can arrive here with 5-6 minutes left — refusing it would
+  // flap anthropic org-wide once per token lifetime. A short-but-live token
+  // is safe to hand out: the runtime's empty-refresh guard (PRODUCT-1317)
+  // keeps pi from POSTing an empty refresh for it, and the current turn just
+  // uses the remaining validity.
+  if (cred.provider === "anthropic" && isExpiring(cred))
     return notConnected(res, "anthropic credential is stale");
   // Access token ONLY (Gate #2): the refresh token never leaves this process.
   // A stolen sandbox credential is then worth minutes, not an account. The

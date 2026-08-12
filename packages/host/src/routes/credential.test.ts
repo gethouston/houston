@@ -622,6 +622,30 @@ test("an expiring anthropic credential whose refresh fails degrades to marked 40
   expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
 });
 
+test("a short-but-live anthropic token is served, not refused (deploy-order independence)", async () => {
+  // Until every gateway rolls the 10-minute ServeSkew, a healthy token can
+  // arrive with 5-6 minutes left. The marked 404 is an authoritative
+  // disconnect (the runtime deletes its served entry AND the ghost file,
+  // PRODUCT-1323) — refusing a live token would flap anthropic org-wide once
+  // per token lifetime. The stale refusal keys on the DEFAULT margin; the
+  // 6-minute margin only drives the refresh attempt above it.
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "anthropic",
+    accessToken: "sk-ant-oat01-shortlive",
+    refreshToken: "", // access-only: the gateway is the only refresher
+    expiresAt: Date.now() + 5.5 * 60 * 1000,
+    kind: "oauth",
+  });
+  const r = mockRes();
+  expect(
+    await call(credentials, "anthropic", r, { gatewayFronted: true }),
+  ).toBe(true);
+  expect(r.out.status).toBe(200);
+  expect(r.out.body.access).toBe("sk-ant-oat01-shortlive");
+});
+
 test("a token below pi's five-minute validity floor is refreshed at serve time (PRODUCT-1317)", async () => {
   // pi refreshes any stored OAuth entry within 5 minutes of expiry, and a
   // served entry has refresh:"" — so a token served with less than the floor
@@ -683,10 +707,14 @@ test("a healthy long-lived token is served as-is, no token-endpoint call", async
   }
 });
 
-test("an anthropic token below pi's floor is never served (marked 404)", async () => {
-  // A served anthropic entry lands in the runtime's auth.json access-only,
-  // where pi's usage probes put it through the same 5-minute refresh window —
-  // and there is no central refresh config to rescue it here (PRODUCT-1317).
+test("an anthropic token below pi's floor is still served while live (guard owns the window)", async () => {
+  // A 4-minute anthropic token sits inside pi's 5-minute refresh window — but
+  // the RUNTIME's empty-refresh guard (PRODUCT-1317) is what keeps pi from
+  // POSTing an empty refresh for it, and the token still runs the in-flight
+  // turn. Refusing it here would be an authoritative marked 404: the runtime
+  // deletes its served entry and the ghost file (PRODUCT-1323) — an org-wide
+  // anthropic flap whenever a gateway couldn't refresh in time. Only a token
+  // past the DEFAULT stale margin is refused (see the stale tests above).
   const credentials = new MemoryCredentialStore();
   await credentials.put({
     workspaceId: "w1",
@@ -700,6 +728,6 @@ test("an anthropic token below pi's floor is never served (marked 404)", async (
   expect(
     await call(credentials, "anthropic", r, { gatewayFronted: true }),
   ).toBe(true);
-  expect(r.out.status).toBe(404);
-  expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
+  expect(r.out.status).toBe(200);
+  expect(r.out.body.access).toBe("sk-ant-oat01-four-minutes");
 });
