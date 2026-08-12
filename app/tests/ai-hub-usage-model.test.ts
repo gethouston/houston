@@ -220,16 +220,12 @@ describe("formatMeteredSince", () => {
 
 describe("formatCreditsAmount", () => {
   it("formats USD as currency and credit units as a plain number", () => {
-    strictEqual(
-      formatCreditsAmount({ remaining: 12.34, unit: "USD" }, "en"),
-      "$12.34",
-    );
-    strictEqual(
-      formatCreditsAmount(
-        { remaining: 19.5, granted: 25, unit: "credits" },
-        "en",
-      ),
-      "19.5",
-    );
+    strictEqual(formatCreditsAmount(12.34, "USD", "en"), "$12.34");
+    strictEqual(formatCreditsAmount(19.5, "credits", "en"), "19.5");
+  });
+
+  it("formats a spend figure the same way (the excludesGrants line)", () => {
+    strictEqual(formatCreditsAmount(0.31, "USD", "en"), "$0.31");
+    strictEqual(formatCreditsAmount(0, "USD", "en"), "$0.00");
   });
 });

@@ -1,5 +1,6 @@
 import { cn, Skeleton } from "@houston-ai/core";
 import type {
+  ProviderUsageCredits,
   ProviderUsageTokens,
   ProviderUsageWindow,
 } from "@houston-ai/engine-client";
@@ -56,11 +57,11 @@ export function ProviderUsageMeters({ slot }: { slot: UsageSlot }) {
             />
           ))}
           {slot.row.credits && (
-            <p className="text-[13px] text-ink tabular-nums">
-              {t("providerUsage.creditsLeft", {
-                amount: formatCreditsAmount(slot.row.credits, i18n.language),
-              })}
-            </p>
+            <CreditsBalance
+              credits={slot.row.credits}
+              locale={i18n.language}
+              t={t}
+            />
           )}
           {slot.row.tokens && (
             <MeteredTokens
@@ -71,6 +72,47 @@ export function ProviderUsageMeters({ slot }: { slot: UsageSlot }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * The prepaid balance line. A provider that reports the real balance gets the
+ * classic "$19.50 left". A provider whose API omits free/promotional grants
+ * (`excludesGrants` — OpenRouter reports purchased credits only) must not
+ * claim "$0.00 left" to an account that has grant money: it shows the real
+ * spend instead, with a note saying the grant balance is unreported.
+ */
+function CreditsBalance({
+  credits,
+  locale,
+  t,
+}: {
+  credits: ProviderUsageCredits;
+  locale: string;
+  t: Translate;
+}) {
+  if (!credits.excludesGrants) {
+    return (
+      <p className="text-[13px] text-ink tabular-nums">
+        {t("providerUsage.creditsLeft", {
+          amount: formatCreditsAmount(credits.remaining, credits.unit, locale),
+        })}
+      </p>
+    );
+  }
+  return (
+    <div>
+      {credits.used !== undefined && (
+        <p className="text-[13px] text-ink tabular-nums">
+          {t("providerUsage.creditsUsed", {
+            amount: formatCreditsAmount(credits.used, credits.unit, locale),
+          })}
+        </p>
+      )}
+      <p className="mt-0.5 text-xs text-ink-muted">
+        {t("providerUsage.grantsUnreported")}
+      </p>
     </div>
   );
 }

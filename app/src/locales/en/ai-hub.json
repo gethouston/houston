@@ -148,6 +148,8 @@
     "percentUsed": "{{percent}}% used",
     "resets": "Resets {{when}}",
     "creditsLeft": "{{amount}} left",
+    "creditsUsed": "{{amount}} used",
+    "grantsUnreported": "This provider doesn't report free or promotional credit balances. Check your balance on their site.",
     "tokensUsed": "{{amount}} tokens used",
     "tokensSplit": "{{input}} in, {{output}} out",
     "meteredSince": "measured by Houston since {{when}}",

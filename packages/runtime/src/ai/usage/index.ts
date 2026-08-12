@@ -2,8 +2,9 @@ import { listProviders } from "../providers";
 import { fetchAnthropicUsage } from "./anthropic";
 import { fetchCodexUsage } from "./codex";
 import { fetchCopilotUsage } from "./copilot";
-import { fetchDeepSeekUsage, fetchOpenRouterUsage } from "./credits";
+import { fetchDeepSeekUsage } from "./credits";
 import { readTokenSpend } from "./ledger";
+import { fetchOpenRouterUsage } from "./openrouter";
 import type { ProviderUsage } from "./types";
 
 export { readTokenSpend, recordTokenSpend } from "./ledger";

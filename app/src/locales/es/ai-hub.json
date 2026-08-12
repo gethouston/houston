@@ -148,6 +148,8 @@
     "percentUsed": "{{percent}}% usado",
     "resets": "Se reinicia {{when}}",
     "creditsLeft": "Te quedan {{amount}}",
+    "creditsUsed": "{{amount}} usados",
+    "grantsUnreported": "Este proveedor no informa los saldos de créditos gratuitos o promocionales. Revisa tu saldo en su sitio.",
     "tokensUsed": "{{amount}} tokens usados",
     "tokensSplit": "{{input}} de entrada, {{output}} de salida",
     "meteredSince": "medido por Houston desde {{when}}",

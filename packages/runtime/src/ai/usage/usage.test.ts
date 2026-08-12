@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { fetchAnthropicUsage } from "./anthropic";
 import { fetchCodexUsage } from "./codex";
 import { fetchCopilotUsage } from "./copilot";
-import { fetchDeepSeekUsage, fetchOpenRouterUsage } from "./credits";
+import { fetchDeepSeekUsage } from "./credits";
 import { listProviderUsage } from "./index";
+import { fetchOpenRouterUsage } from "./openrouter";
 import { clampPercent, epochSecondsToIso } from "./types";
 
 function jsonResponse(body: unknown, status = 200): typeof fetch {
@@ -241,26 +242,111 @@ describe("fetchCopilotUsage", () => {
 describe("credit balances", () => {
   const keyStore = { has: () => true, getApiKey: async () => "sk-1" };
 
-  it("openrouter: remaining = credits - usage", async () => {
+  /** Routes the two OpenRouter probes by URL; a missing entry answers 500. */
+  function openRouterFetch(routes: {
+    credits?: { body?: unknown; status?: number };
+    key?: { body?: unknown; status?: number };
+  }): typeof fetch {
+    return async (url) => {
+      const route = String(url).endsWith("/credits")
+        ? routes.credits
+        : routes.key;
+      return new Response(JSON.stringify(route?.body ?? {}), {
+        status: route ? (route.status ?? 200) : 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+  }
+
+  it("openrouter: a purchased account keeps remaining = credits - usage", async () => {
     const row = await fetchOpenRouterUsage(
-      jsonResponse({ data: { total_credits: 25, total_usage: 5.5 } }),
+      openRouterFetch({
+        credits: { body: { data: { total_credits: 25, total_usage: 5.5 } } },
+        key: { body: { data: { usage: 5.5, limit: null } } },
+      }),
       keyStore,
     );
     expect(row.status).toBe("ok");
     expect(row.credits).toEqual({
       remaining: 19.5,
       granted: 25,
+      used: 5.5,
       unit: "USD",
     });
   });
 
-  it("openrouter: an unreadable balance is an error, not a $0 balance", async () => {
+  it("openrouter: a grant-funded account reports spend + excludesGrants, never $0 left", async () => {
     const row = await fetchOpenRouterUsage(
-      jsonResponse({ data: { credits: 25 } }),
+      openRouterFetch({
+        // The dashboard says "$10.00 in grants" but the public API only ever
+        // reports purchased credits — total_credits stays 0 (PRODUCT-1075).
+        credits: { body: { data: { total_credits: 0, total_usage: 0.31 } } },
+        key: {
+          body: { data: { usage: 0.31, limit: null, limit_remaining: null } },
+        },
+      }),
+      keyStore,
+    );
+    expect(row.status).toBe("ok");
+    expect(row.credits).toEqual({
+      remaining: 0,
+      used: 0.31,
+      unit: "USD",
+      excludesGrants: true,
+    });
+  });
+
+  it("openrouter: a capped key's remainder stands in when /credits is management-only (403)", async () => {
+    const row = await fetchOpenRouterUsage(
+      openRouterFetch({
+        credits: { status: 403 },
+        key: {
+          body: { data: { usage: 2.5, limit: 10, limit_remaining: 7.5 } },
+        },
+      }),
+      keyStore,
+    );
+    expect(row.status).toBe("ok");
+    expect(row.credits).toEqual({
+      remaining: 7.5,
+      granted: 10,
+      used: 2.5,
+      unit: "USD",
+    });
+  });
+
+  it("openrouter: a key-probe outage never sinks a good balance", async () => {
+    const fetchImpl: typeof fetch = async (url) => {
+      if (String(url).endsWith("/credits"))
+        return new Response(
+          JSON.stringify({ data: { total_credits: 25, total_usage: 5.5 } }),
+          { status: 200 },
+        );
+      throw new Error("network down");
+    };
+    const row = await fetchOpenRouterUsage(fetchImpl, keyStore);
+    expect(row.status).toBe("ok");
+    expect(row.credits?.remaining).toBe(19.5);
+  });
+
+  it("openrouter: unreadable probes are an error, not a $0 balance", async () => {
+    const row = await fetchOpenRouterUsage(
+      openRouterFetch({
+        credits: { body: { data: { credits: 25 } } },
+        key: { status: 500 },
+      }),
       keyStore,
     );
     expect(row.status).toBe("error");
     expect(row.credits).toBeUndefined();
+  });
+
+  it("openrouter: 401s on both probes read as unauthenticated", async () => {
+    const row = await fetchOpenRouterUsage(
+      openRouterFetch({ credits: { status: 401 }, key: { status: 401 } }),
+      keyStore,
+    );
+    expect(row.status).toBe("unauthenticated");
   });
 
   it("deepseek: parses the string USD balance", async () => {

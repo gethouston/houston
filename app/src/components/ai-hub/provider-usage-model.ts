@@ -172,21 +172,23 @@ export function formatMeteredSince(
 }
 
 /**
- * A localized amount for a credits balance: real currency formatting for USD
- * balances ("$12.34"), a plain localized number for provider-internal credit
- * units (the caller wraps it in the "left" phrase).
+ * A localized amount for a credits figure (remaining or spent): real currency
+ * formatting for USD ("$12.34"), a plain localized number for
+ * provider-internal credit units (the caller wraps it in the "left"/"used"
+ * phrase).
  */
 export function formatCreditsAmount(
-  credits: NonNullable<ProviderUsage["credits"]>,
+  amount: number,
+  unit: NonNullable<ProviderUsage["credits"]>["unit"],
   locale: string,
 ): string {
-  if (credits.unit === "USD") {
+  if (unit === "USD") {
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "USD",
-    }).format(credits.remaining);
+    }).format(amount);
   }
   return new Intl.NumberFormat(locale, {
     maximumFractionDigits: 2,
-  }).format(credits.remaining);
+  }).format(amount);
 }

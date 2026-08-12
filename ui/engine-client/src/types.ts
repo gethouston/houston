@@ -1345,7 +1345,15 @@ export interface ProviderUsageCredits {
   remaining: number;
   /** Total granted, when reported. */
   granted?: number;
+  /** Lifetime spend in `unit`, when reported. */
+  used?: number;
   unit: "USD" | "credits";
+  /**
+   * True when the provider's API omits free/promotional grants from the
+   * balance (OpenRouter reports purchased credits only), so `remaining` is a
+   * lower bound the UI must not present as "you have nothing left".
+   */
+  excludesGrants?: boolean;
 }
 
 /**

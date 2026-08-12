@@ -2,77 +2,25 @@ import { type KeyStore as FullKeyStore, keyStore } from "../../auth/storage";
 import type { ProviderUsage } from "./types";
 
 /** The slice of the credential store the balance probes read. */
-type KeyStore = Pick<FullKeyStore, "has" | "getApiKey">;
+export type KeyStore = Pick<FullKeyStore, "has" | "getApiKey">;
 
 /**
- * Prepaid-credit balances for the API-key providers that expose one:
+ * Prepaid-credit balances for API-key providers that expose one:
  *
- *   OpenRouter — GET https://openrouter.ai/api/v1/credits
- *                → { data: { total_credits, total_usage } }
  *   DeepSeek   — GET https://api.deepseek.com/user/balance
  *                → { balance_infos: [{ currency, total_balance: "12.34" }] }
  *
- * Both authenticate with the stored API key as a Bearer token. No rate-limit
+ * Authenticates with the stored API key as a Bearer token. No rate-limit
  * windows here — a balance is the whole story for pay-as-you-go keys.
+ * (OpenRouter's two-probe blend lives in `openrouter.ts`.)
  */
 
-async function apiKeyFor(
+export async function apiKeyFor(
   store: KeyStore,
   provider: string,
 ): Promise<string | null> {
   if (!store.has(provider)) return null; // stored-only, like providerConnected
   return (await store.getApiKey(provider)) ?? null;
-}
-
-/** Fetch the OpenRouter account's remaining prepaid credits. */
-export async function fetchOpenRouterUsage(
-  fetchImpl: typeof fetch = fetch,
-  store: KeyStore = keyStore,
-): Promise<ProviderUsage> {
-  const provider = "openrouter";
-  const key = await apiKeyFor(store, provider);
-  if (!key) return { provider, status: "unauthenticated", windows: [] };
-
-  const res = await fetchImpl("https://openrouter.ai/api/v1/credits", {
-    headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (res.status === 401 || res.status === 403)
-    return { provider, status: "unauthenticated", windows: [] };
-  if (!res.ok) {
-    return {
-      provider,
-      status: "error",
-      windows: [],
-      message: `OpenRouter credits API answered ${res.status}`,
-    };
-  }
-  const body = (await res.json()) as {
-    data?: { total_credits?: unknown; total_usage?: unknown };
-  };
-  const total = body.data?.total_credits;
-  const used = body.data?.total_usage;
-  // A missing/renamed field must read as a probe failure, not a $0 balance.
-  if (typeof total !== "number" || typeof used !== "number") {
-    return {
-      provider,
-      status: "error",
-      windows: [],
-      message: "OpenRouter credits response had no readable balance",
-    };
-  }
-  return {
-    provider,
-    status: "ok",
-    windows: [],
-    // OpenRouter credits are denominated in USD.
-    credits: {
-      remaining: Math.max(0, total - used),
-      granted: total,
-      unit: "USD",
-    },
-    fetchedAt: new Date().toISOString(),
-  };
 }
 
 /** Fetch the DeepSeek account's remaining balance (prefers the USD row). */
