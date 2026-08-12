@@ -14,6 +14,11 @@ import {
   readAuthFile,
   writeAuthFile,
 } from "./auth-file";
+import {
+  maskAccessOnly,
+  needsServeSync,
+  runEmptyRefreshServeSync,
+} from "./empty-refresh-guard";
 import { recordUsedToken } from "./used-token";
 
 /**
@@ -142,14 +147,21 @@ export class HoustonAuthStore implements CredentialStore {
   // ---- pi-ai CredentialStore ----
 
   async read(providerId: string): Promise<Credential | undefined> {
+    // PRODUCT-1317 (empty-refresh-guard.ts): a served access-only entry pi is
+    // about to put through its refresh path re-syncs centrally FIRST, so a
+    // fresh token can land before pi's expiry check runs.
+    if (needsServeSync(this.get(providerId), Date.now()))
+      await runEmptyRefreshServeSync();
     const cred = this.get(providerId);
     // pi calls this inside `prepareRequest` on every `stream()`, i.e. at
     // request preparation inside the turn's async subtree — the one moment the
     // token a request runs on is knowable. Record its digest into the turn's
     // capture so a later revoked-token report names the token that actually
     // produced the failure, not whatever a re-serve stored since
-    // (auth/used-token.ts, PRODUCT-1319). OAuth access only — an api_key has
-    // no revocation semantics the report may act on. No-op outside a turn.
+    // (auth/used-token.ts, PRODUCT-1319). Recorded AFTER the guard's re-sync,
+    // so the digest names the token the request will actually carry. OAuth
+    // access only — an api_key has no revocation semantics the report may act
+    // on. No-op outside a turn.
     if (cred?.type === "oauth" && cred.access)
       recordUsedToken(providerId, cred.access);
     return cred;
@@ -172,7 +184,11 @@ export class HoustonAuthStore implements CredentialStore {
     const state = this.scoped();
     const prev = state.chains.get(providerId) ?? Promise.resolve();
     const apply = async () => {
-      const next = await fn(state.cache[providerId]);
+      // PRODUCT-1317 (empty-refresh-guard.ts): pi's refresh closures POST
+      // `current.refresh` to the provider's token endpoint — an access-only
+      // (refresh:"") entry is masked to `undefined` so they take their
+      // logged-out branch and leave the entry unchanged instead.
+      const next = await fn(maskAccessOnly(state.cache[providerId]));
       // Contract: `undefined` leaves the entry unchanged (NOT a delete).
       if (next !== undefined) this.setIn(state, providerId, next);
       const settled = state.cache[providerId];
