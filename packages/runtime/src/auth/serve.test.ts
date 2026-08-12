@@ -301,6 +301,29 @@ test("a never-manifested ghost credential is still cleared on an authoritative n
   });
 });
 
+test("a deployment refusal (not-served-here) never clears the local credential file", async () => {
+  // Desktop/self-host hosts answer EVERY anthropic serve with the marked 404
+  // plus `x-houston-not-served-here`: a deployment fact, not a store verdict.
+  // There the materialized file belongs to the local browser login — reading
+  // the refusal as a disconnect would delete a healthy credential on every
+  // sync (the regression the PRODUCT-1323 review caught).
+  await withTempHoustonHome(async () => {
+    const file = writeMaterializedClaudeCredential();
+    const fetchImpl = (async () =>
+      new Response(null, {
+        status: 404,
+        headers: {
+          "x-houston-not-connected": "1",
+          "x-houston-not-served-here": "1",
+        },
+      })) as unknown as typeof globalThis.fetch;
+    await withServeMode(fetchImpl, async () => {
+      expect(await syncServedCredential()).toEqual([]);
+      expect(existsSync(file)).toBe(true);
+    });
+  });
+});
+
 test("a personal scope never clears the pod-shared ghost, manifest or not", async () => {
   const actingToken = (sub: string) =>
     `acting-v1.${Buffer.from(

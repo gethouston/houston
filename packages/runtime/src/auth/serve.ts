@@ -195,7 +195,12 @@ async function runServedSync(): Promise<string[]> {
       // the provenance gate then blocks the revocation reporter too. The
       // function is serve-mode-reached-only, personal-scope-guarded, and a
       // no-op without the file, so an ordinary disconnected pod pays nothing.
-      if (probe.id === "anthropic") clearGhostClaudeCredential();
+      // EXCEPT on a deployment that never serves anthropic (`notServedHere`,
+      // the desktop/self-host refusal): there the file IS the browser login's
+      // legitimate credential and this answer says nothing about the central
+      // store — deleting it would disconnect a healthy local Claude.
+      if (probe.id === "anthropic" && !probe.notServedHere)
+        clearGhostClaudeCredential();
       if (manifest.has(probe.id)) {
         // A refresh-bearing OAuth entry still survives inside
         // removeServedCredentialAt: that's the device-code connect mid-capture.

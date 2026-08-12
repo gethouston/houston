@@ -17,7 +17,7 @@ import type { ServedCredential } from "./auth-file";
 
 export type ServeProbe =
   | { id: string; state: "served"; cred: ServedCredential }
-  | { id: string; state: "not-connected" }
+  | { id: string; state: "not-connected"; notServedHere?: boolean }
   | { id: string; state: "error"; detail: string; timedOut?: boolean };
 
 /**
@@ -27,6 +27,16 @@ export type ServeProbe =
  * must never delete a working credential.
  */
 const NOT_CONNECTED_HEADER = "x-houston-not-connected";
+
+/**
+ * Second marker on the anthropic refusal of a non-gateway-fronted host:
+ * "anthropic is NEVER served on this deployment" — a deployment fact, not a
+ * verdict about the central store. The desktop/self-host browser login owns
+ * the local `.credentials.json` there, so the ghost cleanup (PRODUCT-1323)
+ * must not read this answer as "the workspace disconnected" and delete a
+ * legitimate credential.
+ */
+const NOT_SERVED_HERE_HEADER = "x-houston-not-served-here";
 
 /** One stalled host/gateway socket must not hang every hydrating route. */
 const SERVE_FETCH_TIMEOUT_MS = 10_000;
@@ -100,7 +110,13 @@ async function probeOnce(id: string): Promise<ServeProbe> {
       },
     );
     if (res.status === 404 && res.headers.get(NOT_CONNECTED_HEADER) === "1")
-      return { id, state: "not-connected" };
+      return {
+        id,
+        state: "not-connected",
+        ...(res.headers.get(NOT_SERVED_HERE_HEADER) === "1"
+          ? { notServedHere: true }
+          : {}),
+      };
     if (!res.ok)
       return {
         id,
