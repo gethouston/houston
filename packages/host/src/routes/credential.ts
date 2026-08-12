@@ -28,6 +28,20 @@ function notConnected(res: ServerResponse, error: string): true {
 }
 
 /**
+ * Serve-time refresh margin. The real invariant is pi's OAuth validity floor:
+ * pi refreshes ANY stored OAuth entry within 5 minutes of expiry
+ * (`DEFAULT_OAUTH_MINIMUM_VALIDITY_MS`, pi-ai dist/auth/resolve.js), and a
+ * served entry is access-only (Gate #2's `refresh:""`) — pi has nothing to
+ * refresh it with, and before the runtime's empty-refresh guard it POSTed
+ * `refresh_token=""` at the provider (PRODUCT-1317, seen live as
+ * PRODUCT-1293). A token served with less than the floor remaining is born
+ * inside pi's refresh window, so the refresh here must fire while MORE than
+ * the floor remains: 6 minutes is pi's 5 plus a minute of slack. Passed
+ * explicitly — `isExpiring`'s 2-minute default serves its other callers.
+ */
+const SERVE_VALIDITY_SKEW_MS = 6 * 60 * 1000;
+
+/**
  * Sandbox-facing (connect-once): an agent runtime serves a FRESH subscription
  * token from its workspace's central credential. Authenticated by the
  * per-sandbox HMAC token (NOT a user JWT), refreshed centrally here so no
@@ -99,7 +113,7 @@ export async function handleSandboxCredential(
     if (deadError) throw deadError;
     return notConnected(res, "workspace not connected");
   }
-  if (isExpiring(cred) && cred.refreshToken) {
+  if (isExpiring(cred, SERVE_VALIDITY_SKEW_MS) && cred.refreshToken) {
     const refreshing = cred.provider;
     try {
       // Single-flight: one runtime process per agent serves this per turn AND
@@ -113,6 +127,9 @@ export async function handleSandboxCredential(
         acting,
         load: () => deps.credentials.get(claim.workspaceId, refreshing, acting),
         persist: (c) => deps.credentials.put(c, acting),
+        // The flight's own re-check must judge expiry by THIS route's margin,
+        // or it hands back the very token the route already deemed too short.
+        skewMs: SERVE_VALIDITY_SKEW_MS,
       });
     } catch (err) {
       if (err instanceof CredentialGoneError) {
@@ -166,8 +183,11 @@ export async function handleSandboxCredential(
   // keychain credential, so serving an expired access token would shadow a
   // still-working self-refreshing credential. Degrading to the marked 404
   // makes the runtime drop the served entry (provenance-gated) and fall back
-  // to that file path instead.
-  if (cred.provider === "anthropic" && isExpiring(cred))
+  // to that file path instead. Judged by the same pi-floor margin as above:
+  // the runtime writes a served anthropic entry into auth.json too (access-
+  // only), where pi's usage probes resolve it through the same 5-minute
+  // refresh window (PRODUCT-1317).
+  if (cred.provider === "anthropic" && isExpiring(cred, SERVE_VALIDITY_SKEW_MS))
     return notConnected(res, "anthropic credential is stale");
   // Access token ONLY (Gate #2): the refresh token never leaves this process.
   // A stolen sandbox credential is then worth minutes, not an account. The

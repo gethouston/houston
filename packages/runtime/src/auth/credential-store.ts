@@ -14,6 +14,11 @@ import {
   readAuthFile,
   writeAuthFile,
 } from "./auth-file";
+import {
+  maskAccessOnly,
+  needsServeSync,
+  runEmptyRefreshServeSync,
+} from "./empty-refresh-guard";
 
 /**
  * Houston's credential store: pi-ai's `CredentialStore` contract over
@@ -141,6 +146,11 @@ export class HoustonAuthStore implements CredentialStore {
   // ---- pi-ai CredentialStore ----
 
   async read(providerId: string): Promise<Credential | undefined> {
+    // PRODUCT-1317 (empty-refresh-guard.ts): a served access-only entry pi is
+    // about to put through its refresh path re-syncs centrally FIRST, so a
+    // fresh token can land before pi's expiry check runs.
+    if (needsServeSync(this.get(providerId), Date.now()))
+      await runEmptyRefreshServeSync();
     return this.get(providerId);
   }
 
@@ -161,7 +171,11 @@ export class HoustonAuthStore implements CredentialStore {
     const state = this.scoped();
     const prev = state.chains.get(providerId) ?? Promise.resolve();
     const apply = async () => {
-      const next = await fn(state.cache[providerId]);
+      // PRODUCT-1317 (empty-refresh-guard.ts): pi's refresh closures POST
+      // `current.refresh` to the provider's token endpoint — an access-only
+      // (refresh:"") entry is masked to `undefined` so they take their
+      // logged-out branch and leave the entry unchanged instead.
+      const next = await fn(maskAccessOnly(state.cache[providerId]));
       // Contract: `undefined` leaves the entry unchanged (NOT a delete).
       if (next !== undefined) this.setIn(state, providerId, next);
       return state.cache[providerId];

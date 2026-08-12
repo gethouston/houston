@@ -40,6 +40,13 @@ export type CredentialRefreshRun = {
    * keeping a private one.
    */
   doRefresh?: CredentialRefresher;
+  /**
+   * Expiry margin THIS caller needs (`isExpiring`'s `skewMs`). The serve route
+   * passes its pi-validity-floor margin (routes/credential.ts, PRODUCT-1317) so
+   * the in-flight re-check can't hand back a token the route already judged too
+   * short-lived. Absent = `isExpiring`'s default.
+   */
+  skewMs?: number;
 };
 
 /**
@@ -96,7 +103,7 @@ export class CredentialRefreshCoalescer {
     if (cached) {
       if (
         this.now() - cached.at < REFRESH_RESULT_TTL_MS &&
-        !isExpiring(cached.cred)
+        !isExpiring(cached.cred, args.skewMs)
       )
         return Promise.resolve(cached.cred);
       this.results.delete(key);
@@ -153,7 +160,7 @@ export class CredentialRefreshCoalescer {
     // it and persisting the result — would recreate the row they deleted and
     // hand their agents a live token for a revoked connection.
     if (loaded === null) throw new CredentialGoneError(args.provider);
-    if (!isExpiring(loaded)) {
+    if (!isExpiring(loaded, args.skewMs)) {
       this.remember(key, loaded);
       return loaded;
     }
