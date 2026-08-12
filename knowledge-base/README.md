@@ -37,6 +37,7 @@ Load the rest on demand.
 | [mission-attribution.md](mission-attribution.md) | Faces, senders, @mentions and unread on missions — all multiplayer-gated |
 | [auth.md](auth.md) | GCP Identity Platform (Firebase Auth) — Google/Apple/Microsoft SSO, email OTP, Keychain, and the Supabase that deliberately stays |
 | [production-infra.md](production-infra.md) | Auto-updater, analytics, in-app bug reports, release env vars, code signing, CI/CD |
+| [daily-cut-routine.md](daily-cut-routine.md) | The Houston routine that schedules the daily cloud cut — dispatch, agent-written release notes, Slack announcing |
 | [sentry.md](sentry.md) | Crash reporting — three runtimes, one Sentry project, dormant until a DSN is set |
 | [hosting.md](hosting.md) | Firebase Hosting — the browser web client (`packages/web`) and the marketing site (`website/`) |
 | [ui-testing.md](ui-testing.md) | Playwright e2e + visual regression — the web build, the in-process fake host, per-worker isolation, the CI shard matrix |

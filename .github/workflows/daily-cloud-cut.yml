@@ -19,8 +19,15 @@
 #      version label. Pushing an `engine-pod-v*` tag manually remains only the
 #      break-glass prod engine roll.
 #
-# This workflow owns ONLY step 1, on a schedule, so a fresh draft is waiting when
-# the team opens the 08:30 daily.
+# This workflow owns ONLY step 1. It has NO schedule of its own: the scheduler
+# is a Houston routine (PRODUCT-1329) that dispatches this workflow every
+# weekday morning, watches the run, writes the user-facing release notes, and
+# posts the outcome to Slack — see knowledge-base/daily-cut-routine.md for the
+# routine prompt + setup. GitHub's cron queue was the previous scheduler and
+# was dropped deliberately: its best-effort delivery ran 30–120 min late
+# (HOU-1013), while Houston's cron fires on time — and the release train is
+# exactly the kind of job Houston exists to run. workflow_dispatch is therefore
+# the ONLY trigger: the routine's daily dispatch, or a human's manual cut.
 #
 # WHY A PAT (RELEASE_CUT_TOKEN), NOT GITHUB_TOKEN:
 #   A tag pushed with the default GITHUB_TOKEN does NOT trigger other workflows —
@@ -33,20 +40,6 @@
 #   the write we need is the PAT's, not the job token's. (Read-only check-run
 #   queries still use GITHUB_TOKEN; those don't need to trigger anything.)
 #
-# WHY WEEKDAYS-ONLY AT 10:22 UTC (AND NOT ON A ROUND MINUTE):
-#   The team QAs in the 08:30 America/Bogota daily, which runs Mon–Fri. Bogotá is
-#   UTC-5 all year (Colombia observes no DST). GitHub's schedule queue is
-#   best-effort: at the previous 11:52 UTC slot the observed delivery delay was
-#   +88 to +128 min (avg ~103), so the cut ACTUALLY started 08:20–09:00 Bogotá —
-#   on top of the daily, with no draft ready (HOU-1013). The target is a cut
-#   that actually starts ~07:05 Bogotá (12:05 UTC), so the nominal slot is
-#   12:05 minus the average delay: 10:22 UTC == 05:22 Bogotá. With the observed
-#   delay range the cut starts 06:50–07:30 Bogotá, and the ~30-min build has
-#   the draft ready by ~08:00. Firing early is harmless (the draft just waits);
-#   firing after 08:30 is the failure mode. The :22 minute is deliberate:
-#   :00/:15/:30/:45 are the most congested cron slots on GitHub and get the
-#   worst delays. `cron: '1-5'` skips weekends — no daily, no cut.
-#
 # WHY TAG-ONLY PUSH:
 #   main is a protected branch; the automation cannot (and must not) push commits
 #   to it. The release commit is created locally on the runner and referenced
@@ -54,22 +47,37 @@
 #   sees the bumped versions without the commit ever landing on main. This
 #   mirrors the manual cut exactly.
 #
-# workflow_dispatch is the manual / off-schedule path: run it by hand to cut a
-# release outside the morning window, or pass an explicit `version` to override
-# the computed next patch (e.g. to jump a minor). Same guards apply.
+# RELEASE NOTES INPUTS (the agent-authored path):
+#   The dispatcher may hand in user-facing release notes. When `notes` is set,
+#   the cut writes it to .github/release-notes/<version>.md INSIDE the release
+#   commit (with optional es/pt siblings), which release.yml treats as
+#   author-written notes: used verbatim as the release body AND embedded in the
+#   updater's latest.json, so agent-written notes reach the in-app update
+#   dialog. Translations attach only alongside `notes` — release.yml fails a
+#   translation with no English source, so the empty-`notes` case stays the
+#   auto-generated changelog exactly as before. workflow_dispatch caps the
+#   whole inputs payload at 64 KB; notes are a short product summary, not a
+#   changelog, so this is never a real limit.
 
 name: Daily cloud cut
 
 on:
-  schedule:
-    # 10:22 UTC, Mon–Fri == 05:22 America/Bogota (UTC-5, no DST). Nominal slot
-    # is ~103 min before the ~07:05 Bogotá target because GitHub's cron queue
-    # delivers that late — see the header.
-    - cron: "22 10 * * 1-5"
   workflow_dispatch:
     inputs:
       version:
         description: "Override the computed next version (semver, e.g. 0.5.18). Leave blank to auto-bump the patch of the latest cloud-v* tag."
+        required: false
+        type: string
+      notes:
+        description: "User-facing release notes (markdown, English). Written to .github/release-notes/<version>.md in the release commit and used verbatim by release.yml. Leave blank for the auto-generated changelog."
+        required: false
+        type: string
+      notes_es:
+        description: "Latin-American Spanish translation of the notes (requires `notes`)."
+        required: false
+        type: string
+      notes_pt:
+        description: "Brazilian Portuguese translation of the notes (requires `notes`)."
         required: false
         type: string
 
@@ -250,26 +258,52 @@ jobs:
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      # 6. Cut: bump every version-bearing file, commit the release, tag it, and
-      #    push ONLY the tag. version.sh edits tracked files in place; `git add -u`
-      #    stages exactly those. The push is tag-only — main is protected and the
-      #    release commit is meant to live solely under the tag (see header). The
-      #    push authenticates via the credential helper from step 1 reading
-      #    RELEASE_CUT_TOKEN from this step's env (checkout persisted nothing,
-      #    so the PAT is the ONLY credential in play) — a PAT push is what makes
-      #    release.yml fire.
+      # 6. Cut: bump every version-bearing file, drop in any dispatcher-authored
+      #    release notes, commit the release, tag it, and push ONLY the tag.
+      #    version.sh edits tracked files in place; `git add -u` stages exactly
+      #    those — the notes files are NEW and need their explicit `git add`.
+      #    Notes land at .github/release-notes/<version>[.es|.pt].md, the
+      #    authored-notes path release.yml prefers over the auto-changelog (see
+      #    header). A translation without English notes is rejected HERE, not 30
+      #    build-minutes later by release.yml's own guard. The push is tag-only —
+      #    main is protected and the release commit is meant to live solely under
+      #    the tag (see header). The push authenticates via the credential helper
+      #    from step 1 reading RELEASE_CUT_TOKEN from this step's env (checkout
+      #    persisted nothing, so the PAT is the ONLY credential in play) — a PAT
+      #    push is what makes release.yml fire.
       - name: Cut release commit + tag
         id: cut
         if: ${{ steps.newcommits.outputs.proceed == 'true' }}
         env:
           VERSION: ${{ steps.version.outputs.version }}
           RELEASE_CUT_TOKEN: ${{ secrets.RELEASE_CUT_TOKEN }}
+          NOTES: ${{ inputs.notes }}
+          NOTES_ES: ${{ inputs.notes_es }}
+          NOTES_PT: ${{ inputs.notes_pt }}
         run: |
           set -euo pipefail
           git config user.name "houston-release-bot"
           git config user.email "release-bot@users.noreply.github.com"
 
           ./scripts/version.sh "${VERSION}"
+
+          if [ -z "${NOTES}" ] && { [ -n "${NOTES_ES}" ] || [ -n "${NOTES_PT}" ]; }; then
+            echo "::error::notes_es/notes_pt were provided without English notes. release.yml refuses translations with no English source, so the build would fail — pass \`notes\` too."
+            exit 1
+          fi
+          if [ -n "${NOTES}" ]; then
+            printf '%s\n' "${NOTES}" > ".github/release-notes/${VERSION}.md"
+            git add ".github/release-notes/${VERSION}.md"
+            echo "Wrote authored release notes to .github/release-notes/${VERSION}.md"
+            if [ -n "${NOTES_ES}" ]; then
+              printf '%s\n' "${NOTES_ES}" > ".github/release-notes/${VERSION}.es.md"
+              git add ".github/release-notes/${VERSION}.es.md"
+            fi
+            if [ -n "${NOTES_PT}" ]; then
+              printf '%s\n' "${NOTES_PT}" > ".github/release-notes/${VERSION}.pt.md"
+              git add ".github/release-notes/${VERSION}.pt.md"
+            fi
+          fi
 
           git add -u
           git commit -m "release: v${VERSION}"
