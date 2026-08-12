@@ -122,6 +122,16 @@ const host = buildLocalHost({
   chatHistoryDbPath:
     process.env.HOUSTON_CHAT_HISTORY_DB ||
     join(houstonHome, "db", "houston.db"),
+  // SPIKE (stateless claim-path): HOUSTON_TURN_URL routes chat turns through a
+  // stateless turn runtime (see packages/runtime/spike/README-claim-path.md).
+  turn: process.env.HOUSTON_TURN_URL
+    ? {
+        runtimeUrl: process.env.HOUSTON_TURN_URL,
+        token: process.env.HOUSTON_TURN_TOKEN || "",
+        storeDir:
+          process.env.HOUSTON_TURN_STORE_DIR || join(houstonHome, "turn-store"),
+      }
+    : undefined,
   port: Number(process.env.HOUSTON_HOST_PORT || 4318),
   // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
   bind: process.env.HOUSTON_HOST_BIND || undefined,

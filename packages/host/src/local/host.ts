@@ -11,7 +11,9 @@ import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { captureRuntimeCredential } from "../channel/capture-credential";
 import { ProxyChannel } from "../channel/proxy";
+import { TurnChannel } from "../channel/turn";
 import { FileCredentialStore } from "../credentials/file-store";
+import { refreshCredential } from "../credentials/refresh";
 import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
@@ -46,6 +48,9 @@ import { SharedMirrorController, StoreSyncDaemon } from "../store-sync";
 import { BootTelemetry } from "../telemetry/boot";
 import { sendBootReport } from "../telemetry/boot-report";
 import { MemoryTurnBus } from "../turn/bus";
+import { ConnectManager } from "../turn/connect";
+import { TurnQuota } from "../turn/quota";
+import { TurnRelay } from "../turn/relay";
 import { UsageSampler } from "../usage/sampler";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
@@ -83,6 +88,14 @@ export interface LocalHostOptions {
   bind?: string;
   /** Random per-boot token the shell presents on every request (SingleUserVerifier). */
   token: string;
+  /**
+   * SPIKE (stateless claim-path): route chat turns through the TurnChannel
+   * against a stateless turn runtime instead of ProxyChannel. `storeDir` must
+   * be the SAME tree the runtime's HOUSTON_LOCAL_STORE_DIR points at (the host
+   * reads conversations/settings from it; the runtime hydrates/syncs it).
+   * Dev-only wiring; absent → ProxyChannel, exactly as before.
+   */
+  turn?: { runtimeUrl: string; token: string; storeDir: string };
   /**
    * Redact the token in the `HOUSTON_HOST_LISTENING` startup banner to a short
    * fingerprint instead of printing it in full. Set when the token was supplied
@@ -348,6 +361,24 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         : undefined,
   });
 
+  // SPIKE (stateless claim-path): when opts.turn is set, chat turns go through
+  // the TurnChannel → stateless turn runtime; the ProxyChannel below is still
+  // built (setup-runtime and friends) but the channel registry serves turns.
+  const turnChannel = opts.turn
+    ? new TurnChannel({
+        runtimeUrl: opts.turn.runtimeUrl,
+        turnToken: opts.turn.token,
+        relay: new TurnRelay(bus),
+        quota: new TurnQuota({ maxConcurrent: 2, perHour: 200 }, { bus }),
+        vfs: new FsVfs(opts.turn.storeDir),
+        credentials,
+        connect: new ConnectManager(credentials, bus),
+        refresh: (cred) => refreshCredential(cred),
+        idToken: async () => null,
+        codexModels: ["gpt-5.5", "gpt-5.5-codex", "gpt-5.1"],
+      })
+    : undefined;
+
   const channel = new ProxyChannel({
     launcher,
     proxy: { forward },
@@ -552,7 +583,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     vfs,
     paths,
     events,
-    channels: { local: channel },
+    channels: { local: turnChannel ?? channel },
     capabilities,
     chatHistoryMigrated,
     integrations,
@@ -591,7 +622,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     vfs,
     paths,
     lock: bus,
-    firer: new ChannelRoutineFirer({ local: channel }),
+    firer: new ChannelRoutineFirer({ local: turnChannel ?? channel }),
     events,
   });
   const syncDaemon = opts.storeSync

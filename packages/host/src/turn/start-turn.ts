@@ -73,7 +73,10 @@ export async function dispatchTurn(
             },
             body: JSON.stringify({
               workspaceId: ws.id,
-              agentId: agent.id,
+              // Local agent ids are "<Workspace>/<Agent>" but the runtime's
+              // agentId regex forbids '/' — the prefix already carries the
+              // real path, so this field only needs to be a valid label.
+              agentId: agent.id.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 128),
               conversationId: cid,
               text,
               nonce,
