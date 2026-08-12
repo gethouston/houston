@@ -14,6 +14,7 @@ import {
   writeServedProvidersAt,
 } from "./auth-file";
 import { scrubSettledCaptureAt } from "./capture-settlement";
+import { bindEmptyRefreshServeSync } from "./empty-refresh-guard";
 import { logServeProbeFailure, noteServeProbeOk } from "./serve-log";
 import { reportDeadServedApiKey, servedApiKeyIsDead } from "./served-key-guard";
 import { forgetServedScope, recordServedScope } from "./served-scope";
@@ -145,6 +146,17 @@ export async function syncServedCredentialSafe(tag: string): Promise<void> {
     );
   }
 }
+
+// PRODUCT-1317: the credential store's empty-refresh guard re-serves an
+// expiring access-only entry through THIS single-flighted sync before pi's
+// expiry check can route it into a refresh. Bound rather than imported by the
+// store — a direct import would cycle (serve → storage → credential-store →
+// serve). The safe variant on purpose: a hydration failure must never fail
+// the credential read it precedes (the modify mask still guards), and the
+// safe wrapper already logs the failure.
+bindEmptyRefreshServeSync(() =>
+  syncServedCredentialSafe("empty-refresh-guard"),
+);
 
 type ServeProbe =
   | { id: string; state: "served"; cred: ServedCredential }
