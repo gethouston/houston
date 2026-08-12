@@ -1,3 +1,5 @@
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { Storage } from "@google-cloud/storage";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 
@@ -21,6 +23,9 @@ export class GcsStore implements ObjectStore {
   }
 
   async download(key: string, destFile: string): Promise<void> {
+    // Parity with LocalDirStore: the ObjectStore contract expects download to
+    // materialize parent directories; GCS's file.download() does not.
+    await mkdir(dirname(destFile), { recursive: true });
     await this.bucket.file(key).download({ destination: destFile });
   }
 
