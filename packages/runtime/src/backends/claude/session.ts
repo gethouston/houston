@@ -27,6 +27,13 @@ export interface ClaudeSessionDeps {
   /** Initial SDK model string. */
   model: string;
   thinkingLevel?: ThinkingLevel;
+  /**
+   * Digest of the OAuth access token in the subprocess env (the token every
+   * turn on this session runs on) — what a revoked-token report names.
+   * Undefined when the session runs on an api_key or the config-dir
+   * credential, where the report must not fire (PRODUCT-1319).
+   */
+  usedAccessDigest?: string;
 }
 
 const errMessage = (err: unknown): string =>
@@ -125,6 +132,7 @@ export class ClaudeSession implements HarnessSession {
       onContextTokens: (t) => {
         this.contextTokens = t;
       },
+      usedAccessDigest: this.deps.usedAccessDigest,
     });
     let capturedSessionId: string | undefined;
     // True once this turn has surfaced a provider_error (from `translate`), so a
@@ -171,7 +179,12 @@ export class ClaudeSession implements HarnessSession {
       // typed provider_error rather than rethrow, so the turn never dies silently.
       this.emit({
         type: "provider_error",
-        data: classifyText(errMessage(err), this.model, null),
+        data: classifyText(
+          errMessage(err),
+          this.model,
+          null,
+          this.deps.usedAccessDigest,
+        ),
       });
     } finally {
       if (capturedSessionId)

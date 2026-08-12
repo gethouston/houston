@@ -20,10 +20,16 @@ export { normalizeUsage };
 type AssistantMsg = Extract<SDKMessage, { type: "assistant" }>;
 type ResultMsg = Extract<SDKMessage, { type: "result" }>;
 
-/** Callbacks a translator fires for state that is not a wire frame. */
+/** Callbacks + per-session context a translator carries beside the stream. */
 export interface TranslatorCallbacks {
   /** Latest observed context fill (from usage frames + compact boundaries). */
   onContextTokens(tokens: number): void;
+  /**
+   * Digest of the OAuth access token the SDK subprocess authenticates with —
+   * threaded into every error classification so a revoked-token report names
+   * the token this turn actually ran on (PRODUCT-1319).
+   */
+  usedAccessDigest?: string;
 }
 
 /**
@@ -202,6 +208,7 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
           message: text || `Claude error: ${msg.error}`,
           model: msg.message?.model ?? null,
           retryAfterSeconds: lastRateLimitRetry,
+          usedAccessDigest: cb.usedAccessDigest,
         }),
       },
     ];
@@ -228,7 +235,7 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
           : null;
       out.push({
         type: "provider_error",
-        data: classifyText(message, null, status),
+        data: classifyText(message, null, status, cb.usedAccessDigest),
       });
     }
     return out;

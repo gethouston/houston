@@ -22,6 +22,10 @@ import {
 import { recordTokenSpend } from "../ai/usage/ledger";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
+import {
+  newUsedTokenCapture,
+  runWithUsedTokenCapture,
+} from "../auth/used-token";
 import { config } from "../config";
 import {
   appendAssistantMessage,
@@ -244,6 +248,14 @@ export async function execTurn(
   const attributedProvider = (fallback: string) =>
     turnProvider ??
     (pin?.provider ? canonicalPinProvider(pin.provider) : fallback);
+  /**
+   * WHICH access token this turn's provider requests ran on, recorded by the
+   * credential store at pi's request-time read (auth/used-token.ts,
+   * PRODUCT-1319). Held OUTSIDE the prompt's async subtree so the catch — which
+   * runs after that subtree unwinds — can still name the failed token when it
+   * reports a revocation. Fresh per turn: the fresh instance is the reset.
+   */
+  const usedTokens = newUsedTokenCapture();
   try {
     // Resolve the model for THIS turn from current settings (a routine's
     // provider/model pin wins, else the workspace's active provider/model).
@@ -474,7 +486,12 @@ export async function execTurn(
               { provider: model.provider, model: model.id },
               () =>
                 runWithInteractionCapture(interaction, () =>
-                  conv.session.prompt(promptText),
+                  // The used-token capture spans the prompt so the credential
+                  // store's request-time reads record into THIS turn's holder
+                  // (auth/used-token.ts, PRODUCT-1319).
+                  runWithUsedTokenCapture(usedTokens, () =>
+                    conv.session.prompt(promptText),
+                  ),
                 ),
             ),
           ),
@@ -679,7 +696,11 @@ export async function execTurn(
     ) {
       noteAuthFailure(canonicalPinProvider(thrown.provider));
       // A REVOKED served token is invisible to the control plane (HOU-952).
-      reportRevokedServedToken(thrown);
+      // Named by the token the turn's requests actually ran on; a throw
+      // BEFORE any request read a credential (pi's prompt-time guard, a bad
+      // pin) recorded nothing, and the reporter then skips — the turn ran on
+      // no served token, so there is nothing safe to delete (PRODUCT-1319).
+      reportRevokedServedToken(thrown, usedTokens.digestFor(thrown.provider));
     }
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
     appendAssistantMessage(id, assistantText, {

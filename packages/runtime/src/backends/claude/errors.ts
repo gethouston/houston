@@ -22,6 +22,15 @@ export interface SdkErrorContext {
   status?: number | null;
   /** Seconds until a rate limit resets, from a `rate_limit_event` when one arrived. */
   retryAfterSeconds?: number | null;
+  /**
+   * Digest of the OAuth access token the SDK subprocess authenticates with,
+   * captured at spawn preparation (backend.ts → read-token.ts). The
+   * revoked-token report names THIS token — never a fresh auth.json read,
+   * which a re-serve between the 401 and the report may have replaced
+   * (PRODUCT-1319). Undefined = the turn ran on an api_key or the config-dir
+   * credential, and the reporter skips.
+   */
+  usedAccessDigest?: string;
 }
 
 /**
@@ -64,10 +73,10 @@ export function mapSdkError(
     if (mapped.kind === "unauthenticated") {
       noteAuthFailure(mapped.provider);
       // A REVOKED served token is invisible to the control plane (HOU-952).
-      reportRevokedServedToken(mapped);
+      reportRevokedServedToken(mapped, ctx.usedAccessDigest);
     }
   }
-  return mapped ?? classifyText(message, model, status);
+  return mapped ?? classifyText(message, model, status, ctx.usedAccessDigest);
 }
 
 /** The enum-determined mappings; null falls through to the text classifier. */
@@ -131,11 +140,16 @@ function mapSdkEnum(
   }
 }
 
-/** Classify raw/untyped failure text (thrown errors, result-error subtypes). */
+/**
+ * Classify raw/untyped failure text (thrown errors, result-error subtypes).
+ * `usedAccessDigest` names the spawn-env token for the revoked-token report
+ * (see `SdkErrorContext.usedAccessDigest`).
+ */
 export function classifyText(
   message: string,
   model: string | null,
   status: number | null,
+  usedAccessDigest?: string,
 ): ProviderError {
   const classified = classifyProviderError({
     provider: PROVIDER,
@@ -152,7 +166,7 @@ export function classifyText(
     // pi/wire.ts do, or a revocation surfacing on this seam never heals
     // centrally and the workspace keeps serving the dead token
     // (PRODUCT-1307). The reporter's own gates keep this safe.
-    reportRevokedServedToken(classified);
+    reportRevokedServedToken(classified, usedAccessDigest);
   }
   return classified;
 }

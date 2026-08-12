@@ -1,3 +1,4 @@
+import { accessDigest } from "@houston/protocol/access-digest";
 import { ANTHROPIC_TOKEN_PREFIXES } from "../../auth/anthropic-setup-token";
 import type { HoustonAuthStore } from "../../auth/credential-store";
 import type { ClaudeToken } from "./backend";
@@ -83,7 +84,14 @@ export function readAnthropicToken(
       );
       return undefined;
     }
-    return classify(access);
+    const token = classify(access);
+    if (!token) return undefined;
+    // Capture WHICH token the subprocess will run on, digested at spawn
+    // preparation: the revoked-token report must name this token, not
+    // whatever auth.json holds when a turn later fails (PRODUCT-1319).
+    // OAUTH-typed store entries only — mirroring the reporter's oauth gate —
+    // so the api_key branch above stays digest-less by design.
+    return { ...token, accessDigest: accessDigest(access) };
   }
 
   console.warn(
