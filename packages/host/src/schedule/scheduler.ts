@@ -5,6 +5,7 @@ import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { type FireLock, type RoutineFirer, scanAgent } from "./agent-scan";
+import type { ReconcileDeps } from "./reconcile";
 
 export type { FireLock, FiringJob, RoutineFirer } from "./agent-scan";
 
@@ -22,6 +23,7 @@ export interface SchedulerDeps {
   dedupTtlSec?: number;
   now?: () => Date;
   newId?: () => string;
+  replyReader?: ReconcileDeps["replyReader"];
 }
 
 /**

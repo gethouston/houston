@@ -104,6 +104,84 @@ test("silent: suppress_when_silent + ROUTINE_OK → run silent, no activity", as
   ).toHaveLength(0);
 });
 
+test("configured dual-write reconcile reads reply-after instead of the transcript file", async () => {
+  const env = await setup(routine());
+  const convKey = conversationKey(
+    prefixFor(env.ws as never, env.agent as never),
+    env.run.session_key,
+  );
+  const originalRead = env.vfs.readText.bind(env.vfs);
+  env.vfs.readText = async (key: string) => {
+    if (key === convKey) throw new Error("file transcript must not be read");
+    return originalRead(key);
+  };
+  const calls: unknown[] = [];
+
+  await reconcileAgentRuns(
+    {
+      ...deps(env.vfs, NOW),
+      replyReader: {
+        async replyAfter(conversationId, sinceMs) {
+          calls.push({ conversationId, sinceMs });
+          return {
+            role: "assistant",
+            content: "remote reply",
+            ts: STARTED.getTime() + 1000,
+          };
+        },
+      },
+    },
+    env.ws,
+    env.agent,
+  );
+
+  expect(calls).toEqual([
+    { conversationId: env.run.session_key, sinceMs: STARTED.getTime() },
+  ]);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect(items[0]).toMatchObject({
+    status: "surfaced",
+    summary: "remote reply",
+  });
+});
+
+test("a failed reply-after shadow lookup falls back to the authoritative file", async () => {
+  const env = await setup(routine());
+  await seedReply(
+    env.vfs,
+    env.ws,
+    env.agent,
+    env.run.session_key,
+    "file reply",
+    STARTED.getTime() + 1000,
+  );
+
+  await reconcileAgentRuns(
+    {
+      ...deps(env.vfs, NOW),
+      replyReader: {
+        async replyAfter() {
+          throw new Error("gateway unavailable");
+        },
+      },
+    },
+    env.ws,
+    env.agent,
+  );
+
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect(items[0]).toMatchObject({
+    status: "surfaced",
+    summary: "file reply",
+  });
+});
+
 test("surfaced: a real finding → run surfaced + a needs_you board activity linked to the run", async () => {
   const r = routine({ suppress_when_silent: true, name: "Deploy watch" });
   const env = await setup(r);

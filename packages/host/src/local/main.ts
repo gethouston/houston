@@ -46,6 +46,8 @@ import { runtimeCommand } from "./runtime-command";
  *                             custom-integration OAuth callback (PRODUCT-1172)
  *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
  *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
+ *   HOUSTON_TRANSCRIPT_DUAL_WRITE=1  file-first transcript/doc DB shadow
+ *   HOUSTON_TURN_LOG=1        relay-frame batches to managed turnlog ingest
  */
 
 // Crash reporting. Dormant without SENTRY_DSN; a DSN in a source run needs the
@@ -168,6 +170,13 @@ const host = buildLocalHost({
   // Active-time reporting rides the same managed-pod gateway quadruple: the
   // env being present IS the switch (desktop/self-host never set it).
   usageReporting: remoteGateway,
+  durableTurns: managedStore?.podGateway
+    ? {
+        gateway: managedStore.podGateway,
+        transcriptDualWrite: process.env.HOUSTON_TRANSCRIPT_DUAL_WRITE === "1",
+        turnLog: process.env.HOUSTON_TURN_LOG === "1",
+      }
+    : undefined,
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
   passive: process.env.HOUSTON_PASSIVE === "1",

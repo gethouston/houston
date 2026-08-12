@@ -13,32 +13,128 @@ import {
   getHistoryAt,
   type HistoryWindow,
   listConversationsAt,
-  renameConversationAt,
+  renameConversationMutationAt,
   type UserMessageMeta,
 } from "./conversation-file";
 import {
   consumeSessionReplayAt,
-  truncateConversationAt,
+  truncateConversationMutationAt,
 } from "./conversation-truncate";
+import {
+  snapshotConversation,
+  type TranscriptShadow,
+  TranscriptShadowQueue,
+} from "./transcript-shadow";
+import { SandboxTranscriptShadowTransport } from "./transcript-shadow-http";
 
-/**
- * Config-bound conversation store for the long-lived server: one JSON file per
- * conversation under dataDir/conversations/. This is the durable, UI-facing
- * transcript and the source of truth for history + listing — intentionally
- * decoupled from pi's internal session format so the datastore can be swapped
- * later. The pure file logic lives in conversation-file.ts (shared with the
- * per-turn cloud runtime, which binds it to a hydrated tmpdir instead).
- */
+export function createConversationStore(
+  dir: string,
+  shadow?: TranscriptShadow,
+) {
+  mkdirSync(dir, { recursive: true });
+  const notify = (
+    operation: () => Parameters<TranscriptShadow["enqueue"]>[0],
+  ) => {
+    try {
+      if (shadow) shadow.enqueue(operation());
+    } catch (error) {
+      console.debug("[transcript-shadow] enqueue failed", error);
+    }
+  };
+
+  return {
+    appendUserMessage(id: string, content: string, meta?: UserMessageMeta) {
+      const result = appendUserMessageAt(dir, id, content, meta);
+      notify(() => {
+        const conversation = snapshotConversation(result.conversation);
+        const turnId = result.message.turnId;
+        const message = conversation.messages.at(-1) ?? result.message;
+        return turnId
+          ? {
+              kind: "user",
+              conversationId: id,
+              turnId,
+              message,
+              expectedCount: result.expectedCount,
+              needsSessionReplay: result.needsSessionReplay,
+              conversation,
+            }
+          : { kind: "repair", conversationId: id, conversation };
+      });
+    },
+    appendAssistantMessage(
+      id: string,
+      content: string,
+      meta?: AssistantMessageMeta,
+    ) {
+      const result = appendAssistantMessageAt(dir, id, content, meta);
+      if (!result) return;
+      notify(() => {
+        const conversation = snapshotConversation(result.conversation);
+        const turnId = result.message.turnId;
+        const message = conversation.messages.at(-1) ?? result.message;
+        return turnId
+          ? {
+              kind: "assistant",
+              conversationId: id,
+              turnId,
+              message,
+              conversation,
+            }
+          : { kind: "repair", conversationId: id, conversation };
+      });
+    },
+    getHistory: (id: string, window?: HistoryWindow) =>
+      getHistoryAt(dir, id, window),
+    listConversations: () => listConversationsAt(dir),
+    renameConversation(id: string, title: string): boolean {
+      const result = renameConversationMutationAt(dir, id, title);
+      if (!result) return false;
+      notify(() => ({
+        kind: "rename",
+        conversationId: id,
+        conversation: snapshotConversation(result),
+      }));
+      return true;
+    },
+    deleteConversation(id: string): boolean {
+      const deleted = deleteConversationAt(dir, id);
+      if (deleted) notify(() => ({ kind: "delete", conversationId: id }));
+      return deleted;
+    },
+    truncateConversation(id: string, turnId: string) {
+      const result = truncateConversationMutationAt(dir, id, turnId);
+      if (!result) return null;
+      notify(() => ({
+        kind: "truncate",
+        conversationId: id,
+        turnId,
+        conversation: snapshotConversation(result.conversation),
+      }));
+      return { removed: result.removed };
+    },
+    consumeSessionReplay: (id: string) => consumeSessionReplayAt(dir, id),
+  };
+}
 
 const dir = join(config.dataDir, "conversations");
-mkdirSync(dir, { recursive: true });
+const shadow =
+  config.transcriptDualWrite && config.controlPlaneUrl && config.sandboxToken
+    ? new TranscriptShadowQueue(
+        new SandboxTranscriptShadowTransport(
+          config.controlPlaneUrl,
+          config.sandboxToken,
+        ),
+      )
+    : undefined;
+const store = createConversationStore(dir, shadow);
 
 export function appendUserMessage(
   id: string,
   content: string,
   meta?: UserMessageMeta,
 ) {
-  appendUserMessageAt(dir, id, content, meta);
+  store.appendUserMessage(id, content, meta);
 }
 
 export function appendAssistantMessage(
@@ -46,15 +142,9 @@ export function appendAssistantMessage(
   content: string,
   meta?: AssistantMessageMeta,
 ) {
-  appendAssistantMessageAt(dir, id, content, meta);
+  store.appendAssistantMessage(id, content, meta);
 }
 
-/**
- * Append the durable stop marker: an empty assistant message flagged
- * `stopped`, which retires a pending interaction exactly the way a real Stop
- * does — the SDK renders it as the "Stopped by user" system line and a history
- * reload settles the turn as stopped instead of re-deriving a clean `done`.
- */
 export function markConversationStopped(id: string): void {
   appendAssistantMessage(id, "", { stopped: true });
 }
@@ -63,34 +153,14 @@ export function getHistory(
   id: string,
   window?: HistoryWindow,
 ): ConversationHistory | null {
-  return getHistoryAt(dir, id, window);
+  return store.getHistory(id, window);
 }
 
 export function listConversations(): ConversationSummary[] {
-  return listConversationsAt(dir);
+  return store.listConversations();
 }
 
-export function renameConversation(id: string, title: string): boolean {
-  return renameConversationAt(dir, id, title);
-}
-
-export function deleteConversation(id: string): boolean {
-  return deleteConversationAt(dir, id);
-}
-
-/**
- * Cut the transcript at a user turn (edit-and-resend, PRODUCT-1217). File
- * write only — callers go through session/truncate-turn.ts, which pairs it
- * with the session/bus invalidation.
- */
-export function truncateConversation(
-  id: string,
-  turnId: string,
-): { removed: number } | null {
-  return truncateConversationAt(dir, id, turnId);
-}
-
-/** One-shot replay marker read (see conversation-truncate.ts). */
-export function consumeSessionReplay(id: string): boolean {
-  return consumeSessionReplayAt(dir, id);
-}
+export const renameConversation = store.renameConversation;
+export const deleteConversation = store.deleteConversation;
+export const truncateConversation = store.truncateConversation;
+export const consumeSessionReplay = store.consumeSessionReplay;

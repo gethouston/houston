@@ -142,6 +142,8 @@ export function appendUserMessageAt(
     updatedAt: now,
     messages: [],
   };
+  const expectedCount = conv.messages.length;
+  const needsSessionReplay = conv.needsSessionReplay === true;
   // Stamp the author (C5) only when a token identified one — a single-user /
   // local turn omits the field entirely, keeping the stored record
   // byte-identical to today. `turnId` matches the live stream's frames so a
@@ -160,6 +162,12 @@ export function appendUserMessageAt(
   });
   conv.updatedAt = now;
   save(dir, conv);
+  return {
+    conversation: conv,
+    message: conv.messages[conv.messages.length - 1] as ChatMessage,
+    expectedCount,
+    needsSessionReplay,
+  };
 }
 
 export function appendAssistantMessageAt(
@@ -187,6 +195,23 @@ export function appendAssistantMessageAt(
   });
   conv.updatedAt = Date.now();
   save(dir, conv);
+  return {
+    conversation: conv,
+    message: conv.messages[conv.messages.length - 1] as ChatMessage,
+  };
+}
+
+export function renameConversationMutationAt(
+  dir: string,
+  id: string,
+  title: string,
+): StoredConversation | null {
+  const conv = loadConversation(dir, id);
+  if (!conv) return null;
+  conv.title = title;
+  conv.updatedAt = Date.now();
+  save(dir, conv);
+  return conv;
 }
 
 export function renameConversationAt(
@@ -194,12 +219,7 @@ export function renameConversationAt(
   id: string,
   title: string,
 ): boolean {
-  const conv = loadConversation(dir, id);
-  if (!conv) return false;
-  conv.title = title;
-  conv.updatedAt = Date.now();
-  save(dir, conv);
-  return true;
+  return renameConversationMutationAt(dir, id, title) !== null;
 }
 
 export function deleteConversationAt(dir: string, id: string): boolean {

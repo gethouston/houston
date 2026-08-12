@@ -65,7 +65,9 @@ import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSharedSkills } from "./routes/shared-skills";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import { handleSandboxSkills } from "./routes/skills-sandbox";
+import { handleSandboxTranscripts } from "./routes/transcripts-sandbox";
 import { handleTriggerEvents } from "./routes/trigger-events";
+import type { TranscriptShadow } from "./transcripts/http-shadow";
 import type { TriggerEventLock } from "./triggers/fire";
 import type { Vfs } from "./vfs";
 
@@ -182,6 +184,8 @@ export interface ControlPlaneDeps {
    * with a turn bus.
    */
   triggerLock?: TriggerEventLock;
+  /** File-authoritative transcript writes mirrored through the sandbox facade. */
+  transcriptShadow?: TranscriptShadow;
   /**
    * Whether this deployment can fire event-driven routines (a trigger backend —
    * a Composio project key + a public webhook URL — exists). True on Houston
@@ -313,6 +317,8 @@ async function handle(
   // find_skills / install_skill tools call this to answer "which skill should
   // I use for X?" and to install the answer into its own skills tree.
   if (await handleSandboxSkills(deps, method, path, url, req, res)) return;
+  // Runtime transcript shadow facade (HMAC sandbox token → pod-auth gateway).
+  if (await handleSandboxTranscripts(deps, method, path, url, req, res)) return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);

@@ -66,6 +66,14 @@ export class ProxyChannel implements RuntimeChannel {
       forwardActingHeader: boolean;
       /** Managed pod shared-cache freshness gate, invoked only for turn starts. */
       beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
+      /** Detached standing-runtime SSE capture for durable turnlog ingest. */
+      turnLogCapture?: {
+        capture(
+          endpoint: RuntimeEndpoint,
+          agentId: string,
+          conversationId: string,
+        ): void;
+      };
       /** Injectable for tests; defaults to the process-wide ledger. */
       revocations?: RevocationTombstones;
     },
@@ -112,7 +120,19 @@ export class ProxyChannel implements RuntimeChannel {
     if (!body && method !== "GET" && method !== "HEAD") {
       body = await readBody(req, MAX_JSON_BYTES);
     }
-    if (method === "POST" && /^conversations\/[^/]+\/messages$/.test(rest)) {
+    const turnStart = rest.match(/^conversations\/([^/]+)\/messages$/);
+    if (method === "POST" && turnStart) {
+      try {
+        const conversationId = decodeURIComponent(turnStart[1] ?? "");
+        this.opts.turnLogCapture?.capture(
+          endpoint,
+          ctx.agent.id,
+          conversationId,
+        );
+      } catch (error) {
+        // Shadow-only: a malformed id or capture setup must never affect send.
+        console.debug("[turnlog] standing capture enqueue failed", error);
+      }
       await this.opts.beforeTurn?.(ctx.agent);
     }
     const params = new URLSearchParams(url.search);
@@ -168,6 +188,11 @@ export class ProxyChannel implements RuntimeChannel {
     // an errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     await this.opts.beforeTurn?.(ctx.agent);
+    try {
+      this.opts.turnLogCapture?.capture(endpoint, ctx.agent.id, conversationId);
+    } catch (error) {
+      console.debug("[turnlog] standing routine capture enqueue failed", error);
+    }
     const res = await fetch(
       `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
       {

@@ -5,7 +5,7 @@ import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
-import { reconcileAgentRuns } from "./reconcile";
+import { type ReconcileDeps, reconcileAgentRuns } from "./reconcile";
 import { fireRoutineRun, RoutineBusyError } from "./run";
 
 /** A due routine to run, with its resolved conversation + run id. */
@@ -43,6 +43,7 @@ export interface AgentScanDeps {
   newId: () => string;
   /** Dedup-lock TTL (s); must exceed the scan interval. */
   dedupTtlSec: number;
+  replyReader?: ReconcileDeps["replyReader"];
 }
 
 const reason = (err: unknown) =>
@@ -101,6 +102,7 @@ export async function scanAgent(
         events: deps.events,
         now: deps.now,
         newId: deps.newId,
+        replyReader: deps.replyReader,
       },
       ws,
       agent,

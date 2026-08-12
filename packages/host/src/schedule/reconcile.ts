@@ -61,6 +61,14 @@ export interface ReconcileDeps {
   events?: EventHub;
   now: () => Date;
   newId: () => string;
+  /** Present only while the managed transcript dual-write is enabled. */
+  replyReader?: {
+    /** undefined means deploy skew: retain the authoritative file read. */
+    replyAfter(
+      conversationId: string,
+      sinceMs: number,
+    ): Promise<ChatMessage | null | undefined>;
+  };
 }
 
 /** One sweep's decision for a run, applied only if the row is still `running`. */
@@ -102,11 +110,27 @@ export async function reconcileAgentRuns(
     const routine = routines.find((r) => r.id === run.routine_id);
     if (!routine) continue; // routine deleted; leave the run to the next sweep
 
-    const raw = await deps.vfs.readText(
-      conversationKey(deps.paths, ws, agent, run.session_key),
-    );
-    const conversation = raw ? (JSON.parse(raw) as StoredConversation) : null;
-    const reply = replyAfter(conversation, Date.parse(run.started_at));
+    const startedAtMs = Date.parse(run.started_at);
+    let remoteReply: ChatMessage | null | undefined;
+    try {
+      remoteReply = await deps.replyReader?.replyAfter(
+        run.session_key,
+        startedAtMs,
+      );
+    } catch (error) {
+      console.debug(
+        `[transcript-shadow] reply-after failed for ${run.session_key}; using file`,
+        error,
+      );
+    }
+    let reply = remoteReply;
+    if (remoteReply === undefined) {
+      const raw = await deps.vfs.readText(
+        conversationKey(deps.paths, ws, agent, run.session_key),
+      );
+      const conversation = raw ? (JSON.parse(raw) as StoredConversation) : null;
+      reply = replyAfter(conversation, startedAtMs);
+    }
 
     const timedOut =
       !reply && nowMs - Date.parse(run.started_at) > RUN_TIMEOUT_MS;

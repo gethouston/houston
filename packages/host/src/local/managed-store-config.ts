@@ -69,6 +69,14 @@ export async function managedStoreConfig(
     );
   }
   return {
+    podGateway: {
+      baseUrl: url,
+      orgSlug,
+      agentSlug,
+      podToken: hostToken,
+      bootId,
+      fence,
+    },
     storeSync: {
       store: new HttpObjectStore({
         baseUrl: `${root}/${encodeURIComponent(agentSlug)}`,

@@ -121,6 +121,8 @@ export const config = {
   sandboxToken: env.HOUSTON_SANDBOX_TOKEN || "",
   /** Where the sandbox fetches its workspace's central subscription token. */
   controlPlaneUrl: env.HOUSTON_CONTROL_PLANE_URL || "",
+  /** File-authoritative transcript writes also enqueue the managed DB shadow. */
+  transcriptDualWrite: env.HOUSTON_TRANSCRIPT_DUAL_WRITE === "1",
 
   /**
    * Code execution policy for long-lived runtime:
