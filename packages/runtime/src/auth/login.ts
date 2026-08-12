@@ -150,7 +150,11 @@ function armLoginExpiry(provider: ProviderId, state: LoginState): void {
     // handler sees the abort as a benign unwind and leaves this in place.
     state.status = "error";
     state.error = LOGIN_TIMEOUT_ERROR;
-    console.error(
+    // WARN, not error: an abandoned login is expected user behavior (they
+    // closed the dialog or walked away mid device-code entry) and this expiry
+    // IS the designed teardown — the crash feed keeps WARN as a breadcrumb
+    // instead of minting a Sentry error event per abandonment.
+    console.warn(
       `[oauth:${provider}] abandoned login timed out after ${LOGIN_TIMEOUT_MS / 60_000}min — aborting to free the callback port`,
     );
     state.abort?.abort();

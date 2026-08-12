@@ -271,6 +271,11 @@ test("an abandoned login expires: reports 'Login timed out' and frees the flow f
   // provider machine-wide. The expiry tears the flow down like cancelLogin but
   // records the attempt as a failure so status polls surface it.
   vi.useFakeTimers({ shouldAdvanceTime: true });
+  // Abandonment is expected user behavior, so the expiry must log at WARN
+  // (crash-feed breadcrumb), never ERROR (a Sentry error event per walked-away
+  // sign-in).
+  const warnSpy = vi.spyOn(console, "warn");
+  const errorSpy = vi.spyOn(console, "error");
   try {
     const first = await startLogin("anthropic");
     expect(first.kind).toBe("auth_code");
@@ -283,6 +288,11 @@ test("an abandoned login expires: reports 'Login timed out' and frees the flow f
     expect(row?.login?.status).toBe("error");
     expect(row?.login?.error).toBe(LOGIN_TIMEOUT_ERROR);
 
+    const abandoned = (calls: unknown[][]) =>
+      calls.some((args) => String(args[0]).includes("abandoned login"));
+    expect(abandoned(warnSpy.mock.calls)).toBe(true);
+    expect(abandoned(errorSpy.mock.calls)).toBe(false);
+
     // The paste promise was rejected (flow unwound, port freed), so a retry
     // builds a FRESH login instead of reusing the dead one.
     const second = await startLogin("anthropic");
@@ -290,6 +300,8 @@ test("an abandoned login expires: reports 'Login timed out' and frees the flow f
     cancelLogin("anthropic");
     await vi.advanceTimersByTimeAsync(100);
   } finally {
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
     vi.useRealTimers();
   }
 });
