@@ -18,10 +18,12 @@
  *
  * Like `isMissingSkillError`, the classifier keys on the structural
  * `.status`: the TS host emits bare-string error bodies with no typed
- * `kind`, and a manifest GET has exactly one 404 path — the agent is gone —
- * so the status is unambiguous in context. Applied ONLY to passive
- * roster-driven queries; user-initiated reads/writes keep the default loud
- * surfacing.
+ * `kind`, and an agent-scoped read has exactly one 404 path — the agent is
+ * gone (a missing data file answers 200 with empty content, and a missing
+ * skill goes through `isMissingSkillError` on its own route) — so the status
+ * is unambiguous in context. Applied ONLY to passive reads — the manifest
+ * queries and the `passiveAgentRead` wrappers in `lib/tauri.ts`
+ * (HOUSTON-APP-4W3 family); writes keep the default loud surfacing.
  */
 export function isAgentGoneError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
@@ -79,5 +81,25 @@ export function makeRosterHealer(
       inFlight = false;
     }
     return true;
+  };
+}
+
+/**
+ * The engine-call-layer trigger: classify a failed passive read and, when the
+ * agent is gone, fire the roster heal for the current workspace — the same
+ * classify→heal contract `useStaleRosterHeal` gives the query surfaces, for
+ * reads whose surfaces don't observe the error (HOUSTON-APP-4W3 family).
+ * Factory form so the wiring is unit-testable: `heal` is the ONE shared
+ * healer (`lib/roster-heal.ts`) and `currentWorkspaceId` reads the workspace
+ * store. Anything but an agent-gone error is a no-op — surfacing stays with
+ * the caller.
+ */
+export function makeAgentGoneHealTrigger(
+  heal: (workspaceId: string | null, agentGone: boolean) => Promise<boolean>,
+  currentWorkspaceId: () => string | null,
+): (err: unknown) => void {
+  return (err) => {
+    if (!isAgentGoneError(err)) return;
+    void heal(currentWorkspaceId(), true);
   };
 }
