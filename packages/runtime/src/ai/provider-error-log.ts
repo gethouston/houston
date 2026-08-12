@@ -38,10 +38,15 @@ export function logProviderError(
   ctx: ProviderErrorLogContext = {},
 ): void {
   const verbatim = error.kind === "unknown" ? error.raw_excerpt : error.message;
+  // `cause` rides right after `kind` so the Sentry capture regex
+  // (runtime-client sentry/client.ts PROVIDER_ERROR_LINE) can tag it: it is
+  // what separates "provider revoked the session" from "user pasted a bad key"
+  // when triaging disconnect storms (PRODUCT-1302).
+  const cause = error.kind === "unauthenticated" ? ` cause=${error.cause}` : "";
   const line =
     `[provider_error] provider=${error.provider} model=${ctx.model ?? "?"} ` +
     `status=${ctx.status ?? "?"}${ctx.sdkError ? ` error=${ctx.sdkError}` : ""} ` +
-    `kind=${error.kind} :: ${verbatim}`;
+    `kind=${error.kind}${cause} :: ${verbatim}`;
   // `no_credentials` is the one auth cause that is an expected USER state, not
   // broken custody: the provider was simply never connected (or the user
   // logged out with it still selected). It became loggable when the
