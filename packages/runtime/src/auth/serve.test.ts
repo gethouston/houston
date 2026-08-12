@@ -27,6 +27,7 @@ import {
 } from "./auth-file";
 import { selectExportCredential } from "./export";
 import { syncServedCredential } from "./serve";
+import { resetServeProbeLog } from "./serve-log";
 import { resetDeadKeyReportsForTest } from "./served-key-guard";
 
 /** The host's authoritative "not connected" 404 (see routes/credential.ts). */
@@ -281,6 +282,48 @@ test("an authoritative anthropic disconnect clears the ghost materialized SDK cr
   });
 });
 
+test("a never-manifested ghost credential is still cleared on an authoritative not-connected (PRODUCT-1323)", async () => {
+  // The ghost can be planted while anthropic is OUTSIDE the served manifest —
+  // a setup pod's non-attributed connect whose central row was later removed,
+  // or a self-host row that was verify-rejected before any successful serve.
+  // The old manifest-gated clear never ran for those, and the provenance gate
+  // then blocked the revocation reporter too: PRODUCT-1307 through a
+  // different door. The clear must not depend on serve provenance — the file
+  // itself only ever comes from a central push.
+  await withTempHoustonHome(async () => {
+    const file = writeMaterializedClaudeCredential();
+    const fetchImpl = (async () =>
+      notConnected404()) as unknown as typeof globalThis.fetch;
+    await withServeMode(fetchImpl, async () => {
+      expect(await syncServedCredential()).toEqual([]);
+      expect(existsSync(file)).toBe(false);
+    });
+  });
+});
+
+test("a personal scope never clears the pod-shared ghost, manifest or not", async () => {
+  const actingToken = (sub: string) =>
+    `acting-v1.${Buffer.from(
+      JSON.stringify({ sub, agent: "acme", exp: 9_000_000_000 }),
+    ).toString("base64url")}.sig`;
+  await withTempHoustonHome(async () => {
+    const file = writeMaterializedClaudeCredential();
+    const fetchImpl = (async () =>
+      notConnected404()) as unknown as typeof globalThis.fetch;
+    await withServeMode(fetchImpl, async () => {
+      await runWithActingContext(
+        { actingAs: actingToken("sub-bob") },
+        async () => {
+          expect(await syncServedCredential()).toEqual([]);
+        },
+      );
+      // The shared login dir is TEAM material (HOU-976): a member's own
+      // not-connected verdict must not delete the workspace's file.
+      expect(existsSync(file)).toBe(true);
+    });
+  });
+});
+
 test("a personal scope's anthropic disconnect leaves the pod-shared SDK credential file alone", async () => {
   // The shared login dir is the TEAM's credential (HOU-976): a member whose
   // personal row disconnects must not take the workspace's file with it.
@@ -471,6 +514,133 @@ test("a serve marks the provider in the manifest, so a later sign-out removes it
     expect(readAuth(path)["openai-codex"]).toBeUndefined();
     expect(readServedProvidersAt(manifestPath)).toEqual([]);
   });
+});
+
+// --- Probe retry through the full sync (PRODUCT-1324 / HOUSTON-APP-4YV) ---
+
+/** A served openai-codex answer; other providers 404. `failFirst` codex calls
+ *  throw the undici socket-failure shape before answers begin. */
+function flakyCodexFetch(failCount: () => boolean) {
+  let codexCalls = 0;
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider === "openai-codex") {
+      codexCalls++;
+      if (failCount())
+        throw Object.assign(new TypeError("fetch failed"), {
+          cause: Object.assign(new Error("read ECONNRESET"), {
+            code: "ECONNRESET",
+          }),
+        });
+      return new Response(
+        JSON.stringify({
+          provider: "openai-codex",
+          kind: "oauth",
+          access: "AT-central",
+          expires: 1_900_000_000_000,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  return { fetchImpl, calls: () => codexCalls };
+}
+
+test("one transient probe failure retries, the provider still applies, and no ERROR is logged", async () => {
+  resetServeProbeLog();
+  let failed = false;
+  const { fetchImpl, calls } = flakyCodexFetch(() => {
+    if (failed) return false;
+    failed = true;
+    return true;
+  });
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    await withServeMode(fetchImpl, async () => {
+      // The retry heals the blip: the provider is APPLIED this sync — a
+      // freshly recycled pod's first turn no longer reads a connected
+      // provider as not-connected.
+      expect(await syncServedCredential()).toEqual(["openai-codex"]);
+      expect(calls()).toBe(2);
+      // 4YV-class noise stays out of Sentry: the blip is a WARN breadcrumb.
+      expect(
+        errors.mock.calls.filter((c) =>
+          String(c[0]).includes("[serve] credential"),
+        ),
+      ).toEqual([]);
+      expect(
+        warns.mock.calls.some(
+          (c) =>
+            String(c[0]).includes("retrying once") &&
+            String(c[0]).includes("ECONNRESET"),
+        ),
+      ).toBe(true);
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+  }
+});
+
+test("a probe that fails both attempts logs ONE error with the cause code and removes nothing", async () => {
+  resetServeProbeLog();
+  const { fetchImpl, calls } = flakyCodexFetch(() => true);
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    await withServeMode(fetchImpl, async () => {
+      const path = join(config.dataDir, "auth.json");
+      const manifestPath = join(config.dataDir, "served-providers.json");
+      // An earlier sync applied codex to this pod.
+      writeFileSync(
+        path,
+        JSON.stringify({
+          "openai-codex": {
+            type: "oauth",
+            access: "AT-served",
+            refresh: "",
+            expires: 1,
+          },
+        }),
+      );
+      writeServedProvidersAt(manifestPath, ["openai-codex"]);
+
+      expect(await syncServedCredential()).toEqual([]);
+      expect(calls()).toBe(2); // attempt + one retry, then final
+      // An error verdict removes NOTHING: the applied credential and its
+      // manifest entry survive for the next sync to reconcile.
+      expect(readAuth(path)["openai-codex"]).toEqual({
+        type: "oauth",
+        access: "AT-served",
+        refresh: "",
+        expires: 1,
+      });
+      expect(readServedProvidersAt(manifestPath)).toEqual(["openai-codex"]);
+      // Exactly one ERROR (a persistent failure must still alert), carrying
+      // the nested cause code that `err.message` alone loses.
+      const serveErrors = errors.mock.calls.filter((c) =>
+        String(c[0]).includes("[serve] credential"),
+      );
+      expect(serveErrors.length).toBe(1);
+      expect(String(serveErrors[0]?.[0])).toContain("ECONNRESET");
+
+      // The next sync re-attempts the probe; the identical repeat stays a
+      // WARN (serve-log dedup), not a second Sentry event.
+      expect(await syncServedCredential()).toEqual([]);
+      expect(calls()).toBe(4);
+      expect(
+        errors.mock.calls.filter((c) =>
+          String(c[0]).includes("[serve] credential"),
+        ).length,
+      ).toBe(1);
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+  }
 });
 
 test("selectExportCredential without a provider falls back to the first OAuth credential", () => {

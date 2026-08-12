@@ -200,6 +200,65 @@ test("GET /providers hydrates served credentials before listing providers", asyn
   }
 });
 
+test("DELETE /auth/:provider/api-key rolls back only the exact just-connected key (PRODUCT-1321)", async () => {
+  // The host calls this when its central store rejected a key the POST had
+  // already verified + persisted: the runtime entry must go (a failed connect
+  // leaves no local residue), but ONLY when it still holds that exact key —
+  // a concurrent connect's newer key survives.
+  const prevDataDir = process.env.HOUSTON_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-rollback-route-"));
+  process.env.HOUSTON_DATA_DIR = dataDir;
+
+  try {
+    vi.resetModules();
+    const { handleProviderRoute } = await import("./provider-routes");
+    const { authStorage } = await import("../auth/storage");
+    const { readAuthFile } = await import("../auth/auth-file");
+    authStorage.set("openrouter", { type: "api_key", key: "sk-or-KEEP" });
+
+    const del = async (body: unknown) => {
+      const { res, out } = mockRes();
+      expect(
+        await handleProviderRoute({
+          method: "DELETE",
+          path: "/auth/openrouter/api-key",
+          url: new URL("http://runtime.test/auth/openrouter/api-key"),
+          req: mockPostReq(body),
+          res,
+        }),
+      ).toBe(true);
+      return out;
+    };
+
+    // A different key (a concurrent connect already replaced ours): untouched.
+    let out = await del({ key: "sk-or-OTHER" });
+    expect(out.status).toBe(200);
+    expect(out.body).toEqual({ ok: true, removed: false });
+    expect(readAuthFile(join(dataDir, "auth.json")).openrouter).toEqual({
+      type: "api_key",
+      key: "sk-or-KEEP",
+    });
+
+    // A keyless rollback is a clear 400, never a blind delete.
+    out = await del({});
+    expect(out.status).toBe(400);
+
+    // The exact key: removed from auth.json AND the in-memory store.
+    out = await del({ key: "sk-or-KEEP" });
+    expect(out.status).toBe(200);
+    expect(out.body).toEqual({ ok: true, removed: true });
+    expect(readAuthFile(join(dataDir, "auth.json")).openrouter).toBeUndefined();
+    expect(authStorage.get("openrouter")).toBeUndefined();
+
+    // Idempotent: a second rollback of the same key is a clean no-op.
+    out = await del({ key: "sk-or-KEEP" });
+    expect(out.body).toEqual({ ok: true, removed: false });
+  } finally {
+    restoreEnv("HOUSTON_DATA_DIR", prevDataDir);
+    vi.resetModules();
+  }
+});
+
 test("openai-compatible route round-trips the org marker without returning its key", async () => {
   const prevDataDir = process.env.HOUSTON_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), "houston-shared-route-"));
