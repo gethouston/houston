@@ -97,6 +97,56 @@ export async function dispatchProviderRoutes(
     return true;
   }
 
+  // Desktop connect dialog (static-host mode): the client submits a pasted key
+  // to providers/:name/api-key — under ProxyChannel the standing runtime serves
+  // it, so the turn path must serve it centrally instead. Same store write as
+  // TurnChannel.saveApiKeyCredential; a bad key surfaces on the first turn.
+  const apiKeySubmit = rest.match(/^providers\/([^/]+)\/api-key$/);
+  if (apiKeySubmit && method === "POST") {
+    const pid = decodeURIComponent(apiKeySubmit[1] ?? "");
+    if (!isApiKeyProvider(pid)) {
+      json(res, 400, { error: "unknown API-key provider" });
+      return true;
+    }
+    const body = await readJson(req);
+    const key = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
+    if (!key) {
+      json(res, 400, { error: "missing 'apiKey'" });
+      return true;
+    }
+    await deps.credentials.put({
+      workspaceId: ws.id,
+      provider: pid,
+      accessToken: key,
+      refreshToken: "",
+      expiresAt: 0,
+      kind: "api_key",
+    });
+    json(res, 200, { ok: true, provider: pid });
+    return true;
+  }
+
+  // Connect-flow claim (HOU-695 semantics): make the just-connected provider
+  // active ONLY when the workspace doesn't already resolve to one — a connect
+  // must never move an existing chat off its provider.
+  if (method === "POST" && rest === "settings/claim") {
+    const body = await readJson(req);
+    const pid = typeof body.provider === "string" ? body.provider : "";
+    const { creds, active, settings } = await connectedCloud();
+    if (!active && pid && creds.get(pid)) {
+      settings.activeProvider = pid;
+      await deps.vfs.writeText(
+        `${prefix}/data/settings.json`,
+        JSON.stringify(settings),
+      );
+    }
+    json(res, 200, {
+      ...settings,
+      activeProvider: settings.activeProvider ?? active ?? null,
+    });
+    return true;
+  }
+
   const auth = rest.match(/^auth\/([^/]+)\/(login|logout)$/);
   if (auth && method === "POST") {
     const pid = auth[1] ?? "";
