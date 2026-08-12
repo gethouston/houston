@@ -27,6 +27,7 @@ import { ApiKeyVerifyError, verifyApiKey } from "../auth/verify-api-key";
 import { refreshAnthropicCredential } from "../backends/claude/credential-status";
 import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
 import { claudeLoginConfigDir } from "../backends/claude/paths";
+import { handleApiKeyRollback } from "./api-key-rollback";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
 export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
@@ -122,6 +123,12 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
   if (method === "POST" && apiKeyMatch) {
     await handleApiKey(ctx, apiKeyMatch[1]);
+    return true;
+  }
+  // The host's rollback when its central store rejected a key the POST above
+  // had already verified + persisted (PRODUCT-1321) — see api-key-rollback.ts.
+  if (method === "DELETE" && apiKeyMatch) {
+    await handleApiKeyRollback(ctx, apiKeyMatch[1]);
     return true;
   }
 

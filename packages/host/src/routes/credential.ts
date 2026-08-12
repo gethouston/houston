@@ -78,10 +78,21 @@ export async function handleSandboxCredential(
   // stale access token that OUTRANKS the working keychain credential
   // (CLAUDE_CODE_OAUTH_TOKEN wins inside the SDK), and refreshing it here would
   // make this host a second rotator of a refresh token family the pod already
-  // owns. The marked 404 is the store's authoritative "not served here" answer;
-  // the runtime's provenance manifest keeps it from deleting anything local.
-  if (provider === "anthropic" && !deps.gatewayFronted)
-    return notConnected(res, "anthropic is not served on this deployment");
+  // owns. The marked 404 carries a SECOND marker, `x-houston-not-served-here`:
+  // this is a deployment fact ("anthropic never serves here"), not a verdict
+  // about the central store, and the runtime's ghost cleanup (PRODUCT-1323)
+  // keys on that distinction — without it, every desktop/self-host serve sync
+  // would read this answer as a workspace disconnect and delete the browser
+  // login's legitimate `.credentials.json`.
+  if (provider === "anthropic" && !deps.gatewayFronted) {
+    json(
+      res,
+      404,
+      { error: "anthropic is not served on this deployment" },
+      { "x-houston-not-connected": "1", "x-houston-not-served-here": "1" },
+    );
+    return true;
+  }
   // WHOSE credential this serve is for (HOU-976). The gateway mints the header;
   // absent (desktop, self-host, every pre-HOU-976 pod) means the single shared
   // scope, so the whole path below is byte-identical to before.

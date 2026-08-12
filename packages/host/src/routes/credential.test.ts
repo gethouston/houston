@@ -558,6 +558,21 @@ test("anthropic is NOT served off the managed cloud, even when stored", async ()
   expect(await call(credentials, "anthropic", r)).toBe(true);
   expect(r.out.status).toBe(404);
   expect(r.out.headers?.["x-houston-not-connected"]).toBe("1");
+  // The deployment-refusal marker: without it the runtime's ghost cleanup
+  // (PRODUCT-1323) would read this answer as a workspace disconnect and delete
+  // the browser login's legitimate `.credentials.json` on every sync.
+  expect(r.out.headers?.["x-houston-not-served-here"]).toBe("1");
+});
+
+test("a real not-connected 404 carries no not-served-here marker", async () => {
+  // The runtime must be able to tell "this deployment never serves anthropic"
+  // (leave local files alone) from "the workspace disconnected" (clear the
+  // ghost) — only the deployment refusal carries the second marker.
+  const credentials = new MemoryCredentialStore();
+  const r = mockRes();
+  expect(await call(credentials, "openai-codex", r)).toBe(true);
+  expect(r.out.status).toBe(404);
+  expect(r.out.headers?.["x-houston-not-served-here"]).toBeUndefined();
 });
 
 test("anthropic serves access-only on a gateway-fronted host", async () => {
