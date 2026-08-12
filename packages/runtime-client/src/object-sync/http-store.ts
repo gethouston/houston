@@ -121,10 +121,14 @@ export class HttpObjectStore implements ObjectStore {
     if (!metadata) {
       throw new Error(`object store PUT ${key} returned a malformed body`);
     }
+    // "0" from the header means the backend has no generations (dir) — the
+    // same normalization parseObjectManifest applies to the manifest body.
+    const headerGeneration = res.headers.get("X-Houston-Generation");
     const generation =
       metadata.generation ??
-      res.headers.get("X-Houston-Generation") ??
-      undefined;
+      (headerGeneration && headerGeneration !== "0"
+        ? headerGeneration
+        : undefined);
     return generation === undefined ? undefined : { generation };
   }
 

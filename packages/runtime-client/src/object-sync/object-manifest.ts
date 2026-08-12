@@ -54,9 +54,14 @@ export function normalizeObjectMetadata(value: ObjectMetadata): ObjectMetadata {
   const { gen: wireGeneration, ...metadata } = value as ObjectMetadata & {
     gen?: unknown;
   };
-  const generation =
+  const raw =
     typeof wireGeneration === "string" || typeof wireGeneration === "number"
       ? String(wireGeneration)
       : value.generation;
+  // Generation 0 means "the backend has no generations" (GCS never mints 0;
+  // 0 is only the DoesNotExist precondition). Treating it as real would flip
+  // syncBack into conditional mode against a store that 501s every guarded
+  // write — found by the cross-repo e2e against the dir blob backend.
+  const generation = raw === undefined || raw === "0" ? undefined : raw;
   return generation === undefined ? metadata : { ...metadata, generation };
 }
