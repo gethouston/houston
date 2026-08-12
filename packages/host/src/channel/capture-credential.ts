@@ -22,6 +22,13 @@ type ExportedCredential = {
  * three would capture one member's credential into another's row. Undefined (the
  * desktop, self-host, every pre-HOU-976 caller) is the single shared scope,
  * byte-identical to before.
+ *
+ * Idempotent settlement (PRODUCT-1318): the two halves (central PUT, runtime
+ * scrub) can each be replayed safely, so a retry of the WHOLE capture after an
+ * ambiguous response converges instead of erroring or double-writing — a
+ * post-scrub replay finds nothing exportable and settles against the central
+ * store; a post-PUT/pre-scrub replay re-PUTs the same family and re-attempts
+ * the scrub.
  */
 export async function captureRuntimeCredential(args: {
   endpoint: RuntimeEndpoint;
@@ -30,6 +37,17 @@ export async function captureRuntimeCredential(args: {
   provider?: string;
   requireRefresh?: boolean;
   actingAs?: string;
+  /**
+   * Fill-only central write, for AUTOMATIC re-pushes (the serve healer). The
+   * gateway's credential PUT doubles as the user's "I reconnected" signal: a
+   * plain PUT clears the revocation tombstone guarding a provider-revoked
+   * family (cloud #230). An automatic re-push of a pod's leftover copy must
+   * never do that — `ifAbsent` rides to the store as the maintenance contract
+   * (`x-houston-if-absent`), which fills a missing row without clobbering a
+   * rotated refresh token or resurrecting a tombstoned one. A real
+   * user-initiated (re)connect omits it and overwrites.
+   */
+  ifAbsent?: boolean;
 }): Promise<CaptureResult> {
   const {
     endpoint,
@@ -38,6 +56,7 @@ export async function captureRuntimeCredential(args: {
     provider,
     requireRefresh,
     actingAs,
+    ifAbsent,
   } = args;
   const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
   const exported = await fetch(`${endpoint.baseUrl}/auth/export${query}`, {
@@ -87,7 +106,7 @@ export async function captureRuntimeCredential(args: {
         refreshToken: "",
         expiresAt: Number.MAX_SAFE_INTEGER,
       },
-      { actingAs },
+      { actingAs, ifAbsent },
     );
     return { ok: true, provider: credential.provider };
   }
@@ -97,6 +116,15 @@ export async function captureRuntimeCredential(args: {
     !credential.refresh ||
     typeof credential.expires !== "number"
   ) {
+    // Nothing exportable — EITHER the runtime truly holds no credential, OR a
+    // previous capture already landed and scrubbed it (a scrubbed entry has
+    // refresh="" and exports as {}). A capture retried after an ambiguous
+    // response (the web client's provider-capture-retry) must settle as
+    // success here instead of failing a connect that actually worked; the
+    // central store is the arbiter.
+    if (provider && (await settledCentrally(credentials, args))) {
+      return { ok: true, provider };
+    }
     return { ok: false, status: 400, error: "agent is not connected yet" };
   }
   await credentials.put(
@@ -110,21 +138,54 @@ export async function captureRuntimeCredential(args: {
       expiresAt: credential.expires,
       enterpriseUrl: credential.enterpriseUrl,
     },
-    { actingAs },
+    { actingAs, ifAbsent },
   );
   const scrub = await scrubRuntimeRefreshToken(
     `${endpoint.baseUrl}/auth/scrub-refresh`,
     endpoint.token,
+    credential.provider,
     actingAs,
   );
   if (!scrub.ok) {
-    return {
-      ok: false,
-      status: 502,
-      error:
-        "credential stored, but the agent sandbox could not be scrubbed of the refresh token — reconnect to retry",
-      detail: scrub.detail,
-    };
+    // The central PUT landed — the connect SUCCEEDED. Failing the capture here
+    // (the old behavior) made the client replay the entire capture, whose
+    // fresh full PUT clears revocation tombstones, while the refresh-bearing
+    // runtime entry it never fixed silently kept the pod rotating the family
+    // alongside the gateway (two rotators → mutual invalid_grant → org-wide
+    // sign-out). Settle instead: the retries above are exhausted, the leftover
+    // entry itself is the durable memory, and the runtime's next serve sync
+    // finishes the scrub once central serves this same access token
+    // (runtime auth/capture-settlement.ts). Loud, not silent:
+    console.error(
+      `[capture] PRODUCT-1318: captured ${credential.provider} centrally but scrubbing the runtime's refresh token failed after retries — the serve-sync self-heal will finish it${scrub.detail ? ` (${scrub.detail})` : ""}`,
+    );
   }
   return { ok: true, provider: credential.provider };
+}
+
+/**
+ * Whether the central store already holds a credential for the requested
+ * provider on this caller's row — the settlement probe for a replayed capture
+ * that finds nothing left to export. A probe failure is logged and read as
+ * "not settled": the caller then reports the same honest "not connected yet"
+ * it always did.
+ */
+async function settledCentrally(
+  credentials: CredentialStore,
+  args: { workspaceId: string; provider?: string; actingAs?: string },
+): Promise<boolean> {
+  if (!args.provider) return false;
+  try {
+    return (
+      (await credentials.get(args.workspaceId, args.provider, {
+        actingAs: args.actingAs,
+      })) !== null
+    );
+  } catch (err) {
+    console.warn(
+      `[capture] settlement probe for ${args.provider} failed:`,
+      err instanceof Error ? err.message : err,
+    );
+    return false;
+  }
 }

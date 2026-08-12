@@ -94,7 +94,17 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     return true;
   }
   if (method === "POST" && path === "/auth/scrub-refresh") {
-    json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
+    // Provider-scoped (PRODUCT-1320): a whole-file scrub let one provider's
+    // capture erase another's mid-capture refresh token. The host always knows
+    // which provider it just captured, so a scrub without one is a bug.
+    const provider = url.searchParams.get("provider");
+    if (!provider) {
+      json(res, 400, {
+        error: "missing 'provider' (the scrub is per-provider)",
+      });
+      return true;
+    }
+    json(res, 200, { ok: true, scrubbed: scrubRefreshTokens(provider) });
     return true;
   }
   if (method === "POST" && path === "/providers/openai-compatible") {
