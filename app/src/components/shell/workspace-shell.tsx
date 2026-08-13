@@ -6,6 +6,7 @@ import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { LessonRunner } from "../academy/lessons/lesson-runner";
 import { CommandPalette } from "../command-palette";
 import { InAppOnboarding } from "../onboarding/in-app-onboarding";
 import { ExportAgentWizard } from "../portable/export-wizard";
@@ -46,6 +47,7 @@ export function WorkspaceShell({
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
   const inAppOnboardingActive = useUIStore((s) => s.inAppOnboardingActive);
+  const activeLessonId = useUIStore((s) => s.activeLessonId);
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
   );
@@ -138,6 +140,13 @@ export function WorkspaceShell({
         <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
       </div>
       {inAppOnboardingActive && <InAppOnboarding />}
+      {/* The guided setup OWNS the screen while it runs: both surfaces spotlight
+          the real app, so two of them at once would point at two controls and
+          teach neither. Arming the setup clears any armed lesson (`stores/ui`);
+          this is the other direction, a lesson armed while it is already up. */}
+      {!inAppOnboardingActive && activeLessonId !== null && (
+        <LessonRunner key={activeLessonId} lessonId={activeLessonId} />
+      )}
     </DetailPanelProvider>
   );
 }

@@ -80,6 +80,11 @@
       "emailSent": {
         "title": "Confira seu e-mail!",
         "body": "Seu agente acabou de enviar um e-mail de verdade para você. É assim que ele trabalha por você."
+      },
+      "academyReveal": {
+        "title": "Capítulo 1 concluído!",
+        "body": "Você acabou de concluir o primeiro capítulo da Academia Houston e ganhou {{points}} de experiência.",
+        "cta": "Ir para a Academia"
       }
     },
     "skipStep": "Pular etapa",

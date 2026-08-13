@@ -20,6 +20,7 @@ const NAV = read("../src/components/shell/sidebar-nav-sections.tsx");
 const HOOK = read("../src/components/shell/use-sidebar-nav-items.tsx");
 const FOOTER = read("../src/components/shell/sidebar-footer.tsx");
 const HELP = read("../src/components/shell/sidebar-help-menu.tsx");
+const GUIDED_SETUP = read("../src/hooks/use-run-guided-setup.ts");
 const VIEWS = read("../src/lib/top-level-views.ts");
 
 /** The source of one nav section, from its id to the next section's. */
@@ -41,13 +42,16 @@ function gatedRuns(source: string): [string, string][] {
 describe("the rail's unlabelled run", () => {
   const primary = navSection("primary");
 
-  it("is Inbox, About me, Agent store, in that order and nothing else", () => {
-    const order = ["INBOX_VIEW_ID", "ABOUT_ME_VIEW_ID", "STORE_VIEW_ID"].map(
-      (id) => primary.indexOf(`id: ${id},`),
-    );
+  it("is Inbox, About me, Academy, Agent store, in that order and nothing else", () => {
+    const order = [
+      "INBOX_VIEW_ID",
+      "ABOUT_ME_VIEW_ID",
+      "ACADEMY_VIEW_ID",
+      "STORE_VIEW_ID",
+    ].map((id) => primary.indexOf(`id: ${id},`));
     assert.ok(
       order.every((i) => i >= 0),
-      "all three rows are declared",
+      "all four rows are declared",
     );
     assert.deepEqual(
       order,
@@ -55,8 +59,8 @@ describe("the rail's unlabelled run", () => {
     );
     assert.equal(
       primary.match(/\n {10}id: /g)?.length,
-      3,
-      "the run leads the rail with exactly three rows",
+      4,
+      "the run leads the rail with exactly four rows",
     );
   });
 
@@ -67,6 +71,30 @@ describe("the rail's unlabelled run", () => {
     assert.ok(primary.includes("onClick: () => setViewMode(ABOUT_ME_VIEW_ID)"));
     assert.ok(primary.includes('label: t("shell:sidebar.aboutMe")'));
     assert.ok(VIEWS.includes("ABOUT_ME_VIEW_ID"), "a real top-level view");
+  });
+
+  it("gives the Academy a real destination, ungated, under About me", () => {
+    // Learning the product ships in every deployment, so the row sits in the
+    // UNGATED lead run beside About me rather than behind a band gate, and it
+    // navigates like every other row instead of arming something.
+    assert.ok(primary.includes("onClick: () => setViewMode(ACADEMY_VIEW_ID)"));
+    assert.ok(primary.includes('label: t("shell:sidebar.academy")'));
+    assert.ok(VIEWS.includes("ACADEMY_VIEW_ID"), "a real top-level view");
+    assert.ok(
+      primary.indexOf("id: ABOUT_ME_VIEW_ID,") <
+        primary.indexOf("id: ACADEMY_VIEW_ID,"),
+      "it follows About me",
+    );
+  });
+
+  it("states unread mentions on the Inbox row, and nowhere else in the run", () => {
+    // The trailing slot is where a nav row states live status, and the Inbox
+    // count is the ONE thing stated there: built from an already-resolved
+    // value, so the nav model stays a pure build and the hook that feeds it
+    // stays the one place a rail row subscribes to data.
+    assert.ok(primary.includes("trailing: buildInboxBadge(t, mentionCount)"));
+    assert.equal(primary.match(/trailing:/g)?.length, 1);
+    assert.ok(HOOK.includes("useMentionInbox(agents)"));
   });
 
   it("carries no row that points at no screen", () => {
@@ -182,14 +210,21 @@ describe("the Guide me composition", () => {
   it("goes home BEFORE arming the in-app onboarding", () => {
     // The onboarding operates over the workspace shell, so the store is left
     // first — arming against Settings would overlay the wrong surface.
-    // The composition moved to the footer with the affordance itself.
+    assert.ok(
+      GUIDED_SETUP.indexOf("openHome();") <
+        GUIDED_SETUP.indexOf("setInAppOnboardingActive(true);"),
+    );
+  });
+
+  it("is defined ONCE, and the footer's menu item spends it", () => {
+    // The Academy's setup chapter runs the same guided setup. Two copies of
+    // the arming order is one copy waiting to drift, so the footer holds the
+    // affordance and the hook holds the composition.
     const start = FOOTER.indexOf("onGuideMe={() => {");
     assert.ok(start >= 0, "the footer composes onGuideMe");
-    const body = FOOTER.slice(start);
-    assert.ok(
-      body.indexOf("openHome();") <
-        body.indexOf("setInAppOnboardingActive(true);"),
-    );
+    assert.ok(FOOTER.includes("useRunGuidedSetup()"));
+    assert.ok(FOOTER.slice(start).includes("runGuidedSetup();"));
+    assert.ok(!FOOTER.includes("setInAppOnboardingFirstRun"));
   });
 
   it("keeps the tour's replay anchor on the control that replays it", () => {

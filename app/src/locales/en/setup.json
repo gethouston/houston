@@ -80,6 +80,11 @@
       "emailSent": {
         "title": "Check your inbox!",
         "body": "Your agent just sent you a real email. That's it working for you, for real."
+      },
+      "academyReveal": {
+        "title": "Chapter 1 complete!",
+        "body": "You just finished the first chapter of the Houston Academy and earned {{points}} experience.",
+        "cta": "Visit the Academy"
       }
     },
     "skipStep": "Skip step",

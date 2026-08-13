@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 /**
  * A non-interactive status / info badge for the onboarding + cloud-migration
  * wizard: a hairline-outlined chip (`ht-hairline`, the same Linear-style
- * outline as the AI Hub's `SpecChip`) with a TRANSPARENT fill and muted ink,
+ * outline as `components/spec-chip.tsx`) with a TRANSPARENT fill and muted ink,
  * deliberately distinct from the filled pill BUTTONS around it. It has no
  * `onClick`, no fill, and no hover state, so it never reads or behaves like
  * something to click — it only labels state ("Step 1 of 2", "Beta", a count).

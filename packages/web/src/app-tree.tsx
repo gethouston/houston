@@ -22,6 +22,7 @@ import { QueryPersistenceProvider } from "@houston/app/components/shell/query-pe
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
 import { useLocalePreference } from "@houston/app/hooks/use-locale-preference";
 import { useSession } from "@houston/app/hooks/use-session";
+import { useUsageAccrual } from "@houston/app/hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "@houston/app/identity-keyed-app";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
@@ -182,6 +183,10 @@ function LocaleSyncOnce() {
 // No StrictMode — matches app/src/main.tsx (portal/listener double-mount churn).
 export default function AppTree() {
   useEngineTheme();
+  // The Academy's usage economy, for the whole life of the page — mirrors
+  // `StartupEffects` in app/src/main.tsx. Above every gate and outside
+  // <App/> (which remounts per identity), so one instance pays each event once.
+  useUsageAccrual();
   // Cloud web build (Firebase identity baked in): sign-in is the FIRST screen.
   // The first-run language picker + agreement are desktop/self-host concepts —
   // pre-auth they can't even persist (the gateway 401s preference writes, which

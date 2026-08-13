@@ -1,15 +1,15 @@
 import { Button, cn } from "@houston-ai/core";
-import { MousePointerClick } from "lucide-react";
+import { TutorialDismissButton } from "./tutorial-dismiss-button";
 import {
-  blockerPanels,
   CARD_W,
   placeCard,
   useSpotlightRects,
 } from "./tutorial-spotlight-geometry";
+import { TutorialSpotlightVeil } from "./tutorial-spotlight-veil";
 
 /**
- * The in-app onboarding's interactive spotlight: dims the shell behind the
- * guided tour's blackish scrim but leaves a HOLE over the target that clicks
+ * A tutorial's interactive spotlight: dims the shell behind the lesson's
+ * blackish scrim but leaves a HOLE over the target that clicks
  * pass straight through — the user performs the real action on the real
  * control (game-tutorial style), instead of reading about it on a card.
  *
@@ -23,7 +23,9 @@ import {
  * the anchor renders.
  *
  * All the measuring and placement math lives in
- * {@link import("./tutorial-spotlight-geometry")}; this file is rendering.
+ * {@link import("./tutorial-spotlight-geometry")} and everything painted around
+ * the hole in {@link import("./tutorial-spotlight-veil")}; this file is the
+ * coach card.
  */
 export function TutorialSpotlight({
   selector,
@@ -34,6 +36,8 @@ export function TutorialSpotlight({
   onAsideCta,
   inDialog,
   showCues = true,
+  onDismiss,
+  dismissLabel,
 }: {
   /** Selector of the control the step is about. */
   selector: string;
@@ -56,6 +60,11 @@ export function TutorialSpotlight({
   /** The click cues (ping + cursor). Off for watch-only beats, where there
    *  is nothing to click. */
   showCues?: boolean;
+  /** A way out, when the flow HAS one. Absent for the mandatory setup, which
+   *  then renders no close at all. */
+  onDismiss?: () => void;
+  /** Names the close for a screen reader; the button is icon-only. */
+  dismissLabel?: string;
 }) {
   const { hole, dialogRect, viewport } = useSpotlightRects(selector, inDialog);
   const card = placeCard({
@@ -64,7 +73,6 @@ export function TutorialSpotlight({
     viewport,
     inDialog: inDialog === true,
   });
-  const panels = blockerPanels(hole, viewport);
 
   // Above the z-50 dialog layer for in-dialog steps, else above shell chrome
   // (≤ z-30) but below dialogs/toasts. Both literals, for the Tailwind JIT.
@@ -72,79 +80,18 @@ export function TutorialSpotlight({
 
   return (
     <>
-      {!inDialog &&
-        panels.map((p, i) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed 4-panel geometry, no reordering
-            key={i}
-            aria-hidden
-            className="pointer-events-auto fixed z-40"
-            style={p}
-          />
-        ))}
-      {/* The visual veil: the tour's cutout (ring + giant shadow), or a plain
-          full scrim while the target is off screen. Never intercepts clicks —
-          the hole must stay truly open. In-dialog steps cut around the WHOLE
-          modal instead (rendered above the dialog layer), so the step reads
-          exactly like every other one: dark world, lit surface. */}
-      {inDialog ? (
-        dialogRect && (
-          <div
-            aria-hidden
-            className="ht-tutorial-veil-cutout pointer-events-none fixed z-[60] rounded-2xl transition-[top,left,width,height] duration-200"
-            style={dialogRect}
-          />
-        )
-      ) : hole ? (
-        <div
-          aria-hidden
-          className="ht-tutorial-veil-cutout pointer-events-none fixed z-40 rounded-xl ring-2 ring-white/70 transition-[top,left,width,height] duration-200"
-          style={hole}
-        />
-      ) : (
-        <div
-          aria-hidden
-          className="ht-tutorial-scrim pointer-events-none fixed inset-0 z-40"
-        />
-      )}
-      {/* In-dialog, the steady ring marks the inner target (the veil above
-          rings nothing — it cuts around the modal). */}
-      {inDialog && hole && (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed z-[60] rounded-xl ring-2 ring-white/70 transition-[top,left,width,height] duration-200"
-          style={hole}
-        />
-      )}
-      {/* The click cues: a sonar ping radiating off the ring, and a cursor
-          glyph tapping at the corner — "here, CLICK". Pure decoration. */}
-      {hole && showCues && (
-        <>
-          <div
-            aria-hidden
-            className={cn(
-              "ht-tutorial-ping pointer-events-none fixed rounded-xl ring-2 ring-white/70",
-              z,
-            )}
-            style={hole}
-          />
-          <MousePointerClick
-            aria-hidden
-            className={cn(
-              "ht-tutorial-cursor ht-tutorial-cursor-shadow pointer-events-none fixed h-6 w-6 text-white",
-              z,
-            )}
-            style={{
-              top: hole.top + hole.height - 10,
-              left: hole.left + hole.width - 10,
-            }}
-          />
-        </>
-      )}
+      <TutorialSpotlightVeil
+        hole={hole}
+        dialogRect={dialogRect}
+        viewport={viewport}
+        inDialog={inDialog === true}
+        showCues={showCues}
+        z={z}
+      />
       {/* The guide chip. Non-modal on purpose — the real UI is the interface.
           `pointer-events-auto` is load-bearing: while a Radix modal is open it
           sets `pointer-events: none` on <body>, which would otherwise kill
-          the exit button. */}
+          the close button the chip carries. */}
       <div
         role="dialog"
         aria-label={title}
@@ -154,8 +101,22 @@ export function TutorialSpotlight({
         )}
         style={{ top: card.top, left: card.left, width: CARD_W }}
       >
+        {onDismiss && dismissLabel && (
+          // Tucked into the chip's own compact corner, and the title clears
+          // it below.
+          <TutorialDismissButton
+            label={dismissLabel}
+            onDismiss={onDismiss}
+            className="top-1.5 right-1.5"
+          />
+        )}
         <div className="min-w-0 flex-1 pl-1">
-          <p className="text-[15px] font-medium leading-snug text-balance text-ink">
+          <p
+            className={cn(
+              "text-[15px] font-medium leading-snug text-balance text-ink",
+              onDismiss && dismissLabel && "pr-6",
+            )}
+          >
             {title}
           </p>
           {hint && (

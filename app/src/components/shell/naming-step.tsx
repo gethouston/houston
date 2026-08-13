@@ -15,7 +15,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { localizeCatalogCopy } from "../../agents/catalog-labels";
 import type { AgentDefinition } from "../../lib/types";
-import { tutorialAnchor } from "../onboarding/tutorial-targets.ts";
+import { tutorialAnchor } from "../tutorial";
 
 interface NamingStepProps {
   selectedAgent: AgentDefinition | undefined;

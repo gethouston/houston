@@ -1,7 +1,7 @@
 import { SidebarNavItem } from "@houston-ai/layout";
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { openHome } from "../../lib/home-nav";
+import { useRunGuidedSetup } from "../../hooks/use-run-guided-setup";
 import { SETTINGS_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { SidebarHelpMenu } from "./sidebar-help-menu";
@@ -24,7 +24,9 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  * to be a permanent row in the rail's lead run, the one entry pointing at no
  * screen and therefore the one that could never light. Asking for help is not a
  * destination, so it wears a help control at the foot of the navigation instead
- * of a slot among the destinations.
+ * of a slot among the destinations. What it runs is the shared
+ * {@link useRunGuidedSetup}, the same composition the Academy's setup chapter
+ * spends, so the guided setup can never start two different ways.
  *
  * Settings is the rail's LAST row, with the update checker below it as ambient
  * status rather than a destination. The avatar menu that used to close the rail
@@ -44,9 +46,7 @@ export function SidebarFooter(props: { collapsed: boolean }) {
   const viewMode = useUIStore((s) => s.viewMode);
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
-  const setInAppOnboardingActive = useUIStore(
-    (s) => s.setInAppOnboardingActive,
-  );
+  const runGuidedSetup = useRunGuidedSetup();
   return (
     <div className="flex flex-col">
       <div
@@ -82,16 +82,7 @@ export function SidebarFooter(props: { collapsed: boolean }) {
           }}
           onGuideMe={() => {
             setMobileSidebarOpen(false);
-            /*
-             * "Guide me" (re)starts the in-app onboarding — the guided setup
-             * that runs over the shell. Leave the store BEFORE arming it: the
-             * flow operates over the workspace shell, and `openHome()` is a
-             * synchronous Zustand set like the arming below, so the overlay
-             * mounts against the already-restored shell.
-             */
-            openHome();
-            useUIStore.getState().setInAppOnboardingFirstRun(false);
-            setInAppOnboardingActive(true);
+            runGuidedSetup();
           }}
           onReportProblem={() => {
             // The one bug-report surface, reached from the place a user is

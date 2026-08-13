@@ -19,6 +19,9 @@ import { buildSidebarNavItems } from "./sidebar-nav-sections";
  * Every entry now POINTS AT A SCREEN. The one that never did, "Guide me", left
  * for the footer's help control (`sidebar-help-menu.tsx`), which is why arming
  * the tour is no longer composed here.
+ *
+ * One row carries live state in its trailing slot, and it gets it here rather
+ * than inside the pure nav model: the Inbox's unread mentions.
  */
 export function useSidebarNavItems(
   t: SidebarChromeT,

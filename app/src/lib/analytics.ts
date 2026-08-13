@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+import { notifyAnalytics } from "./analytics-bus";
 import { getInstallId } from "./install-id";
 import { currentPlatformOs } from "./platform";
 import { tauriPreferences } from "./tauri";
@@ -12,6 +13,9 @@ const HOST =
     : "https://us.i.posthog.com";
 const APP_VERSION =
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
+
+export type { AnalyticsListener } from "./analytics-bus";
+export { subscribeAnalytics } from "./analytics-bus";
 
 const ACTIVE_DATE_KEY = "analytics:last_active_date";
 const FIRST_INSTALL_VERSION_KEY = "analytics:first_install_version";
@@ -98,6 +102,17 @@ export type AnalyticsEventName =
   // Carries `step`, `provider`, `model` so skip-rate can be broken down by
   // model — some models send the email but never emit the completion marker.
   | "onboarding_skipped"
+  // Houston Academy: the learning surface was opened (`source` names where
+  // from) and a chapter was cleared (`chapter` is the chapter id). Chapter
+  // completion is awarded once per account, so the event doubles as the
+  // per-chapter completion rate.
+  | "academy_opened"
+  | "academy_chapter_completed"
+  // A lesson inside a chapter was opened and cleared (`lesson` is the lesson
+  // id, `chapter` the one it belongs to) — the finer grain that shows WHERE
+  // inside a chapter people stop reading.
+  | "academy_lesson_started"
+  | "academy_lesson_completed"
   // Activation funnel
   | "workspace_created"
   | "provider_configured"
@@ -248,6 +263,10 @@ type AnalyticsProperty =
   // ONLY to stamp the `onboarding_automation_goal` person property, truncated,
   // which is where the growth team reads goals from.
   | "goal_text"
+  // Academy chapter id (academy_chapter_completed) and lesson id
+  // (academy_lesson_started / academy_lesson_completed)
+  | "chapter"
+  | "lesson"
   // Org membership role (org_member_added / org_role_changed)
   | "role"
   // Client UX timing (perf_span)
@@ -305,6 +324,8 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "goal_provided",
   "missing_steps",
   "source_screen",
+  "chapter",
+  "lesson",
   "role",
   "span",
   "duration_ms",
@@ -525,6 +546,9 @@ export const analytics = {
   },
 
   track: (event: AnalyticsEventName, props?: Props) => {
+    // The app's own listeners hear EVERY tracked event, before and regardless
+    // of PostHog: a local dev build has no key and still earns Academy points.
+    notifyAnalytics(event, props);
     if (!KEY) return;
     try {
       posthog.capture(event, cleanProps(props));

@@ -1,7 +1,7 @@
 /**
- * The closed vocabulary of `data-tutorial-target` anchors the in-app
- * onboarding spotlights — same discipline as the shell's `data-tour-target`
- * set (`../shell/workspace-tour-steps.ts`), but a separate attribute and union
+ * The closed vocabulary of `data-tutorial-target` anchors the tutorial
+ * spotlights point at — same discipline as the shell's `data-tour-target` set
+ * (`../shell/workspace-tour-steps.ts`), but a separate attribute and union
  * on purpose: those name the shell's own durable landmarks (rail rows, the
  * main region, New task), while these are anchors that exist ONLY so a
  * tutorial step has something to point at. A step may spotlight either — the

@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { HoustonLogo } from "../shell/experience-card";
 import { tourSelector } from "../shell/workspace-tour-steps.ts";
-import { OnboardingCenterCard } from "./onboarding-center-card";
-import { TutorialSpotlight } from "./tutorial-spotlight";
-import { tutorialSelector } from "./tutorial-targets.ts";
+import {
+  TutorialCenterCard,
+  TutorialSpotlight,
+  tutorialSelector,
+} from "../tutorial";
 import type { useInAppOnboarding } from "./use-in-app-onboarding";
+import { useNamingPhase } from "./use-naming-phase";
 import { useSetupChecklist } from "./use-setup-checklist";
 
 /**
@@ -27,7 +30,8 @@ export function InAppOnboardingAgentSteps({
   switch (o.step) {
     case "createAgentIntro":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.createAgentIntro.title")}
           body={t("inApp.steps.createAgentIntro.body")}
           cta={t("inApp.steps.createAgentIntro.cta")}
@@ -74,7 +78,8 @@ export function InAppOnboardingAgentSteps({
       );
     case "agentCreated":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.agentCreated.title")}
           body={t("inApp.steps.agentCreated.body")}
           cta={t("inApp.continue")}
@@ -84,7 +89,8 @@ export function InAppOnboardingAgentSteps({
       );
     case "sendMissionIntro":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.sendMissionIntro.title")}
           body={t("inApp.steps.sendMissionIntro.body")}
           cta={t("inApp.steps.sendMissionIntro.cta")}
@@ -150,45 +156,26 @@ export function InAppOnboardingAgentSteps({
       );
     case "emailSent":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.emailSent.title")}
           body={t("inApp.steps.emailSent.body")}
           cta={t("inApp.steps.missionSent.cta")}
-          onNext={o.finish}
+          onNext={o.startAcademyReveal}
           checklist={checklist}
         />
       );
     // missionSent — the free-text finale.
     default:
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.missionSent.title")}
           body={t("inApp.steps.missionSent.body")}
           cta={t("inApp.steps.missionSent.cta")}
-          onNext={o.finish}
+          onNext={o.startAcademyReveal}
           checklist={checklist}
         />
       );
   }
-}
-
-/** Whether the dialog's naming phase is on screen (DOM-polled, same cadence
- *  as the spotlight's own measurer — the dialog's internal step is not in any
- *  store, and the anchor's presence IS the truth). */
-function useNamingPhase(active: boolean): boolean {
-  const [present, setPresent] = useState(false);
-  useEffect(() => {
-    if (!active) {
-      setPresent(false);
-      return;
-    }
-    const check = () =>
-      setPresent(
-        document.querySelector(tutorialSelector("createAgentNaming")) !== null,
-      );
-    check();
-    const id = window.setInterval(check, 300);
-    return () => window.clearInterval(id);
-  }, [active]);
-  return present;
 }

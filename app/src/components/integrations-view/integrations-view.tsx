@@ -11,12 +11,12 @@ import {
   useCustomIntegrationsSurface,
   useIntegrationsGate,
 } from "../integrations";
-import { tutorialAnchor } from "../onboarding/tutorial-targets.ts";
 import {
   PageHeaderTools,
   PageHeaderToolsProvider,
 } from "../shell/page-header/page-header-tools";
 import { PageContainer } from "../shell/page-shell";
+import { tutorialAnchor } from "../tutorial";
 import {
   INTEGRATIONS_HEADER_THRESHOLDS,
   IntegrationsHeader,

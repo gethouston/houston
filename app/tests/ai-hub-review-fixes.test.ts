@@ -204,10 +204,15 @@ describe("AI Hub review fixes (component source contracts)", () => {
   });
 
   it("Finding 4/9: SpecChip is the shared chip primitive, no local HubChip", () => {
+    // The pill outgrew the hub: the Academy states its counts in the same
+    // shape, so the primitive sits at the app's shared level and the hub's
+    // own kit composes it.
+    const chip = read("../src/components/spec-chip.tsx");
+    ok(chip.includes("export function SpecChip"), "SpecChip is the primitive");
     const badges = read("../src/components/ai-hub/hub-badges.tsx");
     ok(
-      badges.includes("export function SpecChip"),
-      "SpecChip is the primitive",
+      badges.includes('import { SpecChip } from "../spec-chip"'),
+      "the hub kit composes the shared chip rather than redeclaring it",
     );
     // `provider-card.tsx` (which once carried the local HubChip) was deleted in
     // the list redesign; the provider detail surface is now `provider-modal`.

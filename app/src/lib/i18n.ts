@@ -11,6 +11,7 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
+import academyEn from "../locales/en/academy.json";
 import agentOnboardingEn from "../locales/en/agent-onboarding.json";
 import agentsEn from "../locales/en/agents.json";
 import aiHubEn from "../locales/en/ai-hub.json";
@@ -34,6 +35,7 @@ import shellEn from "../locales/en/shell.json";
 import skillsEn from "../locales/en/skills.json";
 import storeEn from "../locales/en/store.json";
 import teamsEn from "../locales/en/teams.json";
+import academyEs from "../locales/es/academy.json";
 import agentOnboardingEs from "../locales/es/agent-onboarding.json";
 import agentsEs from "../locales/es/agents.json";
 import aiHubEs from "../locales/es/ai-hub.json";
@@ -57,6 +59,7 @@ import shellEs from "../locales/es/shell.json";
 import skillsEs from "../locales/es/skills.json";
 import storeEs from "../locales/es/store.json";
 import teamsEs from "../locales/es/teams.json";
+import academyPt from "../locales/pt/academy.json";
 import agentOnboardingPt from "../locales/pt/agent-onboarding.json";
 import agentsPt from "../locales/pt/agents.json";
 import aiHubPt from "../locales/pt/ai-hub.json";
@@ -154,6 +157,7 @@ const resources = {
     context: contextEn,
     teams: teamsEn,
     agentOnboarding: agentOnboardingEn,
+    academy: academyEn,
   },
   es: {
     common: commonEs,
@@ -179,6 +183,7 @@ const resources = {
     context: contextEs,
     teams: teamsEs,
     agentOnboarding: agentOnboardingEs,
+    academy: academyEs,
   },
   pt: {
     common: commonPt,
@@ -204,6 +209,7 @@ const resources = {
     context: contextPt,
     teams: teamsPt,
     agentOnboarding: agentOnboardingPt,
+    academy: academyPt,
   },
 } as const;
 
@@ -242,12 +248,14 @@ void i18n
       "providers",
       "errors",
       "events",
+      "integrations",
       "migration",
       "portable",
       "store",
       "context",
       "teams",
       "agentOnboarding",
+      "academy",
     ],
     interpolation: { escapeValue: false }, // react already escapes
     detection: {

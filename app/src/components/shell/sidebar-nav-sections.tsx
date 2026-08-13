@@ -6,6 +6,7 @@ import {
   Blocks,
   Boxes,
   Building2,
+  GraduationCap,
   Inbox,
   LibraryBig,
   Store,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   ABOUT_ME_VIEW_ID,
+  ACADEMY_VIEW_ID,
   AI_HUB_VIEW_ID,
   INBOX_VIEW_ID,
   ORGANIZATION_VIEW_ID,
@@ -35,12 +37,14 @@ export interface SectionFold {
 /**
  * The rail's top-level destinations, in three runs above "Your teams".
  *
- * 1. **Unlabelled** — the Inbox, About me and the Agent Store. Where work
- *    arrives, what every agent knows about you before it starts, and where
- *    agents come from: the things a user reaches for without being asked, so
- *    they lead the rail and need no heading over them. About me is everyone's,
- *    in every deployment, and deliberately not gated: standing context about
- *    the person is not a preference and belongs to nobody's admin territory.
+ * 1. **Unlabelled** — the Inbox, About me, the Academy and the Agent Store.
+ *    Where work arrives, what every agent knows about you before it starts,
+ *    where you learn the product, and where agents come from: the things a user
+ *    reaches for without being asked, so they lead the rail and need no heading
+ *    over them. About me and the Academy are everyone's, in every deployment,
+ *    and deliberately not gated: standing context about the person, and
+ *    learning to fly, are not preferences and belong to nobody's admin
+ *    territory.
  * 2. **"My accounts"** — the connections that belong to the PERSON: the apps
  *    they have OAuthed and the AI accounts they run their turns on. Nobody
  *    else in the space is affected by either.
@@ -55,22 +59,15 @@ export interface SectionFold {
  * the rows it names — which is the ONE rule, and why nothing here needs a
  * second one asking whether a run came out empty.
  *
- * Two rows this band used to carry are gone. **Permissions** listed the space's
- * agents so an admin could open one's settings page, which is what every team's
- * focused agent screen already does, per team, in every deployment — one
- * door onto agent policy, discovered through the team that owns the agent,
- * instead of two that had to be kept in agreement. **Time worked** is a section
- * inside Admin, beside the activity feed and the usage bars it
- * was always read against.
- *
- * **"Guide me" is not here either**: it never pointed at a screen, so a
- * permanent destination row was the wrong shape for it. It is one of two items
- * behind the help control in the rail's footer (`sidebar-help-menu.tsx`).
- *
- * Settings is NOT here: it is a permanent footer row beside the help control,
- * because it belongs to the PERSON's chrome rather than to what the space is
- * made of, and must stay reachable in the deployments where this band does not
- * exist.
+ * Four things a reader may come looking for live elsewhere, each on purpose.
+ * Per-agent policy is every team's focused agent screen, discovered through
+ * the team that owns the agent. Time worked is a section inside Admin, beside
+ * the activity feed and usage bars it is read against. "Guide me" is one of
+ * two items behind the help control in the rail's footer
+ * (`sidebar-help-menu.tsx`), because it points at no screen. Settings is a
+ * permanent footer row beside that control: it belongs to the PERSON's chrome
+ * rather than to what the space is made of, and must stay reachable in the
+ * deployments where the Workspace band does not exist.
  */
 export function buildSidebarNavItems(args: {
   t: SidebarChromeT;
@@ -147,6 +144,14 @@ export function buildSidebarNavItems(args: {
           // does not walk Admin or Skills. A target in the anchor union that no
           // step spotlights is dead weight the union exists to prevent.
           onClick: () => setViewMode(ABOUT_ME_VIEW_ID),
+        },
+        {
+          id: ACADEMY_VIEW_ID,
+          label: t("shell:sidebar.academy"),
+          icon: <GraduationCap className="h-4 w-4" />,
+          // No tour anchor, for the same reason About me above carries none:
+          // the tour does not walk this row.
+          onClick: () => setViewMode(ACADEMY_VIEW_ID),
         },
         {
           id: STORE_VIEW_ID,

@@ -1,6 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { ABOUT_ME_VIEW_ID } from "../src/components/about-me/id.ts";
+import { ACADEMY_VIEW_ID } from "../src/components/academy/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../src/components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
@@ -30,6 +31,7 @@ describe("isTopLevelView", () => {
     for (const id of [
       INBOX_VIEW_ID,
       ABOUT_ME_VIEW_ID,
+      ACADEMY_VIEW_ID,
       SETTINGS_VIEW_ID,
       AI_HUB_VIEW_ID,
       INTEGRATIONS_VIEW_ID,
@@ -43,13 +45,13 @@ describe("isTopLevelView", () => {
     }
   });
 
-  it("is exactly those nine, and no settings section doubles as one", () => {
+  it("is exactly those ten, and no settings section doubles as one", () => {
     // A Settings section is reached THROUGH `settings`, so no section id may
     // also resolve as a top-level view. Checking the live section list (rather
     // than retired string literals) keeps this failing if a future section is
     // wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 9);
+    strictEqual(TOP_LEVEL_VIEWS.size, 10);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
@@ -268,12 +270,19 @@ describe("blockedTopLevelView", () => {
     strictEqual(blockedTopLevelView(ABOUT_ME_VIEW_ID, gates()), false);
   });
 
+  it("never blocks the Academy: learning the product is everyone's", () => {
+    // Ungated on purpose, exactly like About me: every deployment ships the
+    // Academy, so no gate can ever strand a user off it.
+    strictEqual(blockedTopLevelView(ACADEMY_VIEW_ID, gates()), false);
+  });
+
   it("never blocks ungated top-level views or agent tabs", () => {
     // The team view has a gate of its own (`blockedTeamView`, over the resolved
     // teams) rather than a caps flag, so this one never blocks it.
     for (const id of [
       INBOX_VIEW_ID,
       ABOUT_ME_VIEW_ID,
+      ACADEMY_VIEW_ID,
       SETTINGS_VIEW_ID,
       STORE_VIEW_ID,
       TEAM_VIEW_ID,

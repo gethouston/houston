@@ -48,9 +48,11 @@ describe("in-app setup resume contract", () => {
       hook,
       /void clearPending\(\);\s*void markCompleted\(\);\s*setActive\(false\)/,
     );
-    // A "Guide me" replay is NOT a first run: it never marks pending.
-    const footer = read("../src/components/shell/sidebar-footer.tsx");
-    assert.match(footer, /setInAppOnboardingFirstRun\(false\)/);
-    assert.doesNotMatch(footer, /markPending/);
+    // An ASKED-FOR run is NOT a first run: it never marks pending. One
+    // composition serves every control that offers the guided setup (the
+    // rail's help menu, the Academy's setup chapter).
+    const guided = read("../src/hooks/use-run-guided-setup.ts");
+    assert.match(guided, /setInAppOnboardingFirstRun\(false\)/);
+    assert.doesNotMatch(guided, /markPending/);
   });
 });

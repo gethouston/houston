@@ -105,7 +105,7 @@
 }
 
 /* ---- In-app onboarding click cues --------------------------------------
-   (tutorial-spotlight.tsx, onboarding-center-card.tsx)
+   (tutorial/tutorial-spotlight.tsx, tutorial/tutorial-center-card.tsx)
 
    The cues that say "here, CLICK" on a spotlighted control — a sonar ping
    radiating off the ring, a cursor glyph tapping at the target — plus the
