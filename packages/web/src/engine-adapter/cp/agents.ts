@@ -7,6 +7,7 @@ import type {
 import { HoustonEngineError } from "../client/errors";
 import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "../synthetic";
 import { colorOverlay, moveColor, setColor } from "./agent-color";
+import { hydrateAgentColors } from "./agent-color-sync";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /** What the control plane returns for an agent (id + name + workspace + ts). */
@@ -59,7 +60,14 @@ export function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
 }
 
 export async function listAgents(cfg: ControlPlaneConfig): Promise<Agent[]> {
-  const res = await cpFetch(cfg, "/agents");
+  // Hydrate the color overlay from the `agent_colors` account preference
+  // alongside the list fetch (PRODUCT-1344): after a sign-out purge the
+  // device overlay is empty, and mapping before the account copy lands would
+  // paint every agent default-purple. hydrateAgentColors never rejects.
+  const [res] = await Promise.all([
+    cpFetch(cfg, "/agents"),
+    hydrateAgentColors(cfg),
+  ]);
   const colors = colorOverlay();
   return ((await res.json()) as CpAgent[]).map((a) => toUiAgent(a, colors));
 }

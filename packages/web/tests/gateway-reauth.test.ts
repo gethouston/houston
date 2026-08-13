@@ -121,13 +121,25 @@ test("concurrent 401s share one refresh (single-flight)", async () => {
 test("reads retry through a transient gateway-roll status", async () => {
   vi.useFakeTimers();
   setEngineWindow({ token: "tok" });
-  const calls = stubFetch(json(503), json(200, []));
+  // listAgents also hydrates the `agent_colors` account preference
+  // (PRODUCT-1344) in parallel; answer that side channel by URL so the
+  // retry-under-test keeps a clean two-response queue for /agents itself.
+  const agentResponses = [json(503), json(200, [])];
+  const agentCalls: string[] = [];
+  globalThis.fetch = vi.fn(async (input: unknown) => {
+    const url = String(input);
+    if (url.includes("/v1/preferences/")) return json(200, { value: null });
+    agentCalls.push(url);
+    const next = agentResponses.shift();
+    if (!next) throw new Error("stubFetch: no responses left");
+    return next;
+  }) as unknown as typeof fetch;
 
   const pending = listAgents(CFG);
   await vi.advanceTimersByTimeAsync(600);
 
   expect(await pending).toEqual([]);
-  expect(calls).toHaveLength(2);
+  expect(agentCalls).toHaveLength(2);
 });
 
 test("writes never blind-retry a transient status", async () => {

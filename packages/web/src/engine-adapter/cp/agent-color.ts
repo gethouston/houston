@@ -1,6 +1,9 @@
-// Color is a client-side cosmetic the control plane intentionally does not store
-// (its model is id/name only). Keep a tiny local overlay so the UI's per-agent
-// color survives reloads without bloating the server model.
+// Color is a client-side cosmetic the control plane's agent model does not
+// store (its model is id/name only). This overlay is the DEVICE copy — the
+// synchronous source every render reads — while the durable copy is the
+// `agent_colors` ACCOUNT preference (`./agent-color-sync`, PRODUCT-1344):
+// sign-out purges every account-scoped localStorage key, so a device-only
+// color died with the session and every agent came back default-purple.
 const COLOR_KEY = "houston.web.cp.agentColors";
 export function colorOverlay(): Record<string, string> {
   try {
@@ -19,14 +22,32 @@ function writeOverlay(overlay: Record<string, string>): void {
     /* storage disabled — color just falls back to the default */
   }
 }
+
+/** Fires after every USER-driven overlay write (set/move/clear), so the sync
+ *  layer can mirror the new map up to the account preference. Hydration writes
+ *  go through {@link overwriteColorOverlay} instead, which stays silent — a
+ *  server read must never echo itself straight back as a server write. */
+let onOverlayWrite: (() => void) | null = null;
+export function setOverlayWriteListener(listener: (() => void) | null): void {
+  onOverlayWrite = listener;
+}
+
+/** Replace the whole overlay with the account-merged map (hydration only). */
+export function overwriteColorOverlay(next: Record<string, string>): void {
+  writeOverlay(next);
+}
+
 export function setColor(agentId: string, color: string): void {
   writeOverlay({ ...colorOverlay(), [agentId]: color });
+  onOverlayWrite?.();
 }
 export function moveColor(fromId: string, toId: string): void {
   writeOverlay(renameColorOverlay(colorOverlay(), fromId, toId));
+  onOverlayWrite?.();
 }
 export function clearColor(agentId: string): void {
   writeOverlay(removeColorOverlay(colorOverlay(), agentId));
+  onOverlayWrite?.();
 }
 
 /**
