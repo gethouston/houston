@@ -24,9 +24,12 @@ export interface ActingContext {
   actingAs?: string;
   actingUser?: string;
   /**
-   * WHOSE credentials this subtree resolves — derived from `actingAs` (see
-   * `credentialScopeKeyFor`), precomputed here because the credential store
-   * resolves it on every `read()` pi makes inside `prepareRequest`.
+   * WHOSE credentials this subtree resolves. Normally derived from `actingAs`
+   * (see `credentialScopeKeyFor`); an internal caller may instead supply an
+   * attribution-free scope when it has a stable execution identity but no
+   * acting user (the stateless turn server scopes process-local health this
+   * way). Precomputed because the credential store resolves it on every
+   * `read()` pi makes inside `prepareRequest`.
    */
   credentialScopeKey?: string;
 }
@@ -36,7 +39,7 @@ export const TEAM_CREDENTIAL_SCOPE = "team";
 
 /** WHOSE credentials the current async subtree resolves. */
 export interface CredentialScope {
-  /** `"team"`, or `u:<sub>` for a per-member scope. */
+  /** `"team"`, or `u:<identity>` for an isolated credential scope. */
   key: string;
   /** The acting-as token to forward when serving this scope's credential. */
   actingAs?: string;
@@ -81,9 +84,15 @@ export function runWithActingContext<T>(
 ): T {
   // No identity to carry (local single-user, or neither header present): run
   // plainly so the tools see `undefined` and attach nothing.
-  if (!ctx || (!ctx.actingAs && !ctx.actingUser)) return fn();
+  if (!ctx || (!ctx.actingAs && !ctx.actingUser && !ctx.credentialScopeKey))
+    return fn();
   return store.run(
-    { ...ctx, credentialScopeKey: credentialScopeKeyFor(ctx.actingAs) },
+    {
+      ...ctx,
+      credentialScopeKey: ctx.actingAs
+        ? credentialScopeKeyFor(ctx.actingAs)
+        : ctx.credentialScopeKey,
+    },
     fn,
   );
 }
@@ -100,10 +109,11 @@ export function currentActingContext(): ActingContext | undefined {
  */
 export function currentCredentialScope(): CredentialScope {
   const ctx = store.getStore();
-  if (!ctx?.actingAs) return { key: TEAM_CREDENTIAL_SCOPE };
+  if (!ctx?.actingAs && !ctx?.credentialScopeKey)
+    return { key: TEAM_CREDENTIAL_SCOPE };
   return {
     key: ctx.credentialScopeKey ?? credentialScopeKeyFor(ctx.actingAs),
-    actingAs: ctx.actingAs,
+    ...(ctx.actingAs ? { actingAs: ctx.actingAs } : {}),
   };
 }
 

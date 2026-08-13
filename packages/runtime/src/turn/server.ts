@@ -15,6 +15,7 @@ import {
   syncBack,
 } from "@houston/runtime-client/object-sync";
 import { applyServedCredential } from "../auth/auth-file";
+import { runWithActingContext } from "../session/acting-context";
 import { openSSE } from "../transport/sse";
 import { runPiTurn, type TurnOutcome } from "./turn-session";
 import { parseTurnRequest, type TurnRequest } from "./types";
@@ -111,19 +112,41 @@ async function executeTurn(
       };
     } else {
       const run = deps.runTurn ?? runPiTurn;
-      outcome = await run(root, {
-        conversationId: turn.conversationId,
-        text: turn.text,
-        provider: turn.credential.provider,
-        emit,
-        signal: abort.signal,
-        nonce: turn.nonce,
-        pin: { model: turn.model, effort: turn.effort },
-        mode: turn.mode,
-        turnId,
-        displayText: turn.displayText,
-        mentions: turn.mentions,
-      });
+      const credential = turn.credential;
+      // This process can serve turns for many agents. Give process-local
+      // credential health a stable per-agent scope without inventing an acting
+      // user: tools must not attribute work to this internal identity. The
+      // standing-pod server never enters this wrapper, so its no-context/team
+      // path stays byte-identical.
+      //
+      // This key reads as a PERSONAL scope to authPathIn (anything != "team"),
+      // which would divert scope-resolved auth reads to auth-users/<hash>.json.
+      // That is safe here ONLY because the turn path never resolves credentials
+      // by scope: turn-session builds its per-turn ModelRuntime with an
+      // EXPLICIT authPath (join(dataDir, "auth.json"), where the served
+      // credential was written), and the host-served credential guards no-op
+      // without a control-plane URL. Only credential-health keys off this
+      // scope — which is exactly the isolation this wrapper exists for. If the
+      // turn path ever grows a scope-resolved credential read, revisit.
+      outcome = await runWithActingContext(
+        {
+          credentialScopeKey: `u:turn:${turn.workspaceId}:${turn.agentId}`,
+        },
+        () =>
+          run(root, {
+            conversationId: turn.conversationId,
+            text: turn.text,
+            provider: credential.provider,
+            emit,
+            signal: abort.signal,
+            nonce: turn.nonce,
+            pin: { model: turn.model, effort: turn.effort },
+            mode: turn.mode,
+            turnId,
+            displayText: turn.displayText,
+            mentions: turn.mentions,
+          }),
+      );
     }
 
     // Durability BEFORE the terminal frame. A sync failure is data loss and
