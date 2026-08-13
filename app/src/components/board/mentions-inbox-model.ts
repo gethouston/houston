@@ -118,3 +118,19 @@ export function buildMentionInbox(
   );
   return rows;
 }
+
+/**
+ * Is the inbox still WAITING on the cross-agent sweep? Only while there are
+ * paths to sweep. A roster with no agents (a brand-new team space, a
+ * just-invited member before any agent is shared, single player off
+ * multiplayer) DISABLES the sweep query, and a disabled query never leaves
+ * React Query's `pending` state — rendering on the raw flag alone kept the
+ * Inbox on its skeleton forever exactly for the people whose honest answer is
+ * the empty state. No paths = nothing to sweep = the empty answer is FINAL.
+ */
+export function inboxSweepPending(
+  sweepPending: boolean,
+  pathCount: number,
+): boolean {
+  return pathCount > 0 && sweepPending;
+}
