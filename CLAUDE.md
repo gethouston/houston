@@ -47,6 +47,7 @@ Need specific knowledge? Load on demand. Every `knowledge-base/` doc is routed b
 - Sidebar TEAMS + the `team` screen — **the whole shell since the agent tab strip was deleted** (teams-model, `openTeamView` store contract, `visibleTeamSections` gating, the one-sweep team-scoped board, Team Settings drill-in) → `knowledge-base/teams-ui.md` (client-side grouping; NOT the multiplayer orgs in `teams.md`). The "agent X's <thing> lives WHERE now" map is `knowledge-base/agent-manifest.md` → *Where an agent's surfaces live*.
 - Sidebar ROW anatomy in `ui/layout` (row component, geometry module, the test that pins them) → `knowledge-base/sidebar-anatomy.md`
 - Kept-alive screens, keyboard ownership, the ONE shared detail panel → `knowledge-base/board-shell.md`
+- Houston Academy — the tab, setup as Chapter 1, progress economy, dormant lesson engine, shared tutorial family → `knowledge-base/academy.md`
 - Translating UI strings, namespaces, ui/ labels prop pattern, `t()` rules → `knowledge-base/i18n.md`
 
 **Agents + their surfaces**
