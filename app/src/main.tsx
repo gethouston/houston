@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
+import { useUsageAccrual } from "./hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "./identity-keyed-app";
 import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
@@ -124,6 +125,10 @@ class ErrorBoundary extends Component<
  * `runStartupAnalytics`. Renders children immediately; never blocks.
  */
 function StartupEffects({ children }: { children: ReactNode }) {
+  // The Academy's usage economy listens here, for the app's whole life: it must
+  // outlive <App/> (remounted on every identity change) and start before the
+  // gates, so nothing the user does goes unpaid. Mirrored in the web tree.
+  useUsageAccrual();
   useEffect(() => {
     // Wait for the engine handshake before touching engine-backed preferences.
     // `install_id`, the first-install vintage, the daily-active date, and the

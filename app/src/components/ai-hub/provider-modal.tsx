@@ -21,7 +21,8 @@ import {
   providerModels,
 } from "../provider-browser/provider-grouping.ts";
 import { LocalModelStatusPill } from "../shell/local-model-status.tsx";
-import { LiveStatus, SpecChip } from "./hub-badges.tsx";
+import { SpecChip } from "../spec-chip.tsx";
+import { LiveStatus } from "./hub-badges.tsx";
 import { ModalShell } from "./modal-shell.tsx";
 import { ModelsBrowser } from "./models-browser.tsx";
 import { ConnectButton } from "./provider-modal-connect-button.tsx";

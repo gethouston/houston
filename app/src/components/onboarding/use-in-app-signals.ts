@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useAllConversations } from "../../hooks/queries/use-conversations";
 import { useIntegrationConnections } from "../../hooks/queries/use-integrations";
+import { useSettledConversations } from "../../hooks/queries/use-settled-conversations";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
@@ -8,8 +8,6 @@ import { providerIsConnected } from "../../lib/provider-connection.ts";
 import { useAgentStore } from "../../stores/agents";
 import { INTEGRATION_PROVIDER } from "../integrations/model";
 import { integrationsAvailable } from "./missions/onboarding-flow";
-
-const EMPTY_ROWS: never[] = [];
 
 /**
  * The in-app onboarding's world signals, all read from queries and stores the
@@ -46,13 +44,9 @@ export function useInAppOnboardingSignals() {
   const { canCreate: canCreateAgents } = useCanCreateAgents();
 
   const agents = useAgentStore((s) => s.agents);
-  const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
-  const conversations = useAllConversations(agentPaths);
-  const missionRows = conversations.data ?? EMPTY_ROWS;
-  // Settled = real data for the CURRENT roster key, no refetch in flight; an
-  // in-flight sweep must never seed a baseline (it reads as zero missions).
-  const missionRowsSettled =
-    conversations.data !== undefined && !conversations.isFetching;
+  // The ONE settled reading of the cross-agent sweep, shared with every other
+  // watcher: an in-flight sweep must never seed a baseline.
+  const missions = useSettledConversations();
 
   // The email toolkit the guided first task can run through, if one is
   // connected — same order preference the legacy email mission offered.
@@ -74,9 +68,11 @@ export function useInAppOnboardingSignals() {
     integrationsOn,
     canCreateAgents,
     agentCount: agents.length,
-    missionRows,
-    missionRowsSettled,
-    missionCount: missionRows.length,
+    missionRows: missions.rows,
+    missionRowsSettled: missions.settled,
+    /** Null until the sweep settles — reading the rows' length directly would
+     *  hand out the in-flight zero the settledness contract exists to hide. */
+    missionCount: missions.count,
     emailToolkit,
   };
 }

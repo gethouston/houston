@@ -94,11 +94,22 @@ test("an already-connected user still walks every step and gets acknowledged", a
     .fill("Plan my week");
   await page.getByPlaceholder("What should the agent work on?").press("Enter");
 
-  // The send is the goal — the finale celebrates and hands the shell back.
+  // The send is the goal — the finale celebrates, then hands off to the
+  // Academy reveal that closes every path of the run.
   const finale = page.getByRole("dialog", { name: "Task sent!" });
   await expect(finale).toBeVisible();
   await finale.getByRole("button", { name: "Done" }).click();
+
+  const reveal = page.getByRole("dialog", { name: "Chapter 1 complete!" });
+  await expect(reveal).toBeVisible();
+  await expect(reveal.getByText("earned 50 experience")).toBeVisible();
+  await reveal.getByRole("button", { name: "Visit the Academy" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  // The reveal's action lands the user in the Academy, on the chapter they
+  // just cleared.
+  await expect(page.getByRole("heading", { name: "Academy" })).toBeVisible();
+  await expect(page.getByText("Set up Houston")).toBeVisible();
 
   // The shell is interactive again: the help control opens its menu.
   await page.locator('[data-tour-target="appTour"]').click();
@@ -234,5 +245,11 @@ test("creating an agent in the tutorial: coached dialog, locked email task, inbo
   const finale = page.getByRole("dialog", { name: "Check your inbox!" });
   await expect(finale).toBeVisible();
   await finale.getByRole("button", { name: "Done" }).click();
+
+  // Same closing beat as every other path: the setup was Academy chapter one.
+  const reveal = page.getByRole("dialog", { name: "Chapter 1 complete!" });
+  await expect(reveal).toBeVisible();
+  await reveal.getByRole("button", { name: "Visit the Academy" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Academy" })).toBeVisible();
 });

@@ -40,20 +40,33 @@ const MEASURE_MS = 300;
 const clamp = (min: number, v: number, max: number) =>
   Math.max(min, Math.min(v, max));
 
+/** The box being placed. Defaults to the coach card's own dimensions. */
+export interface CardSize {
+  w: number;
+  h: number;
+}
+
+const DEFAULT_SIZE: CardSize = { w: CARD_W, h: CARD_H };
+
 /** Beside the rect when a side fits (right → left → below → above), else null. */
-function placeBeside(rect: Rect, vw: number, vh: number): Placement | null {
-  const clampTop = (y: number) => clamp(MARGIN, y, vh - CARD_H - MARGIN);
-  const clampLeft = (x: number) => clamp(MARGIN, x, vw - CARD_W - MARGIN);
+function placeBeside(
+  rect: Rect,
+  vw: number,
+  vh: number,
+  size: CardSize,
+): Placement | null {
+  const clampTop = (y: number) => clamp(MARGIN, y, vh - size.h - MARGIN);
+  const clampLeft = (x: number) => clamp(MARGIN, x, vw - size.w - MARGIN);
   const right = rect.left + rect.width + GAP;
-  if (right + CARD_W + MARGIN <= vw)
+  if (right + size.w + MARGIN <= vw)
     return { top: clampTop(rect.top), left: right };
-  if (rect.left - GAP - CARD_W >= MARGIN)
-    return { top: clampTop(rect.top), left: rect.left - GAP - CARD_W };
-  const centeredLeft = clampLeft(rect.left + rect.width / 2 - CARD_W / 2);
+  if (rect.left - GAP - size.w >= MARGIN)
+    return { top: clampTop(rect.top), left: rect.left - GAP - size.w };
+  const centeredLeft = clampLeft(rect.left + rect.width / 2 - size.w / 2);
   const below = rect.top + rect.height + GAP;
-  if (below + CARD_H + MARGIN <= vh) return { top: below, left: centeredLeft };
-  if (rect.top - GAP - CARD_H >= MARGIN)
-    return { top: rect.top - GAP - CARD_H, left: centeredLeft };
+  if (below + size.h + MARGIN <= vh) return { top: below, left: centeredLeft };
+  if (rect.top - GAP - size.h >= MARGIN)
+    return { top: rect.top - GAP - size.h, left: centeredLeft };
   return null;
 }
 
@@ -77,15 +90,19 @@ export function placeCard(args: {
   dialogRect: Rect | null;
   viewport: Viewport;
   inDialog: boolean;
+  /** The box to place. Omitted for the coach card's own dimensions; the
+   *  lesson whisper is a smaller surface and passes its own. */
+  size?: CardSize;
 }): Placement {
   const { hole, dialogRect, viewport, inDialog } = args;
+  const size = args.size ?? DEFAULT_SIZE;
   return (
     (inDialog && dialogRect
-      ? placeBeside(dialogRect, viewport.w, viewport.h)
+      ? placeBeside(dialogRect, viewport.w, viewport.h, size)
       : null) ??
-    (hole ? placeBeside(hole, viewport.w, viewport.h) : null) ?? {
-      top: viewport.h / 2 - CARD_H / 2,
-      left: clamp(MARGIN, viewport.w / 2 - CARD_W / 2, viewport.w - CARD_W),
+    (hole ? placeBeside(hole, viewport.w, viewport.h, size) : null) ?? {
+      top: viewport.h / 2 - size.h / 2,
+      left: clamp(MARGIN, viewport.w / 2 - size.w / 2, viewport.w - size.w),
     }
   );
 }

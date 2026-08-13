@@ -5,6 +5,7 @@ import {
   TEAM_VIEW_ID,
 } from "../../lib/top-level-views";
 import { ABOUT_ME_VIEW_ID, AboutMeView } from "../about-me";
+import { ACADEMY_VIEW_ID, AcademyView } from "../academy";
 import { AiHubView } from "../ai-hub/ai-hub-view";
 import { InboxView } from "../inbox/inbox-view";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
@@ -20,9 +21,9 @@ import type { KeepAliveView } from "./keep-alive-views";
  *
  * Admin is a screen of its own here, gated so it is never even mounted where it
  * would have nothing to show (`showOrganization`: multiplayer owner/admin, and
- * a TEAM active space on a Spaces host). About me is ungated: standing context
- * about the PERSON exists in every deployment. Settings carries only its own
- * sections now.
+ * a TEAM active space on a Spaces host). About me and the Academy are ungated:
+ * standing context about the PERSON, and learning the product, exist in every
+ * deployment. Settings carries only its own sections now.
  *
  * Two screens that used to be here are gone. Permissions listed the space's
  * agents to reach one's settings page, which every team's "focused agent screen"
@@ -40,6 +41,7 @@ export function topLevelScreenViews(gates: {
   return [
     { id: INBOX_VIEW_ID, enabled: true, content: <InboxView /> },
     { id: ABOUT_ME_VIEW_ID, enabled: true, content: <AboutMeView /> },
+    { id: ACADEMY_VIEW_ID, enabled: true, content: <AcademyView /> },
     { id: AI_HUB_VIEW_ID, enabled: gates.showAiModels, content: <AiHubView /> },
     { id: SETTINGS_VIEW_ID, enabled: true, content: <SettingsView /> },
     {

@@ -1,8 +1,8 @@
 import { Plus, Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
-import { tutorialAnchor } from "../onboarding/tutorial-targets.ts";
 import { STORE_VIEW_ID } from "../store-view";
+import { tutorialAnchor } from "../tutorial";
 import { CreateChoiceTile } from "./create-choice-tile";
 
 interface AgentPickerStepProps {

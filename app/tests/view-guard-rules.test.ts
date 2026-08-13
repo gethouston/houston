@@ -108,6 +108,9 @@ describe("deadViewStep", () => {
     assert.equal(deadViewStep({ ...base, viewMode: "inbox" }), "keep");
     assert.equal(deadViewStep({ ...base, viewMode: "team" }), "keep");
     assert.equal(deadViewStep({ ...base, viewMode: "about-me" }), "keep");
+    // Ungated like About me: no gate can take the Academy away, so the guard
+    // must never send a user home off it.
+    assert.equal(deadViewStep({ ...base, viewMode: "academy" }), "keep");
     assert.equal(deadViewStep({ ...base, viewMode: "organization" }), "keep");
   });
 

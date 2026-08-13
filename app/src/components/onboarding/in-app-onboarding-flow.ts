@@ -32,7 +32,10 @@ export type InAppStep =
   | "sendMission"
   | "missionSent"
   | "emailSending"
-  | "emailSent";
+  | "emailSent"
+  /** The closing beat, whichever path got here: the setup IS the Academy's
+   *  first chapter, so the flow ends by handing the user their reward. */
+  | "academyReveal";
 
 export interface InAppSignals {
   /** The AI hub is the active top-level view. */
@@ -95,6 +98,7 @@ export function inAppOnboardingAdvance(
     case "sendMissionIntro":
     case "missionSent":
     case "emailSent":
+    case "academyReveal":
       return { kind: "stay" };
     case "openAiHub":
       return signals.onAiHub

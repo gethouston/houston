@@ -143,6 +143,13 @@ interface UIState {
   /** The in-app onboarding PREWROTE the new-task composer draft (the guided
    * email first task): user edits to it are ignored while set. */
   tutorialComposerLock: boolean;
+  /** The Academy lesson playing over the workspace shell
+   * (`components/academy/lessons`), or null. Armed by the Academy path, cleared
+   * by finishing or exiting the lesson, and by the guided setup arming (it owns
+   * the screen alone). Ephemeral, never persisted: a lesson is a live run over
+   * the app, and a reload must land the user back in the app rather than into a
+   * beat whose world is long gone. */
+  activeLessonId: string | null;
   /** Agent id queued for the "Export a copy" wizard, or null. */
   shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
@@ -248,6 +255,7 @@ interface UIState {
   setInAppOnboardingActive: (active: boolean) => void;
   setInAppOnboardingFirstRun: (firstRun: boolean) => void;
   setTutorialComposerLock: (locked: boolean) => void;
+  setActiveLessonId: (lessonId: string | null) => void;
   setShareAgentId: (agentId: string | null) => void;
   setImportFromFriendOpen: (open: boolean) => void;
   setImportSeedPreview: (preview: PortableUploadPreviewResponse | null) => void;
@@ -301,6 +309,7 @@ const initialUIState = {
   inAppOnboardingActive: false,
   inAppOnboardingFirstRun: false,
   tutorialComposerLock: false,
+  activeLessonId: null,
   shareAgentId: null,
   importFromFriendOpen: false,
   importSeedPreview: null,
@@ -451,12 +460,20 @@ export const useUIStore = create<UIState>()(
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
       setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
       setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
+      // Arming the guided setup DISARMS any lesson: the setup is the one run
+      // the user cannot be talked out of, and "Guide me" is reachable from the
+      // rail while a lesson is playing over the very same app.
       setInAppOnboardingActive: (inAppOnboardingActive) =>
-        set({ inAppOnboardingActive }),
+        set(
+          inAppOnboardingActive
+            ? { inAppOnboardingActive, activeLessonId: null }
+            : { inAppOnboardingActive },
+        ),
       setInAppOnboardingFirstRun: (inAppOnboardingFirstRun) =>
         set({ inAppOnboardingFirstRun }),
       setTutorialComposerLock: (tutorialComposerLock) =>
         set({ tutorialComposerLock }),
+      setActiveLessonId: (activeLessonId) => set({ activeLessonId }),
       setShareAgentId: (shareAgentId) => set({ shareAgentId }),
       setImportFromFriendOpen: (importFromFriendOpen) =>
         set({ importFromFriendOpen }),

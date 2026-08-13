@@ -1,0 +1,74 @@
+{
+  "title": "Academy",
+  "status": {
+    "experience": "Experience",
+    "experienceOf": "{{value}} / {{goal}}",
+    "experienceTotal": "{{value}} in total",
+    "usageChip": "Usage {{points}}",
+    "streakChip_one": "{{count}}-day streak",
+    "streakChip_other": "{{count}}-day streak",
+    "streakBest_one": "Best: {{count}} day",
+    "streakBest_other": "Best: {{count}} days",
+    "toNextRank": "{{points}} to {{rank}}",
+    "topRank": "Top rank reached",
+    "avatarAlt": "Your Academy rank"
+  },
+  "ranks": {
+    "cadet": "Cadet",
+    "pilot": "Pilot",
+    "specialist": "Specialist",
+    "commander": "Commander",
+    "missionDirector": "Mission Director"
+  },
+  "path": {
+    "title": "Your path",
+    "earned": "{{points}} experience"
+  },
+  "chapters": {
+    "setup": {
+      "title": "Set up Houston",
+      "description": "A guided walk through the app, from your first agent to your first mission."
+    }
+  },
+  "actions": {
+    "start": "Start",
+    "replay": "Replay"
+  },
+  "locked": {
+    "title": "Coming soon",
+    "description": "A new chapter opens here as the Academy grows."
+  },
+  "error": {
+    "title": "Couldn't load your progress",
+    "description": "Something went wrong reaching the server. Check your connection and try again.",
+    "retry": "Try again"
+  },
+  "lessons": {
+    "exit": "Exit lesson",
+    "progress": "Step {{current}} of {{total}}",
+    "stepCount": "{{current}} / {{total}}",
+    "video": {
+      "kicker": "Watch",
+      "continue": "Continue",
+      "comingSoon": "The video is on its way. You can start now."
+    },
+    "send-first-task": {
+      "title": "Send your first task",
+      "description": "Ask an agent for something and watch it get done.",
+      "steps": {
+        "watch": {
+          "title": "Send your first task",
+          "body": "See how a task travels from you to your agent."
+        },
+        "intro": {
+          "title": "Your turn",
+          "body": "Open a new task and tell your agent what you need.",
+          "cta": "Show me"
+        },
+        "newTask": {
+          "body": "Click New task to open one for your agent."
+        }
+      }
+    }
+  }
+}

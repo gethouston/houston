@@ -7,6 +7,7 @@
  */
 
 import "react-i18next";
+import type academy from "../locales/en/academy.json";
 import type agentOnboarding from "../locales/en/agent-onboarding.json";
 import type agents from "../locales/en/agents.json";
 import type aiHub from "../locales/en/ai-hub.json";
@@ -58,6 +59,7 @@ declare module "react-i18next" {
       context: typeof context;
       teams: typeof teams;
       agentOnboarding: typeof agentOnboarding;
+      academy: typeof academy;
     };
   }
 }

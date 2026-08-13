@@ -1,0 +1,74 @@
+{
+  "title": "Academia",
+  "status": {
+    "experience": "Experiencia",
+    "experienceOf": "{{value}} / {{goal}}",
+    "experienceTotal": "{{value}} en total",
+    "usageChip": "Uso {{points}}",
+    "streakChip_one": "Racha de {{count}} día",
+    "streakChip_other": "Racha de {{count}} días",
+    "streakBest_one": "Mejor racha: {{count}} día",
+    "streakBest_other": "Mejor racha: {{count}} días",
+    "toNextRank": "{{points}} para {{rank}}",
+    "topRank": "Rango máximo alcanzado",
+    "avatarAlt": "Tu rango en la Academia"
+  },
+  "ranks": {
+    "cadet": "Cadete",
+    "pilot": "Piloto",
+    "specialist": "Especialista",
+    "commander": "Comandante",
+    "missionDirector": "Director de misión"
+  },
+  "path": {
+    "title": "Tu camino",
+    "earned": "{{points}} de experiencia"
+  },
+  "chapters": {
+    "setup": {
+      "title": "Configura Houston",
+      "description": "Un recorrido guiado por la app, desde tu primer agente hasta tu primera misión."
+    }
+  },
+  "actions": {
+    "start": "Empezar",
+    "replay": "Repetir"
+  },
+  "locked": {
+    "title": "Muy pronto",
+    "description": "Aquí se abrirá un capítulo nuevo a medida que crezca la Academia."
+  },
+  "error": {
+    "title": "No se pudo cargar tu progreso",
+    "description": "Algo salió mal al conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar"
+  },
+  "lessons": {
+    "exit": "Salir de la lección",
+    "progress": "Paso {{current}} de {{total}}",
+    "stepCount": "{{current}} / {{total}}",
+    "video": {
+      "kicker": "Mira",
+      "continue": "Continuar",
+      "comingSoon": "El video está en camino. Puedes empezar ahora."
+    },
+    "send-first-task": {
+      "title": "Envía tu primera tarea",
+      "description": "Pídele algo a un agente y mira cómo lo resuelve.",
+      "steps": {
+        "watch": {
+          "title": "Envía tu primera tarea",
+          "body": "Mira cómo una tarea viaja de ti a tu agente."
+        },
+        "intro": {
+          "title": "Te toca",
+          "body": "Abre una tarea nueva y dile a tu agente qué necesitas.",
+          "cta": "Muéstrame"
+        },
+        "newTask": {
+          "body": "Haz clic en Tarea nueva para abrir una para tu agente."
+        }
+      }
+    }
+  }
+}

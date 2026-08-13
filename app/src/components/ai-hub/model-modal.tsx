@@ -16,6 +16,7 @@ import { analytics } from "../../lib/analytics.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import { connectCardByGatewayId } from "../provider-browser/provider-grouping.ts";
+import { SpecChip } from "../spec-chip.tsx";
 import {
   capabilityKeys,
   formatReleaseDate,
@@ -24,7 +25,7 @@ import {
   modelMarkId,
   sortOffers,
 } from "./format.ts";
-import { CapabilityChip, SpecChip } from "./hub-badges.tsx";
+import { CapabilityChip } from "./hub-badges.tsx";
 import { ModalShell } from "./modal-shell.tsx";
 import { ModelOfferRow } from "./model-offer-row.tsx";
 

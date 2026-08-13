@@ -10,7 +10,6 @@ import { useProviderConnections } from "../../hooks/use-provider-connections";
 import type { CatalogModel } from "../../lib/ai-hub/catalog-types";
 import { useHubCatalog } from "../../lib/ai-hub/use-hub-catalog";
 import type { ProviderInfo } from "../../lib/providers";
-import { tutorialAnchor } from "../onboarding/tutorial-targets.ts";
 import {
   filterByQuickFilter,
   type ProviderQuickFilter,
@@ -20,6 +19,7 @@ import {
   PageHeaderToolsProvider,
 } from "../shell/page-header/page-header-tools";
 import { PageContainer } from "../shell/page-shell";
+import { tutorialAnchor } from "../tutorial";
 import { AiHubCatalogControls } from "./ai-hub-catalog-controls";
 import {
   AiHubHeader,

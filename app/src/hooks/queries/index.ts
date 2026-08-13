@@ -88,6 +88,10 @@ export {
   useRoutineWritesForAnyAgent,
 } from "./use-routines";
 export {
+  type SettledConversations,
+  useSettledConversations,
+} from "./use-settled-conversations";
+export {
   useCreateSkill,
   useInstallCommunitySkill,
   useInstallSkillFromRepo,

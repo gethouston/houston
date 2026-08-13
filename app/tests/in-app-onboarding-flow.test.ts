@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   type InAppSignals,
+  type InAppStep,
   inAppOnboardingAdvance,
 } from "../src/components/onboarding/in-app-onboarding-flow.ts";
 
@@ -46,10 +47,62 @@ test("narration beats hold regardless of signals — every user walks every step
     "sendMissionIntro",
     "missionSent",
     "emailSent",
+    "academyReveal",
   ] as const) {
     assert.deepEqual(inAppOnboardingAdvance(step, everythingTrue), {
       kind: "stay",
     });
+  }
+});
+
+test("the Academy reveal is the flow's last word, whatever the signals say", () => {
+  // The closing beat is button-advanced like every other card, and no signal
+  // can move it: the run ends by the user's own action on the reveal.
+  for (const over of [
+    {},
+    { missionSent: true },
+    { emailMode: true, emailSent: true },
+  ]) {
+    assert.deepEqual(
+      inAppOnboardingAdvance("academyReveal", signals(over)),
+      { kind: "stay" },
+      JSON.stringify(over),
+    );
+  }
+});
+
+test("no signal jumps the user into the reveal — its finales hand off by button", () => {
+  // The finales are read beats: the run reaches the reveal through their CTA
+  // (`startAcademyReveal`), never behind the user's back on a live signal.
+  const steps: InAppStep[] = [
+    "welcome",
+    "connectAiIntro",
+    "openAiHub",
+    "connectAi",
+    "aiConnected",
+    "integrationsIntro",
+    "openIntegrations",
+    "connectIntegration",
+    "createAgentIntro",
+    "createAgent",
+    "createAgentDialog",
+    "agentCreated",
+    "sendMissionIntro",
+    "sendMission",
+    "missionSent",
+    "emailSending",
+    "emailSent",
+    "academyReveal",
+  ];
+  for (const step of steps) {
+    for (const s of [signals(), everythingTrue]) {
+      const advance = inAppOnboardingAdvance(step, s);
+      assert.notEqual(
+        advance.kind === "stay" ? null : advance.step,
+        "academyReveal",
+        step,
+      );
+    }
   }
 });
 

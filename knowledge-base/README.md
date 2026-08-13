@@ -14,6 +14,7 @@ Load the rest on demand.
 | [design-system.md](design-system.md) | Deep design narrative — futuristic theme internals, component and animation detail (`/DESIGN.md` is the mandatory compact spec) |
 | [sidebar-anatomy.md](sidebar-anatomy.md) | `ui/layout` rail rendering vocabulary — the row component, the geometry module, the test that holds them together |
 | [board-shell.md](board-shell.md) | Kept-alive screens, keyboard ownership, and the ONE shared detail panel |
+| [academy.md](academy.md) | Houston Academy — the tab under About me, setup as Chapter 1, the progress economy (record/queue/usage/ranks), the dormant lesson engine, the shared tutorial family |
 | [teams-ui.md](teams-ui.md) | The whole shell — sidebar teams, the `team` screen, section gating, the team-scoped board, Team Settings drill-in (client-side grouping, NOT multiplayer orgs) |
 | [agent-manifest.md](agent-manifest.md) | What an agent IS on disk — manifest shape, tiers, creation/import/activation, and where each of an agent's surfaces lives now |
 | [agent-settings.md](agent-settings.md) | The ONE per-agent configuration surface — section model, caps gating, the two doors onto it, the People access choice, read-only, analytics |

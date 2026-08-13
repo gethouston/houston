@@ -35,6 +35,7 @@ function completedCount(step: InAppStep): number {
       return 3;
     case "missionSent":
     case "emailSent":
+    case "academyReveal":
       return 4;
   }
 }

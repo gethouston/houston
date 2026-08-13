@@ -12,8 +12,9 @@
  * needs no team is the Inbox — which is why the Inbox is where boot waits and
  * where every fallback lands when no team has resolved.
  *
- * Admin is here, in the rail's "Workspace" band, and About me is here under the
- * Inbox: neither is a preference, so neither is a Settings section. Each owns
+ * Admin is here, in the rail's "Workspace" band, and About me and the Academy
+ * are here under the Inbox: none of them is a preference, so none of them is a
+ * Settings section. Each owns
  * the whole window, and a read one of them owns is active while ITS OWN screen
  * is — not while `settings` is. Settings itself is general preferences plus
  * Danger, nothing else (`lib/settings-sections.ts`).
@@ -31,6 +32,7 @@
  * user deletes cannot leave a dead view id behind.
  */
 import { ABOUT_ME_VIEW_ID } from "../components/about-me/id.ts";
+import { ACADEMY_VIEW_ID } from "../components/academy/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
@@ -39,6 +41,7 @@ import { TEAM_VIEW_ID, type TeamSectionId } from "./teams-model.ts";
 
 export {
   ABOUT_ME_VIEW_ID,
+  ACADEMY_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
   ORGANIZATION_VIEW_ID,
   SKILLS_VIEW_ID,
@@ -53,6 +56,7 @@ export const AI_HUB_VIEW_ID = "ai-hub";
 export type TopLevelViewId =
   | typeof INBOX_VIEW_ID
   | typeof ABOUT_ME_VIEW_ID
+  | typeof ACADEMY_VIEW_ID
   | typeof SETTINGS_VIEW_ID
   | typeof AI_HUB_VIEW_ID
   | typeof INTEGRATIONS_VIEW_ID
@@ -64,6 +68,7 @@ export type TopLevelViewId =
 export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   INBOX_VIEW_ID,
   ABOUT_ME_VIEW_ID,
+  ACADEMY_VIEW_ID,
   SETTINGS_VIEW_ID,
   AI_HUB_VIEW_ID,
   INTEGRATIONS_VIEW_ID,

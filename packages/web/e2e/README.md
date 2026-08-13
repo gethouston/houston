@@ -300,9 +300,14 @@ rsync -a --exclude node_modules --exclude .git --exclude dist --exclude target \
   ./ ../linux-visual/
 docker run --rm -v "$PWD/../linux-visual":/w -w /w/packages/web \
   mcr.microsoft.com/playwright:v1.61.1-noble \
-  bash -c "corepack enable && pnpm install --frozen-lockfile && pnpm test:visual:update"
+  bash -c "corepack enable && pnpm install --frozen-lockfile && \
+    pnpm exec playwright test --project=visual --update-snapshots=all --workers=1"
 # then copy the regenerated *-linux.png back into e2e/visual/__screenshots__/
 ```
+
+`--workers=1` is load-bearing in the container: with two workers the paired
+dev servers starve each other and the app never gets past its loading screen,
+so every test times out waiting for the shell.
 
 Docker Desktop on macOS does not reliably share `/private/tmp/...` scratch
 paths — a mount can show up partially empty inside the container. Keep the copy

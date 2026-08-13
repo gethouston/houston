@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
+import type { LabeledChecklistItem } from "../tutorial";
 import { inAppSetupChecklist } from "./in-app-setup-checklist";
-import type { LabeledChecklistItem } from "./onboarding-center-card";
 import type { useInAppOnboarding } from "./use-in-app-onboarding";
 
 /**

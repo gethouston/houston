@@ -4,13 +4,17 @@ import { useOnboardingCompleted } from "../../hooks/use-onboarding-completed";
 import { useOnboardingPending } from "../../hooks/use-onboarding-pending";
 import { analytics } from "../../lib/analytics";
 import { openHome } from "../../lib/home-nav";
-import { isMissionBoardSurface } from "../../lib/top-level-views";
+import {
+  ACADEMY_VIEW_ID,
+  isMissionBoardSurface,
+} from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import type { InAppStep } from "./in-app-onboarding-flow";
 import { useGuidedEmailTask } from "./use-guided-email-task";
 import { useInAppAdvance } from "./use-in-app-advance";
 import { useInAppOnboardingSignals } from "./use-in-app-signals";
 import { useSendMissionDiscipline } from "./use-send-mission-discipline";
+import { useSetupChapterAward } from "./use-setup-chapter-award";
 
 /**
  * The in-app onboarding's live wiring: observes the app's own signals
@@ -45,6 +49,7 @@ export function useInAppOnboarding() {
   });
   const { clearPending } = useOnboardingPending();
   const { markCompleted } = useOnboardingCompleted();
+  const awardSetupChapter = useSetupChapterAward();
 
   // Arrival snapshots: already true → the step renders its already-done
   // addendum, and an old success is never re-celebrated.
@@ -101,18 +106,20 @@ export function useInAppOnboarding() {
 
   const finish = () => {
     email.cleanup();
-    // Terminal: the setup never re-enters on the next boot, and the funnel
-    // gets its closing event.
-    analytics.track("onboarding_completed", {
-      source: firstRun ? "in_app" : "in_app_replay",
-    });
+    // Terminal, and the ONLY way a run ends: the setup never re-enters on the
+    // next boot, the funnel gets its closing event, and the Academy's first
+    // chapter is paid. The award lives here rather than in the reveal card's
+    // handler so it can never depend on which button ended the run.
+    const source = firstRun ? "in_app" : "in_app_replay";
+    analytics.track("onboarding_completed", { source });
+    awardSetupChapter(source);
     void clearPending();
     void markCompleted();
     setActive(false);
   };
   const afterIntegrationsSequence = () => {
     if (signals.canCreateAgents) setStep("createAgentIntro");
-    else finish();
+    else setStep("academyReveal");
   };
 
   return {
@@ -174,6 +181,13 @@ export function useInAppOnboarding() {
     /** The watch beat's way onward when the agent errored or takes too long:
      *  the task WAS sent, so it ends on the honest sent finale. */
     abandonEmailWait: () => setStep("missionSent"),
-    finish,
+    /** Every finale hands off to the reveal — the setup was chapter one. */
+    startAcademyReveal: () => setStep("academyReveal"),
+    /** The reveal's one action: end the run, then land in the Academy so the
+     *  reward the card just announced is on screen. */
+    visitAcademy: () => {
+      finish();
+      useUIStore.getState().setViewMode(ACADEMY_VIEW_ID);
+    },
   };
 }

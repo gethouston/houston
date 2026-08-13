@@ -1,19 +1,23 @@
 import { useEffect } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useOnboardingPending } from "../../hooks/use-onboarding-pending";
+import { SETUP_CHAPTER_EXPERIENCE } from "../../lib/academy/academy-ranks";
 import { useUIStore } from "../../stores/ui";
+import { HoustonLogo } from "../shell/experience-card";
 import { tourSelector } from "../shell/workspace-tour-steps.ts";
+import {
+  TutorialCenterCard,
+  TutorialSpotlight,
+  tutorialSelector,
+} from "../tutorial";
 import { InAppOnboardingAgentSteps } from "./in-app-onboarding-agent-steps";
-import { OnboardingCenterCard } from "./onboarding-center-card";
-import { TutorialSpotlight } from "./tutorial-spotlight";
-import { tutorialSelector } from "./tutorial-targets.ts";
 import { useInAppOnboarding } from "./use-in-app-onboarding";
 import { useSetupChecklist } from "./use-setup-checklist";
 
 /**
  * The in-app onboarding: a game-style tutorial over the REAL app, in two
  * positions. The WHAT — narration — speaks from a centered card with its own
- * button ({@link OnboardingCenterCard}); the HOW — the action — is a chip
+ * button ({@link TutorialCenterCard}); the HOW — the action — is a chip
  * pinned where the action happens ({@link TutorialSpotlight}). All wiring —
  * signals, the step machine, provisioning, confetti, analytics — lives in
  * {@link useInAppOnboarding}; this file only renders the current step.
@@ -22,7 +26,8 @@ import { useSetupChecklist } from "./use-setup-checklist";
  * celebration) → connect your apps (same shape; only where the deployment
  * serves Composio) → create an agent (intro, New-agent spot, celebration;
  * only for callers who may create) → send it its first task (intro, New-task
- * spot, finale) — the last two rendered by {@link InAppOnboardingAgentSteps}.
+ * spot, finale) — the last two rendered by {@link InAppOnboardingAgentSteps} —
+ * and, whichever path got here, the Academy reveal that closes the run.
  * EVERY user walks every step with its full teaching; a goal already met on
  * arrival gets an addendum under a hairline with a skip button, never a
  * replaced or skipped step.
@@ -35,7 +40,8 @@ export function InAppOnboarding() {
   switch (o.step) {
     case "welcome":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.welcomeTitle")}
           body={
             <Trans
@@ -51,7 +57,8 @@ export function InAppOnboarding() {
       );
     case "connectAiIntro":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.connectAiIntro.title")}
           body={t("inApp.steps.connectAiIntro.body")}
           cta={t("inApp.steps.connectAiIntro.cta")}
@@ -83,7 +90,8 @@ export function InAppOnboarding() {
       );
     case "aiConnected":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("tutorial.missions.aiConnected.title")}
           body={t("tutorial.missions.aiConnected.body")}
           cta={t("tutorial.missions.aiConnected.cta")}
@@ -93,7 +101,8 @@ export function InAppOnboarding() {
       );
     case "integrationsIntro":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.integrationsIntro.title")}
           body={t("inApp.steps.integrationsIntro.body")}
           cta={t("inApp.steps.integrationsIntro.cta")}
@@ -133,11 +142,28 @@ export function InAppOnboarding() {
       );
     case "integrationConnected":
       return (
-        <OnboardingCenterCard
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
           title={t("inApp.steps.integrationConnected.title")}
           body={t("inApp.steps.integrationConnected.body")}
           cta={t("inApp.continue")}
           onNext={o.afterIntegrationsSequence}
+          checklist={checklist}
+        />
+      );
+    case "academyReveal":
+      // Every path ends here: the setup the user just walked IS the Academy's
+      // first chapter, and its experience is already theirs (awarded on the
+      // finish this card's action runs).
+      return (
+        <TutorialCenterCard
+          header={<HoustonLogo size={40} />}
+          title={t("inApp.steps.academyReveal.title")}
+          body={t("inApp.steps.academyReveal.body", {
+            points: SETUP_CHAPTER_EXPERIENCE,
+          })}
+          cta={t("inApp.steps.academyReveal.cta")}
+          onNext={o.visitAcademy}
           checklist={checklist}
         />
       );

@@ -37,8 +37,8 @@ test("each celebration checks its item and points at the next", () => {
   ]);
 });
 
-test("the finales show everything done", () => {
-  for (const step of ["missionSent", "emailSent"] as const) {
+test("the finales and the Academy reveal show everything done", () => {
+  for (const step of ["missionSent", "emailSent", "academyReveal"] as const) {
     assert.ok(
       inAppSetupChecklist(step, ALL).every((i) => i.state === "done"),
       step,
