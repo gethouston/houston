@@ -7,6 +7,7 @@ import { isMultiplayer } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
 import {
   buildMentionInbox,
+  inboxSweepPending,
   type MentionInboxConversation,
 } from "./mentions-inbox-model";
 import { agentsByPath } from "./mission-card-agent";
@@ -48,6 +49,10 @@ export function useMentionInbox(agents: Agent[]) {
     [agents, mentionsExist],
   );
   const { data, isPending } = useAllConversations(paths);
+  // An empty roster disables the sweep query, and a disabled query never
+  // leaves `pending` — see inboxSweepPending. Without this, a new team space
+  // (or a just-invited member) stared at the Inbox skeleton forever.
+  const pending = inboxSweepPending(isPending, paths.length);
   const conversations: MentionInboxConversation[] = useMemo(
     () => data ?? [],
     [data],
@@ -61,5 +66,5 @@ export function useMentionInbox(agents: Agent[]) {
     () => rows.reduce((n, row) => n + (row.mentionOutstanding ? 1 : 0), 0),
     [rows],
   );
-  return { rows, conversations, mentionCount, isPending };
+  return { rows, conversations, mentionCount, isPending: pending };
 }

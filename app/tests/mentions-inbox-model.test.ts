@@ -2,6 +2,7 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   buildMentionInbox,
+  inboxSweepPending,
   type MentionInboxConversation,
 } from "../src/components/board/mentions-inbox-model.ts";
 import type { ReadCursorStore } from "../src/lib/read-cursors.ts";
@@ -233,5 +234,20 @@ describe("buildMentionInbox", () => {
       buildMentionInbox([c], store(), ME, roster)[0]?.agentName,
       "Kai",
     );
+  });
+});
+
+describe("inboxSweepPending", () => {
+  it("passes the sweep's pending state through while there are paths", () => {
+    strictEqual(inboxSweepPending(true, 3), true);
+    strictEqual(inboxSweepPending(false, 3), false);
+  });
+
+  it("settles an EMPTY roster immediately (disabled query never leaves pending)", () => {
+    // A brand-new team space or a just-invited member has no agents yet; the
+    // sweep query is disabled and its raw isPending stays true forever. The
+    // inbox must show its empty state, not an eternal skeleton.
+    strictEqual(inboxSweepPending(true, 0), false);
+    strictEqual(inboxSweepPending(false, 0), false);
   });
 });
