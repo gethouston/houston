@@ -41,7 +41,7 @@ import { forward } from "../proxy/route";
 import { CredentialServeHealer } from "../routes/credential-healer";
 import { CUSTOM_OAUTH_CALLBACK_PATH } from "../routes/custom-integrations-oauth";
 import { ChannelRoutineFirer } from "../schedule/firer";
-import { Scheduler } from "../schedule/scheduler";
+import { type RoutineSchedulerMode, Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { LocalWorkspaceStore } from "../store/local";
@@ -182,6 +182,8 @@ export interface LocalHostOptions {
    * credential-less runtimes) or churn watch events while the cloud app copies.
    */
   passive?: boolean;
+  /** Cron ownership. `external` keeps reconcile alive but skips local fires. */
+  routineSchedulerMode?: RoutineSchedulerMode;
   /**
    * True only when a trusted gateway fronts EVERY request to this host (the
    * managed cloud pod: the gateway enforces the pod token and mints/strips
@@ -603,6 +605,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // always available — on managed cloud the Go control plane POSTs delivered
     // events to it. The lock dedupes redeliveries.
     triggerLock: bus,
+    routineFireLock: bus,
+    routineFireDedupTtlSec: opts.gatewayFronted ? 86_400 : 3600,
     transcriptShadow,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's
@@ -638,6 +642,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     firer: new ChannelRoutineFirer({ local: channel }),
     events,
     replyReader: transcriptShadow,
+    mode: opts.routineSchedulerMode ?? "local",
+    dedupTtlSec: opts.gatewayFronted ? 86_400 : 3600,
   });
   const syncDaemon = opts.storeSync
     ? new StoreSyncDaemon({

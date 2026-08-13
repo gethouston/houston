@@ -5,6 +5,7 @@ import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
+import { burnRoutineFireInstant, type FireLock } from "./fire-lock";
 import { type ReconcileDeps, reconcileAgentRuns } from "./reconcile";
 import { fireRoutineRun, RoutineBusyError } from "./run";
 
@@ -27,11 +28,6 @@ export interface RoutineFirer {
   fire(job: FiringJob): Promise<void>;
 }
 
-/** The dedup primitive the scheduler needs from the bus (atomic set-if-absent). */
-export interface FireLock {
-  setNx(key: string, value: string, ttlSec: number): Promise<boolean>;
-}
-
 /** What one agent's scan needs — SchedulerDeps minus the workspace listing. */
 export interface AgentScanDeps {
   vfs: Vfs;
@@ -43,6 +39,8 @@ export interface AgentScanDeps {
   newId: () => string;
   /** Dedup-lock TTL (s); must exceed the scan interval. */
   dedupTtlSec: number;
+  /** External mode skips only cron evaluation/firing; reconcile still runs. */
+  cronFiresEnabled: boolean;
   replyReader?: ReconcileDeps["replyReader"];
 }
 
@@ -74,18 +72,20 @@ export async function scanAgent(
 ): Promise<void> {
   const where = `${ws.id}/${agent.id}`;
   try {
-    const root = deps.paths.agentRoot(ws, agent);
-    const { items: routines } = await loadRoutines(deps.vfs, root);
-    for (const routine of routines) {
-      const at = dueAt(routine, since, now, timezone);
-      if (!at) continue;
-      // The instant is replica-independent → all replicas race for one key.
-      const won = await deps.lock.setNx(
-        `routine:fired:${routine.id}:${at.toISOString()}`,
-        "1",
-        deps.dedupTtlSec,
-      );
-      if (won) await fireRoutine(deps, ws, agent, routine);
+    if (deps.cronFiresEnabled) {
+      const root = deps.paths.agentRoot(ws, agent);
+      const { items: routines } = await loadRoutines(deps.vfs, root);
+      for (const routine of routines) {
+        const at = dueAt(routine, since, now, timezone);
+        if (!at) continue;
+        const won = await burnRoutineFireInstant(
+          deps.lock,
+          routine.id,
+          at,
+          deps.dedupTtlSec,
+        );
+        if (won) await fireRoutine(deps, ws, agent, routine);
+      }
     }
   } catch (err) {
     console.error(`[scheduler] ${where} routine scan failed:`, reason(err));
@@ -93,6 +93,15 @@ export async function scanAgent(
 
   // Complete runs whose turn has finished (silent/surfaced/timeout). Runs live
   // in their own document, so they settle even when routines.json is unreadable.
+  await reconcile(deps, ws, agent, where);
+}
+
+async function reconcile(
+  deps: AgentScanDeps,
+  ws: Workspace,
+  agent: Agent,
+  where: string,
+): Promise<void> {
   try {
     await reconcileAgentRuns(
       {

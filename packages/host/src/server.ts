@@ -60,6 +60,7 @@ import { handlePortableAccount } from "./routes/portable";
 import { handlePortableFromStore } from "./routes/portable-from-store";
 import { handleSandboxProviderUsage } from "./routes/provider-usage";
 import { BodyTooLargeError } from "./routes/read-body";
+import { handleRoutineFires } from "./routes/routine-fires";
 import { handleSandboxRoutines } from "./routes/routines-sandbox";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSharedSkills } from "./routes/shared-skills";
@@ -67,6 +68,7 @@ import { handleSkillsDirectory } from "./routes/skills-directory";
 import { handleSandboxSkills } from "./routes/skills-sandbox";
 import { handleSandboxTranscripts } from "./routes/transcripts-sandbox";
 import { handleTriggerEvents } from "./routes/trigger-events";
+import type { FireLock } from "./schedule/fire-lock";
 import type { TranscriptShadow } from "./transcripts/http-shadow";
 import type { TriggerEventLock } from "./triggers/fire";
 import type { Vfs } from "./vfs";
@@ -184,6 +186,10 @@ export interface ControlPlaneDeps {
    * with a turn bus.
    */
   triggerLock?: TriggerEventLock;
+  /** Shared scheduled-instant lock for local scans and CP-delivered fires. */
+  routineFireLock?: FireLock;
+  /** Scheduled-instant lock TTL. Managed pods use 24h; other profiles 1h. */
+  routineFireDedupTtlSec?: number;
   /** File-authoritative transcript writes mirrored through the sandbox facade. */
   transcriptShadow?: TranscriptShadow;
   /**
@@ -417,6 +423,8 @@ async function handle(
   // (the runtime has no trigger routes). The Go control plane POSTs external
   // events here for a managed pod; the pod fires the matching routine.
   if (await handleTriggerEvents(deps, userId, method, path, req, res)) return;
+  // Pod cron delivery — same internal-only trust posture as trigger-events.
+  if (await handleRoutineFires(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

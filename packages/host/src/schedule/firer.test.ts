@@ -277,10 +277,13 @@ test("ProxyChannel.fireTurn includes the routine's model/effort/mode pins in the
   }
 });
 
-test("ProxyChannel.fireTurn sends x-houston-acting-user when a creator is threaded, omits it otherwise", async () => {
-  const seen: { actingUser: string | null }[] = [];
+test("ProxyChannel.fireTurn sends exactly the requested routine identity header", async () => {
+  const seen: { actingUser: string | null; actingAs: string | null }[] = [];
   const runtime = await startTestFetchServer(async (req) => {
-    seen.push({ actingUser: req.headers.get("x-houston-acting-user") });
+    seen.push({
+      actingUser: req.headers.get("x-houston-acting-user"),
+      actingAs: req.headers.get("x-houston-acting-as"),
+    });
     return Response.json({ ok: true }, { status: 202 });
   });
   const launcher = {
@@ -309,9 +312,24 @@ test("ProxyChannel.fireTurn sends x-houston-acting-user when a creator is thread
       "sub-alice",
     );
     expect(seen[0]?.actingUser).toBe("sub-alice");
+    expect(seen[0]?.actingAs).toBeNull();
     // Legacy routine (no creator) → the header is absent.
     await channel.fireTurn({ workspace: ws("gke"), agent }, "c1", "go");
     expect(seen[1]?.actingUser).toBeNull();
+    expect(seen[1]?.actingAs).toBeNull();
+    // Control-plane delivery carries the signed token INSTEAD of a bare sub.
+    await channel.fireTurn(
+      { workspace: ws("gke"), agent },
+      "c1",
+      "go",
+      undefined,
+      "must-not-ride",
+      "acting-v1.payload.signature",
+    );
+    expect(seen[2]).toEqual({
+      actingUser: null,
+      actingAs: "acting-v1.payload.signature",
+    });
   } finally {
     await runtime.stop();
   }

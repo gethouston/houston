@@ -179,6 +179,7 @@ export class ProxyChannel implements RuntimeChannel {
     text: string,
     pin?: TurnPin,
     actingUser?: string,
+    actingAs?: string,
   ): Promise<void> {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
@@ -200,10 +201,11 @@ export class ProxyChannel implements RuntimeChannel {
         headers: {
           "content-type": "application/json",
           Authorization: `Bearer ${endpoint.token}`,
-          // C2 routine path: no per-turn acting-as token is minted — the runtime
-          // instead forwards this creator sub on its integration calls (paired
-          // pod-side with the pod token). Omitted for legacy creator-less routines.
-          ...(actingUser ? { "x-houston-acting-user": actingUser } : {}),
+          ...(actingAs
+            ? { "x-houston-acting-as": actingAs }
+            : actingUser
+              ? { "x-houston-acting-user": actingUser }
+              : {}),
         },
         body: JSON.stringify({
           text,

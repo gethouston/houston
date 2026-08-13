@@ -45,6 +45,8 @@ import { runtimeCommand } from "./runtime-command";
  *   HOUSTON_OAUTH_CALLBACK_BASE_URL  self-host only: the public origin for the
  *                             custom-integration OAuth callback (PRODUCT-1172)
  *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
+ *   HOUSTON_ROUTINE_SCHEDULER_MODE  local (default) | external (managed pod
+ *                             only; disables cron fires, keeps reconcile)
  *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
  *   HOUSTON_TRANSCRIPT_DUAL_WRITE=1  file-first transcript/doc DB shadow
  *   HOUSTON_TURN_LOG=1        relay-frame batches to managed turnlog ingest
@@ -109,6 +111,20 @@ const managedStore = await managedStoreConfig(
 // product prompt (event wakes advertised only when true), the routine write
 // gate, and the trigger-status route.
 const triggersEnabled = process.env.HOUSTON_MANAGED_CLOUD === "1";
+const routineSchedulerModeRaw = process.env.HOUSTON_ROUTINE_SCHEDULER_MODE;
+const routineSchedulerMode =
+  routineSchedulerModeRaw === undefined || routineSchedulerModeRaw === "local"
+    ? "local"
+    : routineSchedulerModeRaw === "external"
+      ? "external"
+      : await fatal(
+          `[local-host] invalid HOUSTON_ROUTINE_SCHEDULER_MODE=${routineSchedulerModeRaw}; expected local or external.`,
+        );
+if (routineSchedulerMode === "external" && !triggersEnabled) {
+  await fatal(
+    "[local-host] HOUSTON_ROUTINE_SCHEDULER_MODE=external is valid only on managed cloud pods.",
+  );
+}
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
@@ -156,6 +172,7 @@ const host = buildLocalHost({
       : LOCAL_CAPABILITIES,
   // A trigger backend exists only on managed cloud (see `triggersEnabled`).
   triggersEnabled,
+  routineSchedulerMode,
   // Managed pods sit behind the gateway (it enforces the pod token and mints
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.
