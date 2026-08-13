@@ -41,15 +41,28 @@ test("setEndpoint repoints gateway calls to the new base URL and bearer", async 
     token: "token-1",
     controlPlane: true,
   });
+  // listAgents also reads the `agent_colors` account preference in parallel
+  // (PRODUCT-1344); pick out the /agents requests so the repointing assertion
+  // stays about the endpoint, not about that side channel.
+  const agentCalls = () =>
+    cap.urls
+      .map((url, i) => ({ url, bearer: cap.bearers[i] }))
+      .filter((c) => c.url.endsWith("/agents"));
   await client.listAgents("ws");
-  expect(cap.urls[0]).toBe(`${BASE_A}/agents`);
-  expect(cap.bearers[0]).toBe("Bearer token-1");
+  expect(agentCalls()[0].url).toBe(`${BASE_A}/agents`);
+  expect(agentCalls()[0].bearer).toBe("Bearer token-1");
 
   // The hosted token-refresh path: same shape the shell applies, twice.
   client.setEndpoint({ baseUrl: BASE_B, token: "token-2" });
   await client.listAgents("ws");
-  expect(cap.urls[1]).toBe(`${BASE_B}/agents`);
-  expect(cap.bearers[1]).toBe("Bearer token-2");
+  expect(agentCalls()[1].url).toBe(`${BASE_B}/agents`);
+  expect(agentCalls()[1].bearer).toBe("Bearer token-2");
+  // The repoint also re-keys the color hydration: its pref reads must follow
+  // the endpoint, never keep hitting the old gateway.
+  const prefBases = cap.urls
+    .filter((u) => u.includes("/v1/preferences/"))
+    .map((u) => new URL(u).origin);
+  expect(prefBases).toEqual([BASE_A, BASE_B]);
 });
 
 test("setEndpoint rebuilds the direct runtime client on the new port (local sidecar restart)", async () => {

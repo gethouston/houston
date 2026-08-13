@@ -8,6 +8,7 @@ import type { ControlPlaneConfig } from "../control-plane";
 import {
   gatewayAuthFetch,
   liveToken,
+  resetAgentColorSync,
   runtimeClientFor,
   setupRuntimeClientFor,
 } from "../control-plane";
@@ -154,6 +155,10 @@ export class AdapterContext {
       this._cp.baseUrl = this.baseUrl;
       this._cp.token = opts.token;
     }
+    // The new bearer may belong to a DIFFERENT account (this client is
+    // repointed in place, never rebuilt): the next agent list must re-merge
+    // that account's `agent_colors` preference (PRODUCT-1344).
+    resetAgentColorSync();
     this.authFetch = gatewayAuthFetch(
       opts.token,
       () => this._cp?.activeOrgSlug,
