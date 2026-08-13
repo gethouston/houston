@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Houston — You're invited</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root { color-scheme: light; }
+    body {
+      font-family: ui-sans-serif, -apple-system, system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #fafafa;
+      color: #0d0d0d;
+    }
+    .card {
+      text-align: center;
+      padding: 60px 40px;
+      max-width: 440px;
+    }
+    .logo {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 24px;
+      display: block;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 12px;
+      letter-spacing: -0.01em;
+    }
+    p {
+      font-size: 14px;
+      color: #555;
+      margin: 0 0 24px;
+      line-height: 1.5;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    a.btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 999px;
+      background: #0d0d0d;
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    a.btn:hover { opacity: 0.9; }
+    a.btn.secondary {
+      background: transparent;
+      color: #0d0d0d;
+      border: 1px solid #d4d4d4;
+    }
+    .small {
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img src="/houston-black.svg" alt="Houston" class="logo">
+    <h1 id="title">You're invited to Houston</h1>
+    <p id="message">Opening Houston. Sign in with the email address that received this invitation and you'll join the team automatically.</p>
+    <div class="actions">
+      <a id="open" class="btn" href="houston://open">Open Houston</a>
+      <a id="download" class="btn secondary" href="/#download">Don't have Houston? Download it</a>
+      <span class="small">If Houston doesn't open, download the app, then sign in with your invited email.</span>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      // Personalize with the team name when the invite email carried one.
+      // Text-node assignment only — never innerHTML — so the query param
+      // cannot inject markup.
+      var params = new URLSearchParams(window.location.search || "");
+      var team = (params.get("team") || "").trim();
+      if (team) {
+        document.getElementById("title").textContent =
+          "You're invited to " + team + " on Houston";
+      }
+
+      // Try to hand off to the installed desktop app right away. The scheme
+      // is registered by the app itself (houston://), so on a machine with
+      // Houston installed this pops the app; the OS may first ask "Open
+      // Houston?", which is fine. Without the app the navigation is a silent
+      // no-op in most browsers.
+      var deepLink = "houston://open";
+      try {
+        window.location.replace(deepLink);
+      } catch (e) {
+        // ignore — the buttons stay usable
+      }
+
+      // If the page is still visible AND focused a moment later, the app
+      // almost certainly didn't open: launching Houston blurs this window,
+      // and the browser's "Open Houston?" confirm dialog steals focus
+      // (document.hasFocus() goes false) even when it doesn't blur. In that
+      // case fall through to the download gate with its modal open (the
+      // site's #download hash trigger) so a new user can grab the installer
+      // without hunting for the button.
+      var blurred = false;
+      window.addEventListener("blur", function () { blurred = true; });
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") blurred = true;
+      });
+      setTimeout(function () {
+        if (
+          !blurred &&
+          document.visibilityState === "visible" &&
+          document.hasFocus()
+        ) {
+          window.location.href = "/#download";
+        }
+      }, 2600);
+    })();
+  </script>
+</body>
+</html>

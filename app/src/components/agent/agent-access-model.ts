@@ -136,11 +136,12 @@ function canBeManagerRole(role: OrgRole): boolean {
 }
 
 /**
- * The people who currently have access, as dialog rows. The org owner is always
- * included (they can use every org agent and can never be removed). An org-wide
- * agent ("everyone" sentinel) expands to every current member so the count is
- * truthful and editing operates on the real roster instead of silently dropping
- * the team. Sorted owner, then managers, then members, then by email/id.
+ * The people who currently have access, as dialog rows. Org owners are always
+ * included (every owner can use every org agent and can never be removed; an
+ * org may hold several). An org-wide agent ("everyone" sentinel) expands to
+ * every current member so the count is truthful and editing operates on the
+ * real roster instead of silently dropping the team. Sorted owners, then
+ * managers, then members, then by email/id.
  */
 export function buildSharePeople(opts: {
   agent: Pick<Agent, "assignments" | "assignedUserIds">;
@@ -155,8 +156,9 @@ export function buildSharePeople(opts: {
   if (isSharedWithEveryone(opts.agent)) {
     for (const m of opts.members) ids.add(m.userId);
   }
-  const owner = opts.members.find((m) => m.role === "owner");
-  if (owner) ids.add(owner.userId);
+  for (const m of opts.members) {
+    if (m.role === "owner") ids.add(m.userId);
+  }
 
   const people: SharePerson[] = [];
   for (const userId of ids) {

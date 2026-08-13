@@ -226,7 +226,7 @@ describe("hasAgentTeams (C13 feature-detect)", () => {
 });
 
 describe("grantable roles", () => {
-  it("owner is never grantable from the UI", () => {
-    deepStrictEqual([...GRANTABLE_ROLES], ["admin", "user"]);
+  it("owner is grantable (multi-owner orgs), then admin and user", () => {
+    deepStrictEqual([...GRANTABLE_ROLES], ["owner", "admin", "user"]);
   });
 });

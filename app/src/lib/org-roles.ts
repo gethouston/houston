@@ -126,8 +126,9 @@ export function canSeeAiModelsPage(
 }
 
 /**
- * Can this caller MUTATE members (add / remove / change role)? Owner only per
- * C3 — admins see the roster read-only.
+ * Can this caller MUTATE members (add / remove / change role)? Owners only per
+ * C3 — admins see the roster read-only. An org may hold several owners; every
+ * one of them passes this gate.
  */
 export function canManageMembers(
   caps: Capabilities | null | undefined,
@@ -177,8 +178,15 @@ export function isSpaceOwner(
 }
 
 /**
- * The roles an owner may GRANT when adding or re-roling a member. Owner is the
- * single billing seat and is never handed out from the UI (ownership transfer
- * is out of scope for v1).
+ * The roles an owner may GRANT when adding or re-roling a member. Owner is
+ * grantable too: an org may hold any number of owners (the gateway's only
+ * cardinality rule is the >= 1 floor, its race-safe `last_owner` 409), so an
+ * owner can invite or promote a co-owner. Granting owner is confirm-gated in
+ * both surfaces (add row + roster) because it hands out full org authority
+ * including billing.
  */
-export const GRANTABLE_ROLES: readonly OrgRole[] = ["admin", "user"] as const;
+export const GRANTABLE_ROLES: readonly OrgRole[] = [
+  "owner",
+  "admin",
+  "user",
+] as const;

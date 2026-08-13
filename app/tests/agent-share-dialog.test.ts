@@ -209,6 +209,35 @@ describe("buildSharePeople", () => {
       ["own", "adm", "mem"],
     );
   });
+
+  it("includes EVERY owner of a multi-owner org, each a non-removable manager", () => {
+    const coOwner: OrgMember = {
+      userId: "own2",
+      email: "co@x.co",
+      role: "owner",
+    };
+    const people = buildSharePeople({
+      agent: { assignments: [{ userId: "mem", access: "user" }] },
+      members: [...ROSTER, coOwner],
+      selfId: null,
+    });
+    for (const id of ["own", "own2"]) {
+      const owner = people.find((p) => p.userId === id);
+      strictEqual(owner?.isOwner, true);
+      strictEqual(owner?.access, "manager");
+    }
+    // Both owners sort ahead of everyone else (alphabetical within the tier),
+    // and neither can be stripped.
+    deepStrictEqual(
+      people.slice(0, 2).map((p) => p.userId),
+      ["own2", "own"],
+    );
+    const afterRemove = applyShareAction(people, "own2", "remove");
+    strictEqual(
+      afterRemove.some((a) => a.userId === "own2"),
+      true,
+    );
+  });
 });
 
 describe("buildSharePeople org-wide", () => {

@@ -257,6 +257,7 @@
       "user": "Membro"
     },
     "roleHelp": {
+      "owner": "Os proprietários têm controle total da organização, incluindo pessoas e cobrança.",
       "admin": "Os managers criam e executam agentes.",
       "user": "Os membros usam os agentes compartilhados com eles."
     },
@@ -279,6 +280,15 @@
       "description": "Ela perderá o acesso a todos os agentes compartilhados com ela. Você pode adicioná-la novamente depois.",
       "confirm": "Remover",
       "cancel": "Cancelar"
+    },
+    "makeOwnerConfirm": {
+      "title": "Tornar {{name}} proprietário?",
+      "description": "Os proprietários têm controle total desta organização: pessoas, agentes e cobrança. Você pode mudar isso depois, desde que a organização mantenha pelo menos um proprietário.",
+      "confirm": "Tornar proprietário"
+    },
+    "lastOwner": {
+      "title": "A organização precisa de um proprietário",
+      "body": "Você não pode remover nem rebaixar o único proprietário. Primeiro torne outra pessoa proprietária."
     }
   },
   "activityTab": {

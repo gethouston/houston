@@ -24,9 +24,10 @@ export function useOrg(enabled: boolean) {
  * `tauriOrg.*` wrappers, each wrapped by the `call()` adapter in `lib/tauri.ts`.
  * `call()` already surfaces the real error as a red toast AND
  * reports it to Sentry before re-throwing (React Query swallows the re-throw
- * internally, so `.mutate()` never leaks). The "last owner" 409 and "user
- * already in another org" 409 from the gateway reach the user through that same
- * path. Adding an `onError` here would double-toast.
+ * internally, so `.mutate()` never leaks). The "user already in another org"
+ * 409 reaches the user through that same path; the "last owner" 409 is an
+ * expected business state and `call()` routes it to a plain informational
+ * toast (`isLastOwnerError`). Adding an `onError` here would double-toast.
  */
 export function useAddMember() {
   const qc = useQueryClient();

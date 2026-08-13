@@ -120,3 +120,15 @@ export function isNeedsUpgradeError(err: unknown): boolean {
 export function isPersonalSpaceError(err: unknown): boolean {
   return shareErrorCode(err) === "personal_space";
 }
+
+/**
+ * True for a gateway `last_owner` rejection (409) — an EXPECTED business state,
+ * NOT a Houston bug: the caller tried to remove or demote an org's only owner,
+ * and the org must keep at least one (the gateway's race-safe floor). Routed to
+ * a plain informational toast, exactly like {@link isNeedsUpgradeError}, so the
+ * owner learns to hand ownership to someone else first instead of seeing a red
+ * "report a bug" toast. Reuses the same kind/code/body extractor.
+ */
+export function isLastOwnerError(err: unknown): boolean {
+  return shareErrorCode(err) === "last_owner";
+}

@@ -257,6 +257,7 @@
       "user": "Member"
     },
     "roleHelp": {
+      "owner": "Owners have full control of the organization, including people and billing.",
       "admin": "Managers create and run agents.",
       "user": "Members use agents shared with them."
     },
@@ -279,6 +280,15 @@
       "description": "They'll lose access to every agent shared with them. You can add them again later.",
       "confirm": "Remove",
       "cancel": "Cancel"
+    },
+    "makeOwnerConfirm": {
+      "title": "Make {{name}} an owner?",
+      "description": "Owners have full control of this organization: people, agents, and billing. You can change this later as long as the organization keeps at least one owner.",
+      "confirm": "Make owner"
+    },
+    "lastOwner": {
+      "title": "The organization needs an owner",
+      "body": "You can't remove or demote the only owner. Make someone else an owner first."
     }
   },
   "activityTab": {

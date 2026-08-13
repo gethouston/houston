@@ -1,5 +1,6 @@
 import {
   AsyncButton,
+  ConfirmDialog,
   Input,
   Select,
   SelectContent,
@@ -12,14 +13,20 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAddMember } from "../../hooks/queries";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";
-import { type AddOutcome, describeAddResult } from "./people-tab-model";
+import {
+  type AddOutcome,
+  describeAddResult,
+  grantsOwner,
+} from "./people-tab-model";
 
 /**
- * The owner-only "Add someone" row on the People tab: email + role (Manager /
- * Member, each with a plain-language explanation) → `POST /org/members`. A known
- * user is added directly; an unknown email becomes a pending invite (`202`), and
- * we confirm which happened inline. Failures (already a member, another org)
- * reach the user as a toast from the `call()` wrapper, so no `onError` here.
+ * The owner-only "Add someone" row on the People tab: email + role (Owner /
+ * Manager / Member, each with a plain-language explanation) →
+ * `POST /org/members`. A known user is added directly; an unknown email becomes
+ * a pending invite (`202`), and we confirm which happened inline. Adding
+ * someone as OWNER (full org authority, billing included) is confirm-gated
+ * before the request fires. Failures (already a member, another org) reach the
+ * user as a toast from the `call()` wrapper, so no `onError` here.
  */
 export function PeopleAddRow() {
   const { t } = useTranslation("teams");
@@ -27,8 +34,9 @@ export function PeopleAddRow() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgRole>("user");
   const [outcome, setOutcome] = useState<AddOutcome | null>(null);
+  const [confirmOwner, setConfirmOwner] = useState(false);
 
-  const submit = async () => {
+  const send = async () => {
     const value = email.trim();
     if (!value || addMember.isPending) return;
     try {
@@ -40,6 +48,15 @@ export function PeopleAddRow() {
       // call() already surfaced the reason (already a member, another org, ...);
       // keep the typed email so the owner can fix and retry.
     }
+  };
+
+  const submit = async () => {
+    if (!email.trim() || addMember.isPending) return;
+    if (grantsOwner(role)) {
+      setConfirmOwner(true);
+      return;
+    }
+    await send();
   };
 
   return (
@@ -108,6 +125,18 @@ export function PeopleAddRow() {
         {outcome?.kind === "invited" &&
           t("people.add.invited", { email: outcome.email })}
       </p>
+      <ConfirmDialog
+        open={confirmOwner}
+        onOpenChange={setConfirmOwner}
+        title={t("people.makeOwnerConfirm.title", { name: email.trim() })}
+        description={t("people.makeOwnerConfirm.description")}
+        confirmLabel={t("people.makeOwnerConfirm.confirm")}
+        cancelLabel={t("people.removeConfirm.cancel")}
+        onConfirm={() => {
+          setConfirmOwner(false);
+          void send();
+        }}
+      />
     </section>
   );
 }
