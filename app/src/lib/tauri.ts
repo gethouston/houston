@@ -60,7 +60,11 @@ import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
-import { isNeedsUpgradeError, isPersonalSpaceError } from "./team-status-model";
+import {
+  isLastOwnerError,
+  isNeedsUpgradeError,
+  isPersonalSpaceError,
+} from "./team-status-model";
 import { isToolkitOauthUnavailableError } from "./toolkit-oauth-unavailable";
 import type {
   Agent,
@@ -222,6 +226,18 @@ async function surfaceError(
     showExpectedStateToast(
       i18n.t("teams:personalSpace.inviteBlockedTitle"),
       i18n.t("teams:personalSpace.inviteBlockedBody"),
+    );
+    return;
+  }
+
+  // Expected business state, not a bug: removing or demoting an org's only
+  // owner (C3 `last_owner` 409). The org must keep at least one owner; tell
+  // the caller to hand ownership to someone else first, never the red bug pair.
+  if (isLastOwnerError(err)) {
+    const { showExpectedStateToast } = await import("./error-toast");
+    showExpectedStateToast(
+      i18n.t("teams:people.lastOwner.title"),
+      i18n.t("teams:people.lastOwner.body"),
     );
     return;
   }

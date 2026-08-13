@@ -62,8 +62,10 @@ so every existing single-player/self-host profile stays valid:
 **Org role** = authority in the org. **Agent access** = authority on one shared agent.
 
 - **`OrgRole = "owner" | "admin" | "user"`** — UI labels **Owner / Manager / Member**.
-  `owner` is the single billing/root seat; `admin` manages members + agents; `user` is a
-  plain seat that can only use assigned agents.
+  `owner` is the billing/root role; an org may hold SEVERAL owners (the gateway's only
+  cardinality rule is the >= 1 floor, its race-safe `last_owner` 409, so the last owner
+  can never be removed or demoted). `admin` manages members + agents; `user` is a plain
+  seat that can only use assigned agents.
 - **`AgentAccess = "manager" | "user"`** — per-agent, on `gateway.agent_assignments`.
   `manager` may reconfigure the agent (instructions, skills, model, allowed apps,
   assignments); `user` may only use it. Owner is always `manager` on every org agent.
@@ -84,13 +86,13 @@ that also take `Pick<Agent, "access" | "assigned">` in `app/src/lib/agent-access
 | `orgRole(caps)` | the role, or `null` off-multiplayer. A missing role on a multiplayer host is treated as the least-privileged `user` — never widens |
 | `canCreateAgents(caps)` | owner/admin (single-player: always). The sidebar "New Agent" reads it via `useCanCreateAgents` |
 | `canSeeMembers(caps)` | owner/admin. Also the exact gate for the org dashboard (`canSeeOrganization` delegates to it) |
-| `canManageMembers(caps)` | **owner only**; admins see the roster read-only |
+| `canManageMembers(caps)` | **owners only**; admins see the roster read-only |
 | `isAgentManager(caps, agent)` | the single per-agent authority gate: single-player true; org owner true; else `agent.access === "manager"`. It trusts `access` verbatim because the gateway already clamps a stale `manager` row for a `user` member before it reaches the wire |
 | `canEditAgentConfig` | semantic alias of `isAgentManager` for config-edit call sites |
 | `canManageAssignments(caps, agent)` | same gate; behind the Share block |
 | `canSeeAiModelsPage(caps)` | **TRUE for everyone, always.** See below |
 | `canSeeBillingTab(caps, activeSpaceIsTeam)` | Spaces host AND active team AND owner/admin (`spaces.md`) |
-| `GRANTABLE_ROLES = ["admin","user"]` | owner is never handed out from the UI (ownership transfer is out of scope) |
+| `GRANTABLE_ROLES = ["owner","admin","user"]` | owner IS grantable (multi-owner orgs): the add row and the roster role select offer it behind the `makeOwnerConfirm` dialog (`grantsOwner` in `people-tab-model.ts`). Demoting/removing an owner is allowed too (`canEditMember` no longer special-cases owner rows); the gateway's `last_owner` 409 is the floor, surfaced via `isLastOwnerError` as a plain info toast |
 
 - **The global Integrations page has NO role gate** — it is the personal catalog for
   every member in every mode.
@@ -176,9 +178,11 @@ Sections:
   agent-written files never corrupt). The same component draws About me, an
   agent's Job description (agent settings), and the team context card.
 - **People** (`members-tab.tsx` / `people-roster.tsx`) — roster + pending invites,
-  **membership only**: owner mutates (add/remove/re-role, revoke invite), admin sees
-  them read-only. Per-agent access is managed on the agent settings page's People
-  section. This is the ONLY membership surface.
+  **membership only**: owners mutate (add/remove/re-role, revoke invite), admin sees
+  them read-only. Any role is grantable including owner (confirm-gated, multi-owner);
+  the sole-owner case is guarded by the gateway (`last_owner`). Per-agent access is
+  managed on the agent settings page's People section. This is the ONLY membership
+  surface.
 - **Analytics** (`analytics-tab.tsx`) — one measurement section; Activity (audit log,
   paged), Usage (per-agent/user message counters), and Time worked are its lenses.
 - **Billing** (`billing-tab.tsx`) — `spaces.md` → *Billing surface*.
@@ -334,6 +338,11 @@ Members can only connect apps the agent allows. Full model: `integrations.md` §
 
 ## Invites, members, audit, usage
 
+- **Invite email → landing page** — the gateway's invite + member-added emails link
+  `https://gethouston.ai/invite/?team=<name>` (`GW_INVITE_URL`; `website/src/invite/`),
+  which tries the desktop app via `houston://open` and falls back to the marketing
+  site's `/#download` gate when the app isn't installed. Tokenless by design: joining
+  stays email-matched (auto-join on first sign-in, or the invite inbox).
 - **Invites** — `addOrgMember(email, role)` → `POST /v1/org/members`
   (`packages/web/src/engine-adapter/cp/orgs.ts`), targeting the ACTIVE space;
   `403 personal_space` on a personal one (surfaced as the friendly `personalSpace` toast,

@@ -45,6 +45,7 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/guides/downloads");
   eleventyConfig.addPassthroughCopy("src/slack");
   eleventyConfig.addPassthroughCopy("src/auth");
+  eleventyConfig.addPassthroughCopy("src/invite");
   eleventyConfig.addPassthroughCopy("src/_headers");
   eleventyConfig.addPassthroughCopy("src/_redirects");
   // SEO + AI-crawler files. Served verbatim at the site root (/robots.txt,

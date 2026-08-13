@@ -41,16 +41,28 @@ export function initialsFor(source: string): string {
 
 /**
  * Can the viewer re-role or remove this member row? Owners only (`canManage`),
- * never themselves (no self-demotion/self-remove from the UI), and never
- * another owner (ownership transfer is out of scope for v1; the gateway also
- * guards the last-owner case with a 409).
+ * never themselves (no self-demotion/self-remove from the UI). Other OWNER rows
+ * are editable too — an org may hold several owners, and demoting or removing
+ * one is legal as long as at least one remains; the gateway's race-safe
+ * `last_owner` 409 is the floor and surfaces as a plain informational toast.
  */
 export function canEditMember(opts: {
   canManage: boolean;
   isSelf: boolean;
   role: OrgRole;
 }): boolean {
-  return opts.canManage && !opts.isSelf && opts.role !== "owner";
+  return opts.canManage && !opts.isSelf;
+}
+
+/**
+ * Does this role change hand out OWNER authority — full org control including
+ * membership and billing? Both grant surfaces (the add/invite row and the
+ * roster's role select) confirm-gate exactly this transition; every other
+ * change (including demoting an owner) applies directly, since the gateway
+ * guards the only dangerous case (`last_owner`).
+ */
+export function grantsOwner(next: OrgRole, current?: OrgRole): boolean {
+  return next === "owner" && current !== "owner";
 }
 
 /**

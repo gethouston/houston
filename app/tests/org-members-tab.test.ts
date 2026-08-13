@@ -4,6 +4,7 @@ import type { OrgMember } from "@houston-ai/engine-client";
 import {
   canEditMember,
   describeAddResult,
+  grantsOwner,
   initialsFor,
   inviterLabel,
   memberLabel,
@@ -61,11 +62,29 @@ describe("people tab model — canEditMember", () => {
       false,
     );
   });
-  it("blocks editing another owner (no ownership transfer)", () => {
+  it("lets an owner edit another owner (multi-owner orgs; the gateway guards the last-owner floor)", () => {
     strictEqual(
       canEditMember({ canManage: true, isSelf: false, role: "owner" }),
-      false,
+      true,
     );
+  });
+});
+
+describe("people tab model — grantsOwner", () => {
+  it("granting owner to a non-owner needs the confirm", () => {
+    strictEqual(grantsOwner("owner", "user"), true);
+    strictEqual(grantsOwner("owner", "admin"), true);
+  });
+  it("adding/inviting a brand-new person as owner needs the confirm", () => {
+    strictEqual(grantsOwner("owner"), true);
+  });
+  it("a no-op owner-to-owner change does not", () => {
+    strictEqual(grantsOwner("owner", "owner"), false);
+  });
+  it("every non-owner grant applies without a confirm", () => {
+    strictEqual(grantsOwner("admin", "user"), false);
+    strictEqual(grantsOwner("user", "owner"), false);
+    strictEqual(grantsOwner("user"), false);
   });
 });
 
