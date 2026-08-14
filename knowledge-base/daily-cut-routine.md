@@ -57,6 +57,12 @@ exists to run — dogfooding it is the point.
    goes in the routine prompt, a chat message, a file, or a commit; rotating
    it (Slack app → OAuth & Permissions → Reinstall) only requires updating the
    stored credential.
+
+   **Disconnect Composio Slack from this agent** (or drop Slack from its
+   allowlist). Prompt wording alone is not enough: given a working Slack tool,
+   the agent reaches for it and the post goes out under the connecting human's
+   name. Observed, not theoretical. Removing the tool leaves the bot token as
+   the only path.
 4. **Model.** Give the agent a capable model; the AI account must be usable at
    team scope, since routine runs fire on the team credential.
 5. **Routine A (cron).** Create a routine, schedule weekdays 07:00
@@ -88,8 +94,15 @@ Post everything to the Slack channel #RELEASE-CHANNEL by calling Slack's
 chat.postMessage API (POST https://slack.com/api/chat.postMessage, JSON body
 {"channel": "#RELEASE-CHANNEL", "text": "<message>"}) authorized with the bot
 token in your slack-bot-token credential. Messages support Slack mrkdwn; keep
-code blocks fenced. Work in English in GitHub, but write user-facing release
-notes in en + es + pt as described below.
+code blocks fenced.
+
+NEVER post through a connected Slack app or Slack integration tool, even if one
+is available and looks easier. Those post as the person who connected the
+account, and release reports must come from the Houston bot, not from a
+teammate. The bot token in your credential is the ONLY way you post to Slack.
+
+Work in English in GitHub, but write user-facing release notes in en + es + pt
+as described below.
 
 Steps, in order:
 
@@ -174,6 +187,11 @@ Post ONE message to the Slack channel #RELEASE-CHANNEL by calling Slack's
 chat.postMessage API (POST https://slack.com/api/chat.postMessage, JSON body
 {"channel": "#RELEASE-CHANNEL", "text": "<message>"}) authorized with the bot
 token in your slack-bot-token credential. Slack mrkdwn, no markdown headings.
+
+NEVER post through a connected Slack app or Slack integration tool, even if one
+is available and looks easier. Those post as the person who connected the
+account, and release reports must come from the Houston bot, not from a
+teammate. The bot token in your credential is the ONLY way you post to Slack.
 
 The message:
 - First line: ":rocket: *Houston v<version> draft is ready to QA*"
