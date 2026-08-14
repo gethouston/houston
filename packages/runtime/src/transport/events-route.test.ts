@@ -180,7 +180,7 @@ test("a cursor from inside a finished turn resyncs (buffer cleared at the termin
   });
 });
 
-test("Last-Event-ID resumes like ?after=, and the query wins when both are sent", async () => {
+test("Last-Event-ID resumes like ?after=, and the header wins when both are sent", async () => {
   const id = freshId();
   await withServer(async (base) => {
     publish(id, { type: "user", data: { content: "q", ts: 1 } }); // 1
@@ -195,9 +195,11 @@ test("Last-Event-ID resumes like ?after=, and the query wins when both are sent"
       2, 3,
     ]);
 
-    // Query beats a contradicting header.
-    const both = await fetch(`${base}/conversations/${id}/events?after=2`, {
-      headers: authHeaders({ "Last-Event-ID": "0" }),
+    // The header beats a contradicting query: the gateway advances
+    // Last-Event-ID past its Redis replay while the original ?after= stays in
+    // the query string, so query-first would re-serve the replayed frames.
+    const both = await fetch(`${base}/conversations/${id}/events?after=0`, {
+      headers: authHeaders({ "Last-Event-ID": "2" }),
     });
     const frames = await collectFrames(both, 1);
     expect(frames).toEqual([{ type: "text", data: "b", seq: 3, id: "3" }]);

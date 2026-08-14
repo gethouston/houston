@@ -15,6 +15,7 @@ export class ChannelRoutineFirer implements RoutineFirer {
     private readonly channels: Partial<
       Record<WorkspaceRuntime, RuntimeChannel>
     >,
+    private readonly actingAs?: string,
   ) {}
 
   async fire(job: FiringJob): Promise<void> {
@@ -30,8 +31,8 @@ export class ChannelRoutineFirer implements RoutineFirer {
     // Autopilot mode so they never block on an ask_user question (a missing
     // app connection still queues a connect card the user finds in the chat —
     // the turn ends rather than blocking).
-    // The creator's sub (C2) is threaded as the turn's acting-user so integration
-    // calls act as them; absent for legacy creator-less routines → acts as owner.
+    // Local fires thread the creator's bare sub. Control-plane scheduled fires
+    // instead inject a minted acting-as token, which replaces the bare header.
     const createdBy = job.routine.created_by;
     const pin = { ...routinePin(job.routine), mode: "auto" as const };
     // A pin that resolves to no known provider (junk or a legacy id no alias
@@ -50,7 +51,8 @@ export class ChannelRoutineFirer implements RoutineFirer {
       job.conversationId,
       routinePrompt(job.routine),
       { ...pin, effort: job.routine.effort },
-      createdBy,
+      this.actingAs ? undefined : createdBy,
+      this.actingAs,
     );
   }
 }

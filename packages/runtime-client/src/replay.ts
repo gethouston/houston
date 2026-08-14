@@ -97,19 +97,24 @@ export class ReplayLog {
 }
 
 /**
- * The resume cursor of a conversation events request: `?after=<n>` wins over
- * the standard `Last-Event-ID` header. A non-numeric / negative / non-integer
- * value is treated as absent (that source is ignored). Undefined = no cursor:
- * serve the fresh-connect contract (sync, then live frames).
+ * The resume cursor of a conversation events request: the standard
+ * `Last-Event-ID` header wins over `?after=<n>`. The header is always the
+ * fresher signal — reconnecting EventSource clients echo the last id they
+ * actually received, and the cloud gateway advances it past its own Redis
+ * replay before proxying while the original `?after=` stays in the query
+ * string; resolving the query first would re-serve every replayed frame.
+ * A non-numeric / negative / non-integer value is treated as absent (that
+ * source is ignored). Undefined = no cursor: serve the fresh-connect
+ * contract (sync, then live frames).
  */
 export function parseResumeCursor(
   afterParam: string | null,
   lastEventId?: string | string[],
 ): number | undefined {
-  const query = parseCursorValue(afterParam);
-  if (query !== undefined) return query;
   const header = Array.isArray(lastEventId) ? lastEventId[0] : lastEventId;
-  return parseCursorValue(header ?? null);
+  const fromHeader = parseCursorValue(header ?? null);
+  if (fromHeader !== undefined) return fromHeader;
+  return parseCursorValue(afterParam);
 }
 
 function parseCursorValue(raw: string | null): number | undefined {

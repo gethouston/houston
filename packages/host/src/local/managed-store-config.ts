@@ -1,5 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { HttpObjectStore } from "@houston/runtime-client/object-sync";
+import {
+  fetchWithRetry,
+  HttpObjectStore,
+} from "@houston/runtime-client/object-sync";
 
 function optionalPositiveNumber(name: string): number | undefined {
   const raw = process.env[name];
@@ -33,16 +37,78 @@ export async function managedStoreConfig(
 
   const root = `${url.replace(/\/+$/, "")}/v1/pod/store/${encodeURIComponent(orgSlug)}`;
   const hydrateMaxMb = optionalPositiveNumber("HOUSTON_HYDRATE_MAX_MB");
+  const bootId = randomUUID();
+  const fence: { token?: string } = {};
+  let generations: boolean | undefined;
+  // Claim the write lease for THIS boot before anything hydrates or syncs.
+  // Every legitimate new writer boots (kubelet container restarts and node
+  // reschedules included — neither passes through a control-plane wake), and
+  // a resumed zombie by definition does not re-run boot, so it cannot
+  // re-claim. A 404 is an old/unfenced gateway: proceed exactly as today and
+  // let the response-header capture pick up a token if one ever appears.
+  // Any other failure is fatal — syncing unfenced against a fencing gateway
+  // would 409 the first write anyway; die loudly and let the pod restart.
+  try {
+    const res = await fetchWithRetry(
+      (input, init) =>
+        fetch(input, { ...init, signal: AbortSignal.timeout(10_000) }),
+      `${root}/${encodeURIComponent(agentSlug)}/lease`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${hostToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ bootId }),
+      },
+    );
+    if (res.ok) {
+      const body = (await res.json()) as {
+        token?: string;
+        generations?: boolean;
+      };
+      if (typeof body.token === "string" && body.token !== "") {
+        fence.token = body.token;
+      }
+      // The gateway's explicit generation-precondition capability. Known
+      // before the first hydrate, which is what lets an EMPTY prefix send
+      // create-only preconditions instead of last-writer-wins first creates.
+      // Old gateways omit the field: leave undefined and let the sync layers
+      // infer capability from observed generations, exactly as today.
+      if (typeof body.generations === "boolean") {
+        generations = body.generations;
+      }
+    } else if (res.status !== 404) {
+      return fatal(
+        `[local-host] write-lease claim failed (${res.status}): the store gateway fences writes but refused this boot's claim.`,
+      );
+    }
+  } catch (err) {
+    return fatal(
+      `[local-host] write-lease claim unreachable: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
   return {
+    podGateway: {
+      baseUrl: url,
+      orgSlug,
+      agentSlug,
+      podToken: hostToken,
+      bootId,
+      fence,
+    },
     storeSync: {
       store: new HttpObjectStore({
         baseUrl: `${root}/${encodeURIComponent(agentSlug)}`,
         token: hostToken,
+        bootId,
+        fence,
       }),
       quietMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_QUIET_MS"),
       intervalMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_INTERVAL_MS"),
       maxHydrateBytes:
         hydrateMaxMb === undefined ? undefined : hydrateMaxMb * 1024 * 1024,
+      generations,
     },
     sharedMirror: {
       store: new HttpObjectStore({
@@ -51,6 +117,9 @@ export async function managedStoreConfig(
         agentSlug,
       }),
       mirrorDir: join(houstonHome, "shared-mirror"),
+      // Capability is a property of the deployment's blob backend, so the
+      // agent-prefix signal covers the shared prefix too.
+      generations,
     },
   };
 }

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import type { ManifestObjectStore, ObjectMetadata } from "./object-manifest";
+import { StoreConflictError } from "./object-store";
 import {
   canonicalMetadata,
   downloadAtomic,
@@ -34,6 +35,13 @@ export interface SyncSharedMirrorOptions {
   families?: readonly SharedMirrorFamily[];
   mode?: "push-pull" | "push-only";
   onConflict?: (key: string) => void;
+  /**
+   * The gateway's explicit generation-precondition capability (boot lease
+   * response). Overrides inference from the snapshot, which cannot see
+   * capability on an empty prefix — where concurrent first creates would
+   * otherwise be last-writer-wins. Absent on old gateways: infer.
+   */
+  generations?: boolean;
 }
 
 export interface SharedMirrorResult {
@@ -109,6 +117,10 @@ export async function syncSharedMirror(
   );
   const uploaded: string[] = [];
   const uploadedMetadata: Record<string, SharedMirrorFileState> = {};
+  const conflicted = new Set<string>();
+  const generationAware =
+    options.generations ??
+    snapshot.objects.some(({ generation }) => generation !== undefined);
   if (options.state) {
     for (const key of await localFamilyFiles(options.mirrorDir, families)) {
       const metadata = await localMetadata(localPath(options.mirrorDir, key));
@@ -121,15 +133,32 @@ export async function syncSharedMirror(
       // A partial earlier pass may have changed bytes without advancing state.
       // Equal remote bytes prove this is an echo, not a new intentional edit.
       if (sameMetadata(metadata, canonicalRemote)) continue;
-      if (!sameMetadata(canonicalRemote, options.state.files[key])) {
+      const ifGenerationMatch =
+        remoteMetadata?.generation ?? (generationAware ? "0" : undefined);
+      if (
+        ifGenerationMatch === undefined &&
+        !sameMetadata(canonicalRemote, options.state.files[key])
+      ) {
         options.onConflict?.(key);
       }
-      await options.store.upload(localPath(options.mirrorDir, key), key);
-      remote.set(key, {
-        key,
-        ...metadata,
-        updated: remoteMetadata?.updated ?? "",
-      });
+      try {
+        const result = await options.store.upload(
+          localPath(options.mirrorDir, key),
+          key,
+          ifGenerationMatch === undefined ? undefined : { ifGenerationMatch },
+        );
+        remote.set(key, {
+          key,
+          ...metadata,
+          updated: remoteMetadata?.updated ?? "",
+          generation: result?.generation,
+        });
+      } catch (error) {
+        if (!(error instanceof StoreConflictError)) throw error;
+        conflicted.add(key);
+        options.onConflict?.(key);
+        continue;
+      }
       uploadedMetadata[key] = metadata;
       uploaded.push(key);
     }
@@ -152,6 +181,7 @@ export async function syncSharedMirror(
   );
   const downloaded: string[] = [];
   for (const object of objects) {
+    if (conflicted.has(object.key)) continue;
     const destination = localPath(options.mirrorDir, object.key);
     if (await matches(destination, object)) continue;
     await downloadAtomic(options.store, object, destination);

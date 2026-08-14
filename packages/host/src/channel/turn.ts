@@ -68,6 +68,7 @@ export class TurnChannel implements RuntimeChannel {
     // identity flows through the standing-pod path (ProxyChannel). Accepted to
     // keep the port aligned, ignored here.
     _actingUser?: string,
+    _actingAs?: string,
   ): Promise<void> {
     const outcome = await dispatchTurn(
       this.deps,

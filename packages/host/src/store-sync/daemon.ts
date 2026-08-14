@@ -2,60 +2,22 @@ import { mkdir } from "node:fs/promises";
 import {
   type HydrateManifest,
   hydrate,
-  type ObjectStore,
-  syncBack,
+  StoreFencedError,
 } from "@houston/runtime-client/object-sync";
 import { type TreeWatch, watchTree } from "../watch/watch-tree";
+import {
+  DEFAULT_INTERVAL_MS,
+  DEFAULT_MAX_HYDRATE_BYTES,
+  DEFAULT_QUIET_MS,
+  logHydrated,
+  logSyncResult,
+  runSyncBack,
+  STORE_SYNC_EXCLUDES,
+  type StoreSyncOptions,
+} from "./daemon-policy";
 
-const DEFAULT_QUIET_MS = 3_000;
-const DEFAULT_INTERVAL_MS = 300_000;
-// Just under the pod's 10Gi emptyDir cap (GW_PVC_SIZE), NOT the per-turn
-// mode's 512 MiB: syncBack has no ceiling, so anything the agent writes must
-// also hydrate back on the next wake — a hydrate cap smaller than what sync
-// allows out is a delayed crash-loop (writes succeed today, the wake after
-// the next sleep fails forever). The gap below 10Gi leaves room for the
-// excluded scratch (tmp files, runtime credentials) that lives on the emptyDir
-// but never syncs.
-const DEFAULT_MAX_HYDRATE_BYTES = 9 * 1024 * 1024 * 1024;
-// Warn while the agent is WRITING (actionable), not when a later wake fails:
-// crossing this fraction of the hydrate cap logs loudly on every sync.
-const SIZE_WARN_FRACTION = 0.8;
+export { STORE_SYNC_EXCLUDES, type StoreSyncOptions } from "./daemon-policy";
 
-/**
- * Extra pod-local paths that must not reach the store. The runtime credential
- * material (`auth.json`, `auth-users/`) is deliberately absent: `excluded()`
- * drops it unconditionally, so no caller can configure the leak back in.
- */
-export const STORE_SYNC_EXCLUDES = [
-  "credentials.json",
-  "claude-login/.credentials.json",
-  "db/",
-  // Org-shared data is a synchronized mirror with its own store prefix.
-  "shared-mirror/",
-];
-
-export interface StoreSyncOptions {
-  store: ObjectStore;
-  rootDir: string;
-  excludes?: string[];
-  /**
-   * Absolute paths the filesystem watcher never descends into (HOU-1237,
-   * distinct from `excludes` above — object-store keys, not watch paths).
-   * The unfiltered periodic sync still covers them, so this only trades a
-   * ~3s debounce for the interval one inside the excluded subtree.
-   */
-  watchExcludeDirs?: string[];
-  quietMs?: number;
-  intervalMs?: number;
-  maxHydrateBytes?: number;
-  log: (msg: string, err?: unknown) => void;
-}
-
-/**
- * Owns the managed pod's local cache lifecycle. Hydration must succeed before
- * observation or synchronization can start; that latch prevents an empty cache
- * from ever being mistaken for authoritative mass deletion.
- */
 export class StoreSyncDaemon {
   private manifest: HydrateManifest = new Map();
   private hydrated = false;
@@ -68,8 +30,13 @@ export class StoreSyncDaemon {
   private intervalTimer: ReturnType<typeof setInterval> | undefined;
   private syncPromise: Promise<void> | undefined;
   private rerunRequested = false;
+  private fencedLatch = false;
 
   constructor(private readonly opts: StoreSyncOptions) {}
+
+  get fenced(): boolean {
+    return this.fencedLatch;
+  }
 
   /** Returns the number of objects restored (the boot telemetry records it). */
   async hydrate(): Promise<number> {
@@ -82,12 +49,7 @@ export class StoreSyncDaemon {
     });
     this.manifest = manifest;
     this.hydrated = true;
-    // Hydration gates the pod's readiness probe, so its cost must be visible
-    // in the boot log — a wake-latency regression should point here, not to a
-    // silent gap before the listening banner.
-    this.opts.log(
-      `[store-sync] hydrated ${manifest.size} objects in ${Date.now() - startedAt}ms`,
-    );
+    logHydrated(this.opts, manifest.size, startedAt);
     return manifest.size;
   }
 
@@ -95,7 +57,7 @@ export class StoreSyncDaemon {
     if (!this.hydrated) {
       throw new Error("store sync cannot start before successful hydration");
     }
-    if (this.started) return;
+    if (this.started || this.fencedLatch) return;
     this.started = true;
     try {
       this.watcher = watchTree(this.opts.rootDir, () => this.markDirty(), {
@@ -125,12 +87,7 @@ export class StoreSyncDaemon {
 
   async stop(): Promise<void> {
     this.stopping = true;
-    this.watcher?.close();
-    this.watcher = undefined;
-    if (this.quietTimer) clearTimeout(this.quietTimer);
-    if (this.intervalTimer) clearInterval(this.intervalTimer);
-    this.quietTimer = undefined;
-    this.intervalTimer = undefined;
+    this.stopScheduling();
     if (!this.hydrated) return;
 
     if (this.syncPromise) {
@@ -142,6 +99,10 @@ export class StoreSyncDaemon {
           err,
         );
       }
+    }
+    if (this.fencedLatch) {
+      this.started = false;
+      return;
     }
     try {
       await this.syncOnce();
@@ -159,7 +120,7 @@ export class StoreSyncDaemon {
   }
 
   private markDirty(): void {
-    if (this.stopping) return;
+    if (this.stopping || this.fencedLatch) return;
     this.dirty = true;
     this.dirtyVersion += 1;
     if (this.quietTimer) clearTimeout(this.quietTimer);
@@ -171,7 +132,12 @@ export class StoreSyncDaemon {
   }
 
   private runInBackground(trigger: string): void {
-    if (this.stopping || (trigger === "debounced" && !this.dirty)) return;
+    if (
+      this.stopping ||
+      this.fencedLatch ||
+      (trigger === "debounced" && !this.dirty)
+    )
+      return;
     void this.requestSync().catch((err) => {
       this.opts.log(`[store-sync] ${trigger} sync failed; will retry`, err);
     });
@@ -186,7 +152,7 @@ export class StoreSyncDaemon {
       do {
         this.rerunRequested = false;
         await this.syncOnce();
-      } while (this.rerunRequested && !this.stopping);
+      } while (this.rerunRequested && !this.stopping && !this.fencedLatch);
     })().finally(() => {
       this.syncPromise = undefined;
     });
@@ -195,31 +161,37 @@ export class StoreSyncDaemon {
 
   private async syncOnce(): Promise<void> {
     const version = this.dirtyVersion;
-    const result = await syncBack(
-      this.opts.store,
-      "",
-      this.opts.rootDir,
-      this.manifest,
-      { excludes: this.excludes },
-    );
+    let result: Awaited<ReturnType<typeof runSyncBack>>;
+    try {
+      result = await runSyncBack(this.opts, this.manifest, this.excludes);
+    } catch (err) {
+      if (!(err instanceof StoreFencedError)) throw err;
+      this.loseFence(err);
+      return;
+    }
     this.manifest = result.manifest;
     if (version === this.dirtyVersion) this.dirty = false;
-    // A skip only happens on an ATTEMPTED upload (a changed file), so this
-    // logs once per oversized version, not on every periodic pass — an err-less
-    // breadcrumb, not a Sentry error (the store's cap is a deterministic
-    // verdict on the file, not an engine fault — HOUSTON-APP-4Y7).
-    for (const skip of result.skipped) {
-      this.opts.log(
-        `[store-sync] ${skip.key} exceeds the store's per-object cap and stays pod-local until it changes (${skip.reason})`,
-      );
-    }
-    const cap = this.opts.maxHydrateBytes ?? DEFAULT_MAX_HYDRATE_BYTES;
-    if (result.totalBytes > cap * SIZE_WARN_FRACTION) {
-      const mb = (n: number) => Math.round(n / 1024 / 1024);
-      this.opts.log(
-        `[store-sync] agent data is ${mb(result.totalBytes)} MiB of the ` +
-          `${mb(cap)} MiB hydration cap — past the cap the agent cannot wake`,
-      );
-    }
+    logSyncResult(result, this.opts);
+  }
+
+  private loseFence(err: StoreFencedError): void {
+    if (this.fencedLatch) return;
+    this.fencedLatch = true;
+    this.dirty = false;
+    this.rerunRequested = false;
+    this.stopScheduling();
+    this.opts.log(
+      "[store-sync] write fencing lost: another pod owns this agent's store; halting sync",
+      err,
+    );
+  }
+
+  private stopScheduling(): void {
+    this.watcher?.close();
+    this.watcher = undefined;
+    if (this.quietTimer) clearTimeout(this.quietTimer);
+    if (this.intervalTimer) clearInterval(this.intervalTimer);
+    this.quietTimer = undefined;
+    this.intervalTimer = undefined;
   }
 }

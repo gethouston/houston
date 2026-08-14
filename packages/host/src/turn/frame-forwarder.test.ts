@@ -1,0 +1,219 @@
+import type { SequencedFrame } from "@houston/runtime-client";
+import { afterEach, expect, test, vi } from "vitest";
+import { MemoryTurnBus } from "./bus";
+import type { TurnLogSender } from "./frame-forwarder";
+import { FrameForwarder } from "./frame-forwarder";
+import { eventChannel } from "./relay-dialect";
+import { HttpTurnLogSender } from "./turn-log-http";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+test("captures without a client, batches frames, and flushes terminal immediately", async () => {
+  const requests: {
+    path: string;
+    frames: SequencedFrame[];
+    headers: Headers;
+  }[] = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    // The ingest wire shape: a BARE array of {seq, frame}, frame verbatim
+    // (seq inline) so replayed frames are byte-equivalent to live ones.
+    const body = JSON.parse(String(init?.body)) as {
+      seq: number;
+      frame: SequencedFrame;
+    }[];
+    requests.push({
+      path: new URL(String(input)).pathname,
+      frames: body.map((entry) => {
+        if (entry.seq !== entry.frame.seq) {
+          throw new Error("cursor seq diverged from the frame's own seq");
+        }
+        return entry.frame;
+      }),
+      headers: new Headers(init?.headers),
+    });
+    return Response.json({ ok: true });
+  };
+  const bus = new MemoryTurnBus();
+  const sender = new HttpTurnLogSender({
+    gateway: {
+      baseUrl: "https://gateway.example",
+      orgSlug: "acme",
+      agentSlug: "helper",
+      podToken: "pod-token",
+      bootId: "boot-1",
+      fence: { token: "71" },
+    },
+    fetchImpl,
+    retryDelaysMs: [],
+  });
+  const forwarder = new FrameForwarder({ bus, sender, batchMs: 10_000 });
+  // No SSE/client subscriber exists: this unconditional capture is the only one.
+  forwarder.capture("routine/c1", "helper/routine/c1");
+
+  await bus.publish(
+    eventChannel("helper/routine/c1"),
+    JSON.stringify({ type: "text", data: { text: "a" }, seq: 41 }),
+  );
+  await bus.publish(
+    eventChannel("helper/routine/c1"),
+    JSON.stringify({ type: "done", data: {}, seq: 42 }),
+  );
+  await eventually(() => requests.length === 1);
+
+  expect(requests[0]?.path).toBe("/v1/pod/turnlog/acme/helper/routine%2Fc1");
+  expect(requests[0]?.frames.map((frame) => frame.seq)).toEqual([41, 42]);
+  expect(requests[0]?.headers.get("authorization")).toBe("Bearer pod-token");
+  expect(requests[0]?.headers.get("x-houston-fencing-token")).toBe("71");
+  expect(requests[0]?.headers.get("x-houston-boot-id")).toBe("boot-1");
+});
+
+test("flushes a full 32-frame batch without waiting for the timer", async () => {
+  const batches: SequencedFrame[][] = [];
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as {
+      seq: number;
+      frame: SequencedFrame;
+    }[];
+    batches.push(body.map((entry) => entry.frame));
+    return Response.json({ ok: true });
+  };
+  const bus = new MemoryTurnBus();
+  const forwarder = new FrameForwarder({
+    bus,
+    sender: new HttpTurnLogSender({
+      gateway: {
+        baseUrl: "https://gateway.example",
+        orgSlug: "acme",
+        agentSlug: "helper",
+        podToken: "pod-token",
+        bootId: "boot-1",
+        fence: {},
+      },
+      fetchImpl,
+      retryDelaysMs: [],
+    }),
+    batchMs: 10_000,
+  });
+  forwarder.capture("c1", "helper/c1");
+
+  for (let seq = 1; seq <= 32; seq++) {
+    await bus.publish(
+      eventChannel("helper/c1"),
+      JSON.stringify({ type: "text", data: { text: String(seq) }, seq }),
+    );
+  }
+  await eventually(() => batches.length === 1);
+  expect(batches[0]).toHaveLength(32);
+});
+
+test("serializes consecutive turns for the same conversation", async () => {
+  const batches: number[][] = [];
+  let releaseFirst: (() => void) | undefined;
+  const firstBlocked = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
+  const sender: TurnLogSender = {
+    async send(_conversationId, frames) {
+      batches.push(frames.map((frame) => frame.seq));
+      if (batches.length === 1) await firstBlocked;
+    },
+  };
+  const bus = new MemoryTurnBus();
+  const forwarder = new FrameForwarder({ bus, sender });
+
+  forwarder.capture("c1", "helper/c1");
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "done", data: {}, seq: 10 }),
+  );
+  await eventually(() => batches.length === 1);
+
+  forwarder.capture("c1", "helper/c1");
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "done", data: {}, seq: 11 }),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  expect(batches).toEqual([[10]]);
+
+  releaseFirst?.();
+  await eventually(() => batches.length === 2);
+  expect(batches).toEqual([[10], [11]]);
+});
+
+test("evicts an idle capture so the same relay can start cleanly later", async () => {
+  vi.useFakeTimers();
+  const sent: number[][] = [];
+  const bus = new MemoryTurnBus();
+  const forwarder = new FrameForwarder({
+    bus,
+    sender: {
+      async send(_conversationId, frames) {
+        sent.push(frames.map((frame) => frame.seq));
+      },
+    },
+    batchSize: 1,
+  });
+
+  forwarder.capture("c1", "helper/c1");
+  await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "text", data: { text: "stale" }, seq: 1 }),
+  );
+  expect(sent).toEqual([]);
+
+  forwarder.capture("c1", "helper/c1");
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "done", data: {}, seq: 2 }),
+  );
+  await vi.runAllTimersAsync();
+  expect(sent).toEqual([[2]]);
+});
+
+test("stop waits for a pending send to settle before returning", async () => {
+  let releaseSend!: () => void;
+  const sendReleased = new Promise<void>((resolve) => {
+    releaseSend = resolve;
+  });
+  let sendStarted = false;
+  const bus = new MemoryTurnBus();
+  const forwarder = new FrameForwarder({
+    bus,
+    sender: {
+      async send() {
+        sendStarted = true;
+        await sendReleased;
+      },
+    },
+  });
+  forwarder.capture("c1", "helper/c1");
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "done", data: {}, seq: 1 }),
+  );
+  await eventually(() => sendStarted);
+
+  let stopped = false;
+  const stopping = forwarder.stop();
+  void stopping.then(() => {
+    stopped = true;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  expect(stopped).toBe(false);
+
+  releaseSend();
+  await stopping;
+  expect(stopped).toBe(true);
+});
+
+async function eventually(predicate: () => boolean): Promise<void> {
+  const deadline = Date.now() + 1_000;
+  while (!predicate()) {
+    if (Date.now() >= deadline) throw new Error("condition not reached");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}

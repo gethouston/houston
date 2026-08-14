@@ -12,7 +12,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { excluded, hydrate, syncBack } from "./hydrate";
-import { LocalDirStore, ObjectTooLargeError } from "./object-store";
+import type { ObjectMetadata } from "./object-manifest";
+import {
+  LocalDirStore,
+  type ObjectStore,
+  ObjectTooLargeError,
+  StoreConflictError,
+  StoreFencedError,
+} from "./object-store";
 
 /**
  * The hydrate-to-sync loop pins faithful materialization, content diffing,
@@ -39,6 +46,16 @@ function seed(
 }
 
 const PREFIX = "ws/w1/agent-1";
+
+function metadata(key: string, generation: string): ObjectMetadata {
+  return {
+    key,
+    size: 1,
+    md5: "md5",
+    updated: "2026-08-12T00:00:00Z",
+    generation,
+  };
+}
 
 test("hydrate materializes the prefix and syncBack returns the new manifest", async () => {
   const { storeRoot, store, work } = setup();
@@ -198,6 +215,317 @@ test("an unchanged workspace uploads nothing and remains in the manifest", async
   expect(result.uploaded).toEqual([]);
   expect(result.deleted).toEqual([]);
   expect(result.manifest).toEqual(manifest);
+});
+
+test("uses hydrated generations for known, new, deleted, and unchanged files", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, {
+    "workspace/changed.txt": "v1",
+    "workspace/delete.txt": "delete",
+    "workspace/unchanged.txt": "same",
+  });
+  const generations = new Map([
+    [`${PREFIX}/workspace/changed.txt`, "10"],
+    [`${PREFIX}/workspace/delete.txt`, "20"],
+    [`${PREFIX}/workspace/unchanged.txt`, "30"],
+  ]);
+  const writes: Array<{
+    key: string;
+    operation: "delete" | "upload";
+    precondition?: string;
+  }> = [];
+  const versioned: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async (prefix = "") =>
+      (await store.list(prefix)).map((key) =>
+        metadata(key, generations.get(key) ?? "1"),
+      ),
+    download: (key, dest) => store.download(key, dest),
+    upload: async (src, key, opts) => {
+      writes.push({
+        key,
+        operation: "upload",
+        precondition: opts?.ifGenerationMatch,
+      });
+      await store.upload(src, key);
+      const generation = String(Number(generations.get(key) ?? "0") + 1);
+      generations.set(key, generation);
+      return { generation };
+    },
+    delete: async (key, opts) => {
+      writes.push({
+        key,
+        operation: "delete",
+        precondition: opts?.ifGenerationMatch,
+      });
+      await store.delete(key);
+    },
+  };
+  const manifest = await hydrate(versioned, PREFIX, work);
+  writeFileSync(join(work, "workspace", "changed.txt"), "v2");
+  writeFileSync(join(work, "workspace", "new.txt"), "new");
+  rmSync(join(work, "workspace", "delete.txt"));
+
+  const result = await syncBack(versioned, PREFIX, work, manifest);
+
+  expect(writes).toEqual([
+    {
+      key: `${PREFIX}/workspace/changed.txt`,
+      operation: "upload",
+      precondition: "10",
+    },
+    {
+      key: `${PREFIX}/workspace/new.txt`,
+      operation: "upload",
+      precondition: "0",
+    },
+    {
+      key: `${PREFIX}/workspace/delete.txt`,
+      operation: "delete",
+      precondition: "20",
+    },
+  ]);
+  expect(result.manifest.get("workspace/changed.txt")?.generation).toBe("11");
+  expect(result.manifest.get("workspace/new.txt")?.generation).toBe("1");
+  expect(result.manifest.get("workspace/unchanged.txt")?.generation).toBe("30");
+});
+
+test("explicit generations capability makes empty-prefix first creates conditional", async () => {
+  const { store, work } = setup();
+  const preconditions: Array<string | undefined> = [];
+  const observing: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    download: (key, dest) => store.download(key, dest),
+    upload: async (src, key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      await store.upload(src, key);
+      return { generation: "1" };
+    },
+    delete: (key) => store.delete(key),
+  };
+  mkdirSync(join(work, "workspace"), { recursive: true });
+  writeFileSync(join(work, "workspace", "first.txt"), "born");
+
+  // A cold agent has an EMPTY manifest: inference sees no generations, so
+  // without the boot-lease capability signal this create would have to go
+  // unconditional and concurrent first creates would be last-writer-wins.
+  const result = await syncBack(observing, PREFIX, work, new Map(), {
+    generations: true,
+  });
+  expect(preconditions).toEqual(["0"]);
+  expect(result.manifest.get("workspace/first.txt")?.generation).toBe("1");
+
+  // An explicit false forces unconditional writes even where an observed
+  // generation would otherwise be sent (the signal outranks inference).
+  preconditions.length = 0;
+  writeFileSync(join(work, "workspace", "first.txt"), "changed");
+  const manifest = new Map([
+    ["workspace/first.txt", { hash: "stale", generation: "1" }],
+  ]);
+  await syncBack(observing, PREFIX, work, manifest, { generations: false });
+  expect(preconditions).toEqual([undefined]);
+});
+
+test("refreshes generations once and records a second upload conflict", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/notes.txt": "v1" });
+  let manifestCalls = 0;
+  const preconditions: Array<string | undefined> = [];
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return [
+        metadata(
+          `${PREFIX}/workspace/notes.txt`,
+          manifestCalls === 1 ? "5" : "6",
+        ),
+      ];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: async (_src, key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      throw new StoreConflictError(
+        key,
+        `conflict at ${opts?.ifGenerationMatch}`,
+      );
+    },
+    delete: (key, opts) => store.delete(key, opts),
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  writeFileSync(join(work, "workspace", "notes.txt"), "v2");
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(preconditions).toEqual(["5", "6"]);
+  expect(manifestCalls).toBe(2);
+  expect(result.uploaded).toEqual([]);
+  expect(result.conflicts).toEqual([
+    { key: "workspace/notes.txt", reason: "conflict at 6" },
+  ]);
+  expect(result.manifest.get("workspace/notes.txt")).toMatchObject({
+    generation: "6",
+  });
+});
+
+test("a fenced upload aborts the sync pass immediately", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  const fenced: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => [metadata(`${PREFIX}/workspace/a.txt`, "5")],
+    download: (key, dest) => store.download(key, dest),
+    upload: async (_src, key) => {
+      throw new StoreFencedError(key, "lease lost");
+    },
+    delete: (key, opts) => store.delete(key, opts),
+  };
+  const manifest = await hydrate(fenced, PREFIX, work);
+  writeFileSync(join(work, "workspace", "a.txt"), "changed");
+
+  await expect(syncBack(fenced, PREFIX, work, manifest)).rejects.toBeInstanceOf(
+    StoreFencedError,
+  );
+});
+
+test("a delete conflict refreshes the generation and retries successfully", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  const preconditions: Array<string | undefined> = [];
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return [
+        metadata(`${PREFIX}/workspace/a.txt`, manifestCalls === 1 ? "5" : "6"),
+      ];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key, opts) => store.upload(src, key, opts),
+    delete: async (key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      if (opts?.ifGenerationMatch === "5") {
+        throw new StoreConflictError(key, "stale generation");
+      }
+      await store.delete(key);
+    },
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  rmSync(join(work, "workspace", "a.txt"));
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(preconditions).toEqual(["5", "6"]);
+  expect(manifestCalls).toBe(2);
+  expect(result.deleted).toEqual(["workspace/a.txt"]);
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.conflicts).toEqual([]);
+});
+
+test("a second delete conflict preserves refreshed ownership for the next pass", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  const preconditions: Array<string | undefined> = [];
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return [
+        metadata(`${PREFIX}/workspace/a.txt`, manifestCalls === 1 ? "5" : "6"),
+      ];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key, opts) => store.upload(src, key, opts),
+    delete: async (key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      throw new StoreConflictError(
+        key,
+        `conflict at ${opts?.ifGenerationMatch}`,
+      );
+    },
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  rmSync(join(work, "workspace", "a.txt"));
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(preconditions).toEqual(["5", "6"]);
+  expect(manifestCalls).toBe(2);
+  expect(result.deleted).toEqual([]);
+  expect(result.manifest.get("workspace/a.txt")?.generation).toBe("6");
+  expect(result.conflicts).toEqual([
+    { key: "workspace/a.txt", reason: "conflict at 6" },
+  ]);
+});
+
+test("a delete conflict whose refresh finds no object is already deleted", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  let deleteCalls = 0;
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return manifestCalls === 1
+        ? [metadata(`${PREFIX}/workspace/a.txt`, "5")]
+        : [];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key, opts) => store.upload(src, key, opts),
+    delete: async (key) => {
+      deleteCalls += 1;
+      throw new StoreConflictError(key, "stale generation");
+    },
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  rmSync(join(work, "workspace", "a.txt"));
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(deleteCalls).toBe(1);
+  expect(result.deleted).toEqual(["workspace/a.txt"]);
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.conflicts).toEqual([]);
+});
+
+test("a delete conflict retries unconditionally after a generation-less refresh", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  const preconditions: Array<string | undefined> = [];
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return [
+        {
+          ...metadata(`${PREFIX}/workspace/a.txt`, "5"),
+          generation: manifestCalls === 1 ? "5" : undefined,
+        },
+      ];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key, opts) => store.upload(src, key, opts),
+    delete: async (key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      if (opts?.ifGenerationMatch === "5") {
+        throw new StoreConflictError(key, "stale generation");
+      }
+      await store.delete(key);
+    },
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  rmSync(join(work, "workspace", "a.txt"));
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(preconditions).toEqual(["5", undefined]);
+  expect(result.deleted).toEqual(["workspace/a.txt"]);
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.conflicts).toEqual([]);
 });
 
 test("a file deleted mid-walk is reconciled as deleted, not a failed sync", async () => {
@@ -395,7 +723,7 @@ test("a large file round-trips: streamed hash agrees across syncBack and hydrate
       maxBytes: 64 * 1024 * 1024,
     },
   );
-  expect(rehydrated.get("workspace/big.bin")).toBe(
-    result.manifest.get("workspace/big.bin"),
+  expect(rehydrated.get("workspace/big.bin")?.hash).toBe(
+    result.manifest.get("workspace/big.bin")?.hash,
   );
 });

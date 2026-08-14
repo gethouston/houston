@@ -11,7 +11,7 @@ import { openSSE } from "./sse";
  *
  * Fresh connect (no cursor): a `sync` catch-up frame (running/partial/seq
  * watermark + the running turn's id), then live frames. Resume (`?after=<seq>`
- * or `Last-Event-ID`, query wins): the missed frames are replayed from the
+ * or `Last-Event-ID`, header wins): the missed frames are replayed from the
  * bus's in-flight-turn buffer and live frames follow — no `sync`, no gap, no
  * duplicate. A cursor the buffer can't serve (too old / from before a restart)
  * gets a `sync` with `resync: true` instead; the client refetches history and

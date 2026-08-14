@@ -15,6 +15,8 @@ import { FileCredentialStore } from "../credentials/file-store";
 import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
+import { HttpDocShadow } from "../docs/http-shadow";
+import { DocShadowProjector } from "../docs/projector";
 import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
 import { CustomExecutorHost } from "../integrations/custom/executor-host";
@@ -33,19 +35,24 @@ import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { reseedAgentSchemas } from "../migrate/agent-schemas";
 import { migrateChatHistory } from "../migrate/chat-history";
 import { LocalPaths } from "../paths";
+import type { PodGatewayConfig } from "../pod-gateway";
 import type { ChannelCtx } from "../ports";
 import { forward } from "../proxy/route";
 import { CredentialServeHealer } from "../routes/credential-healer";
 import { CUSTOM_OAUTH_CALLBACK_PATH } from "../routes/custom-integrations-oauth";
 import { ChannelRoutineFirer } from "../schedule/firer";
-import { Scheduler } from "../schedule/scheduler";
+import { type RoutineSchedulerMode, Scheduler } from "../schedule/scheduler";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { LocalWorkspaceStore } from "../store/local";
 import { SharedMirrorController, StoreSyncDaemon } from "../store-sync";
 import { BootTelemetry } from "../telemetry/boot";
 import { sendBootReport } from "../telemetry/boot-report";
+import { HttpTranscriptShadow } from "../transcripts/http-shadow";
 import { MemoryTurnBus } from "../turn/bus";
+import { FrameForwarder } from "../turn/frame-forwarder";
+import { StandingFrameCapture } from "../turn/standing-frame-capture";
+import { HttpTurnLogSender } from "../turn/turn-log-http";
 import { UsageSampler } from "../usage/sampler";
 import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
@@ -175,6 +182,8 @@ export interface LocalHostOptions {
    * credential-less runtimes) or churn watch events while the cloud app copies.
    */
   passive?: boolean;
+  /** Cron ownership. `external` keeps reconcile alive but skips local fires. */
+  routineSchedulerMode?: RoutineSchedulerMode;
   /**
    * True only when a trusted gateway fronts EVERY request to this host (the
    * managed cloud pod: the gateway enforces the pod token and mints/strips
@@ -203,11 +212,15 @@ export interface LocalHostOptions {
     quietMs?: number;
     intervalMs?: number;
     maxHydrateBytes?: number;
+    /** Gateway's explicit generation-precondition capability (boot lease). */
+    generations?: boolean;
   };
   /** Managed-pod read/write org prefix mirror, outside the agent workspace. */
   sharedMirror?: {
     store: ManifestObjectStore;
     mirrorDir: string;
+    /** Gateway's explicit generation-precondition capability (boot lease). */
+    generations?: boolean;
   };
   /**
    * Managed-pod active-time reporting: sample this pod's busy state and report
@@ -219,6 +232,19 @@ export interface LocalHostOptions {
     orgSlug: string;
     agentSlug: string;
     podToken: string;
+  };
+  /** Managed durable-turn shadows. Both switches are explicit rollout caps. */
+  durableTurns?: {
+    gateway: PodGatewayConfig;
+    /**
+     * Turnlog ingest lives on the GATEWAY (it owns the Redis streams), not on
+     * the pod store `gateway` points at — batches sent there 404. Absent =
+     * fall back to `gateway` for old control planes that predate
+     * HOUSTON_TURNLOG_URL; the sender's failure path already tolerates it.
+     */
+    turnlogGateway?: PodGatewayConfig;
+    transcriptDualWrite: boolean;
+    turnLog: boolean;
   };
 }
 
@@ -293,6 +319,27 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       })
     : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
+  const transcriptShadow = opts.durableTurns?.transcriptDualWrite
+    ? new HttpTranscriptShadow({ gateway: opts.durableTurns.gateway })
+    : undefined;
+  const docShadow = opts.durableTurns?.transcriptDualWrite
+    ? new HttpDocShadow({ gateway: opts.durableTurns.gateway })
+    : undefined;
+  const docProjector = docShadow
+    ? new DocShadowProjector({ store, vfs, paths, shadow: docShadow })
+    : undefined;
+  const frameForwarder = opts.durableTurns?.turnLog
+    ? new FrameForwarder({
+        bus,
+        sender: new HttpTurnLogSender({
+          gateway:
+            opts.durableTurns.turnlogGateway ?? opts.durableTurns.gateway,
+        }),
+      })
+    : undefined;
+  const standingFrameCapture = frameForwarder
+    ? new StandingFrameCapture(bus, frameForwarder)
+    : undefined;
 
   const spawner =
     opts.spawner ??
@@ -310,6 +357,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         ...(process.env.HOUSTON_SIDECAR_BINARY
           ? { HOUSTON_SIDECAR_ROLE: "runtime" }
           : {}),
+        // Do not inherit a rollout flag into a runtime unless the host also
+        // constructed its pod-auth facade from the complete managed config.
+        HOUSTON_TRANSCRIPT_DUAL_WRITE: transcriptShadow ? "1" : "",
       },
       onLog: opts.onRuntimeLog,
     });
@@ -360,6 +410,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // integration calls act as the driving user (C2).
     forwardActingHeader: opts.gatewayFronted ?? false,
     beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
+    turnLogCapture: standingFrameCapture,
   });
   const credentialHealer = opts.credentials
     ? new CredentialServeHealer(
@@ -549,6 +600,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // managed cloud the Go edge advertises the capability; a pod/self-host/desktop
     // stays byte-identical to the nominal profile (absent = off, protocol #core).
   };
+  const syncDaemon = opts.storeSync
+    ? new StoreSyncDaemon({
+        ...opts.storeSync,
+        rootDir: dirname(opts.workspacesRoot),
+        // FsWatcher below already watches this subtree for reactivity. Avoid a
+        // second, redundant inotify watch over it (HOU-1237).
+        watchExcludeDirs: [opts.workspacesRoot],
+        log: severityLog,
+      })
+    : undefined;
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -568,6 +629,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // always available — on managed cloud the Go control plane POSTs delivered
     // events to it. The lock dedupes redeliveries.
     triggerLock: bus,
+    routineFireLock: bus,
+    routineFireDedupTtlSec: opts.gatewayFronted ? 86_400 : 3600,
+    transcriptShadow,
     agentConfigs,
     // Managed pods record the gateway-minted acting identity as a routine's
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);
@@ -586,13 +650,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // non-public route: timings aren't secrets, but there is no reason to
     // widen the unauthenticated surface for them.
     metrics: { render: () => boot.render(), contentType: boot.contentType },
+    storeFenced: syncDaemon ? () => syncDaemon.fenced : undefined,
   };
 
   const server = createControlPlaneServer(deps);
   // The agent (or the user) editing files directly → reactivity, no host write.
-  const watcher = new FsWatcher(opts.workspacesRoot, (e) =>
-    events.emit(LOCAL_USER, e),
-  );
+  const watcher = new FsWatcher(opts.workspacesRoot, (event) => {
+    events.emit(LOCAL_USER, event);
+    docProjector?.onEvent(event);
+  });
   const scheduler = new Scheduler({
     store,
     vfs,
@@ -600,17 +666,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     lock: bus,
     firer: new ChannelRoutineFirer({ local: channel }),
     events,
+    replyReader: transcriptShadow,
+    mode: opts.routineSchedulerMode ?? "local",
+    dedupTtlSec: opts.gatewayFronted ? 86_400 : 3600,
   });
-  const syncDaemon = opts.storeSync
-    ? new StoreSyncDaemon({
-        ...opts.storeSync,
-        rootDir: dirname(opts.workspacesRoot),
-        // FsWatcher above already watches this subtree for reactivity —
-        // don't pay for a second, redundant inotify watch over it (HOU-1237).
-        watchExcludeDirs: [opts.workspacesRoot],
-        log: severityLog,
-      })
-    : undefined;
   // Managed pods sample their own busy state (the gateway can only see AWAKE
   // from outside) and report per-day active totals to the compute-usage ingest.
   const usageSampler = opts.usageReporting
@@ -746,6 +805,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       }
       boot.record("migrations", Date.now() - migrationsT0);
       bootStamp("hydration + migrations done");
+      // Seed CAS revisions at boot, but never put readiness behind shadow I/O.
+      docProjector?.seed();
       const bind = opts.bind ?? "127.0.0.1";
       await boot.time(
         "listen",
@@ -818,6 +879,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       stopPromise = (async () => {
         scheduler.stop();
         watcher.stop();
+        standingFrameCapture?.stop();
+        frameForwarder?.stop();
         // Drain the last accrued stretch before the runtimes go down; the
         // sampler swallows report failures, so this never blocks a shutdown.
         await usageSampler?.stop();

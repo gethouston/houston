@@ -20,6 +20,15 @@ export function truncateConversationAt(
   id: string,
   turnId: string,
 ): { removed: number } | null {
+  const mutation = truncateConversationMutationAt(dir, id, turnId);
+  return mutation ? { removed: mutation.removed } : null;
+}
+
+export function truncateConversationMutationAt(
+  dir: string,
+  id: string,
+  turnId: string,
+) {
   const conv = loadConversation(dir, id);
   if (!conv) return null;
   const at = conv.messages.findIndex((m) => m.turnId === turnId);
@@ -29,7 +38,7 @@ export function truncateConversationAt(
   conv.needsSessionReplay = true;
   conv.updatedAt = Date.now();
   saveConversation(dir, conv);
-  return { removed };
+  return { removed, conversation: conv };
 }
 
 /**

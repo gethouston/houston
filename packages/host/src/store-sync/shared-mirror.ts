@@ -17,6 +17,8 @@ export interface SharedMirrorControllerOptions {
   debounceMs?: number;
   watchDebounceMs?: number;
   now?: () => number;
+  /** Gateway's explicit generation-precondition capability (boot lease). */
+  generations?: boolean;
   log: (message: string, error?: unknown) => void;
 }
 
@@ -135,9 +137,10 @@ export class SharedMirrorController {
           snapshot,
           state: this.state,
           mode,
+          generations: this.options.generations,
           onConflict: (key) =>
             this.options.log(
-              `[shared-mirror] local edit won concurrent change for ${key}`,
+              `[shared-mirror] concurrent change blocked local edit for ${key}`,
             ),
         });
         this.state = result.state;

@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { HttpObjectStore, STREAM_UPLOAD_THRESHOLD_BYTES } from "./http-store";
-import { ObjectTooLargeError } from "./object-store";
+import {
+  ObjectTooLargeError,
+  StoreConflictError,
+  StoreFencedError,
+} from "./object-store";
 
 const metadata = (key: string, size: number) => ({
   key,
@@ -98,6 +102,122 @@ test("PUTs shared objects with the pod agent binding", async () => {
   });
   expect(request?.headers.get("authorization")).toBe("Bearer pod-token");
   expect(request?.headers.get("x-houston-agent")).toBe("writer");
+});
+
+test("captures a fencing token and echoes it with the stable boot id on writes", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-fenced-object-store-"));
+  const source = join(dir, "source.txt");
+  writeFileSync(source, "hello");
+  const requests: Headers[] = [];
+  let call = 0;
+  const fence: { token?: string } = {};
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/v1/pod/store/acme/agent",
+    token: "pod-token",
+    bootId: "boot-123",
+    fence,
+    fetchImpl: async (_input, init) => {
+      requests.push(new Headers(init?.headers));
+      call += 1;
+      if (call === 1) {
+        return Response.json(
+          { objects: [{ ...metadata("notes.txt", 5), gen: 7 }] },
+          { headers: { "X-Houston-Fencing-Token": "41" } },
+        );
+      }
+      if (call === 2) {
+        return Response.json(
+          { ...metadata("notes.txt", 5), gen: "8" },
+          {
+            headers: {
+              "X-Houston-Fencing-Token": "42",
+              "X-Houston-Generation": "9",
+            },
+          },
+        );
+      }
+      return new Response(null, { status: 204 });
+    },
+  });
+
+  expect(await store.manifest()).toMatchObject([
+    { key: "notes.txt", generation: "7" },
+  ]);
+  expect(
+    await store.upload(source, "notes.txt", { ifGenerationMatch: "7" }),
+  ).toEqual({ generation: "8" });
+  await store.delete("notes.txt", { ifGenerationMatch: "8" });
+
+  expect(requests[0]?.get("x-houston-fencing-token")).toBeNull();
+  expect(requests[1]?.get("x-houston-fencing-token")).toBe("41");
+  expect(requests[1]?.get("x-houston-boot-id")).toBe("boot-123");
+  expect(requests[1]?.get("x-houston-if-generation-match")).toBe("7");
+  expect(requests[2]?.get("x-houston-fencing-token")).toBe("42");
+  expect(requests[2]?.get("x-houston-boot-id")).toBe("boot-123");
+  expect(requests[2]?.get("x-houston-if-generation-match")).toBe("8");
+  expect(fence.token).toBe("42");
+});
+
+test.each([
+  409, 500,
+])("does not capture a fencing token from a failed %i response", async (status) => {
+  const fence = { token: "41" };
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/base",
+    token: "pod-token",
+    bootId: "boot-123",
+    fence,
+    fetchImpl: async () =>
+      new Response("rejected", {
+        status,
+        headers: { "X-Houston-Fencing-Token": "99" },
+      }),
+    retryDelaysMs: [],
+  });
+
+  await expect(store.manifest()).rejects.toThrow(`failed (${status})`);
+  expect(fence.token).toBe("41");
+});
+
+test("keeps old-gateway writes free of fencing and precondition headers", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-unfenced-object-store-"));
+  const source = join(dir, "source.txt");
+  writeFileSync(source, "hello");
+  let headers = new Headers();
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/base",
+    token: "pod-token",
+    bootId: "boot-123",
+    fence: {},
+    fetchImpl: async (_input, init) => {
+      headers = new Headers(init?.headers);
+      return Response.json(metadata("notes.txt", 5));
+    },
+  });
+
+  await store.upload(source, "notes.txt");
+
+  expect(Object.fromEntries(headers)).toEqual({
+    authorization: "Bearer pod-token",
+  });
+});
+
+test("uses the generation response header when the PUT body has no gen", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-generation-header-"));
+  const source = join(dir, "source.txt");
+  writeFileSync(source, "hello");
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/base",
+    token: "pod-token",
+    fetchImpl: async () =>
+      Response.json(metadata("notes.txt", 5), {
+        headers: { "X-Houston-Generation": "9223372036854775806" },
+      }),
+  });
+
+  await expect(store.upload(source, "notes.txt")).resolves.toEqual({
+    generation: "9223372036854775806",
+  });
 });
 
 test("encodes each object-key path segment", async () => {
@@ -237,6 +357,26 @@ test("retries upload and delete through transient failures", async () => {
   expect(del.calls()).toBe(2);
 });
 
+test("retries a fenced unconditional PUT after a transient response", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-fenced-retry-"));
+  const source = join(dir, "source.txt");
+  writeFileSync(source, "hello");
+  const put = flaky([new Response("bad gateway", { status: 502 })], () =>
+    Response.json(metadata("file.txt", 5)),
+  );
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/base",
+    token: "pod-token",
+    bootId: "boot-123",
+    fence: { token: "41" },
+    fetchImpl: put.fetchImpl,
+    retryDelaysMs: [0, 0],
+  });
+
+  await expect(store.upload(source, "file.txt")).resolves.toBeUndefined();
+  expect(put.calls()).toBe(2);
+});
+
 test("retries download and still writes the file atomically", async () => {
   const dir = mkdtempSync(join(tmpdir(), "http-object-store-retry-dl-"));
   const destination = join(dir, "nested", "dest.txt");
@@ -273,6 +413,52 @@ test("a 413 PUT surfaces as the typed ObjectTooLargeError, with no retry", async
   expect((err as ObjectTooLargeError).key).toBe("work/huge.mp4");
   expect(String(err)).toContain("failed (413)");
   // 413 is deterministic — the retry layer must not re-send the body.
+  expect(calls).toBe(1);
+});
+
+test.each([
+  [409, StoreFencedError],
+  [412, StoreConflictError],
+] as const)("a %i write response surfaces its typed store error", async (status, ErrorType) => {
+  const dir = mkdtempSync(join(tmpdir(), "houston-store-write-error-"));
+  const source = join(dir, "notes.txt");
+  writeFileSync(source, "notes");
+  const store = new HttpObjectStore({
+    baseUrl: "https://gw.test/v1/pod/store/o/a",
+    token: "pod-token",
+    fetchImpl: async () => new Response("rejected", { status }),
+    retryDelaysMs: [0, 0],
+  });
+
+  const err = await store
+    .upload(source, "work/notes.txt", { ifGenerationMatch: "3" })
+    .then(() => null)
+    .catch((error: unknown) => error);
+
+  expect(err).toBeInstanceOf(ErrorType);
+  expect((err as StoreFencedError | StoreConflictError).key).toBe(
+    "work/notes.txt",
+  );
+});
+
+test("does not retry a conditional PUT after a transient response", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "houston-store-conditional-"));
+  const source = join(dir, "notes.txt");
+  writeFileSync(source, "notes");
+  let calls = 0;
+  const store = new HttpObjectStore({
+    baseUrl: "https://gw.test/v1/pod/store/o/a",
+    token: "pod-token",
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response("gateway unavailable", { status: 502 });
+    },
+    retryDelaysMs: [0, 0],
+  });
+
+  await expect(
+    store.upload(source, "work/notes.txt", { ifGenerationMatch: "3" }),
+  ).rejects.toThrow("failed (502)");
   expect(calls).toBe(1);
 });
 

@@ -4,9 +4,14 @@ import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
-import { type FireLock, type RoutineFirer, scanAgent } from "./agent-scan";
+import { type RoutineFirer, scanAgent } from "./agent-scan";
+import type { FireLock } from "./fire-lock";
+import type { ReconcileDeps } from "./reconcile";
 
-export type { FireLock, FiringJob, RoutineFirer } from "./agent-scan";
+export type { FiringJob, RoutineFirer } from "./agent-scan";
+export type { FireLock } from "./fire-lock";
+
+export type RoutineSchedulerMode = "local" | "external";
 
 export interface SchedulerDeps {
   store: WorkspaceStore;
@@ -20,8 +25,11 @@ export interface SchedulerDeps {
   intervalMs?: number;
   /** Dedup-lock TTL (s); must exceed the scan interval. Default 1h. */
   dedupTtlSec?: number;
+  /** `external` disables cron fires only. Default `local`. */
+  mode?: RoutineSchedulerMode;
   now?: () => Date;
   newId?: () => string;
+  replyReader?: ReconcileDeps["replyReader"];
 }
 
 /**
@@ -118,6 +126,7 @@ export class Scheduler {
             now: this.now,
             newId: this.newId,
             dedupTtlSec: this.dedupTtlSec,
+            cronFiresEnabled: this.deps.mode !== "external",
           },
           ws,
           agent,

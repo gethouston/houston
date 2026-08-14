@@ -58,8 +58,27 @@ async function start(): Promise<Server> {
 const server = await start();
 
 let shuttingDown = false;
+let shadowDrain: Promise<void> = Promise.resolve();
+
+// Bounded, best-effort: a scale-to-zero right after a file mutation must give
+// the transcript shadow queue a chance to reach the gateway (its pending sends
+// and dirty markers are in-memory only), but may never hold the process past
+// the shutdown cap below. Turn mode has no long-lived store — importing it
+// there would only create an unused conversations dir.
+async function drainTranscriptShadow(): Promise<void> {
+  if (config.mode === "turn") return;
+  try {
+    const { drainTranscriptShadowForShutdown } = await import(
+      "./store/conversations"
+    );
+    await drainTranscriptShadowForShutdown(2_000);
+  } catch (error) {
+    logger.error("transcript shadow shutdown drain failed:", error);
+  }
+}
 
 async function exitNow() {
+  await shadowDrain;
   await logger.close();
   process.exit(0);
 }
@@ -68,6 +87,7 @@ function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info("runtime shutdown requested", { signal });
+  shadowDrain = drainTranscriptShadow();
   server.close(() => {
     void exitNow();
   });

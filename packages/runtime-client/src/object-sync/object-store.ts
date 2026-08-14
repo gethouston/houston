@@ -11,9 +11,26 @@ import { pipeline } from "node:stream/promises";
 export interface ObjectStore {
   /** All keys under a prefix (prefix itself excluded; no delimiter semantics). */
   list(prefix: string): Promise<string[]>;
+  manifest?(
+    prefix?: string,
+  ): Promise<import("./object-manifest").ObjectMetadata[]>;
   download(key: string, destFile: string): Promise<void>;
-  upload(srcFile: string, key: string): Promise<void>;
-  delete(key: string): Promise<void>;
+  upload(
+    srcFile: string,
+    key: string,
+    opts?: WriteOptions,
+    // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
+  ): Promise<WriteResult | void>;
+  delete(key: string, opts?: WriteOptions): Promise<void>;
+}
+
+export interface WriteOptions {
+  /** `0` means create-only. */
+  ifGenerationMatch?: string;
+}
+
+export interface WriteResult {
+  generation?: string;
 }
 
 /**
@@ -30,6 +47,28 @@ export class ObjectTooLargeError extends Error {
   ) {
     super(message);
     this.name = "ObjectTooLargeError";
+  }
+}
+
+/** The gateway rejected a stale pod after another boot acquired the lease. */
+export class StoreFencedError extends Error {
+  constructor(
+    readonly key: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "StoreFencedError";
+  }
+}
+
+/** A generation precondition missed because the remote object changed. */
+export class StoreConflictError extends Error {
+  constructor(
+    readonly key: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "StoreConflictError";
   }
 }
 
@@ -74,13 +113,19 @@ export class LocalDirStore implements ObjectStore {
     );
   }
 
-  async upload(srcFile: string, key: string): Promise<void> {
+  async upload(
+    srcFile: string,
+    key: string,
+    _opts?: WriteOptions,
+  ): Promise<void> {
+    // The local development store has no generations; conditional options are
+    // intentionally ignored so its existing filesystem behavior stays exact.
     const dest = this.fileFor(key);
     await mkdir(dirname(dest), { recursive: true });
     await pipeline(createReadStream(srcFile), createWriteStream(dest));
   }
 
-  async delete(key: string): Promise<void> {
+  async delete(key: string, _opts?: WriteOptions): Promise<void> {
     const file = this.fileFor(key);
     const existing = await stat(file).catch(() => null);
     if (existing) await rm(file);

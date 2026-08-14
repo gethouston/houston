@@ -23,6 +23,23 @@ Houston uses files, not a DB, for everything. The only SQLite left is a read-onl
 > as `ConversationsChanged`, which the gateway fans to every client so an open
 > chat on another device reloads the same transcript.
 
+### Managed durable-turn shadows
+
+Two managed-cloud rollout caps mirror this file model without changing its
+authority. `HOUSTON_TRANSCRIPT_DUAL_WRITE=1` queues transcript mutations only
+after the atomic file rename and projects watcher-observed `activity`,
+`routines`, `routine_runs`, `config`, and `learnings` files to the gateway.
+Failures, revision conflicts, and deploy skew are contained in the shadow path;
+the local file and object-store sync remain the source used by the turn.
+Reconcile may use the gateway's narrow `reply-after` query while this cap is on,
+but falls back to the transcript file when the route is unavailable.
+
+`HOUSTON_TURN_LOG=1` independently forwards authoritative sequenced turn frames
+from the host to the gateway in bounded, detached batches. This is a resume
+shadow only: an ingest gap leaves the existing live-pod resume path intact.
+Both caps are constructed only for a fully configured managed pod and reuse its
+pod token, boot id, and shared fencing-token holder.
+
 ## Rule
 If @houston-ai component renders it → `.houston/` folder.
 If app-specific → `.houston/`.

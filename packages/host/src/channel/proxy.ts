@@ -40,6 +40,7 @@ export interface RuntimeProxy {
  * a slightly-fast clock must not be rejected as expired.
  */
 const STALE_SKEW_MS = 60_000;
+const TURN_LOG_ATTACH_TIMEOUT_MS = 1_500;
 
 /**
  * The standing-runtime channel: wake the agent's runtime (GKE pod today, local
@@ -66,6 +67,15 @@ export class ProxyChannel implements RuntimeChannel {
       forwardActingHeader: boolean;
       /** Managed pod shared-cache freshness gate, invoked only for turn starts. */
       beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
+      /** Detached standing-runtime SSE capture for durable turnlog ingest. */
+      turnLogCapture?: {
+        capture(
+          endpoint: RuntimeEndpoint,
+          agentId: string,
+          conversationId: string,
+        ): Promise<void>;
+        stopCapture(agentId: string, conversationId: string): void;
+      };
       /** Injectable for tests; defaults to the process-wide ledger. */
       revocations?: RevocationTombstones;
     },
@@ -73,6 +83,55 @@ export class ProxyChannel implements RuntimeChannel {
 
   private get revocations(): RevocationTombstones {
     return this.opts.revocations ?? sharedRevocationTombstones;
+  }
+
+  private async attachTurnLogCapture(
+    endpoint: RuntimeEndpoint,
+    agentId: string,
+    conversationId: string,
+  ): Promise<void> {
+    const capture = this.opts.turnLogCapture;
+    if (!capture) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const timeout = new Promise<"timeout">((resolve) => {
+        timer = setTimeout(
+          () => resolve("timeout"),
+          TURN_LOG_ATTACH_TIMEOUT_MS,
+        );
+        timer.unref?.();
+      });
+      const result = await Promise.race([
+        capture
+          .capture(endpoint, agentId, conversationId)
+          .then(() => "attached" as const),
+        timeout,
+      ]);
+      if (result === "timeout") {
+        console.debug(
+          `[turnlog] standing capture attach timed out for ${conversationId}; proceeding unattached`,
+        );
+      }
+    } catch (error) {
+      console.debug(
+        `[turnlog] standing capture attach failed for ${conversationId}; proceeding without turnlog`,
+        error,
+      );
+      this.stopTurnLogCapture(agentId, conversationId);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private stopTurnLogCapture(agentId: string, conversationId: string): void {
+    try {
+      this.opts.turnLogCapture?.stopCapture(agentId, conversationId);
+    } catch (error) {
+      console.debug(
+        `[turnlog] standing capture teardown failed for ${conversationId}`,
+        error,
+      );
+    }
   }
 
   async dispatch(
@@ -112,8 +171,25 @@ export class ProxyChannel implements RuntimeChannel {
     if (!body && method !== "GET" && method !== "HEAD") {
       body = await readBody(req, MAX_JSON_BYTES);
     }
-    if (method === "POST" && /^conversations\/[^/]+\/messages$/.test(rest)) {
-      await this.opts.beforeTurn?.(ctx.agent);
+    const turnStart = rest.match(/^conversations\/([^/]+)\/messages$/);
+    let capturedConversationId: string | undefined;
+    if (method === "POST" && turnStart) {
+      try {
+        const conversationId = decodeURIComponent(turnStart[1] ?? "");
+        capturedConversationId = conversationId;
+        await this.attachTurnLogCapture(endpoint, ctx.agent.id, conversationId);
+      } catch (error) {
+        // Shadow-only: a malformed id or capture setup must never affect send.
+        console.debug("[turnlog] standing capture enqueue failed", error);
+      }
+      try {
+        await this.opts.beforeTurn?.(ctx.agent);
+      } catch (error) {
+        if (capturedConversationId) {
+          this.stopTurnLogCapture(ctx.agent.id, capturedConversationId);
+        }
+        throw error;
+      }
     }
     const params = new URLSearchParams(url.search);
     params.delete("token");
@@ -138,19 +214,32 @@ export class ProxyChannel implements RuntimeChannel {
       ? lastEventHeader[0]
       : lastEventHeader;
 
-    return this.opts.proxy.forward(
-      endpoint,
-      {
-        method,
-        path: `/${rest}`,
-        search: qs ? `?${qs}` : "",
-        contentType: req.headers["content-type"] ?? null,
-        body,
-        actingAs,
-        lastEventId,
-      },
-      res,
-    );
+    try {
+      await this.opts.proxy.forward(
+        endpoint,
+        {
+          method,
+          path: `/${rest}`,
+          search: qs ? `?${qs}` : "",
+          contentType: req.headers["content-type"] ?? null,
+          body,
+          actingAs,
+          lastEventId,
+        },
+        res,
+      );
+    } catch (error) {
+      if (capturedConversationId) {
+        this.stopTurnLogCapture(ctx.agent.id, capturedConversationId);
+      }
+      throw error;
+    }
+    if (
+      capturedConversationId &&
+      (res.statusCode < 200 || res.statusCode >= 300)
+    ) {
+      this.stopTurnLogCapture(ctx.agent.id, capturedConversationId);
+    }
   }
 
   async fireTurn(
@@ -159,6 +248,7 @@ export class ProxyChannel implements RuntimeChannel {
     text: string,
     pin?: TurnPin,
     actingUser?: string,
+    actingAs?: string,
   ): Promise<void> {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
@@ -168,28 +258,37 @@ export class ProxyChannel implements RuntimeChannel {
     // an errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     await this.opts.beforeTurn?.(ctx.agent);
-    const res = await fetch(
-      `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          Authorization: `Bearer ${endpoint.token}`,
-          // C2 routine path: no per-turn acting-as token is minted — the runtime
-          // instead forwards this creator sub on its integration calls (paired
-          // pod-side with the pod token). Omitted for legacy creator-less routines.
-          ...(actingUser ? { "x-houston-acting-user": actingUser } : {}),
+    await this.attachTurnLogCapture(endpoint, ctx.agent.id, conversationId);
+    let res: Response;
+    try {
+      res = await fetch(
+        `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Authorization: `Bearer ${endpoint.token}`,
+            ...(actingAs
+              ? { "x-houston-acting-as": actingAs }
+              : actingUser
+                ? { "x-houston-acting-user": actingUser }
+                : {}),
+          },
+          body: JSON.stringify({
+            text,
+            ...(pin?.provider ? { provider: pin.provider } : {}),
+            ...(pin?.model ? { model: pin.model } : {}),
+            ...(pin?.effort ? { effort: pin.effort } : {}),
+            ...(pin?.mode ? { mode: pin.mode } : {}),
+          }),
         },
-        body: JSON.stringify({
-          text,
-          ...(pin?.provider ? { provider: pin.provider } : {}),
-          ...(pin?.model ? { model: pin.model } : {}),
-          ...(pin?.effort ? { effort: pin.effort } : {}),
-          ...(pin?.mode ? { mode: pin.mode } : {}),
-        }),
-      },
-    );
+      );
+    } catch (error) {
+      this.stopTurnLogCapture(ctx.agent.id, conversationId);
+      throw error;
+    }
     if (!res.ok) {
+      this.stopTurnLogCapture(ctx.agent.id, conversationId);
       const body = await res.text().catch(() => "");
       throw new TurnFireError(
         `runtime ${res.status}: ${body}`,

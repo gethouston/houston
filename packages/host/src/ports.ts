@@ -224,9 +224,9 @@ export interface RuntimeChannel {
    * so the caller records an errored run instead of a silent miss.
    *
    * `pin` carries the routine's provider/model/effort/mode overrides.
-   * `actingUser` (C2) is the routine creator's Supabase `sub` — forwarded to the
-   * runtime as `x-houston-acting-user` so its integration calls act as that user.
-   * Absent for legacy routines (no creator recorded) → the runtime acts as owner.
+   * `actingUser` is the local routine creator's bare `sub`. `actingAs` is a
+   * gateway-minted C2 token for an externally scheduled fire and replaces the
+   * bare header. Both are absent for legacy creator-less local routines.
    */
   fireTurn(
     ctx: ChannelCtx,
@@ -234,6 +234,7 @@ export interface RuntimeChannel {
     text: string,
     pin?: TurnPin,
     actingUser?: string,
+    actingAs?: string,
   ): Promise<void>;
   /**
    * Abort the in-flight turn on a conversation — the "stop this routine run"

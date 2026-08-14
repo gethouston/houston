@@ -3,7 +3,10 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { ManifestObjectStore } from "@houston/runtime-client/object-sync";
+import {
+  type ManifestObjectStore,
+  StoreConflictError,
+} from "@houston/runtime-client/object-sync";
 import { expect, test, vi } from "vitest";
 import { SharedMirrorController } from "./shared-mirror";
 
@@ -204,12 +207,18 @@ test("pull watcher echoes never upload the downloaded bytes", async () => {
   await controller.stop();
 });
 
-test("logs a local-wins conflict with the key", async () => {
+test("logs a blocked local edit conflict with the key", async () => {
   const remote = memoryStore({ "skills/a/SKILL.md": "a v1" });
+  const store: ManifestObjectStore = {
+    ...remote.store,
+    async upload(_source, key) {
+      throw new StoreConflictError(key, "generation conflict");
+    },
+  };
   const mirrorDir = mkdtempSync(join(tmpdir(), "shared-controller-conflict-"));
   const logs: string[] = [];
   const controller = new SharedMirrorController({
-    store: remote.store,
+    store,
     mirrorDir,
     debounceMs: 0,
     watchDebounceMs: 60_000,
@@ -226,7 +235,7 @@ test("logs a local-wins conflict with the key", async () => {
   await controller.beforeTurn();
 
   expect(logs).toContain(
-    "[shared-mirror] local edit won concurrent change for skills/a/SKILL.md",
+    "[shared-mirror] concurrent change blocked local edit for skills/a/SKILL.md",
   );
   await controller.stop();
 });

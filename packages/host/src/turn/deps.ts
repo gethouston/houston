@@ -3,6 +3,7 @@ import type { Agent, Workspace } from "../domain/types";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 import type { Vfs } from "../vfs";
 import type { ConnectManager } from "./connect";
+import type { FrameForwarder } from "./frame-forwarder";
 import type { TurnQuota } from "./quota";
 import type { TurnRelay } from "./relay";
 
@@ -23,6 +24,7 @@ export interface TurnDeps {
   /** Google ID token for Cloud Run IAM on the runtime; null on dev. */
   idToken: () => Promise<string | null>;
   codexModels: string[];
+  frameForwarder?: Pick<FrameForwarder, "capture">;
 }
 
 export const PROVIDER = "openai-codex";

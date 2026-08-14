@@ -55,6 +55,13 @@ export async function dispatchTurn(
     throw err;
   }
   const key = `${agent.id}/${cid}`;
+  // Capture is independent of any client events subscription, so routine turns
+  // and background sends enter turnlog too.
+  try {
+    deps.frameForwarder?.capture(cid, key);
+  } catch (error) {
+    console.debug("[turnlog] relay capture enqueue failed", error);
+  }
   const started = await deps.relay.start(
     agent.id,
     key,

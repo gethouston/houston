@@ -8,6 +8,13 @@ import {
   type ObjectStore,
 } from "@houston/runtime-client/object-sync";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import {
+  authFailureActive,
+  clearAuthFailure,
+  noteAuthFailure,
+  resetAuthFailures,
+} from "../auth/credential-health";
+import { currentActingContext } from "../session/acting-context";
 import { createTurnServer } from "./server";
 import type { runPiTurn } from "./turn-session";
 
@@ -118,6 +125,57 @@ test("no credential → error frame with a clear message, never a hang", async (
   expect(raw).toContain("No provider connected");
   expect(raw).toContain('"type":"error"');
   expect(raw).not.toContain('"type":"done"');
+});
+
+test("one agent's auth failure survives another agent's clean turn", async () => {
+  resetAuthFailures();
+  let agentAFailureSurvived = false;
+  let actingIdentityLeaked = false;
+  const probe: typeof runPiTurn = async (_root, turn) => {
+    const acting = currentActingContext();
+    actingIdentityLeaked ||= !!(acting?.actingAs || acting?.actingUser);
+    if (turn.text === "fail") noteAuthFailure(turn.provider, "dead-token");
+    if (turn.text === "clean") clearAuthFailure(turn.provider);
+    if (turn.text === "probe") {
+      agentAFailureSurvived = authFailureActive(turn.provider, "dead-token");
+    }
+    return {};
+  };
+  const scopedServer = createTurnServer({
+    store,
+    token: "",
+    runTurn: probe,
+  });
+  await new Promise<void>((resolve) =>
+    scopedServer.listen(0, "127.0.0.1", resolve),
+  );
+  const address = scopedServer.address();
+  const scopedBase = `http://127.0.0.1:${
+    typeof address === "object" && address ? address.port : 0
+  }`;
+  const run = (agentId: string, text: string) =>
+    fetch(`${scopedBase}/turn`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(
+        turnBody({
+          agentId,
+          text,
+          gcsPrefix: `ws/w1/${agentId}`,
+        }),
+      ),
+    }).then((response) => response.text());
+
+  try {
+    await run("agent-a", "fail");
+    await run("agent-b", "clean");
+    await run("agent-a", "probe");
+    expect(agentAFailureSurvived).toBe(true);
+    expect(actingIdentityLeaked).toBe(false);
+  } finally {
+    resetAuthFailures();
+    scopedServer.close();
+  }
 });
 
 test("a sync failure surfaces as the turn's error — never a quiet done", async () => {

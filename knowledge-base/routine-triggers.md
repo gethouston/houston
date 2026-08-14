@@ -64,6 +64,31 @@ surface itself (rows, setup chat, schedule popover) is
 - Always mounted — every local host has a turn bus, wired as `triggerLock` in
   `local/host.ts`.
 
+## Pod routine-fires route (control-plane cron delivery)
+
+`POST /agents/:agentId/routine-fires`
+(`packages/host/src/routes/routine-fires.ts`) is the internal fire-only route the
+control plane uses after it decides a cron instant is due. It has the same pod-token
+trust posture as `trigger-events`: a request carrying an inbound
+`x-houston-acting-as` header is a user-facing gateway request and gets a 404.
+
+- Body: `{routineId, fireAt, actingAs}`. The route accepts only an enabled
+  schedule routine, never a trigger-bound routine.
+- The pod cannot verify the acting token's HMAC because the signing secret stays
+  in the gateway. After pod-token authentication it uses the existing trusted
+  gateway decoder and requires the token payload `sub` to equal the routine's
+  `created_by`; malformed or mismatched tokens get stable
+  `routine_creator_mismatch` refusal, with no owner fallback.
+- Local cron scans and this route burn the same
+  `routine:fired:<routineId>:<fireAt ISO>` lock before the busy gate. A busy run
+  therefore consumes the instant. Redelivery of a consumed instant answers
+  `{result:"fired",deduped:true}` without starting a second run.
+- Managed pods keep these instant locks for 24 hours. Desktop and self-host keep
+  the original one-hour TTL.
+- `HOUSTON_ROUTINE_SCHEDULER_MODE=external` is managed-pod-only and disables
+  only local cron evaluation/firing. The scheduler still reconciles running
+  runs, while trigger delivery and run-now remain mounted and operational.
+
 ## Capability, status, and the write gate
 
 - **`capabilities.triggers`** reaches the UI from `/v1/capabilities` served by the

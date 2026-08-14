@@ -60,12 +60,16 @@ import { handlePortableAccount } from "./routes/portable";
 import { handlePortableFromStore } from "./routes/portable-from-store";
 import { handleSandboxProviderUsage } from "./routes/provider-usage";
 import { BodyTooLargeError } from "./routes/read-body";
+import { handleRoutineFires } from "./routes/routine-fires";
 import { handleSandboxRoutines } from "./routes/routines-sandbox";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSharedSkills } from "./routes/shared-skills";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import { handleSandboxSkills } from "./routes/skills-sandbox";
+import { handleSandboxTranscripts } from "./routes/transcripts-sandbox";
 import { handleTriggerEvents } from "./routes/trigger-events";
+import type { FireLock } from "./schedule/fire-lock";
+import type { TranscriptShadow } from "./transcripts/http-shadow";
 import type { TriggerEventLock } from "./triggers/fire";
 import type { Vfs } from "./vfs";
 
@@ -182,6 +186,12 @@ export interface ControlPlaneDeps {
    * with a turn bus.
    */
   triggerLock?: TriggerEventLock;
+  /** Shared scheduled-instant lock for local scans and CP-delivered fires. */
+  routineFireLock?: FireLock;
+  /** Scheduled-instant lock TTL. Managed pods use 24h; other profiles 1h. */
+  routineFireDedupTtlSec?: number;
+  /** File-authoritative transcript writes mirrored through the sandbox facade. */
+  transcriptShadow?: TranscriptShadow;
   /**
    * Whether this deployment can fire event-driven routines (a trigger backend —
    * a Composio project key + a public webhook URL — exists). True on Houston
@@ -204,6 +214,8 @@ export interface ControlPlaneDeps {
    * the route 404s (a test server without telemetry stays honest).
    */
   metrics?: { render(): Promise<string>; contentType: string };
+  /** Managed-store write-fence state; absent on desktop and self-host. */
+  storeFenced?: () => boolean;
 }
 
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
@@ -219,6 +231,16 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   );
+}
+
+export function healthBody(deps: Pick<ControlPlaneDeps, "storeFenced">): {
+  status: "ok";
+  storeFenced?: boolean;
+} {
+  return {
+    status: "ok",
+    ...(deps.storeFenced ? { storeFenced: deps.storeFenced() } : {}),
+  };
 }
 
 /** Resolve the caller to a verified user id, or null if unauthenticated. */
@@ -252,7 +274,9 @@ async function handle(
   // Public: health + the v3 meta surface (capabilities are not secrets; the UI
   // reads them before sign-in to shape itself).
   if (method === "GET" && path === "/health") {
-    return json(res, 200, { status: "ok" });
+    // The gateway may use storeFenced to change routing/readiness later. This
+    // change only surfaces the state and deliberately keeps health at 200.
+    return json(res, 200, healthBody(deps));
   }
   if (method === "GET" && path === "/v1/version") {
     return json(res, 200, {
@@ -313,6 +337,8 @@ async function handle(
   // find_skills / install_skill tools call this to answer "which skill should
   // I use for X?" and to install the answer into its own skills tree.
   if (await handleSandboxSkills(deps, method, path, url, req, res)) return;
+  // Runtime transcript shadow facade (HMAC sandbox token → pod-auth gateway).
+  if (await handleSandboxTranscripts(deps, method, path, url, req, res)) return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
@@ -411,6 +437,8 @@ async function handle(
   // (the runtime has no trigger routes). The Go control plane POSTs external
   // events here for a managed pod; the pod fires the matching routine.
   if (await handleTriggerEvents(deps, userId, method, path, req, res)) return;
+  // Pod cron delivery — same internal-only trust posture as trigger-events.
+  if (await handleRoutineFires(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 
