@@ -232,6 +232,13 @@ export interface LocalHostOptions {
   /** Managed durable-turn shadows. Both switches are explicit rollout caps. */
   durableTurns?: {
     gateway: PodGatewayConfig;
+    /**
+     * Turnlog ingest lives on the GATEWAY (it owns the Redis streams), not on
+     * the pod store `gateway` points at — batches sent there 404. Absent =
+     * fall back to `gateway` for old control planes that predate
+     * HOUSTON_TURNLOG_URL; the sender's failure path already tolerates it.
+     */
+    turnlogGateway?: PodGatewayConfig;
     transcriptDualWrite: boolean;
     turnLog: boolean;
   };
@@ -320,7 +327,10 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const frameForwarder = opts.durableTurns?.turnLog
     ? new FrameForwarder({
         bus,
-        sender: new HttpTurnLogSender({ gateway: opts.durableTurns.gateway }),
+        sender: new HttpTurnLogSender({
+          gateway:
+            opts.durableTurns.turnlogGateway ?? opts.durableTurns.gateway,
+        }),
       })
     : undefined;
   const standingFrameCapture = frameForwarder

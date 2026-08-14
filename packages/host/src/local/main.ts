@@ -190,6 +190,15 @@ const host = buildLocalHost({
   durableTurns: managedStore?.podGateway
     ? {
         gateway: managedStore.podGateway,
+        // Same pod identity and the SAME shared fence object (capturePodFence
+        // mutates it as writes observe tokens) — only the base moves to the
+        // gateway, where the turnlog ingest is actually mounted.
+        turnlogGateway: process.env.HOUSTON_TURNLOG_URL
+          ? {
+              ...managedStore.podGateway,
+              baseUrl: process.env.HOUSTON_TURNLOG_URL,
+            }
+          : undefined,
         transcriptDualWrite: process.env.HOUSTON_TRANSCRIPT_DUAL_WRITE === "1",
         turnLog: process.env.HOUSTON_TURN_LOG === "1",
       }
