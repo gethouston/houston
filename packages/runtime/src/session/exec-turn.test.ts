@@ -73,6 +73,10 @@ vi.mock("./conversation-cache", () => ({
     preTokens: null,
   })),
   switchModeIfNeeded: vi.fn(async () => ({ rebuilt: false })),
+  // The revoked-token eviction (PRODUCT-1355) peeks the live cache in the
+  // turn's finally; these frame-contract tests run on non-Claude convs, so a
+  // minimal empty stand-in is enough.
+  conversations: { peek: () => undefined, delete: () => false },
 }));
 
 // The durable store is irrelevant to the frame contract under test.

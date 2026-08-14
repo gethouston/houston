@@ -24,10 +24,10 @@ import { buildToolPolicy, makeCanUseTool } from "./tool-policy";
  * A resolved Anthropic credential: an OAuth token or a pasted API key.
  * `accessDigest` is set ONLY when the value came from an OAUTH-typed store
  * entry's access token (read-token.ts): it is what a revoked-token report
- * names, captured at spawn preparation because the SDK subprocess env is built
- * once per session — re-reading auth.json at failure time would digest
- * whatever a re-serve stored since, not the token the failed turn ran on
- * (PRODUCT-1319).
+ * names, captured at spawn preparation — the env is rebuilt from a fresh read
+ * at every prompt (PRODUCT-1355), so the digest travels WITH that read; still
+ * never re-digested at failure time, which would name whatever a re-serve
+ * stored since, not the token the failed turn ran on (PRODUCT-1319).
  */
 export type ClaudeToken =
   | { kind: "oauth-token"; value: string; accessDigest?: string }
@@ -135,16 +135,35 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       // dev/tests): the SDK resolves its own native binary. Only set inside the
       // Bun-compiled desktop sidecar, where require.resolve can't reach it.
       const pathToClaudeCodeExecutable = resolveClaudeExecutable();
+      // The subprocess env, rebuilt from a FRESH credential read on every call.
+      // The session invokes this at the start of each prompt (PRODUCT-1355):
+      // the SDK spawns one subprocess per `query()`, so per-turn env is the
+      // seam that lets a session follow the gateway's token rotation instead of
+      // 401ing forever on the token it was built with. Re-asserting the scope
+      // guard keeps a personal turn whose token vanished a typed refusal, never
+      // a silent fall-through onto the pod-shared (team) credential.
+      const refreshAuth = () => {
+        const fresh = deps.readToken();
+        assertAnthropicScopeCredential(fresh);
+        return {
+          env: buildClaudeEnv(
+            claudeLoginConfigDir(),
+            fresh,
+            // Personal scope: the CLI's credential store moves off the shared
+            // dir, so a mid-turn 401 cannot recover onto the team credential.
+            // Team scope: undefined, i.e. unchanged (see `./scope-guard`).
+            anthropicCredentialStorageDir(deps.dataDir),
+          ),
+          accessDigest: fresh?.accessDigest,
+        };
+      };
+      // One coherent build-time read for the env AND the digest (the top-of-
+      // function `token` read predates the SDK import await, so it is not
+      // reused here). Every prompt overrides both with its own fresh read.
+      const initialAuth = refreshAuth();
       const baseOptions: Options = {
         cwd: deps.workspaceDir,
-        env: buildClaudeEnv(
-          claudeLoginConfigDir(),
-          token,
-          // Personal scope: the CLI's credential store moves off the shared dir,
-          // so a mid-turn 401 cannot recover onto the team credential. Team
-          // scope: undefined, i.e. unchanged (see `./scope-guard`).
-          anthropicCredentialStorageDir(deps.dataDir),
-        ),
+        env: initialAuth.env,
         ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
         settingSources: [],
         tools: policy.tools,
@@ -186,9 +205,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         sessionsStore,
         model: toSdkModel(opts.model.id),
         thinkingLevel: opts.thinkingLevel,
+        refreshAuth,
         // WHICH token the subprocess env carries, for the revoked-token
-        // report — every turn on this session runs on it (PRODUCT-1319).
-        usedAccessDigest: token?.accessDigest,
+        // report (PRODUCT-1319) — updated by refreshAuth on every prompt so it
+        // always names the token the current turn runs on (PRODUCT-1355).
+        usedAccessDigest: initialAuth.accessDigest,
       });
     },
   };

@@ -41,8 +41,10 @@ import {
 } from "./attribution";
 import { needsAutocompact } from "./autocompact";
 import { publish } from "./bus";
+import { evictClaudeSessionOnRevokedToken } from "./claude-token-guard";
 import {
   type Conversation,
+  conversations,
   switchBackendIfNeeded,
   switchModeIfNeeded,
 } from "./conversation-cache";
@@ -174,6 +176,10 @@ export async function execTurn(
   // assistant message (so the inline card survives a reload) AND skip the clean
   // `done` that would settle the chat as a success on top of the error.
   let providerError: ProviderError | undefined;
+  // The catch path's typed resolution of a THROWN failure, hoisted so the
+  // finally's revoked-token eviction (PRODUCT-1355) can read it — the catch's
+  // own `typed` is block-scoped. Streamed failures land in `providerError`.
+  let thrownTyped: ProviderError | undefined;
 
   // Stall watchdog: a provider stream that goes silent mid-turn resolves neither
   // success nor error and would hold the workdir lock until the socket dies.
@@ -703,6 +709,7 @@ export async function execTurn(
       reportRevokedServedToken(thrown, usedTokens.digestFor(thrown.provider));
     }
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
+    thrownTyped = typed;
     appendAssistantMessage(id, assistantText, {
       tools,
       thinking: thinkingText || undefined,
@@ -746,5 +753,17 @@ export async function execTurn(
     // Undefined only if resolveModel/switchBackendIfNeeded threw before we
     // subscribed (a bad pin) — nothing to tear down in that case.
     unsub?.();
+    // PRODUCT-1355 (layer 3): a turn that died on a REVOKED token leaves a
+    // Claude session whose next spawn would 401 identically — evict it so the
+    // user's next attempt after reconnecting rebuilds on the fresh credential.
+    // History is on disk; only the in-memory session is disposed. The guard
+    // itself scopes this to the Claude backend + `token_revoked`, and defers
+    // while other turns are still queued on this conversation.
+    evictClaudeSessionOnRevokedToken(
+      conversations,
+      id,
+      conv,
+      thrownTyped ?? providerError,
+    );
   }
 }

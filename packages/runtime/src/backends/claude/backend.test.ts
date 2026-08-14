@@ -13,14 +13,20 @@ import {
 } from "./backend";
 import { claudeLoginConfigDir } from "./paths";
 
-// Capture the `baseOptions` the backend hands a session WITHOUT running the SDK:
-// the whole point of the scope guard is that a refused turn never builds an env
-// at all, so "was a session constructed, and with which env" is the assertion.
-const { built } = vi.hoisted(() => ({ built: [] as Options[] }));
+// Capture the deps the backend hands a session WITHOUT running the SDK: the
+// whole point of the scope guard is that a refused turn never builds an env at
+// all, so "was a session constructed, and with which env" is the assertion —
+// plus, since PRODUCT-1355, "does its refreshAuth re-read the CURRENT token".
+type CapturedDeps = {
+  baseOptions: Options;
+  refreshAuth: () => { env: Record<string, string>; accessDigest?: string };
+  usedAccessDigest?: string;
+};
+const { built } = vi.hoisted(() => ({ built: [] as CapturedDeps[] }));
 vi.mock("./session", () => ({
   ClaudeSession: class {
-    constructor(deps: { baseOptions: Options }) {
-      built.push(deps.baseOptions);
+    constructor(deps: CapturedDeps) {
+      built.push(deps);
     }
   },
 }));
@@ -218,7 +224,9 @@ test("a personal scope with its OWN token proceeds (env token outranks the dir)"
     backend.createSession({ conversationId: "c1", model: MODEL }),
   );
   expect(built).toHaveLength(1);
-  expect(built[0]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-x");
+  expect(built[0]?.baseOptions.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe(
+    "sk-ant-oat01-x",
+  );
 });
 
 test("the team scope still pins the shared login dir with no token (unchanged)", async () => {
@@ -227,8 +235,45 @@ test("the team scope still pins the shared login dir with no token (unchanged)",
   const backend = createClaudeBackend(backendDeps(() => undefined));
   await backend.createSession({ conversationId: "c1", model: MODEL });
   expect(built).toHaveLength(1);
-  expect(built[0]?.env?.CLAUDE_CONFIG_DIR).toBe(claudeLoginConfigDir());
-  expect(built[0]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+  expect(built[0]?.baseOptions.env?.CLAUDE_CONFIG_DIR).toBe(
+    claudeLoginConfigDir(),
+  );
+  expect(built[0]?.baseOptions.env?.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+});
+
+test("the session's refreshAuth re-reads the CURRENT token — a rotation between turns reaches the next spawn (PRODUCT-1355)", async () => {
+  // The live incident: the serve path updates auth.json every turn, but the
+  // session's env was baked at build. refreshAuth must read THROUGH to the
+  // store on every call, digest included.
+  let current: ClaudeToken = {
+    kind: "oauth-token",
+    value: "sk-ant-oat01-old",
+    accessDigest: "digest-old",
+  };
+  const backend = createClaudeBackend(backendDeps(() => current));
+  await backend.createSession({ conversationId: "c1", model: MODEL });
+  expect(built[0]?.usedAccessDigest).toBe("digest-old");
+
+  current = {
+    kind: "oauth-token",
+    value: "sk-ant-oat01-new",
+    accessDigest: "digest-new",
+  };
+  const fresh = built[0]?.refreshAuth();
+  expect(fresh?.env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-new");
+  expect(fresh?.accessDigest).toBe("digest-new");
+});
+
+test("refreshAuth re-asserts the personal-scope guard: a token that vanished mid-conversation refuses the turn, never falls through to the team dir", async () => {
+  let current: ClaudeToken | undefined = oauth;
+  const backend = createClaudeBackend(backendDeps(() => current));
+  await runWithActingContext(alice, () =>
+    backend.createSession({ conversationId: "c1", model: MODEL }),
+  );
+  current = undefined;
+  expect(() =>
+    runWithActingContext(alice, () => built[0]?.refreshAuth()),
+  ).toThrow(/^No provider connected\./);
 });
 
 test("browser-login path: shared config dir, NO token env (SDK reads the cached cred)", () => {

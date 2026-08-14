@@ -17,21 +17,44 @@ export type ClaudeQuery = (params: {
   options: Options;
 }) => AsyncIterable<SDKMessage>;
 
+/**
+ * One turn's credential material: the full subprocess env carrying the CURRENT
+ * stored token, and that token's access digest (undefined for an api_key or a
+ * config-dir credential). Re-read per prompt — see `ClaudeSessionDeps.refreshAuth`.
+ */
+export interface TurnAuth {
+  env: NonNullable<Options["env"]>;
+  accessDigest?: string;
+}
+
 /** Everything a `ClaudeSession` needs; assembled by the backend factory. */
 export interface ClaudeSessionDeps {
   query: ClaudeQuery;
   conversationId: string;
-  /** Static per-session options (cwd, env, tools, canUseTool, systemPrompt, …). */
+  /** Static per-session options (cwd, tools, canUseTool, systemPrompt, …). */
   baseOptions: Options;
   sessionsStore: SessionsStore;
   /** Initial SDK model string. */
   model: string;
   thinkingLevel?: ThinkingLevel;
   /**
-   * Digest of the OAuth access token in the subprocess env (the token every
-   * turn on this session runs on) — what a revoked-token report names.
-   * Undefined when the session runs on an api_key or the config-dir
-   * credential, where the report must not fire (PRODUCT-1319).
+   * Re-read the stored credential and rebuild the subprocess env from it.
+   * Called at the start of EVERY prompt (PRODUCT-1355): each `query()` spawns
+   * its own SDK subprocess (resumed by session id), so the env is a per-turn
+   * lever — a session must never stay pinned to the token it was built with,
+   * because the gateway's normal rotation invalidates the superseded access
+   * token and every later turn on the baked-in env would 401 `token_revoked`
+   * forever. May throw the scope guard's typed refusal (a personal scope whose
+   * token disappeared); exec-turn classifies that into the reconnect card, the
+   * same surface `createSession`'s own guard produces.
+   */
+  refreshAuth: () => TurnAuth;
+  /**
+   * Digest of the OAuth access token in the subprocess env at BUILD time —
+   * what a revoked-token report names. Updated by `refreshAuth` on every
+   * prompt, so it always tracks the token the CURRENT turn runs on
+   * (PRODUCT-1319, PRODUCT-1355). Undefined when the session runs on an
+   * api_key or the config-dir credential, where the report must not fire.
    */
   usedAccessDigest?: string;
 }
@@ -68,10 +91,22 @@ export class ClaudeSession implements HarnessSession {
   private model: string;
   private thinkingLevel: ThinkingLevel | undefined;
   private contextTokens: number | undefined;
+  private usedAccessDigest: string | undefined;
 
   constructor(private readonly deps: ClaudeSessionDeps) {
     this.model = deps.model;
     this.thinkingLevel = deps.thinkingLevel;
+    this.usedAccessDigest = deps.usedAccessDigest;
+  }
+
+  /**
+   * The digest of the OAuth access token this session's next spawn runs on
+   * (build-time until the first prompt, then each prompt's `refreshAuth` read).
+   * The conversation cache compares it against the CURRENTLY stored credential
+   * to rebuild sessions left on a rotated-out token (PRODUCT-1355 layer 2).
+   */
+  getUsedAccessDigest(): string | undefined {
+    return this.usedAccessDigest;
   }
 
   subscribe(listener: (e: WireEvent) => void): () => void {
@@ -87,10 +122,17 @@ export class ClaudeSession implements HarnessSession {
 
   async prompt(text: string): Promise<void> {
     if (this.disposed) return;
+    // Fresh credential per turn (PRODUCT-1355): every `query()` spawns its own
+    // SDK subprocess, so re-reading here means this turn runs on the token the
+    // store holds NOW — a reconnect or the gateway's rotation lands on the very
+    // next turn instead of never. The digest follows the env so a revoked-token
+    // report names the token this turn actually ran on (PRODUCT-1319).
+    const auth = this.deps.refreshAuth();
+    this.usedAccessDigest = auth.accessDigest;
     const resume = this.deps.sessionsStore.resolveResume(
       this.deps.conversationId,
     );
-    const outcome = await this.runAttempt(text, resume);
+    const outcome = await this.runAttempt(text, resume, auth.env);
     if (outcome !== "retry-fresh") return;
     // The SDK refused the resume id (its cwd-scoped lookup missed the
     // transcript — e.g. the workspace was renamed). The stale mapping is
@@ -99,7 +141,7 @@ export class ClaudeSession implements HarnessSession {
     console.warn(
       `[claude] resume for conversation ${this.deps.conversationId} was rejected by the SDK; starting a fresh session`,
     );
-    await this.runAttempt(text, undefined);
+    await this.runAttempt(text, undefined, auth.env);
   }
 
   /**
@@ -112,6 +154,7 @@ export class ClaudeSession implements HarnessSession {
   private async runAttempt(
     text: string,
     resume: string | undefined,
+    env: TurnAuth["env"],
   ): Promise<"done" | "retry-fresh"> {
     this.aborting = false;
     const abortController = new AbortController();
@@ -122,6 +165,9 @@ export class ClaudeSession implements HarnessSession {
       : undefined;
     const options: Options = {
       ...this.deps.baseOptions,
+      // The per-turn env OVERRIDES the build-time one in baseOptions, so this
+      // spawn carries the currently stored credential (PRODUCT-1355).
+      env,
       model: this.model,
       abortController,
       ...(resume ? { resume } : {}),
@@ -132,7 +178,7 @@ export class ClaudeSession implements HarnessSession {
       onContextTokens: (t) => {
         this.contextTokens = t;
       },
-      usedAccessDigest: this.deps.usedAccessDigest,
+      usedAccessDigest: this.usedAccessDigest,
     });
     let capturedSessionId: string | undefined;
     // True once this turn has surfaced a provider_error (from `translate`), so a
@@ -183,7 +229,7 @@ export class ClaudeSession implements HarnessSession {
           errMessage(err),
           this.model,
           null,
-          this.deps.usedAccessDigest,
+          this.usedAccessDigest,
         ),
       });
     } finally {

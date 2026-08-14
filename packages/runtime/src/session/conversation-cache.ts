@@ -12,6 +12,7 @@ import {
 import type { HarnessSession, ResolvedModel } from "../backends/types";
 import { config } from "../config";
 import { LruCache } from "../lru";
+import { claudeSessionTokenStale } from "./claude-token-guard";
 import type { TurnPin } from "./exec-turn";
 import { SYSTEM_PROMPT } from "./resource-loader";
 import { buildToolSelection } from "./tool-selection";
@@ -329,11 +330,27 @@ export async function getConversation(
   context?: ProvidedContext,
 ): Promise<Conversation> {
   const existing = conversations.get(id);
-  if (existing) {
+  // PRODUCT-1355 (layer 2): a cached Claude session pinned to an access token
+  // the store no longer holds (the gateway rotated the family; Anthropic
+  // invalidated the superseded token) is disposed and rebuilt below, so the
+  // fresh session reads the current credential. Busy conversations are left
+  // alone — their queued turns hold this very object, and the per-prompt
+  // credential re-read keeps them correct; matching digests, digest-less
+  // sessions, and non-Claude backends fall through untouched (no churn).
+  const rotatedOut =
+    existing && !isConvBusy(existing) && claudeSessionTokenStale(existing);
+  if (existing && !rotatedOut) {
     // Reap sessions idle past the TTL on every access, so a quiet runtime still
     // sheds memory between turns (get() above already marked `existing` fresh).
     conversations.sweepIdle();
     return existing;
+  }
+  // Preserve the conversation's startup context across the rebuild (HOU-711),
+  // exactly like the backend/mode rebuilds below do.
+  const carriedContext = context ?? existing?.context;
+  if (existing) {
+    conversations.delete(id);
+    existing.session.dispose();
   }
 
   // The model the session is built with — recorded on the Conversation so a
@@ -355,7 +372,7 @@ export async function getConversation(
     // Only used when the session is FIRST built (new conversation) — a later
     // message in the same conversation reuses this session, so context edits
     // take effect on the next chat, matching the local file behavior (HOU-711).
-    ...(context ? { context } : {}),
+    ...(carriedContext ? { context: carriedContext } : {}),
   });
 
   const conv: Conversation = {
@@ -366,7 +383,7 @@ export async function getConversation(
     backendId: backend.id,
     mode,
     pending: 0,
-    ...(context ? { context } : {}),
+    ...(carriedContext ? { context: carriedContext } : {}),
   };
   // set() enforces the size bound (disposing the LRU tail if full); sweepIdle()
   // then reaps any TTL-expired idle session. Both skip busy sessions, and the
