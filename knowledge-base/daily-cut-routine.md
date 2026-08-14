@@ -35,9 +35,16 @@ exists to run — dogfooding it is the point.
    toolkit's OAuth scopes turn out not to cover workflow dispatch, fall back to
    a custom API integration holding a fine-grained PAT (Actions: read/write,
    Contents: read on `gethouston/houston`).
-3. **Slack connection.** Connect Slack and pick the release channel the posts
-   should land in. Make sure the agent's integration allowlist includes both
-   GitHub and Slack.
+3. **Slack bot.** The Composio-managed Slack OAuth is a USER-token connection —
+   posts would appear as the connecting human, wrong identity for release
+   reports. Use the dedicated Slack app instead (bot user `houston_bot`,
+   workspace app with only the `chat:write` scope): invite it to the release
+   channel (`/invite @houston_bot` in #houston-drafts — bots cannot post to a
+   channel they are not a member of), then store its `xoxb-` bot token in the
+   agent's SECURE CREDENTIAL card, named `slack-bot-token`. The token never
+   goes in the routine prompt, a chat message, a file, or a commit; rotating
+   it (Slack app → OAuth & Permissions → Reinstall) only requires updating the
+   stored credential.
 4. **Model.** Give the agent a capable model; the AI account must be usable at
    team scope, since routine runs fire on the team credential.
 5. **Routine.** Create a routine with a cron schedule, weekdays 07:00
@@ -55,8 +62,12 @@ Paste verbatim (fill in the Slack channel):
 
 ```text
 You run the morning cut of the Houston release train. Repo: gethouston/houston.
-Post everything to the Slack channel #RELEASE-CHANNEL. Work in English in
-GitHub, but write user-facing release notes in en + es + pt as described below.
+Post everything to the Slack channel #RELEASE-CHANNEL by calling Slack's
+chat.postMessage API (POST https://slack.com/api/chat.postMessage, JSON body
+{"channel": "#RELEASE-CHANNEL", "text": "<message>"}) authorized with the bot
+token in your slack-bot-token credential. Messages support Slack mrkdwn; keep
+code blocks fenced. Work in English in GitHub, but write user-facing release
+notes in en + es + pt as described below.
 
 Steps, in order:
 
