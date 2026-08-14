@@ -460,7 +460,7 @@ test("an unserviceable cursor degrades to a resync sync carrying the current wat
   }
 });
 
-test("Last-Event-ID resumes like ?after=, and the query wins when both are sent", async () => {
+test("Last-Event-ID resumes like ?after=, and the header wins when both are sent", async () => {
   const { deps } = makeDeps();
   const { base, close } = await serve(deps);
   try {
@@ -481,8 +481,11 @@ test("Last-Event-ID resumes like ?after=, and the query wins when both are sent"
       2, 3,
     ]);
 
-    const both = await fetch(`${base}/conversations/c12/events?after=2`, {
-      headers: { "Last-Event-ID": "0" },
+    // The gateway advances Last-Event-ID past its Redis replay while the
+    // original ?after= stays in the query string: the header must win, or
+    // every frame the gateway just replayed is served a second time.
+    const both = await fetch(`${base}/conversations/c12/events?after=0`, {
+      headers: { "Last-Event-ID": "2" },
     });
     const frames = await collectFrames(both, 1);
     expect(frames).toEqual([{ type: "text", data: "c", seq: 3, id: "3" }]);

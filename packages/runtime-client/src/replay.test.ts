@@ -175,10 +175,15 @@ test("replayAfter boundary sweep across a full window: below / at each / above",
 // Cursor parsing
 // ---------------------------------------------------------------------------
 
-test("parseResumeCursor: query wins over the Last-Event-ID header", () => {
-  expect(parseResumeCursor("7", "3")).toBe(7);
+test("parseResumeCursor: the Last-Event-ID header wins over the query", () => {
+  // The gateway advances Last-Event-ID past its Redis replay while the stale
+  // ?after= stays in the query string — the header must win or every replayed
+  // frame is served twice.
+  expect(parseResumeCursor("7", "3")).toBe(3);
   expect(parseResumeCursor(null, "3")).toBe(3);
-  expect(parseResumeCursor("0", "3")).toBe(0);
+  expect(parseResumeCursor("7", undefined)).toBe(7);
+  expect(parseResumeCursor("0", "3")).toBe(3);
+  expect(parseResumeCursor("3", "0")).toBe(0);
   expect(parseResumeCursor(null, undefined)).toBeUndefined();
 });
 
@@ -188,8 +193,8 @@ test("parseResumeCursor: non-numeric / negative / non-integer values are absent"
   expect(parseResumeCursor("1.5", undefined)).toBeUndefined();
   expect(parseResumeCursor("", undefined)).toBeUndefined();
   expect(parseResumeCursor(null, "nope")).toBeUndefined();
-  // An invalid query is absent → the header still counts.
-  expect(parseResumeCursor("abc", "4")).toBe(4);
+  // An invalid header is absent → the query still counts.
+  expect(parseResumeCursor("4", "abc")).toBe(4);
   // A repeated header uses the first value (Node may fold headers into arrays).
   expect(parseResumeCursor(null, ["5", "9"])).toBe(5);
 });

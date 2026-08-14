@@ -234,8 +234,9 @@ export function clipToolResult(text: string): string {
  * turn's id inside `data.turnId` instead of the envelope.
  *
  * Resume: each frame is written with an SSE `id: <seq>` line, and a client
- * reconnects with `?after=<seq>` (query wins) or the standard `Last-Event-ID`
- * header. Frames still inside the server's replay window (the in-flight turn,
+ * reconnects with `?after=<seq>` or the standard `Last-Event-ID` header
+ * (header wins — it is the fresher signal, and the cloud gateway advances it
+ * past its own replay while the original query param rides along unchanged). Frames still inside the server's replay window (the in-flight turn,
  * capped) are re-sent in order — no gap, no duplicate, no `sync`. A cursor
  * that cannot be served (older than the window, or from before a restart)
  * gets a fresh `sync` carrying `resync: true` + the current watermark instead.
