@@ -518,6 +518,7 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
     baseOptions: {},
     sessionsStore: fakeStore(),
     model: "claude-sonnet-4-6",
+    refreshAuth: () => ({ env: {} }),
   });
 
   const holder = newInteractionHolder();

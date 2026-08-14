@@ -127,6 +127,7 @@ test("a mid-turn flip reaches canUseTool dispatched off a Claude-session turn", 
     baseOptions: {},
     sessionsStore: fakeStore(),
     model: "claude-sonnet-4-6",
+    refreshAuth: () => ({ env: {} }),
   });
   await runWithTurnMode(ref, () => session.prompt("hi"));
 

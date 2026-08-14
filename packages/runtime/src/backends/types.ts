@@ -55,6 +55,14 @@ export interface HarnessSession {
   setThinkingLevel(level: ThinkingLevel): void;
   /** The current context fill, or undefined when unknown. */
   getContextUsage(): { tokens: number | null } | undefined;
+  /**
+   * Digest of the provider access token this session's next turn runs on, when
+   * the backend pins one into the session (the Claude Agent SDK backend). The
+   * conversation cache compares it against the CURRENTLY stored credential to
+   * rebuild a cached session left on a rotated-out token (PRODUCT-1355).
+   * Backends that read credentials per request (pi) leave this unimplemented.
+   */
+  getUsedAccessDigest?(): string | undefined;
 }
 
 /** What a backend needs to open a session for one conversation. */

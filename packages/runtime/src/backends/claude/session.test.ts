@@ -99,6 +99,7 @@ function make(deps: {
   query: ClaudeQuery;
   store?: SessionsStore;
   model?: string;
+  refreshAuth?: () => { env: Record<string, string>; accessDigest?: string };
 }): ClaudeSession {
   return new ClaudeSession({
     query: deps.query,
@@ -106,6 +107,7 @@ function make(deps: {
     baseOptions: {} as Options,
     sessionsStore: deps.store ?? fakeStore(),
     model: deps.model ?? "claude-sonnet-4-6",
+    refreshAuth: deps.refreshAuth ?? (() => ({ env: {} })),
   });
 }
 
@@ -331,6 +333,65 @@ test("the captured session_id is persisted after the turn", async () => {
   });
   await session.prompt("go");
   expect(store.setCalls).toContainEqual(["c1", "sess-99"]);
+});
+
+test("every prompt spawns with the env refreshAuth returns AT THAT PROMPT — a rotated token is adopted, never the build-time env (PRODUCT-1355)", async () => {
+  // The live incident: the gateway rotates the family mid-conversation, so the
+  // token the session was built with is invalid on every later turn. Each
+  // query() spawns its own subprocess, so the env must be re-read per prompt.
+  let current = { token: "sk-ant-oat01-first", digest: "digest-first" };
+  const optionsSeen: Options[] = [];
+  const session = make({
+    query: capturingQuery((o) => {
+      optionsSeen.push(o);
+    }),
+    refreshAuth: () => ({
+      env: { CLAUDE_CODE_OAUTH_TOKEN: current.token },
+      accessDigest: current.digest,
+    }),
+  });
+
+  await session.prompt("one");
+  current = { token: "sk-ant-oat01-rotated", digest: "digest-rotated" };
+  await session.prompt("two");
+
+  expect(optionsSeen[0]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe(
+    "sk-ant-oat01-first",
+  );
+  expect(optionsSeen[1]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe(
+    "sk-ant-oat01-rotated",
+  );
+  // The digest follows the env, so a revoked-token report (and the cache's
+  // rotation check) names the token the CURRENT turn actually ran on.
+  expect(session.getUsedAccessDigest()).toBe("digest-rotated");
+});
+
+test("the retry-fresh rerun reuses the SAME prompt's auth (one read per prompt, not per attempt)", async () => {
+  const store = fakeStore("sess-gone");
+  let reads = 0;
+  const optionsSeen: Options[] = [];
+  let call = 0;
+  const query: ClaudeQuery = (params) => {
+    optionsSeen.push(params.options);
+    call++;
+    if (call === 1)
+      return throwingQuery(
+        new Error("No conversation found with session ID: sess-gone"),
+      )(params);
+    return arrayQuery([usageMsg("sess-new")])(params);
+  };
+  const session = make({
+    query,
+    store,
+    refreshAuth: () => {
+      reads++;
+      return { env: { CLAUDE_CODE_OAUTH_TOKEN: "tok" }, accessDigest: "d" };
+    },
+  });
+  await session.prompt("go");
+  expect(reads).toBe(1);
+  expect(optionsSeen).toHaveLength(2);
+  expect(optionsSeen[1]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe("tok");
 });
 
 test("getContextUsage is undefined before a turn, then reflects the last usage", async () => {
