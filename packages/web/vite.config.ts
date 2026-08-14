@@ -147,6 +147,12 @@ export default defineConfig(({ mode }) => {
       // users can't reconstruct source via DevTools (matches app/vite.config.ts).
       // A future web release pipeline can upload these maps to Sentry.
       sourcemap: "hidden",
+      rollupOptions: {
+        input: {
+          app: path.resolve(__dirname, "index.html"),
+          connected: path.resolve(__dirname, "connected/index.html"),
+        },
+      },
     },
   };
 });

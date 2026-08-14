@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Connection complete | Houston</title>
+    <style>
+      html {
+        color-scheme: light dark;
+        background: Canvas;
+        color: CanvasText;
+      }
+
+      body {
+        margin: 0;
+      }
+    </style>
+    <script>
+      try {
+        if (localStorage.getItem("houston.theme.cache") === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      } catch (e) {
+        /* Storage unavailable: keep the browser's honest system theme. */
+      }
+    </script>
+    <link rel="stylesheet" href="./connected.css" />
+  </head>
+  <body
+    class="box-border grid min-h-screen place-items-center bg-background p-6 text-ink"
+  >
+    <main
+      class="grid w-full max-w-md justify-items-center gap-4 text-center"
+      aria-labelledby="callback-title"
+    >
+      <div
+        class="grid size-12 place-items-center rounded-full bg-success text-success-text"
+        aria-hidden="true"
+      >
+        <svg
+          class="size-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M20 6 9 17l-5-5"></path>
+        </svg>
+      </div>
+      <h1 id="callback-title" class="m-0 text-balance text-2xl font-normal">
+        Connection complete
+      </h1>
+      <p id="callback-detail" class="m-0 text-base leading-relaxed text-ink-muted">
+        You can close this tab and return to Houston.
+      </p>
+      <button
+        id="callback-close"
+        class="min-h-10 cursor-pointer rounded-full border-0 bg-action px-5 text-sm font-medium text-action-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        type="button"
+      >
+        Close tab
+      </button>
+    </main>
+    <script>
+      const copies = {
+        en: {
+          title: "Connection complete",
+          detail: "You can close this tab and return to Houston.",
+          close: "Close tab",
+        },
+        es: {
+          title: "Conexión completada",
+          detail: "Puedes cerrar esta pestaña y volver a Houston.",
+          close: "Cerrar pestaña",
+        },
+        pt: {
+          title: "Conexão concluída",
+          detail: "Você pode fechar esta aba e voltar ao Houston.",
+          close: "Fechar aba",
+        },
+      };
+      const language = navigator.language.toLowerCase().split("-")[0];
+      const copy = copies[language] || copies.en;
+      document.documentElement.lang = language in copies ? language : "en";
+      document.title = `${copy.title} | Houston`;
+      document.getElementById("callback-title").textContent = copy.title;
+      document.getElementById("callback-detail").textContent = copy.detail;
+      document.getElementById("callback-close").textContent = copy.close;
+
+      const closeTab = () => window.close();
+      document.getElementById("callback-close").addEventListener("click", closeTab);
+      requestAnimationFrame(() => setTimeout(closeTab, 500));
+    </script>
+  </body>
+</html>
