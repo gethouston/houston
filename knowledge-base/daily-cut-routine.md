@@ -102,11 +102,27 @@ Steps, in order:
    "Today's draft cloud-v<version> is already waiting." with its link and stop.
 4. Write the release notes from the merged PRs. This is a product presentation
    for non-technical users, not a changelog: 3 to 5 top items, each one line,
-   benefit first, plain words. No PR numbers, no file names, no dev jargon. If
-   there are only internal fixes, one line: "Stability and polish improvements."
-   End with a short "Fixes and polish" line summarizing the rest. No em dashes.
-   Produce three versions: English, Latin-American Spanish (neutral, tú),
-   Brazilian Portuguese (você).
+   benefit first, plain words. No PR numbers, no file names, no dev jargon.
+   Internal work (refactors, dependency bumps, engine plumbing) is never its own
+   item: fold it into one "Stability and polish improvements under the hood."
+   line. If nothing user visible shipped, that line is the whole body.
+
+   Format, exactly:
+   - First line: "## Houston v<version>" (keep the v; every past release has it).
+   - Then the items.
+   - Then, ALWAYS, this closing section, because these notes replace the
+     auto-generated ones and updating users would otherwise lose the warning:
+
+       ### Before you upgrade
+
+       - Quit Houston before installing. macOS does not always replace an app
+         that is running.
+
+   NEVER use an em dash (—) anywhere in the notes. Use a comma, or split the
+   sentence in two. This is a hard rule in this product's copy and it is checked.
+
+   Produce three complete versions: English, Latin-American Spanish (neutral,
+   tú), Brazilian Portuguese (você). Translate the closing section too.
 5. Dispatch the workflow .github/workflows/daily-cloud-cut.yml on ref main with
    inputs: notes = the English markdown, notes_es and notes_pt = the
    translations. Leave the version input empty.
