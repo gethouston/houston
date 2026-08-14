@@ -111,7 +111,8 @@ const managedStore = await managedStoreConfig(
 // product prompt (event wakes advertised only when true), the routine write
 // gate, and the trigger-status route.
 const triggersEnabled = process.env.HOUSTON_MANAGED_CLOUD === "1";
-const routineSchedulerModeRaw = process.env.HOUSTON_ROUTINE_SCHEDULER_MODE;
+const routineSchedulerModeRaw =
+  process.env.HOUSTON_ROUTINE_SCHEDULER_MODE || undefined;
 const routineSchedulerMode =
   routineSchedulerModeRaw === undefined || routineSchedulerModeRaw === "local"
     ? "local"
@@ -125,6 +126,37 @@ if (routineSchedulerMode === "external" && !triggersEnabled) {
     "[local-host] HOUSTON_ROUTINE_SCHEDULER_MODE=external is valid only on managed cloud pods.",
   );
 }
+const durableTurns = managedStore?.podGateway
+  ? (() => {
+      const transcriptDualWrite =
+        process.env.HOUSTON_TRANSCRIPT_DUAL_WRITE === "1";
+      const turnLog = process.env.HOUSTON_TURN_LOG === "1";
+      console.info(
+        transcriptDualWrite
+          ? "[boot] transcript dual-write ON (HOUSTON_TRANSCRIPT_DUAL_WRITE=1)"
+          : "[boot] transcript dual-write OFF (HOUSTON_TRANSCRIPT_DUAL_WRITE unset)",
+      );
+      console.info(
+        turnLog
+          ? "[boot] turnlog capture ON (HOUSTON_TURN_LOG=1)"
+          : "[boot] turnlog capture OFF (HOUSTON_TURN_LOG unset)",
+      );
+      return {
+        gateway: managedStore.podGateway,
+        turnlogGateway: process.env.HOUSTON_TURNLOG_URL
+          ? {
+              ...managedStore.podGateway,
+              baseUrl: process.env.HOUSTON_TURNLOG_URL,
+              // The turnlog is a different backend service and must never
+              // share or mutate the object store's lease fence.
+              fence: { ...managedStore.podGateway.fence },
+            }
+          : undefined,
+        transcriptDualWrite,
+        turnLog,
+      };
+    })()
+  : undefined;
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
@@ -187,22 +219,7 @@ const host = buildLocalHost({
   // Active-time reporting rides the same managed-pod gateway quadruple: the
   // env being present IS the switch (desktop/self-host never set it).
   usageReporting: remoteGateway,
-  durableTurns: managedStore?.podGateway
-    ? {
-        gateway: managedStore.podGateway,
-        // Same pod identity and the SAME shared fence object (capturePodFence
-        // mutates it as writes observe tokens) — only the base moves to the
-        // gateway, where the turnlog ingest is actually mounted.
-        turnlogGateway: process.env.HOUSTON_TURNLOG_URL
-          ? {
-              ...managedStore.podGateway,
-              baseUrl: process.env.HOUSTON_TURNLOG_URL,
-            }
-          : undefined,
-        transcriptDualWrite: process.env.HOUSTON_TRANSCRIPT_DUAL_WRITE === "1",
-        turnLog: process.env.HOUSTON_TURN_LOG === "1",
-      }
-    : undefined,
+  durableTurns,
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
   passive: process.env.HOUSTON_PASSIVE === "1",

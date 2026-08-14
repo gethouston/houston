@@ -22,6 +22,7 @@ export {
   StoreConflictError,
   StoreFencedError,
 } from "./object-store";
+export { fetchWithRetry } from "./retry";
 export type {
   SharedMirrorFamily,
   SharedMirrorResult,

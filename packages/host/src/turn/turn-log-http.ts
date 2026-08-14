@@ -12,6 +12,7 @@ const RETRYABLE = new Set([502, 503, 504]);
 export class HttpTurnLogSender implements TurnLogSender {
   private readonly fetchImpl: typeof fetch;
   private readonly retryDelaysMs: number[];
+  private disabled = false;
 
   constructor(
     private readonly opts: {
@@ -25,6 +26,7 @@ export class HttpTurnLogSender implements TurnLogSender {
   }
 
   async send(conversationId: string, frames: SequencedFrame[]): Promise<void> {
+    if (this.disabled) return;
     const { gateway } = this.opts;
     const url = podGatewayUrl(
       gateway,
@@ -46,6 +48,7 @@ export class HttpTurnLogSender implements TurnLogSender {
         });
         capturePodFence(gateway, response);
         if (response.ok) return;
+        if (response.status === 404) return this.disableForSkew();
         const detail = await response.text();
         lastError = new Error(
           `turnlog ingest failed (${response.status}): ${detail.slice(0, 300)}`,
@@ -61,5 +64,13 @@ export class HttpTurnLogSender implements TurnLogSender {
     throw lastError instanceof Error
       ? lastError
       : new Error("turnlog ingest failed");
+  }
+
+  private disableForSkew(): void {
+    if (this.disabled) return;
+    this.disabled = true;
+    console.debug(
+      "[turnlog] gateway route unavailable; disabling for this process",
+    );
   }
 }

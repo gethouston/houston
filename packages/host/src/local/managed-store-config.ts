@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { HttpObjectStore } from "@houston/runtime-client/object-sync";
+import {
+  fetchWithRetry,
+  HttpObjectStore,
+} from "@houston/runtime-client/object-sync";
 
 function optionalPositiveNumber(name: string): number | undefined {
   const raw = process.env[name];
@@ -45,14 +48,19 @@ export async function managedStoreConfig(
   // Any other failure is fatal — syncing unfenced against a fencing gateway
   // would 409 the first write anyway; die loudly and let the pod restart.
   try {
-    const res = await fetch(`${root}/${encodeURIComponent(agentSlug)}/lease`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${hostToken}`,
-        "content-type": "application/json",
+    const res = await fetchWithRetry(
+      (input, init) =>
+        fetch(input, { ...init, signal: AbortSignal.timeout(10_000) }),
+      `${root}/${encodeURIComponent(agentSlug)}/lease`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${hostToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ bootId }),
       },
-      body: JSON.stringify({ bootId }),
-    });
+    );
     if (res.ok) {
       const body = (await res.json()) as { token?: string };
       if (typeof body.token === "string" && body.token !== "") {

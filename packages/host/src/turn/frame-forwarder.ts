@@ -2,6 +2,13 @@ import { isTerminalFrame, type SequencedFrame } from "@houston/runtime-client";
 import type { TurnBus } from "./bus";
 import { eventChannel } from "./relay-dialect";
 
+/**
+ * Long enough for legitimate tool-heavy turns, bounded so dead SSE captures
+ * cannot leak forever.
+ */
+const CAPTURE_IDLE_MS = 30 * 60 * 1000;
+const STOP_DRAIN_TIMEOUT_MS = 3_000;
+
 export interface TurnLogSender {
   send(conversationId: string, frames: SequencedFrame[]): Promise<void>;
 }
@@ -10,6 +17,7 @@ interface CaptureState {
   conversationId: string;
   frames: SequencedFrame[];
   timer?: ReturnType<typeof setTimeout>;
+  idleTimer?: ReturnType<typeof setTimeout>;
   unsubscribe: () => void;
 }
 
@@ -44,15 +52,36 @@ export class FrameForwarder {
       (message) => this.onMessage(relayKey, state, message),
     );
     this.states.set(relayKey, state);
+    this.armIdleWatchdog(relayKey, state);
   }
 
-  stop(): void {
-    for (const state of this.states.values()) {
-      if (state.timer) clearTimeout(state.timer);
-      this.flush(state);
-      state.unsubscribe();
+  release(relayKey: string): void {
+    const state = this.states.get(relayKey);
+    if (!state) return;
+    this.evict(relayKey, state);
+  }
+
+  async stop(): Promise<void> {
+    for (const [relayKey, state] of this.states) {
+      this.evict(relayKey, state);
     }
-    this.states.clear();
+    const pending = [...this.sendTails.values()];
+    if (pending.length === 0) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), STOP_DRAIN_TIMEOUT_MS);
+      timer.unref?.();
+    });
+    const result = await Promise.race([
+      Promise.allSettled(pending).then(() => "settled" as const),
+      timeout,
+    ]);
+    clearTimeout(timer);
+    if (result === "timeout") {
+      console.debug(
+        `[turnlog] stop timed out with ${pending.length} batch send(s) still pending`,
+      );
+    }
   }
 
   private onMessage(
@@ -71,6 +100,7 @@ export class FrameForwarder {
       );
       return;
     }
+    this.armIdleWatchdog(relayKey, state);
     state.frames.push(frame);
     const terminal = isTerminalFrame(frame.type);
     if (terminal || state.frames.length >= this.batchSize) {
@@ -80,9 +110,28 @@ export class FrameForwarder {
       state.timer.unref?.();
     }
     if (terminal) {
-      state.unsubscribe();
-      this.states.delete(relayKey);
+      this.evict(relayKey, state, false);
     }
+  }
+
+  private armIdleWatchdog(relayKey: string, state: CaptureState): void {
+    if (state.idleTimer) clearTimeout(state.idleTimer);
+    state.idleTimer = setTimeout(
+      () => this.evict(relayKey, state),
+      CAPTURE_IDLE_MS,
+    );
+    state.idleTimer.unref?.();
+  }
+
+  private evict(relayKey: string, state: CaptureState, flush = true): void {
+    if (this.states.get(relayKey) !== state) return;
+    if (state.timer) clearTimeout(state.timer);
+    if (state.idleTimer) clearTimeout(state.idleTimer);
+    state.timer = undefined;
+    state.idleTimer = undefined;
+    if (flush) this.flush(state);
+    state.unsubscribe();
+    this.states.delete(relayKey);
   }
 
   private flush(state: CaptureState): void {

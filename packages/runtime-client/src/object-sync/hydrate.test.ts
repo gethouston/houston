@@ -352,17 +352,27 @@ test("a fenced upload aborts the sync pass immediately", async () => {
   );
 });
 
-test("a delete conflict leaves the remote object unowned and records it", async () => {
+test("a delete conflict refreshes the generation and retries successfully", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  const preconditions: Array<string | undefined> = [];
   const conflicting: ObjectStore = {
     list: (prefix) => store.list(prefix),
-    manifest: async () => [metadata(`${PREFIX}/workspace/a.txt`, "5")],
+    manifest: async () => {
+      manifestCalls += 1;
+      return [
+        metadata(`${PREFIX}/workspace/a.txt`, manifestCalls === 1 ? "5" : "6"),
+      ];
+    },
     download: (key, dest) => store.download(key, dest),
     upload: (src, key, opts) => store.upload(src, key, opts),
     delete: async (key, opts) => {
-      expect(opts?.ifGenerationMatch).toBe("5");
-      throw new StoreConflictError(key, "remote rewrite won");
+      preconditions.push(opts?.ifGenerationMatch);
+      if (opts?.ifGenerationMatch === "5") {
+        throw new StoreConflictError(key, "stale generation");
+      }
+      await store.delete(key);
     },
   };
   const manifest = await hydrate(conflicting, PREFIX, work);
@@ -370,11 +380,116 @@ test("a delete conflict leaves the remote object unowned and records it", async 
 
   const result = await syncBack(conflicting, PREFIX, work, manifest);
 
-  expect(result.deleted).toEqual([]);
+  expect(preconditions).toEqual(["5", "6"]);
+  expect(manifestCalls).toBe(2);
+  expect(result.deleted).toEqual(["workspace/a.txt"]);
   expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.conflicts).toEqual([]);
+});
+
+test("a second delete conflict preserves refreshed ownership for the next pass", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  const preconditions: Array<string | undefined> = [];
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return [
+        metadata(`${PREFIX}/workspace/a.txt`, manifestCalls === 1 ? "5" : "6"),
+      ];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key, opts) => store.upload(src, key, opts),
+    delete: async (key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      throw new StoreConflictError(
+        key,
+        `conflict at ${opts?.ifGenerationMatch}`,
+      );
+    },
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  rmSync(join(work, "workspace", "a.txt"));
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(preconditions).toEqual(["5", "6"]);
+  expect(manifestCalls).toBe(2);
+  expect(result.deleted).toEqual([]);
+  expect(result.manifest.get("workspace/a.txt")?.generation).toBe("6");
   expect(result.conflicts).toEqual([
-    { key: "workspace/a.txt", reason: "remote rewrite won" },
+    { key: "workspace/a.txt", reason: "conflict at 6" },
   ]);
+});
+
+test("a delete conflict whose refresh finds no object is already deleted", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  let deleteCalls = 0;
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return manifestCalls === 1
+        ? [metadata(`${PREFIX}/workspace/a.txt`, "5")]
+        : [];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key, opts) => store.upload(src, key, opts),
+    delete: async (key) => {
+      deleteCalls += 1;
+      throw new StoreConflictError(key, "stale generation");
+    },
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  rmSync(join(work, "workspace", "a.txt"));
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(deleteCalls).toBe(1);
+  expect(result.deleted).toEqual(["workspace/a.txt"]);
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.conflicts).toEqual([]);
+});
+
+test("a delete conflict retries unconditionally after a generation-less refresh", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  let manifestCalls = 0;
+  const preconditions: Array<string | undefined> = [];
+  const conflicting: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: async () => {
+      manifestCalls += 1;
+      return [
+        {
+          ...metadata(`${PREFIX}/workspace/a.txt`, "5"),
+          generation: manifestCalls === 1 ? "5" : undefined,
+        },
+      ];
+    },
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key, opts) => store.upload(src, key, opts),
+    delete: async (key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      if (opts?.ifGenerationMatch === "5") {
+        throw new StoreConflictError(key, "stale generation");
+      }
+      await store.delete(key);
+    },
+  };
+  const manifest = await hydrate(conflicting, PREFIX, work);
+  rmSync(join(work, "workspace", "a.txt"));
+
+  const result = await syncBack(conflicting, PREFIX, work, manifest);
+
+  expect(preconditions).toEqual(["5", undefined]);
+  expect(result.deleted).toEqual(["workspace/a.txt"]);
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.conflicts).toEqual([]);
 });
 
 test("a file deleted mid-walk is reconciled as deleted, not a failed sync", async () => {

@@ -35,6 +35,7 @@ export function capturePodFence(
   gateway: PodGatewayConfig,
   response: Response,
 ): void {
+  if (!response.ok) return;
   const token = response.headers.get("X-Houston-Fencing-Token");
-  if (token !== null) gateway.fence.token = token;
+  if (token) gateway.fence.token = token;
 }

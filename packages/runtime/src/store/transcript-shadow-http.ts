@@ -1,5 +1,5 @@
 import type {
-  TranscriptShadowOperation,
+  TranscriptShadowSend,
   TranscriptShadowTransport,
 } from "./transcript-shadow";
 
@@ -15,7 +15,7 @@ export class SandboxTranscriptShadowTransport
     this.baseUrl = baseUrl.replace(/\/+$/, "");
   }
 
-  async send(operation: TranscriptShadowOperation): Promise<void> {
+  async send(operation: TranscriptShadowSend): Promise<void> {
     const cid = encodeURIComponent(operation.conversationId);
     const root = `${this.baseUrl}/sandbox/transcripts/conversations/${cid}`;
     const request = requestFor(root, operation);
@@ -37,7 +37,7 @@ export class SandboxTranscriptShadowTransport
   }
 }
 
-function requestFor(root: string, operation: TranscriptShadowOperation) {
+function requestFor(root: string, operation: TranscriptShadowSend) {
   switch (operation.kind) {
     case "user":
       return {
@@ -46,7 +46,7 @@ function requestFor(root: string, operation: TranscriptShadowOperation) {
         body: {
           message: operation.message,
           ts: operation.message.ts,
-          title: operation.conversation.title,
+          title: operation.title,
           expectedCount: operation.expectedCount,
           needsSessionReplay: operation.needsSessionReplay,
         },
@@ -67,7 +67,7 @@ function requestFor(root: string, operation: TranscriptShadowOperation) {
       return {
         method: "PUT",
         url: root,
-        body: { title: operation.conversation.title },
+        body: { title: operation.title },
       };
     case "delete":
       return { method: "DELETE", url: root };

@@ -596,6 +596,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // managed cloud the Go edge advertises the capability; a pod/self-host/desktop
     // stays byte-identical to the nominal profile (absent = off, protocol #core).
   };
+  const syncDaemon = opts.storeSync
+    ? new StoreSyncDaemon({
+        ...opts.storeSync,
+        rootDir: dirname(opts.workspacesRoot),
+        // FsWatcher below already watches this subtree for reactivity. Avoid a
+        // second, redundant inotify watch over it (HOU-1237).
+        watchExcludeDirs: [opts.workspacesRoot],
+        log: severityLog,
+      })
+    : undefined;
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -636,6 +646,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // non-public route: timings aren't secrets, but there is no reason to
     // widen the unauthenticated surface for them.
     metrics: { render: () => boot.render(), contentType: boot.contentType },
+    storeFenced: syncDaemon ? () => syncDaemon.fenced : undefined,
   };
 
   const server = createControlPlaneServer(deps);
@@ -655,16 +666,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     mode: opts.routineSchedulerMode ?? "local",
     dedupTtlSec: opts.gatewayFronted ? 86_400 : 3600,
   });
-  const syncDaemon = opts.storeSync
-    ? new StoreSyncDaemon({
-        ...opts.storeSync,
-        rootDir: dirname(opts.workspacesRoot),
-        // FsWatcher above already watches this subtree for reactivity —
-        // don't pay for a second, redundant inotify watch over it (HOU-1237).
-        watchExcludeDirs: [opts.workspacesRoot],
-        log: severityLog,
-      })
-    : undefined;
   // Managed pods sample their own busy state (the gateway can only see AWAKE
   // from outside) and report per-day active totals to the compute-usage ingest.
   const usageSampler = opts.usageReporting

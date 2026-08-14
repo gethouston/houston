@@ -2,13 +2,18 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
-import { createConversationStore } from "./conversations";
+import { loadConversation } from "./conversation-file";
 import {
-  type TranscriptShadow,
-  type TranscriptShadowOperation,
-  TranscriptShadowQueue,
-  type TranscriptShadowTransport,
+  createConversationStore,
+  drainTranscriptShadowForShutdown,
+} from "./conversations";
+import type {
+  TranscriptShadow,
+  TranscriptShadowOperation,
+  TranscriptShadowSend,
+  TranscriptShadowTransport,
 } from "./transcript-shadow";
+import { TranscriptShadowQueue } from "./transcript-shadow-queue";
 
 const dirs: string[] = [];
 
@@ -50,9 +55,12 @@ test("user and assistant shadow only after the atomic file write", () => {
     kind: "user",
     conversationId: "c1",
     turnId: "t1",
+    title: "hello",
     expectedCount: 0,
     needsSessionReplay: false,
   });
+  // Message-only enqueue: the hot append path never clones the conversation.
+  expect(seen.some((operation) => "conversation" in operation)).toBe(false);
 });
 
 test("a synchronous shadow enqueue failure cannot fail the file mutation", () => {
@@ -74,7 +82,7 @@ test("a synchronous shadow enqueue failure cannot fail the file mutation", () =>
 
 test("a failed shadow write never throws and repairs before the next turn", async () => {
   const dir = tempDir();
-  const sent: TranscriptShadowOperation[] = [];
+  const sent: TranscriptShadowSend[] = [];
   let failFirst = true;
   const transport: TranscriptShadowTransport = {
     async send(operation) {
@@ -85,7 +93,9 @@ test("a failed shadow write never throws and repairs before the next turn", asyn
       }
     },
   };
-  const shadow = new TranscriptShadowQueue(transport);
+  const shadow = new TranscriptShadowQueue(transport, (id) =>
+    loadConversation(dir, id),
+  );
   const store = createConversationStore(dir, shadow);
 
   expect(() =>
@@ -103,4 +113,8 @@ test("a failed shadow write never throws and repairs before the next turn", asyn
     conversation: { messages: [{ content: "first" }, { content: "second" }] },
   });
   expect(shadow.isDirty("c1")).toBe(false);
+});
+
+test("the module-level shutdown drain is a no-op when the flag is off", async () => {
+  await expect(drainTranscriptShadowForShutdown(100)).resolves.toBeUndefined();
 });

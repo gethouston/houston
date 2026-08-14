@@ -63,7 +63,7 @@ export interface ReconcileDeps {
   newId: () => string;
   /** Present only while the managed transcript dual-write is enabled. */
   replyReader?: {
-    /** undefined means deploy skew: retain the authoritative file read. */
+    /** null/undefined means no shadow reply: retain the authoritative file read. */
     replyAfter(
       conversationId: string,
       sinceMs: number,
@@ -105,32 +105,36 @@ export async function reconcileAgentRuns(
   const { items: routines } = await loadRoutines(deps.vfs, root);
   const nowMs = deps.now().getTime();
   const updates: RunUpdate[] = [];
-
-  for (const run of running) {
-    const routine = routines.find((r) => r.id === run.routine_id);
-    if (!routine) continue; // routine deleted; leave the run to the next sweep
-
-    const startedAtMs = Date.parse(run.started_at);
-    let remoteReply: ChatMessage | null | undefined;
-    try {
-      remoteReply = await deps.replyReader?.replyAfter(
-        run.session_key,
-        startedAtMs,
-      );
-    } catch (error) {
-      console.debug(
-        `[transcript-shadow] reply-after failed for ${run.session_key}; using file`,
-        error,
-      );
-    }
-    let reply = remoteReply;
-    if (remoteReply === undefined) {
+  const candidates = running.flatMap((run) => {
+    const routine = routines.find((item) => item.id === run.routine_id);
+    return routine ? [{ run, routine }] : [];
+  });
+  const replies = await Promise.all(
+    candidates.map(async ({ run }) => {
+      const startedAtMs = Date.parse(run.started_at);
+      let remoteReply: ChatMessage | null | undefined;
+      try {
+        remoteReply = await deps.replyReader?.replyAfter(
+          run.session_key,
+          startedAtMs,
+        );
+      } catch (error) {
+        console.debug(
+          `[transcript-shadow] reply-after failed for ${run.session_key}; using file`,
+          error,
+        );
+      }
+      if (remoteReply) return remoteReply;
       const raw = await deps.vfs.readText(
         conversationKey(deps.paths, ws, agent, run.session_key),
       );
       const conversation = raw ? (JSON.parse(raw) as StoredConversation) : null;
-      reply = replyAfter(conversation, startedAtMs);
-    }
+      return replyAfter(conversation, startedAtMs);
+    }),
+  );
+
+  for (const [index, { run, routine }] of candidates.entries()) {
+    const reply = replies[index] ?? null;
 
     const timedOut =
       !reply && nowMs - Date.parse(run.started_at) > RUN_TIMEOUT_MS;

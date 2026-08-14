@@ -354,6 +354,60 @@ test("a generation conflict keeps local bytes and invokes the conflict path", as
   ).toBe("1");
 });
 
+test("generation-less remote drift signals a conflict and still uploads local bytes", async () => {
+  const mirrorDir = mkdtempSync(join(tmpdir(), "shared-mirror-unversioned-"));
+  const key = "skills/a/SKILL.md";
+  const local = Buffer.from("intentional local edit");
+  const baseline = Buffer.from("shared baseline");
+  const remote = Buffer.from("simultaneous remote edit");
+  await mkdir(join(mirrorDir, "skills", "a"), { recursive: true });
+  writeFileSync(join(mirrorDir, key), local);
+  const conflicts: string[] = [];
+  const preconditions: Array<string | undefined> = [];
+  let uploaded = Buffer.alloc(0);
+
+  const result = await syncSharedMirror({
+    store: {
+      manifest: async () => {
+        throw new Error("snapshot should avoid a second manifest read");
+      },
+      download: async () => {
+        throw new Error("push-only sync should not download");
+      },
+      upload: async (source, _key, opts) => {
+        uploaded = readFileSync(source);
+        preconditions.push(opts?.ifGenerationMatch);
+      },
+    },
+    mirrorDir,
+    snapshot: {
+      state: {
+        fingerprint: "remote",
+        files: { [key]: { size: remote.length, md5: md5(remote) } },
+      },
+      objects: [
+        {
+          key,
+          size: remote.length,
+          md5: md5(remote),
+          updated: "2026-07-30T00:00:00Z",
+        },
+      ],
+    },
+    state: {
+      fingerprint: "baseline",
+      files: { [key]: { size: baseline.length, md5: md5(baseline) } },
+    },
+    mode: "push-only",
+    onConflict: (conflictedKey) => conflicts.push(conflictedKey),
+  });
+
+  expect(conflicts).toEqual([key]);
+  expect(preconditions).toEqual([undefined]);
+  expect(result.uploaded).toEqual([key]);
+  expect(uploaded).toEqual(local);
+});
+
 test("an unchanged remote manifest repairs a same-size corrupted local file", async () => {
   const remote = await fakePodStore({
     "skills/a/SKILL.md": "good",

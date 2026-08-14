@@ -6,7 +6,10 @@ import { eventChannel } from "./relay-dialect";
 
 /** Pumps a standing runtime's SSE into ev2 without relying on a client listener. */
 export class StandingFrameCapture {
-  private readonly pumps = new Map<string, AbortController>();
+  private readonly pumps = new Map<
+    string,
+    { controller: AbortController; attached: Promise<void> }
+  >();
 
   constructor(
     private readonly bus: TurnBus,
@@ -17,24 +20,53 @@ export class StandingFrameCapture {
     endpoint: RuntimeEndpoint,
     agentId: string,
     conversationId: string,
-  ): void {
+  ): Promise<void> {
     const key = `${agentId}/${conversationId}`;
     this.forwarder.capture(conversationId, key);
-    if (this.pumps.has(key)) return;
+    const existing = this.pumps.get(key);
+    if (existing) return existing.attached;
     const controller = new AbortController();
-    this.pumps.set(key, controller);
-    void this.pump(endpoint, conversationId, key, controller).catch((error) => {
-      if (!controller.signal.aborted) {
-        console.debug(
-          `[turnlog] standing runtime capture failed for ${conversationId}; live-pod resume remains available`,
-          error,
-        );
-      }
+    let resolveAttached!: () => void;
+    let rejectAttached!: (error: unknown) => void;
+    const attached = new Promise<void>((resolve, reject) => {
+      resolveAttached = resolve;
+      rejectAttached = reject;
     });
+    const state = { controller, attached };
+    this.pumps.set(key, state);
+    void this.pump(endpoint, conversationId, key, controller, resolveAttached)
+      .catch((error) => {
+        rejectAttached(error);
+        if (!controller.signal.aborted) {
+          console.debug(
+            `[turnlog] standing runtime capture failed for ${conversationId}; live-pod resume remains available`,
+            error,
+          );
+        }
+      })
+      .finally(() => {
+        if (this.pumps.get(key) !== state) return;
+        this.pumps.delete(key);
+        this.forwarder.release(key);
+      });
+    return attached;
+  }
+
+  stopCapture(agentId: string, conversationId: string): void {
+    const key = `${agentId}/${conversationId}`;
+    const state = this.pumps.get(key);
+    if (state) {
+      this.pumps.delete(key);
+      state.controller.abort();
+    }
+    this.forwarder.release(key);
   }
 
   stop(): void {
-    for (const controller of this.pumps.values()) controller.abort();
+    for (const [key, state] of this.pumps) {
+      state.controller.abort();
+      this.forwarder.release(key);
+    }
     this.pumps.clear();
   }
 
@@ -43,29 +75,29 @@ export class StandingFrameCapture {
     conversationId: string,
     key: string,
     controller: AbortController,
+    attached: () => void,
   ): Promise<void> {
-    try {
-      const response = await fetch(
-        `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/events`,
-        {
-          headers: { Authorization: `Bearer ${endpoint.token}` },
-          signal: controller.signal,
-        },
-      );
-      if (!response.ok || !response.body) {
-        throw new Error(`runtime events failed (${response.status})`);
-      }
-      await readEventStream(response.body, async (frame) => {
-        // A fresh runtime subscription begins with a snapshot sync. Turnlog is
-        // the turn's event log, so only frames published by the turn enter ev2.
-        if (frame.type === "sync") return;
-        // The standing runtime's ReplayLog already assigned the authoritative
-        // seq. Publish that exact envelope; never introduce a second counter.
-        await this.bus.publish(eventChannel(key), JSON.stringify(frame));
-        if (isTerminalFrame(frame.type)) controller.abort();
-      });
-    } finally {
-      this.pumps.delete(key);
+    const response = await fetch(
+      `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/events`,
+      {
+        headers: { Authorization: `Bearer ${endpoint.token}` },
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok || !response.body) {
+      throw new Error(`runtime events failed (${response.status})`);
     }
+    const reading = readEventStream(response.body, async (frame) => {
+      // A fresh runtime subscription begins with a snapshot sync. Turnlog is
+      // the turn's event log, so only frames published by the turn enter ev2.
+      if (frame.type === "sync") return;
+      // The standing runtime's ReplayLog already assigned the authoritative
+      // seq. Publish that exact envelope; never introduce a second counter.
+      await this.bus.publish(eventChannel(key), JSON.stringify(frame));
+      if (isTerminalFrame(frame.type)) controller.abort();
+    });
+    if (!response.body.locked) await reading;
+    attached();
+    await reading;
   }
 }

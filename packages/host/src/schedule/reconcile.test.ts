@@ -7,7 +7,7 @@ import {
   saveRoutines,
 } from "@houston/domain";
 import type { Activity, Routine, RoutineRun } from "@houston/protocol";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { CloudPaths } from "../paths";
 import { workspaceRoot } from "../routes/agent-data";
 import { MemoryWorkspaceStore } from "../store/memory";
@@ -180,6 +180,88 @@ test("a failed reply-after shadow lookup falls back to the authoritative file", 
     status: "surfaced",
     summary: "file reply",
   });
+});
+
+test("a shadow miss falls back to a reply in the authoritative file", async () => {
+  const env = await setup(routine());
+  await seedReply(
+    env.vfs,
+    env.ws,
+    env.agent,
+    env.run.session_key,
+    "file reply after shadow miss",
+    STARTED.getTime() + 1000,
+  );
+
+  await reconcileAgentRuns(
+    {
+      ...deps(env.vfs, new Date(STARTED.getTime() + 16 * 60 * 1000)),
+      replyReader: {
+        async replyAfter() {
+          return null;
+        },
+      },
+    },
+    env.ws,
+    env.agent,
+  );
+
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect(items[0]).toMatchObject({
+    status: "surfaced",
+    summary: "file reply after shadow miss",
+  });
+});
+
+test("reply-after reads for running runs start in parallel", async () => {
+  const firstRoutine = routine({ suppress_when_silent: true });
+  const secondRoutine = routine({
+    id: "r2",
+    suppress_when_silent: true,
+  });
+  const env = await setup(firstRoutine);
+  const secondRun = createRoutineRun(
+    secondRoutine,
+    "run-2",
+    STARTED.toISOString(),
+  );
+  const root = workspaceRoot(env.ws, env.agent);
+  await saveRoutines(env.vfs, root, [firstRoutine, secondRoutine]);
+  await saveRoutineRuns(env.vfs, root, [env.run, secondRun]);
+
+  let releaseReads!: () => void;
+  const readsReleased = new Promise<void>((resolve) => {
+    releaseReads = resolve;
+  });
+  const calls: string[] = [];
+  const reconciling = reconcileAgentRuns(
+    {
+      ...deps(env.vfs, NOW),
+      replyReader: {
+        async replyAfter(conversationId) {
+          calls.push(conversationId);
+          await readsReleased;
+          return {
+            role: "assistant",
+            content: "ROUTINE_OK",
+            ts: STARTED.getTime() + 1000,
+          };
+        },
+      },
+    },
+    env.ws,
+    env.agent,
+  );
+
+  await vi.waitFor(() => expect(calls).toHaveLength(2));
+  releaseReads();
+  await reconciling;
+
+  const { items } = await loadRoutineRuns(env.vfs, root);
+  expect(items.map((run) => run.status)).toEqual(["silent", "silent"]);
 });
 
 test("surfaced: a real finding → run surfaced + a needs_you board activity linked to the run", async () => {

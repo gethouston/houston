@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, posix, relative, sep } from "node:path";
 import { fileSha256 } from "./file-hash";
@@ -28,9 +29,9 @@ export interface SyncResult {
   skipped: { key: string; reason: string }[];
   /**
    * Per-object generation conflicts (typed 412) that survived one refreshed
-   * retry, plus conditional deletes of objects someone else rewrote. The pass
-   * continues past them; a FENCE rejection (409) aborts it instead — that pod
-   * is no longer the writer, and every further write would be garbage.
+   * retry. The pass continues past them; a FENCE rejection (409) aborts it
+   * instead — that pod is no longer the writer, and every further write would
+   * be garbage.
    */
   conflicts: { key: string; reason: string }[];
   /** Bytes the next hydration must materialize, excluding local-only paths. */
@@ -39,7 +40,14 @@ export interface SyncResult {
 
 async function walkFiles(dir: string, base: string): Promise<string[]> {
   const out: string[] = [];
-  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  let entries: Dirent[];
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return [];
+    throw err;
+  }
   for (const entry of entries) {
     const abs = join(dir, entry.name);
     if (entry.isSymbolicLink()) continue;
@@ -69,6 +77,11 @@ export async function syncBack(
   opts: { excludes?: string[] } = {},
 ): Promise<SyncResult> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
+  // An empty manifest cannot reveal generation support. Sending create-only
+  // "0" would prevent concurrent first-create races on capable gateways, but
+  // generation-less HTTP backends reject guarded writes instead of ignoring
+  // the header. Until the wire exposes that capability, an empty prefix must
+  // stay unconditional and concurrent first creates remain last-writer-wins.
   const generationAware = [...manifest.values()].some(
     ({ generation }) => generation !== undefined,
   );
@@ -172,7 +185,31 @@ export async function syncBack(
       deleted.push(rel);
     } catch (err) {
       if (!(err instanceof StoreConflictError)) throw err;
-      conflicts.push({ key: rel, reason: err.message });
+      const refreshedManifest = await refresh();
+      if (!refreshedManifest) {
+        nextManifest.set(rel, previous);
+        conflicts.push({ key: rel, reason: err.message });
+        continue;
+      }
+      const current = refreshedManifest.get(key);
+      if (!current) {
+        deleted.push(rel);
+        continue;
+      }
+      const retryGeneration = current.generation;
+      try {
+        await store.delete(
+          key,
+          retryGeneration === undefined
+            ? undefined
+            : { ifGenerationMatch: retryGeneration },
+        );
+        deleted.push(rel);
+      } catch (retryError) {
+        if (!(retryError instanceof StoreConflictError)) throw retryError;
+        nextManifest.set(rel, { ...previous, generation: retryGeneration });
+        conflicts.push({ key: rel, reason: retryError.message });
+      }
     }
   }
   return {

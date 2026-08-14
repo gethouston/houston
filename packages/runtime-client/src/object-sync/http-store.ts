@@ -101,8 +101,9 @@ export class HttpObjectStore implements ObjectStore {
   ): Promise<WriteResult | void> {
     const url = this.objectUrl(key);
     const headers = this.writeHeaders(opts);
-    // A guarded write is not safe to replay after a lost response: the first
-    // attempt may have committed, making the retry fail its own generation.
+    // Fenced unconditional writes are idempotent and retry-safe: a superseded
+    // writer is rejected by its token. Generation-guarded writes cannot retry
+    // because a lost success is indistinguishable from a failed attempt.
     const retryable = !this.guardedWrite(opts);
     const res = await uploadFile(
       this.fetch.bind(this),
@@ -133,7 +134,8 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async delete(key: string, opts?: WriteOptions): Promise<void> {
-    // As with PUT, a guarded DELETE may have committed despite a lost response.
+    // As with PUT, a generation-guarded DELETE may have committed despite a
+    // lost response.
     const res = await this.fetch(
       this.objectUrl(key),
       {
@@ -149,8 +151,8 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   /**
-   * GETs and unguarded writes are safe to re-issue. Guarded writes explicitly
-   * disable retries at their call sites because a lost success cannot be
+   * GETs and fenced-but-unconditional writes are safe to re-issue. Writes with
+   * generation preconditions disable retries because a lost success cannot be
    * distinguished from a failed attempt without violating the precondition.
    */
   private fetch(
@@ -191,12 +193,11 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   private guardedWrite(opts?: WriteOptions): boolean {
-    return (
-      opts?.ifGenerationMatch !== undefined || this.fence?.token !== undefined
-    );
+    return opts?.ifGenerationMatch !== undefined;
   }
 
   private captureFence(res: Response): void {
+    if (!res.ok) return;
     const token = res.headers.get("X-Houston-Fencing-Token");
     if (token !== null && this.fence) this.fence.token = token;
   }

@@ -1,20 +1,13 @@
 import type { SequencedFrame } from "@houston/runtime-client";
-import { afterEach, expect, test } from "vitest";
-import {
-  startTestFetchServer,
-  type TestFetchServer,
-} from "../testing/fetch-server";
+import { afterEach, expect, test, vi } from "vitest";
 import { MemoryTurnBus } from "./bus";
 import type { TurnLogSender } from "./frame-forwarder";
 import { FrameForwarder } from "./frame-forwarder";
 import { eventChannel } from "./relay-dialect";
 import { HttpTurnLogSender } from "./turn-log-http";
 
-let server: TestFetchServer | undefined;
-
-afterEach(async () => {
-  await server?.stop();
-  server = undefined;
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 test("captures without a client, batches frames, and flushes terminal immediately", async () => {
@@ -23,35 +16,36 @@ test("captures without a client, batches frames, and flushes terminal immediatel
     frames: SequencedFrame[];
     headers: Headers;
   }[] = [];
-  server = await startTestFetchServer(async (request) => {
+  const fetchImpl: typeof fetch = async (input, init) => {
     // The ingest wire shape: a BARE array of {seq, frame}, frame verbatim
     // (seq inline) so replayed frames are byte-equivalent to live ones.
-    const body = (await request.json()) as {
+    const body = JSON.parse(String(init?.body)) as {
       seq: number;
       frame: SequencedFrame;
     }[];
     requests.push({
-      path: new URL(request.url).pathname,
+      path: new URL(String(input)).pathname,
       frames: body.map((entry) => {
         if (entry.seq !== entry.frame.seq) {
           throw new Error("cursor seq diverged from the frame's own seq");
         }
         return entry.frame;
       }),
-      headers: request.headers,
+      headers: new Headers(init?.headers),
     });
     return Response.json({ ok: true });
-  });
+  };
   const bus = new MemoryTurnBus();
   const sender = new HttpTurnLogSender({
     gateway: {
-      baseUrl: server.baseUrl,
+      baseUrl: "https://gateway.example",
       orgSlug: "acme",
       agentSlug: "helper",
       podToken: "pod-token",
       bootId: "boot-1",
       fence: { token: "71" },
     },
+    fetchImpl,
     retryDelaysMs: [],
   });
   const forwarder = new FrameForwarder({ bus, sender, batchMs: 10_000 });
@@ -77,26 +71,27 @@ test("captures without a client, batches frames, and flushes terminal immediatel
 
 test("flushes a full 32-frame batch without waiting for the timer", async () => {
   const batches: SequencedFrame[][] = [];
-  server = await startTestFetchServer(async (request) => {
-    const body = (await request.json()) as {
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as {
       seq: number;
       frame: SequencedFrame;
     }[];
     batches.push(body.map((entry) => entry.frame));
     return Response.json({ ok: true });
-  });
+  };
   const bus = new MemoryTurnBus();
   const forwarder = new FrameForwarder({
     bus,
     sender: new HttpTurnLogSender({
       gateway: {
-        baseUrl: server.baseUrl,
+        baseUrl: "https://gateway.example",
         orgSlug: "acme",
         agentSlug: "helper",
         podToken: "pod-token",
         bootId: "boot-1",
         fence: {},
       },
+      fetchImpl,
       retryDelaysMs: [],
     }),
     batchMs: 10_000,
@@ -146,6 +141,73 @@ test("serializes consecutive turns for the same conversation", async () => {
   releaseFirst?.();
   await eventually(() => batches.length === 2);
   expect(batches).toEqual([[10], [11]]);
+});
+
+test("evicts an idle capture so the same relay can start cleanly later", async () => {
+  vi.useFakeTimers();
+  const sent: number[][] = [];
+  const bus = new MemoryTurnBus();
+  const forwarder = new FrameForwarder({
+    bus,
+    sender: {
+      async send(_conversationId, frames) {
+        sent.push(frames.map((frame) => frame.seq));
+      },
+    },
+    batchSize: 1,
+  });
+
+  forwarder.capture("c1", "helper/c1");
+  await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "text", data: { text: "stale" }, seq: 1 }),
+  );
+  expect(sent).toEqual([]);
+
+  forwarder.capture("c1", "helper/c1");
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "done", data: {}, seq: 2 }),
+  );
+  await vi.runAllTimersAsync();
+  expect(sent).toEqual([[2]]);
+});
+
+test("stop waits for a pending send to settle before returning", async () => {
+  let releaseSend!: () => void;
+  const sendReleased = new Promise<void>((resolve) => {
+    releaseSend = resolve;
+  });
+  let sendStarted = false;
+  const bus = new MemoryTurnBus();
+  const forwarder = new FrameForwarder({
+    bus,
+    sender: {
+      async send() {
+        sendStarted = true;
+        await sendReleased;
+      },
+    },
+  });
+  forwarder.capture("c1", "helper/c1");
+  await bus.publish(
+    eventChannel("helper/c1"),
+    JSON.stringify({ type: "done", data: {}, seq: 1 }),
+  );
+  await eventually(() => sendStarted);
+
+  let stopped = false;
+  const stopping = forwarder.stop();
+  void stopping.then(() => {
+    stopped = true;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  expect(stopped).toBe(false);
+
+  releaseSend();
+  await stopping;
+  expect(stopped).toBe(true);
 });
 
 async function eventually(predicate: () => boolean): Promise<void> {

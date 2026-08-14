@@ -128,6 +128,12 @@ export async function syncSharedMirror(
       if (sameMetadata(metadata, canonicalRemote)) continue;
       const ifGenerationMatch =
         remoteMetadata?.generation ?? (generationAware ? "0" : undefined);
+      if (
+        ifGenerationMatch === undefined &&
+        !sameMetadata(canonicalRemote, options.state.files[key])
+      ) {
+        options.onConflict?.(key);
+      }
       try {
         const result = await options.store.upload(
           localPath(options.mirrorDir, key),

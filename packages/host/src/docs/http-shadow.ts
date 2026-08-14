@@ -31,19 +31,60 @@ export class HttpDocShadow implements DocShadow {
 
   async put(family: HoustonFamily, doc: unknown): Promise<void> {
     if (this.disabled) return;
+    if (!this.revisions.has(family)) {
+      const seeded = await this.seedFamily(family);
+      if (!seeded || this.disabled) return;
+    }
+    const cachedRevision = this.revisions.get(family);
+    if (cachedRevision === undefined) {
+      throw new Error(`[doc-shadow] ${family} revision unavailable after seed`);
+    }
+    const response = await this.putAtRevision(family, doc, cachedRevision);
+    if (response.status === 409) {
+      const revision = await responseRevision(response);
+      if (revision === undefined) {
+        this.revisions.delete(family);
+        console.debug(
+          `[doc-shadow] ${family} revision conflict without current revision; re-seeding on next write`,
+        );
+        return;
+      }
+      this.revisions.set(family, revision);
+      const retry = await this.putAtRevision(family, doc, revision);
+      await this.acceptPutResponse(family, retry);
+      return;
+    }
+    await this.acceptPutResponse(family, response);
+  }
+
+  private async putAtRevision(
+    family: HoustonFamily,
+    doc: unknown,
+    revision: number,
+  ): Promise<Response> {
     const response = await this.fetchImpl(this.url(family), {
       method: "PUT",
       headers: podGatewayHeaders(this.opts.gateway, {
         write: true,
         json: true,
-        extra: { "If-Match": String(this.revisions.get(family) ?? 0) },
+        extra: { "If-Match": String(revision) },
       }),
       body: JSON.stringify({ doc }),
       signal: AbortSignal.timeout(5_000),
     });
     capturePodFence(this.opts.gateway, response);
+    return response;
+  }
+
+  private async acceptPutResponse(
+    family: HoustonFamily,
+    response: Response,
+  ): Promise<void> {
     if (response.status === 404) return this.disableForSkew();
     if (response.status === 409) {
+      const revision = await responseRevision(response);
+      if (revision === undefined) this.revisions.delete(family);
+      else this.revisions.set(family, revision);
       console.debug(
         `[doc-shadow] ${family} revision conflict; file remains authoritative`,
       );
@@ -54,8 +95,8 @@ export class HttpDocShadow implements DocShadow {
     if (revision !== undefined) this.revisions.set(family, revision);
   }
 
-  private async seedFamily(family: HoustonFamily): Promise<void> {
-    if (this.disabled) return;
+  private async seedFamily(family: HoustonFamily): Promise<boolean> {
+    if (this.disabled) return false;
     try {
       const response = await this.fetchImpl(this.url(family), {
         headers: podGatewayHeaders(this.opts.gateway),
@@ -64,14 +105,16 @@ export class HttpDocShadow implements DocShadow {
       capturePodFence(this.opts.gateway, response);
       if (response.status === 404) {
         this.revisions.set(family, 0);
-        return;
+        return true;
       }
       if (!response.ok) throw await responseError(response, family, "GET");
       const revision = await responseRevision(response);
       this.revisions.set(family, revision ?? 0);
+      return true;
     } catch (error) {
       console.debug(`[doc-shadow] ${family} revision seed failed`, error);
-      this.revisions.set(family, 0);
+      this.revisions.delete(family);
+      return false;
     }
   }
 

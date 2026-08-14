@@ -214,6 +214,8 @@ export interface ControlPlaneDeps {
    * the route 404s (a test server without telemetry stays honest).
    */
   metrics?: { render(): Promise<string>; contentType: string };
+  /** Managed-store write-fence state; absent on desktop and self-host. */
+  storeFenced?: () => boolean;
 }
 
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
@@ -229,6 +231,16 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   );
+}
+
+export function healthBody(deps: Pick<ControlPlaneDeps, "storeFenced">): {
+  status: "ok";
+  storeFenced?: boolean;
+} {
+  return {
+    status: "ok",
+    ...(deps.storeFenced ? { storeFenced: deps.storeFenced() } : {}),
+  };
 }
 
 /** Resolve the caller to a verified user id, or null if unauthenticated. */
@@ -262,7 +274,9 @@ async function handle(
   // Public: health + the v3 meta surface (capabilities are not secrets; the UI
   // reads them before sign-in to shape itself).
   if (method === "GET" && path === "/health") {
-    return json(res, 200, { status: "ok" });
+    // The gateway may use storeFenced to change routing/readiness later. This
+    // change only surfaces the state and deliberately keeps health at 200.
+    return json(res, 200, healthBody(deps));
   }
   if (method === "GET" && path === "/v1/version") {
     return json(res, 200, {

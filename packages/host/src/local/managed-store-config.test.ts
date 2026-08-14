@@ -5,8 +5,80 @@ import { afterEach, expect, test, vi } from "vitest";
 import { managedStoreConfig } from "./managed-store-config";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+
+function stubManagedStoreEnv() {
+  vi.stubEnv("HOUSTON_STORE_URL", "https://store.test");
+  vi.stubEnv("HOUSTON_ORG_SLUG", "acme");
+  vi.stubEnv("HOUSTON_AGENT_SLUG", "writer");
+}
+
+test("retries a transient lease failure and boots fenced", async () => {
+  stubManagedStoreEnv();
+  vi.useFakeTimers();
+  const fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(Response.json({}, { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ token: "lease-2" }));
+
+  const configPromise = managedStoreConfig(
+    "pod-token",
+    "/data",
+    async (message) => {
+      throw new Error(message);
+    },
+  );
+  await vi.runAllTimersAsync();
+  const config = await configPromise;
+
+  expect(config?.podGateway.fence.token).toBe("lease-2");
+  expect(fetchSpy).toHaveBeenCalledTimes(2);
+  const signals = fetchSpy.mock.calls.map(([, init]) => init?.signal);
+  expect(signals[0]).toBeInstanceOf(AbortSignal);
+  expect(signals[1]).toBeInstanceOf(AbortSignal);
+  expect(signals[1]).not.toBe(signals[0]);
+});
+
+test("fails boot after persistent transient lease failures exhaust retries", async () => {
+  stubManagedStoreEnv();
+  vi.useFakeTimers();
+  const fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(Response.json({}, { status: 503 }));
+  const fatal = vi.fn(async (message: string): Promise<never> => {
+    throw new Error(message);
+  });
+
+  const configPromise = managedStoreConfig("pod-token", "/data", fatal);
+  const rejectedConfig = expect(configPromise).rejects.toThrow(
+    "write-lease claim failed (503)",
+  );
+  await vi.runAllTimersAsync();
+
+  await rejectedConfig;
+  expect(fetchSpy).toHaveBeenCalledTimes(3);
+  expect(fatal).toHaveBeenCalledOnce();
+});
+
+test("boots unfenced without retry when the lease route is absent", async () => {
+  stubManagedStoreEnv();
+  const fetchSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(Response.json({}, { status: 404 }));
+
+  const config = await managedStoreConfig(
+    "pod-token",
+    "/data",
+    async (message) => {
+      throw new Error(message);
+    },
+  );
+
+  expect(config?.podGateway.fence.token).toBeUndefined();
+  expect(fetchSpy).toHaveBeenCalledOnce();
 });
 
 test("shared pod-store config uses the org route and binds requests to the agent slug", async () => {

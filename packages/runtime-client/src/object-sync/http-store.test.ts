@@ -158,6 +158,27 @@ test("captures a fencing token and echoes it with the stable boot id on writes",
   expect(fence.token).toBe("42");
 });
 
+test.each([
+  409, 500,
+])("does not capture a fencing token from a failed %i response", async (status) => {
+  const fence = { token: "41" };
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/base",
+    token: "pod-token",
+    bootId: "boot-123",
+    fence,
+    fetchImpl: async () =>
+      new Response("rejected", {
+        status,
+        headers: { "X-Houston-Fencing-Token": "99" },
+      }),
+    retryDelaysMs: [],
+  });
+
+  await expect(store.manifest()).rejects.toThrow(`failed (${status})`);
+  expect(fence.token).toBe("41");
+});
+
 test("keeps old-gateway writes free of fencing and precondition headers", async () => {
   const dir = mkdtempSync(join(tmpdir(), "http-unfenced-object-store-"));
   const source = join(dir, "source.txt");
@@ -336,6 +357,26 @@ test("retries upload and delete through transient failures", async () => {
   expect(del.calls()).toBe(2);
 });
 
+test("retries a fenced unconditional PUT after a transient response", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-fenced-retry-"));
+  const source = join(dir, "source.txt");
+  writeFileSync(source, "hello");
+  const put = flaky([new Response("bad gateway", { status: 502 })], () =>
+    Response.json(metadata("file.txt", 5)),
+  );
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/base",
+    token: "pod-token",
+    bootId: "boot-123",
+    fence: { token: "41" },
+    fetchImpl: put.fetchImpl,
+    retryDelaysMs: [0, 0],
+  });
+
+  await expect(store.upload(source, "file.txt")).resolves.toBeUndefined();
+  expect(put.calls()).toBe(2);
+});
+
 test("retries download and still writes the file atomically", async () => {
   const dir = mkdtempSync(join(tmpdir(), "http-object-store-retry-dl-"));
   const destination = join(dir, "nested", "dest.txt");
@@ -410,14 +451,14 @@ test("does not retry a conditional PUT after a transient response", async () => 
     token: "pod-token",
     fetchImpl: async () => {
       calls += 1;
-      return new Response("gateway unavailable", { status: 503 });
+      return new Response("gateway unavailable", { status: 502 });
     },
     retryDelaysMs: [0, 0],
   });
 
   await expect(
     store.upload(source, "work/notes.txt", { ifGenerationMatch: "3" }),
-  ).rejects.toThrow("failed (503)");
+  ).rejects.toThrow("failed (502)");
   expect(calls).toBe(1);
 });
 
