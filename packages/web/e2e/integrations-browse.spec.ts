@@ -218,7 +218,7 @@ test("a row's + connects INLINE, exactly once, leaving every other row usable", 
   await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
 });
 
-test("HighLevel explains the required Sub-Account View before opening OAuth", async ({
+test("HighLevel asks for Sub-Account View before opening OAuth", async ({
   page,
   request,
 }) => {
@@ -238,7 +238,10 @@ test("HighLevel explains the required Sub-Account View before opening OAuth", as
     guidance.getByText("Agency View", { exact: true }),
   ).toBeVisible();
   await expect(
-    guidance.getByText("Choose Sub-Account View.", { exact: true }),
+    guidance.getByText(
+      "When the HighLevel page opens, use the dropdown next to Houston to switch Agency View to Sub-Account View.",
+      { exact: true },
+    ),
   ).toBeVisible();
   await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
 

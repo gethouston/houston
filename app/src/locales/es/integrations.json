@@ -74,13 +74,9 @@
   },
   "highlevelGuidance": {
     "title": "Elige Sub-Account View en HighLevel",
-    "body": "HighLevel abre en Agency View de forma predeterminada. Si mantienes esa opción, la aplicación puede instalarse, pero no terminará de conectarse con Houston.",
-    "whenPageOpens": "Cuando se abra la página de HighLevel:",
+    "body": "Cuando se abra la página de HighLevel, usa el menú junto a Houston para cambiar Agency View a Sub-Account View.",
     "houstonAppName": "Houston",
     "agencyView": "Agency View",
-    "openDropdown": "Abre el menú Agency View junto al nombre de la aplicación Houston.",
-    "chooseSubAccount": "Elige Sub-Account View.",
-    "selectLocation": "Selecciona una ubicación y luego haz clic en Install.",
     "cancel": "Cancelar",
     "continue": "Continuar a HighLevel"
   },

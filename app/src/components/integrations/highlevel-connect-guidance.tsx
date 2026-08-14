@@ -39,10 +39,7 @@ export function HighLevelConnectGuidance({
         </AlertDialogHeader>
 
         <div className="rounded-lg border border-line bg-input p-3">
-          <p className="mb-2 text-sm font-medium text-ink">
-            {t("highlevelGuidance.whenPageOpens")}
-          </p>
-          <div className="mb-3 flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm">
             <span className="font-medium text-ink">
               {t("highlevelGuidance.houstonAppName")}
             </span>
@@ -51,11 +48,6 @@ export function HighLevelConnectGuidance({
               <ChevronDown className="size-3.5" aria-hidden />
             </span>
           </div>
-          <ol className="list-decimal space-y-1.5 pl-5 text-sm text-ink-muted">
-            <li>{t("highlevelGuidance.openDropdown")}</li>
-            <li>{t("highlevelGuidance.chooseSubAccount")}</li>
-            <li>{t("highlevelGuidance.selectLocation")}</li>
-          </ol>
         </div>
 
         <AlertDialogFooter>
