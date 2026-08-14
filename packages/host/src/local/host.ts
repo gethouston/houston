@@ -212,11 +212,15 @@ export interface LocalHostOptions {
     quietMs?: number;
     intervalMs?: number;
     maxHydrateBytes?: number;
+    /** Gateway's explicit generation-precondition capability (boot lease). */
+    generations?: boolean;
   };
   /** Managed-pod read/write org prefix mirror, outside the agent workspace. */
   sharedMirror?: {
     store: ManifestObjectStore;
     mirrorDir: string;
+    /** Gateway's explicit generation-precondition capability (boot lease). */
+    generations?: boolean;
   };
   /**
    * Managed-pod active-time reporting: sample this pod's busy state and report

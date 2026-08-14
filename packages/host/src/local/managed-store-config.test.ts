@@ -42,6 +42,34 @@ test("retries a transient lease failure and boots fenced", async () => {
   expect(signals[1]).not.toBe(signals[0]);
 });
 
+test("threads the lease response's generation capability into both sync configs", async () => {
+  stubManagedStoreEnv();
+  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+    Response.json({ token: "9", generations: true }),
+  );
+
+  const config = await managedStoreConfig("pod-token", "/data", async (m) => {
+    throw new Error(m);
+  });
+
+  expect(config?.storeSync.generations).toBe(true);
+  expect(config?.sharedMirror.generations).toBe(true);
+});
+
+test("an old gateway without the capability field leaves generations undefined", async () => {
+  stubManagedStoreEnv();
+  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+    Response.json({ token: "9" }),
+  );
+
+  const config = await managedStoreConfig("pod-token", "/data", async (m) => {
+    throw new Error(m);
+  });
+
+  expect(config?.storeSync.generations).toBeUndefined();
+  expect(config?.sharedMirror.generations).toBeUndefined();
+});
+
 test("fails boot after persistent transient lease failures exhaust retries", async () => {
   stubManagedStoreEnv();
   vi.useFakeTimers();

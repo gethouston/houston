@@ -26,6 +26,8 @@ export interface StoreSyncOptions {
   quietMs?: number;
   intervalMs?: number;
   maxHydrateBytes?: number;
+  /** Gateway's explicit generation-precondition capability (boot lease). */
+  generations?: boolean;
   log: (msg: string, err?: unknown) => void;
 }
 
@@ -34,7 +36,10 @@ export function runSyncBack(
   manifest: HydrateManifest,
   excludes: string[],
 ): Promise<SyncResult> {
-  return syncBack(opts.store, "", opts.rootDir, manifest, { excludes });
+  return syncBack(opts.store, "", opts.rootDir, manifest, {
+    excludes,
+    generations: opts.generations,
+  });
 }
 
 export function logHydrated(

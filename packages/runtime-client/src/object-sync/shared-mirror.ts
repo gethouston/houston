@@ -35,6 +35,13 @@ export interface SyncSharedMirrorOptions {
   families?: readonly SharedMirrorFamily[];
   mode?: "push-pull" | "push-only";
   onConflict?: (key: string) => void;
+  /**
+   * The gateway's explicit generation-precondition capability (boot lease
+   * response). Overrides inference from the snapshot, which cannot see
+   * capability on an empty prefix — where concurrent first creates would
+   * otherwise be last-writer-wins. Absent on old gateways: infer.
+   */
+  generations?: boolean;
 }
 
 export interface SharedMirrorResult {
@@ -111,9 +118,9 @@ export async function syncSharedMirror(
   const uploaded: string[] = [];
   const uploadedMetadata: Record<string, SharedMirrorFileState> = {};
   const conflicted = new Set<string>();
-  const generationAware = snapshot.objects.some(
-    ({ generation }) => generation !== undefined,
-  );
+  const generationAware =
+    options.generations ??
+    snapshot.objects.some(({ generation }) => generation !== undefined);
   if (options.state) {
     for (const key of await localFamilyFiles(options.mirrorDir, families)) {
       const metadata = await localMetadata(localPath(options.mirrorDir, key));

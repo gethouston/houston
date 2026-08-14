@@ -74,17 +74,20 @@ export async function syncBack(
   prefix: string,
   dir: string,
   manifest: HydrateManifest,
-  opts: { excludes?: string[] } = {},
+  opts: { excludes?: string[]; generations?: boolean } = {},
 ): Promise<SyncResult> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
-  // An empty manifest cannot reveal generation support. Sending create-only
-  // "0" would prevent concurrent first-create races on capable gateways, but
-  // generation-less HTTP backends reject guarded writes instead of ignoring
-  // the header. Until the wire exposes that capability, an empty prefix must
-  // stay unconditional and concurrent first creates remain last-writer-wins.
-  const generationAware = [...manifest.values()].some(
-    ({ generation }) => generation !== undefined,
-  );
+  // opts.generations is the gateway's explicit capability signal (the boot
+  // lease response advertises whether the blob backend supports generation
+  // preconditions). It matters exactly where inference cannot work: an empty
+  // manifest has no generations to observe, so without the signal a cold
+  // agent must write unconditionally and concurrent first creates are
+  // last-writer-wins — while sending create-only "0" blindly would 501 on
+  // generation-less HTTP backends. Old gateways omit the field; fall back to
+  // inferring capability from observed generations.
+  const generationAware =
+    opts.generations ??
+    [...manifest.values()].some(({ generation }) => generation !== undefined);
   const uploaded: string[] = [];
   const skipped: SyncResult["skipped"] = [];
   const conflicts: SyncResult["conflicts"] = [];

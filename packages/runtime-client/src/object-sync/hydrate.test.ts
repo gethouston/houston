@@ -290,6 +290,42 @@ test("uses hydrated generations for known, new, deleted, and unchanged files", a
   expect(result.manifest.get("workspace/unchanged.txt")?.generation).toBe("30");
 });
 
+test("explicit generations capability makes empty-prefix first creates conditional", async () => {
+  const { store, work } = setup();
+  const preconditions: Array<string | undefined> = [];
+  const observing: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    download: (key, dest) => store.download(key, dest),
+    upload: async (src, key, opts) => {
+      preconditions.push(opts?.ifGenerationMatch);
+      await store.upload(src, key);
+      return { generation: "1" };
+    },
+    delete: (key) => store.delete(key),
+  };
+  mkdirSync(join(work, "workspace"), { recursive: true });
+  writeFileSync(join(work, "workspace", "first.txt"), "born");
+
+  // A cold agent has an EMPTY manifest: inference sees no generations, so
+  // without the boot-lease capability signal this create would have to go
+  // unconditional and concurrent first creates would be last-writer-wins.
+  const result = await syncBack(observing, PREFIX, work, new Map(), {
+    generations: true,
+  });
+  expect(preconditions).toEqual(["0"]);
+  expect(result.manifest.get("workspace/first.txt")?.generation).toBe("1");
+
+  // An explicit false forces unconditional writes even where an observed
+  // generation would otherwise be sent (the signal outranks inference).
+  preconditions.length = 0;
+  writeFileSync(join(work, "workspace", "first.txt"), "changed");
+  const manifest = new Map([
+    ["workspace/first.txt", { hash: "stale", generation: "1" }],
+  ]);
+  await syncBack(observing, PREFIX, work, manifest, { generations: false });
+  expect(preconditions).toEqual([undefined]);
+});
+
 test("refreshes generations once and records a second upload conflict", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/notes.txt": "v1" });
