@@ -24,10 +24,20 @@ test("captures without a client, batches frames, and flushes terminal immediatel
     headers: Headers;
   }[] = [];
   server = await startTestFetchServer(async (request) => {
-    const body = (await request.json()) as { frames: SequencedFrame[] };
+    // The ingest wire shape: a BARE array of {seq, frame}, frame verbatim
+    // (seq inline) so replayed frames are byte-equivalent to live ones.
+    const body = (await request.json()) as {
+      seq: number;
+      frame: SequencedFrame;
+    }[];
     requests.push({
       path: new URL(request.url).pathname,
-      frames: body.frames,
+      frames: body.map((entry) => {
+        if (entry.seq !== entry.frame.seq) {
+          throw new Error("cursor seq diverged from the frame's own seq");
+        }
+        return entry.frame;
+      }),
       headers: request.headers,
     });
     return Response.json({ ok: true });
@@ -68,8 +78,11 @@ test("captures without a client, batches frames, and flushes terminal immediatel
 test("flushes a full 32-frame batch without waiting for the timer", async () => {
   const batches: SequencedFrame[][] = [];
   server = await startTestFetchServer(async (request) => {
-    const body = (await request.json()) as { frames: SequencedFrame[] };
-    batches.push(body.frames);
+    const body = (await request.json()) as {
+      seq: number;
+      frame: SequencedFrame;
+    }[];
+    batches.push(body.map((entry) => entry.frame));
     return Response.json({ ok: true });
   });
   const bus = new MemoryTurnBus();

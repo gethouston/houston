@@ -36,7 +36,12 @@ export class HttpTurnLogSender implements TurnLogSender {
         const response = await this.fetchImpl(url, {
           method: "POST",
           headers: podGatewayHeaders(gateway, { write: true, json: true }),
-          body: JSON.stringify({ frames }),
+          // The ingest wire shape is a bare array of {seq, frame} — seq is
+          // the producer cursor, frame the FULL wire frame verbatim (seq
+          // included) so a replayed frame is byte-equivalent to a live one.
+          body: JSON.stringify(
+            frames.map((frame) => ({ seq: frame.seq, frame })),
+          ),
           signal: AbortSignal.timeout(5_000),
         });
         capturePodFence(gateway, response);
