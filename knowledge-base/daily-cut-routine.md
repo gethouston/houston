@@ -61,12 +61,15 @@ exists to run — dogfooding it is the point.
    team scope, since routine runs fire on the team credential.
 5. **Routine A (cron).** Create a routine, schedule weekdays 07:00
    America/Bogota, prompt = "Routine A" below.
-6. **Routine B (webhook).** Create a second routine with an INCOMING WEBHOOK
-   wake, prompt = "Routine B" below. Mint its key (the reveal shows `url` +
-   `secret` exactly once) and save them as the repo secrets
-   `HOUSTON_DRAFT_WEBHOOK_URL` + `HOUSTON_DRAFT_WEBHOOK_SECRET` on
-   `gethouston/houston`. Webhook wakes are hosted-cloud only — the Go gateway
-   owns the ingress ([routine-triggers.md](routine-triggers.md)).
+6. **Routine B (webhook).** Create a second routine and pick the **"From an
+   external app"** wake (the intake's third option — *not* "When something
+   happens in an app", which binds a Composio event instead), prompt =
+   "Routine B" below. Mint its key and save the revealed URL as the repo secret
+   `HOUSTON_DRAFT_WEBHOOK_URL` on `gethouston/houston`. The minted secret is the
+   URL's LAST PATH SEGMENT — the gateway needs no auth header, so the whole URL
+   is a credential: repo secret only, never a literal, never logged. Rotate by
+   re-minting the key. Webhook wakes are hosted-cloud only — the Go gateway owns
+   the ingress ([routine-triggers.md](routine-triggers.md)).
 7. **Supervised first run.** Ask the agent to run routine A by hand on a safe
    morning. Verify: the dispatch appears in the repo's Actions tab, the tag +
    draft build succeed, the draft body carries the agent's notes, and both

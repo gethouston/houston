@@ -51,8 +51,7 @@
 #   LINEAR_API_KEY                     — Linear API key for in-app "Report bug" issue creation
 #   LINEAR_TEAM_ID                     — Linear team UUID for in-app "Report bug" issues
 #   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built. FALLBACK only on the cloud channel: skipped when HOUSTON_DRAFT_WEBHOOK_URL handled the announcement.
-#   HOUSTON_DRAFT_WEBHOOK_URL          — minted wake URL of the Houston routine that announces a ready cloud draft (PRODUCT-1329). Set → Houston owns the Slack post (as houston_bot); unset or POST fails → the plain Slack ping above runs instead.
-#   HOUSTON_DRAFT_WEBHOOK_SECRET       — the secret revealed with that URL, sent as the webhook's auth header
+#   HOUSTON_DRAFT_WEBHOOK_URL          — minted wake URL of the Houston routine that announces a ready cloud draft (PRODUCT-1329). Its last path segment IS the routine's secret, so the whole URL is a credential (no auth header). Set → Houston owns the Slack post (as houston_bot); unset or POST fails → the plain Slack ping above runs instead.
 #   SENTRY_DSN                         — Sentry crash reporting DSN
 #   SENTRY_AUTH_TOKEN                  — Sentry CLI auth token (org-scoped, perms: project:releases, project:read, org:read). Used to upload source maps + Rust debug symbols and create/finalize releases. Empty → skip the Sentry upload step (forks, personal builds).
 #   POSTHOG_PERSONAL_API_KEY           — PostHog personal API key (scope: annotation:write) used by the finalize job to mark every release on PostHog charts. Empty → skip the annotation step.
@@ -2204,7 +2203,6 @@ jobs:
         if: ${{ success() && startsWith(github.ref_name, 'cloud-v') }}
         env:
           HOUSTON_WEBHOOK_URL: ${{ secrets.HOUSTON_DRAFT_WEBHOOK_URL }}
-          HOUSTON_WEBHOOK_SECRET: ${{ secrets.HOUSTON_DRAFT_WEBHOOK_SECRET }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
@@ -2231,14 +2229,13 @@ jobs:
               staging_dmg: $staging_dmg, prod_dmg: $prod_dmg, run_url: $run_url, notes: $notes}' \
             > houston-payload.json
 
-          # The gateway's webhook auth header is owned by the cloud repo's C9
-          # contract, not this one. Sending the minted secret under both accepted
-          # spellings costs nothing (an unknown header is ignored) and keeps this
-          # workflow from hard-coupling to a contract it cannot see.
+          # No auth header: the gateway mints the routine's secret as the URL's
+          # last path segment, so the URL IS the credential (verified against
+          # gateway.gethouston.ai — 200 {"status":"accepted"}). It is therefore
+          # a secret in full, never echoed; GitHub masks it in logs. Rotate by
+          # re-minting the routine's webhook key and updating the repo secret.
           if curl -sS --fail-with-body -X POST "${HOUSTON_WEBHOOK_URL}" \
               -H 'Content-Type: application/json' \
-              -H "Authorization: Bearer ${HOUSTON_WEBHOOK_SECRET}" \
-              -H "x-houston-webhook-secret: ${HOUSTON_WEBHOOK_SECRET}" \
               --data @houston-payload.json; then
             echo "handed_off=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Houston woken for the cloud-v${VERSION} draft announcement."
