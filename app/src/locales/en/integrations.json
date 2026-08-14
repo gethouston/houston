@@ -72,6 +72,18 @@
     "noResults": "No matching apps found.",
     "loading": "Loading apps..."
   },
+  "highlevelGuidance": {
+    "title": "Choose Sub-Account View in HighLevel",
+    "body": "HighLevel opens in Agency View by default. If you keep that option, the app may install but it will not finish connecting to Houston.",
+    "whenPageOpens": "When the HighLevel page opens:",
+    "houstonAppName": "Houston",
+    "agencyView": "Agency View",
+    "openDropdown": "Open the Agency View dropdown next to the Houston app name.",
+    "chooseSubAccount": "Choose Sub-Account View.",
+    "selectLocation": "Select one location, then click Install.",
+    "cancel": "Cancel",
+    "continue": "Continue to HighLevel"
+  },
   "home": {
     "tabs": {
       "label": "Integration sections",

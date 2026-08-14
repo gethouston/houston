@@ -43,7 +43,7 @@ export function CatalogCategorySection({
   section,
   surface,
   connectFlow,
-  onConnected,
+  onConnect,
   owns,
   statusOf,
   onOpen,
@@ -53,7 +53,7 @@ export function CatalogCategorySection({
   /** This catalog's half of every row's origin key. */
   surface: string;
   connectFlow: ConnectFlow;
-  onConnected?: (toolkit: string) => void;
+  onConnect: (toolkit: string, origin: string) => void;
   /** Does THIS row own its app's inline connect state? */
   owns: (slug: string, origin: string) => boolean;
   /** This app's broken-connection status, if it has one. */
@@ -85,11 +85,7 @@ export function CatalogCategorySection({
               key={tk.slug}
               display={appDisplay(tk.slug, tk)}
               onOpen={() => onOpen(tk, origin)}
-              onConnect={() =>
-                void connectFlow.connect(tk.slug, origin).then((attempt) => {
-                  if (attempt.outcome === "active") onConnected?.(tk.slug);
-                })
-              }
+              onConnect={() => onConnect(tk.slug, origin)}
               connectFlow={connectFlow}
               owns={owns(tk.slug, origin)}
               status={statusOf(tk.slug)}

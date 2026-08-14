@@ -30,6 +30,27 @@ async function openIntegrationsPage(page: Page): Promise<void> {
   await page.locator('[data-tour-target="nav-integrations"]').click();
 }
 
+async function addHighLevelToCatalog(page: Page): Promise<void> {
+  await page.route("**/v1/integrations/composio/toolkits", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { items: unknown[] };
+    await route.fulfill({
+      response,
+      json: {
+        items: [
+          ...body.items,
+          {
+            slug: "highlevel",
+            name: "HighLevel",
+            description: "CRM and marketing automation",
+            categories: ["sales"],
+          },
+        ],
+      },
+    });
+  });
+}
+
 test("the browse page groups the catalog into category sections with an installed strip", async ({
   page,
   request,
@@ -195,6 +216,34 @@ test("a row's + connects INLINE, exactly once, leaving every other row usable", 
     .click();
   await expect(page.getByText("Finish connecting Slack")).toHaveCount(0);
   await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
+});
+
+test("HighLevel explains the required Sub-Account View before opening OAuth", async ({
+  page,
+  request,
+}) => {
+  await addHighLevelToCatalog(page);
+  await armCapabilities(request, { integrations: ["composio"] });
+  await openIntegrationsPage(page);
+
+  await page.getByRole("button", { name: "Connect HighLevel" }).click();
+
+  const guidance = page.getByRole("alertdialog");
+  await expect(
+    guidance.getByRole("heading", {
+      name: "Choose Sub-Account View in HighLevel",
+    }),
+  ).toBeVisible();
+  await expect(
+    guidance.getByText("Agency View", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    guidance.getByText("Choose Sub-Account View.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
+
+  await guidance.getByRole("button", { name: "Continue to HighLevel" }).click();
+  await expect(page.getByText("Finish connecting HighLevel")).toBeVisible();
 });
 
 test("the owning row becomes ONE card carrying ONE spinner", async ({
