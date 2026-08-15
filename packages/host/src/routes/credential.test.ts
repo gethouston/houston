@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { accessDigest } from "@houston/protocol/access-digest";
-import { beforeEach, expect, test } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
+import { captureRuntimeCredential } from "../channel/capture-credential";
 import { sharedCredentialRefresher } from "../credentials/refresh-coalescer";
 import { RemoteCredentialDeadError } from "../credentials/remote-store";
 import { MemoryCredentialStore } from "../credentials/store";
@@ -132,6 +133,65 @@ test("serve miss heals once and serves the fresh central credential", async () =
   await call(credentials, "openai-codex", second, { credentialHealer });
   expect(second.out.status).toBe(404);
   expect(heals).toBe(1);
+});
+
+test("a serve miss heals the pasted anthropic setup token from the runtime and serves it (PRODUCT-1370)", async () => {
+  // The already-looping victim, healed with no re-paste: the pod's runtime
+  // still holds the pasted api_key that every pre-fix capture refused. Wired
+  // exactly like local/host.ts wires the healer — captureRuntimeCredential with
+  // localOriginOnly + ifAbsent — against a runtime whose export attests the
+  // token is local-origin, then the serve answers it as kind api_key.
+  const credentials = new MemoryCredentialStore();
+  const exportUrls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/auth/export")) {
+        exportUrls.push(url);
+        return Response.json({
+          provider: "anthropic",
+          kind: "api_key",
+          key: "sk-ant-oat01-healed",
+        });
+      }
+      return new Response("not found", { status: 404 });
+    }),
+  );
+  try {
+    const credentialHealer = new CredentialServeHealer(async (args) => {
+      const result = await captureRuntimeCredential({
+        endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
+        credentials,
+        workspaceId: args.workspaceId,
+        provider: args.provider,
+        localOriginOnly: true,
+        actingAs: args.actingAs,
+        ifAbsent: true,
+      });
+      return result.ok;
+    });
+    const r = mockRes();
+    expect(
+      await call(credentials, "anthropic", r, {
+        gatewayFronted: true,
+        credentialHealer,
+      }),
+    ).toBe(true);
+    expect(r.out.status).toBe(200);
+    expect(r.out.body).toMatchObject({
+      provider: "anthropic",
+      access: "sk-ant-oat01-healed",
+      kind: "api_key",
+    });
+    // The healer asked for local-origin credentials only — a serve-written
+    // projection would have been refused runtime-side, never resurrected.
+    expect(exportUrls).toEqual([
+      "http://runtime/auth/export?provider=anthropic&excludeServed=1",
+    ]);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
 
 test("concurrent dead serves single-flight their heal", async () => {
@@ -594,6 +654,32 @@ test("anthropic serves access-only on a gateway-fronted host", async () => {
     provider: "anthropic",
     access: "sk-ant-oat01-fresh",
     kind: "oauth",
+  });
+});
+
+test("a captured anthropic setup token (api_key) serves on a gateway-fronted host (PRODUCT-1370)", async () => {
+  // Exactly what the capture path stores for the paste flow: kind api_key,
+  // no refresh, never expires. It must serve 200 as kind api_key — never hit
+  // the refresh path, and never be judged a "STALE anthropic token" (that
+  // check is for served OAuth access tokens; an api_key has no expiry).
+  const credentials = new MemoryCredentialStore();
+  await credentials.put({
+    workspaceId: "w1",
+    provider: "anthropic",
+    accessToken: "sk-ant-oat01-setup-token",
+    refreshToken: "",
+    expiresAt: Number.MAX_SAFE_INTEGER,
+    kind: "api_key",
+  });
+  const r = mockRes();
+  expect(
+    await call(credentials, "anthropic", r, { gatewayFronted: true }),
+  ).toBe(true);
+  expect(r.out.status).toBe(200);
+  expect(r.out.body).toMatchObject({
+    provider: "anthropic",
+    access: "sk-ant-oat01-setup-token",
+    kind: "api_key",
   });
 });
 

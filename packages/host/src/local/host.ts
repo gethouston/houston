@@ -422,7 +422,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
             credentials,
             workspaceId,
             provider,
-            requireRefresh: true,
+            // Automatic capture: only local-origin credentials. Refresh-bearing
+            // OAuth (a fresh login / lost-scrub leftover) and api_keys the
+            // runtime attests were NOT serve-written (PRODUCT-1370: heals the
+            // pasted Anthropic setup token after a missed capture) — never a
+            // served projection, which would resurrect a central disconnect.
+            localOriginOnly: true,
             // The member whose serve missed — their runtime file, their row.
             actingAs,
             // AUTOMATIC re-push (no user behind it): fill-only, per the store's

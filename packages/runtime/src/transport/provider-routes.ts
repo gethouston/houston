@@ -90,7 +90,11 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   }
   if (method === "GET" && path === "/auth/export") {
     const provider = url.searchParams.get("provider") || undefined;
-    json(res, 200, exportCredential(provider) ?? {});
+    // The serve healer's local-origin contract (PRODUCT-1370): an AUTOMATIC
+    // capture must not export a serve-written api_key projection — re-pushing
+    // it would resurrect a credential the user disconnected centrally.
+    const excludeServed = url.searchParams.get("excludeServed") === "1";
+    json(res, 200, exportCredential(provider, { excludeServed }) ?? {});
     return true;
   }
   if (method === "POST" && path === "/auth/scrub-refresh") {
