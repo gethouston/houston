@@ -47,22 +47,29 @@ exists to run — dogfooding it is the point.
    toolkit's OAuth scopes turn out not to cover workflow dispatch, fall back to
    a custom API integration holding a fine-grained PAT (Actions: read/write,
    Contents: read on `gethouston/houston`).
-3. **Slack bot.** The Composio-managed Slack OAuth is a USER-token connection —
-   posts would appear as the connecting human, wrong identity for release
-   reports. Use the dedicated Slack app instead (bot user `houston_bot`,
-   workspace app with only the `chat:write` scope): invite it to the release
-   channel (`/invite @houston_bot` in #houston-drafts — bots cannot post to a
-   channel they are not a member of), then store its `xoxb-` bot token in the
-   agent's SECURE CREDENTIAL card, named `slack-bot-token`. The token never
-   goes in the routine prompt, a chat message, a file, or a commit; rotating
-   it (Slack app → OAuth & Permissions → Reinstall) only requires updating the
-   stored credential.
+3. **Slack bot, as a CUSTOM INTEGRATION.** The Composio-managed Slack OAuth is a
+   USER-token connection — posts appear as the connecting human, the wrong
+   identity for release reports (observed: the first test posted under a
+   teammate's name). Use the dedicated Slack app instead: bot user
+   `houston_bot`, workspace app with only the `chat:write` scope, invited to the
+   channel (`/invite @houston_bot` in #houston-drafts — a bot cannot post to a
+   channel it is not in).
+
+   Its `xoxb-` token is held by a **custom API integration**, not a loose named
+   credential: Houston stores secrets only against a registered definition
+   ([custom-integrations.md](custom-integrations.md)), so "save a credential
+   called slack-bot-token" has nowhere to live. Register a minimal OpenAPI
+   definition for `POST https://slack.com/api/chat.postMessage` with
+   `auth: credential` (bearer), then paste the token into the secure card that
+   definition presents. The token never goes in a routine prompt, a chat
+   message, a file, or a commit; rotating it (Slack app → OAuth & Permissions →
+   Reinstall) only means re-entering it on that card.
 
    **Disconnect Composio Slack from this agent** (or drop Slack from its
    allowlist). Prompt wording alone is not enough: given a working Slack tool,
    the agent reaches for it and the post goes out under the connecting human's
-   name. Observed, not theoretical. Removing the tool leaves the bot token as
-   the only path.
+   name. Observed, not theoretical. Removing it leaves the bot integration as
+   the only Slack path.
 4. **Model.** Give the agent a capable model; the AI account must be usable at
    team scope, since routine runs fire on the team credential.
 5. **Routine A (cron).** Create a routine, schedule weekdays 07:00
@@ -90,16 +97,15 @@ Paste verbatim (fill in the Slack channel):
 
 ```text
 You run the morning cut of the Houston release train. Repo: gethouston/houston.
-Post everything to the Slack channel #RELEASE-CHANNEL by calling Slack's
-chat.postMessage API (POST https://slack.com/api/chat.postMessage, JSON body
-{"channel": "#RELEASE-CHANNEL", "text": "<message>"}) authorized with the bot
-token in your slack-bot-token credential. Messages support Slack mrkdwn; keep
-code blocks fenced.
+Post everything to the Slack channel #RELEASE-CHANNEL with the chat.postMessage
+tool of your "slack-bot" custom integration, which carries the Houston bot
+token: channel = "#RELEASE-CHANNEL", text = the message. Messages support Slack
+mrkdwn; keep code blocks fenced.
 
 NEVER post through a connected Slack app or Slack integration tool, even if one
 is available and looks easier. Those post as the person who connected the
 account, and release reports must come from the Houston bot, not from a
-teammate. The bot token in your credential is the ONLY way you post to Slack.
+teammate. The slack-bot custom integration is the ONLY way you post to Slack.
 
 Work in English in GitHub, but write user-facing release notes in en + es + pt
 as described below.
@@ -183,15 +189,15 @@ event from our release pipeline; its payload has these fields: event, version,
 tag, release_url, staging_dmg, prod_dmg, run_url, notes (the user-facing release
 notes, markdown).
 
-Post ONE message to the Slack channel #RELEASE-CHANNEL by calling Slack's
-chat.postMessage API (POST https://slack.com/api/chat.postMessage, JSON body
-{"channel": "#RELEASE-CHANNEL", "text": "<message>"}) authorized with the bot
-token in your slack-bot-token credential. Slack mrkdwn, no markdown headings.
+Post ONE message to the Slack channel #RELEASE-CHANNEL with the chat.postMessage
+tool of your "slack-bot" custom integration, which carries the Houston bot
+token: channel = "#RELEASE-CHANNEL", text = the message. Slack mrkdwn, no
+markdown headings.
 
 NEVER post through a connected Slack app or Slack integration tool, even if one
 is available and looks easier. Those post as the person who connected the
 account, and release reports must come from the Houston bot, not from a
-teammate. The bot token in your credential is the ONLY way you post to Slack.
+teammate. The slack-bot custom integration is the ONLY way you post to Slack.
 
 The message:
 - First line: ":rocket: *Houston v<version> draft is ready to QA*"
