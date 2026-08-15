@@ -44,10 +44,32 @@ test("PASTE flow surfaces the help URL, then stores the pasted token", async () 
     },
     { store: (k) => stored.push(k) },
   );
-  // Wire shape unchanged: a docs URL + paste instructions (auth_code in login.ts).
-  expect(seen.info?.url).toContain("docs.claude.com");
-  expect(seen.info?.instructions).toMatch(/claude setup-token/);
+  // Wire shape unchanged: a help URL + paste instructions (auth_code in login.ts).
+  // The URL is the Console's API-keys page — somewhere a non-technical user can
+  // actually mint a pasteable value without a terminal.
+  expect(seen.info?.url).toContain("console.anthropic.com");
+  expect(seen.info?.instructions).toMatch(/API key/);
   expect(stored).toEqual(["sk-ant-oat01-pasted"]);
+});
+
+test("PASTE flow copy never instructs running a CLI (2026-08-15 incident)", async () => {
+  // Older clients render this wire string verbatim, and Houston's audience is
+  // non-technical: an instruction like "run `claude setup-token` in your
+  // terminal" must never reach a user again.
+  const seen: { info?: { url: string; instructions: string } } = {};
+  await runAnthropicSetupTokenLogin(
+    {
+      onAuth: (i) => {
+        seen.info = i;
+      },
+      onManualCodeInput: async () => "sk-ant-oat01-pasted",
+    },
+    { store: () => {} },
+  );
+  expect(seen.info?.instructions).not.toMatch(
+    /setup-token|terminal|CLI|command/i,
+  );
+  expect(seen.info?.url).not.toMatch(/cli-reference/);
 });
 
 test("PASTE flow rejects a junk paste (validation, no silent failure)", async () => {

@@ -77,9 +77,18 @@ refresh-less and remain safe to replace on every serve cycle.
   own family this way; there is deliberately NO path that seeds a space from a
   cached snapshot (the old `?if_absent=1` background reconcile did exactly
   that and was the HOU-950 root cause — the host still honors the flag for
-  older clients, but nothing current sends it). Any failure degrades to the
-  setup-token paste dialog (deliberate last resort; also the only path for a
-  pure-web client, which has no local CLI).
+  older clients, but nothing current sends it). A handoff failure surfaces as
+  a standard ERROR (toast + Sentry), never the token paste dialog: the user's
+  browser login succeeded, so a failed handoff is Houston's infrastructure
+  failure (the 2026-08-15 broken-image incident dressed one up as "run
+  `claude setup-token`" — `claude-login-settle.ts` `handoff-failed`). The
+  paste dialog remains only where the browser login cannot run at all: the
+  pre-AVX2 helper SIGILL fallback (`claude-login-failure.ts`) and the primary
+  connect for a pure-web client (no local `claude` to run). Its copy is
+  localized in the client and NEVER mentions a CLI — it points at an Anthropic
+  Console API key (`app/tests/provider-login-cli-free-copy.test.ts` pins
+  this; the runtime's wire `instructions` string is CLI-free too but new
+  clients ignore its content).
 - **Per-turn serve (managed cloud)**: the pod's serve sync
   (`packages/runtime/src/auth/serve.ts`) probes anthropic like every provider;
   the pod host serves a gateway-refreshed ACCESS-ONLY token

@@ -7,8 +7,10 @@
  * a long-lived token (`sk-ant-oat01…`). We never replay OAuth ourselves — that is
  * the blocked path — and we never spawn the `claude` binary either: it is an Ink
  * TUI that requires a real TTY and deadlocks on the runtime's piped stdio (probed:
- * zero bytes, no clean error). So the user runs `claude setup-token` in their own
- * terminal (or creates a console API key) and PASTES the token into Houston.
+ * zero bytes, no clean error). So the user PASTES a token into Houston: the
+ * surfaced instruction is to create a console API key (no terminal — the
+ * audience is non-technical), and a `claude setup-token` value pasted by a
+ * power user is accepted just the same.
  *
  * Wire shape is unchanged: `startLogin("anthropic")` emits the same
  * `{ kind:"auth_code", url, instructions }` LoginInfo and reuses completeLogin's
@@ -30,14 +32,24 @@ export const ANTHROPIC_TOKEN_PREFIXES = [
 ] as const;
 
 /**
- * Official Claude Code CLI reference (documents `claude setup-token`). Surfaced
- * as the connect `url` so the webapp can open it next to the paste box.
+ * Where a user can mint something to paste WITHOUT a terminal: the Anthropic
+ * Console's API-keys page. Surfaced as the connect `url` so the webapp can open
+ * it next to the paste box. Deliberately NOT the Claude Code CLI reference:
+ * Houston's audience is non-technical and the product never instructs running a
+ * CLI (the 2026-08-15 incident showed "run `claude setup-token`" landing on
+ * cloud users as if an infrastructure failure were their task).
  */
 export const ANTHROPIC_TOKEN_HELP_URL =
-  "https://docs.claude.com/en/docs/claude-code/cli-reference";
+  "https://console.anthropic.com/settings/keys";
 
+/**
+ * Paste-flow copy. MUST never instruct running a CLI command — new clients
+ * render their own localized copy and ignore this string, but older clients
+ * display it verbatim, so it stays CLI-free here too (pinned by
+ * anthropic-setup-token.test.ts).
+ */
 const PASTE_INSTRUCTIONS =
-  "Run `claude setup-token` in your terminal, then paste the token it prints (starts with sk-ant-oat01). A console API key (sk-ant-api03) also works.";
+  "Create an API key in the Anthropic Console and paste it here (starts with sk-ant-api03). A Claude setup token (sk-ant-oat01) also works.";
 
 export type SetupTokenCallbacks = {
   /** Surface the help URL + paste instructions to the webapp (auth_code). */

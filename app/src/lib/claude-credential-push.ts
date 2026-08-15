@@ -21,8 +21,8 @@ export type ClaudeCredentialPushResult =
 /**
  * Push once, retrying only TRANSIENT failures (a waking pod, a gateway blip) on
  * the shared backoff. Never throws: the caller decides how loud the outcome is,
- * because on the desktop a failure degrades to the setup-token paste flow rather
- * than a dead spinner.
+ * because on the desktop a failure settles into a standard error surface (see
+ * `claude-login-settle`) rather than a dead spinner.
  *
  * `sleep` and `onRetry` are injectable so a test can run the loop without waiting
  * and without a logger.

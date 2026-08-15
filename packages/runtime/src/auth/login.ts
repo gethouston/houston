@@ -32,11 +32,12 @@ import { authStorage, modelRuntime, providerConnected } from "./storage";
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
  *
- * - anthropic (Claude): the sanctioned setup-token flow. The direct OAuth PKCE
- *   replay is server-blocked since 2026-04, so we drive Anthropic's own
- *   `claude setup-token` (or take a pasted token) and store the resulting
- *   `sk-ant-oat01…` as an api_key. Same `auth_code` + completeLogin wire shape as
- *   before — see auth/anthropic-setup-token.ts.
+ * - anthropic (Claude): the token PASTE flow. The direct OAuth PKCE replay is
+ *   server-blocked since 2026-04, so we take a pasted console API key
+ *   (`sk-ant-api03…`, the surfaced instruction — never a CLI command) or a
+ *   `claude setup-token` value (`sk-ant-oat01…`) and store it as an api_key.
+ *   Same `auth_code` + completeLogin wire shape as before — see
+ *   auth/anthropic-setup-token.ts.
  * - openai-codex (ChatGPT/Codex): the CLIENT picks. A co-located desktop client
  *   sends `deviceAuth: false` and gets the browser/loopback login — the user
  *   approves in their own browser and the localhost callback finishes it, no

@@ -18,17 +18,26 @@ import { ProviderDeviceCode } from "./provider-device-code";
 import { providerLoginUrlHost } from "./provider-login-url";
 
 /**
+ * Where a user can mint a pasteable Anthropic API key without a terminal.
+ * Mirrors the runtime's `ANTHROPIC_TOKEN_HELP_URL`
+ * (packages/runtime/src/auth/anthropic-setup-token.ts).
+ */
+const ANTHROPIC_CONSOLE_KEYS_URL =
+  "https://console.anthropic.com/settings/keys";
+
+/**
  * Sign-in dialog for remote/headless Houston Engines, where the provider
  * CLI can't open the user's browser (it lives on another machine). The
  * engine surfaces the sign-in URL via a `ProviderLoginUrl` WS event; this
  * dialog shows it plus the per-provider completion step:
  *
- *  - Setup-token paste (Claude/Anthropic): the event carries `instructions`
- *    (e.g. "Run `claude setup-token`…, paste the token — starts with
- *    sk-ant-oat01") and `url` is only a docs REFERENCE, not a sign-in page.
- *    We render the instructions prominently above the paste field and demote
- *    the url to a small optional "Reference" link — never auto-opened. This is
- *    the ONE flow that shows on desktop too (see `shouldOpenLoginUrlDirectly`).
+ *  - Token paste (Claude/Anthropic): the event carries `instructions` (the
+ *    flow marker; the copy itself is OUR localized, CLI-free text — see the
+ *    render note below) and `url` is only a help REFERENCE, not a sign-in
+ *    page. We render the paste steps prominently above the paste field and
+ *    demote the reference to a small optional link — never auto-opened. This
+ *    is the ONE flow that shows on desktop too (see
+ *    `shouldOpenLoginUrlDirectly`).
  *  - Paste-back (Claude, no instructions): a text input relays the verification
  *    code to `POST /v1/providers/:name/login/code` (written to the CLI's stdin).
  *  - Device-grant (codex `--device-auth`): when the event carries
@@ -50,9 +59,11 @@ interface Props {
   /** Device-grant one-time code (codex). Null/absent = paste-back flow. */
   userCode?: string | null;
   /**
-   * Setup-token paste-flow steps (Claude/Anthropic). When present, `url` is a
-   * docs reference (not a sign-in page): we show these steps prominently and
-   * demote the url to a small "Reference" link. Absent for other flows.
+   * Token paste-flow MARKER (Claude/Anthropic). When present, `url` is a help
+   * reference (not a sign-in page): we show localized paste steps prominently
+   * and demote the reference to a small link. The string's CONTENT is never
+   * rendered — an older engine's copy may instruct running a CLI command,
+   * which must not reach a user. Absent for other flows.
    */
   instructions?: string | null;
   onClose: () => void;
@@ -99,11 +110,19 @@ export function ProviderLoginDialog({
   // isn't parseable; we then just omit the hint.
   const host = providerLoginUrlHost(url);
 
-  // Setup-token paste flow (Claude/Anthropic): `url` is a docs reference, not a
-  // sign-in page. We surface the runtime's step-by-step `instructions` above the
-  // paste field and demote the url to a small "Reference" link, rather than the
+  // Token paste flow (Claude/Anthropic): `url` is a help reference, not a
+  // sign-in page. We surface our own localized paste steps above the paste
+  // field and demote the url to a small "Reference" link, rather than the
   // Open/Copy/reveal button row meant for a real OAuth URL.
   const isAuthCode = !!instructions;
+
+  // Reference target for the Claude paste flow: always the Console's API-keys
+  // page (where a non-technical user can mint a pasteable key), even when an
+  // older engine sent its CLI docs page as the help url.
+  const referenceUrl =
+    isAuthCode && provider.id === "anthropic"
+      ? ANTHROPIC_CONSOLE_KEYS_URL
+      : url;
 
   const handleCopyUrl = async () => {
     try {
@@ -162,11 +181,15 @@ export function ProviderLoginDialog({
         <div className="space-y-4">
           {isAuthCode ? (
             <>
-              {/* Setup-token steps from the runtime, shown prominently above
-                  the paste field. The docs `url` is only a small reference
-                  link (opened on click) — never auto-opened. */}
+              {/* Paste steps, shown prominently above the paste field. The
+                  wire `instructions` string is only the FLOW MARKER — the copy
+                  rendered is our own localized, CLI-free text, so an older
+                  engine's "run `claude setup-token`" instruction can never
+                  reach a user (2026-08-15 incident) and the copy is finally
+                  translated. The help `url` is only a small reference link
+                  (opened on click) — never auto-opened. */}
               <p className="rounded-md border bg-chip-subtle/40 p-3 text-[13px] whitespace-pre-line">
-                {instructions}
+                {t("providerLogin.pasteInstructions")}
               </p>
               {host && (
                 <Button
@@ -174,7 +197,7 @@ export function ProviderLoginDialog({
                   variant="link"
                   size="sm"
                   className="h-auto gap-1.5 p-0 text-ink-muted"
-                  onClick={() => void tauriSystem.openUrl(url)}
+                  onClick={() => void tauriSystem.openUrl(referenceUrl)}
                 >
                   <ExternalLink className="size-3.5" />
                   {t("providerLogin.reference")}
@@ -260,7 +283,9 @@ export function ProviderLoginDialog({
                   htmlFor="provider-login-code"
                   className="text-[13px] font-medium"
                 >
-                  {t("providerLogin.codeLabel")}
+                  {isAuthCode
+                    ? t("providerLogin.tokenLabel")
+                    : t("providerLogin.codeLabel")}
                 </label>
                 <input
                   id="provider-login-code"
@@ -269,7 +294,11 @@ export function ProviderLoginDialog({
                   autoFocus
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder={t("providerLogin.codePlaceholder")}
+                  placeholder={
+                    isAuthCode
+                      ? t("providerLogin.tokenPlaceholder")
+                      : t("providerLogin.codePlaceholder")
+                  }
                   className="w-full rounded-md border bg-input px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
                   disabled={submitting}
                 />

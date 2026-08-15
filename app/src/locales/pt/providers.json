@@ -28,7 +28,8 @@
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
     "description": "Abra a página de login no seu navegador, finalize o login e cole aqui o código de verificação.",
-    "authCodeDescription": "Cole um token de configuração para terminar de conectar {{name}}.",
+    "authCodeDescription": "Cole uma chave de API ou um token para terminar de conectar {{name}}.",
+    "pasteInstructions": "Crie uma chave de API no console da Anthropic e cole aqui. Ela começa com sk-ant-api03. Um token de configuração do Claude (sk-ant-oat01) também funciona.",
     "reference": "Referência",
     "openUrl": "Abrir URL",
     "copyUrl": "Copiar URL",
@@ -39,6 +40,8 @@
     "destinationHint": "Você será levado para {{host}}.",
     "codeLabel": "Código de verificação",
     "codePlaceholder": "Cole o código do seu navegador",
+    "tokenLabel": "Chave de API ou token",
+    "tokenPlaceholder": "sk-ant-...",
     "codeRequired": "Informe primeiro o código de verificação.",
     "submit": "Enviar código",
     "submitting": "Enviando...",
@@ -123,8 +126,9 @@
   "claudeLogin": {
     "timeout": "O login do Claude expirou. Tente conectar novamente.",
     "confirmTimeout": "Você entrou no Claude, mas o Houston não conseguiu confirmar a conexão. Tente novamente.",
+    "handoffFailed": "Você entrou no Claude, mas o Houston teve um problema do nosso lado ao concluir a conexão. Tente novamente em instantes ou reporte um erro se continuar acontecendo.",
     "autoFailedTitle": "Não foi possível concluir a conexão automaticamente",
-    "autoFailedBody": "Cole um token de configuração do Claude para concluir a conexão.",
+    "autoFailedBody": "Cole uma chave de API da Anthropic para terminar de conectar.",
     "helperUnsupported": "O processador deste computador é muito antigo para executar o assistente de login do Claude, então não é possível conectar uma assinatura do Claude nesta máquina."
   },
   "localModel": {
