@@ -61,7 +61,10 @@ exists to run — dogfooding it is the point.
    called slack-bot-token" has nowhere to live. Register a minimal OpenAPI
    definition for `POST https://slack.com/api/chat.postMessage` with
    `auth: credential` (bearer), then paste the token into the secure card that
-   definition presents. The token never goes in a routine prompt, a chat
+   definition presents. The request schema must expose **`blocks` as well as
+   `text`** — Block Kit is what gives the announcement its header and its
+   download buttons; a `text`-only spec silently degrades every release post to
+   a wall of plain text. The token never goes in a routine prompt, a chat
    message, a file, or a commit; rotating it (Slack app → OAuth & Permissions →
    Reinstall) only means re-entering it on that card.
 
@@ -199,14 +202,22 @@ is available and looks easier. Those post as the person who connected the
 account, and release reports must come from the Houston bot, not from a
 teammate. The slack-bot custom integration is the ONLY way you post to Slack.
 
-The message:
-- First line: ":rocket: *Houston v<version> draft is ready to QA*"
-- Then the top items from `notes`, as they are written. They are already user
-  facing; do not rewrite them into a changelog and do not add PR numbers.
-- Then: "Test the *staging DMG* in the daily: <staging_dmg>"
-- Then: "Draft: <release_url>"
-Keep it short enough to read without scrolling. If a field is empty, leave that
-line out rather than posting an empty link.
+Send BLOCK KIT, not plain text. Set text to "Houston v<version> is ready to
+test" (Slack uses it for notifications) and blocks to exactly this shape:
+
+1. header: plain_text "Houston v<version> is ready to test"
+2. context: one mrkdwn element, "Draft cloud release · the *staging DMG* talks
+   to the staging gateway, it's the one to test in the daily before we publish"
+3. section: mrkdwn, the items from `notes` as they are written. They are already
+   user facing; do not rewrite them into a changelog and do not add PR numbers.
+   Drop the "## Houston v..." heading line and the "Before you upgrade" section,
+   they belong in the release body, not in chat.
+4. actions, with a button per link the payload actually carries:
+   - staging_dmg: text "Download staging DMG (QA)", style primary
+   - prod_dmg: text "Prod DMG"
+   - release_url: text "View on GitHub"
+   Omit any button whose URL is empty. A button with no url is invalid and Slack
+   rejects the whole message.
 
 If the payload's event is not "draft_ready", ignore it and do nothing.
 ```
