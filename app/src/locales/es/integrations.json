@@ -72,6 +72,14 @@
     "noResults": "No hay apps que coincidan.",
     "loading": "Cargando apps..."
   },
+  "highlevelGuidance": {
+    "title": "Elige Sub-Account View en HighLevel",
+    "body": "Cuando se abra la página de HighLevel, usa el menú junto a Houston para cambiar Agency View a Sub-Account View.",
+    "houstonAppName": "Houston",
+    "agencyView": "Agency View",
+    "cancel": "Cancelar",
+    "continue": "Continuar a HighLevel"
+  },
   "home": {
     "tabs": {
       "label": "Secciones de integraciones",

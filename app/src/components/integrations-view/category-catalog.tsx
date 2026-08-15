@@ -5,6 +5,7 @@ import type {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ConnectFlow } from "../integrations";
+import { HighLevelConnectGuidance } from "../integrations/highlevel-connect-guidance";
 import { AppInfoDialog } from "./app-info-dialog";
 import { CatalogCategorySection } from "./catalog-category-section";
 import { useCatalogSections } from "./use-catalog-sections";
@@ -76,6 +77,24 @@ export function CategoryCatalog({
     toolkit: IntegrationToolkit;
     origin: string;
   } | null>(null);
+  const [highLevelRequest, setHighLevelRequest] = useState<{
+    toolkit: string;
+    origin: string;
+  } | null>(null);
+
+  const beginConnect = (toolkit: string, origin: string) => {
+    void connectFlow.connect(toolkit, origin).then((attempt) => {
+      if (attempt.outcome === "active") onConnected?.(toolkit);
+    });
+  };
+
+  const requestConnect = (toolkit: string, origin: string) => {
+    if (toolkit === "highlevel") {
+      setHighLevelRequest({ toolkit, origin });
+      return;
+    }
+    beginConnect(toolkit, origin);
+  };
 
   return (
     <div>
@@ -91,7 +110,7 @@ export function CategoryCatalog({
               section={section}
               surface={surface}
               connectFlow={connectFlow}
-              onConnected={onConnected}
+              onConnect={requestConnect}
               // The spotlight repeats category rows: only the copy that owns
               // this app expands, so the panel appears exactly once.
               owns={(slug, origin) => owners.get(slug) === origin}
@@ -111,9 +130,7 @@ export function CategoryCatalog({
           const origin = info?.origin;
           setInfo(null);
           if (origin) {
-            void connectFlow.connect(toolkit, origin).then((attempt) => {
-              if (attempt.outcome === "active") onConnected?.(toolkit);
-            });
+            requestConnect(toolkit, origin);
           }
         }}
         onRemove={(toolkit) => {
@@ -125,6 +142,19 @@ export function CategoryCatalog({
         // modal for an app whose hand-off is already running (started from its
         // row, or from another surface entirely).
         busy={info !== null && info.toolkit.slug in connectFlow.states}
+      />
+
+      <HighLevelConnectGuidance
+        open={highLevelRequest !== null}
+        onOpenChange={(open) => {
+          if (!open) setHighLevelRequest(null);
+        }}
+        onContinue={() => {
+          if (!highLevelRequest) return;
+          const request = highLevelRequest;
+          setHighLevelRequest(null);
+          beginConnect(request.toolkit, request.origin);
+        }}
       />
     </div>
   );
