@@ -50,7 +50,8 @@
 #                                        literal in this file. Empty/unused on the local `v*` channel.
 #   LINEAR_API_KEY                     — Linear API key for in-app "Report bug" issue creation
 #   LINEAR_TEAM_ID                     — Linear team UUID for in-app "Report bug" issues
-#   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built
+#   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built. FALLBACK only on the cloud channel: skipped when HOUSTON_DRAFT_WEBHOOK_URL handled the announcement.
+#   HOUSTON_DRAFT_WEBHOOK_URL          — minted wake URL of the Houston routine that announces a ready cloud draft (PRODUCT-1329). Its last path segment IS the routine's secret, so the whole URL is a credential (no auth header). Set → Houston owns the Slack post (as houston_bot); unset or POST fails → the plain Slack ping above runs instead.
 #   SENTRY_DSN                         — Sentry crash reporting DSN
 #   SENTRY_AUTH_TOKEN                  — Sentry CLI auth token (org-scoped, perms: project:releases, project:read, org:read). Used to upload source maps + Rust debug symbols and create/finalize releases. Empty → skip the Sentry upload step (forks, personal builds).
 #   POSTHOG_PERSONAL_API_KEY           — PostHog personal API key (scope: annotation:write) used by the finalize job to mark every release on PostHog charts. Empty → skip the annotation step.
@@ -2181,12 +2182,73 @@ jobs:
             --data @posthog-annotation.json
           echo "::notice::PostHog annotation created for Houston v$VERSION"
 
+      # Hand the announcement to Houston (PRODUCT-1329). A webhook-triggered
+      # routine composes the draft-ready message in product language and posts
+      # it as the houston_bot Slack app — the same agent that cut this release.
+      # This POST is the wake: it fires the instant the draft exists, which is
+      # why the routine does NOT poll the build.
+      #
+      # The credential IS the switch (no dark booleans): with
+      # HOUSTON_DRAFT_WEBHOOK_URL set, Houston owns the announcement and the
+      # legacy Slack step below stands down; unset, or if this POST fails, the
+      # Slack step runs exactly as before. A release train that announces
+      # NOTHING is the one unacceptable outcome, so the fallback is automatic
+      # rather than a flag someone must remember to flip.
+      #
+      # Payload carries what the message needs, so the routine never has to
+      # guess which build it is woken for. Cloud tags only — the local v*
+      # channel is not the daily-cut train and keeps the plain Slack ping.
+      - name: Hand off draft announcement to Houston
+        id: houston_handoff
+        if: ${{ success() && startsWith(github.ref_name, 'cloud-v') }}
+        env:
+          HOUSTON_WEBHOOK_URL: ${{ secrets.HOUSTON_DRAFT_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          if [ -z "${HOUSTON_WEBHOOK_URL}" ]; then
+            echo "HOUSTON_DRAFT_WEBHOOK_URL not set; leaving the announcement to the Slack step."
+            exit 0
+          fi
+
+          VERSION="${GITHUB_REF_NAME#cloud-}"; VERSION="${VERSION#v}"
+          RELEASE_URL=$(gh release view "$GITHUB_REF_NAME" --json url --jq .url 2>/dev/null) || RELEASE_URL=""
+          STAGING_DMG=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[] | select(.name | startswith("Houston_staging")) | .url] | first // empty' 2>/dev/null) || STAGING_DMG=""
+          PROD_DMG=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[] | select((.name | endswith(".dmg")) and (.name | startswith("Houston_staging") | not)) | .url] | first // empty' 2>/dev/null) || PROD_DMG=""
+
+          jq -n \
+            --arg event "draft_ready" \
+            --arg version "$VERSION" \
+            --arg tag "$GITHUB_REF_NAME" \
+            --arg release_url "$RELEASE_URL" \
+            --arg staging_dmg "$STAGING_DMG" \
+            --arg prod_dmg "$PROD_DMG" \
+            --arg run_url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --rawfile notes release-notes.md \
+            '{event: $event, version: $version, tag: $tag, release_url: $release_url,
+              staging_dmg: $staging_dmg, prod_dmg: $prod_dmg, run_url: $run_url, notes: $notes}' \
+            > houston-payload.json
+
+          # No auth header: the gateway mints the routine's secret as the URL's
+          # last path segment, so the URL IS the credential (verified against
+          # gateway.gethouston.ai — 200 {"status":"accepted"}). It is therefore
+          # a secret in full, never echoed; GitHub masks it in logs. Rotate by
+          # re-minting the routine's webhook key and updating the repo secret.
+          if curl -sS --fail-with-body -X POST "${HOUSTON_WEBHOOK_URL}" \
+              -H 'Content-Type: application/json' \
+              --data @houston-payload.json; then
+            echo "handed_off=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Houston woken for the cloud-v${VERSION} draft announcement."
+          else
+            echo "::warning::Houston draft webhook POST failed; falling back to the direct Slack ping."
+          fi
+
       # Pings the team Slack channel so anyone can grab the DMG and try
       # the build before we publish. No-ops when
       # SLACK_RELEASE_WEBHOOK_URL is unset, so forks and personal builds
-      # stay quiet.
+      # stay quiet. Skipped when Houston took the announcement above.
       - name: Notify Slack of new draft release
-        if: success()
+        if: ${{ success() && steps.houston_handoff.outputs.handed_off != 'true' }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_RELEASE_WEBHOOK_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

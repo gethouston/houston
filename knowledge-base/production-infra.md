@@ -565,10 +565,15 @@ gateway is channel `cloud`.
 
 ### Daily cloud cut (`daily-cloud-cut.yml`)
 
-- **Schedule: `cron: "22 10 * * 1-5"` = 10:22 UTC Mon–Fri = 05:22 America/Bogota**
-  (UTC-5, no DST). The nominal slot sits ~103 min before the ~07:05 Bogotá target
-  because GitHub's `schedule` queue is best-effort and routinely fires 30-120 min
-  late (worst at `:00`/`:15`/`:30`/`:45`) — never trust it for a hard deadline.
+- **`workflow_dispatch`-only — the scheduler is a Houston routine** (PRODUCT-1329):
+  a cloud agent dispatches the workflow weekday mornings (~07:00 Bogotá), passes
+  agent-written user-facing release notes via the `notes`/`notes_es`/`notes_pt`
+  inputs (written to `.github/release-notes/<version>[.es|.pt].md` inside the
+  release commit, so release.yml treats them as authored notes and the updater
+  embeds them), watches the run, and posts the outcome to Slack — see
+  [daily-cut-routine.md](daily-cut-routine.md). The old GitHub cron was dropped:
+  its best-effort queue fired 30-120 min late (HOU-1013) and needed a ~103-min
+  fudge factor; Houston's cron fires on time.
 - Replicates the manual cut: branch from main tip → `scripts/version.sh` →
   `release: v<version>` commit (lives only under the tag, never pushed to protected
   main) → annotated `cloud-v<version>` tag pushed with the `RELEASE_CUT_TOKEN`

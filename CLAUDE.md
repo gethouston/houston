@@ -81,6 +81,7 @@ Need specific knowledge? Load on demand. Every `knowledge-base/` doc is routed b
 
 **Ship + operate**
 - Updater, analytics, in-app bug reports, release env vars, code signing, CI/CD → `knowledge-base/production-infra.md`
+- Daily cloud cut scheduling — the Houston routine that dispatches it, agent-written release notes, Slack posts → `knowledge-base/daily-cut-routine.md`
 - Crash reporting (Sentry — three runtimes, one project, dormant without a DSN) → `knowledge-base/sentry.md`
 - Firebase Hosting for the web client + marketing site → `knowledge-base/hosting.md`
 - Automated UI / end-to-end tests (Playwright, web build, fake host, visual regression) → `knowledge-base/ui-testing.md` + `packages/web/e2e/README.md`
