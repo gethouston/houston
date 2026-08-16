@@ -28,3 +28,81 @@ test("parseTurnRequest never trusts the wire — an unknown mode is execute", ()
   expect(parseTurnRequest({ ...BASE, mode: "" }).mode).toBe("execute");
   expect(parseTurnRequest({ ...BASE, mode: 1 }).mode).toBe("execute");
 });
+
+test("parseTurnRequest accepts the pool execution envelope", () => {
+  expect(
+    parseTurnRequest({
+      ...BASE,
+      turnId: "turn-1",
+      hostToken: "host-secret",
+      actingAs: { userId: "user-1", name: "Ada" },
+      shadow: true,
+      claim: {
+        id: "claim-1",
+        bootId: "boot-1",
+        token: "claim-secret",
+        heartbeatUrl: "https://gateway.test/claims/claim-1/heartbeat",
+      },
+    }),
+  ).toMatchObject({
+    turnId: "turn-1",
+    hostToken: "host-secret",
+    actingAs: { userId: "user-1", name: "Ada" },
+    shadow: true,
+    claim: { id: "claim-1", bootId: "boot-1", token: "claim-secret" },
+  });
+});
+
+test.each([
+  ["turnId", { turnId: "bad/id" }],
+  ["hostToken", { hostToken: "" }],
+  ["actingAs", { actingAs: { userId: "" } }],
+  ["actingAs", { actingAs: { userId: "u1", extra: true } }],
+  ["shadow", { shadow: "true" }],
+  ["claim", { claim: { id: "c", bootId: "b", token: "t" } }],
+  [
+    "claim",
+    {
+      claim: {
+        id: "c",
+        bootId: "b",
+        token: "t",
+        heartbeatUrl: "https://gateway.test/hb",
+        extra: true,
+      },
+    },
+  ],
+])("rejects an invalid optional %s field", (_field, extra) => {
+  expect(() => parseTurnRequest({ ...BASE, ...extra })).toThrow();
+});
+
+test("claim and hostToken are all-or-nothing", () => {
+  const claim = {
+    id: "claim-1",
+    bootId: "boot-1",
+    token: "claim-secret",
+    heartbeatUrl: "https://gateway.test/heartbeat",
+  };
+  expect(() => parseTurnRequest({ ...BASE, claim })).toThrow(
+    "claim and hostToken",
+  );
+  expect(() => parseTurnRequest({ ...BASE, hostToken: "host-secret" })).toThrow(
+    "claim and hostToken",
+  );
+});
+
+test("a claimed turn requires exactly ws/org/agent", () => {
+  expect(() =>
+    parseTurnRequest({
+      ...BASE,
+      gcsPrefix: "ws/org/agent/extra",
+      hostToken: "host-secret",
+      claim: {
+        id: "claim-1",
+        bootId: "boot-1",
+        token: "claim-secret",
+        heartbeatUrl: "https://gateway.test/heartbeat",
+      },
+    }),
+  ).toThrow("claimed turn has invalid 'gcsPrefix'");
+});

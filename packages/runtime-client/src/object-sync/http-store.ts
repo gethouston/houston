@@ -26,6 +26,8 @@ export interface HttpObjectStoreOptions {
   bootId?: string;
   /** Mutable lease token shared by every agent-prefix request in this boot. */
   fence?: { token?: string };
+  /** Per-conversation mutation authority for a pooled worker turn. */
+  claim?: { token: string; bootId: string };
 }
 
 export class HttpObjectStore implements ObjectStore {
@@ -36,6 +38,7 @@ export class HttpObjectStore implements ObjectStore {
   private readonly retryDelaysMs: number[] | undefined;
   private readonly bootId: string | undefined;
   private readonly fence: { token?: string } | undefined;
+  private readonly claim: { token: string; bootId: string } | undefined;
 
   constructor(opts: HttpObjectStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
@@ -45,9 +48,15 @@ export class HttpObjectStore implements ObjectStore {
     this.retryDelaysMs = opts.retryDelaysMs;
     this.bootId = opts.bootId;
     this.fence = opts.fence;
+    this.claim = opts.claim;
     if (Boolean(this.bootId) !== Boolean(this.fence)) {
       throw new Error(
         "object store bootId and fence must be configured together",
+      );
+    }
+    if (this.claim && (this.bootId || this.fence)) {
+      throw new Error(
+        "object store claim authority cannot be combined with lease authority",
       );
     }
   }
@@ -188,6 +197,9 @@ export class HttpObjectStore implements ObjectStore {
     if (this.fence?.token !== undefined && this.bootId !== undefined) {
       headers["X-Houston-Fencing-Token"] = this.fence.token;
       headers["X-Houston-Boot-Id"] = this.bootId;
+    } else if (this.claim) {
+      headers["X-Houston-Claim-Token"] = this.claim.token;
+      headers["X-Houston-Claim-Boot"] = this.claim.bootId;
     }
     return headers;
   }

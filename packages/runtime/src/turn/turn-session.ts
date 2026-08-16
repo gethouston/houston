@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
 import type {
   ChatMessage,
@@ -11,10 +10,8 @@ import type {
   WireFrame,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
-import { registerCustomProviderIfConfigured } from "../ai/openai-compatible";
 import { classifyProviderError } from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
-import { ensureQwenRuntimeProvider } from "../ai/qwen-dashscope";
 import { readAuthFile } from "../auth/auth-file";
 import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
@@ -24,6 +21,7 @@ import {
 } from "../auth/used-token";
 import { createPiBackend } from "../backends/pi/backend";
 import { config } from "../config";
+import { framePrompt, type MessageAuthor } from "../session/attribution";
 import {
   diffSnapshots,
   type FileSnapshot,
@@ -43,8 +41,9 @@ import { makeRunCodeTool } from "../session/tools/run-code";
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,
+  loadConversation,
 } from "../store/conversation-file";
-import { resolveTurnModel } from "./turn-model";
+import { createTurnModelRuntime } from "./turn-runtime";
 
 /**
  * One pi turn against a hydrated throwaway root (<root>/workspace +
@@ -108,6 +107,8 @@ export interface PiTurnRequest {
    * echoed on the `user` frame. Absent when the message mentions nobody.
    */
   mentions?: ChatMessage["mentions"];
+  /** Human author supplied by the trusted pool dispatcher. */
+  author?: MessageAuthor;
 }
 
 export async function runPiTurn(
@@ -125,13 +126,20 @@ export async function runPiTurn(
     turnId,
     displayText,
     mentions,
+    author,
   } = turn;
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
   const conversationsDir = join(dataDir, "conversations");
 
+  const priorAuthors = author
+    ? (loadConversation(conversationsDir, conversationId)?.messages ?? [])
+        .filter((message) => message.role === "user")
+        .map((message) => message.author)
+    : [];
   appendUserMessageAt(conversationsDir, conversationId, text, {
+    author,
     turnId,
     displayText,
     mentions,
@@ -167,14 +175,11 @@ export async function runPiTurn(
     // local (openai-compatible) provider registers from the dir's own
     // custom-endpoint config so its model can dispatch (pi 0.82 streams
     // strictly by registered provider id).
-    const modelRuntime = await ModelRuntime.create({
-      authPath: join(dataDir, "auth.json"),
-      modelsPath: join(dataDir, "models.json"),
-    });
-    registerCustomProviderIfConfigured(modelRuntime, dataDir);
-    // The qwen (DashScope) extension provider needs the same per-turn
-    // registration the long-lived runtime gets at boot (auth/storage.ts).
-    ensureQwenRuntimeProvider(modelRuntime);
+    const { modelRuntime, model } = await createTurnModelRuntime(
+      dataDir,
+      provider,
+      pin?.model,
+    );
 
     const toolSelection = buildToolSelection({
       codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
@@ -200,7 +205,6 @@ export async function runPiTurn(
         })
       : null;
 
-    const model = resolveTurnModel(dataDir, provider, pin?.model);
     // Seed the used-token capture with the credential this turn will run on
     // (see the declaration above). OAuth access only — an api_key has no
     // revocation semantics the report may act on.
@@ -296,7 +300,9 @@ export async function runPiTurn(
       // The used-token capture spans the prompt so the streamed error path
       // (pi/wire.ts) reads THIS turn's seeded token when it reports.
       await runWithInteractionCapture(interaction, () =>
-        runWithUsedTokenCapture(usedTokens, () => session.prompt(text)),
+        runWithUsedTokenCapture(usedTokens, () =>
+          session.prompt(framePrompt(text, author, priorAuthors)),
+        ),
       );
     } finally {
       signal?.removeEventListener("abort", onAbort);

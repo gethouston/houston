@@ -158,6 +158,47 @@ test("captures a fencing token and echoes it with the stable boot id on writes",
   expect(fence.token).toBe("42");
 });
 
+test("claim-backed mutations send claim headers instead of lease headers", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-claim-object-store-"));
+  const source = join(dir, "source.txt");
+  writeFileSync(source, "hello");
+  const requests: Headers[] = [];
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test/v1/pod/store/acme/agent",
+    token: "host-token",
+    claim: { token: "claim-token", bootId: "claim-boot" },
+    fetchImpl: async (_input, init) => {
+      requests.push(new Headers(init?.headers));
+      return init?.method === "DELETE"
+        ? new Response(null, { status: 204 })
+        : Response.json(metadata("notes.txt", 5));
+    },
+  });
+
+  await store.upload(source, "notes.txt");
+  await store.delete("notes.txt");
+
+  for (const headers of requests) {
+    expect(headers.get("x-houston-claim-token")).toBe("claim-token");
+    expect(headers.get("x-houston-claim-boot")).toBe("claim-boot");
+    expect(headers.get("x-houston-fencing-token")).toBeNull();
+    expect(headers.get("x-houston-boot-id")).toBeNull();
+  }
+});
+
+test("claim and lease mutation authority cannot be configured together", () => {
+  expect(
+    () =>
+      new HttpObjectStore({
+        baseUrl: "https://store.test/base",
+        token: "host-token",
+        bootId: "lease-boot",
+        fence: {},
+        claim: { token: "claim-token", bootId: "claim-boot" },
+      }),
+  ).toThrow("claim authority cannot be combined");
+});
+
 test.each([
   409, 500,
 ])("does not capture a fencing token from a failed %i response", async (status) => {

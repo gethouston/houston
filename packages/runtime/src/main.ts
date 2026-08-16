@@ -27,17 +27,24 @@ async function start(): Promise<Server> {
   if (config.mode === "turn") {
     const { createTurnServer } = await import("./turn/server");
     const { GcsStore } = await import("./turn/gcs-store");
+    const { poolOnlyFallbackStore } = await import("./turn/turn-store");
     const { LocalDirStore } = await import(
       "@houston/runtime-client/object-sync"
     );
-    if (!config.gcsBucket && !config.localStoreDir) {
+    if (
+      !config.gcsBucket &&
+      !config.localStoreDir &&
+      !process.env.HOUSTON_POOL_STORE_URL
+    ) {
       throw new Error(
-        "turn mode needs HOUSTON_GCS_BUCKET (prod) or HOUSTON_LOCAL_STORE_DIR (dev)",
+        "turn mode needs HOUSTON_GCS_BUCKET, HOUSTON_LOCAL_STORE_DIR, or HOUSTON_POOL_STORE_URL",
       );
     }
     const store = config.gcsBucket
       ? new GcsStore(config.gcsBucket)
-      : new LocalDirStore(config.localStoreDir);
+      : config.localStoreDir
+        ? new LocalDirStore(config.localStoreDir)
+        : poolOnlyFallbackStore();
     const server = createTurnServer({ store, token: config.turnToken });
     server.listen(config.port, config.host, () => {
       console.info("runtime listening", {
