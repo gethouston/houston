@@ -19,7 +19,6 @@ export type TranscriptShadowOperation =
       message: ChatMessage;
       title: string;
       expectedCount: number;
-      needsSessionReplay: boolean;
     })
   | (ShadowBase & {
       kind: "assistant";

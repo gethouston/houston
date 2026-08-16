@@ -10,7 +10,7 @@ import {
   getHistoryAt,
   listConversationsAt,
   loadConversation,
-  renameConversationAt,
+  renameConversationMutationAt,
 } from "./conversation-file";
 
 /** Mint an `acting-v1.<payloadB64Url>.<sig>` token carrying `payload` (C2). */
@@ -27,7 +27,9 @@ test("rename persists the new title and bumps updatedAt", () => {
   const before = loadConversation(dir, "c1");
   if (!before) throw new Error("loadConversation returned null after append");
 
-  expect(renameConversationAt(dir, "c1", "Quarterly report")).toBe(true);
+  expect(
+    renameConversationMutationAt(dir, "c1", "Quarterly report"),
+  ).not.toBeNull();
 
   const after = loadConversation(dir, "c1");
   if (!after) throw new Error("loadConversation returned null after rename");
@@ -39,7 +41,7 @@ test("rename persists the new title and bumps updatedAt", () => {
 
 test("rename of an unknown conversation reports failure, writes nothing", () => {
   const dir = freshDir();
-  expect(renameConversationAt(dir, "ghost", "nope")).toBe(false);
+  expect(renameConversationMutationAt(dir, "ghost", "nope")).toBeNull();
   expect(listConversationsAt(dir)).toHaveLength(0);
 });
 

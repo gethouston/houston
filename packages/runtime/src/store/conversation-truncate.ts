@@ -15,15 +15,6 @@ import { loadConversation, saveConversation } from "./conversation-file";
  * (HOU-951). Returns how many messages were removed, or null when the
  * conversation or the turn is unknown (nothing was written).
  */
-export function truncateConversationAt(
-  dir: string,
-  id: string,
-  turnId: string,
-): { removed: number } | null {
-  const mutation = truncateConversationMutationAt(dir, id, turnId);
-  return mutation ? { removed: mutation.removed } : null;
-}
-
 export function truncateConversationMutationAt(
   dir: string,
   id: string,

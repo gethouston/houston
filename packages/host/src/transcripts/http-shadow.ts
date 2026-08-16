@@ -15,7 +15,6 @@ export type TranscriptShadowCommand =
       message: ChatMessage;
       title: string;
       expectedCount: number;
-      needsSessionReplay: boolean;
     }
   | {
       kind: "assistant";
@@ -111,10 +110,9 @@ export class HttpTranscriptShadow implements TranscriptShadow {
             ts: command.message.ts,
             title: command.title,
             expectedCount: command.expectedCount,
-            // The pod-store atomically consumes its own durable replay marker.
-            // `needsSessionReplay` is carried across the runtime/host facade to
-            // assert the file's pre-consume state, but is intentionally absent
-            // here because the strict pod route derives (and records) it.
+            // No replay marker on the wire: the strict pod route derives and
+            // records `needs_session_replay` itself (set on truncate, cleared
+            // by the next user turn), and its parser rejects unknown fields.
           },
         };
       case "assistant":
