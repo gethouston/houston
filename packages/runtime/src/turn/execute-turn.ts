@@ -93,7 +93,6 @@ export async function executeTurn(
       }
     } else {
       let outcome: TurnOutcome;
-      let runtimeFailed = false;
       if (!turn.credential) {
         emit({
           type: "user",
@@ -136,7 +135,6 @@ export async function executeTurn(
             ),
           );
         } catch (error) {
-          runtimeFailed = true;
           outcome = {
             error: error instanceof Error ? error.message : String(error),
           };
@@ -146,7 +144,13 @@ export async function executeTurn(
       await heartbeat?.checkpoint();
       if (heartbeat?.fenced) {
         outcome = { error: "claim_fenced" };
-      } else if (!runtimeFailed) {
+      } else {
+        // Durability BEFORE the terminal frame, and REGARDLESS of how the
+        // runtime fared: a failed turn may still have made workspace progress
+        // (tool writes before the provider died), and dropping it silently
+        // was never the contract. Only a fenced claim skips the sync — that
+        // pod is no longer the writer. A sync failure surfaces as (part of)
+        // the turn's error, never a quiet done.
         try {
           await syncBack(resolved.store, resolved.prefix, root, manifest);
         } catch (error) {
