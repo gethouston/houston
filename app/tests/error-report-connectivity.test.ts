@@ -39,6 +39,40 @@ describe("reportError declines connectivity failures (HOU-1085 policy)", () => {
   });
 });
 
+describe("global rejection handler declines connectivity failures", () => {
+  // PRODUCT-1392 (HOUSTON-APP-4PG): a transport TypeError rejecting from a
+  // promise nobody catches (the `/v1/events` stream dropping on device
+  // offline) landed in `window.onunhandledrejection`, which was the last
+  // surface without the HOU-1085 gate — 2,331 events / 151 users of
+  // `unhandled_rejection: Load failed`, with the red toast, on builds where
+  // both other layers were already gated.
+  const source = read("../src/lib/global-error-handlers.ts");
+
+  it("gates capture + red toast on isNetworkTransportError", () => {
+    ok(
+      source.includes('from "./network-transport-error"'),
+      "global-error-handlers.ts must import the connectivity classifier",
+    );
+    const body = source.slice(source.indexOf("window.onunhandledrejection ="));
+    const guard = body.indexOf("if (isNetworkTransportError(event.reason))");
+    const capture = body.indexOf("analytics.captureException");
+    const redToast = body.indexOf("showErrorToast(");
+    ok(guard !== -1, "the rejection handler must gate on connectivity");
+    ok(
+      body.indexOf("showConnectivityErrorToast(", guard) !== -1,
+      "the connectivity branch must surface the deduped connectivity toast",
+    );
+    ok(
+      capture === -1 || guard < capture,
+      "the connectivity guard must run before the exception capture",
+    );
+    ok(
+      redToast === -1 || guard < redToast,
+      "the connectivity guard must run before the red error toast",
+    );
+  });
+});
+
 describe("provider connect actions do not double-surface connectivity", () => {
   // The engine-call layer (`surfaceError` in lib/tauri.ts) shows the ONE
   // deduped connectivity toast for these failures; the hook's authored red

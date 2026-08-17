@@ -1,7 +1,8 @@
 import { isAgentWarmingError } from "./agent-warming-guard";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { isBenignLockRejection } from "./benign-rejections";
-import { showErrorToast } from "./error-toast";
+import { showConnectivityErrorToast, showErrorToast } from "./error-toast";
+import { isNetworkTransportError } from "./network-transport-error";
 
 /**
  * Install the process-wide `window.onerror` / `window.onunhandledrejection`
@@ -54,6 +55,20 @@ export function installGlobalErrorHandlers(): void {
         "[global:unhandledrejection] write blocked while the agent warms up:",
         message,
       );
+      return;
+    }
+    // A transport-level network failure whose rejected promise nobody caught
+    // (PRODUCT-1392: the `/v1/events` global stream dropping on device
+    // offline / sleep-wake). Same HOU-1085 policy as the engine-call and
+    // caller-toast layers — ONE deduped connectivity toast, no Sentry capture:
+    // nothing in Houston broke. This handler was the last ungated surface, and
+    // it kept the `unhandled_rejection: Load failed` Sentry family alive after
+    // both other layers were gated. console.error (patched) so the drop still
+    // reaches the log file; the toast fires the analytics event past dedupe.
+    if (isNetworkTransportError(event.reason)) {
+      event.preventDefault();
+      console.error("[global:unhandledrejection] connectivity drop:", message);
+      showConnectivityErrorToast("unhandled_rejection", message);
       return;
     }
     console.error("[global:unhandledrejection]", message, event.reason);
