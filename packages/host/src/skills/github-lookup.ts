@@ -1,5 +1,6 @@
 import { fetchSkillMdAtPath } from "./github";
 import { extractFrontmatterName, skillIdFromPath } from "./github-parse";
+import { probePluginMarketplace } from "./plugin-marketplace";
 import { SkillRemoteError } from "./remote-error";
 
 const GH_HEADERS = { "User-Agent": "houston-skills/1.0" };
@@ -9,8 +10,12 @@ const SHALLOW_CANDIDATE_CAP = 6;
 export interface LocateSkillMdOptions {
   /**
    * Escalate to the recursive Git Trees scan when the cheaper tiers miss.
-   * Lookup runs in three tiers, cheapest first:
+   * Lookup runs in four tiers, cheapest first:
    *   1. Common path guesses — raw-CDN fetches, no `api.github.com` call.
+   *   1.5. Plugin-marketplace probe (ALWAYS run, raw-CDN only) — repos whose
+   *      `.claude-plugin/marketplace.json` manifest exists keep skills at
+   *      `<plugin>/skills/<skillId>/SKILL.md`; the manifest lists the plugin
+   *      roots to probe (plugin-marketplace.ts, PRODUCT-1382).
    *   2. Shallow tree scan (ALWAYS run) — at most two SMALL non-recursive
    *      `api.github.com` calls (the repo root, then the `skills/` subtree if
    *      present); fuzzy-matches directory names against `skillId` and confirms
@@ -32,9 +37,10 @@ export interface LocateSkillMdOptions {
  * Shared "find the SKILL.md for `skillId` in `source`" lookup, used by both the
  * install flow (install.ts) and the read-only preview flow (preview.ts) so the
  * two never drift. `source` is an already-normalized `owner/repo`. Runs the
- * three tiers documented on {@link LocateSkillMdOptions.deepScan} — cheap path
- * guesses, then a shallow tree scan, then (install only) the recursive scan —
- * and returns the raw SKILL.md text or throws `skill_not_in_repo`.
+ * tiers documented on {@link LocateSkillMdOptions.deepScan} — cheap path
+ * guesses, the plugin-marketplace probe, a shallow tree scan, then (install
+ * only) the recursive scan — and returns the raw SKILL.md text or throws
+ * `skill_not_in_repo`.
  */
 export async function locateSkillMd(
   fetchImpl: typeof fetch,
@@ -58,6 +64,15 @@ export async function locateSkillMd(
   for (const attempt of attempts) {
     if (attempt.status === "fulfilled") return attempt.value;
   }
+
+  // Tier 1.5 — plugin-marketplace probe, always; raw-CDN only. Runs BEFORE the
+  // shallow scan so marketplace repos never spend api.github.com quota.
+  const marketplaceMd = await probePluginMarketplace(
+    fetchImpl,
+    source,
+    skillId,
+  );
+  if (marketplaceMd !== null) return marketplaceMd;
 
   // Tier 2 — shallow scan, always (≤2 small non-recursive api.github.com calls).
   const shallow = await shallowFindSkillPath(fetchImpl, source, skillId);
