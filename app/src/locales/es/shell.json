@@ -396,7 +396,9 @@
     "offlineTitle": "Houston, sin conexión",
     "offlineDescription": "No podemos conectarnos a Houston en este momento. Revisa tu conexión a internet e inténtalo de nuevo.",
     "engineWakingTitle": "Houston, tu agente se está despertando",
-    "engineWakingDescription": "Estará listo en un momento. Inténtalo de nuevo en breve."
+    "engineWakingDescription": "Estará listo en un momento. Inténtalo de nuevo en breve.",
+    "updateStuckTitle": "Houston, las actualizaciones no te llegan",
+    "updateStuckDescription": "No hemos podido buscar actualizaciones. Puede que tu red las esté bloqueando. Siempre puedes descargar la última versión en gethouston.ai."
   },
   "agentDelete": {
     "title": "¿Eliminar el agente?",

@@ -201,6 +201,11 @@ export type AnalyticsEventName =
   | "update_offered"
   | "update_forced"
   | "update_accepted"
+  // The check itself keeps failing: after UPDATE_CHECK_STUCK_THRESHOLD
+  // consecutive failures the client counts as stuck — it may never see an
+  // update again (release feed unreachable), so it self-reports once per
+  // streak (PRODUCT-1386). `from_version` is the build it is stuck on.
+  | "update_check_failed"
   // Reliability
   | "session_completed"
   | "session_failed"
@@ -235,6 +240,8 @@ type AnalyticsProperty =
   | "file_kind"
   | "from_version"
   | "to_version"
+  // How many update checks failed in a row (update_check_failed)
+  | "consecutive_failures"
   // Onboarding funnel
   | "locale"
   | "detected_locale"
@@ -309,6 +316,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "file_kind",
   "from_version",
   "to_version",
+  "consecutive_failures",
   "locale",
   "detected_locale",
   "step",

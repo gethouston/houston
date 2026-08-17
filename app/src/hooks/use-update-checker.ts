@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "../lib/analytics";
+import { currentAppVersion } from "../lib/app-version";
+import { showUpdateCheckStuckToast } from "../lib/error-toast";
 import {
   type ForcedUpdateMode,
   forcedUpdateMode,
+  nextCheckFailureStreak,
   shouldRecheckOnFocus,
   UPDATE_CHECK_INTERVAL_MS,
+  updateCheckJustStuck,
 } from "../lib/update-force";
 import { useUpdateMachine } from "./use-update-machine";
 
@@ -28,10 +32,26 @@ export function useUpdateChecker() {
   const { status, runCheck, installAndRelaunch, relaunchInstalledApp } =
     useUpdateMachine();
   const lastCheckAtRef = useRef<number | null>(null);
+  // Consecutive check FAILURES. A client that can never reach the release
+  // feed would strand on an old build silently (the check is fail-open) —
+  // when the streak first hits the stuck threshold, it surfaces itself:
+  // nudge + telemetry, once per streak (PRODUCT-1386).
+  const failureStreakRef = useRef(0);
 
-  const check = useCallback(() => {
+  const check = useCallback(async () => {
     lastCheckAtRef.current = Date.now();
-    return runCheck();
+    const { outcome, message } = await runCheck();
+    failureStreakRef.current = nextCheckFailureStreak(
+      failureStreakRef.current,
+      outcome,
+    );
+    if (updateCheckJustStuck(failureStreakRef.current)) {
+      showUpdateCheckStuckToast(
+        message ?? "unknown check failure",
+        failureStreakRef.current,
+        currentAppVersion(),
+      );
+    }
   }, [runCheck]);
 
   // The forced presentation, latched on the first transition into

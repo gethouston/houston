@@ -396,7 +396,9 @@
     "offlineTitle": "Houston, connection lost",
     "offlineDescription": "We can't reach Houston right now. Check your internet connection and try again.",
     "engineWakingTitle": "Houston, your agent is waking up",
-    "engineWakingDescription": "It will be ready in a moment. Try again shortly."
+    "engineWakingDescription": "It will be ready in a moment. Try again shortly.",
+    "updateStuckTitle": "Houston, updates can't reach you",
+    "updateStuckDescription": "We haven't been able to check for updates. Your network may be blocking them. You can always get the latest version at gethouston.ai."
   },
   "agentDelete": {
     "title": "Delete agent?",
