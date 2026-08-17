@@ -10,7 +10,7 @@ import {
 } from "./conversation-file";
 import {
   consumeSessionReplayAt,
-  truncateConversationAt,
+  truncateConversationMutationAt,
 } from "./conversation-truncate";
 
 const freshDir = () => mkdtempSync(join(tmpdir(), "houston-truncate-"));
@@ -29,7 +29,9 @@ test("truncate at a later turn keeps everything before it and stamps the replay 
   const dir = freshDir();
   seedTwoTurns(dir);
 
-  expect(truncateConversationAt(dir, "c1", "t2")).toEqual({ removed: 2 });
+  expect(truncateConversationMutationAt(dir, "c1", "t2")).toMatchObject({
+    removed: 2,
+  });
 
   const conv = loadConversation(dir, "c1");
   if (!conv) throw new Error("loadConversation returned null after truncate");
@@ -46,7 +48,9 @@ test("truncate at the FIRST turn empties the transcript (editing message one)", 
   const dir = freshDir();
   seedTwoTurns(dir);
 
-  expect(truncateConversationAt(dir, "c1", "t1")).toEqual({ removed: 4 });
+  expect(truncateConversationMutationAt(dir, "c1", "t1")).toMatchObject({
+    removed: 4,
+  });
   expect(loadConversation(dir, "c1")?.messages).toEqual([]);
 });
 
@@ -55,7 +59,7 @@ test("truncate cuts from the turn's USER message even when the cut lands mid-tra
   seedTwoTurns(dir);
   appendUserMessageAt(dir, "c1", "third", { turnId: "t3" });
 
-  truncateConversationAt(dir, "c1", "t2");
+  truncateConversationMutationAt(dir, "c1", "t2");
 
   const conv = loadConversation(dir, "c1");
   expect(conv?.messages.every((m) => m.turnId === "t1")).toBe(true);
@@ -65,8 +69,8 @@ test("unknown turn or conversation writes nothing and reports null (404 at the r
   const dir = freshDir();
   seedTwoTurns(dir);
 
-  expect(truncateConversationAt(dir, "c1", "ghost")).toBeNull();
-  expect(truncateConversationAt(dir, "nope", "t1")).toBeNull();
+  expect(truncateConversationMutationAt(dir, "c1", "ghost")).toBeNull();
+  expect(truncateConversationMutationAt(dir, "nope", "t1")).toBeNull();
 
   const conv = loadConversation(dir, "c1");
   expect(conv?.messages).toHaveLength(4);
@@ -76,7 +80,7 @@ test("unknown turn or conversation writes nothing and reports null (404 at the r
 test("consumeSessionReplayAt is one-shot: true once after a truncate, then false", () => {
   const dir = freshDir();
   seedTwoTurns(dir);
-  truncateConversationAt(dir, "c1", "t2");
+  truncateConversationMutationAt(dir, "c1", "t2");
 
   expect(consumeSessionReplayAt(dir, "c1")).toBe(true);
   expect(consumeSessionReplayAt(dir, "c1")).toBe(false);

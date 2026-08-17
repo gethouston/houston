@@ -56,7 +56,6 @@ export function createConversationStore(
               message: snapshotMessage(result.message),
               title: result.conversation.title,
               expectedCount: result.expectedCount,
-              needsSessionReplay: result.needsSessionReplay,
             }
           : { kind: "repair", conversationId: id };
       });

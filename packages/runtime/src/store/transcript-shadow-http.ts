@@ -48,7 +48,6 @@ function requestFor(root: string, operation: TranscriptShadowSend) {
           ts: operation.message.ts,
           title: operation.title,
           expectedCount: operation.expectedCount,
-          needsSessionReplay: operation.needsSessionReplay,
         },
       };
     case "assistant":

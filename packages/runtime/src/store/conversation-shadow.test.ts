@@ -57,7 +57,6 @@ test("user and assistant shadow only after the atomic file write", () => {
     turnId: "t1",
     title: "hello",
     expectedCount: 0,
-    needsSessionReplay: false,
   });
   // Message-only enqueue: the hot append path never clones the conversation.
   expect(seen.some((operation) => "conversation" in operation)).toBe(false);

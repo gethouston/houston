@@ -214,14 +214,6 @@ export function renameConversationMutationAt(
   return conv;
 }
 
-export function renameConversationAt(
-  dir: string,
-  id: string,
-  title: string,
-): boolean {
-  return renameConversationMutationAt(dir, id, title) !== null;
-}
-
 export function deleteConversationAt(dir: string, id: string): boolean {
   const f = fileFor(dir, id);
   dropParsedFile(f);
