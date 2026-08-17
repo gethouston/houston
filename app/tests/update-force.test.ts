@@ -4,9 +4,12 @@ import {
   FOCUS_RECHECK_MIN_GAP_MS,
   FORCED_UPDATE_COUNTDOWN_SECONDS,
   forcedUpdateMode,
+  nextCheckFailureStreak,
   shouldRecheckOnFocus,
   tickCountdown,
   UPDATE_CHECK_INTERVAL_MS,
+  UPDATE_CHECK_STUCK_THRESHOLD,
+  updateCheckJustStuck,
 } from "../src/lib/update-force.ts";
 
 // The forced presentation follows the find, not the release: a launch-check
@@ -63,5 +66,45 @@ describe("cadence sanity", () => {
 
   it("polls more often than it throttles focus rechecks", () => {
     ok(UPDATE_CHECK_INTERVAL_MS > FOCUS_RECHECK_MIN_GAP_MS);
+  });
+});
+
+// A client that can never reach the release feed must surface itself instead
+// of stranding silently (PRODUCT-1386): the streak counts consecutive
+// failures, any completed check resets it, and the stuck signal fires exactly
+// on the crossing so one streak means one nudge.
+describe("nextCheckFailureStreak", () => {
+  it("extends on a failure", () => {
+    strictEqual(nextCheckFailureStreak(2, "failed"), 3);
+  });
+
+  it("resets when a check finds an update", () => {
+    strictEqual(nextCheckFailureStreak(5, "found"), 0);
+  });
+
+  it("resets when a check completes with nothing to install", () => {
+    strictEqual(nextCheckFailureStreak(5, "none"), 0);
+  });
+
+  it("ignores a check that never ran", () => {
+    strictEqual(nextCheckFailureStreak(2, "skipped"), 2);
+  });
+});
+
+describe("updateCheckJustStuck", () => {
+  it("stays quiet below the threshold", () => {
+    strictEqual(updateCheckJustStuck(UPDATE_CHECK_STUCK_THRESHOLD - 1), false);
+  });
+
+  it("fires exactly on the crossing", () => {
+    strictEqual(updateCheckJustStuck(UPDATE_CHECK_STUCK_THRESHOLD), true);
+  });
+
+  it("does not re-fire as the streak keeps growing", () => {
+    strictEqual(updateCheckJustStuck(UPDATE_CHECK_STUCK_THRESHOLD + 1), false);
+  });
+
+  it("one offline blip cannot trip it", () => {
+    ok(UPDATE_CHECK_STUCK_THRESHOLD >= 2);
   });
 });
