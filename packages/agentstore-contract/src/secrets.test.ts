@@ -8,6 +8,7 @@ const SAMPLES: Array<[string, string]> = [
   ["Anthropic API key", "sk-ant-api03-abcdefghijklmnopqrstuvwxyz012345"],
   ["OpenAI API key", `sk-proj-${"a".repeat(24)}`],
   ["Google API key", `AIza${"A".repeat(35)}`],
+  ["Google auth key", `AQ.Ab8${"a".repeat(25)}`],
   ["GitHub token", `ghp_${"a".repeat(36)}`],
   ["Slack token", "xoxb-12345678901234"],
   ["Stripe secret key", `sk_live_${"a".repeat(24)}`],

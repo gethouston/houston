@@ -21,6 +21,9 @@ const SECRET_PATTERNS: Array<{ pattern: string; re: RegExp }> = [
   { pattern: "Anthropic API key", re: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/g },
   { pattern: "OpenAI API key", re: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g },
   { pattern: "Google API key", re: /\bAIza[0-9A-Za-z_-]{35}\b/g },
+  // AI Studio's newer auth-key format (PRODUCT-1368); length varies, so
+  // require a long unbroken tail to keep prose false positives near zero.
+  { pattern: "Google auth key", re: /\bAQ\.[0-9A-Za-z_-]{25,}\b/g },
   { pattern: "GitHub token", re: /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g },
   { pattern: "Slack token", re: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g },
   {
