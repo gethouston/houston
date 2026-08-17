@@ -27,13 +27,20 @@ export function authCauseBodyKey(cause: UnauthCause): string {
       return `${K}.bodyInvalidApiKey`;
     case "token_revoked":
       return `${K}.bodyTokenRevoked`;
+    case "org_policy_blocked":
+      return `${K}.bodyOrgPolicyBlocked`;
     default:
       return `${K}.bodyUnknown`;
   }
 }
 
-/** The action a button fires. A `badge` button is a disabled status pill. */
-export type AuthCardAction = "reconnect" | "cancel";
+/**
+ * The action a button fires. A `badge` button is a disabled status pill.
+ * `open_ai_hub` navigates to the AI Hub instead of launching a sign-in — the
+ * org-policy card's action, because reconnecting cannot heal that failure and
+ * the remedy (an API key) lives on the AI Hub's connect surfaces.
+ */
+export type AuthCardAction = "reconnect" | "cancel" | "open_ai_hub";
 
 export type AuthCardButton =
   | { kind: "action"; labelKey: string; action: AuthCardAction }
@@ -98,6 +105,11 @@ function donePresentation(args: {
  * - `done` without a retry handler: nothing to resume — plain confirmation.
  * - `waiting`: the wait is on the user's browser, so the action is Cancel.
  * - `failed` / `idle`: the Reconnect button relaunches sign-in.
+ * - `orgPolicyBlocked` (idle / failed): the provider's org policy blocked
+ *   subscription access — reconnecting can only fail the same way, so the
+ *   card never offers it. The action opens the AI Hub, where the user can
+ *   connect with an API key instead (PRODUCT-1393). A later successful
+ *   connect still lands the normal `done` confirmation + auto-resume.
  */
 export function resolveAuthCardPresentation(args: {
   phase: LoginPhase;
@@ -105,6 +117,7 @@ export function resolveAuthCardPresentation(args: {
   hasFailedPrompt: boolean;
   hasRetry: boolean;
   causeBodyKey: string;
+  orgPolicyBlocked?: boolean;
 }): AuthCardPresentation {
   const { phase, hasProvider, hasFailedPrompt, hasRetry, causeBodyKey } = args;
 
@@ -136,6 +149,22 @@ export function resolveAuthCardPresentation(args: {
       hasFailedPrompt,
       hasRetry,
     });
+  }
+
+  // idle and failed alike: this card never launches a sign-in (a reconnect
+  // can only hit the same policy wall), so a stray login failure elsewhere
+  // must not swap in the "sign-in did not finish" body over the honest one.
+  if (args.orgPolicyBlocked) {
+    return {
+      variant: "active",
+      titleKey: `${K}.titleOrgPolicy`,
+      bodyKey: `${K}.bodyOrgPolicyBlocked`,
+      button: {
+        kind: "action",
+        labelKey: `${K}.useApiKey`,
+        action: "open_ai_hub",
+      },
+    };
   }
 
   if (phase === "waiting") {
