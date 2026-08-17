@@ -240,6 +240,28 @@ test("does NOT report a non-terminal auth failure", async () => {
 
 test.each([
   [
+    "with Anthropic's own remedy prose",
+    "Your organization has disabled Claude subscription access for Claude Code",
+  ],
+  // Belt and braces: even a message carrying a confirmed revocation marker
+  // must not report under this cause — the token is NOT dead (the org policy
+  // is the wall), and the compare-and-delete would sign the whole workspace
+  // out of a credential that other environments can still use.
+  ["even when the text carries a confirmed marker", "403 has been revoked"],
+])("does NOT report an org_policy_blocked failure %s (PRODUCT-1393)", async (_label, message) => {
+  const captured = await withServeMode(
+    (dir) => servedAnthropic(dir),
+    () =>
+      reportRevokedServedToken(
+        { ...revoked, cause: "org_policy_blocked", message },
+        accessDigest("served-access"),
+      ),
+  );
+  expect(captured).toBeNull();
+});
+
+test.each([
+  [
     "a session that merely 'ended'",
     "401 Your session has ended. Please log in again.",
   ],

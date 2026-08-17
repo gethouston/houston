@@ -104,11 +104,13 @@ describe("createEngineSentry", () => {
     expect(frames[frames.length - 1]?.filename).toMatch(/client\.test\.ts$/);
   });
 
-  it("captureLog: [provider_error] lines fingerprint by (provider, kind) and tag the family", async () => {
+  it("captureLog: [provider_error] lines fingerprint by (provider, kind, cause, sdk-slug) and tag the family", async () => {
     // Without the fingerprint, every provider_error line groups on the
     // identical synthetic thread stack at the log helper and Sentry shows ONE
     // issue for every family (HOU-1156). Without the tags, the dashboard
     // cannot filter "all disconnect events" across providers (PRODUCT-1302).
+    // A line with neither `error=` nor `cause=` keeps the stable 5-element
+    // array shape with "" placeholders.
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", [
       "[provider_error] provider=openai-codex model=gpt-5.5 status=? kind=unknown :: WebSocket closed 1006",
@@ -121,21 +123,27 @@ describe("createEngineSentry", () => {
       "provider_error",
       "openai-codex",
       "unknown",
+      "",
+      "",
     ]);
     expect(events[0]?.tags).toMatchObject({
       provider: "openai-codex",
       provider_error_kind: "unknown",
     });
     expect(events[0]?.tags?.provider_error_cause).toBeUndefined();
+    expect(events[0]?.tags?.provider_error_sdk).toBeUndefined();
     // Everything else keeps default grouping and gains no provider tags.
     expect(events[1]?.fingerprint).toBeUndefined();
     expect(events[1]?.tags?.provider).toBeUndefined();
   });
 
-  it("captureLog: an unauthenticated provider_error line tags its cause but keeps the (provider, kind) fingerprint", async () => {
-    // `cause` must NOT join the fingerprint — that would re-split every
-    // existing per-family issue on deploy. It rides as a tag only, so
-    // `provider_error_cause:token_revoked` is a dashboard query.
+  it("captureLog: an unauthenticated provider_error line joins its cause into the fingerprint", async () => {
+    // `cause` is deliberately IN the fingerprint (PRODUCT-1393), reversing
+    // PRODUCT-1302's keep-accumulating choice: the (provider, kind) bucket
+    // merged token_revoked storms with a genuine oauth_org_not_allowed family
+    // under one misleading title. Re-splitting existing issues on deploy is
+    // intended. An old-format line with no `error=` slug still fingerprints,
+    // with "" in the slug slot.
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", [
       "[provider_error] provider=anthropic model=claude-fable-5 status=401 kind=unauthenticated cause=token_revoked :: OAuth access token has been revoked",
@@ -147,11 +155,42 @@ describe("createEngineSentry", () => {
       "provider_error",
       "anthropic",
       "unauthenticated",
+      "token_revoked",
+      "",
     ]);
     expect(events[0]?.tags).toMatchObject({
       provider: "anthropic",
       provider_error_kind: "unauthenticated",
       provider_error_cause: "token_revoked",
+    });
+    expect(events[0]?.tags?.provider_error_sdk).toBeUndefined();
+  });
+
+  it("captureLog: a provider_error line with an SDK error slug fingerprints and tags all four fields", async () => {
+    // `error=` rides BEFORE `kind=` in the log line (see
+    // runtime ai/provider-error-log.ts — the format is a contract with
+    // PROVIDER_ERROR_LINE). The slug is what splits Anthropic's org-policy
+    // block (oauth_org_not_allowed) from ordinary auth failures sharing the
+    // same kind + cause space.
+    const { sentry, events } = testSentry();
+    sentry.captureLog("ERROR", [
+      "[provider_error] provider=anthropic model=claude-fable-5 status=403 error=oauth_org_not_allowed kind=unauthenticated cause=org_policy_blocked :: Your organization has disabled Claude subscription access",
+    ]);
+    await sentry.flush();
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.fingerprint).toEqual([
+      "provider_error",
+      "anthropic",
+      "unauthenticated",
+      "org_policy_blocked",
+      "oauth_org_not_allowed",
+    ]);
+    expect(events[0]?.tags).toMatchObject({
+      provider: "anthropic",
+      provider_error_kind: "unauthenticated",
+      provider_error_cause: "org_policy_blocked",
+      provider_error_sdk: "oauth_org_not_allowed",
     });
   });
 

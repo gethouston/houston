@@ -65,11 +65,40 @@ test("authentication_failed → invalid_api_key / token_revoked / unknown causes
   expect(unknown).toMatchObject({ cause: "unknown" });
 });
 
-test("oauth_org_not_allowed → unauthenticated", () => {
+test("oauth_org_not_allowed → unauthenticated with the org_policy_blocked cause", () => {
+  // Not the shared authentication_failed handling (PRODUCT-1393): the org
+  // policy block is not a credential-lifecycle failure — reconnecting cannot
+  // heal it, and the text-derived cause read Anthropic's "…for Claude Code"
+  // remedy prose as an ordinary auth failure, merging a genuine org-policy
+  // family into the token_revoked bucket.
   expect(
-    mapSdkError("oauth_org_not_allowed", { message: "org policy", model: null })
-      .kind,
-  ).toBe("unauthenticated");
+    mapSdkError("oauth_org_not_allowed", {
+      message: "Your organization has disabled Claude subscription access",
+      model: null,
+    }),
+  ).toEqual({
+    kind: "unauthenticated",
+    provider: "anthropic",
+    cause: "org_policy_blocked",
+    message: "Your organization has disabled Claude subscription access",
+  });
+});
+
+test("org_policy_blocked stays an ERROR-level log — broken access, not an expected user state", () => {
+  // Unlike no_credentials (a fresh install is not a bug), an org-policy block
+  // means turns are failing on access the user believes they have; it must
+  // keep firing Sentry events so the family stays countable.
+  mapSdkError("oauth_org_not_allowed", {
+    message: "Your organization has disabled Claude subscription access",
+    model: null,
+  });
+  expect(consoleError).toHaveBeenCalledOnce();
+  expect(consoleWarn).not.toHaveBeenCalled();
+  expect(consoleError).toHaveBeenCalledWith(
+    expect.stringContaining(
+      "error=oauth_org_not_allowed kind=unauthenticated cause=org_policy_blocked",
+    ),
+  );
 });
 
 test("billing_error → quota_exhausted", () => {

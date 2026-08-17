@@ -69,13 +69,19 @@ const NODE_PROCESS_WARNING = /^\(node:\d+\)/;
 
 /**
  * The stable line `logProviderError` (runtime `ai/provider-error-log.ts`)
- * emits for every classified provider failure. Provider and kind are enough to
- * name a family; `cause` (present on unauthenticated errors) tells a revoked
- * token from a bad pasted key. Anything finer (model, the verbatim text) is
- * unbounded cardinality and stays in the message.
+ * emits for every classified provider failure — a documented contract with
+ * this regex:
+ *
+ *   `[provider_error] provider=X model=Y status=Z[ error=SLUG] kind=K[ cause=C] :: text`
+ *
+ * `error=` (the Claude Agent SDK's own error slug, when that backend
+ * classified the failure) rides BEFORE `kind=`; `cause=` (present on
+ * unauthenticated errors) rides right after it. Provider, kind, cause, and
+ * the SDK slug together name a family; anything finer (model, the verbatim
+ * text) is unbounded cardinality and stays in the message.
  */
 const PROVIDER_ERROR_LINE =
-  /^\[provider_error\] provider=(\S+) .*?kind=(\S+)(?: cause=(\S+))?/;
+  /^\[provider_error\] provider=(\S+) .*?(?:error=(\S+) )?kind=(\S+)(?: cause=(\S+))?/;
 
 function providerErrorMeta(message: string): {
   fingerprint: string[];
@@ -84,19 +90,27 @@ function providerErrorMeta(message: string): {
   const m = PROVIDER_ERROR_LINE.exec(message);
   if (!m) return null;
   const provider = m[1] ?? "";
-  const kind = m[2] ?? "";
+  const sdkSlug = m[2] ?? "";
+  const kind = m[3] ?? "";
+  const cause = m[4] ?? "";
   return {
-    // The fingerprint stays (provider, kind) — cause is deliberately NOT in
-    // it, so existing issues (56F, 56K, …) keep accumulating instead of
-    // re-splitting on deploy. Cause-level slicing happens via the tag.
-    fingerprint: ["provider_error", provider, kind],
+    // The fingerprint is (provider, kind, cause, sdk-slug). Cause and the SDK
+    // slug JOINED it deliberately (PRODUCT-1393), reversing PRODUCT-1302's
+    // (provider, kind) grouping: that shape merged every Anthropic
+    // `unauthenticated` family into ONE issue titled by its first event, so a
+    // token_revoked storm hid a genuine oauth_org_not_allowed family behind a
+    // misleading title and user count. Re-splitting the existing Sentry
+    // issues on deploy is INTENDED this time — per-cause issues are the
+    // triage unit. Absent fields become "" so the array shape stays stable.
+    fingerprint: ["provider_error", provider, kind, cause, sdkSlug],
     // Tags, unlike fingerprints, are searchable dashboard-wide: they make
     // `provider_error_kind:unauthenticated` one query across every provider's
     // issue (PRODUCT-1302) where the fingerprint alone cannot.
     tags: {
       provider,
       provider_error_kind: kind,
-      ...(m[3] ? { provider_error_cause: m[3] } : {}),
+      ...(cause ? { provider_error_cause: cause } : {}),
+      ...(sdkSlug ? { provider_error_sdk: sdkSlug } : {}),
     },
   };
 }
@@ -256,8 +270,9 @@ export function createEngineSentry(
               // (Codex WebSocket drops, Gemini 503s, billing denials, …)
               // collapsed into ONE Sentry issue titled by whichever message
               // came first (HOU-1156). Fingerprint those lines by
-              // (provider, kind) so each family is its own countable issue,
-              // and tag them so the dashboard can filter across families.
+              // (provider, kind, cause, sdk-slug) so each family is its own
+              // countable issue (PRODUCT-1393), and tag them so the dashboard
+              // can filter across families.
               ...(providerErrorMeta(message) ?? {}),
               threads: {
                 values: [

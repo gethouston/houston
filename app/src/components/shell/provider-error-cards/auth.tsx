@@ -44,6 +44,9 @@ export function UnauthenticatedCard({
     hasFailedPrompt: !!error.failed_prompt,
     hasRetry: !!onRetry,
     causeBodyKey: authCauseBodyKey(error.cause),
+    // Org-policy block (PRODUCT-1393): reconnecting cannot heal it, so the
+    // card's action opens the AI Hub (connect with an API key) instead.
+    orgPolicyBlocked: error.cause === "org_policy_blocked",
   });
 
   // Map the resolved button spec to its live handler + pending state. The
@@ -59,6 +62,16 @@ export function UnauthenticatedCard({
           disabled
           loading={login.retrying}
           variant="outline"
+        />
+      );
+    }
+    if (button.action === "open_ai_hub") {
+      // Navigation, not a launch: nothing to spin on, nothing to cancel.
+      return (
+        <RowCardButton
+          label={t(button.labelKey)}
+          onClick={login.openAiHub}
+          variant="default"
         />
       );
     }

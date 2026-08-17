@@ -89,11 +89,24 @@ function mapSdkEnum(
 ): ProviderError | null {
   switch (error) {
     case "authentication_failed":
-    case "oauth_org_not_allowed":
       return {
         kind: "unauthenticated",
         provider: PROVIDER,
         cause: authCause(message.toLowerCase()),
+        message,
+      };
+    case "oauth_org_not_allowed":
+      // Deliberately NOT the shared authentication_failed handling: this is
+      // Anthropic's org/policy enforcement (subscription access blocked for
+      // this environment), not a credential-lifecycle failure. Reconnecting
+      // cannot heal it — Anthropic's own remedy text says use an API key —
+      // so the text-derived cause (whose loose "log in again" phrasings read
+      // as token_revoked) would file it under the wrong family and render a
+      // reconnect CTA that can only fail (PRODUCT-1393).
+      return {
+        kind: "unauthenticated",
+        provider: PROVIDER,
+        cause: "org_policy_blocked",
         message,
       };
     case "billing_error":

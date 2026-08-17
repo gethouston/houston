@@ -16,7 +16,7 @@ errorMessage) into the wire shape.
 
 | Kind | Extra payload | Fires when | Card + CTAs |
 |------|---------------|-----------|-------------|
-| `unauthenticated` | `cause` (`no_credentials` \| `token_expired` \| `token_revoked` \| `invalid_api_key` \| `unknown`), `undelivered_prompt?` | Credential missing, expired, revoked server-side, or rejected. | `UnauthenticatedCard` (`provider-error-cards/auth.tsx`). Reconnect through whatever surface `reconnect-surface.ts` picks (OAuth browser login / api-key paste dialog / local-endpoint dialog), then waits on `ProviderLoginComplete`, flips to a green "Reconnected" state and runs a one-shot auto-resume. **Names no provider → the generic variant**: plug icon, no brand, CTA opens the AI Hub (see *Attribution*). |
+| `unauthenticated` | `cause` (`no_credentials` \| `token_expired` \| `token_revoked` \| `invalid_api_key` \| `org_policy_blocked` \| `unknown`), `undelivered_prompt?` | Credential missing, expired, revoked server-side, or rejected. | `UnauthenticatedCard` (`provider-error-cards/auth.tsx`). Reconnect through whatever surface `reconnect-surface.ts` picks (OAuth browser login / api-key paste dialog / local-endpoint dialog), then waits on `ProviderLoginComplete`, flips to a green "Reconnected" state and runs a one-shot auto-resume. **Names no provider → the generic variant**: plug icon, no brand, CTA opens the AI Hub (see *Attribution*). **`org_policy_blocked`** (Anthropic's SDK enum `oauth_org_not_allowed`, mapped in `backends/claude/errors.ts` — the org/policy blocked subscription access for this environment; PRODUCT-1393): reconnecting cannot heal it, so the card never offers Reconnect — its `open_ai_hub` action opens the AI Hub to connect an API key instead. It never fires the revoked-token report. |
 | `rate_limited` | `model`, `retry_after_seconds` | Short-window throttle. Waiting helps. | `RateLimitedCard` (`limits.tsx`). Retry + Switch model; body interpolates the countdown when present. |
 | `quota_exhausted` | `model`, `scope` (`free_tier` \| `paid_plan` \| `organization` \| `unknown`), `resets_at` | Account out of credit or blocked on billing — the "pay or switch" state. HTTP 402 alone decides it; text patterns catch gateways that ship it under another status (opencode's `401 CreditsError`). | `QuotaExhaustedCard` (`quota.tsx`). Switch provider; body names `resets_at` when the provider gave one. |
 | `model_unavailable` | `model`, `reason` (`preview_gated` \| `deprecated` \| `region_restricted` \| `unknown`), `suggested_fallback` | The credential is fine but THIS model isn't served to it — Copilot Free answering a premium model with `400 model_not_supported`, NVIDIA's per-account function gate. | `ModelUnavailableCard` (`quota.tsx`). One-click "Switch to `suggested_fallback`" + Pick another model. The one card that reads `credential`: personal scope swaps the body to `shell:providerError.credential.modelUnavailableBody`. |
@@ -60,10 +60,15 @@ Every classified failure logs exactly once through
 `provider_internal`, `network_unreachable`) plus
 `unauthenticated`/`no_credentials` go to WARN (Sentry breadcrumb); everything
 else — `unknown` and real auth failures — to ERROR (Sentry event). The Sentry
-client fingerprints `[provider_error]` lines by `(provider, kind)`
-(`packages/runtime-client/src/sentry/client.ts`), so each family is its own
-countable issue. The ritual: search Sentry for `kind=unknown`, and promote any
-repeating family into a classifier branch — verbatim fixture first.
+client fingerprints `[provider_error]` lines by
+`(provider, kind, cause, sdk-error-slug)`
+(`packages/runtime-client/src/sentry/client.ts`; the log line's format is a
+documented contract with that regex), so each family is its own countable
+issue — cause and the SDK slug joined the fingerprint in PRODUCT-1393 after
+the coarser `(provider, kind)` bucket merged a genuine `oauth_org_not_allowed`
+family into a `token_revoked` storm under one misleading title. The ritual:
+search Sentry for `kind=unknown`, and promote any repeating family into a
+classifier branch — verbatim fixture first.
 
 ## `credential` — WHOSE account failed
 
