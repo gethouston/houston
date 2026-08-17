@@ -444,8 +444,9 @@ signing + reputation problem, solved in `release.yml`'s `build-windows` job.
   A plain `pnpm tauri build` builds the host too (no cargo feature to opt in). No
   provider CLIs are bundled — pi runs providers in-process.
 - **Output:** a DRAFT GitHub Release with a signed + notarized universal DMG, signed
-  Windows MSIs (x64 + arm64), a Linux AppImage, and `latest.json`. **Draft = QA
-  gate** — users don't see it until published.
+  Windows MSIs (x64 + arm64), an updater-signed Linux AppImage, and `latest.json`
+  advertising all three platforms. **Draft = QA gate** — users don't see it until
+  published.
 - **Duration:** ~25-30 min wall-clock (mac + win + linux in parallel; mac is the long
   pole at ~25 min including Apple notarization).
 
@@ -455,18 +456,22 @@ signing + reputation problem, solved in `release.yml`'s `build-windows` job.
 prep (ubuntu, ~30s)               creates empty draft + release-notes.md artifact
   ├── build-macos (mac, ~25m)     matrix [prod, staging on cloud-v*] — bun-compiles host sidecar (both arches) → signs, notarizes, uploads DMG/tar/sig/latest.json (staging leg: one renamed DMG only)
   ├── build-windows (win, ~15m)   bun-compiles host sidecar per arch → uploads MSI + .sig (x64 + arm64)
-  ├── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → uploads AppImage (download-only, not in latest.json)
+  ├── build-linux (ubuntu, ~15m)  bun-compiles host sidecar → repairs AppImage → updater-signs the REPAIRED file → uploads AppImage + .sig
   ├── build-web (ubuntu, ~5m)     builds packages/web → uploads web-dist.tar.gz + Sentry maps
-  └── finalize (ubuntu, ~30s) [needs mac + win] extends latest.json with windows entries, posts Slack
+  └── finalize (ubuntu, ~30s) [needs mac + win + linux] extends latest.json with windows + linux entries, posts Slack
 ```
 
 Mac, Windows, Linux and web run in parallel — they only need the empty draft `prep`
 creates. `finalize` stitches `latest.json` together (the macOS-only base plus the
-Windows entries assembled from the MSI `.sig` in the draft) and posts the team Slack
-notification; it needs only mac + win, so a flaky Linux/web leg never blocks the
-updater manifest. Linux is UNSIGNED + download-only (no auto-update entry). Slack
-lives in `finalize` because it needs `release-notes.md`, published as an artifact by
-`prep`.
+Windows entries from the MSI `.sig`s and the `linux-x86_64` entry from the AppImage
+`.sig`, PRODUCT-1387) and posts the team Slack notification. Since Linux joined the
+updater, build-linux is a hard `finalize` dependency — a broken Linux leg blocks the
+manifest (fail-closed; an entry-less manifest would silently re-strand Linux users).
+The AppImage's updater `.sig` is minted AFTER the sidecar repair (a sig from `tauri
+build` would cover the pre-repair bytes and every client would reject the download);
+only web stays outside the updater. AppImage installs from before this wiring point
+at the legacy feed and must redownload once. Slack lives in `finalize` because it
+needs `release-notes.md`, published as an artifact by `prep`.
 
 ### Build guards
 

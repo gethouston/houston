@@ -9,7 +9,7 @@
 # (see scripts/ci/point-updater-at-cloud-manifest.sh), and this workflow keeps
 # that pointer current: whenever a `cloud-v*` release is PUBLISHED (draft →
 # public, manual after QA — same flow as the local channel), it copies the
-# release's finalized `latest-cloud.json` (macOS + Windows entries, merged by
+# release's finalized `latest-cloud.json` (macOS + Windows + Linux entries, merged by
 # the release workflow's finalize job) onto the rolling `cloud-latest`
 # release.
 #

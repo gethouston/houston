@@ -1629,17 +1629,19 @@ jobs:
   # untouched. (.deb intentionally not built — AppImage is the single Linux
   # artifact; a .deb would need its own apt/repo + GPG story to be worth it.)
   #
-  # UNSIGNED + NOT wired into the auto-updater (latest.json is macOS + Windows
-  # only; `finalize` doesn't add a Linux entry). Download-only, for testing.
+  # Wired into the auto-updater (PRODUCT-1387): the job updater-signs the FINAL
+  # (post-sidecar-repair) AppImage and uploads the `.sig`; `finalize` merges a
+  # `linux-x86_64` entry into the manifest next to the mac + Windows ones.
+  # Installs from before this wiring point at the legacy feed and must
+  # redownload once — from then on they ride the same forced-update train.
   build-linux:
     needs: prep
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      # See build-macos: cloud channel bakes the managed gateway URL (a secret).
-      # Linux is download-only / not wired into the auto-updater, so it needs no
-      # endpoint rewrite — only the baked URL so the app reaches the gateway.
+      # See build-macos: cloud channel bakes the managed gateway URL (a secret)
+      # and repoints the updater endpoint at the cloud manifest below.
       IS_CLOUD: ${{ startsWith(github.ref_name, 'cloud-') }}
       VITE_HOSTED_ENGINE_URL: ${{ startsWith(github.ref_name, 'cloud-') && secrets.HOSTED_ENGINE_URL || '' }}
       VITE_HOSTED_ENGINE_AUTH: ${{ startsWith(github.ref_name, 'cloud-') && 'oauth' || '' }}
@@ -1718,14 +1720,20 @@ jobs:
           chmod +x "$SHIM_DIR/ldd"
           echo "$SHIM_DIR" >> "$GITHUB_PATH"
 
-      # tauri.conf.json has `createUpdaterArtifacts: true` + an updater pubkey, so
-      # tauri tries to emit a minisign `.sig` for the AppImage and FAILS if
-      # TAURI_SIGNING_PRIVATE_KEY is absent ("public key found, but no private
-      # key"). Linux is download-only / not wired into the auto-updater, so we
-      # don't ship the signing key here — instead flip updater-artifact creation
-      # off for this runner's checkout (never committed). mac/win keep it on:
-      # they pass the key and feed latest.json.
-      - name: Disable updater artifacts (Linux is download-only)
+      # CLOUD channel only: repoint the updater at `latest-cloud.json` before
+      # the build bakes tauri.conf.json in (see build-macos for the why).
+      - name: Point updater at cloud manifest (cloud channel)
+        if: ${{ env.IS_CLOUD == 'true' }}
+        run: bash scripts/ci/point-updater-at-cloud-manifest.sh
+
+      # Keep tauri's OWN updater-artifact emission off — not because Linux is
+      # unsigned (it isn't, anymore), but because the signature tauri would
+      # emit here covers the WRONG bytes: the "Restore Bun host sidecar" step
+      # below rebuilds the AppImage after packaging, so the updater `.sig` is
+      # minted manually AFTER the repair (see "Updater-sign the repaired
+      # AppImage"). Without this flip `tauri build` also dies when
+      # TAURI_SIGNING_PRIVATE_KEY is absent, which keeps forks building.
+      - name: Disable in-build updater artifacts (signed post-repair instead)
         run: bash scripts/ci/configure-ts-engine-unsigned.sh
 
       # frpc is a Tauri externalBin (the local-model bridge tunnel client). The
@@ -1800,6 +1808,25 @@ jobs:
           echo "Artifact:"
           echo "  AppImage: $APPIMAGE ($(du -sh "$APPIMAGE" | cut -f1))"
 
+      # Mint the updater signature over the FINAL bytes — after the sidecar
+      # repair rebuilt the AppImage (a sig from `tauri build` would cover the
+      # pre-repair file and every client would reject the download). Same
+      # minisign key the mac/win artifacts use, so the baked updater pubkey
+      # verifies all three platforms. Fail-closed: no sig, no release — a
+      # manifest entry pointing at unverifiable bytes would strand every
+      # Linux client on a failed-update loop.
+      - name: Updater-sign the repaired AppImage
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          APPIMAGE="${{ steps.artifacts-linux.outputs.appimage }}"
+          (cd app && pnpm tauri signer sign "$GITHUB_WORKSPACE/$APPIMAGE")
+          test -s "$APPIMAGE.sig" \
+            || { echo "::error::updater signature missing for $APPIMAGE"; exit 1; }
+          echo "  sig: $APPIMAGE.sig"
+
       - name: Upload source maps + Rust debug symbols to Sentry (linux x64)
         if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
         env:
@@ -1844,6 +1871,7 @@ jobs:
         run: |
           gh release upload "$GITHUB_REF_NAME" \
             "${{ steps.artifacts-linux.outputs.appimage }}" \
+            "${{ steps.artifacts-linux.outputs.appimage }}.sig" \
             checksums-linux-sha256.txt \
             --clobber
 
@@ -2016,22 +2044,26 @@ jobs:
           echo "::notice::web-dist.tar.gz uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME — web-promote.yml deploys these exact bytes to production on publish."
 
   # ============================================================================
-  # Stitch the parallel mac + win builds into one finished draft release.
-  # Runs on a clean ubuntu runner — no source tree, no signing identities,
-  # no platform-specific tooling needed. Just `gh`, `jq`, and `curl`,
-  # which are all preinstalled on `ubuntu-latest`.
+  # Stitch the parallel mac + win + linux builds into one finished draft
+  # release. Runs on a clean ubuntu runner — no source tree, no signing
+  # identities, no platform-specific tooling needed. Just `gh`, `jq`, and
+  # `curl`, which are all preinstalled on `ubuntu-latest`.
   #
   # Two responsibilities:
   #   1. Extend the macOS-only `latest.json` (uploaded by build-macos)
-  #      with a `windows-x86_64` entry pointing at the MSI + .sig that
-  #      build-windows uploaded. After this, both Mac and Windows users
-  #      see auto-update prompts on next launch.
+  #      with the `windows-*` entries (MSI + .sig from build-windows) and
+  #      the `linux-x86_64` entry (AppImage + .sig from build-linux,
+  #      PRODUCT-1387). After this, Mac, Windows, and Linux users all see
+  #      auto-update prompts on next launch. Deliberate trade-off of
+  #      wiring Linux in: build-linux is now a hard dependency, so a
+  #      broken Linux leg blocks the manifest (fail-closed — an entry-less
+  #      manifest would silently re-strand Linux users instead).
   #   2. Notify Slack — moved here from build-windows because that step
   #      needs `release-notes.md` and the file only existed on the macOS
   #      runner. Now `prep` publishes it as a workflow artifact and any
   #      downstream job downloads it.
   finalize:
-    needs: [build-macos, build-windows]
+    needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # No `actions/checkout` step on this job — finalize doesn't need the
@@ -2076,14 +2108,15 @@ jobs:
           sentry-cli releases finalize "$RELEASE"
           echo "::notice::Finalized Sentry release $RELEASE"
 
-      # Pull `latest.json` (mac entries) and all Windows `*.msi.sig`
-      # files straight from the draft release. Using assets-on-the-draft
-      # as the handoff (instead of cross-job artifacts) avoids extra
-      # upload/download steps and keeps the source of truth in one
-      # place — the draft itself. Two .sig files now ship: one per
-      # Windows arch (x64, arm64). Tauri's updater key for each entry
-      # is the platform string the in-app client polls for.
-      - name: Extend latest.json with Windows updater entries
+      # Pull `latest.json` (mac entries), all Windows `*.msi.sig`, and the
+      # Linux `*.AppImage.sig` straight from the draft release. Using
+      # assets-on-the-draft as the handoff (instead of cross-job artifacts)
+      # avoids extra upload/download steps and keeps the source of truth in
+      # one place — the draft itself. Three .sig kinds ship: one per Windows
+      # arch (x64, arm64) plus the x64 AppImage (PRODUCT-1387). Tauri's
+      # updater key for each entry is the platform string the in-app client
+      # polls for.
+      - name: Extend latest.json with Windows + Linux updater entries
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -2099,6 +2132,7 @@ jobs:
           gh release download "$GITHUB_REF_NAME" \
             --pattern "$MANIFEST" \
             --pattern '*.msi.sig' \
+            --pattern '*.AppImage.sig' \
             --dir "$tmpdir"
 
           if [ ! -s "$tmpdir/$MANIFEST" ]; then
@@ -2139,12 +2173,35 @@ jobs:
             mv "$tmpdir/latest.merged.json" "$tmpdir/latest.next.json"
           done
 
+          # Same walk for the Linux AppImage sig (PRODUCT-1387). Only x64 is
+          # built, so the platform key is fixed. Fail-closed like Windows: a
+          # missing sig means build-linux broke, not "skip Linux".
+          appimage_sigs=("$tmpdir"/*.AppImage.sig)
+          if [ ${#appimage_sigs[@]} -eq 0 ]; then
+            echo "::error::no *.AppImage.sig in draft release; build-linux must have failed to upload it"
+            exit 1
+          fi
+
+          for SIG_FILE in "${appimage_sigs[@]}"; do
+            APPIMAGE_NAME=$(basename "$SIG_FILE" .sig)
+            APPIMAGE_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$APPIMAGE_NAME"
+            APPIMAGE_SIG=$(cat "$SIG_FILE")
+
+            echo "  + linux-x86_64 ← $APPIMAGE_NAME"
+            jq \
+              --arg sig "$APPIMAGE_SIG" \
+              --arg url "$APPIMAGE_URL" \
+              '.platforms["linux-x86_64"] = {signature: $sig, url: $url}' \
+              "$tmpdir/latest.next.json" > "$tmpdir/latest.merged.json"
+            mv "$tmpdir/latest.merged.json" "$tmpdir/latest.next.json"
+          done
+
           echo "Updated $MANIFEST:"
           cat "$tmpdir/latest.next.json"
 
           mv "$tmpdir/latest.next.json" "$tmpdir/$MANIFEST"
           gh release upload "$GITHUB_REF_NAME" "$tmpdir/$MANIFEST" --clobber
-          echo "::notice::$MANIFEST now advertises macOS + Windows (x64 + arm64) for the in-app updater"
+          echo "::notice::$MANIFEST now advertises macOS + Windows (x64 + arm64) + Linux (x64) for the in-app updater"
 
       # Drop a PostHog annotation marking this release. Every PostHog
       # insight chart shows a vertical line at this timestamp, so any
