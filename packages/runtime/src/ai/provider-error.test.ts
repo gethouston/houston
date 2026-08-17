@@ -1043,6 +1043,24 @@ test("Anthropic 'prompt is too long' → context_overflow, never rate_limited de
   }
 });
 
+test("OpenAI per-string 10MiB cap ('string too long') → context_overflow with null token counts", () => {
+  // Verbatim from PRODUCT-1394 (HOUSTON-APP-56R): pi's unbounded compaction
+  // serialized a 31MB conversation into one content string; OpenAI caps any
+  // single string at 10,485,760 chars. The message carries char counts, not
+  // token counts, so both extractors must stay null (the card omits numbers).
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    message:
+      "Summarization failed: Invalid 'input[0].content[0].text': string too long. Expected a string with maximum length 10485760, but got a string with length 31056249 instead.",
+  });
+  expect(err.kind).toBe("context_overflow");
+  if (err.kind === "context_overflow") {
+    expect(err.context_window_tokens).toBeNull();
+    expect(err.prompt_tokens).toBeNull();
+  }
+});
+
 test("overflow text without numbers still classifies, with null token counts", () => {
   const err = classifyProviderError({
     provider: "amazon-bedrock",
