@@ -220,8 +220,9 @@ test("GET /providers labels WHOSE credential served each acting identity", async
           ? {
               provider,
               kind: "api_key",
-              // AIza-shaped: a served google key of any other shape is the
-              // dead legacy family served-key-guard.ts refuses (HOU-1107).
+              // AIza-shaped: a served google key of the OAuth-material shape
+              // (ya29./eyJ) is the dead legacy family served-key-guard.ts
+              // refuses (HOU-1107).
               access: "AIzaTeamGemini",
               expires: 0,
               accountId: null,

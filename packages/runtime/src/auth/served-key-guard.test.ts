@@ -18,11 +18,18 @@ test("a google api_key that is an OAuth access token reads dead", () => {
   expect(
     servedApiKeyIsDead(served({ access: "eyJhbGciOiJSUzI1NiJ9.x.y" })),
   ).toBe(true);
-  expect(servedApiKeyIsDead(served({ access: "aa" }))).toBe(true);
 });
 
-test("a real Gemini key (AIza…) is never refused", () => {
+test("a real Gemini key is never refused, whatever its format", () => {
+  // AIza standard key.
   expect(servedApiKeyIsDead(served({}))).toBe(false);
+  // AQ. auth key — the format AI Studio issues since 2026 (PRODUCT-1368).
+  expect(
+    servedApiKeyIsDead(served({ access: "AQ.Ab8RN6JkyDLMExampleAuthKey" })),
+  ).toBe(false);
+  // The guard judges deadness (OAuth material), not validity: an unknown
+  // shape is served and judged by Google, never refused from shape alone.
+  expect(servedApiKeyIsDead(served({ access: "aa" }))).toBe(false);
 });
 
 test("the guard is google-only and api_key-only", () => {

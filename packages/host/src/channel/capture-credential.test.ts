@@ -255,3 +255,34 @@ test("a real AIza google api-key export still captures", async () => {
   expect(result).toEqual({ ok: true, provider: "google" });
   expect(stored[0]?.accessToken).toBe("AIzaSyRealKey");
 });
+
+test("a new-format AQ. google auth key captures too (PRODUCT-1368)", async () => {
+  // AI Studio issues AQ.-prefixed auth keys since 2026; only OAuth material
+  // (ya29./eyJ) is refused from shape.
+  const stored: WorkspaceCredential[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        provider: "google",
+        kind: "api_key",
+        key: "AQ.Ab8RN6JkyDLMExampleAuthKey",
+      }),
+    ),
+  );
+  const result = await captureRuntimeCredential({
+    endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
+    credentials: {
+      get: async () => null,
+      put: async (credential) => {
+        stored.push(credential);
+      },
+      remove: async () => {},
+      removeIfAccess: async () => false,
+    },
+    workspaceId: "workspace",
+    provider: "google",
+  });
+  expect(result).toEqual({ ok: true, provider: "google" });
+  expect(stored[0]?.accessToken).toBe("AQ.Ab8RN6JkyDLMExampleAuthKey");
+});
