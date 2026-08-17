@@ -208,6 +208,62 @@ test("locateSkillMd with deepScan: false skips the RECURSIVE scan on a shallow m
   expect(recursiveCalls).toBe(0);
 });
 
+test("locateSkillMd resolves a plugin-marketplace skill via the manifest probe (PRODUCT-1382)", async () => {
+  // The Sentry HOUSTON-APP-4XZ shape: anthropics/knowledge-work-plugins keeps
+  // `daily-briefing` at sales/skills/daily-briefing/SKILL.md. The manifest
+  // probe must resolve it on the preview path (deepScan: false) WITHOUT any
+  // rate-limited api.github.com call. Object-shaped (external) plugin sources
+  // must be skipped, not crash the probe.
+  let apiCalls = 0;
+  const manifest = JSON.stringify({
+    plugins: [
+      { name: "productivity", source: "./productivity" },
+      { name: "external", source: { source: "github", repo: "o/r" } },
+      { name: "sales", source: "./sales" },
+    ],
+  });
+  const md = await locateSkillMd(
+    fakeFetch(
+      (url) => {
+        if (url.includes("api.github.com")) apiCalls++;
+        return null;
+      },
+      rawAt(".claude-plugin/marketplace.json", manifest),
+      rawAt("sales/skills/daily-briefing/SKILL.md", "briefing-body"),
+    ),
+    "owner/repo",
+    "daily-briefing",
+    { deepScan: false },
+  );
+  expect(md).toBe("briefing-body");
+  expect(apiCalls).toBe(0);
+});
+
+test("locateSkillMd falls through to the shallow scan when no marketplace plugin holds the skill", async () => {
+  const manifest = JSON.stringify({
+    plugins: [{ name: "sales", source: "./sales" }],
+  });
+  const md = await locateSkillMd(
+    fakeFetch(
+      rawAt(".claude-plugin/marketplace.json", manifest),
+      (url) =>
+        url.endsWith("git/trees/HEAD")
+          ? jsonRes({
+              tree: [{ path: "daily-briefing-kit", type: "tree", sha: "d1" }],
+            })
+          : null,
+      rawAt(
+        "daily-briefing-kit/SKILL.md",
+        "---\nname: daily-briefing\n---\n\n# Briefing",
+      ),
+    ),
+    "owner/repo",
+    "daily-briefing",
+    { deepScan: false },
+  );
+  expect(md).toBe("---\nname: daily-briefing\n---\n\n# Briefing");
+});
+
 test("locateSkillMd with deepScan: false still succeeds on a common-path hit", async () => {
   const md = await locateSkillMd(
     fakeFetch(rawAt("skills/writing/SKILL.md", "hit")),
