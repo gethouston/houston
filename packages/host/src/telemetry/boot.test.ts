@@ -94,4 +94,46 @@ describe("sendBootReport", () => {
     await sendBootReport({ report, telemetry: boot, log: () => {}, fetchImpl });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
+
+  it("treats an older gateway's 401 (authenticated not-found wall) as done, not an error (HOUSTON-APP-559)", async () => {
+    const boot = new BootTelemetry();
+    const log = vi.fn();
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 401 }));
+    await sendBootReport({
+      report,
+      telemetry: boot,
+      log,
+      fetchImpl,
+      retryDelayMs: 1,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    // Info-level breadcrumb only: no error argument, so severityLog never
+    // reaches console.error → no Sentry event.
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith(
+      "[boot-report] gateway has no ingest yet (401), skipping",
+    );
+  });
+
+  it("still gives up loudly on any other rejection (retry, then error)", async () => {
+    const boot = new BootTelemetry();
+    const log = vi.fn();
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 500 }));
+    await sendBootReport({
+      report,
+      telemetry: boot,
+      log,
+      fetchImpl,
+      retryDelayMs: 1,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledWith(
+      "[boot-report] rejected",
+      expect.any(Error),
+    );
+    expect(log).toHaveBeenCalledWith(
+      "[boot-report] giving up after retry",
+      expect.any(Error),
+    );
+  });
 });

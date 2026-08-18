@@ -17,8 +17,16 @@ export interface BootReportOptions {
  * ready (HOU-1011). Pods scale to zero, so Prometheus never scrapes a boot —
  * the gateway folds these reports into its own /metrics histograms instead.
  * One retry, then give up loudly: a lost report costs one data point, never
- * the boot (mirrors the usage sampler's fire-and-forget posture; a 404 is an
- * older gateway that doesn't serve the ingest yet).
+ * the boot (mirrors the usage sampler's fire-and-forget posture).
+ *
+ * Deploy-order tolerance: an older gateway that doesn't mount the ingest yet
+ * answers from its authenticated not-found fallback, and a pod bearer is not a
+ * user session — so "no route" surfaces as 401, not 404 (HOUSTON-APP-559:
+ * 104 pods × 2 attempts in the 40s between the engine roll and the gateway
+ * roll). Both mean "nothing to report to" and neither heals in a 5s retry, so
+ * both skip quietly. A real pod-token mismatch is not hidden by this: the same
+ * token is exercised loudly by every other pod route (credentials, usage,
+ * turnlog) on the same boot.
  */
 export async function sendBootReport(opts: BootReportOptions): Promise<void> {
   const { url, orgSlug, agentSlug, podToken } = opts.report;
@@ -40,8 +48,10 @@ export async function sendBootReport(opts: BootReportOptions): Promise<void> {
         body,
       });
       if (res.ok) return;
-      if (res.status === 404) {
-        opts.log("[boot-report] gateway has no ingest yet (404), skipping");
+      if (res.status === 404 || res.status === 401) {
+        opts.log(
+          `[boot-report] gateway has no ingest yet (${res.status}), skipping`,
+        );
         return;
       }
       opts.log("[boot-report] rejected", new Error(`status ${res.status}`));
