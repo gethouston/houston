@@ -277,6 +277,15 @@ export function isNvidiaFunctionGated(
 const NVIDIA_BROAD_FALLBACK = "meta/llama-3.3-70b-instruct";
 
 /**
+ * The Moonshot model offered as the one-click switch target when a pinned
+ * Moonshot model answers `Not found the model` (a retired kimi-k2 preview,
+ * or kimi-k3 on an account that has not made the top-up that unlocks it):
+ * kimi-k2.6 is listed by /v1/models even on an un-funded account, so it is
+ * the broadest-served Kimi model we have evidence for (PRODUCT-1411).
+ */
+const MOONSHOT_BROAD_FALLBACK = "kimi-k2.6";
+
+/**
  * Map a failed model request to a typed `ProviderError`, then stamp WHOSE
  * credential ran the turn (`stampCredentialScope`).
  *
@@ -418,14 +427,25 @@ function classify(input: ProviderErrorInput): ProviderError {
       reason: modelUnavailableReason(lower),
       // Offer a concrete switch target only when we know one AND it isn't the
       // failing model itself (a base Copilot model never reports unavailable).
-      suggested_fallback:
-        provider === "github-copilot" && model !== COPILOT_BASE_FALLBACK
-          ? COPILOT_BASE_FALLBACK
-          : null,
+      suggested_fallback: broadFallback(provider, model),
       message,
     };
   }
   return { kind: "unknown", provider, raw_excerpt: excerpt(message) };
+}
+
+/**
+ * The provider's broadly-served switch target for a `model_unavailable` card,
+ * or null when we know none (or the failing model IS the fallback).
+ */
+function broadFallback(provider: string, model: string): string | null {
+  const fallback =
+    provider === "github-copilot"
+      ? COPILOT_BASE_FALLBACK
+      : provider === "moonshotai"
+        ? MOONSHOT_BROAD_FALLBACK
+        : null;
+  return fallback && fallback !== model ? fallback : null;
 }
 
 function isAuth(lower: string, status: number | null): boolean {

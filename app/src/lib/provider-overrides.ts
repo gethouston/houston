@@ -741,9 +741,10 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay as you go",
     installUrl: "https://platform.moonshot.ai",
     apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
-    // Moonshot's own migration target for the retired kimi-k2 previews, served
-    // to every account incl. newly registered ones — the model auto-selected
-    // on connect. Twin of the runtime's `UNCURATED_DEFAULT_MODEL.moonshotai`
+    // Moonshot's own migration target for the retired kimi-k2 previews — the
+    // model auto-selected on connect. Unlocked by the same >= $1 first top-up
+    // Moonshot requires before any request works, so every account that can
+    // chat has it. Twin of the runtime's `UNCURATED_DEFAULT_MODEL.moonshotai`
     // (the key-verifier probe); keep them in sync (PRODUCT-1411).
     defaultModel: "kimi-k3",
     models: {

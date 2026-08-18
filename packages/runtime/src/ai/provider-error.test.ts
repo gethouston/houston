@@ -1153,8 +1153,22 @@ test("Moonshot 404 'Not found the model' → model_unavailable (PRODUCT-1411)", 
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable") {
     expect(err.reason).toBe("unknown");
-    expect(err.suggested_fallback).toBeNull();
+    // One-click switch to the broadest-served Kimi model (listed by
+    // /v1/models even on an un-funded account).
+    expect(err.suggested_fallback).toBe("kimi-k2.6");
   }
+});
+
+test("Moonshot gate on the broad fallback itself offers no fallback", () => {
+  const err = classifyProviderError({
+    provider: "moonshotai",
+    model: "kimi-k2.6",
+    message:
+      '404: {"message":"Not found the model kimi-k2.6 or Permission denied","type":"resource_not_found_error"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
 });
 
 test("embedded code extraction stays out of 1xx-3xx (HOU-1156)", () => {

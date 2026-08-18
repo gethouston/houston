@@ -222,10 +222,13 @@ function saveSettings(s: Settings) {
  *   still lists them, and the first row IS kimi-k2-0711-preview — every
  *   Moonshot connect answered `404 Not found the model kimi-k2-0711-preview
  *   or Permission denied` and read as "couldn't reach Moonshot" (PRODUCT-1411,
- *   Sentry HOUSTON-APP-54G). kimi-k3 is Moonshot's own migration target and
- *   is served to every account, including newly registered ones. Twin of the
- *   frontend's `PROVIDER_OVERRIDES.moonshotai.defaultModel` (auto-select on
- *   connect reads THAT); keep them in sync.
+ *   Sentry HOUSTON-APP-54G). kimi-k3 is Moonshot's own migration target;
+ *   it unlocks on the same >= $1 first top-up Moonshot requires before ANY
+ *   request works (an un-funded account answers `429 suspended due to
+ *   insufficient balance` on every model — which the verifier already reads
+ *   as proof of the key), so every account that can chat at all has it.
+ *   Twin of the frontend's `PROVIDER_OVERRIDES.moonshotai.defaultModel`
+ *   (auto-select on connect reads THAT); keep them in sync.
  */
 const UNCURATED_DEFAULT_MODEL: Record<string, string> = {
   nvidia: "meta/llama-3.3-70b-instruct",
