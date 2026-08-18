@@ -167,7 +167,7 @@ export function providerAuthMethod(id: string): ProviderAuthMethod {
 export function providerDefaultModel(id: string): string {
   const curated = PROVIDERS.find((p) => p.id === id);
   if (curated) return curated.defaultModel;
-  return firstCatalogModel(id) ?? config.codexModel;
+  return uncuratedDefaultModel(id) ?? config.codexModel;
 }
 
 /** The first model id pi lists for a provider, or undefined when it has none. */
@@ -209,27 +209,47 @@ function saveSettings(s: Settings) {
 
 /**
  * Uncurated providers whose alphabetically-first catalog model is a bad
- * default. NVIDIA serves each hosted model per ACCOUNT (HOU-890): the
- * catalog's first row (google/gemma-3-12b-it) answers `404 Function not
- * found for account` for many accounts, so defaulting to it broke both key
- * verification and the first chat; meta/llama-3.3-70b-instruct is served to
- * every account we have evidence from (keep in sync with the classifier's
- * NVIDIA_BROAD_FALLBACK and the verifier's NVIDIA_VERIFY_FALLBACKS).
+ * default — the id the key VERIFIER probes and the first chat runs on, so a
+ * dead first row breaks connect itself:
+ * - NVIDIA serves each hosted model per ACCOUNT (HOU-890): the catalog's
+ *   first row (google/gemma-3-12b-it) answers `404 Function not found for
+ *   account` for many accounts; meta/llama-3.3-70b-instruct is served to
+ *   every account we have evidence from (keep in sync with the classifier's
+ *   NVIDIA_BROAD_FALLBACK and the verifier's NVIDIA_VERIFY_FALLBACKS).
+ * - Moonshot AI RETIRED the whole kimi-k2 preview series on 2026-05-25
+ *   (platform.kimi.ai/docs/models: kimi-k2-0711-preview, -0905-preview,
+ *   -turbo-preview, -thinking, -thinking-turbo), but pi-ai's baked catalog
+ *   still lists them, and the first row IS kimi-k2-0711-preview — every
+ *   Moonshot connect answered `404 Not found the model kimi-k2-0711-preview
+ *   or Permission denied` and read as "couldn't reach Moonshot" (PRODUCT-1411,
+ *   Sentry HOUSTON-APP-54G). kimi-k3 is Moonshot's own migration target and
+ *   is served to every account, including newly registered ones. Twin of the
+ *   frontend's `PROVIDER_OVERRIDES.moonshotai.defaultModel` (auto-select on
+ *   connect reads THAT); keep them in sync.
  */
 const UNCURATED_DEFAULT_MODEL: Record<string, string> = {
   nvidia: "meta/llama-3.3-70b-instruct",
+  moonshotai: "kimi-k3",
 };
+
+/**
+ * The default model for an uncurated pi provider: the hand-picked override
+ * when one exists (and pi still lists it), else the first model pi lists;
+ * undefined when pi has no catalog for it.
+ */
+function uncuratedDefaultModel(provider: string): string | undefined {
+  const preferred = UNCURATED_DEFAULT_MODEL[provider];
+  if (preferred && piModelIds(provider).includes(preferred)) return preferred;
+  return firstCatalogModel(provider);
+}
 
 function defaultModel(provider: ProviderId): string {
   const found = PROVIDERS.find((p) => p.id === provider);
   if (found) return found.defaultModel;
   // Uncurated pi provider: no configured default, so start on the hand-picked
-  // override when one exists (and pi still lists it), else the first model pi
-  // lists, rather than hard-failing the picker/turn.
-  const preferred = UNCURATED_DEFAULT_MODEL[provider];
-  if (preferred && piModelIds(provider).includes(preferred)) return preferred;
-  const first = firstCatalogModel(provider);
-  if (first) return first;
+  // override / first pi model rather than hard-failing the picker/turn.
+  const preferred = uncuratedDefaultModel(provider);
+  if (preferred) return preferred;
   throw new Error(`unknown provider: ${provider}`);
 }
 

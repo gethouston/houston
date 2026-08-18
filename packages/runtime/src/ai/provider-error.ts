@@ -145,6 +145,15 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // needs a region opt-in, so the switch-model card is the honest one
   // (HOU-1156). The type name carries the `region_restricted` reason.
   "regionerror",
+  // Moonshot AI (api.moonshot.ai / .cn) answers a retired or unknown model id
+  // with 404 `{"message":"Not found the model <id> or Permission denied",
+  // "type":"resource_not_found_error"}`. Verified live: Moonshot checks the
+  // key BEFORE the model (a bad key answers 401 invalid_authentication_error
+  // even for a garbage model id), so this body proves the credential and only
+  // the MODEL is gone — the switch-model card, and at connect time a verified
+  // key rather than "could not verify" (PRODUCT-1411: the whole kimi-k2
+  // preview series was retired 2026-05-25 while pi's catalog still lists it).
+  "not found the model",
 ];
 
 /**

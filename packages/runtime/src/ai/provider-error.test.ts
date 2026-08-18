@@ -1138,6 +1138,25 @@ test("opencode RegionError → model_unavailable / region_restricted (HOU-1156)"
     expect(err.reason).toBe("region_restricted");
 });
 
+test("Moonshot 404 'Not found the model' → model_unavailable (PRODUCT-1411)", () => {
+  // Verbatim api.moonshot.ai body for a retired id (the whole kimi-k2 preview
+  // series was discontinued 2026-05-25 while pi's catalog still lists it).
+  // Moonshot checks the key BEFORE the model (a bad key answers 401 even for
+  // a garbage model id), so this proves the credential: switch-model card,
+  // never the report-bug `unknown` card — and at connect time a verified key.
+  const err = classifyProviderError({
+    provider: "moonshotai",
+    model: "kimi-k2-0711-preview",
+    message:
+      '404: {"message":"Not found the model kimi-k2-0711-preview or Permission denied","type":"resource_not_found_error"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable") {
+    expect(err.reason).toBe("unknown");
+    expect(err.suggested_fallback).toBeNull();
+  }
+});
+
 test("embedded code extraction stays out of 1xx-3xx (HOU-1156)", () => {
   // A stray non-HTTP application code must never veto the auth branch.
   expect(extractHttpStatus('{"code": 200, "message": "ok-ish"}')).toBeNull();

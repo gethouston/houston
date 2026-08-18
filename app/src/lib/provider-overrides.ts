@@ -203,6 +203,18 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gemma-4-26b-a4b-it",
     "gemma-4-31b-it",
   ]),
+  // Moonshot AI retired the whole kimi-k2 preview series on 2026-05-25
+  // (platform.kimi.ai/docs/models: kimi-k2-0711-preview, -0905-preview,
+  // -turbo-preview, -thinking, -thinking-turbo) and closed kimi-k2.5 to new
+  // accounts ahead of its 2026-08-31 sunset, but pi-ai's catalog still lists
+  // them all — picking one answers `404 Not found the model` (PRODUCT-1411).
+  // Only what Moonshot serves today. Presentation-only, like every set here.
+  moonshotai: new Set([
+    "kimi-k3",
+    "kimi-k2.7-code",
+    "kimi-k2.7-code-highspeed",
+    "kimi-k2.6",
+  ]),
 };
 
 /** Whether `modelId` may surface for `providerId` (a Houston display id). */
@@ -729,9 +741,12 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay as you go",
     installUrl: "https://platform.moonshot.ai",
     apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
+    // Moonshot's own migration target for the retired kimi-k2 previews, served
+    // to every account incl. newly registered ones — the model auto-selected
+    // on connect. Twin of the runtime's `UNCURATED_DEFAULT_MODEL.moonshotai`
+    // (the key-verifier probe); keep them in sync (PRODUCT-1411).
+    defaultModel: "kimi-k3",
     models: {
-      // Backported into pi 0.80.6's catalog by the moonshot-k3 patch
-      // (packages/host/src/providers/moonshot-k3-catalog-patch.ts).
       "kimi-k3": {
         label: "Kimi K3",
         description: "Moonshot's frontier model. Long context, vision.",
