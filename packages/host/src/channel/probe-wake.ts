@@ -1,5 +1,10 @@
 import type { ServerResponse } from "node:http";
-import type { ChannelCtx, RuntimeEndpoint, RuntimeLauncher } from "../ports";
+import {
+  type ChannelCtx,
+  LauncherClosedError,
+  type RuntimeEndpoint,
+  type RuntimeLauncher,
+} from "../ports";
 import { json } from "../routes/http";
 
 /**
@@ -53,7 +58,8 @@ export async function wakeForDispatch(
   res: ServerResponse,
 ): Promise<RuntimeEndpoint | null> {
   const wake = launcher.ensureAwake(ctx.agent);
-  if (method !== "GET" || !PROBE_ROUTES.has(rest)) return wake;
+  if (method !== "GET" || !PROBE_ROUTES.has(rest))
+    return wake.catch((err) => rejectIfClosed(err, res));
 
   // A boot that fails after this request has been answered has no one left to
   // tell; the next probe re-triggers the spawn and surfaces the failure then.
@@ -68,6 +74,8 @@ export async function wakeForDispatch(
   try {
     const endpoint = await Promise.race([wake, tooSlow]);
     if (endpoint) return endpoint;
+  } catch (err) {
+    return rejectIfClosed(err, res);
   } finally {
     clearTimeout(timer);
   }
@@ -77,5 +85,17 @@ export async function wakeForDispatch(
     { error: "the agent's runtime is still starting, try again shortly" },
     { "Retry-After": "2" },
   );
+  return null;
+}
+
+/**
+ * A host mid-shutdown refuses to spawn (launcher/process.ts, PRODUCT-1399).
+ * That is not a runtime failure but a "not here, not now": answer 503 +
+ * Retry-After so the client retries against the replacement pod (or the next
+ * app start) instead of rendering a 500. Any other rejection is the caller's.
+ */
+function rejectIfClosed(err: unknown, res: ServerResponse): null {
+  if (!(err instanceof LauncherClosedError)) throw err;
+  json(res, 503, { error: err.message }, { "Retry-After": "2" });
   return null;
 }
