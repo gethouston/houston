@@ -28,7 +28,7 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
-import { isAgentGoneError } from "./agent-gone";
+import { isAgentGoneError, partitionAgentGoneReads } from "./agent-gone";
 import { isAgentNameConflictError } from "./agent-name-conflict";
 import {
   blockWriteWhileWarming,
@@ -159,8 +159,9 @@ export async function surfaceEngineError(
   label: string,
   err: unknown,
   context?: Record<string, unknown>,
+  options?: Pick<EngineCallOptions, "silence">,
 ): Promise<void> {
-  await surfaceError(label, err, context);
+  await surfaceError(label, err, context, options);
 }
 
 async function surfaceError(
@@ -1216,19 +1217,41 @@ export const tauriConversations = {
     // so `call()` raises no toast for it — the query layer owns that surface
     // (one toast per incomplete sweep, plus a bounded re-sweep). Only a sweep
     // where EVERY agent failed rejects, and that keeps the toast + capture.
+    //
+    // A PASSIVE read like every other roster-driven one (`passiveAgentRead`):
+    // an agent the server no longer knows (`404 agent not found` — the local
+    // roster is stale after a space switch or a delete on another device) is
+    // not a failed read of OUR agent. Its 404 is silenced and the roster
+    // heals; in a partial sweep the gone agents leave `failedAgents` (nothing
+    // to re-sweep, nothing to report — HOUSTON-APP-4WR / 58R / 55E), and a
+    // sweep where EVERY agent is gone rejects quietly (the caller's surface
+    // silences it too) so the cache keeps the last real rows for the roster
+    // reload that follows. Every real failure keeps its loud path.
     return call<AllConversationsSweep>(
       "list_all_conversations",
       async () => {
         const { conversations, failedAgents } =
           await getEngine().listAllConversations(reachable);
+        const { gone, failed } = partitionAgentGoneReads(failedAgents);
+        if (gone.length > 0) {
+          logger.warn(
+            `[engine:list_all_conversations] ${gone.length} agent(s) gone from the roster: ${gone
+              .map((g) => g.agentPath)
+              .join(", ")}`,
+          );
+          healStaleRosterFromError(gone[0].reason);
+        }
         return {
           items: conversations.map(conversationToRaw),
-          failedAgents,
+          failedAgents: failed,
         };
       },
       undefined,
-      options,
-    );
+      { silence: isAgentGoneError, ...options },
+    ).catch((err) => {
+      healStaleRosterFromError(err);
+      throw err;
+    });
   },
 };
 

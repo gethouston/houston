@@ -103,3 +103,22 @@ export function makeAgentGoneHealTrigger(
     void heal(currentWorkspaceId(), true);
   };
 }
+
+/**
+ * Split a cross-agent sweep's failed reads into the agents the server no
+ * longer knows (roster stale — see {@link isAgentGoneError}) and the real
+ * failures. A gone agent's read is not "missions unread": there is nothing to
+ * re-sweep or report, only a roster to heal, so the sweep's recovery layer
+ * (`hooks/queries/all-conversations-sweep.ts`) must never see it as a partial
+ * failure — that made every stale roster a red toast, a Sentry report, and
+ * three doomed re-sweeps (HOUSTON-APP-4WR / 58R / 55E).
+ */
+export function partitionAgentGoneReads<T extends { reason: unknown }>(
+  failed: readonly T[],
+): { gone: T[]; failed: T[] } {
+  const gone: T[] = [];
+  const rest: T[] = [];
+  for (const read of failed)
+    (isAgentGoneError(read.reason) ? gone : rest).push(read);
+  return { gone, failed: rest };
+}
