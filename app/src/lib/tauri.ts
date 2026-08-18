@@ -266,9 +266,11 @@ async function surfaceError(
   // Expected environment state, not a bug: the gateway's "engine unavailable"
   // 503 — the agent's engine pod is provisioning or cold-starting (HOU-1114: a
   // just-installed store agent's background writes hit this and showed the red
-  // bug pair while the agent was in fact starting fine). The request succeeds
-  // once the pod wakes; surface it as one deduped "waking up" notice, no
-  // Sentry. The raw diagnostic is already in the log tail above.
+  // bug pair while the agent was in fact starting fine) — or its "engine proxy
+  // failed" 502, the pod restarting under an engine roll (PRODUCT-1403). The
+  // request succeeds once the pod listens again; surface it as one deduped
+  // "waking up" notice, no Sentry. The raw diagnostic is already in the log
+  // tail above.
   if (isEngineWakingError(err)) {
     const { showEngineWakingToast } = await import("./error-toast");
     showEngineWakingToast(label, message);

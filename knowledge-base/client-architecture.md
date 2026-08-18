@@ -144,8 +144,16 @@ ONE place the gateway's 5xx bodies are parsed, turning prose into the typed
 | Gateway answer | Reason | Client behavior |
 | --- | --- | --- |
 | `503 {"error":"engine unavailable","detail":"agent is waking"}` (+`Retry-After`) | `engine-waking` | 4 extra attempts, `WAKE_RETRY_DELAYS_MS` = 15s of client patience on top of the gateway's own 8s `ensure-awake` leg per attempt. No toast unless the budget is spent. |
+| `502 {"error":"engine proxy failed","detail":<dial error>}` | `pod-unreachable` | Same wake budget. The gateway's per-agent proxy exhausted its dial ladder against a pod it believes is running — the pod is restarting under an engine roll (a deploy re-rolls every agent pod). Every deploy day used to produce a burst of these on the passive per-agent reads, each captured as a bug for a pod that was up seconds later (PRODUCT-1403). |
 | `503 {"error":"shared skills not configured"}` | `feature-absent` | Answered on the first attempt — retrying a deployment shape is pure waste. |
 | any other 502/503/504, or a transport drop | `handoff` | The original 2 blind retries (~2s, PRODUCT-731). |
+
+When the budget IS spent, the app-side classifier `app/src/lib/engine-waking-error.ts`
+(`isEngineWakingError`) recognizes the same two pod-not-reachable answers (the
+`engine unavailable` 503 and the `engine proxy failed` 502) and routes them to the
+quiet "your agent is waking up" surface — no Sentry capture — everywhere an engine
+error surfaces (`lib/tauri.ts` `surfaceError`, the partial cross-agent sweep). Any
+other 502/503 body keeps the loud path.
 
 Two rules that fall out of this and are easy to get wrong:
 - **`Retry-After` is unreadable.** The gateway sends no
