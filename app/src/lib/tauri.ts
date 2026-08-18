@@ -312,8 +312,13 @@ export const tauriWorkspaces = {
     call<Workspace>("create_workspace", () =>
       getEngine().createWorkspace({ name }),
     ),
-  delete: (id: string) =>
-    call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
+  delete: (id: string, options?: EngineCallOptions) =>
+    call<void>(
+      "delete_workspace",
+      () => getEngine().deleteWorkspace(id),
+      undefined,
+      options,
+    ),
   rename: (id: string, newName: string) =>
     call<void>("rename_workspace", async () => {
       await getEngine().renameWorkspace(id, { newName });
