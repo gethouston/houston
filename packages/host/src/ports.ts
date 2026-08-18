@@ -68,6 +68,20 @@ export class ApiKeyRejectedError extends Error {
   }
 }
 
+/**
+ * The launcher is shutting down (pod termination, app quit) and refuses to
+ * spawn: a runtime born now would be orphaned by the exiting host and, on
+ * a serve-mode pod, boot into a host whose listener is already closed
+ * (PRODUCT-1399). Routes answer 503 so the client retries against the
+ * replacement pod / the next app start.
+ */
+export class LauncherClosedError extends Error {
+  constructor() {
+    super("the host is shutting down; retry shortly");
+    this.name = "LauncherClosedError";
+  }
+}
+
 /** Persistence for workspaces + agents. Impls: MemoryWorkspaceStore, PgWorkspaceStore. */
 export interface WorkspaceStore {
   /** The user's personal workspace, creating it on first access (lazy provisioning). */
