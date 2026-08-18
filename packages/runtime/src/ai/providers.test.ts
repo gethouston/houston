@@ -97,6 +97,26 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("nope")).toBe("gpt-5.5");
 });
 
+test("uncurated providers with a hand-picked default skip pi's dead first row (PRODUCT-1411)", () => {
+  // Moonshot AI: pi's catalog still lists the kimi-k2 preview series (first
+  // row kimi-k2-0711-preview) that Moonshot retired on 2026-05-25 — every key
+  // probe / first chat on it answered `404 Not found the model`. The default
+  // is Moonshot's migration target, and it is ONE table for every read path
+  // (`modelFor` — the verifier probe — and `providerDefaultModel` — the turn
+  // path with no saved model — both derive from `uncuratedDefaultModel`).
+  expect(providerDefaultModel("moonshotai")).toBe("kimi-k3");
+  const m = safeGetModel(
+    "moonshotai",
+    providerDefaultModel("moonshotai"),
+    false,
+  ) as { provider?: string; id?: string };
+  expect(m.provider).toBe("moonshotai");
+  expect(m.id).toBe("kimi-k3");
+  // NVIDIA (HOU-890) rides the same table — the turn path used to ignore it
+  // and default to the per-account-gated first row.
+  expect(providerDefaultModel("nvidia")).toBe("meta/llama-3.3-70b-instruct");
+});
+
 test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {
   const ids = PROVIDERS.map((p) => p.id);
   expect(ids).toContain("minimax");

@@ -1,6 +1,7 @@
 import { ok } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  isModelVisible,
   PROVIDER_ID_RENAME,
   PROVIDER_OVERRIDES,
   VISIBLE_MODELS,
@@ -120,5 +121,34 @@ describe("VISIBLE_MODELS stay in sync with the shipped pi-ai catalog", () => {
         );
       });
     }
+  }
+});
+
+describe("PROVIDER_OVERRIDES defaultModel is offered and visible", () => {
+  // The override's `defaultModel` is what auto-selects the moment a key
+  // verifies (`resolveAutoSelect`), so it must be a model the shipped catalog
+  // offers AND one the picker shows — a retired or hidden default sends the
+  // first chat straight into "model not found" (PRODUCT-1411: Moonshot's
+  // catalog-first row was a model Moonshot had already retired).
+  for (const [houstonId, override] of Object.entries(PROVIDER_OVERRIDES)) {
+    const modelId = override.defaultModel;
+    if (!modelId) continue;
+    const piId = houstonToPi[houstonId] ?? houstonId;
+    // Houston-injected SKUs (MiniMax's token plan) are legitimately absent
+    // from pi's catalog; the overrides guard above already pins those.
+    if (!HOUSTON_INJECTED_MODELS.has(`${piId}/${modelId}`)) {
+      it(`${houstonId} default ${modelId} exists in the shipped catalog`, () => {
+        ok(
+          shippedModel(piId, modelId) != null,
+          `PROVIDER_OVERRIDES["${houstonId}"].defaultModel "${modelId}" is not offered by the shipped catalog (provider "${piId}").`,
+        );
+      });
+    }
+    it(`${houstonId} default ${modelId} is visible in the picker`, () => {
+      ok(
+        isModelVisible(houstonId, modelId),
+        `PROVIDER_OVERRIDES["${houstonId}"].defaultModel "${modelId}" is hidden by VISIBLE_MODELS["${houstonId}"].`,
+      );
+    });
   }
 });
