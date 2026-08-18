@@ -16,8 +16,13 @@ export interface BootReportOptions {
  * Push the boot-span ledger to the gateway once, right after this pod became
  * ready (HOU-1011). Pods scale to zero, so Prometheus never scrapes a boot —
  * the gateway folds these reports into its own /metrics histograms instead.
- * One retry, then give up loudly: a lost report costs one data point, never
- * the boot (mirrors the usage sampler's fire-and-forget posture).
+ *
+ * Failure posture (mirrors the usage sampler's fire-and-forget): a lost report
+ * costs one data point, never the boot. Transient failures (network, 5xx) get
+ * ONE retry; only the final give-up is an error entry (a Sentry event) and it
+ * names the real cause — the per-attempt failures are breadcrumbs, otherwise
+ * every gateway roll fired an error per pod for a blip the retry then healed
+ * (PRODUCT-1405). Deterministic rejections (other 4xx) are never retried.
  *
  * Deploy-order tolerance: an older gateway that doesn't mount the ingest yet
  * answers from its authenticated not-found fallback, and a pod bearer is not a
@@ -33,6 +38,7 @@ export async function sendBootReport(opts: BootReportOptions): Promise<void> {
   const target = `${url.replace(/\/+$/, "")}/v1/pod/boot-report/${encodeURIComponent(orgSlug)}/${encodeURIComponent(agentSlug)}`;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const body = JSON.stringify(opts.telemetry.reportPayload());
+  let lastFailure = "unknown";
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0)
       await new Promise((r) =>
@@ -54,10 +60,34 @@ export async function sendBootReport(opts: BootReportOptions): Promise<void> {
         );
         return;
       }
-      opts.log("[boot-report] rejected", new Error(`status ${res.status}`));
+      lastFailure = `status ${res.status}`;
+      // Any other 4xx is deterministic (payload rejected) — retrying can't help.
+      if (res.status < 500) break;
     } catch (err) {
-      opts.log("[boot-report] send failed", err);
+      lastFailure = describeFetchError(err);
     }
+    if (attempt === 0)
+      opts.log(`[boot-report] send failed (${lastFailure}), retrying once`);
   }
-  opts.log("[boot-report] giving up after retry", new Error("send failed"));
+  opts.log(
+    "[boot-report] giving up",
+    new Error(`boot report not accepted: ${lastFailure}`),
+  );
+}
+
+/**
+ * undici wraps every network failure in a bare `TypeError: fetch failed` and
+ * hides the reason (ECONNREFUSED, EAI_AGAIN, ...) in `cause`; surface it so the
+ * give-up entry says what actually happened.
+ */
+function describeFetchError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const cause = err.cause;
+  const causeText =
+    cause instanceof Error
+      ? cause.message
+      : cause === undefined
+        ? undefined
+        : String(cause);
+  return causeText ? `${err.message}: ${causeText}` : err.message;
 }
