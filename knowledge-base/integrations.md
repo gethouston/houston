@@ -62,23 +62,21 @@ Two providers live behind the port: **Composio** (the hosted catalog, this doc) 
 
 ### Auth configs — which apps are connectable, and enabling one that is not
 
-Whether a toolkit in the catalog can actually be CONNECTED depends on our Composio
-project having an ENABLED **auth config** for it. Both adapters resolve one lazily on
-the first connect (`composio-auth-config.ts` here; `internal/integrations/authconfig.go`
-in the gateway, same algorithm): reuse an enabled config if the project has one, else
-create one, managed OAuth first (`use_composio_managed_auth`, Composio's own app: gmail,
-googlesheets, googledrive, googlecalendar, slack…), else the toolkit's first
-user-collectible scheme (API key / bearer, asked for on the hosted connect page). A
-toolkit that is **OAuth-only with NO Composio-managed app** cannot be auto-created:
+Whether a toolkit in the catalog can actually be CONNECTED depends on the Composio
+project having an ENABLED **auth config** for it. The direct adapter resolves one lazily
+on the first connect (`composio-auth-config.ts`): reuse an enabled config if the project
+has one, else create one, managed OAuth first (`use_composio_managed_auth`, Composio's
+own app: gmail, googlesheets, googledrive, googlecalendar, slack…), else the toolkit's
+first user-collectible scheme (API key / bearer, asked for on the hosted connect page).
+A toolkit that is **OAuth-only with NO Composio-managed app** cannot be auto-created:
 connect fails 400 `toolkit_oauth_unavailable` (HOU-1110) — the app sits in the catalog
-but nobody can connect it. Google Forms was the canonical case (PRODUCT-1409): live
-metadata `composio_managed_auth_schemes: []`, `auth_config_details: [OAUTH2]`, zero auth
-configs in the project.
+but nobody can connect it. Google Forms is the canonical case (PRODUCT-1409): live
+metadata `composio_managed_auth_schemes: []`, `auth_config_details: [OAUTH2]`, no auth
+config in the project.
 
-**Runbook — enable such a toolkit for every user.** Nothing in code changes; once an
-enabled auth config exists, the next connect reuses it (per-process cache, no restart
-needed). Prod and staging are DIFFERENT Composio projects (`gateway-composio` secret in
-each cluster's `houston-gateway` ns), so repeat step 3 per environment.
+**Runbook — enable such a toolkit for every user of a deployment.** Nothing in code
+changes; once an enabled auth config exists, the next connect reuses it (per-process
+cache, no restart needed). Each Composio project (each deployment key) needs its own.
 
 1. **Read what Composio wants**: `GET /api/v3/toolkits/<slug>` with the project key →
    `auth_config_details[].fields.auth_config_creation` lists required creds
@@ -88,15 +86,15 @@ each cluster's `houston-gateway` ns), so repeat step 3 per environment.
    (Google Forms' default includes `auth/drive`, a Google RESTRICTED scope that
    forces a CASA security assessment; the tools work with `forms.body`,
    `forms.body.readonly`, `forms.responses.readonly` + `drive.file`).
-2. **Register a developer OAuth app on the vendor side** (Console UI only — no API):
-   for Google, GCP project `gethouston` (owns the "Houston" consent screen), enable the
-   API (`gcloud services enable forms.googleapis.com --project gethouston`), add the
-   scopes on the consent screen, create a *Web application* OAuth client whose
-   authorized redirect URIs are BOTH `https://backend.composio.dev/api/v3.1/toolkits/auth/callback`
-   (Composio docs) and `https://backend.composio.dev/api/v1/auth-apps/add` (the toolkit
-   metadata default). Sensitive scopes on a Production consent screen mean Google's
-   OAuth app verification (else the "unverified app" interstitial + 100-user cap) —
-   submit it; the parallel cheaper ask is Composio adding managed auth for the toolkit.
+2. **Register a developer OAuth app on the vendor side** (vendor console UI): for
+   Google, in the Cloud project that owns your OAuth consent screen, enable the API
+   (Forms API for `googleforms`), add the scopes on the consent screen, and create a
+   *Web application* OAuth client whose authorized redirect URIs are BOTH
+   `https://backend.composio.dev/api/v3.1/toolkits/auth/callback` (Composio docs) and
+   `https://backend.composio.dev/api/v1/auth-apps/add` (the toolkit metadata default).
+   Sensitive scopes on a Production consent screen mean Google's OAuth app
+   verification (else the "unverified app" interstitial + 100-user cap) — submit it;
+   the parallel cheaper ask is Composio adding managed auth for the toolkit.
 3. **Create the auth config in Composio** (dashboard "use your own developer
    credentials", or the API — secrets via env, never in a file):
    `curl -X POST https://backend.composio.dev/api/v3/auth_configs -H "x-api-key: $COMPOSIO_API_KEY" -H 'content-type: application/json' -d '{"toolkit":{"slug":"googleforms"},"auth_config":{"type":"use_custom_auth","name":"houston-googleforms","authScheme":"OAUTH2","credentials":{"client_id":"'"$CID"'","client_secret":"'"$CSECRET"'","scopes":"https://www.googleapis.com/auth/forms.body,https://www.googleapis.com/auth/forms.body.readonly,https://www.googleapis.com/auth/forms.responses.readonly,https://www.googleapis.com/auth/drive.file"}}}'`
