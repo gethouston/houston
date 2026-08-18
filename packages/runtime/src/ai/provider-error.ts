@@ -600,8 +600,22 @@ function modelUnavailableReason(
     : "unknown";
 }
 
+/**
+ * Overflow shapes pi-ai's pattern list misses. OpenAI enforces a hard
+ * 10,485,760-char cap on any single content string; an over-cap request is
+ * rejected with `Invalid 'input[0].content[0].text': string too long.
+ * Expected a string with maximum length 10485760, …` — the conversation
+ * outgrew what one request can carry, so the context-overflow card (bigger
+ * window / fresh chat) is the honest one, never the report-bug `unknown`
+ * (PRODUCT-1394; the message carries no token numbers, so both extractors
+ * below return null and the card omits them).
+ */
+const EXTRA_OVERFLOW_PATTERNS = [/string too long/i];
+
 function isContextOverflow(message: string): boolean {
-  return getOverflowPatterns().some((p) => p.test(message));
+  return [...getOverflowPatterns(), ...EXTRA_OVERFLOW_PATTERNS].some((p) =>
+    p.test(message),
+  );
 }
 
 /**
