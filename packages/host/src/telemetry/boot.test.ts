@@ -68,11 +68,13 @@ describe("sendBootReport", () => {
     ]);
   });
 
-  it("retries once on failure, then gives up loudly", async () => {
+  it("retries once on a network failure, then gives up loudly with the cause", async () => {
     const boot = new BootTelemetry();
     const log = vi.fn();
     const fetchImpl = vi.fn(async () => {
-      throw new Error("refused");
+      throw new TypeError("fetch failed", {
+        cause: new Error("connect ECONNREFUSED 10.0.0.1:80"),
+      });
     });
     await sendBootReport({
       report,
@@ -82,23 +84,66 @@ describe("sendBootReport", () => {
       retryDelayMs: 1,
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(log).toHaveBeenCalledWith(
-      "[boot-report] giving up after retry",
-      expect.any(Error),
+    // Attempt 1 is a breadcrumb (no error object), not a Sentry event.
+    expect(log).toHaveBeenNthCalledWith(
+      1,
+      "[boot-report] send failed (fetch failed: connect ECONNREFUSED 10.0.0.1:80), retrying once",
+    );
+    // Only the give-up carries an error, and it names the real cause.
+    expect(log).toHaveBeenNthCalledWith(
+      2,
+      "[boot-report] giving up",
+      expect.objectContaining({
+        message:
+          "boot report not accepted: fetch failed: connect ECONNREFUSED 10.0.0.1:80",
+      }),
+    );
+    expect(log).toHaveBeenCalledTimes(2);
+  });
+
+  it("a transient failure healed by the retry logs no error at all", async () => {
+    const boot = new BootTelemetry();
+    const log = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    await sendBootReport({
+      report,
+      telemetry: boot,
+      log,
+      fetchImpl,
+      retryDelayMs: 1,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0]).toHaveLength(1);
+  });
+
+  it("retries a 5xx once, then gives up with the status", async () => {
+    const boot = new BootTelemetry();
+    const log = vi.fn();
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 503 }));
+    await sendBootReport({
+      report,
+      telemetry: boot,
+      log,
+      fetchImpl,
+      retryDelayMs: 1,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenLastCalledWith(
+      "[boot-report] giving up",
+      expect.objectContaining({
+        message: "boot report not accepted: status 503",
+      }),
     );
   });
 
-  it("treats an older gateway's 404 as done (no retry)", async () => {
-    const boot = new BootTelemetry();
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }));
-    await sendBootReport({ report, telemetry: boot, log: () => {}, fetchImpl });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-  });
-
-  it("treats an older gateway's 401 (authenticated not-found wall) as done, not an error (HOUSTON-APP-559)", async () => {
+  it("does not retry a deterministic 4xx (payload rejected) but still gives up loudly", async () => {
     const boot = new BootTelemetry();
     const log = vi.fn();
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 401 }));
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 400 }));
     await sendBootReport({
       report,
       telemetry: boot,
@@ -107,33 +152,26 @@ describe("sendBootReport", () => {
       retryDelayMs: 1,
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
-    // Info-level breadcrumb only: no error argument, so severityLog never
-    // reaches console.error → no Sentry event.
     expect(log).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledWith(
-      "[boot-report] gateway has no ingest yet (401), skipping",
+      "[boot-report] giving up",
+      expect.objectContaining({
+        message: "boot report not accepted: status 400",
+      }),
     );
   });
 
-  it("still gives up loudly on any other rejection (retry, then error)", async () => {
+  it.each([
+    404, 401,
+  ])("treats an older gateway's %i as done (no retry, no error)", async (status) => {
     const boot = new BootTelemetry();
     const log = vi.fn();
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 500 }));
-    await sendBootReport({
-      report,
-      telemetry: boot,
-      log,
-      fetchImpl,
-      retryDelayMs: 1,
-    });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const fetchImpl = vi.fn(async () => new Response(null, { status }));
+    await sendBootReport({ report, telemetry: boot, log, fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledWith(
-      "[boot-report] rejected",
-      expect.any(Error),
-    );
-    expect(log).toHaveBeenCalledWith(
-      "[boot-report] giving up after retry",
-      expect.any(Error),
+      `[boot-report] gateway has no ingest yet (${status}), skipping`,
     );
   });
 });
