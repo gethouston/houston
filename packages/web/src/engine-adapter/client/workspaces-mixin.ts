@@ -4,12 +4,27 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import {
   listWorkspaces as cpListWorkspaces,
+  deleteOrg,
   retryTransientRead,
 } from "../control-plane";
 import { syntheticWorkspace } from "../synthetic";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { SidebarLayoutStore } from "./sidebar-layout-store";
+
+/** Exactly `org:` + 16 lowercase hex chars — the C8 team-space id grammar. */
+const TEAM_WORKSPACE_ID = /^org:([a-f0-9]{16})$/;
+
+/**
+ * The org slug behind a team workspace id, or `null` for the personal row (the
+ * synthetic "default" or any opaque non-`org:` id). Mirrors the app's
+ * `orgSlugFromWorkspaceId` (`app/src/lib/space-id.ts`); the adapter keeps its
+ * own copy because `packages/web` never imports from `app/`.
+ */
+export function teamSlugFromWorkspaceId(id: string): string | null {
+  const match = TEAM_WORKSPACE_ID.exec(id);
+  return match ? match[1] : null;
+}
 
 export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
   class Workspaces extends Base {
@@ -62,7 +77,21 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       const { provider, model } = await this.ctx.activeOld();
       return syntheticWorkspace(provider, model);
     }
-    async deleteWorkspace(): Promise<void> {}
+    // Delete a team space (PRODUCT-1410). Only an `org:<slug>` row is
+    // deletable, and only through the gateway: the personal workspace is the
+    // synthetic row every deployment keeps (a hosted personal space goes away
+    // with the account, never on its own), and a local/self-host list holds
+    // nothing but that row. Off-cloud, or asked for the personal row, this
+    // THROWS — the old empty stub let the UI drop the row locally and call it
+    // deleted while the space lived on and re-listed on the next refresh.
+    async deleteWorkspace(id: string): Promise<void> {
+      const slug = teamSlugFromWorkspaceId(id);
+      if (slug === null)
+        throw new Error("Your personal workspace can't be deleted.");
+      if (!this.ctx.cp)
+        throw new Error("Deleting a team needs the hosted gateway.");
+      await deleteOrg(this.ctx.cp, slug);
+    }
     async setWorkspaceLocale(
       _id: string,
       locale: string | null,

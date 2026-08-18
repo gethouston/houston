@@ -135,6 +135,39 @@ every client gate here is cosmetic.
 - `POST /v1/orgs` is NOT idempotent: a lost response is reconciled via `listOrgs`
   (`reconcileCreatedTeam`), never blind-retried.
 
+## Delete-team (Settings → Danger Zone)
+
+- **Route** — `DELETE /v1/orgs/:slug` (cross-org, like the rest of `/v1/orgs`; the
+  gateway is the sole enforcer). `204` = the space and everything in it is gone.
+  Rejections are FLAT `{error, code}`: `404 org_not_found` (unknown, or not the
+  caller's), `403 personal_space` (a personal space goes with the account, never on
+  its own), plain `403` (not the owner), `409 has_members` (teammates remain: remove
+  them first), `409 subscription_active` (a live subscription: cancel it from Billing
+  first). Conservative v1: only a solo owner with no live subscription can delete.
+- **Feature-detect** — `capabilities.workspaceDelete` (gateway-injected, like
+  `apiKeys` / `agentTeams`). The Danger Zone
+  (`app/src/components/settings/sections/danger.tsx`) renders only when the flag is
+  on AND the active space is a team (`isTeamWorkspace`) AND the caller owns it
+  (`canDeleteWorkspace`, PRODUCT-1247). Desktop / self-host / a gateway that predates
+  the route: no section at all — the one personal workspace was never deletable, and
+  the old always-disabled "create another workspace first" row is gone with it.
+- **Wire** — `deleteOrg` (`packages/web/src/engine-adapter/cp/spaces-billing.ts`),
+  `deleteWorkspace(id)` on the workspaces mixin (`org:<slug>` → `deleteOrg`; the
+  personal row and an off-cloud client THROW), app wrapper `tauriWorkspaces.delete`.
+  **PRODUCT-1410:** the mixin used to be an empty stub, so the row left the local
+  store while the space lived on and re-listed on the next refresh.
+- **After the 204** — the workspace store's `delete` applies the same
+  `planSpacesRefresh` merge as the live-spaces poll with the row removed
+  (`stores/workspace-refresh-apply.ts`): the deleted space was active ⇒ `reselect`
+  onto the default space, persist `last_workspace_id`, `setActiveOrg`, and reset the
+  space-scoped caches; then the section reloads agents and `openHome()`s so the switch
+  is visible. Error taxonomy `classifyWorkspaceDeleteError` /
+  `isExpectedWorkspaceDeleteError` (`app/src/lib/workspace-delete-model.ts`); the
+  expected codes are silenced from `call()` and toasted plainly
+  (`settings:dangerZone.blocked.*`).
+- Tests: `app/tests/workspace-delete-model.test.ts`,
+  `packages/web/tests/workspace-delete.test.ts`.
+
 ## Invite inbox (the invitee side)
 
 Auto-join fires only on an account's FIRST-EVER contact with the gateway, so for an
