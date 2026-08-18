@@ -112,9 +112,10 @@ export function showUpdateCheckStuckToast(
 }
 
 /**
- * Surface a gateway "engine unavailable" 503 (HOU-1114) as ONE informational
- * "your agent is waking up" toast. The agent's engine pod is provisioning (a
- * just-installed store agent) or cold-starting; every per-agent call fails the
+ * Surface a gateway "engine unavailable" 503 (HOU-1114) or "engine proxy
+ * failed" 502 (PRODUCT-1403) as ONE informational "your agent is waking up"
+ * toast. The agent's engine pod is provisioning (a just-installed store
+ * agent), cold-starting, or restarting under a roll; every per-agent call fails the
  * same way until it wakes, so the toast dedupes on its constant displayed body
  * and the burst reads as one state, not a storm. No Sentry capture and no
  * green "report sent" toast: nothing in Houston broke and the request
