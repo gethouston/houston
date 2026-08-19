@@ -66,7 +66,7 @@ A packaged build (or `pnpm tauri dev` with no host URL) spawns the staged sideca
 2. Needs a credential → the credential IS the switch. Key present = on; key absent = loud, named OFF with the remedy. Never layer a boolean on top.
 3. Deliberately off (e.g. analytics in dev) → a committed `.env.development` line with a reason. Personal toggles → `.env.local`, never CLI flags.
 
-### Error surfacing (HOU-1245): silent to the user, never silent to us
+### Error surfacing: silent to the user, never silent to us
 - An unexpected error shows the user NOTHING, but MUST reach every reporting path — frontend log, PostHog `app_error_shown`, Sentry. Route it through `showErrorToast` (report-only despite its name) or `reportError`/`logAndReportError` (`app/src/lib/{error-toast,error-report}.ts`); never a bare `console.error`, never an empty catch.
 - Toasts are reserved for states the user can act on, with authored `t()` copy — never a raw `err.message` or a generic red box: expected business states (`showExpectedStateToast`), device offline / host unreachable (`showConnectivityErrorToast`), engine pod waking (`showEngineWakingToast`), plus call-site copy like "name already taken". Connectivity and pod-waking states skip Sentry: nothing in Houston broke.
 - Banned swallowing, both languages: TS `.catch(() => null/[]/{})`, catch-without-report, log-only catches, fire-and-forget promises in handlers; Rust `let _ =`/`.ok()`/`unwrap_or*` on user-initiated ops, log-and-continue `Err(_)` arms, `unwrap()`/`expect()` outside tests. The one Rust exception: `tracing::error!` from emit/watcher callbacks with no UI thread. When unsure, report — don't swallow.
@@ -120,6 +120,6 @@ Read `/DESIGN.md` FIRST and hold it in context (tokens, motion, hard rules, bann
 ## Git, secrets, permissions
 
 - `main` is protected: PRs only, never `git reset --hard` or force-push on `main`. Never merge without explicit instruction.
-- Branches: `fix|feat/PRODUCT-<id>-<short-slug>` (no personal handles). Commits and PR titles: conventional `type(scope): summary (PRODUCT-<id>)` — types `feat|fix|docs|chore|refactor|test`; scopes are areas like `host`, `shell`, `chat`.
+- Branches: `fix|feat/<issue-id>-<short-slug>` (no personal handles). Commits and PR titles: conventional `type(scope): summary` — types `feat|fix|docs|chore|refactor|test`; scopes are areas like `host`, `shell`, `chat`.
 - Secrets (signing identities, API keys, issuer UUIDs): env vars only — `option_env!()` in Rust, env in CI. Never literals in committed files.
 - Confirm before destructive ops, hard-to-reverse actions (force-push, dep removal), shared-state changes (push, PR create, Slack/email), and third-party uploads. One approval ≠ approval in all contexts.
