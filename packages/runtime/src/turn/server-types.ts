@@ -16,4 +16,6 @@ export interface TurnServerDeps {
   fetchImpl?: typeof fetch;
   heartbeatIntervalMs?: number;
   maxHydrateBytes?: number;
+  /** Test seam: transient-status retry delays for transcript publication. */
+  transcriptRetryDelaysMs?: number[];
 }

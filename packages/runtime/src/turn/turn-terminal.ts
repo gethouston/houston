@@ -7,9 +7,13 @@ export function turnTerminalFrame(
   outcome: TurnOutcome,
   turnId: string,
   poolWritesOutOfScope: number,
+  transcriptSkipped?: "route_absent",
 ): WireFrame {
-  const diagnostic =
-    poolWritesOutOfScope > 0 ? { poolWritesOutOfScope } : undefined;
+  const fields = {
+    ...(poolWritesOutOfScope > 0 ? { poolWritesOutOfScope } : {}),
+    ...(transcriptSkipped ? { transcriptSkipped } : {}),
+  };
+  const diagnostic = Object.keys(fields).length > 0 ? fields : undefined;
   if (outcome.error) {
     // SAFETY: pooled-turn diagnostics are an additive internal transport field;
     // public WireFrame consumers still receive the required error message.

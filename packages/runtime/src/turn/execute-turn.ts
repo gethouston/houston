@@ -9,7 +9,8 @@ import { releaseConversation, runWithConversationScope } from "../session/bus";
 import { openSSE } from "../transport/sse";
 import { startClaimHeartbeat } from "./claim-heartbeat";
 import type { TurnServerDeps } from "./server-types";
-import { prepareTurnFilesystem, syncTurnFilesystem } from "./turn-filesystem";
+import { finishTurnDurability } from "./turn-durability";
+import { prepareTurnFilesystem } from "./turn-filesystem";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
 import { createTurnModelRuntime } from "./turn-runtime";
@@ -149,36 +150,23 @@ export async function executeTurn(
         }
       }
 
-      let poolWritesOutOfScope = 0;
-      await heartbeat?.checkpoint();
-      if (heartbeat?.fenced) {
-        outcome = { error: "claim_fenced" };
-      } else {
-        // Durability BEFORE the terminal frame, and REGARDLESS of how the
-        // runtime fared: a failed turn may still have made workspace progress
-        // (tool writes before the provider died), and dropping it silently
-        // was never the contract. Only a fenced claim skips the sync — that
-        // pod is no longer the writer. A sync failure surfaces as (part of)
-        // the turn's error, never a quiet done.
-        try {
-          poolWritesOutOfScope = await syncTurnFilesystem({
-            store: resolved.store,
-            prefix: resolved.prefix,
-            filesystem,
-            conversationId: turn.conversationId,
-            claimed: Boolean(turn.claim),
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          outcome = {
-            error: outcome.error
-              ? `${outcome.error}; sync failed: ${message}`
-              : `workspace sync failed: ${message}`,
-          };
-        }
-      }
-      emit(turnTerminalFrame(outcome, turnId, poolWritesOutOfScope));
+      const durable = await finishTurnDurability({
+        deps,
+        turn: { ...turn, turnId },
+        filesystem,
+        resolved,
+        heartbeat,
+        outcome,
+      });
+      outcome = durable.outcome;
+      emit(
+        turnTerminalFrame(
+          outcome,
+          turnId,
+          durable.poolWritesOutOfScope,
+          durable.transcriptSkipped,
+        ),
+      );
       await turnLog?.flush();
     }
   } catch (error) {
