@@ -1,3 +1,4 @@
+import type { OrgSummary } from "@houston-ai/engine-client";
 import { shareErrorCode } from "./share-via-team.ts";
 import type { Workspace } from "./types.ts";
 
@@ -54,6 +55,37 @@ export function classifyWorkspaceDeleteError(
  */
 export function isExpectedWorkspaceDeleteError(err: unknown): boolean {
   return classifyWorkspaceDeleteError(err) !== "unknown";
+}
+
+/**
+ * Can the Danger Zone assume the gateway will accept the delete, and so switch
+ * the user away with a success toast BEFORE the server round-trip
+ * (PRODUCT-1426)? This decides the UX shape only, never the outcome — the
+ * gateway stays the sole enforcer, so a false `false` merely means the slower
+ * server-first flow, while a false `true` is caught by the store's rollback.
+ *
+ * Mirrors the gateway's two 409s over a fresh `GET /v1/orgs` row:
+ * - `has_members` rejects when any OTHER member row exists → require
+ *   `memberCount <= 1` (the caller is the owner, so the one member is them).
+ * - `subscription_active` rejects when a Stripe subscription object exists in
+ *   a non-terminal state. `billing.interval` is set exactly when a Stripe
+ *   object exists, and the effective status can hide one (a solo team with a
+ *   trialing/unpaid Stripe object reads `free`), so require no `interval` AND
+ *   a status that is not `active`/`past_due`. `enterprise` bills off-platform
+ *   — unverifiable, so never optimistic.
+ *
+ * Anything unverifiable (org not listed, billing absent) → `false`.
+ */
+export function canDeleteOptimistically(org: OrgSummary | undefined): boolean {
+  if (org === undefined || org.kind !== "team") return false;
+  if (org.memberCount > 1) return false;
+  const billing = org.billing;
+  if (billing === undefined || billing.plan !== "team") return false;
+  return (
+    billing.status !== "active" &&
+    billing.status !== "past_due" &&
+    billing.interval === undefined
+  );
 }
 
 /**

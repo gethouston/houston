@@ -18,6 +18,7 @@ import { resolveActiveWorkspace } from "../lib/workspace-switch";
 import {
   pendingWorkspaceDeletes,
   runWorkspaceDelete,
+  type WorkspaceDeleteMode,
 } from "./workspace-delete";
 import { applyRefreshPlan } from "./workspace-refresh-apply";
 
@@ -46,13 +47,18 @@ interface WorkspaceState {
   refreshWorkspaces: () => Promise<void>;
   setCurrent: (ws: Workspace) => void;
   create: (name: string) => Promise<Workspace>;
-  /** Delete a team space for good (PRODUCT-1410). Optimistic (PRODUCT-1426):
-   *  the row leaves the list and, when it was the active space, the store
-   *  lands on the default space and re-pins the gateway BEFORE the server
-   *  round-trip — the returned promise settles once the server confirms.
-   *  Rejections restore the row in place and propagate (surfaced by the wire
-   *  layer / the caller's `silence` predicate). */
-  delete: (id: string, options?: EngineCallOptions) => Promise<void>;
+  /** Delete a team space for good (PRODUCT-1410). Defaults to `server-first`
+   *  (the row leaves the list only once the space is really gone); a caller
+   *  that pre-checked the gateway will accept (`canDeleteOptimistically`)
+   *  passes `optimistic` to switch away BEFORE the server round-trip, with the
+   *  row restored in place on rejection (PRODUCT-1426). Rejections propagate
+   *  either way (surfaced by the wire layer / the caller's `silence`
+   *  predicate). */
+  delete: (
+    id: string,
+    options?: EngineCallOptions,
+    mode?: WorkspaceDeleteMode,
+  ) => Promise<void>;
   rename: (id: string, newName: string) => Promise<void>;
   /** Set (or clear, with null) the workspace's UI-locale override. */
   setLocale: (id: string, locale: string | null) => Promise<void>;
@@ -149,7 +155,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     return ws;
   },
 
-  delete: (id, options) => runWorkspaceDelete(id, options, get, set),
+  delete: (id, options, mode = "server-first") =>
+    runWorkspaceDelete(id, options, get, set, mode),
 
   rename: async (id, newName) => {
     await tauriWorkspaces.rename(id, newName);
