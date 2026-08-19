@@ -29,4 +29,4 @@ events, …) plus the wire types. Desktop-app bootstrap (reads
 - Wire types + zod: `packages/protocol/src/wire.ts` (protocol v3).
 - The host that serves the contract: `packages/host` (`@houston/host`).
 - The maintenance contract across surfaces (SDK / tokens / inventory / parity):
-  `knowledge-base/client-architecture.md`.
+  root `CLAUDE.md` → "Client-surface changes (SDK first)".

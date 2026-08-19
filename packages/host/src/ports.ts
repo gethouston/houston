@@ -327,8 +327,7 @@ export interface RuntimeChannel {
    * token, and a recycled pod reconnects from the central store. On a
    * desktop/self-host host the central entry is an inert durability marker
    * (never served, never refreshed). The multi-tenant per-turn Cloud Run
-   * channel REFUSES this (Anthropic is off there). Lifecycle map:
-   * knowledge-base/anthropic-credentials.md.
+   * channel REFUSES this (Anthropic is off there).
    */
   saveClaudeOAuthCredential(
     ctx: ChannelCtx,

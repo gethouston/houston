@@ -95,7 +95,7 @@ save "Connect", getKey "Get your API key"), `providers:signOutConfirm.*`, card s
 `providers:card.*` ("Connected"/"Not connected"/"Connecting..."/"Coming soon"), toasts
 `providers:toast.*`.
 
-## 3. Integrations (Composio; KB houston/knowledge-base/integrations.md, contracts C1/C4)
+## 3. Integrations (Composio; contracts C1/C4)
 
 Surfaces: global page (Connected apps grid + card→per-agent access sheet; always-visible
 "Connect more apps" catalog: A-Z ~1000 apps, category dropdown, search, load-more) and a per-agent

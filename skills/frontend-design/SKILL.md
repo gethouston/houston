@@ -11,8 +11,8 @@ Design like the lead at a studio that gives every product an identity no one els
 
 Before any pixel:
 
-1. Read **`/DESIGN.md`** (repo root) FIRST — the compact, agent-facing spec you hold in context (identity, hard rules, token quick-reference, motion, banned defaults, polish checklist, component inventory). Then **`knowledge-base/design-system.md`** for the surface you touch — the deeper narrative layer (rationale, detailed component/animation guidance, futuristic-theme internals).
-2. Token VALUES are authoritative in **`packages/design-tokens/tokens/*.json`** (semantic `--ht-*` alias layer, light + dark). Never a hardcoded hex/spacing literal — a visual change is a token edit (design-system.md → Change procedure).
+1. Read **`/DESIGN.md`** (repo root) FIRST — the agent-facing spec you hold in context (identity, hard rules, token quick-reference, motion, banned defaults, polish checklist, component inventory). Then read the existing components of the surface you touch.
+2. Token VALUES are authoritative in **`packages/design-tokens/tokens/*.json`** (semantic `--ht-*` alias layer, light + dark). Never a hardcoded hex/spacing literal — a visual change is a token edit.
 3. Search before building: `@houston-ai/*` showcase, existing `app/src` components, shadcn/ui registry. Reuse beats invention (`houston/CLAUDE.md` → Search before building).
 
 **The design system wins on any conflict.** This skill adds *process*; it never overrides a documented token, rule, or pattern.

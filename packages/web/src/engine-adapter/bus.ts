@@ -45,8 +45,8 @@ export function emitEvent(type: string, data: unknown): void {
 
 /**
  * Write-through invalidation echo — adapter-synthesizer behavior, app-bus
- * specific (NOT SDK core; see knowledge-base/client-architecture.md, procedure
- * a).
+ * specific (NOT SDK core; see root CLAUDE.md → Client-surface changes,
+ * procedure a).
  *
  * The hosted UI's TanStack caches (board status, config, routines, skills,
  * learnings, …) invalidate ONLY on events from the host's global `/v1/events`

@@ -11,8 +11,8 @@ import { writeClaudeOAuthCredentialFile } from "./credentials-file";
 import { claudeCredentialsFile } from "./paths";
 
 /**
- * The pod-shared Claude login dir is TEAM material (HOU-976 §2.6.5, and
- * knowledge-base/anthropic-credentials.md trap #4): one file per pod, read by
+ * The pod-shared Claude login dir is TEAM material (HOU-976 §2.6.5): one file
+ * per pod, read by
  * every member's SDK subprocess and self-refreshed in place. A MEMBER's
  * credential must never reach it — that would both hand their refresh-token
  * family to the rest of the space and create a second rotator for it.

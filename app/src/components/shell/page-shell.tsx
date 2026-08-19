@@ -8,7 +8,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
  * reusable widget, so they carry no inventory/parity churn. Props-only, no store
  * imports. The canon is the AI hub's structure: a centered `px-8` column (two
  * named widths — see {@link PageContainer}) with a 24px normal-weight title.
- * See knowledge-base/design-system.md.
+ * See /DESIGN.md.
  */
 
 /**

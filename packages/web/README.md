@@ -22,7 +22,7 @@ final cutover, but normal convergence work uses host mode.
 
 Run `pnpm dev` from the repo root — the ONE entry point. Its `web` pane serves
 this package on http://localhost:1430 against the local Go gateway (cloud
-profile: real sign-in, multiplayer). See `knowledge-base/dev-loop.md`.
+profile: real sign-in, multiplayer).
 Do not run this package's `dev` script directly; outside the pane's env it
 boots a differently-configured app, which is the drift `pnpm dev` exists to
 prevent.

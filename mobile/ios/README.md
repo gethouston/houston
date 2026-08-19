@@ -110,8 +110,8 @@ lookup against `Houston/Localizable.xcstrings`. Keys mirror the Swift keypath
 desktop locale files exactly (PARITY is law); where a desktop key exists, es/pt
 reuse the desktop translations verbatim. Plurals use catalog plural variations —
 never `count == 1` branches in Swift. Adding a string = add the `Strings` member
-AND the catalog entry with all three languages in the same change. Full
-conventions: `knowledge-base/i18n.md` (iOS section).
+AND the catalog entry with all three languages in the same change. Desktop
+i18n conventions: root `CLAUDE.md` → Internationalization.
 
 ## Troubleshooting
 

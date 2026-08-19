@@ -10,7 +10,7 @@ Read this section. If your PR doesn't fit, we'll close it without arguing.
 2. **One open PR at a time** per contributor. Open the next one only after the previous merges or closes.
 3. **Scratch your own itch.** The PR must fix a bug you hit or add a feature you actually use in Houston. "I thought the repo could use X" isn't a reason. Speculative improvements are work for us, not value.
 4. **AI-generated is fine, you reviewing the diff isn't optional.** Use Claude Code, Cursor, whatever. But you read the diff first. If the PR body has to justify why to ship it ("not really an upgrade but…"), don't ship it. PRs that read as raw autonomous-loop output get closed.
-5. **No importing external frameworks.** Don't add your own methodology, RFCs, or doctrine to Houston's `knowledge-base/` or `docs/`. Link from your repo to ours, not the other way around.
+5. **No importing external frameworks.** Don't add your own methodology, RFCs, or doctrine to Houston's `docs/`. Link from your repo to ours, not the other way around.
 6. **Stacked PRs get one shot.** If the base PR doesn't land, the stack is dead. Don't chain four deep.
 
 If you're unsure whether something fits, open an issue and ask. Cheaper than a closed PR for both of us.
@@ -24,13 +24,13 @@ pnpm install
 cargo check --workspace
 ```
 
-Before changing architecture or shared behavior, read [`CLAUDE.md`](CLAUDE.md) and the relevant notes in [`knowledge-base/`](knowledge-base/). They describe the current host/runtime design, package boundaries, and repository conventions.
+Before changing architecture or shared behavior, read [`CLAUDE.md`](CLAUDE.md), [`CONTEXT.md`](CONTEXT.md), and [`BOUNDARY.md`](BOUNDARY.md). They describe the current host/runtime design, package boundaries, and repository conventions; the code and its tests are the source of truth beyond that.
 
 ## Development
 
 ```bash
 # Run Houston — THE one dev entry point: doctor, then the full stack via
-# mprocs (desktop app, web app, host, local cloud). See knowledge-base/dev-loop.md
+# mprocs (desktop app, web app, host, local cloud).
 pnpm dev
 
 # Run just the TypeScript host local profile (the engine)

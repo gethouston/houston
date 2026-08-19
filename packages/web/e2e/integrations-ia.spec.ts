@@ -26,7 +26,7 @@ import { adminRow } from "./support/settings-nav";
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (advertise `multiplayer` + `teams` + a `role`)
- * control. See `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
+ * control. See `@houston/fake-host` README + `packages/web/e2e/README.md`.
  */
 
 /** Teams owner: integrations on, multiplayer + Teams, top role. */

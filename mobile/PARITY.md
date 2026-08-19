@@ -3,11 +3,11 @@
 > Extracted from the desktop app 2026-07-03 (all claims cited file:line at extraction time).
 > HARD REQUIREMENT (founder): mobile uses exactly the same statuses, names, and affordances
 > as desktop. This file is the enforceable contract for the iOS surfaces; update it via the
-> normal inventory/procedures flow (knowledge-base/client-architecture.md) when desktop changes.
+> normal inventory/procedures flow (root `CLAUDE.md` → Client-surface changes) when desktop changes.
 > Locale strings come from app/src/locales/en/*.json; es/pt mirror the same keys.
 > iOS ships en/es/pt natively: copy lives in `Strings*.swift` backed by
 > `Houston/Localizable.xcstrings`; en mirrors desktop en/*.json exactly, and es/pt reuse the
-> desktop translations verbatim wherever a desktop key exists (see knowledge-base/i18n.md, iOS section).
+> desktop translations verbatim wherever a desktop key exists (see mobile/ios/README.md, i18n section).
 
 ## 1. Status vocabulary
 

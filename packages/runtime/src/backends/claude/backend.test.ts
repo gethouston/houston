@@ -173,8 +173,8 @@ test("Houston host secrets never reach the subprocess env", () => {
 });
 
 /**
- * The READ-side mirror of the credentials-file scope guard (HOU-976, and
- * knowledge-base/anthropic-credentials.md traps #4 + #6): `CLAUDE_CONFIG_DIR` is
+ * The READ-side mirror of the credentials-file scope guard (HOU-976):
+ * `CLAUDE_CONFIG_DIR` is
  * the POD-SHARED login dir holding the TEAM's `.credentials.json`. Handing it to
  * the SDK with no personal token in the env makes a member's turn authenticate as
  * the team AND lets the SDK self-refresh the team's refresh-token family — a
