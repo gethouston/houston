@@ -17,6 +17,7 @@ test("resolves the single standing agent and creates its runtime data dir", asyn
   await expect(resolveTurnLayout(storeRoot)).resolves.toEqual({
     kind: "standing",
     workspaceDir: agentDir,
+    workspaceRel: "workspaces/W/A",
     dataDir: join(agentDir, ".houston", "runtime"),
     dataRel: "workspaces/W/A/.houston/runtime",
   });
@@ -35,6 +36,7 @@ test.each([
   await expect(resolveTurnLayout(storeRoot)).resolves.toEqual({
     kind: "cloudrun",
     workspaceDir: join(storeRoot, "workspace"),
+    workspaceRel: "workspace",
     dataDir: join(storeRoot, "data"),
     dataRel: "data",
   });

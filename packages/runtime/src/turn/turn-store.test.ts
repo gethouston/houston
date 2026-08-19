@@ -12,6 +12,7 @@ const claim = {
 };
 const turn = {
   gcsPrefix: "ws/acme/helper",
+  conversationId: "conversation-1",
   hostToken: "host-token",
   claim,
 } as TurnRequest;

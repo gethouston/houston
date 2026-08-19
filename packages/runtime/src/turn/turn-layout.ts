@@ -20,6 +20,7 @@ export class TurnSetupError extends Error {
 export interface TurnLayout {
   kind: "standing" | "cloudrun";
   workspaceDir: string;
+  workspaceRel: string;
   dataDir: string;
   dataRel: string;
 }
@@ -87,6 +88,7 @@ export async function resolveTurnLayout(
     return {
       kind: "standing",
       workspaceDir,
+      workspaceRel: storeRelative(storeRoot, workspaceDir),
       dataDir,
       dataRel: storeRelative(storeRoot, dataDir),
     };
@@ -102,7 +104,13 @@ export async function resolveTurnLayout(
       mkdir(workspaceDir, { recursive: true }),
       mkdir(dataDir, { recursive: true }),
     ]);
-    return { kind: "cloudrun", workspaceDir, dataDir, dataRel: "data" };
+    return {
+      kind: "cloudrun",
+      workspaceDir,
+      workspaceRel: "workspace",
+      dataDir,
+      dataRel: "data",
+    };
   }
   throw new TurnSetupError(
     "layout_unexpected",

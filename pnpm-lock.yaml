@@ -527,6 +527,9 @@ importers:
       '@google-cloud/storage':
         specifier: 7.21.0
         version: 7.21.0
+      '@houston/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol

@@ -27,7 +27,7 @@ export interface HttpObjectStoreOptions {
   /** Mutable lease token shared by every agent-prefix request in this boot. */
   fence?: { token?: string };
   /** Per-conversation mutation authority for a pooled worker turn. */
-  claim?: { token: string; bootId: string };
+  claim?: { token: string; bootId: string; conversationId: string };
 }
 
 export class HttpObjectStore implements ObjectStore {
@@ -38,7 +38,9 @@ export class HttpObjectStore implements ObjectStore {
   private readonly retryDelaysMs: number[] | undefined;
   private readonly bootId: string | undefined;
   private readonly fence: { token?: string } | undefined;
-  private readonly claim: { token: string; bootId: string } | undefined;
+  private readonly claim:
+    | { token: string; bootId: string; conversationId: string }
+    | undefined;
 
   constructor(opts: HttpObjectStoreOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
@@ -200,6 +202,7 @@ export class HttpObjectStore implements ObjectStore {
     } else if (this.claim) {
       headers["X-Houston-Claim-Token"] = this.claim.token;
       headers["X-Houston-Claim-Boot"] = this.claim.bootId;
+      headers["X-Houston-Claim-Conversation"] = this.claim.conversationId;
     }
     return headers;
   }

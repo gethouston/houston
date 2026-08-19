@@ -8,10 +8,12 @@ export function turnTerminalFrame(
   turnId: string,
   poolWritesOutOfScope: number,
   transcriptSkipped?: "route_absent",
+  activityDocSkipped?: "route_absent",
 ): WireFrame {
   const fields = {
     ...(poolWritesOutOfScope > 0 ? { poolWritesOutOfScope } : {}),
     ...(transcriptSkipped ? { transcriptSkipped } : {}),
+    ...(activityDocSkipped ? { activityDocSkipped } : {}),
   };
   const diagnostic = Object.keys(fields).length > 0 ? fields : undefined;
   if (outcome.error) {

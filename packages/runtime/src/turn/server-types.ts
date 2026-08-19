@@ -18,4 +18,6 @@ export interface TurnServerDeps {
   maxHydrateBytes?: number;
   /** Test seam: transient-status retry delays for transcript publication. */
   transcriptRetryDelaysMs?: number[];
+  /** Test seam: transient-status retry delays for activity doc publication. */
+  activityDocRetryDelaysMs?: number[];
 }

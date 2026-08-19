@@ -63,7 +63,11 @@ export function resolveTurnStore(
     store: new HttpObjectStore({
       baseUrl: `${root}/v1/pod/store/${encodeURIComponent(org)}/${encodeURIComponent(agent)}`,
       token: turn.hostToken,
-      claim: { token: turn.claim.token, bootId: turn.claim.bootId },
+      claim: {
+        token: turn.claim.token,
+        bootId: turn.claim.bootId,
+        conversationId: turn.conversationId,
+      },
       ...(config.fetchImpl ? { fetchImpl: config.fetchImpl } : {}),
     }),
     prefix: "",

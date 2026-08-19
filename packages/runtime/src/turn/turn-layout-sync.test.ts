@@ -92,8 +92,18 @@ test.each([
   const runTurn: typeof runPiTurn = async (layout) => {
     await seed(layout.dataDir, "conversations/c1.json", '{"after":1}');
     await seed(layout.dataDir, "sessions/c1/state.json", "session");
+    await seed(
+      layout.workspaceDir,
+      ".houston/activity/activity.json",
+      '[{"id":"a1","title":"Plan","status":"running"}]',
+    );
+    await seed(
+      layout.workspaceDir,
+      ".houston/activity/activity.schema.json",
+      '{"type":"array"}',
+    );
     await seed(layout.workspaceDir, "result.txt", "workspace");
-    await seed(layout.workspaceDir, ".houston/routines.json", "routines");
+    await seed(layout.workspaceDir, ".houston/routines/routines.json", "[]");
     return {};
   };
   const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
@@ -115,16 +125,25 @@ test.each([
   expect(
     await readFile(join(prefixRoot, dataRel, "sessions/c1/state.json"), "utf8"),
   ).toBe("session");
+  expect(
+    await readFile(
+      join(prefixRoot, workspaceRel, ".houston/activity/activity.json"),
+      "utf8",
+    ),
+  ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
   expect(keys).not.toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
   expect(keys).not.toContain(
-    `ws/w1/agent-1/${workspaceRel}/.houston/routines.json`,
+    `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
+  );
+  expect(keys).not.toContain(
+    `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
   );
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
-    data: { poolWritesOutOfScope: 2 },
+    data: { poolWritesOutOfScope: 3 },
   });
   expect(log).toHaveBeenCalledWith(
-    "[turn] pool_writes_out_of_scope=2 prefix=ws/w1/agent-1 conversation=c1",
+    "[turn] pool_writes_out_of_scope=3 prefix=ws/w1/agent-1 conversation=c1",
   );
   log.mockRestore();
 });

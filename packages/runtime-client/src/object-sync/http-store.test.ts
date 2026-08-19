@@ -166,7 +166,11 @@ test("claim-backed mutations send claim headers instead of lease headers", async
   const store = new HttpObjectStore({
     baseUrl: "https://store.test/v1/pod/store/acme/agent",
     token: "host-token",
-    claim: { token: "claim-token", bootId: "claim-boot" },
+    claim: {
+      token: "claim-token",
+      bootId: "claim-boot",
+      conversationId: "mission-7",
+    },
     fetchImpl: async (_input, init) => {
       requests.push(new Headers(init?.headers));
       return init?.method === "DELETE"
@@ -181,6 +185,7 @@ test("claim-backed mutations send claim headers instead of lease headers", async
   for (const headers of requests) {
     expect(headers.get("x-houston-claim-token")).toBe("claim-token");
     expect(headers.get("x-houston-claim-boot")).toBe("claim-boot");
+    expect(headers.get("x-houston-claim-conversation")).toBe("mission-7");
     expect(headers.get("x-houston-fencing-token")).toBeNull();
     expect(headers.get("x-houston-boot-id")).toBeNull();
   }
@@ -194,7 +199,11 @@ test("claim and lease mutation authority cannot be configured together", () => {
         token: "host-token",
         bootId: "lease-boot",
         fence: {},
-        claim: { token: "claim-token", bootId: "claim-boot" },
+        claim: {
+          token: "claim-token",
+          bootId: "claim-boot",
+          conversationId: "mission-7",
+        },
       }),
   ).toThrow("claim authority cannot be combined");
 });

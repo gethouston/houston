@@ -1,5 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join, posix } from "node:path";
+import { docKey } from "@houston/domain";
 import {
   HydrateLimitError,
   type HydrateManifest,
@@ -55,9 +56,10 @@ export async function prepareTurnFilesystem(opts: {
   };
 }
 
-/** Build the exact conversation and session scope granted to one claim. */
+/** Build the exact conversation, session, and activity-doc write scope. */
 export function claimedTurnIncludes(
   dataRel: string,
+  workspaceRel: string,
   conversationId: string,
 ): (relativePath: string) => boolean {
   const conversation = posix.join(
@@ -66,18 +68,25 @@ export function claimedTurnIncludes(
     `${encodeURIComponent(conversationId)}.json`,
   );
   const session = posix.join(dataRel, "sessions", conversationId);
+  const activity = turnActivityKey(workspaceRel);
   return (relativePath) =>
-    relativePath === conversation || relativePath.startsWith(`${session}/`);
+    relativePath === conversation ||
+    relativePath.startsWith(`${session}/`) ||
+    relativePath === activity;
 }
 
-/** Sync a turn, limiting a claimed writer to its granted conversation. */
+/** Store-relative mission-board object granted to a claimed turn. */
+export const turnActivityKey = (workspaceRel: string): string =>
+  docKey(workspaceRel, "activity");
+
+/** Sync a turn, limiting a claimed writer to its granted turn-owned files. */
 export async function syncTurnFilesystem(opts: {
   store: ObjectStore;
   prefix: string;
   filesystem: TurnFilesystem;
   conversationId: string;
   claimed: boolean;
-}): Promise<number> {
+}): Promise<{ uploaded: string[]; outOfScope: number }> {
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -87,6 +96,7 @@ export async function syncTurnFilesystem(opts: {
       ? {
           include: claimedTurnIncludes(
             opts.filesystem.dataRel,
+            opts.filesystem.workspaceRel,
             opts.conversationId,
           ),
         }
@@ -98,5 +108,5 @@ export async function syncTurnFilesystem(opts: {
       `[turn] pool_writes_out_of_scope=${result.outOfScope} prefix=${opts.prefix || opts.filesystem.dataRel} conversation=${opts.conversationId}`,
     );
   }
-  return result.outOfScope;
+  return { uploaded: result.uploaded, outOfScope: result.outOfScope };
 }

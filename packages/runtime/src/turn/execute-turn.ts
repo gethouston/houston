@@ -172,6 +172,7 @@ export async function executeTurn(
           turnId,
           durable.poolWritesOutOfScope,
           durable.transcriptSkipped,
+          durable.activityDocSkipped,
         ),
       );
       await turnLog?.flush();
