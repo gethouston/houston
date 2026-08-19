@@ -42,6 +42,41 @@ export function logServeSweepFailure(count: number, detail: string): void {
   console.error(`[serve] ${line}`);
 }
 
+/**
+ * A non-uniform sweep's failures, collapsed by shared detail. SEVERAL probes
+ * failing the SAME way in one sweep is still one incident, not one per
+ * provider: a control-plane blip seen through the gateway answers
+ * `500: {"error":"fetch failed"}` to exactly the probes in flight during the
+ * window (PRODUCT-1423) — the partial-sweep sibling of logServeSweepFailure.
+ * A detail only one provider hit stays that provider's own incident. Dedup
+ * rides the per-provider transition map, so a group repeats as a warning and
+ * each member's recovery re-arms it.
+ */
+export function logServeProbeFailures(
+  failures: ReadonlyArray<{ id: string; detail: string }>,
+): void {
+  const byDetail = new Map<string, string[]>();
+  for (const f of failures) {
+    const ids = byDetail.get(f.detail);
+    if (ids) ids.push(f.id);
+    else byDetail.set(f.detail, [f.id]);
+  }
+  for (const [detail, ids] of byDetail) {
+    const lone = ids.length === 1 ? ids[0] : undefined;
+    if (lone !== undefined) {
+      logServeProbeFailure(lone, detail);
+      continue;
+    }
+    const group = `credential probes for ${ids.join(", ")}`;
+    if (ids.every((id) => lastFailureDetail.get(id) === detail)) {
+      console.warn(`[serve] ${group} still failing: ${detail}`);
+      continue;
+    }
+    for (const id of ids) lastFailureDetail.set(id, detail);
+    console.error(`[serve] ${group} failed alike: ${detail}`);
+  }
+}
+
 /** Called after any sweep that did NOT fail uniformly (some probe answered). */
 export function noteServeSweepOk(): void {
   if (lastFailureDetail.delete(SWEEP_KEY))
