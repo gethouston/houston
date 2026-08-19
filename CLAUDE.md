@@ -2,8 +2,6 @@
 
 Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the only agent loop) behind the **host** (`packages/host`) — serving desktop and cloud from the same code, with one shared client behavior layer (`@houston/sdk`) bound by every surface. **The code is the truth**: there is no separate knowledge base. Read the module and its tests before changing it; this file holds only the non-obvious map and the rules.
 
-The session protocol (writing style, work phases, git/PR workflow) lives at the workspace level: `~/dev-houston/CLAUDE.md`.
-
 ## Repo map
 
 | Path | What it is |
@@ -68,8 +66,10 @@ A packaged build (or `pnpm tauri dev` with no host URL) spawns the staged sideca
 2. Needs a credential → the credential IS the switch. Key present = on; key absent = loud, named OFF with the remedy. Never layer a boolean on top.
 3. Deliberately off (e.g. analytics in dev) → a committed `.env.development` line with a reason. Personal toggles → `.env.local`, never CLI flags.
 
-### No silent failures (beta policy)
-Every error a user-initiated action can produce MUST reach the user as a toast with a Report-bug affordance, via `errorMessage(err)` — never a generic string. Banned: discarding a `Result` (`let _ =`, `.ok()`, `unwrap_or*` on user-initiated ops, log-and-continue `Err(_)` arms, `unwrap()`/`expect()` outside tests); TS `.catch(() => null/[]/{})`, catch-without-rethrow-or-toast, log-only catches, fire-and-forget promises in handlers. The one exception: `tracing::error!` from emit/watcher callbacks with no UI thread. When unsure, don't swallow.
+### Error surfacing (HOU-1245): silent to the user, never silent to us
+- An unexpected error shows the user NOTHING, but MUST reach every reporting path — frontend log, PostHog `app_error_shown`, Sentry. Route it through `showErrorToast` (report-only despite its name) or `reportError`/`logAndReportError` (`app/src/lib/{error-toast,error-report}.ts`); never a bare `console.error`, never an empty catch.
+- Toasts are reserved for states the user can act on, with authored `t()` copy — never a raw `err.message` or a generic red box: expected business states (`showExpectedStateToast`), device offline / host unreachable (`showConnectivityErrorToast`), engine pod waking (`showEngineWakingToast`), plus call-site copy like "name already taken". Connectivity and pod-waking states skip Sentry: nothing in Houston broke.
+- Banned swallowing, both languages: TS `.catch(() => null/[]/{})`, catch-without-report, log-only catches, fire-and-forget promises in handlers; Rust `let _ =`/`.ok()`/`unwrap_or*` on user-initiated ops, log-and-continue `Err(_)` arms, `unwrap()`/`expect()` outside tests. The one Rust exception: `tracing::error!` from emit/watcher callbacks with no UI thread. When unsure, report — don't swallow.
 
 ### Library boundary (ui/)
 - Generic reusable → `ui/`. App-specific → `app/`. Unsure → start in `app/`, extract later.
@@ -104,7 +104,9 @@ Users and agents are equal writers; every `.houston/` surface must react to file
 
 ### Always
 - Tests mandatory for every feature (tests don't count toward the line limit).
-- Domain concepts are enums / discriminated unions, never bare strings.
+- Read files in full before wide-ranging changes; don't edit from search snippets.
+- No `any`. Domain concepts are enums / discriminated unions, never bare strings.
+- Comments state non-obvious constraints and surprising behavior, never narrate control flow.
 - No hover-only affordances: interactive elements visible without hovering.
 - 200 lines/file max (CSS 500). Never compress to fit — extract modules.
 - Search before building: shadcn/ui registry, `@houston-ai` showcase, existing components, npm.
@@ -117,6 +119,7 @@ Read `/DESIGN.md` FIRST and hold it in context (tokens, motion, hard rules, bann
 
 ## Git, secrets, permissions
 
-- `main` is protected: PRs only, never `git reset --hard` or force-push on `main`. Task branches per the workspace protocol; never merge without explicit instruction.
+- `main` is protected: PRs only, never `git reset --hard` or force-push on `main`. Never merge without explicit instruction.
+- Branches: `fix|feat/PRODUCT-<id>-<short-slug>` (no personal handles). Commits and PR titles: conventional `type(scope): summary (PRODUCT-<id>)` — types `feat|fix|docs|chore|refactor|test`; scopes are areas like `host`, `shell`, `chat`.
 - Secrets (signing identities, API keys, issuer UUIDs): env vars only — `option_env!()` in Rust, env in CI. Never literals in committed files.
 - Confirm before destructive ops, hard-to-reverse actions (force-push, dep removal), shared-state changes (push, PR create, Slack/email), and third-party uploads. One approval ≠ approval in all contexts.
