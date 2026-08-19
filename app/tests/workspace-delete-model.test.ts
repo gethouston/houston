@@ -1,8 +1,10 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { Workspace } from "../src/lib/types.ts";
 import {
   classifyWorkspaceDeleteError,
   isExpectedWorkspaceDeleteError,
+  restoreSpaceRow,
 } from "../src/lib/workspace-delete-model.ts";
 
 /**
@@ -49,6 +51,39 @@ describe("classifyWorkspaceDeleteError", () => {
     );
     strictEqual(classifyWorkspaceDeleteError(new Error("boom")), "unknown");
     strictEqual(classifyWorkspaceDeleteError(undefined), "unknown");
+  });
+});
+
+// PRODUCT-1426: the optimistic delete's rollback puts the row back where the
+// user last saw it when the gateway rejects the delete.
+const ws = (id: string, name: string, isDefault = false): Workspace => ({
+  id,
+  name,
+  isDefault,
+  createdAt: "2026-08-19T00:00:00Z",
+});
+
+const personal = ws("Houston", "Personal", true);
+const teamA = ws("org:aaaaaaaaaaaaaaaa", "Marketing");
+const teamB = ws("org:bbbbbbbbbbbbbbbb", "Sales");
+
+describe("restoreSpaceRow", () => {
+  it("puts the row back at its old index", () => {
+    deepStrictEqual(restoreSpaceRow([personal, teamB], teamA, 1), [
+      personal,
+      teamA,
+      teamB,
+    ]);
+  });
+
+  it("clamps an out-of-range index (the list shrank meanwhile)", () => {
+    deepStrictEqual(restoreSpaceRow([personal], teamB, 2), [personal, teamB]);
+  });
+
+  it("lets a racing re-list win: an already-present id changes nothing", () => {
+    const renamed = { ...teamA, name: "Marketing LATAM" };
+    const list = [personal, renamed];
+    strictEqual(restoreSpaceRow(list, teamA, 1), list);
   });
 });
 

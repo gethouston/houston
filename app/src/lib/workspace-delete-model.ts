@@ -1,4 +1,5 @@
 import { shareErrorCode } from "./share-via-team.ts";
+import type { Workspace } from "./types.ts";
 
 /**
  * Pure, DOM-free logic behind deleting a team space from Settings → Danger
@@ -53,4 +54,19 @@ export function classifyWorkspaceDeleteError(
  */
 export function isExpectedWorkspaceDeleteError(err: unknown): boolean {
   return classifyWorkspaceDeleteError(err) !== "unknown";
+}
+
+/**
+ * Put a row back where it was after an optimistic delete the server rejected
+ * (PRODUCT-1426). Dedupes by id: a background re-list racing the rollback may
+ * already have restored the row, and it wins — its object is fresher.
+ */
+export function restoreSpaceRow(
+  list: Workspace[],
+  row: Workspace,
+  index: number,
+): Workspace[] {
+  if (list.some((w) => w.id === row.id)) return list;
+  const at = Math.min(Math.max(index, 0), list.length);
+  return [...list.slice(0, at), row, ...list.slice(at)];
 }

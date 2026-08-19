@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { analytics } from "../lib/analytics";
 import { setActiveOrg } from "../lib/engine";
 import { queryClient } from "../lib/query-client";
-import { queryKeys } from "../lib/query-keys";
 import { resetCacheForSpaceChange } from "../lib/space-cache";
 import { orgSlugFromWorkspaceId } from "../lib/space-id";
 import {
@@ -11,8 +10,15 @@ import {
   tauriWorkspaces,
 } from "../lib/tauri";
 import type { Workspace } from "../lib/types";
-import { planSpacesRefresh } from "../lib/workspace-refresh";
+import {
+  planSpacesRefresh,
+  withoutPendingDeletes,
+} from "../lib/workspace-refresh";
 import { resolveActiveWorkspace } from "../lib/workspace-switch";
+import {
+  pendingWorkspaceDeletes,
+  runWorkspaceDelete,
+} from "./workspace-delete";
 import { applyRefreshPlan } from "./workspace-refresh-apply";
 
 interface WorkspaceState {
@@ -40,11 +46,12 @@ interface WorkspaceState {
   refreshWorkspaces: () => Promise<void>;
   setCurrent: (ws: Workspace) => void;
   create: (name: string) => Promise<Workspace>;
-  /** Delete a team space for good (PRODUCT-1410). Resolves once the server has
-   *  destroyed it and the store no longer lists it; when it was the active
-   *  space, the store has already landed on the default space and re-pinned
-   *  the gateway exactly like a user-driven switch. Rejections propagate
-   *  (surfaced by the wire layer / the caller's `silence` predicate). */
+  /** Delete a team space for good (PRODUCT-1410). Optimistic (PRODUCT-1426):
+   *  the row leaves the list and, when it was the active space, the store
+   *  lands on the default space and re-pins the gateway BEFORE the server
+   *  round-trip — the returned promise settles once the server confirms.
+   *  Rejections restore the row in place and propagate (surfaced by the wire
+   *  layer / the caller's `silence` predicate). */
   delete: (id: string, options?: EngineCallOptions) => Promise<void>;
   rename: (id: string, newName: string) => Promise<void>;
   /** Set (or clear, with null) the workspace's UI-locale override. */
@@ -74,10 +81,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       // Restore the last-selected space alongside the list. On a personal-only
       // host the persisted id resolves to the sole default workspace, so this
       // stays byte-identical to the old isDefault-then-first resolution.
-      const [workspaces, lastId] = await Promise.all([
+      const [listed, lastId] = await Promise.all([
         tauriWorkspaces.list(),
         tauriPreferences.get("last_workspace_id"),
       ]);
+      const workspaces = withoutPendingDeletes(listed, pendingWorkspaceDeletes);
       const current = resolveActiveWorkspace(workspaces, lastId);
       // Pin the active space (C8) BEFORE the first space-scoped fetches fire so
       // they carry the right x-houston-org from the start (no header for
@@ -106,6 +114,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch {
       return; // logged by the wire layer; the next tick retries
     }
+    // Checked AFTER the fetch: a delete that started mid-flight must still win.
+    fresh = withoutPendingDeletes(fresh, pendingWorkspaceDeletes);
     const prev = get();
     if (prev.loading) return; // a real load started mid-flight; it wins
     // The active space vanishing here means the user was removed from the team
@@ -139,28 +149,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     return ws;
   },
 
-  delete: async (id, options) => {
-    // The server call comes FIRST and its rejection propagates: the row leaves
-    // the store only once the space is really gone. (The v3 adapter's old
-    // no-op stub let this "succeed" and drop the row locally while the space
-    // lived on and re-listed on the next refresh — PRODUCT-1410.)
-    await tauriWorkspaces.delete(id, options);
-    const prev = get();
-    // Same merge as a live refresh that no longer lists the space: when it was
-    // the active one this is a `reselect`, which lands on the default space
-    // AND re-pins the gateway + resets the space-scoped caches — dropping the
-    // row without re-pinning would leave every request addressed to a space
-    // that now 404s. The next refresh tick then confirms the server agrees.
-    applyRefreshPlan(
-      planSpacesRefresh(
-        prev.workspaces,
-        prev.current,
-        prev.workspaces.filter((w) => w.id !== id),
-      ),
-      set,
-    );
-    queryClient.invalidateQueries({ queryKey: queryKeys.orgs() });
-  },
+  delete: (id, options) => runWorkspaceDelete(id, options, get, set),
 
   rename: async (id, newName) => {
     await tauriWorkspaces.rename(id, newName);
@@ -182,6 +171,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   // Mirrors the initial state (loading: true) so the shell shows its splash, not
-  // a stale list, until the incoming account's loadWorkspaces() resolves.
-  reset: () => set({ workspaces: [], current: null, loading: true }),
+  // a stale list, until the incoming account's loadWorkspaces() resolves. The
+  // outgoing account's in-flight deletes must not filter the incoming list.
+  reset: () => {
+    pendingWorkspaceDeletes.clear();
+    set({ workspaces: [], current: null, loading: true });
+  },
 }));
