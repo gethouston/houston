@@ -865,6 +865,50 @@ test("a sweep where EVERY probe is refused logs ONE error, not one per provider 
   }
 }, 30_000);
 
+test("probes caught by ONE gateway blip mid-sweep log ONE error, not one per provider (PRODUCT-1423)", async () => {
+  // A control-plane restart seen through the gateway: the probes in flight
+  // during the window get `500: {"error":"fetch failed"}` while the rest of
+  // the sweep answers normally. Not uniform, so the PRODUCT-1399 collapse
+  // never fired — HOUSTON-APP-4YV got one Sentry event per caught provider.
+  resetServeProbeLog();
+  const blipped = new Set(["google", "openrouter", "opencode-go"]);
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider && blipped.has(provider))
+      return new Response(JSON.stringify({ error: "fetch failed" }), {
+        status: 500,
+      });
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const serveErrors = () =>
+    errors.mock.calls
+      .map((c) => String(c[0]))
+      .filter((m) => m.startsWith("[serve]"));
+  try {
+    await withServeMode(fetchImpl, async () => {
+      expect(await syncServedCredential()).toEqual([]);
+      // ONE event naming every caught provider (in catalog order) and the
+      // shared gateway detail.
+      expect(serveErrors()).toHaveLength(1);
+      const line = serveErrors()[0] ?? "";
+      expect(line).toMatch(/^\[serve\] credential probes for /);
+      for (const id of blipped) expect(line).toContain(id);
+      expect(line).toContain('failed alike: 500: {"error":"fetch failed"}');
+      // The persistent repeat stays a WARN breadcrumb, never a second event.
+      expect(await syncServedCredential()).toEqual([]);
+      expect(serveErrors()).toHaveLength(1);
+      expect(
+        warns.mock.calls.some((c) => String(c[0]).includes("still failing")),
+      ).toBe(true);
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+  }
+}, 30_000);
+
 test("selectExportCredential without a provider falls back to the first OAuth credential", () => {
   const auth: Record<string, PiCred> = {
     "openai-codex": oauth("AT-codex", "RT-codex"),

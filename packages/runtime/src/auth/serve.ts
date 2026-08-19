@@ -15,7 +15,7 @@ import {
 import { scrubSettledCaptureAt } from "./capture-settlement";
 import { bindEmptyRefreshServeSync } from "./empty-refresh-guard";
 import {
-  logServeProbeFailure,
+  logServeProbeFailures,
   logServeSweepFailure,
   noteServeProbeOk,
   noteServeSweepOk,
@@ -186,7 +186,16 @@ async function runServedSync(): Promise<string[]> {
   const sweepDetail = uniformFailureDetail(probes);
   if (sweepDetail !== undefined)
     logServeSweepFailure(probes.length, sweepDetail);
-  else noteServeSweepOk();
+  else {
+    noteServeSweepOk();
+    // A PARTIALLY failed sweep collapses the same way: probes sharing one
+    // failure detail are one incident (a control-plane blip caught mid-sweep —
+    // PRODUCT-1423), and dedup across syncs lives in serve-log.ts, so a
+    // persistent failure never emits one Sentry error per re-probe.
+    logServeProbeFailures(
+      probes.flatMap((p) => (p.state === "error" ? [p] : [])),
+    );
+  }
   const applied: string[] = [];
   const removed: string[] = [];
   // Provenance gate: an authoritative "not connected" may only remove providers
@@ -270,11 +279,6 @@ async function runServedSync(): Promise<string[]> {
         manifest.delete(probe.id);
         manifestDirty = true;
       }
-    } else if (sweepDetail === undefined) {
-      // Dedup lives in serve-log.ts: every turn and hydrating route re-probes,
-      // so a persistent gateway failure must not emit one Sentry error each.
-      // (A uniformly failed sweep was already logged once, above.)
-      logServeProbeFailure(probe.id, probe.detail);
     }
   }
   if (manifestDirty)
