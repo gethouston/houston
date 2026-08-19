@@ -39,6 +39,10 @@ sentry = "0.42"
 # Layer is a no-op until sentry::init has run, so safe to register
 # unconditionally in logging.rs even when SENTRY_DSN is empty.
 sentry-tracing = "0.42"
+# `NormalizeEvent` in sentry_events.rs: log-crate records reach tracing with
+# callsite target "log"; the real target (needed to demote known noisy deps)
+# only exists on the normalized metadata.
+tracing-log = "0.2"
 # keyring v3 backends are OPT-IN per platform. Without a Linux feature the
 # crate silently compiles its in-memory mock on Linux — auth_set_item
 # "succeeds" into a throwaway object and every session evaporates on quit
@@ -77,6 +81,13 @@ tracing-appender = { workspace = true }
 # the webview boots we've already committed to launching from the DMG.
 # `rfd` is pure Rust + AppKit, no React/Webview/Tauri dependency, so it
 # can pop a dialog at the very top of `run()`.
+[dev-dependencies]
+# sentry_events.rs pipeline tests capture what actually reaches Sentry via
+# the in-memory test transport, instead of unit-testing the demote predicate
+# (which is how the original event_filter bug slipped through).
+sentry = { version = "0.42", features = ["test"] }
+log = "0.4"
+
 [target."cfg(target_os = \"macos\")".dependencies]
 rfd = "0.15"
 # Native app-activation. `window.set_focus()` (makeKeyAndOrderFront) does not
