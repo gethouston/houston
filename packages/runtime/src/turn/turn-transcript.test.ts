@@ -478,3 +478,43 @@ test("a corrupt conversation file still ends in a terminal error frame", async (
   expect(raw).toContain("transcript publish failed");
   expect(raw).not.toContain('"type":"done"');
 });
+
+test("the user row lands on the user frame, before the turn finishes", async () => {
+  const objects = seedStandingLayout();
+  const requests: TranscriptRequest[] = [];
+  let requestsWhenTurnEnded = -1;
+  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+    const conversationsDir = join(filesystem.dataDir, "conversations");
+    const { message } = appendUserMessageAt(
+      conversationsDir,
+      turn.conversationId,
+      turn.text,
+      { turnId: turn.turnId },
+    );
+    // What the real session does right after persisting the user message.
+    turn.emit({ type: "user", data: message, turnId: turn.turnId });
+    // Let the early publish run while the "model" is still working.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    requestsWhenTurnEnded = requests.length;
+    appendAssistantMessageAt(conversationsDir, turn.conversationId, "Reply", {
+      turnId: turn.turnId,
+    });
+    return {};
+  };
+
+  const raw = await runClaimedTurn({
+    runTurn,
+    poolStoreUrl: "https://pool.example",
+    fetchImpl: poolFetch(objects, requests),
+    heartbeatIntervalMs: 60_000,
+  });
+
+  // The user PUT was already on the wire while the turn was still running,
+  // and the final publish did not send it twice.
+  expect(requestsWhenTurnEnded).toBe(1);
+  expect(requests.map((r) => r.url.split("/").at(-1))).toEqual([
+    "user",
+    "assistant",
+  ]);
+  expect(raw).toContain('"type":"done"');
+});

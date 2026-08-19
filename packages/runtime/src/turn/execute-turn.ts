@@ -18,6 +18,7 @@ import { createTurnModelRuntime } from "./turn-runtime";
 import { runPiTurn, type TurnOutcome } from "./turn-session";
 import { resolveTurnStore } from "./turn-store";
 import { turnSetupErrorFrame, turnTerminalFrame } from "./turn-terminal";
+import { createTurnTranscript } from "./turn-transcript";
 import type { TurnRequest } from "./types";
 
 /** Execute one admitted turn inside an isolated, disposable filesystem root. */
@@ -76,8 +77,17 @@ export async function executeTurn(
     closeSse = sse.close;
     timings.t_sse_open = performance.now();
     const turnLog = createTurnLog(deps, turn);
+    const transcript = createTurnTranscript(
+      deps,
+      { ...turn, turnId },
+      filesystem,
+    );
     const emit = (frame: WireFrame) => {
       sse.send(turnLog ? turnLog.record(frame) : frame);
+      // The runtime persists the user message right before this frame; land
+      // its transcript row now so a gateway that restarts mid-turn can rebuild
+      // the turn. Errors are remembered and surfaced at durability time.
+      if (frame.type === "user") void transcript?.publishUser();
     };
 
     if (turn.shadow) {
@@ -153,6 +163,7 @@ export async function executeTurn(
         resolved,
         heartbeat,
         outcome,
+        transcript,
       });
       outcome = durable.outcome;
       emit(

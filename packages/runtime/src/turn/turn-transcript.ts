@@ -1,16 +1,11 @@
 import { join } from "node:path";
-import {
-  type TranscriptTurnWrite,
-  transcriptTurnRequest,
-} from "@houston/runtime-client";
-import { fetchWithRetry } from "@houston/runtime-client/object-sync";
+import type { TranscriptTurnWrite } from "@houston/runtime-client";
 import { loadConversation } from "../store/conversation-file";
 import type { TurnServerDeps } from "./server-types";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { poolIdentity } from "./turn-store";
+import { putTranscriptRow } from "./turn-transcript-http";
 import type { TurnRequest } from "./types";
-
-const REQUEST_TIMEOUT_MS = 5_000;
 
 export type TranscriptPublishResult =
   | { ok: true }
@@ -19,10 +14,17 @@ export type TranscriptPublishResult =
   | { error: string };
 
 export interface TurnTranscript {
+  /**
+   * Publish the user row as soon as the runtime persisted it (fired on the
+   * `user` frame). Idempotent; a failure is remembered and surfaced by the
+   * final publish(), never thrown here. This is what lets a gateway that
+   * restarts mid-turn rebuild and re-dispatch the turn from the transcript.
+   */
+  publishUser(): Promise<void>;
   publish(): Promise<TranscriptPublishResult>;
 }
 
-interface TranscriptOptions {
+export interface TranscriptOptions {
   baseUrl: string;
   org: string;
   agent: string;
@@ -40,18 +42,24 @@ class HttpTurnTranscript implements TurnTranscript {
   private readonly fetchImpl: typeof fetch;
   private disabled = false;
   private landed = 0;
+  private userPublish: Promise<TranscriptPublishResult> | undefined;
 
   constructor(private readonly opts: TranscriptOptions) {
     this.fetchImpl = opts.fetchImpl ?? fetch;
   }
 
-  async publish(): Promise<TranscriptPublishResult> {
-    let conversation: ReturnType<typeof loadConversation>;
+  private load(): {
+    conversation?: NonNullable<ReturnType<typeof loadConversation>>;
+    error?: string;
+  } {
     try {
-      conversation = loadConversation(
+      const conversation = loadConversation(
         join(this.opts.dataDir, "conversations"),
         this.opts.conversationId,
       );
+      return conversation
+        ? { conversation }
+        : { error: "conversation file is missing" };
     } catch (error) {
       // A corrupt file must still end in a terminal error frame, never a
       // stream that closes with neither done nor error.
@@ -59,25 +67,48 @@ class HttpTurnTranscript implements TurnTranscript {
         error: `conversation file unreadable: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
-    if (!conversation) return { error: "conversation file is missing" };
-    // A hydrated conversation contains every earlier turn. The persisted
-    // turnId identifies the one idempotent pair this claim is allowed to PUT.
-    // LAST match: an adopted re-run of this turnId appends a second pair
-    // behind the dead worker's, and the reply the client just streamed is
-    // the one that must reach Postgres.
-    const userIndex = conversation.messages.findLastIndex(
+  }
+
+  // A hydrated conversation contains every earlier turn. The persisted turnId
+  // identifies the one idempotent pair this claim is allowed to PUT. LAST
+  // match: an adopted re-run of this turnId appends a second pair behind the
+  // dead worker's, and the reply the client just streamed is the one that
+  // must reach Postgres.
+  private userIndex(messages: { role: string; turnId?: string }[]): number {
+    return messages.findLastIndex(
       (message) =>
         message.role === "user" && message.turnId === this.opts.turnId,
     );
+  }
+
+  async publishUser(): Promise<void> {
+    this.userPublish ??= (async (): Promise<TranscriptPublishResult> => {
+      const loaded = this.load();
+      if (!loaded.conversation) return { error: loaded.error ?? "" };
+      const index = this.userIndex(loaded.conversation.messages);
+      if (index < 0) return { error: "turn user message is missing" };
+      return this.put({
+        kind: "user",
+        turnId: this.opts.turnId,
+        message: loaded.conversation.messages[index],
+        title: loaded.conversation.title || "",
+        expectedCount: index,
+      });
+    })();
+    await this.userPublish;
+  }
+
+  async publish(): Promise<TranscriptPublishResult> {
+    await this.publishUser();
+    const userResult = await this.userPublish;
+    if (!userResult || !("ok" in userResult)) {
+      return userResult ?? { error: "user row was never published" };
+    }
+    const loaded = this.load();
+    if (!loaded.conversation) return { error: loaded.error ?? "" };
+    const conversation = loaded.conversation;
+    const userIndex = this.userIndex(conversation.messages);
     if (userIndex < 0) return { error: "turn user message is missing" };
-    const userResult = await this.put({
-      kind: "user",
-      turnId: this.opts.turnId,
-      message: conversation.messages[userIndex],
-      title: conversation.title || "",
-      expectedCount: userIndex,
-    });
-    if (!("ok" in userResult)) return userResult;
 
     const assistant = conversation.messages
       .slice(userIndex + 1)
@@ -98,38 +129,8 @@ class HttpTurnTranscript implements TurnTranscript {
     write: TranscriptTurnWrite,
   ): Promise<TranscriptPublishResult> {
     if (this.disabled) return { disabled: true, reason: "route_absent" };
-    const root = this.opts.baseUrl.replace(/\/+$/, "");
-    const conversationUrl = `${root}/v1/pod/transcripts/${encodeURIComponent(
-      this.opts.org,
-    )}/${encodeURIComponent(this.opts.agent)}/conversations/${encodeURIComponent(
-      this.opts.conversationId,
-    )}`;
-    const request = transcriptTurnRequest(conversationUrl, write);
     try {
-      // Transient 502/503/504 and network drops retry (the routes are
-      // idempotent per turnId); a fresh timeout per attempt, or a timed-out
-      // signal would abort every retry on arrival.
-      const response = await fetchWithRetry(
-        (url, init) =>
-          this.fetchImpl(url, {
-            ...init,
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-          }),
-        request.url,
-        {
-          method: request.method,
-          headers: {
-            Authorization: `Bearer ${this.opts.hostToken}`,
-            "Content-Type": "application/json",
-            "X-Houston-Claim-Token": this.opts.claim.token,
-            "X-Houston-Claim-Boot": this.opts.claim.bootId,
-          },
-          body: JSON.stringify(request.body),
-        },
-        this.opts.retryDelaysMs ? { delaysMs: this.opts.retryDelaysMs } : {},
-      );
-      // Release the socket whatever the status; the body is never needed.
-      await response.body?.cancel();
+      const response = await putTranscriptRow(this.fetchImpl, this.opts, write);
       if (response.ok) {
         this.landed += 1;
         return { ok: true };

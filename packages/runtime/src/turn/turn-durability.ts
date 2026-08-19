@@ -4,9 +4,9 @@ import type { TurnServerDeps } from "./server-types";
 import { syncTurnFilesystem, type TurnFilesystem } from "./turn-filesystem";
 import type { TurnOutcome } from "./turn-session";
 import type { ResolvedTurnStore } from "./turn-store";
-import {
-  createTurnTranscript,
-  type TranscriptPublishResult,
+import type {
+  TranscriptPublishResult,
+  TurnTranscript,
 } from "./turn-transcript";
 import type { TurnRequest } from "./types";
 
@@ -17,6 +17,8 @@ interface TurnDurabilityOptions {
   resolved: ResolvedTurnStore;
   heartbeat: ClaimHeartbeat | null;
   outcome: TurnOutcome;
+  /** The turn's transcript publisher (created at turn start; null = none). */
+  transcript: TurnTranscript | null;
 }
 
 export interface TurnDurabilityResult {
@@ -70,11 +72,7 @@ export async function finishTurnDurability(
   // transcript rows whose authoritative conversation file is still missing.
   let published: TranscriptPublishResult | undefined;
   try {
-    published = await createTurnTranscript(
-      opts.deps,
-      opts.turn,
-      opts.filesystem,
-    )?.publish();
+    published = await opts.transcript?.publish();
   } catch (error) {
     published = {
       error: error instanceof Error ? error.message : String(error),
