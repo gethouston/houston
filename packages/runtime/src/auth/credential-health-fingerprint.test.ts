@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
@@ -12,6 +12,7 @@ const { setCustomEndpointConfig } = await import("../ai/openai-compatible");
 const { authFailureActive, noteAuthFailure, resetAuthFailures } = await import(
   "./credential-health"
 );
+const { runWithActingContext } = await import("../session/acting-context");
 
 afterEach(() => resetAuthFailures());
 
@@ -30,4 +31,23 @@ test("an unchanged endpoint keeps its failure mark", () => {
   noteAuthFailure("openai-compatible");
   expect(authFailureActive("openai-compatible")).toBe(true);
   expect(authFailureActive("openai-compatible")).toBe(true);
+});
+
+test("turn-scoped fingerprints read the active turn auth path", () => {
+  const root = mkdtempSync(join(tmpdir(), "houston-turn-credfp-"));
+  const authPath = join(root, "data", "auth.json");
+  mkdirSync(join(root, "data"), { recursive: true });
+  writeFileSync(
+    authPath,
+    JSON.stringify({ openai: { type: "api_key", key: "turn-a" } }),
+  );
+  runWithActingContext({ credentialScopeKey: "u:turn:w:a", authPath }, () => {
+    noteAuthFailure("openai");
+    expect(authFailureActive("openai")).toBe(true);
+    writeFileSync(
+      authPath,
+      JSON.stringify({ openai: { type: "api_key", key: "turn-b" } }),
+    );
+    expect(authFailureActive("openai")).toBe(false);
+  });
 });

@@ -2,6 +2,10 @@ import type { Server } from "node:http";
 import { initEngineSentry } from "@houston/runtime-client/sentry";
 import { config } from "./config";
 import { installRuntimeLogging } from "./observability/logging";
+import {
+  beginWorkerShutdown,
+  type WorkerRegistration,
+} from "./turn/worker-registration";
 
 // Crash reporting (dormant without SENTRY_DSN — inherited from the host that
 // spawned us: the desktop app's injection or the engine-pod image env). Wired
@@ -23,31 +27,72 @@ const { logger } = installRuntimeLogging({
  *  - turn: the stateless per-turn cloud runtime — POST /turn only, one
  *    hydrate→run→sync cycle per request. Selected with HOUSTON_MODE=turn.
  */
+let workerRegistration: WorkerRegistration | null = null;
+
 async function start(): Promise<Server> {
   if (config.mode === "turn") {
+    const { AdmissionLimiter, turnConcurrency } = await import(
+      "./turn/admission"
+    );
     const { createTurnServer } = await import("./turn/server");
     const { GcsStore } = await import("./turn/gcs-store");
+    const { poolOnlyFallbackStore } = await import("./turn/turn-store");
+    const { WorkerRegistration: Registration } = await import(
+      "./turn/worker-registration"
+    );
+    const { loadWorkerRegistrationConfig, turnServerToken } = await import(
+      "./turn/worker-registration-config"
+    );
     const { LocalDirStore } = await import(
       "@houston/runtime-client/object-sync"
     );
-    if (!config.gcsBucket && !config.localStoreDir) {
+    if (
+      !config.gcsBucket &&
+      !config.localStoreDir &&
+      !process.env.HOUSTON_POOL_STORE_URL
+    ) {
       throw new Error(
-        "turn mode needs HOUSTON_GCS_BUCKET (prod) or HOUSTON_LOCAL_STORE_DIR (dev)",
+        "turn mode needs HOUSTON_GCS_BUCKET, HOUSTON_LOCAL_STORE_DIR, or HOUSTON_POOL_STORE_URL",
       );
     }
     const store = config.gcsBucket
       ? new GcsStore(config.gcsBucket)
-      : new LocalDirStore(config.localStoreDir);
-    const server = createTurnServer({ store, token: config.turnToken });
-    server.listen(config.port, config.host, () => {
-      console.info("runtime listening", {
-        auth: config.turnToken ? "x_internal_token_required" : "open_local_dev",
-        mode: "turn",
-        store: config.gcsBucket
-          ? `gs://${config.gcsBucket}`
-          : config.localStoreDir,
-        url: `http://${config.host}:${config.port}`,
+      : config.localStoreDir
+        ? new LocalDirStore(config.localStoreDir)
+        : poolOnlyFallbackStore();
+    const registrationConfig = await loadWorkerRegistrationConfig();
+    const admission = new AdmissionLimiter(turnConcurrency());
+    workerRegistration = registrationConfig
+      ? new Registration(registrationConfig, admission)
+      : null;
+    const token = turnServerToken(config.turnToken, registrationConfig);
+    const server = createTurnServer({
+      store,
+      token,
+      admission,
+      isDraining: () => workerRegistration?.draining ?? false,
+    });
+    await workerRegistration?.start();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const failed = (error: Error) => reject(error);
+        server.once("error", failed);
+        server.listen(config.port, config.host, () => {
+          server.off("error", failed);
+          resolve();
+        });
       });
+    } catch (error) {
+      await workerRegistration?.stop();
+      throw error;
+    }
+    console.info("runtime listening", {
+      auth: token ? "x_internal_token_required" : "open_local_dev",
+      mode: "turn",
+      store: config.gcsBucket
+        ? `gs://${config.gcsBucket}`
+        : config.localStoreDir,
+      url: `http://${config.host}:${config.port}`,
     });
     return server;
   }
@@ -59,6 +104,7 @@ const server = await start();
 
 let shuttingDown = false;
 let shadowDrain: Promise<void> = Promise.resolve();
+let workerDrain: Promise<void> = Promise.resolve();
 
 // Bounded, best-effort: a scale-to-zero right after a file mutation must give
 // the transcript shadow queue a chance to reach the gateway (its pending sends
@@ -79,6 +125,11 @@ async function drainTranscriptShadow(): Promise<void> {
 
 async function exitNow() {
   await shadowDrain;
+  // Order matters: the draining heartbeat must land BEFORE registration
+  // stops, or stop() aborts the very request that tells the gateway to route
+  // elsewhere and the registry keeps advertising a dead worker for a minute.
+  await workerDrain;
+  await workerRegistration?.stop();
   await logger.close();
   process.exit(0);
 }
@@ -87,13 +138,19 @@ function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info("runtime shutdown requested", { signal });
+  workerDrain = beginWorkerShutdown(signal, workerRegistration);
   shadowDrain = drainTranscriptShadow();
   server.close(() => {
     void exitNow();
   });
-  setTimeout(() => {
-    void exitNow();
-  }, 3000).unref();
+  // A registered pool worker keeps serving its in-flight turn until the
+  // response ends (sync-back + terminal frame); the pod's termination grace is
+  // the hard deadline there. Every other runtime keeps the short forced exit.
+  if (!workerRegistration) {
+    setTimeout(() => {
+      void exitNow();
+    }, 3000).unref();
+  }
 }
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));

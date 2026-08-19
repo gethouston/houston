@@ -32,6 +32,8 @@ export interface ActingContext {
    * `read()` pi makes inside `prepareRequest`.
    */
   credentialScopeKey?: string;
+  /** Explicit auth.json for a throwaway turn root. */
+  authPath?: string;
 }
 
 /** The credential scope of a request with no acting identity: the shared file. */
@@ -84,7 +86,13 @@ export function runWithActingContext<T>(
 ): T {
   // No identity to carry (local single-user, or neither header present): run
   // plainly so the tools see `undefined` and attach nothing.
-  if (!ctx || (!ctx.actingAs && !ctx.actingUser && !ctx.credentialScopeKey))
+  if (
+    !ctx ||
+    (!ctx.actingAs &&
+      !ctx.actingUser &&
+      !ctx.credentialScopeKey &&
+      !ctx.authPath)
+  )
     return fn();
   return store.run(
     {

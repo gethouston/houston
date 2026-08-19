@@ -5,7 +5,9 @@ import {
   evict,
   publish,
   reduceSnapshot,
+  releaseConversation,
   replayAfter,
+  runWithConversationScope,
   snapshot,
   subscribe,
   subscriberCount,
@@ -41,6 +43,30 @@ test("events reach only that conversation's subscribers, stamped with seq", () =
 
   unsubA();
   unsubB();
+});
+
+test("turn scopes isolate the same conversation id across agents and release it", () => {
+  const id = "shared-cid";
+  const a: SequencedFrame[] = [];
+  const b: SequencedFrame[] = [];
+  runWithConversationScope("w/agent-a", () => {
+    subscribe(id, (event) => a.push(event));
+  });
+  runWithConversationScope("w/agent-b", () => {
+    subscribe(id, (event) => b.push(event));
+  });
+  runWithConversationScope("w/agent-a", () => {
+    publish(id, { type: "text", data: "only a" });
+  });
+
+  expect(a.map((event) => event.data)).toEqual(["only a"]);
+  expect(b).toEqual([]);
+  releaseConversation("w/agent-a", id);
+  runWithConversationScope("w/agent-a", () => {
+    expect(snapshot(id).seq).toBe(0);
+    expect(subscriberCount(id)).toBe(0);
+  });
+  releaseConversation("w/agent-b", id);
 });
 
 test("two concurrent conversations never cross, and each has its own seq counter", () => {

@@ -6,13 +6,13 @@ import {
   parseMentions,
 } from "@houston/protocol";
 import { expect, test } from "vitest";
-import { parseTurnRequest } from "../turn/types";
+import { parseTurnRequest } from "../turn/parse-turn-request";
 
 /**
  * The @mention send-body guard (HOU-944). `parseMentions` is the ONE place a
  * mention sidecar is trusted — the long-lived send route
  * (`conversation-routes.ts` → `handleStartTurn`), the cloud turn parser
- * (`turn/types.ts` → `parseTurnRequest`) and the host's forwarding hop all call
+ * (`turn/parse-turn-request.ts`) and the host's forwarding hop all call
  * it — so a junk shape can never reach the transcript or the wire. It lives in
  * `@houston/protocol` beside `normalizeTurnMode` and is exercised here, where
  * both runtime readers live.

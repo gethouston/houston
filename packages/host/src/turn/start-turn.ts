@@ -80,7 +80,7 @@ export async function dispatchTurn(
             },
             body: JSON.stringify({
               workspaceId: ws.id,
-              agentId: agent.id,
+              agentId: agent.id.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 128),
               conversationId: cid,
               text,
               nonce,

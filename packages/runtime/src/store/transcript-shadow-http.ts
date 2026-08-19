@@ -1,3 +1,4 @@
+import { transcriptTurnRequest } from "@houston/runtime-client";
 import type {
   TranscriptShadowSend,
   TranscriptShadowTransport,
@@ -40,22 +41,9 @@ export class SandboxTranscriptShadowTransport
 function requestFor(root: string, operation: TranscriptShadowSend) {
   switch (operation.kind) {
     case "user":
-      return {
-        method: "PUT",
-        url: `${root}/turns/${encodeURIComponent(operation.turnId)}/user`,
-        body: {
-          message: operation.message,
-          ts: operation.message.ts,
-          title: operation.title,
-          expectedCount: operation.expectedCount,
-        },
-      };
+      return transcriptTurnRequest(root, operation);
     case "assistant":
-      return {
-        method: "PUT",
-        url: `${root}/turns/${encodeURIComponent(operation.turnId)}/assistant`,
-        body: { message: operation.message, ts: operation.message.ts },
-      };
+      return transcriptTurnRequest(root, operation);
     case "truncate":
       return {
         method: "POST",

@@ -1,4 +1,5 @@
 import type { ChatMessage } from "@houston/protocol";
+import { transcriptTurnRequest } from "@houston/runtime-client";
 import {
   capturePodFence,
   type PodGatewayConfig,
@@ -102,25 +103,9 @@ export class HttpTranscriptShadow implements TranscriptShadow {
     const root = this.conversationUrl(command.conversationId);
     switch (command.kind) {
       case "user":
-        return {
-          method: "PUT",
-          url: `${root}/turns/${encodeURIComponent(command.turnId)}/user`,
-          body: {
-            message: command.message,
-            ts: command.message.ts,
-            title: command.title,
-            expectedCount: command.expectedCount,
-            // No replay marker on the wire: the strict pod route derives and
-            // records `needs_session_replay` itself (set on truncate, cleared
-            // by the next user turn), and its parser rejects unknown fields.
-          },
-        };
+        return transcriptTurnRequest(root, command);
       case "assistant":
-        return {
-          method: "PUT",
-          url: `${root}/turns/${encodeURIComponent(command.turnId)}/assistant`,
-          body: { message: command.message, ts: command.message.ts },
-        };
+        return transcriptTurnRequest(root, command);
       case "truncate":
         return {
           method: "POST",
