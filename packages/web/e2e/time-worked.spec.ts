@@ -18,7 +18,7 @@ import { screen } from "./support/team-nav";
  * Reaching it needs Admin, so every test here arms a Teams OWNER on top of the
  * compute capability. The data comes from `GET /v1/org/compute-usage`, armed via
  * the fake host's `/__test__/compute-usage` control. See `@houston/fake-host`
- * README + `knowledge-base/ui-testing.md`.
+ * README + `packages/web/e2e/README.md`.
  */
 
 const DAY_MS = 86_400_000;

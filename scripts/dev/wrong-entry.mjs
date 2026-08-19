@@ -15,7 +15,7 @@ process.stderr.write(
     "It preflights your machine (doctor), then boots the full stack: the",
     "desktop app, the web app with real sign-in and multiplayer, and the",
     "local cloud (gateway + engines as processes). Same stack for the whole",
-    "team, every time. Reference: knowledge-base/dev-loop.md",
+    "team, every time.",
     "",
   ].join("\n"),
 );

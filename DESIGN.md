@@ -2,7 +2,7 @@
 
 ## 1. What this file is
 Mandatory context for every coding agent (Claude Code / Codex) before touching UI. Distills the canonical sources into rules you can hold in context.
-Canonical sources, in precedence order: `packages/design-tokens/tokens/*.json` (source of truth — **tokens win on any conflict**) › `knowledge-base/design-system.md` (current-state doctrine) › this file (summary). If this file disagrees with the token JSON, the JSON is right — fix this file.
+Canonical sources, in precedence order: `packages/design-tokens/tokens/*.json` (source of truth — **tokens win on any conflict**) › this file (the doctrine). If this file disagrees with the token JSON, the JSON is right — fix this file.
 
 ## 2. Product design identity
 Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy, not corporate. Current look = the **futuristic theme**: the shared canvas `ui/core/src/canvas.css` (aurora, glass surfaces, depth utilities — imported after core globals so its overrides win; also consumed by the store playground and, eventually, agents.gethouston.ai) plus the app-only chrome left in `app/src/styles/futuristic.css` (AI-Hub `.ht-live-glow` / modal surface).
@@ -121,7 +121,7 @@ Merge the tokenized scale (§4) with these craft rules:
 - **Never block paste.**
 
 ## 8. Process (mandatory for UI tasks)
-1. Load THIS file first, plus `knowledge-base/design-system.md` for the surface it touches.
+1. Load THIS file first, plus the existing components of the surface it touches.
 2. **New surface/screen** → generate **3–5 genuinely distinct** design directions, judge them, pin the winner before building → `skills/frontend-design/SKILL.md`.
 3. **Never self-review the look.** Design judgment is Julian's alone — show him. No `/design-review` screenshot loops.
 4. Scoped checks only (biome + your vitest); run **`pnpm check:parity`** whenever a shared/`ui/` component changed.

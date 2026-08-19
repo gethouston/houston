@@ -598,7 +598,7 @@ export class ProxyChannel implements RuntimeChannel {
    * inside the SDK. On a desktop/self-host host this central entry is an inert
    * durability marker (never served, never refreshed). The multi-tenant
    * per-turn Cloud Run channel refuses this credential entirely. The token is
-   * never logged. Lifecycle map: knowledge-base/anthropic-credentials.md.
+   * never logged.
    */
   async saveClaudeOAuthCredential(
     ctx: ChannelCtx,

@@ -44,8 +44,7 @@ export interface OrgPeopleRoster {
  * from an empty space by design.
  *
  * Cached generously (a roster changes when someone joins or leaves). The query
- * key is not space-scoped because switching spaces drops the whole query cache
- * (knowledge-base/teams.md, Spaces).
+ * key is not space-scoped because switching spaces drops the whole query cache.
  */
 export function useOrgPeople(): OrgPeopleRoster {
   const { capabilities } = useCapabilities();

@@ -21,7 +21,7 @@ Closes #
 ## Surface impact
 
 <!-- A UI/UX change must not silently skip a surface. Tick what this PR touches.
-     Procedure: knowledge-base/client-architecture.md -->
+     Procedure: CLAUDE.md → "Client-surface changes (SDK first)" -->
 
 Change type:
 
@@ -45,4 +45,4 @@ Surfaces updated:
 - [ ] `pnpm typecheck` passes
 - [ ] `cargo check --workspace` passes (if Rust touched)
 - [ ] `cargo test --workspace` passes (if Rust touched)
-- [ ] No external frameworks/methodology imported into `knowledge-base/` or `docs/`
+- [ ] No external frameworks/methodology imported into `docs/`

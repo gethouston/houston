@@ -85,8 +85,8 @@ changed in that adoption is a cosmetic alpha normalization
 **July 2026 — owner-vocabulary rename.** The semantic set was later renamed 1:1 to
 names the owner can speak as Tailwind utilities (`background` → `input`,
 `foreground` → `ink`, `primary` → `action`, `accent` → `hover`, `secondary` →
-`chip`, `border` → `line`, `destructive` → `danger`, and so on — the full table
-lives in `knowledge-base/design-system.md`). Every resolved value is
+`chip`, `border` → `line`, `destructive` → `danger`, and so on — the full set
+lives in `tokens/*.json`). Every resolved value is
 byte-identical; only the names moved. `test/legacy-resolved.json` keys carry the
 NEW names while pinning the SAME resolved colours, so the same `zero-diff.test.ts`
 that proved CSS adoption moved zero pixels now also proves the rename moved zero

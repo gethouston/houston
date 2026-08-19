@@ -28,7 +28,7 @@ import { openAgentSettings } from "./support/team-nav";
  * `/__test__/workspaces` (the C8 team-space row the hub's account note keys
  * off) and `/__test__/agent-settings` (the agent model ceiling); the `/v1/org`
  * view load is served by the fake host. See `@houston/fake-host` README +
- * `knowledge-base/ui-testing.md`.
+ * `packages/web/e2e/README.md`.
  */
 
 /** Teams owner: multiplayer + Teams, top role. */
