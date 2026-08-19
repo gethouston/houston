@@ -8,6 +8,7 @@ import { runWithActingContext } from "../session/acting-context";
 import { releaseConversation, runWithConversationScope } from "../session/bus";
 import { openSSE } from "../transport/sse";
 import { startClaimHeartbeat } from "./claim-heartbeat";
+import { piTurnRequest } from "./pi-turn-request";
 import type { TurnServerDeps } from "./server-types";
 import { finishTurnDurability } from "./turn-durability";
 import { prepareTurnFilesystem } from "./turn-filesystem";
@@ -132,20 +133,10 @@ export async function executeTurn(
                 ...(turn.actingAs ? { actingUser: turn.actingAs.userId } : {}),
               },
               () =>
-                run(filesystem, {
-                  conversationId: turn.conversationId,
-                  text: turn.text,
-                  provider: turn.credential?.provider ?? "",
-                  emit,
-                  signal: abort.signal,
-                  nonce: turn.nonce,
-                  pin: { model: turn.model, effort: turn.effort },
-                  mode: turn.mode,
-                  turnId,
-                  displayText: turn.displayText,
-                  mentions: turn.mentions,
-                  author: turn.actingAs,
-                }),
+                run(
+                  filesystem,
+                  piTurnRequest(turn, turnId, emit, abort.signal),
+                ),
             ),
           );
         } catch (error) {

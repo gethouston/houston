@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { parseTurnRequest } from "./types";
+import { parseTurnRequest } from "./parse-turn-request";
 
 const BASE = {
   workspaceId: "w1",
@@ -117,4 +117,18 @@ test("parseTurnRequest accepts a turnlog seq start and rejects a bad one", () =>
       "invalid 'turnlogSeqStart'",
     );
   }
+});
+
+test("parseTurnRequest carries the hosted turn context and rejects non-strings", () => {
+  const parsed = parseTurnRequest({
+    ...BASE,
+    workspaceContext: "team note",
+    userContext: "",
+  });
+  expect(parsed.workspaceContext).toBe("team note");
+  expect(parsed.userContext).toBe("");
+  expect(parseTurnRequest(BASE).workspaceContext).toBeUndefined();
+  expect(() => parseTurnRequest({ ...BASE, userContext: 5 })).toThrow(
+    "invalid 'userContext'",
+  );
 });

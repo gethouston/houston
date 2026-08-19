@@ -7,8 +7,9 @@ import {
 } from "node:http";
 import { AdmissionLimiter, turnConcurrency } from "./admission";
 import { executeTurn } from "./execute-turn";
+import { parseTurnRequest } from "./parse-turn-request";
 import type { TurnServerDeps } from "./server-types";
-import { parseTurnRequest, type TurnRequest } from "./types";
+import type { TurnRequest } from "./types";
 
 export type { TurnServerDeps } from "./server-types";
 

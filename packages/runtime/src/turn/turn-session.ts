@@ -38,6 +38,7 @@ import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makePlanReadyTool } from "../session/tools/plan-ready";
 import { makeRunCodeTool } from "../session/tools/run-code";
+import type { ProvidedContext } from "../session/workspace-context";
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,
@@ -109,6 +110,8 @@ export interface PiTurnRequest {
   mentions?: ChatMessage["mentions"];
   /** Human author supplied by the trusted pool dispatcher. */
   author?: MessageAuthor;
+  /** Gateway-provided workspace/user context for the session prompt. */
+  context?: ProvidedContext;
 }
 
 export interface PiTurnDirectories {
@@ -262,6 +265,9 @@ export async function runPiTurn(
       conversationId,
       model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
+      // Hosted turn context rides the envelope; the loader overlays it exactly
+      // as the long-lived server path does for a message-send body.
+      ...(turn.context ? { context: turn.context } : {}),
       // The turn's mode clamps this pi session's tools + overlays its prompt,
       // exactly as the long-lived server path does (createPiBackend applies
       // `toolNamesForMode` + the loader overlay from `opts.mode`): plan →
