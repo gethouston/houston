@@ -99,6 +99,12 @@ for (const agent of ["a", "b"]) {
   );
   seed(prefix, "workspace/secret.txt", `SECRET-${agent.toUpperCase()}`);
 }
+seed(
+  "ws/w1/agent-s",
+  "workspaces/W/A/.houston/runtime/custom-endpoint.json",
+  JSON.stringify({ baseUrl: `${providerUrl}/v1`, model: "echo" }),
+);
+seed("ws/w1/agent-s", "workspaces/W/A/secret.txt", "SECRET-S");
 mkdirSync(process.env.HOUSTON_DATA_DIR, { recursive: true });
 writeFileSync(
   join(process.env.HOUSTON_DATA_DIR, "auth.json"),
@@ -109,14 +115,20 @@ writeFileSync(
 
 const runtime = createTurnServer({ store, token: "", concurrency: 1 });
 const runtimeUrl = await listen(runtime);
-async function observeRoot(secret: string): Promise<string> {
+async function observeRoot(
+  secret: string,
+  workspaceRel = "workspace",
+): Promise<string> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     for (const name of readdirSync(tmpdir())) {
       if (!name.startsWith("houston-turn-")) continue;
       const root = join(tmpdir(), name);
       try {
         if (
-          readFileSync(join(root, "workspace/secret.txt"), "utf8") === secret
+          readFileSync(
+            join(root, "store", workspaceRel, "secret.txt"),
+            "utf8",
+          ) === secret
         ) {
           return root;
         }
@@ -129,7 +141,11 @@ async function observeRoot(secret: string): Promise<string> {
   throw new Error(`did not observe the ${secret} turn root`);
 }
 
-async function run(agent: "a" | "b", index: number): Promise<void> {
+async function run(
+  agent: "a" | "b" | "s",
+  index: number,
+  workspaceRel?: string,
+): Promise<void> {
   const responsePromise = fetch(`${runtimeUrl}/turn`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -148,7 +164,7 @@ async function run(agent: "a" | "b", index: number): Promise<void> {
       },
     }),
   });
-  const root = await observeRoot(`SECRET-${agent.toUpperCase()}`);
+  const root = await observeRoot(`SECRET-${agent.toUpperCase()}`, workspaceRel);
   const response = await responsePromise;
   expect(response.status).toBe(200);
   const raw = await response.text();
@@ -169,12 +185,16 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   await run("b", 0);
   await run("a", 1);
   await run("b", 1);
+  await run("s", 0, "workspaces/W/A");
+  await run("s", 1, "workspaces/W/A");
 
   expect(seen.map(({ token }) => token)).toEqual([
     "token-a",
     "token-b",
     "token-a",
     "token-b",
+    "token-s",
+    "token-s",
   ]);
   expect(seen.some(({ token }) => token === "process-global-token")).toBe(
     false,
@@ -192,6 +212,15 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   expect(aConversation).not.toContain("REQUEST-B");
   expect(bConversation).toContain("REQUEST-B-1");
   expect(bConversation).not.toContain("REQUEST-A");
+  const standingConversation = readFileSync(
+    join(
+      storeRoot,
+      "ws/w1/agent-s/workspaces/W/A/.houston/runtime/conversations/same-cid.json",
+    ),
+    "utf8",
+  );
+  expect(standingConversation).toContain("REQUEST-S-1");
+  expect(standingConversation).not.toContain("REQUEST-A");
   expect(await store.list("ws/w1")).not.toContainEqual(
     expect.stringMatching(/auth\.json$/),
   );

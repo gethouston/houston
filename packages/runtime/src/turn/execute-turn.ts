@@ -1,19 +1,21 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
-import { hydrate, syncBack } from "@houston/runtime-client/object-sync";
 import { applyServedCredential } from "../auth/auth-file";
 import { runWithActingContext } from "../session/acting-context";
 import { releaseConversation, runWithConversationScope } from "../session/bus";
 import { openSSE } from "../transport/sse";
 import { startClaimHeartbeat } from "./claim-heartbeat";
 import type { TurnServerDeps } from "./server-types";
+import { prepareTurnFilesystem, syncTurnFilesystem } from "./turn-filesystem";
+import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { runPiTurn, type TurnOutcome } from "./turn-session";
 import { resolveTurnStore } from "./turn-store";
+import { turnSetupErrorFrame, turnTerminalFrame } from "./turn-terminal";
 import type { TurnRequest } from "./types";
 
 /** Execute one admitted turn inside an isolated, disposable filesystem root. */
@@ -29,6 +31,7 @@ export async function executeTurn(
   const scope = `${turn.workspaceId}/${turn.agentId}`;
   const abort = new AbortController();
   req.on("close", () => abort.abort());
+  const turnId = turn.turnId ?? crypto.randomUUID();
   let heartbeat: ReturnType<typeof startClaimHeartbeat> | null = null;
   let closeSse: (() => void) | undefined;
   try {
@@ -47,11 +50,17 @@ export async function executeTurn(
               : {}),
           })
         : null;
-    const manifest = await hydrate(resolved.store, resolved.prefix, root);
+    const filesystem = await prepareTurnFilesystem({
+      store: resolved.store,
+      prefix: resolved.prefix,
+      root,
+      claimed: Boolean(turn.claim),
+      ...(deps.maxHydrateBytes !== undefined
+        ? { maxBytes: deps.maxHydrateBytes }
+        : {}),
+    });
     timings.t_hydrated = performance.now();
-    await mkdir(join(root, "workspace"), { recursive: true });
-    const dataDir = join(root, "data");
-    await mkdir(dataDir, { recursive: true });
+    const { dataDir } = filesystem;
     const authPath = join(dataDir, "auth.json");
     if (turn.credential) applyServedCredential(authPath, turn.credential);
     timings.t_cred_written = performance.now();
@@ -59,7 +68,6 @@ export async function executeTurn(
     const sse = openSSE(res);
     closeSse = sse.close;
     timings.t_sse_open = performance.now();
-    const turnId = turn.turnId ?? crypto.randomUUID();
     const turnLog = createTurnLog(deps, turn);
     const emit = (frame: WireFrame) => {
       sse.send(turnLog ? turnLog.record(frame) : frame);
@@ -76,7 +84,7 @@ export async function executeTurn(
         );
         emit({
           type: "shadow",
-          data: { ...timings, hydratedObjects: manifest.size },
+          data: { ...timings, hydratedObjects: filesystem.manifest.size },
           turnId,
           // SAFETY: shadow is an internal turn-server control frame. It uses
           // the WireFrame transport without entering the public protocol.
@@ -118,7 +126,7 @@ export async function executeTurn(
                 ...(turn.actingAs ? { actingUser: turn.actingAs.userId } : {}),
               },
               () =>
-                run(root, {
+                run(filesystem, {
                   conversationId: turn.conversationId,
                   text: turn.text,
                   provider: turn.credential?.provider ?? "",
@@ -141,6 +149,7 @@ export async function executeTurn(
         }
       }
 
+      let poolWritesOutOfScope = 0;
       await heartbeat?.checkpoint();
       if (heartbeat?.fenced) {
         outcome = { error: "claim_fenced" };
@@ -152,7 +161,13 @@ export async function executeTurn(
         // pod is no longer the writer. A sync failure surfaces as (part of)
         // the turn's error, never a quiet done.
         try {
-          await syncBack(resolved.store, resolved.prefix, root, manifest);
+          poolWritesOutOfScope = await syncTurnFilesystem({
+            store: resolved.store,
+            prefix: resolved.prefix,
+            filesystem,
+            conversationId: turn.conversationId,
+            claimed: Boolean(turn.claim),
+          });
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
@@ -163,20 +178,14 @@ export async function executeTurn(
           };
         }
       }
-      if (outcome.error) {
-        emit({ type: "error", data: { message: outcome.error }, turnId });
-      } else {
-        emit({
-          type: "done",
-          data: null,
-          turnId,
-          ...(outcome.pendingInteraction
-            ? { pendingInteraction: outcome.pendingInteraction }
-            : {}),
-        });
-      }
+      emit(turnTerminalFrame(outcome, turnId, poolWritesOutOfScope));
       await turnLog?.flush();
     }
+  } catch (error) {
+    if (!(error instanceof TurnSetupError)) throw error;
+    const sse = openSSE(res);
+    closeSse = sse.close;
+    sse.send(turnSetupErrorFrame(error, turnId));
   } finally {
     try {
       await heartbeat?.stop();

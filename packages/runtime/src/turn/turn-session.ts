@@ -46,8 +46,8 @@ import {
 import { createTurnModelRuntime } from "./turn-runtime";
 
 /**
- * One pi turn against a hydrated throwaway root (<root>/workspace +
- * <root>/data). Unlike chat.ts (one long-lived process = one workspace, module
+ * One pi turn against resolved hydrated directories. Unlike chat.ts (one
+ * long-lived process = one workspace, module
  * state), EVERYTHING here is per-request: auth storage, model registry,
  * session, tools. Nothing survives the request — that is the isolation story.
  *
@@ -111,8 +111,13 @@ export interface PiTurnRequest {
   author?: MessageAuthor;
 }
 
+export interface PiTurnDirectories {
+  workspaceDir: string;
+  dataDir: string;
+}
+
 export async function runPiTurn(
-  root: string,
+  directories: PiTurnDirectories,
   turn: PiTurnRequest,
 ): Promise<TurnOutcome> {
   const {
@@ -129,8 +134,7 @@ export async function runPiTurn(
     author,
   } = turn;
   const emit = (e: WireFrame) => turn.emit({ ...e, turnId });
-  const workspaceDir = join(root, "workspace");
-  const dataDir = join(root, "data");
+  const { workspaceDir, dataDir } = directories;
   const conversationsDir = join(dataDir, "conversations");
 
   const priorAuthors = author

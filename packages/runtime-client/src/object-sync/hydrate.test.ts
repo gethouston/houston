@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { excluded, hydrate, syncBack } from "./hydrate";
+import { excluded, type HydrateLimitError, hydrate, syncBack } from "./hydrate";
 import type { ObjectMetadata } from "./object-manifest";
 import {
   LocalDirStore,
@@ -579,7 +579,12 @@ test("hydration size cap throws, never truncates silently", async () => {
   seed(storeRoot, PREFIX, { "workspace/big.bin": "x".repeat(2048) });
   await expect(
     hydrate(store, PREFIX, work, { maxBytes: 1024 }),
-  ).rejects.toThrow(/hydration limit/);
+  ).rejects.toEqual(
+    expect.objectContaining({
+      name: "HydrateLimitError",
+      maxBytes: 1024,
+    }) satisfies Partial<HydrateLimitError>,
+  );
 });
 
 test("missing prefix hydrates to an empty manifest", async () => {

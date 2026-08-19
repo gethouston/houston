@@ -1,4 +1,5 @@
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
+import type { AdmissionLimiter } from "./admission";
 import type { runPiTurn } from "./turn-session";
 
 /** Injectable dependencies and pool controls for the per-turn HTTP server. */
@@ -8,8 +9,11 @@ export interface TurnServerDeps {
   token: string;
   runTurn?: typeof runPiTurn;
   concurrency?: number;
+  admission?: AdmissionLimiter;
+  isDraining?: () => boolean;
   poolStoreUrl?: string;
   turnLogUrl?: string;
   fetchImpl?: typeof fetch;
   heartbeatIntervalMs?: number;
+  maxHydrateBytes?: number;
 }

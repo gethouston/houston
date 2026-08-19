@@ -1,14 +1,16 @@
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test } from "vitest";
 import { currentActingContext } from "../session/acting-context";
@@ -147,8 +149,10 @@ test("shadow hydrates and resolves, emits shadow then done, and leaves no writes
       .find((candidate) => {
         try {
           return (
-            readFileSync(join(candidate, "workspace/note.txt"), "utf8") ===
-            "original"
+            readFileSync(
+              join(candidate, "store/workspace/note.txt"),
+              "utf8",
+            ) === "original"
           );
         } catch {
           return false;
@@ -179,9 +183,25 @@ test("a fenced heartbeat skips syncBack and emits claim_fenced", async () => {
     res.end("adopted");
   });
   const heartbeatBase = await listen(heartbeat);
-  const store = new LocalDirStore(mkdtempSync(join(tmpdir(), "pool-store-")));
-  const runTurn: typeof runPiTurn = async (root) => {
-    await writeFile(join(root, "workspace", "must-not-sync.txt"), "nope");
+  const storeRoot = mkdtempSync(join(tmpdir(), "pool-store-"));
+  const store = new LocalDirStore(storeRoot);
+  // A claimed turn needs an existing agent; seed the standing layout.
+  const settings = join(
+    storeRoot,
+    "ws",
+    "w1",
+    "agent-1",
+    "workspaces",
+    "W",
+    "A",
+    ".houston",
+    "runtime",
+    "settings.json",
+  );
+  mkdirSync(dirname(settings), { recursive: true });
+  writeFileSync(settings, "{}");
+  const runTurn: typeof runPiTurn = async (layout) => {
+    await writeFile(join(layout.workspaceDir, "must-not-sync.txt"), "nope");
     await new Promise((resolve) => setTimeout(resolve, 20));
     return {};
   };

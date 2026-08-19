@@ -62,7 +62,9 @@ function json(
 
 /** Create the bounded HTTP server used by stateless per-turn workers. */
 export function createTurnServer(deps: TurnServerDeps): Server {
-  const admission = new AdmissionLimiter(deps.concurrency ?? turnConcurrency());
+  const admission =
+    deps.admission ??
+    new AdmissionLimiter(deps.concurrency ?? turnConcurrency());
   return createServer((req, res) => {
     (async () => {
       const path = (req.url || "/").split("?")[0];
@@ -74,6 +76,14 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       }
       if (!authorized(req, deps.token)) {
         return json(res, 401, { error: "unauthorized" });
+      }
+      if (deps.isDraining?.()) {
+        return json(
+          res,
+          503,
+          { error: "worker_draining" },
+          { "Retry-After": "1" },
+        );
       }
       let turn: TurnRequest;
       try {

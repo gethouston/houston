@@ -1,22 +1,32 @@
 /** Process-local admission guard for bounded pooled-turn concurrency. */
 export class AdmissionLimiter {
-  private active = 0;
+  private activeCount = 0;
 
-  constructor(private readonly capacity: number) {
-    if (!Number.isInteger(capacity) || capacity < 1) {
+  constructor(private readonly capacityValue: number) {
+    if (!Number.isInteger(capacityValue) || capacityValue < 1) {
       throw new Error("turn concurrency must be a positive integer");
     }
   }
 
+  /** Maximum simultaneous turns this worker admits. */
+  get capacity(): number {
+    return this.capacityValue;
+  }
+
+  /** Turns currently holding an admission slot. */
+  get active(): number {
+    return this.activeCount;
+  }
+
   /** Acquire a slot, returning an idempotent release function when available. */
   tryAcquire(): (() => void) | null {
-    if (this.active >= this.capacity) return null;
-    this.active += 1;
+    if (this.activeCount >= this.capacityValue) return null;
+    this.activeCount += 1;
     let released = false;
     return () => {
       if (released) return;
       released = true;
-      this.active -= 1;
+      this.activeCount -= 1;
     };
   }
 }

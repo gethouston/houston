@@ -125,6 +125,11 @@ export function parseTurnRequest(body: unknown): TurnRequest {
       expires: c.expires,
       accountId: typeof c.accountId === "string" ? c.accountId : null,
       kind: c.kind === "api_key" ? "api_key" : "oauth",
+      // Copilot Enterprise routes to a per-tenant API host; dropping it here
+      // would silently turn an enterprise credential into a github.com one.
+      ...(typeof c.enterpriseUrl === "string" && c.enterpriseUrl
+        ? { enterpriseUrl: c.enterpriseUrl }
+        : {}),
     };
   }
   if (b.turnId !== undefined && (!nonEmpty(b.turnId) || !ID.test(b.turnId))) {
