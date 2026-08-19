@@ -75,8 +75,15 @@ pub fn init(data_dir: &Path) {
 /// failure is fully handled in the frontend updater hooks, so Sentry only
 /// needs the breadcrumb trail, not an event per 5-minute poll
 /// (Sentry HOUSTON-APP-14).
+///
+/// `rustls_platform_verifier` fires `log::error!` internally whenever the
+/// OS trust store rejects a peer certificate (e.g. a machine behind a
+/// misconfigured corporate MITM proxy whose root even Windows won't chain).
+/// The failing request already returns `Err` and its caller owns surfacing
+/// it, so the verifier's own log line is a duplicate — one Sentry event per
+/// retry from a handful of broken machines (Sentry HOUSTON-APP-PE).
 fn demote_error_to_breadcrumb(target: &str) -> bool {
-    target.starts_with("tauri_plugin_updater")
+    target.starts_with("tauri_plugin_updater") || target.starts_with("rustls_platform_verifier")
 }
 
 fn logs_dir() -> PathBuf {
@@ -172,6 +179,14 @@ mod tests {
     fn updater_plugin_errors_are_demoted_to_breadcrumbs() {
         assert!(demote_error_to_breadcrumb("tauri_plugin_updater::updater"));
         assert!(demote_error_to_breadcrumb("tauri_plugin_updater"));
+    }
+
+    #[test]
+    fn tls_platform_verifier_errors_are_demoted_to_breadcrumbs() {
+        assert!(demote_error_to_breadcrumb(
+            "rustls_platform_verifier::verification::windows"
+        ));
+        assert!(demote_error_to_breadcrumb("rustls_platform_verifier"));
     }
 
     #[test]
