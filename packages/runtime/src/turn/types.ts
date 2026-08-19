@@ -54,6 +54,13 @@ export interface TurnRequest {
   actingAs?: { userId: string; name?: string };
   /** Hydrate and resolve the model without calling it or writing back. */
   shadow?: boolean;
+  /**
+   * First turnlog sequence number this execution may use. The gateway keeps
+   * ONE turnlog stream per conversation, so a worker that restarted at 1 on a
+   * conversation's second turn would collide with the first turn's frames
+   * (replay = resync). Absent = 1 (a fresh conversation, or a legacy caller).
+   */
+  turnlogSeqStart?: number;
   /** Exclusive conversation claim granted to this worker. */
   claim?: {
     id: string;
@@ -156,6 +163,14 @@ export function parseTurnRequest(body: unknown): TurnRequest {
   if (b.shadow !== undefined && typeof b.shadow !== "boolean") {
     throw new Error("invalid 'shadow'");
   }
+  if (
+    b.turnlogSeqStart !== undefined &&
+    (typeof b.turnlogSeqStart !== "number" ||
+      !Number.isSafeInteger(b.turnlogSeqStart) ||
+      b.turnlogSeqStart < 1)
+  ) {
+    throw new Error("invalid 'turnlogSeqStart'");
+  }
   let claim: TurnRequest["claim"];
   if (b.claim !== undefined) {
     const parsed = record(b.claim, "claim");
@@ -209,6 +224,8 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     hostToken: typeof b.hostToken === "string" ? b.hostToken : undefined,
     actingAs,
     shadow: typeof b.shadow === "boolean" ? b.shadow : undefined,
+    turnlogSeqStart:
+      typeof b.turnlogSeqStart === "number" ? b.turnlogSeqStart : undefined,
     claim,
   };
 }

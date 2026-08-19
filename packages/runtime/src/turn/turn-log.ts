@@ -13,6 +13,8 @@ interface TurnLogOptions {
   fetchImpl?: typeof fetch;
   batchMs?: number;
   batchSize?: number;
+  /** First seq to stamp (the conversation's stream continues, never restarts). */
+  seqStart?: number;
 }
 
 const REQUEST_TIMEOUT_MS = 5_000;
@@ -26,7 +28,7 @@ export class TurnLog {
   private readonly batchMs: number;
   private readonly batchSize: number;
   private readonly frames: SequencedFrame[] = [];
-  private seq = 0;
+  private seq: number;
   private disabled = false;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private tail = Promise.resolve();
@@ -35,6 +37,7 @@ export class TurnLog {
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.batchMs = opts.batchMs ?? 250;
     this.batchSize = opts.batchSize ?? 32;
+    this.seq = (opts.seqStart ?? 1) - 1;
   }
 
   /** Sequence and enqueue one frame, flushing terminal frames immediately. */
@@ -122,5 +125,6 @@ export function createTurnLog(
     hostToken: turn.hostToken,
     claim: { token: turn.claim.token, bootId: turn.claim.bootId },
     ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+    ...(turn.turnlogSeqStart ? { seqStart: turn.turnlogSeqStart } : {}),
   });
 }

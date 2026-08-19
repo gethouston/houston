@@ -105,3 +105,19 @@ test("a 404 disables only that turn's sender", async () => {
   await nextTurn.flush();
   expect(fetchImpl).toHaveBeenCalledTimes(2);
 });
+
+test("seqStart continues the conversation's stream instead of restarting at 1", async () => {
+  const log = new TurnLog({
+    baseUrl: "http://127.0.0.1:1",
+    org: "org-1",
+    agent: "agent-1",
+    conversationId: "c1",
+    hostToken: "host-token",
+    claim: { token: "7", bootId: "boot" },
+    fetchImpl: async () => new Response(null, { status: 204 }),
+    seqStart: 41,
+  });
+  expect(log.record(frame).seq).toBe(41);
+  expect(log.record(frame).seq).toBe(42);
+  await log.flush();
+});

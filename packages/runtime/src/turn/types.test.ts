@@ -106,3 +106,15 @@ test("a claimed turn requires exactly ws/org/agent", () => {
     }),
   ).toThrow("claimed turn has invalid 'gcsPrefix'");
 });
+
+test("parseTurnRequest accepts a turnlog seq start and rejects a bad one", () => {
+  expect(
+    parseTurnRequest({ ...BASE, turnlogSeqStart: 41 }).turnlogSeqStart,
+  ).toBe(41);
+  expect(parseTurnRequest(BASE).turnlogSeqStart).toBeUndefined();
+  for (const bad of [0, -1, 1.5, "41", Number.MAX_SAFE_INTEGER + 2]) {
+    expect(() => parseTurnRequest({ ...BASE, turnlogSeqStart: bad })).toThrow(
+      "invalid 'turnlogSeqStart'",
+    );
+  }
+});
