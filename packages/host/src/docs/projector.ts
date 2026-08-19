@@ -1,4 +1,8 @@
-import { docKey, type HoustonFamily } from "@houston/domain";
+import {
+  docKey,
+  type HoustonFamily,
+  normalizeActivities,
+} from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
@@ -64,11 +68,20 @@ export class DocShadowProjector {
     const workspace = await this.deps.store.getWorkspace(agent.workspaceId);
     if (!workspace) return;
     const root = this.deps.paths.agentRoot(workspace, agent);
-    const raw = await this.deps.vfs.readText(docKey(root, family));
+    const key = docKey(root, family);
+    const raw = await this.deps.vfs.readText(key);
     if (raw === null) return;
-    await this.deps.shadow.put(
-      family,
-      JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown,
-    );
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
+    // The activity family is READ by the gateway (the mission board is served
+    // from the doc at database authority), and reads normalize via
+    // normalizeActivities — malformed entries dropped, defaults applied. Keep
+    // that behavior in exactly one place by projecting the NORMALIZED items:
+    // for host-written files this is a byte-level no-op (saveActivities writes
+    // normalized items), and for agent hand-edits the doc converges to what
+    // the pod would serve. normalizeActivities is idempotent, so the doc also
+    // remains a valid activity.json for any future file reconstruction.
+    const doc =
+      family === "activity" ? normalizeActivities(parsed, key).items : parsed;
+    await this.deps.shadow.put(family, doc);
   }
 }
