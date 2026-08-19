@@ -64,6 +64,13 @@ export interface TurnRequest {
    * (replay = resync). Absent = 1 (a fresh conversation, or a legacy caller).
    */
   turnlogSeqStart?: number;
+  /**
+   * A scheduled routine fire (pool path): the worker derives the prompt and
+   * pins from the agent's own routine file and keeps the run-row lifecycle the
+   * standing host would have kept. Requires a claim: only the control-plane
+   * scheduler dispatches routine turns.
+   */
+  routine?: { id: string };
   /** Exclusive conversation claim granted to this worker. */
   claim?: {
     id: string;

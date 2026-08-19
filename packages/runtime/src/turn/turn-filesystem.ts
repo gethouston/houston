@@ -69,15 +69,21 @@ export function claimedTurnIncludes(
   );
   const session = posix.join(dataRel, "sessions", conversationId);
   const activity = turnActivityKey(workspaceRel);
+  const runs = turnRoutineRunsKey(workspaceRel);
   return (relativePath) =>
     relativePath === conversation ||
     relativePath.startsWith(`${session}/`) ||
-    relativePath === activity;
+    relativePath === activity ||
+    relativePath === runs;
 }
 
 /** Store-relative mission-board object granted to a claimed turn. */
 export const turnActivityKey = (workspaceRel: string): string =>
   docKey(workspaceRel, "activity");
+
+/** Store-relative routine-runs object granted to a claimed turn. */
+export const turnRoutineRunsKey = (workspaceRel: string): string =>
+  docKey(workspaceRel, "routine_runs");
 
 /** Sync a turn, limiting a claimed writer to its granted turn-owned files. */
 export async function syncTurnFilesystem(opts: {
