@@ -142,6 +142,12 @@ jobs:
           # return malformed InRelease files the web job dies before tests run.
           sudo rm -f /etc/apt/sources.list.d/azure-cli.*
           sudo rm -f /etc/apt/sources.list.d/microsoft-prod.*
+          # The image's apt mirrorlist tries azure.archive.ubuntu.com before
+          # archive.ubuntu.com; when the Azure mirror is down, every index
+          # fetch burns its retry loop against it first and apt-get update can
+          # eat the whole 30-minute job (shard timeouts on 2026-08-19). Skip
+          # straight to the canonical archive.
+          echo "https://archive.ubuntu.com/ubuntu/	priority:1" | sudo tee /etc/apt/apt-mirrors.txt
 
       - name: Install Playwright Chromium
         run: pnpm --filter houston-web exec playwright install --with-deps chromium
