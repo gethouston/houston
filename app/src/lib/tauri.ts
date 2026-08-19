@@ -792,7 +792,15 @@ export const tauriSkills = {
       () =>
         getEngine().previewCommunitySkill(agentPath, source, skillId, signal),
       undefined,
-      { toast: false },
+      // `skill_not_in_repo` on a preview is an expected upstream state, not a
+      // Houston bug: the skills.sh index keeps listing skills whose GitHub
+      // repo was deleted, and preview deliberately skips the recursive scan
+      // that install runs (github-lookup.ts), so deeply nested skills miss
+      // here yet install fine. The detail modal already shows its visible
+      // error state (use-skill-preview.ts), so no Sentry capture — that
+      // second surface is what kept HOUSTON-APP-4XZ alive after PRODUCT-1382
+      // fixed every findable layout. Every other failure stays captured.
+      { toast: false, silenceKinds: ["skill_not_in_repo"] },
     ),
   installCommunity: (
     agentPath: string,
