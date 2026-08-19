@@ -37,19 +37,26 @@ test("heartbeat posts the claim grant with the host token and stops", async () =
   expect(heartbeat.fenced).toBe(false);
 });
 
-test("a 409 fences the claim", async () => {
+test("a 409 fences the claim and fires onFenced once", async () => {
   let status = 204;
+  const onFenced = vi.fn();
   const heartbeat = startClaimHeartbeat({
     claim,
     hostToken: "host-token",
     fetchImpl: async () =>
       new Response(status === 204 ? null : "heartbeat", { status }),
     intervalMs: 60_000,
+    onFenced,
   });
   await heartbeat.ready;
   expect(heartbeat.fenced).toBe(false);
+  expect(onFenced).not.toHaveBeenCalled();
   status = 409;
   await heartbeat.checkpoint();
   expect(heartbeat.fenced).toBe(true);
+  expect(onFenced).toHaveBeenCalledOnce();
+  // Fenced is terminal: later checkpoints do not beat again.
+  await heartbeat.checkpoint();
+  expect(onFenced).toHaveBeenCalledOnce();
   await heartbeat.stop();
 });

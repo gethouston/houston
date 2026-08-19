@@ -31,7 +31,11 @@ export async function executeTurn(
   timings.t_tmpdir = performance.now();
   const scope = `${turn.workspaceId}/${turn.agentId}`;
   const abort = new AbortController();
-  req.on("close", () => abort.abort());
+  // A CLAIMED turn's lifetime is the claim, not the HTTP connection: the
+  // gateway may lose its stream and re-attach through the turnlog, so a
+  // dropped socket must not abort the work; a fenced heartbeat (the claim was
+  // released or adopted) must. Unclaimed turns keep the connection contract.
+  if (!turn.claim) req.on("close", () => abort.abort());
   const turnId = turn.turnId ?? crypto.randomUUID();
   let heartbeat: ReturnType<typeof startClaimHeartbeat> | null = null;
   let closeSse: (() => void) | undefined;
@@ -45,6 +49,7 @@ export async function executeTurn(
         ? startClaimHeartbeat({
             claim: turn.claim,
             hostToken: turn.hostToken,
+            onFenced: () => abort.abort(),
             ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
             ...(deps.heartbeatIntervalMs
               ? { intervalMs: deps.heartbeatIntervalMs }

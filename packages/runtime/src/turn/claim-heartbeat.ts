@@ -19,6 +19,8 @@ export function startClaimHeartbeat(opts: {
   hostToken: string;
   fetchImpl?: typeof fetch;
   intervalMs?: number;
+  /** Fired once, the moment a heartbeat learns the claim was adopted. */
+  onFenced?: () => void;
 }): ClaimHeartbeat {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const intervalMs = opts.intervalMs ?? 15_000;
@@ -45,6 +47,7 @@ export function startClaimHeartbeat(opts: {
       if (response.status === 409) {
         fenced = true;
         clearInterval(timer);
+        opts.onFenced?.();
       } else if (!response.ok) {
         console.warn(
           `[turn] claim heartbeat failed (${response.status}): ${(

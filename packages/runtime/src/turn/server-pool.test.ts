@@ -255,3 +255,106 @@ test("the supplied turn id and acting identity reach the turn session", async ()
   });
   expect(raw).toContain('"turnId":"gateway-turn-1"');
 });
+
+function seedStandingAgent(): string {
+  const storeRoot = mkdtempSync(join(tmpdir(), "pool-store-"));
+  const settings = join(
+    storeRoot,
+    "ws",
+    "w1",
+    "agent-1",
+    "workspaces",
+    "W",
+    "A",
+    ".houston",
+    "runtime",
+    "settings.json",
+  );
+  mkdirSync(dirname(settings), { recursive: true });
+  writeFileSync(settings, "{}");
+  return storeRoot;
+}
+
+const claimedBody = (heartbeatUrl: string) =>
+  body({
+    hostToken: "host-token",
+    claim: {
+      id: "claim-1",
+      bootId: "boot-1",
+      token: "claim-token",
+      heartbeatUrl,
+    },
+  });
+
+test("a claimed turn outlives a dropped client connection and still syncs", async () => {
+  const heartbeat = createServer((_req, res) => {
+    res.writeHead(204);
+    res.end();
+  });
+  const heartbeatBase = await listen(heartbeat);
+  const storeRoot = seedStandingAgent();
+  const store = new LocalDirStore(storeRoot);
+  let sawAbort: boolean | undefined;
+  let finished: (() => void) | undefined;
+  const done = new Promise<void>((resolve) => {
+    finished = resolve;
+  });
+  const runTurn: typeof runPiTurn = async (layout, turn) => {
+    // Give the client time to hang up, then keep working as if nothing
+    // happened: the claim, not the socket, owns this turn.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    sawAbort = turn.signal?.aborted;
+    try {
+      const conversations = join(layout.dataDir, "conversations");
+      mkdirSync(conversations, { recursive: true });
+      await writeFile(
+        join(conversations, `${turn.conversationId}.json`),
+        JSON.stringify({ id: turn.conversationId, messages: [] }),
+      );
+      return {};
+    } finally {
+      finished?.();
+    }
+  };
+  const base = await listen(createTurnServer({ store, token: "", runTurn }));
+  const controller = new AbortController();
+  // The response headers arrive once the SSE opens (after hydrate); aborting
+  // right after that drops the socket while the turn is still running.
+  const response = await fetch(`${base}/turn`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(claimedBody(heartbeatBase)),
+    signal: controller.signal,
+  });
+  expect(response.status).toBe(200);
+  controller.abort();
+  await done;
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(sawAbort).toBe(false);
+  expect(await store.list("ws/w1/agent-1")).toContain(
+    "ws/w1/agent-1/workspaces/W/A/.houston/runtime/conversations/c1.json",
+  );
+});
+
+test("a fenced heartbeat aborts the running claimed turn", async () => {
+  let status = 204;
+  const heartbeat = createServer((_req, res) => {
+    res.writeHead(status);
+    res.end();
+  });
+  const heartbeatBase = await listen(heartbeat);
+  const store = new LocalDirStore(seedStandingAgent());
+  const runTurn: typeof runPiTurn = async (_layout, turn) => {
+    status = 409;
+    await new Promise<void>((resolve) => {
+      turn.signal?.addEventListener("abort", () => resolve(), { once: true });
+    });
+    return { error: "aborted" };
+  };
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn, heartbeatIntervalMs: 20 }),
+  );
+  const raw = await (await post(base, claimedBody(heartbeatBase))).text();
+  expect(raw).toContain("claim_fenced");
+  expect(raw).not.toContain('"type":"done"');
+});
