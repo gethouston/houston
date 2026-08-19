@@ -1,4 +1,4 @@
-import type { OrgSummary } from "@houston-ai/engine-client";
+import type { BillingSummary, OrgMember } from "@houston-ai/engine-client";
 import { shareErrorCode } from "./share-via-team.ts";
 import type { Workspace } from "./types.ts";
 
@@ -64,23 +64,29 @@ export function isExpectedWorkspaceDeleteError(err: unknown): boolean {
  * gateway stays the sole enforcer, so a false `false` merely means the slower
  * server-first flow, while a false `true` is caught by the store's rollback.
  *
- * Mirrors the gateway's two 409s over a fresh `GET /v1/orgs` row:
- * - `has_members` rejects when any OTHER member row exists → require
- *   `memberCount <= 1` (the caller is the owner, so the one member is them).
+ * Mirrors the gateway's two 409s over fresh reads of the ACTIVE space (the
+ * one being deleted) — NOT the `GET /v1/orgs` summaries, which carry no
+ * billing detail:
+ * - `has_members` rejects when any OTHER member row exists. `GET /v1/org`'s
+ *   roster is the very same member listing the delete handler counts, and the
+ *   caller (the owner) is always one row → require `members.length <= 1`. An
+ *   absent roster is unverifiable → never optimistic.
  * - `subscription_active` rejects when a Stripe subscription object exists in
- *   a non-terminal state. `billing.interval` is set exactly when a Stripe
- *   object exists, and the effective status can hide one (a solo team with a
- *   trialing/unpaid Stripe object reads `free`), so require no `interval` AND
- *   a status that is not `active`/`past_due`. `enterprise` bills off-platform
- *   — unverifiable, so never optimistic.
- *
- * Anything unverifiable (org not listed, billing absent) → `false`.
+ *   a non-terminal state. `GET /v1/org/billing` degrades to `null` exactly
+ *   when the billing surface is OFF (unconfigured / predates the route) — no
+ *   Stripe object can exist there, so `null` is SAFE. On a real summary,
+ *   `interval` is set exactly when a Stripe object exists, and the effective
+ *   status can hide one (a solo team with a trialing/unpaid Stripe object
+ *   reads `free`), so require no `interval` AND a status that is not
+ *   `active`/`past_due`. `enterprise` bills off-platform — unverifiable.
  */
-export function canDeleteOptimistically(org: OrgSummary | undefined): boolean {
-  if (org === undefined || org.kind !== "team") return false;
-  if (org.memberCount > 1) return false;
-  const billing = org.billing;
-  if (billing === undefined || billing.plan !== "team") return false;
+export function canDeleteOptimistically(
+  members: readonly OrgMember[] | undefined,
+  billing: BillingSummary | null,
+): boolean {
+  if (members === undefined || members.length > 1) return false;
+  if (billing === null) return true;
+  if (billing.plan !== "team") return false;
   return (
     billing.status !== "active" &&
     billing.status !== "past_due" &&

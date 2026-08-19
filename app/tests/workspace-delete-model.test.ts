@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { BillingSummary, OrgSummary } from "@houston-ai/engine-client";
+import type { BillingSummary, OrgMember } from "@houston-ai/engine-client";
 import type { Workspace } from "../src/lib/types.ts";
 import {
   canDeleteOptimistically,
@@ -57,61 +57,72 @@ describe("classifyWorkspaceDeleteError", () => {
 });
 
 // PRODUCT-1426: the pre-check that picks the UX shape — optimistic only for a
-// space the gateway will provably accept deleting. Mirrors the gateway's two
-// 409s: any OTHER member row (`memberCount > 1`) and a live Stripe object
+// space the gateway will provably accept deleting, over the same reads the
+// admin screens use (`GET /v1/org` roster + `GET /v1/org/billing`). Mirrors
+// the gateway's two 409s: any OTHER member row, and a live Stripe object
 // (`interval` is set exactly when one exists; `active`/`past_due` always mean
 // one). Everything unverifiable stays server-first.
-const org = (
-  overrides: Partial<OrgSummary> = {},
-  billing?: Partial<BillingSummary>,
-): OrgSummary => ({
-  id: "org-1",
-  slug: "acme",
-  name: "Acme",
-  kind: "team",
-  role: "owner",
-  memberCount: 1,
-  degraded: false,
-  billing:
-    billing === undefined
-      ? { plan: "team", status: "free", seats: 1 }
-      : { plan: "team", status: "free", seats: 1, ...billing },
+const member = (userId: string, role: OrgMember["role"]): OrgMember => ({
+  userId,
+  role,
+});
+
+const soloOwner = [member("u-owner", "owner")];
+
+const billing = (overrides: Partial<BillingSummary> = {}): BillingSummary => ({
+  plan: "team",
+  status: "free",
+  seats: 1,
   ...overrides,
 });
 
 describe("canDeleteOptimistically", () => {
   it("accepts a solo free team (the deletable shape)", () => {
-    strictEqual(canDeleteOptimistically(org()), true);
+    strictEqual(canDeleteOptimistically(soloOwner, billing()), true);
   });
 
   it("accepts a solo team whose trial expired without a Stripe object", () => {
-    strictEqual(canDeleteOptimistically(org({}, { status: "expired" })), true);
+    strictEqual(
+      canDeleteOptimistically(soloOwner, billing({ status: "expired" })),
+      true,
+    );
+  });
+
+  it("accepts a null billing summary: the surface is off, no Stripe object can exist", () => {
+    strictEqual(canDeleteOptimistically(soloOwner, null), true);
   });
 
   it("rejects when teammates remain (the gateway's has_members)", () => {
-    strictEqual(canDeleteOptimistically(org({ memberCount: 2 })), false);
+    strictEqual(
+      canDeleteOptimistically([...soloOwner, member("u-2", "user")], billing()),
+      false,
+    );
   });
 
   it("rejects every hint of a live Stripe object (subscription_active)", () => {
-    strictEqual(canDeleteOptimistically(org({}, { status: "active" })), false);
     strictEqual(
-      canDeleteOptimistically(org({}, { status: "past_due" })),
+      canDeleteOptimistically(soloOwner, billing({ status: "active" })),
+      false,
+    );
+    strictEqual(
+      canDeleteOptimistically(soloOwner, billing({ status: "past_due" })),
       false,
     );
     // A Stripe object can hide behind a free/trialing/expired effective
     // status; its `interval` is the tell.
     strictEqual(
-      canDeleteOptimistically(org({}, { status: "free", interval: "monthly" })),
+      canDeleteOptimistically(
+        soloOwner,
+        billing({ status: "free", interval: "monthly" }),
+      ),
       false,
     );
   });
 
   it("stays server-first on everything unverifiable", () => {
-    strictEqual(canDeleteOptimistically(undefined), false);
-    strictEqual(canDeleteOptimistically(org({ kind: "personal" })), false);
-    strictEqual(canDeleteOptimistically(org({ billing: undefined })), false);
+    strictEqual(canDeleteOptimistically(undefined, billing()), false);
     strictEqual(
-      canDeleteOptimistically(org({}, { plan: "enterprise" })),
+      canDeleteOptimistically(soloOwner, billing({ plan: "enterprise" })),
       false,
     );
   });

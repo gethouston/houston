@@ -6,7 +6,7 @@ import { useCapabilities } from "../../../hooks/use-capabilities";
 import { showExpectedStateToast } from "../../../lib/error-toast";
 import { openHome } from "../../../lib/home-nav";
 import { canDeleteWorkspace } from "../../../lib/org-roles";
-import { isTeamWorkspace, orgSlugFromWorkspaceId } from "../../../lib/space-id";
+import { isTeamWorkspace } from "../../../lib/space-id";
 import { tauriOrg } from "../../../lib/tauri";
 import {
   canDeleteOptimistically,
@@ -31,8 +31,9 @@ import { SettingsControlRow } from "../settings-row";
  * its two business rejections (`has_members`, `subscription_active`) come
  * back as plain informational toasts that say what to do first.
  *
- * Confirming pre-checks those two rejections against a fresh `GET /v1/orgs`
- * row (PRODUCT-1426), and the answer picks the UX shape, never the outcome:
+ * Confirming pre-checks those two rejections against fresh active-org reads
+ * (`GET /v1/org` roster + `GET /v1/org/billing`, PRODUCT-1426), and the
+ * answer picks the UX shape, never the outcome:
  * a provably-deletable solo team switches the user to the default space with
  * the success toast immediately (the slow gateway delete finishes behind the
  * switch, with the store's rollback as the race net); anything the pre-check
@@ -79,11 +80,14 @@ export function DangerSection() {
     const { id, name } = currentWorkspace;
     setDeleting(true);
     try {
-      const slug = orgSlugFromWorkspaceId(id);
-      const provablyDeletable = await tauriOrg.listOrgs().then(
-        (list) =>
-          canDeleteOptimistically(list.orgs.find((o) => o.slug === slug)),
-        // Not swallowed: the wire layer reported the list failure, and the
+      // Both reads address the ACTIVE space — still the doomed team here; the
+      // optimistic switch only re-pins the gateway after they resolve.
+      const provablyDeletable = await Promise.all([
+        tauriOrg.get(),
+        tauriOrg.getBilling(),
+      ]).then(
+        ([info, billing]) => canDeleteOptimistically(info.members, billing),
+        // Not swallowed: the wire layer reported the read failure, and the
         // server-first path below gives the delete its own loud outcome.
         () => false,
       );
