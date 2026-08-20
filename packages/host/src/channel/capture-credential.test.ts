@@ -59,7 +59,7 @@ test("full export stores once then scrubs once, provider-scoped", async () => {
       credentials,
       workspaceId: "workspace",
       provider: "openai-codex",
-      requireRefresh: true,
+      localOriginOnly: true,
     }),
   ).toEqual({ ok: true, provider: "openai-codex" });
   expect(puts).toHaveLength(1);
@@ -161,7 +161,7 @@ test("an automatic (healer) capture rides the gateway's if-absent maintenance co
       credentials,
       workspaceId: "workspace",
       provider: "openai-codex",
-      requireRefresh: true,
+      localOriginOnly: true,
       ifAbsent: true,
     }),
   ).toEqual({ ok: true, provider: "openai-codex" });
@@ -169,30 +169,137 @@ test("an automatic (healer) capture rides the gateway's if-absent maintenance co
   expect(gatewayPuts[0]?.ifAbsent).toBe("1");
 });
 
-test("heal mode rejects an api-key export before storing", async () => {
-  let puts = 0;
+test("the anthropic setup token captures as an api_key — stored centrally, no scrub (PRODUCT-1370)", async () => {
+  // The paste flow stores the token runtime-side as an api_key entry; before
+  // PRODUCT-1370 the export refused it, capture 400'd "not connected yet", the
+  // gateway never stored anthropic and the UI re-asked the code forever.
+  const { credentials, puts } = recordingStore();
+  const scrubbed: string[] = [];
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      Response.json({ provider: "openrouter", kind: "api_key", key: "sk" }),
+    vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/auth/export"))
+        return Response.json({
+          provider: "anthropic",
+          kind: "api_key",
+          key: "sk-ant-oat01-setup-token",
+        });
+      if (url.includes("/auth/scrub-refresh")) {
+        scrubbed.push(url);
+        return Response.json({ ok: true });
+      }
+      return new Response("not found", { status: 404 });
+    }),
+  );
+  expect(
+    await captureRuntimeCredential({
+      endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
+      credentials,
+      workspaceId: "workspace",
+      provider: "anthropic",
+    }),
+  ).toEqual({ ok: true, provider: "anthropic" });
+  expect(puts).toHaveLength(1);
+  expect(puts[0]?.credential).toMatchObject({
+    provider: "anthropic",
+    kind: "api_key",
+    accessToken: "sk-ant-oat01-setup-token",
+    refreshToken: "",
+    expiresAt: Number.MAX_SAFE_INTEGER,
+  });
+  // An api_key has no refresh token to strip, and the entry must STAY in
+  // auth.json (on the desktop, serve never re-supplies anthropic): no scrub.
+  expect(scrubbed).toEqual([]);
+});
+
+test("a healer capture asks for local-origin credentials only and stores a returned api_key", async () => {
+  // The healer's contract rides to the runtime as excludeServed=1: the runtime
+  // refuses serve-written api_key projections (its served-providers manifest is
+  // the proof of origin), so an api_key it DOES return is attested local — the
+  // pasted setup token of a currently-looping user heals with no re-paste.
+  const { credentials, puts } = recordingStore();
+  const exportUrls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/auth/export")) {
+        exportUrls.push(url);
+        return Response.json({
+          provider: "anthropic",
+          kind: "api_key",
+          key: "sk-ant-oat01-leftover",
+        });
+      }
+      return new Response("not found", { status: 404 });
+    }),
+  );
+  expect(
+    await captureRuntimeCredential({
+      endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
+      credentials,
+      workspaceId: "workspace",
+      provider: "anthropic",
+      localOriginOnly: true,
+      ifAbsent: true,
+    }),
+  ).toEqual({ ok: true, provider: "anthropic" });
+  expect(exportUrls).toEqual([
+    "http://runtime/auth/export?provider=anthropic&excludeServed=1",
+  ]);
+  expect(puts).toHaveLength(1);
+  expect(puts[0]?.credential.kind).toBe("api_key");
+  expect(puts[0]?.opts?.ifAbsent).toBe(true);
+});
+
+test("an api_key capture lands on the gateway wire as kind api_key", async () => {
+  // The e2e-shaped assertion from the issue: the fake gateway sees the PUT the
+  // real one would store — kind "api_key", the pasted token as the access.
+  const gatewayPuts: Array<Record<string, unknown>> = [];
+  const gatewayFetch = (async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => {
+    if (init?.method === "PUT") {
+      gatewayPuts.push(JSON.parse(String(init.body)));
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    return new Response(`unexpected ${String(input)}`, { status: 500 });
+  }) as typeof fetch;
+  const credentials = new RemoteCredentialStore({
+    baseUrl: "http://gateway",
+    orgSlug: "acme",
+    agentSlug: "sales",
+    podToken: "pod-token",
+    fetchImpl: gatewayFetch,
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request) =>
+      String(input).includes("/auth/export")
+        ? Response.json({
+            provider: "anthropic",
+            kind: "api_key",
+            key: "sk-ant-oat01-wire",
+          })
+        : new Response("not found", { status: 404 }),
     ),
   );
-  const result = await captureRuntimeCredential({
-    endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
-    credentials: {
-      get: async () => null,
-      put: async () => {
-        puts++;
-      },
-      remove: async () => {},
-      removeIfAccess: async () => false,
-    },
-    workspaceId: "workspace",
-    provider: "openrouter",
-    requireRefresh: true,
+  expect(
+    await captureRuntimeCredential({
+      endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
+      credentials,
+      workspaceId: "workspace",
+      provider: "anthropic",
+    }),
+  ).toEqual({ ok: true, provider: "anthropic" });
+  expect(gatewayPuts).toHaveLength(1);
+  expect(gatewayPuts[0]).toMatchObject({
+    kind: "api_key",
+    access: "sk-ant-oat01-wire",
+    refresh: "",
   });
-  expect(result.ok).toBe(false);
-  expect(puts).toBe(0);
 });
 
 test("a google api-key export that is an OAuth-type token is rejected before storing", async () => {

@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 import {
   applyServedCredential,
   readAuthFile,
+  scrubRefreshTokenAt,
   writeAuthFile,
 } from "./auth-file";
 
@@ -77,5 +78,19 @@ test("applyServedCredential does not clobber a refresh-bearing login", () => {
     }),
   ).toBe(false);
   expect(readAuthFile(path)["openai-codex"]).toEqual(pending);
+  rmSync(path, { force: true });
+});
+
+test("scrubRefreshTokenAt no-ops on an api_key entry (nothing to scrub)", () => {
+  // The capture flow's post-PUT scrub is OAuth-only; an api_key (the pasted
+  // Anthropic setup token, PRODUCT-1370) has no refresh token to strip and the
+  // entry must survive capture untouched — on the desktop the serve path never
+  // re-supplies anthropic, so removing it would disconnect the provider the
+  // user just connected.
+  const path = scratch();
+  const pasted = { type: "api_key" as const, key: "sk-ant-oat01-setup" };
+  writeAuthFile(path, { anthropic: pasted });
+  expect(scrubRefreshTokenAt(path, "anthropic")).toBe(false);
+  expect(readAuthFile(path).anthropic).toEqual(pasted);
   rmSync(path, { force: true });
 });

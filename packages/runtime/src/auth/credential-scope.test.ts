@@ -221,15 +221,16 @@ test("connect-once capture exports the ACTING member's credential, not the team'
     });
 
     // The team capture path (no acting identity) is unchanged…
-    expect(exportCredential("openai-codex")?.access).toBe("at-team");
+    expect(exportCredential("openai-codex")).toMatchObject({
+      access: "at-team",
+    });
     // …and a member's connect captures THEIR credential. Exporting the team's
     // would store one refresh-token family under two rows: two rotators.
     expect(
-      runWithActingContext(
-        { actingAs: actingToken("sub-alice") },
-        () => exportCredential("openai-codex")?.access,
+      runWithActingContext({ actingAs: actingToken("sub-alice") }, () =>
+        exportCredential("openai-codex"),
       ),
-    ).toBe("at-alice");
+    ).toMatchObject({ access: "at-alice" });
     // A member who connected nothing exports nothing (never the team's).
     expect(
       runWithActingContext({ actingAs: actingToken("sub-bob") }, () =>

@@ -58,12 +58,10 @@ test("selectExportCredential(provider) returns THAT provider, not the first in t
     "openai-codex": oauth("AT-codex", "RT-codex"),
     "github-copilot": oauth("tid=copilot", "gho_github_token"),
   };
-  expect(selectExportCredential(auth, "github-copilot")?.provider).toBe(
-    "github-copilot",
-  );
-  expect(selectExportCredential(auth, "github-copilot")?.access).toBe(
-    "tid=copilot",
-  );
+  expect(selectExportCredential(auth, "github-copilot")).toMatchObject({
+    provider: "github-copilot",
+    access: "tid=copilot",
+  });
   // And it can still pick codex when codex is the one being connected.
   expect(selectExportCredential(auth, "openai-codex")?.provider).toBe(
     "openai-codex",
@@ -198,6 +196,44 @@ test("a served anthropic credential lands in auth.json as an access-only oauth e
       refresh: "",
       expires: 1_900_000_000_000,
     });
+  });
+});
+
+test("a served anthropic setup token (kind api_key) lands in auth.json as an api_key entry", async () => {
+  // PRODUCT-1370: once the pasted setup token is captured centrally, the
+  // gateway serves it back with kind "api_key". The runtime must write pi's
+  // api_key variant — pi's anthropic provider auto-detects the sk-ant-oat
+  // prefix, and the Claude SDK backend reads the same entry via
+  // readAnthropicToken — and record serve provenance so a later authoritative
+  // central sign-out can remove exactly this entry.
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider === "anthropic") {
+      return new Response(
+        JSON.stringify({
+          provider: "anthropic",
+          kind: "api_key",
+          access: "sk-ant-oat01-captured",
+          expires: Number.MAX_SAFE_INTEGER,
+          accountId: null,
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    expect(await syncServedCredential()).toEqual(["anthropic"]);
+    const auth = JSON.parse(
+      readFileSync(join(config.dataDir, "auth.json"), "utf8"),
+    ) as Record<string, { type: string; key?: string }>;
+    expect(auth.anthropic).toEqual({
+      type: "api_key",
+      key: "sk-ant-oat01-captured",
+    });
+    expect(
+      readServedProvidersAt(join(config.dataDir, "served-providers.json")),
+    ).toContain("anthropic");
   });
 });
 

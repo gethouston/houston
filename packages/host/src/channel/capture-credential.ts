@@ -35,7 +35,20 @@ export async function captureRuntimeCredential(args: {
   credentials: CredentialStore;
   workspaceId: string;
   provider?: string;
-  requireRefresh?: boolean;
+  /**
+   * The serve healer's contract (an AUTOMATIC capture with no user behind it):
+   * only accept credentials that provably originate from a local login, never a
+   * projection of a row the central store already owns/owned. For OAuth that
+   * proof is structural — the runtime only ever exports refresh-BEARING entries,
+   * and a serve-written projection is access-only (Gate #2). For an api_key —
+   * byte-identical whether pasted locally or serve-written — the runtime holds
+   * the proof (its served-providers manifest), so this flag rides to
+   * `/auth/export` as `excludeServed=1` and a returned api_key is attested
+   * local-origin (PRODUCT-1370: the pasted Anthropic setup token heals this
+   * way). Without the manifest gate, a healer re-push of a pod's leftover
+   * served api_key would resurrect a credential the user disconnected.
+   */
+  localOriginOnly?: boolean;
   actingAs?: string;
   /**
    * Fill-only central write, for AUTOMATIC re-pushes (the serve healer). The
@@ -54,11 +67,14 @@ export async function captureRuntimeCredential(args: {
     credentials,
     workspaceId,
     provider,
-    requireRefresh,
+    localOriginOnly,
     actingAs,
     ifAbsent,
   } = args;
-  const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
+  const params = new URLSearchParams();
+  if (provider) params.set("provider", provider);
+  if (localOriginOnly) params.set("excludeServed", "1");
+  const query = params.size ? `?${params}` : "";
   const exported = await fetch(`${endpoint.baseUrl}/auth/export${query}`, {
     headers: {
       Authorization: `Bearer ${endpoint.token}`,
@@ -75,8 +91,11 @@ export async function captureRuntimeCredential(args: {
   }
   const credential = (await exported.json()) as ExportedCredential;
   if (credential.kind === "api_key") {
-    if (requireRefresh)
-      return { ok: false, status: 400, error: "agent is not connected yet" };
+    // No post-PUT scrub for an api_key (unlike the OAuth path below): there is
+    // no refresh token to strip, and the entry deliberately STAYS in auth.json
+    // — on the desktop the serve path never re-supplies anthropic
+    // (routes/credential.ts refuses it there), so scrubbing/removing the pasted
+    // setup token would disconnect the provider the user just connected.
     if (!credential.provider || !credential.key)
       return { ok: false, status: 400, error: "agent is not connected yet" };
     if (
