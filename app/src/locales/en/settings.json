@@ -95,10 +95,24 @@
     "title": "Danger zone",
     "description": "Permanently delete this workspace and all its agents.",
     "deleteButton": "Delete workspace",
-    "createAnotherFirst": "Create another workspace first before deleting this one.",
     "confirmTitle": "Delete \"{{name}}\"?",
     "confirmDescription": "This will permanently delete this workspace and all its agents. This cannot be undone.",
-    "confirmLabel": "Delete"
+    "confirmLabel": "Delete",
+    "deleted": "\"{{name}}\" was deleted.",
+    "blocked": {
+      "has_members": {
+        "title": "Remove the other members first",
+        "body": "People are still in this workspace. Remove them from People, or ask them to leave, then delete it."
+      },
+      "subscription_active": {
+        "title": "Cancel the subscription first",
+        "body": "This workspace still has an active subscription. Cancel it from Billing, then delete the workspace."
+      },
+      "personal_space": {
+        "title": "Your personal workspace can't be deleted",
+        "body": "It goes away with your account. You can delete team workspaces you own."
+      }
+    }
   },
   "deleteAccount": {
     "title": "Delete account",

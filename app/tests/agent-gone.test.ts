@@ -5,6 +5,7 @@ import {
   isAgentGoneError,
   makeAgentGoneHealTrigger,
   makeRosterHealer,
+  partitionAgentGoneReads,
 } from "../src/lib/agent-gone.ts";
 
 describe("isAgentGoneError", () => {
@@ -163,5 +164,55 @@ describe("makeAgentGoneHealTrigger", () => {
     );
     trigger(agentGone);
     assert.deepEqual(calls, [null]);
+  });
+});
+
+describe("partitionAgentGoneReads", () => {
+  const gone = (agentPath: string) => ({
+    agentPath,
+    reason: Object.assign(new Error("agent not found (engine error 404)"), {
+      status: 404,
+    }),
+  });
+  const waking = (agentPath: string) => ({
+    agentPath,
+    reason: Object.assign(new Error("engine unavailable (engine error 503)"), {
+      status: 503,
+    }),
+  });
+
+  it("splits a stale roster's 404s from the real failures", () => {
+    const { gone: g, failed } = partitionAgentGoneReads([
+      gone("a"),
+      waking("b"),
+      gone("c"),
+    ]);
+    assert.deepEqual(
+      g.map((r) => r.agentPath),
+      ["a", "c"],
+    );
+    assert.deepEqual(
+      failed.map((r) => r.agentPath),
+      ["b"],
+    );
+  });
+
+  it("leaves a sweep with no gone agents untouched", () => {
+    const reads = [waking("a"), waking("b")];
+    const { gone: g, failed } = partitionAgentGoneReads(reads);
+    assert.deepEqual(g, []);
+    assert.deepEqual(failed, reads);
+  });
+
+  it("classifies an all-gone sweep as nothing to re-sweep", () => {
+    // The space-switch shape (HOUSTON-APP-4WR): every agent of the previous
+    // space's roster answers 404 under the new org.
+    const { gone: g, failed } = partitionAgentGoneReads([gone("a"), gone("b")]);
+    assert.equal(g.length, 2);
+    assert.deepEqual(failed, []);
+  });
+
+  it("is empty-safe", () => {
+    assert.deepEqual(partitionAgentGoneReads([]), { gone: [], failed: [] });
   });
 });

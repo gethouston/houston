@@ -14,8 +14,13 @@ import {
 } from "./auth-file";
 import { scrubSettledCaptureAt } from "./capture-settlement";
 import { bindEmptyRefreshServeSync } from "./empty-refresh-guard";
-import { logServeProbeFailure, noteServeProbeOk } from "./serve-log";
-import { probeProviders } from "./serve-probe";
+import {
+  logServeProbeFailures,
+  logServeSweepFailure,
+  noteServeProbeOk,
+  noteServeSweepOk,
+} from "./serve-log";
+import { probeProviders, type ServeProbe } from "./serve-probe";
 import { reportDeadServedApiKey, servedApiKeyIsDead } from "./served-key-guard";
 import { forgetServedScope, recordServedScope } from "./served-scope";
 import { authStorage } from "./storage";
@@ -173,6 +178,24 @@ async function runServedSync(): Promise<string[]> {
   // each; serve-probe.ts) so a hydrating route pays a few round-trips, not
   // forty sockets at once. The auth.json writes below stay serial.
   const probes = await probeProviders(probeIds);
+  // Every probe failing with ONE detail is the control plane being unreachable
+  // (the host closing under this runtime, a gateway outage) — one incident,
+  // logged once (serve-log.ts), never once per provider (PRODUCT-1399). The
+  // loop below still treats each as an error verdict: nothing applied or
+  // removed, auth.json kept as is, the next sync re-probes.
+  const sweepDetail = uniformFailureDetail(probes);
+  if (sweepDetail !== undefined)
+    logServeSweepFailure(probes.length, sweepDetail);
+  else {
+    noteServeSweepOk();
+    // A PARTIALLY failed sweep collapses the same way: probes sharing one
+    // failure detail are one incident (a control-plane blip caught mid-sweep —
+    // PRODUCT-1423), and dedup across syncs lives in serve-log.ts, so a
+    // persistent failure never emits one Sentry error per re-probe.
+    logServeProbeFailures(
+      probes.flatMap((p) => (p.state === "error" ? [p] : [])),
+    );
+  }
   const applied: string[] = [];
   const removed: string[] = [];
   // Provenance gate: an authoritative "not connected" may only remove providers
@@ -256,10 +279,6 @@ async function runServedSync(): Promise<string[]> {
         manifest.delete(probe.id);
         manifestDirty = true;
       }
-    } else {
-      // Dedup lives in serve-log.ts: every turn and hydrating route re-probes,
-      // so a persistent gateway failure must not emit one Sentry error each.
-      logServeProbeFailure(probe.id, probe.detail);
     }
   }
   if (manifestDirty)
@@ -275,4 +294,16 @@ async function runServedSync(): Promise<string[]> {
     `[serve] applied central credentials: ${applied.join(", ") || "(none)"}`,
   );
   return applied;
+}
+
+/**
+ * The shared detail when EVERY probe (of at least two) errored the same way,
+ * else undefined. A lone failing provider is that provider's incident.
+ */
+function uniformFailureDetail(probes: ServeProbe[]): string | undefined {
+  const first = probes[0];
+  if (probes.length < 2 || !first || first.state !== "error") return undefined;
+  return probes.every((p) => p.state === "error" && p.detail === first.detail)
+    ? first.detail
+    : undefined;
 }

@@ -37,7 +37,7 @@ const EMPTY_PROFILES: ReadonlyMap<string, UserProfile> = new Map();
  * The ids are deduped + sorted into a stable query key so the same contributor
  * set (in any order, with repeats) hits one cache entry. Cached generously
  * (profiles change rarely); the query key is NOT org-scoped because a space
- * switch drops the whole query cache (see knowledge-base/teams.md §Spaces).
+ * switch drops the whole query cache.
  */
 export function useUserProfiles(
   userIds: string[],

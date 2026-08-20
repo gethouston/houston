@@ -2,19 +2,10 @@ import type { Dirent } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, posix, relative, sep } from "node:path";
 import { fileSha256 } from "./file-hash";
-import {
-  DEFAULT_EXCLUDES,
-  excluded,
-  type HydrateManifest,
-  type HydrateManifestEntry,
-} from "./hydrate";
+import { DEFAULT_EXCLUDES, excluded, type HydrateManifest } from "./hydrate";
 import type { ObjectMetadata } from "./object-manifest";
-import {
-  type ObjectStore,
-  ObjectTooLargeError,
-  StoreConflictError,
-  type WriteOptions,
-} from "./object-store";
+import type { ObjectStore } from "./object-store";
+import { deleteOwnedObject, uploadChangedObject } from "./sync-back-conflicts";
 
 export interface SyncResult {
   uploaded: string[];
@@ -34,8 +25,18 @@ export interface SyncResult {
    * be garbage.
    */
   conflicts: { key: string; reason: string }[];
+  /** Changed paths rejected by the caller's write scope. */
+  outOfScope: number;
   /** Bytes the next hydration must materialize, excluding local-only paths. */
   totalBytes: number;
+}
+
+/** Caller policy for exclusions, generations, and permitted write paths. */
+export interface SyncBackOptions {
+  excludes?: string[];
+  generations?: boolean;
+  /** Limit writes and deletes while still detecting skipped changes. */
+  include?: (relativePath: string) => boolean;
 }
 
 async function walkFiles(dir: string, base: string): Promise<string[]> {
@@ -57,24 +58,13 @@ async function walkFiles(dir: string, base: string): Promise<string[]> {
   return out;
 }
 
-function initialWriteOptions(
-  generationAware: boolean,
-  previous: HydrateManifestEntry | undefined,
-): WriteOptions | undefined {
-  if (!generationAware) return undefined;
-  if (previous?.generation !== undefined) {
-    return { ifGenerationMatch: previous.generation };
-  }
-  return previous ? undefined : { ifGenerationMatch: "0" };
-}
-
 /** Upload changes and conditionally remove objects owned by the prior hydrate. */
 export async function syncBack(
   store: ObjectStore,
   prefix: string,
   dir: string,
   manifest: HydrateManifest,
-  opts: { excludes?: string[]; generations?: boolean } = {},
+  opts: SyncBackOptions = {},
 ): Promise<SyncResult> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   // opts.generations is the gateway's explicit capability signal (the boot
@@ -92,6 +82,7 @@ export async function syncBack(
   const skipped: SyncResult["skipped"] = [];
   const conflicts: SyncResult["conflicts"] = [];
   const nextManifest: HydrateManifest = new Map();
+  let outOfScope = 0;
   let refreshed: Promise<Map<string, ObjectMetadata>> | undefined;
   const refresh = () => {
     if (!store.manifest) return undefined;
@@ -125,101 +116,60 @@ export async function syncBack(
     }
     totalBytes += size;
     const previous = manifest.get(rel);
+    if (opts.include && !opts.include(rel)) {
+      // Out of the caller's write scope: never uploaded, but still counted
+      // toward the next hydration and kept in the manifest as it was.
+      if (previous?.hash !== hash) outOfScope += 1;
+      if (previous) nextManifest.set(rel, previous);
+      continue;
+    }
     if (previous?.hash === hash) {
       nextManifest.set(rel, previous);
       continue;
     }
 
     const key = prefix ? posix.join(prefix, rel) : rel;
-    try {
-      const result = await store.upload(
-        abs,
-        key,
-        initialWriteOptions(generationAware, previous),
-      );
-      nextManifest.set(rel, { hash, generation: result?.generation });
-      uploaded.push(rel);
-    } catch (err) {
-      if (err instanceof ObjectTooLargeError) {
-        nextManifest.set(rel, { hash });
-        skipped.push({ key: rel, reason: err.message });
-        continue;
-      }
-      if (!(err instanceof StoreConflictError)) throw err;
-      const refreshedManifest = await refresh();
-      if (!refreshedManifest) {
-        if (previous) nextManifest.set(rel, previous);
-        conflicts.push({ key: rel, reason: err.message });
-        continue;
-      }
-      const current = refreshedManifest.get(key);
-      const retryGeneration = current ? current.generation : "0";
-      if (retryGeneration === undefined) {
-        if (previous) nextManifest.set(rel, previous);
-        conflicts.push({ key: rel, reason: err.message });
-        continue;
-      }
-      try {
-        const result = await store.upload(abs, key, {
-          ifGenerationMatch: retryGeneration,
-        });
-        nextManifest.set(rel, { hash, generation: result?.generation });
-        uploaded.push(rel);
-      } catch (retryError) {
-        if (!(retryError instanceof StoreConflictError)) throw retryError;
-        if (previous) {
-          nextManifest.set(rel, { ...previous, generation: retryGeneration });
-        }
-        conflicts.push({ key: rel, reason: retryError.message });
-      }
-    }
+    const result = await uploadChangedObject({
+      store,
+      abs,
+      key,
+      hash,
+      previous,
+      generationAware,
+      refresh,
+    });
+    if (result.entry) nextManifest.set(rel, result.entry);
+    if (result.uploaded) uploaded.push(rel);
+    if (result.skipped) skipped.push({ key: rel, reason: result.skipped });
+    if (result.conflict) conflicts.push({ key: rel, reason: result.conflict });
   }
 
   const deleted: string[] = [];
   for (const [rel, previous] of manifest) {
     if (nextManifest.has(rel)) continue;
-    const key = prefix ? posix.join(prefix, rel) : rel;
-    const writeOptions =
-      generationAware && previous.generation !== undefined
-        ? { ifGenerationMatch: previous.generation }
-        : undefined;
-    try {
-      await store.delete(key, writeOptions);
-      deleted.push(rel);
-    } catch (err) {
-      if (!(err instanceof StoreConflictError)) throw err;
-      const refreshedManifest = await refresh();
-      if (!refreshedManifest) {
-        nextManifest.set(rel, previous);
-        conflicts.push({ key: rel, reason: err.message });
-        continue;
-      }
-      const current = refreshedManifest.get(key);
-      if (!current) {
-        deleted.push(rel);
-        continue;
-      }
-      const retryGeneration = current.generation;
-      try {
-        await store.delete(
-          key,
-          retryGeneration === undefined
-            ? undefined
-            : { ifGenerationMatch: retryGeneration },
-        );
-        deleted.push(rel);
-      } catch (retryError) {
-        if (!(retryError instanceof StoreConflictError)) throw retryError;
-        nextManifest.set(rel, { ...previous, generation: retryGeneration });
-        conflicts.push({ key: rel, reason: retryError.message });
-      }
+    if (opts.include && !opts.include(rel)) {
+      nextManifest.set(rel, previous);
+      outOfScope += 1;
+      continue;
     }
+    const key = prefix ? posix.join(prefix, rel) : rel;
+    const result = await deleteOwnedObject({
+      store,
+      key,
+      previous,
+      generationAware,
+      refresh,
+    });
+    if (result.deleted) deleted.push(rel);
+    if (result.entry) nextManifest.set(rel, result.entry);
+    if (result.conflict) conflicts.push({ key: rel, reason: result.conflict });
   }
   return {
     uploaded,
     deleted,
     skipped,
     conflicts,
+    outOfScope,
     manifest: nextManifest,
     totalBytes,
   };

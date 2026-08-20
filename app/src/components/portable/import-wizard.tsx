@@ -11,7 +11,7 @@
  * The CLAUDE.md (instructions) always rides along — it's the agent's
  * identity. The wizard does not expose a toggle for it.
  *
- * Visual language: `knowledge-base/design-system.md` plus the existing
+ * Visual language: `/DESIGN.md` plus the existing
  * `NamingStep` for name+color, so it feels exactly like creating an
  * agent from scratch.
  */

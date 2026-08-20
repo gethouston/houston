@@ -66,9 +66,56 @@ export function showConnectivityErrorToast(
 }
 
 /**
- * Surface a gateway "engine unavailable" 503 (HOU-1114) as ONE informational
- * "your agent is waking up" toast. The agent's engine pod is provisioning (a
- * just-installed store agent) or cold-starting; every per-agent call fails the
+ * Surface a client whose update checks keep failing (PRODUCT-1386). The
+ * forced updater is fail-open — a check failure only console.warns — so a
+ * client that can NEVER reach the release feed (a proxy or region block
+ * between it and GitHub) would strand on an old build invisibly, with no
+ * server-side floor to catch it since the 426 gate was retired
+ * (PRODUCT-1144). The checker calls this once per failure streak, after
+ * `UPDATE_CHECK_STUCK_THRESHOLD` consecutive failures:
+ *  - one informational toast pointing at the manual download, so the user
+ *    can act;
+ *  - a dedicated `update_check_failed` analytics event (its own name, not
+ *    `app_error_shown`, so a fleet-staleness dashboard can count stuck
+ *    clients directly);
+ *  - a Sentry capture, so stranded clients get an issue with a user count —
+ *    this also surfaces any leaked staging QA build, whose no-op updater
+ *    endpoint 404s every check by design.
+ */
+export function showUpdateCheckStuckToast(
+  message: string,
+  consecutiveFailures: number,
+  currentVersion: string,
+): void {
+  const command = "update_check";
+  console.error(
+    `[toast:${command}] ${consecutiveFailures} consecutive check failures: ${message}`,
+  );
+  useUIStore.getState().addToast({
+    title: i18n.t("shell:errorToast.updateStuckTitle"),
+    description: i18n.t("shell:errorToast.updateStuckDescription"),
+    variant: "info",
+  });
+  analytics.track("update_check_failed", {
+    source: command,
+    consecutive_failures: consecutiveFailures,
+    from_version: currentVersion,
+    error_kind: classifyAnalyticsError(message),
+  });
+  if (sentrySuppressedInDev) return;
+  void sentryCapture(createSentryReportError(command, message), {
+    source: command,
+    error_kind: classifyAnalyticsError(message),
+  }).catch((flushErr: unknown) => {
+    console.error("[sentry] failed to flush captured error", flushErr);
+  });
+}
+
+/**
+ * Surface a gateway "engine unavailable" 503 (HOU-1114) or "engine proxy
+ * failed" 502 (PRODUCT-1403) as ONE informational "your agent is waking up"
+ * toast. The agent's engine pod is provisioning (a just-installed store
+ * agent), cold-starting, or restarting under a roll; every per-agent call fails the
  * same way until it wakes, so the toast dedupes on its constant displayed body
  * and the burst reads as one state, not a storm. No Sentry capture and no
  * green "report sent" toast: nothing in Houston broke and the request

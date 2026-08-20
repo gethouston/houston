@@ -73,7 +73,6 @@ function parseCommand(
       mismatchedTurn(message, turnId) ||
       !Number.isSafeInteger(body.expectedCount) ||
       (body.expectedCount as number) < 0 ||
-      typeof body.needsSessionReplay !== "boolean" ||
       typeof body.title !== "string"
     ) {
       return null;
@@ -85,7 +84,6 @@ function parseCommand(
       message,
       title: body.title,
       expectedCount: body.expectedCount as number,
-      needsSessionReplay: body.needsSessionReplay,
     };
   }
   if (method === "POST" && rest === "truncate") {

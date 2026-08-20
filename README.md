@@ -235,7 +235,7 @@ houston/
 > `packages/control-plane` was renamed to `packages/host`. The host still owns
 > the cloud-control-plane role, but the package and path are now host-first.
 
-See `knowledge-base/architecture.md` for repo-shape detail + current gaps.
+See `CLAUDE.md` for the repo map and conventions.
 
 ---
 

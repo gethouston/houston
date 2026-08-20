@@ -20,6 +20,17 @@
  *    no blob store bound (`cloud/internal/edge/shared_skills_routes.go`). That
  *    is a deployment SHAPE, permanent for the session: retrying burns round
  *    trips to be told the same thing.
+ *  - **The pod is not accepting connections.** The gateway's per-agent proxy
+ *    (`cloud/internal/proxy/forward.go` → `connectWithRetry`) walks a short
+ *    dial ladder against a pod it believes is running and, when every dial is
+ *    refused, answers `502 {"error":"engine proxy failed","detail":<dial
+ *    error>}`. On a read that is the same event as a wake, seen from the other
+ *    side: the pod is restarting under an engine roll (a deploy re-rolls every
+ *    agent pod), or was just replaced, and the very same request answers once
+ *    it listens again. Every deploy day produced a burst of these on the
+ *    passive per-agent reads (`list_skills`, `read_agent_file`, ...) that got
+ *    the short handoff patience and then surfaced as a bug (PRODUCT-1403 /
+ *    HOUSTON-APP-4WQ) — for a pod that was up again seconds later.
  *  - **Anything else** — a gateway roll, a load-balancer handoff, a host that
  *    is restarting — heals in about a second, which is what the original two
  *    blind retries were sized for (HOU-731).
@@ -51,12 +62,16 @@ const TRANSIENT_STATUSES = new Set([502, 503, 504]);
  */
 const ENGINE_UNAVAILABLE = "engine unavailable";
 const AGENT_IS_WAKING = "agent is waking";
+const ENGINE_PROXY_FAILED = "engine proxy failed";
 export const SHARED_SKILLS_UNCONFIGURED = "shared skills not configured";
 
 /** Why a read got no answer — the typed form of the gateway's 5xx body. */
 export type UnavailableReason =
   /** The agent's engine pod is cold-starting; the gateway asked us to retry. */
   | "engine-waking"
+  /** The gateway could not connect to the agent's pod: it is restarting (an
+   *  engine roll) or was just replaced, and answers once it listens again. */
+  | "pod-unreachable"
   /** This deployment does not run the feature at all. Retrying cannot help. */
   | "feature-absent"
   /** A gateway roll, an LB handoff, a dropped connection — heals in ~a second. */
@@ -70,7 +85,9 @@ export const HANDOFF_RETRY_DELAYS_MS = [500, 1_500] as const;
 
 /**
  * Four extra attempts, 15s of client-side patience, for a pod the gateway has
- * told us is still waking.
+ * told us is still waking — or could not connect to at all (`pod-unreachable`,
+ * the restart-under-a-roll twin of a wake, whose gateway-side cost per attempt
+ * is the proxy's ~4s dial ladder instead of the 8s ensure-awake leg).
  *
  * Sized against the gateway, not guessed. Each attempt costs the gateway one
  * `ensure-awake` long-poll leg of up to 8s (`wakeWaitMs`) before it answers
@@ -99,6 +116,7 @@ export function classifyUnavailableBody(body: unknown): UnavailableReason {
   if (b?.error === ENGINE_UNAVAILABLE && b?.detail === AGENT_IS_WAKING) {
     return "engine-waking";
   }
+  if (b?.error === ENGINE_PROXY_FAILED) return "pod-unreachable";
   return "handoff";
 }
 
@@ -106,6 +124,7 @@ export function classifyUnavailableBody(body: unknown): UnavailableReason {
 export function retryDelaysFor(reason: UnavailableReason): readonly number[] {
   switch (reason) {
     case "engine-waking":
+    case "pod-unreachable":
       return WAKE_RETRY_DELAYS_MS;
     case "feature-absent":
       return NO_RETRY_DELAYS_MS;

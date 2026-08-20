@@ -1,5 +1,6 @@
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 import { genericErrorDescription } from "../../lib/error-report";
+import { isNetworkTransportError } from "../../lib/network-transport-error";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import type {
@@ -69,11 +70,17 @@ export function useProviderConnectActions({
           `[use-provider-connections] launchLogin(${provider.id}) failed:`,
           msg,
         );
-        addToast({
-          title: t("toast.signInFailed", { provider: provider.name }),
-          description: genericErrorDescription("provider_sign_in", err),
-          variant: "error",
-        });
+        // A device-offline transport drop was already surfaced by the
+        // engine-call layer as the one deduped connectivity toast (HOU-1085);
+        // the authored red toast on top would double-surface an environment
+        // state (HOUSTON-APP-4PQ, PRODUCT-1383).
+        if (!isNetworkTransportError(err)) {
+          addToast({
+            title: t("toast.signInFailed", { provider: provider.name }),
+            description: genericErrorDescription("provider_sign_in", err),
+            variant: "error",
+          });
+        }
         setPending(null);
       }
     },
@@ -120,11 +127,14 @@ export function useProviderConnectActions({
           `[use-provider-connections] cancelLogin(${provider.id}) failed:`,
           msg,
         );
-        addToast({
-          title: t("toast.cancelFailed", { provider: provider.name }),
-          description: genericErrorDescription("provider_cancel_login", err),
-          variant: "error",
-        });
+        // Connectivity drop: the engine-call layer's toast already covered it.
+        if (!isNetworkTransportError(err)) {
+          addToast({
+            title: t("toast.cancelFailed", { provider: provider.name }),
+            description: genericErrorDescription("provider_cancel_login", err),
+            variant: "error",
+          });
+        }
       } finally {
         setPending((current) => (current?.id === provider.id ? null : current));
         setLoginDialog((current) =>
@@ -150,11 +160,14 @@ export function useProviderConnectActions({
           `[use-provider-connections] launchLogout(${provider.id}) failed:`,
           msg,
         );
-        addToast({
-          title: t("toast.signOutFailed", { provider: provider.name }),
-          description: genericErrorDescription("provider_sign_out", err),
-          variant: "error",
-        });
+        // Connectivity drop: the engine-call layer's toast already covered it.
+        if (!isNetworkTransportError(err)) {
+          addToast({
+            title: t("toast.signOutFailed", { provider: provider.name }),
+            description: genericErrorDescription("provider_sign_out", err),
+            variant: "error",
+          });
+        }
       } finally {
         setPending(null);
       }

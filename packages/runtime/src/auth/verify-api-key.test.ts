@@ -156,6 +156,23 @@ test("a gated model (together's 'Unable to access model') proves auth — verifi
   await expect(verifyApiKey("together", "sk-valid")).resolves.toBeUndefined();
 });
 
+test("moonshotai: a retired probe model's 404 still verifies the key (PRODUCT-1411)", async () => {
+  // Live shape from HOUSTON-APP-54G: pi's catalog kept Moonshot's retired
+  // kimi-k2 previews, so the probe answered `404 Not found the model` and 58
+  // users read "couldn't reach Moonshot AI" for a perfectly good key. Moonshot
+  // authenticates before it looks the model up (a bad key is a 401 even for a
+  // garbage id), so this is a model verdict, not a key verdict — the key
+  // stores; the retired model is a switch-model card later, not a lockout.
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        '404: {"message":"Not found the model kimi-k2-0711-preview or Permission denied","type":"resource_not_found_error"}',
+    }),
+  );
+  await expect(verifyApiKey("moonshotai", "sk-valid")).resolves.toBeUndefined();
+});
+
 const nvidiaGate = (model: string) =>
   reply({
     stopReason: "error",

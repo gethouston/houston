@@ -209,6 +209,30 @@ test("a pinned routine turn sends autopilot mode to the runtime", async () => {
   expect(turnBodies[0]?.mode).toBe("auto");
 });
 
+test("the turn envelope sanitizes a slash-bearing agent id", async () => {
+  const { deps } = makeDeps();
+  turnBodies = [];
+  const localAgent = { ...agent, id: "Work/Marketing team!" };
+  const done = new Promise<void>((resolve) => {
+    deps.relay.subscribe(`${localAgent.id}/c-local`, (event) => {
+      if (event.type === "done" || event.type === "error") resolve();
+    });
+  });
+
+  const outcome = await dispatchTurn(
+    deps,
+    ws,
+    localAgent,
+    "c-local",
+    "hello",
+    undefined,
+  );
+  expect(outcome.status).toBe("accepted");
+  await done;
+  expect(turnBodies[0]?.agentId).toBe("Work_Marketing_team_");
+  expect(turnBodies[0]?.gcsPrefix).toBe("ws/w1/Work/Marketing team!");
+});
+
 test("a malformed turn body answers a clean 400 — both the streamed and the pre-read parse", async () => {
   const { deps } = makeDeps();
   const bad = "{not json";

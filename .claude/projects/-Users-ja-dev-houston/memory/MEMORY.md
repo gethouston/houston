@@ -1,2 +1,0 @@
-- [feedback_always_toast_errors.md](feedback_always_toast_errors.md) — Never suppress error toasts; user prefers noisy errors over silent failures
-- [project_ai_native_reactivity.md](project_ai_native_reactivity.md) — Core philosophy: users and LLMs are equal participants; all mutations must be immediately visible to both

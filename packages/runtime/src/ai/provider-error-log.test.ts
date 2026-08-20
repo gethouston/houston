@@ -41,6 +41,48 @@ describe("logProviderError", () => {
     );
   });
 
+  it("puts the SDK error slug BEFORE kind, and cause right after it (the regex contract)", () => {
+    // `[provider_error] provider=X model=Y status=Z error=SLUG kind=K cause=C :: text`
+    // — the exact shape runtime-client sentry/client.ts PROVIDER_ERROR_LINE
+    // captures into the (provider, kind, cause, sdk-slug) fingerprint.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    logProviderError(
+      {
+        kind: "unauthenticated",
+        provider: "anthropic",
+        cause: "org_policy_blocked",
+        message: "Your organization has disabled Claude subscription access",
+      },
+      {
+        model: "claude-fable-5",
+        status: 403,
+        sdkError: "oauth_org_not_allowed",
+      },
+    );
+    expect(error).toHaveBeenCalledWith(
+      "[provider_error] provider=anthropic model=claude-fable-5 status=403 " +
+        "error=oauth_org_not_allowed kind=unauthenticated cause=org_policy_blocked " +
+        ":: Your organization has disabled Claude subscription access",
+    );
+  });
+
+  it("keeps org_policy_blocked at error level — broken access, not an expected user state", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    logProviderError({
+      kind: "unauthenticated",
+      provider: "anthropic",
+      cause: "org_policy_blocked",
+      message: "Your organization has disabled Claude subscription access",
+    });
+    expect(warn).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "kind=unauthenticated cause=org_policy_blocked ::",
+      ),
+    );
+  });
+
   it("emits no cause field for non-auth kinds", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     logProviderError(

@@ -1,6 +1,11 @@
 import { createServer } from "node:net";
 import type { Agent, AgentId } from "../domain/types";
-import type { RuntimeEndpoint, RuntimeLauncher, RuntimeState } from "../ports";
+import {
+  LauncherClosedError,
+  type RuntimeEndpoint,
+  type RuntimeLauncher,
+  type RuntimeState,
+} from "../ports";
 
 /**
  * A spawned runtime process. The launcher only needs its port + a way to kill
@@ -145,6 +150,16 @@ export class ProcessLauncher implements RuntimeLauncher {
   private readonly booting = new Map<AgentId, Promise<RuntimeEndpoint>>();
   /** Refcounted rename latch — see hold(). */
   private readonly held = new Map<AgentId, number>();
+  /**
+   * Set once shutdownAll* has run: this launcher spawns nothing ever again.
+   * shutdownAllAndWait clears the live-set BEFORE the children have exited,
+   * so without the latch a dispatch landing in that drain window (the
+   * client's provider poll, a routine, the SSE resume) found no running entry
+   * and respawned a runtime the exiting host never kills — an orphan that,
+   * on a serve-mode pod, booted into a host whose listener was already
+   * closed and logged an ECONNREFUSED per known provider (PRODUCT-1399).
+   */
+  private closed = false;
   private readonly allocatePort: () => Promise<number>;
   private readonly waitHealthy: (port: number, token: string) => Promise<void>;
 
@@ -154,6 +169,7 @@ export class ProcessLauncher implements RuntimeLauncher {
   }
 
   async ensureAwake(agent: Agent): Promise<RuntimeEndpoint> {
+    if (this.closed) throw new LauncherClosedError();
     // Held = a rename is moving this id's directory RIGHT NOW. Refuse loudly:
     // the app's own reconnect storm (SSE resume within ~500ms, watchdog polls,
     // provider probes) arrives with the old id during the quiesce window, and
@@ -224,6 +240,10 @@ export class ProcessLauncher implements RuntimeLauncher {
       throw new Error(
         `agent '${agent.id}' is being renamed — retry with its new id`,
       );
+    // Same gap for shutdown: a boot that entered before shutdownAll* ran is
+    // not in the live-set yet, so its child would be spawned AFTER the sweep
+    // that kills everything — an orphan by construction.
+    if (this.closed) throw new LauncherClosedError();
     const cred = this.opts.credentialServing;
     const handle = this.opts.spawner.spawn({
       workspaceDir: this.opts.workspaceDirFor(agent),
@@ -369,6 +389,7 @@ export class ProcessLauncher implements RuntimeLauncher {
   /** Kill every running runtime — called on supervisor shutdown so a restart
    *  doesn't orphan child processes (which would hold ports + the agent dir). */
   shutdownAll(): void {
+    this.closed = true;
     for (const r of this.running.values()) r.handle.kill();
     this.running.clear();
   }
@@ -381,6 +402,9 @@ export class ProcessLauncher implements RuntimeLauncher {
    * (test stubs) count as already exited.
    */
   async shutdownAllAndWait(timeoutMs = 5_000): Promise<void> {
+    // Latch FIRST: from here on ensureAwake refuses (LauncherClosedError)
+    // instead of respawning into the drain window below.
+    this.closed = true;
     const waits: Promise<void>[] = [];
     for (const r of this.running.values()) {
       const { onExit } = r.handle;

@@ -11,7 +11,7 @@ You cannot judge UI from code. Look at it. A picture is worth 1000 tokens.
 
 ## Precondition
 
-Read **`/DESIGN.md`** (repo root) FIRST — the compact spec that defines the rules this loop scores against (hard rules, token quick-reference, motion, banned defaults). Then **`knowledge-base/design-system.md`** for the deeper narrative on the surface you touched. The `--ht-*` token values live in `packages/design-tokens/tokens/*.json`. This is what "token compliance" and "motion rules" below are measured against.
+Read **`/DESIGN.md`** (repo root) FIRST — the spec that defines the rules this loop scores against (hard rules, token quick-reference, motion, banned defaults). The `--ht-*` token values live in `packages/design-tokens/tokens/*.json`. This is what "token compliance" and "motion rules" below are measured against.
 
 ## The loop
 
@@ -19,7 +19,7 @@ Read **`/DESIGN.md`** (repo root) FIRST — the compact spec that defines the ru
 
 **App screens** (`app/src` / `packages/web`) run against an in-memory **fake host** — no real backend, no AI, no credentials. Two paths:
 
-- **Playwright harness (default, hermetic).** `pnpm --filter houston-web test:e2e` boots both servers itself (vite `:1430` + fake host `:4399`) — write a throwaway spec (or extend one) that navigates the touched screen and calls `page.screenshot(...)`. Fixtures seed a booted shell with one agent selected (`packages/web/e2e/README.md`, `knowledge-base/ui-testing.md`). Arm Teams / integration / board states via the `/__test__/*` controls documented there. There is also a scoped **`/verify`** skill (`houston/packages/web:verify`) that drives host + Playwright flows.
+- **Playwright harness (default, hermetic).** `pnpm --filter houston-web test:e2e` boots both servers itself (vite `:1430` + fake host `:4399`) — write a throwaway spec (or extend one) that navigates the touched screen and calls `page.screenshot(...)`. Fixtures seed a booted shell with one agent selected (`packages/web/e2e/README.md`). Arm Teams / integration / board states via the `/__test__/*` controls documented there. There is also a scoped **`/verify`** skill (`houston/packages/web:verify`) that drives host + Playwright flows.
 - **Manual, two panes.** Terminal 1: `pnpm --filter houston-web fake-host` (`:4399`). Terminal 2: `pnpm --filter houston-web dev` (vite `:1430`). Then drive a browser — Playwright script, or the Chrome/browser MCP if available — to the touched screen.
 
 **Website** (`website/`, Eleventy — no fake host): `cd website && npm run dev` serves the built site (`--serve`), or `npm run build` then serve `_site/`. Same rubric applies.

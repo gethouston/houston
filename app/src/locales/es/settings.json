@@ -95,10 +95,24 @@
     "title": "Zona de peligro",
     "description": "Elimina este espacio de trabajo y todos sus agentes de forma permanente.",
     "deleteButton": "Eliminar espacio de trabajo",
-    "createAnotherFirst": "Crea otro espacio de trabajo antes de eliminar este.",
     "confirmTitle": "¿Eliminar \"{{name}}\"?",
     "confirmDescription": "Esto eliminará de forma permanente este espacio de trabajo y todos sus agentes. No se puede deshacer.",
-    "confirmLabel": "Eliminar"
+    "confirmLabel": "Eliminar",
+    "deleted": "Se eliminó \"{{name}}\".",
+    "blocked": {
+      "has_members": {
+        "title": "Primero quita a los demás miembros",
+        "body": "Todavía hay personas en este espacio de trabajo. Quítalas desde Personas, o pídeles que salgan, y luego elimínalo."
+      },
+      "subscription_active": {
+        "title": "Primero cancela la suscripción",
+        "body": "Este espacio de trabajo todavía tiene una suscripción activa. Cancélala desde Facturación y luego elimina el espacio de trabajo."
+      },
+      "personal_space": {
+        "title": "Tu espacio de trabajo personal no se puede eliminar",
+        "body": "Se elimina junto con tu cuenta. Puedes eliminar los espacios de trabajo de equipo que te pertenecen."
+      }
+    }
   },
   "deleteAccount": {
     "title": "Eliminar cuenta",

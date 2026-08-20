@@ -26,11 +26,13 @@ const wakingError = () => {
 /** WebKit's fetch transport rejection — the device dropped offline. */
 const offlineError = () => new TypeError("Load failed");
 
-/** A read failure that IS a bug (or a deleted agent): must keep reporting. */
+/** A read failure that IS a bug: must keep reporting. (A deleted agent's
+ *  `404 agent not found` never reaches this layer any more — the engine call
+ *  layer partitions it out and heals the roster, `partitionAgentGoneReads`.) */
 const realError = () => {
-  const err = new Error("agent not found (engine error 404)");
+  const err = new Error("internal error (engine error 500)");
   err.name = "HoustonEngineError";
-  return Object.assign(err, { status: 404 });
+  return Object.assign(err, { status: 500 });
 };
 
 describe("representativeSweepFailure", () => {

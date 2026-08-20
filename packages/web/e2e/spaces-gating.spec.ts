@@ -25,7 +25,7 @@ import { navRow } from "./support/team-nav";
  * The spaces-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (`{ spaces:true }`) and `/__test__/workspaces` (team
  * rows the C8 workspaces bridge serves at `GET /v1/workspaces`). See
- * `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
+ * `@houston/fake-host` README + `packages/web/e2e/README.md`.
  *
  * The team-space cases drive the REAL switcher UI against the fake host's
  * armed team rows — live since the adapter's `listWorkspaces` bridges the C8

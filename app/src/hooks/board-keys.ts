@@ -9,8 +9,7 @@
  * keep it from the control the user has focused. They gate on
  * `isMissionBoardSurface` (what is on the GLASS), never on
  * `isMissionBoardView`: the asymmetry with ⌘N and the
- * palette, which DO have a navigate-then-fire fallback, is deliberate and
- * documented in `knowledge-base/board-shell.md`.
+ * palette, which DO have a navigate-then-fire fallback, is deliberate.
  */
 
 import {

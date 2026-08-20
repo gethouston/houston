@@ -7,7 +7,8 @@ import type { ClaudeToken } from "./backend";
 
 /**
  * The READ-side mirror of `credentials-file.ts`'s write refusal, at TURN START
- * (HOU-976; see knowledge-base/anthropic-credentials.md traps #4 and #6). Its
+ * (HOU-976; the single-rotator + cross-member invariants are spelled out in
+ * `credentials-file.ts`'s doc comment). Its
  * mid-turn sibling is `anthropicCredentialStorageDir` below — one guard covers
  * who STARTS a turn, the other who can RESUME it after a 401.
  *

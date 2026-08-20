@@ -1043,6 +1043,24 @@ test("Anthropic 'prompt is too long' → context_overflow, never rate_limited de
   }
 });
 
+test("OpenAI per-string 10MiB cap ('string too long') → context_overflow with null token counts", () => {
+  // Verbatim from PRODUCT-1394 (HOUSTON-APP-56R): pi's unbounded compaction
+  // serialized a 31MB conversation into one content string; OpenAI caps any
+  // single string at 10,485,760 chars. The message carries char counts, not
+  // token counts, so both extractors must stay null (the card omits numbers).
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    message:
+      "Summarization failed: Invalid 'input[0].content[0].text': string too long. Expected a string with maximum length 10485760, but got a string with length 31056249 instead.",
+  });
+  expect(err.kind).toBe("context_overflow");
+  if (err.kind === "context_overflow") {
+    expect(err.context_window_tokens).toBeNull();
+    expect(err.prompt_tokens).toBeNull();
+  }
+});
+
 test("overflow text without numbers still classifies, with null token counts", () => {
   const err = classifyProviderError({
     provider: "amazon-bedrock",
@@ -1118,6 +1136,39 @@ test("opencode RegionError → model_unavailable / region_restricted (HOU-1156)"
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable")
     expect(err.reason).toBe("region_restricted");
+});
+
+test("Moonshot 404 'Not found the model' → model_unavailable (PRODUCT-1411)", () => {
+  // Verbatim api.moonshot.ai body for a retired id (the whole kimi-k2 preview
+  // series was discontinued 2026-05-25 while pi's catalog still lists it).
+  // Moonshot checks the key BEFORE the model (a bad key answers 401 even for
+  // a garbage model id), so this proves the credential: switch-model card,
+  // never the report-bug `unknown` card — and at connect time a verified key.
+  const err = classifyProviderError({
+    provider: "moonshotai",
+    model: "kimi-k2-0711-preview",
+    message:
+      '404: {"message":"Not found the model kimi-k2-0711-preview or Permission denied","type":"resource_not_found_error"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable") {
+    expect(err.reason).toBe("unknown");
+    // One-click switch to the broadest-served Kimi model (listed by
+    // /v1/models even on an un-funded account).
+    expect(err.suggested_fallback).toBe("kimi-k2.6");
+  }
+});
+
+test("Moonshot gate on the broad fallback itself offers no fallback", () => {
+  const err = classifyProviderError({
+    provider: "moonshotai",
+    model: "kimi-k2.6",
+    message:
+      '404: {"message":"Not found the model kimi-k2.6 or Permission denied","type":"resource_not_found_error"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
 });
 
 test("embedded code extraction stays out of 1xx-3xx (HOU-1156)", () => {

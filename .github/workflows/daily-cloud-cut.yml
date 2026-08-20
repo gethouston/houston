@@ -22,8 +22,7 @@
 # This workflow owns ONLY step 1. It has NO schedule of its own: the scheduler
 # is a Houston routine (PRODUCT-1329) that dispatches this workflow every
 # weekday morning, watches the run, writes the user-facing release notes, and
-# posts the outcome to Slack — see knowledge-base/daily-cut-routine.md for the
-# routine prompt + setup. GitHub's cron queue was the previous scheduler and
+# posts the outcome to Slack. GitHub's cron queue was the previous scheduler and
 # was dropped deliberately: its best-effort delivery ran 30–120 min late
 # (HOU-1013), while Houston's cron fires on time — and the release train is
 # exactly the kind of job Houston exists to run. workflow_dispatch is therefore

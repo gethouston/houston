@@ -2,7 +2,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
-import type { ForwardRequest, RuntimeEndpoint } from "../ports";
+import {
+  type ForwardRequest,
+  LauncherClosedError,
+  type RuntimeEndpoint,
+} from "../ports";
 import { ProxyChannel } from "./proxy";
 
 /**
@@ -307,4 +311,74 @@ test("a boot that fails AFTER the probe was answered is not an unhandled rejecti
   } finally {
     process.off("unhandledRejection", unhandled);
   }
+});
+
+// PRODUCT-1399: a host mid-shutdown refuses to spawn. That is a "retry
+// elsewhere", not a runtime failure — both a probe and a full route answer 503
+// + Retry-After instead of falling into the server's generic 500.
+function closedLauncher() {
+  return {
+    async ensureAwake(): Promise<RuntimeEndpoint> {
+      throw new LauncherClosedError();
+    },
+    async sleep() {},
+    async destroy() {},
+    async status() {
+      return "asleep" as const;
+    },
+  };
+}
+
+test("a probe against a shutting-down host answers 503 + Retry-After (PRODUCT-1399)", async () => {
+  const forwarded: ForwardRequest[] = [];
+  const channel = new ProxyChannel({
+    launcher: closedLauncher(),
+    proxy: {
+      async forward(_endpoint, req) {
+        forwarded.push(req);
+      },
+    },
+    credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
+  });
+  const r = res();
+  await channel.dispatch(
+    ctx,
+    "GET",
+    "providers",
+    urlFor("providers"),
+    request(),
+    asServerResponse(r),
+  );
+  expect(r.statusCode).toBe(503);
+  expect(r.headers["Retry-After"]).toBe("2");
+  expect(JSON.parse(r.body)).toEqual({
+    error: "the host is shutting down; retry shortly",
+  });
+  expect(forwarded).toEqual([]);
+});
+
+test("a non-probe route against a shutting-down host answers 503 too, not a 500", async () => {
+  const forwarded: ForwardRequest[] = [];
+  const channel = new ProxyChannel({
+    launcher: closedLauncher(),
+    proxy: {
+      async forward(_endpoint, req) {
+        forwarded.push(req);
+      },
+    },
+    credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
+  });
+  const r = res();
+  await channel.dispatch(
+    ctx,
+    "GET",
+    "events",
+    urlFor("events"),
+    request(),
+    asServerResponse(r),
+  );
+  expect(r.statusCode).toBe(503);
+  expect(forwarded).toEqual([]);
 });

@@ -3,11 +3,13 @@ export { HttpObjectStore } from "./http-store";
 export type {
   HydrateManifest,
   HydrateOptions,
+  SyncBackOptions,
   SyncResult,
 } from "./hydrate";
 export {
   DEFAULT_EXCLUDES,
   excluded,
+  HydrateLimitError,
   hydrate,
   syncBack,
 } from "./hydrate";

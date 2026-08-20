@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import type { Agent } from "../domain/types";
+import { LauncherClosedError } from "../ports";
 import {
   ProcessLauncher,
   type ProcessLauncherOptions,
@@ -413,4 +414,75 @@ test("multiple agents get distinct ports + processes", async () => {
   const a = await launcher.ensureAwake(agent("a"));
   const b = await launcher.ensureAwake(agent("b"));
   expect(a.baseUrl).not.toBe(b.baseUrl);
+});
+
+// PRODUCT-1399: shutdownAllAndWait clears the live-set BEFORE the children
+// have exited, so a dispatch landing in that drain window (a provider poll, a
+// routine, an SSE resume) used to find no running entry and respawn a runtime
+// the exiting host never killed — an orphan that, on a serve-mode pod, booted
+// into a host whose listener was already closed and logged an ECONNREFUSED
+// per known provider (41 Sentry errors per pod termination).
+test("ensureAwake during shutdownAllAndWait's drain is REFUSED, never respawned (PRODUCT-1399)", async () => {
+  let exitCb: (() => void) | undefined;
+  let spawned = 0;
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      spawned += 1;
+      return {
+        port: 5000 + spawned,
+        // The child exits 30ms after SIGTERM — a realistic drain window.
+        kill: () => setTimeout(() => exitCb?.(), 30),
+        onExit: (cb) => {
+          exitCb = cb;
+        },
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("polled"));
+
+  const shutdown = launcher.shutdownAllAndWait(5_000);
+  // Arrives mid-drain (child alive, live-set already cleared).
+  await expect(launcher.ensureAwake(agent("polled"))).rejects.toBeInstanceOf(
+    LauncherClosedError,
+  );
+  await shutdown;
+  // And stays refused after the drain — a closed launcher never spawns again.
+  await expect(launcher.ensureAwake(agent("polled"))).rejects.toThrow(
+    "shutting down",
+  );
+  expect(spawned).toBe(1);
+  expect(await launcher.status("polled")).toBe("asleep");
+});
+
+test("shutdownAll (the sync variant) latches the launcher the same way", async () => {
+  const { spawner, spawns, killed } = recordingSpawner();
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("a"));
+  launcher.shutdownAll();
+  expect(killed).toEqual([5000]);
+  await expect(launcher.ensureAwake(agent("b"))).rejects.toBeInstanceOf(
+    LauncherClosedError,
+  );
+  expect(spawns).toHaveLength(1);
+});
+
+test("a boot that entered BEFORE shutdown but had not spawned yet is refused, so its child cannot outlive the sweep", async () => {
+  const { spawner, spawns } = recordingSpawner();
+  let releasePort!: () => void;
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      // The one await between "enter" and "spawn": the port allocation.
+      allocatePort: () =>
+        new Promise<number>((resolve) => {
+          releasePort = () => resolve(0);
+        }),
+    }),
+  );
+  const boot = launcher.ensureAwake(agent("late"));
+  await new Promise((r) => setTimeout(r, 0)); // parked on allocatePort
+  await launcher.shutdownAllAndWait();
+  releasePort();
+  await expect(boot).rejects.toBeInstanceOf(LauncherClosedError);
+  expect(spawns).toHaveLength(0); // no child ever spawned past the sweep
 });

@@ -15,12 +15,18 @@
  * - `token_revoked` — the provider ended the session server-side (the terminal
  *   session-kill, e.g. Codex `app_session_terminated` / "your session has ended").
  * - `invalid_api_key` — a pasted key the provider rejected.
+ * - `org_policy_blocked` — the provider's organization/policy blocked
+ *   subscription access for this environment (Anthropic's
+ *   `oauth_org_not_allowed`, e.g. subscription OAuth denied from datacenter
+ *   IPs). The credential itself is not the problem, so reconnecting does NOT
+ *   heal it; the remedy is connecting with an API key instead.
  */
 export type AuthFailureCause =
   | "no_credentials"
   | "token_expired"
   | "token_revoked"
   | "invalid_api_key"
+  | "org_policy_blocked"
   | "unknown";
 
 /**

@@ -17,8 +17,7 @@ import type { ClaudeQuery } from "./session";
 import { titleWithClaude } from "./title";
 
 /**
- * MID-TURN 401 RECOVERY, per credential scope (HOU-976; knowledge-base/
- * anthropic-credentials.md trap #6).
+ * MID-TURN 401 RECOVERY, per credential scope (HOU-976).
  *
  * A personal Anthropic credential is served ACCESS-ONLY per turn, so it can
  * expire while the turn is still running. The Claude CLI then runs its own 401

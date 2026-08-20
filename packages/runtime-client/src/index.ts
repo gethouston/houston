@@ -33,4 +33,6 @@ export { readEventStream } from "./sse-read";
 export type { ResumableStreamSource } from "./stitch";
 export { serveResumableStream } from "./stitch";
 export { StreamChannel } from "./stream-channel";
+export type { TranscriptTurnWrite } from "./transcript-turn-request";
+export { transcriptTurnRequest } from "./transcript-turn-request";
 export * from "./types";

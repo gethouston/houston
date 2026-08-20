@@ -8,7 +8,7 @@
  *   pick → anonymize → review → { Save file | Publish → listing → share }
  * and, for an already-listed agent, a manage view instead of `pick`.
  *
- * Visual language follows `knowledge-base/design-system.md`. Step bodies live
+ * Visual language follows `/DESIGN.md`. Step bodies live
  * in sibling files; this file is the orchestrator + footer.
  */
 

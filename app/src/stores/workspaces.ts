@@ -2,12 +2,18 @@ import { create } from "zustand";
 import { analytics } from "../lib/analytics";
 import { setActiveOrg } from "../lib/engine";
 import { queryClient } from "../lib/query-client";
+import { queryKeys } from "../lib/query-keys";
 import { resetCacheForSpaceChange } from "../lib/space-cache";
 import { orgSlugFromWorkspaceId } from "../lib/space-id";
-import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
+import {
+  type EngineCallOptions,
+  tauriPreferences,
+  tauriWorkspaces,
+} from "../lib/tauri";
 import type { Workspace } from "../lib/types";
 import { planSpacesRefresh } from "../lib/workspace-refresh";
 import { resolveActiveWorkspace } from "../lib/workspace-switch";
+import { applyRefreshPlan } from "./workspace-refresh-apply";
 
 interface WorkspaceState {
   workspaces: Workspace[];
@@ -34,7 +40,12 @@ interface WorkspaceState {
   refreshWorkspaces: () => Promise<void>;
   setCurrent: (ws: Workspace) => void;
   create: (name: string) => Promise<Workspace>;
-  delete: (id: string) => Promise<void>;
+  /** Delete a team space for good (PRODUCT-1410). Resolves once the server has
+   *  destroyed it and the store no longer lists it; when it was the active
+   *  space, the store has already landed on the default space and re-pinned
+   *  the gateway exactly like a user-driven switch. Rejections propagate
+   *  (surfaced by the wire layer / the caller's `silence` predicate). */
+  delete: (id: string, options?: EngineCallOptions) => Promise<void>;
   rename: (id: string, newName: string) => Promise<void>;
   /** Set (or clear, with null) the workspace's UI-locale override. */
   setLocale: (id: string, locale: string | null) => Promise<void>;
@@ -97,17 +108,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
     const prev = get();
     if (prev.loading) return; // a real load started mid-flight; it wins
-    const plan = planSpacesRefresh(prev.workspaces, prev.current, fresh);
-    if (plan.kind === "unchanged") return;
-    set({ workspaces: plan.workspaces, current: plan.current });
-    if (plan.kind === "reselect" && plan.current) {
-      // The active space vanished (removed from the team while the app was
-      // open): re-pin like setCurrent — staying pinned to a space the gateway
-      // now 403s would strand every request.
-      tauriPreferences.set("last_workspace_id", plan.current.id);
-      const orgChanged = setActiveOrg(orgSlugFromWorkspaceId(plan.current.id));
-      resetCacheForSpaceChange(queryClient, orgChanged);
-    }
+    // The active space vanishing here means the user was removed from the team
+    // while the app was open.
+    applyRefreshPlan(
+      planSpacesRefresh(prev.workspaces, prev.current, fresh),
+      set,
+    );
   },
 
   setCurrent: (ws) => {
@@ -133,16 +139,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     return ws;
   },
 
-  delete: async (id) => {
-    await tauriWorkspaces.delete(id);
-    set((s) => {
-      const workspaces = s.workspaces.filter((w) => w.id !== id);
-      const current =
-        s.current?.id === id
-          ? (workspaces.find((w) => w.isDefault) ?? workspaces[0] ?? null)
-          : s.current;
-      return { workspaces, current };
-    });
+  delete: async (id, options) => {
+    // The server call comes FIRST and its rejection propagates: the row leaves
+    // the store only once the space is really gone. (The v3 adapter's old
+    // no-op stub let this "succeed" and drop the row locally while the space
+    // lived on and re-listed on the next refresh — PRODUCT-1410.)
+    await tauriWorkspaces.delete(id, options);
+    const prev = get();
+    // Same merge as a live refresh that no longer lists the space: when it was
+    // the active one this is a `reselect`, which lands on the default space
+    // AND re-pins the gateway + resets the space-scoped caches — dropping the
+    // row without re-pinning would leave every request addressed to a space
+    // that now 404s. The next refresh tick then confirms the server agrees.
+    applyRefreshPlan(
+      planSpacesRefresh(
+        prev.workspaces,
+        prev.current,
+        prev.workspaces.filter((w) => w.id !== id),
+      ),
+      set,
+    );
+    queryClient.invalidateQueries({ queryKey: queryKeys.orgs() });
   },
 
   rename: async (id, newName) => {

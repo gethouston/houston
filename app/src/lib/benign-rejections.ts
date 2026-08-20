@@ -24,6 +24,32 @@
  * auth calls (sign-in, code exchange) are awaited with their own try/catch in
  * `auth.ts`, so those rejections are *handled* and never reach this predicate.
  */
+/**
+ * WebKit's abort-time fetch teardown noise (PRODUCT-1436, HOUSTON-APP-4ZZ /
+ * 4Z3). Aborting a `fetch` whose response body is locked to an active reader
+ * makes WKWebView reject an INTERNAL promise no user code can reach, with the
+ * WebKit-only `AbortError` phrasing "Fetch is aborted". Every promise our own
+ * stream plumbing exposes is already handled — `streamEventsResumable` and
+ * `streamGlobalEvents` catch the aborted read, and `readEventStream` defuses
+ * the duplicate `reader.closed` rejection (this quirk's "Load failed" twin) —
+ * so this exact message on an UNHANDLED rejection can only be the platform's
+ * internal promise, fired by our own deliberate teardown (an observer stream's
+ * idle-sync stop, a token-rotation disconnect). Nothing broke; swallow it.
+ *
+ * Deliberately narrow — WebKit's exact abort phrasing, not any `AbortError`:
+ * a floating aborted promise in our code is a real bug and must keep reaching
+ * the report path.
+ */
+export function isBenignAbortRejection(reason: unknown): boolean {
+  if (!reason || typeof reason !== "object") return false;
+  const { name, message } = reason as { name?: unknown; message?: unknown };
+  return (
+    name === "AbortError" &&
+    typeof message === "string" &&
+    /^fetch is aborted/i.test(message)
+  );
+}
+
 export function isBenignLockRejection(reason: unknown): boolean {
   if (!reason || typeof reason !== "object") return false;
 

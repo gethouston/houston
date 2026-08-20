@@ -29,11 +29,13 @@ import type { ServedCredential } from "./auth-file";
 
 /**
  * True when the served credential is a google "api_key" whose value cannot be
- * a Gemini API key. Every Google Cloud API key starts with `AIza` (a
- * documented, stable prefix); the legacy garbage never does — it is OAuth
- * material (`ya29.…` user tokens, `eyJ…` JWTs). Scoped to google only: no
- * other provider has this legacy family, and other providers' key shapes are
- * not this crisp.
+ * a Gemini API key: the legacy garbage is OAuth material (`ya29.…` user
+ * tokens, `eyJ…` JWTs), refused by shape. Anything else — `AIza` standard
+ * keys, the newer `AQ.` auth keys, whatever Google mints next — is served and
+ * judged by Google (PRODUCT-1368: an AIza allowlist here refused every new
+ * AQ. key and deleted its central row). Scoped to google only: no other
+ * provider has this legacy family, and other providers' key shapes are not
+ * this crisp.
  */
 export function servedApiKeyIsDead(cred: ServedCredential): boolean {
   return deadGoogleApiKey(cred);

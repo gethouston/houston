@@ -25,7 +25,6 @@ function userOp(conversationId: string, n: number): TranscriptShadowOperation {
     message: message(n),
     title: "chat",
     expectedCount: n - 1,
-    needsSessionReplay: false,
   };
 }
 
