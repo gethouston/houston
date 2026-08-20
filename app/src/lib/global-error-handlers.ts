@@ -1,6 +1,9 @@
 import { isAgentWarmingError } from "./agent-warming-guard";
 import { analytics, classifyAnalyticsError } from "./analytics";
-import { isBenignLockRejection } from "./benign-rejections";
+import {
+  isBenignAbortRejection,
+  isBenignLockRejection,
+} from "./benign-rejections";
 import { showConnectivityErrorToast, showErrorToast } from "./error-toast";
 import { isNetworkTransportError } from "./network-transport-error";
 
@@ -42,6 +45,17 @@ export function installGlobalErrorHandlers(): void {
       event.preventDefault();
       console.debug(
         "[global:unhandledrejection] ignored benign Web Locks contention:",
+        message,
+      );
+      return;
+    }
+    // WebKit rejects an unreachable internal promise when a locked fetch body
+    // is aborted — fired by our own deliberate stream teardown (PRODUCT-1436).
+    // Not a failure: same posture as the lock guard above, console.debug only.
+    if (isBenignAbortRejection(event.reason)) {
+      event.preventDefault();
+      console.debug(
+        "[global:unhandledrejection] ignored WebKit fetch-abort teardown noise:",
         message,
       );
       return;
