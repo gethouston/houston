@@ -1,7 +1,10 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 import type { Workspace } from "../src/lib/types.ts";
-import { planSpacesRefresh } from "../src/lib/workspace-refresh.ts";
+import {
+  planSpacesRefresh,
+  withoutPendingDeletes,
+} from "../src/lib/workspace-refresh.ts";
 
 // The live-spaces poll (HOU: "a new org must appear without relaunching").
 // planSpacesRefresh is the pure merge decision the workspace store applies on
@@ -75,5 +78,31 @@ describe("planSpacesRefresh", () => {
     ]);
     assert.strictEqual(plan.kind, "update");
     assert.strictEqual(plan.kind === "update" && plan.current?.id, personal.id);
+  });
+});
+
+// PRODUCT-1426: while an optimistic delete is in flight the server still lists
+// the space, so every re-list must drop pending-delete rows or the 60s poll /
+// a window focus would resurrect a space the user just watched disappear.
+describe("withoutPendingDeletes", () => {
+  it("returns the same array when nothing is pending (the common tick)", () => {
+    const fresh = [personal, teamA];
+    assert.strictEqual(withoutPendingDeletes(fresh, new Set()), fresh);
+  });
+
+  it("drops rows whose delete is still in flight", () => {
+    assert.deepStrictEqual(
+      withoutPendingDeletes([personal, teamA, teamB], new Set([teamA.id])),
+      [personal, teamB],
+    );
+  });
+
+  it("composes with planSpacesRefresh into an unchanged tick mid-delete", () => {
+    const plan = planSpacesRefresh(
+      [personal, teamB],
+      personal,
+      withoutPendingDeletes([personal, teamA, teamB], new Set([teamA.id])),
+    );
+    assert.strictEqual(plan.kind, "unchanged");
   });
 });
