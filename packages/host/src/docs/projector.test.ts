@@ -140,7 +140,69 @@ test("boot seed projects every family once; missing files converge to empty docs
   expect(puts.find((p) => p.family === "config")?.doc).toEqual({});
 });
 
-test("a multi-agent host refuses ALL doc projection (route binds one agent)", async () => {
+test("a multi-agent host defers binding until the gateway addresses an agent", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  // A rename leftover beside the live agent — the shape seen on prod pod
+  // volumes ("Personal/MARKETING SHALOM" beside "Personal/SHALOM MARKETING").
+  const stale = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "Old Name",
+  });
+  const live = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "New Name",
+  });
+  const puts: { family: string; doc: unknown }[] = [];
+  const shadow: DocShadow = {
+    async seed() {},
+    async put(family, doc) {
+      puts.push({ family, doc });
+    },
+  };
+  await vfs.writeText(
+    docKey(paths.agentRoot(workspace, stale), "learnings"),
+    JSON.stringify([{ id: "old", text: "stale", created_at: "then" }]),
+  );
+  await vfs.writeText(
+    docKey(paths.agentRoot(workspace, live), "learnings"),
+    JSON.stringify([{ id: "new", text: "live", created_at: "now" }]),
+  );
+
+  const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+  projector.seed();
+  await projector.flush();
+  // Ambiguous: nothing projects yet — not the stale dir, not the live one.
+  projector.onEvent({ type: "LearningsChanged", agentPath: stale.id });
+  projector.onEvent({ type: "LearningsChanged", agentPath: live.id });
+  await projector.flush();
+  expect(puts).toEqual([]);
+
+  // The gateway addresses the live agent (its registry engine id): that IS
+  // the binding. The boot seed back-fills from the live agent's files only.
+  projector.bindAddressed(live.id);
+  await projector.flush();
+  expect(puts.find((p) => p.family === "learnings")?.doc).toEqual([
+    { id: "new", text: "live", created_at: "now" },
+  ]);
+  expect(puts.map((p) => p.family).sort()).toEqual([
+    "activity",
+    "config",
+    "learnings",
+    "routine_runs",
+    "routines",
+  ]);
+
+  // The leftover's events stay refused forever after.
+  const seeded = puts.length;
+  projector.onEvent({ type: "LearningsChanged", agentPath: stale.id });
+  await projector.flush();
+  expect(puts.length).toBe(seeded);
+});
+
+test("an addressed id that is not an agent on this host does not bind", async () => {
   const store = new MemoryWorkspaceStore();
   const vfs = new MemoryVfs();
   const paths = new LocalPaths();
@@ -154,19 +216,13 @@ test("a multi-agent host refuses ALL doc projection (route binds one agent)", as
       puts.push({ family, doc });
     },
   };
-  await vfs.writeText(
-    docKey(paths.agentRoot(workspace, a), "learnings"),
-    JSON.stringify([{ id: "l1", text: "t", created_at: "now" }]),
-  );
-
   const projector = new DocShadowProjector({ store, vfs, paths, shadow });
   projector.seed();
   await projector.flush();
-  // Even a post-seed event for an existing agent must not cross-post: the
-  // shadow's URL names ONE agent and this host cannot tell which.
+  projector.bindAddressed("Personal/Nobody");
+  await projector.flush();
   projector.onEvent({ type: "LearningsChanged", agentPath: a.id });
   await projector.flush();
-
   expect(puts).toEqual([]);
 });
 

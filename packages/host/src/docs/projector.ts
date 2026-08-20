@@ -28,11 +28,15 @@ const EVENT_FAMILY: Partial<Record<HoustonEvent["type"], HoustonFamily>> = {
 export class DocShadowProjector {
   private readonly tails = new Map<string, Promise<void>>();
   private ready: Promise<void> = Promise.resolve();
-  // The shadow's doc route is bound to ONE agent (the cloud pod's). Seeding
-  // pins that agent; any other agent id reaching project() (leftover dirs on
-  // a pod volume, unexpected multi-agent hosts) must never cross-post into
-  // the bound agent's doc. null = ambiguous host, all projection refused.
-  private bound: string | null | undefined;
+  // The shadow's doc route is bound to ONE agent (the cloud pod's). A host
+  // with exactly one agent binds at seed; a host with several (rename
+  // leftovers like `Personal/Old Name` beside the live agent are common on
+  // pod volumes) cannot tell them apart itself and DEFERS: the gateway names
+  // the real agent in every authenticated /agents/<id>/ request, and the
+  // first such request binds. Any other agent id reaching project() is
+  // refused — nothing may cross-post into the bound agent's doc.
+  private bound: string | undefined;
+  private addressing = false;
 
   constructor(
     private readonly deps: {
@@ -74,21 +78,55 @@ export class DocShadowProjector {
     }
     const only = agents.length === 1 ? agents[0] : undefined;
     if (only === undefined) {
-      this.poison(agents.length);
+      console.warn(
+        `[doc-shadow] host serves ${agents.length} agents; binding deferred to the first addressed agent`,
+      );
       return;
     }
     this.bound = only;
+    await this.seedBound(only);
+  }
+
+  private async seedBound(agentId: string): Promise<void> {
     for (const family of Object.values(EVENT_FAMILY)) {
       if (!family) continue;
       try {
-        await this.project(only, family);
+        await this.project(agentId, family);
       } catch (error) {
         console.error(
-          `[doc-shadow] boot content seed ${this.bound}#${family} failed`,
+          `[doc-shadow] boot content seed ${agentId}#${family} failed`,
           error,
         );
       }
     }
+  }
+
+  /**
+   * An authenticated request addressed this agent. On a host that could not
+   * bind at seed (several agent directories), the gateway's choice IS the
+   * binding: it addresses the registry's engine id, never a leftover. Binds
+   * once and back-fills the boot seed; later calls are no-ops.
+   */
+  bindAddressed(agentId: string): void {
+    if (this.bound !== undefined || this.addressing) return;
+    this.addressing = true;
+    const task = this.ready
+      .then(async () => {
+        if (this.bound !== undefined) return;
+        if (!(await this.deps.store.getAgent(agentId))) return;
+        this.bound = agentId;
+        console.warn(
+          `[doc-shadow] bound to ${agentId} from the first addressed request; seeding`,
+        );
+        await this.seedBound(agentId);
+      })
+      .catch((error: unknown) => {
+        console.error(`[doc-shadow] addressed bind ${agentId} failed`, error);
+      })
+      .finally(() => {
+        this.addressing = false;
+      });
+    this.ready = task;
   }
 
   onEvent(event: HoustonEvent): void {
@@ -117,7 +155,6 @@ export class DocShadowProjector {
   }
 
   private async project(agentId: string, family: HoustonFamily): Promise<void> {
-    if (this.bound === null) return; // ambiguous host, reported when poisoned
     if (this.bound === undefined && !(await this.lazyBind(agentId, family))) {
       return;
     }
@@ -155,18 +192,15 @@ export class DocShadowProjector {
   /**
    * Bind on first projection when boot found no agents. True = agentId is
    * the host's single agent; the remaining families are enqueued so the
-   * boot seed this pod missed still happens.
+   * boot seed this pod missed still happens. Several agents = still
+   * ambiguous: wait for bindAddressed.
    */
   private async lazyBind(
     agentId: string,
     family: HoustonFamily,
   ): Promise<boolean> {
     const agents = await this.listAgentIds();
-    if (agents.length > 1) {
-      this.poison(agents.length);
-      return false;
-    }
-    if (agents.length === 0 || agents[0] !== agentId) return false;
+    if (agents.length !== 1 || agents[0] !== agentId) return false;
     this.bound = agentId;
     console.warn(
       `[doc-shadow] bound to ${agentId} on first projection (agent hydrated after boot); seeding remaining families`,
@@ -185,15 +219,6 @@ export class DocShadowProjector {
       }
     }
     return agents;
-  }
-
-  // The single doc route cannot be attributed on a multi-agent host: refuse
-  // every projection rather than post one agent's files under another's docs.
-  private poison(count: number): void {
-    this.bound = null;
-    console.error(
-      `[doc-shadow] host serves ${count} agents but the doc route binds one; doc projection disabled`,
-    );
   }
 }
 

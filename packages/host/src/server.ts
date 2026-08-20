@@ -98,6 +98,8 @@ export type MountAdmin = (
 
 export interface ControlPlaneDeps {
   verifier: TokenVerifier;
+  /** Authenticated agent-scoped request seen for this agent id (docs/projector binding). */
+  addressedAgent?: (agentId: string) => void;
   store: WorkspaceStore;
   /** Connect-once: the one subscription credential per workspace, served to its sandboxes. */
   credentials: CredentialStore;
@@ -343,6 +345,14 @@ async function handle(
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
   if (!userId) return json(res, 401, { error: "unauthorized" });
+  // An AUTHENTICATED /agents/<id>/ request names the agent this host is
+  // addressed as — the doc shadow's binding signal on hosts whose workspace
+  // holds more than one agent directory (rename leftovers). After auth only:
+  // an anonymous caller must never pick the binding.
+  if (deps.addressedAgent) {
+    const addressed = /^\/agents\/([^/]+)(?:\/|$)/.exec(path);
+    if (addressed?.[1]) deps.addressedAgent(decodeURIComponent(addressed[1]));
+  }
 
   // The global reactivity stream (SSE): this user's domain-change events only.
   // Long-lived — do not fall through, and never end the response here.

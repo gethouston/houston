@@ -656,6 +656,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // widen the unauthenticated surface for them.
     metrics: { render: () => boot.render(), contentType: boot.contentType },
     storeFenced: syncDaemon ? () => syncDaemon.fenced : undefined,
+    addressedAgent: docProjector
+      ? (agentId) => docProjector.bindAddressed(agentId)
+      : undefined,
   };
 
   const server = createControlPlaneServer(deps);
