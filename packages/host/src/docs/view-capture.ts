@@ -36,8 +36,10 @@ export function viewForPath(
   return family ? { agentId: decodeURIComponent(match[1]), family } : null;
 }
 
-/** Views are small JSON bodies; anything larger is not a view answer. */
-const CAPTURE_CAP_BYTES = 512 * 1024;
+/** Views are modest JSON bodies (summaries, not contents); a body past this
+ *  is not a view answer and is left to the proxy path. Generous on purpose:
+ *  an abandoned capture leaves the PREVIOUS doc serving asleep readers. */
+const CAPTURE_CAP_BYTES = 4 * 1024 * 1024;
 
 /**
  * Tee a response body without altering what the client receives. When the

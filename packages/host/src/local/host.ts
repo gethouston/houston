@@ -17,7 +17,7 @@ import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { HttpDocShadow } from "../docs/http-shadow";
 import { DocShadowProjector } from "../docs/projector";
-import { warmViewDocs } from "../docs/view-warm";
+import { refreshViewsOnEvents, warmViewDocs } from "../docs/view-warm";
 import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
 import { CustomExecutorHost } from "../integrations/custom/executor-host";
@@ -616,6 +616,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         log: severityLog,
       })
     : undefined;
+  // Per-family publish chains for the view sink (see viewSink below).
+  const viewTails = new Map<string, Promise<void>>();
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -669,8 +671,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
             // Same cross-post rule as the file projector: the doc route
             // names ONE agent; a view captured for any other id (a leftover
             // directory's /skills) must never land under the bound agent.
-            void docProjector
-              .boundAgent()
+            // Publishes are SERIALIZED per family so two captures in flight
+            // land in capture order — a detached pair could otherwise let
+            // the older body win the CAS retry.
+            const prior = viewTails.get(family) ?? Promise.resolve();
+            const task = prior
+              .then(() => docProjector.boundAgent())
               .then((bound) => {
                 if (bound !== agentId) {
                   console.warn(
@@ -682,12 +688,28 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
               })
               .catch((error: unknown) => {
                 console.error(`[view-docs] ${family} publish failed`, error);
+              })
+              .finally(() => {
+                if (viewTails.get(family) === task) viewTails.delete(family);
               });
+            viewTails.set(family, task);
           }
         : undefined,
   };
 
   const server = createControlPlaneServer(deps);
+  if (docShadow) {
+    // Views go stale on CHANGE without a live read (a skill the agent
+    // installs overnight); re-capture on the domain events that invalidate
+    // them.
+    refreshViewsOnEvents({
+      port: opts.port,
+      token: opts.token,
+      store,
+      events,
+      userId: LOCAL_USER,
+    });
+  }
   // The agent (or the user) editing files directly → reactivity, no host write.
   const watcher = new FsWatcher(opts.workspacesRoot, (event) => {
     events.emit(LOCAL_USER, event);

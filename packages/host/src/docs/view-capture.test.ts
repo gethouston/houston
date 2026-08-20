@@ -71,8 +71,8 @@ test("non-200, non-JSON, and oversized bodies never publish", async () => {
 
   const big = await serveOnce((res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ blob: "x".repeat(600 * 1024) }));
+    res.end(JSON.stringify({ blob: "x".repeat(5 * 1024 * 1024) }));
   });
   expect(big.captured).toEqual([]);
-  expect(big.body.length).toBeGreaterThan(600 * 1024);
+  expect(big.body.length).toBeGreaterThan(5 * 1024 * 1024);
 });
