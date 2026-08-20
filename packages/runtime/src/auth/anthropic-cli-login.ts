@@ -72,6 +72,9 @@ export async function runAnthropicLogin(
 ): Promise<void> {
   if (deps.binary) {
     try {
+      console.log(
+        `[oauth:anthropic] Claude CLI subscription login via ${deps.binary}`,
+      );
       await runAnthropicCliLogin(cb, deps, deps.binary);
       return;
     } catch (e) {

@@ -23,13 +23,19 @@ export function resolveClaudeCliBinary(deps?: {
 }): string | null {
   const override = process.env.HOUSTON_CLAUDE_BIN;
   if (override) return override;
+  // Every probe failure is collected and logged on the null path: a null here
+  // silently downgrades the connect to the token paste flow, and a silent
+  // downgrade is undebuggable from the field (beta policy: we want the noise).
+  const probes: string[] = [];
   try {
     const sidecarSibling = resolveClaudeExecutable();
     if (sidecarSibling) return sidecarSibling;
-  } catch {
+    probes.push("not a Bun sidecar (Node runtime)");
+  } catch (e) {
     // Bun-compiled but the sibling is missing/placeholder: turns already fail
     // loud there (binary-path throws its typed error); the LOGIN just degrades
     // to the paste flow instead of refusing to start.
+    logNoCliBinary([`sidecar sibling unusable: ${(e as Error).message}`]);
     return null;
   }
   const name = process.platform === "win32" ? "claude.exe" : "claude";
@@ -42,12 +48,22 @@ export function resolveClaudeCliBinary(deps?: {
       const hit = resolve(spec);
       const bin = hit.endsWith(name) ? hit : join(dirname(hit), name);
       if (exists(bin)) return bin;
-    } catch {
+      probes.push(`${spec} resolved but ${bin} does not exist`);
+    } catch (e) {
       // Not resolvable via this spec (package "exports" differences between
       // SDK versions) — try the next, else fall through to null.
+      probes.push(`${spec}: ${(e as Error).message.split("\n")[0]}`);
     }
   }
+  logNoCliBinary(probes);
   return null;
+}
+
+/** The one line that explains a paste-flow downgrade in pod/self-host logs. */
+function logNoCliBinary(probes: string[]): void {
+  console.warn(
+    `[oauth:anthropic] no runnable Claude CLI here — the connect will use the token paste flow (${probes.join(" | ")})`,
+  );
 }
 
 /**
