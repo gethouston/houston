@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { HttpDocShadow } from "./http-shadow";
+import { canonicalJSON, HttpDocShadow } from "./http-shadow";
 
 test("doc shadow seeds and advances If-Match with fencing headers", async () => {
   const requests: RequestInit[] = [];
@@ -170,5 +170,32 @@ test("an unchanged doc costs one GET and no PUT, even key-reordered", async () =
   ]);
   expect(requests.filter((request) => request.method === "PUT")).toHaveLength(
     1,
+  );
+});
+
+test("canonicalJSON keeps a parsed __proto__ key as content", () => {
+  // JSON.parse creates "__proto__" as an OWN property; the canonicalizer must
+  // not lose it to the prototype setter, else two docs differing only in that
+  // key compare equal and the skip-if-equal check suppresses a required PUT.
+  const withProto = JSON.parse('{"__proto__":{"a":1},"b":2}') as unknown;
+  const withoutProto = JSON.parse('{"b":2}') as unknown;
+  expect(canonicalJSON(withProto)).not.toBe(canonicalJSON(withoutProto));
+  expect(canonicalJSON(withProto)).toContain("__proto__");
+});
+
+test("put with an undefined doc throws instead of silently skipping", async () => {
+  const shadow = new HttpDocShadow({
+    gateway: {
+      baseUrl: "https://store.example",
+      orgSlug: "acme",
+      agentSlug: "helper",
+      podToken: "pod-token",
+      bootId: "boot-1",
+      fence: {},
+    },
+    fetchImpl: (async () => Response.json({ revision: 1 })) as typeof fetch,
+  });
+  await expect(shadow.put("activity", undefined)).rejects.toThrow(
+    /without a document/,
   );
 });

@@ -5,6 +5,15 @@ import {
   podGatewayHeaders,
   podGatewayUrl,
 } from "../pod-gateway";
+import {
+  canonicalJSON,
+  etagRevision,
+  parseDocBody,
+  responseError,
+  responseRevision,
+} from "./wire";
+
+export { canonicalJSON } from "./wire";
 
 export interface DocShadow {
   seed(): Promise<void>;
@@ -36,6 +45,12 @@ export class HttpDocShadow implements DocShadow {
 
   async put(family: HoustonFamily, doc: unknown): Promise<void> {
     if (this.disabled) return;
+    if (doc === undefined) {
+      // canonicalJSON(undefined) is not a string; comparing it against a
+      // missing cache entry would silently skip the write. No caller may
+      // pass undefined — surface the contract violation instead.
+      throw new Error(`[doc-shadow] ${family} put called without a document`);
+    }
     if (!this.revisions.has(family)) {
       const seeded = await this.seedFamily(family);
       if (!seeded || this.disabled) return;
@@ -132,7 +147,7 @@ export class HttpDocShadow implements DocShadow {
       }
       return true;
     } catch (error) {
-      console.debug(`[doc-shadow] ${family} revision seed failed`, error);
+      console.error(`[doc-shadow] ${family} revision seed failed`, error);
       this.revisions.delete(family);
       this.remote.delete(family);
       return false;
@@ -154,74 +169,4 @@ export class HttpDocShadow implements DocShadow {
       "[doc-shadow] gateway route unavailable; disabling for this process",
     );
   }
-}
-
-/** Stable stringify (recursive key sort) so jsonb's key reordering never
- *  reads as a content change. */
-export function canonicalJSON(value: unknown): string {
-  return JSON.stringify(sortKeys(value));
-}
-
-function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys);
-  if (value !== null && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-      out[key] = sortKeys((value as Record<string, unknown>)[key]);
-    }
-    return out;
-  }
-  return value;
-}
-
-function etagRevision(response: Response): number | undefined {
-  const etag = response.headers
-    .get("ETag")
-    ?.replace(/^W\//, "")
-    .replaceAll('"', "");
-  return etag && Number.isSafeInteger(Number(etag)) ? Number(etag) : undefined;
-}
-
-function parseDocBody(text: string): { revision?: number; doc?: unknown } {
-  if (!text) return {};
-  try {
-    const body = JSON.parse(text) as { revision?: unknown; doc?: unknown };
-    return {
-      ...(typeof body.revision === "number" ? { revision: body.revision } : {}),
-      ...("doc" in body ? { doc: body.doc } : {}),
-    };
-  } catch (error) {
-    console.debug("[doc-shadow] response carried no revision", error);
-    return {};
-  }
-}
-
-async function responseRevision(
-  response: Response,
-): Promise<number | undefined> {
-  const etag = response.headers
-    .get("ETag")
-    ?.replace(/^W\//, "")
-    .replaceAll('"', "");
-  if (etag && Number.isSafeInteger(Number(etag))) return Number(etag);
-  const text = await response.text();
-  if (!text) return undefined;
-  try {
-    const body = JSON.parse(text) as { revision?: unknown };
-    return typeof body.revision === "number" ? body.revision : undefined;
-  } catch (error) {
-    console.debug("[doc-shadow] response carried no revision", error);
-    return undefined;
-  }
-}
-
-async function responseError(
-  response: Response,
-  family: HoustonFamily,
-  method: string,
-): Promise<Error> {
-  const detail = await response.text();
-  return new Error(
-    `doc shadow ${method} ${family} failed (${response.status}): ${detail.slice(0, 300)}`,
-  );
 }
