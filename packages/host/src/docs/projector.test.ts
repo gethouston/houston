@@ -376,3 +376,23 @@ test("a pod that boots before its agent hydrates binds on first projection", asy
   await projector.flush();
   expect(puts.length).toBe(seeded);
 });
+
+test("boundAgent resolves after the seed to the bound id, or undefined", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "A",
+  });
+  const shadow: DocShadow = { async seed() {}, async put() {} };
+  const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+  projector.seed();
+  expect(await projector.boundAgent()).toBe(agent.id);
+
+  await store.createAgent({ workspaceId: workspace.id, name: "B" });
+  const ambiguous = new DocShadowProjector({ store, vfs, paths, shadow });
+  ambiguous.seed();
+  expect(await ambiguous.boundAgent()).toBeUndefined();
+});

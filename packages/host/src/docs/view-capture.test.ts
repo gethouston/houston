@@ -16,6 +16,11 @@ test("viewForPath matches exactly the three view routes", () => {
     agentId: "a1",
     family: "custom_definitions",
   });
+  expect(viewForPath("/agents/a1/skills")).toEqual({
+    agentId: "a1",
+    family: "skills",
+  });
+  expect(viewForPath("/agents/a1/skills/my-skill")).toBeNull();
   expect(viewForPath("/agents/a1/providers/openai")).toBeNull();
   expect(viewForPath("/agents/a1/conversations")).toBeNull();
   expect(viewForPath("/providers")).toBeNull();
@@ -66,8 +71,8 @@ test("non-200, non-JSON, and oversized bodies never publish", async () => {
 
   const big = await serveOnce((res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ blob: "x".repeat(600 * 1024) }));
+    res.end(JSON.stringify({ blob: "x".repeat(5 * 1024 * 1024) }));
   });
   expect(big.captured).toEqual([]);
-  expect(big.body.length).toBeGreaterThan(600 * 1024);
+  expect(big.body.length).toBeGreaterThan(5 * 1024 * 1024);
 });

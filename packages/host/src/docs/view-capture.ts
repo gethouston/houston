@@ -8,13 +8,20 @@ import type { ServerResponse } from "node:http";
  * what turns the app's cold-open reads (`/providers` was observed at 8-11s,
  * a full pod wake) into a gateway read.
  */
-export type ViewFamily = "providers" | "provider_usage" | "custom_definitions";
+export type ViewFamily =
+  | "providers"
+  | "provider_usage"
+  | "custom_definitions"
+  | "skills";
 
 /** Route rest (after `/agents/:id/`) → the view family it publishes. */
 export const VIEW_RESTS: Readonly<Record<string, ViewFamily>> = {
   providers: "providers",
   "providers/usage": "provider_usage",
   "integrations/custom/definitions": "custom_definitions",
+  // The skills list is a directory family (no .houston/<family>.json), so it
+  // rides the view path: the pod's own answer, captured and served asleep.
+  skills: "skills",
 };
 
 const AGENT_PATH = /^\/agents\/([^/]+)\/(.+)$/;
@@ -29,8 +36,10 @@ export function viewForPath(
   return family ? { agentId: decodeURIComponent(match[1]), family } : null;
 }
 
-/** Views are small JSON bodies; anything larger is not a view answer. */
-const CAPTURE_CAP_BYTES = 512 * 1024;
+/** Views are modest JSON bodies (summaries, not contents); a body past this
+ *  is not a view answer and is left to the proxy path. Generous on purpose:
+ *  an abandoned capture leaves the PREVIOUS doc serving asleep readers. */
+const CAPTURE_CAP_BYTES = 4 * 1024 * 1024;
 
 /**
  * Tee a response body without altering what the client receives. When the
