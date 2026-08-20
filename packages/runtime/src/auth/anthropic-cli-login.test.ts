@@ -1,6 +1,8 @@
 import { EventEmitter } from "node:events";
+import { existsSync } from "node:fs";
 import { PassThrough } from "node:stream";
 import { expect, test } from "vitest";
+import { resolveClaudeCliBinary } from "./anthropic-cli-binary";
 import {
   type AnthropicLoginDeps,
   runAnthropicLogin,
@@ -202,6 +204,25 @@ test("no binary goes straight to the token paste flow", async () => {
   h.paste("sk-ant-oat01-tok");
   await h.login;
   expect(h.stored.tokens).toEqual(["sk-ant-oat01-tok"]);
+});
+
+test("resolveClaudeCliBinary finds the SDK's real platform binary with no seams", () => {
+  // ENVIRONMENT TRUTH, deliberately un-mocked: this is the exact resolution a
+  // pod / self-host runs. The per-platform package is a dependency of the SDK,
+  // not of the runtime, so a runtime-anchored require can't see it under pnpm
+  // — the original resolver returned null on EVERY Node deployment and every
+  // web login silently fell back to the paste flow. Any dev/CI host has the
+  // SDK installed (turns run through it), so null here means the resolution
+  // chain regressed, not that the binary is absent.
+  const override = process.env.HOUSTON_CLAUDE_BIN;
+  delete process.env.HOUSTON_CLAUDE_BIN;
+  try {
+    const bin = resolveClaudeCliBinary();
+    expect(bin).toBeTruthy();
+    expect(existsSync(bin as string)).toBe(true);
+  } finally {
+    if (override !== undefined) process.env.HOUSTON_CLAUDE_BIN = override;
+  }
 });
 
 test("extractVisitUrl parses plain, punctuated, and OSC-8 wrapped lines", () => {

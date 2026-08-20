@@ -34,7 +34,7 @@ export function resolveClaudeCliBinary(deps?: {
   }
   const name = process.platform === "win32" ? "claude.exe" : "claude";
   const slug = `${process.platform}-${process.arch === "arm64" ? "arm64" : "x64"}`;
-  const resolve = deps?.resolve ?? createRequire(import.meta.url).resolve;
+  const resolve = deps?.resolve ?? sdkScopedResolve;
   const exists = deps?.exists ?? existsSync;
   const pkg = `@anthropic-ai/claude-agent-sdk-${slug}`;
   for (const spec of [`${pkg}/${name}`, `${pkg}/package.json`]) {
@@ -48,6 +48,23 @@ export function resolveClaudeCliBinary(deps?: {
     }
   }
   return null;
+}
+
+/**
+ * Resolve `spec` from the SDK's own directory, in two hops. The per-platform
+ * binary package is a dependency of `@anthropic-ai/claude-agent-sdk`, NOT of
+ * the runtime — under pnpm's isolated node_modules a require anchored HERE
+ * cannot see it (MODULE_NOT_FOUND), which made this resolver return null on
+ * every Node deployment and silently dumped web/pod logins into the paste
+ * flow. Anchor at the SDK's resolved main export instead (its `exports` map
+ * blocks resolving `@anthropic-ai/claude-agent-sdk/package.json` directly);
+ * from there the platform package resolves exactly the way the SDK itself
+ * finds its binary at turn time.
+ */
+function sdkScopedResolve(spec: string): string {
+  const here = createRequire(import.meta.url);
+  const sdkMain = here.resolve("@anthropic-ai/claude-agent-sdk");
+  return createRequire(sdkMain).resolve(spec);
 }
 
 /** Spawn the real CLI login child (`anthropic-cli-login.ts`'s production seam). */
