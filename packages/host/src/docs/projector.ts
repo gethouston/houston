@@ -2,6 +2,9 @@ import {
   docKey,
   type HoustonFamily,
   normalizeActivities,
+  normalizeLearnings,
+  normalizeRoutineRuns,
+  normalizeRoutines,
 } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import type { WorkspacePaths } from "../paths";
@@ -103,16 +106,39 @@ export class DocShadowProjector {
     const raw = await this.deps.vfs.readText(key);
     if (raw === null) return;
     const parsed = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
-    // The activity family is READ by the gateway (the mission board is served
-    // from the doc at database authority), and reads normalize via
-    // normalizeActivities — malformed entries dropped, defaults applied. Keep
-    // that behavior in exactly one place by projecting the NORMALIZED items:
-    // for host-written files this is a byte-level no-op (saveActivities writes
-    // normalized items), and for agent hand-edits the doc converges to what
-    // the pod would serve. normalizeActivities is idempotent, so the doc also
-    // remains a valid activity.json for any future file reconstruction.
-    const doc =
-      family === "activity" ? normalizeActivities(parsed, key).items : parsed;
-    await this.deps.shadow.put(family, doc);
+    // Every family the gateway can serve pod-less is projected NORMALIZED —
+    // the exact shape the pod's own read would return (malformed entries
+    // dropped, defaults applied), so the doc-served answer and the pod-served
+    // answer stay byte-equivalent. Behavior lives once, in the domain
+    // normalizers; they are idempotent, so each doc also remains a valid
+    // family file for any future reconstruction. For host-written files this
+    // is a byte-level no-op.
+    await this.deps.shadow.put(family, normalizeFamilyDoc(family, parsed, key));
+  }
+}
+
+function normalizeFamilyDoc(
+  family: HoustonFamily,
+  parsed: unknown,
+  key: string,
+): unknown {
+  switch (family) {
+    case "activity":
+      return normalizeActivities(parsed, key).items;
+    case "routines":
+      return normalizeRoutines(parsed, key).items;
+    case "routine_runs":
+      return normalizeRoutineRuns(parsed, key).items;
+    case "learnings":
+      return normalizeLearnings(parsed, key).items;
+    case "config":
+      // config.json is one object; a non-object file reads as empty.
+      return parsed !== null &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed)
+        ? parsed
+        : {};
+    default:
+      return parsed;
   }
 }
