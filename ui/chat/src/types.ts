@@ -296,6 +296,10 @@ export type AuthFailureCause =
   | "token_expired"
   | "token_revoked"
   | "invalid_api_key"
+  // The provider's organization/policy blocked subscription access for this
+  // environment (Anthropic's `oauth_org_not_allowed`). Reconnecting does NOT
+  // heal it; the card's action points at using an API key instead.
+  | "org_policy_blocked"
   | "unknown";
 
 export type RunStatus =

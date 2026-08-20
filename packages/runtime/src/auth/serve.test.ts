@@ -839,6 +839,112 @@ test("a probe that fails both attempts logs ONE error with the cause code and re
   }
 });
 
+test("a sweep where EVERY probe is refused logs ONE error, not one per provider (PRODUCT-1399)", async () => {
+  // A runtime whose host has closed under it (pod shutdown), or a gateway
+  // outage: 41 identical ECONNREFUSED verdicts are one incident. Logging each
+  // made every such sweep 41 Sentry events in HOUSTON-APP-4YV.
+  resetServeProbeLog();
+  let refuse = true;
+  let probeCalls = 0;
+  const fetchImpl = (async () => {
+    probeCalls++;
+    if (refuse)
+      throw Object.assign(new TypeError("fetch failed"), {
+        cause: Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:4318"), {
+          code: "ECONNREFUSED",
+        }),
+      });
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const infos = vi.spyOn(console, "info").mockImplementation(() => {});
+  const serveErrors = () =>
+    errors.mock.calls
+      .map((c) => String(c[0]))
+      .filter((m) => m.startsWith("[serve]"));
+  try {
+    await withServeMode(fetchImpl, async () => {
+      const providerCount = new Set([
+        ...PROVIDERS.map((p) => p.id),
+        ...piApiKeyProviderIds(),
+      ]).size;
+      expect(await syncServedCredential()).toEqual([]);
+      expect(probeCalls).toBe(providerCount * 2); // attempt + one retry each
+      expect(serveErrors()).toEqual([
+        `[serve] control plane unreachable for all ${providerCount} providers: fetch failed (cause: ECONNREFUSED)`,
+      ]);
+
+      // The identical repeat is a WARN breadcrumb, never a second event.
+      expect(await syncServedCredential()).toEqual([]);
+      expect(serveErrors()).toHaveLength(1);
+      expect(
+        warns.mock.calls.some((c) =>
+          String(c[0]).includes("control plane unreachable for all"),
+        ),
+      ).toBe(true);
+
+      // Recovery is logged once and re-arms the incident.
+      refuse = false;
+      expect(await syncServedCredential()).toEqual([]);
+      expect(infos).toHaveBeenCalledWith(
+        "[serve] control plane reachable again",
+      );
+      refuse = true;
+      expect(await syncServedCredential()).toEqual([]);
+      expect(serveErrors()).toHaveLength(2);
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+    infos.mockRestore();
+  }
+}, 30_000);
+
+test("probes caught by ONE gateway blip mid-sweep log ONE error, not one per provider (PRODUCT-1423)", async () => {
+  // A control-plane restart seen through the gateway: the probes in flight
+  // during the window get `500: {"error":"fetch failed"}` while the rest of
+  // the sweep answers normally. Not uniform, so the PRODUCT-1399 collapse
+  // never fired — HOUSTON-APP-4YV got one Sentry event per caught provider.
+  resetServeProbeLog();
+  const blipped = new Set(["google", "openrouter", "opencode-go"]);
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider && blipped.has(provider))
+      return new Response(JSON.stringify({ error: "fetch failed" }), {
+        status: 500,
+      });
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const serveErrors = () =>
+    errors.mock.calls
+      .map((c) => String(c[0]))
+      .filter((m) => m.startsWith("[serve]"));
+  try {
+    await withServeMode(fetchImpl, async () => {
+      expect(await syncServedCredential()).toEqual([]);
+      // ONE event naming every caught provider (in catalog order) and the
+      // shared gateway detail.
+      expect(serveErrors()).toHaveLength(1);
+      const line = serveErrors()[0] ?? "";
+      expect(line).toMatch(/^\[serve\] credential probes for /);
+      for (const id of blipped) expect(line).toContain(id);
+      expect(line).toContain('failed alike: 500: {"error":"fetch failed"}');
+      // The persistent repeat stays a WARN breadcrumb, never a second event.
+      expect(await syncServedCredential()).toEqual([]);
+      expect(serveErrors()).toHaveLength(1);
+      expect(
+        warns.mock.calls.some((c) => String(c[0]).includes("still failing")),
+      ).toBe(true);
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+  }
+}, 30_000);
+
 test("selectExportCredential without a provider falls back to the first OAuth credential", () => {
   const auth: Record<string, PiCred> = {
     "openai-codex": oauth("AT-codex", "RT-codex"),

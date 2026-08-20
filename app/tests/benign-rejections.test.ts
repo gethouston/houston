@@ -1,6 +1,9 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { isBenignLockRejection } from "../src/lib/benign-rejections.ts";
+import {
+  isBenignAbortRejection,
+  isBenignLockRejection,
+} from "../src/lib/benign-rejections.ts";
 
 /**
  * auth-js's typed acquire-timeout error, reduced to the shape our predicate
@@ -9,6 +12,56 @@ import { isBenignLockRejection } from "../src/lib/benign-rejections.ts";
 function acquireTimeoutError(message: string): Error {
   return Object.assign(new Error(message), { isAcquireTimeout: true });
 }
+
+/** WebKit's internal abort rejection, reduced to the shape the predicate reads. */
+function webkitAbortError(): unknown {
+  return Object.assign(new Error("Fetch is aborted"), { name: "AbortError" });
+}
+
+describe("isBenignAbortRejection", () => {
+  it("matches WebKit's abort-time AbortError (HOUSTON-APP-4ZZ / 4Z3)", () => {
+    strictEqual(isBenignAbortRejection(webkitAbortError()), true);
+  });
+
+  it("is case-insensitive on the message", () => {
+    strictEqual(
+      isBenignAbortRejection(
+        Object.assign(new Error("FETCH IS ABORTED"), { name: "AbortError" }),
+      ),
+      true,
+    );
+  });
+
+  it("does NOT match other AbortError phrasings (a floating abort in our code is a bug)", () => {
+    strictEqual(
+      isBenignAbortRejection(
+        Object.assign(new Error("The operation was aborted."), {
+          name: "AbortError",
+        }),
+      ),
+      false,
+    );
+    strictEqual(
+      isBenignAbortRejection(
+        Object.assign(new Error("signal is aborted without reason"), {
+          name: "AbortError",
+        }),
+      ),
+      false,
+    );
+  });
+
+  it("does NOT match the message without the AbortError name", () => {
+    strictEqual(isBenignAbortRejection(new Error("Fetch is aborted")), false);
+  });
+
+  it("handles non-object reasons safely", () => {
+    strictEqual(isBenignAbortRejection(null), false);
+    strictEqual(isBenignAbortRejection(undefined), false);
+    strictEqual(isBenignAbortRejection("Fetch is aborted"), false);
+    strictEqual(isBenignAbortRejection({}), false);
+  });
+});
 
 describe("isBenignLockRejection", () => {
   it("matches the raw Web Locks 'stolen' DOMException (HOUSTON-APP-8Y)", () => {

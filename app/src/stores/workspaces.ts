@@ -4,10 +4,23 @@ import { setActiveOrg } from "../lib/engine";
 import { queryClient } from "../lib/query-client";
 import { resetCacheForSpaceChange } from "../lib/space-cache";
 import { orgSlugFromWorkspaceId } from "../lib/space-id";
-import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
+import {
+  type EngineCallOptions,
+  tauriPreferences,
+  tauriWorkspaces,
+} from "../lib/tauri";
 import type { Workspace } from "../lib/types";
-import { planSpacesRefresh } from "../lib/workspace-refresh";
+import {
+  planSpacesRefresh,
+  withoutPendingDeletes,
+} from "../lib/workspace-refresh";
 import { resolveActiveWorkspace } from "../lib/workspace-switch";
+import {
+  pendingWorkspaceDeletes,
+  runWorkspaceDelete,
+  type WorkspaceDeleteMode,
+} from "./workspace-delete";
+import { applyRefreshPlan } from "./workspace-refresh-apply";
 
 interface WorkspaceState {
   workspaces: Workspace[];
@@ -34,7 +47,18 @@ interface WorkspaceState {
   refreshWorkspaces: () => Promise<void>;
   setCurrent: (ws: Workspace) => void;
   create: (name: string) => Promise<Workspace>;
-  delete: (id: string) => Promise<void>;
+  /** Delete a team space for good (PRODUCT-1410). Defaults to `server-first`
+   *  (the row leaves the list only once the space is really gone); a caller
+   *  that pre-checked the gateway will accept (`canDeleteOptimistically`)
+   *  passes `optimistic` to switch away BEFORE the server round-trip, with the
+   *  row restored in place on rejection (PRODUCT-1426). Rejections propagate
+   *  either way (surfaced by the wire layer / the caller's `silence`
+   *  predicate). */
+  delete: (
+    id: string,
+    options?: EngineCallOptions,
+    mode?: WorkspaceDeleteMode,
+  ) => Promise<void>;
   rename: (id: string, newName: string) => Promise<void>;
   /** Set (or clear, with null) the workspace's UI-locale override. */
   setLocale: (id: string, locale: string | null) => Promise<void>;
@@ -63,10 +87,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       // Restore the last-selected space alongside the list. On a personal-only
       // host the persisted id resolves to the sole default workspace, so this
       // stays byte-identical to the old isDefault-then-first resolution.
-      const [workspaces, lastId] = await Promise.all([
+      const [listed, lastId] = await Promise.all([
         tauriWorkspaces.list(),
         tauriPreferences.get("last_workspace_id"),
       ]);
+      const workspaces = withoutPendingDeletes(listed, pendingWorkspaceDeletes);
       const current = resolveActiveWorkspace(workspaces, lastId);
       // Pin the active space (C8) BEFORE the first space-scoped fetches fire so
       // they carry the right x-houston-org from the start (no header for
@@ -95,19 +120,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch {
       return; // logged by the wire layer; the next tick retries
     }
+    // Checked AFTER the fetch: a delete that started mid-flight must still win.
+    fresh = withoutPendingDeletes(fresh, pendingWorkspaceDeletes);
     const prev = get();
     if (prev.loading) return; // a real load started mid-flight; it wins
-    const plan = planSpacesRefresh(prev.workspaces, prev.current, fresh);
-    if (plan.kind === "unchanged") return;
-    set({ workspaces: plan.workspaces, current: plan.current });
-    if (plan.kind === "reselect" && plan.current) {
-      // The active space vanished (removed from the team while the app was
-      // open): re-pin like setCurrent — staying pinned to a space the gateway
-      // now 403s would strand every request.
-      tauriPreferences.set("last_workspace_id", plan.current.id);
-      const orgChanged = setActiveOrg(orgSlugFromWorkspaceId(plan.current.id));
-      resetCacheForSpaceChange(queryClient, orgChanged);
-    }
+    // The active space vanishing here means the user was removed from the team
+    // while the app was open.
+    applyRefreshPlan(
+      planSpacesRefresh(prev.workspaces, prev.current, fresh),
+      set,
+    );
   },
 
   setCurrent: (ws) => {
@@ -133,17 +155,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     return ws;
   },
 
-  delete: async (id) => {
-    await tauriWorkspaces.delete(id);
-    set((s) => {
-      const workspaces = s.workspaces.filter((w) => w.id !== id);
-      const current =
-        s.current?.id === id
-          ? (workspaces.find((w) => w.isDefault) ?? workspaces[0] ?? null)
-          : s.current;
-      return { workspaces, current };
-    });
-  },
+  delete: (id, options, mode = "server-first") =>
+    runWorkspaceDelete(id, options, get, set, mode),
 
   rename: async (id, newName) => {
     await tauriWorkspaces.rename(id, newName);
@@ -165,6 +178,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   // Mirrors the initial state (loading: true) so the shell shows its splash, not
-  // a stale list, until the incoming account's loadWorkspaces() resolves.
-  reset: () => set({ workspaces: [], current: null, loading: true }),
+  // a stale list, until the incoming account's loadWorkspaces() resolves. The
+  // outgoing account's in-flight deletes must not filter the incoming list.
+  reset: () => {
+    pendingWorkspaceDeletes.clear();
+    set({ workspaces: [], current: null, loading: true });
+  },
 }));

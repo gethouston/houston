@@ -43,6 +43,24 @@ export async function createOrg(
 }
 
 /**
+ * Delete a team space the caller owns (`DELETE /v1/orgs/:slug`, PRODUCT-1410).
+ * Never degrades: every rejection is a state the owner must see — `404
+ * org_not_found` (already gone, or not theirs), `403 personal_space` (a
+ * personal space is never deletable), `403` plain not-allowed (not the owner),
+ * `409 has_members` (teammates remain — remove them first), `409
+ * subscription_active` (a live subscription — cancel it first). A `204` means
+ * the space and everything in it is gone for good; the caller must re-list.
+ */
+export async function deleteOrg(
+  cfg: ControlPlaneConfig,
+  slug: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/orgs/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+  });
+}
+
+/**
  * Accept a pending invite addressed to the caller (C8), by the id that rides
  * `listOrgs().invites`. Answers the joined space (the gateway wraps it as
  * `{org}`) so the caller can name it without a second read. Never degrades —

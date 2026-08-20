@@ -16,7 +16,7 @@ export type { MyProfile } from "./queries/user-profiles-map";
  * metadata (display name + provider photo) via {@link resolveMyProfile}.
  * The Supabase `profiles` store retired with Supabase
  * auth, so {@link useUserProfiles} is a stub returning an empty map today (the
- * gateway profile store is a follow-up — see knowledge-base/auth-migration.md);
+ * gateway profile store is a follow-up);
  * the merge collapses to the session's displayName/photoUrl, and the seam is
  * kept so a future row transparently wins once the gateway store lands.
  *

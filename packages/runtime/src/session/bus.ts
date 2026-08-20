@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   type ConversationSnapshot,
   EMPTY_SNAPSHOT as EMPTY,
@@ -9,9 +10,10 @@ import {
 
 /**
  * Per-conversation event bus. This is the ONE place conversation isolation is
- * enforced: subscribers are partitioned by conversation id into disjoint sets, so
- * an event published for conversation A can only ever reach A's subscribers —
- * there is no global firehose for events to leak across conversations.
+ * enforced: subscribers are partitioned by scope + conversation id into
+ * disjoint sets, so an event published for conversation A can only ever reach
+ * A's subscribers — there is no global firehose for events to leak across
+ * conversations or pooled agents.
  *
  * It is also the conversation stream's sequencing authority: every published
  * event runs through a shared StreamChannel (@houston/runtime-client — the
@@ -32,20 +34,30 @@ export { type ConversationSnapshot, reduceSnapshot };
 type Subscriber = (frame: SequencedFrame) => void;
 
 const subscribers = new Map<string, Set<Subscriber>>();
-// One entry per conversation ever published to in this process — kept for the
-// process lifetime because it owns the seq counter (a handful of small objects;
-// conversations are bounded per runtime). Dropped only by evict().
+// Standing-server entries retain the seq counter for process lifetime. Pooled
+// turn entries are explicitly released after cleanup.
 const channels = new Map<string, StreamChannel>();
+const SERVER_SCOPE = "server";
+const scopeStore = new AsyncLocalStorage<string>();
+
+const keyFor = (id: string, scope = scopeStore.getStore() ?? SERVER_SCOPE) =>
+  `${scope}:${id}`;
+
+/** Bind turn-mode bus activity to one workspace/agent scope. */
+export function runWithConversationScope<T>(scope: string, fn: () => T): T {
+  return scopeStore.run(scope, fn);
+}
 
 /** Publish an event to exactly one conversation's subscribers, stamping its seq. */
 export function publish(id: string, event: WireFrame): void {
-  let ch = channels.get(id);
+  const key = keyFor(id);
+  let ch = channels.get(key);
   if (!ch) {
     ch = new StreamChannel();
-    channels.set(id, ch);
+    channels.set(key, ch);
   }
   ch.publish(event, (frame) => {
-    const subs = subscribers.get(id);
+    const subs = subscribers.get(key);
     // Iterate a copy: a callback may (un)subscribe while we fan out.
     if (subs) for (const cb of [...subs]) cb(frame);
   });
@@ -53,23 +65,24 @@ export function publish(id: string, event: WireFrame): void {
 
 /** Subscribe to one conversation's events. Returns an unsubscribe fn. */
 export function subscribe(id: string, cb: Subscriber): () => void {
-  let set = subscribers.get(id);
+  const key = keyFor(id);
+  let set = subscribers.get(key);
   if (!set) {
     set = new Set();
-    subscribers.set(id, set);
+    subscribers.set(key, set);
   }
   set.add(cb);
   return () => {
-    const s = subscribers.get(id);
+    const s = subscribers.get(key);
     if (!s) return;
     s.delete(cb);
-    if (s.size === 0) subscribers.delete(id);
+    if (s.size === 0) subscribers.delete(key);
   };
 }
 
 /** Current in-flight snapshot for a conversation (drives the `sync` frame on connect). */
 export function snapshot(id: string): ConversationSnapshot {
-  return channels.get(id)?.snapshot ?? EMPTY;
+  return channels.get(keyFor(id))?.snapshot ?? EMPTY;
 }
 
 /** Whether any conversation in this runtime currently has an in-flight turn. */
@@ -82,7 +95,7 @@ export function anyTurnRunning(): boolean {
 
 /** Whether THIS conversation currently has an in-flight turn. */
 export function isTurnRunning(id: string): boolean {
-  return channels.get(id)?.snapshot.running ?? false;
+  return channels.get(keyFor(id))?.snapshot.running ?? false;
 }
 
 /**
@@ -94,7 +107,7 @@ export function replayAfter(
   id: string,
   after: number,
 ): SequencedFrame[] | null {
-  const ch = channels.get(id);
+  const ch = channels.get(keyFor(id));
   if (!ch) return after === 0 ? [] : null;
   return ch.replayAfter(after);
 }
@@ -107,10 +120,17 @@ export function replayAfter(
  * Live subscribers stay registered and simply see the next stream, if any.
  */
 export function evict(id: string): void {
-  channels.delete(id);
+  channels.delete(keyFor(id));
+}
+
+/** Drop all process-local state held for a completed pooled turn. */
+export function releaseConversation(scope: string, id: string): void {
+  const key = keyFor(id, scope);
+  channels.delete(key);
+  subscribers.delete(key);
 }
 
 /** Live subscriber count for a conversation (tests / diagnostics). */
 export function subscriberCount(id: string): number {
-  return subscribers.get(id)?.size ?? 0;
+  return subscribers.get(keyFor(id))?.size ?? 0;
 }

@@ -16,8 +16,8 @@ import { claudeCredentialsFile } from "./paths";
  * the CLI envelope (`{claudeAiOauth:{…}}`). On desktop/self-host the full
  * credential lets the SDK self-refresh in place. A managed serve-mode pod must
  * receive an access-only value: the gateway is the refresh family's single
- * rotator, and materializing its refresh token here would violate trap #4 in
- * knowledge-base/anthropic-credentials.md.
+ * rotator, and materializing its refresh token here would create a second one
+ * (Anthropic invalidates the previous holder on every refresh).
  *
  * On a managed pod the file is only an immediate, access-only connected signal
  * at push time. Steady-state, the per-turn served access token rides
@@ -33,10 +33,9 @@ import { claudeCredentialsFile } from "./paths";
  * (1) hand their Anthropic refresh-token family to every other member of the
  * space and (2) create a second rotator for that family — Anthropic invalidates
  * the previous holder on refresh, so the pod's self-refreshing SDK and the
- * gateway would take turns killing each other's token
- * (knowledge-base/anthropic-credentials.md trap #4). A personal scope therefore
+ * gateway would take turns killing each other's token. A personal scope therefore
  * REFUSES, loudly: personal Anthropic on a managed pod is served access-only per
- * turn via `CLAUDE_CODE_OAUTH_TOKEN`, which outranks this file anyway (trap #3).
+ * turn via `CLAUDE_CODE_OAUTH_TOKEN`, which outranks this file anyway.
  */
 export function writeClaudeOAuthCredentialFile(
   configDir: string,

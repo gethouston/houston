@@ -38,10 +38,14 @@ export function logProviderError(
   ctx: ProviderErrorLogContext = {},
 ): void {
   const verbatim = error.kind === "unknown" ? error.raw_excerpt : error.message;
-  // `cause` rides right after `kind` so the Sentry capture regex
-  // (runtime-client sentry/client.ts PROVIDER_ERROR_LINE) can tag it: it is
-  // what separates "provider revoked the session" from "user pasted a bad key"
-  // when triaging disconnect storms (PRODUCT-1302).
+  // The line's format is a documented contract with the Sentry capture regex
+  // (runtime-client sentry/client.ts PROVIDER_ERROR_LINE):
+  //   `[provider_error] provider=X model=Y status=Z[ error=SLUG] kind=K[ cause=C] :: text`
+  // `error=` (the SDK's own slug) rides BEFORE `kind=`, `cause=` right after
+  // it. Sentry fingerprints per (provider, kind, cause, sdk-slug) and tags all
+  // four (PRODUCT-1302, PRODUCT-1393): cause separates "provider revoked the
+  // session" from "user pasted a bad key", the SDK slug separates Anthropic's
+  // org-policy block from ordinary auth failures.
   const cause = error.kind === "unauthenticated" ? ` cause=${error.cause}` : "";
   const line =
     `[provider_error] provider=${error.provider} model=${ctx.model ?? "?"} ` +

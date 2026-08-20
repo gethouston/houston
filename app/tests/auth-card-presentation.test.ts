@@ -32,6 +32,10 @@ describe("authCauseBodyKey", () => {
       authCauseBodyKey("token_revoked"),
       "providerError.unauthenticated.bodyTokenRevoked",
     );
+    strictEqual(
+      authCauseBodyKey("org_policy_blocked"),
+      "providerError.unauthenticated.bodyOrgPolicyBlocked",
+    );
   });
 
   it("falls back to the unknown body for any other cause", () => {
@@ -202,6 +206,75 @@ describe("resolveAuthCardPresentation", () => {
         titleKey: "providerError.unauthenticated.reconnectedTitle",
         bodyKey: "providerError.unauthenticated.reconnectedBody",
         button: null,
+      },
+    );
+  });
+});
+
+// PRODUCT-1393: Anthropic's org/policy block (`oauth_org_not_allowed`) cannot
+// be healed by reconnecting — Anthropic's remedy is an API key — so the card
+// must never offer Reconnect. Its action is a distinct `open_ai_hub` tag the
+// component maps to opening the AI Hub (where an API key can be connected).
+describe("resolveAuthCardPresentation for an org-policy block", () => {
+  const ORG = "providerError.unauthenticated.bodyOrgPolicyBlocked";
+
+  it("idle: honest org-policy copy, and the action opens the AI Hub, never a sign-in", () => {
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "idle",
+        hasProvider: true,
+        hasFailedPrompt: false,
+        hasRetry: false,
+        causeBodyKey: authCauseBodyKey("org_policy_blocked"),
+        orgPolicyBlocked: true,
+      }),
+      {
+        variant: "active",
+        titleKey: "providerError.unauthenticated.titleOrgPolicy",
+        bodyKey: ORG,
+        button: {
+          kind: "action",
+          labelKey: "providerError.unauthenticated.useApiKey",
+          action: "open_ai_hub",
+        },
+      },
+    );
+  });
+
+  it("failed: still the org-policy copy — a stray login failure must not swap in 'sign-in did not finish'", () => {
+    const pres = resolveAuthCardPresentation({
+      phase: "failed",
+      hasProvider: true,
+      hasFailedPrompt: false,
+      hasRetry: true,
+      causeBodyKey: authCauseBodyKey("org_policy_blocked"),
+      orgPolicyBlocked: true,
+    });
+    strictEqual(pres.bodyKey, ORG);
+    strictEqual(
+      pres.button?.kind === "action" ? pres.button.action : null,
+      "open_ai_hub",
+    );
+  });
+
+  it("done: a successful connect (an API key counts) confirms and resumes as usual", () => {
+    deepStrictEqual(
+      resolveAuthCardPresentation({
+        phase: "done",
+        hasProvider: true,
+        hasFailedPrompt: false,
+        hasRetry: true,
+        causeBodyKey: authCauseBodyKey("org_policy_blocked"),
+        orgPolicyBlocked: true,
+      }),
+      {
+        variant: "done",
+        titleKey: "providerError.unauthenticated.reconnectedTitle",
+        bodyKey: "providerError.unauthenticated.reconnectedResuming",
+        button: {
+          kind: "badge",
+          labelKey: "providerError.unauthenticated.signedIn",
+        },
       },
     );
   });

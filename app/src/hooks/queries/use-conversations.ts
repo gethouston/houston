@@ -4,10 +4,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { agentRosterSettled } from "../../lib/agent-gone";
 import { latestCachedAllConversations } from "../../lib/all-conversations-cache";
 import { mergePartialSweep } from "../../lib/all-conversations-recovery";
 import { queryKeys } from "../../lib/query-keys";
 import { type RawConversation, tauriChat } from "../../lib/tauri";
+import { useAgentStore } from "../../stores/agents";
 import {
   recoverFromSweep,
   retargetSweepRecovery,
@@ -26,6 +28,14 @@ export function useAllConversations(agentPaths: string[]) {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.allConversations(agentPaths);
   const roster = queryKey.join("\0");
+  // Gated on the roster having settled for the CURRENT space, like the
+  // skills-manifest fan-out (HOUSTON-APP-544): a space switch wipes the query
+  // cache and refires every mounted query, but `agentPaths` still names the
+  // PREVIOUS space's agents until `loadAgents` re-resolves — a fan-out in that
+  // window asks the new org about agents it never had, and every read
+  // answers `404 agent not found` (HOUSTON-APP-4WR). Data already held is
+  // kept while the gate is closed; the fresh roster gets its own key.
+  const rosterSettled = useAgentStore(agentRosterSettled);
   // A space switch (or any roster change) retires the previous roster's
   // recovery run and its pending re-sweep the moment it happens — waiting for
   // the next sweep to settle would leave a dead roster's timer free to
@@ -48,7 +58,7 @@ export function useAllConversations(agentPaths: string[]) {
       recoverFromSweep(failedAgents, roster, queryClient);
       return merged;
     },
-    enabled: agentPaths.length > 0,
+    enabled: agentPaths.length > 0 && rosterSettled,
     // keepPreviousData, PLUS the newest disk-restored roster variant: the key
     // embeds every agent's folderPath, so the IndexedDB-restored entry only
     // re-attaches on an exact roster match — any drift would blank the sidebar

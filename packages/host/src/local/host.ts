@@ -810,8 +810,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       }
       boot.record("migrations", Date.now() - migrationsT0);
       bootStamp("hydration + migrations done");
-      // Seed CAS revisions at boot, but never put readiness behind shadow I/O.
-      docProjector?.seed();
       const bind = opts.bind ?? "127.0.0.1";
       await boot.time(
         "listen",
@@ -823,6 +821,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       // Passive migration-source mode runs no background daemons (a read-only
       // source must not fire routines, sync, or churn watch events).
       if (!opts.passive) {
+        // Seed the doc shadow at boot (revisions + one content projection),
+        // never blocking readiness. Inside the passive gate: the seed now
+        // WRITES docs, and a passive migration-source host pushing its old
+        // tree's families over the live agent's docs is exactly the
+        // stale-data overwrite passivity exists to prevent.
+        docProjector?.seed();
         watcher.start();
         syncDaemon?.start();
         scheduler.start();

@@ -5,7 +5,7 @@ import {
   osCurrentAppBundlePath,
   osRelaunchAppFromPath,
 } from "../lib/os-bridge";
-import type { UpdateOrigin } from "../lib/update-force";
+import type { UpdateCheckOutcome, UpdateOrigin } from "../lib/update-force";
 
 export interface UpdateInfo {
   currentVersion: string;
@@ -46,14 +46,19 @@ export function useUpdateMachine() {
     statusRef.current = status;
   }, [status]);
 
-  const runCheck = useCallback(async () => {
+  const runCheck = useCallback(async (): Promise<{
+    outcome: UpdateCheckOutcome;
+    message?: string;
+  }> => {
     // The first check of a run is the launch check: a find there means the
     // user just opened the app and hasn't started working. Everything after
-    // (interval, focus, 426 kick) is mid-session. The origin rides on the
-    // available state so the policy layer can pick the forced presentation.
+    // (interval, focus) is mid-session. The origin rides on the available
+    // state so the policy layer can pick the forced presentation.
     const origin: UpdateOrigin = firstCheckRef.current ? "launch" : "poll";
     firstCheckRef.current = false;
-    if (installingRef.current || statusRef.current.state === "ready") return;
+    if (installingRef.current || statusRef.current.state === "ready") {
+      return { outcome: "skipped" };
+    }
 
     try {
       const update = await check();
@@ -61,7 +66,7 @@ export function useUpdateMachine() {
         updateRef.current = null;
         infoRef.current = null;
         setStatus({ state: "idle" });
-        return;
+        return { outcome: "none" };
       }
 
       const info: UpdateInfo = {
@@ -81,8 +86,17 @@ export function useUpdateMachine() {
         });
       }
       setStatus({ state: "available", info, origin });
+      return { outcome: "found" };
     } catch (error) {
+      // Fail-open by design: the staging QA flavor's updater endpoint 404s
+      // forever (point-updater-at-staging-noop.sh) and a launch must never
+      // block on the release feed. The checker counts these to surface a
+      // client whose checks NEVER succeed (PRODUCT-1386).
       console.warn("[updater] check failed", error);
+      return {
+        outcome: "failed",
+        message: error instanceof Error ? error.message : String(error),
+      };
     }
   }, []);
 

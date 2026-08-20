@@ -57,6 +57,19 @@ export interface HydrateOptions {
   concurrency?: number;
 }
 
+/** The hydrated prefix exceeded the caller's aggregate byte cap. */
+export class HydrateLimitError extends Error {
+  constructor(
+    readonly maxBytes: number,
+    readonly observedBytes: number,
+  ) {
+    super(
+      `workspace exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB hydration limit`,
+    );
+    this.name = "HydrateLimitError";
+  }
+}
+
 const DEFAULT_HYDRATE_CONCURRENCY = 16;
 
 /** Download everything under `prefix` into `destDir`. Returns the manifest. */
@@ -112,9 +125,7 @@ export async function hydrate(
         const { size } = await stat(dest);
         total += size;
         if (total > maxBytes) {
-          throw new Error(
-            `workspace exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB hydration limit`,
-          );
+          throw new HydrateLimitError(maxBytes, total);
         }
         manifest.set(rel, { hash: await fileSha256(dest, size), generation });
       } catch (err) {
@@ -133,5 +144,5 @@ export async function hydrate(
   return manifest;
 }
 
-export type { SyncResult } from "./sync-back";
+export type { SyncBackOptions, SyncResult } from "./sync-back";
 export { syncBack } from "./sync-back";

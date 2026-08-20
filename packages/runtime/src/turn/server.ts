@@ -1,46 +1,27 @@
 import { timingSafeEqual } from "node:crypto";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import {
   createServer,
   type IncomingMessage,
   type Server,
   type ServerResponse,
 } from "node:http";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { WireFrame } from "@houston/runtime-client";
-import {
-  hydrate,
-  type ObjectStore,
-  syncBack,
-} from "@houston/runtime-client/object-sync";
-import { applyServedCredential } from "../auth/auth-file";
-import { runWithActingContext } from "../session/acting-context";
-import { openSSE } from "../transport/sse";
-import { runPiTurn, type TurnOutcome } from "./turn-session";
-import { parseTurnRequest, type TurnRequest } from "./types";
+import { AdmissionLimiter, turnConcurrency } from "./admission";
+import { executeTurn } from "./execute-turn";
+import { parseTurnRequest } from "./parse-turn-request";
+import type { TurnServerDeps } from "./server-types";
+import type { TurnRequest } from "./types";
+
+export type { TurnServerDeps } from "./server-types";
 
 /**
- * The per-turn runtime server (cloud hosting layer). One request = one agent
- * turn: hydrate the agent's object-storage prefix into a throwaway dir, write
- * the per-turn access credential, run pi, stream wire frames back as SSE, sync
- * the delta to object storage, wipe the dir. The instance keeps NO tenant
- * state between requests; Cloud Run's per-instance microVM + concurrency=1 do
- * the co-residency isolation, exactly like the code sandbox.
+ * The pooled per-turn runtime. Each admitted request hydrates one agent into a
+ * throwaway root, runs at most one turn, syncs durable changes, then wipes the
+ * root. Admission is explicit because one process may receive several HTTP
+ * requests even when v1 capacity is one.
  *
- * Auth is two-layer like the sandbox: Cloud Run IAM consumes Authorization
- * (only the control plane's SA holds run.invoker); X-Internal-Token carries
- * the app-layer secret. The terminal done/error frame is sent only AFTER
- * sync-back, so a client never sees `done` before its files are durable.
+ * Authorization remains two-layered: deployment IAM protects the endpoint,
+ * while X-Internal-Token is the application secret for ordinary turn traffic.
  */
-
-export interface TurnServerDeps {
-  store: ObjectStore;
-  /** App-layer token; empty = open (local dev only). */
-  token: string;
-  /** Injectable for tests; defaults to the real pi turn. */
-  runTurn?: typeof runPiTurn;
-}
 
 function authorized(req: IncomingMessage, token: string): boolean {
   if (!token) return true;
@@ -57,131 +38,34 @@ async function readJson(
 ): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
-  for await (const c of req) {
-    size += (c as Buffer).byteLength;
-    if (size > maxBytes)
+  for await (const chunk of req) {
+    size += (chunk as Buffer).byteLength;
+    if (size > maxBytes) {
       throw new Error(`request body exceeds ${maxBytes} bytes`);
-    chunks.push(c as Buffer);
+    }
+    chunks.push(chunk as Buffer);
   }
   return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
 }
 
-function json(res: ServerResponse, status: number, body: unknown) {
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+function json(
+  res: ServerResponse,
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+) {
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    ...headers,
+  });
   res.end(JSON.stringify(body));
 }
 
-async function executeTurn(
-  deps: TurnServerDeps,
-  turn: TurnRequest,
-  req: IncomingMessage,
-  res: ServerResponse,
-) {
-  const root = await mkdtemp(join(tmpdir(), "houston-turn-"));
-  const abort = new AbortController();
-  req.on("close", () => abort.abort());
-  try {
-    const manifest = await hydrate(deps.store, turn.gcsPrefix, root);
-    await mkdir(join(root, "workspace"), { recursive: true });
-    await mkdir(join(root, "data"), { recursive: true });
-    if (turn.credential) {
-      applyServedCredential(join(root, "data", "auth.json"), turn.credential);
-    }
-
-    const sse = openSSE(res);
-    // The turn's wire identity: minted HERE (the per-turn server owns the whole
-    // turn) so the frames runPiTurn emits and the terminal frame sent after
-    // sync-back all carry one id — the host relay re-broadcasts them verbatim.
-    const turnId = crypto.randomUUID();
-    const emit = (e: WireFrame) => sse.send(e);
-
-    let outcome: TurnOutcome;
-    if (!turn.credential) {
-      emit({
-        type: "user",
-        data: {
-          content: turn.text,
-          ts: Date.now(),
-          nonce: turn.nonce,
-          mentions: turn.mentions,
-        },
-        turnId,
-      });
-      outcome = {
-        error: "No provider connected. Connect your subscription first.",
-      };
-    } else {
-      const run = deps.runTurn ?? runPiTurn;
-      const credential = turn.credential;
-      // This process can serve turns for many agents. Give process-local
-      // credential health a stable per-agent scope without inventing an acting
-      // user: tools must not attribute work to this internal identity. The
-      // standing-pod server never enters this wrapper, so its no-context/team
-      // path stays byte-identical.
-      //
-      // This key reads as a PERSONAL scope to authPathIn (anything != "team"),
-      // which would divert scope-resolved auth reads to auth-users/<hash>.json.
-      // That is safe here ONLY because the turn path never resolves credentials
-      // by scope: turn-session builds its per-turn ModelRuntime with an
-      // EXPLICIT authPath (join(dataDir, "auth.json"), where the served
-      // credential was written), and the host-served credential guards no-op
-      // without a control-plane URL. Only credential-health keys off this
-      // scope — which is exactly the isolation this wrapper exists for. If the
-      // turn path ever grows a scope-resolved credential read, revisit.
-      outcome = await runWithActingContext(
-        {
-          credentialScopeKey: `u:turn:${turn.workspaceId}:${turn.agentId}`,
-        },
-        () =>
-          run(root, {
-            conversationId: turn.conversationId,
-            text: turn.text,
-            provider: credential.provider,
-            emit,
-            signal: abort.signal,
-            nonce: turn.nonce,
-            pin: { model: turn.model, effort: turn.effort },
-            mode: turn.mode,
-            turnId,
-            displayText: turn.displayText,
-            mentions: turn.mentions,
-          }),
-      );
-    }
-
-    // Durability BEFORE the terminal frame. A sync failure is data loss and
-    // must surface as the turn's error — never a quiet `done`.
-    try {
-      await syncBack(deps.store, turn.gcsPrefix, root, manifest);
-    } catch (err) {
-      const m = err instanceof Error ? err.message : String(err);
-      outcome = {
-        error: outcome.error
-          ? `${outcome.error}; sync failed: ${m}`
-          : `workspace sync failed: ${m}`,
-      };
-    }
-
-    if (outcome.error)
-      sse.send({ type: "error", data: { message: outcome.error }, turnId });
-    else
-      sse.send({
-        type: "done",
-        data: null,
-        turnId,
-        // Carry whatever the turn ended on (ask_user, or a clean-finish offer)
-        // so the `needs_you` card can render it. Only the clean done carries it.
-        ...(outcome.pendingInteraction
-          ? { pendingInteraction: outcome.pendingInteraction }
-          : {}),
-      });
-    sse.close();
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-}
-
+/** Create the bounded HTTP server used by stateless per-turn workers. */
 export function createTurnServer(deps: TurnServerDeps): Server {
+  const admission =
+    deps.admission ??
+    new AdmissionLimiter(deps.concurrency ?? turnConcurrency());
   return createServer((req, res) => {
     (async () => {
       const path = (req.url || "/").split("?")[0];
@@ -191,19 +75,38 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       if (req.method !== "POST" || path !== "/turn") {
         return json(res, 404, { error: "not found" });
       }
-      if (!authorized(req, deps.token))
+      if (!authorized(req, deps.token)) {
         return json(res, 401, { error: "unauthorized" });
+      }
+      if (deps.isDraining?.()) {
+        return json(
+          res,
+          503,
+          { error: "worker_draining" },
+          { "Retry-After": "1" },
+        );
+      }
       let turn: TurnRequest;
       try {
         turn = parseTurnRequest(await readJson(req, 1024 * 1024));
-      } catch (err) {
+      } catch (error) {
         return json(res, 400, {
-          error: err instanceof Error ? err.message : String(err),
+          error: error instanceof Error ? error.message : String(error),
         });
       }
-      await executeTurn(deps, turn, req, res);
-    })().catch((err) => {
-      const message = err instanceof Error ? err.message : String(err);
+      const release = admission.tryAcquire();
+      if (!release) {
+        return json(res, 503, { error: "worker_full" }, { "Retry-After": "1" });
+      }
+      try {
+        await executeTurn(deps, turn, req, res, {
+          t0_request: performance.now(),
+        });
+      } finally {
+        release();
+      }
+    })().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
       console.error("[turn] unhandled:", message);
       if (!res.headersSent) json(res, 500, { error: message });
       else if (!res.writableEnded) res.end();

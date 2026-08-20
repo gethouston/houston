@@ -23,6 +23,19 @@ export type SpacesRefreshPlan =
   | { kind: "update"; workspaces: Workspace[]; current: Workspace | null }
   | { kind: "reselect"; workspaces: Workspace[]; current: Workspace | null };
 
+/**
+ * Drop rows whose delete is still in flight from a freshly-listed set. The
+ * optimistic delete (PRODUCT-1426) removes the row before the server round
+ * trip; until the server confirms, it still LISTS the space, so an untouched
+ * re-list (the 60s poll, a window focus) would resurrect the row mid-delete.
+ */
+export function withoutPendingDeletes(
+  fresh: Workspace[],
+  pending: ReadonlySet<string>,
+): Workspace[] {
+  return pending.size === 0 ? fresh : fresh.filter((w) => !pending.has(w.id));
+}
+
 export function planSpacesRefresh(
   previous: Workspace[],
   current: Workspace | null,

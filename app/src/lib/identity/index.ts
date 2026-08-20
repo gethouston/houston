@@ -3,7 +3,6 @@
 // Provider-agnostic building blocks for all three sign-in methods (Google,
 // Microsoft, email-OTP) across desktop (REST) and, where noted, web/admin
 // (firebase-js-sdk). Wave 2 wires these into auth.ts / cloud-login / admin.
-// See MIGRATION-DESIGN (knowledge-base/auth-migration.md) for the full plan.
 
 // This barrel exposes only what app-level consumers import THROUGH it. The
 // identity leaf modules (pkce, oauth-callback, firebase-rest, desktop-signin,

@@ -44,7 +44,7 @@ GH Actions (`.github/workflows/release.yml`) takes over:
 7. Generates `latest.json` w/ `darwin-aarch64*` AND `darwin-x86_64*` keys
 8. Creates **draft** GH Release w/ all artifacts
 
-One DMG covers Apple Silicon + Intel. See `knowledge-base/production-infra.md` → "macOS Universal".
+One DMG covers Apple Silicon + Intel (macOS Universal; the lipo/verify steps live in `.github/workflows/release.yml`).
 
 Duration: ~15-20 min (2-arch compile).
 
@@ -88,7 +88,7 @@ either script, run the cross-OS regression test on each host you cut from:
 
 ## Env vars required
 
-See `knowledge-base/production-infra.md` for full table. Short version: `APPLE_SIGNING_IDENTITY`, `APPLE_API_KEY`, `APPLE_API_KEY_PATH`, `APPLE_API_ISSUER`, `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, `POSTHOG_KEY`, `POSTHOG_HOST`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SENTRY_DSN`. CI also `APPLE_CERTIFICATE` + `APPLE_CERTIFICATE_PASSWORD`.
+`APPLE_SIGNING_IDENTITY`, `APPLE_API_KEY`, `APPLE_API_KEY_PATH`, `APPLE_API_ISSUER`, `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, `POSTHOG_KEY`, `POSTHOG_HOST`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SENTRY_DSN`. CI also `APPLE_CERTIFICATE` + `APPLE_CERTIFICATE_PASSWORD`.
 
 Never hardcode. `option_env!()` in Rust, env vars in CI.
 

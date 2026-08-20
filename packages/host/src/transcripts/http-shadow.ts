@@ -1,4 +1,5 @@
 import type { ChatMessage } from "@houston/protocol";
+import { transcriptTurnRequest } from "@houston/runtime-client";
 import {
   capturePodFence,
   type PodGatewayConfig,
@@ -15,7 +16,6 @@ export type TranscriptShadowCommand =
       message: ChatMessage;
       title: string;
       expectedCount: number;
-      needsSessionReplay: boolean;
     }
   | {
       kind: "assistant";
@@ -103,26 +103,9 @@ export class HttpTranscriptShadow implements TranscriptShadow {
     const root = this.conversationUrl(command.conversationId);
     switch (command.kind) {
       case "user":
-        return {
-          method: "PUT",
-          url: `${root}/turns/${encodeURIComponent(command.turnId)}/user`,
-          body: {
-            message: command.message,
-            ts: command.message.ts,
-            title: command.title,
-            expectedCount: command.expectedCount,
-            // The pod-store atomically consumes its own durable replay marker.
-            // `needsSessionReplay` is carried across the runtime/host facade to
-            // assert the file's pre-consume state, but is intentionally absent
-            // here because the strict pod route derives (and records) it.
-          },
-        };
+        return transcriptTurnRequest(root, command);
       case "assistant":
-        return {
-          method: "PUT",
-          url: `${root}/turns/${encodeURIComponent(command.turnId)}/assistant`,
-          body: { message: command.message, ts: command.message.ts },
-        };
+        return transcriptTurnRequest(root, command);
       case "truncate":
         return {
           method: "POST",

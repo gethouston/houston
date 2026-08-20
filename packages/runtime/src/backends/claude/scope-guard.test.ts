@@ -7,7 +7,8 @@ import { assertAnthropicScopeCredential } from "./scope-guard";
  * The SDK always gets the POD-SHARED `CLAUDE_CONFIG_DIR`, so "no token in the
  * env" means "authenticate from whatever credential is cached in that dir". For
  * a member acting under a personal scope that credential is the TEAM's, and the
- * SDK self-refreshes it (knowledge-base/anthropic-credentials.md traps #4/#6).
+ * SDK self-refreshes it (a second rotator plus a cross-member leak — see
+ * `credentials-file.ts`).
  */
 function actingToken(sub: string): string {
   const payload = Buffer.from(

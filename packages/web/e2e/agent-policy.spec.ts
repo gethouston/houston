@@ -30,7 +30,7 @@ import {
  * The Teams-shaped state single-player can't reach is armed via the fake host's
  * `/__test__/capabilities` (multiplayer + Teams + a `role`) and `/__test__/org`
  * (a multi-member roster + an agent fleet with per-agent assignments). See
- * `@houston/fake-host` README + `knowledge-base/ui-testing.md`.
+ * `@houston/fake-host` README + `packages/web/e2e/README.md`.
  */
 
 /** Teams owner: multiplayer + Teams, top role. */

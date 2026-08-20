@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { HttpDocShadow } from "./http-shadow";
+import { canonicalJSON, HttpDocShadow } from "./http-shadow";
 
 test("doc shadow seeds and advances If-Match with fencing headers", async () => {
   const requests: RequestInit[] = [];
@@ -54,7 +54,7 @@ test("adopts a conflict revision and retries the PUT once", async () => {
     fetchImpl: fetchImpl as typeof fetch,
   });
 
-  await expect(shadow.put("activity", [])).resolves.toBeUndefined();
+  await expect(shadow.put("activity", [{ id: "m1" }])).resolves.toBeUndefined();
 
   const puts = requests.filter((request) => request.method === "PUT");
   expect(puts).toHaveLength(2);
@@ -88,7 +88,7 @@ test("a conflict without a revision clears the cache and lazily re-seeds", async
     fetchImpl: fetchImpl as typeof fetch,
   });
 
-  await shadow.put("activity", []);
+  await shadow.put("activity", [{ id: "a0" }]);
   await shadow.put("activity", [{ id: "a1" }]);
 
   expect(requests.map((request) => request.method ?? "GET")).toEqual([
@@ -123,7 +123,7 @@ test("a failed boot seed stays unseeded and the next PUT lazily fetches", async 
 
   await shadow.seed();
   bootSeeding = false;
-  await shadow.put("activity", []);
+  await shadow.put("activity", [{ id: "fresh" }]);
 
   const afterSeed = requests.slice(-2);
   expect(afterSeed.map((request) => request.method ?? "GET")).toEqual([
@@ -131,4 +131,71 @@ test("a failed boot seed stays unseeded and the next PUT lazily fetches", async 
     "PUT",
   ]);
   expect(new Headers(afterSeed[1]?.headers).get("if-match")).toBe("12");
+});
+
+test("an unchanged doc costs one GET and no PUT, even key-reordered", async () => {
+  const requests: RequestInit[] = [];
+  const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+    requests.push(init ?? {});
+    if (!init?.method) {
+      // jsonb returns keys in its own order; content is identical.
+      return Response.json({
+        doc: [{ title: "Say Hi", id: "m1", status: "needs_you" }],
+        revision: 6,
+      });
+    }
+    return Response.json({ revision: 7 });
+  });
+  const shadow = new HttpDocShadow({
+    gateway: {
+      baseUrl: "https://store.example",
+      orgSlug: "acme",
+      agentSlug: "helper",
+      podToken: "pod-token",
+      bootId: "boot-1",
+      fence: {},
+    },
+    fetchImpl: fetchImpl as typeof fetch,
+  });
+
+  await shadow.put("activity", [
+    { id: "m1", title: "Say Hi", status: "needs_you" },
+  ]);
+  expect(requests.filter((request) => request.method === "PUT")).toHaveLength(
+    0,
+  );
+
+  await shadow.put("activity", [
+    { id: "m1", title: "Renamed", status: "needs_you" },
+  ]);
+  expect(requests.filter((request) => request.method === "PUT")).toHaveLength(
+    1,
+  );
+});
+
+test("canonicalJSON keeps a parsed __proto__ key as content", () => {
+  // JSON.parse creates "__proto__" as an OWN property; the canonicalizer must
+  // not lose it to the prototype setter, else two docs differing only in that
+  // key compare equal and the skip-if-equal check suppresses a required PUT.
+  const withProto = JSON.parse('{"__proto__":{"a":1},"b":2}') as unknown;
+  const withoutProto = JSON.parse('{"b":2}') as unknown;
+  expect(canonicalJSON(withProto)).not.toBe(canonicalJSON(withoutProto));
+  expect(canonicalJSON(withProto)).toContain("__proto__");
+});
+
+test("put with an undefined doc throws instead of silently skipping", async () => {
+  const shadow = new HttpDocShadow({
+    gateway: {
+      baseUrl: "https://store.example",
+      orgSlug: "acme",
+      agentSlug: "helper",
+      podToken: "pod-token",
+      bootId: "boot-1",
+      fence: {},
+    },
+    fetchImpl: (async () => Response.json({ revision: 1 })) as typeof fetch,
+  });
+  await expect(shadow.put("activity", undefined)).rejects.toThrow(
+    /without a document/,
+  );
 });

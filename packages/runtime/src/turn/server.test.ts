@@ -40,11 +40,11 @@ function seed(rel: string, content: string) {
 // A fake pi turn: proves it sees the hydrated workspace + injected credential,
 // mutates the workspace, emits frames (stamped with the server-minted turnId,
 // like the real runPiTurn).
-const fakeTurn: typeof runPiTurn = async (root, turn) => {
+const fakeTurn: typeof runPiTurn = async (layout, turn) => {
   const { text, provider, emit, turnId } = turn;
-  const notes = await readFile(join(root, "workspace", "notes.txt"), "utf8");
-  const auth = await readFile(join(root, "data", "auth.json"), "utf8");
-  await writeFile(join(root, "workspace", "deck.pptx"), "DECK-BYTES");
+  const notes = await readFile(join(layout.workspaceDir, "notes.txt"), "utf8");
+  const auth = await readFile(join(layout.dataDir, "auth.json"), "utf8");
+  await writeFile(join(layout.workspaceDir, "deck.pptx"), "DECK-BYTES");
   emit({ type: "user", data: { content: text, ts: 1 }, turnId });
   emit({
     type: "text",

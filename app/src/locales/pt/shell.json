@@ -396,7 +396,9 @@
     "offlineTitle": "Houston, sem conexão",
     "offlineDescription": "Não conseguimos conectar ao Houston agora. Verifique sua conexão com a internet e tente novamente.",
     "engineWakingTitle": "Houston, seu agente está acordando",
-    "engineWakingDescription": "Ele estará pronto em um momento. Tente novamente em breve."
+    "engineWakingDescription": "Ele estará pronto em um momento. Tente novamente em breve.",
+    "updateStuckTitle": "Houston, as atualizações não estão chegando",
+    "updateStuckDescription": "Não conseguimos verificar atualizações. Sua rede pode estar bloqueando. Você sempre pode baixar a versão mais recente em gethouston.ai."
   },
   "agentDelete": {
     "title": "Excluir o agente?",
@@ -536,6 +538,9 @@
       "bodyInvalidApiKey": "A chave de API do {{provider}} que o Houston tem não é mais válida. Atualize e tente de novo.",
       "bodyTokenRevoked": "Seu acesso ao {{provider}} foi revogado. Entre novamente para continuar.",
       "bodyUnknown": "O Houston não conseguiu se autenticar no {{provider}}. Reconecte e tente novamente.",
+      "titleOrgPolicy": "{{provider}} bloqueou o acesso por assinatura",
+      "bodyOrgPolicyBlocked": "O {{provider}} não permite usar sua assinatura aqui, então entrar de novo não vai ajudar. Adicione uma chave de API do {{provider}} na página Modelos de IA para continuar trabalhando.",
+      "useApiKey": "Usar uma chave de API",
       "reconnect": "Reconectar",
       "waiting": "Conclua o login no seu navegador",
       "reconnectedTitle": "Reconectado a {{provider}}",

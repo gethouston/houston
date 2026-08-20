@@ -24,6 +24,13 @@ import {
 const sum = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0);
 /** The gateway's exact wake answer (cloud/internal/edge/agents/routes.go). */
 const wakingBody = { error: "engine unavailable", detail: "agent is waking" };
+/** The gateway proxy's exact dial-failure answer (cloud/internal/proxy/forward.go
+ *  `connectWithRetry`): a pod restarting under an engine roll (PRODUCT-1403). */
+const proxyFailedBody = {
+  error: "engine proxy failed",
+  detail:
+    'Get "http://10.0.0.7:4318/skills": dial tcp 10.0.0.7:4318: connect: connection refused',
+};
 
 const originalFetch = globalThis.fetch;
 
@@ -158,6 +165,64 @@ test("the gateway's 5xx vocabulary maps to typed reasons", () => {
   expect(retryDelaysFor("engine-waking")).toBe(WAKE_RETRY_DELAYS_MS);
   expect(retryDelaysFor("handoff")).toBe(HANDOFF_RETRY_DELAYS_MS);
   expect(retryDelaysFor("feature-absent")).toEqual([]);
+});
+
+// ── PRODUCT-1403: the pod-unreachable 502 ───────────────────────────────────
+
+test("the proxy's engine-proxy-failed 502 is a pod-unreachable read, with the wake budget", () => {
+  expect(classifyUnavailableBody(proxyFailedBody)).toBe("pod-unreachable");
+  // The reason alone is the contract; the dial detail varies per pod/route.
+  expect(classifyUnavailableBody({ error: "engine proxy failed" })).toBe(
+    "pod-unreachable",
+  );
+  expect(retryDelaysFor("pod-unreachable")).toBe(WAKE_RETRY_DELAYS_MS);
+  // Other 502 vocabulary keeps the short handoff patience.
+  expect(classifyUnavailableBody({ error: "agent pod unusable" })).toBe(
+    "handoff",
+  );
+});
+
+test("a read against a pod restarting under a roll rides the 502s and resolves", async () => {
+  vi.useFakeTimers();
+  const inner = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(json(502, proxyFailedBody))
+    .mockResolvedValueOnce(json(502, proxyFailedBody))
+    .mockResolvedValueOnce(json(502, proxyFailedBody))
+    .mockResolvedValueOnce(json(200, [{ name: "write-a-post" }]));
+  const doFetch = transientRetryFetch(inner);
+
+  const pending = doFetch("https://gw.example/agents/a1/skills");
+  // The handoff budget would have given up (three attempts, ~2s) right here.
+  await vi.advanceTimersByTimeAsync(sum(HANDOFF_RETRY_DELAYS_MS));
+  expect(inner).toHaveBeenCalledTimes(2);
+
+  await vi.advanceTimersByTimeAsync(sum(WAKE_RETRY_DELAYS_MS));
+  const res = await pending;
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual([{ name: "write-a-post" }]);
+  expect(inner).toHaveBeenCalledTimes(4);
+});
+
+test("cpFetch throws the proxy's reason once the pod-unreachable budget is spent", async () => {
+  vi.useFakeTimers();
+  globalThis.fetch = vi.fn(async () =>
+    json(502, proxyFailedBody),
+  ) as unknown as typeof fetch;
+
+  const pending = cpFetch(
+    { baseUrl: "https://gw.example", token: "tok" },
+    "/agents/a1/skills",
+  ).catch((err: unknown) => err);
+  await vi.advanceTimersByTimeAsync(sum(WAKE_RETRY_DELAYS_MS));
+  const err = (await pending) as { status: number; message: string };
+  // No silent failure: the exhausted budget hands the app the real 502, which
+  // `isEngineWakingError` then routes to the quiet waking surface.
+  expect(err.status).toBe(502);
+  expect(err.message).toBe("engine proxy failed (engine error 502)");
+  expect(globalThis.fetch).toHaveBeenCalledTimes(
+    WAKE_RETRY_DELAYS_MS.length + 1,
+  );
 });
 
 test("the wake budget is bounded to ~15s of client-side patience", () => {

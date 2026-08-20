@@ -49,6 +49,14 @@ export interface ProviderLogin {
   reconnect: () => Promise<void>;
   cancelSignIn: () => Promise<void>;
   closeConnectDialog: () => void;
+  /**
+   * Open the AI Hub — the org-policy card's action (PRODUCT-1393): its
+   * failure cannot be healed by a reconnect, so instead of launching a
+   * sign-in it hands the user the surface where an API key can be connected.
+   * A later successful connect still fires `ProviderLoginComplete`, so the
+   * same done phase + auto-resume apply.
+   */
+  openAiHub: () => void;
 }
 
 export function useProviderLogin(
@@ -184,5 +192,6 @@ export function useProviderLogin(
     reconnect,
     cancelSignIn,
     closeConnectDialog,
+    openAiHub: () => setViewMode(AI_HUB_VIEW_ID),
   };
 }

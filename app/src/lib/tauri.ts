@@ -28,7 +28,7 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
-import { isAgentGoneError } from "./agent-gone";
+import { isAgentGoneError, partitionAgentGoneReads } from "./agent-gone";
 import { isAgentNameConflictError } from "./agent-name-conflict";
 import {
   blockWriteWhileWarming,
@@ -159,8 +159,9 @@ export async function surfaceEngineError(
   label: string,
   err: unknown,
   context?: Record<string, unknown>,
+  options?: Pick<EngineCallOptions, "silence">,
 ): Promise<void> {
-  await surfaceError(label, err, context);
+  await surfaceError(label, err, context, options);
 }
 
 async function surfaceError(
@@ -266,9 +267,11 @@ async function surfaceError(
   // Expected environment state, not a bug: the gateway's "engine unavailable"
   // 503 — the agent's engine pod is provisioning or cold-starting (HOU-1114: a
   // just-installed store agent's background writes hit this and showed the red
-  // bug pair while the agent was in fact starting fine). The request succeeds
-  // once the pod wakes; surface it as one deduped "waking up" notice, no
-  // Sentry. The raw diagnostic is already in the log tail above.
+  // bug pair while the agent was in fact starting fine) — or its "engine proxy
+  // failed" 502, the pod restarting under an engine roll (PRODUCT-1403). The
+  // request succeeds once the pod listens again; surface it as one deduped
+  // "waking up" notice, no Sentry. The raw diagnostic is already in the log
+  // tail above.
   if (isEngineWakingError(err)) {
     const { showEngineWakingToast } = await import("./error-toast");
     showEngineWakingToast(label, message);
@@ -309,8 +312,13 @@ export const tauriWorkspaces = {
     call<Workspace>("create_workspace", () =>
       getEngine().createWorkspace({ name }),
     ),
-  delete: (id: string) =>
-    call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
+  delete: (id: string, options?: EngineCallOptions) =>
+    call<void>(
+      "delete_workspace",
+      () => getEngine().deleteWorkspace(id),
+      undefined,
+      options,
+    ),
   rename: (id: string, newName: string) =>
     call<void>("rename_workspace", async () => {
       await getEngine().renameWorkspace(id, { newName });
@@ -784,7 +792,15 @@ export const tauriSkills = {
       () =>
         getEngine().previewCommunitySkill(agentPath, source, skillId, signal),
       undefined,
-      { toast: false },
+      // `skill_not_in_repo` on a preview is an expected upstream state, not a
+      // Houston bug: the skills.sh index keeps listing skills whose GitHub
+      // repo was deleted, and preview deliberately skips the recursive scan
+      // that install runs (github-lookup.ts), so deeply nested skills miss
+      // here yet install fine. The detail modal already shows its visible
+      // error state (use-skill-preview.ts), so no Sentry capture — that
+      // second surface is what kept HOUSTON-APP-4XZ alive after PRODUCT-1382
+      // fixed every findable layout. Every other failure stays captured.
+      { toast: false, silenceKinds: ["skill_not_in_repo"] },
     ),
   installCommunity: (
     agentPath: string,
@@ -1216,19 +1232,41 @@ export const tauriConversations = {
     // so `call()` raises no toast for it — the query layer owns that surface
     // (one toast per incomplete sweep, plus a bounded re-sweep). Only a sweep
     // where EVERY agent failed rejects, and that keeps the toast + capture.
+    //
+    // A PASSIVE read like every other roster-driven one (`passiveAgentRead`):
+    // an agent the server no longer knows (`404 agent not found` — the local
+    // roster is stale after a space switch or a delete on another device) is
+    // not a failed read of OUR agent. Its 404 is silenced and the roster
+    // heals; in a partial sweep the gone agents leave `failedAgents` (nothing
+    // to re-sweep, nothing to report — HOUSTON-APP-4WR / 58R / 55E), and a
+    // sweep where EVERY agent is gone rejects quietly (the caller's surface
+    // silences it too) so the cache keeps the last real rows for the roster
+    // reload that follows. Every real failure keeps its loud path.
     return call<AllConversationsSweep>(
       "list_all_conversations",
       async () => {
         const { conversations, failedAgents } =
           await getEngine().listAllConversations(reachable);
+        const { gone, failed } = partitionAgentGoneReads(failedAgents);
+        if (gone.length > 0) {
+          logger.warn(
+            `[engine:list_all_conversations] ${gone.length} agent(s) gone from the roster: ${gone
+              .map((g) => g.agentPath)
+              .join(", ")}`,
+          );
+          healStaleRosterFromError(gone[0].reason);
+        }
         return {
           items: conversations.map(conversationToRaw),
-          failedAgents,
+          failedAgents: failed,
         };
       },
       undefined,
-      options,
-    );
+      { silence: isAgentGoneError, ...options },
+    ).catch((err) => {
+      healStaleRosterFromError(err);
+      throw err;
+    });
   },
 };
 

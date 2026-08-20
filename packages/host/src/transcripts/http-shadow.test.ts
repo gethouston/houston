@@ -29,7 +29,6 @@ test("transcript writes carry pod auth, fencing, and learned revisions", async (
     message,
     title: "hello",
     expectedCount: 0,
-    needsSessionReplay: false,
   });
   await shadow.apply({
     kind: "truncate",

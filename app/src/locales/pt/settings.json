@@ -95,10 +95,25 @@
     "title": "Zona de perigo",
     "description": "Exclui este espaço de trabalho e todos os seus agentes de forma permanente.",
     "deleteButton": "Excluir espaço de trabalho",
-    "createAnotherFirst": "Crie outro espaço de trabalho antes de excluir este.",
     "confirmTitle": "Excluir \"{{name}}\"?",
     "confirmDescription": "Isso exclui este espaço de trabalho e todos os seus agentes de forma permanente. Não dá para desfazer.",
-    "confirmLabel": "Excluir"
+    "confirmLabel": "Excluir",
+    "deleting": "Excluindo…",
+    "deleted": "\"{{name}}\" foi excluído.",
+    "blocked": {
+      "has_members": {
+        "title": "Remova os outros membros primeiro",
+        "body": "Ainda há pessoas neste espaço de trabalho. Remova-as em Pessoas, ou peça para saírem, e depois exclua o espaço."
+      },
+      "subscription_active": {
+        "title": "Cancele a assinatura primeiro",
+        "body": "Este espaço de trabalho ainda tem uma assinatura ativa. Cancele em Cobrança e depois exclua o espaço de trabalho."
+      },
+      "personal_space": {
+        "title": "Seu espaço de trabalho pessoal não pode ser excluído",
+        "body": "Ele é excluído junto com a sua conta. Você pode excluir os espaços de trabalho de equipe que são seus."
+      }
+    }
   },
   "deleteAccount": {
     "title": "Excluir conta",

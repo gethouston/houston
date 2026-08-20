@@ -147,6 +147,15 @@ export interface Capabilities {
    * `teams` (which flags multiplayer itself). The gateway is the sole enforcer.
    */
   agentTeams?: boolean;
+  /**
+   * Whether this deployment can delete a team space (`DELETE /v1/orgs/:slug`,
+   * PRODUCT-1410). A feature-detect flag the frontend reads to show the
+   * Settings Danger Zone at all: absent/false on desktop/self-host (one
+   * personal workspace, nothing to delete) and on gateways that predate the
+   * route, where the affordance would only pretend. The gateway is the sole
+   * enforcer (owner of a solo team with no live subscription).
+   */
+  workspaceDelete?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------

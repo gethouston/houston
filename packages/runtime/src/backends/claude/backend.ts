@@ -84,8 +84,7 @@ export class ClaudeBackendUnavailableError extends Error {
  * the dir holds the TEAM's credential, so a member's turn would authenticate as
  * the team and the SDK would self-refresh the team's refresh-token family in
  * place — a second rotator beside the gateway, and one member's account paying
- * for another's turn (see `./scope-guard` and
- * knowledge-base/anthropic-credentials.md traps #4 and #6). Team scope (desktop,
+ * for another's turn (see `./scope-guard`). Team scope (desktop,
  * self-host, every pre-HOU-976 request) and any scope that DOES carry a token are
  * unaffected. A personal scope that DOES carry a token additionally gets its own
  * credential-store dir (`anthropicCredentialStorageDir`), because that token is

@@ -1,9 +1,4 @@
-import {
-  type ChatMessage,
-  normalizeTurnMode,
-  parseMentions,
-  type TurnMode,
-} from "@houston/protocol";
+import type { ChatMessage, TurnMode } from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
 
 /**
@@ -46,65 +41,49 @@ export interface TurnRequest {
    * message mentions nobody.
    */
   mentions?: ChatMessage["mentions"];
-}
-
-const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
-const PREFIX = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
-
-/** Validate an untyped body into a TurnRequest. Throws with the real reason. */
-export function parseTurnRequest(body: unknown): TurnRequest {
-  const b = body as Record<string, unknown>;
-  if (!b || typeof b !== "object")
-    throw new Error("body must be a JSON object");
-  for (const field of ["workspaceId", "agentId", "conversationId"] as const) {
-    if (typeof b[field] !== "string" || !ID.test(b[field] as string)) {
-      throw new Error(`invalid '${field}'`);
-    }
-  }
-  if (typeof b.text !== "string" || !b.text.length)
-    throw new Error("missing 'text'");
-  const prefix = b.gcsPrefix;
-  if (
-    typeof prefix !== "string" ||
-    !PREFIX.test(prefix) ||
-    prefix.includes("..")
-  ) {
-    throw new Error("invalid 'gcsPrefix'");
-  }
-  let credential: ServedCredential | null = null;
-  if (b.credential != null) {
-    const c = b.credential as Record<string, unknown>;
-    if (
-      typeof c.provider !== "string" ||
-      typeof c.access !== "string" ||
-      typeof c.expires !== "number"
-    ) {
-      throw new Error("invalid 'credential'");
-    }
-    credential = {
-      provider: c.provider,
-      access: c.access,
-      expires: c.expires,
-      accountId: typeof c.accountId === "string" ? c.accountId : null,
-      kind: c.kind === "api_key" ? "api_key" : "oauth",
-    };
-  }
-  return {
-    workspaceId: b.workspaceId as string,
-    agentId: b.agentId as string,
-    conversationId: b.conversationId as string,
-    text: b.text,
-    nonce: typeof b.nonce === "string" ? b.nonce : undefined,
-    gcsPrefix: prefix,
-    credential,
-    model: typeof b.model === "string" ? b.model : undefined,
-    effort: typeof b.effort === "string" ? b.effort : undefined,
-    // Never trust the wire: only the known mode literals ("plan", "auto") pass;
-    // anything else normalizes to "execute".
-    mode: normalizeTurnMode(b.mode),
-    displayText: typeof b.displayText === "string" ? b.displayText : undefined,
-    // Same "never trust the wire" posture: junk entries are dropped and an
-    // empty list becomes nothing, so a bad sidecar never costs the user a turn.
-    mentions: parseMentions(b.mentions),
+  /** Gateway-minted identity reused across a retried dispatch. */
+  turnId?: string;
+  /** Per-claim gateway token. Secret material, never log this value. */
+  hostToken?: string;
+  /** Human attribution for machine-dispatched work. */
+  actingAs?: { userId: string; name?: string };
+  /** Hydrate and resolve the model without calling it or writing back. */
+  shadow?: boolean;
+  /**
+   * Hosted-gateway turn context (HOU-711): the org's shared note and the
+   * caller's context, injected into the session prompt exactly as the
+   * long-lived server path does. Either present = "use these" (each defaults
+   * to ""); both absent = the workspace's own context files.
+   */
+  workspaceContext?: string;
+  userContext?: string;
+  /**
+   * First turnlog sequence number this execution may use. The gateway keeps
+   * ONE turnlog stream per conversation, so a worker that restarted at 1 on a
+   * conversation's second turn would collide with the first turn's frames
+   * (replay = resync). Absent = 1 (a fresh conversation, or a legacy caller).
+   */
+  turnlogSeqStart?: number;
+  /**
+   * A scheduled routine fire (pool path): the worker derives the prompt and
+   * pins from the agent's own routine file and keeps the run-row lifecycle the
+   * standing host would have kept. Requires a claim: only the control-plane
+   * scheduler dispatches routine turns.
+   */
+  routine?: {
+    id: string;
+    /**
+     * Trigger events (Composio / webhooks) that woke this routine. Present =
+     * the worker builds the trigger prompt (events framed as untrusted data)
+     * instead of the plain scheduled-run prompt.
+     */
+    events?: { id: string; trigger_slug: string; payload: unknown }[];
+  };
+  /** Exclusive conversation claim granted to this worker. */
+  claim?: {
+    id: string;
+    bootId: string;
+    token: string;
+    heartbeatUrl: string;
   };
 }

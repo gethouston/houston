@@ -17,7 +17,7 @@ versioned engineering contract, CI-checked, not remembered.
 
 A structural change here is procedure c of the three-surface maintenance
 contract — how it flows relative to behavior (SDK) and look (tokens) changes is
-in `knowledge-base/client-architecture.md`.
+in the root `CLAUDE.md` → "Client-surface changes (SDK first)".
 
 ## Files
 

@@ -1,6 +1,6 @@
 /**
  * Shared presentational primitives for the portable share/import wizards.
- * Visual language follows `knowledge-base/design-system.md` — near-black text
+ * Visual language follows `/DESIGN.md` — near-black text
  * on white, no decorative icons, sentence-case sections, progress dots beside
  * the eyebrow (the close button owns the right corner).
  */
