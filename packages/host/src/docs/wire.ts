@@ -1,5 +1,3 @@
-import type { HoustonFamily } from "@houston/domain";
-
 /** Stable stringify (recursive key sort) so jsonb's key reordering never
  *  reads as a content change. */
 export function canonicalJSON(value: unknown): string {
@@ -62,7 +60,7 @@ export async function responseRevision(
 
 export async function responseError(
   response: Response,
-  family: HoustonFamily,
+  family: string,
   method: string,
 ): Promise<Error> {
   const detail = await response.text();

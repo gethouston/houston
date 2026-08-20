@@ -10,6 +10,11 @@ import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
 // from the package.json that shipped it.
 import { version as HOST_VERSION } from "../package.json";
 import type { SharedEndpointStore } from "./credentials/remote-shared-endpoint-store";
+import {
+  attachViewCapture,
+  type ViewFamily,
+  viewForPath,
+} from "./docs/view-capture";
 import type {
   Agent,
   UserId,
@@ -100,6 +105,12 @@ export interface ControlPlaneDeps {
   verifier: TokenVerifier;
   /** Authenticated agent-scoped request seen for this agent id (docs/projector binding). */
   addressedAgent?: (agentId: string) => void;
+  /**
+   * Receives every successful view-route response body (docs/view-capture)
+   * for publication to the managed doc store. Cloud pods only; absent on
+   * desktop/self-host.
+   */
+  viewSink?: (agentId: string, family: ViewFamily, body: unknown) => void;
   store: WorkspaceStore;
   /** Connect-once: the one subscription credential per workspace, served to its sandboxes. */
   credentials: CredentialStore;
@@ -474,6 +485,17 @@ export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
       res.once("close", () => {
         agentRequests--;
       });
+    }
+    // Tee the view routes' successful answers into the managed doc store so
+    // the gateway can serve them while this pod is asleep. Transparent to the
+    // client; only 200 JSON bodies under the cap publish.
+    if (deps.viewSink && (req.method ?? "GET").toUpperCase() === "GET") {
+      const view = viewForPath(path);
+      if (view) {
+        attachViewCapture(res, (body) =>
+          deps.viewSink?.(view.agentId, view.family, body),
+        );
+      }
     }
     handle(counted, req, res).catch((err) => {
       // An over-cap body maps to 413 (Payload Too Large) with its own clean

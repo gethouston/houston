@@ -17,6 +17,7 @@ import { RemoteCredentialStore } from "../credentials/remote-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { HttpDocShadow } from "../docs/http-shadow";
 import { DocShadowProjector } from "../docs/projector";
+import { warmViewDocs } from "../docs/view-warm";
 import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
 import { CustomExecutorHost } from "../integrations/custom/executor-host";
@@ -659,6 +660,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     addressedAgent: docProjector
       ? (agentId) => docProjector.bindAddressed(agentId)
       : undefined,
+    // Publish the view routes' answers (providers, usage, custom definitions)
+    // to the managed doc store; the gateway serves them while the pod is
+    // asleep. Cloud pods only (docShadow exists only under dual-write).
+    viewSink: docShadow
+      ? (_agentId, family, body) => {
+          void docShadow.put(family, body).catch((error: unknown) => {
+            console.error(`[view-docs] ${family} publish failed`, error);
+          });
+        }
+      : undefined,
   };
 
   const server = createControlPlaneServer(deps);
@@ -830,6 +841,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // tree's families over the live agent's docs is exactly the
         // stale-data overwrite passivity exists to prevent.
         docProjector?.seed();
+        if (docShadow) {
+          // Self-warm the view docs so an agent asleep since before views
+          // existed gets them published without a first slow client read.
+          warmViewDocs({ port: opts.port, token: opts.token, store });
+        }
         watcher.start();
         syncDaemon?.start();
         scheduler.start();

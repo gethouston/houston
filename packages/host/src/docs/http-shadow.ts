@@ -5,6 +5,7 @@ import {
   podGatewayHeaders,
   podGatewayUrl,
 } from "../pod-gateway";
+import type { ViewFamily } from "./view-capture";
 import {
   canonicalJSON,
   etagRevision,
@@ -15,19 +16,22 @@ import {
 
 export { canonicalJSON } from "./wire";
 
+/** Everything the shadow can hold: family files plus engine-computed views. */
+export type ShadowFamily = HoustonFamily | ViewFamily;
+
 export interface DocShadow {
   seed(): Promise<void>;
-  put(family: HoustonFamily, doc: unknown): Promise<void>;
+  put(family: ShadowFamily, doc: unknown): Promise<void>;
 }
 
 export class HttpDocShadow implements DocShadow {
   private readonly fetchImpl: typeof fetch;
-  private readonly revisions = new Map<HoustonFamily, number>();
+  private readonly revisions = new Map<ShadowFamily, number>();
   // Canonical (key-sorted) JSON of the last doc known to be durable, seeded
   // from the GET and refreshed on every accepted PUT. What makes the boot
   // content seed idempotent: an unchanged file costs one GET, never a PUT,
   // so revisions do not churn on every pod boot.
-  private readonly remote = new Map<HoustonFamily, string>();
+  private readonly remote = new Map<ShadowFamily, string>();
   private disabled = false;
 
   constructor(
@@ -43,7 +47,7 @@ export class HttpDocShadow implements DocShadow {
     await Promise.all(FAMILIES.map((family) => this.seedFamily(family)));
   }
 
-  async put(family: HoustonFamily, doc: unknown): Promise<void> {
+  async put(family: ShadowFamily, doc: unknown): Promise<void> {
     if (this.disabled) return;
     if (doc === undefined) {
       // canonicalJSON(undefined) is not a string; comparing it against a
@@ -82,7 +86,7 @@ export class HttpDocShadow implements DocShadow {
   }
 
   private async putAtRevision(
-    family: HoustonFamily,
+    family: ShadowFamily,
     doc: unknown,
     revision: number,
   ): Promise<Response> {
@@ -101,7 +105,7 @@ export class HttpDocShadow implements DocShadow {
   }
 
   private async acceptPutResponse(
-    family: HoustonFamily,
+    family: ShadowFamily,
     response: Response,
     canonical: string,
   ): Promise<void> {
@@ -122,7 +126,7 @@ export class HttpDocShadow implements DocShadow {
     this.remote.set(family, canonical);
   }
 
-  private async seedFamily(family: HoustonFamily): Promise<boolean> {
+  private async seedFamily(family: ShadowFamily): Promise<boolean> {
     if (this.disabled) return false;
     try {
       const response = await this.fetchImpl(this.url(family), {
@@ -154,7 +158,7 @@ export class HttpDocShadow implements DocShadow {
     }
   }
 
-  private url(family: HoustonFamily): string {
+  private url(family: ShadowFamily): string {
     const { gateway } = this.opts;
     return podGatewayUrl(
       gateway,
