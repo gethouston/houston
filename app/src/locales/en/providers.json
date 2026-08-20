@@ -28,7 +28,8 @@
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
     "description": "Open the sign-in page in your browser, complete sign-in, then paste the verification code back here.",
-    "authCodeDescription": "Paste a setup token to finish connecting {{name}}.",
+    "authCodeDescription": "Paste an API key or token to finish connecting {{name}}.",
+    "pasteInstructions": "Create an API key in the Anthropic Console, then paste it here. It starts with sk-ant-api03. A Claude setup token (sk-ant-oat01) also works.",
     "reference": "Reference",
     "openUrl": "Open URL",
     "copyUrl": "Copy URL",
@@ -39,6 +40,8 @@
     "destinationHint": "You'll be taken to {{host}}.",
     "codeLabel": "Verification code",
     "codePlaceholder": "Paste the code from your browser",
+    "tokenLabel": "API key or token",
+    "tokenPlaceholder": "sk-ant-...",
     "codeRequired": "Enter the verification code first.",
     "submit": "Submit code",
     "submitting": "Submitting...",
@@ -123,8 +126,9 @@
   "claudeLogin": {
     "timeout": "Claude sign-in timed out. Please try connecting again.",
     "confirmTimeout": "Signed in to Claude, but Houston could not confirm the connection. Please try again.",
+    "handoffFailed": "Signed in to Claude, but Houston hit a problem on our side while finishing the connection. Please try again in a moment, or report a bug if it keeps happening.",
     "autoFailedTitle": "Couldn't finish connecting automatically",
-    "autoFailedBody": "Paste a Claude setup token to finish connecting.",
+    "autoFailedBody": "Paste an Anthropic API key to finish connecting.",
     "helperUnsupported": "This computer's processor is too old to run the Claude sign-in helper, so a Claude subscription can't be connected on this machine."
   },
   "localModel": {

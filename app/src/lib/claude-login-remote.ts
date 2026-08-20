@@ -31,11 +31,17 @@
  *
  * SAFETY: this ships unsupervised, so EVERY user-initiated failure here
  * (extraction not-found, malformed cred, push non-200 after retries, network)
- * degrades to the existing setup-token paste flow with a friendly toast. A
- * bug in the push must never leave the user on a dead spinner. But a push
- * TRANSPORT failure alone is not proof the credential didn't land (HOU-1143):
- * before degrading, the settlement policy (`claude-login-settle`) asks the
- * engine's own usability probe — connected means connected, dialog withheld.
+ * surfaces as a standard ERROR (toast with the report-bug affordance + Sentry
+ * capture) — the user's browser login succeeded, so a failed handoff is
+ * Houston's infrastructure failure, never a task handed back to the user (the
+ * 2026-08-15 broken-image incident degraded every cloud connect into a "run
+ * `claude setup-token`" dialog). A bug in the push must never leave the user
+ * on a dead spinner either. And a push TRANSPORT failure alone is not proof
+ * the credential didn't land (HOU-1143): before failing, the settlement
+ * policy (`claude-login-settle`) asks the engine's own usability probe —
+ * connected means connected. The token PASTE flow is reserved for the one
+ * case where the LOCAL machine cannot run the browser login at all
+ * (`fallbackToPaste`, pre-AVX2 helper — HOUSTON-APP-543).
  */
 
 import { useUIStore } from "../stores/ui";
@@ -165,37 +171,55 @@ export async function finishRemoteClaudeLogin(
         i18n.t("providers:claudeLogin.confirmTimeout"),
       );
       return;
-    case "paste":
-      fallbackToPaste(frontendProviderId, settlement.reason, announce);
+    case "handoff-failed":
+      // The user's browser login SUCCEEDED; the handoff is Houston's job, so
+      // its failure is an INFRASTRUCTURE error — standard error surface
+      // (toast with the report-bug affordance) plus a Sentry capture, never
+      // the token paste dialog (2026-08-15: a broken engine image degraded
+      // every cloud connect into a "run a CLI command" task).
+      reportError(
+        "push_claude_oauth_credential",
+        "Claude credential handoff failed and anthropic reads disconnected — surfacing the failure as an error",
+        settlement.reason,
+      );
+      announce(
+        frontendProviderId,
+        false,
+        i18n.t("providers:claudeLogin.handoffFailed"),
+      );
       return;
   }
 }
 
 /**
- * Guaranteed safety net: degrade to the runtime's setup-token paste flow with a
- * friendly toast. Calls `providerLogin` DIRECTLY (not `launchLogin`, which would
- * re-enter the desktop browser login). If even starting the paste flow fails,
- * `announce(false)` clears the pending row so nothing spins forever.
+ * Hardware fallback ONLY: start the runtime's token paste flow with a friendly
+ * toast. Used by `claude-login.ts` when the browser-login helper cannot RUN on
+ * this machine (pre-AVX2 CPU, signal death — HOUSTON-APP-543) and the engine
+ * is remote: the paste flow runs in the runtime and needs no local binary, so
+ * it is the one genuine alternative left. Its copy never mentions running a
+ * CLI (the dialog renders localized paste steps pointing at the Anthropic
+ * Console). Deliberately NOT called for handoff/engine failures — those are
+ * Houston's infrastructure errors and settle as `handoff-failed` above.
  *
- * Exported for `claude-login.ts`: a helper that cannot RUN on this machine
- * (pre-AVX2 CPU, signal death — HOUSTON-APP-543) degrades the same way, since
- * the paste flow runs in the (remote) runtime and needs no local binary.
+ * Calls `providerLogin` DIRECTLY (not `launchLogin`, which would re-enter the
+ * desktop browser login). If even starting the paste flow fails,
+ * `announce(false)` clears the pending row so nothing spins forever.
  */
 export function fallbackToPaste(
   frontendProviderId: string,
   reason: unknown,
   announce: Announce,
 ): void {
-  // The real reason (an extraction/push/network error, NEVER the token) goes to
-  // the log tail AND to Sentry — the degrade used to be console-only, so every
+  // The real reason (the helper's failure detail, NEVER a token) goes to the
+  // log tail AND to Sentry — the degrade used to be console-only, so every
   // paste fallback in the wild was invisible until a user filed it (HOU-1143).
   console.warn(
-    "[claude-login] remote credential handoff failed; falling back to paste:",
+    "[claude-login] browser login unavailable on this machine; falling back to paste:",
     reason,
   );
   reportError(
     "push_claude_oauth_credential",
-    "Claude credential handoff failed and anthropic reads disconnected — degrading to the setup-token paste flow",
+    "Claude browser-login helper cannot run on this machine — degrading to the token paste flow",
     reason,
   );
   useUIStore.getState().addToast({

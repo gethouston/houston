@@ -11,13 +11,23 @@
  * answers 502 when the credential stored centrally but the pod materialize
  * failed (the per-turn serve path self-heals both), and a network drop can
  * eat a response to a push that succeeded. Every one of those used to dump
- * the setup-token paste dialog on a user whose connect actually WORKED — so
- * when a credential left this machine, believe the engine's own usability
- * probe over the transport error, and only degrade to the paste flow when
- * anthropic really reads disconnected.
+ * the token paste dialog on a user whose connect actually WORKED — so when a
+ * credential left this machine, believe the engine's own usability probe over
+ * the transport error, and only fail when anthropic really reads
+ * disconnected.
  *
  * A failed EXTRACTION (`no-credential`) is different: nothing left the
- * machine, so there is nothing to probe for — degrade immediately.
+ * machine, so there is nothing to probe for — fail immediately.
+ *
+ * What a genuine failure surfaces CHANGED after the 2026-08-15 incident: a
+ * broken engine image (its `claude` binary missing, `spawn claude ENOENT`)
+ * made every settle read disconnected, and the old `paste` settlement dressed
+ * that infrastructure failure up as a user task ("run `claude setup-token`").
+ * The user did everything right — their browser login SUCCEEDED — so a failed
+ * handoff is Houston's failure and settles as `handoff-failed`: a standard
+ * error surface (toast + Sentry report), never the paste dialog. The paste
+ * flow remains reachable only where the LOCAL machine can't run the browser
+ * login at all (pre-AVX2 helper SIGILL — see claude-login-failure.ts).
  */
 
 /** Outcome of `pushMintedClaudeCredential` (extraction + push, never throws). */
@@ -34,8 +44,10 @@ export type ClaudeLoginSettlement =
    *  the confirm window — surface the timeout, NOT the paste dialog (the
    *  credential is stored; the pod is just slow). */
   | { kind: "confirm-timeout" }
-  /** The login genuinely needs the manual setup-token paste flow. */
-  | { kind: "paste"; reason: unknown };
+  /** The handoff genuinely failed (extraction, or push + disconnected probe).
+   *  An infrastructure failure on Houston's side: surface a standard error
+   *  with the report-bug affordance, never the paste dialog. */
+  | { kind: "handoff-failed"; reason: unknown };
 
 /**
  * Decide the login outcome from the push result plus the engine's own view.
@@ -55,5 +67,5 @@ export async function settleRemoteClaudeLogin(
   if (result.reason === "push-failed" && (await confirm())) {
     return { kind: "connected", recovered: true };
   }
-  return { kind: "paste", reason: result.error };
+  return { kind: "handoff-failed", reason: result.error };
 }

@@ -6,9 +6,12 @@ import {
 } from "../src/lib/claude-login-settle.ts";
 
 /**
- * The remote Claude login's settlement policy (HOU-1143): the paste dialog is
- * the LAST resort, shown only when anthropic genuinely reads disconnected —
- * never over a connect that actually worked.
+ * The remote Claude login's settlement policy (HOU-1143 + the 2026-08-15
+ * broken-image incident): a connect that actually worked is never failed, and
+ * a handoff that genuinely failed settles as `handoff-failed` — a standard
+ * error surface — NEVER the token paste dialog. The paste flow is not a
+ * settlement outcome at all: it exists only for the pre-AVX2 hardware
+ * fallback routed in claude-login-failure.ts.
  */
 
 /** A confirm probe with a scripted answer that records whether it ran. */
@@ -55,15 +58,18 @@ describe("settleRemoteClaudeLogin", () => {
     });
   });
 
-  it("push failed and anthropic reads disconnected → paste, carrying the push error", async () => {
+  it("push failed and anthropic reads disconnected → handoff-failed (an infrastructure error), never paste", async () => {
+    // The 2026-08-15 shape: a broken engine image (spawn claude ENOENT) makes
+    // every probe read disconnected. The user's browser login succeeded, so
+    // this is Houston's failure — an error surface, not a CLI/paste task.
     const { confirm } = probe(false);
     assert.deepEqual(await settleRemoteClaudeLogin(pushFailed, confirm), {
-      kind: "paste",
+      kind: "handoff-failed",
       reason: { status: 502 },
     });
   });
 
-  it("extraction failed → paste immediately, without probing", async () => {
+  it("extraction failed → handoff-failed immediately, without probing", async () => {
     // Nothing left the machine, so a connected probe could only be reading a
     // pre-existing credential — probing would mask a failed fresh mint.
     const { confirm, ran } = probe(true);
@@ -73,7 +79,7 @@ describe("settleRemoteClaudeLogin", () => {
       error: new Error("handoff dir empty"),
     };
     assert.deepEqual(await settleRemoteClaudeLogin(result, confirm), {
-      kind: "paste",
+      kind: "handoff-failed",
       reason: result.error,
     });
     assert.equal(ran(), false);

@@ -28,7 +28,9 @@
  *     copy, then poll. From the push on, the gateway is that family's ONLY
  *     rotator (HOU-950 — a second rotator trips Anthropic's refresh-token-reuse
  *     detection and revokes the family, signing the user out everywhere). Any
- *     failure degrades to the setup-token paste flow, never a dead spinner.
+ *     handoff failure surfaces as a standard error (Houston's infrastructure
+ *     failed, not the user), never a dead spinner and never the token paste
+ *     dialog; the paste flow is reserved for a helper that cannot RUN here.
  *
  * Each space the user connects therefore gets its OWN freshly minted token
  * family. There is deliberately NO path that seeds a space from a cached
