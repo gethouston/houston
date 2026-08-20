@@ -21,6 +21,13 @@ import {
 } from "./login";
 import { modelRuntime } from "./storage";
 
+// startLogin("anthropic") resolves the Claude CLI at this seam; a test host has
+// the real SDK binary installed, and spawning it would open a browser. Null =
+// the token paste flow, which is what these tests exercise.
+vi.mock("./anthropic-cli-binary", () => ({
+  resolveClaudeCliBinary: () => null,
+}));
+
 /** Occupy the fixed Codex callback port, like a running Codex CLI would. */
 function occupyCodexCallbackPort(): Promise<Server> {
   return new Promise<Server>((resolve, reject) => {
