@@ -1,11 +1,15 @@
 import { StoreFencedError } from "@houston/runtime-client/object-sync";
 import type { ClaimHeartbeat } from "./claim-heartbeat";
 import type { TurnServerDeps } from "./server-types";
-import { publishTurnActivityDoc } from "./turn-activity-doc";
+import {
+  publishTurnActivityDoc,
+  publishTurnRunsDoc,
+} from "./turn-activity-doc";
 import {
   syncTurnFilesystem,
   type TurnFilesystem,
   turnActivityKey,
+  turnRoutineRunsKey,
 } from "./turn-filesystem";
 import type { TurnOutcome } from "./turn-session";
 import type { ResolvedTurnStore } from "./turn-store";
@@ -110,6 +114,19 @@ export async function finishTurnDurability(
     outcome = appendError(
       outcome,
       `board doc publish failed: ${activityPublished.error}`,
+    );
+  }
+  const runsChanged = uploaded.includes(
+    turnRoutineRunsKey(opts.filesystem.workspaceRel),
+  );
+  const runsPublished =
+    opts.turn.claim && opts.turn.routine && runsChanged
+      ? await publishTurnRunsDoc(opts.deps, opts.turn, opts.filesystem)
+      : null;
+  if (runsPublished && "error" in runsPublished) {
+    outcome = appendError(
+      outcome,
+      `runs doc publish failed: ${runsPublished.error}`,
     );
   }
   // The claim may have been adopted while sync/publish were in flight (the

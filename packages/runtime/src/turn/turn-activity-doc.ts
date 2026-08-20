@@ -16,6 +16,7 @@ export type ActivityDocPublishResult =
   | { error: string };
 
 interface ActivityDocOptions {
+  family: "activity" | "routine_runs";
   baseUrl: string;
   org: string;
   agent: string;
@@ -38,7 +39,7 @@ async function request(
   const root = opts.baseUrl.replace(/\/+$/, "");
   const url = `${root}/v1/pod/docs/${encodeURIComponent(
     opts.org,
-  )}/${encodeURIComponent(opts.agent)}/activity`;
+  )}/${encodeURIComponent(opts.agent)}/${opts.family}`;
   return fetchWithRetry(
     (input, requestInit) =>
       opts.fetchImpl(input, {
@@ -102,7 +103,10 @@ async function putAtRevision(
 async function acceptPut(
   response: Response,
 ): Promise<ActivityDocPublishResult> {
-  if (response.status === 404) {
+  if (response.status === 404 || response.status === 403) {
+    // 404: the docs route is absent. 403: the store predates this family in
+    // the claim scope. Both mean "this deployment cannot take the doc yet" —
+    // a diagnostic on the terminal frame, never a failed turn.
     await response.body?.cancel();
     return { disabled: true, reason: "route_absent" };
   }
@@ -156,6 +160,52 @@ export async function publishTurnActivityDoc(
     const { org, agent } = poolIdentity(turn.gcsPrefix);
     return await publish(
       {
+        family: "activity",
+        baseUrl,
+        org,
+        agent,
+        conversationId: turn.conversationId,
+        hostToken: turn.hostToken,
+        claim: { token: turn.claim.token, bootId: turn.claim.bootId },
+        fetchImpl: deps.fetchImpl ?? fetch,
+        ...(deps.activityDocRetryDelaysMs
+          ? { retryDelaysMs: deps.activityDocRetryDelaysMs }
+          : {}),
+      },
+      doc,
+    );
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
+ * Project a routine turn's uploaded runs file into the routine_runs DB doc —
+ * raw parse, mirroring the standing DocShadowProjector's non-activity
+ * families byte for byte.
+ */
+export async function publishTurnRunsDoc(
+  deps: TurnServerDeps,
+  turn: TurnRequest & { turnId: string },
+  filesystem: TurnFilesystem,
+): Promise<ActivityDocPublishResult | null> {
+  const baseUrl = deps.poolStoreUrl ?? process.env.HOUSTON_POOL_STORE_URL;
+  if (turn.shadow || !baseUrl || !turn.claim || !turn.hostToken) return null;
+  try {
+    const raw = await readFile(
+      join(
+        filesystem.workspaceDir,
+        ".houston",
+        "routine_runs",
+        "routine_runs.json",
+      ),
+      "utf8",
+    );
+    const doc = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
+    const { org, agent } = poolIdentity(turn.gcsPrefix);
+    return await publish(
+      {
+        family: "routine_runs",
         baseUrl,
         org,
         agent,

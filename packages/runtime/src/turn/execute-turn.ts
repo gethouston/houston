@@ -14,6 +14,12 @@ import { finishTurnDurability } from "./turn-durability";
 import { prepareTurnFilesystem } from "./turn-filesystem";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
+import {
+  prepareRoutineTurn,
+  type RoutinePhase,
+  RoutineTurnError,
+  settleRoutineTurn,
+} from "./turn-routine";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { runPiTurn, type TurnOutcome } from "./turn-session";
 import { resolveTurnStore } from "./turn-store";
@@ -118,6 +124,43 @@ export async function executeTurn(
       }
     } else {
       let outcome: TurnOutcome;
+      // A routine fire derives its prompt and pins from the agent's own
+      // routine file (the prompt authority), records the running row, and
+      // gates double-fires — the worker-side twin of the host's
+      // fireRoutineRun. Typed failures terminate the turn with a machine
+      // code the dispatcher settles the fire from.
+      let routinePhase: RoutinePhase | null = null;
+      let effectiveTurn = turn;
+      if (turn.routine) {
+        try {
+          routinePhase = await prepareRoutineTurn(
+            filesystem.workspaceDir,
+            turn,
+            turnId,
+            new Date().toISOString(),
+          );
+          effectiveTurn = {
+            ...turn,
+            text: routinePhase.text,
+            ...(routinePhase.model ? { model: routinePhase.model } : {}),
+            ...(routinePhase.effort ? { effort: routinePhase.effort } : {}),
+            mode: "auto",
+          };
+        } catch (error) {
+          const code =
+            error instanceof RoutineTurnError ? error.code : "routine_error";
+          emit({
+            type: "error",
+            data: {
+              message: error instanceof Error ? error.message : String(error),
+              code,
+            },
+            turnId,
+          } as WireFrame);
+          await turnLog?.flush();
+          return;
+        }
+      }
       if (!turn.credential) {
         emit({
           type: "user",
@@ -145,13 +188,37 @@ export async function executeTurn(
               () =>
                 run(
                   filesystem,
-                  piTurnRequest(turn, turnId, emit, abort.signal),
+                  piTurnRequest(effectiveTurn, turnId, emit, abort.signal),
                 ),
             ),
           );
         } catch (error) {
           outcome = {
             error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+
+      if (routinePhase) {
+        // The run row must leave "running" and land in the tree BEFORE the
+        // claimed sync-back uploads it — never a stuck row, never silent.
+        try {
+          await settleRoutineTurn({
+            workspaceDir: filesystem.workspaceDir,
+            phase: routinePhase,
+            conversationId: turn.conversationId,
+            ...(outcome.error ? { turnError: outcome.error } : {}),
+            nowIso: new Date().toISOString(),
+            newId: () => crypto.randomUUID(),
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          outcome = {
+            ...outcome,
+            error: outcome.error
+              ? `${outcome.error}; routine settle failed: ${message}`
+              : `routine settle failed: ${message}`,
           };
         }
       }

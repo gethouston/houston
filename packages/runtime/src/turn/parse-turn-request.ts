@@ -130,6 +130,18 @@ export function parseTurnRequest(body: unknown): TurnRequest {
   if (Boolean(claim) !== Boolean(b.hostToken)) {
     throw new Error("claim and hostToken must be configured together");
   }
+  let routine: TurnRequest["routine"];
+  if (b.routine !== undefined) {
+    const parsed = record(b.routine, "routine");
+    exactKeys(parsed, ["id"], "routine");
+    if (!nonEmpty(parsed.id)) {
+      throw new Error("invalid 'routine'");
+    }
+    if (!claim) {
+      throw new Error("routine turns require a claim");
+    }
+    routine = { id: parsed.id };
+  }
   const poolPrefix = prefix.split("/");
   if (
     claim &&
@@ -166,6 +178,7 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     userContext: typeof b.userContext === "string" ? b.userContext : undefined,
     turnlogSeqStart:
       typeof b.turnlogSeqStart === "number" ? b.turnlogSeqStart : undefined,
+    routine,
     claim,
   };
 }
