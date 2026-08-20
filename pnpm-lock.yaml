@@ -533,6 +533,9 @@ importers:
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
+      '@houston/host':
+        specifier: workspace:*
+        version: link:../host
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol
