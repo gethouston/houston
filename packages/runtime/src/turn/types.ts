@@ -70,7 +70,15 @@ export interface TurnRequest {
    * standing host would have kept. Requires a claim: only the control-plane
    * scheduler dispatches routine turns.
    */
-  routine?: { id: string };
+  routine?: {
+    id: string;
+    /**
+     * Trigger events (Composio / webhooks) that woke this routine. Present =
+     * the worker builds the trigger prompt (events framed as untrusted data)
+     * instead of the plain scheduled-run prompt.
+     */
+    events?: { id: string; trigger_slug: string; payload: unknown }[];
+  };
   /** Exclusive conversation claim granted to this worker. */
   claim?: {
     id: string;
