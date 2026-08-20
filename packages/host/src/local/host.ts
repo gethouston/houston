@@ -663,13 +663,28 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // Publish the view routes' answers (providers, usage, custom definitions)
     // to the managed doc store; the gateway serves them while the pod is
     // asleep. Cloud pods only (docShadow exists only under dual-write).
-    viewSink: docShadow
-      ? (_agentId, family, body) => {
-          void docShadow.put(family, body).catch((error: unknown) => {
-            console.error(`[view-docs] ${family} publish failed`, error);
-          });
-        }
-      : undefined,
+    viewSink:
+      docShadow && docProjector
+        ? (agentId, family, body) => {
+            // Same cross-post rule as the file projector: the doc route
+            // names ONE agent; a view captured for any other id (a leftover
+            // directory's /skills) must never land under the bound agent.
+            void docProjector
+              .boundAgent()
+              .then((bound) => {
+                if (bound !== agentId) {
+                  console.warn(
+                    `[view-docs] refusing ${family} publish for ${agentId} (route bound to ${bound ?? "nothing yet"})`,
+                  );
+                  return;
+                }
+                return docShadow.put(family, body);
+              })
+              .catch((error: unknown) => {
+                console.error(`[view-docs] ${family} publish failed`, error);
+              });
+          }
+        : undefined,
   };
 
   const server = createControlPlaneServer(deps);

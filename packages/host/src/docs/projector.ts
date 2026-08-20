@@ -149,6 +149,18 @@ export class DocShadowProjector {
     this.tails.set(key, task);
   }
 
+  /**
+   * Resolves to the bound agent id once the boot seed has settled (or to
+   * undefined if the host could not bind). The view sink consults it so an
+   * answer captured for any other agent id (a leftover directory on a pod
+   * volume) is never published as the bound agent's doc — the same
+   * cross-post rule project() enforces for family files.
+   */
+  async boundAgent(): Promise<string | undefined> {
+    await this.ready;
+    return this.bound;
+  }
+
   async flush(): Promise<void> {
     await this.ready;
     await Promise.all([...this.tails.values()]);
