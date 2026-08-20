@@ -32,12 +32,14 @@ test("a family watcher event shadows the file's current whole document", async (
   projector.onEvent({ type: "LearningsChanged", agentPath: agent.id });
   await projector.flush();
 
-  expect(puts).toEqual([
-    {
-      family: "learnings",
-      doc: [{ id: "l1", text: "remember", created_at: "now" }],
-    },
-  ]);
+  // Without a boot seed, the first projection lazily binds and back-fills
+  // every family; the event's own family carries the file content.
+  expect(
+    puts.find((p) => (p as { family: string }).family === "learnings"),
+  ).toEqual({
+    family: "learnings",
+    doc: [{ id: "l1", text: "remember", created_at: "now" }],
+  });
 });
 
 test("the activity family projects the NORMALIZED items, not the raw file", async () => {
@@ -73,14 +75,10 @@ test("the activity family projects the NORMALIZED items, not the raw file", asyn
   projector.onEvent({ type: "ActivityChanged", agentPath: agent.id });
   await projector.flush();
 
-  expect(puts).toEqual([
-    {
-      family: "activity",
-      doc: [
-        { id: "m1", title: "Say Hi", status: "needs_you", description: "" },
-      ],
-    },
-  ]);
+  expect(puts.find((p) => p.family === "activity")).toEqual({
+    family: "activity",
+    doc: [{ id: "m1", title: "Say Hi", status: "needs_you", description: "" }],
+  });
 });
 
 test("boot seed projects every family once; missing files converge to empty docs", async () => {
@@ -258,4 +256,67 @@ test("a vanished family file converges the doc back to empty", async () => {
   projector.onEvent({ type: "RoutinesChanged", agentPath: agent.id });
   await projector.flush();
   expect(puts.at(-1)).toEqual({ family: "routines", doc: [] });
+});
+
+test("a pod that boots before its agent hydrates binds on first projection", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const puts: { family: string; doc: unknown }[] = [];
+  const shadow: DocShadow = {
+    async seed() {},
+    async put(family, doc) {
+      puts.push({ family, doc });
+    },
+  };
+  // Boot with ZERO agents (cloud pods can reach the seed before the
+  // workspace tree hydrates) — must not poison, must not project.
+  const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+  projector.seed();
+  await projector.flush();
+  expect(puts).toEqual([]);
+
+  // The agent hydrates after boot; its first watcher event binds the
+  // projector and back-fills the boot seed for every family.
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "A",
+  });
+  await vfs.writeText(
+    docKey(paths.agentRoot(workspace, agent), "routines"),
+    JSON.stringify([
+      {
+        id: "r1",
+        name: "D",
+        prompt: "p",
+        schedule: "0 9 * * *",
+        enabled: true,
+      },
+    ]),
+  );
+  projector.onEvent({ type: "RoutinesChanged", agentPath: agent.id });
+  await projector.flush();
+
+  const families = puts.map((p) => p.family).sort();
+  expect(families).toEqual([
+    "activity",
+    "config",
+    "learnings",
+    "routine_runs",
+    "routines",
+  ]);
+  expect(
+    (puts.find((p) => p.family === "routines")?.doc as unknown[]).length,
+  ).toBe(1);
+
+  // Still refuses a foreign agent after the late bind.
+  const stray = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "B",
+  });
+  const seeded = puts.length;
+  projector.onEvent({ type: "RoutinesChanged", agentPath: stray.id });
+  await projector.flush();
+  expect(puts.length).toBe(seeded);
 });
