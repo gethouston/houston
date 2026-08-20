@@ -1,3 +1,5 @@
+import { salvageLeadingJson } from "./json-salvage";
+
 /**
  * The domain layer's only I/O dependency: a keyed text store. The host's Vfs
  * (Memory/Gcs/Fs) satisfies this structurally, so the SAME domain code runs
@@ -44,6 +46,11 @@ export async function loadJson<T>(
   try {
     return JSON.parse(text) as T;
   } catch (err) {
+    // A complete value followed by trailing bytes (an outside writer appended
+    // or overlapped the doc) keeps the value: nothing the user wrote is lost,
+    // and the next save rewrites the file clean. Anything else still throws.
+    const salvaged = salvageLeadingJson(text);
+    if (salvaged !== undefined) return salvaged as T;
     throw new Error(
       `${key} is not valid JSON (${err instanceof Error ? err.message : String(err)})`,
     );
