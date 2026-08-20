@@ -76,6 +76,21 @@ function causeCode(err: unknown, depth = 0): string | undefined {
   return causeCode(e.cause, depth + 1);
 }
 
+/**
+ * The host's error bodies echo the requested provider id ("credential gateway
+ * GET qwen failed (500): …"), so one gateway outage failed every probe with a
+ * UNIQUE detail — the sweep collapses (uniformFailureDetail in serve.ts, the
+ * group-by-detail in serve-log.ts) compare exact strings and never grouped
+ * them, keeping one incident at ~40 Sentry events (PRODUCT-1443, the
+ * HOUSTON-APP-4YV residual). The probe's own id is redundant inside its detail
+ * — every log line already names the provider — so it normalizes to a
+ * placeholder, making identical failures byte-identical across providers (and
+ * across syncs, for the dedup map's still-failing comparison).
+ */
+export function normalizeProbeDetail(id: string, body: string): string {
+  return body.split(id).join("<provider>");
+}
+
 /** A probe failure's log detail: the message plus the nested cause code. */
 export function describeProbeError(err: unknown): string {
   if (!(err instanceof Error)) return String(err);
@@ -121,7 +136,10 @@ async function probeOnce(id: string): Promise<ServeProbe> {
       return {
         id,
         state: "error",
-        detail: `${res.status}: ${await res.text().catch(() => "")}`,
+        detail: `${res.status}: ${normalizeProbeDetail(
+          id,
+          await res.text().catch(() => ""),
+        )}`,
       };
     return {
       id,
