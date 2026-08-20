@@ -36,9 +36,40 @@ export class DocShadowProjector {
   ) {}
 
   seed(): void {
-    this.ready = this.deps.shadow.seed().catch((error: unknown) => {
-      console.debug("[doc-shadow] boot revision seed failed", error);
-    });
+    // Revision seed first, then ONE content projection of every family for
+    // every agent this host serves (the cloud pod serves exactly one). This
+    // is what makes agents whose files predate the doc shadow eligible for
+    // the database read paths and pool dispatch: without it, a doc only
+    // exists after the family's first post-shadow change, which silently
+    // excludes the quietest agents (observed fleet-wide in staging: one
+    // routines doc across ~750 agents). The skip-if-equal PUT in the shadow
+    // keeps repeat boots at one GET per family, no revision churn.
+    this.ready = this.deps.shadow
+      .seed()
+      .then(() => this.seedContent())
+      .catch((error: unknown) => {
+        console.debug("[doc-shadow] boot seed failed", error);
+      });
+  }
+
+  private async seedContent(): Promise<void> {
+    const workspaces = await this.deps.store.listWorkspaces();
+    for (const workspace of workspaces) {
+      const agents = await this.deps.store.listAgents(workspace.id);
+      for (const agent of agents) {
+        for (const family of Object.values(EVENT_FAMILY)) {
+          if (!family) continue;
+          try {
+            await this.project(agent.id, family);
+          } catch (error) {
+            console.debug(
+              `[doc-shadow] boot content seed ${agent.id}#${family} failed`,
+              error,
+            );
+          }
+        }
+      }
+    }
   }
 
   onEvent(event: HoustonEvent): void {

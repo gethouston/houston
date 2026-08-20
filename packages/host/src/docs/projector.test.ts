@@ -82,3 +82,51 @@ test("the activity family projects the NORMALIZED items, not the raw file", asyn
     },
   ]);
 });
+
+test("boot seed projects every existing family once, missing files skipped", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "A",
+  });
+  const root = paths.agentRoot(workspace, agent);
+  const puts: { family: string; doc: unknown }[] = [];
+  const shadow: DocShadow = {
+    async seed() {},
+    async put(family, doc) {
+      puts.push({ family, doc });
+    },
+  };
+  // Two families exist on disk (one of them an activity needing
+  // normalization); the rest are absent and must not project.
+  await vfs.writeText(
+    docKey(root, "routines"),
+    JSON.stringify([
+      {
+        id: "r1",
+        name: "Daily",
+        prompt: "p",
+        schedule: "0 9 * * *",
+        enabled: true,
+      },
+    ]),
+  );
+  await vfs.writeText(
+    docKey(root, "activity"),
+    JSON.stringify([{ id: "m1", title: "T", status: "needs_you" }]),
+  );
+
+  const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+  projector.seed();
+  await projector.flush();
+
+  const families = puts.map((p) => p.family).sort();
+  expect(families).toEqual(["activity", "routines"]);
+  const activity = puts.find((p) => p.family === "activity");
+  expect(activity?.doc).toEqual([
+    { id: "m1", title: "T", status: "needs_you", description: "" },
+  ]);
+});
