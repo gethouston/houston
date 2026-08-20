@@ -39,7 +39,9 @@ export function parseTurnRequest(body: unknown): TurnRequest {
       throw new Error(`invalid '${field}'`);
     }
   }
-  if (typeof b.text !== "string" || !b.text.length)
+  // Routine turns carry no text on the wire: the worker derives the prompt
+  // from the hydrated routine file (the envelope's routine.id is the payload).
+  if (typeof b.text !== "string" || (!b.text.length && b.routine === undefined))
     throw new Error("missing 'text'");
   const prefix = b.gcsPrefix;
   if (
