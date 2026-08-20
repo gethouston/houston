@@ -49,7 +49,6 @@ export function DangerSection() {
   const loadAgents = useAgentStore((s) => s.loadAgents);
   const addToast = useUIStore((s) => s.addToast);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   if (!currentWorkspace) return null;
   if (!capabilities?.workspaceDelete) return null;
@@ -58,14 +57,17 @@ export function DangerSection() {
 
   // The active space switched under the user (the space they deleted owned
   // this Settings screen), so land them on home to make the switch visible.
-  const landHomeAndToast = async (name: string) => {
-    const landing = useWorkspaceStore.getState().current;
-    if (landing) await loadAgents(landing.id);
-    openHome();
+  // The toast comes FIRST: the landing space's agent load can take seconds
+  // (in the worst case an engine wake), and the user must not stare at a
+  // silent screen wondering whether the delete took (PRODUCT-1426).
+  const toastAndLandHome = async (name: string) => {
     addToast({
       title: t("dangerZone.deleted", { name }),
       variant: "success",
     });
+    const landing = useWorkspaceStore.getState().current;
+    if (landing) await loadAgents(landing.id);
+    openHome();
   };
 
   const blockedToast = (
@@ -76,9 +78,11 @@ export function DangerSection() {
       t(`dangerZone.blocked.${failure}.body`),
     );
 
+  // Returned to ConfirmDialog, whose async-confirm affordance keeps the dialog
+  // open on a "Deleting…" spinner until this settles (or the optimistic switch
+  // unmounts it, at which instant the success toast is already up).
   const handleDelete = async () => {
     const { id, name } = currentWorkspace;
-    setDeleting(true);
     try {
       // Both reads address the ACTIVE space — still the doomed team here; the
       // optimistic switch only re-pins the gateway after they resolve.
@@ -101,7 +105,7 @@ export function DangerSection() {
           { silence: isExpectedWorkspaceDeleteError },
           "optimistic",
         ).then(() => null, classifyWorkspaceDeleteError);
-        await landHomeAndToast(name);
+        await toastAndLandHome(name);
         const failure = await settled;
         if (failure !== null && failure !== "unknown") blockedToast(failure);
         return;
@@ -113,9 +117,8 @@ export function DangerSection() {
         if (failure !== "unknown") blockedToast(failure);
         return; // unknown: report already surfaced by the wire layer
       }
-      await landHomeAndToast(name);
+      await toastAndLandHome(name);
     } finally {
-      setDeleting(false);
       setShowConfirm(false);
     }
   };
@@ -131,7 +134,6 @@ export function DangerSection() {
         <Button
           variant="destructive"
           size="sm"
-          disabled={deleting}
           onClick={() => setShowConfirm(true)}
         >
           {t("dangerZone.confirmLabel")}
@@ -144,6 +146,7 @@ export function DangerSection() {
         title={t("dangerZone.confirmTitle", { name: currentWorkspace.name })}
         description={t("dangerZone.confirmDescription")}
         confirmLabel={t("dangerZone.confirmLabel")}
+        pendingLabel={t("dangerZone.deleting")}
         onConfirm={handleDelete}
       />
     </>

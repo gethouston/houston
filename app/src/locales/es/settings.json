@@ -98,6 +98,7 @@
     "confirmTitle": "¿Eliminar \"{{name}}\"?",
     "confirmDescription": "Esto eliminará de forma permanente este espacio de trabajo y todos sus agentes. No se puede deshacer.",
     "confirmLabel": "Eliminar",
+    "deleting": "Eliminando…",
     "deleted": "Se eliminó \"{{name}}\".",
     "blocked": {
       "has_members": {
