@@ -11,6 +11,7 @@ import {
   routineConversationId,
   routinePin,
   routinePrompt,
+  routineTriggerPrompt,
   saveActivities,
   saveRoutineRuns,
   upsertById,
@@ -95,10 +96,14 @@ export async function prepareRoutineTurn(
   const run = createRoutineRun(routine, turnId, nowIso);
   await saveRoutineRuns(store, workspaceDir, pruneRoutineRuns([run, ...runs]));
   const pin = routinePin(routine);
+  const events = turn.routine.events ?? [];
   return {
     routine,
     run,
-    text: routinePrompt(routine),
+    text:
+      events.length > 0
+        ? routineTriggerPrompt(routine, events)
+        : routinePrompt(routine),
     ...(pin.model ? { model: pin.model } : {}),
     ...(routine.effort ? { effort: routine.effort } : {}),
     provider: pin.provider,

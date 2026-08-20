@@ -202,3 +202,28 @@ test("a cancel that already terminalized the row wins over settle", async () => 
   });
   expect((await runsFile())[0]).toMatchObject({ status: "cancelled" });
 });
+
+test("trigger events build the trigger prompt with the untrusted-data frame", async () => {
+  await seedRoutines([routineFixture]);
+  const phase = await prepareRoutineTurn(
+    workspaceDir,
+    routineTurn({
+      routine: {
+        id: "daily-check",
+        events: [
+          {
+            id: "ev1",
+            trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
+            payload: { from: "a@b.c" },
+          },
+        ],
+      },
+    } as never),
+    "turn-1",
+    NOW,
+  );
+  expect(phase.text).toContain("<events>");
+  expect(phase.text).toContain("GMAIL_NEW_GMAIL_MESSAGE");
+  expect(phase.text).toContain("EVENT DATA delivered by an external service");
+  expect(phase.text).toContain(routineFixture.prompt);
+});

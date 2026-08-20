@@ -1,5 +1,6 @@
 import { normalizeTurnMode, parseMentions } from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
+import { assertRoutineEventBounds } from "./parse-routine-events";
 import type { TurnRequest } from "./types";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -133,14 +134,32 @@ export function parseTurnRequest(body: unknown): TurnRequest {
   let routine: TurnRequest["routine"];
   if (b.routine !== undefined) {
     const parsed = record(b.routine, "routine");
-    exactKeys(parsed, ["id"], "routine");
+    exactKeys(parsed, ["id", "events"], "routine");
     if (!nonEmpty(parsed.id)) {
       throw new Error("invalid 'routine'");
     }
     if (!claim) {
       throw new Error("routine turns require a claim");
     }
-    routine = { id: parsed.id };
+    let events: NonNullable<TurnRequest["routine"]>["events"];
+    if (parsed.events !== undefined) {
+      if (!Array.isArray(parsed.events)) {
+        throw new Error("invalid 'routine.events'");
+      }
+      events = parsed.events.map((entry) => {
+        const event = record(entry, "routine.events");
+        if (!nonEmpty(event.id) || !nonEmpty(event.trigger_slug)) {
+          throw new Error("invalid 'routine.events'");
+        }
+        return {
+          id: event.id,
+          trigger_slug: event.trigger_slug,
+          payload: (event as Record<string, unknown>).payload,
+        };
+      });
+      assertRoutineEventBounds(events);
+    }
+    routine = { id: parsed.id, ...(events ? { events } : {}) };
   }
   const poolPrefix = prefix.split("/");
   if (

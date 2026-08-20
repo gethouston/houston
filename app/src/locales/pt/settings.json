@@ -98,6 +98,7 @@
     "confirmTitle": "Excluir \"{{name}}\"?",
     "confirmDescription": "Isso exclui este espaço de trabalho e todos os seus agentes de forma permanente. Não dá para desfazer.",
     "confirmLabel": "Excluir",
+    "deleting": "Excluindo…",
     "deleted": "\"{{name}}\" foi excluído.",
     "blocked": {
       "has_members": {

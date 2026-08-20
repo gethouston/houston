@@ -161,10 +161,16 @@ export function routineTriggerPrompt(
   routine: Routine,
   events: Array<{ id: string; trigger_slug: string; payload: unknown }>,
 ): string {
+  // "</" becomes "<\/" inside every embedded JSON string — identical string
+  // semantics per the JSON grammar, but a payload containing a literal
+  // "</event>" can no longer fake-close the untrusted-data block and plant
+  // instructions "outside" it.
+  const neutralize = (json: string | undefined) =>
+    (json ?? "null").replaceAll("</", "<\\/");
   const blocks = events
     .map(
       (e) =>
-        `<event id=${JSON.stringify(e.id)} trigger=${JSON.stringify(e.trigger_slug)}>\n${JSON.stringify(e.payload, null, 2)}\n</event>`,
+        `<event id=${neutralize(JSON.stringify(e.id))} trigger=${neutralize(JSON.stringify(e.trigger_slug))}>\n${neutralize(JSON.stringify(e.payload, null, 2))}\n</event>`,
     )
     .join("\n");
   return `${routinePrompt(routine)}${TRIGGER_EVENT_PREAMBLE}\n<events>\n${blocks}\n</events>`;

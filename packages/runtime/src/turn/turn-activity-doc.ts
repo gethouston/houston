@@ -1,9 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { normalizeActivities } from "@houston/domain";
+import { normalizeActivities, normalizeRoutineRuns } from "@houston/domain";
 import { fetchWithRetry } from "@houston/runtime-client/object-sync";
 import type { TurnServerDeps } from "./server-types";
-import { type TurnFilesystem, turnActivityKey } from "./turn-filesystem";
+import {
+  type TurnFilesystem,
+  turnActivityKey,
+  turnRoutineRunsKey,
+} from "./turn-filesystem";
 import { poolIdentity } from "./turn-store";
 import type { TurnRequest } from "./types";
 
@@ -181,8 +185,8 @@ export async function publishTurnActivityDoc(
 
 /**
  * Project a routine turn's uploaded runs file into the routine_runs DB doc —
- * raw parse, mirroring the standing DocShadowProjector's non-activity
- * families byte for byte.
+ * NORMALIZED, mirroring the standing DocShadowProjector, so the doc's shape
+ * never depends on which execution path wrote it last.
  */
 export async function publishTurnRunsDoc(
   deps: TurnServerDeps,
@@ -201,7 +205,11 @@ export async function publishTurnRunsDoc(
       ),
       "utf8",
     );
-    const doc = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
+    const doc = normalizeRoutineRuns(
+      parsed,
+      turnRoutineRunsKey(filesystem.workspaceRel),
+    ).items;
     const { org, agent } = poolIdentity(turn.gcsPrefix);
     return await publish(
       {

@@ -25,19 +25,20 @@ import {
   currentCredentialScope,
   isPersonalScope,
 } from "../session/acting-context";
-import { runAnthropicSetupTokenLogin } from "./anthropic-setup-token";
+import { resolveClaudeCliBinary } from "./anthropic-cli-binary";
+import { runAnthropicLogin } from "./anthropic-cli-login";
 import { preflightCodexCallbackPort } from "./codex-port-preflight";
 import { authStorage, modelRuntime, providerConnected } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
  *
- * - anthropic (Claude): the token PASTE flow. The direct OAuth PKCE replay is
- *   server-blocked since 2026-04, so we take a pasted console API key
- *   (`sk-ant-api03…`, the surfaced instruction — never a CLI command) or a
- *   `claude setup-token` value (`sk-ant-oat01…`) and store it as an api_key.
- *   Same `auth_code` + completeLogin wire shape as before — see
- *   auth/anthropic-setup-token.ts.
+ * - anthropic (Claude): the SUBSCRIPTION login, driven by the bundled Claude
+ *   Code CLI running next to this runtime (the one sanctioned OAuth client —
+ *   the direct PKCE replay is server-blocked since 2026-04): open the authorize
+ *   URL, approve, paste back the code the callback page shows. Where no CLI can
+ *   run, the token paste flow (an `sk-ant-…` value stored as api_key) remains
+ *   the fallback — see auth/anthropic-cli-login.ts.
  * - openai-codex (ChatGPT/Codex): the CLIENT picks. A co-located desktop client
  *   sends `deviceAuth: false` and gets the browser/loopback login — the user
  *   approves in their own browser and the localhost callback finishes it, no
@@ -403,24 +404,38 @@ export async function startLogin(
     },
   };
 
-  // Anthropic uses the sanctioned setup-token flow (the direct OAuth replay is
-  // server-blocked), NOT pi's OAuth login. It emits the same `auth_code`
-  // wire shape and reuses the paste promise, then stores the captured token as an
-  // api_key credential — see auth/anthropic-setup-token.ts.
+  // Anthropic runs the bundled Claude Code CLI's subscription login (the one
+  // sanctioned OAuth client — the direct replay is server-blocked), falling
+  // back to the token paste flow where no CLI can run. Both emit the same
+  // `auth_code` wire shape and reuse the paste promise: with `instructions` the
+  // webapp renders the paste flow, without them the open-URL + paste-code flow
+  // — see auth/anthropic-cli-login.ts.
   const login: Promise<unknown> =
     provider === "anthropic"
-      ? runAnthropicSetupTokenLogin(
+      ? runAnthropicLogin(
           {
             onAuth: ({ url, instructions }) => {
-              state.info = { kind: "auth_code", url, instructions };
+              state.info = {
+                kind: "auth_code",
+                url,
+                ...(instructions ? { instructions } : {}),
+              };
               state.status = "awaiting_user";
               resolveInfo(state.info);
             },
             onManualCodeInput: () => pastePromise,
           },
           {
-            store: (key) =>
+            binary: resolveClaudeCliBinary(),
+            storeToken: (key) =>
               authStorage.set("anthropic", { type: "api_key", key }),
+            storeOauth: (cred) =>
+              authStorage.set("anthropic", {
+                type: "oauth",
+                access: cred.access,
+                refresh: cred.refresh,
+                expires: cred.expires,
+              }),
           },
         )
       : runProviderOAuthLogin(provider, interaction);
