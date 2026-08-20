@@ -263,9 +263,43 @@ export interface ProbeDeps {
   /** Engine answered (with anything) — the agent is reachable. */
   onReady: (agentId: string) => void;
   /** TTL elapsed without the engine ever answering. */
-  onTimeout: (agentId: string, lastError: unknown) => void;
+  onTimeout: (agentId: string, error: ProvisioningTimeoutError) => void;
   sleep: (ms: number) => Promise<void>;
   now: () => number;
+}
+
+/**
+ * The probe's TTL elapsed. Always a real Error with a diagnostic message: the
+ * pod may have NEVER answered (every attempt held open server-side), in which
+ * case there is no "last error" to forward — reporting that raw value gave
+ * Sentry a bare `undefined` with nothing to triage on.
+ */
+export class ProvisioningTimeoutError extends Error {
+  readonly attempts: number;
+  readonly heldOpen: boolean;
+  constructor(attempts: number, lastError: unknown) {
+    const heldOpen = lastError === undefined;
+    const last = heldOpen
+      ? "the last attempt was still held open, the engine never answered"
+      : `last failure: ${describeProbeFailure(lastError)}`;
+    super(
+      `engine did not answer within ${PROVISIONING_TTL_MS / 60_000} min (${attempts} attempts; ${last})`,
+      { cause: lastError },
+    );
+    this.name = "ProvisioningTimeoutError";
+    this.attempts = attempts;
+    this.heldOpen = heldOpen;
+  }
+}
+
+function describeProbeFailure(err: unknown): string {
+  if (err instanceof Error) {
+    const status = (err as { status?: unknown }).status;
+    return typeof status === "number"
+      ? `HTTP ${status} ${err.message}`
+      : `${err.name}: ${err.message}`;
+  }
+  return String(err);
 }
 
 /**
@@ -279,6 +313,7 @@ export async function runProvisioningProbe(
   deps: ProbeDeps,
 ): Promise<void> {
   let lastError: unknown;
+  let attempts = 0;
   const initialRemaining = entry.since + PROVISIONING_TTL_MS - deps.now();
   // One deadline for the whole probe, anchored to the create call. Left
   // pending when the probe wins — a settled timer with no listeners is free.
@@ -287,9 +322,13 @@ export async function runProvisioningProbe(
     .then(() => "timeout" as const);
   while (deps.isMarked(entry.agentId)) {
     if (deps.now() - entry.since >= PROVISIONING_TTL_MS) {
-      deps.onTimeout(entry.agentId, lastError);
+      deps.onTimeout(
+        entry.agentId,
+        new ProvisioningTimeoutError(attempts, lastError),
+      );
       return;
     }
+    attempts++;
     // The attempt never rejects (failures fold into a verdict), so losing the
     // race can't leave an unhandled rejection behind.
     const attempt = deps
@@ -305,7 +344,10 @@ export async function runProvisioningProbe(
       );
     const outcome = await Promise.race([attempt, deadline]);
     if (outcome === "timeout") {
-      deps.onTimeout(entry.agentId, lastError);
+      deps.onTimeout(
+        entry.agentId,
+        new ProvisioningTimeoutError(attempts, lastError),
+      );
       return;
     }
     if (outcome === "ready") {

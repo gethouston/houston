@@ -268,7 +268,7 @@ function startProbe(entry: ProvisioningEntry): void {
         )
         .finally(() => store.clearProvisioning(id, entry));
     },
-    onTimeout: (id, lastError) => {
+    onTimeout: (id, error) => {
       // A newer mark (rename, or a fresh create reusing the id) already
       // retired this exact entry — nothing to do.
       if (useAgentProvisioningStore.getState().provisioning[id] !== entry) {
@@ -281,12 +281,9 @@ function startProbe(entry: ProvisioningEntry): void {
       // giving up. A pod that's merely slow to schedule still comes up.
       if (!entry.timedOut) {
         entry.timedOut = true;
-        showErrorToast(
-          "agent_provisioning",
-          lastError instanceof Error ? lastError.message : String(lastError),
-          lastError,
-          { userMessage: i18n.t("shell:agentProvisioning.stillStarting") },
-        );
+        showErrorToast("agent_provisioning", error.message, error, {
+          userMessage: i18n.t("shell:agentProvisioning.stillStarting"),
+        });
       }
       entry.since = Date.now();
       useAgentProvisioningStore.setState((s) => {

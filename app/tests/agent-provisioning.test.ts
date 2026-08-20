@@ -4,6 +4,7 @@ import {
   detectEngineAsleep,
   PROVISIONING_RETRY_MS,
   PROVISIONING_TTL_MS,
+  ProvisioningTimeoutError,
   parsePersistedProvisioning,
   probeSaysStillStarting,
   runProvisioningProbe,
@@ -213,7 +214,7 @@ describe("runProvisioningProbe", () => {
 
   function harness(readResults: Array<unknown | Error>) {
     const calls = { ready: 0, timeout: 0, sleeps: 0, reads: 0 };
-    let timeoutError: unknown;
+    let timeoutError: ProvisioningTimeoutError | undefined;
     let marked = true;
     let clock = 1;
     // The whole-probe TTL deadline is the one sleep longer than a retry
@@ -234,9 +235,9 @@ describe("runProvisioningProbe", () => {
         calls.ready++;
         marked = false;
       },
-      onTimeout: (_id: string, lastError: unknown) => {
+      onTimeout: (_id: string, error: ProvisioningTimeoutError) => {
         calls.timeout++;
-        timeoutError = lastError;
+        timeoutError = error;
         marked = false;
       },
       sleep: (ms: number): Promise<void> => {
@@ -292,17 +293,30 @@ describe("runProvisioningProbe", () => {
     };
     await runProvisioningProbe(entry, deps);
     deepStrictEqual(calls, { ready: 0, timeout: 1, sleeps: 1, reads: 1 });
-    strictEqual((timeoutError() as { status?: number }).status, 503);
+    const err = timeoutError();
+    ok(err instanceof ProvisioningTimeoutError);
+    strictEqual((err.cause as { status?: number }).status, 503);
+    strictEqual(err.heldOpen, false);
+    strictEqual(err.attempts, 1);
+    ok(err.message.includes("HTTP 503"), err.message);
   });
 
   it("times out even while an attempt is held open server-side", async () => {
-    const { deps, calls } = harness([HELD]);
+    const { deps, calls, timeoutError } = harness([HELD]);
     const probe = runProvisioningProbe(entry, deps);
     // Let the probe issue the read (which never settles), then hit the TTL.
     await Promise.resolve();
     deps.fireDeadline();
     await probe;
     deepStrictEqual(calls, { ready: 0, timeout: 1, sleeps: 0, reads: 1 });
+    // No attempt ever failed, so there is no "last error" — the timeout must
+    // still be a real, descriptive Error rather than a forwarded `undefined`
+    // (that bare value is what Sentry used to receive).
+    const err = timeoutError();
+    ok(err instanceof ProvisioningTimeoutError);
+    strictEqual(err.heldOpen, true);
+    strictEqual(err.cause, undefined);
+    ok(err.message.includes("never answered"), err.message);
   });
 
   it("stops silently when the entry is retired mid-loop", async () => {
