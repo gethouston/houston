@@ -134,3 +134,27 @@ test("the sweep incident is tracked apart from per-provider failures", () => {
     "[serve] control plane reachable again",
   );
 });
+
+test("a dead central credential NEVER logs an error (user state, not incident)", () => {
+  const detail =
+    '500: {"error":"credential gateway GET github-copilot reported a dead credential"}';
+  logServeProbeFailure("github-copilot", detail);
+  logServeProbeFailure("github-copilot", detail);
+  expect(error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledTimes(2);
+  // Reconnecting re-arms the transition tracking like any recovery.
+  noteServeProbeOk("github-copilot");
+  expect(info).toHaveBeenCalledWith(
+    "[serve] credential github-copilot recovered",
+  );
+});
+
+test("a dead-credential group in a sweep stays at warning level per provider", () => {
+  const detail = "500: dead credential";
+  logServeProbeFailures([
+    { id: "github-copilot", detail },
+    { id: "google", detail },
+  ]);
+  expect(error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledTimes(2);
+});

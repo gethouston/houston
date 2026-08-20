@@ -381,5 +381,9 @@ test("a fencing loss latches once, halts scheduling, and skips the final drain",
     entry.message.includes("write fencing lost"),
   );
   expect(fencingLogs).toHaveLength(1);
-  expect(fencingLogs[0]?.err).toBeInstanceOf(StoreFencedError);
+  // Info-level breadcrumb, not an error: fencing loss is a designed lifecycle
+  // outcome, so the log must not carry the error object (the severity log
+  // routes any entry WITH an error to Sentry as an error event).
+  expect(fencingLogs[0]?.err).toBeUndefined();
+  expect(fencingLogs[0]?.message).toContain("lease lost");
 });

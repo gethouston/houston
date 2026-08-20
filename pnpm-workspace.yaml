@@ -21,4 +21,5 @@ overrides:
   "gaxios>uuid": "^11.1.1"
   "teeny-request>uuid": "^11.1.1"
 patchedDependencies:
+  '@earendil-works/pi-ai@0.84.2': patches/@earendil-works__pi-ai@0.84.2.patch
   '@executor-js/sdk@1.5.37': patches/@executor-js__sdk@1.5.37.patch

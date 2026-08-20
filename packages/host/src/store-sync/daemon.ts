@@ -180,9 +180,12 @@ export class StoreSyncDaemon {
     this.dirty = false;
     this.rerunRequested = false;
     this.stopScheduling();
+    // No error object: fencing loss is a DESIGNED lifecycle outcome (a newer
+    // boot owns the prefix — setup pods are superseded routinely) and the
+    // halt is the correct response. Passing `err` made every takeover a
+    // Sentry error via the severity log's failure channel.
     this.opts.log(
-      "[store-sync] write fencing lost: another pod owns this agent's store; halting sync",
-      err,
+      `[store-sync] write fencing lost: another pod owns this agent's store; halting sync (${err.message})`,
     );
   }
 
