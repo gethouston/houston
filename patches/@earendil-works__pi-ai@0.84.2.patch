@@ -1,0 +1,17 @@
+diff --git a/dist/api/google-shared.js b/dist/api/google-shared.js
+index dcf5c60f53a8579894d6f2d18f2c565a84ea8a89..058015f04d048841ecbd19cba8b6ac6e887eb10f 100644
+--- a/dist/api/google-shared.js
++++ b/dist/api/google-shared.js
+@@ -337,8 +337,10 @@ export function mapStopReason(reason) {
+         case FinishReason.NO_IMAGE:
+             return "error";
+         default: {
+-            const _exhaustive = reason;
+-            throw new Error(`Unhandled stop reason: ${_exhaustive}`);
++            // Gemini adds FinishReason values faster than the SDK enum ships
++            // (MALFORMED_RESPONSE, observed 2026-08): an unknown reason is an
++            // error stop, never a crash of the whole turn pipeline.
++            return "error";
+         }
+     }
+ }

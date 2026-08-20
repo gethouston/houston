@@ -17,7 +17,23 @@ const lastFailureDetail = new Map<string, string>();
  */
 const SWEEP_KEY = "*";
 
+/**
+ * A gateway answer that is a USER state, not an engine incident: the central
+ * credential is DEAD (revoked upstream, refresh permanently failed) and only
+ * a user reconnect revives it. The transition-dedup map is per-process, so a
+ * wake/sleep-cycling pod re-logged the same dead credential as a fresh error
+ * on every boot — 41 Sentry errors in a day for one disconnected provider.
+ */
+const EXPECTED_DETAIL = /dead credential/;
+
 export function logServeProbeFailure(provider: string, detail: string): void {
+  if (EXPECTED_DETAIL.test(detail)) {
+    lastFailureDetail.set(provider, detail);
+    console.warn(
+      `[serve] credential ${provider} dead centrally (user reconnect required): ${detail}`,
+    );
+    return;
+  }
   if (lastFailureDetail.get(provider) === detail) {
     console.warn(`[serve] credential ${provider} still failing: ${detail}`);
     return;
@@ -63,8 +79,8 @@ export function logServeProbeFailures(
   }
   for (const [detail, ids] of byDetail) {
     const lone = ids.length === 1 ? ids[0] : undefined;
-    if (lone !== undefined) {
-      logServeProbeFailure(lone, detail);
+    if (lone !== undefined || EXPECTED_DETAIL.test(detail)) {
+      for (const id of ids) logServeProbeFailure(id, detail);
       continue;
     }
     const group = `credential probes for ${ids.join(", ")}`;
