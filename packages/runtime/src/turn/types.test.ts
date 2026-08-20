@@ -132,3 +132,26 @@ test("parseTurnRequest carries the hosted turn context and rejects non-strings",
     "invalid 'userContext'",
   );
 });
+
+const ROUTINE_BASE = {
+  ...BASE,
+  text: "",
+  hostToken: "ht",
+  claim: {
+    id: "cl1",
+    bootId: "b1",
+    token: "t1",
+    heartbeatUrl: "http://127.0.0.1/hb",
+  },
+  routine: { id: "r1" },
+};
+
+test("a routine turn may omit text (the worker derives the prompt)", () => {
+  expect(parseTurnRequest(ROUTINE_BASE).routine).toEqual({ id: "r1" });
+});
+
+test("a non-routine turn still requires text", () => {
+  expect(() => parseTurnRequest({ ...BASE, text: "" })).toThrow(
+    /missing 'text'/,
+  );
+});
