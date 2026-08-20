@@ -1,6 +1,7 @@
 import { expect, test, vi } from "vitest";
 import {
   describeProbeError,
+  normalizeProbeDetail,
   PROBE_CONCURRENCY,
   probeProvider,
   probeProviders,
@@ -104,6 +105,25 @@ test("probeProviders caps concurrency and preserves order", async () => {
   expect(peak).toBeLessThanOrEqual(PROBE_CONCURRENCY);
   expect(peak).toBeGreaterThan(1); // still concurrent, not serial
   expect(results.map((p) => p.id)).toEqual(ids);
+});
+
+test("normalizeProbeDetail replaces every echo of the probe's own provider id", () => {
+  // PRODUCT-1443: the host's error body names the provider ("credential
+  // gateway GET qwen failed (500)"), which made every probe's detail unique
+  // and defeated the sweep collapses. The id appears in the gateway path AND
+  // in nested error text — all occurrences must normalize.
+  expect(
+    normalizeProbeDetail(
+      "qwen",
+      'credential gateway GET qwen failed (500): {"error":"qwen gateway error"}',
+    ),
+  ).toBe(
+    'credential gateway GET <provider> failed (500): {"error":"<provider> gateway error"}',
+  );
+  // A body that never mentions the id passes through untouched.
+  expect(normalizeProbeDetail("qwen", '{"error":"gateway error"}')).toBe(
+    '{"error":"gateway error"}',
+  );
 });
 
 test("describeProbeError surfaces the nested undici cause code", () => {

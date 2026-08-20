@@ -909,6 +909,93 @@ test("probes caught by ONE gateway blip mid-sweep log ONE error, not one per pro
   }
 }, 30_000);
 
+test("a full-sweep gateway outage whose bodies echo each provider id logs ONE error (PRODUCT-1443)", async () => {
+  // The HOUSTON-APP-4YV residual: a gateway outage answers EVERY probe
+  // `500: {"error":"credential gateway GET <id> failed (500): …"}`. The echoed
+  // provider id made every detail unique, so neither the PRODUCT-1399 uniform
+  // collapse nor the PRODUCT-1423 group collapse fired — one blip stayed 41
+  // Sentry events. Normalizing the probe's own id out of the detail
+  // (serve-probe.ts) makes the sweep uniform again.
+  resetServeProbeLog();
+  const gatewayBody = (provider: string) =>
+    JSON.stringify({
+      error: `credential gateway GET ${provider} failed (500): {"error":"gateway error"}`,
+    });
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider") ?? "";
+    return new Response(gatewayBody(provider), { status: 500 });
+  }) as unknown as typeof globalThis.fetch;
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const serveErrors = () =>
+    errors.mock.calls
+      .map((c) => String(c[0]))
+      .filter((m) => m.startsWith("[serve]"));
+  try {
+    await withServeMode(fetchImpl, async () => {
+      const providerCount = new Set([
+        ...PROVIDERS.map((p) => p.id),
+        ...piApiKeyProviderIds(),
+      ]).size;
+      expect(await syncServedCredential()).toEqual([]);
+      expect(serveErrors()).toEqual([
+        `[serve] control plane unreachable for all ${providerCount} providers: 500: ${gatewayBody("<provider>")}`,
+      ]);
+      // The identical repeat stays a WARN breadcrumb, never a second event.
+      expect(await syncServedCredential()).toEqual([]);
+      expect(serveErrors()).toHaveLength(1);
+      expect(
+        warns.mock.calls.some((c) =>
+          String(c[0]).includes("control plane unreachable for all"),
+        ),
+      ).toBe(true);
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+  }
+}, 30_000);
+
+test("mid-sweep gateway 500s with echoed provider ids collapse to one group (PRODUCT-1443)", async () => {
+  // The partial-sweep sibling: only the probes caught by the blip fail, each
+  // with its own id echoed in the body — same detail once normalized, so the
+  // PRODUCT-1423 group collapse fires instead of one event per provider.
+  resetServeProbeLog();
+  const blipped = new Set(["google", "openrouter", "opencode-go"]);
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider && blipped.has(provider))
+      return new Response(
+        JSON.stringify({
+          error: `credential gateway GET ${provider} failed (500): {"error":"gateway error"}`,
+        }),
+        { status: 500 },
+      );
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const serveErrors = () =>
+    errors.mock.calls
+      .map((c) => String(c[0]))
+      .filter((m) => m.startsWith("[serve]"));
+  try {
+    await withServeMode(fetchImpl, async () => {
+      expect(await syncServedCredential()).toEqual([]);
+      expect(serveErrors()).toHaveLength(1);
+      const line = serveErrors()[0] ?? "";
+      expect(line).toMatch(/^\[serve\] credential probes for /);
+      for (const id of blipped) expect(line).toContain(id);
+      expect(line).toContain(
+        'failed alike: 500: {"error":"credential gateway GET <provider> failed (500): ',
+      );
+    });
+  } finally {
+    errors.mockRestore();
+    warns.mockRestore();
+  }
+}, 30_000);
+
 test("selectExportCredential without a provider falls back to the first OAuth credential", () => {
   const auth: Record<string, PiCred> = {
     "openai-codex": oauth("AT-codex", "RT-codex"),
