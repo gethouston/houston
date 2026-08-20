@@ -16,6 +16,11 @@ test("viewForPath matches exactly the three view routes", () => {
     agentId: "a1",
     family: "custom_definitions",
   });
+  expect(viewForPath("/agents/a1/skills")).toEqual({
+    agentId: "a1",
+    family: "skills",
+  });
+  expect(viewForPath("/agents/a1/skills/my-skill")).toBeNull();
   expect(viewForPath("/agents/a1/providers/openai")).toBeNull();
   expect(viewForPath("/agents/a1/conversations")).toBeNull();
   expect(viewForPath("/providers")).toBeNull();
