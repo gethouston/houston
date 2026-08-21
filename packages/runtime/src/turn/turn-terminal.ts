@@ -2,15 +2,23 @@ import type { WireFrame } from "@houston/runtime-client";
 import type { TurnSetupError } from "./turn-layout";
 import type { TurnOutcome } from "./turn-session";
 
-/** Build the durable terminal frame after sync-back completes. */
+/**
+ * Build the durable terminal frame after sync-back completes. `changed` lists
+ * the domain events the landed writes imply; the gateway fans them out to
+ * every member's /v1/events, the pod-event parity for a worker-run turn. It
+ * rides the error frame too: a provider failure after a durable tool write
+ * still changed what other tabs show.
+ */
 export function turnTerminalFrame(
   outcome: TurnOutcome,
   turnId: string,
   poolWritesOutOfScope: number,
   transcriptSkipped?: "route_absent",
   activityDocSkipped?: "route_absent",
+  changed: readonly string[] = [],
 ): WireFrame {
   const fields = {
+    ...(changed.length > 0 ? { changed } : {}),
     ...(poolWritesOutOfScope > 0 ? { poolWritesOutOfScope } : {}),
     ...(transcriptSkipped ? { transcriptSkipped } : {}),
     ...(activityDocSkipped ? { activityDocSkipped } : {}),
