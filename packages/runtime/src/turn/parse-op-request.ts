@@ -42,9 +42,10 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
 // The op-route shapes (mirrors the Go classifier): the agent-data families,
 // agentfile writes, and skills (install + manage), never a runtime path.
 const OP_ROUTE =
-  /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^skills\/(community|repo)\/install$|^files(\/(download|archive|read|import|move|rename|folder))?$|^attachments$|^skills-manifest$/;
-const READ_ROUTE =
-  /^files(\/(download|archive|read))?$|^agentfile\/|^skills-manifest$/;
+  /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^skills\/(community|repo)\/install$|^files(\/.+)?$|^attachments$|^skills-manifest$/;
+// Any files/* shape reads through the handler (it owns the 404 for an
+// unknown one), never a write.
+const READ_ROUTE = /^files(\/.+)?$|^agentfile\/|^skills-manifest$/;
 
 function parseActing(raw: unknown): TurnRequest["actingAs"] {
   if (!raw || typeof raw !== "object") return undefined;
@@ -108,10 +109,23 @@ export function parseOpRequest(body: unknown): OpRequest {
       // Defense in depth: the worker accepts only the op-route shapes the
       // gateway classifier dispatches — a valid-token caller cannot reach a
       // handler surface (e.g. POST agentfile) the public path never exposes.
-      if (!OP_ROUTE.test(rest)) throw new Error("op.rest is not an op route");
+      // Match the DECODED path: the handlers decode, so the allowlist must
+      // see what they see (`%2Ehouston` is `.houston`).
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(rest);
+      } catch {
+        throw new Error("invalid 'op.rest'");
+      }
+      if (decoded.includes("..") || decoded.startsWith("/")) {
+        throw new Error("invalid 'op.rest'");
+      }
+      if (!OP_ROUTE.test(decoded)) {
+        throw new Error("op.rest is not an op route");
+      }
       // Reads run as ops only where the gateway has no doc to serve them
       // from: the Files tab and arbitrary agent files.
-      if (method === "GET" && !READ_ROUTE.test(rest)) {
+      if (method === "GET" && !READ_ROUTE.test(decoded)) {
         throw new Error("op.rest is not a read op route");
       }
       const query =

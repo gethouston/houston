@@ -111,20 +111,38 @@ export async function executeOp(
         filesystem.manifest,
         { include: result.include },
       );
-      // Any object that did not durably persist means the op cannot be
-      // reported ok: out of scope (dropped), a size rejection (skipped), or a
-      // generation conflict that survived the refreshed retry. Decline so the
-      // gateway proxies and the pod re-applies from the synced tree — never
-      // answer ok on a lost write.
-      if (
+      const landed = synced.uploaded.length + synced.deleted.length > 0;
+      const partial =
         synced.outOfScope > 0 ||
         synced.skipped.length > 0 ||
-        synced.conflicts.length > 0
-      ) {
+        synced.conflicts.length > 0;
+      if (partial) {
         console.error(
-          `[op] not durably synced; declining: outOfScope=${synced.outOfScope} skipped=${synced.skipped.length} conflicts=${synced.conflicts.length} prefix=${resolved.prefix} kind=${op.op.kind}`,
+          `[op] not durably synced: outOfScope=${synced.outOfScope} skipped=${synced.skipped.length} conflicts=${synced.conflicts.length} landed=${landed} prefix=${resolved.prefix} kind=${op.op.kind}`,
         );
-        return json(res, 200, { ok: true, decline: true });
+        // NOTHING landed: declining is safe — the gateway proxies and the
+        // pod applies the write from an unchanged tree.
+        if (!landed) return json(res, 200, { ok: true, decline: true });
+        // A file the store refuses (over its per-object cap) can never
+        // persist anywhere — the pod would silently fail the same way.
+        // Tell the user; the client does not retry a 413.
+        if (synced.skipped.length > 0) {
+          return json(res, 200, {
+            ok: true,
+            status: 413,
+            contentType: "application/json",
+            body: JSON.stringify({
+              error: "file too large to store",
+              files: synced.skipped.map((s) => s.key),
+            }),
+            events: [],
+          });
+        }
+        // Something landed and something conflicted: the write is PARTLY
+        // durable. Re-running it on the pod would duplicate the part that
+        // landed (a routine create mints a fresh id); the client must be
+        // told the result is unknown instead.
+        return json(res, 200, { ok: true, ambiguous: true });
       }
       if (result.status < 300) {
         const failures = await republish(deps, turnLike, filesystem, result);
@@ -132,13 +150,13 @@ export async function executeOp(
           failures.push(...(await opTranscriptMirror(deps, turnLike, op.op)));
         }
         if (failures.length > 0) {
-          // The files landed but a doc/transcript projection did not: the
-          // asleep read path would serve a stale doc the next read-modify-
-          // write clobbers. Decline; the pod re-projects on wake.
+          // The files ARE durable; only a doc/transcript projection lagged.
+          // Never re-run (duplicates) — answer the handler's status and make
+          // the gap loud: the next op's republish or the pod's wake-time
+          // projector re-projects from the files.
           console.error(
-            `[op] projection failed; declining: ${failures.join("; ")} prefix=${resolved.prefix}`,
+            `[op] projection failed after a durable sync (asleep reads may lag until the next projection): ${failures.join("; ")} prefix=${resolved.prefix}`,
           );
-          return json(res, 200, { ok: true, decline: true });
         }
       }
     }

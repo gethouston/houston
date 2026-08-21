@@ -229,10 +229,12 @@ test("a file download relays binary bytes base64 with its headers", async () => 
     }),
   );
   expect(json.status).toBe(200);
-  const body = json.bodyBase64
-    ? Buffer.from(json.bodyBase64 as string, "base64").toString("utf8")
-    : (json.body as string);
-  expect(body).toBe("a,b\n1,2\n");
+  // Always base64 on a download — byte-exact, whatever the MIME.
+  expect(typeof json.bodyBase64).toBe("string");
+  expect(json.body).toBe("");
+  expect(
+    Buffer.from(json.bodyBase64 as string, "base64").toString("utf8"),
+  ).toBe("a,b\n1,2\n");
   expect(
     String(
       (json.headers as Record<string, string> | undefined)?.[

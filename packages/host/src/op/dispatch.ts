@@ -57,11 +57,7 @@ export interface AgentOpResponse {
 // relayed byte-exact (a Latin-1 CSV through `response.text()` would be
 // re-encoded), so every non-JSON body rides base64.
 const TEXT_BODY = /^application\/json/i;
-const RELAYED_HEADERS = [
-  "content-disposition",
-  "cache-control",
-  "etag",
-] as const;
+const RELAYED_HEADERS = ["content-disposition", "cache-control"] as const;
 
 /**
  * Dispatch one op against `workspacesRoot` (the hydrated `workspaces/` dir)
@@ -177,7 +173,10 @@ export async function dispatchAgentOp(opts: {
       if (value) headers[name] = value;
     }
     const relayed = Object.keys(headers).length > 0 ? { headers } : {};
-    if (TEXT_BODY.test(contentType)) {
+    // A download/archive is always bytes, whatever its MIME (a `.json` file
+    // is `application/json` too); everything else is the handler's own JSON.
+    const binaryRoute = /^files\/(download|archive)$/.test(rest);
+    if (!binaryRoute && TEXT_BODY.test(contentType)) {
       return {
         status: response.status,
         contentType,

@@ -95,7 +95,9 @@ export function createTurnServer(deps: TurnServerDeps): Server {
         // turn, a fraction of the work. The cap is the Files import cap plus
         // envelope headroom: an upload rides the op exactly as it rides the
         // pod (base64 JSON), and the pod reads it with the same limit.
-        const body = await readJson(req, OP_BODY_MAX_BYTES);
+        // Admission BEFORE the body is drained: the cap is ~135 MiB, so N
+        // parked uploads must not buffer N bodies on a worker that runs one
+        // op at a time. A refused request never reads its body.
         const releaseOp = admission.tryAcquire();
         if (!releaseOp) {
           return json(
@@ -106,6 +108,7 @@ export function createTurnServer(deps: TurnServerDeps): Server {
           );
         }
         try {
+          const body = await readJson(req, OP_BODY_MAX_BYTES);
           await executeOp(deps, req, res, body);
         } finally {
           releaseOp();
