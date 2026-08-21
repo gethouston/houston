@@ -48,7 +48,10 @@ export function poolIdentity(gcsPrefix: string): {
 
 /** Select claim-backed HTTP storage or preserve the configured legacy store. */
 export function resolveTurnStore(
-  turn: TurnRequest,
+  turn: Pick<
+    TurnRequest,
+    "gcsPrefix" | "claim" | "hostToken" | "conversationId"
+  >,
   fallback: ObjectStore,
   config: TurnStoreConfig = {},
 ): ResolvedTurnStore {

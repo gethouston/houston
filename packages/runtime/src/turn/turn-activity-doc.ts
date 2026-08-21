@@ -19,8 +19,9 @@ export type ActivityDocPublishResult =
   | { disabled: true; reason: "route_absent" }
   | { error: string };
 
-interface ActivityDocOptions {
-  family: "activity" | "routine_runs";
+export interface ActivityDocOptions {
+  /** Any family or view the pod-store admits (validDocFamily). */
+  family: string;
   baseUrl: string;
   org: string;
   agent: string;
@@ -122,7 +123,7 @@ async function acceptPut(
   return { ok: true };
 }
 
-async function publish(
+export async function publish(
   opts: ActivityDocOptions,
   doc: unknown,
 ): Promise<ActivityDocPublishResult> {

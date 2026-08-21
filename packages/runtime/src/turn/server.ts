@@ -6,6 +6,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { AdmissionLimiter, turnConcurrency } from "./admission";
+import { executeOp } from "./execute-op";
 import { executeTurn } from "./execute-turn";
 import { parseTurnRequest } from "./parse-turn-request";
 import type { TurnServerDeps } from "./server-types";
@@ -72,7 +73,7 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       if (req.method === "GET" && path === "/health") {
         return json(res, 200, { status: "ok", mode: "turn" });
       }
-      if (req.method !== "POST" || path !== "/turn") {
+      if (req.method !== "POST" || (path !== "/turn" && path !== "/op")) {
         return json(res, 404, { error: "not found" });
       }
       if (!authorized(req, deps.token)) {
@@ -85,6 +86,27 @@ export function createTurnServer(deps: TurnServerDeps): Server {
           { error: "worker_draining" },
           { "Retry-After": "1" },
         );
+      }
+      if (path === "/op") {
+        // A write for a sleeping agent (docs/op): same auth + admission as a
+        // turn, a fraction of the work. 4 MiB: an agentfile PUT carries the
+        // file body inline (the app's upload cap), well above every JSON op.
+        const body = await readJson(req, 4 * 1024 * 1024);
+        const releaseOp = admission.tryAcquire();
+        if (!releaseOp) {
+          return json(
+            res,
+            503,
+            { error: "worker_full" },
+            { "Retry-After": "1" },
+          );
+        }
+        try {
+          await executeOp(deps, req, res, body);
+        } finally {
+          releaseOp();
+        }
+        return;
       }
       let turn: TurnRequest;
       try {
