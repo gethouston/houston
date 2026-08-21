@@ -131,7 +131,8 @@
       "outOfCredits": "Sem créditos",
       "checking": "Verificando",
       "connect": "Conectar {{provider}}",
-      "runsAsCreator": "Roda na conta de quem criou a rotina"
+      "runsAsCreator": "Roda na conta de quem criou a rotina",
+      "runsAsCreatorProvider": "Roda na conta de {{provider}} de quem criou a rotina"
     },
     "failure": {
       "creatorNotConnected": "Quem criou a rotina não tem uma conta {{provider}} conectada.",

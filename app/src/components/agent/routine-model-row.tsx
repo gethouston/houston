@@ -14,6 +14,7 @@ import type { Routine } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { useRoutineModelResolution } from "../../hooks/use-routine-model-resolution";
 import { useRoutineProviderHealth } from "../../hooks/use-routine-provider-health";
+import { providerName } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
 import { RoutineModelSelector } from "./routine-model-selector";
 import { RoutineProviderHealthBadge } from "./routine-provider-health-badge";
@@ -47,7 +48,11 @@ export function RoutineModelRow({
       )}
       {runsAsCreator && (
         <p className="text-xs text-ink-muted">
-          {t("details.health.runsAsCreator")}
+          {provider
+            ? t("details.health.runsAsCreatorProvider", {
+                provider: providerName(provider),
+              })
+            : t("details.health.runsAsCreator")}
         </p>
       )}
     </div>

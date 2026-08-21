@@ -131,7 +131,8 @@
       "outOfCredits": "Sin créditos",
       "checking": "Comprobando",
       "connect": "Conectar {{provider}}",
-      "runsAsCreator": "Se ejecuta en la cuenta de quien la creó"
+      "runsAsCreator": "Se ejecuta en la cuenta de quien la creó",
+      "runsAsCreatorProvider": "Se ejecuta en la cuenta de {{provider}} de quien la creó"
     },
     "failure": {
       "creatorNotConnected": "Quien creó la rutina no tiene una cuenta de {{provider}} conectada.",

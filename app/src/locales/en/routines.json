@@ -131,7 +131,8 @@
       "outOfCredits": "Out of credits",
       "checking": "Checking",
       "connect": "Connect {{provider}}",
-      "runsAsCreator": "Runs on the creator's connected account"
+      "runsAsCreator": "Runs on the creator's connected account",
+      "runsAsCreatorProvider": "Runs on the creator's {{provider}} account"
     },
     "failure": {
       "creatorNotConnected": "The routine's creator has no {{provider}} account connected.",
