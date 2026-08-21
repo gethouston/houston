@@ -179,6 +179,10 @@ export async function executeOp(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // Loud: a 500 here is the gateway's "worker_500" with no other trace.
+    console.error(
+      `[op] failed kind=${op.op.kind} ${op.op.kind === "route" ? `${op.op.method} ${op.op.rest}` : ""}: ${message}`,
+    );
     if (!res.headersSent) json(res, 500, { error: message });
   } finally {
     try {

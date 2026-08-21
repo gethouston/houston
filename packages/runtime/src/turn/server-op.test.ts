@@ -199,10 +199,14 @@ test("a files list runs as a READ op: no sync-back, runtime tree not hydrated", 
   );
   const { json } = await postOp(
     base,
+    // The gateway's exact envelope: an empty-string body + a content type
+    // ride along on EVERY route op, GET included.
     opBody(agentId, await heartbeatOK(), {
       kind: "route",
       method: "GET",
       rest: "files",
+      body: "",
+      contentType: "application/json",
     }),
   );
   expect(json.status).toBe(200);
