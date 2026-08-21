@@ -156,6 +156,21 @@ export interface Capabilities {
    * enforcer (owner of a solo team with no live subscription).
    */
   workspaceDelete?: boolean;
+  /**
+   * Whether this deployment keeps an account-level agent-config library
+   * (`GET /v1/agent-configs`, PRODUCT-1474). The hosted gateway says `false`
+   * (one pod per agent, no shared disk) so the client skips the read instead
+   * of discovering the missing route by 404; absent on deployments that
+   * predate the flag, where the client keeps the legacy probe.
+   */
+  agentConfigLibrary?: boolean;
+  /**
+   * Whether this deployment accepts the caller's session token at
+   * `PUT /v1/integrations/session` (PRODUCT-1474). `false` on the hosted
+   * gateway, which verifies JWTs itself; `true` on a self-host engine that
+   * forwards integration calls with the pushed session. Absent → legacy probe.
+   */
+  integrationSessionSink?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------

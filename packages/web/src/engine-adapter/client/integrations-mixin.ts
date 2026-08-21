@@ -1,5 +1,6 @@
 import { EngineError } from "@houston/runtime-client";
 import * as controlPlane from "../control-plane";
+import { deploymentServes } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
 
 export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -13,6 +14,10 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async setIntegrationSession(token: string | null): Promise<void> {
       if (!this.ctx.cp) return;
+      // The hosted gateway advertises `integrationSessionSink: false` — it
+      // verifies JWTs itself — so the push is skipped; the 404 swallow below
+      // stays for deployments that predate the flag (PRODUCT-1474).
+      if (!(await deploymentServes(this.ctx, "integrationSessionSink"))) return;
       // SDK delegates the byte-identical PUT /v1/integrations/session. The SDK
       // PROPAGATES a 404; web must keep swallowing it — a deployment with no
       // gateway session sink (the cloud host verifies JWTs itself, self-host /

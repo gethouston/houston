@@ -191,17 +191,23 @@ test("disconnectIntegration delegates a byte-identical POST .../disconnect", asy
   expect(calls[0].body).toBe(JSON.stringify({ toolkit: "gmail" }));
 });
 
+// The adapter first asks /v1/capabilities whether the deployment has a
+// session sink (PRODUCT-1474); a deployment that does not say `false` gets the
+// legacy PUT.
 test("setIntegrationSession delegates a byte-identical PUT .../session", async () => {
-  stubFetch(json(200, {}));
+  stubFetch(json(200, { profile: "local" }), json(200, {}));
   await client().setIntegrationSession("tok");
-  expect(calls).toHaveLength(1);
-  expect(calls[0].method).toBe("PUT");
-  expect(calls[0].url).toBe(`${BASE}/v1/integrations/session`);
-  expect(calls[0].body).toBe(JSON.stringify({ token: "tok" }));
+  expect(calls).toHaveLength(2);
+  expect(calls[1].method).toBe("PUT");
+  expect(calls[1].url).toBe(`${BASE}/v1/integrations/session`);
+  expect(calls[1].body).toBe(JSON.stringify({ token: "tok" }));
 });
 
 test("setIntegrationSession swallows a 404 (deployment with no session sink)", async () => {
-  stubFetch(json(404, { error: "no session sink" }));
+  stubFetch(
+    json(200, { profile: "local" }),
+    json(404, { error: "no session sink" }),
+  );
   await expect(client().setIntegrationSession("tok")).resolves.toBeUndefined();
 });
 

@@ -157,3 +157,81 @@ test("every other /v1/me/profile failure still propagates — never swallowed", 
     "profile exploded (engine error 500)",
   );
 });
+
+// PRODUCT-1474: the deployment SAYS which of these routes it serves, so the
+// client stops discovering the gap by 404. Absent flag = legacy probe.
+
+test("agentConfigLibrary:false skips /v1/agent-configs entirely", async () => {
+  const calls = stubFetch(
+    json(200, { profile: "cloud", agentConfigLibrary: false }),
+  );
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+
+  await expect(client.listInstalledConfigs()).resolves.toEqual([]);
+
+  expect(calls).toEqual(["https://gateway.example/v1/capabilities"]);
+});
+
+test("integrationSessionSink:false skips PUT /v1/integrations/session", async () => {
+  const calls = stubFetch(
+    json(200, { profile: "cloud", integrationSessionSink: false }),
+  );
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+
+  await expect(client.setIntegrationSession("tok")).resolves.toBeUndefined();
+
+  expect(calls).toEqual(["https://gateway.example/v1/capabilities"]);
+});
+
+test("the deployment flags are probed once per client, not per call", async () => {
+  const calls = stubFetch(
+    json(200, {
+      profile: "cloud",
+      agentConfigLibrary: false,
+      integrationSessionSink: false,
+    }),
+  );
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+
+  await client.listInstalledConfigs();
+  await client.setIntegrationSession("tok");
+  await client.listInstalledConfigs();
+
+  expect(calls).toEqual(["https://gateway.example/v1/capabilities"]);
+});
+
+test("an absent flag keeps the legacy probe: the route is tried and its 404 still swallowed", async () => {
+  const calls = stubFetch(
+    json(200, { profile: "cloud" }),
+    json(404, { error: "not found" }),
+    json(404, { error: "not found" }),
+  );
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+
+  await expect(client.listInstalledConfigs()).resolves.toEqual([]);
+  await expect(client.setIntegrationSession("tok")).resolves.toBeUndefined();
+
+  expect(calls).toEqual([
+    "https://gateway.example/v1/capabilities",
+    "https://gateway.example/v1/agent-configs",
+    "https://gateway.example/v1/integrations/session",
+  ]);
+});
+
+test("a failed capabilities probe falls back to the legacy path and re-probes next call", async () => {
+  const calls = stubFetch(
+    json(500, { error: "boom" }),
+    json(200, []),
+    json(200, { profile: "cloud", agentConfigLibrary: false }),
+  );
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
+
+  await expect(client.listInstalledConfigs()).resolves.toEqual([]);
+  await expect(client.listInstalledConfigs()).resolves.toEqual([]);
+
+  expect(calls).toEqual([
+    "https://gateway.example/v1/capabilities",
+    "https://gateway.example/v1/agent-configs",
+    "https://gateway.example/v1/capabilities",
+  ]);
+});
