@@ -1,6 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { docKey } from "@houston/domain";
+import { MAX_UPLOAD_BYTES } from "@houston/host/src/turn/files-import";
+import { FsVfs, LazyStoreVfs, type Vfs } from "@houston/host/src/vfs";
 import {
   DEFAULT_EXCLUDES,
   HydrateLimitError,
@@ -21,7 +23,15 @@ export const TURN_HYDRATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 /** Hydrated manifest paired with the resolved on-disk layout. */
 export interface TurnFilesystem extends TurnLayout {
   storeRoot: string;
+  /** Sync-back ownership: objects on disk (and, lazily, objects owned
+   *  without a download). A lazy tree grows this as handlers read. */
   manifest: HydrateManifest;
+  /** Reads rooted at `storeRoot`: the real tree when hydrated, the
+   *  store-backed overlay when lazy. Readers that may touch an object the
+   *  op did not materialize (doc republish) go through this, never `fs`. */
+  vfs: Vfs;
+  /** Remote objects the lazy listing knows about (diagnostics). */
+  listedObjects: number;
 }
 
 /**
@@ -39,18 +49,56 @@ export async function prepareTurnFilesystem(opts: {
   /** Extra hydrate excludes (on top of the defaults), e.g. the runtime tree
    *  for an op that never reads conversations. */
   excludes?: string[];
+  /** Per-object hot-set admission on top of the excludes. */
+  filter?: (rel: string) => boolean;
+  /**
+   * Download nothing up front: list the store, lay out the agent's
+   * directory skeleton, and serve reads through a store-backed vfs that
+   * materializes one object on first touch. Needs a store with a manifest
+   * (a legacy list-only store hydrates eagerly). Only for handlers that
+   * read through the vfs port; a turn's tools read the real filesystem.
+   */
+  lazy?: boolean;
 }): Promise<TurnFilesystem> {
   const storeRoot = join(opts.root, "store");
   await mkdir(storeRoot, { recursive: true });
+  const excludes = opts.excludes
+    ? [...DEFAULT_EXCLUDES, ...opts.excludes]
+    : DEFAULT_EXCLUDES;
+  if (opts.lazy && opts.store.manifest) {
+    const objects = await opts.store.manifest(opts.prefix);
+    const manifest: HydrateManifest = new Map();
+    const vfs = new LazyStoreVfs({
+      store: opts.store,
+      prefix: opts.prefix,
+      root: storeRoot,
+      objects,
+      manifest,
+      excludes,
+      maxObjectBytes: MAX_UPLOAD_BYTES,
+    });
+    await layoutSkeleton(
+      storeRoot,
+      objects.map(({ key }) =>
+        opts.prefix ? key.slice(opts.prefix.length + 1) : key,
+      ),
+    );
+    return {
+      ...(await resolveTurnLayout(storeRoot, { allowEmpty: !opts.claimed })),
+      storeRoot,
+      manifest,
+      vfs,
+      listedObjects: objects.length,
+    };
+  }
   const maxBytes =
     opts.maxBytes ?? (opts.claimed ? TURN_HYDRATE_MAX_BYTES : undefined);
   let manifest: HydrateManifest;
   try {
     manifest = await hydrate(opts.store, opts.prefix, storeRoot, {
       ...(maxBytes !== undefined ? { maxBytes } : {}),
-      ...(opts.excludes
-        ? { excludes: [...DEFAULT_EXCLUDES, ...opts.excludes] }
-        : {}),
+      excludes,
+      ...(opts.filter ? { filter: opts.filter } : {}),
     });
   } catch (error) {
     if (!(error instanceof HydrateLimitError)) throw error;
@@ -60,7 +108,29 @@ export async function prepareTurnFilesystem(opts: {
     ...(await resolveTurnLayout(storeRoot, { allowEmpty: !opts.claimed })),
     storeRoot,
     manifest,
+    vfs: new FsVfs(storeRoot),
+    listedObjects: manifest.size,
   };
+}
+
+/**
+ * The directories the layout resolver and the host's agent lookup key on,
+ * without a single download: `workspaces/<ws>/<agent>` for the standing
+ * layout, `data` / `workspace` for the per-turn one. Deeper directories
+ * appear as objects materialize.
+ */
+async function layoutSkeleton(storeRoot: string, rels: string[]) {
+  const dirs = new Set<string>();
+  for (const rel of rels) {
+    const segments = rel.split("/");
+    const depth = segments[0] === "workspaces" ? 3 : 1;
+    if (segments.length > depth) dirs.add(segments.slice(0, depth).join("/"));
+  }
+  await Promise.all(
+    [...dirs].map((dir) =>
+      mkdir(join(storeRoot, ...dir.split("/")), { recursive: true }),
+    ),
+  );
 }
 
 /** Build the exact conversation, session, and activity-doc write scope. */

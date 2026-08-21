@@ -1,6 +1,6 @@
-import { rm } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { dispatchAgentOp } from "@houston/host/src/op/dispatch";
+import { PrefixedVfs } from "@houston/host/src/vfs";
 import type { HoustonEvent } from "@houston/protocol";
 import { applyServedCredential } from "../auth/auth-file";
 import { generateTitle } from "../session/summarize";
@@ -89,9 +89,13 @@ export async function applyOp(
   const agentId = engineAgentId(filesystem);
   switch (op.op.kind) {
     case "route": {
+      // The handlers address the agent under `workspaces/`; the turn's vfs
+      // is rooted one level up (lazy or real, the same seam).
+      const vfs = new PrefixedVfs(filesystem.vfs, "workspaces");
       const result = await dispatchAgentOp({
         workspacesRoot: join(filesystem.storeRoot, "workspaces"),
         agentId,
+        vfs,
         request: {
           method: op.op.method,
           rest: op.op.rest,
@@ -123,6 +127,7 @@ export async function applyOp(
         const view = await dispatchAgentOp({
           workspacesRoot: join(filesystem.storeRoot, "workspaces"),
           agentId,
+          vfs,
           request: {
             method: "GET",
             rest: "skills",
@@ -225,6 +230,16 @@ export async function applyOp(
       const { conversationId, action } = op.op;
       const dir = join(filesystem.dataDir, "conversations");
       const include = conversationScope(filesystem.dataRel, conversationId);
+      // Materialize the one conversation file (a lazy tree downloads it here;
+      // a hydrated one already has it). A missing conversation stays missing
+      // and the mutation below answers 404.
+      await filesystem.vfs.readBytes(
+        posix.join(
+          filesystem.dataRel,
+          "conversations",
+          `${encodeURIComponent(conversationId)}.json`,
+        ),
+      );
       // The runtime's own directory-scoped mutations — the pod's PATCH/DELETE
       // call the same functions against its live data dir.
       const found =
@@ -243,10 +258,11 @@ export async function applyOp(
         };
       }
       if (action === "delete") {
-        await rm(join(filesystem.dataDir, "sessions", conversationId), {
-          recursive: true,
-          force: true,
-        });
+        // Through the vfs so a lazy tree tombstones the session files it
+        // never downloaded (the sync-back then deletes them in the store).
+        await filesystem.vfs.deletePrefix(
+          posix.join(filesystem.dataRel, "sessions", conversationId),
+        );
       }
       return {
         ...json(200, { ok: true }),

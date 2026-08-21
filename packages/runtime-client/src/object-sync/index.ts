@@ -1,3 +1,4 @@
+export { fileSha256 } from "./file-hash";
 export type { HttpObjectStoreOptions } from "./http-store";
 export { HttpObjectStore } from "./http-store";
 export type {

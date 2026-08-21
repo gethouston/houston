@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -24,9 +24,9 @@ import { poolIdentity, resolveTurnStore } from "./turn-store";
 /** Reserved claim key for agent-level writes (gateway + pod-store agree). */
 export const AGENT_OPS_CLAIM_ID = "agent-ops";
 
-/** Route ops skip the AGENT's runtime tree (`workspaces/<ws>/<agent>/
+/** Route ops never see the AGENT's runtime tree (`workspaces/<ws>/<agent>/
  *  .houston/runtime/`) — exactly that depth, so a user project carrying its
- *  own `.houston/runtime` directory is hydrated like any other file. */
+ *  own `.houston/runtime` directory is listed like any other file. */
 const ROUTE_OP_EXCLUDES = ["workspaces/*/*/.houston/runtime/"];
 /** A settings op reads/writes the runtime dir's small files only: skip the
  *  bulk (history, user files); the small .houston docs keep the layout real.
@@ -102,19 +102,23 @@ export async function executeOp(
       ...(deps.maxHydrateBytes !== undefined
         ? { maxBytes: deps.maxHydrateBytes }
         : {}),
-      // Agent-level routes (files, docs, skills) never read the runtime tree
-      // (conversations, sessions) — the bulk of a busy agent. A settings op
-      // needs the runtime dir minus those two. Conversation ops hydrate
-      // everything. A credential op touches no file at all (the gateway's
-      // store is the only write) — it still hydrates the layout so the
-      // agent-exists check holds, with everything but the root excluded.
+      // Agent-level routes (files, docs, skills) and conversation ops run
+      // over a LAZY tree: the store's listing, objects downloaded on first
+      // read — a Files listing or a one-file read costs one round-trip, not
+      // the agent's size, and a rename fetches its one conversation. The
+      // runtime tree (conversations, sessions) is never listed for routes.
+      // A settings op needs the runtime dir minus those two. A credential
+      // op touches no file at all (the gateway's store is the only write)
+      // — it still hydrates the layout so the agent-exists check holds.
       ...(op.op.kind === "route"
-        ? { excludes: ROUTE_OP_EXCLUDES }
-        : op.op.kind === "settings"
-          ? { excludes: SETTINGS_OP_EXCLUDES }
-          : op.op.kind === "credential"
-            ? { excludes: CREDENTIAL_OP_EXCLUDES }
-            : {}),
+        ? { excludes: ROUTE_OP_EXCLUDES, lazy: true }
+        : op.op.kind === "conversation"
+          ? { lazy: true }
+          : op.op.kind === "settings"
+            ? { excludes: SETTINGS_OP_EXCLUDES }
+            : op.op.kind === "credential"
+              ? { excludes: CREDENTIAL_OP_EXCLUDES }
+              : {}),
     });
     const result = await applyOp(op, filesystem, deps.fetchImpl);
     if (result.agentMissing || result.decline) {
@@ -250,12 +254,16 @@ async function republish(
     const key = docKey(filesystem.workspaceRel, family);
     let doc: unknown;
     try {
-      const raw = await readFile(join(filesystem.storeRoot, key), "utf8");
-      doc = normalizeFamily(
-        family,
-        JSON.parse(raw.replace(/^\uFEFF/, "")),
-        key,
-      );
+      // Through the vfs: on a lazy tree the handler may have emitted the
+      // event without the family file being on disk yet — a raw read would
+      // project an EMPTY doc over real data.
+      const raw = await filesystem.vfs.readText(key);
+      doc =
+        raw === null
+          ? family === "config"
+            ? {}
+            : []
+          : normalizeFamily(family, JSON.parse(raw), key);
     } catch {
       doc = family === "config" ? {} : [];
     }

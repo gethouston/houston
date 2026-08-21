@@ -12,6 +12,7 @@ import { piTurnRequest } from "./pi-turn-request";
 import type { TurnServerDeps } from "./server-types";
 import { finishTurnDurability } from "./turn-durability";
 import { prepareTurnFilesystem } from "./turn-filesystem";
+import { ownConversationOnly } from "./turn-hot-set";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
 import {
@@ -71,6 +72,13 @@ export async function executeTurn(
       claimed: Boolean(turn.claim),
       ...(deps.maxHydrateBytes !== undefined
         ? { maxBytes: deps.maxHydrateBytes }
+        : {}),
+      // A pool turn hydrates its own conversation's history only: the other
+      // conversations are the bulk of a busy agent and nothing in a turn
+      // reads them. An unclaimed (legacy per-workspace) runtime keeps the
+      // full tree.
+      ...(turn.claim
+        ? { filter: ownConversationOnly(turn.conversationId) }
         : {}),
     });
     timings.t_hydrated = performance.now();

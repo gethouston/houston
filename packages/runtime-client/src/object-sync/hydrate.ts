@@ -71,6 +71,12 @@ export interface HydrateOptions {
    * 133-object workspace measured 10.5 s sequential vs 0.4 s at 16.
    */
   concurrency?: number;
+  /**
+   * Per-object admission on top of `excludes`: only objects the predicate
+   * accepts are downloaded. Lets a caller hydrate a hot-set (one
+   * conversation's files, not every conversation's) without a glob per id.
+   */
+  filter?: (rel: string) => boolean;
 }
 
 /** The hydrated prefix exceeded the caller's aggregate byte cap. */
@@ -115,6 +121,7 @@ export async function hydrate(
     const { key } = object;
     const rel = prefix ? key.slice(prefix.length + 1) : key;
     if (!rel || excluded(rel, excludes)) continue;
+    if (opts.filter && !opts.filter(rel)) continue;
     entries.push({ key, rel, generation: object.generation });
   }
   // Workers pull from a shared cursor. The first failure (download error or
