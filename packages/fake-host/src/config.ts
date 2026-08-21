@@ -22,6 +22,13 @@ import path from "node:path";
  * The root is found by walking up from cwd to `pnpm-workspace.yaml` — every
  * process that resolves ports (playwright main, its workers, the standalone
  * fake host, vite) runs from somewhere inside the worktree, so they all agree.
+ *
+ * 100 buckets, NOT more: every derived port must stay below 32768, the floor
+ * of Linux's default ephemeral range (net.ipv4.ip_local_port_range). A derived
+ * port inside that range is a flake factory — any earlier `bind(0)` listener
+ * or even the port probe's own self-connect can occupy it, and Playwright's
+ * pre-launch check then dies with "already used" before a single test runs
+ * (CI shard failure on run 32522005259: the runner path hashed to 35620).
  */
 export function worktreePortOffset(startDir: string = process.cwd()): number {
   let dir = path.resolve(startDir);
@@ -34,7 +41,7 @@ export function worktreePortOffset(startDir: string = process.cwd()): number {
   }
   let hash = 5381;
   for (const ch of dir) hash = ((hash * 33) ^ ch.charCodeAt(0)) >>> 0;
-  return hash % 200;
+  return hash % 100;
 }
 
 /** ≥ the per-worker fake-host slots (workers + 1) and the +5 auth vite server,
@@ -45,8 +52,9 @@ export const WORKTREE_PORT_STRIDE = 40;
  * Resolve the fake host's port for the current process.
  *
  * The base port is HOUSTON_E2E_FAKE_HOST_PORT when set, else derived per
- * worktree ({@link worktreePortOffset}) in 28100..36060 — disjoint from the
- * web ports' derived range (packages/web/e2e/config.ts).
+ * worktree ({@link worktreePortOffset}) in 28100..32060 — disjoint from the
+ * web ports' derived range (packages/web/e2e/config.ts) and, with the worker
+ * slots on top (< stride), entirely below the Linux ephemeral-port floor.
  *
  * Playwright sets TEST_PARALLEL_INDEX only inside worker processes, where each
  * parallel slot runs its OWN in-process fake host (e2e/support/fixtures.ts) —

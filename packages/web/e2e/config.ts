@@ -9,7 +9,7 @@
 import { WORKTREE_PORT_STRIDE, worktreePortOffset } from "@houston/fake-host";
 
 /** Vite dev server (packages/web). HOUSTON_E2E_WEB_PORT when set, else derived
- *  per worktree in 20000..27960 (disjoint from the fake host's derived range) —
+ *  per worktree in 20000..23960 (disjoint from the fake host's derived range) —
  *  distinct ports per parallel worktree keep e2e runs from silently reusing a
  *  foreign worktree's server. playwright.config passes the resolved value to
  *  vite explicitly, so the two processes cannot disagree. */
