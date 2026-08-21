@@ -56,10 +56,12 @@ async function heartbeatOK(): Promise<string> {
   );
 }
 
-function opBody(agentId: string, heartbeatUrl: string, op: unknown) {
+function opBody(_agentId: string, heartbeatUrl: string, op: unknown) {
   return {
     workspaceId: "w1",
-    agentId,
+    // The gateway sends the agent SLUG; the worker derives the engine id
+    // ("Personal/Bob") from the hydrated layout.
+    agentId: "agent-1",
     gcsPrefix: "ws/w1/agent-1",
     hostToken: "host-token",
     claim: {

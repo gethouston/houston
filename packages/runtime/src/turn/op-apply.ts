@@ -60,16 +60,27 @@ export function conversationScope(
   return (rel) => rel === file || rel.startsWith(sessions);
 }
 
+/**
+ * The engine's agent id ("Workspace/Agent") from the hydrated layout. The
+ * gateway's envelope names the agent by SLUG; turns never need the engine
+ * id (the layout resolver finds the single agent), but the host handlers
+ * address the agent by its id — so it is derived here, never trusted.
+ */
+export function engineAgentId(filesystem: TurnFilesystem): string {
+  return filesystem.workspaceRel.replace(/^workspaces\//, "");
+}
+
 export async function applyOp(
   op: OpRequest,
   filesystem: TurnFilesystem,
   fetchImpl?: typeof fetch,
 ): Promise<OpResult> {
+  const agentId = engineAgentId(filesystem);
   switch (op.op.kind) {
     case "route": {
       const result = await dispatchAgentOp({
         workspacesRoot: join(filesystem.storeRoot, "workspaces"),
-        agentId: op.agentId,
+        agentId,
         request: {
           method: op.op.method,
           rest: op.op.rest,
@@ -169,7 +180,7 @@ export async function applyOp(
       }
       return {
         ...json(200, { ok: true }),
-        events: [{ type: "ConversationsChanged", agentPath: op.agentId }],
+        events: [{ type: "ConversationsChanged", agentPath: agentId }],
         include,
       };
     }
