@@ -121,8 +121,24 @@
       "cancelled": "Detenida"
     },
     "model": {
-      "inherit": "Modelo del agente",
+      "followsAgent": "Sigue el modelo del agente",
       "reset": "Usar el modelo del agente"
+    },
+    "health": {
+      "connected": "Conectado",
+      "notConnected": "Sin conectar",
+      "needsReconnect": "Hay que volver a conectar",
+      "outOfCredits": "Sin créditos",
+      "checking": "Comprobando",
+      "connect": "Conectar {{provider}}",
+      "runsAsCreator": "Se ejecuta en la cuenta de quien la creó"
+    },
+    "failure": {
+      "creatorNotConnected": "Quien creó la rutina no tiene una cuenta de {{provider}} conectada.",
+      "teamNotConnected": "Este equipo no tiene una cuenta de {{provider}} conectada.",
+      "creatorNeedsReconnect": "Quien creó la rutina tiene que volver a conectar {{provider}}.",
+      "teamNeedsReconnect": "Hay que volver a conectar {{provider}}.",
+      "outOfCredits": "La cuenta de {{provider}} se quedó sin créditos."
     }
   },
   "row": {

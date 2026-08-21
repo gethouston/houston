@@ -62,6 +62,7 @@ export type {
   RoutineEditPatch,
   RoutineFormData,
   RoutineRun,
+  RoutineRunFailure,
   RoutineTriggerBinding,
   RoutineWake,
   RoutineWakeMode,

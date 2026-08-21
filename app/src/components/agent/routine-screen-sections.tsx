@@ -17,7 +17,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import type { Agent } from "../../lib/types";
-import { RoutineModelSelector } from "./routine-model-selector";
+import { RoutineModelRow } from "./routine-model-row";
 
 interface Props {
   agent: Agent;
@@ -134,7 +134,7 @@ export function RoutineScreenSections({
 
       <Section title={t("details.modelTitle")}>
         <div className="self-start">
-          <RoutineModelSelector agent={agent} routine={routine} bordered />
+          <RoutineModelRow agent={agent} routine={routine} />
         </div>
       </Section>
     </div>

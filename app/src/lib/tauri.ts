@@ -23,6 +23,7 @@ import type {
   ProviderStatus as EngineProviderStatus,
   MessageMention,
   ProviderAuthState,
+  ProviderHealth,
   ProviderUsage,
   SkillsManifest,
 } from "@houston-ai/engine-client";
@@ -1517,6 +1518,12 @@ export interface ProviderStatus {
    * reads the shape it always read.
    */
   credentialScope?: CredentialScope;
+  /**
+   * Why the provider is (un)usable for this identity (PRODUCT-1475). Richer
+   * than `authenticated`: `out_of_credits` is a VALID credential with no quota,
+   * so it stays authenticated. Absent from engines that predate it.
+   */
+  health?: ProviderHealth;
 }
 
 /**
@@ -1555,6 +1562,7 @@ export const tauriProvider = {
         // keeps fields it names explicitly, so omitting it would silently
         // swallow which account answered. Absent stays absent.
         credentialScope: p.credentialScope,
+        health: p.health,
       };
     }),
   /**
@@ -1597,6 +1605,7 @@ export const tauriProvider = {
             // path feeds the chat model picker, which is where the account label
             // is actually rendered.
             credentialScope: p.credentialScope,
+            health: p.health,
           };
         });
         return out;
@@ -1618,6 +1627,7 @@ export const tauriProvider = {
             authenticated: status.authState === "authenticated",
             cli_name: status.cliName,
             active_model: status.activeModel,
+            health: status.health,
           };
         });
         return out;

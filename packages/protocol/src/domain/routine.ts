@@ -140,6 +140,29 @@ export type RoutineRunStatus =
   | "error"
   | "cancelled";
 
+/**
+ * Why a routine run failed at the credential level (PRODUCT-1475). A routine
+ * fires on its CREATOR's credential scope, so the person reading the run's
+ * history may have their own account connected and still see it fail — the run
+ * has to name whose account is the problem, and what the remedy is.
+ *
+ * `creator_*` = the routine creator's own account; `team_*` = the space's
+ * single shared account. `out_of_credits` is a VALID credential with no quota
+ * left, which reconnecting would not fix.
+ */
+export type RoutineRunFailureCode =
+  | "creator_not_connected"
+  | "team_not_connected"
+  | "creator_needs_reconnect"
+  | "team_needs_reconnect"
+  | "out_of_credits";
+
+export interface RoutineRunFailure {
+  code: RoutineRunFailureCode;
+  /** The provider id the run needed (e.g. "anthropic"). */
+  provider: string;
+}
+
 export interface RoutineRun {
   id: string;
   routine_id: string;
@@ -151,6 +174,12 @@ export interface RoutineRun {
   completed_at?: string;
   /** Human-readable reset hint while a run sleeps on a usage-limit window. */
   paused_until?: string;
+  /**
+   * The typed credential-level reason an errored run failed. Additive and
+   * optional: a run that failed for any other reason (a timeout, a provider
+   * outage) carries only `summary`, exactly as before.
+   */
+  failure?: RoutineRunFailure;
 }
 
 export interface RoutineRunUpdate {

@@ -6,16 +6,24 @@
  * routine is this" is as load-bearing there as what the routine is called. So
  * the name truncates and the chip never does. A single-agent list passes no
  * chip and the line is exactly the paragraph it always was.
+ *
+ * A second, rarer chip rides the same line: a WARNING the surface supplies when
+ * this routine cannot run as configured (its AI account is disconnected or out
+ * of credits). It sits after the owner chip and, like it, never truncates —
+ * a warning that gets cut off is not a warning.
  */
 import type { ReactNode } from "react";
 
 export function RoutineRowTitle({
   name,
   ownerChip,
+  warningChip,
 }: {
   name: string;
   /** The owning agent's chip, for a list that spans several agents. */
   ownerChip?: ReactNode;
+  /** Surface-supplied warning that this routine cannot run as configured. */
+  warningChip?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-1.5">
@@ -23,6 +31,7 @@ export function RoutineRowTitle({
         {name}
       </p>
       {ownerChip && <span className="shrink-0">{ownerChip}</span>}
+      {warningChip && <span className="shrink-0">{warningChip}</span>}
     </div>
   );
 }

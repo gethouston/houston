@@ -1,15 +1,10 @@
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname } from "node:path";
-import { endpointFileIn, OPENAI_COMPATIBLE } from "../ai/openai-compatible";
-import { claudeCredentialsFile } from "../backends/claude/paths";
-import { config } from "../config";
+import { currentCredentialScope } from "../session/acting-context";
+import { credentialFingerprint } from "./credential-fingerprint";
 import {
-  currentActingContext,
-  currentCredentialScope,
-  isPersonalScope,
-} from "../session/acting-context";
-import { authPathIn, readAuthFile } from "./auth-file";
+  forgetProviderMarks,
+  readProviderMarks,
+  writeProviderMarks,
+} from "./provider-marks";
 
 /**
  * Turn-time truth fed back into provider status.
@@ -32,99 +27,122 @@ import { authPathIn, readAuthFile } from "./auth-file";
  * back to connected). A clean turn also clears it, which covers the one
  * change no fingerprint can see: a macOS Keychain re-login.
  *
- * Reads the persisted credential material directly (auth-file.ts + the
- * materialized Claude file) rather than going through auth/storage.ts — that
- * module reaches the Claude backend, which this module's callers (the
- * backends' error classifiers) sit underneath, and the import cycle is not
- * worth a cached view of the same bytes. In-memory only, deliberately: a
- * restart re-learns the truth from the next turn, and persisting "broken"
- * state could wedge a provider off after an out-of-band fix.
+ * The fingerprint itself (and its credential IO) lives in
+ * ./credential-fingerprint.
+ *
+ * The marks are PERSISTED (auth/provider-marks.ts): a restarted pod would
+ * otherwise report a dead token as Connected until the next failing turn, and
+ * a routine firing in that window fails while the screen says connected
+ * (PRODUCT-1475). That cannot wedge a provider off after an out-of-band fix
+ * because every mark carries the fingerprint of the credential it was recorded
+ * against — any credential change auto-heals a loaded mark exactly as it heals
+ * an in-memory one.
+ *
+ * Marks are keyed `${scopeKey}:${provider}` by acting identity (HOU-976):
+ * on a shared pod two members hold two different credentials for the same
+ * provider, so one member's dead token must not report the OTHER member's
+ * provider disconnected.
  */
 
-/**
- * `${scopeKey}:${provider}` → fingerprint of the credential that failed
- * authentication. Keyed by acting identity (HOU-976) because on a shared pod
- * two members hold two different credentials for the same provider: one
- * member's dead token must not report the OTHER member's provider disconnected.
- */
-const failed = new Map<string, string>();
+/** How long an exhausted-quota mark holds when the provider named no reset. */
+const QUOTA_MARK_TTL_MS = 60 * 60 * 1000;
 
 /** The mark key for a provider under the CURRENT acting identity. */
 function markFor(id: string): string {
   return `${currentCredentialScope().key}:${id}`;
 }
 
-function digest(value: string | Buffer): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-/** A file's content hash, or "absent" when it can't be read. */
-function fileFingerprint(path: string): string {
-  try {
-    return digest(readFileSync(path));
-  } catch {
-    return "absent";
-  }
-}
-
-/**
- * A stable fingerprint of a provider's CURRENT persisted credential material.
- * Two providers span more than their auth.json entry: anthropic also carries
- * the shared-dir credentials file (the Keychain is not observable from here —
- * its rotations heal via the clean-turn clear instead), and the local
- * OpenAI-compatible provider carries its endpoint config (same placeholder
- * key, different server = a different "credential": reconfiguring the
- * endpoint must heal a failure mark).
- *
- * Everything read here belongs to the CURRENT acting identity (HOU-976). The
- * shared-dir credentials file is the exception in reverse: it is team material,
- * so it only counts in the team scope — otherwise another member's credential
- * push would heal (or re-break) a member's own mark.
- */
-function credentialFingerprint(id: string): string {
-  const { key } = currentCredentialScope();
-  const activeAuthPath = currentActingContext()?.authPath;
-  const dataDir = activeAuthPath ? dirname(activeAuthPath) : config.dataDir;
-  const cred = readAuthFile(activeAuthPath ?? authPathIn(dataDir, key))[id];
-  const stored = cred ? digest(JSON.stringify(cred)) : "absent";
-  if (id === "anthropic" && !isPersonalScope(key))
-    return `${stored}|${fileFingerprint(claudeCredentialsFile())}`;
-  if (id === OPENAI_COMPATIBLE)
-    return `${stored}|${fileFingerprint(endpointFileIn(dataDir))}`;
-  return stored;
-}
-
 /** Record that a turn failed authentication on this provider's current
  *  credential. `fingerprint` is injectable for tests. */
 export function noteAuthFailure(id: string, fingerprint?: string): void {
-  failed.set(markFor(id), fingerprint ?? credentialFingerprint(id));
+  const marks = readProviderMarks();
+  marks.authFailed.set(markFor(id), fingerprint ?? credentialFingerprint(id));
+  writeProviderMarks(marks);
 }
 
-/** Heal the mark without a credential change — a turn that COMPLETED on this
- *  provider proved the credential works (exec-turn / turn-session call this on
- *  every clean turn; cheap no-op when nothing is marked). */
-export function clearAuthFailure(id: string): void {
-  failed.delete(markFor(id));
+/**
+ * Record that this provider's account ran OUT OF CREDITS / quota. Distinct
+ * from an auth failure: the credential is valid, so reconnecting fixes
+ * nothing — the status surface must say "out of credits", not "reconnect".
+ *
+ * `resetsAt` is the provider's own reset hint (ISO 8601) when it gave one; an
+ * open-ended exhaustion holds for an hour, after which the next turn re-learns
+ * the truth rather than leaving the account marked dead forever.
+ */
+export function noteQuotaExhausted(
+  id: string,
+  resetsAt: string | null,
+  fingerprint?: string,
+): void {
+  const parsed = resetsAt ? Date.parse(resetsAt) : Number.NaN;
+  const marks = readProviderMarks();
+  marks.quotaExhausted.set(markFor(id), {
+    fingerprint: fingerprint ?? credentialFingerprint(id),
+    expiresAt: Number.isNaN(parsed) ? Date.now() + QUOTA_MARK_TTL_MS : parsed,
+  });
+  writeProviderMarks(marks);
+}
+
+/** Heal both marks without a credential change — a turn that COMPLETED on this
+ *  provider proved the credential both authenticates and has quota left
+ *  (exec-turn / turn-session call this on every clean turn; cheap no-op when
+ *  nothing is marked). */
+export function clearProviderMarks(id: string): void {
+  const marks = readProviderMarks();
+  const mark = markFor(id);
+  // Both deletes must run (no short-circuit): a turn can heal an auth mark and
+  // a quota mark at once.
+  const hadAuth = marks.authFailed.delete(mark);
+  const hadQuota = marks.quotaExhausted.delete(mark);
+  if (!hadAuth && !hadQuota) return;
+  writeProviderMarks(marks);
 }
 
 /**
  * Whether this provider's CURRENT credential is the one that failed a turn's
  * authentication. A changed credential deletes the mark (auto-heal), so the
  * check stays true only while retrying would fail the same way. The common
- * path (nothing marked) does no IO. `fingerprint` is injectable for tests.
+ * path (nothing marked) does no credential IO. `fingerprint` is injectable for
+ * tests.
  */
 export function authFailureActive(id: string, fingerprint?: string): boolean {
+  const marks = readProviderMarks();
   const mark = markFor(id);
-  const marked = failed.get(mark);
+  const marked = marks.authFailed.get(mark);
   if (marked === undefined) return false;
   if (marked !== (fingerprint ?? credentialFingerprint(id))) {
-    failed.delete(mark);
+    marks.authFailed.delete(mark);
+    writeProviderMarks(marks);
     return false;
   }
   return true;
 }
 
-/** Tests only: forget every mark. */
+/**
+ * Whether this provider's CURRENT credential is out of quota. Auto-heals the
+ * same two ways as an auth mark (a changed credential, a clean turn) plus a
+ * third the provider itself names: the reset instant passing.
+ */
+export function quotaExhaustedActive(
+  id: string,
+  fingerprint?: string,
+): boolean {
+  const marks = readProviderMarks();
+  const mark = markFor(id);
+  const marked = marks.quotaExhausted.get(mark);
+  if (marked === undefined) return false;
+  const stale =
+    marked.expiresAt <= Date.now() ||
+    marked.fingerprint !== (fingerprint ?? credentialFingerprint(id));
+  if (stale) {
+    marks.quotaExhausted.delete(mark);
+    writeProviderMarks(marks);
+    return false;
+  }
+  return true;
+}
+
+/** Tests only: forget every mark, in memory and on disk. */
 export function resetAuthFailures(): void {
-  failed.clear();
+  forgetProviderMarks();
 }

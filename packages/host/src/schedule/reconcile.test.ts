@@ -348,7 +348,136 @@ test("a failed turn's typed provider error surfaces as the run's error immediate
     workspaceRoot(env.ws, env.agent),
   );
   expect((items[0] as RoutineRun).status).toBe("error");
-  expect((items[0] as RoutineRun).summary).toContain("session expired");
+  // The row names WHOSE account needs the fix, not the provider's generic
+  // sentence: the reader may have their own Claude connected (PRODUCT-1475).
+  expect((items[0] as RoutineRun).failure).toEqual({
+    code: "creator_needs_reconnect",
+    provider: "anthropic",
+  });
+  expect((items[0] as RoutineRun).summary).toBe(
+    "Claude needs to be reconnected by the routine's creator.",
+  );
+});
+
+/**
+ * Every credential-level wall a routine can hit, mapped to the honest row a
+ * non-technical reader can act on (PRODUCT-1475). The routine runs on its
+ * CREATOR's credential scope, so a personal-scope (or unattributed) failure is
+ * the creator's account and a team-scope one is the space's shared account.
+ */
+test.each([
+  [
+    "creator has never connected",
+    {
+      kind: "unauthenticated",
+      provider: "anthropic",
+      cause: "no_credentials",
+      message: "No provider connected.",
+    },
+    "creator_not_connected",
+    "The routine's creator has no Claude account connected.",
+  ],
+  [
+    "the team has never connected",
+    {
+      kind: "unauthenticated",
+      provider: "anthropic",
+      cause: "no_credentials",
+      message: "No provider connected.",
+      credential: { scope: "team" },
+    },
+    "team_not_connected",
+    "This team has no Claude account connected.",
+  ],
+  [
+    "the creator's own credential died",
+    {
+      kind: "unauthenticated",
+      provider: "openai-codex",
+      cause: "token_revoked",
+      message: "Your session has ended.",
+      credential: { scope: "personal" },
+    },
+    "creator_needs_reconnect",
+    "ChatGPT / Codex needs to be reconnected by the routine's creator.",
+  ],
+  [
+    "the team credential died",
+    {
+      kind: "unauthenticated",
+      provider: "anthropic",
+      cause: "invalid_api_key",
+      message: "invalid x-api-key",
+      credential: { scope: "team" },
+    },
+    "team_needs_reconnect",
+    "Claude needs to be reconnected for this team.",
+  ],
+  [
+    "the account ran out of credits",
+    {
+      kind: "quota_exhausted",
+      provider: "minimax",
+      model: null,
+      scope: "paid_plan",
+      resets_at: null,
+      message: "Insufficient balance",
+    },
+    "out_of_credits",
+    "The MiniMax account is out of credits.",
+  ],
+])("a run that failed because %s reports the typed failure and an honest summary", async (_case, providerError, code, summary) => {
+  const env = await setup(routine());
+  await seedReply(
+    env.vfs,
+    env.ws,
+    env.agent,
+    env.run.session_key,
+    "",
+    STARTED.getTime() + 1000,
+    providerError,
+  );
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  const run = items[0] as RoutineRun;
+  expect(run.status).toBe("error");
+  expect(run.failure).toEqual({
+    code,
+    provider: (providerError as { provider: string }).provider,
+  });
+  expect(run.summary).toBe(summary);
+});
+
+test("a non-credential provider failure keeps the verbatim reason and stays untyped", async () => {
+  const env = await setup(routine());
+  await seedReply(
+    env.vfs,
+    env.ws,
+    env.agent,
+    env.run.session_key,
+    "",
+    STARTED.getTime() + 1000,
+    {
+      kind: "rate_limited",
+      provider: "anthropic",
+      model: null,
+      retry_after_seconds: 60,
+      message: "You have hit your usage limit.",
+    },
+  );
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  const run = items[0] as RoutineRun;
+  expect(run.summary).toBe("You have hit your usage limit.");
+  expect(run.failure).toBeUndefined();
 });
 
 test("an empty successful reply completes the run (surfaced 'Nothing to report'), not a timeout", async () => {

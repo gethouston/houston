@@ -22,6 +22,14 @@ export interface RoutineRunListProps {
   onOpenRun?: (run: RoutineRun) => void;
   /** BCP-47 locale for the start-time stamps. */
   locale?: string;
+  /**
+   * Overrides a run's second line. The stored `run.summary` is the agent's own
+   * words, but a run that never reached the agent (its AI account was
+   * disconnected, or out of credits) carries a typed failure instead — and
+   * naming a provider in the user's language is app work, not `ui/` work. Return
+   * `undefined` to keep `run.summary`.
+   */
+  summaryFor?: (run: RoutineRun) => string | undefined;
   labels?: Partial<RoutineRunListLabels>;
 }
 
@@ -41,6 +49,7 @@ export function RoutineRunList({
   runs,
   onOpenRun,
   locale,
+  summaryFor,
   labels,
 }: RoutineRunListProps) {
   const l = { ...DEFAULT_RUN_LIST_LABELS, ...labels };
@@ -56,6 +65,7 @@ export function RoutineRunList({
         const { Icon, className } = STATUS_GLYPH[run.status];
         const duration = formatRunDuration(run);
         const started = formatRunStart(run.started_at, locale);
+        const summary = summaryFor?.(run) ?? run.summary;
         const body = (
           <>
             <Icon
@@ -73,9 +83,9 @@ export function RoutineRunList({
                   {duration && <> · {duration}</>}
                 </span>
               </span>
-              {run.summary && (
+              {summary && (
                 <span className="mt-0.5 line-clamp-2 text-left text-xs text-ink-muted">
-                  {run.summary}
+                  {summary}
                 </span>
               )}
             </span>

@@ -191,6 +191,43 @@ test("a no-provider 409 fire records the errored run but logs a warning, not an 
   );
   expect(items).toHaveLength(1);
   expect((items[0] as RoutineRun).status).toBe("error");
+  // Unpinned routine: there is no provider to name, so the row keeps the
+  // runtime's verbatim message and stays untyped (PRODUCT-1475).
+  expect((items[0] as RoutineRun).failure).toBeUndefined();
+});
+
+test("a no-provider 409 on a PINNED routine names the provider the creator must connect", async () => {
+  const env = await setup([
+    routine({ schedule: ENABLED, provider: "anthropic" }),
+  ]);
+  const firer = new CaptureFirer(
+    new TurnFireError(
+      'runtime 409: {"error":"No provider connected."}',
+      409,
+      "no_provider",
+    ),
+  );
+  const s = makeScheduler(env, firer);
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    s.start();
+    await s.tick(DUE);
+  } finally {
+    warn.mockRestore();
+  }
+
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  const run = items[0] as RoutineRun;
+  expect(run.failure).toEqual({
+    code: "creator_not_connected",
+    provider: "anthropic",
+  });
+  expect(run.summary).toBe(
+    "The routine's creator has no Claude account connected.",
+  );
 });
 
 test("the workspace timezone preference re-times routines (account-wide zone)", async () => {

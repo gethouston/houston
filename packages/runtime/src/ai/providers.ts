@@ -7,7 +7,11 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 // accepts — narrower than `KnownProvider`, which since pi 0.82 also names
 // purely dynamic providers (radius) with no static catalog entry.
 import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
-import { authFailureActive } from "../auth/credential-health";
+import type { ProviderHealth } from "@houston/protocol";
+import {
+  authFailureActive,
+  quotaExhaustedActive,
+} from "../auth/credential-health";
 import { servedScopeFor } from "../auth/served-scope";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
@@ -591,7 +595,11 @@ export function safeModelIds(provider: ProviderId): string[] {
  *  `credentialScope` names WHOSE credential produced `configured` (HOU-976), so
  *  the picker can label a row "your account". Absent unless the request carries
  *  an acting identity — desktop, self-host and every pre-HOU-976 caller see the
- *  exact shape they saw before. */
+ *  exact shape they saw before.
+ *
+ *  `health` says WHY (PRODUCT-1475), for the same acting identity: a routine
+ *  that fails "no provider connected" while the screen says Connected is the
+ *  bug this row has to make impossible. */
 function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
   const servedScope = servedScopeFor(id);
   return {
@@ -602,7 +610,28 @@ function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
     activeModel: modelFor(id),
     models: safeModelIds(id),
     ...(servedScope ? { credentialScope: servedScope } : {}),
+    health: providerHealth(id),
   };
+}
+
+/**
+ * WHY a provider is (un)usable for the acting identity — the reason behind
+ * `configured`, in the order the user must act on: no credential at all, a
+ * credential the provider rejected, a valid credential with no quota left, a
+ * local endpoint that is not answering.
+ *
+ * `out_of_credits` deliberately does NOT flip `configured` to false: the
+ * credential is valid and the turn should still run and surface its own typed
+ * card, so the row stays connected and only `health` tells the honest story
+ * (which is what a routine's failure summary reads).
+ */
+function providerHealth(id: ProviderId): ProviderHealth {
+  if (!providerConfigured(id)) return "not_connected";
+  if (authFailureActive(id)) return "needs_reconnect";
+  if (quotaExhaustedActive(id)) return "out_of_credits";
+  if (id === OPENAI_COMPATIBLE && !endpointReachableCached())
+    return "unreachable";
+  return "connected";
 }
 
 /**

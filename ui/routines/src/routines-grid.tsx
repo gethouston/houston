@@ -66,6 +66,11 @@ export interface RoutinesGridProps {
   /** The same slot for a DRAFT row. Separate from `ownerChip` because a draft
    *  is not a routine and has none of its fields — only its own id. */
   draftOwnerChip?: (draft: RoutineDraft) => ReactNode;
+  /** Per-row WARNING chip: the app returns a node when this routine cannot run
+   *  as configured (its AI account is disconnected, needs reconnecting, or is
+   *  out of credits) and `null`/`undefined` otherwise. `ui/` cannot know any of
+   *  that — it owns no provider state — so the whole judgement is the app's. */
+  warningChip?: (routine: Routine) => ReactNode;
   /** Edit a schedule routine's cron inline. When supplied, a schedule routine's
    *  summary line becomes an always-visible edit affordance (popover builder). */
   onScheduleChange?: (routineId: string, cron: string) => void;

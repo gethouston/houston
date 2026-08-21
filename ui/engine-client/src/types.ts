@@ -1312,6 +1312,19 @@ export type ProviderAuthState = "authenticated" | "unauthenticated" | "unknown";
  */
 export type CredentialScope = "personal" | "team";
 
+/**
+ * How usable a provider credential is RIGHT NOW for whoever asked. Mirrors
+ * `ProviderHealth` in `@houston/protocol` (ui/ mirrors wire unions rather than
+ * importing them, same as `CredentialScope` above). Richer than `authState`: a
+ * credential can be authenticated and valid yet unusable (`out_of_credits`).
+ */
+export type ProviderHealth =
+  | "connected"
+  | "not_connected"
+  | "needs_reconnect"
+  | "out_of_credits"
+  | "unreachable";
+
 export interface ProviderStatus {
   provider: string;
   cliInstalled: boolean;
@@ -1335,6 +1348,11 @@ export interface ProviderStatus {
    * pre-HOU-976 surface reads the shape it always read.
    */
   credentialScope?: CredentialScope;
+  /**
+   * Why the provider is (un)usable for the acting identity. Absent from engines
+   * that predate it, so treat absence as "read `authState` as before".
+   */
+  health?: ProviderHealth;
 }
 
 /**

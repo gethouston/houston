@@ -59,7 +59,12 @@ vi.mock("../ai/providers", async (importOriginal) => {
 vi.mock("../auth/credential-health", async (importOriginal) => {
   const real =
     await importOriginal<typeof import("../auth/credential-health")>();
-  return { ...real, noteAuthFailure: vi.fn(), clearAuthFailure: vi.fn() };
+  return {
+    ...real,
+    noteAuthFailure: vi.fn(),
+    noteQuotaExhausted: vi.fn(),
+    clearProviderMarks: vi.fn(),
+  };
 });
 vi.mock("../auth/report-revoked", () => ({
   reportRevokedServedToken: vi.fn(),

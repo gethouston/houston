@@ -21,10 +21,10 @@ import {
 } from "../lib/chat-model-picker-map";
 import { statusCredentialScope } from "../lib/credential-scope";
 import { newEngineActive } from "../lib/engine";
+import { modelDisplayLabel } from "../lib/model-labels";
 import { osIsTauri } from "../lib/os-bridge";
 import {
   EMPTY_PROVIDER_CAPABILITIES,
-  getModel,
   getProvider,
   getVisibleProviders,
 } from "../lib/providers";
@@ -146,15 +146,13 @@ export function usePickerViewModels(opts: {
   const catalogState: "loading" | "ready" =
     catalogReady && !capabilitiesLoading ? "ready" : "loading";
 
-  const currentModel = getModel(provider, model);
   const currentProvider = getProvider(provider);
+  // The shared label chain (`modelDisplayLabel`): catalog label, then the
+  // engine-reported configured model — a local OpenAI-compatible model isn't in
+  // the static catalog — then the raw selection. The routine screen's model row
+  // names the same pair through the same chain, so the two can't disagree.
   const displayLabel =
-    currentModel?.label ??
-    // A local OpenAI-compatible model isn't in the static catalog, so show the
-    // engine-reported configured model id (then the raw selection) rather than
-    // falling through to the provider subtitle.
-    statuses[provider]?.active_model ??
-    (model || undefined) ??
+    modelDisplayLabel(provider, model, statuses[provider]?.active_model) ??
     currentProvider?.subtitle ??
     t("modelSelector.selectModel");
 

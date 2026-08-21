@@ -13,7 +13,11 @@ import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { classifyProviderError } from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
 import { readAuthFile } from "../auth/auth-file";
-import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
+import {
+  clearProviderMarks,
+  noteAuthFailure,
+  noteQuotaExhausted,
+} from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
 import {
   newUsedTokenCapture,
@@ -368,7 +372,7 @@ export async function runPiTurn(
     if (fileChanges) emit({ type: "file_changes", data: fileChanges });
     // A completed turn proves this provider's credential works — heal any
     // stale turn-failure mark (auth/credential-health.ts; mirrors exec-turn).
-    if (!providerError) clearAuthFailure(provider);
+    if (!providerError) clearProviderMarks(provider);
     // Carry the pending question only on a clean turn — never alongside a
     // provider error (mirrors exec-turn: only the clean `done` carries it).
     return providerError ? {} : { pendingInteraction };
@@ -412,6 +416,11 @@ export async function runPiTurn(
         // (PRODUCT-1319).
         reportRevokedServedToken(thrown, usedTokens.digestFor(thrown.provider));
       }
+      // The account ran out of credits: a valid credential with nothing left,
+      // so the status surface must say so instead of "Connected" (mirrors
+      // exec-turn).
+      if (thrown.kind === "quota_exhausted")
+        noteQuotaExhausted(thrown.provider, thrown.resets_at);
       if (thrown.kind !== "unknown") {
         appendAssistantMessageAt(
           conversationsDir,

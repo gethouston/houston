@@ -5,11 +5,13 @@ import {
   saveRoutineRuns,
   upsertById,
 } from "@houston/domain";
-import type { Routine } from "@houston/protocol";
+import type { Routine, RoutineRunFailure } from "@houston/protocol";
+import { TurnFireError } from "../channel/fire-error";
 import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
+import { routineRunFailureSummary } from "./run-failure";
 import { withRunsFile } from "./runs-lock";
 import type { RoutineFirer } from "./scheduler";
 
@@ -89,6 +91,16 @@ export async function fireRoutineRun(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // The runtime refused the fire outright because nothing is connected for
+    // the identity the routine runs as — the creator's (PRODUCT-1475). Typed
+    // only when the routine PINS a provider: the unpinned case genuinely has
+    // no provider to name, so it keeps the runtime's verbatim message.
+    const failure: RoutineRunFailure | undefined =
+      err instanceof TurnFireError &&
+      err.code === "no_provider" &&
+      routine.provider
+        ? { code: "creator_not_connected", provider: routine.provider }
+        : undefined;
     await withRunsFile(root, async () => {
       const { items: current } = await loadRoutineRuns(deps.vfs, root);
       const row = current.find((r) => r.id === runId);
@@ -101,7 +113,8 @@ export async function fireRoutineRun(
         upsertById(current, {
           ...row,
           status: "error",
-          summary: message,
+          summary: failure ? routineRunFailureSummary(failure) : message,
+          ...(failure ? { failure } : {}),
           completed_at: deps.now().toISOString(),
         }),
       );
