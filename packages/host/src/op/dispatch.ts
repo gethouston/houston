@@ -53,8 +53,10 @@ export interface AgentOpResponse {
   events: HoustonEvent[];
 }
 
-const TEXT_BODY =
-  /^(application\/json|text\/|application\/x-ndjson|image\/svg)/i;
+// Only the handlers' own JSON is safe to carry as text: a downloaded file is
+// relayed byte-exact (a Latin-1 CSV through `response.text()` would be
+// re-encoded), so every non-JSON body rides base64.
+const TEXT_BODY = /^application\/json/i;
 const RELAYED_HEADERS = [
   "content-disposition",
   "cache-control",
