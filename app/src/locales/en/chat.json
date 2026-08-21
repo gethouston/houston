@@ -27,7 +27,8 @@
       "setupConfirm": "Download",
       "setupProgress": "Downloading... {{pct}}%",
       "micDenied": "Houston needs microphone access. Allow it in system settings, then try again.",
-      "noMic": "No microphone was found."
+      "noMic": "No microphone was found.",
+      "failed": "Voice typing didn't work this time. Please try again."
     }
   },
   "mentions": {

@@ -27,7 +27,8 @@
       "setupConfirm": "Descargar",
       "setupProgress": "Descargando... {{pct}}%",
       "micDenied": "Houston necesita acceso al micrófono. Permítelo en la configuración del sistema y vuelve a intentarlo.",
-      "noMic": "No se encontró ningún micrófono."
+      "noMic": "No se encontró ningún micrófono.",
+      "failed": "El dictado por voz no funcionó esta vez. Inténtalo de nuevo."
     }
   },
   "mentions": {
