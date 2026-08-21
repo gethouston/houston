@@ -8,9 +8,16 @@ import {
   deleteConversationAt,
   renameConversationMutationAt,
 } from "../store/conversation-file";
+import { applyApiKeyConnect } from "./op-credential";
+import {
+  claimActiveProviderIn,
+  putSettingsIn,
+  settingsOpFiles,
+} from "./op-settings";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { createTurnModelRuntime } from "./turn-runtime";
+import { poolIdentity } from "./turn-store";
 
 export interface OpResult {
   status: number;
@@ -27,6 +34,8 @@ export interface OpResult {
   skillsView?: unknown;
   /** The hydrated tree had no such agent — decline, do not relay. */
   agentMissing?: boolean;
+  /** The worker cannot serve this one (a provider that needs the pod). */
+  decline?: boolean;
 }
 
 const json = (
@@ -130,6 +139,54 @@ export async function applyOp(
         }
       }
       return out;
+    }
+    case "settings": {
+      const none = () => false;
+      try {
+        const settings =
+          op.op.action === "put"
+            ? putSettingsIn(filesystem.dataDir, op.op.input)
+            : claimActiveProviderIn(
+                filesystem.dataDir,
+                op.op.provider,
+                op.op.connectedProviders,
+              );
+        const files = new Set(settingsOpFiles(filesystem.dataRel));
+        return {
+          ...json(200, settings),
+          events: [],
+          include: (rel) => files.has(rel),
+        };
+      } catch (e) {
+        return {
+          ...json(400, { error: e instanceof Error ? e.message : String(e) }),
+          events: [],
+          include: none,
+        };
+      }
+    }
+    case "credential": {
+      const none = () => false;
+      const { org, agent } = poolIdentity(op.gcsPrefix);
+      const answer = await applyApiKeyConnect({
+        provider: op.op.provider,
+        apiKey: op.op.apiKey,
+        credentialsBaseUrl: new URL(op.claim.heartbeatUrl).origin,
+        orgSlug: org,
+        agentSlug: agent,
+        hostToken: op.hostToken,
+        ...(op.actingToken ? { actingAs: op.actingToken } : {}),
+        ...(fetchImpl ? { fetchImpl } : {}),
+      });
+      if ("decline" in answer) {
+        return {
+          ...json(503, { error: "provider needs the pod" }),
+          events: [],
+          include: none,
+          decline: true,
+        };
+      }
+      return { ...json(answer.status, answer.body), events: [], include: none };
     }
     case "title": {
       const none = () => false;

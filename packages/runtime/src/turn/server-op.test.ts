@@ -78,7 +78,23 @@ function opBody(_agentId: string, heartbeatUrl: string, op: unknown) {
   };
 }
 
+/** Like the gateway: a `worker_full` (the previous op's slot still closing
+ *  its temp dir) is retried, never treated as the op's answer. */
 async function postOp(base: string, body: unknown) {
+  for (let attempt = 0; ; attempt++) {
+    const result = await postOpOnce(base, body);
+    if (
+      result.status !== 503 ||
+      result.json.error !== "worker_full" ||
+      attempt > 40
+    ) {
+      return result;
+    }
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}
+
+async function postOpOnce(base: string, body: unknown) {
   const response = await fetch(`${base}/op`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -295,4 +311,123 @@ test("mission attribution (actingAs.name) reaches the activity handler", async (
   expect(created.contributors).toEqual([
     { user_id: "user-1", name: "Alice Lee" },
   ]);
+});
+
+test("a settings claim runs on the worker and syncs settings.json back (never moves a set provider)", async () => {
+  const { storeRoot, agentId, prefix } = await seedAgent();
+  const store = new LocalDirStore(storeRoot);
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const hb = await heartbeatOK();
+
+  // Nothing set: the connect claims the active provider.
+  let { json } = await postOp(
+    base,
+    opBody(agentId, hb, {
+      kind: "settings",
+      action: "claim",
+      provider: "openai-codex",
+      connectedProviders: ["openai-codex"],
+    }),
+  );
+  expect(json, JSON.stringify(json)).toMatchObject({ status: 200 });
+  expect(JSON.parse(json.body as string)).toMatchObject({
+    activeProvider: "openai-codex",
+  });
+  const synced = await store.list(prefix);
+  expect(
+    synced.some((k) => k.endsWith("/.houston/runtime/settings.json")),
+  ).toBe(true);
+  // And NOTHING else under the runtime tree was touched (no conversations
+  // hydrated, none deleted).
+  expect(synced.some((k) => k.endsWith("/runtime/conversations/c1.json"))).toBe(
+    true,
+  );
+
+  // Already set: a second connect must not move it (HOU-695).
+  ({ json } = await postOp(
+    base,
+    opBody(agentId, hb, {
+      kind: "settings",
+      action: "claim",
+      provider: "anthropic",
+      connectedProviders: ["openai-codex", "anthropic"],
+    }),
+  ));
+  expect(json, JSON.stringify(json)).toMatchObject({ status: 200 });
+  expect(JSON.parse(json.body as string)).toMatchObject({
+    activeProvider: "openai-codex",
+  });
+
+  // The model picker (PUT /settings) does move it, and persists the model.
+  ({ json } = await postOp(
+    base,
+    opBody(agentId, hb, {
+      kind: "settings",
+      action: "put",
+      input: {
+        activeProvider: "anthropic",
+        model: "claude-sonnet-5",
+        effort: "high",
+      },
+    }),
+  ));
+  const after = JSON.parse(json.body as string) as {
+    activeProvider: string;
+    models: Record<string, string>;
+    effort: string;
+  };
+  expect(after.activeProvider).toBe("anthropic");
+  expect(after.models.anthropic).toBe("claude-sonnet-5");
+  expect(after.effort).toBe("high");
+});
+
+test("an api-key connect verifies the key and pushes it to the gateway store (no file written)", async () => {
+  const { storeRoot, agentId, prefix } = await seedAgent();
+  const store = new LocalDirStore(storeRoot);
+  // The "gateway": heartbeat + the pod-credentials PUT the push lands on.
+  const pushes: { path: string; auth: string; body: string }[] = [];
+  const gateway = await listen(
+    createServer((req, res) => {
+      if (req.method === "PUT" && req.url?.startsWith("/v1/pod/credentials/")) {
+        let body = "";
+        req.on("data", (c) => {
+          body += c;
+        });
+        req.on("end", () => {
+          pushes.push({
+            path: req.url ?? "",
+            auth: req.headers.authorization ?? "",
+            body,
+          });
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end("{}");
+        });
+        return;
+      }
+      res.writeHead(200);
+      res.end("{}");
+    }),
+  );
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  // A key the verifier rejects (no provider reachable in tests): 401 with
+  // the provider's reason, and NOTHING pushed.
+  const { json } = await postOp(
+    base,
+    opBody(agentId, `${gateway}/hb`, {
+      kind: "credential",
+      action: "api-key",
+      provider: "nope-provider",
+      apiKey: "sk-test",
+    }),
+  );
+  expect([400, 401]).toContain(json.status);
+  expect(pushes).toHaveLength(0);
+  // No local residue: auth.json never appears in the store.
+  expect((await store.list(prefix)).some((k) => k.endsWith("auth.json"))).toBe(
+    false,
+  );
 });

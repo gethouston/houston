@@ -363,7 +363,7 @@ export function activeProvider(): ProviderId | null {
  */
 const OPENCODE_GATEWAYS: readonly ProviderId[] = ["opencode", "opencode-go"];
 
-function credentialSiblingIds(pid: ProviderId): ProviderId[] {
+export function credentialSiblingIds(pid: ProviderId): ProviderId[] {
   return OPENCODE_GATEWAYS.includes(pid) ? [...OPENCODE_GATEWAYS] : [pid];
 }
 
