@@ -28,6 +28,17 @@ export const AGENT_OPS_CLAIM_ID = "agent-ops";
  *  .houston/runtime/`) — exactly that depth, so a user project carrying its
  *  own `.houston/runtime` directory is hydrated like any other file. */
 const ROUTE_OP_EXCLUDES = ["workspaces/*/*/.houston/runtime/"];
+/** A settings op reads/writes the runtime dir's small files only: skip the
+ *  bulk (history, user files); the small .houston docs keep the layout real.
+ *  A model-picker click must not pay a big agent's hydrate. */
+const SETTINGS_OP_EXCLUDES = [
+  "workspaces/*/*/.houston/runtime/conversations/",
+  "workspaces/*/*/.houston/runtime/sessions/",
+  "workspaces/*/*/files/",
+  "workspaces/*/*/uploads/",
+];
+/** A credential op needs nothing but the agent directory to exist. */
+const CREDENTIAL_OP_EXCLUDES = SETTINGS_OP_EXCLUDES;
 
 const EVENT_FAMILY: Partial<Record<HoustonEvent["type"], HoustonFamily>> = {
   ActivityChanged: "activity",
@@ -92,14 +103,24 @@ export async function executeOp(
         ? { maxBytes: deps.maxHydrateBytes }
         : {}),
       // Agent-level routes (files, docs, skills) never read the runtime tree
-      // (conversations, sessions) — the bulk of a busy agent. Conversation
-      // ops do, so they hydrate everything.
-      ...(op.op.kind === "route" ? { excludes: ROUTE_OP_EXCLUDES } : {}),
+      // (conversations, sessions) — the bulk of a busy agent. A settings op
+      // needs the runtime dir minus those two. Conversation ops hydrate
+      // everything. A credential op touches no file at all (the gateway's
+      // store is the only write) — it still hydrates the layout so the
+      // agent-exists check holds, with everything but the root excluded.
+      ...(op.op.kind === "route"
+        ? { excludes: ROUTE_OP_EXCLUDES }
+        : op.op.kind === "settings"
+          ? { excludes: SETTINGS_OP_EXCLUDES }
+          : op.op.kind === "credential"
+            ? { excludes: CREDENTIAL_OP_EXCLUDES }
+            : {}),
     });
     const result = await applyOp(op, filesystem, deps.fetchImpl);
-    if (result.agentMissing) {
-      // Not this worker's agent (legacy layout / stale envelope): decline so
-      // the gateway proxies, never relay a spurious 404 as the pod's answer.
+    if (result.agentMissing || result.decline) {
+      // Not this worker's agent (legacy layout / stale envelope), or a case
+      // the worker cannot serve: decline so the gateway takes its fallback,
+      // never relay a spurious answer as the pod's.
       return json(res, 200, { ok: true, decline: true });
     }
     await heartbeat.checkpoint();

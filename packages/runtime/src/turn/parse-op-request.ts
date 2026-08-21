@@ -19,6 +19,18 @@ export type AgentOp =
     }
   | { kind: "title"; text: string }
   | {
+      kind: "settings";
+      action: "put";
+      input: { activeProvider?: string; model?: string; effort?: string };
+    }
+  | {
+      kind: "settings";
+      action: "claim";
+      provider: string;
+      connectedProviders: string[];
+    }
+  | { kind: "credential"; action: "api-key"; provider: string; apiKey: string }
+  | {
       kind: "conversation";
       action: "rename" | "delete";
       conversationId: string;
@@ -32,6 +44,9 @@ export interface OpRequest {
   hostToken: string;
   claim: NonNullable<TurnRequest["claim"]>;
   actingAs?: TurnRequest["actingAs"];
+  /** The connecting member's acting-as token (their own credential row in a
+   *  team space) — only a credential op needs it. */
+  actingToken?: string;
   credential: ServedCredential | null;
   triggersEnabled: boolean;
   op: AgentOp;
@@ -147,6 +162,50 @@ export function parseOpRequest(body: unknown): OpRequest {
     case "title":
       op = { kind: "title", text: str(raw.text, "op.text") };
       break;
+    case "settings": {
+      if (raw.action === "put") {
+        const input = (raw.input ?? {}) as Record<string, unknown>;
+        const pick = (k: string) =>
+          typeof input[k] === "string" && (input[k] as string).length <= 200
+            ? { [k]: input[k] as string }
+            : {};
+        op = {
+          kind: "settings",
+          action: "put",
+          input: {
+            ...pick("activeProvider"),
+            ...pick("model"),
+            ...pick("effort"),
+          },
+        };
+        break;
+      }
+      if (raw.action === "claim") {
+        const connected = Array.isArray(raw.connectedProviders)
+          ? raw.connectedProviders.filter(
+              (p): p is string => typeof p === "string",
+            )
+          : [];
+        op = {
+          kind: "settings",
+          action: "claim",
+          provider: str(raw.provider, "op.provider"),
+          connectedProviders: connected,
+        };
+        break;
+      }
+      throw new Error("invalid 'op.action'");
+    }
+    case "credential": {
+      if (raw.action !== "api-key") throw new Error("invalid 'op.action'");
+      op = {
+        kind: "credential",
+        action: "api-key",
+        provider: str(raw.provider, "op.provider"),
+        apiKey: str(raw.apiKey, "op.apiKey"),
+      };
+      break;
+    }
     case "conversation": {
       const action = raw.action;
       if (action !== "rename" && action !== "delete")
@@ -172,6 +231,9 @@ export function parseOpRequest(body: unknown): OpRequest {
     agentId,
     gcsPrefix,
     hostToken,
+    ...(typeof b.actingToken === "string" && b.actingToken
+      ? { actingToken: b.actingToken }
+      : {}),
     claim: {
       id: str(claim.id, "claim.id"),
       bootId: str(claim.bootId, "claim.bootId"),
