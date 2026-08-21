@@ -4,7 +4,7 @@ export { FsVfs } from "./fs";
 // this open barrel.
 export { LazyStoreVfs } from "./lazy-store";
 export {
-  LazyObjectTooLargeError,
+  LazyReadRefusedError,
   type LazyStoreVfsOptions,
   UNREAD_HASH,
 } from "./lazy-store-types";

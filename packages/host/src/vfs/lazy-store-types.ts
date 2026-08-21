@@ -12,17 +12,26 @@ import type {
  */
 export const UNREAD_HASH = "unread:owned-without-download";
 
-/** One object is over the per-read cap: refused before any byte moves. */
-export class LazyObjectTooLargeError extends Error {
+/**
+ * A read the lazy tree refuses: one object over the per-object cap, or the
+ * op's materialized total over its budget. Raised before the bytes move (or
+ * right after, when the manifest size turned out stale). The op layer maps
+ * it to "unavailable while asleep" for a read and to a decline for a write,
+ * never to a partial result.
+ */
+export class LazyReadRefusedError extends Error {
   constructor(
+    readonly reason: "object" | "total",
     readonly key: string,
     readonly size: number,
     readonly maxBytes: number,
   ) {
     super(
-      `${key} is ${size} bytes, over the ${maxBytes}-byte cap for a read while the agent sleeps`,
+      reason === "object"
+        ? `${key} is ${size} bytes, over the ${maxBytes}-byte cap for a read while the agent sleeps`
+        : `reading ${key} (${size} bytes) would exceed the ${maxBytes}-byte budget of this operation`,
     );
-    this.name = "LazyObjectTooLargeError";
+    this.name = "LazyReadRefusedError";
   }
 }
 
@@ -40,4 +49,6 @@ export interface LazyStoreVfsOptions {
   excludes: string[];
   /** Largest single object a read may materialize. */
   maxObjectBytes: number;
+  /** Budget for everything this vfs materializes over its lifetime. */
+  maxBytes: number;
 }

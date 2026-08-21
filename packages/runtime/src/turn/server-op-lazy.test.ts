@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalWorkspaceStore } from "@houston/host/src/store/local";
+import { MAX_UPLOAD_BYTES } from "@houston/host/src/turn/files-import";
 import {
   LocalDirStore,
   type ObjectStore,
@@ -242,6 +243,31 @@ test("a conversation rename hydrates its own conversation only", async () => {
   expect(keys).toHaveLength(45);
 });
 
+test("a folder move that hits the read cap mid-way declines and leaves the store untouched", async () => {
+  const { storeRoot, agentRel } = await seedBusyAgent();
+  // One oversized file among the forty: the per-child move refuses it.
+  writeFileSync(
+    join(storeRoot, PREFIX, agentRel, "reports", "huge.bin"),
+    Buffer.alloc(MAX_UPLOAD_BYTES + 1),
+  );
+  const store = countingStore(storeRoot);
+  const before = (await store.list(PREFIX)).sort();
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const json = await postOp(base, await heartbeatOK(), {
+    kind: "route",
+    method: "POST",
+    rest: "files/move",
+    contentType: "application/json",
+    body: JSON.stringify({ path: "reports", toDir: "archive" }),
+  });
+  expect(json.decline, JSON.stringify(json)).toBe(true);
+  expect(json.status).toBeUndefined();
+  expect((await store.list(PREFIX)).sort()).toEqual(before);
+  expect(store.downloads.some((k) => k.endsWith("/huge.bin"))).toBe(false);
+});
+
 test("a conversation delete removes its file and unread session files, nothing else", async () => {
   const { storeRoot, agentRel } = await seedBusyAgent();
   const store = countingStore(storeRoot);
@@ -254,9 +280,8 @@ test("a conversation delete removes its file and unread session files, nothing e
     conversationId: "c1",
   });
   expect(json.status, JSON.stringify(json)).toBe(200);
-  expect(store.downloads).toEqual([
-    `${agentRel}/.houston/runtime/conversations/c1.json`,
-  ]);
+  // A delete needs no bytes: existence comes from the listing.
+  expect(store.downloads).toEqual([]);
   const keys = await store.list(PREFIX);
   const runtime = `${PREFIX}/${agentRel}/.houston/runtime`;
   expect(keys).not.toContain(`${runtime}/conversations/c1.json`);
@@ -264,6 +289,26 @@ test("a conversation delete removes its file and unread session files, nothing e
   expect(keys).toContain(`${runtime}/conversations/c2.json`);
   expect(keys).toContain(`${runtime}/sessions/c2/s.jsonl`);
   expect(keys).toHaveLength(43);
+});
+
+test("renaming a conversation over the read cap declines to the pod instead of failing", async () => {
+  const { storeRoot, agentRel } = await seedBusyAgent();
+  writeFileSync(
+    join(storeRoot, PREFIX, agentRel, ".houston/runtime/conversations/c1.json"),
+    Buffer.alloc(MAX_UPLOAD_BYTES + 1),
+  );
+  const store = countingStore(storeRoot);
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const json = await postOp(base, await heartbeatOK(), {
+    kind: "conversation",
+    action: "rename",
+    conversationId: "c1",
+    title: "x",
+  });
+  expect(json.decline, JSON.stringify(json)).toBe(true);
+  expect(store.downloads).toEqual([]);
 });
 
 test("renaming a conversation the agent does not have answers 404 without a download", async () => {

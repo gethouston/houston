@@ -14,7 +14,7 @@ import { handleSkillsRemote } from "../routes/skills-remote";
 import { LocalWorkspaceStore } from "../store/local";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
-import { FsVfs, LazyObjectTooLargeError, type Vfs } from "../vfs";
+import { FsVfs, LazyReadRefusedError, type Vfs } from "../vfs";
 import { relayAgentOpResponse, TOO_LARGE_MESSAGE } from "./dispatch-relay";
 
 /**
@@ -95,6 +95,10 @@ export async function dispatchAgentOp(opts: {
     opts.request;
   const query = new URLSearchParams(opts.request.query ?? "");
 
+  // A refused lazy read answers 503 from INSIDE the handler chain (the
+  // handler may be half-way through a multi-key mutation); the flag tells
+  // the caller to discard the overlay instead of syncing a partial result.
+  let refused = false;
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     // Files (list/read/download/archive/import/move/rename/folder): the
     // Files tab, byte-identical to the pod.
@@ -146,7 +150,8 @@ export async function dispatchAgentOp(opts: {
   };
   const server = createServer((req, res) => {
     handler(req, res).catch((error: unknown) => {
-      if (error instanceof LazyObjectTooLargeError) {
+      if (error instanceof LazyReadRefusedError) {
+        refused = true;
         // Refused before the download: the same answer the relay cap gives.
         if (!res.headersSent) {
           res.writeHead(503, { "Content-Type": "application/json" });
@@ -179,7 +184,8 @@ export async function dispatchAgentOp(opts: {
           : {},
       ...(body !== undefined ? { body } : {}),
     });
-    return relayAgentOpResponse(response, rest, events);
+    const relayed = await relayAgentOpResponse(response, rest, events);
+    return refused ? { ...relayed, tooLarge: true } : relayed;
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }

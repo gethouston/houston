@@ -10,7 +10,7 @@ import {
 import { expect, test } from "vitest";
 import { runVfsContract } from "../testing/vfs-contract";
 import { LazyStoreVfs } from "./lazy-store";
-import { LazyObjectTooLargeError, UNREAD_HASH } from "./lazy-store-types";
+import { LazyReadRefusedError, UNREAD_HASH } from "./lazy-store-types";
 
 const PREFIX = "ws/w1/agent-1";
 
@@ -56,6 +56,7 @@ async function seeded(files: Record<string, string> = {}) {
     manifest,
     excludes: ["workspaces/*/*/.houston/runtime/"],
     maxObjectBytes: 1024,
+    maxBytes: 4096,
   });
   return { store, root, manifest, vfs, storeRoot };
 }
@@ -71,6 +72,7 @@ runVfsContract("LazyStoreVfs (empty store)", () => {
     manifest,
     excludes: [],
     maxObjectBytes: 1024 * 1024,
+    maxBytes: 1024 * 1024,
   });
 });
 
@@ -118,7 +120,7 @@ test("an object over the per-read cap is refused before any byte is downloaded",
   });
   await expect(
     vfs.readBytes("workspaces/P/Bob/big.bin"),
-  ).rejects.toBeInstanceOf(LazyObjectTooLargeError);
+  ).rejects.toBeInstanceOf(LazyReadRefusedError);
   expect(store.downloads).toEqual([]);
   // Still listed: the Files tab shows it; only fetching it is unavailable.
   expect(await vfs.list("workspaces/P/Bob")).toContain(

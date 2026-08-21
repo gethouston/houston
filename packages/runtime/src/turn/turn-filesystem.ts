@@ -32,6 +32,9 @@ export interface TurnFilesystem extends TurnLayout {
   vfs: Vfs;
   /** Remote objects the lazy listing knows about (diagnostics). */
   listedObjects: number;
+  /** The store's generation capability as the listing showed it; undefined
+   *  when the hydrated manifest itself carries the answer (eager trees). */
+  generationAware?: boolean;
 }
 
 /**
@@ -65,6 +68,8 @@ export async function prepareTurnFilesystem(opts: {
   const excludes = opts.excludes
     ? [...DEFAULT_EXCLUDES, ...opts.excludes]
     : DEFAULT_EXCLUDES;
+  const maxBytes =
+    opts.maxBytes ?? (opts.claimed ? TURN_HYDRATE_MAX_BYTES : undefined);
   if (opts.lazy && opts.store.manifest) {
     const objects = await opts.store.manifest(opts.prefix);
     const manifest: HydrateManifest = new Map();
@@ -76,6 +81,7 @@ export async function prepareTurnFilesystem(opts: {
       manifest,
       excludes,
       maxObjectBytes: MAX_UPLOAD_BYTES,
+      maxBytes: maxBytes ?? TURN_HYDRATE_MAX_BYTES,
     });
     await layoutSkeleton(
       storeRoot,
@@ -89,17 +95,24 @@ export async function prepareTurnFilesystem(opts: {
       manifest,
       vfs,
       listedObjects: objects.length,
+      generationAware: vfs.generationAware,
     };
   }
-  const maxBytes =
-    opts.maxBytes ?? (opts.claimed ? TURN_HYDRATE_MAX_BYTES : undefined);
   let manifest: HydrateManifest;
+  let listed: string[] = [];
   try {
     manifest = await hydrate(opts.store, opts.prefix, storeRoot, {
       ...(maxBytes !== undefined ? { maxBytes } : {}),
       excludes,
       ...(opts.filter ? { filter: opts.filter } : {}),
+      onListed: (rels) => {
+        listed = rels;
+      },
     });
+    // The layout must resolve from what the STORE holds, not from what the
+    // filter admitted: a turn whose agent has nothing but other
+    // conversations' history still targets an existing agent.
+    await layoutSkeleton(storeRoot, listed);
   } catch (error) {
     if (!(error instanceof HydrateLimitError)) throw error;
     throw new TurnSetupError("hydrate_over_cap", error.message);

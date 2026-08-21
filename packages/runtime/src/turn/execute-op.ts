@@ -131,12 +131,31 @@ export async function executeOp(
     if (heartbeat.fenced) return json(res, 409, { error: "claim_fenced" });
     const isRead = op.op.kind === "route" && op.op.method === "GET";
     if (!isRead) {
+      if (result.tooLarge || result.status >= 500) {
+        // The handler failed part-way (a refused lazy read, a 5xx): the
+        // overlay may hold HALF a multi-key mutation. Nothing has reached
+        // the store yet, so declining is exact — the pod re-runs the write
+        // from an unchanged tree instead of the user seeing a split folder.
+        console.error(
+          `[op] handler failed before sync: status=${result.status} tooLarge=${result.tooLarge === true} prefix=${resolved.prefix} kind=${op.op.kind}`,
+        );
+        return json(res, 200, { ok: true, decline: true });
+      }
       const synced = await syncBack(
         resolved.store,
         resolved.prefix,
         filesystem.storeRoot,
         filesystem.manifest,
-        { include: result.include, holdDeletesOnFailure: true },
+        {
+          include: result.include,
+          holdDeletesOnFailure: true,
+          // A lazy tree's manifest may be EMPTY for a pure create; the
+          // listing still told us whether the store mints generations, so a
+          // first create stays create-only (CAS "0") instead of blind.
+          ...(filesystem.generationAware !== undefined
+            ? { generations: filesystem.generationAware }
+            : {}),
+        },
       );
       const landed = synced.uploaded.length + synced.deleted.length > 0;
       const partial =
@@ -253,11 +272,20 @@ async function republish(
   for (const family of families) {
     const key = docKey(filesystem.workspaceRel, family);
     let doc: unknown;
+    // Through the vfs: on a lazy tree the handler may have emitted the
+    // event without the family file being on disk yet — a raw read would
+    // project an EMPTY doc over real data. A read that THROWS (store blip,
+    // refused size) is a diagnostic, never an empty projection.
+    let raw: string | null;
     try {
-      // Through the vfs: on a lazy tree the handler may have emitted the
-      // event without the family file being on disk yet — a raw read would
-      // project an EMPTY doc over real data.
-      const raw = await filesystem.vfs.readText(key);
+      raw = await filesystem.vfs.readText(key);
+    } catch (error) {
+      diagnostics.push(
+        `${family}: read failed, not projected: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      continue;
+    }
+    try {
       doc =
         raw === null
           ? family === "config"

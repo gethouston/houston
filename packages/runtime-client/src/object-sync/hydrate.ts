@@ -77,6 +77,8 @@ export interface HydrateOptions {
    * conversation's files, not every conversation's) without a glob per id.
    */
   filter?: (rel: string) => boolean;
+  /** Every admitted path BEFORE `filter` (the store's view of the tree). */
+  onListed?: (rels: string[]) => void;
 }
 
 /** The hydrated prefix exceeded the caller's aggregate byte cap. */
@@ -117,13 +119,16 @@ export async function hydrate(
     objects ??
     (await store.list(prefix)).map((key) => ({ key, generation: undefined }));
   const entries: { generation?: string; key: string; rel: string }[] = [];
+  const admitted: string[] = [];
   for (const object of listed) {
     const { key } = object;
     const rel = prefix ? key.slice(prefix.length + 1) : key;
     if (!rel || excluded(rel, excludes)) continue;
+    admitted.push(rel);
     if (opts.filter && !opts.filter(rel)) continue;
     entries.push({ key, rel, generation: object.generation });
   }
+  opts.onListed?.(admitted);
   // Workers pull from a shared cursor. The first failure (download error or
   // the size cap) parks every worker before it takes new work, and only that
   // first error is thrown — workers themselves never reject, so a second

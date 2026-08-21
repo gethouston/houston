@@ -119,3 +119,29 @@ test("a claimed turn's filter leaves other conversations' history out of the hyd
     "workspaces/Personal/Bob/.houston/runtime/settings.json",
   ]);
 });
+
+test("a claimed turn whose agent holds only other conversations still resolves its layout", async () => {
+  const storeRoot = mkdtempSync(join(tmpdir(), "hot-set-empty-"));
+  const prefix = "ws/w1/agent-1";
+  const runtime = join(
+    storeRoot,
+    prefix,
+    "workspaces",
+    "Personal",
+    "Bob",
+    ".houston",
+    "runtime",
+  );
+  mkdirSync(join(runtime, "conversations"), { recursive: true });
+  writeFileSync(join(runtime, "conversations", "c2.json"), "{}");
+  const fs = await prepareTurnFilesystem({
+    store: new LocalDirStore(storeRoot),
+    prefix,
+    root: mkdtempSync(join(tmpdir(), "hot-set-empty-root-")),
+    claimed: true,
+    filter: ownConversationOnly("c-new"),
+  });
+  expect(fs.manifest.size).toBe(0);
+  expect(fs.kind).toBe("standing");
+  expect(fs.workspaceRel).toBe("workspaces/Personal/Bob");
+});
