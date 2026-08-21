@@ -34,16 +34,18 @@ async function seedAgent(): Promise<{
   const store = new LocalWorkspaceStore(workspaces);
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = await store.createAgent({ workspaceId: ws.id, name: "Bob" });
-  // The standing layout marker the turn layout resolver keys on.
-  const settings = join(
-    workspaces,
-    ...agent.id.split("/"),
-    ".houston",
-    "runtime",
-    "settings.json",
-  );
-  mkdirSync(dirname(settings), { recursive: true });
-  writeFileSync(settings, "{}");
+  // Every real agent carries a CLAUDE.md — the directory the layout resolver
+  // keys on. (Route ops hydrate WITHOUT the runtime tree, so the marker must
+  // not live there.)
+  const agentDir = join(workspaces, ...agent.id.split("/"));
+  mkdirSync(agentDir, { recursive: true });
+  writeFileSync(join(agentDir, "CLAUDE.md"), "# Bob\n");
+  // A user file + a runtime file: the files op must see the former and the
+  // hydrate must skip the latter.
+  writeFileSync(join(agentDir, "report.csv"), "a,b\n1,2\n");
+  const runtime = join(agentDir, ".houston", "runtime", "conversations");
+  mkdirSync(runtime, { recursive: true });
+  writeFileSync(join(runtime, "c1.json"), "{}");
   return { storeRoot, agentId: agent.id, prefix };
 }
 
@@ -186,7 +188,58 @@ test("an invalid op is rejected before any hydration", async () => {
     }),
   );
   expect(status).toBe(400);
-  expect(String(json.error)).toContain("write method");
+  expect(String(json.error)).toContain("not a read op route");
+});
+
+test("a files list runs as a READ op: no sync-back, runtime tree not hydrated", async () => {
+  const { storeRoot, agentId } = await seedAgent();
+  const store = new LocalDirStore(storeRoot);
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const { json } = await postOp(
+    base,
+    opBody(agentId, await heartbeatOK(), {
+      kind: "route",
+      method: "GET",
+      rest: "files",
+    }),
+  );
+  expect(json.status).toBe(200);
+  const listing = JSON.parse(json.body as string) as Array<{ name: string }>;
+  const names = listing.map((e) => e.name);
+  expect(names).toContain("report.csv");
+  // Runtime files never surface in the Files tab and were not hydrated.
+  expect(JSON.stringify(listing)).not.toContain("c1.json");
+});
+
+test("a file download relays binary bytes base64 with its headers", async () => {
+  const { storeRoot, agentId } = await seedAgent();
+  const store = new LocalDirStore(storeRoot);
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const { json } = await postOp(
+    base,
+    opBody(agentId, await heartbeatOK(), {
+      kind: "route",
+      method: "GET",
+      rest: "files/download",
+      query: "path=report.csv",
+    }),
+  );
+  expect(json.status).toBe(200);
+  const body = json.bodyBase64
+    ? Buffer.from(json.bodyBase64 as string, "base64").toString("utf8")
+    : (json.body as string);
+  expect(body).toBe("a,b\n1,2\n");
+  expect(
+    String(
+      (json.headers as Record<string, string> | undefined)?.[
+        "content-disposition"
+      ] ?? "",
+    ),
+  ).toContain("report.csv");
 });
 
 test("a root-level agentfile write persists (F6: no longer dropped)", async () => {

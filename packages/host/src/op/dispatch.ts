@@ -9,8 +9,11 @@ import { LocalPaths } from "../paths";
 import { handleAgentData } from "../routes/agent-data";
 import { handleAgentFile } from "../routes/agent-file";
 import { handleSkills } from "../routes/skills";
+import { handleSkillsManifest } from "../routes/skills-manifest";
 import { handleSkillsRemote } from "../routes/skills-remote";
 import { LocalWorkspaceStore } from "../store/local";
+import { handleAttachments } from "../turn/attachments";
+import { handleFiles } from "../turn/files";
 import { FsVfs } from "../vfs";
 
 /**
@@ -29,6 +32,8 @@ export interface AgentOpRequest {
   actingSub?: string;
   actingAuthor?: ActivityContributor | null;
   triggersEnabled: boolean;
+  /** Raw query string (files routes take `?path=`), no leading `?`. */
+  query?: string;
 }
 
 export interface AgentOpResponse {
@@ -38,10 +43,23 @@ export interface AgentOpResponse {
   agentMissing?: true;
   status: number;
   contentType: string;
+  /** Text body (JSON/text responses). Empty when `bodyBase64` is set. */
   body: string;
+  /** Binary body (a file download, an archive) — base64, relayed raw. */
+  bodyBase64?: string;
+  /** Response headers a client depends on (Content-Disposition, Cache-Control). */
+  headers?: Record<string, string>;
   /** Domain events the handler emitted — the caller republishes their docs. */
   events: HoustonEvent[];
 }
+
+const TEXT_BODY =
+  /^(application\/json|text\/|application\/x-ndjson|image\/svg)/i;
+const RELAYED_HEADERS = [
+  "content-disposition",
+  "cache-control",
+  "etag",
+] as const;
 
 /**
  * Dispatch one op against `workspacesRoot` (the hydrated `workspaces/` dir)
@@ -76,8 +94,13 @@ export async function dispatchAgentOp(opts: {
   };
   const { method, rest, triggersEnabled, actingSub, actingAuthor } =
     opts.request;
+  const query = new URLSearchParams(opts.request.query ?? "");
 
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
+    // Files (list/read/download/archive/import/move/rename/folder): the
+    // Files tab, byte-identical to the pod.
+    if (await handleFiles(vfs, paths, ctx, method, rest, req, res, query, emit))
+      return;
     if (
       await handleAgentData(
         vfs,
@@ -95,6 +118,13 @@ export async function dispatchAgentOp(opts: {
     )
       return;
     if (await handleAgentFile(vfs, paths, ctx, method, rest, req, res, emit))
+      return;
+    // Composer drops land in uploads/ BEFORE the send (which is a pool turn).
+    if (await handleAttachments(vfs, paths, ctx, method, rest, req, res, emit))
+      return;
+    if (
+      await handleSkillsManifest(vfs, paths, ctx, method, rest, req, res, emit)
+    )
       return;
     if (await handleSkills(vfs, paths, ctx, method, rest, req, res, emit))
       return;
@@ -137,10 +167,30 @@ export async function dispatchAgentOp(opts: {
         : {},
       body: opts.request.body,
     });
+    const contentType =
+      response.headers.get("content-type") ?? "application/json";
+    const headers: Record<string, string> = {};
+    for (const name of RELAYED_HEADERS) {
+      const value = response.headers.get(name);
+      if (value) headers[name] = value;
+    }
+    const relayed = Object.keys(headers).length > 0 ? { headers } : {};
+    if (TEXT_BODY.test(contentType)) {
+      return {
+        status: response.status,
+        contentType,
+        body: await response.text(),
+        ...relayed,
+        events,
+      };
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
     return {
       status: response.status,
-      contentType: response.headers.get("content-type") ?? "application/json",
-      body: await response.text(),
+      contentType,
+      body: "",
+      bodyBase64: bytes.toString("base64"),
+      ...relayed,
       events,
     };
   } finally {

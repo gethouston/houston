@@ -16,6 +16,10 @@ export interface OpResult {
   status: number;
   contentType: string;
   body: string;
+  /** Binary answer (file download / archive), base64 — relayed raw. */
+  bodyBase64?: string;
+  /** Response headers the client depends on (Content-Disposition, ...). */
+  headers?: Record<string, string>;
   events: HoustonEvent[];
   /** Store-relative paths this op may have written (the sync-back scope). */
   include: (relativePath: string) => boolean;
@@ -82,6 +86,7 @@ export async function applyOp(
         request: {
           method: op.op.method,
           rest: op.op.rest,
+          ...(op.op.query ? { query: op.op.query } : {}),
           ...(op.op.body !== undefined ? { body: op.op.body } : {}),
           ...(op.op.contentType ? { contentType: op.op.contentType } : {}),
           ...(op.actingAs

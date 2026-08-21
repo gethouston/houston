@@ -24,6 +24,9 @@ import { poolIdentity, resolveTurnStore } from "./turn-store";
 /** Reserved claim key for agent-level writes (gateway + pod-store agree). */
 export const AGENT_OPS_CLAIM_ID = "agent-ops";
 
+/** Route ops skip the runtime tree wherever the agent sits in the prefix. */
+const ROUTE_OP_EXCLUDES = ["**/.houston/runtime/"];
+
 const EVENT_FAMILY: Partial<Record<HoustonEvent["type"], HoustonFamily>> = {
   ActivityChanged: "activity",
   RoutinesChanged: "routines",
@@ -86,6 +89,10 @@ export async function executeOp(
       ...(deps.maxHydrateBytes !== undefined
         ? { maxBytes: deps.maxHydrateBytes }
         : {}),
+      // Agent-level routes (files, docs, skills) never read the runtime tree
+      // (conversations, sessions) — the bulk of a busy agent. Conversation
+      // ops do, so they hydrate everything.
+      ...(op.op.kind === "route" ? { excludes: ROUTE_OP_EXCLUDES } : {}),
     });
     const result = await applyOp(op, filesystem, deps.fetchImpl);
     if (result.agentMissing) {
@@ -95,27 +102,44 @@ export async function executeOp(
     }
     await heartbeat.checkpoint();
     if (heartbeat.fenced) return json(res, 409, { error: "claim_fenced" });
-    const synced = await syncBack(
-      resolved.store,
-      resolved.prefix,
-      filesystem.storeRoot,
-      filesystem.manifest,
-      {
-        include: result.include,
-      },
-    );
-    if (synced.outOfScope > 0) {
-      console.info(
-        `[op] pool_writes_out_of_scope=${synced.outOfScope} prefix=${resolved.prefix} kind=${op.op.kind}`,
+    const isRead = op.op.kind === "route" && op.op.method === "GET";
+    if (!isRead) {
+      const synced = await syncBack(
+        resolved.store,
+        resolved.prefix,
+        filesystem.storeRoot,
+        filesystem.manifest,
+        { include: result.include },
       );
-    }
-    const diagnostics: string[] = [];
-    if (result.status < 300) {
-      diagnostics.push(
-        ...(await republish(deps, turnLike, filesystem, result)),
-      );
-      if (op.op.kind === "conversation") {
-        diagnostics.push(...(await opTranscriptMirror(deps, turnLike, op.op)));
+      // Any object that did not durably persist means the op cannot be
+      // reported ok: out of scope (dropped), a size rejection (skipped), or a
+      // generation conflict that survived the refreshed retry. Decline so the
+      // gateway proxies and the pod re-applies from the synced tree — never
+      // answer ok on a lost write.
+      if (
+        synced.outOfScope > 0 ||
+        synced.skipped.length > 0 ||
+        synced.conflicts.length > 0
+      ) {
+        console.error(
+          `[op] not durably synced; declining: outOfScope=${synced.outOfScope} skipped=${synced.skipped.length} conflicts=${synced.conflicts.length} prefix=${resolved.prefix} kind=${op.op.kind}`,
+        );
+        return json(res, 200, { ok: true, decline: true });
+      }
+      if (result.status < 300) {
+        const failures = await republish(deps, turnLike, filesystem, result);
+        if (op.op.kind === "conversation") {
+          failures.push(...(await opTranscriptMirror(deps, turnLike, op.op)));
+        }
+        if (failures.length > 0) {
+          // The files landed but a doc/transcript projection did not: the
+          // asleep read path would serve a stale doc the next read-modify-
+          // write clobbers. Decline; the pod re-projects on wake.
+          console.error(
+            `[op] projection failed; declining: ${failures.join("; ")} prefix=${resolved.prefix}`,
+          );
+          return json(res, 200, { ok: true, decline: true });
+        }
       }
     }
     json(res, 200, {
@@ -123,8 +147,9 @@ export async function executeOp(
       status: result.status,
       contentType: result.contentType,
       body: result.body,
+      ...(result.bodyBase64 ? { bodyBase64: result.bodyBase64 } : {}),
+      ...(result.headers ? { headers: result.headers } : {}),
       events: result.events.map((e) => e.type),
-      ...(diagnostics.length ? { diagnostics } : {}),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -35,6 +35,11 @@ export function excluded(rel: string, excludes: string[]): boolean {
   if (normalized.split("/").includes("auth-users")) return true;
   return excludes.some((exclude) => {
     const pattern = norm(exclude);
+    if (pattern.startsWith("**/") && pattern.endsWith("/")) {
+      // Any-depth subtree: `**/.houston/runtime/` matches that directory
+      // wherever the agent sits in the prefix (workspaces/<ws>/<agent>/...).
+      return `/${normalized}/`.includes(`/${pattern.slice(3)}`);
+    }
     if (pattern.endsWith("/")) {
       const subtree = pattern.slice(0, -1);
       return normalized === subtree || normalized.startsWith(pattern);
