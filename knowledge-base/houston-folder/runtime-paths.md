@@ -16,7 +16,7 @@ Same columns as [paths.md](paths.md); flags point into
 
 | Path | Source of truth | Worker reads from | Worker writes to | Projected doc | Served asleep from | Claim | Flags |
 |---|---|---|---|---|---|---|---|
-| `settings.json` (`{activeProvider?, models?, effort?}`) | store | T: hydrate, read by `resolveTurnModel`. O(settings/credential/conversation): hydrate. O(route): excluded. The gateway dispatcher also GETs this single object to pick the provider for a pool turn | T: never. O(settings): store, exactly this file plus `custom-endpoint.json` | none. It feeds `isActive`/`activeModel` in the `providers` view, but a settings op returns `events: []`, so nothing re-captures | `PUT settings`, `POST settings/claim`: O(settings). `claim` carries the gateway-computed connected set because a worker has no `auth.json` | agent-ops | D2 D18 |
+| `settings.json` (`{activeProvider?, models?, effort?}`) | store | T: hydrate, read by `resolveTurnModel`. O(settings/credential/conversation): hydrate. O(route): excluded. The pool dispatcher GETs this single object to pick the provider for a pool turn and for the asleep `providers` overlay; without a pool dispatcher the overlay picks the first connected provider in curated order instead | T: never. O(settings): store, exactly this file plus `custom-endpoint.json` | none. It feeds `isActive`/`activeModel` in the `providers` view, but a settings op returns `events: []`, so nothing re-captures | `PUT settings`, `POST settings/claim`: O(settings). `claim` carries the gateway-computed connected set because a worker has no `auth.json` | agent-ops | D2 D18 |
 | `custom-endpoint.json` (OpenAI-compatible endpoint, no api key inside) | store; org-shared twin is a Postgres row served at the pod shared-endpoint route | as `settings.json`; T reads it in `buildActiveCustomModel` | O(settings): store | none | `POST providers/openai-compatible`: wake | agent-ops | D2 W3 |
 | `qwen-region.json` (written beside the key on a Qwen connect) | store | T: hydrate, read per turn | never: not in `settingsOpFiles`, which is why a Qwen api-key op declines to the pod | none | Qwen `credential/api-key`: declines, wakes | - | D2 |
 | `models.json` (pi `ModelRuntime` store) | store | T: hydrate | T: written locally, never synced back | none | n/a | - | D1 |
@@ -33,7 +33,7 @@ Same columns as [paths.md](paths.md); flags point into
 
 | Path | Source of truth | Worker reads from | Worker writes to | Projected doc | Served asleep from | Claim | Flags |
 |---|---|---|---|---|---|---|---|
-| `runtime.log` (append-only, inside the data dir) | pod-local, but excluded by nothing | hydrated on every T and every non-route O | never from T/O; P uploads it on every sync tick | none | n/a | - | D17 |
+| `runtime.log` (append-only, inside the data dir) | pod-local, but excluded by nothing | hydrated on every T and on settings, credential, conversation and title ops (route ops exclude the runtime dir) | never from T/O; P uploads it whenever its hash changed, which is most sync ticks | none | n/a | - | D17 |
 | `token-usage.json` (rewritten after every turn on P) | store | hydrated | never from T/O | none; `providers/usage` view reads it on P | `GET providers/usage`: view doc | - | D3 |
 
 ## Root-level objects (same prefix, outside any agent dir)
@@ -43,5 +43,7 @@ Same columns as [paths.md](paths.md); flags point into
 | `custom-integrations.json` (custom integration definitions) | store | hydrated on T and O | never from T/O; P syncs it | view `custom_definitions` (captured `GET integrations/custom/definitions`), refreshed on `CustomIntegrationsChanged` | `GET integrations/custom/definitions`: view doc. Writes (`integrations/custom/*`): wake | - | D3 |
 | `custom-integration-secrets.json` | gateway custody (remote secret store) on managed pods; the file is migrated and deleted at boot | hydrated if present | never | none | n/a | - | W5 |
 | `agents/` (installed agent-config library) | store | hydrated | never | none | n/a | - | - |
+| `integrations.json` (retired per-user Composio state; may still hold a plaintext key) | store: not in the standing exclude list | hydrated when present | never | none | n/a; deleted when the reconnect notice is dismissed | - | - |
+| `claude-login/projects/<cwd-slug>/<session>.jsonl` (Claude SDK transcripts) | store; written by the Claude backend on a standing pod. Pool turns use the per-request pi backend and never write these | hydrated when present | never | none | n/a | - | - |
 | `credentials.json`, `claude-login/.credentials.json`, `db/`, `shared-mirror/` | pod-local | excluded from P's hydrate and sync; a claimed turn carries only `DEFAULT_EXCLUDES`, so they would land on a worker if a pod ever uploaded them | never | none | n/a | - | D18 |
 | `ws/<workspaceId>/preferences.json` (`locale`, `timezone`, `sidebar_layout`, `legal_acceptance`) | store, above the agent prefixes | not under the agent root; no op reaches it | never | none | not audited here: `/v1/workspaces/*` and `/v1/preferences/*` are account routes, outside the agent dispatch chain | - | - |

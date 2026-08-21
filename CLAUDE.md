@@ -1,6 +1,6 @@
 # Houston
 
-Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the only agent loop) behind the **host** (`packages/host`) — serving desktop and cloud from the same code, with one shared client behavior layer (`@houston/sdk`) bound by every surface. **The code is the truth**: there is no separate knowledge base. Read the module and its tests before changing it; this file holds only the non-obvious map and the rules.
+Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the only agent loop) behind the **host** (`packages/host`) — serving desktop and cloud from the same code, with one shared client behavior layer (`@houston/sdk`) bound by every surface. **The code is the truth**: read the module and its tests before changing it; this file holds only the non-obvious map and the rules. `knowledge-base/` holds code-cited audits that are too wide for one module's comments; when an audit and the code disagree, the code wins and the audit is stale.
 
 ## Repo map
 
@@ -20,6 +20,7 @@ Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the
 | `selfhost/` | Docker + Caddy self-host image (`selfhost/README.md`) |
 | `skills/` | Task procedures: `/release`, `/debug`, `/build-app-local`, `/design-review`, `/frontend-design` |
 | `docs/adr/` | Architecture decision records |
+| `knowledge-base/` | Code-cited audits (e.g. the agent workspace: where each file lives, what a pool worker hydrates, what is projected) |
 | `convergence/`, `store/` | Historical: the Rust→TS cutover record; legacy bundled catalog data. Never the current map |
 
 Non-obvious wiring:
