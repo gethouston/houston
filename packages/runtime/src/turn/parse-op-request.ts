@@ -37,6 +37,11 @@ export interface OpRequest {
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
 
+// The op-route shapes (mirrors the Go classifier): the agent-data families,
+// agentfile writes, and skills (install + manage), never a runtime path.
+const OP_ROUTE =
+  /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^skills\/(community|repo)\/install$/;
+
 function parseActing(raw: unknown): TurnRequest["actingAs"] {
   if (!raw || typeof raw !== "object") return undefined;
   const a = raw as { userId?: unknown; name?: unknown };
@@ -96,6 +101,10 @@ export function parseOpRequest(body: unknown): OpRequest {
       const rest = str(raw.rest, "op.rest");
       if (rest.includes("..") || rest.startsWith("/"))
         throw new Error("invalid 'op.rest'");
+      // Defense in depth: the worker accepts only the op-route shapes the
+      // gateway classifier dispatches — a valid-token caller cannot reach a
+      // handler surface (e.g. POST agentfile) the public path never exposes.
+      if (!OP_ROUTE.test(rest)) throw new Error("op.rest is not an op route");
       op = {
         kind: "route",
         method,
