@@ -95,11 +95,21 @@ export function useDictation({
         }
       } catch (err) {
         dispatch({ type: "transcribeSettled" });
-        if (errorText(err) === "model-not-ready") void reopen();
-        else showErrorToast("dictation_transcribe", errorText(err), err);
+        if (errorText(err) === "model-not-ready") {
+          void reopen();
+        } else {
+          // Report-only path first, then authored copy: the user spoke and
+          // pressed stop, so a silent drop reads as "it sent nothing"
+          // (PRODUCT-1448) — retrying is a real action they can take.
+          showErrorToast("dictation_transcribe", errorText(err), err);
+          addToast({
+            title: t("composer.dictation.failed"),
+            variant: "error",
+          });
+        }
       }
     },
-    [reopen],
+    [reopen, addToast, t],
   );
 
   const beginCapture = useCallback(async () => {

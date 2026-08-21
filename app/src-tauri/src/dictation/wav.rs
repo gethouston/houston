@@ -8,7 +8,12 @@ use std::time::Duration;
 const FALLBACK_BYTE_RATE: u64 = 16_000 * 2;
 
 /// The floor a transcription is always allowed, regardless of clip length.
-const MIN_TIMEOUT_SECS: u64 = 30;
+/// Generous on purpose: the first run pays a cold 181 MB model load, and
+/// CPU-only Windows machines (antivirus scan of the exe + model, slow disks,
+/// VMs) blew the previous 30s floor on even short clips (PRODUCT-1448). The
+/// timeout only exists to reap a genuinely hung sidecar, not to race a slow
+/// one.
+const MIN_TIMEOUT_SECS: u64 = 120;
 
 /// Estimated audio duration, in seconds, from the raw WAV bytes.
 ///
@@ -52,7 +57,7 @@ fn parse_duration(bytes: &[u8]) -> Option<f64> {
     Some((data as f64) / (rate as f64))
 }
 
-/// Timeout for one transcription: `max(30s, 4 × audio duration)`.
+/// Timeout for one transcription: `max(120s, 4 × audio duration)`.
 pub fn transcription_timeout(duration_secs: f64) -> Duration {
     let scaled = (duration_secs * 4.0).ceil().max(0.0);
     let secs = (scaled as u64).max(MIN_TIMEOUT_SECS);
@@ -104,10 +109,10 @@ mod tests {
     }
 
     #[test]
-    fn timeout_honors_30s_floor() {
-        // A 1s clip → 4s, floored up to the 30s minimum.
-        assert_eq!(transcription_timeout(1.0), Duration::from_secs(30));
-        assert_eq!(transcription_timeout(0.0), Duration::from_secs(30));
+    fn timeout_honors_120s_floor() {
+        // A 1s clip → 4s, floored up to the 120s minimum.
+        assert_eq!(transcription_timeout(1.0), Duration::from_secs(120));
+        assert_eq!(transcription_timeout(0.0), Duration::from_secs(120));
     }
 
     #[test]

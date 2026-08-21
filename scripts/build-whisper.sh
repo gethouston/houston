@@ -12,7 +12,9 @@
 # built fully static (`-DBUILD_SHARED_LIBS=OFF`) so it carries no whisper/ggml
 # shared-library dependency, and on macOS Metal is embedded into the binary
 # (`-DGGML_METAL_EMBED_LIBRARY=ON`) so there is no sibling `.metallib` to ship.
-# On macOS the result is verified dylib-free with `otool -L`.
+# On Windows the MSVC CRT is statically linked too (no VC++ redistributable
+# needed on user machines). On macOS the result is verified dylib-free with
+# `otool -L`; on Windows it is verified free of VC++ runtime DLL imports.
 #
 # Output:
 #   target/whisper/whisper-cli-<rust-triple>          (macOS / Linux)
@@ -190,6 +192,19 @@ case "$OS" in
   windows | linux)
     # CPU-only, portable across CPUs (no -march=native), self-contained.
     CMAKE_FLAGS+=(-DGGML_NATIVE=OFF)
+    # Statically link the MSVC C/C++ runtime. BUILD_SHARED_LIBS=OFF only
+    # covers whisper/ggml themselves — MSVC still defaults to /MD, leaving the
+    # shipped exe dependent on MSVCP140.dll/VCRUNTIME140.dll, which machines
+    # without the VC++ redistributable don't have (PRODUCT-1448: dictation
+    # died with a "MSVCP140.dll not found" system dialog). CMP0091 must be
+    # forced NEW because whisper.cpp's cmake_minimum_required predates 3.15,
+    # which would otherwise silently ignore CMAKE_MSVC_RUNTIME_LIBRARY.
+    if [ "$OS" = "windows" ]; then
+      CMAKE_FLAGS+=(
+        -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+        -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+      )
+    fi
     # ggml hard-refuses plain MSVC for ARM64 ("MSVC is not supported for ARM,
     # use clang" — ggml-cpu/CMakeLists.txt): its ARM kernels need clang's
     # NEON/ACLE intrinsics. Visual Studio's bundled ClangCL toolset compiles
@@ -232,6 +247,20 @@ if [ "$OS" = "macos" ] && command -v otool >/dev/null 2>&1; then
     exit 1
   fi
   echo "  dylib check OK (system-only dependencies)"
+fi
+
+# On Windows, verify the binary carries no VC++-redistributable dependency —
+# the Windows analogue of the macOS otool gate above. PE import-table DLL
+# names are plain ASCII inside the exe, so a grep is a toolchain-free check
+# (dumpbin needs a VS dev shell Git Bash doesn't have). A hit means the
+# static-CRT flags above regressed and the exe would fail to launch on
+# machines without the redistributable installed.
+if [ "$OS" = "windows" ]; then
+  if grep -qai -e 'MSVCP140' -e 'VCRUNTIME140' -e 'CONCRT140' "$BUILT"; then
+    echo "ERROR: whisper-cli imports the dynamic VC++ runtime (MSVCP140/VCRUNTIME140) — expected a statically linked CRT" >&2
+    exit 1
+  fi
+  echo "  CRT check OK (no VC++ redistributable dependency)"
 fi
 
 mkdir -p "$OUT_DIR"

@@ -27,7 +27,8 @@
       "setupConfirm": "Baixar",
       "setupProgress": "Baixando... {{pct}}%",
       "micDenied": "O Houston precisa de acesso ao microfone. Permita nas configurações do sistema e tente novamente.",
-      "noMic": "Nenhum microfone foi encontrado."
+      "noMic": "Nenhum microfone foi encontrado.",
+      "failed": "A digitação por voz não funcionou desta vez. Tente novamente."
     }
   },
   "mentions": {
