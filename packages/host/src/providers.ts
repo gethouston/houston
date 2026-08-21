@@ -129,13 +129,16 @@ export const PROVIDERS: readonly HostProvider[] = [
     // `cloud: false` = off the legacy cloudrun per-turn listing only; served
     // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
+    // Claude ids are `global.` inference-profile ids — Bedrock serves Claude
+    // 4.x only through inference profiles; bare foundation ids fail every
+    // on-demand invocation (PRODUCT-1477).
     models: [
-      "anthropic.claude-sonnet-4-6",
-      "anthropic.claude-opus-4-8",
+      "global.anthropic.claude-sonnet-4-6",
+      "global.anthropic.claude-opus-4-8",
       "amazon.nova-pro-v1:0",
       "amazon.nova-lite-v1:0",
     ],
-    defaultModel: "anthropic.claude-sonnet-4-6",
+    defaultModel: "global.anthropic.claude-sonnet-4-6",
   },
   {
     id: "minimax",

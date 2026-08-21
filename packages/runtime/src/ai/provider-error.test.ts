@@ -370,6 +370,21 @@ test("together.ai's gated-model body → model_unavailable, never unknown", () =
   expect(err.kind).toBe("model_unavailable");
 });
 
+test("Bedrock bare-foundation-id on-demand rejection → model_unavailable, never unknown (PRODUCT-1477)", () => {
+  // The verbatim ValidationException Bedrock answers a bare Claude 4.x id with
+  // (Sentry, 2026-08-21) — note AWS's curly apostrophe in "isn\u2019t", which
+  // keeps every "is not supported" pattern from matching. The key
+  // authenticated fine; classifying this as `unknown` made the api-key verify
+  // read "couldn't reach Amazon Bedrock" for a valid key.
+  const err = classifyProviderError({
+    provider: "amazon-bedrock",
+    model: "anthropic.claude-sonnet-4-6",
+    message:
+      "Validation error: Invocation of model ID anthropic.claude-sonnet-4-6 with on-demand throughput isn\u2019t supported. Retry your request with the ID or ARN of an inference profile that contains this model.",
+  });
+  expect(err.kind).toBe("model_unavailable");
+});
+
 test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilot provider", () => {
   const err = classifyProviderError({
     provider: "openai-codex",

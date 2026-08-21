@@ -558,13 +558,18 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay-as-you-go on your AWS account",
     installUrl: "https://aws.amazon.com/bedrock/",
     apiKeyUrl: "https://console.aws.amazon.com/bedrock/home#/api-keys",
-    defaultModel: "anthropic.claude-sonnet-4-6",
+    // Inference-profile id (`global.`), NOT the bare foundation id: Bedrock
+    // serves Claude 4.x only through inference profiles, so bare-id invocation
+    // (including the connect-time key probe) fails with "on-demand throughput
+    // isn't supported" (PRODUCT-1477). Twin of the runtime's
+    // `config.bedrockModel`; keep them in sync.
+    defaultModel: "global.anthropic.claude-sonnet-4-6",
     models: {
-      "anthropic.claude-sonnet-4-6": {
+      "global.anthropic.claude-sonnet-4-6": {
         label: "Claude Sonnet 4.6",
         description: "Anthropic's balanced model, via Bedrock.",
       },
-      "anthropic.claude-opus-4-8": {
+      "global.anthropic.claude-opus-4-8": {
         label: "Claude Opus 4.8",
         description: "Anthropic's flagship, via Bedrock.",
       },

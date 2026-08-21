@@ -55,8 +55,15 @@ export const config = {
   githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "gpt-4.1",
   /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
   geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3.5-flash",
-  /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock` model id. */
-  bedrockModel: env.HOUSTON_BEDROCK_MODEL || "anthropic.claude-sonnet-4-6",
+  /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock`
+   *  model id. MUST be an inference-profile id (`global.` prefix): Bedrock
+   *  serves Claude 4.x only through inference profiles, so the bare foundation
+   *  id fails every on-demand invocation with "Invocation of model ID … with
+   *  on-demand throughput isn't supported" — including the connect-time key
+   *  probe, which made every Bedrock connect fail (PRODUCT-1477). Twin of the
+   *  frontend's `PROVIDER_OVERRIDES["amazon-bedrock"].defaultModel`. */
+  bedrockModel:
+    env.HOUSTON_BEDROCK_MODEL || "global.anthropic.claude-sonnet-4-6",
   /**
    * Default MiniMax model (API-key provider). Defaults to the token/coding-plan
    * SKU `MiniMax-M3[1m]` (1M-context): MiniMax's Anthropic endpoint documents this

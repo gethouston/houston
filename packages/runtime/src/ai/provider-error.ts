@@ -135,6 +135,13 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // …" — for models its serverless tier doesn't include. The credential
   // authenticated fine; only the model is out of reach.
   "unable to access model",
+  // Bedrock's bare-foundation-id rejection — "Invocation of model ID … with
+  // on-demand throughput isn't supported. Retry your request with the ID or
+  // ARN of an inference profile …" (Claude 4.x is inference-profile-only).
+  // The credential authenticated; only THIS model id is uninvokable. Matched
+  // on the apostrophe-free phrase: AWS spells "isn't" with U+2019, which the
+  // "is not supported" pattern above can never hit (PRODUCT-1477).
+  "on-demand throughput",
   // GitHub Copilot's newer 400 body — `The requested model is not available
   // for integrator "vscode-chat". Available models: […]` — same plan-doesn't-
   // serve-this-model failure as its older `model_not_supported` code (HOU-977).

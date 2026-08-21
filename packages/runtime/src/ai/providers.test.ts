@@ -90,7 +90,7 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode-go")).toBe("glm-5.1");
   expect(providerDefaultModel("deepseek")).toBe("deepseek-v4-flash");
   expect(providerDefaultModel("amazon-bedrock")).toBe(
-    "anthropic.claude-sonnet-4-6",
+    "global.anthropic.claude-sonnet-4-6",
   );
   expect(providerDefaultModel("minimax")).toBe("MiniMax-M3[1m]");
   // Unknown falls back to the Codex default (never throws / undefined).
