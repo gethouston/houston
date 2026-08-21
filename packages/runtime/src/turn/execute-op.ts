@@ -62,7 +62,7 @@ export async function executeOp(
   const turnLike = {
     ...op,
     conversationId:
-      op.op.kind === "conversation" ? op.op.conversationId : "__agent_ops__",
+      op.op.kind === "conversation" ? op.op.conversationId : AGENT_OPS_CLAIM_ID,
   };
   const heartbeat = startClaimHeartbeat({
     claim: op.claim,
