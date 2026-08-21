@@ -79,11 +79,15 @@
       "title": "Cómo obtener tu clave",
       "nvidia1": "Abre la página de claves de NVIDIA con el botón de arriba e inicia sesión, o crea una cuenta gratis.",
       "nvidia2": "Haz clic en \"Generate Personal Key\" y en \"Services Included\" marca \"Public API Endpoints\".",
-      "nvidia3": "Copia la clave que empieza con \"nvapi-\" y pégala abajo."
+      "nvidia3": "Copia la clave que empieza con \"nvapi-\" y pégala abajo.",
+      "bedrock1": "Abre la página de claves de API de Bedrock con el botón de arriba y elige \"Claves de API de larga duración\".",
+      "bedrock2": "Haz clic en \"Generar claves de API de larga duración\". El valor de la clave se muestra una sola vez, así que cópialo de inmediato.",
+      "bedrock3": "Pega el valor de la clave abajo. Empieza con \"ABSK\". El nombre que aparece en la lista (\"BedrockAPIKey-...\") no es la clave."
     },
     "errorInvalidKey": "{{name}} no aceptó esta clave. Revísala y pégala de nuevo.",
     "errorKeyRestricted": "Esta clave está bloqueada por la configuración de tu cuenta de {{name}}. Crea una clave nueva sin restricciones con el botón de arriba y pégala aquí.",
     "errorNvidiaAccountGated": "Tu clave es válida, pero NVIDIA no está sirviendo modelos de chat a tu cuenta en este momento. Asegúrate de que tu clave sea una Personal Key de org.ngc.nvidia.com con \"Public API Endpoints\" en Services Included. Si aun así falla, pide al soporte de NVIDIA que habilite el acceso a modelos para tu cuenta.",
+    "errorBedrockInvalidKey": "Amazon Bedrock no aceptó esta clave. Asegúrate de pegar el valor de la clave (empieza con \"ABSK\") y no su nombre de la lista (\"BedrockAPIKey-...\"). AWS muestra el valor una sola vez, así que genera una clave nueva si ya no lo tienes.",
     "errorProviderUnavailable": "No pudimos conectar con {{name}} para verificar tu clave, así que no se guardó nada. Inténtalo de nuevo en un momento."
   },
   "copilot": {

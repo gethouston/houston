@@ -6,13 +6,20 @@ import { useTranslation } from "react-i18next";
  * first (HOU-890): a working key must be an NGC Personal Key with the
  * "Public API Endpoints" service included, a picker the quick
  * build.nvidia.com key flow never shows, so without these steps users mint
- * keys that fail on every chat model.
+ * keys that fail on every chat model. Amazon Bedrock second (PRODUCT-1477):
+ * the console shows a generated key's VALUE exactly once and afterwards lists
+ * only its name, which users then paste as the key.
  */
 const GUIDES = {
   nvidia: [
     "apiKey.guide.nvidia1",
     "apiKey.guide.nvidia2",
     "apiKey.guide.nvidia3",
+  ],
+  "amazon-bedrock": [
+    "apiKey.guide.bedrock1",
+    "apiKey.guide.bedrock2",
+    "apiKey.guide.bedrock3",
   ],
 } as const;
 

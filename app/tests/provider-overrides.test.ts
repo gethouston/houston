@@ -73,7 +73,6 @@ describe("providerDescription", () => {
       "moonshotai",
       "zai",
       "vercel-ai-gateway",
-      "azure-openai-responses",
       "google-vertex",
       "openai-compatible",
       "zai-coding-cn",
@@ -104,6 +103,7 @@ describe("providerDescription", () => {
       "xiaomi-token-plan-sgp",
       "cloudflare-ai-gateway",
       "cloudflare-workers-ai",
+      "azure-openai-responses",
     ]) {
       ok(DROP_PI_PROVIDERS.has(id), `${id} must be in DROP_PI_PROVIDERS`);
       strictEqual(
