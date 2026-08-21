@@ -21,6 +21,9 @@ import { publish } from "./turn-activity-doc";
 import { prepareTurnFilesystem, type TurnFilesystem } from "./turn-filesystem";
 import { poolIdentity, resolveTurnStore } from "./turn-store";
 
+/** Reserved claim key for agent-level writes (gateway + pod-store agree). */
+export const AGENT_OPS_CLAIM_ID = "agent-ops";
+
 const EVENT_FAMILY: Partial<Record<HoustonEvent["type"], HoustonFamily>> = {
   ActivityChanged: "activity",
   RoutinesChanged: "routines",
