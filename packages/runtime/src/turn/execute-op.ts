@@ -28,18 +28,17 @@ export const AGENT_OPS_CLAIM_ID = "agent-ops";
  *  .houston/runtime/`) — exactly that depth, so a user project carrying its
  *  own `.houston/runtime` directory is hydrated like any other file. */
 const ROUTE_OP_EXCLUDES = ["workspaces/*/*/.houston/runtime/"];
-/** A settings op reads/writes the runtime dir's small files only. */
+/** A settings op reads/writes the runtime dir's small files only: skip the
+ *  bulk (history, user files); the small .houston docs keep the layout real.
+ *  A model-picker click must not pay a big agent's hydrate. */
 const SETTINGS_OP_EXCLUDES = [
   "workspaces/*/*/.houston/runtime/conversations/",
   "workspaces/*/*/.houston/runtime/sessions/",
-];
-/** A credential op needs nothing but the agent directory to exist: skip the
- *  bulk (history, user files); the small .houston docs keep the layout real. */
-const CREDENTIAL_OP_EXCLUDES = [
-  ...SETTINGS_OP_EXCLUDES,
   "workspaces/*/*/files/",
   "workspaces/*/*/uploads/",
 ];
+/** A credential op needs nothing but the agent directory to exist. */
+const CREDENTIAL_OP_EXCLUDES = SETTINGS_OP_EXCLUDES;
 
 const EVENT_FAMILY: Partial<Record<HoustonEvent["type"], HoustonFamily>> = {
   ActivityChanged: "activity",

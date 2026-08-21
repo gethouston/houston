@@ -383,7 +383,7 @@ test("a settings claim runs on the worker and syncs settings.json back (never mo
   expect(after.effort).toBe("high");
 });
 
-test("an api-key connect verifies the key and pushes it to the gateway store (no file written)", async () => {
+test("an api-key connect that fails connectability pushes nothing and leaves no auth.json", async () => {
   const { storeRoot, agentId, prefix } = await seedAgent();
   const store = new LocalDirStore(storeRoot);
   // The "gateway": heartbeat + the pod-credentials PUT the push lands on.
@@ -413,8 +413,9 @@ test("an api-key connect verifies the key and pushes it to the gateway store (no
   const base = await listen(
     createTurnServer({ store, token: "", runTurn: noopTurn }),
   );
-  // A key the verifier rejects (no provider reachable in tests): 401 with
-  // the provider's reason, and NOTHING pushed.
+  // A key that fails the connectability check (unknown provider) answers the
+  // runtime's own 400 and NOTHING is pushed. (The verify→push success path
+  // needs a live provider; it is exercised on staging, not here.)
   const { json } = await postOp(
     base,
     opBody(agentId, `${gateway}/hb`, {
@@ -424,7 +425,7 @@ test("an api-key connect verifies the key and pushes it to the gateway store (no
       apiKey: "sk-test",
     }),
   );
-  expect([400, 401]).toContain(json.status);
+  expect(json.status).toBe(400);
   expect(pushes).toHaveLength(0);
   // No local residue: auth.json never appears in the store.
   expect((await store.list(prefix)).some((k) => k.endsWith("auth.json"))).toBe(

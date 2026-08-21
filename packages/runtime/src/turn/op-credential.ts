@@ -71,6 +71,8 @@ export async function applyApiKeyConnect(
   try {
     await store.put(
       {
+        // Unused by the remote store (the URL names org + agent); the port's
+        // shape requires it.
         workspaceId: opts.orgSlug,
         provider: opts.provider,
         accessToken: key,
