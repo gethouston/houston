@@ -74,7 +74,10 @@ export async function finishTurnDurability(
     });
     poolWritesOutOfScope = synced.outOfScope;
     uploaded = synced.uploaded;
-    changed = changedEventTypes(opts.filesystem, uploaded);
+    changed = changedEventTypes(opts.filesystem, [
+      ...uploaded,
+      ...synced.deleted,
+    ]);
   } catch (error) {
     // A fenced object write means the claim was adopted mid-sync: report it
     // as exactly that, not as a generic sync failure.
@@ -114,11 +117,17 @@ export async function finishTurnDurability(
       changed,
     };
   }
+  // An event is a promise that the refetch can be served asleep: a family
+  // whose projection failed is left out (the read would fall to the pod).
+  const without = (type: (typeof changed)[number]) => {
+    changed = changed.filter((t) => t !== type);
+  };
   if (published && "error" in published) {
     outcome = appendError(
       outcome,
       `transcript publish failed: ${published.error}`,
     );
+    without("ConversationsChanged");
   }
 
   const activityChanged = uploaded.includes(
@@ -133,6 +142,7 @@ export async function finishTurnDurability(
       outcome,
       `board doc publish failed: ${activityPublished.error}`,
     );
+    without("ActivityChanged");
   }
   const runsChanged = uploaded.includes(
     turnRoutineRunsKey(opts.filesystem.workspaceRel),
@@ -146,6 +156,11 @@ export async function finishTurnDurability(
       outcome,
       `runs doc publish failed: ${runsPublished.error}`,
     );
+  }
+  // The runs doc is projected for routine fires only; any other turn that
+  // touched it has no doc to point other tabs at.
+  if (runsChanged && (!runsPublished || "error" in runsPublished)) {
+    without("RoutineRunsChanged");
   }
   // The claim may have been adopted while sync/publish were in flight (the
   // heartbeat loop learns it asynchronously). A last checkpoint keeps a stale

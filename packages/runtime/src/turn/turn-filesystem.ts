@@ -99,7 +99,7 @@ export async function syncTurnFilesystem(opts: {
   filesystem: TurnFilesystem;
   conversationId: string;
   claimed: boolean;
-}): Promise<{ uploaded: string[]; outOfScope: number }> {
+}): Promise<{ uploaded: string[]; deleted: string[]; outOfScope: number }> {
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -121,5 +121,9 @@ export async function syncTurnFilesystem(opts: {
       `[turn] pool_writes_out_of_scope=${result.outOfScope} prefix=${opts.prefix || opts.filesystem.dataRel} conversation=${opts.conversationId}`,
     );
   }
-  return { uploaded: result.uploaded, outOfScope: result.outOfScope };
+  return {
+    uploaded: result.uploaded,
+    deleted: result.deleted,
+    outOfScope: result.outOfScope,
+  };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedEventTypes } from "./turn-changed-events";
+import { announcedOpEvents, changedEventTypes } from "./turn-changed-events";
 
 const layout = {
   workspaceRel: "workspaces/Houston/Agent",
@@ -52,6 +52,32 @@ describe("changedEventTypes", () => {
         "workspaces/Houston/Agent/.houston/activity/activity.schema.json",
         "workspaces/Houston/Other/.houston/activity/activity.json",
       ]),
+    ).toEqual([]);
+  });
+});
+
+describe("announcedOpEvents", () => {
+  it("announces the handler's agent events once, sorted", () => {
+    expect(
+      announcedOpEvents(
+        [
+          { type: "RoutinesChanged", agentPath: "a" },
+          { type: "ActivityChanged", agentPath: "a" },
+          { type: "RoutinesChanged", agentPath: "a" },
+          { type: "Toast", level: "info", message: "x" },
+        ],
+        [],
+      ),
+    ).toEqual(["ActivityChanged", "RoutinesChanged"]);
+  });
+
+  it("announces nothing when a projection failed", () => {
+    // Other tabs would refetch a doc that lagged: the read falls to the pod.
+    expect(
+      announcedOpEvents(
+        [{ type: "RoutinesChanged", agentPath: "a" }],
+        ["routines: PUT rejected (503)"],
+      ),
     ).toEqual([]);
   });
 });

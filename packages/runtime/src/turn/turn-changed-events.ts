@@ -46,3 +46,20 @@ export function changedEventTypes(
   }
   return [...out].sort();
 }
+
+/**
+ * What an op reply may announce: the handler's events, but only once every
+ * projection the refetch would read is durable. A lagging doc announced
+ * early sends every member's tab to a read the gateway cannot serve asleep.
+ */
+export function announcedOpEvents(
+  events: readonly HoustonEvent[],
+  projectionFailures: readonly string[],
+): AgentEventType[] {
+  if (projectionFailures.length > 0) return [];
+  const out = new Set<AgentEventType>();
+  for (const event of events) {
+    if ("agentPath" in event) out.add(event.type);
+  }
+  return [...out].sort();
+}

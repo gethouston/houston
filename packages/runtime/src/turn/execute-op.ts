@@ -18,6 +18,7 @@ import { opTranscriptMirror } from "./op-transcript";
 import { parseOpRequest } from "./parse-op-request";
 import type { TurnServerDeps } from "./server-types";
 import { publish } from "./turn-activity-doc";
+import { announcedOpEvents } from "./turn-changed-events";
 import { prepareTurnFilesystem, type TurnFilesystem } from "./turn-filesystem";
 import { poolIdentity, resolveTurnStore } from "./turn-store";
 
@@ -126,6 +127,7 @@ export async function executeOp(
     await heartbeat.checkpoint();
     if (heartbeat.fenced) return json(res, 409, { error: "claim_fenced" });
     const isRead = op.op.kind === "route" && op.op.method === "GET";
+    let announce: ReturnType<typeof announcedOpEvents> = [];
     if (!isRead) {
       const synced = await syncBack(
         resolved.store,
@@ -187,6 +189,7 @@ export async function executeOp(
             `[op] projection failed after a durable sync (asleep reads may lag until the next projection): ${failures.join("; ")} prefix=${resolved.prefix}`,
           );
         }
+        announce = announcedOpEvents(result.events, failures);
       }
     }
     json(res, 200, {
@@ -196,7 +199,7 @@ export async function executeOp(
       body: result.body,
       ...(result.bodyBase64 ? { bodyBase64: result.bodyBase64 } : {}),
       ...(result.headers ? { headers: result.headers } : {}),
-      events: result.events.map((e) => e.type),
+      events: announce,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
