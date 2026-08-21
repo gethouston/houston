@@ -119,3 +119,23 @@ export async function resolveTurnLayout(
       : "hydrated store does not contain a recognized agent layout",
   );
 }
+
+/**
+ * The directories the layout resolver and the host's agent lookup key on,
+ * without a single download: `workspaces/<ws>/<agent>` for the standing
+ * layout, `data` / `workspace` for the per-turn one. Deeper directories
+ * appear as objects materialize.
+ */
+export async function layoutSkeleton(storeRoot: string, rels: string[]) {
+  const dirs = new Set<string>();
+  for (const rel of rels) {
+    const segments = rel.split("/");
+    const depth = segments[0] === "workspaces" ? 3 : 1;
+    if (segments.length > depth) dirs.add(segments.slice(0, depth).join("/"));
+  }
+  await Promise.all(
+    [...dirs].map((dir) =>
+      mkdir(join(storeRoot, ...dir.split("/")), { recursive: true }),
+    ),
+  );
+}

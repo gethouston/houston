@@ -71,6 +71,16 @@ export interface HydrateOptions {
    * 133-object workspace measured 10.5 s sequential vs 0.4 s at 16.
    */
   concurrency?: number;
+  /**
+   * Per-object admission on top of `excludes`: only objects the predicate
+   * accepts are downloaded. Lets a caller hydrate a hot-set (one
+   * conversation's files, not every conversation's) without a glob per id.
+   */
+  filter?: (rel: string) => boolean;
+  /** Every admitted path BEFORE `filter` (the store's view of the tree) and
+   *  whether the listing carried generations (the CAS capability, which a
+   *  filtered manifest can no longer answer on its own). */
+  onListed?: (listing: { rels: string[]; generationAware: boolean }) => void;
 }
 
 /** The hydrated prefix exceeded the caller's aggregate byte cap. */
@@ -111,12 +121,18 @@ export async function hydrate(
     objects ??
     (await store.list(prefix)).map((key) => ({ key, generation: undefined }));
   const entries: { generation?: string; key: string; rel: string }[] = [];
+  const admitted: string[] = [];
+  let generationAware = false;
   for (const object of listed) {
     const { key } = object;
     const rel = prefix ? key.slice(prefix.length + 1) : key;
     if (!rel || excluded(rel, excludes)) continue;
+    admitted.push(rel);
+    if (object.generation !== undefined) generationAware = true;
+    if (opts.filter && !opts.filter(rel)) continue;
     entries.push({ key, rel, generation: object.generation });
   }
+  opts.onListed?.({ rels: admitted, generationAware });
   // Workers pull from a shared cursor. The first failure (download error or
   // the size cap) parks every worker before it takes new work, and only that
   // first error is thrown — workers themselves never reject, so a second

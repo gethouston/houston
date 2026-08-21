@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream, existsSync } from "node:fs";
 import { mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
+import type { ObjectMetadata } from "./object-manifest";
 
 /**
  * The object-storage port behind durable engine state. Keys are forward-slash
@@ -103,6 +105,25 @@ export class LocalDirStore implements ObjectStore {
     };
     await walk(base);
     return out.sort();
+  }
+
+  /** Size + mtime + md5 per key, the same shape the HTTP store serves; no
+   *  generations (the local store has none), so readers stay unconditional. */
+  async manifest(prefix = ""): Promise<ObjectMetadata[]> {
+    const out: ObjectMetadata[] = [];
+    for (const key of await this.list(prefix)) {
+      const file = this.fileFor(key);
+      const info = await stat(file);
+      const hash = createHash("md5");
+      for await (const chunk of createReadStream(file)) hash.update(chunk);
+      out.push({
+        key,
+        size: info.size,
+        md5: hash.digest("base64"),
+        updated: info.mtime.toISOString(),
+      });
+    }
+    return out;
   }
 
   async download(key: string, destFile: string): Promise<void> {

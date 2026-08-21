@@ -1,6 +1,6 @@
-import { rm } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { dispatchAgentOp } from "@houston/host/src/op/dispatch";
+import { LazyReadRefusedError, PrefixedVfs } from "@houston/host/src/vfs";
 import type { HoustonEvent } from "@houston/protocol";
 import { applyServedCredential } from "../auth/auth-file";
 import { generateTitle } from "../session/summarize";
@@ -36,6 +36,8 @@ export interface OpResult {
   agentMissing?: boolean;
   /** The worker cannot serve this one (a provider that needs the pod). */
   decline?: boolean;
+  /** A lazy read was refused mid-handler: the overlay may be partial. */
+  tooLarge?: true;
 }
 
 const json = (
@@ -89,9 +91,13 @@ export async function applyOp(
   const agentId = engineAgentId(filesystem);
   switch (op.op.kind) {
     case "route": {
+      // The handlers address the agent under `workspaces/`; the turn's vfs
+      // is rooted one level up (lazy or real, the same seam).
+      const vfs = new PrefixedVfs(filesystem.vfs, "workspaces");
       const result = await dispatchAgentOp({
         workspacesRoot: join(filesystem.storeRoot, "workspaces"),
         agentId,
+        vfs,
         request: {
           method: op.op.method,
           rest: op.op.rest,
@@ -123,6 +129,7 @@ export async function applyOp(
         const view = await dispatchAgentOp({
           workspacesRoot: join(filesystem.storeRoot, "workspaces"),
           agentId,
+          vfs,
           request: {
             method: "GET",
             rest: "skills",
@@ -225,28 +232,50 @@ export async function applyOp(
       const { conversationId, action } = op.op;
       const dir = join(filesystem.dataDir, "conversations");
       const include = conversationScope(filesystem.dataRel, conversationId);
-      // The runtime's own directory-scoped mutations — the pod's PATCH/DELETE
-      // call the same functions against its live data dir.
-      const found =
-        action === "rename"
-          ? renameConversationMutationAt(
-              dir,
-              conversationId,
-              op.op.title ?? "",
-            ) !== null
-          : deleteConversationAt(dir, conversationId);
-      if (!found) {
-        return {
-          ...json(404, { error: "conversation not found" }),
-          events: [],
-          include,
-        };
-      }
+      const notFound = {
+        ...json(404, { error: "conversation not found" }),
+        events: [],
+        include,
+      };
+      const conversationsRel = posix.join(filesystem.dataRel, "conversations");
+      const fileRel = posix.join(
+        conversationsRel,
+        `${encodeURIComponent(conversationId)}.json`,
+      );
+      // Existence from the listing: a lazy tree answers it without a
+      // download (the pod's 404 for an unknown conversation, same contract).
+      const exists = (await filesystem.vfs.list(conversationsRel)).includes(
+        fileRel,
+      );
+      if (!exists) return notFound;
       if (action === "delete") {
-        await rm(join(filesystem.dataDir, "sessions", conversationId), {
-          recursive: true,
-          force: true,
-        });
+        // Deletes need no bytes: tombstone the file and the session dir so
+        // a lazy tree never downloads what it is about to remove.
+        await filesystem.vfs.deleteKey(fileRel);
+        await filesystem.vfs.deletePrefix(
+          posix.join(filesystem.dataRel, "sessions", conversationId),
+        );
+        deleteConversationAt(dir, conversationId);
+      } else {
+        // A rename reads the file: materialize it (a hydrated tree already
+        // has it). Over the read cap the pod must do it — decline.
+        try {
+          await filesystem.vfs.readBytes(fileRel);
+        } catch (error) {
+          if (!(error instanceof LazyReadRefusedError)) throw error;
+          return {
+            ...json(503, { error: "conversation too large to edit asleep" }),
+            events: [],
+            include,
+            decline: true,
+          };
+        }
+        const renamed = renameConversationMutationAt(
+          dir,
+          conversationId,
+          op.op.title ?? "",
+        );
+        if (renamed === null) return notFound;
       }
       return {
         ...json(200, { ok: true }),

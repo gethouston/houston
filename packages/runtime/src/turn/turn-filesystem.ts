@@ -1,6 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { docKey } from "@houston/domain";
+import { MAX_UPLOAD_BYTES } from "@houston/host/src/turn/files-import";
+import { FsVfs, LazyStoreVfs, type Vfs } from "@houston/host/src/vfs";
 import {
   DEFAULT_EXCLUDES,
   HydrateLimitError,
@@ -10,6 +12,7 @@ import {
   syncBack,
 } from "@houston/runtime-client/object-sync";
 import {
+  layoutSkeleton,
   resolveTurnLayout,
   type TurnLayout,
   TurnSetupError,
@@ -21,7 +24,18 @@ export const TURN_HYDRATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 /** Hydrated manifest paired with the resolved on-disk layout. */
 export interface TurnFilesystem extends TurnLayout {
   storeRoot: string;
+  /** Sync-back ownership: objects on disk (and, lazily, objects owned
+   *  without a download). A lazy tree grows this as handlers read. */
   manifest: HydrateManifest;
+  /** Reads rooted at `storeRoot`: the real tree when hydrated, the
+   *  store-backed overlay when lazy. Readers that may touch an object the
+   *  op did not materialize (doc republish) go through this, never `fs`. */
+  vfs: Vfs;
+  /** Remote objects the lazy listing knows about (diagnostics). */
+  listedObjects: number;
+  /** The store's generation capability as the LISTING showed it. A filtered
+   *  or lazy manifest may be empty and cannot answer this on its own. */
+  generationAware: boolean;
 }
 
 /**
@@ -39,19 +53,62 @@ export async function prepareTurnFilesystem(opts: {
   /** Extra hydrate excludes (on top of the defaults), e.g. the runtime tree
    *  for an op that never reads conversations. */
   excludes?: string[];
+  /** Per-object hot-set admission on top of the excludes. */
+  filter?: (rel: string) => boolean;
+  /**
+   * Download nothing up front: list the store, lay out the agent's
+   * directory skeleton, and serve reads through a store-backed vfs that
+   * materializes one object on first touch. Needs a store with a manifest
+   * (a legacy list-only store hydrates eagerly). Only for handlers that
+   * read through the vfs port; a turn's tools read the real filesystem.
+   */
+  lazy?: boolean;
 }): Promise<TurnFilesystem> {
   const storeRoot = join(opts.root, "store");
   await mkdir(storeRoot, { recursive: true });
+  const excludes = opts.excludes
+    ? [...DEFAULT_EXCLUDES, ...opts.excludes]
+    : DEFAULT_EXCLUDES;
   const maxBytes =
     opts.maxBytes ?? (opts.claimed ? TURN_HYDRATE_MAX_BYTES : undefined);
+  if (opts.lazy && opts.store.manifest) {
+    const objects = await opts.store.manifest(opts.prefix);
+    const manifest: HydrateManifest = new Map();
+    const vfs = new LazyStoreVfs({
+      store: opts.store,
+      prefix: opts.prefix,
+      root: storeRoot,
+      objects,
+      manifest,
+      excludes,
+      maxObjectBytes: MAX_UPLOAD_BYTES,
+      maxBytes: maxBytes ?? TURN_HYDRATE_MAX_BYTES,
+    });
+    await layoutSkeleton(storeRoot, vfs.remoteKeys);
+    return {
+      ...(await resolveTurnLayout(storeRoot, { allowEmpty: !opts.claimed })),
+      storeRoot,
+      manifest,
+      vfs,
+      listedObjects: objects.length,
+      generationAware: vfs.generationAware,
+    };
+  }
   let manifest: HydrateManifest;
+  let listed = { rels: [] as string[], generationAware: false };
   try {
     manifest = await hydrate(opts.store, opts.prefix, storeRoot, {
       ...(maxBytes !== undefined ? { maxBytes } : {}),
-      ...(opts.excludes
-        ? { excludes: [...DEFAULT_EXCLUDES, ...opts.excludes] }
-        : {}),
+      excludes,
+      ...(opts.filter ? { filter: opts.filter } : {}),
+      onListed: (listing) => {
+        listed = listing;
+      },
     });
+    // The layout must resolve from what the STORE holds, not from what the
+    // filter admitted: a turn whose agent has nothing but other
+    // conversations' history still targets an existing agent.
+    await layoutSkeleton(storeRoot, listed.rels);
   } catch (error) {
     if (!(error instanceof HydrateLimitError)) throw error;
     throw new TurnSetupError("hydrate_over_cap", error.message);
@@ -60,6 +117,9 @@ export async function prepareTurnFilesystem(opts: {
     ...(await resolveTurnLayout(storeRoot, { allowEmpty: !opts.claimed })),
     storeRoot,
     manifest,
+    vfs: new FsVfs(storeRoot),
+    listedObjects: listed.rels.length,
+    generationAware: listed.generationAware,
   };
 }
 
@@ -105,15 +165,18 @@ export async function syncTurnFilesystem(opts: {
     opts.prefix,
     opts.filesystem.storeRoot,
     opts.filesystem.manifest,
-    opts.claimed
-      ? {
-          include: claimedTurnIncludes(
-            opts.filesystem.dataRel,
-            opts.filesystem.workspaceRel,
-            opts.conversationId,
-          ),
-        }
-      : {},
+    {
+      generations: opts.filesystem.generationAware,
+      ...(opts.claimed
+        ? {
+            include: claimedTurnIncludes(
+              opts.filesystem.dataRel,
+              opts.filesystem.workspaceRel,
+              opts.conversationId,
+            ),
+          }
+        : {}),
+    },
   );
   if (result.outOfScope > 0) {
     // Attributed: on a shared worker an unattributed count is unactionable.

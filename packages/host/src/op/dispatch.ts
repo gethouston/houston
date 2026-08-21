@@ -14,8 +14,8 @@ import { handleSkillsRemote } from "../routes/skills-remote";
 import { LocalWorkspaceStore } from "../store/local";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
-import { MAX_UPLOAD_BYTES } from "../turn/files-import";
-import { FsVfs } from "../vfs";
+import { FsVfs, LazyReadRefusedError, type Vfs } from "../vfs";
+import { relayAgentOpResponse, TOO_LARGE_MESSAGE } from "./dispatch-relay";
 
 /**
  * A write the gateway routes to a pool worker instead of waking the agent's
@@ -56,12 +56,6 @@ export interface AgentOpResponse {
   events: HoustonEvent[];
 }
 
-// Only the handlers' own JSON is safe to carry as text: a downloaded file is
-// relayed byte-exact (a Latin-1 CSV through `response.text()` would be
-// re-encoded), so every non-JSON body rides base64.
-const TEXT_BODY = /^application\/json/i;
-const RELAYED_HEADERS = ["content-disposition", "cache-control"] as const;
-
 /**
  * Dispatch one op against `workspacesRoot` (the hydrated `workspaces/` dir)
  * for `agentId`. Runs the handler chain over a loopback server so the
@@ -73,6 +67,10 @@ export async function dispatchAgentOp(opts: {
   agentId: string;
   request: AgentOpRequest;
   fetchImpl?: typeof fetch;
+  /** The handlers' file port, rooted at `workspacesRoot`. Default: the real
+   *  directory. A lazy store-backed vfs lets an op run over a manifest-only
+   *  tree that downloads objects on first read. */
+  vfs?: Vfs;
 }): Promise<AgentOpResponse> {
   const store = new LocalWorkspaceStore(opts.workspacesRoot);
   const agent = await store.getAgent(opts.agentId);
@@ -86,7 +84,7 @@ export async function dispatchAgentOp(opts: {
       events: [],
     };
   }
-  const vfs = new FsVfs(opts.workspacesRoot);
+  const vfs = opts.vfs ?? new FsVfs(opts.workspacesRoot);
   const paths = new LocalPaths();
   const ctx = { workspace, agent };
   const events: HoustonEvent[] = [];
@@ -97,6 +95,10 @@ export async function dispatchAgentOp(opts: {
     opts.request;
   const query = new URLSearchParams(opts.request.query ?? "");
 
+  // A refused lazy read answers 503 from INSIDE the handler chain (the
+  // handler may be half-way through a multi-key mutation); the flag tells
+  // the caller to discard the overlay instead of syncing a partial result.
+  let refused = false;
   const handler = async (req: IncomingMessage, res: ServerResponse) => {
     // Files (list/read/download/archive/import/move/rename/folder): the
     // Files tab, byte-identical to the pod.
@@ -148,6 +150,15 @@ export async function dispatchAgentOp(opts: {
   };
   const server = createServer((req, res) => {
     handler(req, res).catch((error: unknown) => {
+      if (error instanceof LazyReadRefusedError) {
+        refused = true;
+        // Refused before the download: the same answer the relay cap gives.
+        if (!res.headersSent) {
+          res.writeHead(503, { "Content-Type": "application/json" });
+        }
+        res.end(JSON.stringify({ error: TOO_LARGE_MESSAGE }));
+        return;
+      }
       if (!res.headersSent) {
         res.writeHead(500, { "Content-Type": "application/json" });
       }
@@ -173,51 +184,8 @@ export async function dispatchAgentOp(opts: {
           : {},
       ...(body !== undefined ? { body } : {}),
     });
-    const contentType =
-      response.headers.get("content-type") ?? "application/json";
-    const headers: Record<string, string> = {};
-    for (const name of RELAYED_HEADERS) {
-      const value = response.headers.get(name);
-      if (value) headers[name] = value;
-    }
-    const relayed = Object.keys(headers).length > 0 ? { headers } : {};
-    // A download/archive is always bytes, whatever its MIME (a `.json` file
-    // is `application/json` too); everything else is the handler's own JSON.
-    const binaryRoute = /^files\/(download|archive)$/.test(rest);
-    if (!binaryRoute && TEXT_BODY.test(contentType)) {
-      return {
-        status: response.status,
-        contentType,
-        body: await response.text(),
-        ...relayed,
-        events,
-      };
-    }
-    const declared = Number(response.headers.get("content-length") ?? "0");
-    if (declared > MAX_UPLOAD_BYTES) {
-      // A body this size cannot ride a JSON envelope on a shared worker
-      // (base64 + envelope copies). Refuse before buffering; the gateway
-      // answers the read as unavailable rather than waking a pod.
-      await response.body?.cancel();
-      return {
-        tooLarge: true,
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: "file too large to fetch while the agent sleeps",
-        }),
-        events,
-      };
-    }
-    const bytes = Buffer.from(await response.arrayBuffer());
-    return {
-      status: response.status,
-      contentType,
-      body: "",
-      bodyBase64: bytes.toString("base64"),
-      ...relayed,
-      events,
-    };
+    const relayed = await relayAgentOpResponse(response, rest, events);
+    return refused ? { ...relayed, tooLarge: true } : relayed;
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
