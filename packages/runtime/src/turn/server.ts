@@ -89,8 +89,9 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       }
       if (path === "/op") {
         // A write for a sleeping agent (docs/op): same auth + admission as a
-        // turn, a fraction of the work.
-        const body = await readJson(req, 1024 * 1024);
+        // turn, a fraction of the work. 4 MiB: an agentfile PUT carries the
+        // file body inline (the app's upload cap), well above every JSON op.
+        const body = await readJson(req, 4 * 1024 * 1024);
         const releaseOp = admission.tryAcquire();
         if (!releaseOp) {
           return json(
