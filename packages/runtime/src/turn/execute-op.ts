@@ -88,6 +88,11 @@ export async function executeOp(
         : {}),
     });
     const result = await applyOp(op, filesystem, deps.fetchImpl);
+    if (result.agentMissing) {
+      // Not this worker's agent (legacy layout / stale envelope): decline so
+      // the gateway proxies, never relay a spurious 404 as the pod's answer.
+      return json(res, 200, { ok: true, decline: true });
+    }
     await heartbeat.checkpoint();
     if (heartbeat.fenced) return json(res, 409, { error: "claim_fenced" });
     const synced = await syncBack(

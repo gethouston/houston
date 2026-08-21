@@ -188,3 +188,52 @@ test("an invalid op is rejected before any hydration", async () => {
   expect(status).toBe(400);
   expect(String(json.error)).toContain("write method");
 });
+
+test("a root-level agentfile write persists (F6: no longer dropped)", async () => {
+  const { storeRoot, agentId, prefix } = await seedAgent();
+  const store = new LocalDirStore(storeRoot);
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const { json } = await postOp(
+    base,
+    opBody(agentId, await heartbeatOK(), {
+      kind: "route",
+      method: "PUT",
+      rest: "agentfile/data-schema.md",
+      contentType: "application/json",
+      body: JSON.stringify({ content: "# schema" }),
+    }),
+  );
+  expect(json.ok).toBe(true);
+  expect(json.decline).toBeUndefined();
+  // The whole-agent-dir scope carried it to the store (before, it was dropped).
+  const synced = await store.list(prefix);
+  expect(synced.some((k) => k.endsWith("/data-schema.md"))).toBe(true);
+});
+
+test("mission attribution (actingAs.name) reaches the activity handler", async () => {
+  const { storeRoot, agentId } = await seedAgent();
+  const store = new LocalDirStore(storeRoot);
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const body = opBody(agentId, await heartbeatOK(), {
+    kind: "route",
+    method: "POST",
+    rest: "activities",
+    contentType: "application/json",
+    body: JSON.stringify({ title: "Draft the memo", status: "needs_you" }),
+  });
+  (body.actingAs as { name?: string }).name = "Alice Lee";
+  const { json } = await postOp(base, body);
+  expect(json.status).toBe(201);
+  const created = JSON.parse(json.body as string) as {
+    created_by?: string;
+    contributors?: Array<{ user_id: string; name?: string }>;
+  };
+  expect(created.created_by).toBe("user-1");
+  expect(created.contributors).toEqual([
+    { user_id: "user-1", name: "Alice Lee" },
+  ]);
+});

@@ -37,6 +37,16 @@ export interface OpRequest {
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
 
+function parseActing(raw: unknown): TurnRequest["actingAs"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const a = raw as { userId?: unknown; name?: unknown };
+  if (typeof a.userId !== "string" || !a.userId) return undefined;
+  return {
+    userId: a.userId,
+    ...(typeof a.name === "string" && a.name ? { name: a.name } : {}),
+  };
+}
+
 function str(v: unknown, field: string): string {
   if (typeof v !== "string" || !v.length) throw new Error(`invalid '${field}'`);
   return v;
@@ -131,12 +141,8 @@ export function parseOpRequest(body: unknown): OpRequest {
       token: str(claim.token, "claim.token"),
       heartbeatUrl: str(claim.heartbeatUrl, "claim.heartbeatUrl"),
     },
-    actingAs:
-      b.actingAs &&
-      typeof b.actingAs === "object" &&
-      typeof (b.actingAs as { userId?: unknown }).userId === "string"
-        ? { userId: (b.actingAs as { userId: string }).userId }
-        : undefined,
+    actingAs: parseActing(b.actingAs),
+
     credential,
     triggersEnabled: b.triggersEnabled === true,
     op,

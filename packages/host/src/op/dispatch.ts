@@ -32,6 +32,10 @@ export interface AgentOpRequest {
 }
 
 export interface AgentOpResponse {
+  /** The hydrated tree holds no such agent: the worker must NOT relay this
+   *  as the handler's answer (a legacy layout, a stale envelope) — it declines
+   *  so the gateway takes the proxy path instead. */
+  agentMissing?: true;
   status: number;
   contentType: string;
   body: string;
@@ -53,20 +57,13 @@ export async function dispatchAgentOp(opts: {
 }): Promise<AgentOpResponse> {
   const store = new LocalWorkspaceStore(opts.workspacesRoot);
   const agent = await store.getAgent(opts.agentId);
-  if (!agent) {
+  const workspace = agent ? await store.getWorkspace(agent.workspaceId) : null;
+  if (!agent || !workspace) {
     return {
+      agentMissing: true,
       status: 404,
       contentType: "application/json",
       body: JSON.stringify({ error: "agent not found" }),
-      events: [],
-    };
-  }
-  const workspace = await store.getWorkspace(agent.workspaceId);
-  if (!workspace) {
-    return {
-      status: 404,
-      contentType: "application/json",
-      body: JSON.stringify({ error: "workspace not found" }),
       events: [],
     };
   }

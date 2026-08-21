@@ -21,6 +21,8 @@ export interface OpResult {
   include: (relativePath: string) => boolean;
   /** The pod's own /skills answer after a skills mutation (the skills view). */
   skillsView?: unknown;
+  /** The hydrated tree had no such agent — decline, do not relay. */
+  agentMissing?: boolean;
 }
 
 const json = (
@@ -32,22 +34,14 @@ const json = (
   body: JSON.stringify(value),
 });
 
-/** Everything an agent-level route may touch: the `.houston` family files,
- *  skills, and the agent's markdown — never the runtime tree (conversations,
- *  sessions, auth) and never user files. Mirrors the pod-store's ops-claim
- *  scope exactly. */
+/** Everything an agent-level route may touch: the agent's whole directory
+ *  (family files, skills, markdown, any agentfile path the pod would
+ *  accept) — never the runtime tree (conversations, sessions, auth), which
+ *  stays conversation-scoped. Mirrors the pod-store's ops-claim scope. */
 export function agentRouteScope(workspaceRel: string): OpResult["include"] {
-  const houston = `${posix.join(workspaceRel, ".houston")}/`;
+  const root = `${workspaceRel}/`;
   const runtime = `${posix.join(workspaceRel, ".houston", "runtime")}/`;
-  const agents = `${posix.join(workspaceRel, ".agents")}/`;
-  const files = new Set([
-    posix.join(workspaceRel, "CLAUDE.md"),
-    posix.join(workspaceRel, "GROUP.md"),
-  ]);
-  return (rel) =>
-    files.has(rel) ||
-    rel.startsWith(agents) ||
-    (rel.startsWith(houston) && !rel.startsWith(runtime));
+  return (rel) => rel.startsWith(root) && !rel.startsWith(runtime);
 }
 
 /** One conversation's file + sessions. */
@@ -90,7 +84,17 @@ export async function applyOp(
           rest: op.op.rest,
           ...(op.op.body !== undefined ? { body: op.op.body } : {}),
           ...(op.op.contentType ? { contentType: op.op.contentType } : {}),
-          ...(op.actingAs ? { actingSub: op.actingAs.userId } : {}),
+          ...(op.actingAs
+            ? {
+                actingSub: op.actingAs.userId,
+                // Gateway-fronted: the acting human is a full contributor on
+                // missions, exactly as the pod stamps it from the acting header.
+                actingAuthor: {
+                  user_id: op.actingAs.userId,
+                  ...(op.actingAs.name ? { name: op.actingAs.name } : {}),
+                },
+              }
+            : {}),
           triggersEnabled: op.triggersEnabled,
         },
         ...(fetchImpl ? { fetchImpl } : {}),
