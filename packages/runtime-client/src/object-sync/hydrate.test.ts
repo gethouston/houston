@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -731,4 +732,60 @@ test("a large file round-trips: streamed hash agrees across syncBack and hydrate
   expect(rehydrated.get("workspace/big.bin")?.hash).toBe(
     result.manifest.get("workspace/big.bin")?.hash,
   );
+});
+
+test("holdDeletesOnFailure: a rename whose destination is refused keeps the source object", async () => {
+  // A pool op renames a file that predates a store-cap reduction: the new key
+  // is rejected (413). With deletes held, the old key — the ONLY durable
+  // copy — survives; the default one-shot pass would have deleted it.
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/big.bin": "B".repeat(64) });
+  const manifest = await hydrate(store, PREFIX, work);
+  renameSync(
+    join(work, "workspace", "big.bin"),
+    join(work, "workspace", "renamed.bin"),
+  );
+  const capped = {
+    list: (prefix: string) => store.list(prefix),
+    download: (key: string, dest: string) => store.download(key, dest),
+    upload: (src: string, key: string) =>
+      statSync(src).size > 32
+        ? Promise.reject(
+            new ObjectTooLargeError(
+              key,
+              `object store PUT ${key} failed (413)`,
+            ),
+          )
+        : store.upload(src, key),
+    delete: (key: string) => store.delete(key),
+  };
+  const held = await syncBack(capped, PREFIX, work, manifest, {
+    holdDeletesOnFailure: true,
+  });
+  expect(held.skipped.map((s) => s.key)).toEqual(["workspace/renamed.bin"]);
+  expect(held.deleted).toEqual([]);
+  expect(await store.list(PREFIX)).toContain(`${PREFIX}/workspace/big.bin`);
+  // The held entry stays owned in the manifest, so nothing is orphaned.
+  expect(held.manifest.has("workspace/big.bin")).toBe(true);
+});
+
+test("segment-glob excludes match exactly one segment per `*` and only the named depth", () => {
+  const ex = ["workspaces/*/*/.houston/runtime/"];
+  expect(
+    excluded(
+      "workspaces/Personal/Bob/.houston/runtime/conversations/c1.json",
+      ex,
+    ),
+  ).toBe(true);
+  expect(
+    excluded("workspaces/Personal/Bob/.houston/runtime/settings.json", ex),
+  ).toBe(true);
+  // A user project's own .houston/runtime is NOT the agent's — hydrated.
+  expect(
+    excluded("workspaces/Personal/Bob/repo/.houston/runtime/state.db", ex),
+  ).toBe(false);
+  expect(
+    excluded("workspaces/Personal/Bob/.houston/routines/routines.json", ex),
+  ).toBe(false);
+  expect(excluded("workspace/.houston/runtime/x", ex)).toBe(false);
 });

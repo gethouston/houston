@@ -14,6 +14,7 @@ import { handleSkillsRemote } from "../routes/skills-remote";
 import { LocalWorkspaceStore } from "../store/local";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
+import { MAX_UPLOAD_BYTES } from "../turn/files-import";
 import { FsVfs } from "../vfs";
 
 /**
@@ -41,6 +42,8 @@ export interface AgentOpResponse {
    *  as the handler's answer (a legacy layout, a stale envelope) — it declines
    *  so the gateway takes the proxy path instead. */
   agentMissing?: true;
+  /** A binary answer over the relay cap: refused before buffering. */
+  tooLarge?: true;
   status: number;
   contentType: string;
   /** Text body (JSON/text responses). Empty when `bodyBase64` is set. */
@@ -182,6 +185,22 @@ export async function dispatchAgentOp(opts: {
         contentType,
         body: await response.text(),
         ...relayed,
+        events,
+      };
+    }
+    const declared = Number(response.headers.get("content-length") ?? "0");
+    if (declared > MAX_UPLOAD_BYTES) {
+      // A body this size cannot ride a JSON envelope on a shared worker
+      // (base64 + envelope copies). Refuse before buffering; the gateway
+      // answers the read as unavailable rather than waking a pod.
+      await response.body?.cancel();
+      return {
+        tooLarge: true,
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "file too large to fetch while the agent sleeps",
+        }),
         events,
       };
     }

@@ -24,8 +24,10 @@ import { poolIdentity, resolveTurnStore } from "./turn-store";
 /** Reserved claim key for agent-level writes (gateway + pod-store agree). */
 export const AGENT_OPS_CLAIM_ID = "agent-ops";
 
-/** Route ops skip the runtime tree wherever the agent sits in the prefix. */
-const ROUTE_OP_EXCLUDES = ["**/.houston/runtime/"];
+/** Route ops skip the AGENT's runtime tree (`workspaces/<ws>/<agent>/
+ *  .houston/runtime/`) — exactly that depth, so a user project carrying its
+ *  own `.houston/runtime` directory is hydrated like any other file. */
+const ROUTE_OP_EXCLUDES = ["workspaces/*/*/.houston/runtime/"];
 
 const EVENT_FAMILY: Partial<Record<HoustonEvent["type"], HoustonFamily>> = {
   ActivityChanged: "activity",
@@ -109,7 +111,7 @@ export async function executeOp(
         resolved.prefix,
         filesystem.storeRoot,
         filesystem.manifest,
-        { include: result.include },
+        { include: result.include, holdDeletesOnFailure: true },
       );
       const landed = synced.uploaded.length + synced.deleted.length > 0;
       const partial =
@@ -145,7 +147,13 @@ export async function executeOp(
         return json(res, 200, { ok: true, ambiguous: true });
       }
       if (result.status < 300) {
-        const failures = await republish(deps, turnLike, filesystem, result);
+        let failures = await republish(deps, turnLike, filesystem, result);
+        if (failures.length > 0) {
+          // One more round before accepting a lag: a blip on the doc PUT is
+          // the common case and the files are already durable.
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          failures = await republish(deps, turnLike, filesystem, result);
+        }
         if (op.op.kind === "conversation") {
           failures.push(...(await opTranscriptMirror(deps, turnLike, op.op)));
         }

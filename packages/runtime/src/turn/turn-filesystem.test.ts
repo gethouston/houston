@@ -28,7 +28,7 @@ test("route-op excludes skip the runtime tree wherever the agent sits", async ()
     prefix,
     root,
     claimed: true,
-    excludes: ["**/.houston/runtime/"],
+    excludes: ["workspaces/*/*/.houston/runtime/"],
   });
   const hydrated = JSON.stringify([...fs.manifest.keys()].sort());
   expect(hydrated).toContain("report.csv");

@@ -37,6 +37,14 @@ export interface SyncBackOptions {
   generations?: boolean;
   /** Limit writes and deletes while still detecting skipped changes. */
   include?: (relativePath: string) => boolean;
+  /**
+   * Skip the delete pass entirely when any upload was skipped or conflicted.
+   * A rename/move uploads the new key and deletes the old one; if the upload
+   * is refused (over the store's cap, a conflict) the delete would destroy
+   * the ONLY durable copy. One-shot callers (a pool op) set this; the
+   * standing daemon retries on its next tick and keeps the default.
+   */
+  holdDeletesOnFailure?: boolean;
 }
 
 async function walkFiles(dir: string, base: string): Promise<string[]> {
@@ -145,8 +153,16 @@ export async function syncBack(
   }
 
   const deleted: string[] = [];
+  const holdDeletes =
+    opts.holdDeletesOnFailure === true &&
+    (skipped.length > 0 || conflicts.length > 0);
   for (const [rel, previous] of manifest) {
     if (nextManifest.has(rel)) continue;
+    if (holdDeletes) {
+      // Keep the prior entry so the object stays owned and durable.
+      nextManifest.set(rel, previous);
+      continue;
+    }
     if (opts.include && !opts.include(rel)) {
       nextManifest.set(rel, previous);
       outOfScope += 1;
