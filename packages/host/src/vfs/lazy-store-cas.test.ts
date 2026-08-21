@@ -171,6 +171,22 @@ test("renaming a remote-only folder moves every descendant", async () => {
   ).rejects.toThrow(/source not found/);
 });
 
+test("moving a folder into itself is refused and onto itself is a no-op, like rename(2)", async () => {
+  const { vfs, store, root, manifest } = await seeded();
+  await expect(
+    vfs.move("workspaces/P/Bob/dir", "workspaces/P/Bob/dir/inner"),
+  ).rejects.toThrow(/inside the source/);
+  await vfs.move("workspaces/P/Bob/dir", "workspaces/P/Bob/dir");
+  await vfs.move("workspaces/P/Bob/a.txt", "workspaces/P/Bob/a.txt");
+  expect(await vfs.list("workspaces/P/Bob/dir")).toEqual([
+    "workspaces/P/Bob/dir/b.txt",
+  ]);
+  expect(await vfs.readText("workspaces/P/Bob/a.txt")).toBe("a");
+  const result = await syncBack(store, PREFIX, root, manifest);
+  expect(result.uploaded).toEqual([]);
+  expect(result.deleted).toEqual([]);
+});
+
 test("a stale manifest size cannot smuggle an oversized object past the cap", async () => {
   const storeRoot = mkdtempSync(join(tmpdir(), "lazy-stale-"));
   const abs = join(storeRoot, PREFIX, "workspaces/P/Bob/grown.bin");

@@ -12,6 +12,7 @@ import {
   syncBack,
 } from "@houston/runtime-client/object-sync";
 import {
+  layoutSkeleton,
   resolveTurnLayout,
   type TurnLayout,
   TurnSetupError,
@@ -32,9 +33,9 @@ export interface TurnFilesystem extends TurnLayout {
   vfs: Vfs;
   /** Remote objects the lazy listing knows about (diagnostics). */
   listedObjects: number;
-  /** The store's generation capability as the listing showed it; undefined
-   *  when the hydrated manifest itself carries the answer (eager trees). */
-  generationAware?: boolean;
+  /** The store's generation capability as the LISTING showed it. A filtered
+   *  or lazy manifest may be empty and cannot answer this on its own. */
+  generationAware: boolean;
 }
 
 /**
@@ -83,12 +84,7 @@ export async function prepareTurnFilesystem(opts: {
       maxObjectBytes: MAX_UPLOAD_BYTES,
       maxBytes: maxBytes ?? TURN_HYDRATE_MAX_BYTES,
     });
-    await layoutSkeleton(
-      storeRoot,
-      objects.map(({ key }) =>
-        opts.prefix ? key.slice(opts.prefix.length + 1) : key,
-      ),
-    );
+    await layoutSkeleton(storeRoot, vfs.remoteKeys);
     return {
       ...(await resolveTurnLayout(storeRoot, { allowEmpty: !opts.claimed })),
       storeRoot,
@@ -99,20 +95,20 @@ export async function prepareTurnFilesystem(opts: {
     };
   }
   let manifest: HydrateManifest;
-  let listed: string[] = [];
+  let listed = { rels: [] as string[], generationAware: false };
   try {
     manifest = await hydrate(opts.store, opts.prefix, storeRoot, {
       ...(maxBytes !== undefined ? { maxBytes } : {}),
       excludes,
       ...(opts.filter ? { filter: opts.filter } : {}),
-      onListed: (rels) => {
-        listed = rels;
+      onListed: (listing) => {
+        listed = listing;
       },
     });
     // The layout must resolve from what the STORE holds, not from what the
     // filter admitted: a turn whose agent has nothing but other
     // conversations' history still targets an existing agent.
-    await layoutSkeleton(storeRoot, listed);
+    await layoutSkeleton(storeRoot, listed.rels);
   } catch (error) {
     if (!(error instanceof HydrateLimitError)) throw error;
     throw new TurnSetupError("hydrate_over_cap", error.message);
@@ -122,28 +118,9 @@ export async function prepareTurnFilesystem(opts: {
     storeRoot,
     manifest,
     vfs: new FsVfs(storeRoot),
-    listedObjects: manifest.size,
+    listedObjects: listed.rels.length,
+    generationAware: listed.generationAware,
   };
-}
-
-/**
- * The directories the layout resolver and the host's agent lookup key on,
- * without a single download: `workspaces/<ws>/<agent>` for the standing
- * layout, `data` / `workspace` for the per-turn one. Deeper directories
- * appear as objects materialize.
- */
-async function layoutSkeleton(storeRoot: string, rels: string[]) {
-  const dirs = new Set<string>();
-  for (const rel of rels) {
-    const segments = rel.split("/");
-    const depth = segments[0] === "workspaces" ? 3 : 1;
-    if (segments.length > depth) dirs.add(segments.slice(0, depth).join("/"));
-  }
-  await Promise.all(
-    [...dirs].map((dir) =>
-      mkdir(join(storeRoot, ...dir.split("/")), { recursive: true }),
-    ),
-  );
 }
 
 /** Build the exact conversation, session, and activity-doc write scope. */
@@ -188,15 +165,18 @@ export async function syncTurnFilesystem(opts: {
     opts.prefix,
     opts.filesystem.storeRoot,
     opts.filesystem.manifest,
-    opts.claimed
-      ? {
-          include: claimedTurnIncludes(
-            opts.filesystem.dataRel,
-            opts.filesystem.workspaceRel,
-            opts.conversationId,
-          ),
-        }
-      : {},
+    {
+      generations: opts.filesystem.generationAware,
+      ...(opts.claimed
+        ? {
+            include: claimedTurnIncludes(
+              opts.filesystem.dataRel,
+              opts.filesystem.workspaceRel,
+              opts.conversationId,
+            ),
+          }
+        : {}),
+    },
   );
   if (result.outOfScope > 0) {
     // Attributed: on a shared worker an unattributed count is unactionable.

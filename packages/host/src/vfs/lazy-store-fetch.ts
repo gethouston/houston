@@ -48,9 +48,18 @@ export async function fetchObject(
     await rm(dest, { force: true });
     throw new LazyReadRefusedError("total", key, size, maxBytes);
   }
-  budget.materializedBytes += size;
+  let hash: string;
+  try {
+    hash = await fileSha256(dest, size);
+  } catch (error) {
+    // An unhashed file must not survive: the sync-back would take it for a
+    // fresh local write and upload it create-only.
+    await rm(dest, { force: true });
+    throw error;
+  }
   opts.manifest.set(key, {
-    hash: await fileSha256(dest, size),
+    hash,
     ...(meta.generation !== undefined ? { generation: meta.generation } : {}),
   });
+  budget.materializedBytes += size;
 }

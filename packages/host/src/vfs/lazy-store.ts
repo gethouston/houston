@@ -4,7 +4,8 @@ import {
 } from "@houston/runtime-client/object-sync";
 import { FsVfs } from "./fs";
 import { fetchObject, type LazyBudget } from "./lazy-store-fetch";
-import { type LazyStoreVfsOptions, UNREAD_HASH } from "./lazy-store-types";
+import { LazyOwnership } from "./lazy-store-ownership";
+import type { LazyStoreVfsOptions } from "./lazy-store-types";
 import { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
 
 /**
@@ -20,24 +21,28 @@ import { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
  */
 export class LazyStoreVfs implements Vfs {
   private readonly local: FsVfs;
-  private readonly remote = new Map<string, ObjectMetadata>();
-  /** Remote keys deleted (or moved away) locally: hidden from every read. */
-  private readonly hidden = new Set<string>();
+  private readonly state: LazyOwnership;
   private readonly inflight = new Map<string, Promise<void>>();
   private readonly budget: LazyBudget = { materializedBytes: 0 };
 
   constructor(private readonly opts: LazyStoreVfsOptions) {
     this.local = new FsVfs(opts.root);
+    this.state = new LazyOwnership(opts.manifest);
     for (const object of opts.objects) {
       const rel = this.relOf(object.key);
       if (!rel || excluded(rel, opts.excludes)) continue;
-      this.remote.set(rel, object);
+      this.state.remote.set(rel, object);
     }
   }
 
   /** Whether the store mints generations (the sync-back CAS capability). */
   get generationAware(): boolean {
     return this.opts.objects.some((o) => o.generation !== undefined);
+  }
+
+  /** Remote keys (store-relative) this vfs knows about, excludes applied. */
+  get remoteKeys(): string[] {
+    return [...this.state.remote.keys()];
   }
 
   private relOf(storeKey: string): string | null {
@@ -48,32 +53,6 @@ export class LazyStoreVfs implements Vfs {
       : null;
   }
 
-  private visible(rel: string): ObjectMetadata | undefined {
-    return this.hidden.has(rel) ? undefined : this.remote.get(rel);
-  }
-
-  /** Remote keys visible under `prefix/` (not hidden). */
-  private remoteUnder(prefix: string): [string, ObjectMetadata][] {
-    const under = `${prefix}/`;
-    return [...this.remote].filter(
-      ([rel]) => rel.startsWith(under) && !this.hidden.has(rel),
-    );
-  }
-
-  /** A real tree refuses a file where a directory is and vice versa. */
-  private assertWritable(key: string): void {
-    const segments = key.split("/");
-    for (let i = 1; i < segments.length; i++) {
-      const ancestor = segments.slice(0, i).join("/");
-      if (this.visible(ancestor)) {
-        throw new Error(`ENOTDIR: not a directory, ${ancestor}`);
-      }
-    }
-    if (this.remoteUnder(key).length > 0) {
-      throw new Error(`EISDIR: illegal operation on a directory, ${key}`);
-    }
-  }
-
   list = async (prefix: string) =>
     (await this.listDetailed(prefix)).map((s) => s.key);
 
@@ -81,7 +60,7 @@ export class LazyStoreVfs implements Vfs {
     assertSafeKey(prefix);
     const out = await this.local.listDetailed(prefix);
     const seen = new Set(out.map((s) => s.key));
-    for (const [rel, meta] of this.remoteUnder(prefix)) {
+    for (const [rel, meta] of this.state.under(prefix)) {
       if (seen.has(rel)) continue;
       out.push({
         key: rel,
@@ -101,7 +80,7 @@ export class LazyStoreVfs implements Vfs {
     assertSafeKey(key);
     const local = await this.local.readBytes(key);
     if (local !== null) return local;
-    const meta = this.visible(key);
+    const meta = this.state.visible(key);
     if (!meta) return null;
     await this.materialize(key, meta);
     return this.local.readBytes(key);
@@ -127,49 +106,37 @@ export class LazyStoreVfs implements Vfs {
 
   async writeBytes(key: string, content: Buffer): Promise<void> {
     assertSafeKey(key);
-    this.assertWritable(key);
+    this.state.assertWritable(key);
     await this.settle(key);
     await this.local.writeBytes(key, content);
-    this.hidden.delete(key);
-    this.own(key);
-  }
-
-  /** Put an unread remote key under sync-back ownership (CAS on its generation). */
-  private own(rel: string): void {
-    const meta = this.remote.get(rel);
-    if (!meta || this.opts.manifest.has(rel)) return;
-    this.opts.manifest.set(rel, {
-      hash: UNREAD_HASH,
-      ...(meta.generation !== undefined ? { generation: meta.generation } : {}),
-    });
-  }
-
-  /** Hide a remote key from reads and make sure sync-back deletes it. */
-  private tombstone(rel: string): void {
-    if (!this.remote.has(rel)) return;
-    this.hidden.add(rel);
-    this.own(rel);
+    this.state.written(key);
   }
 
   async deleteKey(key: string): Promise<void> {
     assertSafeKey(key);
     await this.settle(key);
     await this.local.deleteKey(key);
-    this.tombstone(key);
+    this.state.tombstone(key);
   }
 
   async move(fromKey: string, toKey: string): Promise<void> {
     assertSafeKey(fromKey);
     assertSafeKey(toKey);
+    // POSIX rename: onto itself is a no-op, into itself is an error.
+    if (toKey === fromKey) return;
+    if (toKey.startsWith(`${fromKey}/`)) {
+      throw new Error(`move: destination is inside the source: ${fromKey}`);
+    }
     const isFile =
-      (await this.local.readBytes(fromKey)) !== null || this.visible(fromKey);
+      (await this.local.readBytes(fromKey)) !== null ||
+      this.state.visible(fromKey);
     if (!isFile) {
       // A directory: exists only as its descendants. Move each one.
       const children = await this.listDetailed(fromKey);
       if (children.length === 0) {
         throw new Error(`move: source not found: ${fromKey}`);
       }
-      if (this.remoteUnder(toKey).length > 0) {
+      if (this.state.under(toKey).length > 0) {
         throw new Error(`move: destination is not empty: ${toKey}`);
       }
       for (const child of children) {
@@ -181,20 +148,23 @@ export class LazyStoreVfs implements Vfs {
       await this.local.deletePrefix(fromKey);
       return;
     }
-    this.assertWritable(toKey);
-    const meta = this.visible(fromKey);
+    this.state.assertWritable(toKey);
+    const meta = this.state.visible(fromKey);
     if ((await this.local.readBytes(fromKey)) === null && meta) {
       await this.materialize(fromKey, meta);
     }
     await this.local.move(fromKey, toKey);
-    this.hidden.delete(toKey);
-    this.own(toKey);
-    this.tombstone(fromKey);
+    this.state.written(toKey);
+    this.state.tombstone(fromKey);
   }
 
   async deletePrefix(prefix: string): Promise<void> {
     assertSafeKey(prefix);
+    const under = `${prefix}/`;
+    for (const key of this.inflight.keys()) {
+      if (key.startsWith(under)) await this.settle(key);
+    }
     await this.local.deletePrefix(prefix);
-    for (const [rel] of this.remoteUnder(prefix)) this.tombstone(rel);
+    for (const [rel] of this.state.under(prefix)) this.state.tombstone(rel);
   }
 }

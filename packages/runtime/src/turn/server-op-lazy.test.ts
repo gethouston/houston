@@ -268,6 +268,26 @@ test("a folder move that hits the read cap mid-way declines and leaves the store
   expect(store.downloads.some((k) => k.endsWith("/huge.bin"))).toBe(false);
 });
 
+test("a plain handler 5xx on a tree op declines before any sync-back", async () => {
+  const { storeRoot } = await seedBusyAgent();
+  const store = countingStore(storeRoot);
+  const before = (await store.list(PREFIX)).sort();
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  // A folder under a path the store holds as a FILE: a real tree fails the
+  // mkdir (ENOTDIR) and the handler 500s; the worker must not sync or relay.
+  const json = await postOp(base, await heartbeatOK(), {
+    kind: "route",
+    method: "POST",
+    rest: "files/folder",
+    contentType: "application/json",
+    body: JSON.stringify({ path: "reports/r1.csv/sub" }),
+  });
+  expect(json.decline, JSON.stringify(json)).toBe(true);
+  expect((await store.list(PREFIX)).sort()).toEqual(before);
+});
+
 test("a conversation delete removes its file and unread session files, nothing else", async () => {
   const { storeRoot, agentRel } = await seedBusyAgent();
   const store = countingStore(storeRoot);

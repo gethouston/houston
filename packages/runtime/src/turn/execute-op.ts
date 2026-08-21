@@ -131,11 +131,15 @@ export async function executeOp(
     if (heartbeat.fenced) return json(res, 409, { error: "claim_fenced" });
     const isRead = op.op.kind === "route" && op.op.method === "GET";
     if (!isRead) {
-      if (result.tooLarge || result.status >= 500) {
-        // The handler failed part-way (a refused lazy read, a 5xx): the
-        // overlay may hold HALF a multi-key mutation. Nothing has reached
-        // the store yet, so declining is exact — the pod re-runs the write
-        // from an unchanged tree instead of the user seeing a split folder.
+      const treeOp = op.op.kind === "route" || op.op.kind === "conversation";
+      if (result.tooLarge || (treeOp && result.status >= 500)) {
+        // A tree-mutating handler failed part-way (a refused lazy read, a
+        // 5xx): the overlay may hold HALF a multi-key mutation. Nothing has
+        // reached the store yet, so declining is exact — the pod re-runs
+        // the write from an unchanged tree instead of the user seeing a
+        // split folder. Credential/settings ops have no overlay to leave
+        // half-written; their own status (a 502 from the credential store)
+        // is the pod's answer too.
         console.error(
           `[op] handler failed before sync: status=${result.status} tooLarge=${result.tooLarge === true} prefix=${resolved.prefix} kind=${op.op.kind}`,
         );
@@ -152,9 +156,7 @@ export async function executeOp(
           // A lazy tree's manifest may be EMPTY for a pure create; the
           // listing still told us whether the store mints generations, so a
           // first create stays create-only (CAS "0") instead of blind.
-          ...(filesystem.generationAware !== undefined
-            ? { generations: filesystem.generationAware }
-            : {}),
+          generations: filesystem.generationAware,
         },
       );
       const landed = synced.uploaded.length + synced.deleted.length > 0;
@@ -275,7 +277,8 @@ async function republish(
     // Through the vfs: on a lazy tree the handler may have emitted the
     // event without the family file being on disk yet — a raw read would
     // project an EMPTY doc over real data. A read that THROWS (store blip,
-    // refused size) is a diagnostic, never an empty projection.
+    // refused size) is a diagnostic; an absent or unparsable file projects
+    // the empty doc, as the pod's own projector does.
     let raw: string | null;
     try {
       raw = await filesystem.vfs.readText(key);

@@ -144,4 +144,42 @@ test("a claimed turn whose agent holds only other conversations still resolves i
   expect(fs.manifest.size).toBe(0);
   expect(fs.kind).toBe("standing");
   expect(fs.workspaceRel).toBe("workspaces/Personal/Bob");
+  expect(fs.listedObjects).toBe(1);
+});
+
+test("the eager path reports the store's generation capability even when the filtered manifest is empty", async () => {
+  const storeRoot = mkdtempSync(join(tmpdir(), "gen-aware-"));
+  const prefix = "ws/w1/agent-1";
+  const runtime = join(
+    storeRoot,
+    prefix,
+    "workspaces/Personal/Bob/.houston/runtime",
+  );
+  mkdirSync(join(runtime, "conversations"), { recursive: true });
+  writeFileSync(join(runtime, "conversations", "c2.json"), "{}");
+  const inner = new LocalDirStore(storeRoot);
+  const store = {
+    list: (p: string) => inner.list(p),
+    manifest: async (p?: string) =>
+      (await inner.manifest(p)).map((o) => ({ ...o, generation: "3" })),
+    download: inner.download.bind(inner),
+    upload: inner.upload.bind(inner),
+    delete: inner.delete.bind(inner),
+  };
+  const fs = await prepareTurnFilesystem({
+    store,
+    prefix,
+    root: mkdtempSync(join(tmpdir(), "gen-aware-root-")),
+    claimed: true,
+    filter: ownConversationOnly("c-new"),
+  });
+  expect(fs.manifest.size).toBe(0);
+  expect(fs.generationAware).toBe(true);
+  const plain = await prepareTurnFilesystem({
+    store: inner,
+    prefix,
+    root: mkdtempSync(join(tmpdir(), "gen-aware-root2-")),
+    claimed: true,
+  });
+  expect(plain.generationAware).toBe(false);
 });
