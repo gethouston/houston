@@ -100,7 +100,7 @@ export async function applyOp(
         // gateway's asleep reads show the install/remove immediately.
         const view = await dispatchAgentOp({
           workspacesRoot: join(filesystem.storeRoot, "workspaces"),
-          agentId: op.agentId,
+          agentId,
           request: {
             method: "GET",
             rest: "skills",
