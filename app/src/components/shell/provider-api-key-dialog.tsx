@@ -65,6 +65,12 @@ const REASON_COPY: Record<
 function reasonCopyKey(providerId: string, reason: ApiKeyConnectReason) {
   if (providerId === "nvidia" && reason === "key_restricted")
     return "apiKey.errorNvidiaAccountGated" as const;
+  // Bedrock's console lists keys by NAME ("BedrockAPIKey-xxxx-at-<account>")
+  // and reveals the VALUE only once at generation, so a rejected key is
+  // usually the name pasted in place of the value (PRODUCT-1477) — say so
+  // instead of the generic "check it and paste it again".
+  if (providerId === "amazon-bedrock" && reason === "invalid_key")
+    return "apiKey.errorBedrockInvalidKey" as const;
   return REASON_COPY[reason];
 }
 
