@@ -68,6 +68,10 @@
     "getKey": "Obtén tu clave de API",
     "label": "Clave de API",
     "placeholder": "Pega tu clave de API",
+    "endpointLabel": "Punto de conexión",
+    "endpointPlaceholder": "https://tu-recurso.openai.azure.com",
+    "endpointHelp": "La URL del punto de conexión de tu recurso en el portal de Azure. Houston llama a la implementación con el mismo nombre del modelo, así que nombra tus implementaciones igual que el modelo (por ejemplo \"gpt-5.5\").",
+    "endpointRequired": "Primero ingresa la URL del punto de conexión. Empieza con https:// y la encuentras en tu recurso del portal de Azure.",
     "required": "Primero ingresa tu clave de API.",
     "verifyFailed": "No se pudo conectar esta clave: {{detail}}",
     "show": "Mostrar clave",
@@ -82,7 +86,10 @@
       "nvidia3": "Copia la clave que empieza con \"nvapi-\" y pégala abajo.",
       "bedrock1": "Abre la página de claves de API de Bedrock con el botón de arriba y elige \"Claves de API de larga duración\".",
       "bedrock2": "Haz clic en \"Generar claves de API de larga duración\". El valor de la clave se muestra una sola vez, así que cópialo de inmediato.",
-      "bedrock3": "Pega el valor de la clave abajo. Empieza con \"ABSK\". El nombre que aparece en la lista (\"BedrockAPIKey-...\") no es la clave."
+      "bedrock3": "Pega el valor de la clave abajo. Empieza con \"ABSK\". El nombre que aparece en la lista (\"BedrockAPIKey-...\") no es la clave.",
+      "azure1": "En el portal de Azure, abre tu recurso de Azure OpenAI (o Foundry) y entra a \"Claves y punto de conexión\".",
+      "azure2": "Copia una de las dos claves y la URL del punto de conexión.",
+      "azure3": "Implementa los modelos que quieras usar, cada uno con el mismo nombre del modelo (por ejemplo \"gpt-5.5\"), y pega aquí el punto de conexión y la clave."
     },
     "errorInvalidKey": "{{name}} no aceptó esta clave. Revísala y pégala de nuevo.",
     "errorKeyRestricted": "Esta clave está bloqueada por la configuración de tu cuenta de {{name}}. Crea una clave nueva sin restricciones con el botón de arriba y pégala aquí.",

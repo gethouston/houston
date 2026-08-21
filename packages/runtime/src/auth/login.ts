@@ -4,6 +4,11 @@ import type {
 } from "@earendil-works/pi-ai";
 import type { LoginInfo } from "@houston/runtime-client";
 import {
+  AZURE_OPENAI,
+  normalizeAzureEndpoint,
+  setAzureEndpoint,
+} from "../ai/azure-openai";
+import {
   type CustomEndpointInput,
   clearCustomEndpointConfig,
   OPENAI_COMPATIBLE,
@@ -477,9 +482,18 @@ export async function startLogin(
  * pi's `api_key` credential variant; auth resolution then returns it for any
  * request against the provider's built-in OpenAI-compatible gateway. There is
  * no OAuth dance and nothing to refresh or scrub.
+ *
+ * Azure OpenAI (PRODUCT-1477) additionally requires the resource `endpoint`,
+ * persisted FIRST (its own file, ai/azure-openai.ts) so a bad URL never
+ * leaves a stored key aimed at nothing — mirroring setCustomEndpoint's order.
  */
-export function setApiKey(providerId: string, key: string): void {
-  const trimmed = assertApiKeyConnectable(providerId, key);
+export function setApiKey(
+  providerId: string,
+  key: string,
+  endpoint?: string,
+): void {
+  const trimmed = assertApiKeyConnectable(providerId, key, endpoint);
+  if (providerId === AZURE_OPENAI) setAzureEndpoint(endpoint ?? "");
   authStorage.set(providerId, { type: "api_key", key: trimmed });
   const slot = activeKey(providerId as ProviderId);
   const state = active.get(slot);
@@ -493,12 +507,19 @@ export function setApiKey(providerId: string, key: string): void {
  * fail fast on these BEFORE spending a live verification request
  * (`verifyApiKey`). Returns the trimmed key.
  */
-export function assertApiKeyConnectable(providerId: string, key: string) {
+export function assertApiKeyConnectable(
+  providerId: string,
+  key: string,
+  endpoint?: string,
+) {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   if (providerAuthMethod(providerId) !== "apiKey")
     throw new Error(`${providerId} does not connect with a pasted API key`);
   const trimmed = key.trim();
   if (!trimmed) throw new Error("missing API key");
+  // Azure needs its per-resource endpoint alongside the key — validate the
+  // URL here so the connect fails as a cheap 400, before the live probe.
+  if (providerId === AZURE_OPENAI) normalizeAzureEndpoint(endpoint ?? "");
   return trimmed;
 }
 

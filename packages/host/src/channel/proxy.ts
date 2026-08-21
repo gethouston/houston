@@ -480,6 +480,7 @@ export class ProxyChannel implements RuntimeChannel {
     ctx: ChannelCtx,
     provider: string,
     apiKey: string,
+    providerEndpoint?: string,
   ): Promise<void> {
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
@@ -491,7 +492,12 @@ export class ProxyChannel implements RuntimeChannel {
           Authorization: `Bearer ${endpoint.token}`,
           ...(ctx.actingAs ? { "x-houston-acting-as": ctx.actingAs } : {}),
         },
-        body: JSON.stringify({ key: apiKey }),
+        // Azure OpenAI rides its per-resource endpoint with the key
+        // (PRODUCT-1477); the runtime validates and persists it.
+        body: JSON.stringify({
+          key: apiKey,
+          ...(providerEndpoint ? { endpoint: providerEndpoint } : {}),
+        }),
       },
     );
     if (!res.ok) {

@@ -15,6 +15,7 @@ import {
 import { servedScopeFor } from "../auth/served-scope";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
+import { AZURE_OPENAI, withAzureBaseUrl } from "./azure-openai";
 import { endpointReachableCached } from "./endpoint-reachability";
 import {
   MINIMAX_PROVIDER,
@@ -237,6 +238,10 @@ function saveSettings(s: Settings) {
 const UNCURATED_DEFAULT_MODEL: Record<string, string> = {
   nvidia: "meta/llama-3.3-70b-instruct",
   moonshotai: "kimi-k3",
+  // pi's azure catalog is alphabetical, so "first model" would be gpt-4 —
+  // a 2023 model as the connect-time default. Start on the current
+  // broadly-deployed tier instead (PRODUCT-1477).
+  [AZURE_OPENAI]: "gpt-5.5",
 };
 
 /**
@@ -483,10 +488,16 @@ export function safeGetModel(
   // own contract (its declared return is non-optional; the runtime-undefined
   // case is what the pinned guard below checks) so callers keep the exact
   // pre-extension signature.
-  const lookup = (id: string): Model<Api> =>
-    (provider === QWEN_PROVIDER_ID
-      ? qwenModel(id)
-      : getModel(pp, id as Parameters<typeof getModel>[1])) as Model<Api>;
+  const lookup = (id: string): Model<Api> => {
+    const m = (
+      provider === QWEN_PROVIDER_ID
+        ? qwenModel(id)
+        : getModel(pp, id as Parameters<typeof getModel>[1])
+    ) as Model<Api>;
+    // Azure's catalog ships no base URL (the endpoint is per-resource) —
+    // overlay the connect-time endpoint or every request throws before HTTP.
+    return m && provider === AZURE_OPENAI ? withAzureBaseUrl(m) : m;
+  };
   if (pinned) {
     // pi-ai's getModel returns `undefined` (it never throws) for an id the
     // provider doesn't offer. A pinned id is NOT auto-corrected, but it must

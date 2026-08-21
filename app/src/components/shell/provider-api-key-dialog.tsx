@@ -14,6 +14,7 @@ import {
   type ApiKeyConnectReason,
   apiKeyConnectReason,
 } from "../../lib/api-key-connect-error";
+import { API_KEY_ENDPOINT_PROVIDERS } from "../../lib/provider-overrides";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { ProviderApiKeyField } from "./provider-api-key-field";
@@ -77,6 +78,7 @@ function reasonCopyKey(providerId: string, reason: ApiKeyConnectReason) {
 export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   const { t } = useTranslation("providers");
   const [key, setKey] = useState("");
+  const [endpoint, setEndpoint] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,6 +89,7 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   useEffect(() => {
     if (provider) {
       setKey("");
+      setEndpoint("");
       setError(null);
       setSubmitting(false);
     }
@@ -94,6 +97,9 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
 
   if (!provider) return null;
   const url = provider.apiKeyUrl;
+  // Azure OpenAI (PRODUCT-1477): every request goes to the user's own resource
+  // URL, so the dialog collects the endpoint alongside the key.
+  const needsEndpoint = API_KEY_ENDPOINT_PROVIDERS.has(provider.id);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,10 +108,19 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       setError(t("apiKey.required"));
       return;
     }
+    const trimmedEndpoint = endpoint.trim();
+    if (needsEndpoint && !trimmedEndpoint.startsWith("https://")) {
+      setError(t("apiKey.endpointRequired"));
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      await tauriProvider.setApiKey(provider.id, trimmed);
+      await tauriProvider.setApiKey(
+        provider.id,
+        trimmed,
+        needsEndpoint ? trimmedEndpoint : undefined,
+      );
       // Success: the parent's ProviderLoginComplete handler flips the card and
       // toasts. Close here so the dialog doesn't linger over the connected state.
       onClose();
@@ -163,6 +178,30 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
 
           <ProviderApiKeyGuide providerId={provider.id} />
 
+          {needsEndpoint && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="provider-endpoint"
+                className="text-[13px] font-medium"
+              >
+                {t("apiKey.endpointLabel")}
+              </label>
+              <input
+                id="provider-endpoint"
+                type="url"
+                autoComplete="off"
+                value={endpoint}
+                onChange={(e) => setEndpoint(e.target.value)}
+                placeholder={t("apiKey.endpointPlaceholder")}
+                className="w-full rounded-md border bg-input px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
+                disabled={submitting}
+              />
+              <p className="text-[12px] text-ink-muted">
+                {t("apiKey.endpointHelp")}
+              </p>
+            </div>
+          )}
+
           <ProviderApiKeyField
             label={t("apiKey.label")}
             placeholder={t("apiKey.placeholder")}
@@ -183,7 +222,12 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
             <Button type="button" variant="outline" onClick={onClose}>
               {t("apiKey.cancel")}
             </Button>
-            <Button type="submit" disabled={submitting || !key.trim()}>
+            <Button
+              type="submit"
+              disabled={
+                submitting || !key.trim() || (needsEndpoint && !endpoint.trim())
+              }
+            >
               {submitting ? t("apiKey.saving") : t("apiKey.save")}
             </Button>
           </DialogFooter>

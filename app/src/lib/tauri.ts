@@ -1862,10 +1862,10 @@ export const tauriProvider = {
    * New-engine only — the connect UI shows these providers only when
    * `newEngineActive()`.
    */
-  setApiKey: (provider: string, apiKey: string) =>
+  setApiKey: (provider: string, apiKey: string, endpoint?: string) =>
     call<void>(
       "set_provider_api_key",
-      () => getEngine().setProviderApiKey(provider, apiKey),
+      () => getEngine().setProviderApiKey(provider, apiKey, endpoint),
       undefined,
       // The connect dialog surfaces the failure inline with the engine's typed
       // reason (bad key / restricted key / provider outage) — a red bug toast

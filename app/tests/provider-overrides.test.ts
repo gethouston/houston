@@ -1,6 +1,7 @@
 import { ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  API_KEY_ENDPOINT_PROVIDERS,
   DESCRIPTION_BY_ID,
   DROP_PI_PROVIDERS,
   FEATURED_PROVIDER_IDS,
@@ -73,6 +74,7 @@ describe("providerDescription", () => {
       "moonshotai",
       "zai",
       "vercel-ai-gateway",
+      "azure-openai-responses",
       "google-vertex",
       "openai-compatible",
       "zai-coding-cn",
@@ -103,7 +105,6 @@ describe("providerDescription", () => {
       "xiaomi-token-plan-sgp",
       "cloudflare-ai-gateway",
       "cloudflare-workers-ai",
-      "azure-openai-responses",
     ]) {
       ok(DROP_PI_PROVIDERS.has(id), `${id} must be in DROP_PI_PROVIDERS`);
       strictEqual(
@@ -112,6 +113,15 @@ describe("providerDescription", () => {
         `${id} must not keep a curated override`,
       );
     }
+  });
+
+  it("azure connects with an endpoint field, not a bare key (PRODUCT-1477)", () => {
+    // Azure's base URL is per-resource, so it must NOT sit in the drop list
+    // (that was the stopgap) and MUST be flagged for the endpoint-aware
+    // connect dialog.
+    ok(!DROP_PI_PROVIDERS.has("azure-openai-responses"));
+    ok(API_KEY_ENDPOINT_PROVIDERS.has("azure-openai-responses"));
+    ok(PROVIDER_OVERRIDES["azure-openai-responses"]?.apiKeyUrl);
   });
 
   it("returns an empty string for a provider we have never described", () => {

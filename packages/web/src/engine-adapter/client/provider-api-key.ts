@@ -17,6 +17,7 @@ export async function connectApiKey(
   ctx: AdapterContext,
   name: string,
   apiKey: string,
+  endpoint?: string,
 ): Promise<void> {
   const pid = toNewProvider(name);
   if (!pid) throw new Error(`provider ${name} not supported`);
@@ -35,7 +36,7 @@ export async function connectApiKey(
     const agentId = ctx.providerAgentId();
     if (!agentId) {
       for (const target of targets) {
-        await controlPlane.setSetupApiKey(ctx.cp, target, apiKey);
+        await controlPlane.setSetupApiKey(ctx.cp, target, apiKey, endpoint);
       }
       emitEvent("ProviderLoginComplete", {
         provider: name,
@@ -45,7 +46,7 @@ export async function connectApiKey(
       return;
     }
     for (const target of targets) {
-      await controlPlane.setApiKey(ctx.cp, agentId, target, apiKey);
+      await controlPlane.setApiKey(ctx.cp, agentId, target, apiKey, endpoint);
     }
     // CLAIM (don't set) the active provider: it becomes active only when the
     // agent doesn't already resolve to one — a first connect on a fresh agent.
@@ -60,7 +61,7 @@ export async function connectApiKey(
       .claimActiveProvider(pid);
   } else {
     for (const target of targets) {
-      await ctx.engine.setApiKey(target, apiKey);
+      await ctx.engine.setApiKey(target, apiKey, endpoint);
     }
     await ctx.engine.claimActiveProvider(pid);
   }

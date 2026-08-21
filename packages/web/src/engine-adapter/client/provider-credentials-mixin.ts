@@ -57,8 +57,12 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
      * the whole flow (sibling gateways, the pre-agent setup path, the active
      * provider claim, and the completion event).
      */
-    async setProviderApiKey(name: string, apiKey: string): Promise<void> {
-      await connectApiKey(this.ctx, name, apiKey);
+    async setProviderApiKey(
+      name: string,
+      apiKey: string,
+      endpoint?: string,
+    ): Promise<void> {
+      await connectApiKey(this.ctx, name, apiKey, endpoint);
     }
 
     /**

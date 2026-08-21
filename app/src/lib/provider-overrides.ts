@@ -149,10 +149,8 @@ export function toCanonicalProviderId(id: string): string {
  *   request URL, so the single-pasted-key connect dialog can never verify or
  *   run them — every attempt dead-ends in "could not verify". Dropped until a
  *   multi-field connect ships (mapped follow-up); same presentation-only rules.
- * - Azure OpenAI is the same shape (PRODUCT-1477): every request needs the
- *   user's RESOURCE endpoint (pi's catalog ships `baseUrl: ""` and throws
- *   "base URL is required" before any HTTP), so a pasted key alone can never
- *   verify — the dialog always read "couldn't reach Azure OpenAI".
+ *   (Azure OpenAI sat here briefly for the same reason; its connect dialog now
+ *   collects the resource endpoint alongside the key — PRODUCT-1477.)
  */
 export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set([
   "openai",
@@ -164,6 +162,16 @@ export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set([
   "xiaomi-token-plan-sgp",
   "cloudflare-ai-gateway",
   "cloudflare-workers-ai",
+]);
+
+/**
+ * Api-key providers whose connect dialog collects a per-account ENDPOINT
+ * alongside the key (PRODUCT-1477). Azure OpenAI is the only one today: every
+ * Azure request goes to the user's own resource URL, so a key alone can never
+ * be verified or used. The dialog shows an endpoint field for these ids and
+ * sends it with the key; the runtime validates and persists it.
+ */
+export const API_KEY_ENDPOINT_PROVIDERS: ReadonlySet<string> = new Set([
   "azure-openai-responses",
 ]);
 
@@ -181,6 +189,19 @@ export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set([
  * (`provider-overrides-drift.test.ts`) rejects orphans.
  */
 export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
+  // Mirrors the `openai` set below where the azure catalog offers the same id
+  // (pi's azure list still carries 2023-era gpt-4; hide it). Azure serves a
+  // model only when the user DEPLOYED it under that name, so a short current
+  // list also keeps the "deployment named after the model id" rule legible.
+  "azure-openai-responses": new Set([
+    "gpt-5.5",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.3-codex-spark",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+  ]),
   openai: new Set([
     "gpt-5.5",
     "gpt-5.6-sol",
@@ -767,6 +788,18 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://open.bigmodel.cn",
     apiKeyUrl: "https://open.bigmodel.cn/usercenter/apikeys",
   },
+  "azure-openai-responses": {
+    name: "Azure OpenAI",
+    subtitle: "OpenAI on Microsoft Azure",
+    cost: "Pay-as-you-go on your Azure account",
+    installUrl:
+      "https://azure.microsoft.com/products/ai-services/openai-service",
+    // Azure keys live per-resource in the portal; there is no global key page.
+    apiKeyUrl: "https://portal.azure.com",
+    // pi's azure catalog is alphabetical (gpt-4 first) — start current.
+    // Twin of the runtime's UNCURATED_DEFAULT_MODEL; keep them in sync.
+    defaultModel: "gpt-5.5",
+  },
   "vercel-ai-gateway": {
     name: "Vercel AI Gateway",
     subtitle: "Many models, one key",
@@ -809,6 +842,7 @@ export const DESCRIPTION_BY_ID: Readonly<Record<string, string>> = {
   moonshotai: "Kimi models from Moonshot AI.",
   zai: "GLM open models from Z.ai.",
   "vercel-ai-gateway": "One key for many models, from Vercel.",
+  "azure-openai-responses": "OpenAI models on Microsoft Azure.",
   "google-vertex": "Gemini and more on Google Cloud Vertex AI.",
   xiaomi: "MiMo models from Xiaomi.",
   // Named regional / subscription variants (reuse the lab's niche).

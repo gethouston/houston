@@ -68,6 +68,10 @@
     "getKey": "Get your API key",
     "label": "API key",
     "placeholder": "Paste your API key",
+    "endpointLabel": "Endpoint",
+    "endpointPlaceholder": "https://your-resource.openai.azure.com",
+    "endpointHelp": "The endpoint URL from your resource in the Azure portal. Houston calls the deployment named exactly like the model, so name your deployments after the model (for example \"gpt-5.5\").",
+    "endpointRequired": "Enter your endpoint URL first. It starts with https:// and comes from your resource in the Azure portal.",
     "required": "Enter your API key first.",
     "verifyFailed": "This key couldn't be connected: {{detail}}",
     "show": "Show key",
@@ -82,7 +86,10 @@
       "nvidia3": "Copy the key that starts with \"nvapi-\" and paste it below.",
       "bedrock1": "Open the Bedrock API keys page with the button above and choose \"Long-term API keys\".",
       "bedrock2": "Click \"Generate long-term API keys\". The key value is shown only once, so copy it right away.",
-      "bedrock3": "Paste the key value below. It starts with \"ABSK\". The name shown in the list (\"BedrockAPIKey-...\") is not the key."
+      "bedrock3": "Paste the key value below. It starts with \"ABSK\". The name shown in the list (\"BedrockAPIKey-...\") is not the key.",
+      "azure1": "In the Azure portal, open your Azure OpenAI (or Foundry) resource and go to \"Keys and endpoint\".",
+      "azure2": "Copy one of the two keys and the endpoint URL.",
+      "azure3": "Deploy the models you want to use, each named exactly like the model (for example \"gpt-5.5\"), then paste the endpoint and key here."
     },
     "errorInvalidKey": "{{name}} didn't accept this key. Check it and paste it again.",
     "errorKeyRestricted": "This key is blocked by settings in your {{name}} account. Create a new key without restrictions using the button above, then paste it here.",

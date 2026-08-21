@@ -106,7 +106,7 @@ export async function handleSetupRuntime(
   // API-key provider connect (no OAuth dance): store centrally + push into the
   // setup runtime so `auth/status` reads connected immediately.
   if (rest === "credential/api-key" && method === "POST") {
-    const { provider, apiKey } = await readJson(req);
+    const { provider, apiKey, endpoint } = await readJson(req);
     if (!provider || typeof provider !== "string") {
       json(res, 400, { error: "missing 'provider'" });
       return true;
@@ -116,7 +116,14 @@ export async function handleSetupRuntime(
       return true;
     }
     try {
-      await channel.saveApiKeyCredential(ctx, provider, apiKey);
+      await channel.saveApiKeyCredential(
+        ctx,
+        provider,
+        apiKey,
+        typeof endpoint === "string" && endpoint.trim()
+          ? endpoint.trim()
+          : undefined,
+      );
       json(res, 200, { ok: true });
     } catch (err) {
       // Mirror the per-agent route: the runtime's typed verification reason

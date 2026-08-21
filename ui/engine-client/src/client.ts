@@ -1203,9 +1203,16 @@ export class HoustonClient {
    * Only the new TS engine serves these providers; the UI gates the call behind
    * `newEngineActive()`, so on the legacy Rust engine this route is never hit.
    */
-  setProviderApiKey(name: string, apiKey: string): Promise<void> {
+  setProviderApiKey(
+    name: string,
+    apiKey: string,
+    endpoint?: string,
+  ): Promise<void> {
+    // The legacy Rust engine has no Azure support; `endpoint` is declared for
+    // shim parity with the v3 adapter and never reaches this engine usefully.
     return this.request("POST", `/providers/${this.seg(name)}/api-key`, {
       apiKey,
+      ...(endpoint ? { endpoint } : {}),
     });
   }
   /**
