@@ -94,6 +94,7 @@ if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
     );
     let output = Command::new("powershell")
         .args(["-NoProfile", "-Sta", "-Command", &script])
+        .creation_flags(crate::child_guard::CREATE_NO_WINDOW)
         .output()
         .await
         .map_err(|e| format!("Failed to open save dialog: {e}"))?;
@@ -152,6 +153,7 @@ if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
     );
     let output = Command::new("powershell")
         .args(["-NoProfile", "-Sta", "-Command", &script])
+        .creation_flags(crate::child_guard::CREATE_NO_WINDOW)
         .output()
         .await
         .map_err(|e| format!("Failed to open file dialog: {e}"))?;
