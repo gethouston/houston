@@ -5,6 +5,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
+import { MAX_UPLOAD_BODY_BYTES } from "@houston/host/src/turn/files-import";
 import { AdmissionLimiter, turnConcurrency } from "./admission";
 import { executeOp } from "./execute-op";
 import { executeTurn } from "./execute-turn";
@@ -63,6 +64,8 @@ function json(
 }
 
 /** Create the bounded HTTP server used by stateless per-turn workers. */
+const OP_BODY_MAX_BYTES = MAX_UPLOAD_BODY_BYTES + 1024 * 1024;
+
 export function createTurnServer(deps: TurnServerDeps): Server {
   const admission =
     deps.admission ??
@@ -89,9 +92,12 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       }
       if (path === "/op") {
         // A write for a sleeping agent (docs/op): same auth + admission as a
-        // turn, a fraction of the work. 4 MiB: an agentfile PUT carries the
-        // file body inline (the app's upload cap), well above every JSON op.
-        const body = await readJson(req, 4 * 1024 * 1024);
+        // turn, a fraction of the work. The cap is the Files import cap plus
+        // envelope headroom: an upload rides the op exactly as it rides the
+        // pod (base64 JSON), and the pod reads it with the same limit.
+        // Admission BEFORE the body is drained: the cap is ~135 MiB, so N
+        // parked uploads must not buffer N bodies on a worker that runs one
+        // op at a time. A refused request never reads its body.
         const releaseOp = admission.tryAcquire();
         if (!releaseOp) {
           return json(
@@ -102,6 +108,7 @@ export function createTurnServer(deps: TurnServerDeps): Server {
           );
         }
         try {
+          const body = await readJson(req, OP_BODY_MAX_BYTES);
           await executeOp(deps, req, res, body);
         } finally {
           releaseOp();

@@ -12,6 +12,8 @@ export type AgentOp =
       kind: "route";
       method: string;
       rest: string;
+      /** Raw query string without the `?` (files routes take `?path=`). */
+      query?: string;
       body?: string;
       contentType?: string;
     }
@@ -40,7 +42,10 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
 // The op-route shapes (mirrors the Go classifier): the agent-data families,
 // agentfile writes, and skills (install + manage), never a runtime path.
 const OP_ROUTE =
-  /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^skills\/(community|repo)\/install$/;
+  /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^skills\/(community|repo)\/install$|^files(\/.+)?$|^attachments$|^skills-manifest$/;
+// Any files/* shape reads through the handler (it owns the 404 for an
+// unknown one), never a write.
+const READ_ROUTE = /^files(\/.+)?$|^agentfile\/|^skills-manifest$/;
 
 function parseActing(raw: unknown): TurnRequest["actingAs"] {
   if (!raw || typeof raw !== "object") return undefined;
@@ -95,8 +100,8 @@ export function parseOpRequest(body: unknown): OpRequest {
   switch (raw.kind) {
     case "route": {
       const method = str(raw.method, "op.method").toUpperCase();
-      if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-        throw new Error("op.method must be a write method");
+      if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+        throw new Error("op.method is not an HTTP method");
       }
       const rest = str(raw.rest, "op.rest");
       if (rest.includes("..") || rest.startsWith("/"))
@@ -104,11 +109,34 @@ export function parseOpRequest(body: unknown): OpRequest {
       // Defense in depth: the worker accepts only the op-route shapes the
       // gateway classifier dispatches — a valid-token caller cannot reach a
       // handler surface (e.g. POST agentfile) the public path never exposes.
-      if (!OP_ROUTE.test(rest)) throw new Error("op.rest is not an op route");
+      // Match the DECODED path: the handlers decode, so the allowlist must
+      // see what they see (`%2Ehouston` is `.houston`).
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(rest);
+      } catch {
+        throw new Error("invalid 'op.rest'");
+      }
+      if (decoded.includes("..") || decoded.startsWith("/")) {
+        throw new Error("invalid 'op.rest'");
+      }
+      if (!OP_ROUTE.test(decoded)) {
+        throw new Error("op.rest is not an op route");
+      }
+      // Reads run as ops only where the gateway has no doc to serve them
+      // from: the Files tab and arbitrary agent files.
+      if (method === "GET" && !READ_ROUTE.test(decoded)) {
+        throw new Error("op.rest is not a read op route");
+      }
+      const query =
+        typeof raw.query === "string" && raw.query.length <= 4096
+          ? raw.query.replace(/^\?/, "")
+          : undefined;
       op = {
         kind: "route",
         method,
         rest,
+        ...(query ? { query } : {}),
         ...(typeof raw.body === "string" ? { body: raw.body } : {}),
         ...(typeof raw.contentType === "string"
           ? { contentType: raw.contentType }

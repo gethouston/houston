@@ -22,6 +22,16 @@ export const DEFAULT_EXCLUDES = ["data/auth.json"];
 
 const norm = (rel: string) => rel.split(sep).join("/");
 
+function segmentGlobMatches(pattern: string, path: string): boolean {
+  const subtree = pattern.endsWith("/");
+  const want = (subtree ? pattern.slice(0, -1) : pattern).split("/");
+  const have = path.split("/");
+  if (subtree ? have.length < want.length : have.length !== want.length) {
+    return false;
+  }
+  return want.every((seg, i) => seg === "*" || seg === have[i]);
+}
+
 export function excluded(rel: string, excludes: string[]): boolean {
   const normalized = norm(rel);
   if (normalized.endsWith(".tmp")) return true;
@@ -35,6 +45,12 @@ export function excluded(rel: string, excludes: string[]): boolean {
   if (normalized.split("/").includes("auth-users")) return true;
   return excludes.some((exclude) => {
     const pattern = norm(exclude);
+    if (pattern.includes("*")) {
+      // Segment glob: `*` matches exactly one path segment; a trailing `/`
+      // names a subtree. `workspaces/*/*/.houston/runtime/` is the agent's
+      // own runtime dir at its fixed depth — never a user project's.
+      return segmentGlobMatches(pattern, normalized);
+    }
     if (pattern.endsWith("/")) {
       const subtree = pattern.slice(0, -1);
       return normalized === subtree || normalized.startsWith(pattern);

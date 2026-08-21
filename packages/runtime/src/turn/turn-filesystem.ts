@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { docKey } from "@houston/domain";
 import {
+  DEFAULT_EXCLUDES,
   HydrateLimitError,
   type HydrateManifest,
   hydrate,
@@ -35,6 +36,9 @@ export async function prepareTurnFilesystem(opts: {
   root: string;
   claimed: boolean;
   maxBytes?: number;
+  /** Extra hydrate excludes (on top of the defaults), e.g. the runtime tree
+   *  for an op that never reads conversations. */
+  excludes?: string[];
 }): Promise<TurnFilesystem> {
   const storeRoot = join(opts.root, "store");
   await mkdir(storeRoot, { recursive: true });
@@ -44,6 +48,9 @@ export async function prepareTurnFilesystem(opts: {
   try {
     manifest = await hydrate(opts.store, opts.prefix, storeRoot, {
       ...(maxBytes !== undefined ? { maxBytes } : {}),
+      ...(opts.excludes
+        ? { excludes: [...DEFAULT_EXCLUDES, ...opts.excludes] }
+        : {}),
     });
   } catch (error) {
     if (!(error instanceof HydrateLimitError)) throw error;

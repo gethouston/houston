@@ -24,6 +24,11 @@ import { poolIdentity, resolveTurnStore } from "./turn-store";
 /** Reserved claim key for agent-level writes (gateway + pod-store agree). */
 export const AGENT_OPS_CLAIM_ID = "agent-ops";
 
+/** Route ops skip the AGENT's runtime tree (`workspaces/<ws>/<agent>/
+ *  .houston/runtime/`) — exactly that depth, so a user project carrying its
+ *  own `.houston/runtime` directory is hydrated like any other file. */
+const ROUTE_OP_EXCLUDES = ["workspaces/*/*/.houston/runtime/"];
+
 const EVENT_FAMILY: Partial<Record<HoustonEvent["type"], HoustonFamily>> = {
   ActivityChanged: "activity",
   RoutinesChanged: "routines",
@@ -86,6 +91,10 @@ export async function executeOp(
       ...(deps.maxHydrateBytes !== undefined
         ? { maxBytes: deps.maxHydrateBytes }
         : {}),
+      // Agent-level routes (files, docs, skills) never read the runtime tree
+      // (conversations, sessions) — the bulk of a busy agent. Conversation
+      // ops do, so they hydrate everything.
+      ...(op.op.kind === "route" ? { excludes: ROUTE_OP_EXCLUDES } : {}),
     });
     const result = await applyOp(op, filesystem, deps.fetchImpl);
     if (result.agentMissing) {
@@ -95,27 +104,68 @@ export async function executeOp(
     }
     await heartbeat.checkpoint();
     if (heartbeat.fenced) return json(res, 409, { error: "claim_fenced" });
-    const synced = await syncBack(
-      resolved.store,
-      resolved.prefix,
-      filesystem.storeRoot,
-      filesystem.manifest,
-      {
-        include: result.include,
-      },
-    );
-    if (synced.outOfScope > 0) {
-      console.info(
-        `[op] pool_writes_out_of_scope=${synced.outOfScope} prefix=${resolved.prefix} kind=${op.op.kind}`,
+    const isRead = op.op.kind === "route" && op.op.method === "GET";
+    if (!isRead) {
+      const synced = await syncBack(
+        resolved.store,
+        resolved.prefix,
+        filesystem.storeRoot,
+        filesystem.manifest,
+        { include: result.include, holdDeletesOnFailure: true },
       );
-    }
-    const diagnostics: string[] = [];
-    if (result.status < 300) {
-      diagnostics.push(
-        ...(await republish(deps, turnLike, filesystem, result)),
-      );
-      if (op.op.kind === "conversation") {
-        diagnostics.push(...(await opTranscriptMirror(deps, turnLike, op.op)));
+      const landed = synced.uploaded.length + synced.deleted.length > 0;
+      const partial =
+        synced.outOfScope > 0 ||
+        synced.skipped.length > 0 ||
+        synced.conflicts.length > 0;
+      if (partial) {
+        console.error(
+          `[op] not durably synced: outOfScope=${synced.outOfScope} skipped=${synced.skipped.length} conflicts=${synced.conflicts.length} landed=${landed} prefix=${resolved.prefix} kind=${op.op.kind}`,
+        );
+        // NOTHING landed: declining is safe — the gateway proxies and the
+        // pod applies the write from an unchanged tree.
+        if (!landed) return json(res, 200, { ok: true, decline: true });
+        // A file the store refuses (over its per-object cap) can never
+        // persist anywhere — the pod would silently fail the same way.
+        // Tell the user; the client does not retry a 413.
+        if (synced.skipped.length > 0) {
+          return json(res, 200, {
+            ok: true,
+            status: 413,
+            contentType: "application/json",
+            body: JSON.stringify({
+              error: "file too large to store",
+              files: synced.skipped.map((s) => s.key),
+            }),
+            events: [],
+          });
+        }
+        // Something landed and something conflicted: the write is PARTLY
+        // durable. Re-running it on the pod would duplicate the part that
+        // landed (a routine create mints a fresh id); the client must be
+        // told the result is unknown instead.
+        return json(res, 200, { ok: true, ambiguous: true });
+      }
+      if (result.status < 300) {
+        let failures = await republish(deps, turnLike, filesystem, result);
+        if (failures.length > 0) {
+          // One more round before accepting a lag: a blip on the doc PUT is
+          // the common case and the files are already durable.
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          failures = await republish(deps, turnLike, filesystem, result);
+        }
+        if (op.op.kind === "conversation") {
+          failures.push(...(await opTranscriptMirror(deps, turnLike, op.op)));
+        }
+        if (failures.length > 0) {
+          // The files ARE durable; only a doc/transcript projection lagged.
+          // Never re-run (duplicates) — answer the handler's status and make
+          // the gap loud: the next op's republish or the pod's wake-time
+          // projector re-projects from the files.
+          console.error(
+            `[op] projection failed after a durable sync (asleep reads may lag until the next projection): ${failures.join("; ")} prefix=${resolved.prefix}`,
+          );
+        }
       }
     }
     json(res, 200, {
@@ -123,8 +173,9 @@ export async function executeOp(
       status: result.status,
       contentType: result.contentType,
       body: result.body,
+      ...(result.bodyBase64 ? { bodyBase64: result.bodyBase64 } : {}),
+      ...(result.headers ? { headers: result.headers } : {}),
       events: result.events.map((e) => e.type),
-      ...(diagnostics.length ? { diagnostics } : {}),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
