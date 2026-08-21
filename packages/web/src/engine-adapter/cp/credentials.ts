@@ -90,13 +90,18 @@ export async function setApiKey(
   agentId: string,
   provider: string,
   apiKey: string,
+  endpoint?: string,
 ): Promise<void> {
   await cpFetch(
     cfg,
     `/agents/${encodeURIComponent(agentId)}/credential/api-key`,
     {
       method: "POST",
-      body: JSON.stringify({ provider, apiKey }),
+      body: JSON.stringify({
+        provider,
+        apiKey,
+        ...(endpoint ? { endpoint } : {}),
+      }),
     },
   );
 }
@@ -171,9 +176,14 @@ export async function setSetupApiKey(
   cfg: ControlPlaneConfig,
   provider: string,
   apiKey: string,
+  endpoint?: string,
 ): Promise<void> {
   await cpFetch(cfg, `/setup-runtime/credential/api-key`, {
     method: "POST",
-    body: JSON.stringify({ provider, apiKey }),
+    body: JSON.stringify({
+      provider,
+      apiKey,
+      ...(endpoint ? { endpoint } : {}),
+    }),
   });
 }

@@ -14,6 +14,16 @@ import {
 } from "./verify-errors";
 
 export type { ApiKeyVerifyReason } from "./verify-errors";
+
+/**
+ * Connect-time extras a probe needs BEFORE anything is persisted. Azure's
+ * endpoint is per-resource and arrives with the key (PRODUCT-1477): the probe
+ * must aim at it explicitly, since the stored overlay (`withAzureBaseUrl`)
+ * only exists after a successful connect.
+ */
+export interface VerifyApiKeyOptions {
+  azureBaseUrl?: string;
+}
 // The stable public surface (host routes, login, tests) predates the module
 // split — keep serving it from here.
 export { ApiKeyVerifyError, raisedMessage } from "./verify-errors";
@@ -42,6 +52,7 @@ export { ApiKeyVerifyError, raisedMessage } from "./verify-errors";
 export async function verifyApiKey(
   providerId: string,
   key: string,
+  opts?: VerifyApiKeyOptions,
 ): Promise<void> {
   // Qwen keys are REGION-scoped (Alibaba Model Studio international): probe
   // every region and persist the accepting one (`qwen-verify.ts`, HOU-1077).
@@ -61,7 +72,7 @@ export async function verifyApiKey(
     return;
   }
 
-  let message = await probeCompletion(providerId, model, key);
+  let message = await probeCompletion(providerId, model, key, opts);
   if (message === null) return;
 
   // NVIDIA serves each model per account (HOU-890): the probe model being
@@ -93,6 +104,7 @@ async function probeCompletion(
   providerId: string,
   model: Parameters<typeof completeSimple>[0],
   key: string,
+  opts?: VerifyApiKeyOptions,
 ): Promise<string | null> {
   try {
     const reply = await completeSimple(
@@ -104,6 +116,7 @@ async function probeCompletion(
         apiKey: key,
         maxTokens: 1,
         signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
+        ...(opts?.azureBaseUrl ? { azureBaseUrl: opts.azureBaseUrl } : {}),
       },
     );
     if (reply.stopReason !== "error") return null;

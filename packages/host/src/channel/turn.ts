@@ -135,7 +135,17 @@ export class TurnChannel implements RuntimeChannel {
     ctx: ChannelCtx,
     provider: string,
     apiKey: string,
+    endpoint?: string,
   ): Promise<void> {
+    // Azure OpenAI needs its per-resource endpoint hydrated into every
+    // per-turn data dir, and this channel has no write for it yet — refuse
+    // loudly rather than store a key that can never make a request
+    // (PRODUCT-1477; mirrors the Claude refusal below).
+    if (endpoint !== undefined) {
+      throw new Error(
+        `${provider} isn't available in the cloud per-turn runtime yet.`,
+      );
+    }
     await this.deps.credentials.put({
       workspaceId: ctx.workspace.id,
       provider,

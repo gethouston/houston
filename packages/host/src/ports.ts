@@ -313,6 +313,7 @@ export interface RuntimeChannel {
     ctx: ChannelCtx,
     provider: string,
     apiKey: string,
+    endpoint?: string,
   ): Promise<void>;
   /**
    * Connect-once for the Anthropic Claude subscription in HOSTED mode. The

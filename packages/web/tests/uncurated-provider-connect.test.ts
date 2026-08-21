@@ -111,9 +111,11 @@ test("setProviderApiKey connects an uncurated pi provider instead of throwing", 
   await (await client()).setProviderApiKey("mistral", "sk-mistral-key");
 
   expect(setApiKey).toHaveBeenCalledTimes(1);
+  // The trailing undefined is the (azure-only) endpoint arg — PRODUCT-1477.
   expect(setApiKey.mock.calls[0].slice(2)).toEqual([
     "mistral",
     "sk-mistral-key",
+    undefined,
   ]);
   expect(claimActiveProvider).toHaveBeenCalledWith("mistral");
 });

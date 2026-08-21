@@ -200,6 +200,142 @@ test("GET /providers hydrates served credentials before listing providers", asyn
   }
 });
 
+test("POST /auth/azure-openai-responses/api-key requires the endpoint and persists both (PRODUCT-1477)", async () => {
+  // Azure is the one catalog provider whose base URL is per-user: the connect
+  // body carries `endpoint` alongside `key`. Verification is mocked — this
+  // test pins the ROUTE contract: endpoint validated as a cheap 400 before
+  // any probe, the probe aimed at the PASTED endpoint, and nothing persisted
+  // until the probe passes.
+  const prevDataDir = process.env.HOUSTON_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-azure-route-"));
+  process.env.HOUSTON_DATA_DIR = dataDir;
+
+  vi.doMock("../auth/verify-api-key", async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    verifyApiKey: vi.fn().mockResolvedValue(undefined),
+  }));
+  try {
+    vi.resetModules();
+    const { handleProviderRoute } = await import("./provider-routes");
+    const { verifyApiKey } = await import("../auth/verify-api-key");
+    const { azureBaseUrl } = await import("../ai/azure-openai");
+    const { authStorage } = await import("../auth/storage");
+
+    const connect = async (body: unknown) => {
+      const { res, out } = mockRes();
+      expect(
+        await handleProviderRoute({
+          method: "POST",
+          path: "/auth/azure-openai-responses/api-key",
+          url: new URL(
+            "http://runtime.test/auth/azure-openai-responses/api-key",
+          ),
+          req: mockPostReq(body),
+          res,
+        }),
+      ).toBe(true);
+      return out;
+    };
+
+    // No endpoint / a non-https endpoint: a clean 400 BEFORE any live probe,
+    // and nothing stored.
+    let out = await connect({ key: "azure-key" });
+    expect(out.status).toBe(400);
+    out = await connect({
+      key: "azure-key",
+      endpoint: "http://acme.openai.azure.com",
+    });
+    expect(out.status).toBe(400);
+    expect(verifyApiKey).not.toHaveBeenCalled();
+    expect(authStorage.get("azure-openai-responses")).toBeUndefined();
+    expect(azureBaseUrl()).toBe("");
+
+    // The good case: probe aimed at the pasted endpoint, then both persisted.
+    out = await connect({
+      key: "azure-key",
+      endpoint: "https://acme.openai.azure.com/",
+    });
+    expect(out.status).toBe(200);
+    expect(verifyApiKey).toHaveBeenCalledWith(
+      "azure-openai-responses",
+      "azure-key",
+      { azureBaseUrl: "https://acme.openai.azure.com" },
+    );
+    expect(authStorage.get("azure-openai-responses")).toEqual({
+      type: "api_key",
+      key: "azure-key",
+    });
+    expect(azureBaseUrl()).toBe("https://acme.openai.azure.com");
+
+    // Non-azure providers keep the endpoint-less contract untouched.
+    const { res, out: orOut } = mockRes();
+    await handleProviderRoute({
+      method: "POST",
+      path: "/auth/openrouter/api-key",
+      url: new URL("http://runtime.test/auth/openrouter/api-key"),
+      req: mockPostReq({ key: "sk-or-abc" }),
+      res,
+    });
+    expect(orOut.status).toBe(200);
+    expect(verifyApiKey).toHaveBeenCalledWith(
+      "openrouter",
+      "sk-or-abc",
+      undefined,
+    );
+  } finally {
+    restoreEnv("HOUSTON_DATA_DIR", prevDataDir);
+    vi.doUnmock("../auth/verify-api-key");
+    vi.resetModules();
+  }
+});
+
+test("POST /auth/azure-openai-responses/api-key persists NOTHING when the probe rejects (PRODUCT-1477)", async () => {
+  const prevDataDir = process.env.HOUSTON_DATA_DIR;
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-azure-reject-"));
+  process.env.HOUSTON_DATA_DIR = dataDir;
+
+  vi.doMock("../auth/verify-api-key", async (importOriginal) => {
+    const real =
+      await importOriginal<typeof import("../auth/verify-api-key")>();
+    return {
+      ...real,
+      verifyApiKey: vi
+        .fn()
+        .mockRejectedValue(
+          new real.ApiKeyVerifyError("azure said no", "invalid_key"),
+        ),
+    };
+  });
+  try {
+    vi.resetModules();
+    const { handleProviderRoute } = await import("./provider-routes");
+    const { azureBaseUrl } = await import("../ai/azure-openai");
+    const { authStorage } = await import("../auth/storage");
+
+    const { res, out } = mockRes();
+    await handleProviderRoute({
+      method: "POST",
+      path: "/auth/azure-openai-responses/api-key",
+      url: new URL("http://runtime.test/auth/azure-openai-responses/api-key"),
+      req: mockPostReq({
+        key: "bad-key",
+        endpoint: "https://acme.openai.azure.com",
+      }),
+      res,
+    });
+    // The typed reason survives to the dialog; neither the key NOR the
+    // endpoint is left behind (a failed connect has no residue).
+    expect(out.status).toBe(401);
+    expect((out.body as { reason?: string }).reason).toBe("invalid_key");
+    expect(authStorage.get("azure-openai-responses")).toBeUndefined();
+    expect(azureBaseUrl()).toBe("");
+  } finally {
+    restoreEnv("HOUSTON_DATA_DIR", prevDataDir);
+    vi.doUnmock("../auth/verify-api-key");
+    vi.resetModules();
+  }
+});
+
 test("DELETE /auth/:provider/api-key rolls back only the exact just-connected key (PRODUCT-1321)", async () => {
   // The host calls this when its central store rejected a key the POST had
   // already verified + persisted: the runtime entry must go (a failed connect

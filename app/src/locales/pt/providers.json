@@ -68,6 +68,10 @@
     "getKey": "Obtenha sua chave de API",
     "label": "Chave de API",
     "placeholder": "Cole sua chave de API",
+    "endpointLabel": "Endpoint",
+    "endpointPlaceholder": "https://seu-recurso.openai.azure.com",
+    "endpointHelp": "A URL do endpoint do seu recurso no portal do Azure. O Houston chama a implantação com o mesmo nome do modelo, então nomeie suas implantações igual ao modelo (por exemplo \"gpt-5.5\").",
+    "endpointRequired": "Primeiro informe a URL do endpoint. Ela começa com https:// e está no seu recurso no portal do Azure.",
     "required": "Primeiro informe sua chave de API.",
     "verifyFailed": "Não foi possível conectar esta chave: {{detail}}",
     "show": "Mostrar chave",
@@ -82,7 +86,10 @@
       "nvidia3": "Copie a chave que começa com \"nvapi-\" e cole abaixo.",
       "bedrock1": "Abra a página de chaves de API do Bedrock com o botão acima e escolha \"Chaves de API de longa duração\".",
       "bedrock2": "Clique em \"Gerar chaves de API de longa duração\". O valor da chave aparece só uma vez, então copie na hora.",
-      "bedrock3": "Cole o valor da chave abaixo. Ele começa com \"ABSK\". O nome exibido na lista (\"BedrockAPIKey-...\") não é a chave."
+      "bedrock3": "Cole o valor da chave abaixo. Ele começa com \"ABSK\". O nome exibido na lista (\"BedrockAPIKey-...\") não é a chave.",
+      "azure1": "No portal do Azure, abra seu recurso do Azure OpenAI (ou Foundry) e acesse \"Chaves e endpoint\".",
+      "azure2": "Copie uma das duas chaves e a URL do endpoint.",
+      "azure3": "Implante os modelos que quiser usar, cada um com o mesmo nome do modelo (por exemplo \"gpt-5.5\"), e cole aqui o endpoint e a chave."
     },
     "errorInvalidKey": "{{name}} não aceitou esta chave. Confira e cole de novo.",
     "errorKeyRestricted": "Esta chave está bloqueada pelas configurações da sua conta {{name}}. Crie uma chave nova sem restrições usando o botão acima e cole aqui.",

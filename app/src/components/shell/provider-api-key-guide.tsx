@@ -21,6 +21,11 @@ const GUIDES = {
     "apiKey.guide.bedrock2",
     "apiKey.guide.bedrock3",
   ],
+  "azure-openai-responses": [
+    "apiKey.guide.azure1",
+    "apiKey.guide.azure2",
+    "apiKey.guide.azure3",
+  ],
 } as const;
 
 export function ProviderApiKeyGuide({ providerId }: { providerId: string }) {

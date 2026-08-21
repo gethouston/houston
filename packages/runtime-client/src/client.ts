@@ -216,13 +216,14 @@ export class HoustonEngineClient {
   /**
    * Store a pasted API key for an api-key provider. No OAuth
    * dance: the key is persisted and used directly for the provider's built-in
-   * OpenAI-compatible gateway.
+   * OpenAI-compatible gateway. Azure OpenAI additionally sends its
+   * per-resource `endpoint` (PRODUCT-1477); other providers omit it.
    */
-  setApiKey(provider: ProviderId, key: string) {
+  setApiKey(provider: ProviderId, key: string, endpoint?: string) {
     return this.json<{ ok: boolean }>(`/auth/${provider}/api-key`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key }),
+      body: JSON.stringify({ key, ...(endpoint ? { endpoint } : {}) }),
     });
   }
   /**

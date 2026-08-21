@@ -506,7 +506,7 @@ export async function handleAgents(
       json(res, authz.status, { error: authz.reason });
       return true;
     }
-    const { provider, apiKey: key } = await readJson(req);
+    const { provider, apiKey: key, endpoint } = await readJson(req);
     if (
       !provider ||
       typeof provider !== "string" ||
@@ -529,6 +529,9 @@ export async function handleAgents(
         { workspace: authz.workspace, agent: authz.agent, actingAs },
         provider,
         key.trim(),
+        typeof endpoint === "string" && endpoint.trim()
+          ? endpoint.trim()
+          : undefined,
       );
       json(res, 200, { ok: true, provider });
     } catch (err) {
