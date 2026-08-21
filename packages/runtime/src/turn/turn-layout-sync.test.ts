@@ -138,9 +138,14 @@ test.each([
   expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
   );
+  // The landed writes name the events other tabs need: the conversation and
+  // the board doc changed; out-of-scope files and session state do not count.
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
-    data: { poolWritesOutOfScope: 3 },
+    data: {
+      poolWritesOutOfScope: 3,
+      changed: ["ActivityChanged", "ConversationsChanged"],
+    },
   });
   expect(log).toHaveBeenCalledWith(
     "[turn] pool_writes_out_of_scope=3 prefix=ws/w1/agent-1 conversation=c1",

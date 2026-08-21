@@ -5,6 +5,7 @@ import {
   publishTurnActivityDoc,
   publishTurnRunsDoc,
 } from "./turn-activity-doc";
+import { changedEventTypes } from "./turn-changed-events";
 import {
   syncTurnFilesystem,
   type TurnFilesystem,
@@ -33,6 +34,8 @@ interface TurnDurabilityOptions {
 export interface TurnDurabilityResult {
   outcome: TurnOutcome;
   poolWritesOutOfScope: number;
+  /** Domain events the landed writes imply (the gateway fans them out). */
+  changed: ReturnType<typeof changedEventTypes>;
   /** Set when transcript rows were deliberately not published. */
   transcriptSkipped?: "route_absent";
   /** Set when the activity doc route is absent on an older deployment. */
@@ -49,11 +52,16 @@ export async function finishTurnDurability(
 ): Promise<TurnDurabilityResult> {
   await opts.heartbeat?.checkpoint();
   if (opts.heartbeat?.fenced) {
-    return { outcome: { error: "claim_fenced" }, poolWritesOutOfScope: 0 };
+    return {
+      outcome: { error: "claim_fenced" },
+      poolWritesOutOfScope: 0,
+      changed: [],
+    };
   }
 
   let poolWritesOutOfScope: number;
   let uploaded: string[];
+  let changed: TurnDurabilityResult["changed"];
   try {
     // Failed provider work may still have durable tool writes. Only a fence
     // may skip sync because a fenced worker no longer owns this conversation.
@@ -66,11 +74,19 @@ export async function finishTurnDurability(
     });
     poolWritesOutOfScope = synced.outOfScope;
     uploaded = synced.uploaded;
+    changed = changedEventTypes(opts.filesystem, [
+      ...uploaded,
+      ...synced.deleted,
+    ]);
   } catch (error) {
     // A fenced object write means the claim was adopted mid-sync: report it
     // as exactly that, not as a generic sync failure.
     if (error instanceof StoreFencedError) {
-      return { outcome: { error: "claim_fenced" }, poolWritesOutOfScope: 0 };
+      return {
+        outcome: { error: "claim_fenced" },
+        poolWritesOutOfScope: 0,
+        changed: [],
+      };
     }
     const message = error instanceof Error ? error.message : String(error);
     const failure = opts.outcome.error
@@ -79,6 +95,7 @@ export async function finishTurnDurability(
     return {
       outcome: appendError(opts.outcome, failure),
       poolWritesOutOfScope: 0,
+      changed: [],
     };
   }
 
@@ -94,13 +111,23 @@ export async function finishTurnDurability(
     };
   }
   if (published && "fenced" in published) {
-    return { outcome: { error: "claim_fenced" }, poolWritesOutOfScope };
+    return {
+      outcome: { error: "claim_fenced" },
+      poolWritesOutOfScope,
+      changed,
+    };
   }
+  // An event is a promise that the refetch can be served asleep: a family
+  // whose projection failed is left out (the read would fall to the pod).
+  const without = (type: (typeof changed)[number]) => {
+    changed = changed.filter((t) => t !== type);
+  };
   if (published && "error" in published) {
     outcome = appendError(
       outcome,
       `transcript publish failed: ${published.error}`,
     );
+    without("ConversationsChanged");
   }
 
   const activityChanged = uploaded.includes(
@@ -115,6 +142,7 @@ export async function finishTurnDurability(
       outcome,
       `board doc publish failed: ${activityPublished.error}`,
     );
+    without("ActivityChanged");
   }
   const runsChanged = uploaded.includes(
     turnRoutineRunsKey(opts.filesystem.workspaceRel),
@@ -129,16 +157,26 @@ export async function finishTurnDurability(
       `runs doc publish failed: ${runsPublished.error}`,
     );
   }
+  // The runs doc is projected for routine fires only; any other turn that
+  // touched it has no doc to point other tabs at.
+  if (runsChanged && (!runsPublished || "error" in runsPublished)) {
+    without("RoutineRunsChanged");
+  }
   // The claim may have been adopted while sync/publish were in flight (the
   // heartbeat loop learns it asynchronously). A last checkpoint keeps a stale
   // worker from ever announcing a clean done.
   await opts.heartbeat?.checkpoint();
   if (opts.heartbeat?.fenced) {
-    return { outcome: { error: "claim_fenced" }, poolWritesOutOfScope };
+    return {
+      outcome: { error: "claim_fenced" },
+      poolWritesOutOfScope,
+      changed,
+    };
   }
   return {
     outcome,
     poolWritesOutOfScope,
+    changed,
     ...(published && "disabled" in published
       ? { transcriptSkipped: published.reason }
       : {}),
