@@ -85,6 +85,24 @@ export type RunStatus =
   | "error"
   | "cancelled";
 
+/**
+ * Why a run failed before the agent ever ran (PRODUCT-1475): the AI account it
+ * was going to use is unusable. Mirrors the engine-client wire union rather
+ * than importing it, the same way the trigger bindings above do, so `ui/` stays
+ * free of app/engine imports. `provider` is a bare id — naming it in the user's
+ * language is the app's job.
+ */
+export interface RoutineRunFailure {
+  code:
+    | "creator_not_connected"
+    | "team_not_connected"
+    | "creator_needs_reconnect"
+    | "team_needs_reconnect"
+    | "out_of_credits";
+  /** Provider id, e.g. `"anthropic"`. */
+  provider: string;
+}
+
 export interface RoutineRun {
   id: string;
   routine_id: string;
@@ -101,6 +119,9 @@ export interface RoutineRun {
    *  provider CLI is sleeping on a plan-window usage limit. Only meaningful
    *  while `status === "running"`. */
   paused_until?: string;
+  /** Typed reason an `error` run never reached the agent. Absent for every
+   *  other failure, whose story is in `summary`. */
+  failure?: RoutineRunFailure;
 }
 
 /**
@@ -143,59 +164,14 @@ export const SCHEDULE_PRESET_LABELS: Record<SchedulePreset, string> = {
   custom: "Custom",
 };
 
-// ── Triggers (C9 event-driven routines) ──────────────────────────────────────
-
-/**
- * How a routine wakes: on a cron `schedule`, or when an external `event`
- * happens (a Composio trigger). The routine editor's segmented choice toggles
- * between the two; exactly one is active per routine.
- */
-export type RoutineWakeMode = "schedule" | "event";
-
-/** The wake mechanism the editor commits on save (discriminated on `mode`). */
-export type RoutineWake =
-  | { mode: "schedule"; schedule: string }
-  | { mode: "event"; trigger: RoutineTriggerBinding };
-
-/**
- * A trigger routine's live provisioning status. `active` = delivering;
- * `pending` = reconcile in flight; `paused_disconnected` = the connected account
- * was disconnected (offer Reconnect); `paused_revoked` = the toolkit fell outside
- * the agent's access; `error` = Composio rejected creation or delivery is failing.
- */
-export type TriggerStatusState =
-  | "active"
-  | "pending"
-  | "paused_disconnected"
-  | "paused_revoked"
-  | "error";
-
-/** One routine's trigger status. */
-export interface TriggerStatusItem {
-  routine_id: string;
-  status: TriggerStatusState;
-  detail?: string;
-}
-
-/** A connectable account for a toolkit, offered when the user has more than one. */
-export interface TriggerAppAccount {
-  id: string;
-  label: string;
-}
-
-/** An app the agent can build an event trigger on (connected + allowed). */
-export interface TriggerApp {
-  toolkit: string;
-  name: string;
-  logoUrl?: string;
-  /** Active connected accounts for this toolkit; a select shows when >1. */
-  accounts: TriggerAppAccount[];
-}
-
-/** A composed "create/update a routine" input: a name, a prompt, and the wake
- *  mechanism the app-owned stepper collected (a cron schedule or an event). */
-export interface RoutineEditPatch {
-  name: string;
-  prompt: string;
-  wake: RoutineWake;
-}
+// The EVENT side of a routine lives one file over; re-exported here so every
+// existing `./types` import keeps working.
+export type {
+  RoutineEditPatch,
+  RoutineWake,
+  RoutineWakeMode,
+  TriggerApp,
+  TriggerAppAccount,
+  TriggerStatusItem,
+  TriggerStatusState,
+} from "./trigger-types";

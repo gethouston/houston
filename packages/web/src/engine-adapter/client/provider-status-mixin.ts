@@ -1,5 +1,6 @@
 import type {
   CredentialScope,
+  ProviderHealth,
   ProviderStatus,
   ProviderUsage,
 } from "../../../../../ui/engine-client/src/types";
@@ -48,6 +49,7 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           // and any pre-HOU-976 pod — see the spread below, which keeps the
           // mapped status byte-identical there.
           credentialScope?: CredentialScope;
+          health?: ProviderHealth;
         }
       >();
       // "unauthenticated" is only ever a CONFIRMED answer from the engine. An
@@ -103,6 +105,13 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           // pod (and every desktop/self-host answer) must map to exactly the
           // object shape the provider-status tests already assert on.
           ...(p?.credentialScope ? { credentialScope: p.credentialScope } : {}),
+          // An engine we never reached says nothing about the credential — the
+          // ENGINE is what's unreachable, which is exactly `"unreachable"`.
+          ...(reachable
+            ? p?.health
+              ? { health: p.health }
+              : {}
+            : { health: "unreachable" as const }),
         } as ProviderStatus;
       });
     }
@@ -128,6 +137,7 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           installSource: "managed",
           cliPath: null,
           activeModel: status?.activeModel || undefined,
+          ...(status?.health ? { health: status.health } : {}),
         } as ProviderStatus;
       });
     }

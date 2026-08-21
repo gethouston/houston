@@ -6,7 +6,10 @@ import {
   stampCredentialScope,
 } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
-import { noteAuthFailure } from "../../auth/credential-health";
+import {
+  noteAuthFailure,
+  noteQuotaExhausted,
+} from "../../auth/credential-health";
 import { reportRevokedServedToken } from "../../auth/report-revoked";
 
 /** The pi provider id this backend runs as — every error is attributed to it. */
@@ -75,6 +78,10 @@ export function mapSdkError(
       // A REVOKED served token is invisible to the control plane (HOU-952).
       reportRevokedServedToken(mapped, ctx.usedAccessDigest);
     }
+    // An exhausted account is a VALID credential with nothing left — marked
+    // separately so status says "out of credits", not "reconnect".
+    if (mapped.kind === "quota_exhausted")
+      noteQuotaExhausted(mapped.provider, mapped.resets_at);
   }
   return mapped ?? classifyText(message, model, status, ctx.usedAccessDigest);
 }
@@ -181,6 +188,8 @@ export function classifyText(
     // (PRODUCT-1307). The reporter's own gates keep this safe.
     reportRevokedServedToken(classified, usedAccessDigest);
   }
+  if (classified.kind === "quota_exhausted")
+    noteQuotaExhausted(classified.provider, classified.resets_at);
   return classified;
 }
 

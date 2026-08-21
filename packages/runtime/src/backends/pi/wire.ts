@@ -8,7 +8,10 @@ import {
 import { classifyProviderError } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
 import { canonicalPinProvider } from "../../ai/providers";
-import { noteAuthFailure } from "../../auth/credential-health";
+import {
+  noteAuthFailure,
+  noteQuotaExhausted,
+} from "../../auth/credential-health";
 import { reportRevokedServedToken } from "../../auth/report-revoked";
 import { currentUsedTokenDigest } from "../../auth/used-token";
 
@@ -242,6 +245,15 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
           reportRevokedServedToken(
             classified,
             currentUsedTokenDigest(classified.provider),
+          );
+        }
+        // The same status-surface feed for an exhausted account: the
+        // credential authenticates fine, so this is "out of credits", never a
+        // reconnect (auth/credential-health.ts).
+        if (classified.kind === "quota_exhausted") {
+          noteQuotaExhausted(
+            canonicalPinProvider(classified.provider),
+            classified.resets_at,
           );
         }
         return { type: "provider_error", data: classified };

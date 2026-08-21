@@ -121,8 +121,25 @@
       "cancelled": "Stopped"
     },
     "model": {
-      "inherit": "Agent's model",
+      "followsAgent": "Follows the agent's model",
       "reset": "Use the agent's model"
+    },
+    "health": {
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "needsReconnect": "Needs reconnect",
+      "outOfCredits": "Out of credits",
+      "checking": "Checking",
+      "connect": "Connect {{provider}}",
+      "runsAsCreator": "Runs on the creator's connected account",
+      "runsAsCreatorProvider": "Runs on the creator's {{provider}} account"
+    },
+    "failure": {
+      "creatorNotConnected": "The routine's creator has no {{provider}} account connected.",
+      "teamNotConnected": "This team has no {{provider}} account connected.",
+      "creatorNeedsReconnect": "{{provider}} needs to be reconnected by the routine's creator.",
+      "teamNeedsReconnect": "{{provider}} needs to be reconnected.",
+      "outOfCredits": "The {{provider}} account is out of credits."
     }
   },
   "row": {

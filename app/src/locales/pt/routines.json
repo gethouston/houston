@@ -121,8 +121,25 @@
       "cancelled": "Interrompida"
     },
     "model": {
-      "inherit": "Modelo do agente",
+      "followsAgent": "Segue o modelo do agente",
       "reset": "Usar o modelo do agente"
+    },
+    "health": {
+      "connected": "Conectado",
+      "notConnected": "Sem conexão",
+      "needsReconnect": "Precisa reconectar",
+      "outOfCredits": "Sem créditos",
+      "checking": "Verificando",
+      "connect": "Conectar {{provider}}",
+      "runsAsCreator": "Roda na conta de quem criou a rotina",
+      "runsAsCreatorProvider": "Roda na conta de {{provider}} de quem criou a rotina"
+    },
+    "failure": {
+      "creatorNotConnected": "Quem criou a rotina não tem uma conta {{provider}} conectada.",
+      "teamNotConnected": "Esta equipe não tem uma conta {{provider}} conectada.",
+      "creatorNeedsReconnect": "Quem criou a rotina precisa reconectar o {{provider}}.",
+      "teamNeedsReconnect": "É preciso reconectar o {{provider}}.",
+      "outOfCredits": "A conta {{provider}} está sem créditos."
     }
   },
   "row": {

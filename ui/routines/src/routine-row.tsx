@@ -5,12 +5,13 @@
  * row is the way into it. The whole row is the click target (a `role="option"`
  * element that opens the chat on click/Enter/Space and carries an unmistakable
  * selected state), rhyming with the Activity list rows. Interactive controls
- * (the switch, the kebab, the inline schedule pencil, a trigger's Reconnect)
- * stop click/keydown from bubbling so operating them never opens the chat.
+ * (the switch, the kebab, the schedule pencil, a trigger's Reconnect) stop
+ * click/keydown from bubbling; the two remaining open-intent judgements live in
+ * `./routine-row-open-intent`.
  *
  * One aligned grid per row: the identity icon (`RoutineRowStatus`) | the title
- * (`RoutineRowTitle`) over ONE muted summary line (`RoutineRowSummary`, never a
- * third) | a compact trailing slot (the next-run time, the switch, the kebab).
+ * (`RoutineRowTitle`) over ONE muted summary line (`RoutineRowSummary`) | a
+ * compact trailing slot (next-run time, the switch, the kebab).
  */
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
@@ -26,13 +27,13 @@ import {
   type ScheduleSummaryLabels,
   type TriggerLabels,
 } from "./labels";
-import { describeNextFire, nextFire } from "./next-fire";
 import { RoutineRowControls } from "./routine-row-controls";
+import { RoutineRowNextFire } from "./routine-row-next-fire";
+import { clickOpensRow, keyOpensRow } from "./routine-row-open-intent";
 import { RoutineRowStatus } from "./routine-row-status";
 import { RoutineRowSummary } from "./routine-row-summary";
 import { RoutineRowTitle } from "./routine-row-title";
 import type { Routine, RoutineRun, TriggerStatusItem } from "./types";
-import { useNow } from "./use-now";
 
 export interface RoutineRowProps {
   routine: Routine;
@@ -56,6 +57,9 @@ export interface RoutineRowProps {
   leadingIcon?: (routine: Routine) => ReactNode;
   /** OWNER chip beside the name, for a cross-agent list (see RoutineRowTitle). */
   ownerChip?: ReactNode;
+  /** WARNING chip beside the name: the surface says this routine cannot run as
+   *  configured (e.g. its AI account is disconnected). Omit for none. */
+  warningChip?: ReactNode;
   /** Edit a schedule routine's cron inline. Supplied + a schedule present turns
    *  the summary line into an always-visible edit affordance. */
   onScheduleChange?: (routineId: string, cron: string) => void;
@@ -90,6 +94,7 @@ export function RoutineRow({
   onStopRun,
   leadingIcon,
   ownerChip,
+  warningChip,
   onScheduleChange,
   labels = DEFAULT_ROW_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
@@ -101,24 +106,12 @@ export function RoutineRow({
   onReconnectTrigger,
   locale = "en-US",
 }: RoutineRowProps) {
-  const now = useNow(60_000);
   const isRunning = lastRun?.status === "running";
   const isPaused = isRunning && !!lastRun?.paused_until;
   const identityIcon = leadingIcon?.(routine);
   // Offer exactly one run control: Stop while running, else Run now.
   const runNow = isRunning ? undefined : onRunNow;
   const stopRun = isRunning ? onStopRun : undefined;
-
-  // The compact trailing next-run time is the pure relative string; the chat
-  // header carries the absolute time and last-run detail.
-  const next =
-    routine.enabled && routine.schedule
-      ? nextFire(routine.schedule, accountTimezone, now)
-      : null;
-  const nextRelative = next
-    ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
-        .relative
-    : null;
 
   return (
     <div
@@ -128,22 +121,10 @@ export function RoutineRow({
       aria-label={onOpenChat ? labels.openChat : undefined}
       tabIndex={onOpenChat ? 0 : undefined}
       onClick={(e) => {
-        // Clicks bubbling from PORTALED children (the kebab menu's items, the
-        // delete confirm dialog's buttons) reach this handler through the
-        // REACT tree while their DOM target sits under document.body. Opening
-        // on those turned "Run now" — and cancelling a delete — into a
-        // navigation (PRODUCT-1208). Only a click physically inside the row
-        // is an open intent.
-        if (e.currentTarget.contains(e.target as Node)) onOpenChat?.();
+        if (clickOpensRow(e.currentTarget, e.target)) onOpenChat?.();
       }}
       onKeyDown={(e) => {
-        // Only the row itself opens the chat on Enter/Space; key events from a
-        // focused inner control bubble here but carry a different target.
-        if (
-          onOpenChat &&
-          e.target === e.currentTarget &&
-          (e.key === "Enter" || e.key === " ")
-        ) {
+        if (onOpenChat && keyOpensRow(e.key, e.target, e.currentTarget)) {
           e.preventDefault();
           onOpenChat();
         }
@@ -170,6 +151,7 @@ export function RoutineRow({
         <RoutineRowTitle
           name={routine.name || labels.untitled}
           ownerChip={ownerChip}
+          warningChip={warningChip}
         />
         <RoutineRowSummary
           routine={routine}
@@ -187,11 +169,12 @@ export function RoutineRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        {nextRelative && (
-          <span className="hidden whitespace-nowrap text-xs tabular-nums text-ink-muted sm:inline">
-            {nextRelative}
-          </span>
-        )}
+        <RoutineRowNextFire
+          routine={routine}
+          accountTimezone={accountTimezone}
+          labels={nextFireLabels}
+          locale={locale}
+        />
         <RoutineRowControls
           name={routine.name || labels.untitled}
           enabled={routine.enabled}

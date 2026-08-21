@@ -3,6 +3,7 @@ import { RoutinesGrid } from "@houston-ai/routines";
 import type { ReactNode } from "react";
 import { useRoutineLabels } from "../../../hooks/use-routine-labels";
 import { allAgentReadsFailed } from "../../../lib/agent-read-failures";
+import { RoutineWarningChip } from "../../agent/routine-warning-chip";
 import { TeamRoutineOwnerChip } from "./team-routine-owner-chip";
 import { useTeamGridLabels } from "./use-team-grid-labels";
 import type { useTeamRoutineActions } from "./use-team-routine-actions";
@@ -59,6 +60,16 @@ export function TeamRoutinesGrid({
     return agent ? <TeamRoutineOwnerChip agent={agent} /> : null;
   };
 
+  // "This one will fail" — resolved per row against its OWN agent, since an
+  // unpinned routine runs on whatever its owner runs on and a merged list holds
+  // several owners. The chip renders itself away when the row is fine.
+  const warningChipFor = (routine: Routine) => {
+    const agent = data.list.ownerOf[routine.id];
+    return agent ? (
+      <RoutineWarningChip agent={agent} routine={routine} />
+    ) : null;
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <RoutinesGrid
@@ -88,6 +99,7 @@ export function TeamRoutinesGrid({
         triggerSummaries={data.triggers.triggerSummaries}
         onReconnectTrigger={data.triggers.onReconnectTrigger}
         ownerChip={oneOwner ? undefined : (routine) => ownerChipFor(routine.id)}
+        warningChip={warningChipFor}
         draftOwnerChip={
           oneOwner ? undefined : (draft) => ownerChipFor(draft.id)
         }

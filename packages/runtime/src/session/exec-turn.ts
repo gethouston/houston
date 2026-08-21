@@ -20,7 +20,11 @@ import {
   resolveModel,
 } from "../ai/providers";
 import { recordTokenSpend } from "../ai/usage/ledger";
-import { clearAuthFailure, noteAuthFailure } from "../auth/credential-health";
+import {
+  clearProviderMarks,
+  noteAuthFailure,
+  noteQuotaExhausted,
+} from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
 import {
   newUsedTokenCapture,
@@ -626,7 +630,7 @@ export async function execTurn(
       // stale turn-failure mark so status reads connected again
       // (auth/credential-health.ts; covers the macOS Keychain re-login no
       // fingerprint can observe).
-      clearAuthFailure(model.provider);
+      clearProviderMarks(model.provider);
       publish(id, {
         type: "done",
         data: null,
@@ -708,6 +712,14 @@ export async function execTurn(
       // no served token, so there is nothing safe to delete (PRODUCT-1319).
       reportRevokedServedToken(thrown, usedTokens.digestFor(thrown.provider));
     }
+    // Same feed for the OTHER credential-level wall a thrown failure can hit:
+    // the account is out of credits, which is not a reconnect (the credential
+    // is valid) and must not read as Connected either.
+    if (thrown.kind === "quota_exhausted" && !providerError && thrown.provider)
+      noteQuotaExhausted(
+        canonicalPinProvider(thrown.provider),
+        thrown.resets_at,
+      );
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
     thrownTyped = typed;
     appendAssistantMessage(id, assistantText, {

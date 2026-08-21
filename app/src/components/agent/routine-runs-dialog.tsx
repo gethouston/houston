@@ -3,6 +3,11 @@
  * (PRODUCT-1208), n8n-style: every recorded run with its outcome, date, time,
  * elapsed time, and (when the run wasn't silent) the result it left behind.
  * Clicking an entry closes the modal and opens that run's chat.
+ *
+ * A run that never reached the agent has no result to show: its AI account was
+ * disconnected, needed reconnecting, or was out of credits (PRODUCT-1475). The
+ * engine reports that as a typed `failure`, and `summaryFor` turns it into a
+ * sentence naming the provider — so "Failed" stops being the whole story.
  */
 
 import {
@@ -18,6 +23,7 @@ import {
 } from "@houston-ai/routines";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { providerName } from "../../lib/providers";
 
 interface Props {
   open: boolean;
@@ -39,6 +45,27 @@ export function RoutineRunsDialog({
   onOpenRun,
 }: Props) {
   const { t } = useTranslation("routines");
+
+  // Spelled out per code rather than built from it: `t()` keys are typed, so a
+  // template-literal key would compile past a typo the locale validator can't
+  // see. `undefined` keeps the run's own summary.
+  const failureSummary = (run: RoutineRun): string | undefined => {
+    if (!run.failure) return undefined;
+    const provider = providerName(run.failure.provider);
+    switch (run.failure.code) {
+      case "creator_not_connected":
+        return t("details.failure.creatorNotConnected", { provider });
+      case "team_not_connected":
+        return t("details.failure.teamNotConnected", { provider });
+      case "creator_needs_reconnect":
+        return t("details.failure.creatorNeedsReconnect", { provider });
+      case "team_needs_reconnect":
+        return t("details.failure.teamNeedsReconnect", { provider });
+      case "out_of_credits":
+        return t("details.failure.outOfCredits", { provider });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -56,6 +83,7 @@ export function RoutineRunsDialog({
               runs={runs ?? []}
               onOpenRun={onOpenRun}
               locale={locale}
+              summaryFor={failureSummary}
               labels={{
                 empty: t("details.runsEmpty"),
                 openRun: t("details.openRun"),

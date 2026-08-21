@@ -87,6 +87,10 @@ seedScope("u:sub-alice", { openrouter: "sk-alice-openrouter" });
 seedScope("u:sub-bob", { google: "sk-bob-gemini" });
 
 const { config } = await import("../config");
+const { noteAuthFailure, resetAuthFailures } = await import(
+  "../auth/credential-health"
+);
+const { runWithActingContext } = await import("../session/acting-context");
 const { createRuntimeServer } = await import("./server");
 const { resetServedScopes } = await import("../auth/served-scope");
 
@@ -94,6 +98,7 @@ interface ProviderRow {
   id: string;
   configured: boolean;
   credentialScope?: "personal" | "team";
+  health?: string;
 }
 
 function listen(server: Server): Promise<string> {
@@ -147,6 +152,7 @@ function configuredIds(rows: ProviderRow[]): string[] {
 }
 
 afterEach(() => {
+  resetAuthFailures();
   resetServedScopes();
   config.controlPlaneUrl = "";
   config.sandboxToken = "";
@@ -268,4 +274,42 @@ test("GET /providers labels WHOSE credential served each acting identity", async
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+test("GET /providers reports WHY each acting identity's provider is (un)usable", async () => {
+  config.controlPlaneUrl = "";
+  config.sandboxToken = "";
+  // Alice's openrouter credential died mid-flight (a rotated refresh token, a
+  // revoked key): the file still holds it, so `configured` alone would keep
+  // saying Connected — which is the lie a routine then fails behind
+  // (PRODUCT-1475). The mark is recorded under HER acting identity.
+  runWithActingContext({ actingAs: ALICE }, () =>
+    noteAuthFailure("openrouter"),
+  );
+
+  await withServer(async (get) => {
+    const alice = await get(ALICE);
+    expect(row(alice, "openrouter")).toMatchObject({
+      configured: false,
+      health: "needs_reconnect",
+    });
+    // Never connected at all is a DIFFERENT remedy, and must read as such.
+    expect(row(alice, "google").health).toBe("not_connected");
+
+    // Bob holds his own, working Gemini key: one member's dead credential says
+    // nothing about another member's.
+    const bob = await get(BOB);
+    expect(row(bob, "google")).toMatchObject({
+      configured: true,
+      health: "connected",
+    });
+    expect(row(bob, "openrouter").health).toBe("not_connected");
+
+    // And the team file is untouched by either member's mark.
+    const team = await get();
+    expect(row(team, "deepseek")).toMatchObject({
+      configured: true,
+      health: "connected",
+    });
+  });
 });

@@ -98,6 +98,7 @@ import {
   finalConnectNames,
   finalCredentialNames,
 } from "../lib/interaction-reply";
+import { providerForModel } from "../lib/model-labels";
 import {
   isModelAllowed,
   modelSelectorDecision,
@@ -120,7 +121,6 @@ import {
   getDefaultModel,
   getProvider,
   normalizeLegacyModel,
-  PROVIDERS,
   validEffortOrDefault,
   validModelOrNull,
 } from "../lib/providers";
@@ -235,14 +235,6 @@ interface UseAgentChatPanelArgs {
 
 /** Stable empty default, so the no-children case never re-runs the memo. */
 const EMPTY_CHILD_MISSIONS: ChatMissionListItem[] = [];
-
-function resolveCatalogProvider(model: string): string | null {
-  return (
-    PROVIDERS.find((provider) =>
-      provider.models.some((candidate) => candidate.id === model),
-    )?.id ?? null
-  );
-}
 
 interface AgentChatPanelProps {
   /** Renders skill cards + "see more" when no Skill is in flight. */
@@ -685,7 +677,7 @@ export function useAgentChatPanel({
           effort: effectiveEffort,
         },
         null,
-        resolveCatalogProvider,
+        providerForModel,
       ),
     [
       modelChoiceInfo?.choice,
@@ -717,7 +709,7 @@ export function useAgentChatPanel({
                   model: activityModel,
                 }
               : null,
-            resolveCatalogProvider,
+            providerForModel,
           )
         : {
             provider: effectiveProvider,

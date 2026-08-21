@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 68
+version: 69
 
 components:
   - id: agent-avatar
@@ -816,6 +816,7 @@ components:
         enabled-toggle,
         quick-actions-menu,
         owner-chip,
+        connection-warning-chip,
       ]
     states:
       [
@@ -829,6 +830,7 @@ components:
         trigger-pending,
         trigger-paused,
         trigger-error,
+        provider-unusable,
       ]
     variants:
       [list-row, grid-card, schedule-driven, event-driven, cross-agent]
@@ -848,6 +850,13 @@ components:
       routine still being built in chat) wears the same chip, or several
       identical "being created" rows would be indistinguishable. A single-agent
       list omits both, since every row would name the same owner.
+      A row also carries a WARNING chip when the AI account the routine would
+      run on is unusable -- not connected, needing a reconnect, or out of
+      credits -- so a broken automation is visible in the list rather than only
+      after it fails. The chip is supplied by the surface (the library owns no
+      provider state) and is absent for a healthy account, for an unconfirmed
+      probe, and for a routine created by someone else, whose account the viewer
+      cannot answer for.
     a11y: >-
       listitem role; toggle labeled with the routine name; next-run/status as
       text; status never color-alone (icon shape + row text carry it); menu
@@ -871,9 +880,20 @@ components:
         editable-prompt,
         schedule-editor,
         model-row,
+        connection-health-badge,
         runs-modal,
       ]
-    states: [viewing, editing-prompt, editing-schedule, loading-runs, no-runs-yet]
+    states:
+      [
+        viewing,
+        editing-prompt,
+        editing-schedule,
+        loading-runs,
+        no-runs-yet,
+        provider-connected,
+        provider-unusable,
+        provider-checking,
+      ]
     variants: [full-screen]
     behavior: >-
       The row click lands here (never straight in a chat); Back or Escape
@@ -882,14 +902,23 @@ components:
       shows the humanized cron with the SAME schedule-builder editor the rows
       use (plus the next fire time), or a trigger's plain-language event with
       its live activation chip (event bindings change via chat, not here).
-      The model row shows "Agent's model" (inherit) or the pinned provider +
-      model; picking pins it (the fire path honors the pin), a reset row
-      returns to inherit -- clamped to the agent's allowed-models ceiling in
-      Teams. "Runs" opens the execution history as a MODAL: every recorded
+      The model row ALWAYS names the resolved pair -- provider + model, e.g.
+      "Claude - Opus 5" -- whether the routine is pinned or follows the agent;
+      an unpinned routine adds a quiet line saying so. Picking pins it (the fire
+      path honors the pin), a reset row returns to following the agent --
+      clamped to the agent's allowed-models ceiling in Teams. Beside it, a
+      status badge says whether that AI account is usable BEFORE any run
+      (connected / not connected / needs reconnect / out of credits /
+      checking), with an inline connect action on the two states connecting can
+      fix. The badge is only shown for a routine the viewer created: a fired
+      routine runs on its CREATOR's account, and the viewer's own connection
+      answer describes a different one -- a routine someone else created gets a
+      plain line saying it runs on the creator's account instead. "Runs" opens the execution history as a MODAL: every recorded
       run newest-first with its plain-language outcome (running / done /
       nothing to report / failed / stopped), date + time, elapsed time, and
-      -- when the run wasn't silent -- the result it left behind; clicking an
-      entry closes the modal and opens that run's chat in the shell panel
+      -- when the run wasn't silent -- the result it left behind, or, for a run
+      that never reached the agent, the reason its AI account could not run it;
+      clicking an entry closes the modal and opens that run's chat in the shell panel
       (closing the chat returns to this screen). "Open chat" reaches the
       routine's setup chat the same way.
     a11y: >-

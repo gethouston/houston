@@ -8,16 +8,16 @@ import {
   saveRoutineRuns,
   upsertById,
 } from "@houston/domain";
-import type {
-  ChatMessage,
-  ProviderError,
-  Routine,
-  RoutineRun,
-} from "@houston/protocol";
+import type { ChatMessage, Routine, RoutineRun } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import { conversationKey, type WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
+import {
+  providerErrorSummary,
+  routineRunFailure,
+  routineRunFailureSummary,
+} from "./run-failure";
 import { withRunsFile } from "./runs-lock";
 
 /** A run still 'running' after this long with no agent reply is declared timed-out. */
@@ -45,12 +45,6 @@ function replyAfter(
     if (m.role === "assistant" && m.ts >= startedAtMs) return m;
   }
   return null;
-}
-
-/** A run-row-sized reason from the turn's typed provider failure. */
-function providerErrorSummary(err: ProviderError): string {
-  const text = err.kind === "unknown" ? err.raw_excerpt : err.message;
-  return text.trim() || `provider error (${err.kind})`;
 }
 
 export interface ReconcileDeps {
@@ -163,11 +157,19 @@ export async function reconcileAgentRuns(
     // now (parity with the Rust dispatcher's visible run errors) instead of
     // classifying the empty reply or waiting out the 15-minute timeout.
     if (reply.providerError) {
+      // A credential-level wall gets the honest, whose-account-is-it sentence
+      // (PRODUCT-1475): the raw provider message says "no provider connected"
+      // to a reader whose OWN account is connected. Everything else keeps the
+      // verbatim provider text.
+      const failure = routineRunFailure(reply.providerError);
       updates.push({
         run: {
           ...run,
           status: "error",
-          summary: providerErrorSummary(reply.providerError),
+          summary: failure
+            ? routineRunFailureSummary(failure)
+            : providerErrorSummary(reply.providerError),
+          ...(failure ? { failure } : {}),
           completed_at: deps.now().toISOString(),
         },
       });

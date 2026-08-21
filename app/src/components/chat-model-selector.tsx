@@ -54,9 +54,10 @@ interface ChatModelSelectorProps {
    */
   allowedModels?: string[] | null;
   /**
-   * Overrides the trigger's model label — the routines header shows "Agent's
-   * model" while the routine carries no pin (PRODUCT-1208). Omit for the
-   * picker's own display label. An empty `provider` also drops the glyph.
+   * Overrides the trigger's model label — the routine screen names the resolved
+   * pair ("Claude · Opus 5") rather than the model alone, since a routine fires
+   * unattended and the AI ACCOUNT is half of what runs it (PRODUCT-1475). Omit
+   * for the picker's own display label. An empty `provider` drops the glyph.
    */
   triggerLabel?: string;
   /** Extra footer row inside the picker popover (the routine pin's "Use the

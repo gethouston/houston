@@ -3,6 +3,29 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v69 - 2026-08-21
+
+A routine now says which AI account it runs on, and whether that account works,
+before it runs. The model row stopped saying "Agent's model" -- a label that
+named neither the provider nor the model -- and always shows the resolved pair,
+with the quiet line about following the agent kept for the unpinned case. Beside
+it sits a connection badge: connected, not connected, needs reconnect, out of
+credits, or checking, with a connect action on the two states connecting can
+fix.
+
+Whose account that badge describes is the whole difficulty. A fired routine runs
+on its CREATOR's account, while the connection answer any surface can get
+describes the VIEWER's. So the badge is shown only for a routine the viewer
+created; every other routine gets a sentence saying it runs on the creator's
+account, which is true and answerable, rather than a badge quietly answering a
+different question.
+
+The same warning rides the list rows, because a list is where a person notices a
+broken automation, and the run history now explains a run that never reached the
+agent instead of leaving "Failed" as the whole story. Nothing here blocks
+anything: saving and enabling a routine stay allowed, the surface only stops
+being silent about what will happen.
+
 ## v68 - 2026-08-08
 
 The rail names TEAMS and nothing else. A team block is a header row and its

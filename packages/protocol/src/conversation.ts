@@ -81,6 +81,25 @@ export interface AuthStatus {
   activeProvider: ProviderId | null;
 }
 
+/**
+ * How usable a provider credential is RIGHT NOW, for the acting identity that
+ * asked. Richer than `configured` (which stays a plain "can this run a turn"
+ * boolean): a credential can be present and valid yet unusable because the
+ * account ran out of credits, and a stored credential can be present yet dead.
+ *
+ * - `connected` — usable.
+ * - `not_connected` — no credential at all for this scope.
+ * - `needs_reconnect` — a credential exists but the provider rejected it.
+ * - `out_of_credits` — the credential is VALID; the account has no quota left.
+ * - `unreachable` — a custom/local endpoint that is not answering.
+ */
+export type ProviderHealth =
+  | "connected"
+  | "not_connected"
+  | "needs_reconnect"
+  | "out_of_credits"
+  | "unreachable";
+
 export interface ProviderInfo {
   id: ProviderId;
   name: string;
@@ -96,6 +115,11 @@ export interface ProviderInfo {
    * nothing to disambiguate".
    */
   credentialScope?: "personal" | "team";
+  /**
+   * Why this provider is (un)usable for the acting identity. Additive: absent
+   * from pre-PRODUCT-1475 engines, where `configured` is the only signal.
+   */
+  health?: ProviderHealth;
 }
 
 // ── Per-account provider usage (GET /providers/usage) ───────────────────────

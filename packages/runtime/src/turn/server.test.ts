@@ -10,7 +10,7 @@ import {
 import { afterAll, beforeAll, expect, test } from "vitest";
 import {
   authFailureActive,
-  clearAuthFailure,
+  clearProviderMarks,
   noteAuthFailure,
   resetAuthFailures,
 } from "../auth/credential-health";
@@ -135,7 +135,7 @@ test("one agent's auth failure survives another agent's clean turn", async () =>
     const acting = currentActingContext();
     actingIdentityLeaked ||= !!(acting?.actingAs || acting?.actingUser);
     if (turn.text === "fail") noteAuthFailure(turn.provider, "dead-token");
-    if (turn.text === "clean") clearAuthFailure(turn.provider);
+    if (turn.text === "clean") clearProviderMarks(turn.provider);
     if (turn.text === "probe") {
       agentAFailureSurvived = authFailureActive(turn.provider, "dead-token");
     }
