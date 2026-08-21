@@ -32,18 +32,22 @@ const json = (
   body: JSON.stringify(value),
 });
 
-/** Everything an agent-level route may touch: the `.houston` tree, skills,
- *  and the agent's markdown — never conversations or user files. */
+/** Everything an agent-level route may touch: the `.houston` family files,
+ *  skills, and the agent's markdown — never the runtime tree (conversations,
+ *  sessions, auth) and never user files. Mirrors the pod-store's ops-claim
+ *  scope exactly. */
 export function agentRouteScope(workspaceRel: string): OpResult["include"] {
-  const prefixes = [
-    `${posix.join(workspaceRel, ".houston")}/`,
-    `${posix.join(workspaceRel, ".agents")}/`,
-  ];
+  const houston = `${posix.join(workspaceRel, ".houston")}/`;
+  const runtime = `${posix.join(workspaceRel, ".houston", "runtime")}/`;
+  const agents = `${posix.join(workspaceRel, ".agents")}/`;
   const files = new Set([
     posix.join(workspaceRel, "CLAUDE.md"),
     posix.join(workspaceRel, "GROUP.md"),
   ]);
-  return (rel) => files.has(rel) || prefixes.some((p) => rel.startsWith(p));
+  return (rel) =>
+    files.has(rel) ||
+    rel.startsWith(agents) ||
+    (rel.startsWith(houston) && !rel.startsWith(runtime));
 }
 
 /** One conversation's file + sessions. */
