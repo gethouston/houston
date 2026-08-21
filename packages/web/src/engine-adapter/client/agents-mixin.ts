@@ -10,6 +10,7 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import * as agents from "../agents";
 import * as controlPlane from "../control-plane";
+import { deploymentServes } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
 
 export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -141,6 +142,10 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
     // no host to keep a library — nothing installed there is the honest answer.
     async listInstalledConfigs(): Promise<InstalledConfig[]> {
       if (!this.ctx.cp) return [];
+      // A deployment that advertises `agentConfigLibrary: false` (the hosted
+      // gateway) is skipped outright; the 404 fallback inside stays for
+      // deployments that predate the flag (PRODUCT-1474).
+      if (!(await deploymentServes(this.ctx, "agentConfigLibrary"))) return [];
       return controlPlane.listInstalledConfigs(this.ctx.cp);
     }
     async installAgentFromGithub(

@@ -4,6 +4,7 @@ import type { HoustonSdk } from "@houston/sdk";
 // `cp/*` submodules directly: the web test suite mocks the barrel module
 // (`vi.mock("…/control-plane")`) and overrides `runtimeClientFor` /
 // `gatewayAuthFetch` etc. — a direct submodule import would bypass the mock.
+import type { Capabilities } from "../../../../../ui/engine-client/src/types";
 import type { ControlPlaneConfig } from "../control-plane";
 import {
   gatewayAuthFetch,
@@ -85,6 +86,11 @@ export class AdapterContext {
    *  id no server speaks), resolved once and shared by every caller that puts a
    *  workspace id on the wire. See `wire-workspace-id.ts`. */
   readonly workspaceIds = new WorkspaceIdResolver(this);
+  /**
+   * Memo for `deploymentServes()` (host-capabilities.ts): the deployment's
+   * advertised capabilities, fetched once per endpoint. `null` = probe failed.
+   */
+  deploymentCaps: Promise<Capabilities | null> | undefined;
   /** In-flight cloud device-code logins, keyed `${agentId}:${providerId}` — the poll guard. */
   readonly activeLogins = new Set<string>();
   /** Per-provider auth-status pollers that translate login completion into events (local mode). */
@@ -150,6 +156,8 @@ export class AdapterContext {
    */
   setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
+    // A repoint may land on a different deployment; re-probe its flags.
+    this.deploymentCaps = undefined;
     this.token = opts.token;
     if (this._cp) {
       this._cp.baseUrl = this.baseUrl;
