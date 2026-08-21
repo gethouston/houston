@@ -161,12 +161,17 @@ export async function dispatchAgentOp(opts: {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
     const { port } = server.address() as AddressInfo;
+    // A GET/HEAD must carry NO body (fetch throws on any, even ""), and the
+    // gateway sends an empty string on every route op.
+    const bodiless = method === "GET" || method === "HEAD";
+    const body = bodiless || !opts.request.body ? undefined : opts.request.body;
     const response = await fetch(`http://127.0.0.1:${port}/op`, {
       method,
-      headers: opts.request.contentType
-        ? { "Content-Type": opts.request.contentType }
-        : {},
-      body: opts.request.body,
+      headers:
+        opts.request.contentType && body !== undefined
+          ? { "Content-Type": opts.request.contentType }
+          : {},
+      ...(body !== undefined ? { body } : {}),
     });
     const contentType =
       response.headers.get("content-type") ?? "application/json";
