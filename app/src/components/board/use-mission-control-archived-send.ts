@@ -1,15 +1,14 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { MessageMention } from "@houston-ai/chat";
 import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { classifyFileKind } from "../../lib/file-kind";
 import { perfSpans } from "../../lib/perf-spans";
+import { showSendFailedToast } from "../../lib/send-error-toast";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
-import { useUIStore } from "../../stores/ui";
 
 /**
  * Send-to-reactivate for the cross-agent Archived view — the analogue of the
@@ -33,9 +32,6 @@ export function useMissionControlArchivedSend({
    *  lands and the mission is no longer archived. */
   onHandoff: (missionId: string) => void;
 }) {
-  const { t } = useTranslation("chat");
-  const addToast = useUIStore((s) => s.addToast);
-
   return useCallback(
     async (
       sessionKey: string,
@@ -72,21 +68,10 @@ export function useMissionControlArchivedSend({
       } catch (err) {
         // The send failed BEFORE a turn stream existed — nothing wrote to the
         // VM, so surface it as a toast (no-silent-failures rule).
-        addToast({
-          title: t("errors.sessionStart", { error: String(err) }),
-          variant: "error",
-        });
+        showSendFailedToast(err);
         throw err;
       }
     },
-    [
-      activeAgent,
-      selectedItem,
-      providerOverride,
-      modelOverride,
-      onHandoff,
-      addToast,
-      t,
-    ],
+    [activeAgent, selectedItem, providerOverride, modelOverride, onHandoff],
   );
 }

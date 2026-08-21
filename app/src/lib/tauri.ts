@@ -61,6 +61,7 @@ import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
+import { isStaleAttachmentError } from "./stale-attachment";
 import {
   isLastOwnerError,
   isNeedsUpgradeError,
@@ -629,8 +630,15 @@ export const tauriChat = {
 export const tauriAttachments = {
   save: async (scopeId: string, files: File[]): Promise<string[]> => {
     if (files.length === 0) return [];
-    return call<string[]>("save_attachments", () =>
-      getEngine().saveAttachments(scopeId, files),
+    // A stale composer attachment (the backing file changed on disk before
+    // send) is the user's environment, not a Houston bug: logged, but no
+    // Sentry report. The send's catch surfaces the authored remedy via
+    // `showSendFailedToast`.
+    return call<string[]>(
+      "save_attachments",
+      () => getEngine().saveAttachments(scopeId, files),
+      undefined,
+      { silence: isStaleAttachmentError },
     );
   },
 };

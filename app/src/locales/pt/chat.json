@@ -112,6 +112,8 @@
   },
   "errors": {
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
+    "staleAttachmentTitle": "Não conseguimos ler um arquivo anexado",
+    "staleAttachmentBody": "Um arquivo que você anexou foi alterado ou excluído do seu dispositivo depois de adicionado. Remova-o da mensagem e anexe-o novamente.",
     "stopSession": "Não foi possível parar a tarefa: {{error}}",
     "modelPersistFailed": "Não foi possível salvar a preferência de modelo",
     "modelNotAllowed": "Este modelo não é permitido para este agente",

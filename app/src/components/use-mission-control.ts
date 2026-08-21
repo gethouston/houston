@@ -31,6 +31,7 @@ import { isMultiplayer } from "../lib/org-roles";
 import { perfSpans } from "../lib/perf-spans";
 import { queryKeys } from "../lib/query-keys";
 import { formatVisibleMessageText } from "../lib/queued-chat";
+import { showSendFailedToast } from "../lib/send-error-toast";
 import { sweepIsAuthoritative } from "../lib/sweep-authoritative";
 import {
   type HistoryLoadOptions,
@@ -42,7 +43,6 @@ import {
 import { DEFAULT_TURN_MODE } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
 import { mergeWarmingRows } from "../lib/warming-board-rows";
-import { useUIStore } from "../stores/ui";
 import { agentsByPath, missionCardAgentName } from "./board/mission-card-agent";
 import { useMcOpenConversation } from "./board/use-mc-open-conversation";
 import { resolveMissionControlSendOverrides } from "./mission-control-send";
@@ -51,7 +51,6 @@ import { AgentCardAvatar } from "./shell/agent-card-avatar";
 export function useMissionControl(agents: Agent[]) {
   const { t } = useTranslation(["chat", "board"]);
   const queryClient = useQueryClient();
-  const addToast = useUIStore((s) => s.addToast);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -318,14 +317,11 @@ export function useMissionControl(agents: Agent[]) {
         // The send failed BEFORE a turn stream existed (attachment save,
         // activity lookup, refused start) — nothing wrote to the VM, so
         // surface it as a toast, same as the create path below.
-        addToast({
-          title: t("errors.sessionStart", { error: String(err) }),
-          variant: "error",
-        });
+        showSendFailedToast(err);
         throw err;
       }
     },
-    [addToast, t],
+    [],
   );
 
   // Blank "New mission" create path for Mission Control. Mirrors the
@@ -394,14 +390,11 @@ export function useMissionControl(agents: Agent[]) {
         // No silent failures: createMission already rolled back the
         // half-created activity. Surface why the mission did not start so
         // the user can retry or report it.
-        addToast({
-          title: t("errors.sessionStart", { error: String(err) }),
-          variant: "error",
-        });
+        showSendFailedToast(err);
         throw err;
       }
     },
-    [t, queryClient, paths, addToast, rememberCreated],
+    [t, queryClient, paths, rememberCreated],
   );
 
   // Per-session run state. The conversation VM is the live source: the open
