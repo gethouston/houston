@@ -112,6 +112,8 @@
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
+    "staleAttachmentTitle": "We couldn't read an attached file",
+    "staleAttachmentBody": "A file you attached changed or was deleted on your device after you added it. Remove it from your message and attach it again.",
     "stopSession": "Couldn't stop the task: {{error}}",
     "modelPersistFailed": "Failed to save model preference",
     "modelNotAllowed": "This model isn't allowed for this agent",

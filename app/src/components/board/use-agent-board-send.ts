@@ -11,6 +11,7 @@ import { maybeShowFirstMissionPrompt } from "../../lib/notification-nudge";
 import { perfSpans } from "../../lib/perf-spans";
 import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
+import { showSendFailedToast } from "../../lib/send-error-toast";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
@@ -239,14 +240,11 @@ export function useAgentBoardSend({
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
         // The send failed BEFORE a turn stream existed — nothing wrote to the
         // VM, so surface it as a toast (no-silent-failures rule).
-        addToast({
-          title: t("chat:errors.sessionStart", { error: String(err) }),
-          variant: "error",
-        });
+        showSendFailedToast(err);
         throw err;
       }
     },
-    [path, agent.id, addToast, rawItems, t, promptContext],
+    [path, agent.id, rawItems, promptContext],
   );
 
   const stopSession = useCallback(

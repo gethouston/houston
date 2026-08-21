@@ -125,6 +125,7 @@ import {
   validModelOrNull,
 } from "../lib/providers";
 import { queryKeys } from "../lib/query-keys";
+import { showSendFailedToast } from "../lib/send-error-toast";
 import { hasAgentOutput } from "../lib/setup-mission-greeting";
 import {
   buildSkillClaudePrompt,
@@ -1394,14 +1395,11 @@ export function useAgentChatPanel({
         .then(
           () => onSendReactivatedRef.current?.(),
           (err: unknown) => {
-            addToast({
-              title: t("chat:errors.sessionStart", { error: String(err) }),
-              variant: "error",
-            });
+            showSendFailedToast(err);
           },
         );
     },
-    [path, selectedSessionKey, displayModelPin, turnMode, addToast, t],
+    [path, selectedSessionKey, displayModelPin, turnMode],
   );
 
   // Resolves a question step's `toolkit` to the app's presentational brand (logo
