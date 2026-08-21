@@ -168,12 +168,11 @@ export async function executeOp(
         console.error(
           `[op] not durably synced: outOfScope=${synced.outOfScope} skipped=${synced.skipped.length} conflicts=${synced.conflicts.length} landed=${landed} prefix=${resolved.prefix} kind=${op.op.kind}`,
         );
-        // NOTHING landed: declining is safe — the gateway proxies and the
-        // pod applies the write from an unchanged tree.
-        if (!landed) return json(res, 200, { ok: true, decline: true });
         // A file the store refuses (over its per-object cap) can never
-        // persist anywhere — the pod would silently fail the same way.
-        // Tell the user; the client does not retry a 413.
+        // persist anywhere — the pod would silently fail the same way, and
+        // proxying would let it answer success for an undurable write.
+        // Tell the user; the client does not retry a 413. Checked BEFORE
+        // the nothing-landed decline: a single refused file lands nothing.
         if (synced.skipped.length > 0) {
           return json(res, 200, {
             ok: true,
@@ -186,6 +185,9 @@ export async function executeOp(
             events: [],
           });
         }
+        // NOTHING landed: declining is safe — the gateway proxies and the
+        // pod applies the write from an unchanged tree.
+        if (!landed) return json(res, 200, { ok: true, decline: true });
         // Something landed and something conflicted: the write is PARTLY
         // durable. Re-running it on the pod would duplicate the part that
         // landed (a routine create mints a fresh id); the client must be

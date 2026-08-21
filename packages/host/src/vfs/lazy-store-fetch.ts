@@ -38,28 +38,29 @@ export async function fetchObject(
   }
   const dest = join(opts.root, ...key.split("/"));
   await mkdir(dirname(dest), { recursive: true });
-  await opts.store.download(opts.prefix ? `${opts.prefix}/${key}` : key, dest);
-  const { size } = await stat(dest);
-  if (size > maxObjectBytes) {
-    await rm(dest, { force: true });
-    throw new LazyReadRefusedError("object", key, size, maxObjectBytes);
-  }
-  if (budget.materializedBytes + size > maxBytes) {
-    await rm(dest, { force: true });
-    throw new LazyReadRefusedError("total", key, size, maxBytes);
-  }
-  let hash: string;
   try {
-    hash = await fileSha256(dest, size);
+    await opts.store.download(
+      opts.prefix ? `${opts.prefix}/${key}` : key,
+      dest,
+    );
+    const { size } = await stat(dest);
+    if (size > maxObjectBytes) {
+      throw new LazyReadRefusedError("object", key, size, maxObjectBytes);
+    }
+    if (budget.materializedBytes + size > maxBytes) {
+      throw new LazyReadRefusedError("total", key, size, maxBytes);
+    }
+    const hash = await fileSha256(dest, size);
+    opts.manifest.set(key, {
+      hash,
+      ...(meta.generation !== undefined ? { generation: meta.generation } : {}),
+    });
+    budget.materializedBytes += size;
   } catch (error) {
-    // An unhashed file must not survive: the sync-back would take it for a
-    // fresh local write and upload it create-only.
+    // Nothing half-fetched may survive: a partial or unhashed file would be
+    // read back as content and taken by the sync-back for a fresh local
+    // write. The store adapter need not replace the destination atomically.
     await rm(dest, { force: true });
     throw error;
   }
-  opts.manifest.set(key, {
-    hash,
-    ...(meta.generation !== undefined ? { generation: meta.generation } : {}),
-  });
-  budget.materializedBytes += size;
 }

@@ -136,7 +136,7 @@ export class LazyStoreVfs implements Vfs {
       if (children.length === 0) {
         throw new Error(`move: source not found: ${fromKey}`);
       }
-      if (this.state.under(toKey).length > 0) {
+      if ((await this.listDetailed(toKey)).length > 0) {
         throw new Error(`move: destination is not empty: ${toKey}`);
       }
       for (const child of children) {

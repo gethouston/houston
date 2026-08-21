@@ -231,3 +231,51 @@ test("the aggregate budget refuses once the op has materialized enough", async (
     /budget/,
   );
 });
+
+test("a failed download leaves no partial file behind", async () => {
+  const storeRoot = mkdtempSync(join(tmpdir(), "lazy-partial-"));
+  const abs = join(storeRoot, PREFIX, "workspaces/P/Bob/doc.txt");
+  mkdirSync(join(abs, ".."), { recursive: true });
+  writeFileSync(abs, "whole");
+  const inner = new LocalDirStore(storeRoot);
+  const root = mkdtempSync(join(tmpdir(), "lazy-partial-overlay-"));
+  const manifest: HydrateManifest = new Map();
+  let fail = true;
+  const vfs = new LazyStoreVfs({
+    store: {
+      ...inner,
+      list: (p) => inner.list(p),
+      manifest: (p) => inner.manifest(p),
+      upload: inner.upload.bind(inner),
+      delete: inner.delete.bind(inner),
+      download: async (key, dest) => {
+        if (!fail) return inner.download(key, dest);
+        writeFileSync(dest, "wh");
+        throw new Error("connection reset");
+      },
+    },
+    prefix: PREFIX,
+    root,
+    objects: await inner.manifest(PREFIX),
+    manifest,
+    excludes: [],
+    maxObjectBytes: 1024,
+    maxBytes: 1024,
+  });
+  await expect(vfs.readText("workspaces/P/Bob/doc.txt")).rejects.toThrow(
+    /connection reset/,
+  );
+  expect(manifest.size).toBe(0);
+  fail = false;
+  // The retry reads the whole object, not the partial bytes.
+  expect(await vfs.readText("workspaces/P/Bob/doc.txt")).toBe("whole");
+});
+
+test("a folder move refuses a destination that already holds local writes", async () => {
+  const { vfs } = await seeded();
+  await vfs.writeText("workspaces/P/Bob/target/local.txt", "l");
+  await expect(
+    vfs.move("workspaces/P/Bob/dir", "workspaces/P/Bob/target"),
+  ).rejects.toThrow(/not empty/);
+  expect(await vfs.readText("workspaces/P/Bob/dir/b.txt")).toBe("b");
+});

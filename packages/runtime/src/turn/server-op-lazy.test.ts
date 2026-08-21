@@ -8,6 +8,7 @@ import { MAX_UPLOAD_BYTES } from "@houston/host/src/turn/files-import";
 import {
   LocalDirStore,
   type ObjectStore,
+  ObjectTooLargeError,
 } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
@@ -286,6 +287,32 @@ test("a plain handler 5xx on a tree op declines before any sync-back", async () 
   });
   expect(json.decline, JSON.stringify(json)).toBe(true);
   expect((await store.list(PREFIX)).sort()).toEqual(before);
+});
+
+test("a single file the store refuses answers 413, never a decline that lets the pod claim success", async () => {
+  const { storeRoot } = await seedBusyAgent();
+  const counting = countingStore(storeRoot);
+  const store: typeof counting = {
+    ...counting,
+    upload: async (_src, key) => {
+      throw new ObjectTooLargeError(key, "over the per-object cap");
+    },
+  };
+  const base = await listen(
+    createTurnServer({ store, token: "", runTurn: noopTurn }),
+  );
+  const json = await postOp(base, await heartbeatOK(), {
+    kind: "route",
+    method: "PUT",
+    rest: "agentfile/notes.md",
+    contentType: "application/json",
+    body: JSON.stringify({ content: "# too big for the store" }),
+  });
+  expect(json.decline, JSON.stringify(json)).toBeUndefined();
+  expect(json.status).toBe(413);
+  expect(JSON.parse(json.body as string).files).toEqual([
+    expect.stringMatching(/notes\.md$/),
+  ]);
 });
 
 test("a conversation delete removes its file and unread session files, nothing else", async () => {
