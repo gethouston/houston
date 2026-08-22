@@ -1,13 +1,13 @@
 ---
 name: airtable-lead-loader
-description: "Create a new Airtable table with the full lead-tracking schema (lead fields + enrichment fields + outreach status) and batch-load records from a scrape file. Uses 4 parallel agents to load 4x faster, working around Airtable's one-record-per-call limit. Phase 2 of both pipelines, also runnable standalone if you have a JSON list of leads."
+description: Create a new Airtable table with the full lead-tracking schema (lead fields + enrichment fields + outreach status) and batch-load records from a scrape file. Uses 4 parallel agents to load 4x faster, working around Airtable's one-record-per-call limit. Phase 2 of both pipelines, also runnable standalone if you have a JSON list of leads.
 version: 1
+tags: []
+last_used: 2026-06-06
 category: Outbound
-featured: no
-image: card-index-dividers
 integrations: [airtable]
+image: card-index-dividers
 ---
-
 
 # Airtable Lead Loader
 
