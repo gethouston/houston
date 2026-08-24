@@ -68,3 +68,13 @@ export async function responseError(
     `doc shadow ${method} ${family} failed (${response.status}): ${detail.slice(0, 300)}`,
   );
 }
+
+/** The gateway's typed rejection of a family its allow-list predates (an
+ *  engine that ships a new family always deploys ahead of the gateway for a
+ *  window). Other 400s stay loud — they are OUR wire bugs. */
+export function unknownFamilyRejection(
+  status: number,
+  detail: string,
+): boolean {
+  return status === 400 && detail.includes("invalid document family");
+}

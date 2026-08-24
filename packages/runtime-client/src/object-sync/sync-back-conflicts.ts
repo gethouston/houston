@@ -18,6 +18,20 @@ export interface UploadChangeResult {
   uploaded: boolean;
   skipped?: string;
   conflict?: string;
+  /** The source file was unlinked between the sync scan and the upload read. */
+  vanished?: boolean;
+}
+
+/**
+ * The agent keeps writing while an upload reads its source, so the file can be
+ * unlinked between the scan's hash and the upload's stat/read (runtime session
+ * files churn constantly). On the streaming path the errno arrives wrapped as
+ * the fetch error's cause.
+ */
+function sourceVanished(error: unknown): boolean {
+  if ((error as NodeJS.ErrnoException).code === "ENOENT") return true;
+  const cause = (error as { cause?: unknown }).cause;
+  return (cause as NodeJS.ErrnoException | undefined)?.code === "ENOENT";
 }
 
 function initialWriteOptions(
@@ -59,6 +73,7 @@ export async function uploadChangedObject(opts: {
         skipped: error.message,
       };
     }
+    if (sourceVanished(error)) return { uploaded: false, vanished: true };
     if (!(error instanceof StoreConflictError)) throw error;
     const refreshed = await opts.refresh();
     if (!refreshed) {
@@ -86,6 +101,8 @@ export async function uploadChangedObject(opts: {
         uploaded: true,
       };
     } catch (retryError) {
+      if (sourceVanished(retryError))
+        return { uploaded: false, vanished: true };
       if (!(retryError instanceof StoreConflictError)) throw retryError;
       return {
         entry: opts.previous

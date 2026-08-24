@@ -567,6 +567,52 @@ test("a file deleted mid-walk is reconciled as deleted, not a failed sync", asyn
   expect(remaining.length).toBe(1);
 });
 
+test("a file deleted between hash and upload is reconciled, not a failed sync", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a", "workspace/b.txt": "b" });
+  const manifest = await hydrate(store, PREFIX, work);
+  writeFileSync(join(work, "workspace", "a.txt"), "changed-a");
+  writeFileSync(join(work, "workspace", "b.txt"), "changed-b");
+  // The upload finds its own source gone: unlinked AFTER syncBack hashed it —
+  // the second half of the vanish window (session files mid-rewrite), which
+  // the mid-walk test above cannot reach.
+  const racing = {
+    list: (prefix: string) => store.list(prefix),
+    download: (key: string, dest: string) => store.download(key, dest),
+    upload: (src: string, key: string) => {
+      if (src.endsWith(join("workspace", "a.txt"))) rmSync(src);
+      return store.upload(src, key);
+    },
+    delete: (key: string) => store.delete(key),
+  };
+  const result = await syncBack(racing, PREFIX, work, manifest);
+  expect(result.uploaded).toEqual(["workspace/b.txt"]);
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.deleted).toEqual(["workspace/a.txt"]);
+});
+
+test("a vanish surfacing as the fetch error's cause is reconciled too", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
+  const manifest = await hydrate(store, PREFIX, work);
+  writeFileSync(join(work, "workspace", "a.txt"), "changed-a");
+  // The streaming upload path hands the source to fetch, so the errno arrives
+  // wrapped as the fetch failure's cause instead of the thrown error itself.
+  const streaming = {
+    list: (prefix: string) => store.list(prefix),
+    download: (key: string, dest: string) => store.download(key, dest),
+    upload: () => {
+      throw new Error("fetch failed", {
+        cause: Object.assign(new Error("no such file"), { code: "ENOENT" }),
+      });
+    },
+    delete: (key: string) => store.delete(key),
+  };
+  const result = await syncBack(streaming, PREFIX, work, manifest);
+  expect(result.uploaded).toEqual([]);
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+});
+
 test("symlinks created locally are never persisted", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });

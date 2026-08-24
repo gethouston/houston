@@ -19,6 +19,16 @@ const EXPECTED_KINDS: ReadonlySet<ProviderError["kind"]> = new Set([
   "network_unreachable",
 ]);
 
+/**
+ * An abort raised out of prompt() (AbortError's "This operation was aborted")
+ * is the caller cancelling the turn — a user Stop or a dropped client — not a
+ * provider failure. It classifies as `unknown` (no provider text to match),
+ * but reporting it as a Sentry error would page us for every cancel that
+ * lands mid-request; the catch sites that own the signal suppress it, and
+ * this guard keeps the ones that cannot see the signal to a warning.
+ */
+const EXPECTED_UNKNOWN_DETAIL = /operation was aborted/i;
+
 export interface ProviderErrorLogContext {
   model?: string | null;
   status?: number | null;
@@ -58,7 +68,8 @@ export function logProviderError(
   // every fresh install fires Sentry errors.
   const expected =
     EXPECTED_KINDS.has(error.kind) ||
-    (error.kind === "unauthenticated" && error.cause === "no_credentials");
+    (error.kind === "unauthenticated" && error.cause === "no_credentials") ||
+    (error.kind === "unknown" && EXPECTED_UNKNOWN_DETAIL.test(verbatim ?? ""));
   if (expected) console.warn(line);
   else console.error(line);
 }
