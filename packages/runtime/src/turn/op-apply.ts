@@ -53,6 +53,19 @@ const json = (
   body: JSON.stringify(value),
 });
 
+/** A JSON answer whose sync-back scope is an exact file list (or nothing). */
+const answered = (
+  answer: { status: number; body: unknown },
+  files: string[] = [],
+): OpResult => {
+  const set = new Set(files);
+  return {
+    ...json(answer.status, answer.body),
+    events: [],
+    include: (rel) => set.has(rel),
+  };
+};
+
 /** Everything an agent-level route may touch: the agent's whole directory
  *  (family files, skills, markdown, any agentfile path the pod would
  *  accept) — never the runtime tree (conversations, sessions, auth), which
@@ -119,12 +132,7 @@ export async function applyOp(
             ...(fetchImpl ? { fetchImpl } : {}),
           },
         );
-        const files = new Set(settingsOpFiles(filesystem.dataRel));
-        return {
-          ...json(answer.status, answer.body),
-          events: [],
-          include: (rel) => files.has(rel),
-        };
+        return answered(answer, settingsOpFiles(filesystem.dataRel));
       }
       try {
         const settings =
@@ -135,18 +143,15 @@ export async function applyOp(
                 op.op.provider,
                 op.op.connectedProviders,
               );
-        const files = new Set(settingsOpFiles(filesystem.dataRel));
-        return {
-          ...json(200, settings),
-          events: [],
-          include: (rel) => files.has(rel),
-        };
+        return answered(
+          { status: 200, body: settings },
+          settingsOpFiles(filesystem.dataRel),
+        );
       } catch (e) {
-        return {
-          ...json(400, { error: e instanceof Error ? e.message : String(e) }),
-          events: [],
-          include: none,
-        };
+        return answered({
+          status: 400,
+          body: { error: e instanceof Error ? e.message : String(e) },
+        });
       }
     }
     case "credential": {
@@ -165,12 +170,7 @@ export async function applyOp(
       });
       // The connect may write the qwen region / azure endpoint file beside
       // the key (the store is the key's only home — auth.json never syncs).
-      const files = new Set(credentialOpFiles(filesystem.dataRel));
-      return {
-        ...json(answer.status, answer.body),
-        events: [],
-        include: (rel) => files.has(rel),
-      };
+      return answered(answer, credentialOpFiles(filesystem.dataRel));
     }
     case "anonymize": {
       const answer = await applyAnonymizeOp(
@@ -182,13 +182,11 @@ export async function applyOp(
       );
       if ("agentMissing" in answer) {
         return {
-          ...json(404, { error: "agent not found" }),
-          events: [],
-          include: none,
+          ...answered({ status: 404, body: { error: "agent not found" } }),
           agentMissing: true,
         };
       }
-      return { ...json(answer.status, answer.body), events: [], include: none };
+      return answered(answer);
     }
     case "title": {
       if (!op.credential) {

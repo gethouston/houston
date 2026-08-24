@@ -37,39 +37,32 @@ export async function applyAnonymizeOp(
   const root = new LocalPaths().agentRoot(workspace, agent);
   const vfs = new PrefixedVfs(filesystem.vfs, "workspaces");
 
+  // Anthropic's pass is Claude-SDK-only (pod-only by compliance); no
+  // credential means the gateway could not resolve one. Both ship the
+  // regex-only result with the reason — the wizard's existing degraded copy.
   const credential = op.credential;
-  const ai: AnonymizeAiRunner =
-    !credential || credential.provider === "anthropic"
-      ? () => {
-          // Surfaces as `aiError` beside the regex-only result — the wizard's
-          // existing degraded copy, never a silent downgrade.
-          throw new Error(
-            "AI anonymization is not available right now; showing pattern-based redactions only",
-          );
-        }
-      : async (items) => {
-          const { dataDir, workspaceDir } = filesystem;
-          applyServedCredential(join(dataDir, "auth.json"), credential);
-          const { modelRuntime, model } = await createTurnModelRuntime(
-            dataDir,
-            credential.provider,
-          );
-          return anonymizeTextsWith(
-            { workspaceDir, model, modelRuntime },
-            items,
-          );
-        };
+  const usable = credential && credential.provider !== "anthropic";
+  const ai: AnonymizeAiRunner | undefined = usable
+    ? async (items) => {
+        const { dataDir, workspaceDir } = filesystem;
+        applyServedCredential(join(dataDir, "auth.json"), credential);
+        const { modelRuntime, model } = await createTurnModelRuntime(
+          dataDir,
+          credential.provider,
+        );
+        return anonymizeTextsWith({ workspaceDir, model, modelRuntime }, items);
+      }
+    : undefined;
 
-  const input = op.op.input;
   const response = await runPortableAnonymize(
-    { vfs, root, ai },
     {
-      claudeMd: input.claudeMd ?? false,
-      skillSlugs: input.skillSlugs ?? [],
-      routineIds: input.routineIds ?? [],
-      learningIds: input.learningIds ?? [],
-      useAi: input.useAi ?? true,
+      vfs,
+      root,
+      ...(ai ? { ai } : {}),
+      aiUnavailableReason:
+        "AI anonymization is not available right now; showing pattern-based redactions only",
     },
+    op.op.input,
   );
   return { status: 200, body: response };
 }

@@ -1,12 +1,11 @@
 import { RemoteSharedEndpointStore } from "@houston/host/src/credentials/remote-shared-endpoint-store";
-import { RemoteCredentialStore } from "@houston/host/src/credentials/remote-store";
 import { checkPublicHttpsEndpoint } from "@houston/host/src/custom-endpoint-validation";
 import {
   OPENAI_COMPATIBLE,
   setCustomEndpointConfigIn,
 } from "../ai/openai-compatible";
 import { LOCAL_PLACEHOLDER_KEY } from "../auth/login";
-import type { OpAnswer } from "./op-credential";
+import { type OpAnswer, pushApiKeyCredential } from "./op-credential";
 import type { OpRequest } from "./parse-op-request";
 
 /**
@@ -35,9 +34,25 @@ export async function applyEndpointConnect(
   },
 ): Promise<OpAnswer> {
   const input = op.op.input;
+  // Trimmed at the boundary, exactly as the pod route trims before
+  // validating — the org share must never carry pasted whitespace.
+  const baseUrl = input.baseUrl.trim();
+  // The descriptor both the config file and the org share persist — built
+  // once so the two writes can never diverge on a field.
+  const descriptor = {
+    baseUrl,
+    model: input.model.trim(),
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.contextWindow !== undefined
+      ? { contextWindow: input.contextWindow }
+      : {}),
+    ...(input.reasoning !== undefined ? { reasoning: input.reasoning } : {}),
+  };
+  // The pod route's own boundary validation, verbatim (message parity), then
+  // the managed-cloud egress guard.
   let parsed: URL;
   try {
-    parsed = new URL(input.baseUrl);
+    parsed = new URL(baseUrl);
   } catch {
     return { status: 400, body: { error: "baseUrl is not a valid URL" } };
   }
@@ -53,52 +68,35 @@ export async function applyEndpointConnect(
   // Endpoint FIRST (the pod's own order): a bad config must never leave a
   // stored key aimed at nothing.
   try {
-    setCustomEndpointConfigIn(deps.dataDir, {
-      baseUrl: input.baseUrl,
-      model: input.model,
-      ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.contextWindow !== undefined
-        ? { contextWindow: input.contextWindow }
-        : {}),
-      ...(input.reasoning !== undefined ? { reasoning: input.reasoning } : {}),
-    });
+    setCustomEndpointConfigIn(deps.dataDir, descriptor);
   } catch (e) {
     return {
       status: 400,
       body: { error: e instanceof Error ? e.message : String(e) },
     };
   }
-  const common = {
-    baseUrl: deps.credentialsBaseUrl,
+  const pushed = await pushApiKeyCredential({
+    credentialsBaseUrl: deps.credentialsBaseUrl,
     orgSlug: deps.orgSlug,
     agentSlug: deps.agentSlug,
-    podToken: op.hostToken,
+    hostToken: op.hostToken,
+    provider: OPENAI_COMPATIBLE,
+    apiKey: input.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY,
+    ...(op.actingToken ? { actingAs: op.actingToken } : {}),
     ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
-  };
+  });
+  if (pushed) return pushed;
   try {
-    await new RemoteCredentialStore(common).put(
-      {
-        workspaceId: deps.orgSlug,
-        provider: OPENAI_COMPATIBLE,
-        accessToken: input.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY,
-        refreshToken: "",
-        expiresAt: 0,
-        kind: "api_key",
-      },
-      op.actingToken ? { actingAs: op.actingToken } : {},
-    );
-    const shared = new RemoteSharedEndpointStore(common);
+    const shared = new RemoteSharedEndpointStore({
+      baseUrl: deps.credentialsBaseUrl,
+      orgSlug: deps.orgSlug,
+      agentSlug: deps.agentSlug,
+      podToken: op.hostToken,
+      ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+    });
     if (input.shared === true) {
       await shared.put({
-        baseUrl: input.baseUrl,
-        model: input.model,
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.contextWindow !== undefined
-          ? { contextWindow: input.contextWindow }
-          : {}),
-        ...(input.reasoning !== undefined
-          ? { reasoning: input.reasoning }
-          : {}),
+        ...descriptor,
         ...(input.apiKey !== undefined ? { apiKey: input.apiKey } : {}),
       });
     } else {

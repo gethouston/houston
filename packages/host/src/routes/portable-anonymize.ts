@@ -36,7 +36,13 @@ export type AnonymizeAiRunner = (
 ) => Promise<{ id: string; text: string; summary: string }[]>;
 
 export async function runPortableAnonymize(
-  deps: { vfs: Vfs; root: string; ai?: AnonymizeAiRunner },
+  deps: {
+    vfs: Vfs;
+    root: string;
+    ai?: AnonymizeAiRunner;
+    /** Surface-specific `aiError` copy when no runner exists at all. */
+    aiUnavailableReason?: string;
+  },
   body: PortableAnonymizeRequest,
 ): Promise<PortableAnonymizeResponse> {
   // Untrusted wizard input — normalize before reuse as a selection.
@@ -61,7 +67,9 @@ export async function runPortableAnonymize(
   if (!deps.ai) {
     return {
       ...(await anonymizeContent(content, redactSecrets)),
-      aiError: "AI anonymization is not available on this deployment",
+      aiError:
+        deps.aiUnavailableReason ??
+        "AI anonymization is not available on this deployment",
     };
   }
   try {

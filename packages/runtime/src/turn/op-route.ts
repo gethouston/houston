@@ -11,6 +11,8 @@ import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { poolIdentity } from "./turn-store";
 
+type RouteOp = OpRequest & { op: Extract<OpRequest["op"], { kind: "route" }> };
+
 /** The store-root definitions file custom-integration ops read and write. */
 const CUSTOM_DEFS_FILE = "custom-integrations.json";
 
@@ -23,6 +25,15 @@ const decline = (include: OpResult["include"]): OpResult => ({
   decline: true,
 });
 
+/** An add whose auth mode is the browser sign-in (pod-only capability). */
+function oauthAddBody(body: string | undefined): boolean {
+  try {
+    return JSON.parse(body ?? "{}").auth === "oauth";
+  } catch {
+    return false; // the handler owns the 400 for a malformed body
+  }
+}
+
 /**
  * A `route` op: the pod's own handler chain over the hydrated tree. Custom
  * integrations additionally get a per-op manager (definitions at the store
@@ -31,19 +42,15 @@ const decline = (include: OpResult["include"]): OpResult => ({
  * whose pending state lives only in a pod's memory.
  */
 export async function applyRouteOp(
-  op: OpRequest & { op: Extract<OpRequest["op"], { kind: "route" }> },
+  op: RouteOp,
   filesystem: TurnFilesystem,
   fetchImpl?: typeof fetch,
 ): Promise<OpResult> {
-  const agentId = engineAgentId(filesystem);
   const include = agentRouteScope(filesystem.workspaceRel);
   const { method, rest } = op.op;
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(rest);
-  } catch {
-    decoded = rest;
-  }
+  // parseOpRequest already proved the rest decodes (and validated the
+  // decoded form against the allowlist).
+  const decoded = decodeURIComponent(rest);
 
   // Desktop→cloud migration: an archive that carries runtime transcripts
   // needs the pod (agentDir-anchored session synthesis + the transcript
@@ -54,13 +61,37 @@ export async function applyRouteOp(
       return decline(include);
     }
   }
+  // Adding an OAuth-auth integration mints a capability answer only the pod
+  // can honor (its callback + pending state) — decline before any write.
+  if (
+    decoded === "integrations/custom/definitions" &&
+    method === "POST" &&
+    oauthAddBody(op.op.body)
+  ) {
+    return decline(include);
+  }
 
-  const customCtx = isCustomIntegrationOpRoute(decoded)
-    ? await customIntegrationContext(op, decoded, filesystem, fetchImpl)
+  const custom = isCustomIntegrationOpRoute(decoded)
+    ? await customIntegrationContext(op, filesystem, fetchImpl)
     : null;
-  if (customCtx && "decline" in customCtx) return decline(include);
-  const custom = customCtx;
+  try {
+    return await runRouteOp(op, filesystem, decoded, custom, fetchImpl);
+  } finally {
+    // The per-op executor holds live MCP connections — a long-lived worker
+    // must not accumulate them.
+    await custom?.dispose();
+  }
+}
 
+async function runRouteOp(
+  op: RouteOp,
+  filesystem: TurnFilesystem,
+  decoded: string,
+  custom: CustomContext | null,
+  fetchImpl?: typeof fetch,
+): Promise<OpResult> {
+  const agentId = engineAgentId(filesystem);
+  const include = agentRouteScope(filesystem.workspaceRel);
   // The handlers address the agent under `workspaces/`; the turn's vfs
   // is rooted one level up (lazy or real, the same seam).
   const vfs = new PrefixedVfs(filesystem.vfs, "workspaces");
@@ -76,8 +107,8 @@ export async function applyRouteOp(
       ...(fetchImpl ? { fetchImpl } : {}),
     });
   const result = await dispatch({
-    method,
-    rest,
+    method: op.op.method,
+    rest: op.op.rest,
     ...(op.op.query ? { query: op.op.query } : {}),
     ...(op.op.body !== undefined ? { body: op.op.body } : {}),
     ...(op.op.bodyBase64 !== undefined ? { bodyBase64: op.op.bodyBase64 } : {}),
@@ -144,27 +175,14 @@ export async function applyRouteOp(
 interface CustomContext {
   manager: CustomIntegrationManager;
   changed: () => boolean;
+  dispose: () => Promise<void>;
 }
 
 async function customIntegrationContext(
-  op: OpRequest & { op: Extract<OpRequest["op"], { kind: "route" }> },
-  decoded: string,
+  op: RouteOp,
   filesystem: TurnFilesystem,
   fetchImpl?: typeof fetch,
-): Promise<CustomContext | { decline: true }> {
-  // Adding an OAuth-auth integration mints a capability answer only the pod
-  // can honor (its callback + pending state) — decline before any write.
-  if (
-    decoded === "integrations/custom/definitions" &&
-    op.op.method === "POST"
-  ) {
-    try {
-      if (JSON.parse(op.op.body ?? "{}").auth === "oauth")
-        return { decline: true };
-    } catch {
-      /* the handler owns the 400 for a malformed body */
-    }
-  }
+): Promise<CustomContext> {
   // Materialize the store-root definitions file into the lazy overlay (and
   // its manifest) BEFORE the raw-fs store reads it: an unmaterialized file
   // would read as "no definitions" and a later write would CAS-create over
@@ -206,5 +224,9 @@ async function customIntegrationContext(
     // No OAuth options: sign-in never runs here (see the module doc).
     {},
   );
-  return { manager, changed: () => changed };
+  return {
+    manager,
+    changed: () => changed,
+    dispose: () => executor.reset(),
+  };
 }

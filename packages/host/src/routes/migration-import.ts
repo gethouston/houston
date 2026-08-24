@@ -32,9 +32,19 @@ import {
  */
 export function archiveTouchesRuntime(bytes: Buffer): boolean {
   try {
-    return Object.keys(unzipSync(new Uint8Array(bytes))).some((key) =>
-      key.replace(/^\/+/, "").startsWith(".houston/runtime/"),
-    );
+    // Names only — the filter refuses every entry, so nothing inflates.
+    // Normalize EXACTLY as the import loop below does (safeSeedKey), so
+    // `./.houston/runtime/…` and friends cannot dodge the decline while
+    // still importing as a runtime path.
+    let touches = false;
+    unzipSync(new Uint8Array(bytes), {
+      filter: (file) => {
+        if (safeSeedKey(file.name)?.startsWith(".houston/runtime/"))
+          touches = true;
+        return false;
+      },
+    });
+    return touches;
   } catch {
     return false;
   }
