@@ -53,11 +53,15 @@ function load(dataDir: string = config.dataDir): StoredEndpoint {
   }
 }
 
-function save(e: StoredEndpoint): void {
-  const file = endpointFileIn(config.dataDir);
+function writeEndpointFileIn(dataDir: string, e: StoredEndpoint): void {
+  const file = endpointFileIn(dataDir);
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify(e, null, 2));
   renameSync(tmp, file);
+}
+
+function save(e: StoredEndpoint): void {
+  writeEndpointFileIn(config.dataDir, e);
   // Every endpoint write re-syncs the live runtime's provider registration —
   // no caller can configure an endpoint the runtime then can't dispatch to.
   if (liveRegistrar) registerCustomProviderIfConfigured(liveRegistrar);
@@ -207,7 +211,7 @@ export interface CustomEndpointInput {
  * server, so reject it at connect time rather than as a cryptic turn error. The
  * API key is handled separately (auth/login.ts), since it belongs in auth.json.
  */
-export function setCustomEndpointConfig(input: CustomEndpointInput): void {
+function normalizeEndpointInput(input: CustomEndpointInput): StoredEndpoint {
   const baseUrl = input.baseUrl?.trim();
   const model = input.model?.trim();
   if (!baseUrl) throw new Error("missing base URL");
@@ -220,7 +224,7 @@ export function setCustomEndpointConfig(input: CustomEndpointInput): void {
   }
   if (url.protocol !== "http:" && url.protocol !== "https:")
     throw new Error("base URL must start with http:// or https://");
-  save({
+  return {
     baseUrl,
     model,
     name: input.name?.trim() || undefined,
@@ -230,7 +234,20 @@ export function setCustomEndpointConfig(input: CustomEndpointInput): void {
         : undefined,
     reasoning: input.reasoning ?? undefined,
     orgShared: input.orgShared === true ? true : undefined,
-  });
+  };
+}
+
+export function setCustomEndpointConfig(input: CustomEndpointInput): void {
+  save(normalizeEndpointInput(input));
+}
+
+/** The dataDir-bound twin a pool worker uses against a hydrated agent root
+ *  (no live runtime to re-register — the next turn reads the file). */
+export function setCustomEndpointConfigIn(
+  dataDir: string,
+  input: CustomEndpointInput,
+): void {
+  writeEndpointFileIn(dataDir, normalizeEndpointInput(input));
 }
 
 /** Forget the endpoint (its key is cleared by auth logout). */

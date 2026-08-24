@@ -82,17 +82,26 @@ export function activeQwenRegion(dataDir: string = config.dataDir): QwenRegion {
 }
 
 /**
+ * Persist the region a key verified against into an arbitrary data dir — the
+ * dataDir-bound twin a pool worker uses against a hydrated agent root (the
+ * live-runtime variant below re-registers the process's provider too).
+ */
+export function setQwenRegionIn(dataDir: string, regionId: string): void {
+  const region = QWEN_REGIONS.find((r) => r.id === regionId);
+  if (!region) throw new Error(`unknown qwen region: ${regionId}`);
+  const file = qwenRegionFileIn(dataDir);
+  const tmp = `${file}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ region: region.id }, null, 2));
+  renameSync(tmp, file);
+}
+
+/**
  * Persist the region a key just verified against and re-register the live
  * runtime so the very next turn dials it (the registered config is merged,
  * but the MODEL objects carry the live base URL — see `qwenModels`).
  */
 export function setQwenRegion(regionId: string): void {
-  const region = QWEN_REGIONS.find((r) => r.id === regionId);
-  if (!region) throw new Error(`unknown qwen region: ${regionId}`);
-  const file = qwenRegionFileIn(config.dataDir);
-  const tmp = `${file}.tmp`;
-  writeFileSync(tmp, JSON.stringify({ region: region.id }, null, 2));
-  renameSync(tmp, file);
+  setQwenRegionIn(config.dataDir, regionId);
   if (liveRegistrar) registerQwenProvider(liveRegistrar);
 }
 

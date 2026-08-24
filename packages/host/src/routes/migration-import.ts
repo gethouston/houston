@@ -23,6 +23,23 @@ import {
  * re-POST of the same chunk an idempotent resume.
  */
 
+/**
+ * Whether an uploaded migration archive carries runtime transcript entries
+ * (`.houston/runtime/**`). A pool worker declines those imports back to the
+ * pod: session re-synthesis is agentDir-anchored and the transcript
+ * authority learns imported conversations only from the pod's projector.
+ * A malformed zip reads as `false` so the real import route owns its error.
+ */
+export function archiveTouchesRuntime(bytes: Buffer): boolean {
+  try {
+    return Object.keys(unzipSync(new Uint8Array(bytes))).some((key) =>
+      key.replace(/^\/+/, "").startsWith(".houston/runtime/"),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export class MigrationImportError extends Error {
   constructor(
     readonly status: number,

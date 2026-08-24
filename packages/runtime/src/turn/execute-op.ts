@@ -313,6 +313,16 @@ async function republish(
     );
     if ("error" in outcome) diagnostics.push(`skills: ${outcome.error}`);
   }
+  if (result.customDefinitionsView !== undefined) {
+    // The definitions list is a view doc (docs/view-capture.ts family), so
+    // the gateway's asleep reads show the mutation immediately.
+    const outcome = await publish(
+      { ...common, family: "custom_definitions" },
+      result.customDefinitionsView,
+    );
+    if ("error" in outcome)
+      diagnostics.push(`custom_definitions: ${outcome.error}`);
+  }
   return diagnostics;
 }
 

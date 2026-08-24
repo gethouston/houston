@@ -1,21 +1,12 @@
-import {
-  createServer,
-  type IncomingMessage,
-  type ServerResponse,
-} from "node:http";
+import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { ActivityContributor, HoustonEvent } from "@houston/protocol";
+import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import { LocalPaths } from "../paths";
-import { handleAgentData } from "../routes/agent-data";
-import { handleAgentFile } from "../routes/agent-file";
-import { handleSkills } from "../routes/skills";
-import { handleSkillsManifest } from "../routes/skills-manifest";
-import { handleSkillsRemote } from "../routes/skills-remote";
 import { LocalWorkspaceStore } from "../store/local";
-import { handleAttachments } from "../turn/attachments";
-import { handleFiles } from "../turn/files";
 import { FsVfs, LazyReadRefusedError, type Vfs } from "../vfs";
 import { relayAgentOpResponse, TOO_LARGE_MESSAGE } from "./dispatch-relay";
+import { runAgentOpChain } from "./handler-chain";
 
 /**
  * A write the gateway routes to a pool worker instead of waking the agent's
@@ -28,6 +19,9 @@ export interface AgentOpRequest {
   /** Route rest after `/agents/<id>/`, e.g. `routines/<id>`, `agentfile/CLAUDE.md`. */
   rest: string;
   body?: string;
+  /** Binary request body (a migration zip), base64 — JSON can't carry raw
+   *  bytes. Mutually exclusive with `body`. */
+  bodyBase64?: string;
   contentType?: string;
   /** Verified acting identity (routines' created_by, activity contributors). */
   actingSub?: string;
@@ -67,6 +61,8 @@ export async function dispatchAgentOp(opts: {
   agentId: string;
   request: AgentOpRequest;
   fetchImpl?: typeof fetch;
+  /** Wired for custom-integration ops (see op/handler-chain.ts). */
+  customIntegrations?: CustomIntegrationManager;
   /** The handlers' file port, rooted at `workspacesRoot`. Default: the real
    *  directory. A lazy store-backed vfs lets an op run over a manifest-only
    *  tree that downloads objects on first read. */
@@ -85,89 +81,59 @@ export async function dispatchAgentOp(opts: {
     };
   }
   const vfs = opts.vfs ?? new FsVfs(opts.workspacesRoot);
-  const paths = new LocalPaths();
-  const ctx = { workspace, agent };
   const events: HoustonEvent[] = [];
-  const emit = (event: HoustonEvent) => {
-    events.push(event);
-  };
-  const { method, rest, triggersEnabled, actingSub, actingAuthor } =
-    opts.request;
-  const query = new URLSearchParams(opts.request.query ?? "");
+  const { method, rest } = opts.request;
 
   // A refused lazy read answers 503 from INSIDE the handler chain (the
   // handler may be half-way through a multi-key mutation); the flag tells
   // the caller to discard the overlay instead of syncing a partial result.
   let refused = false;
-  const handler = async (req: IncomingMessage, res: ServerResponse) => {
-    // Files (list/read/download/archive/import/move/rename/folder): the
-    // Files tab, byte-identical to the pod.
-    if (await handleFiles(vfs, paths, ctx, method, rest, req, res, query, emit))
+  const relayError = (res: ServerResponse, error: unknown): void => {
+    if (error instanceof LazyReadRefusedError) {
+      refused = true;
+      // Refused before the download: the same answer the relay cap gives.
+      if (!res.headersSent) {
+        res.writeHead(503, { "Content-Type": "application/json" });
+      }
+      res.end(JSON.stringify({ error: TOO_LARGE_MESSAGE }));
       return;
-    if (
-      await handleAgentData(
-        vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        emit,
-        actingSub,
-        actingAuthor ?? undefined,
-        triggersEnabled,
-      )
-    )
-      return;
-    if (await handleAgentFile(vfs, paths, ctx, method, rest, req, res, emit))
-      return;
-    // Composer drops land in uploads/ BEFORE the send (which is a pool turn).
-    if (await handleAttachments(vfs, paths, ctx, method, rest, req, res, emit))
-      return;
-    if (
-      await handleSkillsManifest(vfs, paths, ctx, method, rest, req, res, emit)
-    )
-      return;
-    if (await handleSkills(vfs, paths, ctx, method, rest, req, res, emit))
-      return;
-    if (
-      await handleSkillsRemote(
-        vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        emit,
-        opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {},
-      )
-    )
-      return;
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "not an op route" }));
+    }
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+    }
+    res.end(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
   };
   const server = createServer((req, res) => {
-    handler(req, res).catch((error: unknown) => {
-      if (error instanceof LazyReadRefusedError) {
-        refused = true;
-        // Refused before the download: the same answer the relay cap gives.
-        if (!res.headersSent) {
-          res.writeHead(503, { "Content-Type": "application/json" });
-        }
-        res.end(JSON.stringify({ error: TOO_LARGE_MESSAGE }));
-        return;
-      }
-      if (!res.headersSent) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-      }
-      res.end(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      );
-    });
+    runAgentOpChain(
+      {
+        vfs,
+        paths: new LocalPaths(),
+        ctx: { workspace, agent },
+        query: new URLSearchParams(opts.request.query ?? ""),
+        emit: (event) => {
+          events.push(event);
+        },
+        ...(opts.request.actingSub
+          ? { actingSub: opts.request.actingSub }
+          : {}),
+        ...(opts.request.actingAuthor
+          ? { actingAuthor: opts.request.actingAuthor }
+          : {}),
+        triggersEnabled: opts.request.triggersEnabled,
+        ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
+        ...(opts.customIntegrations
+          ? { customIntegrations: opts.customIntegrations }
+          : {}),
+      },
+      method,
+      rest,
+      req,
+      res,
+    ).catch((error: unknown) => relayError(res, error));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
@@ -175,8 +141,15 @@ export async function dispatchAgentOp(opts: {
     // A GET/HEAD must carry NO body (fetch throws on any, even ""), and the
     // gateway sends an empty string on every route op.
     const bodiless = method === "GET" || method === "HEAD";
-    const body = bodiless || !opts.request.body ? undefined : opts.request.body;
-    const response = await fetch(`http://127.0.0.1:${port}/op`, {
+    const body = bodiless
+      ? undefined
+      : opts.request.bodyBase64 !== undefined
+        ? Buffer.from(opts.request.bodyBase64, "base64")
+        : opts.request.body || undefined;
+    // The query rides the loopback URL too: handlers that parse req.url
+    // (migration's ?overwrite=1) see exactly what the pod's server sees.
+    const query = opts.request.query ? `?${opts.request.query}` : "";
+    const response = await fetch(`http://127.0.0.1:${port}/op${query}`, {
       method,
       headers:
         opts.request.contentType && body !== undefined

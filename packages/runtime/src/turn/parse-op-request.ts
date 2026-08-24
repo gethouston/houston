@@ -1,4 +1,9 @@
 import type { ServedCredential } from "../auth/auth-file";
+import {
+  isBinaryBodyOpRoute,
+  isOpRoute,
+  isReadOpRoute,
+} from "./op-route-allowlist";
 import type { TurnRequest } from "./types";
 
 /**
@@ -15,9 +20,22 @@ export type AgentOp =
       /** Raw query string without the `?` (files routes take `?path=`). */
       query?: string;
       body?: string;
+      /** Binary request body (a migration zip), base64 — a JSON envelope
+       *  cannot carry raw bytes. Mutually exclusive with `body`. */
+      bodyBase64?: string;
       contentType?: string;
     }
   | { kind: "title"; text: string }
+  | {
+      kind: "anonymize";
+      input: {
+        claudeMd?: boolean;
+        skillSlugs?: string[];
+        routineIds?: string[];
+        learningIds?: string[];
+        useAi?: boolean;
+      };
+    }
   | {
       kind: "settings";
       action: "put";
@@ -29,7 +47,27 @@ export type AgentOp =
       provider: string;
       connectedProviders: string[];
     }
-  | { kind: "credential"; action: "api-key"; provider: string; apiKey: string }
+  | {
+      kind: "settings";
+      action: "endpoint";
+      input: {
+        baseUrl: string;
+        model: string;
+        name?: string;
+        contextWindow?: number;
+        reasoning?: boolean;
+        shared?: boolean;
+        apiKey?: string;
+      };
+    }
+  | {
+      kind: "credential";
+      action: "api-key";
+      provider: string;
+      apiKey: string;
+      /** Azure OpenAI's per-resource endpoint, arriving with the key. */
+      endpoint?: string;
+    }
   | {
       kind: "conversation";
       action: "rename" | "delete";
@@ -53,14 +91,6 @@ export interface OpRequest {
 }
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
-
-// The op-route shapes (mirrors the Go classifier): the agent-data families,
-// agentfile writes, and skills (install + manage), never a runtime path.
-const OP_ROUTE =
-  /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^skills\/(community|repo)\/install$|^files(\/.+)?$|^attachments$|^skills-manifest$/;
-// Any files/* shape reads through the handler (it owns the 404 for an
-// unknown one), never a write.
-const READ_ROUTE = /^files(\/.+)?$|^agentfile\/|^skills-manifest$/;
 
 function parseActing(raw: unknown): TurnRequest["actingAs"] {
   if (!raw || typeof raw !== "object") return undefined;
@@ -135,13 +165,16 @@ export function parseOpRequest(body: unknown): OpRequest {
       if (decoded.includes("..") || decoded.startsWith("/")) {
         throw new Error("invalid 'op.rest'");
       }
-      if (!OP_ROUTE.test(decoded)) {
+      if (!isOpRoute(decoded)) {
         throw new Error("op.rest is not an op route");
       }
       // Reads run as ops only where the gateway has no doc to serve them
       // from: the Files tab and arbitrary agent files.
-      if (method === "GET" && !READ_ROUTE.test(decoded)) {
+      if (method === "GET" && !isReadOpRoute(decoded)) {
         throw new Error("op.rest is not a read op route");
+      }
+      if (typeof raw.bodyBase64 === "string" && !isBinaryBodyOpRoute(decoded)) {
+        throw new Error("op.bodyBase64 is not accepted for this route");
       }
       const query =
         typeof raw.query === "string" && raw.query.length <= 4096
@@ -153,6 +186,9 @@ export function parseOpRequest(body: unknown): OpRequest {
         rest,
         ...(query ? { query } : {}),
         ...(typeof raw.body === "string" ? { body: raw.body } : {}),
+        ...(typeof raw.bodyBase64 === "string"
+          ? { bodyBase64: raw.bodyBase64 }
+          : {}),
         ...(typeof raw.contentType === "string"
           ? { contentType: raw.contentType }
           : {}),
@@ -162,6 +198,25 @@ export function parseOpRequest(body: unknown): OpRequest {
     case "title":
       op = { kind: "title", text: str(raw.text, "op.text") };
       break;
+    case "anonymize": {
+      const input = (raw.input ?? {}) as Record<string, unknown>;
+      const ids = (v: unknown) =>
+        Array.isArray(v)
+          ? v.filter((s): s is string => typeof s === "string")
+          : [];
+      op = {
+        kind: "anonymize",
+        input: {
+          claudeMd: input.claudeMd === true,
+          skillSlugs: ids(input.skillSlugs),
+          routineIds: ids(input.routineIds),
+          learningIds: ids(input.learningIds),
+          // Mirrors the pod route: absent means the AI pass is wanted.
+          useAi: input.useAi !== false,
+        },
+      };
+      break;
+    }
     case "settings": {
       if (raw.action === "put") {
         const input = (raw.input ?? {}) as Record<string, unknown>;
@@ -194,6 +249,29 @@ export function parseOpRequest(body: unknown): OpRequest {
         };
         break;
       }
+      if (raw.action === "endpoint") {
+        const input = (raw.input ?? {}) as Record<string, unknown>;
+        op = {
+          kind: "settings",
+          action: "endpoint",
+          input: {
+            baseUrl: str(input.baseUrl, "op.input.baseUrl"),
+            model: str(input.model, "op.input.model"),
+            ...(typeof input.name === "string" ? { name: input.name } : {}),
+            ...(typeof input.contextWindow === "number"
+              ? { contextWindow: input.contextWindow }
+              : {}),
+            ...(typeof input.reasoning === "boolean"
+              ? { reasoning: input.reasoning }
+              : {}),
+            ...(input.shared === true ? { shared: true } : {}),
+            ...(typeof input.apiKey === "string"
+              ? { apiKey: input.apiKey }
+              : {}),
+          },
+        };
+        break;
+      }
       throw new Error("invalid 'op.action'");
     }
     case "credential": {
@@ -203,6 +281,9 @@ export function parseOpRequest(body: unknown): OpRequest {
         action: "api-key",
         provider: str(raw.provider, "op.provider"),
         apiKey: str(raw.apiKey, "op.apiKey"),
+        ...(typeof raw.endpoint === "string" && raw.endpoint
+          ? { endpoint: raw.endpoint }
+          : {}),
       };
       break;
     }
