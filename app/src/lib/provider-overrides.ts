@@ -441,10 +441,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "Gemini 3.5 Flash",
         description: "Fast and capable.",
       },
-      "deepseek-v4-flash-free": {
-        label: "DeepSeek V4 Flash (Free)",
-        description: "Fast. Free to try.",
-      },
       "mimo-v2.5-free": {
         label: "MiMo V2.5 (Free)",
         description: "Free to try.",
