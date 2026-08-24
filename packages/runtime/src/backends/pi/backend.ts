@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import {
@@ -77,9 +77,27 @@ function newestSessionFile(sessionDir: string): string | null {
   } catch {
     return null;
   }
-  if (files.length === 0) return null;
   files.sort();
-  return join(sessionDir, files[files.length - 1] as string);
+  // Newest → oldest, skipping anything that is not a readable pi session
+  // (a zero-byte file left by a crash mid-write, junk): opening a corrupt
+  // "newest" would rewrite it as a BLANK session and silently discard the
+  // conversation's context — the exact failure this helper exists to end.
+  for (let i = files.length - 1; i >= 0; i--) {
+    const candidate = join(sessionDir, files[i] as string);
+    if (isReadableSession(candidate)) return candidate;
+  }
+  return null;
+}
+
+function isReadableSession(file: string): boolean {
+  try {
+    const head = readFileSync(file, "utf8").split("\n", 1)[0] ?? "";
+    if (!head) return false;
+    const parsed = JSON.parse(head) as { type?: unknown };
+    return parsed.type === "session";
+  } catch {
+    return false;
+  }
 }
 
 export function createPiBackend(deps: PiBackendDeps): HarnessBackend {

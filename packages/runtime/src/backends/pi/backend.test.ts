@@ -48,6 +48,14 @@ test("resumes the conversation's newest session even when it was written under a
   expect(fixed.getSessionFile()).toBe(newest);
   expect(fixed.getCwd()).toBe(thisTurnRoot);
 
+  // A corrupt newer file (a crash mid-write) must not be opened and
+  // rewritten as a blank session: skip to the newest READABLE one.
+  writeFileSync(join(dir, "2026-08-24T03-00-00-000Z_torn.jsonl"), "");
+  writeFileSync(join(dir, "2026-08-24T03-01-00-000Z_junk.jsonl"), "not json\n");
+  expect(resumeSessionManager(thisTurnRoot, dir, false).getSessionFile()).toBe(
+    newest,
+  );
+
   // A cross-backend rebuild still starts clean (HOU-951).
   expect(
     resumeSessionManager(thisTurnRoot, dir, true).getSessionFile(),
