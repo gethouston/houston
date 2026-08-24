@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { closeSync, openSync, readdirSync, readSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import {
@@ -74,8 +74,12 @@ function newestSessionFile(sessionDir: string): string | null {
   let files: string[];
   try {
     files = readdirSync(sessionDir).filter((f) => f.endsWith(".jsonl"));
-  } catch {
-    return null;
+  } catch (err) {
+    // ONLY a missing dir means "no sessions yet". Anything else (EIO,
+    // EACCES, fd exhaustion) must fail the turn loudly — swallowing it
+    // would answer with silent amnesia, the exact bug this helper ends.
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
   }
   files.sort();
   // Newest → oldest, skipping anything that is not a readable pi session
@@ -90,13 +94,24 @@ function newestSessionFile(sessionDir: string): string | null {
 }
 
 function isReadableSession(file: string): boolean {
+  // Bounded: only the header line matters, and session files grow to MBs.
+  const buffer = Buffer.alloc(64 * 1024);
+  let descriptor: number;
   try {
-    const head = readFileSync(file, "utf8").split("\n", 1)[0] ?? "";
+    descriptor = openSync(file, "r");
+  } catch {
+    return false;
+  }
+  try {
+    const bytes = readSync(descriptor, buffer, 0, buffer.length, 0);
+    const head = buffer.toString("utf8", 0, bytes).split("\n", 1)[0] as string;
     if (!head) return false;
     const parsed = JSON.parse(head) as { type?: unknown };
     return parsed.type === "session";
   } catch {
     return false;
+  } finally {
+    closeSync(descriptor);
   }
 }
 

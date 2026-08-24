@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -37,6 +37,10 @@ test("resumes the conversation's newest session even when it was written under a
     "/tmp/turn-root-B/ws",
   );
   const thisTurnRoot = mkdtempSync(join(tmpdir(), "turn-root-C-"));
+  // Pin FILENAME order, not mtime: hydration rewrites mtimes in download
+  // order, so make the newest-NAMED file the oldest-by-mtime.
+  const past = new Date(Date.now() - 3_600_000);
+  utimesSync(newest, past, past);
 
   // The old call finds nothing under a different cwd — the bug: it does
   // NOT reopen the newest file.
