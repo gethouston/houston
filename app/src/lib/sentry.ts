@@ -34,13 +34,6 @@ const RELEASE = `houston-app@${
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0"
 }`;
 
-// Session Replay sampling. Sentry's guidance: record a small slice of normal
-// sessions, but a replay for EVERY session that hits an error. Replay only runs
-// in builds that bake a DSN (CI release), so dev/forks never record. While
-// actively QA-ing replay, temporarily bump SESSION_SAMPLE_RATE to 1.0.
-const REPLAYS_SESSION_SAMPLE_RATE = 0.1;
-const REPLAYS_ON_ERROR_SAMPLE_RATE = 1.0;
-
 let initialized = false;
 
 /**
@@ -78,8 +71,8 @@ function resolveDeployment(): string {
 // Per-event delivery outcome recorded by the confirming transport (below) and
 // read+cleared by captureException: true once Sentry accepts the event with a
 // 2xx. Bounded so it can't grow unboundedly from envelopes captured outside
-// captureException (replay envelopes carry no header event_id; the SDK's own
-// GlobalHandlers integration is stripped — see initSentry).
+// captureException (some envelope types carry no header event_id; the SDK's
+// own GlobalHandlers integration is stripped — see initSentry).
 const deliveryAccepted = new Map<string, boolean>();
 const MAX_TRACKED_DELIVERIES = 64;
 
@@ -99,8 +92,8 @@ function recordDelivery(eventId: string, accepted: boolean): void {
  * IPC path silently dropped `@sentry/browser` 10.x error envelopes in packaged
  * builds (the plugin's Rust `sentry-types` parser rejected the newer envelope
  * and discarded it with no logging), so JS errors never reached Sentry while
- * `flush()` still reported success. Direct HTTP is the path Session Replay
- * already used successfully, so it's proven to work from the Tauri webview.
+ * `flush()` still reported success. Direct HTTP is proven to work from the
+ * Tauri webview.
  * Native (Rust) crash reporting is unaffected — it's the `sentry` crate's panic
  * handler from `sentry::init` in lib.rs, not this transport.
  *
@@ -120,10 +113,8 @@ export function initSentry(): void {
     dsn: DSN,
     release: RELEASE,
     environment: resolveEnvironment(),
-    // Keep PII off for Session Replay — Houston serves non-technical users
-    // whose chat messages, prompts, agent + workspace names and file paths must
-    // never enter a recording (the masking integration options below enforce
-    // this).
+    // Houston serves non-technical users whose chat messages, prompts, agent +
+    // workspace names and file paths must never ride an event automatically.
     sendDefaultPii: false,
     // Direct HTTP transport, wrapped to record real per-event delivery.
     transport: (options) => {
@@ -158,17 +149,11 @@ export function initSentry(): void {
           integration.name !== "BrowserSession" &&
           integration.name !== "GlobalHandlers",
       ),
-      Sentry.replayIntegration({
-        // Privacy-first: mask all text + inputs and block media so recordings
-        // capture layout/interaction shape, never readable user content. These
-        // are Sentry's defaults; set explicitly so the posture is auditable.
-        maskAllText: true,
-        maskAllInputs: true,
-        blockAllMedia: true,
-      }),
     ],
-    replaysSessionSampleRate: REPLAYS_SESSION_SAMPLE_RATE,
-    replaysOnErrorSampleRate: REPLAYS_ON_ERROR_SAMPLE_RATE,
+    // Session Replay is deliberately OFF (no replayIntegration). Keep the
+    // explicit zero rates so an SDK default can never silently re-enable it.
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 0,
   });
   // Stamp the deployment AFTER init so it rides every subsequent event.
   Sentry.setTag("deployment", resolveDeployment());
