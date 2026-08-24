@@ -1,8 +1,5 @@
 import { join } from "node:path";
-import { CustomExecutorHost } from "@houston/host/src/integrations/custom/executor-host";
-import { CustomIntegrationManager } from "@houston/host/src/integrations/custom/manager";
-import { RemoteCustomSecretStore } from "@houston/host/src/integrations/custom/secrets";
-import { FileCustomIntegrationStore } from "@houston/host/src/integrations/custom/store";
+import type { CustomIntegrationManager } from "@houston/host/src/integrations/custom/manager";
 import { dispatchAgentOp } from "@houston/host/src/op/dispatch";
 import { archiveTouchesRuntime } from "@houston/host/src/routes/migration-import";
 import { PrefixedVfs } from "@houston/host/src/vfs";
@@ -173,6 +170,19 @@ async function customIntegrationContext(
   // would read as "no definitions" and a later write would CAS-create over
   // the real one.
   await filesystem.vfs.readBytes(CUSTOM_DEFS_FILE);
+  // Imported lazily: the embedded executor engine is heavy, and only the
+  // rare custom-integration op needs it — worker startup must not pay it.
+  const [
+    { CustomExecutorHost },
+    { CustomIntegrationManager },
+    { RemoteCustomSecretStore },
+    { FileCustomIntegrationStore },
+  ] = await Promise.all([
+    import("@houston/host/src/integrations/custom/executor-host"),
+    import("@houston/host/src/integrations/custom/manager"),
+    import("@houston/host/src/integrations/custom/secrets"),
+    import("@houston/host/src/integrations/custom/store"),
+  ]);
   const { org, agent } = poolIdentity(op.gcsPrefix);
   const store = new FileCustomIntegrationStore(
     join(filesystem.storeRoot, CUSTOM_DEFS_FILE),
