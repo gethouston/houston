@@ -378,6 +378,27 @@ export async function runPiTurn(
     return providerError ? {} : { pendingInteraction };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // The caller's cancel usually resolves prompt() clean (pi routes an abort
+    // down the usage path), but one landing mid-request RAISES the AbortError
+    // instead. Same user action either way — not a provider failure and not
+    // an outcome error: persist what streamed and end the turn quietly.
+    if (
+      !providerError &&
+      (signal?.aborted || (err instanceof Error && err.name === "AbortError"))
+    ) {
+      if (assistantText)
+        appendAssistantMessageAt(
+          conversationsDir,
+          conversationId,
+          assistantText,
+          {
+            tools,
+            usage,
+            turnId,
+          },
+        );
+      return {};
+    }
     // Classify the throw before reporting a generic outcome error: pi RAISES
     // a missing/expired credential at prompt time ("No API key found for
     // <provider>. Use /login …"), before any stream exists, so this catch is

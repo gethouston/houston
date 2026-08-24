@@ -146,6 +146,13 @@ export async function syncBack(
       generationAware,
       refresh,
     });
+    // Second half of the vanish window: the file outlived the hash above but
+    // was unlinked before the upload re-read it. Same reconciliation as the
+    // walk-stage skip: out of the next manifest, delete pass settles the store.
+    if (result.vanished) {
+      totalBytes -= size;
+      continue;
+    }
     if (result.entry) nextManifest.set(rel, result.entry);
     if (result.uploaded) uploaded.push(rel);
     if (result.skipped) skipped.push({ key: rel, reason: result.skipped });

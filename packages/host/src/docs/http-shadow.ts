@@ -1,18 +1,14 @@
 import { FAMILIES, type HoustonFamily } from "@houston/domain";
 import {
-  capturePodFence,
   type PodGatewayConfig,
   podGatewayHeaders,
   podGatewayUrl,
 } from "../pod-gateway";
+import { ShadowUnavailableError, shadowFetch } from "./shadow-fetch";
+import { publishDoc } from "./shadow-put";
+import { seedFromResponse } from "./shadow-seed";
 import type { ViewFamily } from "./view-capture";
-import {
-  canonicalJSON,
-  etagRevision,
-  parseDocBody,
-  responseError,
-  responseRevision,
-} from "./wire";
+import { canonicalJSON } from "./wire";
 
 export { canonicalJSON } from "./wire";
 
@@ -32,15 +28,22 @@ export class HttpDocShadow implements DocShadow {
   // content seed idempotent: an unchanged file costs one GET, never a PUT,
   // so revisions do not churn on every pod boot.
   private readonly remote = new Map<ShadowFamily, string>();
+  // Families a skewed gateway rejected as unknown (engine ahead of its
+  // allow-list). Per-family, unlike the process-wide route skew latch: one
+  // new view family must not kill projection for the families it does know.
+  private readonly unsupported = new Set<ShadowFamily>();
+  private readonly retryDelaysMs: number[];
   private disabled = false;
 
   constructor(
     private readonly opts: {
       gateway: PodGatewayConfig;
       fetchImpl?: typeof fetch;
+      retryDelaysMs?: number[];
     },
   ) {
     this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.retryDelaysMs = opts.retryDelaysMs ?? [500, 2_000];
   }
 
   async seed(): Promise<void> {
@@ -48,7 +51,7 @@ export class HttpDocShadow implements DocShadow {
   }
 
   async put(family: ShadowFamily, doc: unknown): Promise<void> {
-    if (this.disabled) return;
+    if (this.disabled || this.unsupported.has(family)) return;
     if (doc === undefined) {
       // canonicalJSON(undefined) is not a string; comparing it against a
       // missing cache entry would silently skip the write. No caller may
@@ -65,24 +68,25 @@ export class HttpDocShadow implements DocShadow {
     if (cachedRevision === undefined) {
       throw new Error(`[doc-shadow] ${family} revision unavailable after seed`);
     }
-    const response = await this.putAtRevision(family, doc, cachedRevision);
-    if (response.status === 409) {
-      const revision = await responseRevision(response);
-      if (revision === undefined) {
-        this.revisions.delete(family);
-        this.remote.delete(family);
-        console.debug(
-          `[doc-shadow] ${family} revision conflict without current revision; re-seeding on next write`,
-        );
-        return;
+    try {
+      const outcome = await publishDoc({
+        family,
+        doc,
+        canonical,
+        revision: cachedRevision,
+        putAtRevision: (revision) => this.putAtRevision(family, doc, revision),
+        caches: { revisions: this.revisions, remote: this.remote },
+      });
+      if (outcome.skew) this.disableForSkew();
+      if (outcome.unsupported !== undefined) {
+        this.markUnsupported(family, outcome.unsupported);
       }
-      this.revisions.set(family, revision);
-      this.remote.delete(family);
-      const retry = await this.putAtRevision(family, doc, revision);
-      await this.acceptPutResponse(family, retry, canonical);
-      return;
+    } catch (error) {
+      if (!(error instanceof ShadowUnavailableError)) throw error;
+      // Self-healing: the cached revision survives and the next capture or
+      // warm tick re-publishes. A warning breadcrumb, never a Sentry error.
+      console.warn(`[doc-shadow] ${family} PUT deferred: ${error.message}`);
     }
-    await this.acceptPutResponse(family, response, canonical);
   }
 
   private async putAtRevision(
@@ -90,72 +94,47 @@ export class HttpDocShadow implements DocShadow {
     doc: unknown,
     revision: number,
   ): Promise<Response> {
-    const response = await this.fetchImpl(this.url(family), {
-      method: "PUT",
-      headers: podGatewayHeaders(this.opts.gateway, {
-        write: true,
-        json: true,
-        extra: { "If-Match": String(revision) },
+    return shadowFetch({
+      fetchImpl: this.fetchImpl,
+      gateway: this.opts.gateway,
+      url: this.url(family),
+      retryDelaysMs: this.retryDelaysMs,
+      init: () => ({
+        method: "PUT",
+        headers: podGatewayHeaders(this.opts.gateway, {
+          write: true,
+          json: true,
+          extra: { "If-Match": String(revision) },
+        }),
+        body: JSON.stringify({ doc }),
+        signal: AbortSignal.timeout(5_000),
       }),
-      body: JSON.stringify({ doc }),
-      signal: AbortSignal.timeout(5_000),
     });
-    capturePodFence(this.opts.gateway, response);
-    return response;
-  }
-
-  private async acceptPutResponse(
-    family: ShadowFamily,
-    response: Response,
-    canonical: string,
-  ): Promise<void> {
-    if (response.status === 404) return this.disableForSkew();
-    if (response.status === 409) {
-      const revision = await responseRevision(response);
-      if (revision === undefined) this.revisions.delete(family);
-      else this.revisions.set(family, revision);
-      this.remote.delete(family);
-      console.debug(
-        `[doc-shadow] ${family} revision conflict; file remains authoritative`,
-      );
-      return;
-    }
-    if (!response.ok) throw await responseError(response, family, "PUT");
-    const revision = await responseRevision(response);
-    if (revision !== undefined) this.revisions.set(family, revision);
-    this.remote.set(family, canonical);
   }
 
   private async seedFamily(family: ShadowFamily): Promise<boolean> {
-    if (this.disabled) return false;
-    try {
-      const response = await this.fetchImpl(this.url(family), {
+    if (this.disabled || this.unsupported.has(family)) return false;
+    const outcome = await seedFromResponse(family, () => this.getDoc(family), {
+      revisions: this.revisions,
+      remote: this.remote,
+    });
+    if (outcome.unsupported !== undefined) {
+      this.markUnsupported(family, outcome.unsupported);
+    }
+    return outcome.seeded;
+  }
+
+  private getDoc(family: ShadowFamily): Promise<Response> {
+    return shadowFetch({
+      fetchImpl: this.fetchImpl,
+      gateway: this.opts.gateway,
+      url: this.url(family),
+      retryDelaysMs: this.retryDelaysMs,
+      init: () => ({
         headers: podGatewayHeaders(this.opts.gateway),
         signal: AbortSignal.timeout(5_000),
-      });
-      capturePodFence(this.opts.gateway, response);
-      if (response.status === 404) {
-        this.revisions.set(family, 0);
-        this.remote.delete(family);
-        return true;
-      }
-      if (!response.ok) throw await responseError(response, family, "GET");
-      const text = await response.text();
-      const parsed = parseDocBody(text);
-      const etag = etagRevision(response);
-      this.revisions.set(family, etag ?? parsed.revision ?? 0);
-      if (parsed.doc !== undefined) {
-        this.remote.set(family, canonicalJSON(parsed.doc));
-      } else {
-        this.remote.delete(family);
-      }
-      return true;
-    } catch (error) {
-      console.error(`[doc-shadow] ${family} revision seed failed`, error);
-      this.revisions.delete(family);
-      this.remote.delete(family);
-      return false;
-    }
+      }),
+    });
   }
 
   private url(family: ShadowFamily): string {
@@ -171,6 +150,14 @@ export class HttpDocShadow implements DocShadow {
     this.disabled = true;
     console.debug(
       "[doc-shadow] gateway route unavailable; disabling for this process",
+    );
+  }
+
+  private markUnsupported(family: ShadowFamily, detail: string): void {
+    if (this.unsupported.has(family)) return;
+    this.unsupported.add(family);
+    console.warn(
+      `[doc-shadow] gateway does not know family ${family} (deploy skew); skipping it until restart: ${detail}`,
     );
   }
 }

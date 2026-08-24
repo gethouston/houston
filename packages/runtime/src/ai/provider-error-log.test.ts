@@ -83,6 +83,40 @@ describe("logProviderError", () => {
     );
   });
 
+  it("keeps a caller-cancelled abort a warning even as kind=unknown", () => {
+    // The AbortError a mid-request cancel raises ("This operation was
+    // aborted") classifies as unknown, but it is the user's Stop or a dropped
+    // client — never an engine incident (HOUSTON-APP-59E).
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    logProviderError(
+      {
+        kind: "unknown",
+        provider: "google",
+        raw_excerpt: "This operation was aborted",
+      },
+      { model: "gemini-3.5-flash" },
+    );
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("kind=unknown :: This operation was aborted"),
+    );
+  });
+
+  it("keeps every other unknown failure an error — untriaged by definition", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    logProviderError({
+      kind: "unknown",
+      provider: "google",
+      raw_excerpt: "something novel exploded",
+    });
+    expect(warn).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("kind=unknown :: something novel exploded"),
+    );
+  });
+
   it("emits no cause field for non-auth kinds", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     logProviderError(

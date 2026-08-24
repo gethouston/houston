@@ -119,6 +119,7 @@ test("a failed boot seed stays unseeded and the next PUT lazily fetches", async 
       fence: {},
     },
     fetchImpl: fetchImpl as typeof fetch,
+    retryDelaysMs: [],
   });
 
   await shadow.seed();
@@ -181,6 +182,141 @@ test("canonicalJSON keeps a parsed __proto__ key as content", () => {
   const withoutProto = JSON.parse('{"b":2}') as unknown;
   expect(canonicalJSON(withProto)).not.toBe(canonicalJSON(withoutProto));
   expect(canonicalJSON(withProto)).toContain("__proto__");
+});
+
+const GATEWAY = {
+  baseUrl: "https://store.example",
+  orgSlug: "acme",
+  agentSlug: "helper",
+  podToken: "pod-token",
+  bootId: "boot-1",
+  fence: {},
+};
+
+test("an unknown-family 400 latches that family only, at warning level", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const requests: RequestInit[] = [];
+  const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
+    requests.push(init ?? {});
+    if (String(url).endsWith("/skills")) {
+      return Response.json(
+        { error: "invalid document family" },
+        { status: 400 },
+      );
+    }
+    if (!init?.method) return Response.json({ doc: [], revision: 1 });
+    return Response.json({ revision: 2 });
+  });
+  const shadow = new HttpDocShadow({
+    gateway: GATEWAY,
+    fetchImpl: fetchImpl as typeof fetch,
+    retryDelaysMs: [],
+  });
+
+  await expect(shadow.put("skills", [{ id: "s1" }])).resolves.toBeUndefined();
+  await shadow.put("skills", [{ id: "s2" }]);
+  const skillsRequests = requests.length;
+  // A family the gateway does know keeps projecting.
+  await shadow.put("activity", [{ id: "a1" }]);
+
+  expect(skillsRequests).toBe(1);
+  expect(requests.length).toBe(3);
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("does not know family skills"),
+  );
+  expect(error).not.toHaveBeenCalled();
+  warn.mockRestore();
+  error.mockRestore();
+});
+
+test("a 503 PUT retries on the ladder and succeeds", async () => {
+  const requests: RequestInit[] = [];
+  let failures = 1;
+  const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+    requests.push(init ?? {});
+    if (!init?.method) return Response.json({ doc: [], revision: 4 });
+    if (failures-- > 0) {
+      return Response.json(
+        { error: "transcript store unavailable" },
+        { status: 503 },
+      );
+    }
+    return Response.json({ revision: 5 });
+  });
+  const shadow = new HttpDocShadow({
+    gateway: GATEWAY,
+    fetchImpl: fetchImpl as typeof fetch,
+    retryDelaysMs: [0],
+  });
+
+  await shadow.put("activity", [{ id: "a1" }]);
+
+  expect(requests.filter((request) => request.method === "PUT")).toHaveLength(
+    2,
+  );
+});
+
+test("an exhausted 503 defers at warning and the next publish retries", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const requests: RequestInit[] = [];
+  let unavailable = true;
+  const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+    requests.push(init ?? {});
+    if (!init?.method) return Response.json({ doc: [], revision: 4 });
+    if (unavailable) {
+      return Response.json(
+        { error: "transcript store unavailable" },
+        { status: 503 },
+      );
+    }
+    return Response.json({ revision: 5 });
+  });
+  const shadow = new HttpDocShadow({
+    gateway: GATEWAY,
+    fetchImpl: fetchImpl as typeof fetch,
+    retryDelaysMs: [],
+  });
+
+  await expect(shadow.put("activity", [{ id: "a1" }])).resolves.toBeUndefined();
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("activity PUT deferred"),
+  );
+  expect(error).not.toHaveBeenCalled();
+
+  unavailable = false;
+  await shadow.put("activity", [{ id: "a1" }]);
+  // The cached revision survived the deferral: no re-seed, straight to PUT.
+  expect(requests.map((request) => request.method ?? "GET")).toEqual([
+    "GET",
+    "PUT",
+    "PUT",
+  ]);
+  warn.mockRestore();
+  error.mockRestore();
+});
+
+test("a 503 seed defers at warning, never a Sentry error", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const fetchImpl = vi.fn(async () =>
+    Response.json({ error: "transcript store unavailable" }, { status: 503 }),
+  );
+  const shadow = new HttpDocShadow({
+    gateway: GATEWAY,
+    fetchImpl: fetchImpl as typeof fetch,
+    retryDelaysMs: [],
+  });
+
+  await shadow.put("activity", [{ id: "a1" }]);
+
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("activity seed deferred"),
+  );
+  expect(error).not.toHaveBeenCalled();
+  warn.mockRestore();
+  error.mockRestore();
 });
 
 test("put with an undefined doc throws instead of silently skipping", async () => {
