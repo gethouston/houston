@@ -2,7 +2,7 @@ import type { HoustonEvent } from "@houston/protocol";
 import { expect, test, vi } from "vitest";
 import type { EventHub } from "../events/hub";
 import { MemoryWorkspaceStore } from "../store/memory";
-import { refreshViewsOnEvents } from "./view-warm";
+import { refreshViewsOnEvents, warmViewDocs } from "./view-warm";
 
 function hub(): EventHub & { fire: (e: HoustonEvent) => void } {
   const handlers: Array<(e: HoustonEvent) => void> = [];
@@ -17,6 +17,30 @@ function hub(): EventHub & { fire: (e: HoustonEvent) => void } {
     },
   };
 }
+
+// A freshly woken pod's runtime may take its whole 60s boot-health budget
+// (probes answer 503 throughout); the warm must outlast that, not give up
+// mid-boot (HOUSTON-APP-5AP).
+test("boot warm outlasts a runtime that takes 70s to become healthy", async () => {
+  vi.useFakeTimers();
+  const store = new MemoryWorkspaceStore();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  await store.createAgent({ workspaceId: workspace.id, name: "Only" });
+  const start = Date.now();
+  const statuses: number[] = [];
+  const fetchImpl = vi.fn(async () => {
+    const status = Date.now() - start < 70_000 ? 503 : 200;
+    statuses.push(status);
+    return new Response("{}", { status });
+  }) as unknown as typeof fetch;
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  warmViewDocs({ port: 4318, token: "t", store, fetchImpl });
+  await vi.advanceTimersByTimeAsync(200_000);
+  expect(statuses).toContain(200);
+  expect(errorSpy).not.toHaveBeenCalled();
+  errorSpy.mockRestore();
+  vi.useRealTimers();
+});
 
 test("a SkillsChanged event re-fetches /skills for that agent (debounced)", async () => {
   vi.useFakeTimers();

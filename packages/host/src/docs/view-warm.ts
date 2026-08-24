@@ -3,7 +3,13 @@ import type { EventHub } from "../events/hub";
 import type { WorkspaceStore } from "../ports";
 import { VIEW_RESTS } from "./view-capture";
 
-const ATTEMPTS = 4;
+// The ladder must OUTLAST the launcher's 60s boot-health budget
+// (launcher/process.ts BOOT_HEALTH_BUDGET_MS): `/providers` probes answer 503
+// while the runtime boots, and on a freshly woken pod the boot competes with
+// store hydration for a capped CPU (observed >35s). 9 attempts × 10s spacing
+// ≈ 85s of coverage — a give-up now means a runtime that blew its own boot
+// budget, not a slow-but-healthy wake (HOUSTON-APP-5AP).
+const ATTEMPTS = 9;
 const RETRY_DELAY_MS = 10_000;
 const REFRESH_DEBOUNCE_MS = 500;
 
