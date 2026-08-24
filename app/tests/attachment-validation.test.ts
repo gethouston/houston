@@ -58,6 +58,44 @@ describe("composer attachment validation", () => {
     );
   });
 
+  it("accepts standard archives: zip and the tar family", () => {
+    for (const file of [
+      { name: "project.zip", size: 1024, type: "application/zip" },
+      { name: "backup.tar.gz", size: 1024, type: "application/gzip" },
+      { name: "logs.tgz", size: 1024, type: "" },
+      { name: "data.tar", size: 1024, type: "application/x-tar" },
+      { name: "dump.tar.zst", size: 1024, type: "" },
+    ]) {
+      strictEqual(validateComposerAttachment(file), null, file.name);
+    }
+  });
+
+  it("still rejects archives the agent has no stock tool for", () => {
+    deepStrictEqual(
+      validateComposerAttachment({
+        name: "vault.7z",
+        size: 1024,
+        type: "application/x-7z-compressed",
+      }),
+      { kind: "blockedType", extension: "7z" },
+    );
+    deepStrictEqual(
+      validateComposerAttachment({ name: "old.rar", size: 1024, type: "" }),
+      { kind: "blockedType", extension: "rar" },
+    );
+  });
+
+  it("still applies the size cap to archives", () => {
+    deepStrictEqual(
+      validateComposerAttachment({
+        name: "huge.zip",
+        size: MAX_COMPOSER_ATTACHMENT_BYTES + 1,
+        type: "application/zip",
+      }),
+      { kind: "tooLarge", maxBytes: MAX_COMPOSER_ATTACHMENT_BYTES },
+    );
+  });
+
   it("still applies the size cap to media files", () => {
     deepStrictEqual(
       validateComposerAttachment({

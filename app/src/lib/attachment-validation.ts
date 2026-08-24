@@ -28,23 +28,24 @@ export interface ComposerAttachmentRejection<T extends ComposerAttachmentFile> {
   reason: ComposerAttachmentRejectReason;
 }
 
-// Only archives and executables are blocked: the agent can't act on them and
-// expanding them can flood the workspace. Every other binary — video and audio
-// included — is a legitimate workspace file the agent processes with its shell
-// and code tools (and the Files section accepts them already), so the composer
-// must too. Size is bounded separately by MAX_COMPOSER_ATTACHMENT_BYTES.
+// Only executables/installers and exotic archives are blocked. Standard
+// archives (zip and the tar family) are allowed: the agent expands them with
+// stock `unzip`/`tar`, and expansion size is the agent's own workspace concern
+// — the upload itself is bounded by MAX_COMPOSER_ATTACHMENT_BYTES. 7z and rar
+// stay blocked because the agent has no stock tool to open them. Every other
+// binary — video and audio included — is a legitimate workspace file the
+// agent processes with its shell and code tools (and the Files section
+// accepts them already), so the composer must too.
 const BLOCKED_EXTENSIONS = new Set([
   "7z",
   "apk",
   "app",
   "bin",
-  "bz2",
   "deb",
   "dmg",
   "dll",
   "dylib",
   "exe",
-  "gz",
   "iso",
   "jar",
   "msi",
@@ -52,26 +53,17 @@ const BLOCKED_EXTENSIONS = new Set([
   "rar",
   "rpm",
   "so",
-  "tar",
-  "tgz",
-  "xz",
-  "zip",
-  "zst",
 ]);
 
 const BLOCKED_MIME_TYPES = new Set([
-  "application/gzip",
   "application/vnd.apple.installer+xml",
   "application/vnd.microsoft.portable-executable",
   "application/x-7z-compressed",
   "application/x-apple-diskimage",
-  "application/x-bzip2",
   "application/x-msdownload",
   "application/x-msi",
   "application/x-rar-compressed",
   "application/x-rpm",
-  "application/x-tar",
-  "application/zip",
 ]);
 
 export function splitComposerAttachments<T extends ComposerAttachmentFile>(
