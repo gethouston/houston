@@ -135,6 +135,13 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // …" — for models its serverless tier doesn't include. The credential
   // authenticated fine; only the model is out of reach.
   "unable to access model",
+  // Azure OpenAI's missing-deployment 404 — `DeploymentNotFound: The API
+  // deployment for this resource does not exist.` A wrong key never gets
+  // this far (Azure answers 401 first), so it proves auth at verify time and
+  // is a pick-a-deployed-model problem, not a connectivity one (PRODUCT-1477;
+  // deployments are user-named, so any not-deployed pick hits this).
+  "deploymentnotfound",
+  "deployment for this resource does not exist",
   // Bedrock's bare-foundation-id rejection — "Invocation of model ID … with
   // on-demand throughput isn't supported. Retry your request with the ID or
   // ARN of an inference profile …" (Claude 4.x is inference-profile-only).
