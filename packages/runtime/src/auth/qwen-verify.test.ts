@@ -100,3 +100,30 @@ test("a region with no verdict → provider_unavailable, never 'paste it again'"
     "provider_unavailable",
   );
 });
+
+test("an injected persist (the pool-worker seam) lands the region in the AGENT's dir, not the process's", async () => {
+  const { verifyQwenRegions, persistedRegion } = await load();
+  const { setQwenRegionIn, qwenRegionFileIn } = await import(
+    "../ai/qwen-dashscope"
+  );
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const agentDataDir = mkdtempSync(join(tmpdir(), "houston-qwen-agent-"));
+  await verifyQwenRegions(
+    "qwen",
+    async (m) => (m.baseUrl.includes("dashscope-us") ? null : SG_REJECTED),
+    (regionId) => setQwenRegionIn(agentDataDir, regionId),
+  );
+  // The worker's own data dir stays untouched...
+  expect(persistedRegion()).toBeNull();
+  // ...and the hydrated agent root holds the verified region.
+  const { readFileSync } = await import("node:fs");
+  expect(
+    (
+      JSON.parse(readFileSync(qwenRegionFileIn(agentDataDir), "utf8")) as {
+        region: string;
+      }
+    ).region,
+  ).toBe("us");
+});
