@@ -78,8 +78,12 @@ export async function applyRouteOp(
     return await runRouteOp(op, filesystem, decoded, custom, fetchImpl);
   } finally {
     // The per-op executor holds live MCP connections — a long-lived worker
-    // must not accumulate them.
-    await custom?.dispose();
+    // must not accumulate them. A close failure is diagnostics only: it must
+    // never turn an already-successful op into a 500 (the answer and its
+    // sync-back would be lost while the secret store already committed).
+    await custom?.dispose().catch((error: unknown) => {
+      console.error("[op] custom-integration executor close failed:", error);
+    });
   }
 }
 

@@ -80,6 +80,14 @@ test("tranche-2 route allowlist: portable/migration/custom in, OAuth start out",
   expect(() =>
     parseOpRequest(routeOp("routines", "POST", { bodyBase64: "AAAA" })),
   ).toThrow(/bodyBase64/);
+  // ...and never as a text body: a zip in a UTF-8 string is corrupt and
+  // would bypass the runtime-transcript decline.
+  expect(() =>
+    parseOpRequest(routeOp("migration/import", "POST", { body: "PK..." })),
+  ).toThrow(/bodyBase64/);
+  expect(() =>
+    parseOpRequest(routeOp("migration/import", "POST", { body: "" })),
+  ).not.toThrow();
 });
 
 test("the endpoint and anonymize kinds parse; azure's endpoint rides the credential op", () => {

@@ -170,7 +170,12 @@ export async function applyOp(
       });
       // The connect may write the qwen region / azure endpoint file beside
       // the key (the store is the key's only home — auth.json never syncs).
-      return answered(answer, credentialOpFiles(filesystem.dataRel));
+      // Success-only: a 502 store push must not durably repoint the agent at
+      // an endpoint whose key never landed.
+      return answered(
+        answer,
+        answer.status === 200 ? credentialOpFiles(filesystem.dataRel) : [],
+      );
     }
     case "anonymize": {
       const answer = await applyAnonymizeOp(
