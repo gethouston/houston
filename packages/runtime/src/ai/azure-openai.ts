@@ -46,10 +46,25 @@ export function azureBaseUrl(dataDir?: string): string {
   return load(dataDir).baseUrl ?? "";
 }
 
+/** Azure-owned inference hosts, where the OpenAI v1 surface lives at the
+ *  host root (pi appends `/openai/v1` itself). */
+const AZURE_HOST_SUFFIXES = [
+  ".openai.azure.com",
+  ".cognitiveservices.azure.com",
+  ".ai.azure.com",
+];
+
 /**
  * Validate + normalize a pasted Azure endpoint: a real https URL (the portal
- * always hands out https; http would send the key in the clear), with any
- * trailing slash trimmed so pi's own base-URL normalization starts clean.
+ * always hands out https; http would send the key in the clear). On an
+ * Azure-owned host the PATH is dropped: the portal shows several per-resource
+ * endpoints — the Foundry tab's is `https://<r>.services.ai.azure.com/api/
+ * projects/<p>`, a project surface the OpenAI SDK can't call — while the
+ * OpenAI v1 API always hangs off the host root, and pi only appends its
+ * `/openai/v1` base path when the pasted path is empty (PRODUCT-1477: the
+ * reporting user pasted the Foundry project endpoint, verbatim from the
+ * portal, and every request 404'd). A non-Azure host (a proxy, a gateway)
+ * keeps its path verbatim.
  * Throws with the user-facing reason — connect routes surface it as a 400.
  */
 export function normalizeAzureEndpoint(raw: string): string {
@@ -63,6 +78,8 @@ export function normalizeAzureEndpoint(raw: string): string {
   }
   if (url.protocol !== "https:")
     throw new Error("Azure OpenAI endpoint must start with https://");
+  if (AZURE_HOST_SUFFIXES.some((sfx) => url.hostname.endsWith(sfx)))
+    return `https://${url.host}`;
   return trimmed.replace(/\/+$/, "");
 }
 

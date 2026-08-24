@@ -23,6 +23,8 @@ export type { ApiKeyVerifyReason } from "./verify-errors";
  */
 export interface VerifyApiKeyOptions {
   azureBaseUrl?: string;
+  /** Test seam: injected transport, forwarded to pi so probe URLs are observable. */
+  fetch?: typeof fetch;
 }
 // The stable public surface (host routes, login, tests) predates the module
 // split — keep serving it from here.
@@ -116,7 +118,19 @@ async function probeCompletion(
         apiKey: key,
         maxTokens: 1,
         signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
-        ...(opts?.azureBaseUrl ? { azureBaseUrl: opts.azureBaseUrl } : {}),
+        // The endpoint MUST ride `env`: pi's completeSimple path rebuilds
+        // options through buildBaseOptions, whose allowlist forwards `env`
+        // but silently DROPS `azureBaseUrl` — passing only the option made
+        // every azure verify throw "base URL is required" pre-request
+        // (Sentry, 2026-08-24). The option is kept alongside for any pi
+        // path that does honor it.
+        ...(opts?.azureBaseUrl
+          ? {
+              azureBaseUrl: opts.azureBaseUrl,
+              env: { AZURE_OPENAI_BASE_URL: opts.azureBaseUrl },
+            }
+          : {}),
+        ...(opts?.fetch ? { fetch: opts.fetch } : {}),
       },
     );
     if (reply.stopReason !== "error") return null;

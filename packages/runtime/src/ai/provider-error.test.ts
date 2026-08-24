@@ -370,6 +370,20 @@ test("together.ai's gated-model body → model_unavailable, never unknown", () =
   expect(err.kind).toBe("model_unavailable");
 });
 
+test("Azure missing-deployment 404 → model_unavailable, never unknown (PRODUCT-1477)", () => {
+  // Azure answers 401 for a bad key BEFORE any deployment lookup, so this
+  // 404 proves the credential — classifying it unknown made verify read
+  // "couldn't reach Azure OpenAI" for a valid key whose deployment name
+  // simply didn't match the probe model.
+  const err = classifyProviderError({
+    provider: "azure-openai-responses",
+    model: "gpt-5.5",
+    message:
+      "Azure OpenAI API error (404 DeploymentNotFound): The API deployment for this resource does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again.",
+  });
+  expect(err.kind).toBe("model_unavailable");
+});
+
 test("Bedrock bare-foundation-id on-demand rejection → model_unavailable, never unknown (PRODUCT-1477)", () => {
   // The verbatim ValidationException Bedrock answers a bare Claude 4.x id with
   // (Sentry, 2026-08-21) — note AWS's curly apostrophe in "isn\u2019t", which

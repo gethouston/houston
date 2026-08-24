@@ -17,6 +17,18 @@ test("normalizeAzureEndpoint accepts https, trims a trailing slash, rejects the 
   expect(normalizeAzureEndpoint("  https://acme.openai.azure.com/  ")).toBe(
     "https://acme.openai.azure.com",
   );
+  // The Foundry tab's per-project endpoint (what the portal shows first for a
+  // Foundry resource — and what the PRODUCT-1477 reporter pasted): the OpenAI
+  // v1 surface lives at the host root, so the project path is dropped.
+  expect(
+    normalizeAzureEndpoint(
+      "https://acme.services.ai.azure.com/api/projects/my-agents",
+    ),
+  ).toBe("https://acme.services.ai.azure.com");
+  // A non-Azure host (proxy/gateway) keeps its path verbatim.
+  expect(normalizeAzureEndpoint("https://llm.corp.example/azure/")).toBe(
+    "https://llm.corp.example/azure",
+  );
 
   expect(() => normalizeAzureEndpoint("")).toThrow(/missing/);
   expect(() => normalizeAzureEndpoint("acme.openai.azure.com")).toThrow(
