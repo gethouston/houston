@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import {
@@ -40,6 +41,47 @@ export interface PiBackendDeps {
  * empty session every time, so a fresh process (runtime restart, or a cloud
  * sandbox woken from sleep) would silently lose all prior turns.
  */
+/**
+ * Reopen the conversation's NEWEST session file, wherever it was written.
+ *
+ * `SessionManager.continueRecent` filters candidates by the cwd recorded in
+ * each session header. On a standing pod the workspace path never changes, so
+ * that filter is a no-op — but a pool worker hydrates the agent into a fresh
+ * temp root for every turn, so no prior header can ever match and every turn
+ * silently started a BLANK session: the model answered with no memory of the
+ * conversation while the transcript looked complete everywhere else. The
+ * sessions/<conversationId>/ dir is per-conversation by construction — every
+ * file in it belongs to this conversation — so the newest file is the one to
+ * resume, no cwd questions asked, opened AT this turn's workspace path.
+ *
+ * Newest by FILENAME: pi names session files with an ISO-timestamp prefix,
+ * which sorts chronologically; mtimes would lie here (hydration rewrites
+ * them in download order).
+ */
+export function resumeSessionManager(
+  workspaceDir: string,
+  sessionDir: string,
+  fresh: boolean,
+): SessionManager {
+  if (!fresh) {
+    const newest = newestSessionFile(sessionDir);
+    if (newest) return SessionManager.open(newest, sessionDir, workspaceDir);
+  }
+  return SessionManager.create(workspaceDir, sessionDir);
+}
+
+function newestSessionFile(sessionDir: string): string | null {
+  let files: string[];
+  try {
+    files = readdirSync(sessionDir).filter((f) => f.endsWith(".jsonl"));
+  } catch {
+    return null;
+  }
+  if (files.length === 0) return null;
+  files.sort();
+  return join(sessionDir, files[files.length - 1] as string);
+}
+
 export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
   return {
     id: "pi",
@@ -68,15 +110,11 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         // history arrives as a transcript replay on the first prompt (HOU-951),
         // and a conversation returning to pi after a Claude era must not resume
         // its stale pre-switch session on top of that replay.
-        sessionManager: opts.fresh
-          ? SessionManager.create(
-              deps.workspaceDir,
-              join(deps.dataDir, "sessions", opts.conversationId),
-            )
-          : SessionManager.continueRecent(
-              deps.workspaceDir,
-              join(deps.dataDir, "sessions", opts.conversationId),
-            ),
+        sessionManager: resumeSessionManager(
+          deps.workspaceDir,
+          join(deps.dataDir, "sessions", opts.conversationId),
+          opts.fresh === true,
+        ),
         resourceLoader: loader,
         tools: toolNamesForMode(opts.mode, deps.tools),
         customTools: deps.customTools,
