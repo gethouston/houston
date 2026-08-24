@@ -209,6 +209,11 @@ const host = buildLocalHost({
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.
   gatewayFronted: process.env.HOUSTON_MANAGED_CLOUD === "1",
+  // The org owner's canonical user id, stamped into managed pods by the
+  // control plane. Backfills `created_by` on pre-rollout routines at boot and
+  // backstops routine writes that carry no acting header — an authorless
+  // routine is one the control-plane fire planner refuses to fire.
+  ownerSub: process.env.HOUSTON_USER_ID || undefined,
   // Dev launcher only (scripts/dev/control-plane.sh): its managed-cloud "pods"
   // are processes on the developer's machine, so their egress reaches loopback
   // and the public-HTTPS endpoint validation must not apply. Real pods never

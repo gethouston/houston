@@ -50,6 +50,13 @@ export interface AgentRouteDeps {
    */
   gatewayFronted?: boolean;
   /**
+   * The org owner's canonical user id (mirrors ControlPlaneDeps.ownerSub):
+   * the routine-write fallback creator on a gateway-fronted host whose request
+   * carries no decodable acting-as header, so no routine is born authorless
+   * (an authorless routine is not fireable by the control-plane planner).
+   */
+  ownerSub?: string;
+  /**
    * True when this deployment's egress can reach loopback/private addresses
    * even though it is gateway-fronted. Only the DEV LAUNCHER sets it: its
    * "pods" are processes on the developer's machine, so the managed-cloud

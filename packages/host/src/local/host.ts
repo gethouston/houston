@@ -35,6 +35,7 @@ import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { reseedAgentSchemas } from "../migrate/agent-schemas";
 import { migrateChatHistory } from "../migrate/chat-history";
+import { backfillRoutineCreatedBy } from "../migrate/routine-created-by";
 import { LocalPaths } from "../paths";
 import type { PodGatewayConfig } from "../pod-gateway";
 import type { ChannelCtx } from "../ports";
@@ -194,6 +195,15 @@ export interface LocalHostOptions {
    * untrusted client input — leave this false (the default) and it is dropped.
    */
   gatewayFronted?: boolean;
+  /**
+   * The org owner's canonical user id (the gateway identity directory's sub),
+   * stamped into managed pods as owner env. Managed pods only, two uses: the
+   * boot backfill stamps it as `created_by` on routines recorded before acting
+   * identities were stamped, and routine writes fall back to it when a request
+   * carries no decodable acting-as header — the control-plane fire planner
+   * skips any routine without a creator, so no routine may be authorless.
+   */
+  ownerSub?: string;
   /**
    * Whether this deployment can fire event-driven routines: a trigger backend
    * (a Composio project key + a public webhook URL) exists, so a routine's
@@ -645,6 +655,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // `created_by` (C2 — the sub the gateway re-authorizes at fire time);
     // the desktop ignores the header and keeps stamping the local owner.
     gatewayFronted: opts.gatewayFronted ?? false,
+    // Org-owner fallback creator for routine writes with no acting header —
+    // an authorless routine is not fireable by the control-plane planner.
+    ownerSub: opts.ownerSub,
     // Event-driven routines fire only where a trigger backend exists (Houston
     // Cloud). Off on desktop/self-host: the write gate refuses trigger bindings
     // and the trigger-status route reports them as unable to wake.
@@ -836,6 +849,29 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           "[local-host] agent schema re-seed failed (continuing):",
           err,
         );
+      }
+      // Managed pods: stamp the org owner as `created_by` on routines recorded
+      // before gateway-fronted pods stamped acting identities. The control-plane
+      // fire planner treats an authorless routine as not fireable, so once
+      // pre-wake suppression turns on those routines would never run again; the
+      // planner's snapshot is projected from this very doc on its next
+      // store-sync upload, so the boot stamp is the whole repair. Runs AFTER
+      // hydration (the doc comes from the object store) and BEFORE the watcher,
+      // like the migrations above. Desktop/self-host never set ownerSub.
+      if (opts.gatewayFronted && opts.ownerSub && !opts.passive) {
+        try {
+          backfillRoutineCreatedBy({
+            workspacesRoot: opts.workspacesRoot,
+            ownerSub: opts.ownerSub,
+          });
+        } catch (err) {
+          // No UI thread to toast on at boot; the supervisor must stay up. Log
+          // loudly so the failure shows in the app logs / bug report tail.
+          console.error(
+            "[local-host] routine created_by backfill failed (continuing):",
+            err,
+          );
+        }
       }
       // Additive, idempotent migration of the Rust-desktop era's chat history
       // (SQLite chat_feed) into each agent's `.houston/runtime/`. Runs BEFORE

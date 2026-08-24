@@ -182,6 +182,16 @@ export interface ControlPlaneDeps {
    * untrusted client input and is ignored.
    */
   gatewayFronted?: boolean;
+  /**
+   * The org owner's canonical user id (the gateway identity directory's sub),
+   * stamped into managed pods as env. Routine writes on a gateway-fronted host
+   * fall back to it when a request carries no decodable acting-as header, and
+   * seed installs stamp it when no acting identity exists — the control-plane
+   * fire planner skips any routine without a `created_by`, so no routine may
+   * be born authorless. Absent on desktop/self-host (the local user id is the
+   * recorded creator there).
+   */
+  ownerSub?: string;
   /** Gateway-fronted but the egress still reaches loopback (the dev launcher's
    *  on-machine "pods"): skips the managed-cloud public-HTTPS endpoint
    *  validation. See AgentRouteDeps.loopbackEgress. */
