@@ -6,6 +6,7 @@ import {
 } from "../ai/openai-compatible";
 import { providerDefaultModel, safeGetModel } from "../ai/providers";
 import { QWEN_PROVIDER_ID, resolveQwenModel } from "../ai/qwen-dashscope";
+import { withXiaomiBaseUrl, XIAOMI_PROVIDER_ID } from "../ai/xiaomi-endpoint";
 
 type Settings = { activeProvider?: string; models?: Record<string, string> };
 
@@ -47,5 +48,13 @@ export function resolveTurnModel(
   // per-dataDir rule as the custom endpoint above (qwen-dashscope, HOU-1077).
   if (provider === QWEN_PROVIDER_ID)
     return resolveQwenModel(modelId, !!override, dataDir);
+  // Xiaomi's endpoint is scoped per verified key (general vs Token Plan
+  // gateway), so its model must carry THIS turn's hydrated endpoint file —
+  // same per-dataDir rule as qwen above (ai/xiaomi-endpoint.ts).
+  if (provider === XIAOMI_PROVIDER_ID)
+    return withXiaomiBaseUrl(
+      safeGetModel(provider, modelId, !!override),
+      dataDir,
+    );
   return safeGetModel(provider, modelId, !!override);
 }

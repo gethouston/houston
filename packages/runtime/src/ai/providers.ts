@@ -36,6 +36,11 @@ import {
   piProviderIds,
 } from "./pi-catalog";
 import { QWEN_PROVIDER_ID, qwenModel } from "./qwen-dashscope";
+import {
+  withXiaomiBaseUrl,
+  XIAOMI_PROVIDER_ID,
+  xiaomiOfferedModelIds,
+} from "./xiaomi-endpoint";
 
 /**
  * Supported providers. The provider id is the SAME string pi-ai uses for its
@@ -496,7 +501,12 @@ export function safeGetModel(
     ) as Model<Api>;
     // Azure's catalog ships no base URL (the endpoint is per-resource) —
     // overlay the connect-time endpoint or every request throws before HTTP.
-    return m && provider === AZURE_OPENAI ? withAzureBaseUrl(m) : m;
+    if (m && provider === AZURE_OPENAI) return withAzureBaseUrl(m);
+    // Xiaomi's catalog bakes the general endpoint, but a Token Plan key
+    // authenticates only on its plan's gateway — overlay the endpoint the
+    // stored key verified against (./xiaomi-endpoint).
+    if (m && provider === XIAOMI_PROVIDER_ID) return withXiaomiBaseUrl(m);
+    return m;
   };
   if (pinned) {
     // pi-ai's getModel returns `undefined` (it never throws) for an id the
@@ -594,6 +604,10 @@ export function safeModelIds(provider: ProviderId): string[] {
   // catalog — surface it in the picker alongside pi's pay-as-you-go minimax ids.
   if (provider === MINIMAX_PROVIDER)
     return [MINIMAX_TOKEN_PLAN_MODEL_ID, ...piModelIds(provider)];
+  // Xiaomi's Token Plan gateways serve a subset of the general catalog — a
+  // key verified against one must not be offered a model it 404s.
+  if (provider === XIAOMI_PROVIDER_ID)
+    return xiaomiOfferedModelIds(piModelIds(provider));
   return piModelIds(provider);
 }
 

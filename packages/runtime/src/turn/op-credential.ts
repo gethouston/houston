@@ -10,6 +10,11 @@ import {
   qwenRegionFileIn,
   setQwenRegionIn,
 } from "../ai/qwen-dashscope";
+import {
+  setXiaomiEndpointIn,
+  XIAOMI_PROVIDER_ID,
+  xiaomiEndpointFileIn,
+} from "../ai/xiaomi-endpoint";
 import { assertApiKeyConnectable } from "../auth/login";
 import { ApiKeyVerifyError, verifyApiKey } from "../auth/verify-api-key";
 
@@ -71,6 +76,12 @@ export async function applyApiKeyConnect(
         ? {
             qwenRegionPersist: (regionId) =>
               setQwenRegionIn(opts.dataDir, regionId),
+          }
+        : {}),
+      ...(opts.provider === XIAOMI_PROVIDER_ID
+        ? {
+            xiaomiEndpointPersist: (endpointId) =>
+              setXiaomiEndpointIn(opts.dataDir, endpointId),
           }
         : {}),
     });
@@ -154,9 +165,13 @@ export async function pushApiKeyCredential(opts: {
 }
 
 /** The runtime-dir files an api-key connect may write beside the key (its
- *  sync-back scope): qwen's verified region, azure's resource endpoint.
- *  Derived from the writers' own path helpers so a rename cannot silently
- *  drop a file from the sync. */
+ *  sync-back scope): qwen's verified region, azure's resource endpoint,
+ *  xiaomi's verified endpoint. Derived from the writers' own path helpers so
+ *  a rename cannot silently drop a file from the sync. */
 export function credentialOpFiles(dataRel: string): string[] {
-  return [qwenRegionFileIn(dataRel), azureEndpointFileIn(dataRel)];
+  return [
+    qwenRegionFileIn(dataRel),
+    azureEndpointFileIn(dataRel),
+    xiaomiEndpointFileIn(dataRel),
+  ];
 }
