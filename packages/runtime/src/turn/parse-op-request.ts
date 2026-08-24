@@ -1,42 +1,14 @@
 import type { ServedCredential } from "../auth/auth-file";
+import { type AgentOp, ID, parseAgentOp, str } from "./op-grammar";
 import type { TurnRequest } from "./types";
+
+export type { AgentOp } from "./op-grammar";
 
 /**
  * An OP is a write the gateway routes to a pool worker instead of waking the
  * agent's pod: the same claim/host-token envelope as a turn, plus the
- * operation. `route` ops run the host's own route handlers against the
- * hydrated workspace; `title` and `conversation` ops are the runtime's own.
+ * operation (the op shapes and their parsers live in ./op-grammar).
  */
-export type AgentOp =
-  | {
-      kind: "route";
-      method: string;
-      rest: string;
-      /** Raw query string without the `?` (files routes take `?path=`). */
-      query?: string;
-      body?: string;
-      contentType?: string;
-    }
-  | { kind: "title"; text: string }
-  | {
-      kind: "settings";
-      action: "put";
-      input: { activeProvider?: string; model?: string; effort?: string };
-    }
-  | {
-      kind: "settings";
-      action: "claim";
-      provider: string;
-      connectedProviders: string[];
-    }
-  | { kind: "credential"; action: "api-key"; provider: string; apiKey: string }
-  | {
-      kind: "conversation";
-      action: "rename" | "delete";
-      conversationId: string;
-      title?: string;
-    };
-
 export interface OpRequest {
   workspaceId: string;
   agentId: string;
@@ -52,16 +24,6 @@ export interface OpRequest {
   op: AgentOp;
 }
 
-const ID = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
-
-// The op-route shapes (mirrors the Go classifier): the agent-data families,
-// agentfile writes, and skills (install + manage), never a runtime path.
-const OP_ROUTE =
-  /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^skills\/(community|repo)\/install$|^files(\/.+)?$|^attachments$|^skills-manifest$/;
-// Any files/* shape reads through the handler (it owns the 404 for an
-// unknown one), never a write.
-const READ_ROUTE = /^files(\/.+)?$|^agentfile\/|^skills-manifest$/;
-
 function parseActing(raw: unknown): TurnRequest["actingAs"] {
   if (!raw || typeof raw !== "object") return undefined;
   const a = raw as { userId?: unknown; name?: unknown };
@@ -70,11 +32,6 @@ function parseActing(raw: unknown): TurnRequest["actingAs"] {
     userId: a.userId,
     ...(typeof a.name === "string" && a.name ? { name: a.name } : {}),
   };
-}
-
-function str(v: unknown, field: string): string {
-  if (typeof v !== "string" || !v.length) throw new Error(`invalid '${field}'`);
-  return v;
 }
 
 export function parseOpRequest(body: unknown): OpRequest {
@@ -111,121 +68,6 @@ export function parseOpRequest(body: unknown): OpRequest {
   }
   const raw = b.op as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== "object") throw new Error("invalid 'op'");
-  let op: AgentOp;
-  switch (raw.kind) {
-    case "route": {
-      const method = str(raw.method, "op.method").toUpperCase();
-      if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-        throw new Error("op.method is not an HTTP method");
-      }
-      const rest = str(raw.rest, "op.rest");
-      if (rest.includes("..") || rest.startsWith("/"))
-        throw new Error("invalid 'op.rest'");
-      // Defense in depth: the worker accepts only the op-route shapes the
-      // gateway classifier dispatches — a valid-token caller cannot reach a
-      // handler surface (e.g. POST agentfile) the public path never exposes.
-      // Match the DECODED path: the handlers decode, so the allowlist must
-      // see what they see (`%2Ehouston` is `.houston`).
-      let decoded: string;
-      try {
-        decoded = decodeURIComponent(rest);
-      } catch {
-        throw new Error("invalid 'op.rest'");
-      }
-      if (decoded.includes("..") || decoded.startsWith("/")) {
-        throw new Error("invalid 'op.rest'");
-      }
-      if (!OP_ROUTE.test(decoded)) {
-        throw new Error("op.rest is not an op route");
-      }
-      // Reads run as ops only where the gateway has no doc to serve them
-      // from: the Files tab and arbitrary agent files.
-      if (method === "GET" && !READ_ROUTE.test(decoded)) {
-        throw new Error("op.rest is not a read op route");
-      }
-      const query =
-        typeof raw.query === "string" && raw.query.length <= 4096
-          ? raw.query.replace(/^\?/, "")
-          : undefined;
-      op = {
-        kind: "route",
-        method,
-        rest,
-        ...(query ? { query } : {}),
-        ...(typeof raw.body === "string" ? { body: raw.body } : {}),
-        ...(typeof raw.contentType === "string"
-          ? { contentType: raw.contentType }
-          : {}),
-      };
-      break;
-    }
-    case "title":
-      op = { kind: "title", text: str(raw.text, "op.text") };
-      break;
-    case "settings": {
-      if (raw.action === "put") {
-        const input = (raw.input ?? {}) as Record<string, unknown>;
-        const pick = (k: string) =>
-          typeof input[k] === "string" && (input[k] as string).length <= 200
-            ? { [k]: input[k] as string }
-            : {};
-        op = {
-          kind: "settings",
-          action: "put",
-          input: {
-            ...pick("activeProvider"),
-            ...pick("model"),
-            ...pick("effort"),
-          },
-        };
-        break;
-      }
-      if (raw.action === "claim") {
-        const connected = Array.isArray(raw.connectedProviders)
-          ? raw.connectedProviders.filter(
-              (p): p is string => typeof p === "string",
-            )
-          : [];
-        op = {
-          kind: "settings",
-          action: "claim",
-          provider: str(raw.provider, "op.provider"),
-          connectedProviders: connected,
-        };
-        break;
-      }
-      throw new Error("invalid 'op.action'");
-    }
-    case "credential": {
-      if (raw.action !== "api-key") throw new Error("invalid 'op.action'");
-      op = {
-        kind: "credential",
-        action: "api-key",
-        provider: str(raw.provider, "op.provider"),
-        apiKey: str(raw.apiKey, "op.apiKey"),
-      };
-      break;
-    }
-    case "conversation": {
-      const action = raw.action;
-      if (action !== "rename" && action !== "delete")
-        throw new Error("invalid 'op.action'");
-      const conversationId = str(raw.conversationId, "op.conversationId");
-      if (!ID.test(conversationId))
-        throw new Error("invalid 'op.conversationId'");
-      if (action === "rename" && typeof raw.title !== "string")
-        throw new Error("rename needs 'op.title'");
-      op = {
-        kind: "conversation",
-        action,
-        conversationId,
-        ...(typeof raw.title === "string" ? { title: raw.title } : {}),
-      };
-      break;
-    }
-    default:
-      throw new Error("invalid 'op.kind'");
-  }
   return {
     workspaceId: str(b.workspaceId, "workspaceId"),
     agentId,
@@ -244,6 +86,6 @@ export function parseOpRequest(body: unknown): OpRequest {
 
     credential,
     triggersEnabled: b.triggersEnabled === true,
-    op,
+    op: parseAgentOp(raw),
   };
 }

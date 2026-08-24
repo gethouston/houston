@@ -111,11 +111,14 @@ export async function executeOp(
       // A settings op needs the runtime dir minus those two. A credential
       // op touches no file at all (the gateway's store is the only write)
       // — it still hydrates the layout so the agent-exists check holds.
+      // An anonymize gathers the agent's small docs only — same skip-the-bulk
+      // profile as settings, so a wizard click never pays a big agent's
+      // conversations/files hydrate.
       ...(op.op.kind === "route"
         ? { excludes: ROUTE_OP_EXCLUDES, lazy: true }
         : op.op.kind === "conversation"
           ? { lazy: true }
-          : op.op.kind === "settings"
+          : op.op.kind === "settings" || op.op.kind === "anonymize"
             ? { excludes: SETTINGS_OP_EXCLUDES }
             : op.op.kind === "credential"
               ? { excludes: CREDENTIAL_OP_EXCLUDES }
@@ -312,6 +315,16 @@ async function republish(
       result.skillsView,
     );
     if ("error" in outcome) diagnostics.push(`skills: ${outcome.error}`);
+  }
+  if (result.customDefinitionsView !== undefined) {
+    // The definitions list is a view doc (docs/view-capture.ts family), so
+    // the gateway's asleep reads show the mutation immediately.
+    const outcome = await publish(
+      { ...common, family: "custom_definitions" },
+      result.customDefinitionsView,
+    );
+    if ("error" in outcome)
+      diagnostics.push(`custom_definitions: ${outcome.error}`);
   }
   return diagnostics;
 }

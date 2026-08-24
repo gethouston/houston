@@ -23,6 +23,10 @@ export type { ApiKeyVerifyReason } from "./verify-errors";
  */
 export interface VerifyApiKeyOptions {
   azureBaseUrl?: string;
+  /** Where a verified qwen key's accepting region lands (region-scoped keys,
+   *  HOU-1077). Default: the live runtime's data dir; a pool worker persists
+   *  into the hydrated agent root instead. */
+  qwenRegionPersist?: (regionId: string) => void;
   /** Test seam: injected transport, forwarded to pi so probe URLs are observable. */
   fetch?: typeof fetch;
 }
@@ -59,8 +63,10 @@ export async function verifyApiKey(
   // Qwen keys are REGION-scoped (Alibaba Model Studio international): probe
   // every region and persist the accepting one (`qwen-verify.ts`, HOU-1077).
   if (providerId === QWEN_PROVIDER_ID) {
-    await verifyQwenRegions(providerId, (m) =>
-      probeCompletion(providerId, m, key),
+    await verifyQwenRegions(
+      providerId,
+      (m) => probeCompletion(providerId, m, key),
+      ...(opts?.qwenRegionPersist ? [opts.qwenRegionPersist] : []),
     );
     return;
   }

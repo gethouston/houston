@@ -83,13 +83,19 @@ export function normalizeAzureEndpoint(raw: string): string {
   return trimmed.replace(/\/+$/, "");
 }
 
-/** Persist the endpoint (validated). Atomic like every config write here. */
-export function setAzureEndpoint(raw: string): void {
+/** Persist the endpoint (validated) into an arbitrary data dir — the
+ *  dataDir-bound twin a pool worker uses against a hydrated agent root. */
+export function setAzureEndpointIn(dataDir: string, raw: string): void {
   const baseUrl = normalizeAzureEndpoint(raw);
-  const file = azureEndpointFileIn(config.dataDir);
+  const file = azureEndpointFileIn(dataDir);
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify({ baseUrl }, null, 2));
   renameSync(tmp, file);
+}
+
+/** Persist the endpoint (validated). Atomic like every config write here. */
+export function setAzureEndpoint(raw: string): void {
+  setAzureEndpointIn(config.dataDir, raw);
 }
 
 /**

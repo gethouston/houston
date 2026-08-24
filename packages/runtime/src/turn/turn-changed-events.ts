@@ -55,11 +55,14 @@ export function changedEventTypes(
 export function announcedOpEvents(
   events: readonly HoustonEvent[],
   projectionFailures: readonly string[],
-): AgentEventType[] {
+): (AgentEventType | "CustomIntegrationsChanged")[] {
   if (projectionFailures.length > 0) return [];
-  const out = new Set<AgentEventType>();
+  const out = new Set<AgentEventType | "CustomIntegrationsChanged">();
   for (const event of events) {
-    if ("agentPath" in event) out.add(event.type);
+    // CustomIntegrationsChanged is the one agent-scoped event the protocol
+    // ships without an agentPath (clients invalidate globally).
+    if ("agentPath" in event || event.type === "CustomIntegrationsChanged")
+      out.add(event.type);
   }
   return [...out].sort();
 }

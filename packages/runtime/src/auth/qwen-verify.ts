@@ -23,6 +23,10 @@ type Probe = (model: Model<"openai-completions">) => Promise<string | null>;
 export async function verifyQwenRegions(
   providerId: string,
   probe: Probe,
+  // Where the accepting region lands. The default writes the LIVE runtime's
+  // data dir; a pool worker persists into the hydrated agent root instead
+  // (op-credential.ts), where it syncs back beside settings.json.
+  persist: (regionId: string) => void = setQwenRegion,
 ): Promise<void> {
   // The default (first-listed) model carries the active region's URL; probe
   // each candidate region by swapping the base URL alone.
@@ -32,7 +36,7 @@ export async function verifyQwenRegions(
   for (const region of QWEN_REGIONS) {
     const message = await probe({ ...probeModel, baseUrl: region.baseUrl });
     if (message === null) {
-      setQwenRegion(region.id);
+      persist(region.id);
       return;
     }
     const kind = classifyProviderError({
@@ -41,7 +45,7 @@ export async function verifyQwenRegions(
       message,
     }).kind;
     if (PROVES_AUTH.has(kind)) {
-      setQwenRegion(region.id);
+      persist(region.id);
       return;
     }
     if (kind === "unauthenticated") {

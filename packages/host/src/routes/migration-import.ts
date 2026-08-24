@@ -23,6 +23,33 @@ import {
  * re-POST of the same chunk an idempotent resume.
  */
 
+/**
+ * Whether an uploaded migration archive carries runtime transcript entries
+ * (`.houston/runtime/**`). A pool worker declines those imports back to the
+ * pod: session re-synthesis is agentDir-anchored and the transcript
+ * authority learns imported conversations only from the pod's projector.
+ * A malformed zip reads as `false` so the real import route owns its error.
+ */
+export function archiveTouchesRuntime(bytes: Buffer): boolean {
+  try {
+    // Names only — the filter refuses every entry, so nothing inflates.
+    // Normalize EXACTLY as the import loop below does (safeSeedKey), so
+    // `./.houston/runtime/…` and friends cannot dodge the decline while
+    // still importing as a runtime path.
+    let touches = false;
+    unzipSync(new Uint8Array(bytes), {
+      filter: (file) => {
+        if (safeSeedKey(file.name)?.startsWith(".houston/runtime/"))
+          touches = true;
+        return false;
+      },
+    });
+    return touches;
+  } catch {
+    return false;
+  }
+}
+
 export class MigrationImportError extends Error {
   constructor(
     readonly status: number,

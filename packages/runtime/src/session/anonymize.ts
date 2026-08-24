@@ -1,3 +1,4 @@
+import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { activeProvider, resolveModel } from "../ai/providers";
 import { authStorage, modelRuntime } from "../auth/storage";
 import { oneShotWithClaude } from "../backends/claude/one-shot";
@@ -52,6 +53,32 @@ Return ONLY valid JSON (no markdown fences), with every input id exactly once:
 {"items":[{"id":"...","text":"...","summary":"..."}]}`;
 
 /**
+ * Pure, parameterized redaction pass (the `generateTitle` shape): a one-shot
+ * turn over an injected model runtime. Powers the pool worker's anonymize op,
+ * which has a hydrated agent root instead of the process-global config —
+ * pi providers only; the Claude-SDK path below is pod-only by compliance.
+ */
+export async function anonymizeTextsWith(
+  opts: {
+    workspaceDir: string;
+    model: unknown;
+    modelRuntime: ModelRuntime;
+  },
+  items: AnonymizeItemInput[],
+): Promise<AnonymizeItemResult[]> {
+  if (items.length === 0) return [];
+  const prompt = JSON.stringify({ items });
+  const raw = await oneShotText({
+    cwd: opts.workspaceDir,
+    model: opts.model,
+    modelRuntime: opts.modelRuntime,
+    systemPrompt: ANONYMIZE_PROMPT,
+    prompt,
+  });
+  return parseAnonymizeResult(raw, items);
+}
+
+/**
  * Redact the given texts with the active provider's model. Empty input skips
  * the model call entirely.
  */
@@ -59,25 +86,21 @@ export async function anonymizeTexts(
   items: AnonymizeItemInput[],
 ): Promise<AnonymizeItemResult[]> {
   if (items.length === 0) return [];
-  const prompt = JSON.stringify({ items });
-  const raw =
-    activeProvider() === "anthropic"
-      ? await oneShotWithClaude({
-          prompt,
-          systemPrompt: ANONYMIZE_PROMPT,
-          workspaceDir: config.workspaceDir,
-          readToken: () => readAnthropicToken(authStorage),
-          // Locates the acting member's isolated Claude credential store, so a
-          // 401 here can never recover onto the team credential (HOU-976).
-          dataDir: config.dataDir,
-          modelId: resolveModel().id,
-        })
-      : await oneShotText({
-          cwd: config.workspaceDir,
-          model: resolveModel(),
-          modelRuntime,
-          systemPrompt: ANONYMIZE_PROMPT,
-          prompt,
-        });
-  return parseAnonymizeResult(raw, items);
+  if (activeProvider() === "anthropic") {
+    const raw = await oneShotWithClaude({
+      prompt: JSON.stringify({ items }),
+      systemPrompt: ANONYMIZE_PROMPT,
+      workspaceDir: config.workspaceDir,
+      readToken: () => readAnthropicToken(authStorage),
+      // Locates the acting member's isolated Claude credential store, so a
+      // 401 here can never recover onto the team credential (HOU-976).
+      dataDir: config.dataDir,
+      modelId: resolveModel().id,
+    });
+    return parseAnonymizeResult(raw, items);
+  }
+  return anonymizeTextsWith(
+    { workspaceDir: config.workspaceDir, model: resolveModel(), modelRuntime },
+    items,
+  );
 }

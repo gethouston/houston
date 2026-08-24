@@ -1,6 +1,5 @@
 import { join, posix } from "node:path";
-import { dispatchAgentOp } from "@houston/host/src/op/dispatch";
-import { LazyReadRefusedError, PrefixedVfs } from "@houston/host/src/vfs";
+import { LazyReadRefusedError } from "@houston/host/src/vfs";
 import type { HoustonEvent } from "@houston/protocol";
 import { applyServedCredential } from "../auth/auth-file";
 import { generateTitle } from "../session/summarize";
@@ -8,7 +7,10 @@ import {
   deleteConversationAt,
   renameConversationMutationAt,
 } from "../store/conversation-file";
-import { applyApiKeyConnect } from "./op-credential";
+import { applyAnonymizeOp } from "./op-anonymize";
+import { applyApiKeyConnect, credentialOpFiles } from "./op-credential";
+import { applyEndpointConnect } from "./op-endpoint";
+import { applyRouteOp } from "./op-route";
 import {
   claimActiveProviderIn,
   putSettingsIn,
@@ -32,6 +34,8 @@ export interface OpResult {
   include: (relativePath: string) => boolean;
   /** The pod's own /skills answer after a skills mutation (the skills view). */
   skillsView?: unknown;
+  /** The pod's own definitions answer after a custom-integration mutation. */
+  customDefinitionsView?: unknown;
   /** The hydrated tree had no such agent — decline, do not relay. */
   agentMissing?: boolean;
   /** The worker cannot serve this one (a provider that needs the pod). */
@@ -48,6 +52,19 @@ const json = (
   contentType: "application/json",
   body: JSON.stringify(value),
 });
+
+/** A JSON answer whose sync-back scope is an exact file list (or nothing). */
+const answered = (
+  answer: { status: number; body: unknown },
+  files: string[] = [],
+): OpResult => {
+  const set = new Set(files);
+  return {
+    ...json(answer.status, answer.body),
+    events: [],
+    include: (rel) => set.has(rel),
+  };
+};
 
 /** Everything an agent-level route may touch: the agent's whole directory
  *  (family files, skills, markdown, any agentfile path the pod would
@@ -89,66 +106,34 @@ export async function applyOp(
   fetchImpl?: typeof fetch,
 ): Promise<OpResult> {
   const agentId = engineAgentId(filesystem);
+  const none = () => false;
   switch (op.op.kind) {
-    case "route": {
-      // The handlers address the agent under `workspaces/`; the turn's vfs
-      // is rooted one level up (lazy or real, the same seam).
-      const vfs = new PrefixedVfs(filesystem.vfs, "workspaces");
-      const result = await dispatchAgentOp({
-        workspacesRoot: join(filesystem.storeRoot, "workspaces"),
-        agentId,
-        vfs,
-        request: {
-          method: op.op.method,
-          rest: op.op.rest,
-          ...(op.op.query ? { query: op.op.query } : {}),
-          ...(op.op.body !== undefined ? { body: op.op.body } : {}),
-          ...(op.op.contentType ? { contentType: op.op.contentType } : {}),
-          ...(op.actingAs
-            ? {
-                actingSub: op.actingAs.userId,
-                // Gateway-fronted: the acting human is a full contributor on
-                // missions, exactly as the pod stamps it from the acting header.
-                actingAuthor: {
-                  user_id: op.actingAs.userId,
-                  ...(op.actingAs.name ? { name: op.actingAs.name } : {}),
-                },
-              }
-            : {}),
-          triggersEnabled: op.triggersEnabled,
-        },
-        ...(fetchImpl ? { fetchImpl } : {}),
-      });
-      const out: OpResult = {
-        ...result,
-        include: agentRouteScope(filesystem.workspaceRel),
-      };
-      if (result.events.some((e) => e.type === "SkillsChanged")) {
-        // Re-capture the skills view the way the pod would serve it, so the
-        // gateway's asleep reads show the install/remove immediately.
-        const view = await dispatchAgentOp({
-          workspacesRoot: join(filesystem.storeRoot, "workspaces"),
-          agentId,
-          vfs,
-          request: {
-            method: "GET",
-            rest: "skills",
-            triggersEnabled: op.triggersEnabled,
-          },
-          ...(fetchImpl ? { fetchImpl } : {}),
-        });
-        if (view.status === 200) {
-          try {
-            out.skillsView = JSON.parse(view.body);
-          } catch {
-            /* not JSON: leave the previous view */
-          }
-        }
-      }
-      return out;
-    }
+    case "route":
+      return applyRouteOp(
+        op as OpRequest & { op: Extract<OpRequest["op"], { kind: "route" }> },
+        filesystem,
+        fetchImpl,
+      );
     case "settings": {
-      const none = () => false;
+      if (op.op.action === "endpoint") {
+        const { org, agent } = poolIdentity(op.gcsPrefix);
+        const answer = await applyEndpointConnect(
+          op as OpRequest & {
+            op: Extract<
+              OpRequest["op"],
+              { kind: "settings"; action: "endpoint" }
+            >;
+          },
+          {
+            dataDir: filesystem.dataDir,
+            credentialsBaseUrl: new URL(op.claim.heartbeatUrl).origin,
+            orgSlug: org,
+            agentSlug: agent,
+            ...(fetchImpl ? { fetchImpl } : {}),
+          },
+        );
+        return answered(answer, settingsOpFiles(filesystem.dataRel));
+      }
       try {
         const settings =
           op.op.action === "put"
@@ -158,26 +143,24 @@ export async function applyOp(
                 op.op.provider,
                 op.op.connectedProviders,
               );
-        const files = new Set(settingsOpFiles(filesystem.dataRel));
-        return {
-          ...json(200, settings),
-          events: [],
-          include: (rel) => files.has(rel),
-        };
+        return answered(
+          { status: 200, body: settings },
+          settingsOpFiles(filesystem.dataRel),
+        );
       } catch (e) {
-        return {
-          ...json(400, { error: e instanceof Error ? e.message : String(e) }),
-          events: [],
-          include: none,
-        };
+        return answered({
+          status: 400,
+          body: { error: e instanceof Error ? e.message : String(e) },
+        });
       }
     }
     case "credential": {
-      const none = () => false;
       const { org, agent } = poolIdentity(op.gcsPrefix);
       const answer = await applyApiKeyConnect({
         provider: op.op.provider,
         apiKey: op.op.apiKey,
+        ...(op.op.endpoint ? { endpoint: op.op.endpoint } : {}),
+        dataDir: filesystem.dataDir,
         credentialsBaseUrl: new URL(op.claim.heartbeatUrl).origin,
         orgSlug: org,
         agentSlug: agent,
@@ -185,18 +168,32 @@ export async function applyOp(
         ...(op.actingToken ? { actingAs: op.actingToken } : {}),
         ...(fetchImpl ? { fetchImpl } : {}),
       });
-      if ("decline" in answer) {
+      // The connect may write the qwen region / azure endpoint file beside
+      // the key (the store is the key's only home — auth.json never syncs).
+      // Success-only: a 502 store push must not durably repoint the agent at
+      // an endpoint whose key never landed.
+      return answered(
+        answer,
+        answer.status === 200 ? credentialOpFiles(filesystem.dataRel) : [],
+      );
+    }
+    case "anonymize": {
+      const answer = await applyAnonymizeOp(
+        op as OpRequest & {
+          op: Extract<OpRequest["op"], { kind: "anonymize" }>;
+        },
+        agentId,
+        filesystem,
+      );
+      if ("agentMissing" in answer) {
         return {
-          ...json(503, { error: "provider needs the pod" }),
-          events: [],
-          include: none,
-          decline: true,
+          ...answered({ status: 404, body: { error: "agent not found" } }),
+          agentMissing: true,
         };
       }
-      return { ...json(answer.status, answer.body), events: [], include: none };
+      return answered(answer);
     }
     case "title": {
-      const none = () => false;
       if (!op.credential) {
         return {
           ...json(503, { error: "no credential for title" }),
