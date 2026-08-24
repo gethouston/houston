@@ -2,6 +2,7 @@ import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { classifyProviderError } from "../ai/provider-error";
 import { modelFor, safeGetModel } from "../ai/providers";
 import { QWEN_PROVIDER_ID } from "../ai/qwen-dashscope";
+import { XIAOMI_PROVIDER_ID } from "../ai/xiaomi-endpoint";
 import { nvidiaGated, retryNvidiaFallbacks } from "./nvidia-verify";
 import { verifyQwenRegions } from "./qwen-verify";
 import {
@@ -12,6 +13,7 @@ import {
   rejected,
   VERIFY_TIMEOUT_MS,
 } from "./verify-errors";
+import { verifyXiaomiEndpoints } from "./xiaomi-verify";
 
 export type { ApiKeyVerifyReason } from "./verify-errors";
 
@@ -27,6 +29,10 @@ export interface VerifyApiKeyOptions {
    *  HOU-1077). Default: the live runtime's data dir; a pool worker persists
    *  into the hydrated agent root instead. */
   qwenRegionPersist?: (regionId: string) => void;
+  /** Where a verified xiaomi key's accepting endpoint lands (Token Plan keys
+   *  authenticate only on their plan's gateway). Same default/worker split
+   *  as the qwen seam above. */
+  xiaomiEndpointPersist?: (endpointId: string) => void;
   /** Test seam: injected transport, forwarded to pi so probe URLs are observable. */
   fetch?: typeof fetch;
 }
@@ -77,6 +83,20 @@ export async function verifyApiKey(
 
   if (model.api === "google-generative-ai" && model.baseUrl) {
     await verifyGoogleApiKey(providerId, model.baseUrl, key);
+    return;
+  }
+
+  // Xiaomi keys are ENDPOINT-scoped (general pay-as-you-go vs the Token Plan
+  // gateways): probe every endpoint and persist the accepting one
+  // (`xiaomi-verify.ts`).
+  if (providerId === XIAOMI_PROVIDER_ID) {
+    await verifyXiaomiEndpoints(
+      providerId,
+      key,
+      model,
+      (m) => probeCompletion(providerId, m, key),
+      ...(opts?.xiaomiEndpointPersist ? [opts.xiaomiEndpointPersist] : []),
+    );
     return;
   }
 
