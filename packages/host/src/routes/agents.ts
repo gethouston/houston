@@ -271,7 +271,22 @@ export async function handleAgents(
       const root = (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent);
       try {
         await seedSchemas(deps.vfs, root);
-        await writeAgentSeeds(deps.vfs, root, { claudeMd, seeds });
+        // Seeded routines bypass createRoutine, so stamp the creating user as
+        // their `created_by` (same actor policy as the routine write routes):
+        // the gateway-minted acting sub on a managed pod (org owner when the
+        // header is absent), the local user on the desktop. Without it a
+        // template/portable install births authorless routines the
+        // control-plane planner refuses to fire.
+        const routineCreatedBy = deps.gatewayFronted
+          ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ??
+            deps.ownerSub)
+          : userId;
+        await writeAgentSeeds(
+          deps.vfs,
+          root,
+          { claudeMd, seeds },
+          routineCreatedBy,
+        );
       } catch (err) {
         // Atomic-enough create: a seed-write failure must not leave a
         // permanently seedless agent. First-run reuses an existing record on
@@ -810,9 +825,12 @@ export async function handleAgents(
     // exactly this: its sub is the identity the gateway re-authorizes at fire
     // time. On the desktop the header is untrusted client input, so the local
     // userId stays the recorded creator (routine turns there authenticate with
-    // the frontend session instead).
+    // the frontend session instead). A gateway-fronted request with no
+    // decodable header falls back to the org owner: an authorless routine is
+    // not fireable by the control-plane planner, so SOME real, re-authorizable
+    // identity must always be recorded.
     const routineActor = deps.gatewayFronted
-      ? actingSubFromHeader(req.headers[ACTING_AS_HEADER])
+      ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ?? deps.ownerSub)
       : userId;
     // The acting human as a full contributor, stamped onto missions (activity
     // create/PATCH + turns). CRITICAL: null off the gateway (desktop/self-host),

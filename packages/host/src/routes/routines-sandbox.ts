@@ -45,6 +45,9 @@ export async function handleSandboxRoutines(
      * owner is recorded instead. Mirrors routes/agents.ts routineActor.
      */
     gatewayFronted?: boolean;
+    /** Org-owner fallback creator when no acting header decodes (mirrors
+     *  ControlPlaneDeps.ownerSub). */
+    ownerSub?: string;
   },
   method: string,
   path: string,
@@ -82,9 +85,11 @@ export async function handleSandboxRoutines(
   const nowIso = new Date().toISOString();
   const triggersEnabled = deps.triggersEnabled ?? false;
   // WHO the routine records as its creator (C2), same policy as agent-data: the
-  // gateway-minted acting sub on a managed pod, else the workspace owner.
+  // gateway-minted acting sub on a managed pod (falling back to the org owner
+  // when no header decodes — an authorless routine is not fireable by the
+  // control-plane planner), else the workspace owner.
   const createdBy = deps.gatewayFronted
-    ? actingSubFromHeader(req.headers[ACTING_AS_HEADER])
+    ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ?? deps.ownerSub)
     : ws.ownerUserId;
   // A successful write reacts on the SAME channel a UI or file-watcher write does
   // (saveRoutines writes the file the host watches); scope to the workspace owner.

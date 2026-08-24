@@ -15,6 +15,7 @@ import type {
   PortableExportOverrides,
   PortableSelection,
 } from "@houston/protocol";
+import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
@@ -89,6 +90,12 @@ export interface PortableAccountDeps {
   store: WorkspaceStore;
   vfs?: Vfs;
   paths?: WorkspacePaths;
+  /** Trusted-gateway stance for the acting-as header (mirrors
+   *  ControlPlaneDeps.gatewayFronted). */
+  gatewayFronted?: boolean;
+  /** Org-owner fallback creator when no acting header decodes (mirrors
+   *  ControlPlaneDeps.ownerSub). */
+  ownerSub?: string;
 }
 
 /**
@@ -169,9 +176,17 @@ export async function handlePortableAccount(
   });
   const root = paths.agentRoot(ws, agent);
   await seedSchemas(deps.vfs, root);
+  // WHO installed the agent, recorded as `created_by` on seeded routines
+  // (packs strip the exporter's identity; an authorless routine is not
+  // fireable by the control-plane planner). Same actor policy as the routine
+  // write routes: gateway acting sub / org owner on a managed pod, the local
+  // user on the desktop.
+  const routineCreatedBy = deps.gatewayFronted
+    ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ?? deps.ownerSub)
+    : userId;
   // The SAME serialization the browser adapter sends through create-with-seeds
   // on hosted cloud — one layout, wherever the install lands.
-  await writeAgentSeeds(deps.vfs, root, packageSeed(pkg));
+  await writeAgentSeeds(deps.vfs, root, packageSeed(pkg), routineCreatedBy);
 
   json(res, 201, { agent, installed: portableInventory(pkg) });
   return true;

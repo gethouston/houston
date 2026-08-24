@@ -587,6 +587,51 @@ test("routines (gateway-fronted): created_by records the acting sub, PATCH re-st
   }
 });
 
+test("routines (gateway-fronted): a headerless write falls back to the org owner sub", async () => {
+  // A managed pod that knows its org owner: a request the gateway vouched no
+  // identity for still records a real, re-authorizable creator — an authorless
+  // routine is one the control-plane fire planner refuses to fire.
+  const fronted = createControlPlaneServer({
+    ...deps(),
+    gatewayFronted: true,
+    ownerSub: "owner-sub-9",
+  });
+  await new Promise<void>((r) => fronted.listen(0, "127.0.0.1", () => r()));
+  const addr = fronted.address();
+  const frontedBase = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  try {
+    const bare = await fetch(`${frontedBase}/agents/${agentId}/routines`, {
+      method: "POST",
+      headers: auth("alice"),
+      body: JSON.stringify({
+        name: "Headerless",
+        prompt: "Write it",
+        schedule: "0 9 * * 1-5",
+      }),
+    });
+    expect(bare.status).toBe(201);
+    expect(((await bare.json()) as Routine).created_by).toBe("owner-sub-9");
+
+    // A real acting header still outranks the owner fallback.
+    const acted = await fetch(`${frontedBase}/agents/${agentId}/routines`, {
+      method: "POST",
+      headers: {
+        ...auth("alice"),
+        "x-houston-acting-as": actingToken("supabase-sub-3"),
+      },
+      body: JSON.stringify({
+        name: "With header",
+        prompt: "Write it",
+        schedule: "0 9 * * 1-5",
+      }),
+    });
+    expect(acted.status).toBe(201);
+    expect(((await acted.json()) as Routine).created_by).toBe("supabase-sub-3");
+  } finally {
+    await new Promise<void>((r) => fronted.close(() => r()));
+  }
+});
+
 test("routines: an invalid cron is rejected at create (400), never saved to fail silently", async () => {
   const bad = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
