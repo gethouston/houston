@@ -14,6 +14,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { HubCatalog } from "../../lib/ai-hub/catalog-types.ts";
+import { providerDescription } from "../../lib/provider-overrides.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 import { BrandMark } from "../provider-browser/brand-mark.tsx";
 import {
@@ -60,6 +61,14 @@ export function ProviderModal({
     [catalog, provider],
   );
   const isLocal = provider.auth === "openaiCompatible";
+  // Most hub providers have no aiHub:providers.* marketing copy — without a
+  // default the modal renders the raw lookup key ("providers.xiaomi.description",
+  // PRODUCT-1517). Fall back to the provider-list row's one-liner, which every
+  // id resolves to.
+  const description = t(
+    `providers.${providerDescriptionKey(provider.id)}.description`,
+    { defaultValue: providerDescription(provider.id) },
+  );
 
   // Local model: the bridge state + a disconnect that tears the tunnel down.
   const {
@@ -85,7 +94,7 @@ export function ProviderModal({
           {provider.name}
         </span>
         <p className="text-[13px] leading-relaxed text-ink-muted">
-          {t(`providers.${providerDescriptionKey(provider.id)}.description`)}
+          {description}
         </p>
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
           {models.length > 0 && (
@@ -135,9 +144,7 @@ export function ProviderModal({
       open={open}
       onClose={onClose}
       title={provider.name}
-      description={t(
-        `providers.${providerDescriptionKey(provider.id)}.description`,
-      )}
+      description={description}
       header={header}
       footer={footer}
     >

@@ -168,6 +168,15 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // key rather than "could not verify" (PRODUCT-1411: the whole kimi-k2
   // preview series was retired 2026-05-25 while pi's catalog still lists it).
   "not found the model",
+  // Xiaomi MiMo's reversed word order — 400 `{"code":"400","message":"Not
+  // supported model mimo-v2.5-pro-ultraspeed"}` — from a Token Plan gateway
+  // for a model only the general endpoint serves (the plan catalogs are a
+  // subset; see runtime `ai/xiaomi-endpoint.ts`). Xiaomi checks the key
+  // before the model (a bad key answers 401 for any model id), so the body
+  // proves the credential and only the MODEL is out of reach. None of the
+  // phrasings above match this order, so it degraded to `unknown` — the
+  // report-bug card instead of switch-model (PRODUCT-1517).
+  "not supported model",
 ];
 
 /**
@@ -298,6 +307,16 @@ const NVIDIA_BROAD_FALLBACK = "meta/llama-3.3-70b-instruct";
  * the broadest-served Kimi model we have evidence for (PRODUCT-1411).
  */
 const MOONSHOT_BROAD_FALLBACK = "kimi-k2.6";
+
+/**
+ * The Xiaomi MiMo model offered as the one-click switch target when a pick
+ * answers `Not supported model`: mimo-v2.5-pro is in EVERY Xiaomi catalog —
+ * the general endpoint and all three Token Plan gateways (pi's xiaomi /
+ * xiaomi-token-plan-* tables) — while mimo-v2.5-pro-ultraspeed is
+ * general-only, which is exactly the pick that strands a Token Plan key
+ * (PRODUCT-1517).
+ */
+const XIAOMI_BROAD_FALLBACK = "mimo-v2.5-pro";
 
 /**
  * Map a failed model request to a typed `ProviderError`, then stamp WHOSE
@@ -458,7 +477,9 @@ function broadFallback(provider: string, model: string): string | null {
       ? COPILOT_BASE_FALLBACK
       : provider === "moonshotai"
         ? MOONSHOT_BROAD_FALLBACK
-        : null;
+        : provider === "xiaomi"
+          ? XIAOMI_BROAD_FALLBACK
+          : null;
   return fallback && fallback !== model ? fallback : null;
 }
 

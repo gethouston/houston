@@ -132,6 +132,9 @@
     },
     "openai-compatible": {
       "description": "Run models on your own computer with Ollama, LM Studio, and friends."
+    },
+    "xiaomi": {
+      "description": "MiMo models from Xiaomi: fast, low-cost, built for agent work."
     }
   },
   "toast": {},

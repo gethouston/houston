@@ -202,7 +202,8 @@ export type ProviderDescriptionKey =
   | "amazon-bedrock"
   | "minimax"
   | "nvidia"
-  | "openai-compatible";
+  | "openai-compatible"
+  | "xiaomi";
 
 /**
  * Every connect-card id and the `aiHub:providers.*` key its copy lives under.
@@ -225,12 +226,16 @@ const DESCRIPTION_KEY_BY_ID = {
   minimax: "minimax",
   nvidia: "nvidia",
   "openai-compatible": "openai-compatible",
+  // Not a connect card, but its hub modal rendered the raw fallback key
+  // ("providers.xiaomi.description") once the provider shipped (PRODUCT-1517).
+  xiaomi: "xiaomi",
 } satisfies Record<string, ProviderDescriptionKey>;
 
 /**
- * Map a card id to its description key. Unknown ids fall back to the id itself,
- * so an unwired provider surfaces a missing-key string in the UI (a visible bug)
- * instead of a silent, wrong description.
+ * Map a card id to its description key. Unknown ids fall back to the id itself
+ * so a lookup never borrows another provider's copy; the modal catches the
+ * resulting missing key with the provider-list one-liner (`providerDescription`)
+ * rather than rendering it raw (PRODUCT-1517).
  */
 export function providerDescriptionKey(
   providerId: string,
