@@ -74,6 +74,13 @@ export function createTurnServer(deps: TurnServerDeps): Server {
     (async () => {
       const path = (req.url || "/").split("?")[0];
       if (req.method === "GET" && path === "/health") {
+        // A draining/spent worker reports NOT-ready (503) so a readiness probe
+        // marks a spent single-use pod 0/1 READY instead of Running — the
+        // operator signal that a pod exited its one turn and is awaiting
+        // recycle, and a belt to keep the gateway from dispatching to it.
+        if (deps.isDraining?.()) {
+          return json(res, 503, { status: "draining", mode: "turn" });
+        }
         return json(res, 200, { status: "ok", mode: "turn" });
       }
       if (req.method !== "POST" || (path !== "/turn" && path !== "/op")) {
