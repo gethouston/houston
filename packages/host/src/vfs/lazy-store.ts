@@ -1,6 +1,7 @@
 import {
   excluded,
   type ObjectMetadata,
+  ObjectNotFoundError,
 } from "@houston/runtime-client/object-sync";
 import { FsVfs } from "./fs";
 import { fetchObject, type LazyBudget } from "./lazy-store-fetch";
@@ -82,7 +83,16 @@ export class LazyStoreVfs implements Vfs {
     if (local !== null) return local;
     const meta = this.state.visible(key);
     if (!meta) return null;
-    await this.materialize(key, meta);
+    try {
+      await this.materialize(key, meta);
+    } catch (error) {
+      if (!(error instanceof ObjectNotFoundError)) throw error;
+      // Vanished between the listing and this first read: another writer
+      // deleted it, so the key is absent — never a failed read
+      // (HOUSTON-APP-5AS). Dropped from the remote view so listings agree.
+      this.state.remote.delete(key);
+      return null;
+    }
     return this.local.readBytes(key);
   }
 
@@ -151,7 +161,13 @@ export class LazyStoreVfs implements Vfs {
     this.state.assertWritable(toKey);
     const meta = this.state.visible(fromKey);
     if ((await this.local.readBytes(fromKey)) === null && meta) {
-      await this.materialize(fromKey, meta);
+      try {
+        await this.materialize(fromKey, meta);
+      } catch (error) {
+        if (!(error instanceof ObjectNotFoundError)) throw error;
+        this.state.remote.delete(fromKey);
+        throw new Error(`move: source not found: ${fromKey}`);
+      }
     }
     await this.local.move(fromKey, toKey);
     this.state.written(toKey);

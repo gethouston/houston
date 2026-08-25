@@ -1,6 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { normalizeActivities, normalizeRoutineRuns } from "@houston/domain";
+import {
+  normalizeActivities,
+  normalizeRoutineRuns,
+  parseJsonDoc,
+} from "@houston/domain";
 import { fetchWithRetry } from "@houston/runtime-client/object-sync";
 import type { TurnServerDeps } from "./server-types";
 import {
@@ -160,8 +164,9 @@ export async function publishTurnActivityDoc(
       join(filesystem.workspaceDir, ".houston", "activity", "activity.json"),
       "utf8",
     );
-    const parsed = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
-    const doc = normalizeActivities(parsed, key).items;
+    // Same tolerant parse as every other doc reader (BOM strip + salvage), so
+    // the pooled path publishes exactly what the standing projector would.
+    const doc = normalizeActivities(parseJsonDoc(raw, key), key).items;
     const { org, agent } = poolIdentity(turn.gcsPrefix);
     return await publish(
       {
@@ -197,6 +202,7 @@ export async function publishTurnRunsDoc(
   const baseUrl = deps.poolStoreUrl ?? process.env.HOUSTON_POOL_STORE_URL;
   if (turn.shadow || !baseUrl || !turn.claim || !turn.hostToken) return null;
   try {
+    const runsKey = turnRoutineRunsKey(filesystem.workspaceRel);
     const raw = await readFile(
       join(
         filesystem.workspaceDir,
@@ -206,11 +212,7 @@ export async function publishTurnRunsDoc(
       ),
       "utf8",
     );
-    const parsed = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
-    const doc = normalizeRoutineRuns(
-      parsed,
-      turnRoutineRunsKey(filesystem.workspaceRel),
-    ).items;
+    const doc = normalizeRoutineRuns(parseJsonDoc(raw, runsKey), runsKey).items;
     const { org, agent } = poolIdentity(turn.gcsPrefix);
     return await publish(
       {

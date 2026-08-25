@@ -1,5 +1,8 @@
 import { Storage } from "@google-cloud/storage";
-import type { ObjectStore } from "@houston/runtime-client/object-sync";
+import {
+  ObjectNotFoundError,
+  type ObjectStore,
+} from "@houston/runtime-client/object-sync";
 
 /**
  * GCS-backed ObjectStore. Auth is Application Default Credentials (the Cloud
@@ -21,7 +24,17 @@ export class GcsStore implements ObjectStore {
   }
 
   async download(key: string, destFile: string): Promise<void> {
-    await this.bucket.file(key).download({ destination: destFile });
+    try {
+      await this.bucket.file(key).download({ destination: destFile });
+    } catch (error) {
+      // Same taxonomy as the HTTP store: a listed object deleted before the
+      // read is a vanished object, and readers treat it as an absent key.
+      if ((error as { code?: unknown }).code !== 404) throw error;
+      throw new ObjectNotFoundError(
+        key,
+        `object store GET ${key} failed (404): object not found`,
+      );
+    }
   }
 
   async upload(srcFile: string, key: string): Promise<void> {

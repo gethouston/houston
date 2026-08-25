@@ -21,6 +21,7 @@ export type {
 export type { ObjectStore, WriteOptions, WriteResult } from "./object-store";
 export {
   LocalDirStore,
+  ObjectNotFoundError,
   ObjectTooLargeError,
   StoreConflictError,
   StoreFencedError,

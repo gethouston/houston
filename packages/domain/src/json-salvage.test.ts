@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { firstJsonValueEnd, salvageLeadingJson } from "./json-salvage";
 import { loadRoutineRuns, loadRoutines } from "./routines";
-import { loadJson, type TextStore } from "./store";
+import { loadJson, parseJsonDoc, type TextStore } from "./store";
 
 const ROOT = "Personal/Slack Test";
 
@@ -67,4 +67,14 @@ test("loadJson still throws on a mangled file, naming the key", async () => {
   );
   await store.writeText("k.json", "﻿[]\n");
   expect(await loadJson(store, "k.json", null)).toEqual([]);
+});
+
+test("parseJsonDoc strips a BOM, salvages trailing junk, and names the key", () => {
+  expect(parseJsonDoc(`\uFEFF{"a":1}`, "config.json")).toEqual({ a: 1 });
+  expect(parseJsonDoc('[{"id":"r1"}]junk after', "routines.json")).toEqual([
+    { id: "r1" },
+  ]);
+  expect(() => parseJsonDoc("{oops", "learnings.json")).toThrow(
+    /learnings\.json is not valid JSON/,
+  );
 });

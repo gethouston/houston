@@ -52,6 +52,21 @@ export class ObjectTooLargeError extends Error {
   }
 }
 
+/**
+ * The object vanished between a listing and this request: another writer
+ * deleted it. Readers treat it as an absent key, never a failure — a stale
+ * manifest entry must not fail a whole turn (HOUSTON-APP-5AS).
+ */
+export class ObjectNotFoundError extends Error {
+  constructor(
+    readonly key: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ObjectNotFoundError";
+  }
+}
+
 /** The gateway rejected a stale pod after another boot acquired the lease. */
 export class StoreFencedError extends Error {
   constructor(
@@ -128,10 +143,20 @@ export class LocalDirStore implements ObjectStore {
 
   async download(key: string, destFile: string): Promise<void> {
     await mkdir(dirname(destFile), { recursive: true });
-    await pipeline(
-      createReadStream(this.fileFor(key)),
-      createWriteStream(destFile),
-    );
+    try {
+      await pipeline(
+        createReadStream(this.fileFor(key)),
+        createWriteStream(destFile),
+      );
+    } catch (error) {
+      // Same taxonomy as the HTTP store's 404: a listed file deleted before
+      // the read is a vanished object, not an adapter failure.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      throw new ObjectNotFoundError(
+        key,
+        `object store GET ${key} failed (404): object not found`,
+      );
+    }
   }
 
   async upload(

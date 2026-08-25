@@ -1,5 +1,5 @@
 import { docKey } from "@houston/domain";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { LocalPaths } from "../paths";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
@@ -395,4 +395,123 @@ test("boundAgent resolves after the seed to the bound id, or undefined", async (
   const ambiguous = new DocShadowProjector({ store, vfs, paths, shadow });
   ambiguous.seed();
   expect(await ambiguous.boundAgent()).toBeUndefined();
+});
+
+test("a family file with trailing junk projects its salvaged leading value", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "A",
+  });
+  const root = paths.agentRoot(workspace, agent);
+  const puts: { family: string; doc: unknown }[] = [];
+  const shadow: DocShadow = {
+    async seed() {},
+    async put(family, doc) {
+      puts.push({ family, doc });
+    },
+  };
+  const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+  // An outside writer appended a partial second copy after the value — the
+  // exact file the pod's own read (loadJson) salvages. The projection must
+  // serve the same salvaged answer, not crash (HOUSTON-APP-5A9).
+  const value = [{ id: "l1", text: "kept", created_at: "now" }];
+  await vfs.writeText(
+    docKey(root, "learnings"),
+    `${JSON.stringify(value)}[{ "id": "l1",`,
+  );
+
+  projector.onEvent({ type: "LearningsChanged", agentPath: agent.id });
+  await projector.flush();
+
+  expect(puts.find((p) => p.family === "learnings")).toEqual({
+    family: "learnings",
+    doc: value,
+  });
+});
+
+test("an unparseable family file fails only its family and names the doc key", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "A",
+  });
+  const root = paths.agentRoot(workspace, agent);
+  const puts: { family: string; doc: unknown }[] = [];
+  const shadow: DocShadow = {
+    async seed() {},
+    async put(family, doc) {
+      puts.push({ family, doc });
+    },
+  };
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    await vfs.writeText(docKey(root, "learnings"), "{oops");
+    await vfs.writeText(
+      docKey(root, "activity"),
+      JSON.stringify([{ id: "m1", title: "T", status: "needs_you" }]),
+    );
+    const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+    projector.seed();
+    await projector.flush();
+
+    // Every OTHER family still seeded; the mangled one reported its key.
+    expect(puts.map((p) => p.family)).not.toContain("learnings");
+    expect(puts.find((p) => p.family === "activity")).toBeTruthy();
+    const reported = errors.mock.calls.some((call) =>
+      call.some(
+        (arg) =>
+          arg instanceof Error &&
+          arg.message.includes(docKey(root, "learnings")),
+      ),
+    );
+    expect(reported).toBe(true);
+  } finally {
+    errors.mockRestore();
+  }
+});
+
+test("cross-agent refusals are a latched warn, never repeated per family", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  await store.createAgent({ workspaceId: workspace.id, name: "A" });
+  const shadow: DocShadow = { async seed() {}, async put() {} };
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+    projector.seed();
+    await projector.flush();
+
+    const stray = await store.createAgent({
+      workspaceId: workspace.id,
+      name: "B",
+    });
+    for (let i = 0; i < 3; i++) {
+      projector.onEvent({ type: "LearningsChanged", agentPath: stray.id });
+      await projector.flush();
+    }
+
+    const refusals = warns.mock.calls.filter((call) =>
+      String(call[0]).includes("refusing cross-agent projection"),
+    );
+    expect(refusals).toHaveLength(1);
+    // The designed outcome never reaches the error (Sentry) channel.
+    expect(
+      errors.mock.calls.some((call) =>
+        String(call[0]).includes("refusing cross-agent projection"),
+      ),
+    ).toBe(false);
+  } finally {
+    warns.mockRestore();
+    errors.mockRestore();
+  }
 });
