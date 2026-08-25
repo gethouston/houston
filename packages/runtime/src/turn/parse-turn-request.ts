@@ -181,6 +181,7 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     nonce: typeof b.nonce === "string" ? b.nonce : undefined,
     gcsPrefix: prefix,
     credential,
+    provider: nonEmpty(b.provider) ? b.provider : undefined,
     model: typeof b.model === "string" ? b.model : undefined,
     effort: typeof b.effort === "string" ? b.effort : undefined,
     // Never trust the wire: only the known mode literals ("plan", "auto") pass;
