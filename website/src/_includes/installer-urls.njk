@@ -1,5 +1,6 @@
 <script>
-  // Resolve direct installer URLs (Mac DMG + Windows MSIs) from GitHub
+  // Resolve direct installer URLs (Mac DMG + Windows MSIs + Linux AppImage)
+  // from GitHub
   // releases. The current app ships as prereleases tagged `cloud-vX.Y.Z`,
   // which the `releases/latest` endpoint never returns — it only serves the
   // newest stable tag, i.e. the legacy app kept for users still migrating.
@@ -16,7 +17,7 @@
       return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
     }
     function hasInstallers(rel) {
-      return (rel.assets || []).some(function (a) { return /\.(dmg|msi)$/.test(a.name); });
+      return (rel.assets || []).some(function (a) { return /\.(dmg|msi|AppImage)$/.test(a.name); });
     }
     function isNewer(a, b) {
       return a[0] !== b[0] ? a[0] > b[0] : a[1] !== b[1] ? a[1] > b[1] : a[2] > b[2];
@@ -45,7 +46,8 @@
         return {
           dmg: urlOf(/\.dmg$/),
           winX64: urlOf(/_x64.*\.msi$/),
-          winArm64: urlOf(/_arm64.*\.msi$/)
+          winArm64: urlOf(/_arm64.*\.msi$/),
+          appImage: urlOf(/\.AppImage$/)
         };
       });
   };

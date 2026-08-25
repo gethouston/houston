@@ -9,16 +9,19 @@
   var downloadStep = document.getElementById("dl-step-download");
   var macGroup = document.getElementById("dl-mac-group");
   var windowsGroup = document.getElementById("dl-windows-group");
+  var linuxGroup = document.getElementById("dl-linux-group");
   var windowsSkip = document.getElementById("dl-windows-skip");
   var osAlt = document.getElementById("dl-os-alt");
   var macButton = document.getElementById("dl-btn");
   var x64Button = document.getElementById("dl-windows-x64-btn");
   var arm64Button = document.getElementById("dl-windows-arm64-btn");
+  var linuxButton = document.getElementById("dl-linux-btn");
   var currentOs = "other";
   var currentSource = "unknown";
   var dmgUrl = null;
   var winX64Url = null;
   var winArm64Url = null;
+  var appImageUrl = null;
   var savedY = 0;
 
   // window.houstonT comes from the inline i18n block; fall back to the English
@@ -78,30 +81,22 @@
     setButtonUrl(macButton, dmgUrl);
     setButtonUrl(x64Button, winX64Url);
     setButtonUrl(arm64Button, winArm64Url);
+    setButtonUrl(linuxButton, appImageUrl);
   }
 
   function applyOs(os) {
-    currentOs = os === "mac" || os === "windows" ? os : "other";
-    if (currentOs === "mac") {
-      macGroup.hidden = false;
-      windowsGroup.hidden = true;
-      windowsSkip.hidden = true;
-      osAlt.hidden = false;
-      osAlt.textContent = tr(
-        "gate.needWindows",
-        "Need it for Windows instead?",
-      );
-    } else if (currentOs === "windows") {
-      macGroup.hidden = true;
-      windowsGroup.hidden = false;
-      windowsSkip.hidden = false;
-      osAlt.hidden = false;
-      osAlt.textContent = tr("gate.needMac", "Need it for Mac instead?");
-    } else {
-      macGroup.hidden = false;
-      windowsGroup.hidden = false;
-      windowsSkip.hidden = false;
-      osAlt.hidden = true;
+    currentOs =
+      os === "mac" || os === "windows" || os === "linux" ? os : "other";
+    // A pinned OS shows only its own group plus an escape hatch that reveals
+    // every platform; "other" starts with all of them visible.
+    var pinned = currentOs !== "other";
+    macGroup.hidden = pinned && currentOs !== "mac";
+    windowsGroup.hidden = pinned && currentOs !== "windows";
+    linuxGroup.hidden = pinned && currentOs !== "linux";
+    windowsSkip.hidden = windowsGroup.hidden;
+    osAlt.hidden = !pinned;
+    if (pinned) {
+      osAlt.textContent = tr("gate.needOther", "Need it for a different OS?");
     }
   }
 
@@ -137,9 +132,8 @@
   }
 
   osAlt.addEventListener("click", () => {
-    var target = currentOs === "mac" ? "windows" : "mac";
-    applyOs(target);
-    track("download_os_switched", { to: target });
+    applyOs("other");
+    track("download_os_switched", { to: "all" });
   });
 
   function trackEnabledClick(button, event, name, props) {
@@ -168,6 +162,12 @@
       source: currentSource,
       arch: "arm64",
       msi_url: winArm64Url || "",
+    });
+  });
+  linuxButton.addEventListener("click", (event) => {
+    trackEnabledClick(linuxButton, event, "linux_download_started", {
+      source: currentSource,
+      appimage_url: appImageUrl || "",
     });
   });
 
@@ -220,12 +220,14 @@
       dmgUrl = urls?.dmg;
       winX64Url = urls?.winX64;
       winArm64Url = urls?.winArm64;
+      appImageUrl = urls?.appImage;
     })
     .catch(() => {})
     .then(() => {
       dmgUrl = dmgUrl || RELEASES_PAGE;
       winX64Url = winX64Url || RELEASES_PAGE;
       winArm64Url = winArm64Url || RELEASES_PAGE;
+      appImageUrl = appImageUrl || RELEASES_PAGE;
       refreshButtons();
     });
 

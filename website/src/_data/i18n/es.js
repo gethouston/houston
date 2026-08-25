@@ -533,7 +533,7 @@ export default {
           {
             q: "¿En qué sistemas está Houston?",
             aHtml:
-              'Descárgala para <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="mac">macOS</button> o <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="windows">Windows</button>. En Windows, elige x64 (Intel o AMD) o ARM64 (Surface, Snapdragon).',
+              'Descárgala para <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="mac">macOS</button>, <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="windows">Windows</button> o <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="linux">Linux</button>. En Windows, elige x64 (Intel o AMD) o ARM64 (Surface, Snapdragon). En Linux, descarga el AppImage (x64).',
           },
           {
             q: "¿Cómo entro?",
@@ -551,6 +551,7 @@ export default {
     download: "Descargar",
     mac: "macOS",
     windows: "Windows",
+    linux: "Linux",
     product: "Producto",
     company: "Empresa",
     resources: "Recursos",
@@ -611,6 +612,7 @@ export default {
     macBtn: "Descargar para Mac",
     winX64: "Windows (x64 / Intel / AMD)",
     winArm: "Windows (ARM64 / Surface, Snapdragon)",
+    linuxBtn: "Linux (AppImage / x64)",
     notSure: "¿No sabes cuál elegir?",
     notSureBody:
       'La mayoría de los computadores son x64 (procesadores Intel o AMD). Solo una Surface Pro X, una Surface Pro 9 5G, un portátil con Snapdragon X u otra máquina con Windows basada en ARM necesita ARM64. En la primera instalación verás un aviso de SmartScreen: toca "Ejecutar de todas formas". Ya estamos trabajando en la firma de código completa.',
@@ -779,8 +781,7 @@ export default {
     gate: {
       preparing: "Preparando tu descarga…",
       submit: "Continuar a la descarga",
-      needWindows: "¿La necesitas para Windows?",
-      needMac: "¿La necesitas para Mac?",
+      needOther: "¿La necesitas para otro sistema?",
       countrySearch: "Buscar países",
       countryEmpty: "Sin resultados",
       ccLabel: "Código de país",
