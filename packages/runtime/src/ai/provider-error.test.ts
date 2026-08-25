@@ -335,6 +335,42 @@ test("GitHub Copilot model_not_supported → model_unavailable + gpt-4.1 fallbac
   });
 });
 
+test("Xiaomi 'Not supported model' 400 → model_unavailable + mimo-v2.5-pro fallback (PRODUCT-1517)", () => {
+  // Verbatim from a Token Plan gateway answering mimo-v2.5-pro-ultraspeed — a
+  // model only the general endpoint serves. Xiaomi checks the key before the
+  // model (a bad key answers 401 for any model id), so the credential is fine
+  // and only the pick is out of reach. The reversed word order ("Not supported
+  // model", not "model not supported") matched no pattern and degraded to
+  // `unknown` — the report-bug card instead of switch-model.
+  const message =
+    '400: {"code":"400","message":"Not supported model mimo-v2.5-pro-ultraspeed"}';
+  const err = classifyProviderError({
+    provider: "xiaomi",
+    model: "mimo-v2.5-pro-ultraspeed",
+    message,
+  });
+  expect(err).toEqual({
+    kind: "model_unavailable",
+    provider: "xiaomi",
+    model: "mimo-v2.5-pro-ultraspeed",
+    reason: "unknown",
+    suggested_fallback: "mimo-v2.5-pro",
+    message,
+  });
+});
+
+test("Xiaomi fallback model itself unsupported → no self-referential fallback", () => {
+  const err = classifyProviderError({
+    provider: "xiaomi",
+    model: "mimo-v2.5-pro",
+    message:
+      '400: {"code":"400","message":"Not supported model mimo-v2.5-pro"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
+});
+
 test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-4.1 fallback (HOU-977)", () => {
   // Copilot's NEWER wording for the same plan-doesn't-serve-this-model failure:
   // no `model_not_supported` code, just prose naming the integrator and the

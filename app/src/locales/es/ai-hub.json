@@ -132,6 +132,9 @@
     },
     "openai-compatible": {
       "description": "Ejecuta modelos en tu propio computador con Ollama, LM Studio y similares."
+    },
+    "xiaomi": {
+      "description": "Modelos MiMo de Xiaomi: rápidos, económicos y hechos para el trabajo con agentes."
     }
   },
   "toast": {},
