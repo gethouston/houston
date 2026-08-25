@@ -5,8 +5,8 @@ import { archiveTouchesRuntime } from "@houston/host/src/routes/migration-import
 import { PrefixedVfs } from "@houston/host/src/vfs";
 import type { HoustonEvent } from "@houston/protocol";
 import type { OpResult } from "./op-apply";
-import { agentRouteScope, engineAgentId } from "./op-apply";
 import { isCustomIntegrationOpRoute } from "./op-route-allowlist";
+import { agentRouteScope, engineAgentId } from "./op-scope";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { poolIdentity } from "./turn-store";
