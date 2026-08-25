@@ -557,4 +557,14 @@ describe("the agent Skills section's one writable door", () => {
     ok(!surface.includes("useDeleteSkill"));
     ok(surface.includes("useSkills("));
   });
+
+  it("keeps the search query across a store install", () => {
+    // PRODUCT-1512: the section once wrapped `onInstallCommunity` in a
+    // `setQuery("")` reset, which snapped the Store from the search results
+    // back to the browse shelves after every install. The handler must pass
+    // through untouched (as the global skills page does) so the user can keep
+    // installing from the same search.
+    ok(content.includes("onInstallCommunity,"));
+    ok(!content.includes('setQuery("")'));
+  });
 });

@@ -89,13 +89,11 @@ export function SkillsContent({
     query,
     onQueryChange: setQuery,
     onSearch,
-    onInstallCommunity: onInstallCommunity
-      ? async (skill, signal) => {
-          const result = await onInstallCommunity(skill, signal);
-          if (!signal?.aborted) setQuery("");
-          return result;
-        }
-      : undefined,
+    // The query survives an install (PRODUCT-1512): clearing it would snap the
+    // Store back to the browse shelves mid-flow, so the user can keep
+    // installing more results from the same search — matching the global
+    // skills page.
+    onInstallCommunity,
     onPreviewCommunity,
     installedSkillNames,
   });
