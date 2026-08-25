@@ -60,17 +60,51 @@ async function start(): Promise<Server> {
       : config.localStoreDir
         ? new LocalDirStore(config.localStoreDir)
         : poolOnlyFallbackStore();
+    const { markWorkerSpent, workerSpent } = await import("./turn/single-use");
+    // local bash on a turn worker is only safe when the pod serves exactly one
+    // claimed turn and is then replaced; fail closed like the rest of the
+    // exec-mode parsing (config.ts) rather than silently degrading.
+    if (config.codeExecution === "local" && !config.poolSingleUse) {
+      throw new Error(
+        "HOUSTON_CODE_EXECUTION=local in turn mode requires HOUSTON_POOL_SINGLE_USE=1: a multi-turn pool worker crosses tenant boundaries",
+      );
+    }
+    if (config.poolSingleUse && turnConcurrency() !== 1) {
+      throw new Error(
+        "HOUSTON_POOL_SINGLE_USE=1 requires HOUSTON_TURN_CONCURRENCY=1: single-use means exactly one claimed turn per pod",
+      );
+    }
+    // A restarted container in a spent pod (single-use worker exited, kubelet
+    // restarted it in place) must idle unregistered until the control plane
+    // replaces the pod — never serve from a tree the previous tenant's code
+    // may have touched.
+    let spent = config.poolSingleUse && workerSpent();
+    if (spent) {
+      console.error(
+        "[turn] pod is spent (single-use marker present); refusing to register until the pod is recycled",
+      );
+    }
     const registrationConfig = await loadWorkerRegistrationConfig();
     const admission = new AdmissionLimiter(turnConcurrency());
-    workerRegistration = registrationConfig
-      ? new Registration(registrationConfig, admission)
-      : null;
+    workerRegistration =
+      registrationConfig && !spent
+        ? new Registration(registrationConfig, admission)
+        : null;
     const token = turnServerToken(config.turnToken, registrationConfig);
     const server = createTurnServer({
       store,
       token,
       admission,
-      isDraining: () => workerRegistration?.draining ?? false,
+      isDraining: () => spent || (workerRegistration?.draining ?? false),
+      singleUse: config.poolSingleUse
+        ? {
+            begin: async () => {
+              spent = true;
+              await markWorkerSpent();
+            },
+            settled: () => shutdown("single-use"),
+          }
+        : undefined,
     });
     await workerRegistration?.start();
     try {

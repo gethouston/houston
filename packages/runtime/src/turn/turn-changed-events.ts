@@ -18,10 +18,10 @@ const FAMILY_EVENT: Record<HoustonFamily, AgentEventType> = {
  * signal. Keys with no client-visible cache (sessions, runtime state) map to
  * nothing. Sorted, each type once: the list is a set on the wire.
  *
- * A claimed turn's sync-back scope is its conversation, session, activity
- * and routine-runs objects today (see `claimedTurnIncludes`), so only those
- * families can fire from a pool turn; the file/skill/doc mappings are what
- * a widened scope would announce, nothing more.
+ * A claimed turn's sync-back scope is its conversation, session, the granted
+ * docs, and the agent's workspace files (see `claimedTurnIncludes`), so a
+ * pool turn can fire those families plus FilesChanged/SkillsChanged for the
+ * workspace files it landed.
  */
 export function changedEventTypes(
   layout: { workspaceRel: string; dataRel: string },

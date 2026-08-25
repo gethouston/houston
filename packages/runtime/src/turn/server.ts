@@ -127,12 +127,17 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       if (!release) {
         return json(res, 503, { error: "worker_full" }, { "Retry-After": "1" });
       }
+      const spend = Boolean(turn.claim && deps.singleUse);
       try {
+        // Latch BEFORE the turn runs: a crash mid-turn must still leave the
+        // restarted container refusing to serve (single-use.ts).
+        if (spend) await deps.singleUse?.begin();
         await executeTurn(deps, turn, req, res, {
           t0_request: performance.now(),
         });
       } finally {
         release();
+        if (spend) deps.singleUse?.settled();
       }
     })().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);

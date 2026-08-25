@@ -11,6 +11,18 @@ export interface TurnServerDeps {
   concurrency?: number;
   admission?: AdmissionLimiter;
   isDraining?: () => boolean;
+  /**
+   * Single-use pool lifecycle. `begin` latches the worker spent BEFORE its
+   * one claimed turn executes (fail-closed against a mid-turn crash);
+   * `settled` fires after that turn's response has ended so the process can
+   * shut down and let the orchestrator replace the pod. Only claimed /turn
+   * requests spend the worker — /op is a host-side write that runs no
+   * model-directed code.
+   */
+  singleUse?: {
+    begin: () => Promise<void>;
+    settled: () => void;
+  };
   poolStoreUrl?: string;
   turnLogUrl?: string;
   fetchImpl?: typeof fetch;

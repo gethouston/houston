@@ -81,7 +81,7 @@ test.each([
     workspaceRel: "workspaces/W/A",
   },
   { name: "cloudrun", dataRel: "data", workspaceRel: "workspace" },
-])("a claimed turn syncs only its conversation and session on $name layout", async ({
+])("a claimed turn syncs its conversation, session, granted docs, and workspace files on $name layout", async ({
   dataRel,
   workspaceRel,
 }) => {
@@ -131,7 +131,9 @@ test.each([
       "utf8",
     ),
   ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
-  expect(keys).not.toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
+  // Workspace files are the turn's deliverable: they sync. `.houston/`
+  // internals beyond the explicit grants stay out of scope.
+  expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
   expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
   );
@@ -143,12 +145,12 @@ test.each([
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
     data: {
-      poolWritesOutOfScope: 3,
+      poolWritesOutOfScope: 2,
       changed: ["ActivityChanged", "ConversationsChanged"],
     },
   });
   expect(log).toHaveBeenCalledWith(
-    "[turn] pool_writes_out_of_scope=3 prefix=ws/w1/agent-1 conversation=c1",
+    "[turn] pool_writes_out_of_scope=2 prefix=ws/w1/agent-1 conversation=c1",
   );
   log.mockRestore();
 });
