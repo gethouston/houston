@@ -3,6 +3,7 @@ import {
   describeProbeError,
   normalizeProbeDetail,
   PROBE_CONCURRENCY,
+  probePath,
   probeProvider,
   probeProviders,
   type ServeProbe,
@@ -123,6 +124,17 @@ test("normalizeProbeDetail replaces every echo of the probe's own provider id", 
   // A body that never mentions the id passes through untouched.
   expect(normalizeProbeDetail("qwen", '{"error":"gateway error"}')).toBe(
     '{"error":"gateway error"}',
+  );
+});
+
+test("probePath asks for a fresh serve only while an auth failure is active", () => {
+  // PRODUCT-1515: the post-reconnect retry must not re-read the host's 15s
+  // cached "not connected" that the failing turn itself populated.
+  expect(probePath("anthropic", true)).toBe(
+    "/sandbox/credential?provider=anthropic&fresh=1",
+  );
+  expect(probePath("anthropic", false)).toBe(
+    "/sandbox/credential?provider=anthropic",
   );
 });
 

@@ -1,6 +1,7 @@
 import { config } from "../config";
 import { currentCredentialScope } from "../session/acting-context";
 import type { ServedCredential } from "./auth-file";
+import { authFailureActive } from "./credential-health";
 
 /**
  * Central credential probes for serve mode (PRODUCT-1324 / HOUSTON-APP-4YV).
@@ -106,6 +107,20 @@ function isTimeout(err: unknown): boolean {
   );
 }
 
+/**
+ * The serve route for one provider's probe (exported for its test). `fresh`
+ * rides when the provider's CURRENT credential failed a turn's auth
+ * (`authFailureActive`): it asks the host to shed its short serve cache before
+ * answering, because a reconnect lands centrally WITHOUT passing through the
+ * host process — the cached "not connected" the failing turn populated moments
+ * earlier is exactly the state the post-reconnect retry must not re-read
+ * (PRODUCT-1515). The mark auto-heals on the credential change the fresh serve
+ * delivers, so the bypass lasts only while the failure does.
+ */
+export function probePath(id: string, fresh: boolean): string {
+  return `/sandbox/credential?provider=${id}${fresh ? "&fresh=1" : ""}`;
+}
+
 /** One provider's central lookup — a single attempt. Never throws — an
  *  internal serve hiccup for ONE provider must not strand the others. */
 async function probeOnce(id: string): Promise<ServeProbe> {
@@ -115,7 +130,7 @@ async function probeOnce(id: string): Promise<ServeProbe> {
   const { actingAs } = currentCredentialScope();
   try {
     const res = await fetch(
-      `${config.controlPlaneUrl}/sandbox/credential?provider=${id}`,
+      `${config.controlPlaneUrl}${probePath(id, authFailureActive(id))}`,
       {
         headers: {
           Authorization: `Bearer ${config.sandboxToken}`,

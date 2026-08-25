@@ -89,6 +89,10 @@ export class RemoteCredentialStore implements CredentialStore {
     return this.withWorkspace(workspaceId, adopted);
   }
 
+  invalidate(provider: string, acting?: CredentialActing): void {
+    this.cache.delete(scopeKeyOf(acting, provider));
+  }
+
   async put(
     cred: WorkspaceCredential,
     opts?: { ifAbsent?: boolean } & CredentialActing,

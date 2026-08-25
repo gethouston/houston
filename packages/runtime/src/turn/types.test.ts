@@ -155,3 +155,12 @@ test("a non-routine turn still requires text", () => {
     /missing 'text'/,
   );
 });
+
+test("parseTurnRequest carries the turn's pinned provider; junk reads as absent", () => {
+  expect(parseTurnRequest({ ...BASE, provider: "openrouter" }).provider).toBe(
+    "openrouter",
+  );
+  expect(parseTurnRequest(BASE).provider).toBeUndefined();
+  expect(parseTurnRequest({ ...BASE, provider: "" }).provider).toBeUndefined();
+  expect(parseTurnRequest({ ...BASE, provider: 5 }).provider).toBeUndefined();
+});

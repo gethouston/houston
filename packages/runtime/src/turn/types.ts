@@ -18,6 +18,16 @@ export interface TurnRequest {
   gcsPrefix: string;
   /** null = workspace not connected yet (the turn fails with a clear error). */
   credential: ServedCredential | null;
+  /**
+   * The provider this turn is PINNED to — the conversation's picked provider,
+   * forwarded by the dispatcher. When present it is the provider the turn runs
+   * on (and the provider a failure names), even if the attached credential
+   * belongs to a different provider: a dispatcher that serves the wrong
+   * credential must surface as THIS provider's auth error, never silently move
+   * the turn onto a provider the user did not pick (PRODUCT-1515). Absent =
+   * legacy dispatch: the credential's provider is the pin.
+   */
+  provider?: string;
   /** Per-turn model override (a routine's pinned model). Absent = inherit. */
   model?: string;
   /** Per-turn reasoning-effort override (a routine's pinned effort). Absent = inherit. */
