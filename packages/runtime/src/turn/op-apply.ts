@@ -11,6 +11,7 @@ import { applyAnonymizeOp } from "./op-anonymize";
 import { applyApiKeyConnect, credentialOpFiles } from "./op-credential";
 import { applyEndpointConnect } from "./op-endpoint";
 import { applyRouteOp } from "./op-route";
+import { conversationScope, engineAgentId } from "./op-scope";
 import {
   claimActiveProviderIn,
   putSettingsIn,
@@ -65,40 +66,6 @@ const answered = (
     include: (rel) => set.has(rel),
   };
 };
-
-/** Everything an agent-level route may touch: the agent's whole directory
- *  (family files, skills, markdown, any agentfile path the pod would
- *  accept) — never the runtime tree (conversations, sessions, auth), which
- *  stays conversation-scoped. Mirrors the pod-store's ops-claim scope. */
-export function agentRouteScope(workspaceRel: string): OpResult["include"] {
-  const root = `${workspaceRel}/`;
-  const runtime = `${posix.join(workspaceRel, ".houston", "runtime")}/`;
-  return (rel) => rel.startsWith(root) && !rel.startsWith(runtime);
-}
-
-/** One conversation's file + sessions. */
-export function conversationScope(
-  dataRel: string,
-  cid: string,
-): OpResult["include"] {
-  const file = posix.join(
-    dataRel,
-    "conversations",
-    `${encodeURIComponent(cid)}.json`,
-  );
-  const sessions = `${posix.join(dataRel, "sessions", cid)}/`;
-  return (rel) => rel === file || rel.startsWith(sessions);
-}
-
-/**
- * The engine's agent id ("Workspace/Agent") from the hydrated layout. The
- * gateway's envelope names the agent by SLUG; turns never need the engine
- * id (the layout resolver finds the single agent), but the host handlers
- * address the agent by its id — so it is derived here, never trusted.
- */
-export function engineAgentId(filesystem: TurnFilesystem): string {
-  return filesystem.workspaceRel.replace(/^workspaces\//, "");
-}
 
 export async function applyOp(
   op: OpRequest,
