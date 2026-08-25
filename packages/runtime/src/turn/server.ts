@@ -123,12 +123,38 @@ export function createTurnServer(deps: TurnServerDeps): Server {
           error: error instanceof Error ? error.message : String(error),
         });
       }
+      // A single-use worker enables local bash for its ONE claimed turn; an
+      // unclaimed non-shadow turn would run bash (turnCodeExecutionMode keys on
+      // config) without ever spending the pod — serially reusable cross-tenant
+      // bash, the exact thing single-use exists to forbid. Only a claim carries
+      // a tenant boundary here, so reject unclaimed real turns outright. Shadow
+      // (model warm-up) runs no pi and is fine.
+      if (deps.singleUse && !turn.shadow && !turn.claim) {
+        return json(res, 400, { error: "single_use_requires_claim" });
+      }
       const release = admission.tryAcquire();
       if (!release) {
         return json(res, 503, { error: "worker_full" }, { "Retry-After": "1" });
       }
-      const spend = Boolean(turn.claim && deps.singleUse);
+      // A claimed real turn spends the worker; a shadow warm-up runs no pi and
+      // must NOT (it would kill the pod at warm time). Concurrency is 1 on a
+      // single-use worker, so the slot is held for the whole turn — a second
+      // request cannot acquire until this one releases, by which point `begin`
+      // has latched the pod spent and `isDraining` is true.
+      const spend = Boolean(turn.claim && !turn.shadow && deps.singleUse);
       try {
+        // Re-check AFTER acquiring the slot: a request parked in readJson can
+        // pass the pre-body draining gate, then reach here once the pod's one
+        // turn has already spent it. isDraining() is true the instant begin()
+        // latches, so this closes the straddle.
+        if (deps.isDraining?.()) {
+          return json(
+            res,
+            503,
+            { error: "worker_draining" },
+            { "Retry-After": "1" },
+          );
+        }
         // Latch BEFORE the turn runs: a crash mid-turn must still leave the
         // restarted container refusing to serve (single-use.ts).
         if (spend) await deps.singleUse?.begin();

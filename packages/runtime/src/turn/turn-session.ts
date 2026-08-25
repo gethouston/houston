@@ -44,6 +44,7 @@ import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makePlanReadyTool } from "../session/tools/plan-ready";
+import { makePoolBashTool } from "../session/tools/pool-bash";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import type { ProvidedContext } from "../session/workspace-context";
 import {
@@ -270,6 +271,14 @@ export async function runPiTurn(
         // its name is in the mode's allowlist).
         makePlanReadyTool(),
         ...(sandbox ? [sandbox] : []),
+        // When local bash is enabled (single-use pool worker), shadow pi's
+        // built-in bash with one whose child env is scrubbed to a non-secret
+        // allowlist — pi's default copies process.env, which here carries the
+        // pool worker token and store secrets. Same shadow-by-name mechanism
+        // as the clamped file tools.
+        ...(toolSelection.toolNames.includes("bash")
+          ? [makePoolBashTool(workspaceDir)]
+          : []),
       ],
     });
     const session = await backend.createSession({

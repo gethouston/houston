@@ -60,13 +60,19 @@ async function start(): Promise<Server> {
       : config.localStoreDir
         ? new LocalDirStore(config.localStoreDir)
         : poolOnlyFallbackStore();
-    const { markWorkerSpent, workerSpent } = await import("./turn/single-use");
-    // local bash on a turn worker is only safe when the pod serves exactly one
-    // claimed turn and is then replaced; fail closed like the rest of the
-    // exec-mode parsing (config.ts) rather than silently degrading.
+    const { assertMarkerWritable, markWorkerSpent, workerSpent } = await import(
+      "./turn/single-use"
+    );
+    // local bash on a turn worker is only safe on a single-use pod. Without
+    // single-use, `turnCodeExecutionMode` already degrades `local` to
+    // `disabled` (no bash) — the SAFE outcome — so this is a warning, not a
+    // boot throw: throwing here would crash-loop any existing turn deployment
+    // that never set HOUSTON_CODE_EXECUTION (config.ts defaults to `local`
+    // when no sandbox URL is present). Bash never reaches a shared worker
+    // regardless; the guard that MUST fail closed is the single-use one below.
     if (config.codeExecution === "local" && !config.poolSingleUse) {
-      throw new Error(
-        "HOUSTON_CODE_EXECUTION=local in turn mode requires HOUSTON_POOL_SINGLE_USE=1: a multi-turn pool worker crosses tenant boundaries",
+      logger.warn(
+        "HOUSTON_CODE_EXECUTION=local without HOUSTON_POOL_SINGLE_USE=1 in turn mode: bash is DISABLED (a multi-turn pool worker crosses tenant boundaries). Set HOUSTON_CODE_EXECUTION=disabled to silence this.",
       );
     }
     if (config.poolSingleUse && turnConcurrency() !== 1) {
@@ -74,6 +80,10 @@ async function start(): Promise<Server> {
         "HOUSTON_POOL_SINGLE_USE=1 requires HOUSTON_TURN_CONCURRENCY=1: single-use means exactly one claimed turn per pod",
       );
     }
+    // Prove the spent marker is writable now, at boot, before serving: a
+    // read-only/full volume or an unset HOUSTON_HOME would otherwise turn the
+    // restart guard into a silent no-op and surface only as burned claims.
+    if (config.poolSingleUse) assertMarkerWritable();
     // A restarted container in a spent pod (single-use worker exited, kubelet
     // restarted it in place) must idle unregistered until the control plane
     // replaces the pod — never serve from a tree the previous tenant's code
@@ -100,7 +110,7 @@ async function start(): Promise<Server> {
         ? {
             begin: async () => {
               spent = true;
-              await markWorkerSpent();
+              markWorkerSpent();
             },
             settled: () => shutdown("single-use"),
           }
@@ -184,6 +194,16 @@ function shutdown(signal: string) {
     setTimeout(() => {
       void exitNow();
     }, 3000).unref();
+  } else if (signal === "single-use") {
+    // A single-use worker shuts itself down after its one turn's response has
+    // already ended (settled() runs in the turn's finally). Unlike SIGTERM it
+    // has NO kubelet SIGKILL backstop, so a lingering idle/keep-alive
+    // connection that keeps server.close() from firing would zombie the pod
+    // forever, heartbeating draining and leaking pool capacity. Bound it.
+    setTimeout(() => {
+      logger.warn("single-use shutdown exceeded deadline; forcing exit");
+      void exitNow();
+    }, 30_000).unref();
   }
 }
 process.on("SIGINT", () => shutdown("SIGINT"));

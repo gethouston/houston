@@ -140,13 +140,15 @@ test.each([
   expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
   );
-  // The landed writes name the events other tabs need: the conversation and
-  // the board doc changed; out-of-scope files and session state do not count.
+  // The landed writes name the events other tabs need: the conversation, the
+  // board doc, and the workspace file (result.txt at the workspace root now
+  // fires FilesChanged, not the old files/-subtree-only silence). Out-of-scope
+  // files and session state do not count.
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
     data: {
       poolWritesOutOfScope: 2,
-      changed: ["ActivityChanged", "ConversationsChanged"],
+      changed: ["ActivityChanged", "ConversationsChanged", "FilesChanged"],
     },
   });
   expect(log).toHaveBeenCalledWith(
@@ -176,8 +178,14 @@ test("an unclaimed turn retains full sync-back", async () => {
   expect(await readFile(join(prefixRoot, "workspace/result.txt"), "utf8")).toBe(
     "workspace",
   );
+  // Unclaimed turns sync the whole prefix and now classify every landed key
+  // through the canonical rule: the workspace file fires FilesChanged and the
+  // session write fires ConversationsChanged (deduped, sorted).
   expect(emitted.at(-1)).toEqual(
-    expect.objectContaining({ type: "done", data: null }),
+    expect.objectContaining({
+      type: "done",
+      data: { changed: ["ConversationsChanged", "FilesChanged"] },
+    }),
   );
 });
 

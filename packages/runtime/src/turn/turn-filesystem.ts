@@ -175,7 +175,13 @@ export async function syncTurnFilesystem(opts: {
   filesystem: TurnFilesystem;
   conversationId: string;
   claimed: boolean;
-}): Promise<{ uploaded: string[]; deleted: string[]; outOfScope: number }> {
+}): Promise<{
+  uploaded: string[];
+  deleted: string[];
+  outOfScope: number;
+  skipped: { key: string; reason: string }[];
+  conflicts: { key: string; reason: string }[];
+}> {
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -183,6 +189,11 @@ export async function syncTurnFilesystem(opts: {
     opts.filesystem.manifest,
     {
       generations: opts.filesystem.generationAware,
+      // A single-use worker has no later retry — its temp tree is wiped after
+      // the turn. A failed/oversized workspace-file upload must NOT then delete
+      // the durable object it was replacing, so hold the delete pass whenever
+      // any write was skipped or conflicted (turn durability surfaces it).
+      holdDeletesOnFailure: opts.claimed,
       ...(opts.claimed
         ? {
             include: claimedTurnIncludes(
@@ -200,9 +211,16 @@ export async function syncTurnFilesystem(opts: {
       `[turn] pool_writes_out_of_scope=${result.outOfScope} prefix=${opts.prefix || opts.filesystem.dataRel} conversation=${opts.conversationId}`,
     );
   }
+  if (result.skipped.length > 0 || result.conflicts.length > 0) {
+    console.warn(
+      `[turn] pool_sync_incomplete skipped=${result.skipped.length} conflicts=${result.conflicts.length} conversation=${opts.conversationId}`,
+    );
+  }
   return {
     uploaded: result.uploaded,
     deleted: result.deleted,
     outOfScope: result.outOfScope,
+    skipped: result.skipped,
+    conflicts: result.conflicts,
   };
 }

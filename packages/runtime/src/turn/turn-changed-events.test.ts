@@ -46,13 +46,23 @@ describe("changedEventTypes", () => {
     ).toEqual(["ActivityChanged", "ConversationsChanged"]);
   });
 
-  it("does not match a schema file or a sibling agent's doc", () => {
+  it("isolates a sibling agent's doc; classifies this agent's schema file via the canonical rule", () => {
+    // A sibling agent's key is outside this turn's workspaceRel, so it never
+    // contributes — cross-agent isolation holds.
     expect(
       changedEventTypes(layout, [
-        "workspaces/Houston/Agent/.houston/activity/activity.schema.json",
         "workspaces/Houston/Other/.houston/activity/activity.json",
       ]),
     ).toEqual([]);
+    // The canonical classifier (agentFileEventType) is prefix-based, so this
+    // agent's own activity SCHEMA file maps to ActivityChanged — a rare, safe
+    // over-fire (a refetch), never a miss. Claimed turns never sync .houston
+    // internals anyway (claimedTurnIncludes excludes them).
+    expect(
+      changedEventTypes(layout, [
+        "workspaces/Houston/Agent/.houston/activity/activity.schema.json",
+      ]),
+    ).toEqual(["ActivityChanged"]);
   });
 });
 
