@@ -1,6 +1,7 @@
 import type { HoustonEvent } from "@houston/protocol";
 import type { EventHub } from "../events/hub";
 import type { WorkspaceStore } from "../ports";
+import { listAgentIds } from "./project-family";
 import { VIEW_RESTS } from "./view-capture";
 
 // The ladder must OUTLAST the launcher's 60s boot-health budget
@@ -49,12 +50,7 @@ async function fetchView(
 }
 
 async function singleAgentId(store: WorkspaceStore): Promise<string | null> {
-  const agents: string[] = [];
-  for (const workspace of await store.listWorkspaces()) {
-    for (const agent of await store.listAgents(workspace.id)) {
-      agents.push(agent.id);
-    }
-  }
+  const agents = await listAgentIds(store);
   // Same single-agent rule as the doc projector: the doc route names ONE
   // agent; on any other host shape the warm quietly stands down.
   return agents.length === 1 ? (agents[0] ?? null) : null;

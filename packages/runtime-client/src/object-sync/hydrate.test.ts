@@ -835,3 +835,30 @@ test("segment-glob excludes match exactly one segment per `*` and only the named
   ).toBe(false);
   expect(excluded("workspace/.houston/runtime/x", ex)).toBe(false);
 });
+
+test("an object deleted between the listing and its download is skipped, not fatal", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, "agent-1", {
+    "workspace/keep.txt": "keep",
+    "workspace/vanishes.txt": "gone",
+  });
+  const listing = await store.list("agent-1");
+  rmSync(join(storeRoot, "agent-1", "workspace", "vanishes.txt"));
+  // The stale listing still names the deleted object — the boot-gating pass
+  // must treat the vanish as a delete, not fail the whole hydration.
+  const stale: ObjectStore = {
+    list: async () => listing,
+    download: (key, dest) => store.download(key, dest),
+    upload: (src, key) => store.upload(src, key),
+    delete: (key) => store.delete(key),
+  };
+
+  const manifest = await hydrate(stale, "agent-1", work);
+
+  expect([...manifest.keys()]).toEqual(["workspace/keep.txt"]);
+  expect(readFileSync(join(work, "workspace", "keep.txt"), "utf8")).toBe(
+    "keep",
+  );
+  // Nothing half-fetched survives to be mistaken for a fresh local write.
+  expect(existsSync(join(work, "workspace", "vanishes.txt"))).toBe(false);
+});

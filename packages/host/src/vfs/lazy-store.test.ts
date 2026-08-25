@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -211,4 +217,24 @@ test("moving a missing or deleted source throws like the real filesystem", async
   await expect(
     vfs.move("workspaces/P/Bob/report.csv", "workspaces/P/Bob/x.txt"),
   ).rejects.toThrow(/source not found/);
+});
+
+test("an object deleted remotely after the listing reads as absent, not a failure", async () => {
+  const { vfs, storeRoot } = await seeded();
+  // Another writer deleted it between the turn's listing and this first
+  // read: a vanished object is a delete, never a failed turn
+  // (HOUSTON-APP-5AS).
+  rmSync(join(storeRoot, PREFIX, "workspaces/P/Bob/report.csv"));
+  expect(await vfs.readText("workspaces/P/Bob/report.csv")).toBeNull();
+  // Listings agree with the read, and the vanished key never enters the
+  // sync-back manifest as something to re-create or delete.
+  expect(await vfs.list("workspaces/P/Bob")).not.toContain(
+    "workspaces/P/Bob/report.csv",
+  );
+
+  // Moving a vanished source fails like a missing file, not like a store error.
+  rmSync(join(storeRoot, PREFIX, "workspaces/P/Bob/docs/notes.md"));
+  await expect(
+    vfs.move("workspaces/P/Bob/docs/notes.md", "workspaces/P/Bob/n.md"),
+  ).rejects.toThrow("move: source not found");
 });

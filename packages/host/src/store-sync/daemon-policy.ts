@@ -4,6 +4,7 @@ import {
   type SyncResult,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { type TreeWatch, watchTree } from "../watch/watch-tree";
 
 export const DEFAULT_QUIET_MS = 3_000;
 export const DEFAULT_INTERVAL_MS = 300_000;
@@ -49,6 +50,62 @@ export function logHydrated(
 ): void {
   opts.log(
     `[store-sync] hydrated ${objectCount} objects in ${Date.now() - startedAt}ms`,
+  );
+}
+
+/**
+ * Watch the tree, degrading to the periodic pass alone when the watcher
+ * cannot start or later fails. onError fires at most once (ENOSPC on the
+ * pod's inotify budget — HOU-841); the tree watch keeps whatever coverage it
+ * already has, and the periodic pass guarantees eventual sync regardless.
+ */
+export function startTreeWatch(
+  opts: StoreSyncOptions,
+  onDirty: () => void,
+): TreeWatch | undefined {
+  try {
+    return watchTree(opts.rootDir, onDirty, {
+      excludeDirs: opts.watchExcludeDirs,
+      onError: (err) =>
+        opts.log(
+          "[store-sync] filesystem watcher degraded; periodic sync covers changes",
+          err,
+        ),
+    });
+  } catch (err) {
+    opts.log(
+      "[store-sync] filesystem watcher failed; using periodic sync",
+      err,
+    );
+    return undefined;
+  }
+}
+
+/** Consecutive failed passes before a sync failure reports with its error.
+ *  At the 5-min periodic interval this is ~15 min of sustained failure. */
+const REPORT_AFTER_FAILURES = 3;
+
+/**
+ * One failed pass is a deploy-window blip the next pass absorbs (the gateway
+ * restarts, the pod's network tears down): a breadcrumb, not a report
+ * (HOUSTON-APP-58V). A streak means the store is actually unreachable — that
+ * reports with the error attached.
+ */
+export function logSyncFailed(
+  opts: StoreSyncOptions,
+  trigger: string,
+  consecutiveFailures: number,
+  err: unknown,
+): void {
+  if (consecutiveFailures >= REPORT_AFTER_FAILURES) {
+    opts.log(
+      `[store-sync] ${trigger} sync failed ${consecutiveFailures} times in a row; will retry`,
+      err,
+    );
+    return;
+  }
+  opts.log(
+    `[store-sync] ${trigger} sync failed; will retry (${err instanceof Error ? err.message : String(err)})`,
   );
 }
 

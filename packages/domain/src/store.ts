@@ -37,20 +37,27 @@ export async function loadJson<T>(
 ): Promise<T> {
   const raw = await store.readText(key);
   if (raw === null) return fallback;
-  // A leading byte-order mark is an encoding artifact, not content: files-first
-  // docs get hand-written by agents, users and editors, and `JSON.parse` rejects
-  // a BOM outright (HOU-953). The host's Vfs already drops it on decode; strip
-  // here too so EVERY TextStore impl reads a BOM'd doc rather than declaring the
-  // user's data corrupt over one invisible byte.
+  return parseJsonDoc(raw, key) as T;
+}
+
+/**
+ * The ONE way any Houston code turns a `.houston` doc's text into a value:
+ * every reader (pod read paths, doc-shadow projection, pooled-turn doc
+ * publish) must parse identically or the doc-served and pod-served answers
+ * drift. A leading byte-order mark is an encoding artifact, not content:
+ * files-first docs get hand-written by agents, users and editors, and
+ * `JSON.parse` rejects a BOM outright (HOU-953). A complete value followed by
+ * trailing bytes (an outside writer appended or overlapped the doc) keeps the
+ * value: nothing the user wrote is lost, and the next save rewrites the file
+ * clean. Anything else throws with the key named.
+ */
+export function parseJsonDoc(raw: string, key: string): unknown {
   const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
   try {
-    return JSON.parse(text) as T;
+    return JSON.parse(text) as unknown;
   } catch (err) {
-    // A complete value followed by trailing bytes (an outside writer appended
-    // or overlapped the doc) keeps the value: nothing the user wrote is lost,
-    // and the next save rewrites the file clean. Anything else still throws.
     const salvaged = salvageLeadingJson(text);
-    if (salvaged !== undefined) return salvaged as T;
+    if (salvaged !== undefined) return salvaged;
     throw new Error(
       `${key} is not valid JSON (${err instanceof Error ? err.message : String(err)})`,
     );

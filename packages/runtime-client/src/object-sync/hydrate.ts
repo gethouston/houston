@@ -1,7 +1,7 @@
-import { stat } from "node:fs/promises";
+import { rm, stat } from "node:fs/promises";
 import { basename, join, sep } from "node:path";
 import { fileSha256 } from "./file-hash";
-import type { ObjectStore } from "./object-store";
+import { ObjectNotFoundError, type ObjectStore } from "./object-store";
 
 /**
  * Durable engine state is materialized into a local cache, then synchronized
@@ -161,6 +161,15 @@ export async function hydrate(
         }
         manifest.set(rel, { hash: await fileSha256(dest, size), generation });
       } catch (err) {
+        // Vanished between the listing and its download: another writer
+        // deleted it. The object is simply not part of this hydration —
+        // failing the whole (boot-gating) pass over it would wedge the pod.
+        // A half-opened destination must not survive outside the manifest:
+        // sync-back would read it as a fresh local write of an empty file.
+        if (err instanceof ObjectNotFoundError) {
+          await rm(join(destDir, ...rel.split("/")), { force: true });
+          continue;
+        }
         if (!failed) {
           failed = true;
           firstError = err;

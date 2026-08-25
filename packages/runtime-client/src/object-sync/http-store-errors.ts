@@ -1,4 +1,5 @@
 import {
+  ObjectNotFoundError,
   ObjectTooLargeError,
   StoreConflictError,
   StoreFencedError,
@@ -13,6 +14,7 @@ export async function objectStoreResponseError(
   const message = `object store ${method} ${key} failed (${res.status})${
     body ? `: ${body.slice(0, 200)}` : ""
   }`;
+  if (res.status === 404) return new ObjectNotFoundError(key, message);
   if (res.status === 413) return new ObjectTooLargeError(key, message);
   if (res.status === 409) return new StoreFencedError(key, message);
   if (res.status === 412) return new StoreConflictError(key, message);

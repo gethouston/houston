@@ -4,16 +4,18 @@ import {
   hydrate,
   StoreFencedError,
 } from "@houston/runtime-client/object-sync";
-import { type TreeWatch, watchTree } from "../watch/watch-tree";
+import type { TreeWatch } from "../watch/watch-tree";
 import {
   DEFAULT_INTERVAL_MS,
   DEFAULT_MAX_HYDRATE_BYTES,
   DEFAULT_QUIET_MS,
   logHydrated,
+  logSyncFailed,
   logSyncResult,
   runSyncBack,
   STORE_SYNC_EXCLUDES,
   type StoreSyncOptions,
+  startTreeWatch,
 } from "./daemon-policy";
 
 export { STORE_SYNC_EXCLUDES, type StoreSyncOptions } from "./daemon-policy";
@@ -31,6 +33,7 @@ export class StoreSyncDaemon {
   private syncPromise: Promise<void> | undefined;
   private rerunRequested = false;
   private fencedLatch = false;
+  private consecutiveFailures = 0;
 
   constructor(private readonly opts: StoreSyncOptions) {}
 
@@ -59,25 +62,7 @@ export class StoreSyncDaemon {
     }
     if (this.started || this.fencedLatch) return;
     this.started = true;
-    try {
-      this.watcher = watchTree(this.opts.rootDir, () => this.markDirty(), {
-        excludeDirs: this.opts.watchExcludeDirs,
-        // Fires at most once (ENOSPC on the pod's inotify budget — HOU-841);
-        // the tree watch keeps whatever coverage it already has, and the
-        // periodic pass guarantees eventual sync regardless.
-        onError: (err) =>
-          this.opts.log(
-            "[store-sync] filesystem watcher degraded; periodic sync covers changes",
-            err,
-          ),
-      });
-    } catch (err) {
-      this.opts.log(
-        "[store-sync] filesystem watcher failed; using periodic sync",
-        err,
-      );
-      this.watcher = undefined;
-    }
+    this.watcher = startTreeWatch(this.opts, () => this.markDirty());
     this.intervalTimer = setInterval(
       () => this.runInBackground("periodic"),
       this.opts.intervalMs ?? DEFAULT_INTERVAL_MS,
@@ -139,7 +124,7 @@ export class StoreSyncDaemon {
     )
       return;
     void this.requestSync().catch((err) => {
-      this.opts.log(`[store-sync] ${trigger} sync failed; will retry`, err);
+      logSyncFailed(this.opts, trigger, this.consecutiveFailures, err);
     });
   }
 
@@ -165,10 +150,14 @@ export class StoreSyncDaemon {
     try {
       result = await runSyncBack(this.opts, this.manifest, this.excludes);
     } catch (err) {
-      if (!(err instanceof StoreFencedError)) throw err;
+      if (!(err instanceof StoreFencedError)) {
+        this.consecutiveFailures += 1;
+        throw err;
+      }
       this.loseFence(err);
       return;
     }
+    this.consecutiveFailures = 0;
     this.manifest = result.manifest;
     if (version === this.dirtyVersion) this.dirty = false;
     logSyncResult(result, this.opts);

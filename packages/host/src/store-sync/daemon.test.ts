@@ -387,3 +387,54 @@ test("a fencing loss latches once, halts scheduling, and skips the final drain",
   expect(fencingLogs[0]?.err).toBeUndefined();
   expect(fencingLogs[0]?.message).toContain("lease lost");
 });
+
+test("a transient sync failure is a breadcrumb; only a streak reports the error", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-flaky-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-flaky-local-"));
+  const inner = new LocalDirStore(remoteRoot);
+  let failing = true;
+  const flaky: ObjectStore = {
+    list: (prefix) => inner.list(prefix),
+    download: (key, dest) => inner.download(key, dest),
+    upload: (src, key) => {
+      if (failing) return Promise.reject(new TypeError("fetch failed"));
+      return inner.upload(src, key);
+    },
+    delete: (key) => inner.delete(key),
+  };
+  const logs: Array<{ message: string; err?: unknown }> = [];
+  const daemon = new StoreSyncDaemon({
+    store: flaky,
+    rootDir: localRoot,
+    quietMs: 20,
+    intervalMs: 40,
+    log: (message, err) => logs.push({ message, err }),
+  });
+  await daemon.hydrate();
+  daemon.start();
+  writeFileSync(join(localRoot, "notes.txt"), "notes");
+
+  const failures = () => logs.filter((l) => l.message.includes("sync failed"));
+  await eventually(() => expect(failures().length).toBeGreaterThanOrEqual(4));
+
+  // Deploy-window blips (the first two passes) stay err-less breadcrumbs with
+  // the cause inlined; the sustained streak reports with the error attached.
+  expect(failures()[0]?.err).toBeUndefined();
+  expect(failures()[0]?.message).toContain("fetch failed");
+  expect(failures()[1]?.err).toBeUndefined();
+  expect(failures().some((l) => l.err !== undefined)).toBe(true);
+
+  // Recovery resets the streak: the next lone failure is a breadcrumb again.
+  failing = false;
+  await eventually(() =>
+    expect(readFileSync(join(remoteRoot, "notes.txt"), "utf8")).toBe("notes"),
+  );
+  failing = true;
+  writeFileSync(join(localRoot, "notes.txt"), "notes v2");
+  const seen = failures().length;
+  await eventually(() => expect(failures().length).toBeGreaterThan(seen));
+  expect(failures()[seen]?.err).toBeUndefined();
+
+  failing = false;
+  await daemon.stop();
+});
