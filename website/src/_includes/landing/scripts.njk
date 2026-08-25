@@ -274,6 +274,12 @@
         (navigator.userAgent || "")).toLowerCase();
     if (hay.indexOf("win") !== -1) return "windows";
     if (hay.indexOf("mac") !== -1) return "mac";
+    // Android UAs also say "Linux"; only desktop Linux gets the AppImage.
+    if (
+      hay.indexOf("android") === -1 &&
+      (hay.indexOf("linux") !== -1 || hay.indexOf("x11") !== -1)
+    )
+      return "linux";
     return "other";
   }
 
