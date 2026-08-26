@@ -155,6 +155,32 @@ test("refreshNow returns null when there is no stored session", async () => {
   assert.equal(calls, 0);
 });
 
+test("refreshNow RETHROWS a transient network failure and keeps the session", async () => {
+  // The three-valued contract (HOU-1106) the hosted-session seam depends on:
+  // null is reserved for a TERMINAL sign-out, so a transient failure (identity
+  // service unreachable while a sleep-wake reconnect settles) must throw
+  // IdentityError("network") — and the installer (engine-gate) must pass that
+  // throw through to the adapter's connectivity classifier. Flattening it to
+  // null made the stale-token 401 stand and every live query reported a bogus
+  // "invalid or expired token" storm (PRODUCT-1531).
+  await seedSession();
+  const { refreshNow } = await import("../src/lib/identity/refresh.ts");
+  const { loadSession } = await import("../src/lib/identity/session-store.ts");
+  const { isIdentityError } = await import("../src/lib/identity/errors.ts");
+
+  globalThis.fetch = (async () => {
+    throw new TypeError("Load failed"); // transport rejection, no HTTP response
+  }) as typeof fetch;
+
+  await assert.rejects(refreshNow(), (e: unknown) => {
+    assert.ok(isIdentityError(e), "expected a typed IdentityError");
+    assert.equal(e.code, "network");
+    return true;
+  });
+  // Transient ≠ sign-out: the stored session must survive for the retry.
+  assert.deepEqual(await loadSession(), SESSION);
+});
+
 test("proactive refresh backs off on a transient failure near expiry (no hot loop)", async () => {
   // A session already inside the skew window: the expiry-based delay is 0, so
   // without backoff a failing refresh would reschedule at 0 and hammer the
