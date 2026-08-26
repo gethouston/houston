@@ -34,6 +34,57 @@ test("returns a transient status untouched on the final attempt", async () => {
   expect(waits).toEqual([1, 2]);
 });
 
+test("retries a gateway 500 that wraps an upstream transient status", async () => {
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    return calls < 3
+      ? new Response(
+          JSON.stringify({
+            error:
+              "googleapi: got HTTP response code 503 with body: Service Unavailable",
+          }),
+          { status: 500 },
+        )
+      : new Response(null, { status: 200 });
+  };
+  const res = await fetchWithRetry(fetchImpl, "https://store.test", undefined, {
+    delaysMs: [0, 0],
+    sleep: async () => {},
+  });
+  expect(res.status).toBe(200);
+  expect(calls).toBe(3);
+});
+
+test("a plain 500 is the server's answer and is never retried", async () => {
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ error: "boom" }), { status: 500 });
+  };
+  const res = await fetchWithRetry(fetchImpl, "https://store.test", undefined, {
+    delaysMs: [0, 0],
+    sleep: async () => {},
+  });
+  expect(res.status).toBe(500);
+  expect(calls).toBe(1);
+});
+
+test("a wrapped-transient 500 returned on the final attempt keeps a readable body", async () => {
+  const body = JSON.stringify({
+    error:
+      "googleapi: got HTTP response code 503 with body: Service Unavailable",
+  });
+  const fetchImpl: typeof fetch = async () =>
+    new Response(body, { status: 500 });
+  const res = await fetchWithRetry(fetchImpl, "https://store.test", undefined, {
+    delaysMs: [0],
+    sleep: async () => {},
+  });
+  expect(res.status).toBe(500);
+  expect(await res.text()).toBe(body);
+});
+
 test("an empty delay list disables retries entirely", async () => {
   let calls = 0;
   const fetchImpl: typeof fetch = async () => {
