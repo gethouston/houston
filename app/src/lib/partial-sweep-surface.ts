@@ -17,7 +17,6 @@
  * hooks/queries/all-conversations-sweep.ts.
  */
 
-import type { PartialSweepSurface } from "./all-conversations-recovery.ts";
 import { isEngineWakingError } from "./engine-waking-error.ts";
 import { isNetworkTransportError } from "./network-transport-error.ts";
 
@@ -43,24 +42,24 @@ export function representativeSweepFailure(
 export type PartialSweepToast = "waking" | "connectivity" | "error";
 
 /**
- * Which surface an incomplete sweep earns.
+ * Which surface an incomplete sweep earns, at notice AND at escalation.
  *
- * A first-notice sweep whose failures are all expected environment states gets
- * the matching quiet informational surface, exactly like every other per-agent
- * call (lib/tauri.ts `surfaceError`): an asleep engine pod still waking is the
+ * A sweep whose failures are all expected environment states gets the matching
+ * quiet informational surface, exactly like every other per-agent call
+ * (lib/tauri.ts `surfaceError`): an asleep engine pod still waking is the
  * gateway working as designed (HOU-1114), and the device dropping offline
- * mid-sweep is HOU-1085 — in both cases the board keeps painting the
- * carried-forward rows and the scheduled re-sweep heals the hole, so nothing
- * in Houston broke and there is nothing to report. A real failure, or ANY
- * failure still standing when the recovery run escalates (a pod that never
- * woke through the whole run is a crashloop or a capacity problem — the bug
- * report we want), takes the error surface (toast path + Sentry) as before.
+ * mid-sweep is HOU-1085 — the board keeps painting the carried-forward rows,
+ * so nothing in Houston broke and there is nothing to report. Escalation used
+ * to override this to the error surface ("a pod that never woke through the
+ * whole run is a crashloop"), but the client cannot conclude that
+ * (HOUSTON-APP-58Q): the gateway holds a legitimate cold start for minutes and
+ * an engine roll restarts busy pods hours into a deploy, so every escalated
+ * report was a still-waking pod filed as a bug. Only a real failure — at any
+ * point of the run — takes the error surface (toast path + Sentry).
  */
 export function partialSweepToastKind(
-  surface: PartialSweepSurface,
   representativeReason: unknown,
 ): PartialSweepToast {
-  if (surface === "escalate") return "error";
   if (isEngineWakingError(representativeReason)) return "waking";
   if (isNetworkTransportError(representativeReason)) return "connectivity";
   return "error";

@@ -1,4 +1,4 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   mergePartialSweep,
@@ -98,6 +98,14 @@ describe("planPartialSweep", () => {
     deepStrictEqual(
       planPartialSweep(1, PARTIAL_SWEEP_RETRY_DELAYS_MS.length + 1),
       {},
+    );
+  });
+
+  it("the run outlives a legitimate pod wake — the gateway holds a cold start up to five minutes (HOUSTON-APP-58Q)", () => {
+    const total = PARTIAL_SWEEP_RETRY_DELAYS_MS.reduce((a, b) => a + b, 0);
+    ok(
+      total >= 300_000,
+      `re-sweep run is ${total}ms, shorter than the wake hold`,
     );
   });
 
