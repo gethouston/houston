@@ -102,7 +102,12 @@ async function start(): Promise<Server> {
     // quietly for recycle — masking the clean-exit signal the recycler reads.
     let spent = config.poolSingleUse && workerSpent();
     if (spent) {
-      console.error(
+      // A single-use worker that served its one turn, latched spent, exited,
+      // and got its container restarted in place is a NORMAL lifecycle state,
+      // not a failure — it idles here until the recycler deletes the pod.
+      // Log at info: console.error is captured into Sentry (see the capture
+      // feed above), so an error level would page on every healthy recycle.
+      console.info(
         "[turn] pod is spent (single-use marker present); refusing to register until the pod is recycled",
       );
     }
