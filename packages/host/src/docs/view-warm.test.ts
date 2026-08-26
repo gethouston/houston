@@ -66,6 +66,62 @@ test("a SkillsChanged event re-fetches /skills for that agent (debounced)", asyn
   vi.useRealTimers();
 });
 
+// An agent delete/rename unlinks its skills tree; the watcher classifies each
+// unlink as SkillsChanged for the now-gone path, and the debounced refresh
+// then 404s. A gone agent is the delete's designed outcome, never an error
+// (HOUSTON-APP-5AP).
+test("a refresh 404 for an agent no longer in the store stays silent", async () => {
+  vi.useFakeTimers();
+  const store = new MemoryWorkspaceStore();
+  const fetchImpl = vi.fn(
+    async () => new Response('{"error":"agent not found"}', { status: 404 }),
+  ) as unknown as typeof fetch;
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const events = hub();
+  refreshViewsOnEvents({
+    port: 4318,
+    token: "t",
+    store,
+    events,
+    userId: "local-owner",
+    fetchImpl,
+  });
+  events.fire({ type: "SkillsChanged", agentPath: "Personal/Deleted" });
+  await vi.advanceTimersByTimeAsync(600);
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+  expect(errorSpy).not.toHaveBeenCalled();
+  errorSpy.mockRestore();
+  vi.useRealTimers();
+});
+
+test("a refresh failure for an agent still in the store reports", async () => {
+  vi.useFakeTimers();
+  const store = new MemoryWorkspaceStore();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const agent = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "Only",
+  });
+  const fetchImpl = vi.fn(
+    async () => new Response("{}", { status: 500 }),
+  ) as unknown as typeof fetch;
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const events = hub();
+  refreshViewsOnEvents({
+    port: 4318,
+    token: "t",
+    store,
+    events,
+    userId: "local-owner",
+    fetchImpl,
+  });
+  events.fire({ type: "SkillsChanged", agentPath: agent.id });
+  await vi.advanceTimersByTimeAsync(600);
+  expect(errorSpy).toHaveBeenCalledOnce();
+  errorSpy.mockRestore();
+  vi.useRealTimers();
+});
+
 test("a global CustomIntegrationsChanged resolves the single agent", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
