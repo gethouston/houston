@@ -1,3 +1,4 @@
+import { AZURE_OPENAI, azureBaseUrl } from "../ai/azure-openai";
 import { config } from "../config";
 import { currentCredentialScope } from "../session/acting-context";
 import {
@@ -28,6 +29,10 @@ export type ExportedApiKeyCredential = {
   provider: string;
   kind: "api_key";
   key: string;
+  /** Azure OpenAI's per-resource endpoint, exported beside the key so the
+   *  central row can serve it back to runtimes that never ran the connect
+   *  (PRODUCT-1532). Rides the same non-secret slot Copilot Enterprise uses. */
+  enterpriseUrl?: string;
 };
 
 export type ExportedCredential =
@@ -130,7 +135,7 @@ export function exportCredential(
   opts?: { excludeServed?: boolean },
 ): ExportedCredential | null {
   const scopeKey = currentCredentialScope().key;
-  return selectExportCredential(
+  const selected = selectExportCredential(
     readAuthFile(authPathIn(config.dataDir, scopeKey)),
     provider,
     opts?.excludeServed
@@ -143,4 +148,18 @@ export function exportCredential(
         }
       : undefined,
   );
+  // Azure's key is unusable without its per-resource endpoint, which lives in
+  // its own file (ai/azure-openai.ts), not auth.json — export it alongside so
+  // the capture stores a row every other runtime can actually use
+  // (PRODUCT-1532).
+  if (
+    selected &&
+    "kind" in selected &&
+    selected.kind === "api_key" &&
+    selected.provider === AZURE_OPENAI
+  ) {
+    const endpoint = azureBaseUrl();
+    return endpoint ? { ...selected, enterpriseUrl: endpoint } : selected;
+  }
+  return selected;
 }

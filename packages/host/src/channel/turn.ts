@@ -137,15 +137,10 @@ export class TurnChannel implements RuntimeChannel {
     apiKey: string,
     endpoint?: string,
   ): Promise<void> {
-    // Azure OpenAI needs its per-resource endpoint hydrated into every
-    // per-turn data dir, and this channel has no write for it yet — refuse
-    // loudly rather than store a key that can never make a request
-    // (PRODUCT-1477; mirrors the Claude refusal below).
-    if (endpoint !== undefined) {
-      throw new Error(
-        `${provider} isn't available in the cloud per-turn runtime yet.`,
-      );
-    }
+    // Azure OpenAI's per-resource endpoint rides the credential row's
+    // non-secret enterpriseUrl slot (PRODUCT-1532): the per-turn runtime
+    // receives it baked into each POST /turn and lands it in the turn's data
+    // dir (execute-turn), so the key is never stored aimed at nothing.
     await this.deps.credentials.put({
       workspaceId: ctx.workspace.id,
       provider,
@@ -153,6 +148,7 @@ export class TurnChannel implements RuntimeChannel {
       refreshToken: "",
       expiresAt: 0,
       kind: "api_key",
+      ...(endpoint ? { enterpriseUrl: endpoint } : {}),
     });
   }
 

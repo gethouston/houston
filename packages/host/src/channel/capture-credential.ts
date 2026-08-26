@@ -124,6 +124,11 @@ export async function captureRuntimeCredential(args: {
         accessToken: credential.key,
         refreshToken: "",
         expiresAt: Number.MAX_SAFE_INTEGER,
+        // Azure exports its per-resource endpoint beside the key — a central
+        // row without it serves a key aimed at nothing (PRODUCT-1532).
+        ...(credential.enterpriseUrl
+          ? { enterpriseUrl: credential.enterpriseUrl }
+          : {}),
       },
       { actingAs, ifAbsent },
     );

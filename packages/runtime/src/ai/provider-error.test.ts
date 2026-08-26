@@ -1332,3 +1332,23 @@ test("a 404 on any OTHER provider still falls through to unknown", () => {
   });
   expect(err.kind).toBe("unknown");
 });
+
+test("Azure missing base URL → unauthenticated / no_credentials (PRODUCT-1532)", () => {
+  // pi's azure client throws this before any HTTP when the per-resource
+  // endpoint never landed on THIS runtime — the key alone can't be aimed.
+  const err = classifyProviderError({
+    provider: "azure-openai-responses",
+    model: "gpt-5.4-mini",
+    message:
+      "Azure OpenAI base URL is required. Set AZURE_OPENAI_BASE_URL or AZURE_OPENAI_RESOURCE_NAME, or pass azureBaseUrl, azureResourceName, or model.baseUrl.",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
+  // Any other provider mentioning a base URL keeps its own classification.
+  const other = classifyProviderError({
+    provider: "openrouter",
+    model: "some-model",
+    message: "base URL is required",
+  });
+  expect(other.kind).toBe("unknown");
+});

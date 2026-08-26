@@ -110,6 +110,11 @@ export async function applyApiKeyConnect(
     hostToken: opts.hostToken,
     provider: opts.provider,
     apiKey: key,
+    // Azure's endpoint rides the central row (its enterpriseUrl slot) so
+    // every runtime this key is later served to can aim it (PRODUCT-1532).
+    ...(opts.provider === AZURE_OPENAI && opts.endpoint
+      ? { enterpriseUrl: normalizeAzureEndpoint(opts.endpoint) }
+      : {}),
     ...(opts.actingAs ? { actingAs: opts.actingAs } : {}),
     ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
   });
@@ -131,6 +136,8 @@ export async function pushApiKeyCredential(opts: {
   hostToken: string;
   provider: string;
   apiKey: string;
+  /** Non-secret provider base URL stored beside the key (azure's endpoint). */
+  enterpriseUrl?: string;
   actingAs?: string;
   fetchImpl?: typeof fetch;
 }): Promise<OpAnswer | null> {
@@ -152,6 +159,7 @@ export async function pushApiKeyCredential(opts: {
         refreshToken: "",
         expiresAt: 0,
         kind: "api_key",
+        ...(opts.enterpriseUrl ? { enterpriseUrl: opts.enterpriseUrl } : {}),
       },
       opts.actingAs ? { actingAs: opts.actingAs } : {},
     );

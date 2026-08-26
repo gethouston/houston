@@ -155,3 +155,40 @@ test("exportCredential reads the setup token from auth.json; excludeServed consu
     },
   );
 });
+
+test("an azure api_key export carries the stored endpoint as enterpriseUrl (PRODUCT-1532)", () => {
+  withDataDir(
+    {
+      "auth.json": {
+        "azure-openai-responses": { type: "api_key", key: "azure-key" },
+      },
+      "azure-endpoint.json": { baseUrl: "https://acme.openai.azure.com" },
+    },
+    () => {
+      // The endpoint lives in its own file, not auth.json — the export joins
+      // them so the captured central row serves a usable credential.
+      expect(exportCredential("azure-openai-responses")).toEqual({
+        provider: "azure-openai-responses",
+        kind: "api_key",
+        key: "azure-key",
+        enterpriseUrl: "https://acme.openai.azure.com",
+      });
+    },
+  );
+  withDataDir(
+    {
+      "auth.json": {
+        "azure-openai-responses": { type: "api_key", key: "azure-key" },
+      },
+    },
+    () => {
+      // No stored endpoint (a legacy connect): the export stays key-only
+      // rather than inventing an empty enterpriseUrl.
+      expect(exportCredential("azure-openai-responses")).toEqual({
+        provider: "azure-openai-responses",
+        kind: "api_key",
+        key: "azure-key",
+      });
+    },
+  );
+});

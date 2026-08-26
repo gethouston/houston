@@ -393,3 +393,38 @@ test("a new-format AQ. google auth key captures too (PRODUCT-1368)", async () =>
   expect(result).toEqual({ ok: true, provider: "google" });
   expect(stored[0]?.accessToken).toBe("AQ.Ab8RN6JkyDLMExampleAuthKey");
 });
+
+test("an azure api_key capture stores the exported endpoint as enterpriseUrl (PRODUCT-1532)", async () => {
+  // The runtime exports azure's per-resource endpoint beside the key; the
+  // central row must keep them together or every OTHER runtime is served a
+  // key aimed at nothing ("base URL is required" on each turn).
+  const { credentials, puts } = recordingStore();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request) => {
+      if (String(input).includes("/auth/export"))
+        return Response.json({
+          provider: "azure-openai-responses",
+          kind: "api_key",
+          key: "azure-key",
+          enterpriseUrl: "https://acme.openai.azure.com",
+        });
+      return new Response("not found", { status: 404 });
+    }),
+  );
+  expect(
+    await captureRuntimeCredential({
+      endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
+      credentials,
+      workspaceId: "workspace",
+      provider: "azure-openai-responses",
+    }),
+  ).toEqual({ ok: true, provider: "azure-openai-responses" });
+  expect(puts).toHaveLength(1);
+  expect(puts[0]?.credential).toMatchObject({
+    provider: "azure-openai-responses",
+    kind: "api_key",
+    accessToken: "azure-key",
+    enterpriseUrl: "https://acme.openai.azure.com",
+  });
+});

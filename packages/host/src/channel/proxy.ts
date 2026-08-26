@@ -522,6 +522,12 @@ export class ProxyChannel implements RuntimeChannel {
           refreshToken: "",
           expiresAt: 0,
           kind: "api_key",
+          // The provider endpoint (Azure's per-resource URL) rides the row's
+          // non-secret enterpriseUrl slot: the key is served workspace-wide,
+          // and a runtime that never ran this connect needs the endpoint with
+          // it or every turn dies before HTTP (PRODUCT-1532). The runtime
+          // just verified the key AGAINST this endpoint, so it is proven.
+          ...(providerEndpoint ? { enterpriseUrl: providerEndpoint } : {}),
         },
         { actingAs: ctx.actingAs },
       );
