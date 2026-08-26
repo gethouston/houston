@@ -515,7 +515,7 @@ export default {
           {
             q: "Which systems is Houston on?",
             aHtml:
-              'Download for <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="mac">macOS</button> or <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="windows">Windows</button>. On Windows, pick x64 (Intel or AMD) or ARM64 (Surface, Snapdragon).',
+              'Download for <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="mac">macOS</button>, <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="windows">Windows</button> or <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="linux">Linux</button>. On Windows, pick x64 (Intel or AMD) or ARM64 (Surface, Snapdragon). On Linux, grab the AppImage (x64).',
           },
           {
             q: "How do I get in?",
@@ -533,6 +533,7 @@ export default {
     download: "Download",
     mac: "macOS",
     windows: "Windows",
+    linux: "Linux",
     product: "Product",
     company: "Company",
     resources: "Resources",
@@ -592,6 +593,7 @@ export default {
     macBtn: "Download for Mac",
     winX64: "Windows (x64 / Intel / AMD)",
     winArm: "Windows (ARM64 / Surface, Snapdragon)",
+    linuxBtn: "Linux (AppImage / x64)",
     notSure: "Not sure which one to pick?",
     notSureBody:
       "Most laptops and desktops are x64 (Intel or AMD CPUs). Only a Surface Pro X, Surface Pro 9 5G, a Snapdragon X laptop, or another ARM-based Windows machine needs ARM64. On first install you'll see one SmartScreen \"Run anyway\" prompt; we're working on full code-signing.",
@@ -751,8 +753,7 @@ export default {
     gate: {
       preparing: "Preparing your download…",
       submit: "Continue to download",
-      needWindows: "Need it for Windows instead?",
-      needMac: "Need it for Mac instead?",
+      needOther: "Need it for a different OS?",
       countrySearch: "Search countries",
       countryEmpty: "No matches",
       ccLabel: "Country code",

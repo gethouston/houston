@@ -107,6 +107,40 @@ test("404 means not connected and is cached as a negative result", async () => {
   expect(calls).toHaveLength(1);
 });
 
+test("invalidate sheds a cached negative so the next get sees a reconnect (PRODUCT-1515)", async () => {
+  // A reconnect capture lands centrally without passing through this process,
+  // so only an explicit invalidate can make the post-reconnect retry see it
+  // inside the 15s cache window.
+  const { calls, fetchImpl } = fakeFetch((_call, index) =>
+    index === 0
+      ? json({ error: "org not connected" }, 404)
+      : json(gatewayCredential()),
+  );
+  const s = store(fetchImpl);
+
+  expect(await s.get("ws_1", "openai-codex")).toBeNull();
+  s.invalidate("openai-codex");
+  const got = await s.get("ws_1", "openai-codex");
+  expect(got?.accessToken).toBe("AT-central");
+  expect(calls).toHaveLength(2);
+});
+
+test("invalidate is scoped to the acting identity", async () => {
+  const { calls, fetchImpl } = fakeFetch(() =>
+    json({ error: "org not connected" }, 404),
+  );
+  const s = store(fetchImpl);
+  const acting = { actingAs: actingAs() };
+
+  expect(await s.get("ws_1", "openai-codex")).toBeNull();
+  expect(await s.get("ws_1", "openai-codex", acting)).toBeNull();
+  // Invalidating the member's row leaves the team's cached answer in place.
+  s.invalidate("openai-codex", acting);
+  expect(await s.get("ws_1", "openai-codex")).toBeNull();
+  expect(await s.get("ws_1", "openai-codex", acting)).toBeNull();
+  expect(calls).toHaveLength(3);
+});
+
 test("404 adopts a legacy fallback credential with insert-only PUT, then re-gets the winner", async () => {
   const legacy: WorkspaceCredential = {
     workspaceId: "ws_1",

@@ -12,7 +12,12 @@ export function piTurnRequest(
   return {
     conversationId: turn.conversationId,
     text: turn.text,
-    provider: turn.credential?.provider ?? "",
+    // The turn's PIN outranks the attached credential: a dispatcher that
+    // serves a different provider's credential must fail as the PINNED
+    // provider's auth error, never silently run (and bill) the turn on a
+    // provider the user did not pick (PRODUCT-1515). Legacy dispatches carry
+    // no pin, so the credential's provider stays the selection there.
+    provider: turn.provider || turn.credential?.provider || "",
     emit,
     signal,
     nonce: turn.nonce,

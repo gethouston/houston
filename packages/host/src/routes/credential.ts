@@ -99,6 +99,15 @@ export async function handleSandboxCredential(
   const actingHeader = req.headers["x-houston-acting-as"];
   const actingAs = Array.isArray(actingHeader) ? actingHeader[0] : actingHeader;
   const acting = actingAs ? { actingAs } : undefined;
+  // `fresh=1` = the runtime is retrying after this provider FAILED a turn's
+  // auth (its auth-failure mark is active). A reconnect capture lands in the
+  // central store without passing through this process, so the remote store's
+  // 15s cached "not connected" — populated by the failing turn moments earlier
+  // — would fail the very retry the reconnect just unblocked, re-rendering the
+  // reconnect card in a loop (PRODUCT-1515). Bounded: the runtime sends it
+  // only while a failure mark is active, at most once per serve sync.
+  if (url.searchParams.get("fresh") === "1")
+    deps.credentials.invalidate?.(provider, acting);
   let deadError: RemoteCredentialDeadError | undefined;
   let cred = null;
   try {

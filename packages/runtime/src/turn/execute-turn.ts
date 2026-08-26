@@ -109,7 +109,7 @@ export async function executeTurn(
         if (!turn.credential) throw new Error("shadow turn needs a credential");
         await createTurnModelRuntime(
           dataDir,
-          turn.credential.provider,
+          turn.provider || turn.credential.provider,
           turn.model,
           timings,
         );
@@ -150,6 +150,13 @@ export async function executeTurn(
           effectiveTurn = {
             ...turn,
             text: routinePhase.text,
+            // The routine's pinned provider is the routine's own statement of
+            // what it runs on — it must outrank the dispatcher-attached
+            // credential's provider, or a mismatched serve silently moves the
+            // fire onto a provider the routine never picked (PRODUCT-1515).
+            ...(routinePhase.provider
+              ? { provider: routinePhase.provider }
+              : {}),
             ...(routinePhase.model ? { model: routinePhase.model } : {}),
             ...(routinePhase.effort ? { effort: routinePhase.effort } : {}),
             mode: "auto",

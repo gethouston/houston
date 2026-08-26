@@ -528,7 +528,7 @@ export default {
           {
             q: "Em quais sistemas o Houston roda?",
             aHtml:
-              'Baixe para <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="mac">macOS</button> ou <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="windows">Windows</button>. No Windows, escolha x64 (Intel ou AMD) ou ARM64 (Surface, Snapdragon).',
+              'Baixe para <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="mac">macOS</button>, <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="windows">Windows</button> ou <button class="dl-os-link" data-dl-trigger data-dl-source="faq-os" data-dl-os="linux">Linux</button>. No Windows, escolha x64 (Intel ou AMD) ou ARM64 (Surface, Snapdragon). No Linux, baixe o AppImage (x64).',
           },
           {
             q: "Como eu entro?",
@@ -546,6 +546,7 @@ export default {
     download: "Baixar",
     mac: "macOS",
     windows: "Windows",
+    linux: "Linux",
     product: "Produto",
     company: "Empresa",
     resources: "Recursos",
@@ -606,6 +607,7 @@ export default {
     macBtn: "Baixar para Mac",
     winX64: "Windows (x64 / Intel / AMD)",
     winArm: "Windows (ARM64 / Surface, Snapdragon)",
+    linuxBtn: "Linux (AppImage / x64)",
     notSure: "Não sabe qual escolher?",
     notSureBody:
       'A maioria dos computadores é x64 (processadores Intel ou AMD). Só um Surface Pro X, um Surface Pro 9 5G, um notebook com Snapdragon X ou outra máquina Windows baseada em ARM precisa do ARM64. Na primeira instalação vai aparecer um aviso do SmartScreen: toque em "Executar assim mesmo". A assinatura de código completa está a caminho.',
@@ -774,8 +776,7 @@ export default {
     gate: {
       preparing: "Preparando seu download…",
       submit: "Continuar para o download",
-      needWindows: "Precisa para Windows?",
-      needMac: "Precisa para Mac?",
+      needOther: "Precisa para outro sistema?",
       countrySearch: "Buscar países",
       countryEmpty: "Nada encontrado",
       ccLabel: "Código do país",

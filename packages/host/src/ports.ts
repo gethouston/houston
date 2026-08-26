@@ -416,6 +416,15 @@ export interface CredentialStore {
     acting?: CredentialActing,
   ): Promise<WorkspaceCredential | null>;
   /**
+   * Drop any locally cached answer for this (identity, provider) row so the
+   * next `get` reads the backing store. Implemented only by stores that cache
+   * (the remote store's 15s window): a reconnect capture can land centrally
+   * WITHOUT passing through this process, so a serve that must see it — the
+   * retry right after a reconnect — has to shed the cached "not connected"
+   * first (PRODUCT-1515).
+   */
+  invalidate?(provider: string, acting?: CredentialActing): void;
+  /**
    * Upsert (overwrite in place on refresh). `ifAbsent` makes it a FILL, not a
    * clobber: an existing entry is left untouched. Required for any push of a
    * CACHED credential snapshot (the desktop reconcile) — the central copy may

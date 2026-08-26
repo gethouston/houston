@@ -832,3 +832,58 @@ test("an anthropic token below pi's floor is still served while live (guard owns
   expect(r.out.status).toBe(200);
   expect(r.out.body.access).toBe("sk-ant-oat01-four-minutes");
 });
+
+test("fresh=1 sheds the store's cached answer before the read (PRODUCT-1515)", async () => {
+  // The post-reconnect retry: the failing turn populated the remote store's
+  // 15s negative cache moments before the reconnect landed centrally, so the
+  // runtime's fresh serve must invalidate that row first — scoped to the
+  // acting identity whose credential failed.
+  const memory = new MemoryCredentialStore();
+  await memory.put({
+    workspaceId: "w1",
+    provider: "openai-codex",
+    accessToken: "AT-fresh",
+    refreshToken: "",
+    expiresAt: FRESH_EXPIRES,
+  });
+  const invalidated: { provider: string; actingAs?: string }[] = [];
+  const credentials: CredentialStore = {
+    get: (workspaceId, provider, acting) =>
+      memory.get(workspaceId, provider, acting),
+    put: (cred, opts) => memory.put(cred, opts),
+    remove: (workspaceId, provider, acting) =>
+      memory.remove(workspaceId, provider, acting),
+    removeIfAccess: (workspaceId, provider, sha, opts) =>
+      memory.removeIfAccess(workspaceId, provider, sha, opts),
+    invalidate: (provider, acting) =>
+      invalidated.push({ provider, actingAs: acting?.actingAs }),
+  };
+  const serve = (query: string, actingAs?: string) => {
+    const out = mockRes();
+    return handleSandboxCredential(
+      { vault, credentials },
+      "GET",
+      "/sandbox/credential",
+      new URL(`http://x/sandbox/credential?${query}`),
+      mockReq("sbx", actingAs),
+      out.res,
+    ).then(() => out);
+  };
+
+  const plain = await serve("provider=openai-codex");
+  expect(plain.out.status).toBe(200);
+  expect(invalidated).toEqual([]);
+
+  const fresh = await serve("provider=openai-codex&fresh=1");
+  expect(fresh.out.status).toBe(200);
+  expect(invalidated).toEqual([
+    { provider: "openai-codex", actingAs: undefined },
+  ]);
+
+  // A member's fresh serve invalidates THAT member's row, not the team's.
+  await serve("provider=openai-codex&fresh=1", ACTING);
+  expect(invalidated[1]).toEqual({
+    provider: "openai-codex",
+    actingAs: ACTING,
+  });
+});

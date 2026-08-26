@@ -245,6 +245,46 @@ test("a routine's model/effort pin reaches the pi turn", async () => {
   }
 });
 
+test("a turn's pinned provider outranks the attached credential's (PRODUCT-1515)", async () => {
+  // A dispatcher that serves a different provider's credential must fail as
+  // the PINNED provider's auth error, never silently run the turn on the
+  // credential's provider.
+  let seen: string | undefined;
+  const capture: typeof runPiTurn = async (_root, turn) => {
+    seen = turn.provider;
+    turn.emit({
+      type: "user",
+      data: { content: turn.text, ts: 1 },
+      turnId: turn.turnId,
+    });
+    return {};
+  };
+  const s = createTurnServer({ store, token: "", runTurn: capture });
+  await new Promise<void>((r) => s.listen(0, "127.0.0.1", () => r()));
+  const addr = s.address();
+  const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  try {
+    await (
+      await fetch(`${b}/turn`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(turnBody({ provider: "openrouter" })),
+      })
+    ).text();
+    expect(seen).toBe("openrouter");
+    await (
+      await fetch(`${b}/turn`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(turnBody()),
+      })
+    ).text();
+    expect(seen).toBe(CRED.provider);
+  } finally {
+    s.close();
+  }
+});
+
 test("every frame of a turn — including the server's terminal — carries ONE turnId", async () => {
   seed("workspace/notes.txt", "hello-from-gcs");
   const res = await post(turnBody());
