@@ -133,6 +133,48 @@ test("a single-use worker REJECTS an unclaimed real turn (no reusable bash)", as
   expect(workerSpent()).toBe(false);
 });
 
+test("a single-use worker binds the turn to its own pod UID (X-Pool-Pod-UID)", async () => {
+  await isolatedHome();
+  const begin = vi.fn(async () => {
+    await markWorkerSpent();
+  });
+  const settled = vi.fn();
+  const runTurn: typeof runPiTurn = async () => ({});
+  const base = await listen(
+    createTurnServer({
+      store: await seededStore(),
+      token: "",
+      runTurn,
+      podUid: "pod-A",
+      singleUse: { begin, settled },
+    }),
+  );
+  const post = (headers: Record<string, string>) =>
+    fetch(`${base}/turn`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(claimed),
+    });
+
+  // A turn the gateway minted for a DIFFERENT incarnation (this IP was reused by
+  // a replacement pod): refused, and the worker is NOT spent.
+  const mismatch = await post({ "x-pool-pod-uid": "pod-B" });
+  expect(mismatch.status).toBe(409);
+  expect(await mismatch.json()).toEqual({ error: "pod_uid_mismatch" });
+  // A single-use worker fails closed: a missing binding is refused too.
+  const absent = await post({});
+  expect(absent.status).toBe(409);
+  expect(begin).not.toHaveBeenCalled();
+  expect(workerSpent()).toBe(false);
+
+  // The turn minted for THIS incarnation is served normally.
+  const ok = await post({ "x-pool-pod-uid": "pod-A" });
+  await ok.text();
+  expect(ok.status).toBe(200);
+  expect(begin).toHaveBeenCalledOnce();
+  expect(workerSpent()).toBe(true);
+});
+
 test("a spent worker refuses further turns via the draining gate", async () => {
   await isolatedHome();
   await markWorkerSpent();

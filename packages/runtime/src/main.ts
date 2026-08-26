@@ -116,6 +116,7 @@ async function start(): Promise<Server> {
       store,
       token,
       admission,
+      podUid: config.podUid,
       isDraining: () => spent || (workerRegistration?.draining ?? false),
       singleUse: config.poolSingleUse
         ? {

@@ -34,6 +34,30 @@ function authorized(req: IncomingMessage, token: string): boolean {
   return got.length === want.length && timingSafeEqual(got, want);
 }
 
+/**
+ * Bind a dispatched turn to THIS pod incarnation. The X-Internal-Token is stable
+ * per ordinal, so a replacement pod reusing this ordinal+IP would otherwise
+ * accept a turn the gateway minted for the PRIOR incarnation. The gateway sends
+ * the trusted k8s UID (from the pod_workers stamp) as X-Pool-Pod-UID; a pod
+ * refuses any UID that is not its own downward-API UID. This can only reject,
+ * never admit, so a tenant that reads its own UID gains nothing. A single-use
+ * pod fails closed — a missing header is refused, since the Critical-2 dispatcher
+ * always sends it and the deploy gate guarantees it precedes single-use pods.
+ * `podUid` empty (off-cluster / per-agent worker) disables the check.
+ */
+function incarnationOK(
+  req: IncomingMessage,
+  podUid: string | undefined,
+  singleUse: boolean,
+): boolean {
+  if (!podUid) return true;
+  const header = req.headers["x-pool-pod-uid"];
+  if (typeof header !== "string" || header.length === 0) return !singleUse;
+  const got = Buffer.from(header);
+  const want = Buffer.from(podUid);
+  return got.length === want.length && timingSafeEqual(got, want);
+}
+
 async function readJson(
   req: IncomingMessage,
   maxBytes: number,
@@ -88,6 +112,9 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       }
       if (!authorized(req, deps.token)) {
         return json(res, 401, { error: "unauthorized" });
+      }
+      if (!incarnationOK(req, deps.podUid, Boolean(deps.singleUse))) {
+        return json(res, 409, { error: "pod_uid_mismatch" });
       }
       if (deps.isDraining?.()) {
         return json(

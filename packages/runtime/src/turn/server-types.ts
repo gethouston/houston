@@ -12,6 +12,15 @@ export interface TurnServerDeps {
   admission?: AdmissionLimiter;
   isDraining?: () => boolean;
   /**
+   * This pod's OWN downward-API Kubernetes UID (config.podUid). When set, a
+   * dispatched /turn or /op whose X-Pool-Pod-UID header does not match is
+   * rejected (409) — binding the turn to this exact incarnation so a replacement
+   * pod at a reused ordinal+IP refuses a turn meant for the prior pod. A
+   * single-use worker fails closed (a missing header is rejected too); empty
+   * disables the check (off-cluster / per-agent workers).
+   */
+  podUid?: string;
+  /**
    * Single-use pool lifecycle. `begin` latches the worker spent BEFORE its
    * one claimed turn executes (fail-closed against a mid-turn crash);
    * `settled` fires after that turn's response has ended so the process can

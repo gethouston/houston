@@ -150,6 +150,14 @@ export const config = {
    */
   poolSingleUse: env.HOUSTON_POOL_SINGLE_USE === "1",
   /**
+   * This pod's OWN Kubernetes UID, from the downward API (metadata.uid), NOT
+   * self-reported. The turn server rejects a dispatched turn whose X-Pool-Pod-UID
+   * does not match this, so a REPLACEMENT pod that reused a prior incarnation's
+   * ordinal+IP refuses a turn meant for that prior pod. Empty off-cluster (the
+   * check is then not enforced). Reject-only: it can never admit or self-promote.
+   */
+  podUid: env.HOUSTON_POD_UID ?? "",
+  /**
    * Remote code-execution sandbox (Cloud Run). Used only when codeExecution is
    * "remote"; managed hosted pods run bash in-container (HOUSTON_CODE_EXECUTION=local).
    */
