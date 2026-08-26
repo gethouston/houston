@@ -5,7 +5,11 @@ import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test, vi } from "vitest";
 import { createTurnServer } from "./server";
-import { markWorkerSpent, workerSpent } from "./single-use";
+import {
+  assertSingleUseIncarnationConfigured,
+  markWorkerSpent,
+  workerSpent,
+} from "./single-use";
 import type { runPiTurn } from "./turn-session";
 
 const servers: Server[] = [];
@@ -255,4 +259,21 @@ test("markWorkerSpent requires HOUSTON_HOME", () => {
   } finally {
     if (prev !== undefined) process.env.HOUSTON_HOME = prev;
   }
+});
+
+test("a single-use worker refuses to boot without its pod UID (incarnation fence)", () => {
+  // The dispatch fence fails open on an empty podUid (incarnationOK returns
+  // true). A single-use worker missing HOUSTON_POD_UID would accept a turn
+  // dispatched for a prior incarnation of its ordinal — so boot must throw.
+  expect(() => assertSingleUseIncarnationConfigured(true, "")).toThrow(
+    /HOUSTON_POD_UID/,
+  );
+  expect(() => assertSingleUseIncarnationConfigured(true, "   ")).toThrow(
+    /HOUSTON_POD_UID/,
+  );
+  // A configured single-use worker and any non-single-use worker boot fine.
+  expect(() =>
+    assertSingleUseIncarnationConfigured(true, "pod-uid-abc"),
+  ).not.toThrow();
+  expect(() => assertSingleUseIncarnationConfigured(false, "")).not.toThrow();
 });

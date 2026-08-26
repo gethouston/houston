@@ -60,9 +60,12 @@ async function start(): Promise<Server> {
       : config.localStoreDir
         ? new LocalDirStore(config.localStoreDir)
         : poolOnlyFallbackStore();
-    const { assertMarkerWritable, markWorkerSpent, workerSpent } = await import(
-      "./turn/single-use"
-    );
+    const {
+      assertMarkerWritable,
+      markWorkerSpent,
+      workerSpent,
+      assertSingleUseIncarnationConfigured,
+    } = await import("./turn/single-use");
     // local bash on a turn worker is only safe on a single-use pod. Fail
     // closed per the contract pool.yaml states: an EXPLICIT
     // HOUSTON_CODE_EXECUTION=local without HOUSTON_POOL_SINGLE_USE=1 is a
@@ -87,6 +90,9 @@ async function start(): Promise<Server> {
         "HOUSTON_POOL_SINGLE_USE=1 requires HOUSTON_TURN_CONCURRENCY=1: single-use means exactly one claimed turn per pod",
       );
     }
+    // Fail closed on the incarnation fence (single-use.ts): a single-use
+    // worker missing HOUSTON_POD_UID would accept turns for a prior incarnation.
+    assertSingleUseIncarnationConfigured(config.poolSingleUse, config.podUid);
     // A restarted container in a spent pod (single-use worker exited, kubelet
     // restarted it in place) must idle unregistered until the control plane
     // replaces the pod — never serve from a tree the previous tenant's code

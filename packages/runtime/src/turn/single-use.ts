@@ -77,3 +77,23 @@ export function markWorkerSpent(): void {
     closeSync(fd);
   }
 }
+
+/**
+ * Boot precondition for a single-use pool worker: it MUST know its own pod UID
+ * (HOUSTON_POD_UID, downward API metadata.uid). The per-incarnation dispatch
+ * fence treats an empty UID as "no check" (a non-pool turn server has no pod
+ * identity), so a single-use worker missing it would silently accept a turn
+ * dispatched for a PRIOR incarnation of its ordinal — the cross-tenant hole
+ * X-Pool-Pod-UID exists to close. Its absence means manifest drift or an
+ * image-roll that never re-applied the pool manifest; fail closed at boot.
+ */
+export function assertSingleUseIncarnationConfigured(
+  singleUse: boolean,
+  podUid: string,
+): void {
+  if (singleUse && !podUid.trim()) {
+    throw new Error(
+      "HOUSTON_POOL_SINGLE_USE=1 requires HOUSTON_POD_UID (downward API metadata.uid): the per-incarnation dispatch fence fails open without it — re-apply the pool manifest, do not only roll the image",
+    );
+  }
+}
