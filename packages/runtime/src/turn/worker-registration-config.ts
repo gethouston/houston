@@ -15,7 +15,9 @@ const ENV_NAMES = [
   "HOUSTON_POOL_ENDPOINT",
 ] as const;
 
-type RegistrationEnv = Partial<Record<(typeof ENV_NAMES)[number], string>>;
+type RegistrationEnv = Partial<
+  Record<(typeof ENV_NAMES)[number] | "HOUSTON_POOL_POD_UID", string>
+>;
 
 /** Parsed registration settings plus the per-worker secret. */
 export interface WorkerRegistrationConfig {
@@ -23,13 +25,22 @@ export interface WorkerRegistrationConfig {
   workerId: string;
   endpoint: string;
   token: string;
-  // No pod identity or single-use flag is reported to the gateway: the
-  // heartbeat is authenticated by this worker's own token, which the sandboxed
-  // turn shares a uid with and can read, so self-reported single-use state is
-  // attacker-controllable. The gateway derives those facts from the Kubernetes
-  // API instead (2026-08-25 review, Critical 2). The runtime's OWN single-use
-  // behavior keys off HOUSTON_POOL_SINGLE_USE (config.poolSingleUse), which a
-  // tenant lying to itself gains nothing from.
+  // podUid is this pod's downward-API UID (HOUSTON_POOL_POD_UID), reported in
+  // the heartbeat ONLY as a fail-safe fence: the control-plane admits an
+  // incarnation from the k8s API only where the worker reports the same UID it
+  // observed, so a stale recycler pass cannot stamp a prior pod's mode onto a
+  // replacement pod. It never grants admission (a forged value only de-admits
+  // this worker). Empty when unset — the worker is then simply never admitted
+  // (fail-safe, undispatchable) rather than mis-admitted.
+  // Optional so callers that predate the fence (and tests) need not supply it.
+  podUid?: string;
+  // Beyond the fence above, NO trusted pod identity or single-use flag is
+  // reported to the gateway: the heartbeat is authenticated by this worker's own
+  // token, which the sandboxed turn shares a uid with and can read, so anything
+  // self-reported is attacker-controllable. The gateway derives the trusted
+  // single-use facts from the Kubernetes API (2026-08-26 review, Critical 2).
+  // The runtime's OWN single-use behavior keys off HOUSTON_POOL_SINGLE_USE
+  // (config.poolSingleUse), which a tenant lying to itself gains nothing from.
 }
 
 /** Parse all-or-none pool registration env and load this worker's token. */
@@ -72,6 +83,9 @@ export async function loadWorkerRegistrationConfig(
     workerId,
     endpoint: values.HOUSTON_POOL_ENDPOINT,
     token,
+    // Optional and NOT part of the all-or-none set above: a pool that predates
+    // the fence simply reports no UID and stays undispatchable (fail-safe).
+    podUid: env.HOUSTON_POOL_POD_UID?.trim() ?? "",
   };
 }
 

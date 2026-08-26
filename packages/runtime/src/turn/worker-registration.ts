@@ -110,6 +110,9 @@ export class WorkerRegistration {
           capacity: this.admission.capacity,
           activeClaims: this.admission.active,
           draining: this.drainingState,
+          // Fail-safe fence only (see WorkerRegistrationConfig.podUid): lets the
+          // control-plane bind its admission to THIS incarnation; never trusted.
+          podUid: this.config.podUid,
         }),
         signal: AbortSignal.any([
           requestAbort.signal,

@@ -137,6 +137,36 @@ test("heartbeat sends the exact body and bearer token", async () => {
   });
 });
 
+test("heartbeat includes the pod UID fence when the config supplies one", async () => {
+  let body: Record<string, unknown> | undefined;
+  const gateway = createServer((req, res) => {
+    void (async () => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      res.writeHead(204).end();
+    })();
+  });
+  servers.push(gateway);
+  await new Promise<void>((resolve) => gateway.listen(0, "127.0.0.1", resolve));
+  const address = gateway.address();
+  if (!address || typeof address === "string") throw new Error("no address");
+  const registration = new WorkerRegistration(
+    {
+      heartbeatUrl: `http://127.0.0.1:${address.port}/v1/pool/workers/heartbeat`,
+      workerId: "worker-1",
+      endpoint: "http://worker-1:4318",
+      token: "worker-token",
+      podUid: "pod-uid-123",
+    },
+    new AdmissionLimiter(1),
+    { bootId: "boot-1", intervalMs: 60_000 },
+  );
+  await registration.start();
+  await registration.stop();
+  expect(body?.podUid).toBe("pod-uid-123");
+});
+
 test("a failed heartbeat logs status and text, then retries", async () => {
   let calls = 0;
   const messages: string[] = [];
