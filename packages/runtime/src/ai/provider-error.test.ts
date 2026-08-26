@@ -1256,3 +1256,79 @@ test("Anthropic consumer-terms 400 stays unknown with the actionable excerpt (HO
   expect(err.kind).toBe("unknown");
   if (err.kind === "unknown") expect(err.raw_excerpt).toBe(message);
 });
+
+test("pi 0.84 setModel 'No API key for <provider>/<model>' → unauthenticated / no_credentials (PRODUCT-1530)", () => {
+  // AgentSession.setModel's checkAuth throw dropped the "found": on a cloud
+  // pod whose credential store served no key for a configured custom endpoint
+  // this fired as `unknown` — a Sentry error per turn — instead of reconnect.
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: "gemma4:latest",
+    message: "No API key for openai-compatible/gemma4:latest",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
+});
+
+test("pi 0.84 api-layer 'No API key for provider: <id>' → unauthenticated / no_credentials", () => {
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: null,
+    message: "No API key for provider: openai-compatible",
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("no_credentials");
+});
+
+test("local-override mismatch → model_unavailable with the served model as the fallback (PRODUCT-1530)", () => {
+  // The runtime's own guard (`localOverrideError`): a conversation pinned to a
+  // model the reconfigured endpoint no longer serves fails EVERY turn with
+  // this message. The endpoint names its one served model — the definitive
+  // one-click switch target.
+  const message =
+    'The local endpoint serves "qwen2.5-coder:14b", not "gemma4:latest". Pick the local model (or switch the active provider) before this turn.';
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: "gemma4:latest",
+    message,
+  });
+  expect(err).toEqual({
+    kind: "model_unavailable",
+    provider: "openai-compatible",
+    model: "gemma4:latest",
+    reason: "unknown",
+    suggested_fallback: "qwen2.5-coder:14b",
+    message,
+  });
+});
+
+test("custom endpoint 404 (HTML body) → model_unavailable, never unknown (PRODUCT-1530)", () => {
+  // A base URL that doesn't host the OpenAI API answers the completions POST
+  // with its web server's 404 page — raw HTML that read as `unknown` and
+  // fired a Sentry error per turn. The credential is fine; the endpoint
+  // config / model pick is the fix, so switch-model is the honest card.
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: "gemma4:e4b-it-qat",
+    message:
+      "404 <!DOCTYPE html>\n<html>\n<head>\n<title>Not Found</title>\n</head>\n<body>404 Not Found</body>\n</html>",
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable") {
+    expect(err.reason).toBe("unknown");
+    expect(err.suggested_fallback).toBeNull();
+  }
+});
+
+test("a 404 on any OTHER provider still falls through to unknown", () => {
+  // The custom-endpoint 404 verdict is provider-scoped: other providers' 404s
+  // keep their own explicit patterns (NVIDIA's account gate, Azure's
+  // DeploymentNotFound, Moonshot's retired models).
+  const err = classifyProviderError({
+    provider: "openai",
+    model: "gpt-5.5",
+    message:
+      "404 <!DOCTYPE html><html><head><title>Not Found</title></head></html>",
+  });
+  expect(err.kind).toBe("unknown");
+});

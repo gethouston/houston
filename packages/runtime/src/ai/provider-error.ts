@@ -107,9 +107,19 @@ const INVALID_KEY_PATTERNS = [
  * this; without the pattern it degraded to `unknown` — the generic error card
  * instead of the reconnect card (HOU-956: "Provider is not configured:
  * google" after a Gemini model was picked with no google key stored).
+ *
+ * pi 0.84 added two more missing-credential shapes with the "found" dropped:
+ * AgentSession.setModel throws `No API key for <provider>/<model>` and the
+ * api layers throw `No API key for provider: <provider>`. On a cloud pod the
+ * openai-compatible provider hits the first whenever the gateway credential
+ * store served no key (not even the keyless placeholder) for a configured
+ * endpoint; "no api key found" never matches either, so both degraded to
+ * `unknown` — a Sentry error per turn instead of the reconnect card
+ * (PRODUCT-1530).
  */
 const NO_CREDENTIALS_PATTERNS = [
   "no api key found",
+  "no api key for",
   "no provider connected",
   "no local model configured",
   "provider is not configured",
@@ -177,6 +187,15 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // phrasings above match this order, so it degraded to `unknown` — the
   // report-bug card instead of switch-model (PRODUCT-1517).
   "not supported model",
+  // The runtime's OWN local-override guard (`localOverrideError`,
+  // ai/openai-compatible.ts): a turn pinned to a model the configured custom
+  // endpoint doesn't serve — a conversation pinned before the endpoint was
+  // reconfigured keeps failing every turn. The endpoint is fine; only the
+  // pinned MODEL is out of reach, and the message names the served model, so
+  // the switch-model card can offer it one-click (`localServedFallback`)
+  // instead of the report-bug card firing a Sentry error per turn
+  // (PRODUCT-1530: 550 events from 4 users).
+  "local endpoint serves",
 ];
 
 /**
@@ -319,6 +338,41 @@ const MOONSHOT_BROAD_FALLBACK = "kimi-k2.6";
 const XIAOMI_BROAD_FALLBACK = "mimo-v2.5-pro";
 
 /**
+ * The OpenAI-compatible (custom endpoint) provider id — duplicated from
+ * `ai/openai-compatible.ts` on purpose, like COPILOT_BASE_FALLBACK, so this
+ * classifier stays pure (that module drags in fs + config).
+ */
+const OPENAI_COMPATIBLE_PROVIDER = "openai-compatible";
+
+/**
+ * The custom (OpenAI-compatible) endpoint answered the completions request
+ * with a 404: the base URL doesn't host the OpenAI API at that path (a
+ * reverse proxy's HTML "Not Found" page, an Ollama base URL missing `/v1`)
+ * or the server doesn't know the configured model (Ollama's "model '<id>'
+ * not found, try pulling it first"). Either way the credential is not the
+ * problem and no retry helps — the fix is the endpoint config / model pick,
+ * so the switch-model card is the honest one. Without this the raw body
+ * (often a full HTML document) read as `unknown` — the report-bug card plus
+ * a Sentry error per turn (PRODUCT-1530). Scoped to this provider: other
+ * providers' 404s keep their own explicit patterns (NVIDIA's account gate,
+ * Azure's DeploymentNotFound, Moonshot's retired models).
+ */
+function isCustomEndpoint404(provider: string, status: number | null): boolean {
+  return provider === OPENAI_COMPATIBLE_PROVIDER && status === 404;
+}
+
+/**
+ * The served model a local-override mismatch names (`The local endpoint
+ * serves "<model>", not "<override>". …`) — offered as the one-click switch
+ * target, since it is by definition the ONLY model the endpoint serves.
+ */
+const LOCAL_ENDPOINT_SERVES = /local endpoint serves "([^"]+)"/i;
+
+function localServedFallback(message: string): string | null {
+  return message.match(LOCAL_ENDPOINT_SERVES)?.[1] ?? null;
+}
+
+/**
  * Map a failed model request to a typed `ProviderError`, then stamp WHOSE
  * credential ran the turn (`stampCredentialScope`).
  *
@@ -452,7 +506,10 @@ function classify(input: ProviderErrorInput): ProviderError {
   // (Copilot premium model on Copilot Free, etc.). Needs a known model id to
   // render the "switch model" card — without one it can't name what to switch
   // away from, so it falls through to `unknown`.
-  if (model && isModelUnavailable(lower)) {
+  if (
+    model &&
+    (isModelUnavailable(lower) || isCustomEndpoint404(provider, status))
+  ) {
     return {
       kind: "model_unavailable",
       provider,
@@ -460,7 +517,10 @@ function classify(input: ProviderErrorInput): ProviderError {
       reason: modelUnavailableReason(lower),
       // Offer a concrete switch target only when we know one AND it isn't the
       // failing model itself (a base Copilot model never reports unavailable).
-      suggested_fallback: broadFallback(provider, model),
+      // A local-override mismatch names the endpoint's one served model —
+      // the definitive target, ahead of any per-provider default.
+      suggested_fallback:
+        localServedFallback(message) ?? broadFallback(provider, model),
       message,
     };
   }
