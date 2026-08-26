@@ -388,10 +388,12 @@ export interface WorkspaceCredential {
   /** Credential kind. Absent is read as "oauth" (every legacy credential). */
   kind?: "oauth" | "api_key";
   /**
-   * GitHub Copilot Enterprise (GHE): the company GitHub domain (e.g.
-   * `acme.ghe.com`) this credential was issued for. Absent = individual Copilot
-   * (github.com). The central refresh hits `api.<domain>/copilot_internal/v2/token`,
-   * and it's served back so the runtime points the model at the enterprise API.
+   * Non-secret provider base URL the credential was issued against, served
+   * back so every runtime can aim the token. Two providers use it: GitHub
+   * Copilot Enterprise stores the company GitHub domain (e.g. `acme.ghe.com`;
+   * the central refresh hits `api.<domain>/copilot_internal/v2/token`), and
+   * Azure OpenAI stores its per-resource endpoint (PRODUCT-1532 — the key is
+   * unusable without it). Absent = the provider's default base URL.
    */
   enterpriseUrl?: string;
   /** Scope selected by the gateway when this credential was served. */

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
@@ -38,6 +38,50 @@ test("normalizeAzureEndpoint accepts https, trims a trailing slash, rejects the 
   expect(() => normalizeAzureEndpoint("http://acme.openai.azure.com")).toThrow(
     /https/,
   );
+});
+
+test("applyServedAzureEndpoint lands a served endpoint, idempotently, azure-only, never throwing", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-azure-served-"));
+  const {
+    AZURE_OPENAI,
+    applyServedAzureEndpoint,
+    azureBaseUrl,
+    azureEndpointFileIn,
+  } = await import("./azure-openai");
+
+  // The served row's endpoint lands where model resolution reads it —
+  // normalized exactly like a connect-time paste.
+  applyServedAzureEndpoint(
+    AZURE_OPENAI,
+    "https://acme.openai.azure.com/",
+    dataDir,
+  );
+  expect(azureBaseUrl(dataDir)).toBe("https://acme.openai.azure.com");
+
+  // Same value again: no rewrite (the file's mtime is what store-sync watches).
+  const file = azureEndpointFileIn(dataDir);
+  const before = statSync(file).mtimeMs;
+  applyServedAzureEndpoint(
+    AZURE_OPENAI,
+    "https://acme.openai.azure.com",
+    dataDir,
+  );
+  expect(statSync(file).mtimeMs).toBe(before);
+
+  // A different served value replaces the stored one (a reconnect elsewhere).
+  applyServedAzureEndpoint(
+    AZURE_OPENAI,
+    "https://other.openai.azure.com",
+    dataDir,
+  );
+  expect(azureBaseUrl(dataDir)).toBe("https://other.openai.azure.com");
+
+  // Non-azure providers (copilot's enterprise domain) and absent values are
+  // ignored; a malformed central value reports but never throws or clobbers.
+  applyServedAzureEndpoint("github-copilot", "acme.ghe.com", dataDir);
+  applyServedAzureEndpoint(AZURE_OPENAI, null, dataDir);
+  applyServedAzureEndpoint(AZURE_OPENAI, "not-a-url", dataDir);
+  expect(azureBaseUrl(dataDir)).toBe("https://other.openai.azure.com");
 });
 
 test("setAzureEndpoint persists and azure models resolve with the stored base URL", async () => {

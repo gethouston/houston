@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
+import { applyServedAzureEndpoint } from "../ai/azure-openai";
 import { applyServedCredential } from "../auth/auth-file";
 import { runWithActingContext } from "../session/acting-context";
 import { releaseConversation, runWithConversationScope } from "../session/bus";
@@ -84,7 +85,17 @@ export async function executeTurn(
     timings.t_hydrated = performance.now();
     const { dataDir } = filesystem;
     const authPath = join(dataDir, "auth.json");
-    if (turn.credential) applyServedCredential(authPath, turn.credential);
+    if (turn.credential) {
+      applyServedCredential(authPath, turn.credential);
+      // Azure's per-resource endpoint rides the served credential; land it in
+      // THIS turn's hydrated root so model resolution finds a base URL even
+      // when this agent never ran the connect itself (PRODUCT-1532).
+      applyServedAzureEndpoint(
+        turn.credential.provider,
+        turn.credential.enterpriseUrl,
+        dataDir,
+      );
+    }
     timings.t_cred_written = performance.now();
 
     const sse = openSSE(res);

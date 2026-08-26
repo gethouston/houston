@@ -1516,3 +1516,42 @@ test("a served google key with the real AIza shape is applied normally", async (
     expect(reports).toEqual([]);
   });
 });
+
+test("a served azure credential lands its endpoint file beside auth.json (PRODUCT-1532)", async () => {
+  // The azure KEY is workspace-central, but the per-resource endpoint used to
+  // live only where the connect ran — every other runtime was served a key
+  // aimed at nothing and each turn died with "base URL is required". The
+  // endpoint now rides the row's enterpriseUrl slot; the sweep must land it.
+  const fetchImpl = (async (input: RequestInfo | URL) => {
+    const provider = new URL(String(input)).searchParams.get("provider");
+    if (provider === "azure-openai-responses") {
+      return new Response(
+        JSON.stringify({
+          provider: "azure-openai-responses",
+          kind: "api_key",
+          access: "azure-key",
+          expires: Number.MAX_SAFE_INTEGER,
+          accountId: null,
+          enterpriseUrl: "https://acme.openai.azure.com",
+        }),
+        { status: 200 },
+      );
+    }
+    return notConnected404();
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    expect(await syncServedCredential()).toEqual(["azure-openai-responses"]);
+    const auth = JSON.parse(
+      readFileSync(join(config.dataDir, "auth.json"), "utf8"),
+    ) as Record<string, { type: string; key?: string }>;
+    expect(auth["azure-openai-responses"]).toEqual({
+      type: "api_key",
+      key: "azure-key",
+    });
+    expect(
+      JSON.parse(
+        readFileSync(join(config.dataDir, "azure-endpoint.json"), "utf8"),
+      ),
+    ).toEqual({ baseUrl: "https://acme.openai.azure.com" });
+  });
+});

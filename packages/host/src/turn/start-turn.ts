@@ -103,6 +103,12 @@ export async function dispatchTurn(
                     expires: cred.expiresAt,
                     accountId: cred.accountId ?? null,
                     kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
+                    // Non-secret provider base URL riding the row (Copilot
+                    // Enterprise domain, Azure's resource endpoint) — dropping
+                    // it here silently unaims the served key (PRODUCT-1532).
+                    ...(cred.enterpriseUrl
+                      ? { enterpriseUrl: cred.enterpriseUrl }
+                      : {}),
                   }
                 : null,
             }),

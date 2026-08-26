@@ -99,6 +99,36 @@ export function setAzureEndpoint(raw: string): void {
 }
 
 /**
+ * Persist an endpoint that arrived RIDING a served credential — the
+ * `enterpriseUrl` slot of the central azure row (the Copilot Enterprise
+ * precedent: a non-secret provider base URL the key needs to be usable). The
+ * KEY is workspace-central and served to every runtime, but this file is
+ * per-runtime — so any runtime that didn't run the connect (another agent's
+ * pod, a recycled pod, a second desktop agent) held the key aimed at nothing
+ * and every azure turn died with "base URL is required" (PRODUCT-1532).
+ * Idempotent: writes only when the stored value differs. Never throws — a
+ * malformed central value must not take down the serve sweep or the turn; it
+ * reports and leaves whatever is stored in place.
+ */
+export function applyServedAzureEndpoint(
+  provider: string,
+  endpoint: string | null | undefined,
+  dataDir: string = config.dataDir,
+): void {
+  if (provider !== AZURE_OPENAI || !endpoint) return;
+  try {
+    if (azureBaseUrl(dataDir) === normalizeAzureEndpoint(endpoint)) return;
+    setAzureEndpointIn(dataDir, endpoint);
+  } catch (e) {
+    console.error(
+      `[serve] served azure endpoint is invalid; keeping the stored one: ${
+        e instanceof Error ? e.message : String(e)
+      }`,
+    );
+  }
+}
+
+/**
  * Overlay the stored endpoint onto a resolved azure catalog model. pi's azure
  * client resolves the base URL as option → env → `model.baseUrl`, and the
  * catalog ships `""` — so without this overlay every request throws "base URL

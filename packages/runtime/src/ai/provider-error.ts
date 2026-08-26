@@ -1,6 +1,7 @@
 import { getOverflowPatterns } from "@earendil-works/pi-ai";
 import type { AuthFailureCause, ProviderError } from "@houston/runtime-client";
 import { servedScopeFor } from "../auth/served-scope";
+import { AZURE_OPENAI } from "./azure-openai";
 
 /**
  * Classify a failed model request into a typed `ProviderError` so the chat can
@@ -430,6 +431,18 @@ function classify(input: ProviderErrorInput): ProviderError {
       reason: "unknown",
       suggested_fallback:
         model === NVIDIA_BROAD_FALLBACK ? null : NVIDIA_BROAD_FALLBACK,
+      message,
+    };
+  }
+  // Azure OpenAI with no per-resource endpoint on THIS runtime — pi throws
+  // "base URL is required" before any HTTP. The key may be fine; the half of
+  // the credential that aims it (the endpoint) never landed here. The honest
+  // card is reconnect, which re-collects the endpoint (PRODUCT-1532).
+  if (provider === AZURE_OPENAI && lower.includes("base url is required")) {
+    return {
+      kind: "unauthenticated",
+      provider,
+      cause: "no_credentials",
       message,
     };
   }

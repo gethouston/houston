@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { AZURE_OPENAI, withAzureBaseUrl } from "../ai/azure-openai";
 import {
   buildActiveCustomModel,
   OPENAI_COMPATIBLE,
@@ -53,6 +54,15 @@ export function resolveTurnModel(
   // same per-dataDir rule as qwen above (ai/xiaomi-endpoint.ts).
   if (provider === XIAOMI_PROVIDER_ID)
     return withXiaomiBaseUrl(
+      safeGetModel(provider, modelId, !!override),
+      dataDir,
+    );
+  // Azure's per-resource endpoint is likewise a per-dataDir file: safeGetModel's
+  // built-in overlay reads config.dataDir — the WORKER's own root, never a
+  // hydrated turn root — so without this the turn throws "base URL is
+  // required" before any HTTP (PRODUCT-1532).
+  if (provider === AZURE_OPENAI)
+    return withAzureBaseUrl(
       safeGetModel(provider, modelId, !!override),
       dataDir,
     );

@@ -1,3 +1,4 @@
+import { applyServedAzureEndpoint } from "../ai/azure-openai";
 import { piApiKeyProviderIds } from "../ai/pi-catalog";
 import { PROVIDERS } from "../ai/providers";
 import { clearGhostClaudeCredential } from "../backends/claude/credential-status";
@@ -236,6 +237,11 @@ async function runServedSync(): Promise<string[]> {
         );
       }
       const didApply = applyServedCredential(authPathFor(), probe.cred);
+      // Azure's per-resource endpoint rides the served row (its
+      // `enterpriseUrl` slot). Landed OUTSIDE the didApply gate: the apply
+      // guard protects a mid-capture refresh token, which an api_key row
+      // never carries, and the endpoint write is idempotent (PRODUCT-1532).
+      applyServedAzureEndpoint(probe.id, probe.cred.enterpriseUrl);
       // WHOSE credential this was, remembered for the provider-error stamp and
       // the /providers row. Recorded on the gateway's ANSWER, not on the write:
       // a skipped apply is the mid-capture guard over this same scope's own
