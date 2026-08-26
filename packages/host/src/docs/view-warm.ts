@@ -112,6 +112,12 @@ export function refreshViewsOnEvents(
         if (agentId === null) return;
         const status = await fetchView(opts, agentId, rest, 1);
         if (status !== 200) {
+          // An agent delete/rename unlinks `.agents/skills/**`, and the FS
+          // watcher classifies each unlink as SkillsChanged for the now-gone
+          // path — by refresh time the route answers 404 "agent not found".
+          // That is the designed outcome of the delete, not a refresh failure;
+          // there is no view left to keep fresh (HOUSTON-APP-5AP).
+          if ((await opts.store.getAgent(agentId)) === null) return;
           console.error(
             `[view-docs] refresh of ${rest} after ${event.type} answered ${status}`,
           );
