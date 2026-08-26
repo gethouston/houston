@@ -127,6 +127,15 @@ async function start(): Promise<Server> {
           }
         : undefined,
     });
+    // SECURITY INVARIANT (do not reorder): register BEFORE listening. start()
+    // blocks until the first heartbeat has committed, and that heartbeat carries
+    // this process's fresh bootId, which clears any stale admission the control
+    // plane holds for this ordinal from a PRIOR pod that was replaced (e.g. an
+    // involuntary eviction whose IP this pod reused). If a worker ever served a
+    // /turn before that first heartbeat, a stale single-use admission could
+    // dispatch another tenant's turn onto this fresh VM. Accepting turns before
+    // registering would silently reopen that cross-tenant window — see the cloud
+    // pool_workers boot_id clear (internal/store/poolworkers.go).
     await workerRegistration?.start();
     try {
       await new Promise<void>((resolve, reject) => {
