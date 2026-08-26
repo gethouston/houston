@@ -123,7 +123,18 @@ export async function prepareTurnFilesystem(opts: {
   };
 }
 
-/** Build the exact conversation, session, and activity-doc write scope. */
+/**
+ * Build a claimed turn's write scope: its own conversation, session, the two
+ * granted docs, and the agent's workspace FILES. Workspace files are the
+ * turn's deliverable — a spreadsheet the agent built, a document it edited
+ * (via the clamped file tools or, on a single-use worker, bash) must survive
+ * sync-back or the work silently vanishes. Everything else under `.houston/`
+ * stays out of scope: runtime data, docs, and credentials belong to their own
+ * writers, and two concurrent conversations of one agent must not clobber
+ * them from here. Concurrent workspace-file writes from two conversations of
+ * the same agent are last-writer-wins per object, same as the standing host's
+ * store-sync daemon.
+ */
 export function claimedTurnIncludes(
   dataRel: string,
   workspaceRel: string,
@@ -137,11 +148,16 @@ export function claimedTurnIncludes(
   const session = posix.join(dataRel, "sessions", conversationId);
   const activity = turnActivityKey(workspaceRel);
   const runs = turnRoutineRunsKey(workspaceRel);
+  const workspaceFiles = `${workspaceRel}/`;
+  const internal = posix.join(workspaceRel, ".houston");
   return (relativePath) =>
     relativePath === conversation ||
     relativePath.startsWith(`${session}/`) ||
     relativePath === activity ||
-    relativePath === runs;
+    relativePath === runs ||
+    (relativePath.startsWith(workspaceFiles) &&
+      relativePath !== internal &&
+      !relativePath.startsWith(`${internal}/`));
 }
 
 /** Store-relative mission-board object granted to a claimed turn. */
@@ -159,7 +175,13 @@ export async function syncTurnFilesystem(opts: {
   filesystem: TurnFilesystem;
   conversationId: string;
   claimed: boolean;
-}): Promise<{ uploaded: string[]; deleted: string[]; outOfScope: number }> {
+}): Promise<{
+  uploaded: string[];
+  deleted: string[];
+  outOfScope: number;
+  skipped: { key: string; reason: string }[];
+  conflicts: { key: string; reason: string }[];
+}> {
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -167,6 +189,11 @@ export async function syncTurnFilesystem(opts: {
     opts.filesystem.manifest,
     {
       generations: opts.filesystem.generationAware,
+      // A single-use worker has no later retry — its temp tree is wiped after
+      // the turn. A failed/oversized workspace-file upload must NOT then delete
+      // the durable object it was replacing, so hold the delete pass whenever
+      // any write was skipped or conflicted (turn durability surfaces it).
+      holdDeletesOnFailure: opts.claimed,
       ...(opts.claimed
         ? {
             include: claimedTurnIncludes(
@@ -184,9 +211,16 @@ export async function syncTurnFilesystem(opts: {
       `[turn] pool_writes_out_of_scope=${result.outOfScope} prefix=${opts.prefix || opts.filesystem.dataRel} conversation=${opts.conversationId}`,
     );
   }
+  if (result.skipped.length > 0 || result.conflicts.length > 0) {
+    console.warn(
+      `[turn] pool_sync_incomplete skipped=${result.skipped.length} conflicts=${result.conflicts.length} conversation=${opts.conversationId}`,
+    );
+  }
   return {
     uploaded: result.uploaded,
     deleted: result.deleted,
     outOfScope: result.outOfScope,
+    skipped: result.skipped,
+    conflicts: result.conflicts,
   };
 }

@@ -25,18 +25,21 @@ test("partial registration fails with every missing variable", async () => {
   await expect(
     loadWorkerRegistrationConfig({ HOUSTON_POOL_WORKER_ID: "worker-1" }),
   ).rejects.toThrow(
-    "HOUSTON_POOL_REGISTER_URL, HOUSTON_POOL_WORKER_TOKEN_DIR, HOUSTON_POOL_ENDPOINT",
+    "HOUSTON_POOL_REGISTER_URL, HOUSTON_POOL_WORKER_TOKEN_FILE, HOUSTON_POOL_ENDPOINT",
   );
 });
 
-test("registration loads the per-worker token and dev token wins", async () => {
+test("registration loads this worker's token from its single file and dev token wins", async () => {
   const tokenDir = await mkdtemp(join(tmpdir(), "worker-token-"));
   await mkdir(tokenDir, { recursive: true });
-  await writeFile(join(tokenDir, "worker-1"), " pool-token\n");
+  // The pod projects ONLY its own ordinal as one file (subPathExpr); the
+  // runtime reads that file, never a directory of every worker's token.
+  const tokenFile = join(tokenDir, "token");
+  await writeFile(tokenFile, " pool-token\n");
   const config = await loadWorkerRegistrationConfig({
     HOUSTON_POOL_REGISTER_URL: "https://gateway.test/",
     HOUSTON_POOL_WORKER_ID: "worker-1",
-    HOUSTON_POOL_WORKER_TOKEN_DIR: tokenDir,
+    HOUSTON_POOL_WORKER_TOKEN_FILE: tokenFile,
     HOUSTON_POOL_ENDPOINT: "http://worker-1:4318",
   });
 

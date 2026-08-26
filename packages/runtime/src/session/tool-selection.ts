@@ -154,6 +154,23 @@ export function toolNamesForMode(
   }
 }
 
+/**
+ * The exec mode a stateless (turn-mode) worker may actually run. `local` is
+ * only honored on a SINGLE-USE worker: that pod serves one claimed turn and is
+ * recycled, so it is single-tenant for its whole life — the standing pod's
+ * justification for in-container bash, restored. On a shared multi-turn worker
+ * `local` degrades to `disabled`: one org's process tree, tmp residue, and env
+ * must never be readable by the next org's turn.
+ */
+export function turnCodeExecutionMode(
+  configured: CodeExecutionMode,
+  singleUse: boolean,
+): CodeExecutionMode {
+  if (configured === "remote") return "remote";
+  if (configured === "local" && singleUse) return "local";
+  return "disabled";
+}
+
 export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
   const executable =
     input.codeExecution === "local"

@@ -6,6 +6,7 @@ import {
   PLAN_MODE_TOOL_NAMES,
   planToolNames,
   toolNamesForMode,
+  turnCodeExecutionMode,
 } from "./tool-selection";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
@@ -399,5 +400,22 @@ describe("toolNamesForMode dispatcher", () => {
         SUGGEST_REUSABLE_TOOL_NAME,
       );
     });
+  });
+});
+
+describe("turnCodeExecutionMode", () => {
+  test("remote passes through regardless of single-use", () => {
+    expect(turnCodeExecutionMode("remote", false)).toBe("remote");
+    expect(turnCodeExecutionMode("remote", true)).toBe("remote");
+  });
+
+  test("local is honored only on a single-use worker", () => {
+    expect(turnCodeExecutionMode("local", true)).toBe("local");
+    expect(turnCodeExecutionMode("local", false)).toBe("disabled");
+  });
+
+  test("disabled stays disabled", () => {
+    expect(turnCodeExecutionMode("disabled", true)).toBe("disabled");
+    expect(turnCodeExecutionMode("disabled", false)).toBe("disabled");
   });
 });

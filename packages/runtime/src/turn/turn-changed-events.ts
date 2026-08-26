@@ -1,48 +1,42 @@
-import { docKey, FAMILIES, type HoustonFamily } from "@houston/domain";
+import { agentFileEventType } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 
 type AgentEventType = Extract<HoustonEvent, { agentPath: string }>["type"];
 
-const FAMILY_EVENT: Record<HoustonFamily, AgentEventType> = {
-  activity: "ActivityChanged",
-  routines: "RoutinesChanged",
-  routine_runs: "RoutineRunsChanged",
-  config: "ConfigChanged",
-  learnings: "LearningsChanged",
-};
-
 /**
  * The domain events a pool turn's durable writes imply, derived from the
  * store-relative keys the sync-back landed. A pod emits these from its
- * handlers; a worker has no event bus, so the written objects ARE the
- * signal. Keys with no client-visible cache (sessions, runtime state) map to
- * nothing. Sorted, each type once: the list is a set on the wire.
+ * handlers; a worker has no event bus, so the written objects ARE the signal.
+ * Keys with no client-visible cache map to nothing. Sorted, each type once:
+ * the list is a set on the wire.
  *
- * A claimed turn's sync-back scope is its conversation, session, activity
- * and routine-runs objects today (see `claimedTurnIncludes`), so only those
- * families can fire from a pool turn; the file/skill/doc mappings are what
- * a widened scope would announce, nothing more.
+ * A claimed turn's sync-back scope is its conversation, session, the granted
+ * docs, AND every ordinary workspace file (see `claimedTurnIncludes`). Each
+ * key is made agent-workspace-relative and run through the SAME classifier the
+ * host uses (`agentFileEventType`), so a bash-written `report.pdf` at the
+ * workspace root fires `FilesChanged` and a `CLAUDE.md` fires `ContextChanged`
+ * — not the old files/-subtree-only special case that left root writes silent.
+ * The `cloudrun` layout keeps data under a sibling `dataRel` tree, so its
+ * conversation/session keys are mapped explicitly; the `standing` layout has
+ * data under `${workspaceRel}/.houston/runtime`, caught by the relative path.
  */
 export function changedEventTypes(
   layout: { workspaceRel: string; dataRel: string },
   keys: readonly string[],
 ): AgentEventType[] {
-  const familyByKey = new Map<string, AgentEventType>(
-    FAMILIES.map((family) => [
-      docKey(layout.workspaceRel, family),
-      FAMILY_EVENT[family],
-    ]),
-  );
-  const conversations = `${layout.dataRel}/conversations/`;
-  const files = `${layout.workspaceRel}/files/`;
-  const skills = `${layout.workspaceRel}/.agents/skills/`;
+  const workspacePrefix = `${layout.workspaceRel}/`;
+  const dataPrefix = `${layout.dataRel}/`;
   const out = new Set<AgentEventType>();
   for (const key of keys) {
-    const family = familyByKey.get(key);
-    if (family) out.add(family);
-    else if (key.startsWith(conversations)) out.add("ConversationsChanged");
-    else if (key.startsWith(files)) out.add("FilesChanged");
-    else if (key.startsWith(skills)) out.add("SkillsChanged");
+    if (key.startsWith(workspacePrefix)) {
+      const type = agentFileEventType(key.slice(workspacePrefix.length));
+      if (type) out.add(type);
+    } else if (
+      key.startsWith(`${dataPrefix}conversations/`) ||
+      key.startsWith(`${dataPrefix}sessions/`)
+    ) {
+      out.add("ConversationsChanged");
+    }
   }
   return [...out].sort();
 }

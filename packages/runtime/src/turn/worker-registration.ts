@@ -132,12 +132,17 @@ export class WorkerRegistration {
   }
 }
 
-/** Apply the existing process signal to the pool lifecycle. */
+/**
+ * Apply the shutdown trigger to the pool lifecycle. SIGTERM (pod termination)
+ * and "single-use" (the worker spent its one claimed turn) both drain: the
+ * gateway must hear the draining beat before registration stops, or it keeps
+ * routing to a worker that will never accept another turn.
+ */
 export function beginWorkerShutdown(
   signal: string,
   registration: WorkerRegistration | null,
 ): Promise<void> {
-  return signal === "SIGTERM" && registration
+  return (signal === "SIGTERM" || signal === "single-use") && registration
     ? registration.beginDraining()
     : Promise.resolve();
 }

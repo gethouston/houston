@@ -81,7 +81,7 @@ test.each([
     workspaceRel: "workspaces/W/A",
   },
   { name: "cloudrun", dataRel: "data", workspaceRel: "workspace" },
-])("a claimed turn syncs only its conversation and session on $name layout", async ({
+])("a claimed turn syncs its conversation, session, granted docs, and workspace files on $name layout", async ({
   dataRel,
   workspaceRel,
 }) => {
@@ -131,24 +131,28 @@ test.each([
       "utf8",
     ),
   ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
-  expect(keys).not.toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
+  // Workspace files are the turn's deliverable: they sync. `.houston/`
+  // internals beyond the explicit grants stay out of scope.
+  expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
   expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
   );
   expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
   );
-  // The landed writes name the events other tabs need: the conversation and
-  // the board doc changed; out-of-scope files and session state do not count.
+  // The landed writes name the events other tabs need: the conversation, the
+  // board doc, and the workspace file (result.txt at the workspace root now
+  // fires FilesChanged, not the old files/-subtree-only silence). Out-of-scope
+  // files and session state do not count.
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
     data: {
-      poolWritesOutOfScope: 3,
-      changed: ["ActivityChanged", "ConversationsChanged"],
+      poolWritesOutOfScope: 2,
+      changed: ["ActivityChanged", "ConversationsChanged", "FilesChanged"],
     },
   });
   expect(log).toHaveBeenCalledWith(
-    "[turn] pool_writes_out_of_scope=3 prefix=ws/w1/agent-1 conversation=c1",
+    "[turn] pool_writes_out_of_scope=2 prefix=ws/w1/agent-1 conversation=c1",
   );
   log.mockRestore();
 });
@@ -174,8 +178,14 @@ test("an unclaimed turn retains full sync-back", async () => {
   expect(await readFile(join(prefixRoot, "workspace/result.txt"), "utf8")).toBe(
     "workspace",
   );
+  // Unclaimed turns sync the whole prefix and now classify every landed key
+  // through the canonical rule: the workspace file fires FilesChanged and the
+  // session write fires ConversationsChanged (deduped, sorted).
   expect(emitted.at(-1)).toEqual(
-    expect.objectContaining({ type: "done", data: null }),
+    expect.objectContaining({
+      type: "done",
+      data: { changed: ["ConversationsChanged", "FilesChanged"] },
+    }),
   );
 });
 

@@ -141,6 +141,23 @@ export const config = {
    */
   codeExecution: codeExecutionMode(),
   /**
+   * Single-use pool worker: this process serves exactly ONE claimed turn,
+   * latches itself spent, and exits so the orchestrator replaces the whole pod
+   * (fresh sandbox VM, fresh emptyDir). This is the ONLY configuration in
+   * which a turn-mode worker may run local code execution: single-use makes
+   * the pod single-tenant for its entire life, restoring the standing pod's
+   * "the pod is the tenant boundary" justification.
+   */
+  poolSingleUse: env.HOUSTON_POOL_SINGLE_USE === "1",
+  /**
+   * This pod's OWN Kubernetes UID, from the downward API (metadata.uid), NOT
+   * self-reported. The turn server rejects a dispatched turn whose X-Pool-Pod-UID
+   * does not match this, so a REPLACEMENT pod that reused a prior incarnation's
+   * ordinal+IP refuses a turn meant for that prior pod. Empty off-cluster (the
+   * check is then not enforced). Reject-only: it can never admit or self-promote.
+   */
+  podUid: env.HOUSTON_POD_UID ?? "",
+  /**
    * Remote code-execution sandbox (Cloud Run). Used only when codeExecution is
    * "remote"; managed hosted pods run bash in-container (HOUSTON_CODE_EXECUTION=local).
    */

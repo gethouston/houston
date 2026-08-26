@@ -36,11 +36,15 @@ import {
   planReadyFallback,
   runWithInteractionCapture,
 } from "../session/interaction";
-import { buildToolSelection } from "../session/tool-selection";
+import {
+  buildToolSelection,
+  turnCodeExecutionMode,
+} from "../session/tool-selection";
 import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makePlanReadyTool } from "../session/tools/plan-ready";
+import { makePoolBashTool } from "../session/tools/pool-bash";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import type { ProvidedContext } from "../session/workspace-context";
 import {
@@ -193,7 +197,10 @@ export async function runPiTurn(
     );
 
     const toolSelection = buildToolSelection({
-      codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
+      codeExecution: turnCodeExecutionMode(
+        config.codeExecution,
+        config.poolSingleUse,
+      ),
       integrations: false,
       // The retired stateless per-turn cloud runtime has no sandbox routine,
       // learning, or skills route wired (it syncs the whole workspace prefix),
@@ -243,8 +250,9 @@ export async function runPiTurn(
     const thinkingLevel = toThinkingLevel(effort);
     // Per-request pi backend rooted at the throwaway dirs. Same factory the
     // long-lived server uses (backends/pi) — here nothing survives the request:
-    // auth, registry, tools, and session are all per-turn. No bash, ever, in
-    // cloud turn mode.
+    // auth, registry, tools, and session are all per-turn. Bash reaches a turn
+    // only on a single-use worker (turnCodeExecutionMode); a shared multi-turn
+    // worker never sees it.
     const backend = createPiBackend({
       workspaceDir,
       dataDir,
@@ -263,6 +271,14 @@ export async function runPiTurn(
         // its name is in the mode's allowlist).
         makePlanReadyTool(),
         ...(sandbox ? [sandbox] : []),
+        // When local bash is enabled (single-use pool worker), shadow pi's
+        // built-in bash with one whose child env is scrubbed to a non-secret
+        // allowlist — pi's default copies process.env, which here carries the
+        // pool worker token and store secrets. Same shadow-by-name mechanism
+        // as the clamped file tools.
+        ...(toolSelection.toolNames.includes("bash")
+          ? [makePoolBashTool(workspaceDir)]
+          : []),
       ],
     });
     const session = await backend.createSession({
