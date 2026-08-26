@@ -10,7 +10,6 @@ import {
 import { hostedGateState } from "../../lib/engine-mode";
 import i18n from "../../lib/i18n";
 import { isIdentityConfigured, refreshNow } from "../../lib/identity";
-import { logger } from "../../lib/logger";
 import { SignInScreen } from "../auth/sign-in-screen";
 import { StorageUnavailableScreen } from "../auth/storage-unavailable-screen";
 import { WorkspaceLoading } from "./workspace-loading";
@@ -42,18 +41,18 @@ function HostedEngineGate({ children }: { children: ReactNode }) {
     // The 401 → refresh → replay seam (HOU-687): when the gateway rejects a
     // bearer (token expired while the app idled, connections severed by a
     // gateway roll), the adapter force-mints a fresh ID token and retries
-    // instead of toasting. `refreshNow` returns null on a terminal refresh
-    // failure (revoked/expired refresh token) — a real sign-out surfaced by the
-    // auth gate; a transient throw is logged and treated as null so the 401
-    // surfaces rather than crashing the refresher (parity with the old path).
-    return installHostedSessionRefresh(async () => {
-      try {
-        return await refreshNow();
-      } catch (e) {
-        logger.warn(`[auth] hosted session refresh failed: ${e}`);
-        return null;
-      }
-    });
+    // instead of toasting. `refreshNow`'s answer is three-valued and must pass
+    // through INTACT (HOU-1106): a token means refreshed; null means the
+    // session is terminally gone (a real sign-out — this gate surfaces the
+    // sign-in screen); and a transient `IdentityError("network")` (the
+    // identity service unreachable while a sleep-wake reconnect settles)
+    // THROWS, so the adapter's classifier reads it as connectivity and the
+    // read retries as the reconnect settles. Catching that throw and
+    // answering null — as this seam once did — is indistinguishable from the
+    // terminal sign-out: the stale-token 401 stood and every live query
+    // reported a bogus "invalid or expired token" storm to Sentry
+    // (PRODUCT-1531).
+    return installHostedSessionRefresh(refreshNow);
   }, []);
 
   useEffect(() => {
