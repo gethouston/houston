@@ -1,14 +1,28 @@
 import { readFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 
+// HOUSTON_POOL_WORKER_TOKEN_FILE points at a SINGLE file holding THIS worker's
+// token — never a directory of every ordinal's token. The pod projects only
+// its own ordinal (pool.yaml subPathExpr), so a compromised turn's bash, which
+// runs as the same uid as the runtime, cannot read another worker's token off
+// disk and register an attacker endpoint under its id (2026-08-25 review,
+// Critical 1). Reading its OWN token is harmless: a single-use worker that has
+// already served is refused any further claim server-side (Critical 2 guard).
 const ENV_NAMES = [
   "HOUSTON_POOL_REGISTER_URL",
   "HOUSTON_POOL_WORKER_ID",
-  "HOUSTON_POOL_WORKER_TOKEN_DIR",
+  "HOUSTON_POOL_WORKER_TOKEN_FILE",
   "HOUSTON_POOL_ENDPOINT",
 ] as const;
 
-type RegistrationEnv = Partial<Record<(typeof ENV_NAMES)[number], string>>;
+type RegistrationEnv = Partial<
+  Record<
+    | (typeof ENV_NAMES)[number]
+    | "HOUSTON_POOL_POD_UID"
+    | "HOUSTON_POOL_SINGLE_USE",
+    string
+  >
+>;
 
 /** Parsed registration settings plus the per-worker secret. */
 export interface WorkerRegistrationConfig {
@@ -16,6 +30,11 @@ export interface WorkerRegistrationConfig {
   workerId: string;
   endpoint: string;
   token: string;
+  // Pod identity + single-use posture drive the gateway's server-authoritative
+  // single-use guard. podUid is the downward-API metadata.uid (stable across a
+  // container restart); singleUse mirrors HOUSTON_POOL_SINGLE_USE.
+  podUid: string;
+  singleUse: boolean;
 }
 
 /** Parse all-or-none pool registration env and load this worker's token. */
@@ -25,8 +44,8 @@ export async function loadWorkerRegistrationConfig(
   const values = {
     HOUSTON_POOL_REGISTER_URL: env.HOUSTON_POOL_REGISTER_URL?.trim() ?? "",
     HOUSTON_POOL_WORKER_ID: env.HOUSTON_POOL_WORKER_ID?.trim() ?? "",
-    HOUSTON_POOL_WORKER_TOKEN_DIR:
-      env.HOUSTON_POOL_WORKER_TOKEN_DIR?.trim() ?? "",
+    HOUSTON_POOL_WORKER_TOKEN_FILE:
+      env.HOUSTON_POOL_WORKER_TOKEN_FILE?.trim() ?? "",
     HOUSTON_POOL_ENDPOINT: env.HOUSTON_POOL_ENDPOINT?.trim() ?? "",
   };
   const configured = ENV_NAMES.filter((name) => values[name]);
@@ -44,7 +63,7 @@ export async function loadWorkerRegistrationConfig(
     throw new Error("HOUSTON_POOL_WORKER_ID must be a file name");
   }
   const token = (
-    await readFile(join(values.HOUSTON_POOL_WORKER_TOKEN_DIR, workerId), "utf8")
+    await readFile(values.HOUSTON_POOL_WORKER_TOKEN_FILE, "utf8")
   ).trim();
   if (!token)
     throw new Error(`pool worker token file is empty for ${workerId}`);
@@ -58,6 +77,8 @@ export async function loadWorkerRegistrationConfig(
     workerId,
     endpoint: values.HOUSTON_POOL_ENDPOINT,
     token,
+    podUid: env.HOUSTON_POOL_POD_UID?.trim() ?? "",
+    singleUse: env.HOUSTON_POOL_SINGLE_USE?.trim() === "1",
   };
 }
 

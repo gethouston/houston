@@ -63,16 +63,23 @@ async function start(): Promise<Server> {
     const { assertMarkerWritable, markWorkerSpent, workerSpent } = await import(
       "./turn/single-use"
     );
-    // local bash on a turn worker is only safe on a single-use pod. Without
-    // single-use, `turnCodeExecutionMode` already degrades `local` to
-    // `disabled` (no bash) — the SAFE outcome — so this is a warning, not a
-    // boot throw: throwing here would crash-loop any existing turn deployment
-    // that never set HOUSTON_CODE_EXECUTION (config.ts defaults to `local`
-    // when no sandbox URL is present). Bash never reaches a shared worker
-    // regardless; the guard that MUST fail closed is the single-use one below.
+    // local bash on a turn worker is only safe on a single-use pod. Fail
+    // closed per the contract pool.yaml states: an EXPLICIT
+    // HOUSTON_CODE_EXECUTION=local without HOUSTON_POOL_SINGLE_USE=1 is a
+    // misconfigured pool worker — it must crash-loop loudly, never run. A turn
+    // deployment that never set the var (config defaults local when no sandbox
+    // URL is present) is not a pool worker and stays safe: turnCodeExecutionMode
+    // already degrades that to `disabled` (no bash), so it only warns.
+    const explicitLocal =
+      process.env.HOUSTON_CODE_EXECUTION?.trim().toLowerCase() === "local";
+    if (explicitLocal && !config.poolSingleUse) {
+      throw new Error(
+        "HOUSTON_CODE_EXECUTION=local requires HOUSTON_POOL_SINGLE_USE=1 in turn mode: a multi-turn pool worker running in-container bash crosses tenant boundaries",
+      );
+    }
     if (config.codeExecution === "local" && !config.poolSingleUse) {
       logger.warn(
-        "HOUSTON_CODE_EXECUTION=local without HOUSTON_POOL_SINGLE_USE=1 in turn mode: bash is DISABLED (a multi-turn pool worker crosses tenant boundaries). Set HOUSTON_CODE_EXECUTION=disabled to silence this.",
+        "code execution defaulted to local without HOUSTON_POOL_SINGLE_USE=1 in turn mode: bash is DISABLED (a multi-turn pool worker crosses tenant boundaries). Set HOUSTON_CODE_EXECUTION=disabled to silence this.",
       );
     }
     if (config.poolSingleUse && turnConcurrency() !== 1) {
@@ -80,20 +87,24 @@ async function start(): Promise<Server> {
         "HOUSTON_POOL_SINGLE_USE=1 requires HOUSTON_TURN_CONCURRENCY=1: single-use means exactly one claimed turn per pod",
       );
     }
-    // Prove the spent marker is writable now, at boot, before serving: a
-    // read-only/full volume or an unset HOUSTON_HOME would otherwise turn the
-    // restart guard into a silent no-op and surface only as burned claims.
-    if (config.poolSingleUse) assertMarkerWritable();
     // A restarted container in a spent pod (single-use worker exited, kubelet
     // restarted it in place) must idle unregistered until the control plane
     // replaces the pod — never serve from a tree the previous tenant's code
-    // may have touched.
+    // may have touched. Check spent-ness FIRST: a full emptyDir (a prior
+    // tenant filled /data) would make assertMarkerWritable throw, and if that
+    // ran first a genuinely spent pod would crash-loop instead of idling
+    // quietly for recycle — masking the clean-exit signal the recycler reads.
     let spent = config.poolSingleUse && workerSpent();
     if (spent) {
       console.error(
         "[turn] pod is spent (single-use marker present); refusing to register until the pod is recycled",
       );
     }
+    // Prove the spent marker is writable now, at boot, before serving: a
+    // read-only/full volume or an unset HOUSTON_HOME would otherwise turn the
+    // restart guard into a silent no-op and surface only as burned claims.
+    // Only the not-yet-spent path needs this (a spent pod never serves again).
+    if (config.poolSingleUse && !spent) assertMarkerWritable();
     const registrationConfig = await loadWorkerRegistrationConfig();
     const admission = new AdmissionLimiter(turnConcurrency());
     workerRegistration =

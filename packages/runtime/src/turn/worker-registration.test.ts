@@ -25,19 +25,24 @@ test("partial registration fails with every missing variable", async () => {
   await expect(
     loadWorkerRegistrationConfig({ HOUSTON_POOL_WORKER_ID: "worker-1" }),
   ).rejects.toThrow(
-    "HOUSTON_POOL_REGISTER_URL, HOUSTON_POOL_WORKER_TOKEN_DIR, HOUSTON_POOL_ENDPOINT",
+    "HOUSTON_POOL_REGISTER_URL, HOUSTON_POOL_WORKER_TOKEN_FILE, HOUSTON_POOL_ENDPOINT",
   );
 });
 
-test("registration loads the per-worker token and dev token wins", async () => {
+test("registration loads this worker's token from its single file and dev token wins", async () => {
   const tokenDir = await mkdtemp(join(tmpdir(), "worker-token-"));
   await mkdir(tokenDir, { recursive: true });
-  await writeFile(join(tokenDir, "worker-1"), " pool-token\n");
+  // The pod projects ONLY its own ordinal as one file (subPathExpr); the
+  // runtime reads that file, never a directory of every worker's token.
+  const tokenFile = join(tokenDir, "token");
+  await writeFile(tokenFile, " pool-token\n");
   const config = await loadWorkerRegistrationConfig({
     HOUSTON_POOL_REGISTER_URL: "https://gateway.test/",
     HOUSTON_POOL_WORKER_ID: "worker-1",
-    HOUSTON_POOL_WORKER_TOKEN_DIR: tokenDir,
+    HOUSTON_POOL_WORKER_TOKEN_FILE: tokenFile,
     HOUSTON_POOL_ENDPOINT: "http://worker-1:4318",
+    HOUSTON_POOL_POD_UID: "pod-1",
+    HOUSTON_POOL_SINGLE_USE: "1",
   });
 
   expect(config).toMatchObject({
@@ -45,6 +50,8 @@ test("registration loads the per-worker token and dev token wins", async () => {
     workerId: "worker-1",
     endpoint: "http://worker-1:4318",
     token: "pool-token",
+    podUid: "pod-1",
+    singleUse: true,
   });
   expect(turnServerToken("dev-token", config)).toBe("dev-token");
   expect(turnServerToken("", config)).toBe("pool-token");
@@ -56,6 +63,8 @@ test("the selected token protects the inbound turn route", async () => {
     workerId: "worker-1",
     endpoint: "http://worker-1:4318",
     token: "pool-token",
+    podUid: "pod-1",
+    singleUse: true,
   };
   const startServer = async (explicitToken: string) => {
     const server = createTurnServer({
@@ -112,6 +121,8 @@ test("heartbeat sends the exact body and bearer token", async () => {
       workerId: "worker-1",
       endpoint: "http://worker-1:4318",
       token: "worker-token",
+      podUid: "pod-1",
+      singleUse: true,
     },
     admission,
     { bootId: "boot-1", intervalMs: 60_000 },
@@ -130,6 +141,8 @@ test("heartbeat sends the exact body and bearer token", async () => {
       capacity: 3,
       activeClaims: 1,
       draining: false,
+      podUid: "pod-1",
+      singleUse: true,
     },
   });
 });
@@ -143,6 +156,8 @@ test("a failed heartbeat logs status and text, then retries", async () => {
       workerId: "worker-1",
       endpoint: "http://worker-1:4318",
       token: "worker-token",
+      podUid: "pod-1",
+      singleUse: true,
     },
     new AdmissionLimiter(1),
     {
@@ -175,6 +190,8 @@ test("stop aborts an in-flight heartbeat", async () => {
       workerId: "worker-1",
       endpoint: "http://worker-1:4318",
       token: "worker-token",
+      podUid: "pod-1",
+      singleUse: true,
     },
     new AdmissionLimiter(1),
     {
@@ -207,6 +224,8 @@ test("SIGTERM flips draining and admission reports worker_draining", async () =>
       workerId: "worker-1",
       endpoint: "http://worker-1:4318",
       token: "worker-token",
+      podUid: "pod-1",
+      singleUse: true,
     },
     admission,
     {
