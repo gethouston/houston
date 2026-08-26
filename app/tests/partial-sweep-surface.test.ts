@@ -50,34 +50,30 @@ describe("representativeSweepFailure", () => {
   });
 });
 
+// The kind is reason-only (HOUSTON-APP-58Q). Escalation used to force the
+// error surface on the theory that a pod "never actually woke" — but the
+// client cannot conclude that: the gateway holds a legitimate cold start for
+// minutes and an engine roll restarts busy pods hours into a deploy, so every
+// escalated report was a still-waking pod filed as a bug (26 users in one
+// release). Expected states now stay quiet however long they last; a real
+// failure reports at any point of the run.
 describe("partialSweepToastKind", () => {
-  it("gives a waking pod the quiet HOU-1114 surface, not a bug report", () => {
-    strictEqual(partialSweepToastKind("notice", wakingError()), "waking");
+  it("gives a waking pod the quiet HOU-1114 surface, not a bug report — at notice and at escalation alike", () => {
+    strictEqual(partialSweepToastKind(wakingError()), "waking");
   });
 
   it("gives an offline drop the connectivity surface (HOU-1085)", () => {
-    strictEqual(
-      partialSweepToastKind("notice", offlineError()),
-      "connectivity",
-    );
+    strictEqual(partialSweepToastKind(offlineError()), "connectivity");
   });
 
   it("keeps the error surface for a real per-agent failure", () => {
-    strictEqual(partialSweepToastKind("notice", realError()), "error");
+    strictEqual(partialSweepToastKind(realError()), "error");
   });
 
   it("a coding-bug TypeError is never mistaken for connectivity", () => {
     strictEqual(
-      partialSweepToastKind(
-        "notice",
-        new TypeError("undefined is not a function"),
-      ),
+      partialSweepToastKind(new TypeError("undefined is not a function")),
       "error",
     );
-  });
-
-  it("escalation always reports — even a 'waking' pod, because it never actually woke", () => {
-    strictEqual(partialSweepToastKind("escalate", wakingError()), "error");
-    strictEqual(partialSweepToastKind("escalate", offlineError()), "error");
   });
 });

@@ -63,17 +63,26 @@ export function mergePartialSweep<T extends AgentScopedRow>(
  * an agent that stays broken must not keep the fleet awake all session. After
  * the last delay the aggregate waits for a real signal instead — a remount, an
  * event-stream reconnect, or an event naming that agent.
+ *
+ * The run must outlive a LEGITIMATE pod wake (HOUSTON-APP-58Q): the gateway
+ * holds a cold start for up to five minutes before giving up, so a ladder
+ * that ended at 85s abandoned the board — hole frozen, run escalated — while
+ * the pod was still coming up as designed.
  */
-export const PARTIAL_SWEEP_RETRY_DELAYS_MS = [5_000, 20_000, 60_000];
+export const PARTIAL_SWEEP_RETRY_DELAYS_MS = [
+  5_000, 20_000, 60_000, 120_000, 180_000,
+];
 
 export type PartialSweepSurface =
   /** First partial sweep of a run: tell the user once, CLASSIFIED — a waking
    *  pod or an offline drop gets its quiet informational surface, anything
    *  else the real error report. */
   | "notice"
-  /** The bounded re-sweeps are exhausted and the hole is still open. Whatever
-   *  the reason looked like, a pod that never came up through the whole run is
-   *  the bug report we want — always the error surface. */
+  /** The bounded re-sweeps are exhausted and the hole is still open. Still
+   *  CLASSIFIED by reason (HOUSTON-APP-58Q): an engine roll can restart a busy
+   *  pod hours into a deploy, so "still waking when the run ran out" is the
+   *  platform working as designed, not the crashloop report — only a real
+   *  failure earns the error surface here. */
   | "escalate";
 
 export interface PartialSweepDecision {

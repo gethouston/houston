@@ -95,12 +95,12 @@ export function recoverFromSweep(
 
 /**
  * Tell someone the sweep was incomplete, in the register the failures earn
- * (HOUSTON-APP-538): an asleep pod still waking / a device that dropped
- * offline get their quiet informational toasts (no Sentry — the re-sweep
- * already scheduled above heals the hole once the pod is up), everything else
- * — and ANY failure still standing at escalation — the real error report. The
- * per-agent reasons ride the diagnostic line so the log and the report say
- * WHY, not just who.
+ * (HOUSTON-APP-538, HOUSTON-APP-58Q): an asleep pod still waking / a device
+ * that dropped offline get their quiet informational toasts at notice AND at
+ * escalation (no Sentry — a pod can legitimately take longer to wake than the
+ * whole re-sweep run, so "still waking at the end" is not a bug), everything
+ * else the real error report. The per-agent reasons ride the diagnostic line
+ * so the log and the report say WHY, not just who.
  */
 function surfacePartialSweep(
   surface: PartialSweepSurface,
@@ -110,17 +110,19 @@ function surfacePartialSweep(
   const named = failedAgents
     .map((f) => `${f.agentPath} (${describeReason(f.reason)})`)
     .join(", ");
-  switch (partialSweepToastKind(surface, reason)) {
+  const still =
+    surface === "escalate" ? "still unread after re-sweeps" : "unread";
+  switch (partialSweepToastKind(reason)) {
     case "waking":
       showEngineWakingToast(
         "list_all_conversations_partial",
-        `missions unread for ${failedAgents.length} waking agent(s): ${named}`,
+        `missions ${still} for ${failedAgents.length} waking agent(s): ${named}`,
       );
       return;
     case "connectivity":
       showConnectivityErrorToast(
         "list_all_conversations_partial",
-        `missions unread for ${failedAgents.length} agent(s) while offline: ${named}`,
+        `missions ${still} for ${failedAgents.length} agent(s) while offline: ${named}`,
       );
       return;
     case "error":
