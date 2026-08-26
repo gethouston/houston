@@ -110,8 +110,6 @@ export class WorkerRegistration {
           capacity: this.admission.capacity,
           activeClaims: this.admission.active,
           draining: this.drainingState,
-          podUid: this.config.podUid,
-          singleUse: this.config.singleUse,
         }),
         signal: AbortSignal.any([
           requestAbort.signal,

@@ -15,14 +15,7 @@ const ENV_NAMES = [
   "HOUSTON_POOL_ENDPOINT",
 ] as const;
 
-type RegistrationEnv = Partial<
-  Record<
-    | (typeof ENV_NAMES)[number]
-    | "HOUSTON_POOL_POD_UID"
-    | "HOUSTON_POOL_SINGLE_USE",
-    string
-  >
->;
+type RegistrationEnv = Partial<Record<(typeof ENV_NAMES)[number], string>>;
 
 /** Parsed registration settings plus the per-worker secret. */
 export interface WorkerRegistrationConfig {
@@ -30,11 +23,13 @@ export interface WorkerRegistrationConfig {
   workerId: string;
   endpoint: string;
   token: string;
-  // Pod identity + single-use posture drive the gateway's server-authoritative
-  // single-use guard. podUid is the downward-API metadata.uid (stable across a
-  // container restart); singleUse mirrors HOUSTON_POOL_SINGLE_USE.
-  podUid: string;
-  singleUse: boolean;
+  // No pod identity or single-use flag is reported to the gateway: the
+  // heartbeat is authenticated by this worker's own token, which the sandboxed
+  // turn shares a uid with and can read, so self-reported single-use state is
+  // attacker-controllable. The gateway derives those facts from the Kubernetes
+  // API instead (2026-08-25 review, Critical 2). The runtime's OWN single-use
+  // behavior keys off HOUSTON_POOL_SINGLE_USE (config.poolSingleUse), which a
+  // tenant lying to itself gains nothing from.
 }
 
 /** Parse all-or-none pool registration env and load this worker's token. */
@@ -77,8 +72,6 @@ export async function loadWorkerRegistrationConfig(
     workerId,
     endpoint: values.HOUSTON_POOL_ENDPOINT,
     token,
-    podUid: env.HOUSTON_POOL_POD_UID?.trim() ?? "",
-    singleUse: env.HOUSTON_POOL_SINGLE_USE?.trim() === "1",
   };
 }
 
