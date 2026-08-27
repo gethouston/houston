@@ -103,9 +103,11 @@ jobs:
           if [ -n "$BASE" ] && [ "$BASE" != "0000000000000000000000000000000000000000" ] \
               && git fetch --depth=1 origin "$BASE" 2>/dev/null; then
             if git diff --name-only "$BASE" "${{ github.sha }}" -- \
-                selfhost/Dockerfile packages/protocol packages/runtime-client \
-                packages/domain packages/runtime packages/host ui/agent-schemas \
-                pnpm-lock.yaml .github/workflows/engine-pod-image.yml | grep -q .; then
+                selfhost/Dockerfile selfhost/bundle.mjs packages/protocol \
+                packages/runtime-client packages/domain packages/runtime \
+                packages/host packages/agentstore-contract ui/agent-schemas \
+                patches package.json pnpm-lock.yaml pnpm-workspace.yaml \
+                .github/workflows/engine-pod-image.yml | grep -q .; then
               BUILD=true
             else
               BUILD=false
