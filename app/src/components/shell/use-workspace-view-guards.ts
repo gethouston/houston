@@ -69,7 +69,9 @@ export function useWorkspaceViewGuards(gates: {
     });
     boot.current = step.state;
     if (step.action === "open-home-team" && team !== null) {
-      openTeamView(team.id, "mission-control");
+      // A REDIRECT, not a place the user chose: replacing keeps the transient
+      // boot Inbox off the nav stack, so browser back can't land on it.
+      openTeamView(team.id, "mission-control", { nav: "replace" });
     }
   }, [openTeamView, teams, viewMode, workspaceId]);
 
@@ -87,8 +89,10 @@ export function useWorkspaceViewGuards(gates: {
     });
     if (action !== "go-home") return;
     const team = homeTeam(teams);
-    if (team === null) setViewMode(INBOX_VIEW_ID);
-    else openTeamView(team.id, "mission-control");
+    // Replace, not push: a dead view sent home must not stay reachable via
+    // the browser back button (backing into it would just bounce home again).
+    if (team === null) setViewMode(INBOX_VIEW_ID, { nav: "replace" });
+    else openTeamView(team.id, "mission-control", { nav: "replace" });
   }, [
     activeTeamId,
     openTeamView,

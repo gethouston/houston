@@ -42,6 +42,7 @@ import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 import { newEngineActive } from "./lib/engine";
 import { isIdentityConfigured } from "./lib/identity";
 import { logger } from "./lib/logger";
+import { useNavHistorySync } from "./lib/nav-history";
 import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
@@ -90,6 +91,10 @@ export default function App() {
   // Turn an `houston://store/install` deep link (desktop) or `?install=<slug>`
   // web param into a seeded import wizard once the shell is live.
   useStoreInstallDeepLink();
+  // Mirror the ui store's nav stack into browser history (back/forward walk
+  // the app). The one history writer besides the deep-link param strip above,
+  // which preserves `history.state` — the two cannot fight.
+  useNavHistorySync();
 
   // NOTE: install identity, `install_created`, `session_started`, and theme
   // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.
