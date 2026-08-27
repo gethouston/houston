@@ -45,7 +45,7 @@ describe("logProviderError", () => {
     // `[provider_error] provider=X model=Y status=Z error=SLUG kind=K cause=C :: text`
     // — the exact shape runtime-client sentry/client.ts PROVIDER_ERROR_LINE
     // captures into the (provider, kind, cause, sdk-slug) fingerprint.
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     logProviderError(
       {
         kind: "unauthenticated",
@@ -59,14 +59,19 @@ describe("logProviderError", () => {
         sdkError: "oauth_org_not_allowed",
       },
     );
-    expect(error).toHaveBeenCalledWith(
+    expect(warn).toHaveBeenCalledWith(
       "[provider_error] provider=anthropic model=claude-fable-5 status=403 " +
         "error=oauth_org_not_allowed kind=unauthenticated cause=org_policy_blocked " +
         ":: Your organization has disabled Claude subscription access",
     );
   });
 
-  it("keeps org_policy_blocked at error level — broken access, not an expected user state", () => {
+  it("keeps org_policy_blocked a warning — the user's org policy, not broken custody", () => {
+    // Anthropic authenticated the token and its org policy rejected the
+    // surface (PRODUCT-1553): the card already offers the API-key remedy,
+    // only the org admin can lift the block, and every retried turn
+    // re-fires. HOUSTON-APP-4XG-style custody breaks carry other causes and
+    // stay errors.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     logProviderError({
@@ -75,8 +80,8 @@ describe("logProviderError", () => {
       cause: "org_policy_blocked",
       message: "Your organization has disabled Claude subscription access",
     });
-    expect(warn).not.toHaveBeenCalled();
-    expect(error).toHaveBeenCalledWith(
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
       expect.stringContaining(
         "kind=unauthenticated cause=org_policy_blocked ::",
       ),
