@@ -41,6 +41,14 @@ export interface AgentScanDeps {
   dedupTtlSec: number;
   /** External mode skips only cron evaluation/firing; reconcile still runs. */
   cronFiresEnabled: boolean;
+  /**
+   * Backstop delay for cron fires (scheduler.ts EXTERNAL_FIRE_GRACE_MS): an
+   * instant is only eligible once it is this old, so the control plane's
+   * identity-carrying delivery wins every live race and the local cron picks
+   * up only instants that delivery left unclaimed. 0 = fire on due (desktop /
+   * self-host, where no external delivery exists).
+   */
+  cronFireGraceMs: number;
   replyReader?: ReconcileDeps["replyReader"];
 }
 
@@ -75,8 +83,15 @@ export async function scanAgent(
     if (deps.cronFiresEnabled) {
       const root = deps.paths.agentRoot(ws, agent);
       const { items: routines } = await loadRoutines(deps.vfs, root);
+      // The grace shifts the WHOLE evaluation window, not just a threshold on
+      // `at`: consecutive ticks' shifted windows still tile exactly, so every
+      // instant is evaluated once — `at` stays the true cron instant, and the
+      // dedup key below matches the one the external delivery burns.
+      const grace = deps.cronFireGraceMs;
+      const evalSince = grace ? new Date(since.getTime() - grace) : since;
+      const evalNow = grace ? new Date(now.getTime() - grace) : now;
       for (const routine of routines) {
-        const at = dueAt(routine, since, now, timezone);
+        const at = dueAt(routine, evalSince, evalNow, timezone);
         if (!at) continue;
         const won = await burnRoutineFireInstant(
           deps.lock,

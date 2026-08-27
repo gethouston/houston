@@ -205,6 +205,12 @@ const host = buildLocalHost({
   // A trigger backend exists only on managed cloud (see `triggersEnabled`).
   triggersEnabled,
   routineSchedulerMode,
+  // The control plane's fire scheduler delivers scheduled instants (with the
+  // creator's minted acting identity) only in the managed-cloud topology; the
+  // pod-store env is its marker. Self-host sets HOUSTON_MANAGED_CLOUD with no
+  // control plane, so it must NOT get the backstop grace this enables — its
+  // local cron is the only scheduler.
+  externalRoutineFires: !!managedStore?.podGateway,
   // Managed pods sit behind the gateway (it enforces the pod token and mints
   // x-houston-acting-as); relay that header to the runtime so integration
   // calls act as the driving user. Desktop/self-host stay direct → false.

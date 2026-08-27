@@ -13,6 +13,23 @@ export type { FireLock } from "./fire-lock";
 
 export type RoutineSchedulerMode = "local" | "external";
 
+/**
+ * How long a local cron scan waits past a due instant before firing it, where
+ * an external fire delivery also runs (managed cloud). The control plane's
+ * delivery carries the routine creator's minted acting identity, so its turn
+ * resolves the creator's own credentials; the pod-local path can only run on
+ * the shared team scope (pods cannot mint identity — HOU-976 D10), where a
+ * member's personally-connected provider reads as "not connected". Racing the
+ * delivery at second granularity made WHICH credentials a run used depend on
+ * scheduler load: at the top of the hour the delivery lags behind the herd of
+ * due routines, the local scan won the per-instant dedup burn, and the run
+ * failed no_provider (PRODUCT-1549). The grace keeps the local cron as a
+ * genuine backstop: it fires only instants the external delivery has left
+ * unclaimed for this long. Must stay well under the dedup TTL and above the
+ * delivery's worst observed top-of-hour lag (~15s).
+ */
+export const EXTERNAL_FIRE_GRACE_MS = 120_000;
+
 export interface SchedulerDeps {
   store: WorkspaceStore;
   vfs: Vfs;
@@ -27,6 +44,8 @@ export interface SchedulerDeps {
   dedupTtlSec?: number;
   /** `external` disables cron fires only. Default `local`. */
   mode?: RoutineSchedulerMode;
+  /** Backstop delay for cron fires (see EXTERNAL_FIRE_GRACE_MS). Default 0. */
+  cronFireGraceMs?: number;
   now?: () => Date;
   newId?: () => string;
   replyReader?: ReconcileDeps["replyReader"];
@@ -127,6 +146,7 @@ export class Scheduler {
             newId: this.newId,
             dedupTtlSec: this.dedupTtlSec,
             cronFiresEnabled: this.deps.mode !== "external",
+            cronFireGraceMs: this.deps.cronFireGraceMs ?? 0,
           },
           ws,
           agent,
