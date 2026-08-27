@@ -72,14 +72,20 @@ export function logProviderError(
     `[provider_error] provider=${error.provider} model=${ctx.model ?? "?"} ` +
     `status=${ctx.status ?? "?"}${ctx.sdkError ? ` error=${ctx.sdkError}` : ""} ` +
     `kind=${error.kind}${cause} :: ${verbatim}`;
-  // `no_credentials` is the one auth cause that is an expected USER state, not
-  // broken custody: the provider was simply never connected (or the user
-  // logged out with it still selected). It became loggable when the
-  // pre-session guards started reporting (HOU-1156) — keep it a warning or
-  // every fresh install fires Sentry errors.
+  // Two auth causes are expected USER states, not broken custody.
+  // `no_credentials`: the provider was simply never connected (or the user
+  // logged out with it still selected) — loggable since the pre-session
+  // guards started reporting (HOU-1156); keep it a warning or every fresh
+  // install fires Sentry errors. `org_policy_blocked`: the provider
+  // authenticated the token and then its org policy rejected subscription
+  // access for this environment (Anthropic's `oauth_org_not_allowed`) — the
+  // card already tells the user to switch to an API key, only their org admin
+  // can lift the block, and every retried turn re-fires it.
   const expected =
     EXPECTED_KINDS.has(error.kind) ||
-    (error.kind === "unauthenticated" && error.cause === "no_credentials") ||
+    (error.kind === "unauthenticated" &&
+      (error.cause === "no_credentials" ||
+        error.cause === "org_policy_blocked")) ||
     (error.kind === "unauthenticated" &&
       EXPECTED_AUTH_DETAIL.test(verbatim ?? "")) ||
     (error.kind === "unknown" && EXPECTED_UNKNOWN_DETAIL.test(verbatim ?? ""));

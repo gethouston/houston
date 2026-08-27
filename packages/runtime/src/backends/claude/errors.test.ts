@@ -84,17 +84,19 @@ test("oauth_org_not_allowed → unauthenticated with the org_policy_blocked caus
   });
 });
 
-test("org_policy_blocked stays an ERROR-level log — broken access, not an expected user state", () => {
-  // Unlike no_credentials (a fresh install is not a bug), an org-policy block
-  // means turns are failing on access the user believes they have; it must
-  // keep firing Sentry events so the family stays countable.
+test("org_policy_blocked logs a WARNING — the user's org policy, not broken custody", () => {
+  // The family was kept error-level to count it (PRODUCT-1393); counted, it
+  // proved to be pure user-org state — Anthropic authenticated the token and
+  // rejected the surface, the card already says "use an API key", and only
+  // the org admin can lift the block. Every retried turn re-fires, so an
+  // error-level event per turn is noise (PRODUCT-1553).
   mapSdkError("oauth_org_not_allowed", {
     message: "Your organization has disabled Claude subscription access",
     model: null,
   });
-  expect(consoleError).toHaveBeenCalledOnce();
-  expect(consoleWarn).not.toHaveBeenCalled();
-  expect(consoleError).toHaveBeenCalledWith(
+  expect(consoleWarn).toHaveBeenCalledOnce();
+  expect(consoleError).not.toHaveBeenCalled();
+  expect(consoleWarn).toHaveBeenCalledWith(
     expect.stringContaining(
       "error=oauth_org_not_allowed kind=unauthenticated cause=org_policy_blocked",
     ),
